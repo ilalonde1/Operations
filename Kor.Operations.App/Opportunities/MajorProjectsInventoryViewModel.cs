@@ -36,6 +36,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     private string _statusMessage = "Ready.";
     private Brush _statusBrush = StatusNeutral;
     private bool _isLoading;
+    private IReadOnlyList<MajorProjectRow> _contextSnapshot = Array.Empty<MajorProjectRow>();
 
     public MajorProjectsInventoryViewModel(
         IMajorProjectsInventoryStore store,
@@ -192,6 +193,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
             {
                 Projects.Add(row);
             }
+            _contextSnapshot = Projects.ToArray();
 
             Selected = selectedId.HasValue
                 ? Projects.FirstOrDefault(p => p.Id == selectedId.Value)
@@ -301,18 +303,16 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     }
 
     public string ProviderName => Provider;
-    public bool HasData => Projects.Count > 0;
+    public bool HasData => _contextSnapshot.Count > 0;
 
     public string BuildContext()
     {
-        // Snapshot Projects up front. BuildContext runs on AppAiContextBuilder's
-        // worker thread while the BD refresh paths mutate these on the UI thread;
-        // without the snapshot a mid-Ask refresh silently drops this section
-        // (Batch 102 audit pattern).
-        var projects = Projects.ToArray();
+        // BuildContext runs on AppAiContextBuilder's worker thread. Read the
+        // immutable UI-thread snapshot instead of enumerating the live view.
+        var projects = _contextSnapshot;
 
         var sb = new StringBuilder();
-        sb.AppendLine($"Total major projects tracked: {projects.Length:N0}.");
+        sb.AppendLine($"Total major projects tracked: {projects.Count:N0}.");
 
         AppendCounts(sb, "By province:", projects.GroupBy(p => p.Province));
         AppendCounts(sb, "By stage:", projects.GroupBy(p => string.IsNullOrWhiteSpace(p.StageDisplay) ? "(blank)" : p.StageDisplay));

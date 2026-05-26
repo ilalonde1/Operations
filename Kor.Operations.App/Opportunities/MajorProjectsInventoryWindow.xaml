@@ -174,9 +174,9 @@
 
                             <TextBlock Grid.Row="5" Grid.Column="0" Text="Sub/category" Style="{StaticResource DetailLabel}"/>
                             <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource DetailValue}">
-                                <Run Text="{Binding Selected.SubSector, TargetNullValue=''}"/>
+                                <Run Text="{Binding Selected.SubSector, Mode=OneWay, TargetNullValue=''}"/>
                                 <Run Text=" / "/>
-                                <Run Text="{Binding Selected.ProjectCategoryName, TargetNullValue=''}"/>
+                                <Run Text="{Binding Selected.ProjectCategoryName, Mode=OneWay, TargetNullValue=''}"/>
                             </TextBlock>
 
                             <TextBlock Grid.Row="6" Grid.Column="0" Text="Proponent" Style="{StaticResource DetailLabel}"/>
@@ -220,9 +220,9 @@
 
                             <TextBlock Grid.Row="9" Grid.Column="0" Text="Issue" Style="{StaticResource DetailLabel}"/>
                             <TextBlock Grid.Row="9" Grid.Column="1" Style="{StaticResource DetailValue}">
-                                <Run Text="{Binding Selected.IssueYear, TargetNullValue=''}"/>
+                                <Run Text="{Binding Selected.IssueYear, Mode=OneWay, TargetNullValue=''}"/>
                                 <Run Text=" Q"/>
-                                <Run Text="{Binding Selected.IssueQuarter, TargetNullValue=''}"/>
+                                <Run Text="{Binding Selected.IssueQuarter, Mode=OneWay, TargetNullValue=''}"/>
                             </TextBlock>
                         </Grid>
 
@@ -249,9 +249,9 @@
                             <TextBlock Text="Jobs" FontWeight="SemiBold" Foreground="#506070" Margin="0,0,0,4"/>
                             <TextBlock Style="{StaticResource DetailValue}">
                                 <Run Text="Construction: "/>
-                                <Run Text="{Binding Selected.ConstructionJobs, StringFormat={}{0:N0}, TargetNullValue='unknown'}"/>
+                                <Run Text="{Binding Selected.ConstructionJobs, Mode=OneWay, StringFormat={}{0:N0}, TargetNullValue='unknown'}"/>
                                 <Run Text="   Operating: "/>
-                                <Run Text="{Binding Selected.OperatingJobs, StringFormat={}{0:N0}, TargetNullValue='unknown'}"/>
+                                <Run Text="{Binding Selected.OperatingJobs, Mode=OneWay, StringFormat={}{0:N0}, TargetNullValue='unknown'}"/>
                             </TextBlock>
                         </StackPanel>
 

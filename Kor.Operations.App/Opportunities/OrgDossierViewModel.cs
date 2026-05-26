@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
@@ -36,6 +37,9 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private string _statusMessage = "Ready.";
     private decimal _lifetimeValue;
     private int _lifetimeCount;
+    private IReadOnlyList<ContextDossierSection> _sectionsContextSnapshot = Array.Empty<ContextDossierSection>();
+    private IReadOnlyList<DossierProjectRow> _projectsContextSnapshot = Array.Empty<DossierProjectRow>();
+    private IReadOnlyList<AwardListing> _recentWinsContextSnapshot = Array.Empty<AwardListing>();
 
     public OrgDossierViewModel(
         ICanonicalOrgStore canonicalStore,
@@ -145,6 +149,9 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     public async Task LoadAsync(long canonicalOrgId, CancellationToken ct)
     {
         _canonicalOrgId = null;
+        _sectionsContextSnapshot = Array.Empty<ContextDossierSection>();
+        _projectsContextSnapshot = Array.Empty<DossierProjectRow>();
+        _recentWinsContextSnapshot = Array.Empty<AwardListing>();
         OnPropertyChanged(nameof(HeaderLoaded));
         StatusMessage = "Loading dossier...";
 
@@ -194,6 +201,12 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             {
                 RecentWins.Add(win);
             }
+
+            _sectionsContextSnapshot = Sections
+                .Select(s => new ContextDossierSection(s.ProviderName, s.Fields.ToArray()))
+                .ToArray();
+            _projectsContextSnapshot = Projects.ToArray();
+            _recentWinsContextSnapshot = RecentWins.ToArray();
 
             StatusMessage = $"Loaded {Sections.Count:N0} dossiers, {Projects.Count:N0} projects, {LifetimeCount:N0} award wins.";
         }
@@ -399,24 +412,24 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
 
     public string BuildContext()
     {
-        var sections = Sections.ToArray();
-        var projects = Projects.ToArray();
+        var sections = _sectionsContextSnapshot;
+        var projects = _projectsContextSnapshot;
         var sb = new StringBuilder();
         sb.AppendLine($"Org dossier: {DisplayName}");
         sb.AppendLine($"Kind: {Kind}");
         if (!string.IsNullOrWhiteSpace(Website)) sb.AppendLine($"Website: {Website}");
         if (!string.IsNullOrWhiteSpace(ClendorClientId)) sb.AppendLine($"ClendorClientId: {ClendorClientId}");
         sb.AppendLine($"Research providers: {string.Join(", ", sections.Select(s => s.ProviderName))}");
-        sb.AppendLine($"Linked major projects: {projects.Length:N0}");
+        sb.AppendLine($"Linked major projects: {projects.Count:N0}");
         sb.AppendLine($"Lifetime award value: {LifetimeValue:C0} across {LifetimeCount:N0} wins.");
         return sb.ToString();
     }
 
     public string BuildLocalContext()
     {
-        var sections = Sections.ToArray();
-        var projects = Projects.ToArray();
-        var wins = RecentWins.ToArray();
+        var sections = _sectionsContextSnapshot;
+        var projects = _projectsContextSnapshot;
+        var wins = _recentWinsContextSnapshot;
         var sb = new StringBuilder();
         sb.AppendLine($"Org dossier: {DisplayName}");
         sb.AppendLine($"Kind: {Kind}");
@@ -432,7 +445,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             }
         }
 
-        if (projects.Length > 0)
+        if (projects.Count > 0)
         {
             sb.AppendLine();
             sb.AppendLine("Major project footprint:");
@@ -442,7 +455,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             }
         }
 
-        if (wins.Length > 0)
+        if (wins.Count > 0)
         {
             sb.AppendLine();
             sb.AppendLine("Recent award wins:");
@@ -456,6 +469,8 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
 
         return sb.ToString();
     }
+
+    private sealed record ContextDossierSection(string ProviderName, IReadOnlyList<DossierField> Fields);
 }
 
 public sealed record DossierSection(string ProviderName, string? RefreshedAt)

@@ -1,6 +1,5 @@
 #nullable enable
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
@@ -14,7 +13,6 @@ namespace Kor.Opportunities.Data.Awards;
 /// </summary>
 public sealed class CanonicalOrgResolver
 {
-    private static readonly Regex NonAlnum = new("[^a-z0-9]", RegexOptions.Compiled);
     private static readonly HashSet<string> GenericNameDenylist = new(StringComparer.OrdinalIgnoreCase)
     {
         "officials",
@@ -176,6 +174,16 @@ public sealed class CanonicalOrgResolver
     public static string NormalizeName(string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-        return NonAlnum.Replace(input.ToLowerInvariant(), "");
+        return input.Trim().ToLowerInvariant()
+            .Replace(" ", "", StringComparison.Ordinal)
+            .Replace(".", "", StringComparison.Ordinal)
+            .Replace(",", "", StringComparison.Ordinal)
+            .Replace("'", "", StringComparison.Ordinal)
+            .Replace("-", "", StringComparison.Ordinal)
+            .Replace("&", "", StringComparison.Ordinal)
+            .Replace("/", "", StringComparison.Ordinal)
+            .Replace("(", "", StringComparison.Ordinal)
+            .Replace(")", "", StringComparison.Ordinal)
+            .Replace("+", "", StringComparison.Ordinal);
     }
 }

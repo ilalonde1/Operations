@@ -58,7 +58,35 @@ END
 ELSE
 BEGIN
     UPDATE opportunities.CanonicalOrg
-    SET Kind = COALESCE(@kind, Kind),
+    SET Kind = CASE
+            WHEN @kind IS NULL THEN Kind
+            WHEN CASE @kind
+                    WHEN 'KorClient' THEN 0
+                    WHEN 'KorStructural' THEN 0
+                    WHEN 'Competitor' THEN 1
+                    WHEN 'Developer' THEN 2
+                    WHEN 'Architect' THEN 3
+                    WHEN 'GC' THEN 4
+                    WHEN 'Subcontractor' THEN 5
+                    WHEN 'Buyer' THEN 6
+                    WHEN 'Vendor' THEN 7
+                    ELSE 8
+                 END
+                 < CASE Kind
+                    WHEN 'KorClient' THEN 0
+                    WHEN 'KorStructural' THEN 0
+                    WHEN 'Competitor' THEN 1
+                    WHEN 'Developer' THEN 2
+                    WHEN 'Architect' THEN 3
+                    WHEN 'GC' THEN 4
+                    WHEN 'Subcontractor' THEN 5
+                    WHEN 'Buyer' THEN 6
+                    WHEN 'Vendor' THEN 7
+                    ELSE 8
+                   END
+            THEN @kind
+            ELSE Kind
+        END,
         DisplayName = @name,
         Website = COALESCE(@website, Website),
         Notes = COALESCE(@notes, Notes),
@@ -73,7 +101,7 @@ SELECT @existingId;";
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = kind;
+        cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = (object?)kind ?? DBNull.Value;
         cmd.Parameters.Add("@name", SqlDbType.NVarChar, 300).Value = displayName;
         cmd.Parameters.Add("@clendor", SqlDbType.VarChar, 32).Value = (object?)clendorClientId ?? DBNull.Value;
         cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = (object?)website ?? DBNull.Value;
