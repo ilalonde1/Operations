@@ -5,6 +5,7 @@ using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Core.PrimeConsultant;
 using Kor.Opportunities.Data.Awards;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -39,6 +40,8 @@ Status, IdentifiedAtUtc, ReviewingSinceUtc, QualifiedAtUtc, PursuingSinceUtc, Pr
 OwnerStaffId, ReviewerStaffIds,
 RelevanceScore, RelevanceTier,
 WonLostOutcome, OutcomeReason, WonProjectWbs1, AwardedValue,
+IsPrimeConsultantRfp, PrimeConfidence, PrimeDisciplineType, PrimeProjectSector, PrimeLikelyType,
+PrimeKorSectorMatch, PrimeKorLocationMatch, PrimeClassifiedAtUtc,
 CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy,
 RowVersion";
 
@@ -114,6 +117,7 @@ WHERE OpportunityKey = @key;";
 
     public async Task<Opportunity> InsertAsync(Opportunity opportunity, string actorDisplay, CancellationToken ct)
     {
+        var classifiedOpportunity = WithPrimeClassification(opportunity);
         // CreatedAtUtc / UpdatedAtUtc fall back to SQL defaults so the timestamps are
         // server-side and atomic with the insert. We set CreatedBy / UpdatedBy explicitly
         // so we capture the WPF user, not the SQL login (suser_sname() = 'opportunities_app').
@@ -128,6 +132,8 @@ INSERT INTO opportunities.Opportunities
      OwnerStaffId, ReviewerStaffIds,
      RelevanceScore, RelevanceTier,
      WonLostOutcome, OutcomeReason, WonProjectWbs1, AwardedValue,
+     IsPrimeConsultantRfp, PrimeConfidence, PrimeDisciplineType, PrimeProjectSector, PrimeLikelyType,
+     PrimeKorSectorMatch, PrimeKorLocationMatch, PrimeClassifiedAtUtc,
      CreatedBy, UpdatedBy)
 OUTPUT {OutputInsertedColumns()}
 VALUES
@@ -140,12 +146,14 @@ VALUES
      @ownerId, @reviewerIds,
      @score, @tier,
      @outcome, @outcomeReason, @wbs1, @awarded,
+     @isPrime, @primeConfidence, @primeDisciplineType, @primeProjectSector, @primeLikelyType,
+     @primeKorSectorMatch, @primeKorLocationMatch, @primeClassifiedAt,
      @actor, @actor);";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        BindOpportunityParams(cmd, opportunity);
+        BindOpportunityParams(cmd, classifiedOpportunity);
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
 
         Opportunity inserted;
@@ -164,6 +172,7 @@ VALUES
 
     public async Task<Opportunity> UpdateAsync(Opportunity opportunity, string actorDisplay, CancellationToken ct)
     {
+        var classifiedOpportunity = WithPrimeClassification(opportunity);
         var sql = $@"
 UPDATE opportunities.Opportunities
 SET OpportunityKey = @key,
@@ -181,6 +190,14 @@ SET OpportunityKey = @key,
     OwnerStaffId = @ownerId, ReviewerStaffIds = @reviewerIds,
     RelevanceScore = @score, RelevanceTier = @tier,
     WonLostOutcome = @outcome, OutcomeReason = @outcomeReason, WonProjectWbs1 = @wbs1, AwardedValue = @awarded,
+    IsPrimeConsultantRfp = @isPrime,
+    PrimeConfidence = @primeConfidence,
+    PrimeDisciplineType = @primeDisciplineType,
+    PrimeProjectSector = @primeProjectSector,
+    PrimeLikelyType = @primeLikelyType,
+    PrimeKorSectorMatch = @primeKorSectorMatch,
+    PrimeKorLocationMatch = @primeKorLocationMatch,
+    PrimeClassifiedAtUtc = @primeClassifiedAt,
     UpdatedAtUtc = sysdatetimeoffset(), UpdatedBy = @actor
 OUTPUT {OutputInsertedColumns()}
 WHERE Id = @id AND RowVersion = @rv;";
@@ -188,7 +205,7 @@ WHERE Id = @id AND RowVersion = @rv;";
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        BindOpportunityParams(cmd, opportunity);
+        BindOpportunityParams(cmd, classifiedOpportunity);
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = opportunity.Id;
         cmd.Parameters.Add("@rv", SqlDbType.Binary, 8).Value = opportunity.RowVersion;
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
@@ -347,6 +364,15 @@ WHERE Id = @id AND RowVersion = @rv;";
         cmd.Parameters.Add("@outcomeReason", SqlDbType.NVarChar, 2000).Value = (object?)o.OutcomeReason ?? DBNull.Value;
         cmd.Parameters.Add("@wbs1", SqlDbType.NVarChar, 50).Value = (object?)o.WonProjectWbs1 ?? DBNull.Value;
         AddDecimal(cmd, "@awarded", precision: 18, scale: 2, value: o.AwardedValue);
+
+        cmd.Parameters.Add("@isPrime", SqlDbType.Bit).Value = o.IsPrimeConsultantRfp.HasValue ? (object)o.IsPrimeConsultantRfp.Value : DBNull.Value;
+        AddDecimal(cmd, "@primeConfidence", precision: 4, scale: 3, value: o.PrimeConfidence);
+        cmd.Parameters.Add("@primeDisciplineType", SqlDbType.NVarChar, 40).Value = (object?)o.PrimeDisciplineType ?? DBNull.Value;
+        cmd.Parameters.Add("@primeProjectSector", SqlDbType.NVarChar, 40).Value = (object?)o.PrimeProjectSector ?? DBNull.Value;
+        cmd.Parameters.Add("@primeLikelyType", SqlDbType.NVarChar, 20).Value = (object?)o.PrimeLikelyType ?? DBNull.Value;
+        cmd.Parameters.Add("@primeKorSectorMatch", SqlDbType.Bit).Value = o.PrimeKorSectorMatch.HasValue ? (object)o.PrimeKorSectorMatch.Value : DBNull.Value;
+        cmd.Parameters.Add("@primeKorLocationMatch", SqlDbType.Bit).Value = o.PrimeKorLocationMatch.HasValue ? (object)o.PrimeKorLocationMatch.Value : DBNull.Value;
+        cmd.Parameters.Add("@primeClassifiedAt", SqlDbType.DateTimeOffset).Value = (object?)o.PrimeClassifiedAtUtc ?? DBNull.Value;
     }
 
     /// <summary>
@@ -416,11 +442,36 @@ WHERE Id = @id AND RowVersion = @rv;";
         WonProjectWbs1 = r.IsDBNull(36) ? null : r.GetString(36),
         AwardedValue = r.IsDBNull(37) ? null : r.GetDecimal(37),
 
-        CreatedAtUtc = r.GetDateTimeOffset(38),
-        CreatedBy = r.GetString(39),
-        UpdatedAtUtc = r.GetDateTimeOffset(40),
-        UpdatedBy = r.GetString(41),
+        IsPrimeConsultantRfp = r.IsDBNull(38) ? null : r.GetBoolean(38),
+        PrimeConfidence = r.IsDBNull(39) ? null : r.GetDecimal(39),
+        PrimeDisciplineType = r.IsDBNull(40) ? null : r.GetString(40),
+        PrimeProjectSector = r.IsDBNull(41) ? null : r.GetString(41),
+        PrimeLikelyType = r.IsDBNull(42) ? null : r.GetString(42),
+        PrimeKorSectorMatch = r.IsDBNull(43) ? null : r.GetBoolean(43),
+        PrimeKorLocationMatch = r.IsDBNull(44) ? null : r.GetBoolean(44),
+        PrimeClassifiedAtUtc = r.IsDBNull(45) ? null : r.GetDateTimeOffset(45),
 
-        RowVersion = (byte[])r.GetValue(42),
+        CreatedAtUtc = r.GetDateTimeOffset(46),
+        CreatedBy = r.GetString(47),
+        UpdatedAtUtc = r.GetDateTimeOffset(48),
+        UpdatedBy = r.GetString(49),
+
+        RowVersion = (byte[])r.GetValue(50),
     };
+
+    private static Opportunity WithPrimeClassification(Opportunity opportunity)
+    {
+        var c = PrimeConsultantClassifier.Classify(opportunity);
+        return opportunity with
+        {
+            IsPrimeConsultantRfp = c.IsPrimeConsultantRfp,
+            PrimeConfidence = c.Confidence,
+            PrimeDisciplineType = c.DisciplineType,
+            PrimeProjectSector = c.ProjectSector,
+            PrimeLikelyType = c.LikelyPrimeType,
+            PrimeKorSectorMatch = c.KorSectorMatch,
+            PrimeKorLocationMatch = c.KorLocationMatch,
+            PrimeClassifiedAtUtc = DateTimeOffset.UtcNow,
+        };
+    }
 }

@@ -128,7 +128,7 @@
                 </ComboBox>
 
                 <TextBlock Text="Province:" Margin="0,4,4,0"/>
-                <ComboBox Width="100"
+                <ComboBox Width="100" Margin="0,0,12,0"
                           ItemsSource="{Binding ProvinceFilterOptions}"
                           SelectedItem="{Binding ProvinceFilter}">
                     <ComboBox.ItemTemplate>
@@ -137,6 +137,9 @@
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
+                <CheckBox Content="Prime-Consultant RFPs only"
+                          IsChecked="{Binding PrimeConsultantOnly}"
+                          VerticalAlignment="Center"/>
             </StackPanel>
         </Border>
 
@@ -189,6 +192,17 @@
                                            ToolTip="{Binding OpportunityKey}"
                                            VerticalAlignment="Center"
                                            Padding="6,0"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Prime" Width="70" SortMemberPath="IsPrimeConsultantRfp">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="#3B6E8F" CornerRadius="999"
+                                        Margin="2" Padding="6,2" HorizontalAlignment="Left"
+                                        Visibility="{Binding IsPrimeConsultantRfp, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                    <TextBlock Text="Prime" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -272,6 +286,9 @@
                                 <RowDefinition/>
                                 <RowDefinition/>
                                 <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Buyer" Foreground="#506070" Margin="0,2"/>
@@ -288,6 +305,15 @@
 
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="Owner" Foreground="#506070" Margin="0,2"/>
                             <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Selected.OwnerStaffId, TargetNullValue=''}" Margin="0,2"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Prime sector" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Selected.PrimeProjectSector}" Margin="0,2"/>
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Likely prime" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Selected.PrimeLikelyType}" Margin="0,2"/>
+
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="KOR fit" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Selected.KorFitDisplay}" Margin="0,2"/>
                         </Grid>
 
                         <!-- Open the original RFP page in the browser -->

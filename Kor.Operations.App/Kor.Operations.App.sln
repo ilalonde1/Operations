@@ -52,6 +52,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdCanonicalDedup", "..\tool
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GovCanEngineeringImport", "..\tools\GovCanEngineeringImport\GovCanEngineeringImport.csproj", "{D73F0771-A5F2-414D-A83D-76A756253014}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrimeRfpClassifierBackfill", "..\tools\PrimeRfpClassifierBackfill\PrimeRfpClassifierBackfill.csproj", "{90A5B2D8-19A3-4F7F-B3ED-389D8A53BD8C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -150,6 +152,10 @@ Global
 		{D73F0771-A5F2-414D-A83D-76A756253014}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D73F0771-A5F2-414D-A83D-76A756253014}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D73F0771-A5F2-414D-A83D-76A756253014}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90A5B2D8-19A3-4F7F-B3ED-389D8A53BD8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90A5B2D8-19A3-4F7F-B3ED-389D8A53BD8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90A5B2D8-19A3-4F7F-B3ED-389D8A53BD8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90A5B2D8-19A3-4F7F-B3ED-389D8A53BD8C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

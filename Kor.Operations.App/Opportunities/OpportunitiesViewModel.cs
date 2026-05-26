@@ -78,6 +78,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private OpportunityStatus? _statusFilter;
     private RelevanceTier? _tierFilter;
     private string? _provinceFilter;
+    private bool _primeConsultantOnly;
 
     public OpportunitiesViewModel(
         IOpportunityStore store,
@@ -299,6 +300,18 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         set
         {
             if (SetField(ref _provinceFilter, value))
+            {
+                FilteredOpportunitiesView.Refresh();
+            }
+        }
+    }
+
+    public bool PrimeConsultantOnly
+    {
+        get => _primeConsultantOnly;
+        set
+        {
+            if (SetField(ref _primeConsultantOnly, value))
             {
                 FilteredOpportunitiesView.Refresh();
             }
@@ -833,6 +846,11 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         }
 
         if (TierFilter is { } tier && row.Model.RelevanceTier != tier)
+        {
+            return false;
+        }
+
+        if (PrimeConsultantOnly && row.Model.IsPrimeConsultantRfp != true)
         {
             return false;
         }

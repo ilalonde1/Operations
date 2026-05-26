@@ -80,6 +80,16 @@ public sealed record Opportunity
     public string? WonProjectWbs1 { get; init; }
     public decimal? AwardedValue { get; init; }
 
+    // Prime-consultant RFP classification
+    public bool? IsPrimeConsultantRfp { get; init; }
+    public decimal? PrimeConfidence { get; init; }
+    public string? PrimeDisciplineType { get; init; }
+    public string? PrimeProjectSector { get; init; }
+    public string? PrimeLikelyType { get; init; }
+    public bool? PrimeKorSectorMatch { get; init; }
+    public bool? PrimeKorLocationMatch { get; init; }
+    public DateTimeOffset? PrimeClassifiedAtUtc { get; init; }
+
     // Audit
     public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
     public string CreatedBy { get; init; } = "";

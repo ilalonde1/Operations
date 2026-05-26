@@ -92,6 +92,26 @@ public sealed class OpportunityRowView
     public string TierDisplay =>
         Model.RelevanceTier?.ToString() ?? "";
 
+    public bool IsPrimeConsultantRfp => Model.IsPrimeConsultantRfp == true;
+    public string PrimeProjectSector => Model.PrimeProjectSector ?? "";
+    public string PrimeLikelyType => Model.PrimeLikelyType ?? "";
+    public string PrimeConfidenceDisplay => Model.PrimeConfidence.HasValue ? Model.PrimeConfidence.Value.ToString("0.000") : "";
+    public string KorFitDisplay
+    {
+        get
+        {
+            var sector = Model.PrimeKorSectorMatch == true;
+            var location = Model.PrimeKorLocationMatch == true;
+            return (sector, location) switch
+            {
+                (true, true) => "Sector + Location",
+                (true, false) => "Sector",
+                (false, true) => "Location",
+                _ => "",
+            };
+        }
+    }
+
     /// <summary>Frozen so the row can be created off the UI thread (e.g. inside
     /// LoadAsync) and still bind safely.</summary>
     public Brush TierBrush => Model.RelevanceTier switch
