@@ -90,6 +90,10 @@ internal static class Program
                 defaultProvince: "WA",
                 includeStateInSourceKey: true,
                 ct: cts.Token).ConfigureAwait(false);
+            await ImportAlbertaMarketAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            await ImportInstitutionalPipelineAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            await ImportPrimeTargetingAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            await ImportPrimeContactsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -692,6 +696,376 @@ internal static class Program
         }
     }
 
+    private static async Task ImportAlbertaMarketAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var dir = Path.Combine(options.BaseDirectory, "KOR-Alberta-Market");
+        const string enrichmentProviderName = "AlbertaMarketResearch";
+
+        var firmsPath = Path.Combine(dir, "firms-payload.json");
+        if (TryLoadJson(firmsPath, out var firmsDoc))
+        {
+            using (firmsDoc)
+            {
+                foreach (var firm in EnumerateArray(firmsDoc.RootElement, "firms"))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var firmName = String(firm, "firmName");
+                    if (string.IsNullOrWhiteSpace(firmName))
+                    {
+                        stats.OrgRowsSkipped++;
+                        continue;
+                    }
+
+                    var orgId = await UpsertOrgAsync(
+                        orgStore,
+                        options,
+                        stats,
+                        MapResearchFirmKind(String(firm, "kind")),
+                        firmName,
+                        String(firm, "website"),
+                        String(firm, "researchNotes"),
+                        enrichmentProviderName,
+                        ct).ConfigureAwait(false);
+
+                    await WriteEnrichmentAsync(
+                        enrichmentStore,
+                        options,
+                        stats,
+                        orgId,
+                        enrichmentProviderName,
+                        firm.GetRawText(),
+                        null,
+                        firmName,
+                        ct).ConfigureAwait(false);
+                }
+            }
+        }
+        else
+        {
+            stats.FilesMissing++;
+        }
+
+        var projectsPath = Path.Combine(dir, "projects-payload.json");
+        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (projectsDoc)
+        {
+            var sourceKeysSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var project in EnumerateArray(projectsDoc.RootElement, "projects"))
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "ProjectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var municipality = String(project, "Municipality");
+                var sourceKey = "ABMKT-" + Sha1($"{projectName}|{municipality}");
+                if (!sourceKeysSeen.Add(sourceKey))
+                {
+                    stats.SourceKeyCollisions++;
+                    Console.WriteLine($"[WARN] AlbertaMarketProjects: duplicate SourceKey in this run ({sourceKey}); later row may overwrite earlier row. project={projectName}");
+                }
+
+                var proponentName = String(project, "ProponentName");
+                var architectName = String(project, "ArchitectName");
+                var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+
+                var record = new MajorProjectRecord(
+                    Source: "AlbertaMarketProjects",
+                    SourceKey: sourceKey,
+                    ProjectName: projectName,
+                    ProjectDescription: String(project, "FullDescription"),
+                    EstimatedCostCad: Money(project, "EstimatedCostCad"),
+                    EstimatedCostText: CostText(project, "EstimatedCostCad"),
+                    Sector: String(project, "Sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: null,
+                    MunicipalityName: municipality,
+                    ProponentName: proponentName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: String(project, "Stage"),
+                    ProjectStatus: String(project, "Stage"),
+                    ProjectStage: "AlbertaMarketResearch",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: null,
+                    ScheduleNotes: null,
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: String(project, "SourceUrl"),
+                    RawJson: project.GetRawText())
+                {
+                    Province = "AB",
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportInstitutionalPipelineAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var dir = Path.Combine(options.BaseDirectory, "KOR-Institutional-Pipeline");
+
+        var ownersPath = Path.Combine(dir, "owners-payload.json");
+        if (TryLoadJson(ownersPath, out var ownersDoc))
+        {
+            using (ownersDoc)
+            {
+                foreach (var owner in EnumerateArray(ownersDoc.RootElement, "owners"))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var ownerName = String(owner, "ownerName");
+                    if (string.IsNullOrWhiteSpace(ownerName))
+                    {
+                        stats.OrgRowsSkipped++;
+                        continue;
+                    }
+
+                    var orgId = await UpsertOrgAsync(
+                        orgStore,
+                        options,
+                        stats,
+                        OrgKinds.Buyer,
+                        ownerName,
+                        String(owner, "publishedCapitalPlanUrl"),
+                        String(owner, "korRelevanceReason"),
+                        "InstitutionalOwnerResearch",
+                        ct).ConfigureAwait(false);
+
+                    await WriteEnrichmentAsync(
+                        enrichmentStore,
+                        options,
+                        stats,
+                        orgId,
+                        "InstitutionalOwnerResearch",
+                        owner.GetRawText(),
+                        null,
+                        ownerName,
+                        ct).ConfigureAwait(false);
+                }
+            }
+        }
+        else
+        {
+            stats.FilesMissing++;
+        }
+
+        var projectsPath = Path.Combine(dir, "projects-payload.json");
+        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (projectsDoc)
+        {
+            foreach (var project in EnumerateArray(projectsDoc.RootElement, "projects"))
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "ProjectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var ownerName = String(project, "OwnerName");
+                var architectName = String(project, "ArchitectName");
+                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var sourceCost = Decimal(project, "EstimatedCostCad");
+                var currency = String(project, "Currency");
+                var costCad = IsUsd(currency)
+                    ? UsdToCad(sourceCost, options.FxRate)
+                    : sourceCost.HasValue ? decimal.Round(sourceCost.Value, 0) : (decimal?)null;
+                var costText = IsUsd(currency) ? UsdCostText(sourceCost, options.FxRate) : CostText(project, "EstimatedCostCad");
+                var tenderYear = Short(project, "AnticipatedTenderYear");
+
+                var record = new MajorProjectRecord(
+                    Source: "InstitutionalPipelineProjects",
+                    SourceKey: "INST-" + Sha1($"{ownerName}|{projectName}"),
+                    ProjectName: projectName,
+                    ProjectDescription: null,
+                    EstimatedCostCad: costCad,
+                    EstimatedCostText: costText,
+                    Sector: String(project, "Sector"),
+                    SubSector: String(project, "SubSector"),
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: null,
+                    MunicipalityName: String(project, "Municipality"),
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: String(project, "Stage"),
+                    ProjectStatus: String(project, "Stage"),
+                    ProjectStage: "InstitutionalPipeline",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: tenderYear,
+                    CompletionYear: tenderYear,
+                    ScheduleNotes: null,
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: String(project, "SourceUrl"),
+                    RawJson: project.GetRawText())
+                {
+                    Province = ProvinceFromMarket(String(project, "Province"), String(project, "Market")),
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportPrimeTargetingAsync(
+        ImportOptions options,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Prime-Consultant-Strategy", "primes-payload.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            foreach (var prime in EnumerateArray(doc.RootElement, "primes"))
+            {
+                ct.ThrowIfCancellationRequested();
+                var firmName = String(prime, "firmName");
+                if (string.IsNullOrWhiteSpace(firmName))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                var orgId = await ResolveAsync(resolver, options, stats, firmName, OrgKinds.Architect, "PrimeTargeting", ct).ConfigureAwait(false);
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    orgId,
+                    "PrimeTargeting",
+                    prime.GetRawText(),
+                    null,
+                    firmName,
+                    ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportPrimeContactsAsync(
+        ImportOptions options,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Prime-DecisionMakers", "people-payload.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            var peopleByFirm = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var person in EnumerateArray(doc.RootElement, "people"))
+            {
+                ct.ThrowIfCancellationRequested();
+                var firmName = String(person, "firmName");
+                if (string.IsNullOrWhiteSpace(firmName))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                if (!peopleByFirm.TryGetValue(firmName, out var people))
+                {
+                    people = new List<string>();
+                    peopleByFirm[firmName] = people;
+                }
+
+                people.Add(person.GetRawText());
+            }
+
+            foreach (var (firmName, people) in peopleByFirm)
+            {
+                ct.ThrowIfCancellationRequested();
+                var orgId = await ResolveAsync(resolver, options, stats, firmName, OrgKinds.Architect, "PrimeContacts", ct).ConfigureAwait(false);
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    orgId,
+                    "PrimeContacts",
+                    "{\"people\":[" + string.Join(",", people) + "]}",
+                    null,
+                    firmName,
+                    ct).ConfigureAwait(false);
+            }
+        }
+    }
+
     private static async Task<long?> UpsertOrgAsync(
         SqlCanonicalOrgStore? store,
         ImportOptions options,
@@ -704,6 +1078,7 @@ internal static class Program
         CancellationToken ct)
     {
         stats.OrgsUpserted++;
+        AddCount(stats.OrgsBySource, source);
         if (options.DryRun)
         {
             if (!options.Quiet)
@@ -740,6 +1115,7 @@ internal static class Program
         CancellationToken ct)
     {
         stats.EnrichmentRowsWritten++;
+        AddCount(stats.EnrichmentRowsByProvider, providerName);
         if (options.DryRun)
         {
             if (!options.Quiet)
@@ -1108,6 +1484,31 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
             ? $"USD {usd.Value.ToString("N0", CultureInfo.InvariantCulture)} @{fxRate.ToString(CultureInfo.InvariantCulture)} ({DateTime.UtcNow:yyyy-MM-dd})"
             : null;
 
+    private static bool IsUsd(string? currency)
+        => string.Equals(currency?.Trim(), "USD", StringComparison.OrdinalIgnoreCase);
+
+    private static string ProvinceFromMarket(string? province, string? market)
+    {
+        if (!string.IsNullOrWhiteSpace(province))
+        {
+            return NormalizeProvince(province, Province);
+        }
+
+        var normalized = NormalizeToken(market);
+        if (normalized.Contains("alberta", StringComparison.Ordinal) || normalized == "ab") return "AB";
+        if (normalized.Contains("britishcolumbia", StringComparison.Ordinal) || normalized.Contains("vancouver", StringComparison.Ordinal) || normalized == "bc") return "BC";
+        if (normalized.Contains("california", StringComparison.Ordinal) || normalized.Contains("losangeles", StringComparison.Ordinal) || normalized == "la") return "CA";
+        if (normalized.Contains("washington", StringComparison.Ordinal) || normalized.Contains("seattle", StringComparison.Ordinal) || normalized.Contains("pacnw", StringComparison.Ordinal) || normalized.Contains("pacificnorthwest", StringComparison.Ordinal)) return "WA";
+        if (normalized.Contains("oregon", StringComparison.Ordinal) || normalized.Contains("portland", StringComparison.Ordinal)) return "OR";
+        return Province;
+    }
+
+    private static void AddCount(Dictionary<string, int> counts, string key)
+    {
+        counts.TryGetValue(key, out var current);
+        counts[key] = current + 1;
+    }
+
     private static decimal? Decimal(JsonElement element, string propertyName)
     {
         if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
@@ -1199,6 +1600,18 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         Console.WriteLine($"  Architects resolved:       {stats.ArchitectsResolved}");
         Console.WriteLine($"  Missing payloads:          {stats.FilesMissing}");
         Console.WriteLine($"  SourceKey collisions:      {stats.SourceKeyCollisions}");
+        Console.WriteLine("  Orgs upserted per source:");
+        foreach (var (source, count) in stats.OrgsBySource.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"    {source}: {count}");
+        }
+
+        Console.WriteLine("  Enrichment rows per provider:");
+        foreach (var (provider, count) in stats.EnrichmentRowsByProvider.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"    {provider}: {count}");
+        }
+
         Console.WriteLine("  Projects upserted per source:");
         foreach (var (source, count) in stats.ProjectUpsertsBySource.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
         {
@@ -1276,6 +1689,8 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         public int ProponentsResolved { get; set; }
         public int ArchitectsResolved { get; set; }
         public int SourceKeyCollisions { get; set; }
+        public Dictionary<string, int> OrgsBySource { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, int> EnrichmentRowsByProvider { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> ProjectUpsertsBySource { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
