@@ -681,7 +681,11 @@ SELECT l.DisplayName,
        @classifiedBy,
        sysdatetimeoffset(),
        N'Preserved loser DisplayName during CanonicalOrg dedupe merge.'
-FROM #Losers l
+-- DISTINCT: a group can contain two losers with an IDENTICAL DisplayName
+-- (e.g. 'Alex  Liu DBA: ...' double-space variants). Without it the single
+-- INSERT emits duplicate (RawName, Source) rows and violates
+-- UX_OrgAlias_RawName_Source, rolling back the whole group.
+FROM (SELECT DISTINCT DisplayName FROM #Losers) l
 WHERE NOT EXISTS (
     SELECT 1
     FROM opportunities.OrgAlias a
