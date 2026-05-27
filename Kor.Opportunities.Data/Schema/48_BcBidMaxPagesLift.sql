@@ -9,12 +9,14 @@ GO
    below BC Bid's open-opportunity volume, so most A&E RFPs were never
    scraped (only 3 of 279 BcBid opps flagged prime).
 
-   Lift the cap to 50 (~750 rows, matching BcBidAwards/Historical/Unverified)
-   so the scrape captures essentially the whole open board; the prime
-   classifier then surfaces the A&E/prime ones downstream. No keyword filter
-   needed — and no fragile live-form automation.
+   Goal: get the WHOLE open board, miss nothing. The scraper auto-stops at the
+   real last page (TryAdvanceToNextPage returns false), so maxPages is only a
+   safety ceiling — set it high (100 = ~1,500 rows) so pagination runs to the
+   end of BC Bid's open opportunities regardless of volume. The prime
+   classifier filters to A&E/prime downstream, so nothing is lost.
 
-   If a future run returns ~750 rows (hit the cap), bump higher.
+   VERIFY after the next BcBid run: if it returns ~1,500 rows it hit the ceiling
+   (there's more) — bump higher. If it returns fewer, we have the full board.
    ===================================================================== */
 DECLARE @BcBidId uniqueidentifier =
     (SELECT Id FROM opportunities.OpportunitySources WHERE Name = N'BcBid');
@@ -24,13 +26,13 @@ BEGIN
     IF EXISTS (SELECT 1 FROM opportunities.OpportunitySourceMappings
                WHERE OpportunitySourceId = @BcBidId AND [Key] = N'playwright.maxPages')
         UPDATE opportunities.OpportunitySourceMappings
-        SET ValueJson = N'50', UpdatedAtUtc = sysdatetimeoffset()
+        SET ValueJson = N'100', UpdatedAtUtc = sysdatetimeoffset()
         WHERE OpportunitySourceId = @BcBidId AND [Key] = N'playwright.maxPages';
     ELSE
         INSERT INTO opportunities.OpportunitySourceMappings (OpportunitySourceId, [Key], ValueJson, UpdatedAtUtc)
-        VALUES (@BcBidId, N'playwright.maxPages', N'50', sysdatetimeoffset());
+        VALUES (@BcBidId, N'playwright.maxPages', N'100', sysdatetimeoffset());
 END;
 GO
 
-PRINT 'Migration 48: BcBid opportunities maxPages lifted to 50 (was default 10).';
+PRINT 'Migration 48: BcBid opportunities maxPages lifted to 100 (full pagination; was default 10).';
 GO
