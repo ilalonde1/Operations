@@ -251,36 +251,44 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
     // repainted the grid before we extract (the source of the old flakiness).
     private static async Task<bool> AdvanceToNextPageAsync(IPage page, int fromIndex, CancellationToken ct)
     {
-        ct.ThrowIfCancellationRequested();
-        try
+        // Ivalua's AJAX postback intermittently re-renders the pager mid-flight, so
+        // a single click can miss. Retry the click+wait a couple times before giving
+        // up; each attempt waits for the page-index hidden field to actually advance.
+        for (var attempt = 0; attempt < 3; attempt++)
         {
-            var next = page.Locator("#body_x_grid_gridPagerBtnNextPage");
-            if (await next.CountAsync().ConfigureAwait(false) == 0)
+            ct.ThrowIfCancellationRequested();
+            try
             {
-                return false;
-            }
-
-            await next.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
-
-            var deadline = DateTime.UtcNow.AddMilliseconds(PageWaitTimeoutMs);
-            while (DateTime.UtcNow < deadline)
-            {
-                ct.ThrowIfCancellationRequested();
-                var current = await ReadIntFieldAsync(page, "#hdnCurrentPageIndexbody_x_grid_grd", -1).ConfigureAwait(false);
-                if (current > fromIndex)
+                var next = page.Locator("#body_x_grid_gridPagerBtnNextPage");
+                await next.WaitForAsync(new LocatorWaitForOptions
                 {
-                    return true;
-                }
+                    State = WaitForSelectorState.Attached,
+                    Timeout = 10_000,
+                }).ConfigureAwait(false);
+                await next.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
 
-                await page.WaitForTimeoutAsync(300).ConfigureAwait(false);
+                var deadline = DateTime.UtcNow.AddSeconds(15);
+                while (DateTime.UtcNow < deadline)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var current = await ReadIntFieldAsync(page, "#hdnCurrentPageIndexbody_x_grid_grd", -1).ConfigureAwait(false);
+                    if (current > fromIndex)
+                    {
+                        return true;
+                    }
+
+                    await page.WaitForTimeoutAsync(250).ConfigureAwait(false);
+                }
+            }
+            catch
+            {
+                // fall through to retry
             }
 
-            return false;
+            await page.WaitForTimeoutAsync(1_500).ConfigureAwait(false);
         }
-        catch
-        {
-            return false;
-        }
+
+        return false;
     }
 
     private static async Task<int> ReadIntFieldAsync(IPage page, string selector, int defaultValue)
