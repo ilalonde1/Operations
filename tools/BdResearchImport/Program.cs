@@ -60,11 +60,14 @@ internal static class Program
 
             Console.WriteLine($"BD Research import starting: base={options.BaseDirectory}; dry-run={options.DryRun.ToString().ToLowerInvariant()}; fx-rate={options.FxRate.ToString(CultureInfo.InvariantCulture)}");
 
-            await ImportContractorResearchAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
-            await ImportPublicSectorAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            await ImportIndigenousDevelopmentAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            await ImportBcDevelopmentPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            await ImportUsMarketAsync(
+            bool Run(string tag) => string.IsNullOrWhiteSpace(options.Only)
+                || string.Equals(options.Only, tag, StringComparison.OrdinalIgnoreCase);
+
+            if (Run("contractor")) await ImportContractorResearchAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
+            if (Run("public-sector")) await ImportPublicSectorAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("indigenous")) await ImportIndigenousDevelopmentAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("bc-dev")) await ImportBcDevelopmentPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("la")) await ImportUsMarketAsync(
                 options,
                 orgStore,
                 enrichmentStore,
@@ -77,7 +80,7 @@ internal static class Program
                 defaultProvince: "CA",
                 includeStateInSourceKey: false,
                 ct: cts.Token).ConfigureAwait(false);
-            await ImportUsMarketAsync(
+            if (Run("pacnw")) await ImportUsMarketAsync(
                 options,
                 orgStore,
                 enrichmentStore,
@@ -90,10 +93,11 @@ internal static class Program
                 defaultProvince: "WA",
                 includeStateInSourceKey: true,
                 ct: cts.Token).ConfigureAwait(false);
-            await ImportAlbertaMarketAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            await ImportInstitutionalPipelineAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            await ImportPrimeTargetingAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            await ImportPrimeContactsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("alberta")) await ImportAlbertaMarketAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("institutional")) await ImportInstitutionalPipelineAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("prime-targeting")) await ImportPrimeTargetingAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("prime-contacts")) await ImportPrimeContactsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("island-okanagan")) await ImportIslandOkanaganAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -1066,6 +1070,194 @@ internal static class Program
         }
     }
 
+    private static async Task ImportIslandOkanaganAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var dir = Path.Combine(options.BaseDirectory, "KOR-Island-Okanagan-Ecosystem");
+
+        var orgsPath = Path.Combine(dir, "orgs.json");
+        if (TryLoadJson(orgsPath, out var orgsDoc))
+        {
+            using (orgsDoc)
+            {
+                if (orgsDoc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var org in orgsDoc.RootElement.EnumerateArray())
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        var name = String(org, "name");
+                        if (string.IsNullOrWhiteSpace(name))
+                        {
+                            stats.OrgRowsSkipped++;
+                            continue;
+                        }
+
+                        var orgId = await UpsertOrgAsync(
+                            orgStore,
+                            options,
+                            stats,
+                            MapIslandKind(String(org, "kind")),
+                            name,
+                            String(org, "website"),
+                            String(org, "korRelevance"),
+                            "IslandOkanaganEcosystem",
+                            ct).ConfigureAwait(false);
+
+                        await WriteEnrichmentAsync(
+                            enrichmentStore,
+                            options,
+                            stats,
+                            orgId,
+                            "IslandOkanaganEcosystem",
+                            org.GetRawText(),
+                            null,
+                            name,
+                            ct).ConfigureAwait(false);
+                    }
+                }
+            }
+        }
+        else
+        {
+            stats.FilesMissing++;
+        }
+
+        var projectsPath = Path.Combine(dir, "projects.json");
+        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (projectsDoc)
+        {
+            if (projectsDoc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var project in projectsDoc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "name");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var ownerName = String(project, "owner");
+                var architectName = String(project, "architect");
+                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadFirm(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var cost = Money(project, "estimatedValue");
+                var gc = String(project, "generalContractor");
+
+                var record = new MajorProjectRecord(
+                    Source: "IslandOkanaganProjects",
+                    SourceKey: "IOECO-" + Sha1($"{ownerName}|{projectName}"),
+                    ProjectName: projectName,
+                    ProjectDescription: String(project, "description"),
+                    EstimatedCostCad: cost,
+                    EstimatedCostText: cost.HasValue ? CadCostText(cost.Value) : null,
+                    Sector: String(project, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: String(project, "region"),
+                    MunicipalityName: String(project, "city"),
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: String(project, "stage"),
+                    ProjectStatus: String(project, "stage"),
+                    ProjectStage: "IslandOkanaganEcosystem",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: Short(project, "expectedYear"),
+                    ScheduleNotes: string.IsNullOrWhiteSpace(gc) ? null : "GC: " + gc,
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(project),
+                    RawJson: project.GetRawText())
+                {
+                    Province = ProvinceFromMarket(String(project, "province"), String(project, "region")),
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static string MapIslandKind(string? kind) => kind?.Trim().ToLowerInvariant() switch
+    {
+        "architect" => OrgKinds.Architect,
+        "developer" => OrgKinds.Developer,
+        "gc" => OrgKinds.GeneralContractor,
+        "competitor" => OrgKinds.Competitor,
+        "buyer" => OrgKinds.Buyer,
+        _ => OrgKinds.Unknown,
+    };
+
+    // The research lists teams like "Parkin Architects (prime) + ZGF Architects".
+    // Resolve the lead firm only (text before the first '(', '+', or ';').
+    private static string? LeadFirm(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var cut = value.IndexOfAny(new[] { '(', '+', ';' });
+        var lead = (cut >= 0 ? value[..cut] : value).Trim().TrimEnd(',').Trim();
+        return string.IsNullOrWhiteSpace(lead) ? null : lead;
+    }
+
+    private static string CadCostText(decimal v)
+        => v >= 1_000_000_000m ? "$" + (v / 1_000_000_000m).ToString("0.##", CultureInfo.InvariantCulture) + "B"
+         : v >= 1_000_000m ? "$" + (v / 1_000_000m).ToString("0.#", CultureInfo.InvariantCulture) + "M"
+         : "$" + v.ToString("N0", CultureInfo.InvariantCulture);
+
+    private static string? FirstSourceUrl(JsonElement element)
+    {
+        if (element.TryGetProperty("sourceUrls", out var arr) && arr.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var u in arr.EnumerateArray())
+            {
+                if (u.ValueKind == JsonValueKind.String)
+                {
+                    var s = u.GetString();
+                    if (!string.IsNullOrWhiteSpace(s))
+                    {
+                        return s.Trim();
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static async Task<long?> UpsertOrgAsync(
         SqlCanonicalOrgStore? store,
         ImportOptions options,
@@ -1619,7 +1811,7 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         }
     }
 
-    private sealed record ImportOptions(string BaseDirectory, string OpportunitiesDb, bool DryRun, bool Quiet, decimal FxRate)
+    private sealed record ImportOptions(string BaseDirectory, string OpportunitiesDb, bool DryRun, bool Quiet, decimal FxRate, string? Only)
     {
         public static ImportOptions Parse(string[] args)
         {
@@ -1628,6 +1820,7 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
             var dryRun = false;
             var quiet = false;
             var fxRate = 1.36m;
+            string? only = null;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -1648,12 +1841,15 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
                     case "--fx-rate":
                         fxRate = ParseFxRate(RequireValue(args, ref i, "--fx-rate"));
                         break;
+                    case "--only":
+                        only = RequireValue(args, ref i, "--only");
+                        break;
                     default:
                         throw new ArgumentException($"Unknown argument '{args[i]}'.");
                 }
             }
 
-            return new ImportOptions(baseDir, db, dryRun, quiet, fxRate);
+            return new ImportOptions(baseDir, db, dryRun, quiet, fxRate, only);
         }
 
         private static decimal ParseFxRate(string value)
