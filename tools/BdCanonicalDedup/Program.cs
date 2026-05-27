@@ -87,6 +87,12 @@ internal static class Program
 
             var schema = await VerifySchemaAsync(con).ConfigureAwait(false);
             var beforeCount = await CountCanonicalOrgsAsync(con).ConfigureAwait(false);
+
+            if (!string.IsNullOrWhiteSpace(options.PairsFile))
+            {
+                return await RunPairsMergeAsync(con, options, schema, beforeCount).ConfigureAwait(false);
+            }
+
             var orgs = await LoadOrgsAsync(con).ConfigureAwait(false);
             var groups = BuildGroups(orgs, options.MergeDba);
             var plans = BuildPlans(groups).ToList();
@@ -163,6 +169,76 @@ internal static class Program
             Console.Error.WriteLine($"BdCanonicalDedup failed: {ex.GetType().Name}: {ex.Message}");
             return 1;
         }
+    }
+
+    // Explicit-pair merge: loser -> survivor pairs chosen by the data-honing pass
+    // (often different display names the fuzzy grouper can't match). Reuses the
+    // tested per-group FK-repoint/commit logic; survivor is fixed (not chosen).
+    private static async Task<int> RunPairsMergeAsync(SqlConnection con, ImportOptions options, SchemaInfo schema, int beforeCount)
+    {
+        var lines = await File.ReadAllLinesAsync(options.PairsFile!).ConfigureAwait(false);
+        var orgs = await LoadOrgsAsync(con).ConfigureAwait(false);
+        var byId = orgs.ToDictionary(o => o.Id);
+        var summary = new MergeSummary { RowsBefore = beforeCount };
+
+        foreach (var line in lines)
+        {
+            var parts = line.Split(',');
+            if (parts.Length < 2
+                || !long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var loserId)
+                || !long.TryParse(parts[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var survivorId))
+            {
+                continue; // header or blank
+            }
+
+            if (loserId == survivorId)
+            {
+                continue;
+            }
+
+            if (!byId.TryGetValue(loserId, out var loser) || !byId.TryGetValue(survivorId, out var survivor))
+            {
+                Console.Error.WriteLine($"[WARN] pair {loserId}->{survivorId}: org row not found; skipped.");
+                summary.GroupsFailed++;
+                continue;
+            }
+
+            var members = new List<OrgRow> { survivor, loser };
+            var bestKind = members.OrderBy(o => RankKind(o.Kind)).ThenBy(o => o.Id).First().Kind;
+            var group = new DuplicateGroup(
+                GroupKey: $"pair:{loserId}->{survivorId}",
+                HasDbaKey: false,
+                Survivor: survivor,
+                BestKind: bestKind,
+                Losers: new List<OrgRow> { loser },
+                Members: members);
+
+            summary.GroupsFound++;
+            summary.RowsToMerge++;
+
+            if (!options.Commit)
+            {
+                Console.WriteLine($"[DRY-RUN] merge {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}); kind={bestKind}");
+                continue;
+            }
+
+            try
+            {
+                await CommitGroupAsync(con, group, schema.NewsMentionTypeKeyExists).ConfigureAwait(false);
+                summary.GroupsCommitted++;
+            }
+            catch (Exception ex)
+            {
+                summary.GroupsFailed++;
+                Console.Error.WriteLine($"[WARN] pair {loserId}->{survivorId} failed and was rolled back: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        summary.RowsAfter = options.Commit
+            ? await CountCanonicalOrgsAsync(con).ConfigureAwait(false)
+            : beforeCount - summary.RowsToMerge;
+        WriteSummary(summary, options.Commit);
+        return summary.GroupsFailed == 0 ? 0 : 1;
     }
 
     private static async Task<SchemaInfo> VerifySchemaAsync(SqlConnection con)
@@ -780,7 +856,7 @@ JOIN #Losers l ON l.Id = co.Id;";
         }
     }
 
-    private sealed record ImportOptions(string OpportunitiesDb, bool Commit, bool MergeDba, string OutputDirectory)
+    private sealed record ImportOptions(string OpportunitiesDb, bool Commit, bool MergeDba, string OutputDirectory, string? PairsFile)
     {
         public static ImportOptions Parse(string[] args)
         {
@@ -788,6 +864,7 @@ JOIN #Losers l ON l.Id = co.Id;";
             var commit = false;
             var mergeDba = false;
             var output = DefaultOutputDirectory;
+            string? pairs = null;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -805,12 +882,15 @@ JOIN #Losers l ON l.Id = co.Id;";
                     case "--out":
                         output = RequireValue(args, ref i, "--out");
                         break;
+                    case "--pairs":
+                        pairs = RequireValue(args, ref i, "--pairs");
+                        break;
                     default:
                         throw new ArgumentException($"Unknown argument '{args[i]}'.");
                 }
             }
 
-            return new ImportOptions(db, commit, mergeDba, output);
+            return new ImportOptions(db, commit, mergeDba, output, pairs);
         }
 
         private static string RequireValue(string[] args, ref int i, string name)
