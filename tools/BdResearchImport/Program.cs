@@ -105,6 +105,11 @@ internal static class Program
             if (Run("data-honing")) await ImportDataHoningAsync(options, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("registries")) await ImportRegistriesAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("capital-plans")) await ImportCapitalPlansAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("project-teams")) await ImportProjectTeamsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("competitor-projects")) await ImportCompetitorProjectsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("structural-pipeline")) await ImportStructuralPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("indigenous-projects")) await ImportIndigenousPipelineProjectsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("indigenous-orgs")) await ImportIndigenousPipelineOrgsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -1828,6 +1833,436 @@ internal static class Program
         }
     }
 
+    private static async Task ImportProjectTeamsAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Project-Teams", "outputs", "project-teams.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "projectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var ownerName = String(project, "owner");
+                var architectName = String(project, "architect");
+                var structuralName = String(project, "structuralEngineer");
+                var gcName = String(project, "generalContractor");
+                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectTeamsStructural", ct).ConfigureAwait(false);
+                var gcId = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "ProjectTeamsGC", ct).ConfigureAwait(false);
+
+                var record = new MajorProjectRecord(
+                    Source: "project-teams",
+                    SourceKey: "PTEAM-" + Sha1($"{ownerName}|{projectName}"),
+                    ProjectName: projectName,
+                    ProjectDescription: null,
+                    EstimatedCostCad: Money(project, "estCostCad"),
+                    EstimatedCostText: CostText(project, "estCostCad"),
+                    Sector: String(project, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: String(project, "market"),
+                    MunicipalityName: String(project, "city"),
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: String(project, "status"),
+                    ProjectStatus: String(project, "status"),
+                    ProjectStage: "project-teams",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: Short(project, "completionYear"),
+                    ScheduleNotes: JoinNotes(("MechanicalEngineer", String(project, "mechanicalEngineer")), ("ElectricalEngineer", String(project, "electricalEngineer"))),
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(project),
+                    RawJson: project.GetRawText())
+                {
+                    Province = ProvinceFromResearchMarket(String(project, "market")),
+                    StructuralEngineerName = structuralName,
+                    StructuralEngineerCanonicalOrgId = structuralId,
+                    GeneralContractorName = gcName,
+                    GeneralContractorCanonicalOrgId = gcId,
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportCompetitorProjectsAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Competitor-Portfolios", "outputs", "competitor-projects.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "projectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var structuralName = String(project, "structuralEngineer");
+                var architectName = String(project, "architect");
+                var ownerName = String(project, "owner");
+                var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "CompetitorProjectsStructural", ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+
+                var record = new MajorProjectRecord(
+                    Source: "competitor-projects",
+                    SourceKey: "CPROJ-" + Sha1($"{structuralName}|{projectName}"),
+                    ProjectName: projectName,
+                    ProjectDescription: null,
+                    EstimatedCostCad: null,
+                    EstimatedCostText: null,
+                    Sector: String(project, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: String(project, "market"),
+                    MunicipalityName: String(project, "city"),
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: null,
+                    ProjectStatus: null,
+                    ProjectStage: "competitor-projects",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: Short(project, "completionYear"),
+                    ScheduleNotes: null,
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(project),
+                    RawJson: project.GetRawText())
+                {
+                    Province = ProvinceFromResearchMarket(String(project, "market")),
+                    StructuralEngineerName = structuralName,
+                    StructuralEngineerCanonicalOrgId = structuralId,
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportStructuralPipelineAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Seismic-MassTimber", "outputs", "structural-pipeline.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "projectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var ownerName = String(project, "owner");
+                var architectName = String(project, "architect");
+                var structuralName = String(project, "structuralEngineer");
+                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "StructuralPipelineStructural", ct).ConfigureAwait(false);
+
+                var record = new MajorProjectRecord(
+                    Source: "structural-pipeline",
+                    SourceKey: "STRUCPIPE-" + Sha1($"{ownerName}|{projectName}"),
+                    ProjectName: projectName,
+                    ProjectDescription: null,
+                    EstimatedCostCad: Money(project, "estCostCad"),
+                    EstimatedCostText: CostText(project, "estCostCad"),
+                    Sector: String(project, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: String(project, "market"),
+                    MunicipalityName: String(project, "city"),
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: String(project, "status"),
+                    ProjectStatus: String(project, "status"),
+                    ProjectStage: "structural-pipeline",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: Short(project, "completionYear"),
+                    ScheduleNotes: JoinNotes(("Segment", String(project, "segment")), ("Program", String(project, "program"))),
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(project),
+                    RawJson: project.GetRawText())
+                {
+                    Province = ProvinceFromResearchMarket(String(project, "market")),
+                    StructuralEngineerName = structuralName,
+                    StructuralEngineerCanonicalOrgId = structuralId,
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportIndigenousPipelineProjectsAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Indigenous-Pipeline", "outputs", "indigenous-projects.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "projectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var proponentName = String(project, "proponent");
+                var architectName = String(project, "architect");
+                var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+
+                var record = new MajorProjectRecord(
+                    Source: "indigenous-projects",
+                    SourceKey: "INDIGP-" + Sha1($"{proponentName}|{projectName}"),
+                    ProjectName: projectName,
+                    ProjectDescription: null,
+                    EstimatedCostCad: Money(project, "estCostCad"),
+                    EstimatedCostText: CostText(project, "estCostCad"),
+                    Sector: String(project, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: String(project, "market"),
+                    MunicipalityName: String(project, "city"),
+                    ProponentName: proponentName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: String(project, "status"),
+                    ProjectStatus: String(project, "status"),
+                    ProjectStage: "indigenous-projects",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: true,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: null,
+                    ScheduleNotes: JoinNotes(("Funding", String(project, "funding")), ("Timeline", String(project, "timeline")), ("Partner", String(project, "developerPartner"))),
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(project),
+                    RawJson: project.GetRawText())
+                {
+                    Province = ProvinceFromResearchMarket(String(project, "market")),
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportIndigenousPipelineOrgsAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Indigenous-Pipeline", "outputs", "indigenous-orgs.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var org in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var name = String(org, "name");
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                var orgId = await UpsertOrgAsync(
+                    orgStore,
+                    options,
+                    stats,
+                    MapIslandKind(String(org, "kind")),
+                    name,
+                    String(org, "website"),
+                    $"Nation: {String(org, "nation")}",
+                    "IndigenousPipeline",
+                    ct).ConfigureAwait(false);
+
+                var people = new List<string>();
+                if (org.TryGetProperty("keyPeople", out var peopleArray) && peopleArray.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var person in peopleArray.EnumerateArray())
+                    {
+                        people.Add(person.GetRawText());
+                    }
+                }
+
+                if (people.Count == 0)
+                {
+                    continue;
+                }
+
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    orgId,
+                    "IndigenousDev",
+                    "{\"people\":[" + string.Join(",", people) + "]}",
+                    null,
+                    name,
+                    ct).ConfigureAwait(false);
+            }
+        }
+    }
+
     private static async Task<long?> UpsertOrgAsync(
         SqlCanonicalOrgStore? store,
         ImportOptions options,
@@ -2279,6 +2714,16 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         if (normalized.Contains("washington", StringComparison.Ordinal) || normalized.Contains("seattle", StringComparison.Ordinal) || normalized.Contains("pacnw", StringComparison.Ordinal) || normalized.Contains("pacificnorthwest", StringComparison.Ordinal)) return "WA";
         if (normalized.Contains("oregon", StringComparison.Ordinal) || normalized.Contains("portland", StringComparison.Ordinal)) return "OR";
         return Province;
+    }
+
+    private static string ProvinceFromResearchMarket(string? market)
+    {
+        var normalized = NormalizeToken(market);
+        return normalized.Contains("alberta", StringComparison.Ordinal)
+            || normalized.Contains("calgary", StringComparison.Ordinal)
+            || normalized.Contains("edmonton", StringComparison.Ordinal)
+                ? "AB"
+                : "BC";
     }
 
     private static void AddCount(Dictionary<string, int> counts, string key)
