@@ -66,6 +66,8 @@ internal static class OpportunitiesModule
         services.AddTransient<MajorProjectsInventoryWindow>();
         services.AddTransient<PrimePipelineViewModel>();
         services.AddTransient<PrimePipelineWindow>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardViewModel>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.BdWorkspaceWindow>();
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.ICompetitionInfoQueryStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlCompetitionInfoQueryStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IAwardQueryStore>(

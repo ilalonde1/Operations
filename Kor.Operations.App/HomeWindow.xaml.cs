@@ -188,7 +188,7 @@ namespace Kor.Operations
 
         private void OpenBusinessDevelopment_Click(object sender, RoutedEventArgs e)
         {
-            var win = _services.GetRequiredService<App.BusinessDevelopment.BusinessDevelopmentWindow>();
+            var win = _services.GetRequiredService<App.BusinessDevelopment.Workspace.BdWorkspaceWindow>();
             win.Owner = this;
             win.Show();
         }
