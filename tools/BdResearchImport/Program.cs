@@ -99,6 +99,7 @@ internal static class Program
             if (Run("prime-contacts")) await ImportPrimeContactsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("island-okanagan")) await ImportIslandOkanaganAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("intel-gathering")) await ImportIntelGatheringAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("data-honing")) await ImportDataHoningAsync(options, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -1366,6 +1367,99 @@ internal static class Program
     {
         var text = String(element, propertyName);
         return long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : (long?)null;
+    }
+
+    private static async Task ImportDataHoningAsync(
+        ImportOptions options,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        // Applies KOR-Data-Honing orgs-enriched.json: fills missing websites and
+        // writes the rich enrichment (sectors, key people, notable projects,
+        // structural-partner intel, geography corrections, JV/identity dataIssues)
+        // keyed by Id. Skips merged-away duplicate-losers. Re-runnable.
+        var path = Path.Combine(options.BaseDirectory, "KOR-Data-Honing", "outputs", "orgs-enriched.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var validIds = options.DryRun
+                ? null
+                : await LoadValidOrgIdsAsync(options.OpportunitiesDb, ct).ConfigureAwait(false);
+
+            foreach (var org in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var id = LongOrNull(org, "id");
+                if (id is null)
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                // Skip records whose canonical row was merged away (a dup-loser).
+                if (validIds is not null && !validIds.Contains(id.Value))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                var displayName = String(org, "displayName") ?? id.Value.ToString(CultureInfo.InvariantCulture);
+                var website = String(org, "website");
+                if (!options.DryRun && !string.IsNullOrWhiteSpace(website))
+                {
+                    await UpdateOrgWebsiteAsync(options.OpportunitiesDb, id.Value, website!, ct).ConfigureAwait(false);
+                }
+
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    id,
+                    "DataHoning",
+                    org.GetRawText(),
+                    null,
+                    displayName,
+                    ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task<HashSet<long>> LoadValidOrgIdsAsync(string db, CancellationToken ct)
+    {
+        var ids = new HashSet<long>();
+        await using var con = new SqlConnection(db);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand("SELECT Id FROM opportunities.CanonicalOrg;", con) { CommandTimeout = 60 };
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            ids.Add(r.GetInt64(0));
+        }
+
+        return ids;
+    }
+
+    private static async Task UpdateOrgWebsiteAsync(string db, long id, string website, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(db);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(
+            "UPDATE opportunities.CanonicalOrg SET Website = COALESCE(Website, @w), UpdatedAtUtc = sysdatetimeoffset() WHERE Id = @id;",
+            con);
+        cmd.Parameters.Add("@w", SqlDbType.NVarChar, 500).Value = website;
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
     private static async Task<long?> UpsertOrgAsync(
