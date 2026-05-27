@@ -3,7 +3,6 @@ using System;
 using System.Threading;
 using System.Windows.Controls;
 using Kor.Operations.App.Opportunities;
-using Kor.Opportunities.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
@@ -49,8 +48,7 @@ public partial class RelationshipsView : UserControl
         {
             _vm.KindFilter = value switch
             {
-                "All" => null,
-                "GeneralContractor" => OrgKinds.GeneralContractor,
+                "All (curated)" => null,
                 _ => value,
             };
         }

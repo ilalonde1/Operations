@@ -31,12 +31,13 @@
                           Margin="0,0,0,10"
                           SelectedIndex="0"
                           SelectionChanged="KindCombo_SelectionChanged">
-                    <ComboBoxItem Content="All"/>
+                    <ComboBoxItem Content="All (curated)"/>
                     <ComboBoxItem Content="Architect"/>
                     <ComboBoxItem Content="Competitor"/>
+                    <ComboBoxItem Content="GC"/>
                     <ComboBoxItem Content="Developer"/>
-                    <ComboBoxItem Content="Owner"/>
-                    <ComboBoxItem Content="GeneralContractor"/>
+                    <ComboBoxItem Content="Buyer"/>
+                    <ComboBoxItem Content="KorClient"/>
                 </ComboBox>
 
                 <ListBox x:Name="OrgList"

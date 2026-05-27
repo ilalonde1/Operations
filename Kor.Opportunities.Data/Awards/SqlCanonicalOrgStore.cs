@@ -156,6 +156,7 @@ SELECT TOP (@take) Id, Kind, DisplayName, ClendorClientId, Website, Notes, Creat
 FROM   opportunities.CanonicalOrg
 WHERE  (@q IS NULL OR DisplayName LIKE '%' + @q + '%')
    AND (@kind IS NULL OR Kind = @kind)
+   AND (@kind IS NOT NULL OR Kind NOT IN ('Vendor','Unknown'))
 ORDER BY DisplayName;";
 
         await using var con = new SqlConnection(_connectionString);
