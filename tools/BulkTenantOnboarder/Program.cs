@@ -151,9 +151,13 @@ internal static class Program
 
     private static async Task<bool> UpsertAsync(SqlConnection con, SourceSpec spec)
     {
-        // Idempotent on Name. Returns true if a new source was inserted.
-        await using (var existsCmd = new SqlCommand("SELECT Id FROM opportunities.OpportunitySources WHERE Name = @n;", con))
+        // Idempotent on BaseUrl OR Name — BaseUrl is the true tenant identity, so
+        // a tenant already configured under a different Name (e.g. hand-set key
+        // casing) is correctly skipped rather than duplicated.
+        await using (var existsCmd = new SqlCommand(
+            "SELECT TOP 1 Id FROM opportunities.OpportunitySources WHERE BaseUrl = @url OR Name = @n;", con))
         {
+            existsCmd.Parameters.Add("@url", SqlDbType.NVarChar, 1000).Value = spec.BaseUrl;
             existsCmd.Parameters.Add("@n", SqlDbType.NVarChar, 200).Value = spec.Name;
             var existing = await existsCmd.ExecuteScalarAsync().ConfigureAwait(false);
             if (existing is Guid existingId)
