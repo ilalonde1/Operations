@@ -138,6 +138,11 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
             return Array.Empty<OpportunityCandidate>();
         }
 
+        // One-time diagnostic: dump the rendered results-grid HTML so the live
+        // Ivalua pagination DOM can be inspected to harden TryAdvanceToNextPage.
+        // Gated on bcbid.dumpGrid=true; remove the mapping once captured.
+        await MaybeDumpGridAsync(page, sourceConfig, ct).ConfigureAwait(false);
+
         var baseUri = new Uri(source.BaseUrl);
         for (var pageNum = 1; pageNum <= maxPages; pageNum++)
         {
@@ -402,4 +407,25 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
 
     private static int ResolveInt(IReadOnlyDictionary<string, string> config, string key, int defaultValue)
         => config.TryGetValue(key, out var s) && int.TryParse(s, out var v) ? v : defaultValue;
+
+    private async Task MaybeDumpGridAsync(IPage page, IReadOnlyDictionary<string, string> config, CancellationToken ct)
+    {
+        if (!(config.TryGetValue("bcbid.dumpGrid", out var flag)
+              && string.Equals(flag, "true", StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        try
+        {
+            var diagDir = System.IO.Path.Combine(
+                Environment.GetEnvironmentVariable("PROGRAMDATA") ?? @"C:\ProgramData",
+                "KorOperations", "Opportunities", "diagnostics");
+            System.IO.Directory.CreateDirectory(diagDir);
+            var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+            var path = System.IO.Path.Combine(diagDir, $"BcBid-grid-{stamp}.html");
+            await System.IO.File.WriteAllTextAsync(path, await page.ContentAsync().ConfigureAwait(false), ct).ConfigureAwait(false);
+        }
+        catch { }
+    }
 }
