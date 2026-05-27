@@ -61,12 +61,14 @@ internal static class OpportunitiesModule
         // gets a fresh VM (no stale data from a previous session). Mirrors the
         // FileSync Command Center registration in AppModule.cs.
         services.AddTransient<OpportunitiesViewModel>();
+        services.AddTransient<OpportunitiesView>();
         services.AddTransient<OpportunitiesWindow>();
         services.AddTransient<MajorProjectsInventoryViewModel>();
         services.AddTransient<MajorProjectsInventoryWindow>();
         services.AddTransient<PrimePipelineViewModel>();
         services.AddTransient<PrimePipelineWindow>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardViewModel>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.BdWorkspaceWindow>();
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.ICompetitionInfoQueryStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlCompetitionInfoQueryStore(options.OpportunitiesDb));

@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Threading;
 using System.Windows.Controls;
 
@@ -9,6 +10,12 @@ public partial class DashboardView : UserControl
     public DashboardView()
     {
         InitializeComponent();
+    }
+
+    public DashboardView(DashboardViewModel vm)
+    {
+        InitializeComponent();
+        DataContext = vm ?? throw new ArgumentNullException(nameof(vm));
     }
 
     private async void DashboardView_Loaded(object sender, System.Windows.RoutedEventArgs e)
