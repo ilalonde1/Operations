@@ -103,6 +103,8 @@ internal static class Program
             if (Run("competitor-profiles")) await ImportCompetitorProfilesAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("decision-makers")) await ImportDecisionMakersAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("data-honing")) await ImportDataHoningAsync(options, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
+            if (Run("registries")) await ImportRegistriesAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
+            if (Run("capital-plans")) await ImportCapitalPlansAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -1665,6 +1667,167 @@ internal static class Program
         }
     }
 
+    private static async Task ImportRegistriesAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Registry-Graph", "outputs", "firms.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var firm in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var name = String(firm, "name");
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                var orgId = await UpsertOrgAsync(
+                    orgStore,
+                    options,
+                    stats,
+                    MapIslandKind(String(firm, "kind")),
+                    name,
+                    String(firm, "website"),
+                    notes: null,
+                    source: "Registries",
+                    ct).ConfigureAwait(false);
+
+                var principals = new List<string>();
+                if (firm.TryGetProperty("principals", out var principalsArray) && principalsArray.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var principal in principalsArray.EnumerateArray())
+                    {
+                        principals.Add(principal.GetRawText());
+                    }
+                }
+
+                if (principals.Count == 0)
+                {
+                    continue;
+                }
+
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    orgId,
+                    "Registry",
+                    "{\"people\":[" + string.Join(",", principals) + "]}",
+                    null,
+                    name,
+                    ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportCapitalPlansAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Capital-Plans", "outputs", "capital-pipeline.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var sourceKeysSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "projectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var ownerName = String(project, "owner");
+                var sourceKey = "CAPPLAN-" + Slug(ownerName) + "-" + Slug(projectName);
+                if (!sourceKeysSeen.Add(sourceKey))
+                {
+                    stats.SourceKeyCollisions++;
+                    Console.WriteLine($"[WARN] CapitalPlans: duplicate SourceKey in this run ({sourceKey}); later row may overwrite earlier row. project={projectName}");
+                }
+
+                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var record = new MajorProjectRecord(
+                    Source: "CapitalPlans",
+                    SourceKey: sourceKey,
+                    ProjectName: projectName,
+                    ProjectDescription: String(project, "notes"),
+                    EstimatedCostCad: Money(project, "budgetCad"),
+                    EstimatedCostText: CostText(project, "budgetCad"),
+                    Sector: String(project, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: String(project, "market"),
+                    MunicipalityName: null,
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: null,
+                    ArchitectCanonicalOrgId: null,
+                    Stage: String(project, "status"),
+                    ProjectStatus: String(project, "status"),
+                    ProjectStage: "CapitalPlan",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: null,
+                    ScheduleNotes: JoinNotes(("Timeline", String(project, "timeline")), ("Notes", String(project, "notes"))),
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: String(project, "sourceUrl"),
+                    RawJson: project.GetRawText())
+                {
+                    Province = Province,
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
     private static async Task<long?> UpsertOrgAsync(
         SqlCanonicalOrgStore? store,
         ImportOptions options,
@@ -2034,6 +2197,12 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         }
 
         return sb.ToString();
+    }
+
+    private static string Slug(string? value)
+    {
+        var slug = NormalizeToken(value);
+        return slug.Length == 0 ? "unknown" : slug;
     }
 
     private static string? BuildIndigenousScheduleNotes(string? timeline, string? structuralEngineer)
