@@ -61,13 +61,16 @@ WHERE m.Province IN ('BC','AB','CA','WA','OR')
      OR m.Sector LIKE '%institution%' OR m.Sector LIKE '%care%'
      OR m.Sector IN ('Civic','Tourism / Recreation','Government','Mixed-use')
       )
-  AND NOT (
+  -- Keep unknown (NULL) Stage as a prospect; only exclude the clearly built /
+  -- under-construction states. (NOT(NULL) is NULL, which WHERE drops — so the
+  -- NULL case must be allowed explicitly.)
+  AND (m.Stage IS NULL OR NOT (
         m.Stage LIKE '%complet%' OR m.Stage LIKE 'construction%' OR m.Stage LIKE '%under construction%'
      OR m.Stage LIKE '%construction started%' OR m.Stage LIKE '%in construction%'
      OR m.Stage LIKE '%construction phase%' OR m.Stage LIKE '%in-service%' OR m.Stage LIKE '%in service%'
      OR m.Stage LIKE '%operating%' OR m.Stage LIKE '%occupancy%' OR m.Stage LIKE '%built%'
      OR m.Stage LIKE '%in progress%' OR m.Stage LIKE '%underway%' OR m.Stage LIKE '%demolition%'
-      );
+      ));
 GO
 
 PRINT 'Migration 47: opportunities.PrimePipeline view created (open prime RFPs + upcoming building projects).';

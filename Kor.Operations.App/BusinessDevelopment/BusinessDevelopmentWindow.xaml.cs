@@ -82,4 +82,11 @@ public partial class BusinessDevelopmentWindow : Window
         win.Owner = this;
         win.Show();
     }
+
+    private void OpenPrimePipeline_Click(object sender, RoutedEventArgs e)
+    {
+        var win = _services.GetRequiredService<App.Opportunities.PrimePipelineWindow>();
+        win.Owner = this;
+        win.Show();
+    }
 }

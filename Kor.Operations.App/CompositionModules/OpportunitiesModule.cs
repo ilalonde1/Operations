@@ -47,6 +47,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<IOpportunitySourceStore>(_ => new SqlOpportunitySourceStore(options.OpportunitiesDb));
         services.AddSingleton<IOpportunityObservationStore>(_ => new SqlOpportunityObservationStore(options.OpportunitiesDb));
         services.AddSingleton<IMajorProjectsInventoryStore>(_ => new SqlMajorProjectsInventoryStore(options.OpportunitiesDb));
+        services.AddSingleton<IPrimePipelineStore>(_ => new SqlPrimePipelineStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(
@@ -63,6 +64,8 @@ internal static class OpportunitiesModule
         services.AddTransient<OpportunitiesWindow>();
         services.AddTransient<MajorProjectsInventoryViewModel>();
         services.AddTransient<MajorProjectsInventoryWindow>();
+        services.AddTransient<PrimePipelineViewModel>();
+        services.AddTransient<PrimePipelineWindow>();
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.ICompetitionInfoQueryStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlCompetitionInfoQueryStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IAwardQueryStore>(
