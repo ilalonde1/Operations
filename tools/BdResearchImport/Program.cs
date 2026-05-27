@@ -99,6 +99,9 @@ internal static class Program
             if (Run("prime-contacts")) await ImportPrimeContactsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("island-okanagan")) await ImportIslandOkanaganAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("intel-gathering")) await ImportIntelGatheringAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("owner-pipelines")) await ImportOwnerPipelinesAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("competitor-profiles")) await ImportCompetitorProfilesAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("decision-makers")) await ImportDecisionMakersAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("data-honing")) await ImportDataHoningAsync(options, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
@@ -1460,6 +1463,204 @@ internal static class Program
         cmd.Parameters.Add("@w", SqlDbType.NVarChar, 500).Value = website;
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    private static async Task ImportOwnerPipelinesAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        // Intel-Gathering Track B: institutional owner capital pipelines (projects
+        // 1-3 yrs ahead of the RFP) -> MajorProjectsInventory.
+        var path = Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "owner-pipelines.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var p in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(p, "projectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var ownerName = String(p, "owner");
+                var architectName = String(p, "plannedArchitect");
+                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadFirm(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var cost = Money(p, "estimatedValue");
+
+                var record = new MajorProjectRecord(
+                    Source: "OwnerPipelineProjects",
+                    SourceKey: "OWNPIPE-" + Sha1($"{ownerName}|{projectName}"),
+                    ProjectName: projectName,
+                    ProjectDescription: String(p, "description"),
+                    EstimatedCostCad: cost,
+                    EstimatedCostText: cost.HasValue ? CadCostText(cost.Value) : null,
+                    Sector: String(p, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: null,
+                    MunicipalityName: String(p, "city"),
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: String(p, "stage"),
+                    ProjectStatus: String(p, "stage"),
+                    ProjectStage: "OwnerPipeline",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: Short(p, "expectedYear"),
+                    ScheduleNotes: null,
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(p),
+                    RawJson: p.GetRawText())
+                {
+                    Province = ProvinceFromMarket(String(p, "province"), String(p, "city")),
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportCompetitorProfilesAsync(
+        ImportOptions options,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        // Intel-Gathering Track D: structural-competitor deep-profiles (go-to
+        // architect partners, recent wins, strongholds, exploitable gaps).
+        var path = Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "competitor-profiles.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var c in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var name = String(c, "name");
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                var id = LongOrNull(c, "id");
+                var orgId = id is > 0
+                    ? id
+                    : await ResolveAsync(resolver, options, stats, name, OrgKinds.Competitor, "CompetitorProfile", ct).ConfigureAwait(false);
+
+                await WriteEnrichmentAsync(enrichmentStore, options, stats, orgId, "CompetitorProfile", c.GetRawText(), null, name, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportDecisionMakersAsync(
+        ImportOptions options,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        // Intel-Gathering Track C: decision-maker / people layer, grouped per org
+        // into one enrichment row (mirrors PrimeContacts).
+        var path = Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "people.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var groups = new Dictionary<string, (long? OrgId, string? Name, string Kind, List<string> People)>(StringComparer.OrdinalIgnoreCase);
+            foreach (var person in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var orgName = String(person, "orgName");
+                var orgId = LongOrNull(person, "orgId");
+                var key = orgId is > 0 ? "id:" + orgId.Value.ToString(CultureInfo.InvariantCulture) : orgName;
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                if (!groups.TryGetValue(key, out var g))
+                {
+                    g = (orgId, orgName, MapIslandKind(String(person, "orgKind")), new List<string>());
+                    groups[key] = g;
+                }
+
+                g.People.Add(person.GetRawText());
+            }
+
+            foreach (var g in groups.Values)
+            {
+                ct.ThrowIfCancellationRequested();
+                var orgId = g.OrgId is > 0
+                    ? g.OrgId
+                    : await ResolveAsync(resolver, options, stats, g.Name, g.Kind, "DecisionMakers", ct).ConfigureAwait(false);
+
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    orgId,
+                    "DecisionMakers",
+                    "{\"people\":[" + string.Join(",", g.People) + "]}",
+                    null,
+                    g.Name ?? "(org)",
+                    ct).ConfigureAwait(false);
+            }
+        }
     }
 
     private static async Task<long?> UpsertOrgAsync(
