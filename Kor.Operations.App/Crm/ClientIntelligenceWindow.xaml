@@ -47,8 +47,21 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="0" Margin="2,0,2,8" LastChildFill="True">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,8,0">
+        <Grid Grid.Row="0" Margin="2,0,2,8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <controls:KorHeader x:Name="HeaderBar"
+                                Grid.Row="0"
+                                HeaderText="{Binding HeaderText}"
+                                SubtitleText="Deltek client roll-up"
+                                AvatarDiameter="32"
+                                AvatarBorderThickness="2"/>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right"
+                        VerticalAlignment="Center" Margin="0,4,8,0">
                 <TextBlock Text="Find client:" VerticalAlignment="Center" FontSize="11" Foreground="#666" Margin="0,0,6,0"/>
                 <Grid>
                     <TextBox x:Name="ClientSearchBox" Width="280" VerticalAlignment="Center"
@@ -75,12 +88,7 @@
                     </Popup>
                 </Grid>
             </StackPanel>
-            <controls:KorHeader x:Name="HeaderBar"
-                                HeaderText="{Binding HeaderText}"
-                                SubtitleText="Deltek client roll-up"
-                                AvatarDiameter="32"
-                                AvatarBorderThickness="2"/>
-        </DockPanel>
+        </Grid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="12,0,12,8">
             <Border Background="#1F7A1F" CornerRadius="999" Padding="6,2" Margin="0,0,8,0"
