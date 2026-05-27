@@ -1473,7 +1473,9 @@ internal static class Program
     {
         // Intel-Gathering Track B: institutional owner capital pipelines (projects
         // 1-3 yrs ahead of the RFP) -> MajorProjectsInventory.
-        var path = Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "owner-pipelines.json");
+        var path = !string.IsNullOrWhiteSpace(options.PipelinesFile)
+            ? options.PipelinesFile!
+            : Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "owner-pipelines.json");
         if (!TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
@@ -2226,7 +2228,7 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         }
     }
 
-    private sealed record ImportOptions(string BaseDirectory, string OpportunitiesDb, bool DryRun, bool Quiet, decimal FxRate, string? Only)
+    private sealed record ImportOptions(string BaseDirectory, string OpportunitiesDb, bool DryRun, bool Quiet, decimal FxRate, string? Only, string? PipelinesFile)
     {
         public static ImportOptions Parse(string[] args)
         {
@@ -2236,6 +2238,7 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
             var quiet = false;
             var fxRate = 1.36m;
             string? only = null;
+            string? pipelinesFile = null;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -2259,12 +2262,15 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
                     case "--only":
                         only = RequireValue(args, ref i, "--only");
                         break;
+                    case "--pipelines-file":
+                        pipelinesFile = RequireValue(args, ref i, "--pipelines-file");
+                        break;
                     default:
                         throw new ArgumentException($"Unknown argument '{args[i]}'.");
                 }
             }
 
-            return new ImportOptions(baseDir, db, dryRun, quiet, fxRate, only);
+            return new ImportOptions(baseDir, db, dryRun, quiet, fxRate, only, pipelinesFile);
         }
 
         private static decimal ParseFxRate(string value)
