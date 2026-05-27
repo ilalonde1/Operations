@@ -144,12 +144,22 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         await MaybeDumpGridAsync(page, sourceConfig, ct).ConfigureAwait(false);
 
         var baseUri = new Uri(source.BaseUrl);
-        for (var pageNum = 1; pageNum <= maxPages; pageNum++)
-        {
-            var pageCandidates = await ExtractPageAsync(page, baseUri, ct).ConfigureAwait(false);
-            candidates.AddRange(pageCandidates);
 
-            if (!await TryAdvanceToNextPageAsync(page, ct).ConfigureAwait(false))
+        // BC Bid (Ivalua) exposes total/current page via hidden fields; loop
+        // deterministically to the last page. The old aria-label/anchor selectors
+        // didn't match Ivalua's id-based <button> pager, so pagination quit early
+        // at a random page (yields bounced 30/75/90/150 run-to-run).
+        var maxIndex = await ReadIntFieldAsync(page, "#maxpageindexbody_x_grid_grd", 0).ConfigureAwait(false);
+        var lastPage = Math.Min(maxIndex, maxPages - 1);
+        for (var idx = 0; idx <= lastPage; idx++)
+        {
+            candidates.AddRange(await ExtractPageAsync(page, baseUri, ct).ConfigureAwait(false));
+            if (idx >= lastPage)
+            {
+                break;
+            }
+
+            if (!await AdvanceToNextPageAsync(page, idx, ct).ConfigureAwait(false))
             {
                 break;
             }
@@ -236,42 +246,55 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         };
     }
 
-    private static async Task<bool> TryAdvanceToNextPageAsync(IPage page, CancellationToken ct)
+    // Clicks Ivalua's id-based Next button and waits until the current-page
+    // hidden field advances past fromIndex — confirms the AJAX postback actually
+    // repainted the grid before we extract (the source of the old flakiness).
+    private static async Task<bool> AdvanceToNextPageAsync(IPage page, int fromIndex, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-
-        // BC Bid's Ivalua grid uses an `a` button labeled "Next page" or
-        // similar; selector falls back to common patterns. If none match,
-        // assume single page.
-        var nextSelectors = new[]
+        try
         {
-            "a[aria-label='Next page']:not([aria-disabled='true'])",
-            "button[aria-label='Next page']:not([disabled])",
-            "a.iv-pagination-next:not(.disabled)",
-            "li.iv-pagination-next:not(.disabled) > a",
-        };
-
-        foreach (var selector in nextSelectors)
-        {
-            var handle = await page.QuerySelectorAsync(selector).ConfigureAwait(false);
-            if (handle is null) continue;
-
-            try
+            var next = page.Locator("#body_x_grid_gridPagerBtnNextPage");
+            if (await next.CountAsync().ConfigureAwait(false) == 0)
             {
-                await handle.ClickAsync().ConfigureAwait(false);
-                await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions
+                return false;
+            }
+
+            await next.ClickAsync(new LocatorClickOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+
+            var deadline = DateTime.UtcNow.AddMilliseconds(PageWaitTimeoutMs);
+            while (DateTime.UtcNow < deadline)
+            {
+                ct.ThrowIfCancellationRequested();
+                var current = await ReadIntFieldAsync(page, "#hdnCurrentPageIndexbody_x_grid_grd", -1).ConfigureAwait(false);
+                if (current > fromIndex)
                 {
-                    Timeout = PageWaitTimeoutMs,
-                }).ConfigureAwait(false);
-                return true;
-            }
-            catch
-            {
-                continue;
-            }
-        }
+                    return true;
+                }
 
-        return false;
+                await page.WaitForTimeoutAsync(300).ConfigureAwait(false);
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task<int> ReadIntFieldAsync(IPage page, string selector, int defaultValue)
+    {
+        try
+        {
+            var value = await page.Locator(selector)
+                .InputValueAsync(new LocatorInputValueOptions { Timeout = 5_000 }).ConfigureAwait(false);
+            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : defaultValue;
+        }
+        catch
+        {
+            return defaultValue;
+        }
     }
 
     private async Task<bool> LoginAsync(IPage page, CancellationToken ct)
