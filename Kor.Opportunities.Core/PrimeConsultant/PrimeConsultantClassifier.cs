@@ -51,6 +51,7 @@ public static class PrimeConsultantClassifier
         "design service",
         "design consultant",
         "design consultants",
+        "building design",
     };
 
     private static readonly string[] ArchitectExclusionSignals =
@@ -150,6 +151,29 @@ public static class PrimeConsultantClassifier
         "capacity building",
     };
 
+    // Always-exclude regardless of building/facility signals. These are project
+    // types that are NOT architect-led prime-consultant work: design-build
+    // (contractor is prime), MEP/fire sub-scopes, software/BIM, planning/strategy
+    // studies, and creative-design noise. Confirmed by the data-honing pass
+    // (false positives: ids 468 BIM, 561/640 design-build, 718 fire system,
+    // 10803 housing strategy).
+    private static readonly string[] HardNoiseSignals =
+    {
+        "design-build",
+        "design build",
+        "(bim)",
+        "building information mod",
+        "common data environment",
+        "fire system",
+        "fire suppression",
+        "sprinkler",
+        "housing strategy",
+        "graphic design",
+        "website design",
+        "web design",
+        "photography",
+    };
+
     public static PrimeRfpClassification Classify(Opportunity o)
     {
         ArgumentNullException.ThrowIfNull(o);
@@ -164,6 +188,7 @@ public static class PrimeConsultantClassifier
         var hasBuilding = buildingSignalCount > 0;
         var hasArchitectExclusion = ContainsAny(title, ArchitectExclusionSignals);
         var excluded = ContainsAny(text, FalseBuildingSignals)
+            || ContainsAny(text, HardNoiseSignals)
             || (!hasBuilding && ContainsAny(title, NoiseSignals))
             || hasArchitectExclusion;
 
