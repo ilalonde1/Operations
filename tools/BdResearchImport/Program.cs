@@ -98,6 +98,7 @@ internal static class Program
             if (Run("prime-targeting")) await ImportPrimeTargetingAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("prime-contacts")) await ImportPrimeContactsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("island-okanagan")) await ImportIslandOkanaganAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("intel-gathering")) await ImportIntelGatheringAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -1258,6 +1259,115 @@ internal static class Program
         return null;
     }
 
+    private static async Task ImportIntelGatheringAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        // Track A: team-pairing graph (architect + structural engineer + GC + owner
+        // per recent award). The structural-engineer-per-project edge is the
+        // highest-value datapoint — stored in the new MPI structural/GC columns.
+        var teamPath = Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "team-awards.json");
+        if (!TryLoadJson(teamPath, out var teamDoc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (teamDoc)
+        {
+            if (teamDoc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var t in teamDoc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(t, "project");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var ownerName = String(t, "owner");
+                var architectName = String(t, "architect");
+                var structuralName = String(t, "structuralEngineer");
+                var gcName = String(t, "generalContractor");
+
+                // Prefer the seed Id the research carried through; else resolve by name.
+                var architectId = LongOrNull(t, "architectSeedId")
+                    ?? await ResolveAsync(resolver, options, stats, LeadFirm(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var structuralId = await ResolveAsync(resolver, options, stats, LeadFirm(structuralName), OrgKinds.Competitor, "IntelTeamStructural", ct).ConfigureAwait(false);
+                var gcId = await ResolveAsync(resolver, options, stats, LeadFirm(gcName), OrgKinds.GeneralContractor, "IntelTeamGC", ct).ConfigureAwait(false);
+                var cost = Money(t, "estimatedValue");
+
+                var record = new MajorProjectRecord(
+                    Source: "IntelTeamAwards",
+                    SourceKey: "TEAM-" + Sha1($"{architectName}|{projectName}"),
+                    ProjectName: projectName,
+                    ProjectDescription: null,
+                    EstimatedCostCad: cost,
+                    EstimatedCostText: cost.HasValue ? CadCostText(cost.Value) : null,
+                    Sector: String(t, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: null,
+                    MunicipalityName: String(t, "city"),
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: "Complete",
+                    ProjectStatus: "Awarded",
+                    ProjectStage: "IntelTeamAwards",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: Short(t, "awardYear"),
+                    CompletionYear: null,
+                    ScheduleNotes: null,
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(t),
+                    RawJson: t.GetRawText())
+                {
+                    Province = ProvinceFromMarket(String(t, "province"), String(t, "city")),
+                    StructuralEngineerName = structuralName,
+                    StructuralEngineerCanonicalOrgId = structuralId,
+                    GeneralContractorName = gcName,
+                    GeneralContractorCanonicalOrgId = gcId,
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static long? LongOrNull(JsonElement element, string propertyName)
+    {
+        var text = String(element, propertyName);
+        return long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : (long?)null;
+    }
+
     private static async Task<long?> UpsertOrgAsync(
         SqlCanonicalOrgStore? store,
         ImportOptions options,
@@ -1455,6 +1565,10 @@ SET
     SourceUrl = @sourceUrl,
     IssueYear = @issueYear,
     IssueQuarter = @issueQuarter,
+    StructuralEngineerName = @structuralEngineerName,
+    StructuralEngineerCanonicalOrgId = @structuralEngineerCanonicalOrgId,
+    GeneralContractorName = @generalContractorName,
+    GeneralContractorCanonicalOrgId = @generalContractorCanonicalOrgId,
     RawJson = @rawJson
 WHERE Province = @province
   AND SourceKey = @sourceKey;
@@ -1470,7 +1584,8 @@ BEGIN
          GreenBuildingInd, IndigenousInd, IndigenousNames, ConstructionJobs, OperatingJobs,
          StandardizedStartDate, StandardizedCompletionDate, StartYear, CompletionYear,
          ScheduleNotes, Latitude, Longitude, ProjectWebsite, SourceUrl, IssueYear,
-         IssueQuarter, RawJson)
+         IssueQuarter, StructuralEngineerName, StructuralEngineerCanonicalOrgId,
+         GeneralContractorName, GeneralContractorCanonicalOrgId, RawJson)
     OUTPUT inserted.Id INTO @inserted
     VALUES
         (@province, @sourceKey, @externalProjectId, @projectName, @projectDescription, @estimatedCostCad,
@@ -1481,7 +1596,8 @@ BEGIN
          @greenBuildingInd, @indigenousInd, @indigenousNames, @constructionJobs, @operatingJobs,
          @standardizedStartDate, @standardizedCompletionDate, @startYear, @completionYear,
          @scheduleNotes, @latitude, @longitude, @projectWebsite, @sourceUrl, @issueYear,
-         @issueQuarter, @rawJson);
+         @issueQuarter, @structuralEngineerName, @structuralEngineerCanonicalOrgId,
+         @generalContractorName, @generalContractorCanonicalOrgId, @rawJson);
 END;
 
 COMMIT TRAN;
@@ -1544,6 +1660,10 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         AddString(cmd, "@sourceUrl", r.SourceUrl, 1000);
         AddShort(cmd, "@issueYear", null);
         AddByte(cmd, "@issueQuarter", null);
+        AddString(cmd, "@structuralEngineerName", r.StructuralEngineerName, 500);
+        AddLong(cmd, "@structuralEngineerCanonicalOrgId", r.StructuralEngineerCanonicalOrgId);
+        AddString(cmd, "@generalContractorName", r.GeneralContractorName, 500);
+        AddLong(cmd, "@generalContractorCanonicalOrgId", r.GeneralContractorCanonicalOrgId);
         AddString(cmd, "@rawJson", r.RawJson, -1);
     }
 
@@ -1934,5 +2054,9 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         string RawJson)
     {
         public string Province { get; init; } = Program.Province;
+        public string? StructuralEngineerName { get; init; }
+        public long? StructuralEngineerCanonicalOrgId { get; init; }
+        public string? GeneralContractorName { get; init; }
+        public long? GeneralContractorCanonicalOrgId { get; init; }
     }
 }
