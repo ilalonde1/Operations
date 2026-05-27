@@ -5,6 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Kor.Operations.Mcp</RootNamespace>
     <AssemblyName>Kor.Operations.Mcp</AssemblyName>
+    <!-- Web SDK derives RazorLangVersion from the TFM, but the net8.0-windows OS
+         suffix yields an empty value (RZ3600). Pin it explicitly; the project has
+         no Razor files, so any valid version satisfies the SDK. -->
+    <RazorLangVersion>8.0</RazorLangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NoWarn>$(NoWarn);SA1402;SA1633</NoWarn>
     <!-- Bump on every meaningful service-side change so the /health
