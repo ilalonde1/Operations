@@ -18,6 +18,12 @@ public interface ICanonicalOrgStore
 
     Task<CanonicalOrgRow?> GetCanonicalOrgAsync(long id, CancellationToken ct);
 
+    Task<IReadOnlyList<CanonicalOrgRow>> SearchCanonicalOrgsAsync(
+        string? query,
+        string? kind,
+        int take,
+        CancellationToken ct);
+
     Task<CanonicalOrgRow?> GetCanonicalOrgByClendorIdAsync(string clendorClientId, CancellationToken ct);
 
     Task RecordBcRegistrySnapshotAsync(long canonicalOrgId, BcRegistrySnapshot snapshot, CancellationToken ct);

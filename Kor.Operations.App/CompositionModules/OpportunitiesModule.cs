@@ -69,6 +69,8 @@ internal static class OpportunitiesModule
         services.AddTransient<PrimePipelineWindow>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardView>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsViewModel>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.BdWorkspaceWindow>();
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.ICompetitionInfoQueryStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlCompetitionInfoQueryStore(options.OpportunitiesDb));
@@ -93,6 +95,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>();
         services.AddSingleton<Kor.Operations.App.Opportunities.CustomProposalImportService>();
         services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierViewModel>();
+        services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierView>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.HistoricalOpportunityDetailViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.KorPursuitDialogViewModel>();

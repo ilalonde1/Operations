@@ -58,7 +58,7 @@ public partial class BdWorkspaceWindow : Window
     private void Relationships_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(RelationshipsButton);
-        ContentHost.Content = "Relationships folding into the workspace next.";
+        ContentHost.Content = _services.GetRequiredService<RelationshipsView>();
     }
 
     private void People_Click(object sender, RoutedEventArgs e)

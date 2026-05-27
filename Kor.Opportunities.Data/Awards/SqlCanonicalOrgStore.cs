@@ -145,6 +145,40 @@ WHERE  Id = @id;";
             .ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<CanonicalOrgRow>> SearchCanonicalOrgsAsync(
+        string? query,
+        string? kind,
+        int take,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (@take) Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc
+FROM   opportunities.CanonicalOrg
+WHERE  (@q IS NULL OR DisplayName LIKE '%' + @q + '%')
+   AND (@kind IS NULL OR Kind = @kind)
+ORDER BY DisplayName;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@q", SqlDbType.NVarChar, 300).Value = string.IsNullOrWhiteSpace(query)
+            ? (object)DBNull.Value
+            : query.Trim();
+        cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = string.IsNullOrWhiteSpace(kind)
+            ? (object)DBNull.Value
+            : kind.Trim();
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = take;
+
+        var list = new List<CanonicalOrgRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            list.Add(MapOrg(r));
+        }
+
+        return list;
+    }
+
     public async Task<CanonicalOrgRow?> GetCanonicalOrgByClendorIdAsync(string clendorClientId, CancellationToken ct)
     {
         const string sql = @"
@@ -367,7 +401,11 @@ FROM opportunities.OrgAlias;";
 
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
-        return new CanonicalOrgRow(
+        return MapOrg(r);
+    }
+
+    private static CanonicalOrgRow MapOrg(SqlDataReader r)
+        => new(
             r.GetInt64(0),
             r.GetString(1),
             r.GetString(2),
@@ -376,7 +414,6 @@ FROM opportunities.OrgAlias;";
             r.IsDBNull(5) ? null : r.GetString(5),
             r.GetDateTimeOffset(6),
             r.GetDateTimeOffset(7));
-    }
 
     private static OrgAliasRow MapAlias(SqlDataReader r)
         => new(
