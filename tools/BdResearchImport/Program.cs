@@ -116,6 +116,7 @@ internal static class Program
             if (Run("sub-consultants")) await ImportSubConsultantsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("facility-renewal")) await ImportFacilityRenewalAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("projects-honing")) await ImportProjectsHoningAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("kor-capability")) await ImportKorCapabilityAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -1385,6 +1386,96 @@ internal static class Program
         return long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : (long?)null;
     }
 
+    private static async Task<long?> ResolveKorStructuralOrgAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        CancellationToken ct)
+    {
+        if (options.DryRun)
+        {
+            if (!options.Quiet)
+            {
+                Console.WriteLine("[DRY-RUN] KorCapability: planned lookup CanonicalOrg kind=KorStructural/name=KOR Structural");
+            }
+
+            return null;
+        }
+
+        if (orgStore is null)
+        {
+            throw new InvalidOperationException("Canonical org store is not available.");
+        }
+
+        var byKind = await orgStore.SearchCanonicalOrgsAsync(null, OrgKinds.KorStructural, 10, ct).ConfigureAwait(false);
+        var row = byKind.FirstOrDefault()
+            ?? (await orgStore.SearchCanonicalOrgsAsync("KOR Structural", null, 10, ct).ConfigureAwait(false))
+                .FirstOrDefault(o => string.Equals(o.DisplayName, "KOR Structural", StringComparison.OrdinalIgnoreCase));
+
+        if (row is null)
+        {
+            throw new InvalidOperationException("Could not find the KOR Structural canonical org row.");
+        }
+
+        if (!options.Quiet)
+        {
+            Console.WriteLine($"[ORG] KorCapability: KOR Structural -> CanonicalOrgId={row.Id}");
+        }
+
+        return row.Id;
+    }
+
+    private static string[] StringArray(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return value.EnumerateArray()
+            .Select(v => v.ValueKind == JsonValueKind.String ? v.GetString() : v.ToString())
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => v!.Trim())
+            .ToArray();
+    }
+
+    private static JsonElement? RawJsonOrNull(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        return value;
+    }
+
+    private static int CountName(string? name)
+        => string.IsNullOrWhiteSpace(name) ? 0 : 1;
+
+    private static void AddSectorSystems(
+        Dictionary<string, Dictionary<string, int>> sectorSystemMatrix,
+        string? sector,
+        IReadOnlyList<string> systems)
+    {
+        var sectorKey = string.IsNullOrWhiteSpace(sector) ? "Unknown" : sector.Trim();
+        if (!sectorSystemMatrix.TryGetValue(sectorKey, out var systemCounts))
+        {
+            systemCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            sectorSystemMatrix[sectorKey] = systemCounts;
+        }
+
+        foreach (var system in systems)
+        {
+            if (string.IsNullOrWhiteSpace(system))
+            {
+                continue;
+            }
+
+            var key = system.Trim();
+            systemCounts.TryGetValue(key, out var current);
+            systemCounts[key] = current + 1;
+        }
+    }
+
     private static async Task ImportDataHoningAsync(
         ImportOptions options,
         SqlEnrichmentTrackingStore? enrichmentStore,
@@ -2191,6 +2282,125 @@ internal static class Program
                     }
                 }
             }
+        }
+    }
+
+    private static async Task ImportKorCapabilityAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var projectsPath = Path.Combine(options.BaseDirectory, "KOR-Capability-Corpus", "outputs", "kor-capability-corpus.json");
+        var rosterPath = Path.Combine(options.BaseDirectory, "KOR-Capability-Corpus", "outputs", "kor-roster.json");
+        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        if (!TryLoadJson(rosterPath, out var rosterDoc))
+        {
+            projectsDoc.Dispose();
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (projectsDoc)
+        using (rosterDoc)
+        {
+            if (projectsDoc.RootElement.ValueKind != JsonValueKind.Array || rosterDoc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var korOrgId = await ResolveKorStructuralOrgAsync(options, orgStore, ct).ConfigureAwait(false);
+            var projects = new List<KorCapabilityProject>();
+            var roster = new List<KorCapabilityRosterMember>();
+            var sectorSystemMatrix = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
+            var orgsResolved = 0;
+
+            foreach (var project in projectsDoc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "projectName");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var owner = String(project, "owner");
+                var architect = String(project, "architect");
+                var generalContractor = String(project, "generalContractor");
+                orgsResolved += CountName(owner) + CountName(architect) + CountName(generalContractor);
+                await ResolveAsync(resolver, options, stats, architect, OrgKinds.Architect, "KorCapabilityArchitect", ct).ConfigureAwait(false);
+                await ResolveAsync(resolver, options, stats, generalContractor, OrgKinds.GeneralContractor, "KorCapabilityGC", ct).ConfigureAwait(false);
+                await ResolveAsync(resolver, options, stats, owner, OrgKinds.Buyer, "KorCapabilityOwner", ct).ConfigureAwait(false);
+
+                var systems = StringArray(project, "structuralSystems");
+                AddSectorSystems(sectorSystemMatrix, String(project, "sector"), systems);
+
+                projects.Add(new KorCapabilityProject(
+                    projectName,
+                    String(project, "city"),
+                    String(project, "market"),
+                    Short(project, "completionYear"),
+                    String(project, "sector"),
+                    systems,
+                    owner,
+                    architect,
+                    generalContractor,
+                    RawJsonOrNull(project, "scale"),
+                    String(project, "notableFeatures"),
+                    StringArray(project, "awards"),
+                    String(project, "creditedFirmName"),
+                    Decimal(project, "systemConfidence"),
+                    StringArray(project, "sourceUrls")));
+            }
+
+            var pEngCount = 0;
+            foreach (var person in rosterDoc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var credentials = StringArray(person, "credentials");
+                if (credentials.Any(c => c.Contains("P.Eng", StringComparison.OrdinalIgnoreCase)))
+                {
+                    pEngCount++;
+                }
+
+                roster.Add(new KorCapabilityRosterMember(
+                    String(person, "name"),
+                    String(person, "title"),
+                    credentials,
+                    String(person, "specialty"),
+                    String(person, "era"),
+                    String(person, "creditedFirmName"),
+                    String(person, "notes")));
+            }
+
+            var payload = JsonSerializer.Serialize(new
+            {
+                projects,
+                roster,
+                sectorSystemMatrix,
+                pEngCount,
+            }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+            await WriteEnrichmentAsync(
+                enrichmentStore,
+                options,
+                stats,
+                korOrgId,
+                "KorCapability",
+                payload,
+                null,
+                "KOR Structural",
+                ct).ConfigureAwait(false);
+
+            Console.WriteLine($"[kor-capability] projects={projects.Count}; roster={roster.Count}; orgs resolved/created={orgsResolved}");
         }
     }
 
@@ -3394,4 +3604,30 @@ WHERE Id = @id;";
         public string? GeneralContractorName { get; init; }
         public long? GeneralContractorCanonicalOrgId { get; init; }
     }
+
+    private sealed record KorCapabilityProject(
+        string ProjectName,
+        string? City,
+        string? Market,
+        short? CompletionYear,
+        string? Sector,
+        IReadOnlyList<string> StructuralSystems,
+        string? Owner,
+        string? Architect,
+        string? GeneralContractor,
+        JsonElement? Scale,
+        string? NotableFeatures,
+        IReadOnlyList<string> Awards,
+        string? CreditedFirmName,
+        decimal? SystemConfidence,
+        IReadOnlyList<string> SourceUrls);
+
+    private sealed record KorCapabilityRosterMember(
+        string? Name,
+        string? Title,
+        IReadOnlyList<string> Credentials,
+        string? Specialty,
+        string? Era,
+        string? CreditedFirmName,
+        string? Notes);
 }
