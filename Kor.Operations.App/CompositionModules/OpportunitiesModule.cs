@@ -48,6 +48,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<IOpportunityObservationStore>(_ => new SqlOpportunityObservationStore(options.OpportunitiesDb));
         services.AddSingleton<IMajorProjectsInventoryStore>(_ => new SqlMajorProjectsInventoryStore(options.OpportunitiesDb));
         services.AddSingleton<IPrimePipelineStore>(_ => new SqlPrimePipelineStore(options.OpportunitiesDb));
+        services.AddSingleton<IBdDashboardStore>(_ => new SqlBdDashboardStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(

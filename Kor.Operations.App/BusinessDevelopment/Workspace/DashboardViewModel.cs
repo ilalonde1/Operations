@@ -19,6 +19,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
 
     private readonly IPrimePipelineStore _primePipeline;
     private readonly IOpportunityStore _opportunities;
+    private readonly IBdDashboardStore _bdDashboard;
     private string _totalPipelineDisplay = "0";
     private string _openRfpsDisplay = "0";
     private string _upcomingProjectsDisplay = "0";
@@ -26,10 +27,11 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private string _pipelineValueDisplay = "$0";
     private string _statusMessage = "Ready.";
 
-    public DashboardViewModel(IPrimePipelineStore primePipeline, IOpportunityStore opportunities)
+    public DashboardViewModel(IPrimePipelineStore primePipeline, IOpportunityStore opportunities, IBdDashboardStore bdDashboard)
     {
         _primePipeline = primePipeline ?? throw new ArgumentNullException(nameof(primePipeline));
         _opportunities = opportunities ?? throw new ArgumentNullException(nameof(opportunities));
+        _bdDashboard = bdDashboard ?? throw new ArgumentNullException(nameof(bdDashboard));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -40,6 +42,12 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
 
     public sealed record DeadlineRow(string Name, string? Province, string? Deadline, int DaysLeft);
 
+    public sealed record OpenStructuralSeatRow(string DisplayName, string? Market, string? Status, string? DisplacementRead);
+
+    public sealed record CompetitorWatchPanelRow(string DisplayName, string? CapacityRead);
+
+    public sealed record ForwardPipelinePanelRow(string ProjectName, string? ProponentName, string? Province, string CostDisplay);
+
     public ObservableCollection<FeedRow> LatestRfps { get; } = new();
 
     public ObservableCollection<ChartBar> SectorBars { get; } = new();
@@ -47,6 +55,12 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     public ObservableCollection<ChartBar> MarketBars { get; } = new();
 
     public ObservableCollection<DeadlineRow> Deadlines { get; } = new();
+
+    public ObservableCollection<OpenStructuralSeatRow> OpenStructuralSeats { get; } = new();
+
+    public ObservableCollection<CompetitorWatchPanelRow> CompetitorWatch { get; } = new();
+
+    public ObservableCollection<ForwardPipelinePanelRow> ForwardPipeline { get; } = new();
 
     public string TotalPipelineDisplay
     {
@@ -91,6 +105,9 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             StatusMessage = "Loading BD dashboard...";
             var pipeline = await _primePipeline.GetAllAsync(ct).ConfigureAwait(true);
             var opps = await _opportunities.ListAsync(ct).ConfigureAwait(true);
+            var openStructuralSeats = await _bdDashboard.GetOpenStructuralSeatsAsync(12, ct).ConfigureAwait(true);
+            var competitorWatch = await _bdDashboard.GetCompetitorWatchAsync(12, ct).ConfigureAwait(true);
+            var forwardPipeline = await _bdDashboard.GetForwardPipelineAsync(12, ct).ConfigureAwait(true);
             ct.ThrowIfCancellationRequested();
 
             var now = DateTimeOffset.UtcNow;
@@ -130,6 +147,22 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
                     o.SubmissionDeadlineUtc?.LocalDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                     o.SubmissionDeadlineUtc.HasValue ? (int)Math.Floor((o.SubmissionDeadlineUtc.Value - now).TotalDays) : 0)));
 
+            Replace(OpenStructuralSeats, openStructuralSeats.Select(r => new OpenStructuralSeatRow(
+                r.DisplayName,
+                r.Market,
+                r.Status,
+                r.DisplacementRead)));
+
+            Replace(CompetitorWatch, competitorWatch.Select(r => new CompetitorWatchPanelRow(
+                r.DisplayName,
+                r.CapacityRead)));
+
+            Replace(ForwardPipeline, forwardPipeline.Select(r => new ForwardPipelinePanelRow(
+                r.ProjectName,
+                r.ProponentName,
+                r.Province,
+                FormatCurrency(r.EstimatedCostCad))));
+
             StatusMessage = $"Loaded {pipeline.Count:N0} pipeline rows and {opps.Count:N0} opportunities.";
         }
         catch (OperationCanceledException)
@@ -152,6 +185,9 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         var max = list.Length == 0 ? 0 : list.Max(g => g.Count);
         return list.Select(g => new ChartBar(g.Label, g.Count, max)).ToArray();
     }
+
+    private static string FormatCurrency(decimal? value)
+        => value.HasValue ? string.Format(CanadianCulture, "{0:C0}", value.Value) : "";
 
     private static void Replace<T>(ObservableCollection<T> collection, IEnumerable<T> rows)
     {
