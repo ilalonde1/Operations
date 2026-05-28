@@ -54,6 +54,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GovCanEngineeringImport", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrimeRfpClassifierBackfill", "..\tools\PrimeRfpClassifierBackfill\PrimeRfpClassifierBackfill.csproj", "{90A5B2D8-19A3-4F7F-B3ED-389D8A53BD8C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdDeltekLink", "..\tools\BdDeltekLink\BdDeltekLink.csproj", "{F8F1B91E-0B96-4C81-8A34-82B662566852}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -156,6 +158,10 @@ Global
 		{90A5B2D8-19A3-4F7F-B3ED-389D8A53BD8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{90A5B2D8-19A3-4F7F-B3ED-389D8A53BD8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{90A5B2D8-19A3-4F7F-B3ED-389D8A53BD8C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8F1B91E-0B96-4C81-8A34-82B662566852}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8F1B91E-0B96-4C81-8A34-82B662566852}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8F1B91E-0B96-4C81-8A34-82B662566852}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8F1B91E-0B96-4C81-8A34-82B662566852}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
