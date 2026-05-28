@@ -1,0 +1,232 @@
+#nullable enable
+using System;
+using System.Text.RegularExpressions;
+
+namespace Kor.Opportunities.Core.Ingestion;
+
+public sealed record RelevanceDecision(bool Keep, string? RejectReason);
+
+public static class StructuralRelevanceGate
+{
+    // v1 relevance vocabulary: tuned to reject clearly non-building intake while
+    // keeping ambiguous candidates for downstream scoring/review.
+    private static readonly string[] BuildingSignals =
+    {
+        "building",
+        "buildings",
+        "construction",
+        "construct",
+        "renovation",
+        "renovate",
+        "addition",
+        "expansion",
+        "retrofit",
+        "seismic",
+        "structural",
+        "structure",
+        "facility",
+        "school",
+        "hospital",
+        "health centre",
+        "clinic",
+        "medical centre",
+        "library",
+        "museum",
+        "theatre",
+        "theater",
+        "community centre",
+        "community center",
+        "cultural centre",
+        "recreation",
+        "rec centre",
+        "aquatic",
+        "arena",
+        "gymnasium",
+        "courthouse",
+        "fire hall",
+        "fire station",
+        "police station",
+        "campus",
+        "university",
+        "college",
+        "housing",
+        "residential",
+        "condominium",
+        "apartment",
+        "mixed-use",
+        "institutional",
+        "civic",
+        "city hall",
+        "town hall",
+        "daycare",
+        "childcare",
+        "care home",
+        "long-term care",
+        "pavilion",
+        "tower",
+        "high-rise",
+        "highrise",
+        "parkade",
+        "parking structure",
+        "tenant improvement",
+        "building envelope",
+        "bridge",
+        "footbridge",
+        "pedestrian bridge",
+        "overpass",
+        "stadium",
+        "grandstand",
+        "terminal",
+        "hangar",
+        "warehouse",
+    };
+
+    private static readonly string[] HardIrrelevantSignals =
+    {
+        "road",
+        "roadway",
+        "paving",
+        "pavement",
+        "asphalt",
+        "sidewalk",
+        "curb and gutter",
+        "guardrail",
+        "line painting",
+        "pavement marking",
+        "crack seal",
+        "streetlight",
+        "street light",
+        "traffic signal",
+        "snow removal",
+        "snow clearing",
+        "street sweeping",
+        "water main",
+        "watermain",
+        "sewer",
+        "sanitary",
+        "storm sewer",
+        "stormwater",
+        "culvert",
+        "forcemain",
+        "pipeline",
+        "hydrant",
+        "lift station",
+        "pump station",
+        "irrigation",
+        "software",
+        "saas",
+        "software license",
+        "computer hardware",
+        "laptop",
+        "desktop",
+        "network equipment",
+        "it services",
+        "it support",
+        "help desk",
+        "helpdesk",
+        "telecom",
+        "telecommunication",
+        "fibre optic",
+        "fiber optic",
+        "wi-fi",
+        "cyber security",
+        "cybersecurity",
+        "website",
+        "web development",
+        "application development",
+        "erp",
+        "janitorial",
+        "custodial",
+        "cleaning services",
+        "housekeeping",
+        "landscaping",
+        "lawn",
+        "grounds maintenance",
+        "groundskeeping",
+        "arborist",
+        "tree pruning",
+        "tree removal",
+        "pest control",
+        "waste collection",
+        "garbage",
+        "refuse",
+        "recycling collection",
+        "security guard",
+        "security services",
+        "catering",
+        "food service",
+        "uniform",
+        "linen",
+        "laundry service",
+        "supply of",
+        "supply and delivery",
+        "office supplies",
+        "equipment rental",
+        "vehicle",
+        "vehicles",
+        "fleet",
+        "fuel",
+        "furniture",
+        "appliance",
+        "printing services",
+        "stationery",
+        "personal protective",
+        "ppe",
+        "tires",
+        "advertising",
+        "translation services",
+        "photography",
+        "graphic design",
+        "legal services",
+        "audit services",
+        "payroll",
+        "insurance services",
+        "staffing",
+        "temporary labour",
+        "recruitment",
+    };
+
+    public static RelevanceDecision Evaluate(string? title, string? description, string? buyer)
+    {
+        _ = buyer;
+
+        var text = $"{title ?? string.Empty} {description ?? string.Empty}".ToLowerInvariant();
+        var hasBuildingSignal = ContainsAny(text, BuildingSignals);
+        var matchedIrrelevant = FirstHardIrrelevantMatch(text);
+
+        return matchedIrrelevant is not null && !hasBuildingSignal
+            ? new RelevanceDecision(false, matchedIrrelevant)
+            : new RelevanceDecision(true, null);
+    }
+
+    private static bool ContainsAny(string value, string[] needles)
+    {
+        foreach (var needle in needles)
+        {
+            if (value.Contains(needle, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string? FirstHardIrrelevantMatch(string value)
+    {
+        foreach (var signal in HardIrrelevantSignals)
+        {
+            if (ContainsHardIrrelevantSignal(value, signal))
+            {
+                return signal;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool ContainsHardIrrelevantSignal(string value, string signal)
+        => signal.Contains(' ', StringComparison.Ordinal)
+            ? value.Contains(signal, StringComparison.OrdinalIgnoreCase)
+            : Regex.IsMatch(value, $@"\b{Regex.Escape(signal)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+}

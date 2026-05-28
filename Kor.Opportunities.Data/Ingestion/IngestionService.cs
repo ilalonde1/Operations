@@ -117,6 +117,19 @@ public sealed class IngestionService : IIngestionService
                     continue;
                 }
 
+                var relevance = StructuralRelevanceGate.Evaluate(candidate.Title, candidate.Description, candidate.Buyer);
+                if (!relevance.Keep)
+                {
+                    skipped++;
+                    _logger.LogInformation(
+                        "Ingestion {Run}: rejected '{Title}' from {Source} as non-structural ({Reason}).",
+                        runId,
+                        candidate.Title,
+                        source.Name,
+                        relevance.RejectReason);
+                    continue;
+                }
+
                 try
                 {
                     var outcome = await ProcessCandidateAsync(source, candidate, ct).ConfigureAwait(false);
