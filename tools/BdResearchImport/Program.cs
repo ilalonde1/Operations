@@ -116,6 +116,7 @@ internal static class Program
             if (Run("sub-consultants")) await ImportSubConsultantsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("facility-renewal")) await ImportFacilityRenewalAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("projects-honing")) await ImportProjectsHoningAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("pipeline-seats")) await ImportPipelineSeatsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("kor-capability")) await ImportKorCapabilityAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
@@ -1451,6 +1452,12 @@ internal static class Program
     private static int CountName(string? name)
         => string.IsNullOrWhiteSpace(name) ? 0 : 1;
 
+    private static string? CleanTeamName(string? name)
+    {
+        var trimmed = NullIfBlank(name);
+        return string.Equals(trimmed, "unknown", StringComparison.OrdinalIgnoreCase) ? null : trimmed;
+    }
+
     private static void AddSectorSystems(
         Dictionary<string, Dictionary<string, int>> sectorSystemMatrix,
         string? sector,
@@ -2281,6 +2288,94 @@ internal static class Program
                         Console.WriteLine($"[WARN] ProjectsHoning: skipped missing MPI Id={id.Value}; project={projectName ?? "(unnamed)"}");
                     }
                 }
+            }
+        }
+    }
+
+    private static async Task ImportPipelineSeatsAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Pipeline-Seats", "outputs", "project-seats.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var seatStatusCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var orgsResolved = 0;
+            var projectsStamped = 0;
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var id = LongOrNull(project, "id");
+                if (id is not > 0)
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var projectName = String(project, "projectName");
+                var architectName = CleanTeamName(String(project, "architect"));
+                var structuralName = CleanTeamName(String(project, "structuralEngineer"));
+                var gcName = CleanTeamName(String(project, "generalContractor"));
+                var seatStatus = String(project, "seatStatus");
+                AddCount(seatStatusCounts, string.IsNullOrWhiteSpace(seatStatus) ? "(blank)" : seatStatus.Trim());
+
+                orgsResolved += CountName(architectName) + CountName(structuralName) + CountName(gcName);
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "PipelineSeatsStructural", ct).ConfigureAwait(false);
+                var gcId = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "PipelineSeatsGC", ct).ConfigureAwait(false);
+
+                var updated = await UpdateMajorProjectSeatAsync(
+                    options,
+                    id.Value,
+                    architectName,
+                    architectId,
+                    structuralName,
+                    structuralId,
+                    gcName,
+                    gcId,
+                    seatStatus,
+                    String(project, "korOpening"),
+                    String(project, "confidence"),
+                    ct).ConfigureAwait(false);
+
+                if (updated)
+                {
+                    projectsStamped++;
+                    IncrementProjectSource(stats, "PipelineSeats");
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine(options.DryRun
+                            ? $"[DRY-RUN] PipelineSeats: planned MPI seat update Id={id.Value}; project={projectName ?? "(unnamed)"}"
+                            : $"[MPI] PipelineSeats: updated Id={id.Value}; project={projectName ?? "(unnamed)"}");
+                    }
+                }
+                else
+                {
+                    stats.ProjectRowsSkipped++;
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine($"[WARN] PipelineSeats: skipped missing MPI Id={id.Value}; project={projectName ?? "(unnamed)"}");
+                    }
+                }
+            }
+
+            Console.WriteLine($"[pipeline-seats] projects stamped={projectsStamped}; orgs resolved={orgsResolved}");
+            foreach (var (status, count) in seatStatusCounts.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"[pipeline-seats] seatStatus {status}: {count}");
             }
         }
     }
@@ -3130,6 +3225,57 @@ WHERE Id = @id;";
         AddLong(cmd, "@proponentCanonicalOrgId", proponentCanonicalOrgId);
         AddString(cmd, "@stage", stage, 50);
         AddShort(cmd, "@completionYear", completionYear);
+
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
+    }
+
+    private static async Task<bool> UpdateMajorProjectSeatAsync(
+        ImportOptions options,
+        long id,
+        string? architectName,
+        long? architectCanonicalOrgId,
+        string? structuralEngineerName,
+        long? structuralEngineerCanonicalOrgId,
+        string? generalContractorName,
+        long? generalContractorCanonicalOrgId,
+        string? seatStatus,
+        string? korSeatOpening,
+        string? seatConfidence,
+        CancellationToken ct)
+    {
+        if (options.DryRun)
+        {
+            return true;
+        }
+
+        const string sql = @"
+UPDATE opportunities.MajorProjectsInventory WITH (UPDLOCK, ROWLOCK)
+SET
+    ArchitectName = COALESCE(ArchitectName, @architectName),
+    ArchitectCanonicalOrgId = COALESCE(ArchitectCanonicalOrgId, @architectCanonicalOrgId),
+    StructuralEngineerName = COALESCE(StructuralEngineerName, @structuralEngineerName),
+    StructuralEngineerCanonicalOrgId = COALESCE(StructuralEngineerCanonicalOrgId, @structuralEngineerCanonicalOrgId),
+    GeneralContractorName = COALESCE(GeneralContractorName, @generalContractorName),
+    GeneralContractorCanonicalOrgId = COALESCE(GeneralContractorCanonicalOrgId, @generalContractorCanonicalOrgId),
+    SeatStatus = @seatStatus,
+    KorSeatOpening = @korSeatOpening,
+    SeatConfidence = @seatConfidence,
+    UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(options.OpportunitiesDb);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 60 };
+        AddLong(cmd, "@id", id);
+        AddString(cmd, "@architectName", architectName, 500);
+        AddLong(cmd, "@architectCanonicalOrgId", architectCanonicalOrgId);
+        AddString(cmd, "@structuralEngineerName", structuralEngineerName, 500);
+        AddLong(cmd, "@structuralEngineerCanonicalOrgId", structuralEngineerCanonicalOrgId);
+        AddString(cmd, "@generalContractorName", generalContractorName, 500);
+        AddLong(cmd, "@generalContractorCanonicalOrgId", generalContractorCanonicalOrgId);
+        AddString(cmd, "@seatStatus", seatStatus, 20);
+        AddString(cmd, "@korSeatOpening", korSeatOpening, 500);
+        AddString(cmd, "@seatConfidence", seatConfidence, 20);
 
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
     }
