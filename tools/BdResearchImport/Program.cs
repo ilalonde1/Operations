@@ -112,6 +112,8 @@ internal static class Program
             if (Run("indigenous-orgs")) await ImportIndigenousPipelineOrgsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("owner-procurement")) await ImportOwnerProcurementAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("competitor-signals")) await ImportCompetitorSignalsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("sub-consultants")) await ImportSubConsultantsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
+            if (Run("facility-renewal")) await ImportFacilityRenewalAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -1832,6 +1834,145 @@ internal static class Program
                     null,
                     orgName,
                     ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportSubConsultantsAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-SubConsultants", "outputs", "subconsultant-firms.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var name = String(element, "name");
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                var orgId = await UpsertOrgAsync(
+                    orgStore,
+                    options,
+                    stats,
+                    "Subcontractor",
+                    name,
+                    String(element, "website"),
+                    $"Discipline: {String(element, "discipline")}",
+                    "SubConsultants",
+                    ct).ConfigureAwait(false);
+
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    orgId,
+                    "SubConsultant",
+                    element.GetRawText(),
+                    null,
+                    name,
+                    ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportFacilityRenewalAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Facility-Renewal", "outputs", "renewal-pipeline.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var facilityName = String(element, "facilityName");
+                if (string.IsNullOrWhiteSpace(facilityName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var ownerName = String(element, "owner");
+                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var record = new MajorProjectRecord(
+                    Source: "FacilityRenewal",
+                    SourceKey: "RENEWAL-" + Sha1($"{ownerName}|{facilityName}"),
+                    ProjectName: facilityName,
+                    ProjectDescription: null,
+                    EstimatedCostCad: Money(element, "estCostCad"),
+                    EstimatedCostText: CostText(element, "estCostCad"),
+                    Sector: String(element, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: String(element, "market"),
+                    MunicipalityName: String(element, "city"),
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: proponentId,
+                    ArchitectName: null,
+                    ArchitectCanonicalOrgId: null,
+                    Stage: "identified",
+                    ProjectStatus: "identified",
+                    ProjectStage: "FacilityRenewal",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: null,
+                    ScheduleNotes: JoinNotes(("Condition", String(element, "conditionSignal")), ("Need", String(element, "renewalNeed")), ("Timeline", String(element, "estTimeline"))),
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(element),
+                    RawJson: element.GetRawText())
+                {
+                    Province = ProvinceFromResearchMarket(String(element, "market")),
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
             }
         }
     }
