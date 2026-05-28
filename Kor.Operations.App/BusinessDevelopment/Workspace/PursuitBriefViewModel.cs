@@ -3,10 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Crm;
+using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.MajorProjects;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
@@ -16,14 +20,22 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
     private readonly IPursuitBriefStore _store;
     private readonly IDeltekClientContextService _deltek;
+    private readonly IKorClientBdIntelligenceStore _korBd;
     private PursuitBrief? _brief;
     private string? _korEdgeDisplay;
+    private string? _ownerContactsDisplay;
+    private string? _ownerBdRecordDisplay;
+    private string? _architectWarmthDisplay;
     private string _statusMessage = "Ready.";
 
-    public PursuitBriefViewModel(IPursuitBriefStore store, IDeltekClientContextService deltek)
+    public PursuitBriefViewModel(
+        IPursuitBriefStore store,
+        IDeltekClientContextService deltek,
+        IKorClientBdIntelligenceStore korBd)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _deltek = deltek ?? throw new ArgumentNullException(nameof(deltek));
+        _korBd = korBd ?? throw new ArgumentNullException(nameof(korBd));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -45,6 +57,12 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(NoProcurementProfile));
             OnPropertyChanged(nameof(KorEdgeDisplay));
             OnPropertyChanged(nameof(KorEdgeIsPlaceholder));
+            OnPropertyChanged(nameof(OwnerContactsDisplay));
+            OnPropertyChanged(nameof(OwnerContactsIsPlaceholder));
+            OnPropertyChanged(nameof(OwnerBdRecordDisplay));
+            OnPropertyChanged(nameof(OwnerBdRecordIsPlaceholder));
+            OnPropertyChanged(nameof(ArchitectWarmthDisplay));
+            OnPropertyChanged(nameof(ArchitectWarmthIsPlaceholder));
             OnPropertyChanged(nameof(ThePlayDisplay));
             OnPropertyChanged(nameof(ThePlayIsPlaceholder));
             OnPropertyChanged(nameof(FitScoreDisplay));
@@ -74,6 +92,24 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged
 
     public bool KorEdgeIsPlaceholder => string.IsNullOrWhiteSpace(_korEdgeDisplay);
 
+    public string OwnerContactsDisplay => string.IsNullOrWhiteSpace(_ownerContactsDisplay)
+        ? "No KOR contacts on record at this owner."
+        : _ownerContactsDisplay!;
+
+    public bool OwnerContactsIsPlaceholder => string.IsNullOrWhiteSpace(_ownerContactsDisplay);
+
+    public string OwnerBdRecordDisplay => string.IsNullOrWhiteSpace(_ownerBdRecordDisplay)
+        ? "No KOR pursuit history with this owner."
+        : _ownerBdRecordDisplay!;
+
+    public bool OwnerBdRecordIsPlaceholder => string.IsNullOrWhiteSpace(_ownerBdRecordDisplay);
+
+    public string ArchitectWarmthDisplay => string.IsNullOrWhiteSpace(_architectWarmthDisplay)
+        ? "No KOR contacts on record at this firm."
+        : _architectWarmthDisplay!;
+
+    public bool ArchitectWarmthIsPlaceholder => string.IsNullOrWhiteSpace(_architectWarmthDisplay);
+
     public string ThePlayDisplay => string.IsNullOrWhiteSpace(Brief?.ThePlay) ? "coming with the AI Crucible." : Brief!.ThePlay!;
 
     public bool ThePlayIsPlaceholder => string.IsNullOrWhiteSpace(Brief?.ThePlay);
@@ -87,9 +123,11 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged
         try
         {
             StatusMessage = "Loading pursuit brief...";
-            KorEdgeRaw = null;
+            ClearDynamicDisplays();
             Brief = await _store.GetBriefForProjectAsync(mpiId, ct).ConfigureAwait(true);
-            await LoadOwnerEdgeAsync(Brief, ct).ConfigureAwait(true);
+            await LoadOwnerDeltekAsync(Brief, ct).ConfigureAwait(true);
+            await LoadOwnerBdRecordAsync(Brief, ct).ConfigureAwait(true);
+            await LoadArchitectWarmthAsync(Brief, ct).ConfigureAwait(true);
             StatusMessage = Brief is null
                 ? $"Major Projects Inventory row {mpiId} was not found."
                 : $"Loaded pursuit brief for {Brief.Project.ProjectName}.";
@@ -104,6 +142,14 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged
         }
     }
 
+    private void ClearDynamicDisplays()
+    {
+        KorEdgeRaw = null;
+        OwnerContactsRaw = null;
+        OwnerBdRecordRaw = null;
+        ArchitectWarmthRaw = null;
+    }
+
     private string? KorEdgeRaw
     {
         get => _korEdgeDisplay;
@@ -116,7 +162,43 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task LoadOwnerEdgeAsync(PursuitBrief? brief, CancellationToken ct)
+    private string? OwnerContactsRaw
+    {
+        get => _ownerContactsDisplay;
+        set
+        {
+            if (SetField(ref _ownerContactsDisplay, value, nameof(OwnerContactsDisplay)))
+            {
+                OnPropertyChanged(nameof(OwnerContactsIsPlaceholder));
+            }
+        }
+    }
+
+    private string? OwnerBdRecordRaw
+    {
+        get => _ownerBdRecordDisplay;
+        set
+        {
+            if (SetField(ref _ownerBdRecordDisplay, value, nameof(OwnerBdRecordDisplay)))
+            {
+                OnPropertyChanged(nameof(OwnerBdRecordIsPlaceholder));
+            }
+        }
+    }
+
+    private string? ArchitectWarmthRaw
+    {
+        get => _architectWarmthDisplay;
+        set
+        {
+            if (SetField(ref _architectWarmthDisplay, value, nameof(ArchitectWarmthDisplay)))
+            {
+                OnPropertyChanged(nameof(ArchitectWarmthIsPlaceholder));
+            }
+        }
+    }
+
+    private async Task LoadOwnerDeltekAsync(PursuitBrief? brief, CancellationToken ct)
     {
         var ownerClendorClientId = brief?.OwnerClendorClientId?.Trim();
         if (string.IsNullOrWhiteSpace(ownerClendorClientId))
@@ -128,6 +210,7 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged
         {
             var intelligence = await _deltek.LoadAsync(ownerClendorClientId, ct).ConfigureAwait(true);
             KorEdgeRaw = BuildKorEdgeDisplay(intelligence);
+            OwnerContactsRaw = BuildOwnerContactsDisplay(intelligence);
         }
         catch (OperationCanceledException)
         {
@@ -136,6 +219,53 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged
         catch
         {
             KorEdgeRaw = null;
+            OwnerContactsRaw = null;
+        }
+    }
+
+    private async Task LoadOwnerBdRecordAsync(PursuitBrief? brief, CancellationToken ct)
+    {
+        var ownerClendorClientId = brief?.OwnerClendorClientId?.Trim();
+        if (string.IsNullOrWhiteSpace(ownerClendorClientId))
+        {
+            return;
+        }
+
+        try
+        {
+            var bd = await _korBd.LoadByClendorIdAsync(ownerClendorClientId, ct).ConfigureAwait(true);
+            OwnerBdRecordRaw = BuildOwnerBdRecordDisplay(bd);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            OwnerBdRecordRaw = null;
+        }
+    }
+
+    private async Task LoadArchitectWarmthAsync(PursuitBrief? brief, CancellationToken ct)
+    {
+        var architectClendorClientId = brief?.ArchitectClendorClientId?.Trim();
+        if (string.IsNullOrWhiteSpace(architectClendorClientId))
+        {
+            return;
+        }
+
+        try
+        {
+            var intelligence = await _deltek.LoadAsync(architectClendorClientId, ct).ConfigureAwait(true);
+            ArchitectWarmthRaw = BuildArchitectWarmthDisplay(intelligence, brief?.Architect.ArchitectName);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            ArchitectWarmthRaw = null;
         }
     }
 
@@ -178,6 +308,103 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged
 
         parts.AddRange(flags);
         return string.Join(" - ", parts);
+    }
+
+    private static string? BuildOwnerContactsDisplay(DeltekClientIntelligence? intelligence)
+    {
+        var contacts = OrderedContacts(intelligence?.Contacts)
+            .Take(5)
+            .Select(FormatOwnerContact)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToArray();
+
+        return contacts.Length == 0 ? null : string.Join(Environment.NewLine, contacts);
+    }
+
+    private static string? BuildOwnerBdRecordDisplay(ClientBdIntelligence? bd)
+    {
+        if (bd is null)
+        {
+            return null;
+        }
+
+        var parts = new List<string>();
+        if (bd.Pursuits.TotalCount > 0)
+        {
+            var pursuitSummary = "KOR pursuits with this owner: "
+                + $"{bd.Pursuits.WonCount:N0} won - "
+                + $"{bd.Pursuits.LostCount:N0} lost - "
+                + $"{bd.Pursuits.TotalCount:N0} total";
+            parts.Add(
+                pursuitSummary);
+        }
+
+        if (bd.ExternalActivity.AwardCount > 0)
+        {
+            var awardsSummary = "this owner has awarded "
+                + $"{bd.ExternalActivity.AwardCount:N0} contracts to "
+                + $"{bd.ExternalActivity.DistinctVendorsAwarded:N0} vendors";
+            parts.Add(
+                awardsSummary);
+        }
+
+        return parts.Count == 0 ? null : string.Join(" - ", parts);
+    }
+
+    private static string? BuildArchitectWarmthDisplay(DeltekClientIntelligence? intelligence, string? architectName)
+    {
+        if (intelligence is null || intelligence.Contacts.Count == 0)
+        {
+            return null;
+        }
+
+        var firm = string.IsNullOrWhiteSpace(architectName) ? intelligence.ClientName : architectName.Trim();
+        var sb = new StringBuilder();
+        sb.AppendLine($"KOR knows {intelligence.Contacts.Count:N0} people at {firm}");
+        foreach (var contact in OrderedContacts(intelligence.Contacts).Take(12))
+        {
+            var name = $"{contact.FirstName} {contact.LastName}".Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            var title = string.IsNullOrWhiteSpace(contact.Title) ? "" : $"  {contact.Title}";
+            sb.AppendLine($"- {name}{title}");
+        }
+
+        return sb.ToString().Trim();
+    }
+
+    private static IEnumerable<DeltekContactSummary> OrderedContacts(IReadOnlyList<DeltekContactSummary>? contacts)
+        => (contacts ?? Array.Empty<DeltekContactSummary>())
+            .OrderBy(c => string.Equals(c.SourceFlag, "Direct", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenByDescending(c => c.MostRecentProjectYear ?? 0)
+            .ThenBy(c => c.LastName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(c => c.FirstName, StringComparer.OrdinalIgnoreCase);
+
+    private static string FormatOwnerContact(DeltekContactSummary contact)
+    {
+        var name = $"{contact.FirstName} {contact.LastName}".Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return string.Empty;
+        }
+
+        var title = string.IsNullOrWhiteSpace(contact.Title) ? "" : $"  {contact.Title}";
+        return $"{name}{title} ({OwnerContactTag(contact)})";
+    }
+
+    private static string OwnerContactTag(DeltekContactSummary contact)
+    {
+        if (string.Equals(contact.SourceFlag, "Direct", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Direct";
+        }
+
+        return contact.MostRecentProjectYear is int year && year > 0
+            ? $"via projects {year}"
+            : "via projects";
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
