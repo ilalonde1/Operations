@@ -54,6 +54,12 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
 
     public ObservableCollection<ChartBar> MarketBars { get; } = new();
 
+    public ObservableCollection<ChartBar> StageBars { get; } = new();
+
+    public ObservableCollection<ChartBar> MarketValueBars { get; } = new();
+
+    public ObservableCollection<ChartBar> DeadlineMonthBars { get; } = new();
+
     public ObservableCollection<DeadlineRow> Deadlines { get; } = new();
 
     public ObservableCollection<OpenStructuralSeatRow> OpenStructuralSeats { get; } = new();
@@ -113,6 +119,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             var now = DateTimeOffset.UtcNow;
             var sevenDays = now.AddDays(7);
             var thirtyDays = now.AddDays(30);
+            var sixMonths = now.AddMonths(6);
 
             TotalPipelineDisplay = pipeline.Count.ToString("N0", CanadianCulture);
             OpenRfpsDisplay = pipeline.Count(r => string.Equals(r.PipelineType, "Open RFP", StringComparison.OrdinalIgnoreCase)).ToString("N0", CanadianCulture);
@@ -137,6 +144,24 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             Replace(MarketBars, BuildBars(pipeline
                 .GroupBy(r => string.IsNullOrWhiteSpace(r.Province) ? "" : r.Province!)
                 .Select(g => (Label: g.Key, Count: g.Count()))));
+
+            Replace(StageBars, BuildBars(pipeline
+                .GroupBy(r => string.IsNullOrWhiteSpace(r.Stage) ? "" : r.Stage!)
+                .Select(g => (Label: g.Key, Count: g.Count()))));
+
+            Replace(MarketValueBars, BuildValueBars(pipeline
+                .GroupBy(r => string.IsNullOrWhiteSpace(r.Province) ? "" : r.Province!)
+                .Select(g => (Label: g.Key, Value: (double)(g.Sum(r => r.EstimatedValueCad ?? 0m) / 1_000_000m)))));
+
+            Replace(DeadlineMonthBars, BuildChronologicalBars(opps
+                .Where(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= sixMonths)
+                .GroupBy(o =>
+                {
+                    var deadline = o.SubmissionDeadlineUtc!.Value.LocalDateTime;
+                    return new DateTime(deadline.Year, deadline.Month, 1);
+                })
+                .OrderBy(g => g.Key)
+                .Select(g => (Label: g.Key.ToString("MMM yy", CultureInfo.InvariantCulture), Count: g.Count()))));
 
             Replace(Deadlines, opps
                 .Where(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= thirtyDays)
@@ -182,6 +207,24 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             .ThenBy(g => g.Label, StringComparer.OrdinalIgnoreCase)
             .Take(8)
             .ToArray();
+        var max = list.Length == 0 ? 0 : list.Max(g => g.Count);
+        return list.Select(g => new ChartBar(g.Label, g.Count, max)).ToArray();
+    }
+
+    private static ChartBar[] BuildValueBars(IEnumerable<(string Label, double Value)> groups)
+    {
+        var list = groups
+            .OrderByDescending(g => g.Value)
+            .ThenBy(g => g.Label, StringComparer.OrdinalIgnoreCase)
+            .Take(8)
+            .ToArray();
+        var max = list.Length == 0 ? 0 : list.Max(g => g.Value);
+        return list.Select(g => new ChartBar(g.Label, g.Value, max)).ToArray();
+    }
+
+    private static ChartBar[] BuildChronologicalBars(IEnumerable<(string Label, int Count)> groups)
+    {
+        var list = groups.ToArray();
         var max = list.Length == 0 ? 0 : list.Max(g => g.Count);
         return list.Select(g => new ChartBar(g.Label, g.Count, max)).ToArray();
     }

@@ -7,11 +7,14 @@
              Unloaded="DashboardView_Unloaded">
     <UserControl.Resources>
         <local:BarHeightConverter x:Key="BarHeight" MaxHeight="120"/>
+        <local:MillionsCurrencyConverter x:Key="MillionsCurrency"/>
     </UserControl.Resources>
 
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="*"/>
@@ -264,6 +267,182 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
+                    <TextBlock Text="By Stage" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding StageBars}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Width="48" Margin="4,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Border Grid.Row="0"
+                                                Background="#2563EB"
+                                                CornerRadius="3,3,0,0"
+                                                Width="22"
+                                                VerticalAlignment="Bottom"
+                                                HorizontalAlignment="Center">
+                                            <Border.ToolTip>
+                                                <TextBlock>
+                                                    <Run Text="{Binding Label, Mode=OneWay}"/>
+                                                    <Run Text=": "/>
+                                                    <Run Text="{Binding Value, Mode=OneWay}"/>
+                                                </TextBlock>
+                                            </Border.ToolTip>
+                                            <Border.Height>
+                                                <MultiBinding Converter="{StaticResource BarHeight}">
+                                                    <Binding Path="Value"/>
+                                                    <Binding Path="Max"/>
+                                                </MultiBinding>
+                                            </Border.Height>
+                                        </Border>
+                                        <TextBlock Grid.Row="1"
+                                                   Text="{Binding Label}"
+                                                   FontSize="9"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   HorizontalAlignment="Center"
+                                                   Margin="0,4,0,0"
+                                                   Foreground="{StaticResource Text.Secondary}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="12" Margin="0,0,12,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Value by Market ($M)" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding MarketValueBars}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Width="48" Margin="4,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Border Grid.Row="0"
+                                                Background="#7C3AED"
+                                                CornerRadius="3,3,0,0"
+                                                Width="22"
+                                                VerticalAlignment="Bottom"
+                                                HorizontalAlignment="Center">
+                                            <Border.ToolTip>
+                                                <TextBlock>
+                                                    <Run Text="{Binding Label, Mode=OneWay}"/>
+                                                    <Run Text=": "/>
+                                                    <Run Text="{Binding Value, Converter={StaticResource MillionsCurrency}, Mode=OneWay}"/>
+                                                </TextBlock>
+                                            </Border.ToolTip>
+                                            <Border.Height>
+                                                <MultiBinding Converter="{StaticResource BarHeight}">
+                                                    <Binding Path="Value"/>
+                                                    <Binding Path="Max"/>
+                                                </MultiBinding>
+                                            </Border.Height>
+                                        </Border>
+                                        <TextBlock Grid.Row="1"
+                                                   Text="{Binding Label}"
+                                                   FontSize="9"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   HorizontalAlignment="Center"
+                                                   Margin="0,4,0,0"
+                                                   Foreground="{StaticResource Text.Secondary}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Deadlines - Next 6 Months" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding DeadlineMonthBars}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Width="48" Margin="4,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Border Grid.Row="0"
+                                                Background="#1E3A8A"
+                                                CornerRadius="3,3,0,0"
+                                                Width="22"
+                                                VerticalAlignment="Bottom"
+                                                HorizontalAlignment="Center">
+                                            <Border.ToolTip>
+                                                <TextBlock>
+                                                    <Run Text="{Binding Label, Mode=OneWay}"/>
+                                                    <Run Text=": "/>
+                                                    <Run Text="{Binding Value, Mode=OneWay}"/>
+                                                </TextBlock>
+                                            </Border.ToolTip>
+                                            <Border.Height>
+                                                <MultiBinding Converter="{StaticResource BarHeight}">
+                                                    <Binding Path="Value"/>
+                                                    <Binding Path="Max"/>
+                                                </MultiBinding>
+                                            </Border.Height>
+                                        </Border>
+                                        <TextBlock Grid.Row="1"
+                                                   Text="{Binding Label}"
+                                                   FontSize="9"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   HorizontalAlignment="Center"
+                                                   Margin="0,4,0,0"
+                                                   Foreground="{StaticResource Text.Secondary}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="4" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12" Margin="0,0,12,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
                     <TextBlock Text="Open Structural Seats" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <DataGrid Grid.Row="1"
                               AutoGenerateColumns="False"
@@ -332,10 +511,11 @@
             </Border>
         </Grid>
 
-        <TextBlock Grid.Row="4"
+        <TextBlock Grid.Row="5"
                    Text="{Binding StatusMessage}"
                    Margin="0,10,0,0"
                    Foreground="{StaticResource Text.Secondary}"
                    FontSize="12"/>
     </Grid>
+    </ScrollViewer>
 </UserControl>
