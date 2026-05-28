@@ -79,6 +79,19 @@ public static class StructuralRelevanceGate
         "terminal",
         "hangar",
         "warehouse",
+        "service centre",
+        "service center",
+        "operations centre",
+        "operations center",
+        "works yard",
+        "operations yard",
+        "public works yard",
+        "transit centre",
+        "transit center",
+        "transit exchange",
+        "bus depot",
+        "depot",
+        "maintenance facility",
     };
 
     private static readonly string[] HardIrrelevantSignals =
@@ -186,6 +199,10 @@ public static class StructuralRelevanceGate
         "recruitment",
     };
 
+    private static readonly Regex[] HardIrrelevantRegexes = HardIrrelevantSignals
+        .Select(signal => new Regex($@"\b{Regex.Escape(signal)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled))
+        .ToArray();
+
     public static RelevanceDecision Evaluate(string? title, string? description, string? buyer)
     {
         _ = buyer;
@@ -214,19 +231,14 @@ public static class StructuralRelevanceGate
 
     private static string? FirstHardIrrelevantMatch(string value)
     {
-        foreach (var signal in HardIrrelevantSignals)
+        for (var i = 0; i < HardIrrelevantSignals.Length; i++)
         {
-            if (ContainsHardIrrelevantSignal(value, signal))
+            if (HardIrrelevantRegexes[i].IsMatch(value))
             {
-                return signal;
+                return HardIrrelevantSignals[i];
             }
         }
 
         return null;
     }
-
-    private static bool ContainsHardIrrelevantSignal(string value, string signal)
-        => signal.Contains(' ', StringComparison.Ordinal)
-            ? value.Contains(signal, StringComparison.OrdinalIgnoreCase)
-            : Regex.IsMatch(value, $@"\b{Regex.Escape(signal)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 }
