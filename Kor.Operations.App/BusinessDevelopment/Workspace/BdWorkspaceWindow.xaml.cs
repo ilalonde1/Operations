@@ -75,6 +75,12 @@ public partial class BdWorkspaceWindow : Window
         win.Show();
     }
 
+    private void Admin_Click(object sender, RoutedEventArgs e)
+    {
+        SetActiveNav(AdminButton);
+        ContentHost.Content = _services.GetRequiredService<AdminView>();
+    }
+
     private void Pursuits_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(PursuitsButton);
@@ -109,6 +115,7 @@ public partial class BdWorkspaceWindow : Window
             RelationshipsButton,
             PeopleButton,
             CompetitionButton,
+            AdminButton,
             PursuitsButton,
             ProposalsButton,
             BrochuresButton,

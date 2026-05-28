@@ -128,6 +128,57 @@ ORDER BY EstimatedCostCad DESC;";
         return rows;
     }
 
+    public async Task<IReadOnlyList<DataHealthRow>> GetDataHealthAsync(CancellationToken ct)
+    {
+        const string sql = @"
+SELECT N'Orgs' AS Category, Kind AS Label, COUNT_BIG(*) AS CountValue
+FROM opportunities.CanonicalOrg
+WHERE Kind IN (N'Architect', N'Competitor', N'GC', N'Subcontractor', N'Developer', N'Buyer', N'KorClient')
+GROUP BY Kind
+
+UNION ALL
+
+SELECT N'Enrichment' AS Category, ProviderName AS Label, COUNT_BIG(DISTINCT CanonicalOrgId) AS CountValue
+FROM opportunities.CanonicalOrgEnrichment
+GROUP BY ProviderName
+
+UNION ALL
+
+SELECT N'MPI (BC)' AS Category, N'architect-resolved' AS Label, COUNT_BIG(*) AS CountValue
+FROM opportunities.MajorProjectsInventory
+WHERE Province = N'BC' AND ArchitectCanonicalOrgId IS NOT NULL
+
+UNION ALL
+
+SELECT N'MPI (BC)' AS Category, N'structural-resolved' AS Label, COUNT_BIG(*) AS CountValue
+FROM opportunities.MajorProjectsInventory
+WHERE Province = N'BC' AND StructuralEngineerCanonicalOrgId IS NOT NULL
+
+UNION ALL
+
+SELECT N'MPI (BC)' AS Category, N'total' AS Label, COUNT_BIG(*) AS CountValue
+FROM opportunities.MajorProjectsInventory
+WHERE Province = N'BC'
+
+ORDER BY Category, Label;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+
+        var rows = new List<DataHealthRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new DataHealthRow(
+                r.GetString(0),
+                r.GetString(1),
+                r.GetInt64(2)));
+        }
+
+        return rows;
+    }
+
     private static int ClampTake(int take)
         => Math.Clamp(take, 1, 1000);
 }

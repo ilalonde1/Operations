@@ -12,6 +12,8 @@ public interface IBdDashboardStore
     Task<IReadOnlyList<BdCompetitorWatchRow>> GetCompetitorWatchAsync(int take, CancellationToken ct);
 
     Task<IReadOnlyList<BdForwardPipelineRow>> GetForwardPipelineAsync(int take, CancellationToken ct);
+
+    Task<IReadOnlyList<DataHealthRow>> GetDataHealthAsync(CancellationToken ct);
 }
 
 public sealed record BdOpenStructuralSeatRow(
@@ -35,3 +37,8 @@ public sealed record BdForwardPipelineRow(
     string? Sector,
     decimal? EstimatedCostCad,
     string? Stage);
+
+public sealed record DataHealthRow(
+    string Category,
+    string Label,
+    long Count);
