@@ -114,6 +114,7 @@ internal static class Program
             if (Run("competitor-signals")) await ImportCompetitorSignalsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("sub-consultants")) await ImportSubConsultantsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("facility-renewal")) await ImportFacilityRenewalAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("projects-honing")) await ImportProjectsHoningAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -2068,6 +2069,84 @@ internal static class Program
         }
     }
 
+    private static async Task ImportProjectsHoningAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Data-Honing", "outputs", "projects-enriched.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var id = LongOrNull(project, "id");
+                if (id is not > 0)
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var projectName = String(project, "projectName");
+                var architectName = String(project, "architectName");
+                var structuralName = String(project, "structuralEngineerName");
+                var gcName = String(project, "generalContractorName");
+                var proponentName = String(project, "proponentName");
+
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, "ProjectsHoning", ct).ConfigureAwait(false);
+                var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectsHoning", ct).ConfigureAwait(false);
+                var gcId = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "ProjectsHoning", ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Buyer, "ProjectsHoning", ct).ConfigureAwait(false);
+
+                var updated = await UpdateMajorProjectFromHoningAsync(
+                    options,
+                    id.Value,
+                    architectName,
+                    architectId,
+                    structuralName,
+                    structuralId,
+                    gcName,
+                    gcId,
+                    proponentName,
+                    proponentId,
+                    String(project, "stage"),
+                    Short(project, "completionYear"),
+                    ct).ConfigureAwait(false);
+
+                if (updated)
+                {
+                    IncrementProjectSource(stats, "ProjectsHoning");
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine(options.DryRun
+                            ? $"[DRY-RUN] ProjectsHoning: planned MPI update Id={id.Value}; project={projectName ?? "(unnamed)"}"
+                            : $"[MPI] ProjectsHoning: updated Id={id.Value}; project={projectName ?? "(unnamed)"}");
+                    }
+                }
+                else
+                {
+                    stats.ProjectRowsSkipped++;
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine($"[WARN] ProjectsHoning: skipped missing MPI Id={id.Value}; project={projectName ?? "(unnamed)"}");
+                    }
+                }
+            }
+        }
+    }
+
     private static async Task ImportProjectTeamsAsync(
         ImportOptions options,
         CanonicalOrgResolver? resolver,
@@ -2630,8 +2709,7 @@ internal static class Program
 
     private static async Task UpsertMajorProjectAsync(ImportOptions options, ImportStats stats, MajorProjectRecord r, CancellationToken ct)
     {
-        stats.ProjectUpsertsBySource.TryGetValue(r.Source, out var count);
-        stats.ProjectUpsertsBySource[r.Source] = count + 1;
+        IncrementProjectSource(stats, r.Source);
 
         if (options.DryRun)
         {
@@ -2743,6 +2821,66 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         {
             Console.WriteLine($"[MPI] {r.Source}: {r.SourceKey}; project={r.ProjectName}");
         }
+    }
+
+    private static async Task<bool> UpdateMajorProjectFromHoningAsync(
+        ImportOptions options,
+        long id,
+        string? architectName,
+        long? architectCanonicalOrgId,
+        string? structuralEngineerName,
+        long? structuralEngineerCanonicalOrgId,
+        string? generalContractorName,
+        long? generalContractorCanonicalOrgId,
+        string? proponentName,
+        long? proponentCanonicalOrgId,
+        string? stage,
+        short? completionYear,
+        CancellationToken ct)
+    {
+        if (options.DryRun)
+        {
+            return true;
+        }
+
+        const string sql = @"
+UPDATE opportunities.MajorProjectsInventory WITH (UPDLOCK, ROWLOCK)
+SET
+    ArchitectName = COALESCE(@architectName, ArchitectName),
+    StructuralEngineerName = COALESCE(@structuralEngineerName, StructuralEngineerName),
+    GeneralContractorName = COALESCE(@generalContractorName, GeneralContractorName),
+    ProponentName = COALESCE(@proponentName, ProponentName),
+    Stage = COALESCE(@stage, Stage),
+    CompletionYear = COALESCE(@completionYear, CompletionYear),
+    ArchitectCanonicalOrgId = COALESCE(ArchitectCanonicalOrgId, @architectCanonicalOrgId),
+    StructuralEngineerCanonicalOrgId = COALESCE(StructuralEngineerCanonicalOrgId, @structuralEngineerCanonicalOrgId),
+    GeneralContractorCanonicalOrgId = COALESCE(GeneralContractorCanonicalOrgId, @generalContractorCanonicalOrgId),
+    ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @proponentCanonicalOrgId),
+    UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(options.OpportunitiesDb);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 60 };
+        AddLong(cmd, "@id", id);
+        AddString(cmd, "@architectName", architectName, 500);
+        AddLong(cmd, "@architectCanonicalOrgId", architectCanonicalOrgId);
+        AddString(cmd, "@structuralEngineerName", structuralEngineerName, 500);
+        AddLong(cmd, "@structuralEngineerCanonicalOrgId", structuralEngineerCanonicalOrgId);
+        AddString(cmd, "@generalContractorName", generalContractorName, 500);
+        AddLong(cmd, "@generalContractorCanonicalOrgId", generalContractorCanonicalOrgId);
+        AddString(cmd, "@proponentName", proponentName, 500);
+        AddLong(cmd, "@proponentCanonicalOrgId", proponentCanonicalOrgId);
+        AddString(cmd, "@stage", stage, 50);
+        AddShort(cmd, "@completionYear", completionYear);
+
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
+    }
+
+    private static void IncrementProjectSource(ImportStats stats, string source)
+    {
+        stats.ProjectUpsertsBySource.TryGetValue(source, out var count);
+        stats.ProjectUpsertsBySource[source] = count + 1;
     }
 
     private static void AddParams(SqlCommand cmd, MajorProjectRecord r)
