@@ -476,6 +476,7 @@
                               CanUserDeleteRows="False"
                               HeadersVisibility="Column"
                               GridLinesVisibility="Horizontal"
+                              MouseDoubleClick="ForwardPipelineGrid_MouseDoubleClick"
                               ItemsSource="{Binding ForwardPipeline}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="*"/>

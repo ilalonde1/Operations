@@ -46,7 +46,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
 
     public sealed record CompetitorWatchPanelRow(string DisplayName, string? CapacityRead);
 
-    public sealed record ForwardPipelinePanelRow(string ProjectName, string? ProponentName, string? Province, string CostDisplay);
+    public sealed record ForwardPipelinePanelRow(long Id, string ProjectName, string? ProponentName, string? Province, string CostDisplay);
 
     public ObservableCollection<FeedRow> LatestRfps { get; } = new();
 
@@ -183,6 +183,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
                 r.CapacityRead)));
 
             Replace(ForwardPipeline, forwardPipeline.Select(r => new ForwardPipelinePanelRow(
+                r.Id,
                 r.ProjectName,
                 r.ProponentName,
                 r.Province,

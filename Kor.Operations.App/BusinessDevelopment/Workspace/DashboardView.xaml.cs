@@ -3,6 +3,7 @@ using System;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using Kor.Operations.Services;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
@@ -43,6 +44,29 @@ public partial class DashboardView : UserControl
     private void DashboardView_Unloaded(object sender, System.Windows.RoutedEventArgs e)
     {
         CancelAndDisposeCts();
+    }
+
+    private async void ForwardPipelineGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid || grid.SelectedItem is not DashboardViewModel.ForwardPipelinePanelRow row)
+        {
+            return;
+        }
+
+        try
+        {
+            var vm = AppServices.Get<PursuitBriefViewModel>();
+            await vm.LoadAsync(row.Id, CancellationToken.None).ConfigureAwait(true);
+            var win = new PursuitBriefWindow(vm)
+            {
+                Owner = OwnerWindow(),
+            };
+            win.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(OwnerWindow(), ex.Message, "Pursuit Brief — Generate Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private CancellationTokenSource ReplaceCts()
