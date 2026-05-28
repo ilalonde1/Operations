@@ -5,6 +5,8 @@ namespace Kor.Opportunities.Data.MajorProjects;
 
 public sealed record PursuitBrief(
     PursuitBriefProject Project,
+    string? OwnerClendorClientId,
+    string? ArchitectClendorClientId,
     PursuitBriefArchitect Architect,
     PursuitBriefOwnerProcurement OwnerProcurement,
     IReadOnlyList<PursuitBriefPerson> ArchitectContacts,

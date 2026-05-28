@@ -65,6 +65,8 @@ public sealed class SqlPursuitBriefStore : IPursuitBriefStore
                 project.ProjectStage ?? project.Stage,
                 FormatCurrency(project.EstimatedCostCad),
                 project.SourceUrl),
+            project.OwnerClendorClientId,
+            project.ArchitectClendorClientId,
             new PursuitBriefArchitect(
                 project.ArchitectName,
                 project.ArchitectCanonicalOrgId,
@@ -84,21 +86,27 @@ public sealed class SqlPursuitBriefStore : IPursuitBriefStore
     private async Task<ProjectSeed?> ReadProjectAsync(long mpiId, CancellationToken ct)
     {
         const string sql = @"
-SELECT Id,
-       ProjectName,
-       ProponentName,
-       ProponentCanonicalOrgId,
-       RegionName,
-       MunicipalityName,
-       Sector,
-       Stage,
-       ProjectStage,
-       EstimatedCostCad,
-       SourceUrl,
-       ArchitectName,
-       ArchitectCanonicalOrgId
-FROM opportunities.MajorProjectsInventory
-WHERE Id = @id;";
+SELECT mpi.Id,
+       mpi.ProjectName,
+       mpi.ProponentName,
+       mpi.ProponentCanonicalOrgId,
+       mpi.RegionName,
+       mpi.MunicipalityName,
+       mpi.Sector,
+       mpi.Stage,
+       mpi.ProjectStage,
+       mpi.EstimatedCostCad,
+       mpi.SourceUrl,
+       mpi.ArchitectName,
+       mpi.ArchitectCanonicalOrgId,
+       ownerOrg.ClendorClientId AS OwnerClendorClientId,
+       architectOrg.ClendorClientId AS ArchitectClendorClientId
+FROM opportunities.MajorProjectsInventory mpi
+LEFT JOIN opportunities.CanonicalOrg ownerOrg
+    ON ownerOrg.Id = mpi.ProponentCanonicalOrgId
+LEFT JOIN opportunities.CanonicalOrg architectOrg
+    ON architectOrg.Id = mpi.ArchitectCanonicalOrgId
+WHERE mpi.Id = @id;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -124,7 +132,9 @@ WHERE Id = @id;";
             r.IsDBNull(9) ? null : r.GetDecimal(9),
             r.IsDBNull(10) ? null : r.GetString(10),
             r.IsDBNull(11) ? null : r.GetString(11),
-            r.IsDBNull(12) ? null : r.GetInt64(12));
+            r.IsDBNull(12) ? null : r.GetInt64(12),
+            r.IsDBNull(13) ? null : r.GetString(13),
+            r.IsDBNull(14) ? null : r.GetString(14));
     }
 
     private async Task<string?> ReadEnrichmentJsonAsync(long canonicalOrgId, string providerName, CancellationToken ct)
@@ -315,7 +325,9 @@ ORDER BY Id;";
         decimal? EstimatedCostCad,
         string? SourceUrl,
         string? ArchitectName,
-        long? ArchitectCanonicalOrgId);
+        long? ArchitectCanonicalOrgId,
+        string? OwnerClendorClientId,
+        string? ArchitectClendorClientId);
 
     private sealed record StructuralPartnerDetails(
         string? SeatStatus,
