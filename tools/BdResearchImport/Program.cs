@@ -112,6 +112,7 @@ internal static class Program
             if (Run("indigenous-orgs")) await ImportIndigenousPipelineOrgsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("owner-procurement")) await ImportOwnerProcurementAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("competitor-signals")) await ImportCompetitorSignalsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("structural-partner-map")) await ImportStructuralPartnerMapAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("sub-consultants")) await ImportSubConsultantsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("facility-renewal")) await ImportFacilityRenewalAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("projects-honing")) await ImportProjectsHoningAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
@@ -1831,6 +1832,52 @@ internal static class Program
                     stats,
                     orgId,
                     "CompetitorSignals",
+                    element.GetRawText(),
+                    null,
+                    orgName,
+                    ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportStructuralPartnerMapAsync(
+        ImportOptions options,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Structural-Partner-Map", "outputs", "structural-partner-map.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var orgName = String(element, "orgName");
+                if (string.IsNullOrWhiteSpace(orgName))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                var orgId = await ResolveAsync(resolver, options, stats, orgName, "Architect", "StructuralPartnerMap", ct).ConfigureAwait(false);
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    orgId,
+                    "StructuralPartnerMap",
                     element.GetRawText(),
                     null,
                     orgName,
