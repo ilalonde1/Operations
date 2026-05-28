@@ -91,6 +91,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             StatusMessage = "Loading BD dashboard...";
             var pipeline = await _primePipeline.GetAllAsync(ct).ConfigureAwait(true);
             var opps = await _opportunities.ListAsync(ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
 
             var now = DateTimeOffset.UtcNow;
             var sevenDays = now.AddDays(7);
@@ -130,6 +131,10 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
                     o.SubmissionDeadlineUtc.HasValue ? (int)Math.Floor((o.SubmissionDeadlineUtc.Value - now).TotalDays) : 0)));
 
             StatusMessage = $"Loaded {pipeline.Count:N0} pipeline rows and {opps.Count:N0} opportunities.";
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

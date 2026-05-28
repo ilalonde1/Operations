@@ -52,9 +52,11 @@ public sealed class RelationshipsViewModel : INotifyPropertyChanged
             200,
             ct).ConfigureAwait(true);
 
+        ct.ThrowIfCancellationRequested();
         Orgs.Clear();
         foreach (var row in rows)
         {
+            ct.ThrowIfCancellationRequested();
             Orgs.Add(row);
         }
     }

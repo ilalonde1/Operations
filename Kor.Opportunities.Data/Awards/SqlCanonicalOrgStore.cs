@@ -154,21 +154,22 @@ WHERE  Id = @id;";
         const string sql = @"
 SELECT TOP (@take) Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc
 FROM   opportunities.CanonicalOrg
-WHERE  (@q IS NULL OR DisplayName LIKE '%' + @q + '%')
+WHERE  (@q IS NULL OR DisplayName LIKE '%' + @q + '%' ESCAPE '\')
    AND (@kind IS NULL OR Kind = @kind)
    AND (@kind IS NOT NULL OR Kind NOT IN ('Vendor','Unknown'))
 ORDER BY DisplayName;";
 
+        var safeTake = Math.Clamp(take, 1, 1000);
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@q", SqlDbType.NVarChar, 300).Value = string.IsNullOrWhiteSpace(query)
             ? (object)DBNull.Value
-            : query.Trim();
+            : EscapeLikeQuery(query.Trim());
         cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = string.IsNullOrWhiteSpace(kind)
             ? (object)DBNull.Value
             : kind.Trim();
-        cmd.Parameters.Add("@take", SqlDbType.Int).Value = take;
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = safeTake;
 
         var list = new List<CanonicalOrgRow>();
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -415,6 +416,13 @@ FROM opportunities.OrgAlias;";
             r.IsDBNull(5) ? null : r.GetString(5),
             r.GetDateTimeOffset(6),
             r.GetDateTimeOffset(7));
+
+    private static string EscapeLikeQuery(string query)
+        => query
+            .Replace(@"\", @"\\", StringComparison.Ordinal)
+            .Replace("%", @"\%", StringComparison.Ordinal)
+            .Replace("_", @"\_", StringComparison.Ordinal)
+            .Replace("[", @"\[", StringComparison.Ordinal);
 
     private static OrgAliasRow MapAlias(SqlDataReader r)
         => new(

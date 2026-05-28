@@ -227,7 +227,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     public string StatusMessage
     {
         get => _statusMessage;
-        private set => SetField(ref _statusMessage, value);
+        set => SetField(ref _statusMessage, value);
     }
 
     public bool IsLoading
@@ -360,6 +360,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         try
         {
             var rows = await _store.ListAsync(ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
 
             var preservedKey = Selected?.OpportunityKey;
             Opportunities.Clear();

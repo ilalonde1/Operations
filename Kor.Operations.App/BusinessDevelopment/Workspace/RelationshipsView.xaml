@@ -2,7 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource App.Background}"
-             Loaded="RelationshipsView_Loaded">
+             Loaded="RelationshipsView_Loaded"
+             Unloaded="RelationshipsView_Unloaded">
     <Grid Margin="14">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="320"/>

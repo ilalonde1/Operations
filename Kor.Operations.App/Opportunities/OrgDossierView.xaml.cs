@@ -12,6 +12,7 @@ namespace Kor.Operations.App.Opportunities;
 public partial class OrgDossierView : UserControl
 {
     private readonly OrgDossierViewModel _vm;
+    private CancellationTokenSource? _cts;
     private bool _initialized;
 
     public OrgDossierView(OrgDossierViewModel vm)
@@ -23,9 +24,10 @@ public partial class OrgDossierView : UserControl
 
     public async Task ShowOrgAsync(long canonicalOrgId, CancellationToken ct)
     {
+        var cts = ReplaceCts(ct);
         try
         {
-            await _vm.LoadAsync(canonicalOrgId, ct).ConfigureAwait(true);
+            await _vm.LoadAsync(canonicalOrgId, cts.Token).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -49,7 +51,12 @@ public partial class OrgDossierView : UserControl
 
     private void OrgDossierView_Unloaded(object sender, System.Windows.RoutedEventArgs e)
     {
-        AppServices.Get<AppAiContextBuilder>().Unregister(_vm);
+        CancelAndDisposeCts();
+        if (_initialized)
+        {
+            AppServices.Get<AppAiContextBuilder>().Unregister(_vm);
+        }
+
         _initialized = false;
     }
 
@@ -69,8 +76,26 @@ public partial class OrgDossierView : UserControl
             });
             e.Handled = true;
         }
-        catch
+        catch (Exception ex)
         {
+            _vm.StatusMessage = $"Open link failed: {ex.GetType().Name}: {ex.Message}";
         }
+    }
+
+    private CancellationTokenSource ReplaceCts(CancellationToken ct)
+    {
+        var old = _cts;
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        old?.Cancel();
+        old?.Dispose();
+        return _cts;
+    }
+
+    private void CancelAndDisposeCts()
+    {
+        var old = _cts;
+        _cts = null;
+        old?.Cancel();
+        old?.Dispose();
     }
 }

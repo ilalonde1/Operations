@@ -158,6 +158,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         try
         {
             var org = await _canonicalStore.GetCanonicalOrgAsync(canonicalOrgId, ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
             if (org is null)
             {
                 StatusMessage = $"CanonicalOrg {canonicalOrgId} was not found.";
@@ -173,6 +174,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             Notes = org.Notes;
 
             var enrichments = await _enrichmentStore.ListByOrgAsync(canonicalOrgId, ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
             Sections.Clear();
             foreach (var enrichment in enrichments)
             {
@@ -184,6 +186,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             }
 
             var projects = await _majorProjectsStore.ListByCanonicalOrgAsync(canonicalOrgId, ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
             Projects.Clear();
             foreach (var p in projects)
             {
@@ -194,6 +197,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             OnPropertyChanged(nameof(ProjectFootprintHeader));
 
             var awards = await _vendorAnalyticsStore.GetCompetitorProfileAsync(DisplayName, ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
             LifetimeValue = awards.LifetimeValue;
             LifetimeCount = awards.LifetimeCount;
             RecentWins.Clear();

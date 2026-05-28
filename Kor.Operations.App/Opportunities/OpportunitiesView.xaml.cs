@@ -4,12 +4,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.App.Crm;
 using Kor.Operations.App.Options;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Opportunities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.Opportunities;
 
@@ -42,22 +42,29 @@ public partial class OpportunitiesView : UserControl
 
     private void OpportunitiesView_Unloaded(object sender, RoutedEventArgs e)
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        AppServices.Get<AppAiContextBuilder>().Unregister(_vm);
+        CancelAndDisposeCts();
+        if (_initialized)
+        {
+            AppServices.Get<AppAiContextBuilder>().Unregister(_vm);
+        }
+
+        _initialized = false;
     }
 
     private async Task ReloadAsync()
     {
-        _cts?.Cancel();
-        _cts = new CancellationTokenSource();
+        var cts = ReplaceCts();
         try
         {
-            await _vm.LoadAsync(_cts.Token).ConfigureAwait(true);
+            await _vm.LoadAsync(cts.Token).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
             // window closing
+        }
+        catch (Exception ex)
+        {
+            _vm.StatusMessage = $"Load failed: {ex.GetType().Name}: {ex.Message}";
         }
     }
 
@@ -68,7 +75,7 @@ public partial class OpportunitiesView : UserControl
 
     private async void NewButton_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new OpportunityEntryDialog { Owner = Window.GetWindow(this) };
+        var dlg = new OpportunityEntryDialog { Owner = OwnerWindow() };
         if (dlg.ShowDialog() != true || dlg.Result is null)
         {
             return;
@@ -80,7 +87,7 @@ public partial class OpportunitiesView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Opportunities — Insert Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Insert Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -102,7 +109,7 @@ public partial class OpportunitiesView : UserControl
             return;
         }
 
-        var dlg = new OpportunityEntryDialog(selected.Model) { Owner = Window.GetWindow(this) };
+        var dlg = new OpportunityEntryDialog(selected.Model) { Owner = OwnerWindow() };
         if (dlg.ShowDialog() != true || dlg.Result is null)
         {
             return;
@@ -115,7 +122,7 @@ public partial class OpportunitiesView : UserControl
         catch (OpportunityConcurrencyException)
         {
             MessageBox.Show(
-                Window.GetWindow(this),
+                OwnerWindow(),
                 "This opportunity was modified by another user since you opened it. Click Refresh and try again.",
                 "Opportunities — Concurrent Edit",
                 MessageBoxButton.OK,
@@ -123,14 +130,14 @@ public partial class OpportunitiesView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Opportunities — Update Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Update Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private void ScoringButton_Click(object sender, RoutedEventArgs e)
     {
         var win = _services.GetRequiredService<ScoringProfileWindow>();
-        win.Owner = Window.GetWindow(this);
+        win.Owner = OwnerWindow();
         // When the editor saves or recalcs, refresh our grid so new scores show up.
         win.ProfilePersisted += async (_, _) =>
         {
@@ -156,12 +163,12 @@ public partial class OpportunitiesView : UserControl
             await _vm.EnsureEngagementAsync(ResolveActor(), CancellationToken.None).ConfigureAwait(true);
 
             var win = _services.GetRequiredService<App.Crm.CrmWindow>();
-            win.Owner = Window.GetWindow(this);
+            win.Owner = OwnerWindow();
             win.Show();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Opportunities — Promote To Pursuit Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Promote To Pursuit Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -173,7 +180,7 @@ public partial class OpportunitiesView : UserControl
         }
 
         var win = _services.GetRequiredService<App.Crm.CrmWindow>();
-        win.Owner = Window.GetWindow(this);
+        win.Owner = OwnerWindow();
         win.Show();
     }
 
@@ -195,7 +202,7 @@ public partial class OpportunitiesView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Opportunities — Open RFP Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Open RFP Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -229,7 +236,7 @@ public partial class OpportunitiesView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Opportunities — Log Activity Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Log Activity Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -238,7 +245,7 @@ public partial class OpportunitiesView : UserControl
         var name = ContactNameBox.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(name))
         {
-            MessageBox.Show(Window.GetWindow(this), "Enter a contact name first.", "Opportunities — Add Contact", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(OwnerWindow(), "Enter a contact name first.", "Opportunities — Add Contact", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -257,7 +264,7 @@ public partial class OpportunitiesView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Opportunities — Add Contact Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Add Contact Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -270,7 +277,7 @@ public partial class OpportunitiesView : UserControl
         // directly (e.g. CL00554 City of Vancouver). Needed because most ingested opportunities
         // aren't yet linked to a Deltek client.
         if (!string.IsNullOrWhiteSpace(deltekId)) win.PendingClientId = deltekId;
-        win.Owner = Window.GetWindow(this);
+        win.Owner = OwnerWindow();
         win.Show();
     }
 
@@ -279,12 +286,12 @@ public partial class OpportunitiesView : UserControl
         try
         {
             var win = _services.GetRequiredService<IngestionRunsWindow>();
-            win.Owner = Window.GetWindow(this);
+            win.Owner = OwnerWindow();
             win.Show();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Opportunities — Open Runs Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Open Runs Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -336,7 +343,7 @@ public partial class OpportunitiesView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Opportunities — Run Now Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Run Now Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -370,14 +377,37 @@ public partial class OpportunitiesView : UserControl
             // Re-poll the IngestionRuns panel after 35s so the new run lands.
             _ = Task.Run(async () =>
             {
-                await Task.Delay(TimeSpan.FromSeconds(35)).ConfigureAwait(false);
-                var refreshTask = await Dispatcher.InvokeAsync(() => _vm.RefreshIngestionRunsAsync(CancellationToken.None));
-                await refreshTask.ConfigureAwait(false);
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(35)).ConfigureAwait(false);
+                    if (!_initialized)
+                    {
+                        return;
+                    }
+
+                    var refreshTask = await Dispatcher.InvokeAsync(() =>
+                    {
+                        return _initialized
+                            ? _vm.RefreshIngestionRunsAsync(CancellationToken.None)
+                            : Task.CompletedTask;
+                    });
+                    await refreshTask.ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    if (_initialized)
+                    {
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            _vm.StatusMessage = $"Ingestion-run refresh failed: {ex.GetType().Name}: {ex.Message}";
+                        });
+                    }
+                }
             });
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, $"Opportunities — Run {sourceName} Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, $"Opportunities — Run {sourceName} Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -420,7 +450,7 @@ public partial class OpportunitiesView : UserControl
         catch (OpportunityConcurrencyException)
         {
             MessageBox.Show(
-                Window.GetWindow(this),
+                OwnerWindow(),
                 "Status change blocked: the row was modified elsewhere. Click Refresh and try again.",
                 "Opportunities — Concurrent Edit",
                 MessageBoxButton.OK,
@@ -428,7 +458,7 @@ public partial class OpportunitiesView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Opportunities — Status Change Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Status Change Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -447,5 +477,27 @@ public partial class OpportunitiesView : UserControl
         }
 
         return Environment.UserName;
+    }
+
+    private CancellationTokenSource ReplaceCts()
+    {
+        var old = _cts;
+        _cts = new CancellationTokenSource();
+        old?.Cancel();
+        old?.Dispose();
+        return _cts;
+    }
+
+    private void CancelAndDisposeCts()
+    {
+        var old = _cts;
+        _cts = null;
+        old?.Cancel();
+        old?.Dispose();
+    }
+
+    private Window? OwnerWindow()
+    {
+        return Window.GetWindow(this) ?? Application.Current?.MainWindow;
     }
 }
