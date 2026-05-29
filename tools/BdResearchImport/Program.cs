@@ -117,6 +117,7 @@ internal static class Program
             if (Run("facility-renewal")) await ImportFacilityRenewalAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("projects-honing")) await ImportProjectsHoningAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("pipeline-seats")) await ImportPipelineSeatsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("project-reverify")) await ImportProjectReverifyAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("midmarket")) await ImportMidMarketAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("architect-forecast")) await ImportArchitectForecastAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("kor-capability")) await ImportKorCapabilityAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
@@ -1473,6 +1474,15 @@ internal static class Program
             || string.Equals(trimmed, "probable", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsRetiringProjectVerdict(string? statusVerdict)
+    {
+        var trimmed = statusVerdict?.Trim();
+        return string.Equals(trimmed, "built-complete", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(trimmed, "cancelled", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(trimmed, "not-found", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(trimmed, "under-construction", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void AddSectorSystems(
         Dictionary<string, Dictionary<string, int>> sectorSystemMatrix,
         string? sector,
@@ -2549,6 +2559,99 @@ internal static class Program
         }
     }
 
+    private static async Task ImportProjectReverifyAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Project-Reverify", "outputs", "project-status.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var verdictCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var updated = 0;
+            var retired = 0;
+            var kept = 0;
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var id = LongOrNull(project, "id");
+                if (id is not > 0)
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var verdict = String(project, "statusVerdict");
+                var verdictKey = string.IsNullOrWhiteSpace(verdict) ? "(blank)" : verdict.Trim();
+                AddCount(verdictCounts, verdictKey);
+
+                var architectName = CleanTeamName(String(project, "architectUpdate"));
+                var structuralName = CleanTeamName(String(project, "structuralUpdate"));
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, "ProjectReverifyArchitect", ct).ConfigureAwait(false);
+                var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectReverifyStructural", ct).ConfigureAwait(false);
+                var retire = IsRetiringProjectVerdict(verdict);
+
+                var rowUpdated = await UpdateMajorProjectReverifyAsync(
+                    options,
+                    id.Value,
+                    verdict,
+                    retire,
+                    architectName,
+                    architectId,
+                    structuralName,
+                    structuralId,
+                    ct).ConfigureAwait(false);
+
+                if (rowUpdated)
+                {
+                    updated++;
+                    if (retire)
+                    {
+                        retired++;
+                    }
+                    else
+                    {
+                        kept++;
+                    }
+
+                    IncrementProjectSource(stats, "ProjectReverify");
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine(options.DryRun
+                            ? $"[DRY-RUN] ProjectReverify: planned MPI reverify Id={id.Value}; verdict={verdictKey}"
+                            : $"[MPI] ProjectReverify: updated Id={id.Value}; verdict={verdictKey}");
+                    }
+                }
+                else
+                {
+                    stats.ProjectRowsSkipped++;
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine($"[WARN] ProjectReverify: skipped missing MPI Id={id.Value}; verdict={verdictKey}");
+                    }
+                }
+            }
+
+            Console.WriteLine($"[project-reverify] updated={updated}; retired={retired}; kept={kept}");
+            foreach (var (verdict, count) in verdictCounts.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"[project-reverify] verdict {verdict}: {count}");
+            }
+        }
+    }
+
     private static async Task ImportKorCapabilityAsync(
         ImportOptions options,
         SqlCanonicalOrgStore? orgStore,
@@ -3445,6 +3548,50 @@ WHERE Id = @id;";
         AddString(cmd, "@seatStatus", seatStatus, 20);
         AddString(cmd, "@korSeatOpening", korSeatOpening, 500);
         AddString(cmd, "@seatConfidence", seatConfidence, 20);
+
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
+    }
+
+    private static async Task<bool> UpdateMajorProjectReverifyAsync(
+        ImportOptions options,
+        long id,
+        string? statusVerdict,
+        bool retire,
+        string? architectName,
+        long? architectCanonicalOrgId,
+        string? structuralEngineerName,
+        long? structuralEngineerCanonicalOrgId,
+        CancellationToken ct)
+    {
+        if (options.DryRun)
+        {
+            return true;
+        }
+
+        const string sql = @"
+UPDATE opportunities.MajorProjectsInventory WITH (UPDLOCK, ROWLOCK)
+SET
+    Stage = @statusVerdict,
+    LastVerifiedAtUtc = sysdatetimeoffset(),
+    RetiredAtUtc = CASE WHEN @retire = 1 THEN sysdatetimeoffset() ELSE RetiredAtUtc END,
+    RetiredReason = CASE WHEN @retire = 1 THEN LEFT(N'Re-verify: ' + COALESCE(@statusVerdict, N'(blank)'), 200) ELSE RetiredReason END,
+    ArchitectName = COALESCE(ArchitectName, @architectName),
+    ArchitectCanonicalOrgId = COALESCE(ArchitectCanonicalOrgId, @architectCanonicalOrgId),
+    StructuralEngineerName = COALESCE(StructuralEngineerName, @structuralEngineerName),
+    StructuralEngineerCanonicalOrgId = COALESCE(StructuralEngineerCanonicalOrgId, @structuralEngineerCanonicalOrgId),
+    UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(options.OpportunitiesDb);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 60 };
+        AddLong(cmd, "@id", id);
+        AddString(cmd, "@statusVerdict", statusVerdict, 50);
+        AddBool(cmd, "@retire", retire);
+        AddString(cmd, "@architectName", architectName, 500);
+        AddLong(cmd, "@architectCanonicalOrgId", architectCanonicalOrgId);
+        AddString(cmd, "@structuralEngineerName", structuralEngineerName, 500);
+        AddLong(cmd, "@structuralEngineerCanonicalOrgId", structuralEngineerCanonicalOrgId);
 
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
     }
