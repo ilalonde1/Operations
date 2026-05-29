@@ -25,6 +25,12 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private string _upcomingProjectsDisplay = "0";
     private string _closingSoonDisplay = "0";
     private string _pipelineValueDisplay = "$0";
+    private int _radarCount;
+    private int _bidWindowCount;
+    private int _openSeatCount;
+    private string _radarCountDisplay = "0";
+    private string _bidWindowCountDisplay = "0";
+    private string _openSeatCountDisplay = "0";
     private string _statusMessage = "Ready.";
 
     public DashboardViewModel(IPrimePipelineStore primePipeline, IOpportunityStore opportunities, IBdDashboardStore bdDashboard)
@@ -98,6 +104,42 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         private set => SetField(ref _pipelineValueDisplay, value);
     }
 
+    public int RadarCount
+    {
+        get => _radarCount;
+        private set => SetField(ref _radarCount, value);
+    }
+
+    public int BidWindowCount
+    {
+        get => _bidWindowCount;
+        private set => SetField(ref _bidWindowCount, value);
+    }
+
+    public int OpenSeatCount
+    {
+        get => _openSeatCount;
+        private set => SetField(ref _openSeatCount, value);
+    }
+
+    public string RadarCountDisplay
+    {
+        get => _radarCountDisplay;
+        private set => SetField(ref _radarCountDisplay, value);
+    }
+
+    public string BidWindowCountDisplay
+    {
+        get => _bidWindowCountDisplay;
+        private set => SetField(ref _bidWindowCountDisplay, value);
+    }
+
+    public string OpenSeatCountDisplay
+    {
+        get => _openSeatCountDisplay;
+        private set => SetField(ref _openSeatCountDisplay, value);
+    }
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -114,6 +156,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             var openStructuralSeats = await _bdDashboard.GetOpenStructuralSeatsAsync(12, ct).ConfigureAwait(true);
             var competitorWatch = await _bdDashboard.GetCompetitorWatchAsync(12, ct).ConfigureAwait(true);
             var forwardPipeline = await _bdDashboard.GetForwardPipelineAsync(12, ct).ConfigureAwait(true);
+            var funnel = await _bdDashboard.GetPipelineFunnelAsync(ct).ConfigureAwait(true);
             ct.ThrowIfCancellationRequested();
 
             var now = DateTimeOffset.UtcNow;
@@ -126,6 +169,12 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             UpcomingProjectsDisplay = pipeline.Count(r => string.Equals(r.PipelineType, "Pipeline Project", StringComparison.OrdinalIgnoreCase)).ToString("N0", CanadianCulture);
             ClosingSoonDisplay = opps.Count(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= sevenDays).ToString("N0", CanadianCulture);
             PipelineValueDisplay = string.Format(CanadianCulture, "{0:C0}", pipeline.Sum(r => r.EstimatedValueCad ?? 0m));
+            RadarCount = funnel.RadarCount;
+            BidWindowCount = funnel.BidWindowCount;
+            OpenSeatCount = funnel.OpenSeatCount;
+            RadarCountDisplay = funnel.RadarCount.ToString("N0", CanadianCulture);
+            BidWindowCountDisplay = funnel.BidWindowCount.ToString("N0", CanadianCulture);
+            OpenSeatCountDisplay = funnel.OpenSeatCount.ToString("N0", CanadianCulture);
 
             Replace(LatestRfps, opps
                 .OrderByDescending(o => o.CreatedAtUtc)

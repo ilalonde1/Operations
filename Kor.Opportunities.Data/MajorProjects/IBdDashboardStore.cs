@@ -13,6 +13,8 @@ public interface IBdDashboardStore
 
     Task<IReadOnlyList<BdForwardPipelineRow>> GetForwardPipelineAsync(int take, CancellationToken ct);
 
+    Task<PipelineFunnel> GetPipelineFunnelAsync(CancellationToken ct);
+
     Task<IReadOnlyList<DataHealthRow>> GetDataHealthAsync(CancellationToken ct);
 }
 
@@ -37,6 +39,11 @@ public sealed record BdForwardPipelineRow(
     string? Sector,
     decimal? EstimatedCostCad,
     string? Stage);
+
+public sealed record PipelineFunnel(
+    int RadarCount,
+    int BidWindowCount,
+    int OpenSeatCount);
 
 public sealed record DataHealthRow(
     string Category,

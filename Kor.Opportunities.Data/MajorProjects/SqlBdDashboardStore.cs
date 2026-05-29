@@ -128,6 +128,53 @@ ORDER BY EstimatedCostCad DESC;";
         return rows;
     }
 
+    public async Task<PipelineFunnel> GetPipelineFunnelAsync(CancellationToken ct)
+    {
+        const string sql = @"
+WITH Base AS
+(
+    SELECT Stage, SeatStatus
+    FROM opportunities.MajorProjectsInventory
+    WHERE RetiredAtUtc IS NULL
+      AND (
+            Sector LIKE N'%school%' OR Sector LIKE N'%hospital%' OR Sector LIKE N'%health%'
+         OR Sector LIKE N'%recreation%' OR Sector LIKE N'%civic%' OR Sector LIKE N'%cultural%'
+         OR Sector LIKE N'%universit%' OR Sector LIKE N'%college%' OR Sector LIKE N'%library%'
+         OR Sector LIKE N'%communit%' OR Sector LIKE N'%education%' OR Sector LIKE N'%housing%'
+         OR Sector LIKE N'%institution%' OR Sector LIKE N'%care%'
+         OR Sector LIKE N'%fire%' OR Sector LIKE N'%police%'
+         OR Sector IN (N'Civic', N'Tourism / Recreation', N'Government', N'Mixed-use')
+          )
+)
+SELECT
+    COUNT_BIG(*) AS RadarCount,
+    SUM(CASE
+            WHEN Stage LIKE N'%procure%'
+              OR Stage LIKE N'%RFP%'
+              OR Stage LIKE N'%RFQ%'
+              OR Stage LIKE N'%tender%'
+              OR Stage LIKE N'%design%' THEN 1
+            ELSE 0
+        END) AS BidWindowCount,
+    SUM(CASE WHEN SeatStatus = N'likely-open' THEN 1 ELSE 0 END) AS OpenSeatCount
+FROM Base;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            return new PipelineFunnel(0, 0, 0);
+        }
+
+        return new PipelineFunnel(
+            ToInt32(r.GetInt64(0)),
+            r.IsDBNull(1) ? 0 : ToInt32(Convert.ToInt64(r.GetValue(1), System.Globalization.CultureInfo.InvariantCulture)),
+            r.IsDBNull(2) ? 0 : ToInt32(Convert.ToInt64(r.GetValue(2), System.Globalization.CultureInfo.InvariantCulture)));
+    }
+
     public async Task<IReadOnlyList<DataHealthRow>> GetDataHealthAsync(CancellationToken ct)
     {
         const string sql = @"
@@ -181,4 +228,7 @@ ORDER BY Category, Label;";
 
     private static int ClampTake(int take)
         => Math.Clamp(take, 1, 1000);
+
+    private static int ToInt32(long value)
+        => value > int.MaxValue ? int.MaxValue : (int)value;
 }
