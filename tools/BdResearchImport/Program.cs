@@ -117,6 +117,8 @@ internal static class Program
             if (Run("facility-renewal")) await ImportFacilityRenewalAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("projects-honing")) await ImportProjectsHoningAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("pipeline-seats")) await ImportPipelineSeatsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("midmarket")) await ImportMidMarketAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("architect-forecast")) await ImportArchitectForecastAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("kor-capability")) await ImportKorCapabilityAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
@@ -1458,6 +1460,19 @@ internal static class Program
         return string.Equals(trimmed, "unknown", StringComparison.OrdinalIgnoreCase) ? null : trimmed;
     }
 
+    private static bool IsUnknownName(string? name)
+    {
+        var trimmed = NullIfBlank(name);
+        return trimmed is null || trimmed.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsConfirmedOrProbable(string? confidence)
+    {
+        var trimmed = confidence?.Trim();
+        return string.Equals(trimmed, "confirmed", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(trimmed, "probable", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void AddSectorSystems(
         Dictionary<string, Dictionary<string, int>> sectorSystemMatrix,
         string? sector,
@@ -2289,6 +2304,160 @@ internal static class Program
                     }
                 }
             }
+        }
+    }
+
+    private static async Task ImportMidMarketAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-MidMarket-Pipeline", "outputs", "midmarket-pipeline.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "name");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var ownerName = String(project, "owner");
+                var architectName = String(project, "architect");
+                var structuralName = String(project, "structuralEngineer");
+                var municipality = String(project, "municipality");
+                var ownerId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "MidMarketStructural", ct).ConfigureAwait(false);
+
+                var record = new MajorProjectRecord(
+                    Source: "MidMarketPipeline",
+                    SourceKey: Sha1($"{projectName}|{municipality}"),
+                    ProjectName: projectName,
+                    ProjectDescription: String(project, "notableScope"),
+                    EstimatedCostCad: LongOrNull(project, "estValueCad"),
+                    EstimatedCostText: CostText(project, "estValueCad"),
+                    Sector: String(project, "sector"),
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: String(project, "market"),
+                    MunicipalityName: municipality,
+                    ProponentName: ownerName,
+                    ProponentCanonicalOrgId: ownerId,
+                    ArchitectName: architectName,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: String(project, "stage"),
+                    ProjectStatus: String(project, "stage"),
+                    ProjectStage: String(project, "stage"),
+                    ProjectCategoryName: null,
+                    PublicFundingInd: null,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: null,
+                    ScheduleNotes: null,
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(project),
+                    RawJson: project.GetRawText())
+                {
+                    Province = NormalizeProvince(String(project, "market"), Province),
+                    StructuralEngineerName = structuralName,
+                    StructuralEngineerCanonicalOrgId = structuralId,
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static async Task ImportArchitectForecastAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Architect-Forecast", "outputs", "architect-forecast.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var stamped = 0;
+            var skipped = 0;
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var id = LongOrNull(project, "id");
+                var architectName = String(project, "likelyArchitect");
+                var confidence = String(project, "architectConfidence");
+                if (id is not > 0 || !IsConfirmedOrProbable(confidence) || IsUnknownName(architectName))
+                {
+                    skipped++;
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var updated = await UpdateMajorProjectArchitectForecastAsync(options, id.Value, architectName, architectId, ct).ConfigureAwait(false);
+                if (updated)
+                {
+                    stamped++;
+                    IncrementProjectSource(stats, "ArchitectForecast");
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine(options.DryRun
+                            ? $"[DRY-RUN] ArchitectForecast: planned MPI architect update Id={id.Value}; project={String(project, "projectName") ?? "(unnamed)"}"
+                            : $"[MPI] ArchitectForecast: updated Id={id.Value}; project={String(project, "projectName") ?? "(unnamed)"}");
+                    }
+                }
+                else
+                {
+                    skipped++;
+                    stats.ProjectRowsSkipped++;
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine($"[WARN] ArchitectForecast: skipped MPI Id={id.Value}; architect already set or row missing.");
+                    }
+                }
+            }
+
+            Console.WriteLine($"[architect-forecast] stamped={stamped}; skipped={skipped}");
         }
     }
 
@@ -3276,6 +3445,37 @@ WHERE Id = @id;";
         AddString(cmd, "@seatStatus", seatStatus, 20);
         AddString(cmd, "@korSeatOpening", korSeatOpening, 500);
         AddString(cmd, "@seatConfidence", seatConfidence, 20);
+
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
+    }
+
+    private static async Task<bool> UpdateMajorProjectArchitectForecastAsync(
+        ImportOptions options,
+        long id,
+        string? architectName,
+        long? architectCanonicalOrgId,
+        CancellationToken ct)
+    {
+        if (options.DryRun)
+        {
+            return true;
+        }
+
+        const string sql = @"
+UPDATE opportunities.MajorProjectsInventory WITH (UPDLOCK, ROWLOCK)
+SET
+    ArchitectName = @architectName,
+    ArchitectCanonicalOrgId = @architectCanonicalOrgId,
+    UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id
+  AND ArchitectCanonicalOrgId IS NULL;";
+
+        await using var con = new SqlConnection(options.OpportunitiesDb);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 60 };
+        AddLong(cmd, "@id", id);
+        AddString(cmd, "@architectName", architectName, 500);
+        AddLong(cmd, "@architectCanonicalOrgId", architectCanonicalOrgId);
 
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
     }
