@@ -61,6 +61,12 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<RelationshipsView>();
     }
 
+    private void Events_Click(object sender, RoutedEventArgs e)
+    {
+        SetActiveNav(EventsButton);
+        ContentHost.Content = _services.GetRequiredService<EventsView>();
+    }
+
     private void People_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(PeopleButton);
@@ -113,6 +119,7 @@ public partial class BdWorkspaceWindow : Window
             RfpsButton,
             UpcomingButton,
             RelationshipsButton,
+            EventsButton,
             PeopleButton,
             CompetitionButton,
             AdminButton,

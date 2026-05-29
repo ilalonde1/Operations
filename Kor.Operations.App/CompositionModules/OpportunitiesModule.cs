@@ -8,6 +8,7 @@ using Kor.Opportunities.Core.Deltek;
 using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Heartbeat;
+using Kor.Opportunities.Data.IndustryEvents;
 using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Observations;
@@ -50,6 +51,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<IPrimePipelineStore>(_ => new SqlPrimePipelineStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDashboardStore>(_ => new SqlBdDashboardStore(options.OpportunitiesDb));
         services.AddSingleton<IPursuitBriefStore>(_ => new SqlPursuitBriefStore(options.OpportunitiesDb));
+        services.AddSingleton<IIndustryEventStore>(_ => new SqlIndustryEventStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(
@@ -74,6 +76,8 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsView>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.EventsViewModel>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.EventsView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AdminViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AdminView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.PursuitBriefViewModel>();
