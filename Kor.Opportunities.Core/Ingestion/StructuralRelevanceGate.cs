@@ -199,6 +199,26 @@ public static class StructuralRelevanceGate
         "recruitment",
     };
 
+    private static readonly string[] ProfessionalSignals =
+    {
+        "prime consultant",
+        "architect",
+        "architectural",
+        "architectural services",
+        "architectural consulting",
+        "architectural design",
+        "a/e services",
+        "a-e services",
+        "consulting engineering",
+        "engineering services",
+        "engineering consultant",
+        "design services",
+        "design consultant",
+        "building design",
+        "building envelope",
+        "feasibility study",
+    };
+
     private static readonly Regex[] HardIrrelevantRegexes = HardIrrelevantSignals
         .Select(signal => new Regex($@"\b{Regex.Escape(signal)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled))
         .ToArray();
@@ -208,12 +228,23 @@ public static class StructuralRelevanceGate
         _ = buyer;
 
         var text = $"{title ?? string.Empty} {description ?? string.Empty}".ToLowerInvariant();
-        var hasBuildingSignal = ContainsAny(text, BuildingSignals);
+        var hasBuilding = ContainsAny(text, BuildingSignals);
+        var hasKeep = hasBuilding || ContainsAny(text, ProfessionalSignals);
         var matchedIrrelevant = FirstHardIrrelevantMatch(text);
 
-        return matchedIrrelevant is not null && !hasBuildingSignal
-            ? new RelevanceDecision(false, matchedIrrelevant)
-            : new RelevanceDecision(true, null);
+        // Hard-irrelevant first (more specific reason), but only fatal when no
+        // building signal overrides it. Then the allowlist catch-all.
+        if (matchedIrrelevant is not null && !hasBuilding)
+        {
+            return new RelevanceDecision(false, matchedIrrelevant);
+        }
+
+        if (!hasKeep)
+        {
+            return new RelevanceDecision(false, "no building/structural/design signal");
+        }
+
+        return new RelevanceDecision(true, null);
     }
 
     private static bool ContainsAny(string value, string[] needles)

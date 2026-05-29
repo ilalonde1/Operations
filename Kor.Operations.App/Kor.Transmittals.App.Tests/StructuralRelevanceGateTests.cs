@@ -11,6 +11,11 @@ public sealed class StructuralRelevanceGateTests
     [InlineData("IT Software Support Services")]
     [InlineData("Supply of Office Furniture")]
     [InlineData("Janitorial Services")]
+    [InlineData("Consulting Services")]
+    [InlineData("Deposit Reconciliation Services")]
+    [InlineData("ASL Interpretation Services")]
+    [InlineData("Supply of Type III Ambulances")]
+    [InlineData("Solar PV Installations")]
     public void Evaluate_WhenClearlyNonBuilding_ReturnsReject(string title)
     {
         var decision = StructuralRelevanceGate.Evaluate(title, null, null);
@@ -24,9 +29,8 @@ public sealed class StructuralRelevanceGateTests
     [InlineData("Pedestrian Bridge Replacement")]
     [InlineData("Hospital Seismic Upgrade")]
     [InlineData("Supply and Install Structural Steel - Community Centre")]
-    [InlineData("Consulting Services")]
     [InlineData("Fleet Service Centre - Dawson Creek")]
-    [InlineData("Deposit Reconciliation Services")]
+    [InlineData("Prime Consultant Services (Architect)")]
     public void Evaluate_WhenBuildingOrAmbiguous_ReturnsKeep(string title)
     {
         var decision = StructuralRelevanceGate.Evaluate(title, null, null);
