@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
+using Kor.Opportunities.Data.IndustryEvents;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -54,6 +55,7 @@ internal static class Program
             var db = options.DryRun ? null : options.OpportunitiesDb;
             var orgStore = db is null ? null : new SqlCanonicalOrgStore(db);
             var enrichmentStore = db is null ? null : new SqlEnrichmentTrackingStore(db);
+            var industryEventStore = db is null ? null : new SqlIndustryEventStore(db);
             var resolver = orgStore is null
                 ? null
                 : new CanonicalOrgResolver(orgStore, NullLogger<CanonicalOrgResolver>.Instance);
@@ -121,6 +123,7 @@ internal static class Program
             if (Run("midmarket")) await ImportMidMarketAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("architect-forecast")) await ImportArchitectForecastAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("kor-capability")) await ImportKorCapabilityAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("industry-events")) await ImportIndustryEventsAsync(options, industryEventStore, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -1442,6 +1445,34 @@ internal static class Program
             .ToArray();
     }
 
+    private static string? JoinArray(JsonElement element, string propertyName)
+    {
+        var values = StringArray(element, propertyName);
+        return values.Length == 0 ? null : string.Join("; ", values);
+    }
+
+    private static string? StringOrJoinedArray(JsonElement element, string propertyName)
+    {
+        if (element.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.Array)
+        {
+            return JoinArray(element, propertyName);
+        }
+
+        return String(element, propertyName);
+    }
+
+    private static DateOnly? DateOnlyOrNull(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed
+            : null;
+    }
+
     private static JsonElement? RawJsonOrNull(JsonElement element, string propertyName)
     {
         if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
@@ -2649,6 +2680,88 @@ internal static class Program
             {
                 Console.WriteLine($"[project-reverify] verdict {verdict}: {count}");
             }
+        }
+    }
+
+    private static async Task ImportIndustryEventsAsync(
+        ImportOptions options,
+        SqlIndustryEventStore? store,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Industry-Events", "outputs", "industry-events.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var upserted = 0;
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var name = String(item, "name");
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine("[WARN] IndustryEvents: skipped row with blank name.");
+                    }
+
+                    continue;
+                }
+
+                var startDateText = String(item, "startDate");
+                var record = new IndustryEventRecord(
+                    SourceKey: Sha1($"{name}|{startDateText}"),
+                    Name: name,
+                    Organizer: String(item, "organizer"),
+                    EventType: String(item, "eventType"),
+                    StartDate: DateOnlyOrNull(startDateText),
+                    EndDate: DateOnlyOrNull(String(item, "endDate")),
+                    Recurrence: String(item, "recurrence"),
+                    City: String(item, "city"),
+                    Market: String(item, "market"),
+                    Format: String(item, "format"),
+                    SectorsThemes: JoinArray(item, "sectorsThemes"),
+                    Audience: String(item, "audience"),
+                    TargetsPresent: StringOrJoinedArray(item, "targetsPresent"),
+                    RegistrationUrl: String(item, "registrationUrl"),
+                    CostNote: String(item, "costNote"),
+                    KorRelevance: String(item, "korRelevance"),
+                    SourceNote: String(item, "sourceNote"));
+
+                upserted++;
+                if (options.DryRun)
+                {
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine($"[DRY-RUN] IndustryEvents: planned upsert {record.SourceKey}; event={name}");
+                    }
+
+                    continue;
+                }
+
+                if (store is null)
+                {
+                    throw new InvalidOperationException("Industry event store is not available.");
+                }
+
+                await store.UpsertAsync(record, ct).ConfigureAwait(false);
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"[EVENT] IndustryEvents: upserted {record.SourceKey}; event={name}");
+                }
+            }
+
+            Console.WriteLine($"[industry-events] upserted={upserted}");
         }
     }
 
