@@ -642,6 +642,18 @@ builder.Services.AddQuartz(q =>
   var korProjectSignalKey = new JobKey("CanonicalOrgKorProjectSignalRefreshJob");
   q.AddJob<Kor.Opportunities.Worker.Services.CanonicalOrgKorProjectSignalRefreshJob>(opts => opts.WithIdentity(korProjectSignalKey));
 
+  var dataRetirementKey = new JobKey("DataRetirementJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.DataRetirementJob>(opts => opts.WithIdentity(dataRetirementKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 04:30 Pacific daily, before the 05:00 KOR-project signal refresh.
+      var cron = builder.Configuration["DataRetirementCronSchedule"] ?? "0 30 4 * * ?";
+      t.ForJob(dataRetirementKey)
+       .WithIdentity("DataRetirementTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   q.AddTrigger(t =>
   {
       // Default: 05:00 Pacific daily, before SamGov's 06:00 and permits' 06:30 ticks.

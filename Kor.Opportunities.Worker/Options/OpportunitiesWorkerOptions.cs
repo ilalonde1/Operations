@@ -174,6 +174,13 @@ public sealed class OpportunitiesWorkerOptions
     // --- Round 16a: Deltek won-project signal refresh ---
     public bool CanonicalOrgKorProjectSignalRefreshEnabled { get; set; } = true;
     public string? CanonicalOrgKorProjectSignalRefreshCronSchedule { get; set; }
+
+    // --- L1: data freshness / retirement lifecycle ---
+    public bool DataRetirementEnabled { get; set; } = true;
+    public int StaleOppDays { get; set; } = 60;
+    public int StaleProjectMonths { get; set; } = 6;
+    public string? DataRetirementCronSchedule { get; set; }
+
     public string DeltekDsn { get; set; } = "Deltek";
     public string DeltekUser { get; set; } = "";
     public string DeltekPassword { get; set; } = "";
