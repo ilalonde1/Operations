@@ -58,6 +58,8 @@ internal static class Program
         new("BuildingPermit", "OwnerCanonicalOrgId"),
         new("MajorProjectsInventory", "ArchitectCanonicalOrgId"),
         new("MajorProjectsInventory", "ProponentCanonicalOrgId"),
+        new("MajorProjectsInventory", "StructuralEngineerCanonicalOrgId"),
+        new("MajorProjectsInventory", "GeneralContractorCanonicalOrgId"),
         new("OpportunityAwards", "AwardedToCanonicalOrgId"),
         new("OpportunityAwards", "AwardingCanonicalOrgId"),
         new("Opportunities", "BuyerCanonicalOrgId"),

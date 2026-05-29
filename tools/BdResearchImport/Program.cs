@@ -25,6 +25,18 @@ internal static class Program
     private const string ContractorKind = "Contractor";
     private const string OwnerKind = "Owner";
     private static readonly Regex KorRegex = new(@"\bKOR\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly string[] DataHoningRecognizedKinds =
+    [
+        OrgKinds.Architect,
+        OrgKinds.Competitor,
+        OrgKinds.Developer,
+        OrgKinds.GeneralContractor,
+        OrgKinds.Subcontractor,
+        OrgKinds.Buyer,
+        ClientKind,
+        OrgKinds.KorClient,
+        OrgKinds.KorStructural,
+    ];
 
     private static readonly JsonDocumentOptions JsonOptions = new()
     {
@@ -1601,8 +1613,49 @@ internal static class Program
                     null,
                     displayName,
                     ct).ConfigureAwait(false);
+
+                var targetKind = DataHoningTargetKind(org);
+                if (!options.DryRun && validIds is not null && validIds.Contains(id.Value) && targetKind is not null)
+                {
+                    var changed = await UpdateOrgKindAsync(options.OpportunitiesDb, id.Value, targetKind, ct).ConfigureAwait(false);
+                    if (changed)
+                    {
+                        stats.OrgsReclassified++;
+                        if (string.Equals(targetKind, OrgKinds.Unknown, StringComparison.OrdinalIgnoreCase))
+                        {
+                            stats.OrgsHidden++;
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private static string? DataHoningTargetKind(JsonElement org)
+    {
+        var dataIssues = StringArray(org, "dataIssues");
+        if (dataIssues.Any(i =>
+            string.Equals(i, "placeholder-name", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(i, "defunct", StringComparison.OrdinalIgnoreCase)))
+        {
+            return OrgKinds.Unknown;
+        }
+
+        var suggestedKind = String(org, "suggestedKind")?.Trim();
+        if (string.IsNullOrWhiteSpace(suggestedKind))
+        {
+            return null;
+        }
+
+        foreach (var kind in DataHoningRecognizedKinds)
+        {
+            if (string.Equals(suggestedKind, kind, StringComparison.OrdinalIgnoreCase))
+            {
+                return kind;
+            }
+        }
+
+        return null;
     }
 
     private static async Task<HashSet<long>> LoadValidOrgIdsAsync(string db, CancellationToken ct)
@@ -1630,6 +1683,18 @@ internal static class Program
         cmd.Parameters.Add("@w", SqlDbType.NVarChar, 500).Value = website;
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    private static async Task<bool> UpdateOrgKindAsync(string db, long id, string kind, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(db);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(
+            "UPDATE opportunities.CanonicalOrg SET Kind = @kind, UpdatedAtUtc = sysdatetimeoffset() WHERE Id = @id AND Kind <> @kind;",
+            con);
+        cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = kind;
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
     }
 
     private static async Task ImportOwnerPipelinesAsync(
@@ -4059,6 +4124,8 @@ WHERE Id = @id
         Console.WriteLine($"  Architects resolved:       {stats.ArchitectsResolved}");
         Console.WriteLine($"  Missing payloads:          {stats.FilesMissing}");
         Console.WriteLine($"  SourceKey collisions:      {stats.SourceKeyCollisions}");
+        Console.WriteLine($"  Orgs reclassified:         {stats.OrgsReclassified}");
+        Console.WriteLine($"  Orgs hidden:               {stats.OrgsHidden}");
         Console.WriteLine("  Orgs upserted per source:");
         foreach (var (source, count) in stats.OrgsBySource.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
         {
@@ -4156,6 +4223,8 @@ WHERE Id = @id
         public int ProponentsResolved { get; set; }
         public int ArchitectsResolved { get; set; }
         public int SourceKeyCollisions { get; set; }
+        public int OrgsReclassified { get; set; }
+        public int OrgsHidden { get; set; }
         public Dictionary<string, int> OrgsBySource { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> EnrichmentRowsByProvider { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> ProjectUpsertsBySource { get; } = new(StringComparer.OrdinalIgnoreCase);
