@@ -79,7 +79,7 @@ SET RetiredAtUtc = SYSDATETIMEOFFSET(),
     UpdatedAtUtc = SYSDATETIMEOFFSET()
 WHERE RetiredAtUtc IS NULL
   AND Stage IS NOT NULL
-  AND (
+      AND (
         Stage LIKE '%complet%' OR Stage LIKE 'construction%' OR Stage LIKE '%under construction%'
      OR Stage LIKE '%construction started%' OR Stage LIKE '%in construction%'
      OR Stage LIKE '%construction phase%' OR Stage LIKE '%in-service%' OR Stage LIKE '%in service%'
@@ -87,6 +87,24 @@ WHERE RetiredAtUtc IS NULL
      OR Stage LIKE '%in progress%' OR Stage LIKE '%underway%' OR Stage LIKE '%demolition%'
      OR Stage LIKE '%cancel%'
       );", ct).ConfigureAwait(false);
+
+        var projectsRetiredByCompletionYear = await ExecuteNonQueryAsync(cn, @"
+UPDATE opportunities.MajorProjectsInventory
+SET RetiredAtUtc = SYSDATETIMEOFFSET(),
+    RetiredReason = N'Completed: CompletionYear past',
+    UpdatedAtUtc = SYSDATETIMEOFFSET()
+WHERE RetiredAtUtc IS NULL
+  AND CompletionYear IS NOT NULL
+  AND CompletionYear < YEAR(SYSDATETIMEOFFSET());", ct).ConfigureAwait(false);
+
+        var eventsRetired = await ExecuteNonQueryAsync(cn, @"
+UPDATE opportunities.IndustryEvents
+SET RetiredAtUtc = SYSDATETIMEOFFSET(),
+    RetiredReason = N'Event date passed',
+    UpdatedAtUtc = SYSDATETIMEOFFSET()
+WHERE RetiredAtUtc IS NULL
+  AND EndDate IS NOT NULL
+  AND EndDate < CAST(SYSDATETIMEOFFSET() AS date);", ct).ConfigureAwait(false);
 
         var projectsStale = await ExecuteScalarIntAsync(cn, @"
 SELECT COUNT_BIG(1)
@@ -98,10 +116,12 @@ WHERE RetiredAtUtc IS NULL
         }).ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
+            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects retired by completion year={ProjectsRetiredByCompletionYear}; events retired={EventsRetired}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
             oppsExpired,
             oppsAgedOut,
             projectsRetired,
+            projectsRetiredByCompletionYear,
+            eventsRetired,
             projectsStale,
             sw.ElapsedMilliseconds);
     }
