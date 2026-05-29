@@ -1,0 +1,458 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text.Json;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using Kor.Opportunities.Data.Briefs;
+
+namespace Kor.Operations.App.BusinessDevelopment.Briefs;
+
+/// <summary>
+/// OpenXML-based .docx renderer for the three Pursuit Brief shapes. Stateless +
+/// thread-safe — register as a Singleton. Uses direct character formatting (font
+/// size in half-points, bold, italic) rather than a styles part, so the document
+/// renders consistently without a template dependency.
+/// </summary>
+public sealed class BriefGenerator : IBriefGenerator
+{
+    // OpenXml font sizes are expressed in half-points.
+    private const int TitlePt = 64;     // 32 pt
+    private const int SubtitlePt = 28;  // 14 pt
+    private const int HeadingPt = 28;   // 14 pt
+    private const int BodyPt = 22;      // 11 pt
+    private const int FooterPt = 18;    //  9 pt
+
+    private const string FooterText = "KOR Structural — Confidential / Internal";
+
+    public void WriteOpportunityBrief(OpportunityBriefData data, string outputPath)
+    {
+        if (data is null) throw new ArgumentNullException(nameof(data));
+        if (string.IsNullOrWhiteSpace(outputPath)) throw new ArgumentException("Output path is required.", nameof(outputPath));
+
+        EnsureDirectory(outputPath);
+        using var doc = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
+        var main = doc.AddMainDocumentPart();
+        main.Document = new Document(new Body());
+        var body = main.Document.Body!;
+
+        AppendTitle(body, "Pursuit Brief");
+        AppendSubtitle(body, "Warmest live target — recommended next move");
+        AppendHeading(body, data.Name);
+        AppendBody(body, $"Owner: {Nz(data.BuyerName)}  |  Location: {Nz(data.ProjectCity)}, {Nz(data.ProjectProvince)}  |  Sector: {Nz(data.PrimeProjectSector)}");
+        AppendBody(body, "Submission deadline: " + FormatDeadline(data.SubmissionDeadlineUtc));
+        AppendBody(body, "Estimated value: " + FormatValue(data.EstimatedValue));
+
+        AppendHeading(body, "Why this is our warmest target right now");
+        AppendBullet(body, $"Prime-consultant building RFP (the architect's team is being assembled now, before the structural seat is set) — classifier confidence {data.PrimeConfidence.ToString("F2", CultureInfo.InvariantCulture)}.");
+        AppendBullet(body, "Sector AND geography both match KOR's wheelhouse — exactly the type of work we win in this market.");
+        AppendBullet(body, "Live in active procurement — actionable window for an architect intro.");
+
+        AppendHeading(body, "KOR's angle (relationship intelligence)");
+        if (data.OwnerKorProjectsCount > 0)
+        {
+            AppendBullet(body, $"Owner relationship: KOR has {data.OwnerKorProjectsCount} prior project(s) with {data.BuyerName} — warm-call territory; reference the relationship directly.");
+        }
+        else
+        {
+            AppendBullet(body, $"Owner relationship: no prior KOR project with {data.BuyerName} on file — this is a new-owner pursuit; lean on the architect path.");
+        }
+        if (data.OwnerPipelineProjectCount > 0)
+        {
+            AppendBullet(body, $"We track {data.OwnerPipelineProjectCount} project(s) for this owner in our pipeline data — we know their procurement cadence.");
+        }
+        if (!string.IsNullOrWhiteSpace(data.LikelyArchitectName))
+        {
+            if (data.KorArchitectJointProjectCount > 0)
+            {
+                AppendBullet(body, $"Likely prime consultant: {data.LikelyArchitectName} — has done {data.LikelyArchitectOwnerProjectCount} project(s) for this owner, and KOR has teamed with them on {data.KorArchitectJointProjectCount} past project(s). The warmest path in.");
+            }
+            else
+            {
+                AppendBullet(body, $"Likely prime consultant: {data.LikelyArchitectName} — has done {data.LikelyArchitectOwnerProjectCount} project(s) for this owner. KOR has not yet formally teamed with them; introduce the structural offering this week.");
+            }
+        }
+        else
+        {
+            AppendBullet(body, "Likely prime consultant: not yet identified in our data — research the architect on this owner's recent builds before the deadline.");
+        }
+
+        AppendHeading(body, "Get in front of them this week");
+        if (data.MatchedEvent is { } ev)
+        {
+            var date = ev.StartDate.HasValue ? ev.StartDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "(date TBC)";
+            AppendBullet(body, $"{ev.Name} — {date}, {Nz(ev.City)} ({Nz(ev.Market)}).");
+            if (!string.IsNullOrWhiteSpace(ev.SectorsThemes))
+            {
+                AppendBullet(body, $"Why this event: themes ({ev.SectorsThemes}) line up with the pursuit's sector; audience: {Nz(ev.Audience)}.");
+            }
+            if (!string.IsNullOrWhiteSpace(ev.TargetsPresent))
+            {
+                AppendBullet(body, $"Targets expected in the room: {ev.TargetsPresent}.");
+            }
+            if (!string.IsNullOrWhiteSpace(ev.RegistrationUrl))
+            {
+                AppendBullet(body, $"Register / details: {ev.RegistrationUrl}");
+            }
+        }
+        else
+        {
+            AppendBullet(body, "No directly-matching upcoming event found — go direct architect outreach instead.");
+        }
+
+        AppendHeading(body, "Recommended next steps");
+        if (!string.IsNullOrWhiteSpace(data.LikelyArchitectName))
+        {
+            AppendBullet(body, $"Reach out to {data.LikelyArchitectName} this week with KOR's relevant capability brief; propose teaming on the live RFP.");
+        }
+        AppendBullet(body, "If attending the event, brief the team beforehand and target specific introductions in the room.");
+        AppendBullet(body, "Confirm owner's procurement timeline + submission requirements; align KOR resourcing for the deadline.");
+
+        AppendFooter(body);
+    }
+
+    public void WriteRegionBrief(RegionBriefData data, string outputPath)
+    {
+        if (data is null) throw new ArgumentNullException(nameof(data));
+        if (string.IsNullOrWhiteSpace(outputPath)) throw new ArgumentException("Output path is required.", nameof(outputPath));
+
+        EnsureDirectory(outputPath);
+        using var doc = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
+        var main = doc.AddMainDocumentPart();
+        main.Document = new Document(new Body());
+        var body = main.Document.Body!;
+
+        var scope = string.IsNullOrWhiteSpace(data.City) ? data.Province : $"{data.Province} — {data.City}";
+        AppendTitle(body, "Region Brief");
+        AppendSubtitle(body, scope);
+
+        AppendHeading(body, "Market overview");
+        AppendBody(body, $"Live prime-consultant RFPs: {data.LivePrimeRfpCount}  |  Forward pipeline (planned/funded): {data.ForwardPipelineCount}  |  Active major projects tracked: {data.ActiveMpiCount}");
+
+        AppendHeading(body, "Top architects in this market");
+        if (data.TopArchitects.Count == 0)
+        {
+            AppendBullet(body, "No architects tied to projects in this market in our data yet.");
+        }
+        else
+        {
+            foreach (var a in data.TopArchitects)
+            {
+                var korNote = a.KorJointCount > 0 ? $"; KOR has teamed with them {a.KorJointCount}x" : "; no KOR joint history yet";
+                AppendBullet(body, $"{a.DisplayName} — {a.ProjectCount} project(s) here{korNote}.");
+            }
+        }
+
+        AppendHeading(body, "Top owners / clients in this market");
+        if (data.TopOwners.Count == 0)
+        {
+            AppendBullet(body, "No owners tied to projects in this market in our data yet.");
+        }
+        else
+        {
+            foreach (var o in data.TopOwners)
+            {
+                var korNote = o.KorJointCount > 0 ? $"; {o.KorJointCount} KOR project(s) on record" : "; no prior KOR project on file";
+                AppendBullet(body, $"{o.DisplayName} — {o.ProjectCount} project(s) here{korNote}.");
+            }
+        }
+
+        AppendHeading(body, "Top competitors in this market (structural)");
+        if (data.TopCompetitors.Count == 0)
+        {
+            AppendBullet(body, "No competitors flagged on projects in this market in our data yet.");
+        }
+        else
+        {
+            foreach (var c in data.TopCompetitors)
+            {
+                AppendBullet(body, $"{c.DisplayName} — {c.ProjectCount} project(s) as structural EOR here.");
+            }
+        }
+
+        AppendHeading(body, "Live prime RFPs (top 5)");
+        if (data.LiveRfps.Count == 0)
+        {
+            AppendBullet(body, "No live prime-consultant RFPs in this market right now.");
+        }
+        else
+        {
+            foreach (var r in data.LiveRfps)
+            {
+                AppendBullet(body, $"{r.Name} — {r.BuyerName} ({Nz(r.PrimeProjectSector)}) — deadline {FormatDeadline(r.SubmissionDeadlineUtc)}.");
+            }
+        }
+
+        AppendHeading(body, "Forward pipeline (planned / funded)");
+        if (data.ForwardProjects.Count == 0)
+        {
+            AppendBullet(body, "No forward-pipeline projects in this market in our data yet.");
+        }
+        else
+        {
+            foreach (var p in data.ForwardProjects)
+            {
+                AppendBullet(body, $"{p.ProjectName} — {Nz(p.ProponentName)} ({Nz(p.Stage)}) — {FormatValue(p.EstimatedCostCad)}.");
+            }
+        }
+
+        AppendHeading(body, "Upcoming events in this market");
+        if (data.UpcomingEvents.Count == 0)
+        {
+            AppendBullet(body, "No matching upcoming events in our database.");
+        }
+        else
+        {
+            foreach (var e in data.UpcomingEvents)
+            {
+                var date = e.StartDate.HasValue ? e.StartDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "(date TBC)";
+                AppendBullet(body, $"{e.Name} — {date} — {Nz(e.City)}.");
+            }
+        }
+
+        AppendFooter(body);
+    }
+
+    public void WriteOrgBrief(OrgBriefData data, string outputPath)
+    {
+        if (data is null) throw new ArgumentNullException(nameof(data));
+        if (string.IsNullOrWhiteSpace(outputPath)) throw new ArgumentException("Output path is required.", nameof(outputPath));
+
+        EnsureDirectory(outputPath);
+        using var doc = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
+        var main = doc.AddMainDocumentPart();
+        main.Document = new Document(new Body());
+        var body = main.Document.Body!;
+
+        AppendTitle(body, "Organization Brief");
+        AppendSubtitle(body, $"{data.DisplayName}  ({data.Kind})");
+
+        var enrichment = ParseEnrichment(data.DataHoningEnrichmentJson);
+        var websiteText = string.IsNullOrWhiteSpace(data.Website) ? "(not on file)" : data.Website!;
+        AppendBody(body, $"Website: {websiteText}");
+        if (!string.IsNullOrWhiteSpace(enrichment.HqCity))
+        {
+            AppendBody(body, $"HQ / primary city: {enrichment.HqCity}");
+        }
+        if (enrichment.Sectors.Count > 0)
+        {
+            AppendBody(body, $"Sectors they work in: {string.Join(", ", enrichment.Sectors)}");
+        }
+
+        AppendHeading(body, "KOR's history with this organization");
+        if (data.KorProjectsCount > 0)
+        {
+            var lastNote = data.LastKorProjectAtUtc.HasValue
+                ? $" (last engagement: {data.LastKorProjectAtUtc.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)})"
+                : string.Empty;
+            AppendBullet(body, $"Deltek-tracked KOR projects with this org: {data.KorProjectsCount}{lastNote} — warm-call territory.");
+        }
+        else
+        {
+            AppendBullet(body, "No Deltek-tracked KOR project with this org on file — this is a cold/new relationship; open with the capability brief.");
+        }
+        if (data.KorJointProjectCount > 0)
+        {
+            AppendBullet(body, $"Joint major-project record: KOR has been the structural EOR on {data.KorJointProjectCount} project(s) where this org appears as architect/owner/GC.");
+            foreach (var p in data.KorJointProjects)
+            {
+                AppendBullet(body, $"   • {p.ProjectName} ({p.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "year n/a"}, {Nz(p.Sector)}, {Nz(p.Province)})");
+            }
+        }
+        else
+        {
+            AppendBullet(body, "No joint major-project record where KOR was the structural EOR with this org — there's an opening to be on their next team.");
+        }
+
+        AppendHeading(body, "Their recent work");
+        if (data.RecentProjects.Count == 0)
+        {
+            AppendBullet(body, "No recent major projects in our pipeline data for this org.");
+        }
+        else
+        {
+            foreach (var p in data.RecentProjects)
+            {
+                AppendBullet(body, $"{p.ProjectName} ({p.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "year n/a"}, {Nz(p.Sector)}, {Nz(p.Province)})");
+            }
+        }
+
+        AppendHeading(body, "Key people");
+        if (enrichment.KeyPeople.Count == 0)
+        {
+            AppendBullet(body, "No key people captured yet — flag for the next honing pass.");
+        }
+        else
+        {
+            foreach (var (name, title) in enrichment.KeyPeople)
+            {
+                AppendBullet(body, string.IsNullOrWhiteSpace(title) ? name : $"{name} — {title}");
+            }
+        }
+
+        AppendHeading(body, "Talking points for the visit");
+        if (data.KorProjectsCount > 0 || data.KorJointProjectCount > 0)
+        {
+            AppendBullet(body, "Lead with the shared history — reference the most recent KOR project together by name.");
+        }
+        else
+        {
+            AppendBullet(body, "Lead with KOR's relevant sector capability one-pager; this is a new-relationship visit.");
+        }
+        if (data.RecentProjects.Count > 0)
+        {
+            AppendBullet(body, "Reference their recent project(s) above to show our team has done its homework.");
+        }
+        AppendBullet(body, "Surface one specific live or upcoming pursuit where KOR could be their structural partner.");
+        AppendBullet(body, "Confirm decision-maker for structural selection on their typical projects.");
+
+        AppendFooter(body);
+    }
+
+    // === OpenXML helpers ===
+
+    private static void AppendTitle(Body body, string text)
+    {
+        body.AppendChild(BuildPara(text, TitlePt, bold: true, italic: false, JustificationValues.Center, bullet: false));
+        body.AppendChild(new Paragraph());
+    }
+
+    private static void AppendSubtitle(Body body, string text)
+    {
+        body.AppendChild(BuildPara(text, SubtitlePt, bold: false, italic: true, JustificationValues.Center, bullet: false));
+        body.AppendChild(new Paragraph());
+    }
+
+    private static void AppendHeading(Body body, string text)
+    {
+        body.AppendChild(new Paragraph());
+        body.AppendChild(BuildPara(text, HeadingPt, bold: true, italic: false, align: null, bullet: false));
+    }
+
+    private static void AppendBody(Body body, string text)
+    {
+        body.AppendChild(BuildPara(text, BodyPt, bold: false, italic: false, align: null, bullet: false));
+    }
+
+    private static void AppendBullet(Body body, string text)
+    {
+        body.AppendChild(BuildPara(text, BodyPt, bold: false, italic: false, align: null, bullet: true));
+    }
+
+    private static void AppendFooter(Body body)
+    {
+        body.AppendChild(new Paragraph());
+        body.AppendChild(BuildPara(FooterText, FooterPt, bold: false, italic: true, JustificationValues.Center, bullet: false));
+    }
+
+    private static Paragraph BuildPara(string text, int sizeHalf, bool bold, bool italic, JustificationValues? align, bool bullet)
+    {
+        var pProps = new ParagraphProperties();
+        if (align.HasValue)
+        {
+            pProps.AppendChild(new Justification { Val = align.Value });
+        }
+        if (bullet)
+        {
+            pProps.AppendChild(new Indentation { Left = "360" });
+        }
+
+        var rProps = new RunProperties();
+        rProps.AppendChild(new FontSize { Val = sizeHalf.ToString(CultureInfo.InvariantCulture) });
+        if (bold) rProps.AppendChild(new Bold());
+        if (italic) rProps.AppendChild(new Italic());
+
+        var displayText = bullet ? "•  " + text : text;
+        var run = new Run(rProps, new Text(displayText) { Space = SpaceProcessingModeValues.Preserve });
+
+        return new Paragraph(pProps, run);
+    }
+
+    // === Formatting + parsing helpers ===
+
+    private static string Nz(string? s) => string.IsNullOrWhiteSpace(s) ? "(unspecified)" : s!;
+
+    private static string FormatDeadline(DateTimeOffset? deadline)
+    {
+        if (!deadline.HasValue) return "not specified";
+        var d = deadline.Value;
+        var days = (int)Math.Round((d - DateTimeOffset.Now).TotalDays);
+        return $"{d:yyyy-MM-dd} ({days} day(s))";
+    }
+
+    private static string FormatValue(decimal? value)
+    {
+        return value.HasValue && value.Value > 0
+            ? "CAD " + value.Value.ToString("N0", CultureInfo.InvariantCulture)
+            : "not stated";
+    }
+
+    private static void EnsureDirectory(string outputPath)
+    {
+        var dir = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrWhiteSpace(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+    }
+
+    // Parses the DataHoning enrichment JSON blob (matches KOR-Data-Honing PROMPT shape).
+    // Defensive — returns empty enrichment on any malformed input.
+    private static OrgEnrichment ParseEnrichment(string? json)
+    {
+        var enrichment = new OrgEnrichment();
+        if (string.IsNullOrWhiteSpace(json)) return enrichment;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return enrichment;
+
+            if (root.TryGetProperty("hqCity", out var hq) && hq.ValueKind == JsonValueKind.String)
+            {
+                enrichment.HqCity = hq.GetString();
+            }
+            if (root.TryGetProperty("sectors", out var sectors) && sectors.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var s in sectors.EnumerateArray())
+                {
+                    if (s.ValueKind == JsonValueKind.String)
+                    {
+                        var v = s.GetString();
+                        if (!string.IsNullOrWhiteSpace(v)) enrichment.Sectors.Add(v!);
+                    }
+                }
+            }
+            if (root.TryGetProperty("keyPeople", out var people) && people.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var p in people.EnumerateArray())
+                {
+                    if (p.ValueKind != JsonValueKind.Object) continue;
+                    var name = p.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
+                    var title = p.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        enrichment.KeyPeople.Add((name!, title));
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Defensive — malformed enrichment shouldn't break the brief.
+        }
+
+        return enrichment;
+    }
+
+    private sealed class OrgEnrichment
+    {
+        public string? HqCity { get; set; }
+        public List<string> Sectors { get; } = new();
+        public List<(string Name, string? Title)> KeyPeople { get; } = new();
+    }
+}
