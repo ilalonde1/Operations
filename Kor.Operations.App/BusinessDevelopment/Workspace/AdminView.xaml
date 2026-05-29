@@ -8,6 +8,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="2*"/>
             <RowDefinition Height="2*"/>
+            <RowDefinition Height="2*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -39,7 +40,35 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1">
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Scheduled Jobs" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                <DataGrid Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          ItemsSource="{Binding ScheduledJobs}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Job" Binding="{Binding JobName}" Width="240"/>
+                        <DataGridTextColumn Header="Cron" Binding="{Binding CronSchedule}" Width="150"/>
+                        <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled, Mode=OneWay}" Width="80"/>
+                        <DataGridTextColumn Header="Last run" Binding="{Binding LastRun}" Width="130"/>
+                        <DataGridTextColumn Header="Result" Binding="{Binding Result}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="*"/>
@@ -103,7 +132,7 @@
             </Border>
         </Grid>
 
-        <TextBlock Grid.Row="2"
+        <TextBlock Grid.Row="3"
                    Text="{Binding StatusMessage}"
                    Margin="0,10,0,0"
                    Foreground="{StaticResource Text.Secondary}"

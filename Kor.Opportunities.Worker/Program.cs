@@ -171,6 +171,7 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichment
                 new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityObservationStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionRunStore>(sp => new SqlIngestionRunStore(Cs(sp)));
             builder.Services.AddSingleton<IJobRunStore>(sp => new SqlJobRunStore(Cs(sp)));
+            builder.Services.AddSingleton<IJobScheduleStore>(sp => new SqlJobScheduleStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(
                 Cs(sp),
                 sp.GetRequiredService<ILogger<SqlIngestionTriggerStore>>()));
@@ -763,6 +764,7 @@ builder.Services.AddQuartz(q =>
                      .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
                 });
             });
+            builder.Services.AddHostedService<JobScheduleRegistryHostedService>();
             builder.Services.AddHostedService<JobRunLoggingListenerHostedService>();
             builder.Services.AddQuartzHostedService(opts =>
             {

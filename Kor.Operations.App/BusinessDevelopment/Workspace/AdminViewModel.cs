@@ -18,13 +18,19 @@ public sealed class AdminViewModel : INotifyPropertyChanged
 {
     private readonly IOpportunitySourceStore _sources;
     private readonly IIngestionRunStore _runs;
+    private readonly IJobScheduleStore _schedules;
     private readonly IBdDashboardStore _dashboard;
     private string _statusMessage = "Ready.";
 
-    public AdminViewModel(IOpportunitySourceStore sources, IIngestionRunStore runs, IBdDashboardStore dashboard)
+    public AdminViewModel(
+        IOpportunitySourceStore sources,
+        IIngestionRunStore runs,
+        IJobScheduleStore schedules,
+        IBdDashboardStore dashboard)
     {
         _sources = sources ?? throw new ArgumentNullException(nameof(sources));
         _runs = runs ?? throw new ArgumentNullException(nameof(runs));
+        _schedules = schedules ?? throw new ArgumentNullException(nameof(schedules));
         _dashboard = dashboard ?? throw new ArgumentNullException(nameof(dashboard));
     }
 
@@ -33,6 +39,8 @@ public sealed class AdminViewModel : INotifyPropertyChanged
     public ObservableCollection<OpportunitySource> Sources { get; } = new();
 
     public ObservableCollection<IngestionRunRow> RecentRuns { get; } = new();
+
+    public ObservableCollection<ScheduledJobRow> ScheduledJobs { get; } = new();
 
     public ObservableCollection<DataHealthRow> Health { get; } = new();
 
@@ -49,13 +57,15 @@ public sealed class AdminViewModel : INotifyPropertyChanged
             StatusMessage = "Loading admin cockpit...";
             var sources = await _sources.ListEnabledAsync(ct).ConfigureAwait(true);
             var runs = await _runs.ListRecentAsync(50, ct).ConfigureAwait(true);
+            var schedules = await _schedules.ListWithLastRunAsync(ct).ConfigureAwait(true);
             var health = await _dashboard.GetDataHealthAsync(ct).ConfigureAwait(true);
             ct.ThrowIfCancellationRequested();
 
             Replace(Sources, sources);
             Replace(RecentRuns, runs.Select(ToRunRow));
+            Replace(ScheduledJobs, schedules.Select(ToScheduledJobRow));
             Replace(Health, health);
-            StatusMessage = $"Loaded {sources.Count:N0} sources, {runs.Count:N0} recent runs, {health.Count:N0} health rows.";
+            StatusMessage = $"Loaded {sources.Count:N0} sources, {schedules.Count:N0} job schedules, {runs.Count:N0} recent runs, {health.Count:N0} health rows.";
         }
         catch (OperationCanceledException)
         {
@@ -77,6 +87,26 @@ public sealed class AdminViewModel : INotifyPropertyChanged
             run.SkippedCount,
             run.FailedCount,
             FormatDuration(run.StartedAtUtc, run.EndedAtUtc));
+
+    private static ScheduledJobRow ToScheduledJobRow(JobScheduleRow row)
+        => new(
+            row.JobName,
+            row.CronSchedule ?? "",
+            row.Enabled,
+            row.LastRunAtUtc?.LocalDateTime.ToString("yyyy-MM-dd HH:mm") ?? "",
+            FormatScheduleResult(row.LastSuccess, row.LastSummary));
+
+    private static string FormatScheduleResult(bool? success, string? summary)
+    {
+        var status = success switch
+        {
+            true => "ok",
+            false => "failed",
+            _ => "not run",
+        };
+
+        return string.IsNullOrWhiteSpace(summary) ? status : $"{status}: {summary}";
+    }
 
     private static string FormatDuration(DateTimeOffset startedAtUtc, DateTimeOffset? endedAtUtc)
     {
@@ -123,4 +153,11 @@ public sealed class AdminViewModel : INotifyPropertyChanged
         int SkippedCount,
         int FailedCount,
         string Duration);
+
+    public sealed record ScheduledJobRow(
+        string JobName,
+        string CronSchedule,
+        bool Enabled,
+        string LastRun,
+        string Result);
 }

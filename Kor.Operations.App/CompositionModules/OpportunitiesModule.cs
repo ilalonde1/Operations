@@ -55,6 +55,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityObservationStore(options.OpportunitiesDb));
         services.AddSingleton<IIngestionRunStore>(_ => new SqlIngestionRunStore(options.OpportunitiesDb));
+        services.AddSingleton<IJobScheduleStore>(_ => new SqlJobScheduleStore(options.OpportunitiesDb));
         services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(
             options.OpportunitiesDb,
             sp.GetRequiredService<ILogger<SqlIngestionTriggerStore>>()));
