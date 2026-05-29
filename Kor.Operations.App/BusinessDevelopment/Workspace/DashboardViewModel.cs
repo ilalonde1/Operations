@@ -152,7 +152,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         {
             StatusMessage = "Loading BD dashboard...";
             var pipeline = await _primePipeline.GetAllAsync(ct).ConfigureAwait(true);
-            var opps = await _opportunities.ListAsync(ct).ConfigureAwait(true);
+            var opps = await _opportunities.ListAsync(ct, includeClosed: false, includeNonPrime: false).ConfigureAwait(true);
             var openStructuralSeats = await _bdDashboard.GetOpenStructuralSeatsAsync(12, ct).ConfigureAwait(true);
             var competitorWatch = await _bdDashboard.GetCompetitorWatchAsync(12, ct).ConfigureAwait(true);
             var forwardPipeline = await _bdDashboard.GetForwardPipelineAsync(12, ct).ConfigureAwait(true);

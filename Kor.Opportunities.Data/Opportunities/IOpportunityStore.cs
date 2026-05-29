@@ -14,7 +14,7 @@ namespace Kor.Opportunities.Data.Opportunities;
 public interface IOpportunityStore
 {
     /// <summary>List active opportunities ordered by <c>UpdatedAtUtc</c> DESC.</summary>
-    Task<IReadOnlyList<Opportunity>> ListAsync(CancellationToken ct, int maxRows = 5000);
+    Task<IReadOnlyList<Opportunity>> ListAsync(CancellationToken ct, int maxRows = 5000, bool includeClosed = true, bool includeNonPrime = true);
 
     /// <summary>Returns null if no row matches.</summary>
     Task<Opportunity?> GetByIdAsync(long id, CancellationToken ct);

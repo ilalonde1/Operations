@@ -38,6 +38,7 @@ IssueYear, IssueQuarter, LastSeenAtUtc";
         var sql = $@"
 SELECT {AllColumns}
 FROM opportunities.MajorProjectsInventory
+WHERE RetiredAtUtc IS NULL
 ORDER BY EstimatedCostCad DESC, ProjectName;";
 
         return await ReadRowsAsync(sql, null, ct).ConfigureAwait(false);
@@ -48,7 +49,8 @@ ORDER BY EstimatedCostCad DESC, ProjectName;";
         var sql = $@"
 SELECT {AllColumns}
 FROM opportunities.MajorProjectsInventory
-WHERE ProponentCanonicalOrgId = @id OR ArchitectCanonicalOrgId = @id
+WHERE RetiredAtUtc IS NULL
+  AND (ProponentCanonicalOrgId = @id OR ArchitectCanonicalOrgId = @id)
 ORDER BY EstimatedCostCad DESC, ProjectName;";
 
         return await ReadRowsAsync(sql, canonicalOrgId, ct).ConfigureAwait(false);
@@ -80,26 +82,29 @@ ORDER BY EstimatedCostCad DESC, ProjectName;";
         const string sql = @"
 SELECT DISTINCT Province
 FROM opportunities.MajorProjectsInventory
-WHERE Province IS NOT NULL AND LTRIM(RTRIM(Province)) <> N''
+WHERE RetiredAtUtc IS NULL
+  AND Province IS NOT NULL AND LTRIM(RTRIM(Province)) <> N''
 ORDER BY Province;
 
 SELECT DISTINCT StageName
 FROM (
-    SELECT ProjectStage AS StageName FROM opportunities.MajorProjectsInventory
+    SELECT ProjectStage AS StageName FROM opportunities.MajorProjectsInventory WHERE RetiredAtUtc IS NULL
     UNION
-    SELECT Stage AS StageName FROM opportunities.MajorProjectsInventory
+    SELECT Stage AS StageName FROM opportunities.MajorProjectsInventory WHERE RetiredAtUtc IS NULL
 ) s
 WHERE StageName IS NOT NULL AND LTRIM(RTRIM(StageName)) <> N''
 ORDER BY StageName;
 
 SELECT DISTINCT Sector
 FROM opportunities.MajorProjectsInventory
-WHERE Sector IS NOT NULL AND LTRIM(RTRIM(Sector)) <> N''
+WHERE RetiredAtUtc IS NULL
+  AND Sector IS NOT NULL AND LTRIM(RTRIM(Sector)) <> N''
 ORDER BY Sector;
 
 SELECT DISTINCT RegionName
 FROM opportunities.MajorProjectsInventory
-WHERE RegionName IS NOT NULL AND LTRIM(RTRIM(RegionName)) <> N''
+WHERE RetiredAtUtc IS NULL
+  AND RegionName IS NOT NULL AND LTRIM(RTRIM(RegionName)) <> N''
 ORDER BY RegionName;";
 
         await using var con = new SqlConnection(_connectionString);

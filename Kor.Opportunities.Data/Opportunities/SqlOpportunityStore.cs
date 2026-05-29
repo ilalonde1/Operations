@@ -62,12 +62,27 @@ RowVersion";
         _logger = logger ?? NullLogger<SqlOpportunityStore>.Instance;
     }
 
-    public async Task<IReadOnlyList<Opportunity>> ListAsync(CancellationToken ct, int maxRows = 5000)
+    public async Task<IReadOnlyList<Opportunity>> ListAsync(CancellationToken ct, int maxRows = 5000, bool includeClosed = true, bool includeNonPrime = true)
     {
         var cappedRows = Math.Clamp(maxRows, 1, 5000);
+        var conditions = new List<string>();
+        if (!includeClosed)
+        {
+            conditions.Add("Status NOT IN (6, 7)");
+        }
+
+        if (!includeNonPrime)
+        {
+            conditions.Add("IsPrimeConsultantRfp = 1");
+        }
+
+        var whereClause = conditions.Count == 0
+            ? string.Empty
+            : $"{Environment.NewLine}WHERE {string.Join(" AND ", conditions)}";
+
         var sql = $@"
 SELECT TOP (@max) {AllColumns}
-FROM opportunities.Opportunities
+FROM opportunities.Opportunities{whereClause}
 ORDER BY UpdatedAtUtc DESC;";
 
         await using var con = new SqlConnection(_connectionString);

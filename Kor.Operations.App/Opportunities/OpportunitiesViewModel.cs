@@ -359,7 +359,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         StatusMessage = "Loading…";
         try
         {
-            var rows = await _store.ListAsync(ct).ConfigureAwait(true);
+            var rows = await _store.ListAsync(ct, includeClosed: false, includeNonPrime: false).ConfigureAwait(true);
             ct.ThrowIfCancellationRequested();
 
             var preservedKey = Selected?.OpportunityKey;
