@@ -142,6 +142,7 @@ internal static class Program
             if (Run("seismic-pipeline")) await ImportSeismicPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("island-okanagan-pairing")) await ImportIslandOkanaganPairingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("bd-tracking")) await ImportBdTrackingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("bd-tracking-crosslink")) await ImportBdTrackingCrossLinkAsync(options, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -4059,6 +4060,248 @@ internal static class Program
             foreach (var c in unresolvedCompanies.Take(10)) Console.WriteLine($"       - {c}");
         }
     }
+
+    // === BD Tracking Cross-Link =====================================================
+    // Reads CrmEngagements with non-empty PotentialProjects (the freeform "what
+    // they're working on / what we discussed" column from the spreadsheet),
+    // splits the text into candidate project phrases, fuzzy-matches each against
+    // MajorProjectsInventory project names within the engagement's region's
+    // province, and inserts opportunities.CrmEngagementProjectLink rows for
+    // high-confidence matches. Lower-confidence matches go to an uncertain CSV
+    // for human review.
+    //
+    // Matching algorithm: token-set Jaccard with stopword removal + substring
+    // boost. High confidence = Jaccard >= 0.60 OR exact substring containment;
+    // medium = Jaccard 0.40-0.60.
+    private static async Task ImportBdTrackingCrossLinkAsync(
+        ImportOptions options,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        if (options.DryRun)
+        {
+            Console.WriteLine("[BD-CROSSLINK] dry-run only prints planned links; skipping DB scan in dry-run mode.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.OpportunitiesDb))
+        {
+            Console.Error.WriteLine("[BD-CROSSLINK] no connection string; skipped.");
+            return;
+        }
+
+        await using var con = new SqlConnection(options.OpportunitiesDb);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        // Load engagements with PotentialProjects + Region.
+        var engagements = new List<(long Id, string Region, string Text)>();
+        const string loadEngagementsSql = @"
+SELECT Id, Region, PotentialProjects
+FROM   opportunities.CrmEngagements
+WHERE  PotentialProjects IS NOT NULL
+  AND  Region IS NOT NULL;";
+        await using (var cmd = new SqlCommand(loadEngagementsSql, con))
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                engagements.Add((r.GetInt64(0), r.GetString(1), r.GetString(2)));
+            }
+        }
+        Console.WriteLine($"[BD-CROSSLINK] loaded {engagements.Count} engagements with PotentialProjects text");
+
+        // Load MPI projects (id + name + province) into memory by province. The
+        // BC + AB sets are big-ish (~2-3k each) so we tokenize once per project
+        // for cheap repeated Jaccard scoring downstream.
+        var mpiByProvince = new Dictionary<string, List<(long Id, string Name, HashSet<string> Tokens)>>(StringComparer.OrdinalIgnoreCase);
+        const string loadMpiSql = @"
+SELECT Id, ProjectName, Province
+FROM   opportunities.MajorProjectsInventory
+WHERE  Province IS NOT NULL
+  AND  RetiredAtUtc IS NULL
+  AND  ProjectName IS NOT NULL;";
+        await using (var cmd = new SqlCommand(loadMpiSql, con))
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var id = r.GetInt64(0);
+                var name = r.GetString(1);
+                var prov = r.GetString(2);
+                if (!mpiByProvince.TryGetValue(prov, out var list))
+                {
+                    list = new List<(long, string, HashSet<string>)>();
+                    mpiByProvince[prov] = list;
+                }
+                list.Add((id, name, TokenizeName(name)));
+            }
+        }
+        Console.WriteLine($"[BD-CROSSLINK] loaded MPI by province: {string.Join(", ", mpiByProvince.Select(kv => $"{kv.Key}={kv.Value.Count}"))}");
+
+        var highConfidenceLinks = new List<(long EngagementId, long MpiId, decimal Confidence, string MatchedText)>();
+        var uncertainCandidates = new List<string> { "EngagementId,Region,Phrase,BestMpiId,BestMpiName,Jaccard,Reason" };
+
+        foreach (var eng in engagements)
+        {
+            ct.ThrowIfCancellationRequested();
+            var province = BdTrackingRegionToProvince(eng.Region);
+            if (string.IsNullOrEmpty(province) || !mpiByProvince.TryGetValue(province, out var candidates))
+            {
+                // No matching province (USA / Eastern Canada — MPI is BC + AB only).
+                continue;
+            }
+
+            foreach (var phrase in SplitPotentialProjectsPhrases(eng.Text))
+            {
+                var phraseTokens = TokenizeName(phrase);
+                if (phraseTokens.Count == 0) continue;
+
+                double bestScore = 0;
+                long bestId = 0;
+                string bestName = "";
+                foreach (var (mpiId, mpiName, mpiTokens) in candidates)
+                {
+                    var score = ScoreMatch(phrase, phraseTokens, mpiName, mpiTokens);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestId = mpiId;
+                        bestName = mpiName;
+                    }
+                }
+
+                if (bestScore >= 0.60)
+                {
+                    highConfidenceLinks.Add((eng.Id, bestId, (decimal)(bestScore * 100), phrase));
+                }
+                else if (bestScore >= 0.40)
+                {
+                    uncertainCandidates.Add($"{eng.Id},{CsvEscape(eng.Region)},{CsvEscape(phrase)},{bestId},{CsvEscape(bestName)},{bestScore:F2},MediumConfidence");
+                }
+            }
+        }
+
+        Console.WriteLine($"[BD-CROSSLINK] high-confidence links found: {highConfidenceLinks.Count}");
+        Console.WriteLine($"[BD-CROSSLINK] uncertain candidates (40-60% match): {uncertainCandidates.Count - 1}");
+
+        if (options.DryRun)
+        {
+            foreach (var l in highConfidenceLinks.Take(20))
+            {
+                Console.WriteLine($"[DRY-RUN] crosslink: engagement={l.EngagementId} -> mpi={l.MpiId}; confidence={l.Confidence:F0}; phrase=\"{l.MatchedText}\"");
+            }
+        }
+        else
+        {
+            const string upsertSql = @"
+IF NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagementProjectLink
+               WHERE EngagementId = @eid AND MajorProjectsInventoryId = @mpi)
+BEGIN
+    INSERT INTO opportunities.CrmEngagementProjectLink
+        (EngagementId, MajorProjectsInventoryId, Confidence, MatchedText, MatchedBy)
+    VALUES (@eid, @mpi, @conf, @text, N'BdTrackingCrossLink');
+END;";
+            var inserted = 0;
+            foreach (var l in highConfidenceLinks)
+            {
+                ct.ThrowIfCancellationRequested();
+                await using var cmd = new SqlCommand(upsertSql, con);
+                cmd.Parameters.Add("@eid", System.Data.SqlDbType.BigInt).Value = l.EngagementId;
+                cmd.Parameters.Add("@mpi", System.Data.SqlDbType.BigInt).Value = l.MpiId;
+                cmd.Parameters.Add("@conf", System.Data.SqlDbType.Decimal).Value = l.Confidence;
+                cmd.Parameters.Add("@text", System.Data.SqlDbType.NVarChar, 500).Value = (object?)l.MatchedText ?? DBNull.Value;
+                await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                inserted++;
+            }
+            Console.WriteLine($"[BD-CROSSLINK] high-confidence links inserted: {inserted}");
+        }
+
+        var outDir = Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "outputs");
+        Directory.CreateDirectory(outDir);
+        File.WriteAllLines(Path.Combine(outDir, "crosslink-uncertain.csv"), uncertainCandidates);
+        var hcLines = new List<string> { "EngagementId,MpiId,Confidence,MatchedText" };
+        hcLines.AddRange(highConfidenceLinks.Select(l => $"{l.EngagementId},{l.MpiId},{l.Confidence:F0},{CsvEscape(l.MatchedText)}"));
+        File.WriteAllLines(Path.Combine(outDir, "crosslink-matched.csv"), hcLines);
+        Console.WriteLine($"[BD-CROSSLINK] reports written to {outDir}");
+    }
+
+    private static readonly HashSet<string> Stopwords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "a","an","the","of","and","or","for","to","in","at","on","by","with","from",
+        "new","existing","project","building","centre","center","place"
+    };
+
+    private static HashSet<string> TokenizeName(string name)
+    {
+        var tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var sb = new System.Text.StringBuilder();
+        foreach (var ch in name.ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                sb.Append(ch);
+            }
+            else
+            {
+                if (sb.Length > 0)
+                {
+                    var tok = sb.ToString();
+                    if (tok.Length >= 3 && !Stopwords.Contains(tok)) tokens.Add(tok);
+                    sb.Clear();
+                }
+            }
+        }
+        if (sb.Length > 0)
+        {
+            var tok = sb.ToString();
+            if (tok.Length >= 3 && !Stopwords.Contains(tok)) tokens.Add(tok);
+        }
+        return tokens;
+    }
+
+    private static double ScoreMatch(string phrase, HashSet<string> phraseTokens, string name, HashSet<string> nameTokens)
+    {
+        if (phraseTokens.Count == 0 || nameTokens.Count == 0) return 0;
+
+        // Substring containment bonus: if the entire phrase (no whitespace) appears
+        // inside the name (or vice-versa), boost. Minimum length is 12 chars to
+        // avoid generic single-word matches like "surrey" / "towers" firing on
+        // any MPI project that happens to contain those words.
+        var phraseFlat = string.Concat(phrase.Where(char.IsLetterOrDigit)).ToLowerInvariant();
+        var nameFlat = string.Concat(name.Where(char.IsLetterOrDigit)).ToLowerInvariant();
+        if (phraseFlat.Length >= 12 && (nameFlat.Contains(phraseFlat) || phraseFlat.Contains(nameFlat)))
+        {
+            return 1.0;
+        }
+
+        // Jaccard on the token sets — but require at least 2 significant tokens
+        // in common for the match to count (single-token "tower" / "school" /
+        // "centre" Jaccard hits otherwise dominate).
+        var intersect = phraseTokens.Intersect(nameTokens).Count();
+        if (intersect < 2) return 0;
+        var union = phraseTokens.Union(nameTokens).Count();
+        return union == 0 ? 0 : (double)intersect / union;
+    }
+
+    private static IEnumerable<string> SplitPotentialProjectsPhrases(string text)
+    {
+        // Split on ", ", " | ", ";", " and " (each common in spreadsheet entries).
+        var pieces = text.Split(new[] { ", ", " | ", "; ", "; ", " and " }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var p in pieces)
+        {
+            var trimmed = p.Trim();
+            if (trimmed.Length >= 4) yield return trimmed;
+        }
+    }
+
+    private static string BdTrackingRegionToProvince(string region) => region switch
+    {
+        "Vancouver/LowerMainland" => "BC",
+        "VancouverIsland" => "BC",
+        "Okanagan-BcInterior" => "BC",
+        "Alberta" => "AB",
+        // USA and EasternCanada have no MPI rows; return "" to skip the match.
+        _ => string.Empty,
+    };
 
     // Initiator names from the spreadsheet have typos and casing inconsistency
     // ("Omar ALcazar", "Conor Murtagh"). Normalize to a stable first-name token
