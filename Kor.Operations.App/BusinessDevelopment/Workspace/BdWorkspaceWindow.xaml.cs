@@ -35,37 +35,50 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<DashboardView>();
     }
 
-    private void Dashboard_Click(object sender, RoutedEventArgs e)
+    private void Dashboard_Click(object sender, RoutedEventArgs e) => NavigateToDashboard();
+    private void Rfps_Click(object sender, RoutedEventArgs e) => NavigateToRfps();
+    private void Upcoming_Click(object sender, RoutedEventArgs e) => NavigateToForwardPipeline();
+    private void Relationships_Click(object sender, RoutedEventArgs e) => NavigateToRelationships();
+    private void Events_Click(object sender, RoutedEventArgs e) => NavigateToEvents();
+    private void Competition_Click(object sender, RoutedEventArgs e) => NavigateToCompetition();
+
+    // ===== Public navigation API =====
+    //
+    // The dashboard cards drill into these screens on click. Exposing as
+    // public methods avoids each child view having to know about the
+    // workspace's nav buttons.
+
+    public void NavigateToDashboard()
     {
         SetActiveNav(DashboardButton);
         ContentHost.Content = _services.GetRequiredService<DashboardView>();
     }
 
-    private void Rfps_Click(object sender, RoutedEventArgs e)
+    public void NavigateToRfps()
     {
         SetActiveNav(RfpsButton);
         ContentHost.Content = _services.GetRequiredService<App.Opportunities.OpportunitiesView>();
     }
 
-    private void Upcoming_Click(object sender, RoutedEventArgs e)
+    public void NavigateToForwardPipeline()
     {
         SetActiveNav(UpcomingButton);
         ContentHost.Content = _services.GetRequiredService<App.Opportunities.MajorProjectsInventoryView>();
     }
 
-    private void Relationships_Click(object sender, RoutedEventArgs e)
+    public void NavigateToRelationships()
     {
         SetActiveNav(RelationshipsButton);
         ContentHost.Content = _services.GetRequiredService<RelationshipsView>();
     }
 
-    private void Events_Click(object sender, RoutedEventArgs e)
+    public void NavigateToEvents()
     {
         SetActiveNav(EventsButton);
         ContentHost.Content = _services.GetRequiredService<EventsView>();
     }
 
-    private void Competition_Click(object sender, RoutedEventArgs e)
+    public void NavigateToCompetition()
     {
         SetActiveNav(CompetitionButton);
         ContentHost.Content = _services.GetRequiredService<App.Opportunities.CompetitionInfoView>();

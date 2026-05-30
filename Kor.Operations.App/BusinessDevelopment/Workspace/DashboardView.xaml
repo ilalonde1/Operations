@@ -20,6 +20,60 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Stat tile rendered as a clickable button. Mimics the Card visual
+             (white bg, panel border, rounded corners) but fires Click + has
+             a Hand cursor + slate hover so the big synopsis numbers read as
+             drillable buttons. -->
+        <Style x:Key="Card.StatButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource Panel.Background}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Panel.Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#EDEEF1"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Brand.Primary.Brush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Bar inside the bar-chart ItemsControl rendered as a transparent
+             button so clicking the bar drills into the relevant screen. -->
+        <Style x:Key="Chart.BarButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent">
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -119,40 +173,50 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="14" Margin="0,0,8,0">
+            <Button Grid.Column="0" Style="{StaticResource Card.StatButton}" Margin="0,0,8,0"
+                    Click="TotalPipelineTile_Click"
+                    ToolTip="Open Forward Pipeline">
                 <StackPanel>
                     <TextBlock Text="{Binding TotalPipelineDisplay}" FontSize="28" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
                     <TextBlock Text="Total pipeline" Foreground="{StaticResource Text.Secondary}"/>
                 </StackPanel>
-            </Border>
+            </Button>
 
-            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="14" Margin="0,0,8,0">
+            <Button Grid.Column="1" Style="{StaticResource Card.StatButton}" Margin="0,0,8,0"
+                    Click="OpenRfpsTile_Click"
+                    ToolTip="Open RFPs screen">
                 <StackPanel>
                     <TextBlock Text="{Binding OpenRfpsDisplay}" FontSize="28" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
                     <TextBlock Text="Open RFPs" Foreground="{StaticResource Text.Secondary}"/>
                 </StackPanel>
-            </Border>
+            </Button>
 
-            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="14" Margin="0,0,8,0">
+            <Button Grid.Column="2" Style="{StaticResource Card.StatButton}" Margin="0,0,8,0"
+                    Click="UpcomingProjectsTile_Click"
+                    ToolTip="Open Forward Pipeline">
                 <StackPanel>
                     <TextBlock Text="{Binding UpcomingProjectsDisplay}" FontSize="28" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
                     <TextBlock Text="Upcoming projects" Foreground="{StaticResource Text.Secondary}"/>
                 </StackPanel>
-            </Border>
+            </Button>
 
-            <Border Grid.Column="3" Style="{StaticResource Card}" Padding="14" Margin="0,0,8,0">
+            <Button Grid.Column="3" Style="{StaticResource Card.StatButton}" Margin="0,0,8,0"
+                    Click="ClosingSoonTile_Click"
+                    ToolTip="Open RFPs screen">
                 <StackPanel>
                     <TextBlock Text="{Binding ClosingSoonDisplay}" FontSize="28" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
                     <TextBlock Text="Closing within 7 days" Foreground="{StaticResource Text.Secondary}"/>
                 </StackPanel>
-            </Border>
+            </Button>
 
-            <Border Grid.Column="4" Style="{StaticResource Card}" Padding="14">
+            <Button Grid.Column="4" Style="{StaticResource Card.StatButton}"
+                    Click="PipelineValueTile_Click"
+                    ToolTip="Open Forward Pipeline">
                 <StackPanel>
                     <TextBlock Text="{Binding PipelineValueDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
                     <TextBlock Text="Pipeline value" Foreground="{StaticResource Text.Secondary}"/>
                 </StackPanel>
-            </Border>
+            </Button>
         </Grid>
 
         <!-- Row 2: Latest RFPs (clickable) + Pipeline by sector chart -->
@@ -193,7 +257,9 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="12">
+            <Button Grid.Column="1" Style="{StaticResource Card.StatButton}" Padding="12"
+                    Click="SectorChart_Click"
+                    ToolTip="Open Forward Pipeline">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -247,7 +313,7 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Grid>
-            </Border>
+            </Button>
         </Grid>
 
         <!-- Row 3: 3 clickable lists side-by-side — Open Structural Seats /
@@ -377,7 +443,9 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12" Margin="0,0,12,0">
+            <Button Grid.Column="0" Style="{StaticResource Card.StatButton}" Padding="12" Margin="0,0,12,0"
+                    Click="MarketChart_Click"
+                    ToolTip="Open Forward Pipeline">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -431,9 +499,11 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Grid>
-            </Border>
+            </Button>
 
-            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="12" Margin="0,0,12,0">
+            <Button Grid.Column="1" Style="{StaticResource Card.StatButton}" Padding="12" Margin="0,0,12,0"
+                    Click="StageChart_Click"
+                    ToolTip="Open Forward Pipeline">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -487,9 +557,11 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Grid>
-            </Border>
+            </Button>
 
-            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="12">
+            <Button Grid.Column="2" Style="{StaticResource Card.StatButton}" Padding="12"
+                    Click="MarketValueChart_Click"
+                    ToolTip="Open Forward Pipeline">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -543,7 +615,7 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Grid>
-            </Border>
+            </Button>
         </Grid>
 
         <!-- Row 5: Deadlines (30-day clickable list + 6-month histogram).
@@ -611,7 +683,9 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="12">
+            <Button Grid.Column="1" Style="{StaticResource Card.StatButton}" Padding="12"
+                    Click="DeadlineMonthChart_Click"
+                    ToolTip="Open RFPs screen">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -665,7 +739,7 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Grid>
-            </Border>
+            </Button>
         </Grid>
 
         <TextBlock Grid.Row="6"

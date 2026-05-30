@@ -80,7 +80,7 @@
 
                     <Button x:Name="DashboardButton" Content="Dashboard" Style="{StaticResource ActiveNavButton}" Click="Dashboard_Click"/>
                     <Button x:Name="RfpsButton" Content="RFPs" Style="{StaticResource NavButton}" Click="Rfps_Click"/>
-                    <Button x:Name="UpcomingButton" Content="Upcoming" Style="{StaticResource NavButton}" Click="Upcoming_Click"/>
+                    <Button x:Name="UpcomingButton" Content="Forward Pipeline" Style="{StaticResource NavButton}" Click="Upcoming_Click"/>
                     <Button x:Name="RelationshipsButton" Content="Relationships" Style="{StaticResource NavButton}" Click="Relationships_Click"/>
                     <Button x:Name="EventsButton" Content="Events" Style="{StaticResource NavButton}" Click="Events_Click"/>
                     <Button x:Name="CompetitionButton" Content="Competition" Style="{StaticResource NavButton}" Click="Competition_Click"/>

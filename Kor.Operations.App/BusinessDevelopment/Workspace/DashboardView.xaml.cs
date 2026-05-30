@@ -166,6 +166,41 @@ public partial class DashboardView : UserControl
         }
     }
 
+    // ===== Stat-tile + chart click handlers =====
+    //
+    // Each stat tile + chart card on the dashboard drills into the BD nav
+    // screen most relevant to that number/chart. No per-bar filter is pushed
+    // yet — clicking the card navigates; clicking a specific bar would need
+    // a filter-broker on the destination view (deferred).
+
+    private void TotalPipelineTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+    private void OpenRfpsTile_Click(object sender, RoutedEventArgs e) => GoToRfps();
+    private void UpcomingProjectsTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+    private void ClosingSoonTile_Click(object sender, RoutedEventArgs e) => GoToRfps();
+    private void PipelineValueTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+
+    private void SectorChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+    private void MarketChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+    private void StageChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+    private void MarketValueChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+    private void DeadlineMonthChart_Click(object sender, RoutedEventArgs e) => GoToRfps();
+
+    private void GoToRfps()
+    {
+        if (Window.GetWindow(this) is BdWorkspaceWindow workspace)
+        {
+            workspace.NavigateToRfps();
+        }
+    }
+
+    private void GoToForwardPipeline()
+    {
+        if (Window.GetWindow(this) is BdWorkspaceWindow workspace)
+        {
+            workspace.NavigateToForwardPipeline();
+        }
+    }
+
     private CancellationTokenSource ReplaceCts()
     {
         var old = _cts;
