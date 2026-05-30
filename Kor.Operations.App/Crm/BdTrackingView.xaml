@@ -1,18 +1,35 @@
 <UserControl x:Class="Kor.Operations.App.Crm.BdTrackingView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Kor.Operations.App.Crm"
              Background="{StaticResource App.Background}"
              FontFamily="Mulish, Segoe UI"
              Loaded="View_Loaded"
              Unloaded="View_Unloaded">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <local:RegionEqualsConverter x:Key="RegionEqualsConverter"/>
 
-        <!-- Region tab styled as a pill button — selected state filled with
-             Brand.Primary slate. SelectedRegion is the canonical string. -->
+        <!-- Region tab — Brand.Primary slate fill when selected (DataTrigger
+             compares the tab's text to the VM.SelectedRegion); outline +
+             slate text otherwise. -->
         <Style x:Key="RegionTab" TargetType="Button" BasedOn="{StaticResource Button.ActionBar}">
             <Setter Property="MinHeight" Value="32"/>
             <Setter Property="Padding"   Value="14,4"/>
+            <Setter Property="Margin"    Value="0,0,6,0"/>
+            <Style.Triggers>
+                <DataTrigger Value="True">
+                    <DataTrigger.Binding>
+                        <MultiBinding Converter="{StaticResource RegionEqualsConverter}">
+                            <Binding/>
+                            <Binding Path="DataContext.SelectedRegion" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                        </MultiBinding>
+                    </DataTrigger.Binding>
+                    <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource Brand.Primary.Brush}"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <!-- Compact label for stat cards. -->
@@ -21,6 +38,16 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="Typography.Capitals" Value="AllSmallCaps"/>
+        </Style>
+
+        <!-- Hand cursor + slate hover on engagement rows. -->
+        <Style TargetType="DataGridRow">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#EDEEF1"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
 
@@ -33,11 +60,20 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Row 0: Title -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-            <TextBlock Text="BD Tracking" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}" VerticalAlignment="Center"/>
-            <TextBlock Text="2026 spreadsheet, ingested" FontSize="11" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="12,4,0,0"/>
-        </StackPanel>
+        <!-- Row 0: Title + Refresh button -->
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <TextBlock Text="BD Tracking" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}" VerticalAlignment="Center"/>
+                <TextBlock Text="2026 spreadsheet, ingested" FontSize="11" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="12,4,0,0"/>
+            </StackPanel>
+            <Button Grid.Column="1" Content="↻ Refresh" Width="100" Click="RefreshButton_Click"
+                    Style="{StaticResource Button.ActionBar}"
+                    ToolTip="Reload BD-tracking engagements from the database."/>
+        </Grid>
 
         <!-- Row 1: Region tabs (matches spreadsheet tabs) -->
         <ItemsControl Grid.Row="1" ItemsSource="{Binding RegionOptions}" Margin="0,0,0,10">
@@ -100,28 +136,80 @@
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
-            <DataGrid Grid.Column="0"
-                      x:Name="EngagementsGrid"
-                      AutoGenerateColumns="False"
-                      SelectionMode="Single"
-                      SelectionUnit="FullRow"
-                      IsReadOnly="True"
-                      HeadersVisibility="Column"
-                      GridLinesVisibility="Horizontal"
-                      ItemsSource="{Binding FilteredEngagements}"
-                      SelectedItem="{Binding Selected}">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Region"    Binding="{Binding Region}"              Width="140"/>
-                    <DataGridTextColumn Header="Initiator" Binding="{Binding Initiator}"           Width="80"/>
-                    <DataGridTextColumn Header="Contact"   Binding="{Binding PrimaryContact}"      Width="140"/>
-                    <DataGridTextColumn Header="Company"   Binding="{Binding BuyerDisplayName}"    Width="*"/>
-                    <DataGridTextColumn Header="Latest"    Binding="{Binding LatestActivityDisplay}" Width="90"/>
-                    <DataGridTextColumn Header="Type"      Binding="{Binding LatestActivityTypeDisplay}" Width="70"/>
-                    <DataGridTextColumn Header="Acts"      Binding="{Binding ActivityCount}"     Width="50"/>
-                    <DataGridTextColumn Header="Submitted" Binding="{Binding SubmittedDisplay}"    Width="100"/>
-                    <DataGridTextColumn Header="Accepted"  Binding="{Binding AcceptedDisplay}"     Width="100"/>
-                </DataGrid.Columns>
-            </DataGrid>
+            <Grid Grid.Column="0">
+                <DataGrid x:Name="EngagementsGrid"
+                          AutoGenerateColumns="False"
+                          SelectionMode="Single"
+                          SelectionUnit="FullRow"
+                          IsReadOnly="True"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          ItemsSource="{Binding FilteredEngagements}"
+                          SelectedItem="{Binding Selected}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Region"    Binding="{Binding Region}"              Width="140"/>
+                        <DataGridTextColumn Header="Initiator" Binding="{Binding Initiator}"           Width="80"/>
+                        <DataGridTextColumn Header="Contact"   Binding="{Binding PrimaryContact}"      Width="140"/>
+                        <DataGridTemplateColumn Header="Company" Width="*" SortMemberPath="BuyerDisplayName">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding BuyerDisplayName}"
+                                               Foreground="{StaticResource CorporateBlue}"
+                                               TextDecorations="Underline"
+                                               Cursor="Hand"
+                                               MouseLeftButtonUp="OpenOrgDossier_Click"
+                                               ToolTip="Click to open the Org Dossier for this company"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Latest"    Binding="{Binding LatestActivityDisplay}" Width="90"/>
+                        <DataGridTextColumn Header="Type"      Binding="{Binding LatestActivityTypeDisplay}" Width="70"/>
+                        <DataGridTextColumn Header="Acts"      Binding="{Binding ActivityCount}"     Width="50"/>
+                        <DataGridTextColumn Header="Submitted" Binding="{Binding SubmittedDisplay}"    Width="100"/>
+                        <DataGridTextColumn Header="Accepted"  Binding="{Binding AcceptedDisplay}"     Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Empty state overlay: shown when the current filter has no
+                     matching engagements. Hidden when the grid has rows or while
+                     the VM is loading. -->
+                <Border Background="{StaticResource Panel.Background}"
+                        Padding="40,30"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        IsHitTestVisible="False">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding FilteredEngagements.Count}" Value="0">
+                                    <DataTrigger.Setters>
+                                        <Setter Property="Visibility">
+                                            <Setter.Value>
+                                                <Visibility>Visible</Visibility>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger.Setters>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="No engagements"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="No BD touchpoints match the current region + initiator filter."
+                                   FontSize="11"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,4,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
                           Background="{StaticResource Panel.Border}" ResizeBehavior="PreviousAndNext"/>
@@ -172,10 +260,13 @@
                         <ItemsControl ItemsSource="{Binding SelectedLinkedProjects}" Margin="0,0,0,14">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,0,0,1" Padding="0,4">
+                                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,0,0,1" Padding="0,4"
+                                            Cursor="Hand"
+                                            MouseLeftButtonUp="OpenLinkedMpiProject_Click"
+                                            ToolTip="Click for MPI project detail">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding ProjectName}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding ProjectName}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{StaticResource CorporateBlue}" TextDecorations="Underline"/>
                                                 <Border Background="{StaticResource CorporateBlue}" CornerRadius="999" Padding="6,1" Margin="8,1,0,0">
                                                     <TextBlock Text="{Binding ConfidenceDisplay}" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
                                                 </Border>
