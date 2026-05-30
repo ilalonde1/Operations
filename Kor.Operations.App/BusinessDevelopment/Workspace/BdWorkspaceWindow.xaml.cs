@@ -80,9 +80,7 @@ public partial class BdWorkspaceWindow : Window
     private void Pursuits_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(PursuitsButton);
-        var win = _services.GetRequiredService<App.Crm.CrmWindow>();
-        win.Owner = this;
-        win.Show();
+        ContentHost.Content = _services.GetRequiredService<App.Crm.CrmView>();
     }
 
     private void Proposals_Click(object sender, RoutedEventArgs e)
