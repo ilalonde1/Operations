@@ -12,7 +12,7 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="DetailLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#506070"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="Margin" Value="0,2"/>
         </Style>
         <Style x:Key="DetailValue" TargetType="TextBlock">
@@ -23,7 +23,7 @@
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="8,3"/>
             <Setter Property="Margin" Value="0,0,6,6"/>
-            <Setter Property="Background" Value="#506070"/>
+            <Setter Property="Background" Value="{StaticResource Text.Secondary}"/>
         </Style>
     </Window.Resources>
 
@@ -43,7 +43,7 @@
                             AvatarDiameter="64"
                             AvatarBorderThickness="2"/>
 
-        <Border Grid.Row="1" Margin="12,0,12,8" Padding="10,6" Background="#F0F0F2" CornerRadius="4">
+        <Border Grid.Row="1" Margin="12,0,12,8" Padding="10,6" Background="{StaticResource App.Background}" CornerRadius="4">
             <DockPanel LastChildFill="False">
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                     <TextBlock Text="Search:" Margin="0,4,8,0" FontWeight="SemiBold"/>
@@ -65,7 +65,7 @@
                 <TextBlock DockPanel.Dock="Right"
                            Text="{Binding HeaderCountLabel}"
                            Margin="16,4,0,0"
-                           Foreground="#506070"
+                           Foreground="{StaticResource Text.Secondary}"
                            FontWeight="SemiBold"/>
             </DockPanel>
         </Border>
@@ -91,7 +91,7 @@
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Style="{StaticResource Chip}"
-                                        Background="#1E5BA8"
+                                        Background="{StaticResource CorporateBlue}"
                                         HorizontalAlignment="Left"
                                         Margin="0">
                                     <TextBlock Text="{Binding PipelineType}"
@@ -136,7 +136,7 @@
                           Width="4"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Stretch"
-                          Background="#D0D0D2"
+                          Background="{StaticResource Panel.Border}"
                           ResizeBehavior="PreviousAndNext"/>
 
             <Border Grid.Column="2" Background="White" Padding="14">
@@ -149,13 +149,13 @@
                                    Margin="0,0,0,6"/>
 
                         <WrapPanel Margin="0,0,0,12">
-                            <Border Style="{StaticResource Chip}" Background="#1E5BA8">
+                            <Border Style="{StaticResource Chip}" Background="{StaticResource CorporateBlue}">
                                 <TextBlock Text="{Binding Selected.PipelineType}"
                                            Foreground="White"
                                            FontWeight="SemiBold"
                                            FontSize="11"/>
                             </Border>
-                            <Border Style="{StaticResource Chip}" Background="#1F7A1F">
+                            <Border Style="{StaticResource Chip}" Background="{StaticResource Risk.HighConfidence.Foreground}">
                                 <TextBlock Text="{Binding Selected.Province}"
                                            Foreground="White"
                                            FontWeight="SemiBold"

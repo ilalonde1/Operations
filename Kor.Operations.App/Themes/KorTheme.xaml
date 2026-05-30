@@ -79,6 +79,22 @@
     <!-- ✅ Best-practice: make Secondary the implicit default for all Buttons -->
     <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}" />
 
+    <!-- Action bar button: compact Secondary look for action ribbons (Refresh, Edit, Set stage, etc.).
+         Apply via StackPanel.Resources to skin every button inside one strip. -->
+    <Style x:Key="Button.ActionBar" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Padding"   Value="10,4"/>
+        <Setter Property="Margin"    Value="0,0,8,0"/>
+    </Style>
+
+    <!-- Action bar Primary: same compact size, Primary fill. Use for the killer action
+         in a ribbon (New, Generate Brief). Don't pile up more than one per strip. -->
+    <Style x:Key="Button.ActionBarPrimary" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Padding"   Value="10,4"/>
+        <Setter Property="Margin"    Value="0,0,8,0"/>
+    </Style>
+
     <!-- ===== Inputs ===== -->
 
     <!-- Modern implicit TextBox - rounded, clean border, focus highlight -->

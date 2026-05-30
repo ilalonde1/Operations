@@ -63,6 +63,7 @@
                         Content="Generate Brief"
                         Margin="0,10,0,0"
                         Height="32"
+                        Style="{StaticResource Button.ActionBarPrimary}"
                         Click="GenerateOrgBriefButton_Click"
                         ToolTip="Generate a one-page PDF brief for the selected organization (saved to Desktop). Right-click to export as Word.">
                     <Button.ContextMenu>

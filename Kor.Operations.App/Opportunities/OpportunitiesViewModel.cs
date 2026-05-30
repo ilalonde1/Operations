@@ -56,11 +56,13 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
     // RefreshHeartbeatAsync runs the assignment off the UI thread). Mirrors the
-    // FileSync KPI-brush convention.
-    private static readonly Brush HealthGreen = Freeze(new SolidColorBrush(Color.FromRgb(0x22, 0x8B, 0x22)));
-    private static readonly Brush HealthAmber = Freeze(new SolidColorBrush(Color.FromRgb(0xE5, 0xA8, 0x00)));
-    private static readonly Brush HealthRed = Freeze(new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E)));
-    private static readonly Brush HealthNeutral = Freeze(new SolidColorBrush(Color.FromRgb(0x60, 0x9B, 0xD1)));
+    // FileSync KPI-brush convention. Pulled from KorTheme.xaml when the app is up
+    // so retuning the theme retunes the heartbeat strip; literal fallbacks match
+    // the theme values so static-init order can't crash.
+    private static readonly Brush HealthGreen = ResolveOrFallback("Risk.HighConfidence.Foreground", 0x16, 0x65, 0x34);
+    private static readonly Brush HealthAmber = ResolveOrFallback("Risk.AtRisk.Foreground", 0xA1, 0x62, 0x07);
+    private static readonly Brush HealthRed = ResolveOrFallback("Risk.Critical.Foreground", 0xB9, 0x1C, 0x1C);
+    private static readonly Brush HealthNeutral = ResolveOrFallback("CorporateBlue", 0x2F, 0x54, 0x96);
 
     private OpportunityRowView? _selected;
     private CrmEngagement? _selectedEngagement;
@@ -351,6 +353,22 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     {
         b.Freeze();
         return b;
+    }
+
+    /// <summary>
+    /// Looks up a brush from <c>App.Current.Resources</c>; if unavailable (static
+    /// init runs before App.xaml loads, or the key is missing), falls back to the
+    /// supplied RGB literal. Keeps the heartbeat strip retunable from KorTheme.xaml
+    /// without risking a NullReferenceException at type-load time.
+    /// </summary>
+    private static Brush ResolveOrFallback(string key, byte r, byte g, byte b)
+    {
+        if (System.Windows.Application.Current?.Resources[key] is Brush brush)
+        {
+            return brush;
+        }
+
+        return Freeze(new SolidColorBrush(Color.FromRgb(r, g, b)));
     }
 
     public async Task LoadAsync(CancellationToken ct)

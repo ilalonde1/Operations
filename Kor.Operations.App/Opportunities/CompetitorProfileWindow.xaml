@@ -28,7 +28,7 @@
                             SubtitleText="Competitor profile"
                             AvatarDiameter="96" AvatarBorderThickness="2"/>
 
-        <Border Grid.Row="1" Background="#F4F4F6" Padding="14" Margin="8,0,8,8" CornerRadius="6">
+        <Border Grid.Row="1" Background="{StaticResource App.Background}" Padding="14" Margin="8,0,8,8" CornerRadius="6">
             <StackPanel Orientation="Horizontal">
                 <StackPanel Margin="0,0,32,0">
                     <TextBlock Text="Lifetime won" FontSize="11" Foreground="#666"/>
@@ -207,7 +207,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Border Grid.Column="0" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,4,0">
+            <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,4,0">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Wins by year" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <DataGrid ItemsSource="{Binding ByYear}" AutoGenerateColumns="False" IsReadOnly="True"
@@ -220,7 +220,7 @@
                     </DataGrid>
                 </DockPanel>
             </Border>
-            <Border Grid.Column="1" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Padding="10" Margin="4,0,4,0">
+            <Border Grid.Column="1" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="4,0,4,0">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Top buyers (by $)" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <DataGrid ItemsSource="{Binding TopBuyers}" AutoGenerateColumns="False" IsReadOnly="True"
@@ -233,7 +233,7 @@
                     </DataGrid>
                 </DockPanel>
             </Border>
-            <Border Grid.Column="2" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Padding="10" Margin="4,0,0,0">
+            <Border Grid.Column="2" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="4,0,0,0">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="By source" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <DataGrid ItemsSource="{Binding BySource}" AutoGenerateColumns="False" IsReadOnly="True"
@@ -248,7 +248,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="4" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4" Padding="10" Margin="8,0,8,8">
+        <Border Grid.Row="4" Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="4" Padding="10" Margin="8,0,8,8">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="Recent wins (latest 25)" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
                 <TextBlock DockPanel.Dock="Bottom" Text="{Binding StatusText}" FontSize="11" Foreground="#666" Margin="0,6,0,0"/>

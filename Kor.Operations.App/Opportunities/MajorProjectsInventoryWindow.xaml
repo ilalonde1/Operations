@@ -13,7 +13,7 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="DetailLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#506070"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="Margin" Value="0,2"/>
         </Style>
         <Style x:Key="DetailValue" TargetType="TextBlock">
@@ -24,7 +24,7 @@
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="8,3"/>
             <Setter Property="Margin" Value="0,0,6,6"/>
-            <Setter Property="Background" Value="#506070"/>
+            <Setter Property="Background" Value="{StaticResource Text.Secondary}"/>
         </Style>
     </Window.Resources>
 
@@ -44,7 +44,7 @@
                             AvatarDiameter="64"
                             AvatarBorderThickness="2"/>
 
-        <Border Grid.Row="1" Margin="12,0,12,8" Padding="10,6" Background="#F0F0F2" CornerRadius="4">
+        <Border Grid.Row="1" Margin="12,0,12,8" Padding="10,6" Background="{StaticResource App.Background}" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Search:" Margin="0,4,8,0" FontWeight="SemiBold"/>
                 <TextBox Width="260" Margin="0,0,12,0"
@@ -107,7 +107,7 @@
                     <DataGridTemplateColumn Header="Indigenous" Width="84" SortMemberPath="IsIndigenous">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border Background="#1E5BA8" CornerRadius="999"
+                                <Border Background="{StaticResource CorporateBlue}" CornerRadius="999"
                                         Padding="6,2" HorizontalAlignment="Left"
                                         Visibility="{Binding IsIndigenous, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                     <TextBlock Text="Yes" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
@@ -119,7 +119,7 @@
             </DataGrid>
 
             <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                          Background="#D0D0D2" ResizeBehavior="PreviousAndNext"/>
+                          Background="{StaticResource Panel.Border}" ResizeBehavior="PreviousAndNext"/>
 
             <Border Grid.Column="2" Background="White" Padding="14">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -130,10 +130,10 @@
                                    TextWrapping="Wrap"
                                    Margin="0,0,0,6"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                            <Border Style="{StaticResource Chip}" Background="#1E5BA8">
+                            <Border Style="{StaticResource Chip}" Background="{StaticResource CorporateBlue}">
                                 <TextBlock Text="{Binding Selected.Province}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
                             </Border>
-                            <Border Style="{StaticResource Chip}" Background="#1F7A1F"
+                            <Border Style="{StaticResource Chip}" Background="{StaticResource Risk.HighConfidence.Foreground}"
                                     Visibility="{Binding Selected.IsIndigenous, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                 <TextBlock Text="Indigenous" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
                             </Border>
@@ -185,7 +185,7 @@
                                         Padding="0"
                                         BorderThickness="0"
                                         Background="Transparent"
-                                        Foreground="#1E5BA8"
+                                        Foreground="{StaticResource CorporateBlue}"
                                         FontWeight="SemiBold"
                                         HorizontalAlignment="Left"
                                         Cursor="Hand"
@@ -203,7 +203,7 @@
                                         Padding="0"
                                         BorderThickness="0"
                                         Background="Transparent"
-                                        Foreground="#1E5BA8"
+                                        Foreground="{StaticResource CorporateBlue}"
                                         FontWeight="SemiBold"
                                         HorizontalAlignment="Left"
                                         Cursor="Hand"
@@ -246,7 +246,7 @@
 
                         <StackPanel Margin="0,0,0,12"
                                     Visibility="{Binding Selected.HasJobs, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                            <TextBlock Text="Jobs" FontWeight="SemiBold" Foreground="#506070" Margin="0,0,0,4"/>
+                            <TextBlock Text="Jobs" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                             <TextBlock Style="{StaticResource DetailValue}">
                                 <Run Text="Construction: "/>
                                 <Run Text="{Binding Selected.ConstructionJobs, Mode=OneWay, StringFormat={}{0:N0}, TargetNullValue='unknown'}"/>
@@ -257,13 +257,13 @@
 
                         <StackPanel Margin="0,0,0,12"
                                     Visibility="{Binding Selected.HasIndigenousNames, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                            <TextBlock Text="Indigenous names" FontWeight="SemiBold" Foreground="#506070" Margin="0,0,0,4"/>
+                            <TextBlock Text="Indigenous names" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                             <TextBlock Text="{Binding Selected.IndigenousNames}" TextWrapping="Wrap"/>
                         </StackPanel>
 
                         <StackPanel Margin="0,0,0,12"
                                     Visibility="{Binding Selected.HasDescription, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                            <TextBlock Text="Description" FontWeight="SemiBold" Foreground="#506070" Margin="0,0,0,4"/>
+                            <TextBlock Text="Description" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                             <TextBlock Text="{Binding Selected.ProjectDescription}" TextWrapping="Wrap" FontSize="12"/>
                         </StackPanel>
 

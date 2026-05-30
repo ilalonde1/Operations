@@ -30,24 +30,28 @@
                        FontWeight="SemiBold"/>
         </Border>
 
-        <!-- Action bar. Refresh, New, Edit, status transitions, ingestion. -->
+        <!-- Action bar. Refresh, New, Edit, status transitions, ingestion.
+             StackPanel.Resources skins every <Button> inside as Button.ActionBar
+             so we don't repeat Margin/Padding/MinHeight on each one. -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="12,0,12,8">
-            <Button Content="Refresh"  Width="100" Margin="0,0,8,0" Click="RefreshButton_Click"/>
-            <Button Content="New"      Width="100" Margin="0,0,8,0" Click="NewButton_Click"
-                    Background="{StaticResource Brand.Primary.Brush}" Foreground="White"/>
-            <Button Content="Edit…"    Width="100" Margin="0,0,8,0" Click="EditButton_Click"/>
-            <Button Content="Scoring…" Width="100" Margin="0,0,8,0" Click="ScoringButton_Click"/>
+            <StackPanel.Resources>
+                <Style TargetType="Button" BasedOn="{StaticResource Button.ActionBar}"/>
+            </StackPanel.Resources>
+            <Button Content="Refresh"  Width="100" Click="RefreshButton_Click"/>
+            <Button Content="New"      Width="100" Click="NewButton_Click"
+                    Style="{StaticResource Button.ActionBarPrimary}"/>
+            <Button Content="Edit…"    Width="100" Click="EditButton_Click"/>
+            <Button Content="Scoring…" Width="100" Click="ScoringButton_Click"/>
             <Button x:Name="PromoteToPursuitButton"
                     Content="Promote to Pursuit"
                     Width="140"
-                    Margin="0,0,8,0"
                     Click="PromoteToPursuitButton_Click"
                     ToolTip="Create a Pursuit (engagement) from the selected opportunity, or open the existing one."/>
 
             <Button x:Name="GenerateBriefButton"
                     Content="Generate Brief"
                     Width="130"
-                    Margin="0,0,8,0"
+                    Style="{StaticResource Button.ActionBarPrimary}"
                     Click="GenerateBriefButton_Click"
                     ToolTip="Generate a one-page PDF pursuit brief for the selected opportunity (saved to Desktop). Right-click to export as Word.">
                 <Button.ContextMenu>
@@ -61,7 +65,6 @@
             <Button x:Name="ClientIntelligenceButton"
                     Content="Client Intelligence"
                     Width="160"
-                    Margin="0,0,8,0"
                     Click="ClientIntelligenceButton_Click"
                     ToolTip="Open the Deltek client intelligence window for the selected opportunity. Disabled when the row has no Deltek client link."/>
 
@@ -85,7 +88,7 @@
 
             <Separator Margin="0,4,16,4"/>
 
-            <Button x:Name="MoveToButton" Content="Move to" Width="100" Margin="0,0,8,0"
+            <Button x:Name="MoveToButton" Content="Move to" Width="100"
                     Click="MoveToButton_Click"
                     ToolTip="Change the status of the selected opportunity.">
                 <Button.ContextMenu>

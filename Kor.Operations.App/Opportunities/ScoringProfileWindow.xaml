@@ -167,7 +167,7 @@
             </TabItem>
         </TabControl>
 
-        <Border Grid.Row="3" Padding="12,6" Background="#F0F0F2">
+        <Border Grid.Row="3" Padding="12,6" Background="{StaticResource App.Background}">
             <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
         </Border>
     </Grid>

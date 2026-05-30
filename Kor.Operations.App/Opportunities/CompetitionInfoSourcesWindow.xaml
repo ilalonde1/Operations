@@ -14,7 +14,7 @@
             </StackPanel>
         </Border>
 
-        <Border DockPanel.Dock="Bottom" Background="#F4F4F6" Padding="14,10">
+        <Border DockPanel.Dock="Bottom" Background="{StaticResource App.Background}" Padding="14,10">
             <Button Content="Close" Width="90" HorizontalAlignment="Right"
                     Click="Close_Click"/>
         </Border>

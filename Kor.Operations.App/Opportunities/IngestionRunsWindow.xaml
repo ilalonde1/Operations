@@ -22,12 +22,12 @@
                    Margin="0,0,0,4"/>
         <TextBlock Grid.Row="0"
                    Text="Most recent 50 — newest first. Use Refresh after triggering a run."
-                   FontSize="11" Foreground="#506070" Margin="0,22,0,8"/>
+                   FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,22,0,8"/>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
             <Button Content="Refresh" Width="100" Margin="0,0,8,0" Click="RefreshButton_Click"/>
             <TextBlock x:Name="SummaryLine" VerticalAlignment="Center"
-                       FontSize="11" Foreground="#506070"/>
+                       FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
         </StackPanel>
 
         <DataGrid Grid.Row="2"
@@ -59,7 +59,7 @@
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="TextWrapping" Value="Wrap"/>
-                            <Setter Property="Foreground" Value="#C11E1E"/>
+                            <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
@@ -67,7 +67,7 @@
         </DataGrid>
 
         <Border Grid.Row="3" Padding="0,6,0,0">
-            <TextBlock x:Name="StatusLine" FontSize="12" Foreground="#506070"/>
+            <TextBlock x:Name="StatusLine" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
         </Border>
     </Grid>
 </Window>

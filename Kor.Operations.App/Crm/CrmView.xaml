@@ -17,15 +17,18 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="Refresh" Width="100" Margin="0,0,8,0" Click="RefreshButton_Click"/>
-            <Button Content="Edit engagement…" Width="160" Margin="0,0,8,0" Click="EditEngagementButton_Click"/>
-            <Button Content="Build Fee Proposal…" Width="160" Margin="0,0,8,0" Click="BuildFeeProposalButton_Click"
+            <StackPanel.Resources>
+                <Style TargetType="Button" BasedOn="{StaticResource Button.ActionBar}"/>
+            </StackPanel.Resources>
+            <Button Content="Refresh" Width="100" Click="RefreshButton_Click"/>
+            <Button Content="Edit engagement…" Width="160" Click="EditEngagementButton_Click"/>
+            <Button Content="Build Fee Proposal…" Width="160" Click="BuildFeeProposalButton_Click"
                     ToolTip="Open the Fee Proposal Builder pre-named for this engagement."/>
             <Button Content="Build Brochure…" Width="140" Margin="0,0,16,0" Click="BuildBrochureButton_Click"
                     ToolTip="Open the Sales Brochure Builder pre-named for this engagement."/>
             <Separator Margin="0,4,16,4"/>
 
-            <Button x:Name="SetStageButton" Content="Set stage" Width="100" Margin="0,0,8,0"
+            <Button x:Name="SetStageButton" Content="Set stage" Width="100"
                     Click="SetStageButton_Click"
                     ToolTip="Change the stage of the selected engagement.">
                 <Button.ContextMenu>
