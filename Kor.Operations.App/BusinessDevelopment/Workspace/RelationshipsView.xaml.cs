@@ -59,11 +59,19 @@ public partial class RelationshipsView : UserControl
         {
             _vm.KindFilter = value switch
             {
-                "All (curated)" => null,
+                "All kinds" => null,
                 _ => value,
             };
         }
 
+        if (_loaded)
+        {
+            await SearchAsync().ConfigureAwait(true);
+        }
+    }
+
+    private async void ShowAllCheck_Changed(object sender, RoutedEventArgs e)
+    {
         if (_loaded)
         {
             await SearchAsync().ConfigureAwait(true);

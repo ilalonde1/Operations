@@ -159,7 +159,44 @@ WHERE  (@q IS NULL OR DisplayName LIKE '%' + @q + '%' ESCAPE '\')
    AND (@kind IS NOT NULL OR Kind NOT IN ('Vendor','Unknown'))
 ORDER BY DisplayName;";
 
-        var safeTake = Math.Clamp(take, 1, 1000);
+        return await RunSearchAsync(sql, query, kind, take, ct).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<CanonicalOrgRow>> SearchCanonicalOrgsWithRelationshipsAsync(
+        string? query,
+        string? kind,
+        int take,
+        CancellationToken ct)
+    {
+        // Filter to orgs the firm actually has a relationship with. Each EXISTS
+        // hits an existing filtered/covering index on the FK column (see
+        // schema 22_OpportunityCanonicalLinks.sql, 38_MajorProjectsInventory.sql,
+        // 20_KorPursuits.sql) so the OR doesn't fan out into a table scan.
+        const string sql = @"
+SELECT TOP (@take) co.Id, co.Kind, co.DisplayName, co.ClendorClientId, co.Website, co.Notes, co.CreatedAtUtc, co.UpdatedAtUtc
+FROM   opportunities.CanonicalOrg co
+WHERE  (@q IS NULL OR co.DisplayName LIKE '%' + @q + '%' ESCAPE '\')
+   AND (@kind IS NULL OR co.Kind = @kind)
+   AND (@kind IS NOT NULL OR co.Kind NOT IN ('Vendor','Unknown'))
+   AND (co.ClendorClientId IS NOT NULL
+     OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment e WHERE e.CanonicalOrgId = co.Id)
+     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.ProponentCanonicalOrgId = co.Id OR mp.ArchitectCanonicalOrgId = co.Id)
+     OR EXISTS (SELECT 1 FROM opportunities.Opportunities o WHERE o.BuyerCanonicalOrgId = co.Id)
+     OR EXISTS (SELECT 1 FROM opportunities.OpportunityAwards a WHERE a.AwardingCanonicalOrgId = co.Id OR a.AwardedToCanonicalOrgId = co.Id)
+     OR EXISTS (SELECT 1 FROM opportunities.KorPursuits p WHERE p.BuyerCanonicalOrgId = co.Id OR p.LostToCanonicalOrgId = co.Id))
+ORDER BY co.DisplayName;";
+
+        return await RunSearchAsync(sql, query, kind, take, ct).ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlyList<CanonicalOrgRow>> RunSearchAsync(
+        string sql,
+        string? query,
+        string? kind,
+        int take,
+        CancellationToken ct)
+    {
+        var safeTake = Math.Clamp(take, 1, 2000);
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };

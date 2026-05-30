@@ -24,6 +24,21 @@ public interface ICanonicalOrgStore
         int take,
         CancellationToken ct);
 
+    /// <summary>
+    /// Like <see cref="SearchCanonicalOrgsAsync(string?, string?, int, CancellationToken)"/>
+    /// but filters to canonical orgs with at least one KOR-relevant
+    /// relationship signal: linked Clendor client, research enrichment row,
+    /// linked MPI project (as proponent or architect), linked Opportunity
+    /// (as buyer), linked award (as awarder or winner), or linked KorPursuit.
+    /// Default for the Relationships screen so the list is real organizations
+    /// the firm actually deals with, not the full ~7k canonical-org universe.
+    /// </summary>
+    Task<IReadOnlyList<CanonicalOrgRow>> SearchCanonicalOrgsWithRelationshipsAsync(
+        string? query,
+        string? kind,
+        int take,
+        CancellationToken ct);
+
     Task<CanonicalOrgRow?> GetCanonicalOrgByClendorIdAsync(string clendorClientId, CancellationToken ct);
 
     Task RecordBcRegistrySnapshotAsync(long canonicalOrgId, BcRegistrySnapshot snapshot, CancellationToken ct);
