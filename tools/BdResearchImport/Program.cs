@@ -136,6 +136,9 @@ internal static class Program
             if (Run("architect-forecast")) await ImportArchitectForecastAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("kor-capability")) await ImportKorCapabilityAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("industry-events")) await ImportIndustryEventsAsync(options, industryEventStore, stats, cts.Token).ConfigureAwait(false);
+            if (Run("db-contractors")) await ImportDbContractorsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
+            if (Run("incumbent-rosters")) await ImportIncumbentRostersAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
+            if (Run("capital-funding-signals")) await ImportCapitalFundingSignalsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -3375,6 +3378,238 @@ internal static class Program
                     null,
                     name,
                     ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    // === KOR-DesignBuild-Contractors (db-contractors.json) ===========================
+    // Each row is a GC / design-builder active on institutional buildings under
+    // alternative delivery (DB / CMAR / PDB / IPD). Upserts as a CanonicalOrg
+    // (Kind=GC) and stashes the full research blob as a CanonicalOrgEnrichment
+    // record so the Org Brief surfaces it.
+    private static async Task ImportDbContractorsAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-DesignBuild-Contractors", "outputs", "db-contractors.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var contractor in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var name = String(contractor, "name");
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                var hq = String(contractor, "hq");
+                var notes = string.IsNullOrWhiteSpace(hq) ? null : "HQ: " + hq;
+
+                var orgId = await UpsertOrgAsync(
+                    orgStore,
+                    options,
+                    stats,
+                    OrgKinds.GeneralContractor,
+                    name,
+                    null,
+                    notes,
+                    "DesignBuildContractors",
+                    ct).ConfigureAwait(false);
+
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    orgId,
+                    "DesignBuildContractors",
+                    contractor.GetRawText(),
+                    String(contractor, "fitNotes"),
+                    name,
+                    ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    // === KOR-Incumbent-Rosters (incumbent-rosters.json) ==============================
+    // Each row is a standing-offer / on-call / SoR / prequal roster held by a
+    // structural firm at a target public owner. Upserts the owner as Buyer +
+    // stashes the full blob so the owner's Org Brief surfaces the incumbent +
+    // renewal-window intel.
+    private static async Task ImportIncumbentRostersAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Incumbent-Rosters", "outputs", "incumbent-rosters.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var roster in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var owner = String(roster, "owner");
+                if (string.IsNullOrWhiteSpace(owner))
+                {
+                    stats.OrgRowsSkipped++;
+                    continue;
+                }
+
+                var market = String(roster, "market");
+                var notes = string.IsNullOrWhiteSpace(market) ? null : "Market: " + market;
+
+                var orgId = await UpsertOrgAsync(
+                    orgStore,
+                    options,
+                    stats,
+                    OrgKinds.Buyer,
+                    owner,
+                    null,
+                    notes,
+                    "IncumbentRosters",
+                    ct).ConfigureAwait(false);
+
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    orgId,
+                    "IncumbentRosters",
+                    roster.GetRawText(),
+                    String(roster, "opportunityTiming"),
+                    owner,
+                    ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    // === KOR-Capital-Funding-Signals (capital-funding-signals.json) =================
+    // Each row is a publicly-funded but not-yet-tendered building project. Upserts
+    // as a MajorProjectsInventory row keyed by Sha1(name|municipality), tagged
+    // ProjectStage=CapitalPlan so it shows in the Forward Pipeline panel.
+    private static async Task ImportCapitalFundingSignalsAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Capital-Funding-Signals", "outputs", "capital-funding-signals.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var project in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                var projectName = String(project, "name");
+                if (string.IsNullOrWhiteSpace(projectName))
+                {
+                    stats.ProjectRowsSkipped++;
+                    continue;
+                }
+
+                var owner = String(project, "owner");
+                var architect = String(project, "architectSelected");
+                var market = String(project, "market");
+                var municipality = String(project, "municipality");
+                var sector = String(project, "sector");
+                var stage = String(project, "stage");
+                var notableScope = String(project, "notableScope");
+                var fundingSource = String(project, "fundingSource");
+                var announcedDate = String(project, "announcedDate");
+                var expectedProcurementWindow = String(project, "expectedProcurementWindow");
+
+                var ownerId = await ResolveAsync(resolver, options, stats, owner, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, architect, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+
+                var scheduleParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(fundingSource)) scheduleParts.Add("Funding: " + fundingSource);
+                if (!string.IsNullOrWhiteSpace(announcedDate)) scheduleParts.Add("Announced " + announcedDate);
+                if (!string.IsNullOrWhiteSpace(expectedProcurementWindow)) scheduleParts.Add("Procurement " + expectedProcurementWindow);
+
+                var record = new MajorProjectRecord(
+                    Source: "CapitalFundingSignals",
+                    SourceKey: Sha1($"CapitalFundingSignals|{projectName}|{municipality}"),
+                    ProjectName: projectName,
+                    ProjectDescription: notableScope,
+                    EstimatedCostCad: LongOrNull(project, "fundingAmountCad"),
+                    EstimatedCostText: null,
+                    Sector: sector,
+                    SubSector: null,
+                    ConstructionType: null,
+                    ConstructionSubtype: null,
+                    ProjectType: null,
+                    RegionName: market,
+                    MunicipalityName: municipality,
+                    ProponentName: owner,
+                    ProponentCanonicalOrgId: ownerId,
+                    ArchitectName: architect,
+                    ArchitectCanonicalOrgId: architectId,
+                    Stage: stage,
+                    ProjectStatus: stage,
+                    ProjectStage: "CapitalPlan",
+                    ProjectCategoryName: null,
+                    PublicFundingInd: true,
+                    ProvincialFunding: null,
+                    FederalFunding: null,
+                    MunicipalFunding: null,
+                    OtherPublicFunding: null,
+                    GreenBuildingInd: null,
+                    IndigenousInd: null,
+                    IndigenousNames: null,
+                    ConstructionJobs: null,
+                    OperatingJobs: null,
+                    StandardizedStartDate: null,
+                    StandardizedCompletionDate: null,
+                    StartYear: null,
+                    CompletionYear: null,
+                    ScheduleNotes: scheduleParts.Count == 0 ? null : string.Join(" | ", scheduleParts),
+                    Latitude: null,
+                    Longitude: null,
+                    ProjectWebsite: null,
+                    SourceUrl: FirstSourceUrl(project),
+                    RawJson: project.GetRawText())
+                {
+                    Province = NormalizeProvince(market, string.Empty),
+                };
+
+                await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
             }
         }
     }
