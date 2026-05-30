@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Opportunities;
 
@@ -44,15 +45,27 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
 
     public sealed record ChartBar(string Label, double Value, double Max);
 
-    public sealed record FeedRow(string Name, string Buyer, string? Province, string Status, string? Deadline);
+    // IDs (OpportunityId, OrgId) carried through so the dashboard rows can drill
+    // into the canonical record on double-click — Latest RFPs / Deadlines open the
+    // OpportunityEntryDialog, Open Structural Seats / Competitor Watch open the
+    // OrgDossierWindow, Forward Pipeline opens the PursuitBrief.
+    public sealed record FeedRow(long OpportunityId, string Name, string Buyer, string? Province, string Status, string? Deadline);
 
-    public sealed record DeadlineRow(string Name, string? Province, string? Deadline, int DaysLeft);
+    public sealed record DeadlineRow(long OpportunityId, string Name, string? Province, string? Deadline, int DaysLeft);
 
-    public sealed record OpenStructuralSeatRow(string DisplayName, string? Market, string? Status, string? DisplacementRead);
+    public sealed record OpenStructuralSeatRow(long OrgId, string DisplayName, string? Market, string? Status, string? DisplacementRead);
 
-    public sealed record CompetitorWatchPanelRow(string DisplayName, string? CapacityRead);
+    public sealed record CompetitorWatchPanelRow(long OrgId, string DisplayName, string? CapacityRead);
 
     public sealed record ForwardPipelinePanelRow(long Id, string ProjectName, string? ProponentName, string? Province, string CostDisplay);
+
+    // Loaded into a per-load cache so dashboard click handlers can resolve a
+    // FeedRow/DeadlineRow back to the full Opportunity model (the entry dialog
+    // wants the model, not just the id).
+    private readonly Dictionary<long, Opportunity> _oppCache = new();
+
+    public Opportunity? GetOpportunity(long id) =>
+        _oppCache.TryGetValue(id, out var o) ? o : null;
 
     public ObservableCollection<FeedRow> LatestRfps { get; } = new();
 
@@ -176,10 +189,19 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             BidWindowCountDisplay = funnel.BidWindowCount.ToString("N0", CanadianCulture);
             OpenSeatCountDisplay = funnel.OpenSeatCount.ToString("N0", CanadianCulture);
 
+            // Refresh the opp cache so click handlers can resolve OpportunityId
+            // back to a full Opportunity model.
+            _oppCache.Clear();
+            foreach (var o in opps)
+            {
+                _oppCache[o.Id] = o;
+            }
+
             Replace(LatestRfps, opps
                 .OrderByDescending(o => o.CreatedAtUtc)
                 .Take(15)
                 .Select(o => new FeedRow(
+                    o.Id,
                     o.Name,
                     o.BuyerName,
                     o.ProjectProvince,
@@ -216,18 +238,21 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
                 .Where(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= thirtyDays)
                 .OrderBy(o => o.SubmissionDeadlineUtc)
                 .Select(o => new DeadlineRow(
+                    o.Id,
                     o.Name,
                     o.ProjectProvince,
                     o.SubmissionDeadlineUtc?.LocalDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                     o.SubmissionDeadlineUtc.HasValue ? (int)Math.Floor((o.SubmissionDeadlineUtc.Value - now).TotalDays) : 0)));
 
             Replace(OpenStructuralSeats, openStructuralSeats.Select(r => new OpenStructuralSeatRow(
+                r.OrgId,
                 r.DisplayName,
                 r.Market,
                 r.Status,
                 r.DisplacementRead)));
 
             Replace(CompetitorWatch, competitorWatch.Select(r => new CompetitorWatchPanelRow(
+                r.OrgId,
                 r.DisplayName,
                 r.CapacityRead)));
 
