@@ -115,6 +115,12 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<App.Crm.CrmView>();
     }
 
+    private void BdTracking_Click(object sender, RoutedEventArgs e)
+    {
+        SetActiveNav(BdTrackingButton);
+        ContentHost.Content = _services.GetRequiredService<App.Crm.BdTrackingView>();
+    }
+
     private void Proposals_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(ProposalsButton);
@@ -151,6 +157,7 @@ public partial class BdWorkspaceWindow : Window
             CompetitionButton,
             AdminButton,
             RegionBriefButton,
+            BdTrackingButton,
             PursuitsButton,
             ProposalsButton,
             BrochuresButton,

@@ -13,7 +13,12 @@ public sealed record CrmEngagement
 {
     public long Id { get; init; }
 
-    public long OpportunityId { get; init; }
+    /// <summary>
+    /// FK to <see cref="Opportunity"/>. Null for BD-tracking engagements
+    /// (touchpoints with no formal RFP behind them — meeting at a UDI tour,
+    /// email about potential hotel work) per migration 48.
+    /// </summary>
+    public long? OpportunityId { get; init; }
 
     public CrmEngagementStage Stage { get; init; } = CrmEngagementStage.Drafting;
 
@@ -46,6 +51,34 @@ public sealed record CrmEngagement
     public string UpdatedBy { get; init; } = "";
 
     public byte[] RowVersion { get; init; } = Array.Empty<byte>();
+
+    // ===== BD-tracking columns (migration 48) =====
+    //
+    // Populated by tools/BdTrackingImport when an engagement is a BD touchpoint
+    // (OpportunityId IS NULL); null on opportunity-linked engagements.
+
+    /// <summary>FK to CanonicalOrg(Id) — the firm/buyer this engagement is with.</summary>
+    public long? BuyerCanonicalOrgId { get; init; }
+
+    /// <summary>
+    /// BD-tracking region — one of: Vancouver/LowerMainland, VancouverIsland,
+    /// Alberta, Okanagan-BcInterior, USA, EasternCanada. Mirrors the
+    /// spreadsheet's regional sheets.
+    /// </summary>
+    public string? Region { get; init; }
+
+    /// <summary>Sum of proposal bids submitted on this engagement (CAD).</summary>
+    public decimal? ProposalsSubmittedCad { get; init; }
+
+    /// <summary>Sum of accepted/won proposal values (CAD).</summary>
+    public decimal? ProposalsAcceptedCad { get; init; }
+
+    /// <summary>
+    /// Freeform text from the spreadsheet's "Potential Projects" column —
+    /// what the BD initiator discussed with the contact. Cross-link tool
+    /// fuzzy-matches this against MajorProjectsInventory project names.
+    /// </summary>
+    public string? PotentialProjects { get; init; }
 }
 
 /// <summary>

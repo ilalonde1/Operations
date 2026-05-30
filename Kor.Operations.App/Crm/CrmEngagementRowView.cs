@@ -22,12 +22,16 @@ public sealed class CrmEngagementRowView
     public Opportunity? Opportunity { get; }
 
     public long Id => Engagement.Id;
-    public long OpportunityId => Engagement.OpportunityId;
+    public long? OpportunityId => Engagement.OpportunityId;
     public string StageDisplay => Engagement.Stage.ToString();
     public string OwnerDisplay => Engagement.OwnerStaffId ?? "—";
 
-    public string OpportunityKey => Opportunity?.OpportunityKey ?? $"Opp#{Engagement.OpportunityId}";
-    public string ProjectName => Opportunity?.Name ?? "(opportunity not found)";
+    /// <summary>True for engagements rooted in a formal Opportunity (RFP); false for BD-tracking touchpoints.</summary>
+    public bool HasOpportunity => Engagement.OpportunityId.HasValue;
+
+    public string OpportunityKey => Opportunity?.OpportunityKey
+        ?? (Engagement.OpportunityId.HasValue ? $"Opp#{Engagement.OpportunityId.Value}" : "(BD-tracking)");
+    public string ProjectName => Opportunity?.Name ?? (Engagement.PotentialProjects ?? "(no project named yet)");
     public string Buyer => Opportunity?.BuyerName ?? "";
 
     public string ProposedFeeDisplay =>

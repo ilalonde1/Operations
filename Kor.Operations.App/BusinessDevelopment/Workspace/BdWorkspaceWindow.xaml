@@ -87,6 +87,8 @@
                     <Button x:Name="AdminButton" Content="Admin" Style="{StaticResource NavButton}" Click="Admin_Click"/>
                     <Button x:Name="RegionBriefButton" Content="Region Brief…" Style="{StaticResource NavButton}" Click="RegionBrief_Click"/>
                     <Separator Margin="0,8"/>
+                    <Button x:Name="BdTrackingButton" Content="BD Tracking" Style="{StaticResource NavButton}" Click="BdTracking_Click"
+                            ToolTip="The KOR Structural BD Tracking 2026 spreadsheet, ingested. Region tabs + per-initiator filter + rollup."/>
                     <Button x:Name="PursuitsButton" Content="Pursuits" Style="{StaticResource NavButton}" Click="Pursuits_Click"/>
                     <Button x:Name="ProposalsButton" Content="Proposals" Style="{StaticResource NavButton}" Click="Proposals_Click"/>
                     <Button x:Name="BrochuresButton" Content="Brochures" Style="{StaticResource NavButton}" Click="Brochures_Click"/>

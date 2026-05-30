@@ -56,7 +56,7 @@ public static class CrmAnalyticsService
         // Slice 1: by buyer type. We pull the linked Opportunity's BuyerType.
         // Engagements whose Opportunity is missing get bucketed as "Unknown".
         var byBuyerType = engagements
-            .GroupBy(e => opportunitiesById.TryGetValue(e.OpportunityId, out var o)
+            .GroupBy(e => e.OpportunityId.HasValue && opportunitiesById.TryGetValue(e.OpportunityId.Value, out var o)
                 ? o.BuyerType.ToString()
                 : "Unknown")
             .Select(g => SliceWinRate(g.Key, g))

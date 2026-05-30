@@ -201,7 +201,13 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             Engagements.Clear();
             foreach (var e in engagements)
             {
-                oppById.TryGetValue(e.OpportunityId, out var opp);
+                // BD-tracking engagements (OpportunityId IS NULL) have no parent Opportunity;
+                // CrmEngagementRowView's HasOpportunity / display fallbacks handle the null case.
+                Opportunity? opp = null;
+                if (e.OpportunityId.HasValue)
+                {
+                    oppById.TryGetValue(e.OpportunityId.Value, out opp);
+                }
                 Engagements.Add(new CrmEngagementRowView(e, opp));
             }
 

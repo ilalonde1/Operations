@@ -158,7 +158,9 @@ WHERE Id = @id AND RowVersion = @rv;";
 
     private static void BindEngagementParams(SqlCommand cmd, CrmEngagement e)
     {
-        cmd.Parameters.Add("@oppId", SqlDbType.BigInt).Value = e.OpportunityId;
+        // OpportunityId is nullable post-migration 48 (BD-tracking engagements
+        // have no parent RFP). Convert null -> DBNull explicitly.
+        cmd.Parameters.Add("@oppId", SqlDbType.BigInt).Value = (object?)e.OpportunityId ?? DBNull.Value;
         cmd.Parameters.Add("@stage", SqlDbType.Int).Value = (int)e.Stage;
         cmd.Parameters.Add("@owner", SqlDbType.NVarChar, 20).Value = (object?)e.OwnerStaffId ?? DBNull.Value;
         cmd.Parameters.Add("@assigned", SqlDbType.NVarChar, 500).Value = (object?)e.AssignedStaffIds ?? DBNull.Value;
@@ -182,7 +184,10 @@ WHERE Id = @id AND RowVersion = @rv;";
     private static CrmEngagement MapReader(SqlDataReader r) => new()
     {
         Id = r.GetInt64(0),
-        OpportunityId = r.GetInt64(1),
+        // Migration 48 made OpportunityId nullable (BD-tracking engagements
+        // have no parent Opportunity). MapReader respects null on the read
+        // path; insert/update paths convert null -> DBNull below.
+        OpportunityId = r.IsDBNull(1) ? null : r.GetInt64(1),
         Stage = (CrmEngagementStage)r.GetInt32(2),
         OwnerStaffId = r.IsDBNull(3) ? null : r.GetString(3),
         AssignedStaffIds = r.IsDBNull(4) ? null : r.GetString(4),

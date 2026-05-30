@@ -182,6 +182,13 @@ internal static class OpportunitiesModule
         services.AddTransient<CrmViewModel>();
         services.AddTransient<CrmWindow>();
         services.AddTransient<CrmView>();
+
+        // BD Tracking spreadsheet replica (migration 48-49; 70 engagements ingested
+        // by tools/BdTrackingImport). Region tabs + per-initiator filter + rollup
+        // + drill-detail panel with Activities / Contacts / Linked MPI Projects.
+        services.AddTransient<BdTrackingViewModel>(sp =>
+            new BdTrackingViewModel(options.OpportunitiesDb, sp.GetService<Microsoft.Extensions.Logging.ILogger<BdTrackingViewModel>>()));
+        services.AddTransient<BdTrackingView>();
         services.AddTransient<CrmEngagementDialog>();
         services.AddTransient<ClientIntelligenceViewModel>();
         services.AddTransient<ClientIntelligenceWindow>();
