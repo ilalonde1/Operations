@@ -44,6 +44,13 @@
                     Click="PromoteToPursuitButton_Click"
                     ToolTip="Create a Pursuit (engagement) from the selected opportunity, or open the existing one."/>
 
+            <Button x:Name="GenerateBriefButton"
+                    Content="Generate Brief"
+                    Width="130"
+                    Margin="0,0,8,0"
+                    Click="GenerateBriefButton_Click"
+                    ToolTip="Generate a one-page Word pursuit brief for the selected opportunity (saved to Desktop)."/>
+
             <Button x:Name="ClientIntelligenceButton"
                     Content="Client Intelligence"
                     Width="160"

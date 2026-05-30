@@ -73,6 +73,45 @@ public partial class OpportunitiesView : UserControl
         await ReloadAsync().ConfigureAwait(true);
     }
 
+    private async void GenerateBriefButton_Click(object sender, RoutedEventArgs e)
+    {
+        var row = _vm.Selected;
+        if (row is null)
+        {
+            MessageBox.Show("Select an opportunity first.", "Generate Brief", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var briefStore = AppServices.Get<Kor.Opportunities.Data.Briefs.IBriefDataStore>();
+        var generator = AppServices.Get<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefGenerator>();
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        var path = System.IO.Path.Combine(
+            desktop,
+            $"KOR-Pursuit-Brief-{row.Id}-{DateTime.Now:yyyyMMdd-HHmmss}.docx");
+
+        var previousStatus = _vm.StatusMessage;
+        _vm.StatusMessage = "Generating pursuit brief…";
+        try
+        {
+            var data = await briefStore.GetOpportunityBriefAsync(row.Id, CancellationToken.None).ConfigureAwait(true);
+            if (data is null)
+            {
+                _vm.StatusMessage = previousStatus;
+                MessageBox.Show("Opportunity not found.", "Generate Brief", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            await Task.Run(() => generator.WriteOpportunityBrief(data, path)).ConfigureAwait(true);
+            _vm.StatusMessage = "Brief saved: " + path;
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _vm.StatusMessage = "Brief failed: " + ex.Message;
+            MessageBox.Show("Brief generation failed: " + ex.Message, "Generate Brief", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private async void NewButton_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new OpportunityEntryDialog { Owner = OwnerWindow() };

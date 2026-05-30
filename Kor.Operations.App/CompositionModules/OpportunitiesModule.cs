@@ -52,6 +52,14 @@ internal static class OpportunitiesModule
         services.AddSingleton<IBdDashboardStore>(_ => new SqlBdDashboardStore(options.OpportunitiesDb));
         services.AddSingleton<IPursuitBriefStore>(_ => new SqlPursuitBriefStore(options.OpportunitiesDb));
         services.AddSingleton<IIndustryEventStore>(_ => new SqlIndustryEventStore(options.OpportunitiesDb));
+
+        // Phase 1A/B/C: BD Pursuit Brief — data store + Word generator + region picker.
+        services.AddSingleton<Kor.Opportunities.Data.Briefs.IBriefDataStore>(
+            _ => new Kor.Opportunities.Data.Briefs.SqlBriefDataStore(options.OpportunitiesDb));
+        services.AddSingleton<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefGenerator,
+            Kor.Operations.App.BusinessDevelopment.Briefs.BriefGenerator>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Briefs.RegionBriefDialog>();
+
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(
