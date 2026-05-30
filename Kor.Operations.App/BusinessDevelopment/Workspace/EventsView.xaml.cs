@@ -29,6 +29,7 @@ public partial class EventsView : UserControl
         }
 
         _loaded = true;
+        Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Register(_vm);
         var cts = ReplaceCts();
         try
         {
@@ -45,6 +46,10 @@ public partial class EventsView : UserControl
 
     private void EventsView_Unloaded(object sender, RoutedEventArgs e)
     {
+        if (_loaded)
+        {
+            Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
+        }
         _loaded = false;
         CancelAndDisposeCts();
     }

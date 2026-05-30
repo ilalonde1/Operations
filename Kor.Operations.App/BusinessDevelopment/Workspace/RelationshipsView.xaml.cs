@@ -33,6 +33,7 @@ public partial class RelationshipsView : UserControl
         }
 
         _loaded = true;
+        Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Register(_vm);
         await SearchAsync().ConfigureAwait(true);
     }
 
@@ -40,6 +41,10 @@ public partial class RelationshipsView : UserControl
     {
         CancelAndDisposeSearchCts();
         CancelAndDisposeDossierCts();
+        if (_loaded)
+        {
+            Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
+        }
         _loaded = false;
     }
 

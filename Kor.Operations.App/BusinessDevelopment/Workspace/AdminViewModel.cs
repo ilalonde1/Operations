@@ -14,8 +14,15 @@ using Kor.Opportunities.Data.Sources;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
-public sealed class AdminViewModel : INotifyPropertyChanged
+public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // T5.001 audit fix (2026-05-30): expose Admin state to AI.
+    public string ProviderName => "BD Admin";
+    public bool HasData => Sources.Count > 0 || RecentRuns.Count > 0 || ScheduledJobs.Count > 0;
+    public string BuildContext()
+        => $"BD Admin — {Sources.Count:N0} ingestion sources, {RecentRuns.Count:N0} recent runs visible, {ScheduledJobs.Count:N0} scheduled jobs.";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly IOpportunitySourceStore _sources;
     private readonly IIngestionRunStore _runs;
     private readonly IJobScheduleStore _schedules;

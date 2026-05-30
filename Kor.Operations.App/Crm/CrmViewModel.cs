@@ -36,6 +36,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private bool _isLoading;
     private DeltekClientIntelligence? _deltekContext;
     private CrmAnalyticsSnapshot? _analytics;
+    private CancellationTokenSource? _detailCts;
 
     public CrmViewModel(
         ICrmEngagementStore engagementStore,
@@ -68,7 +69,16 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         {
             if (SetField(ref _selected, value))
             {
-                _ = LoadDetailAsync(CancellationToken.None);
+                // T2.001 audit fix (2026-05-30): per-selection CancellationTokenSource
+                // so a slow previous detail load can't overwrite Activities / Contacts /
+                // DeltekContext after the user has clicked a different row. LoadDetailAsync
+                // also captures the engagement id and re-checks before mutating the
+                // observable collections.
+                var prev = _detailCts;
+                _detailCts = new CancellationTokenSource();
+                prev?.Cancel();
+                prev?.Dispose();
+                _ = LoadDetailAsync(_detailCts.Token);
             }
         }
     }
@@ -235,7 +245,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         {
             var engagementId = Selected.Id;
             var activities = await _activityStore.ListByEngagementAsync(engagementId, ct).ConfigureAwait(true);
+
+            // T2.001 (2026-05-30): if the user switched selection during the
+            // await, Selected.Id will have changed — don't stomp the new
+            // selection's collections with this stale load's results.
+            if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+
             var contacts = await _contactStore.ListByEngagementAsync(engagementId, ct).ConfigureAwait(true);
+            if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
 
             foreach (var a in activities)
             {
@@ -255,7 +272,9 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             {
                 try
                 {
-                    DeltekContext = await _deltekContextService.LoadAsync(deltekId, ct).ConfigureAwait(true);
+                    var deltek = await _deltekContextService.LoadAsync(deltekId, ct).ConfigureAwait(true);
+                    if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+                    DeltekContext = deltek;
                 }
                 catch (OperationCanceledException)
                 {

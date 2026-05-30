@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
@@ -14,8 +15,17 @@ using Kor.Opportunities.Data.Opportunities;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
-public sealed class DashboardViewModel : INotifyPropertyChanged
+public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // T5.001 audit fix (2026-05-30): every BD VM exposes itself to the AI
+    // context builder so the assistant can answer questions grounded in
+    // what's actually on screen.
+    public string ProviderName => "BD Dashboard";
+    public bool HasData => LatestRfps.Count > 0 || ForwardPipeline.Count > 0 || CompetitorWatch.Count > 0;
+    public string BuildContext()
+        => $"BD Dashboard — funnel: {OpenSeatCountDisplay} open seats, {BidWindowCountDisplay} in bid window, {RadarCountDisplay} radar; pipeline: {TotalPipelineDisplay} total / {OpenRfpsDisplay} RFPs / {UpcomingProjectsDisplay} upcoming / {ClosingSoonDisplay} closing in 7d; pipeline value {PipelineValueDisplay}.";
+    public string BuildLocalContext() => BuildContext();
+
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
 
     private readonly IPrimePipelineStore _primePipeline;
@@ -34,11 +44,18 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private string _openSeatCountDisplay = "0";
     private string _statusMessage = "Ready.";
 
-    public DashboardViewModel(IPrimePipelineStore primePipeline, IOpportunityStore opportunities, IBdDashboardStore bdDashboard)
+    private readonly Microsoft.Extensions.Logging.ILogger<DashboardViewModel>? _logger;
+
+    public DashboardViewModel(
+        IPrimePipelineStore primePipeline,
+        IOpportunityStore opportunities,
+        IBdDashboardStore bdDashboard,
+        Microsoft.Extensions.Logging.ILogger<DashboardViewModel>? logger = null)
     {
         _primePipeline = primePipeline ?? throw new ArgumentNullException(nameof(primePipeline));
         _opportunities = opportunities ?? throw new ArgumentNullException(nameof(opportunities));
         _bdDashboard = bdDashboard ?? throw new ArgumentNullException(nameof(bdDashboard));
+        _logger = logger;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -164,12 +181,25 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         try
         {
             StatusMessage = "Loading BD dashboard...";
-            var pipeline = await _primePipeline.GetAllAsync(ct).ConfigureAwait(true);
-            var opps = await _opportunities.ListAsync(ct, includeClosed: false, includeNonPrime: false).ConfigureAwait(true);
-            var openStructuralSeats = await _bdDashboard.GetOpenStructuralSeatsAsync(12, ct).ConfigureAwait(true);
-            var competitorWatch = await _bdDashboard.GetCompetitorWatchAsync(12, ct).ConfigureAwait(true);
-            var forwardPipeline = await _bdDashboard.GetForwardPipelineAsync(12, ct).ConfigureAwait(true);
-            var funnel = await _bdDashboard.GetPipelineFunnelAsync(ct).ConfigureAwait(true);
+
+            // T3.001 audit fix (2026-05-30): kick off all 6 independent reads
+            // in parallel via Task.WhenAll instead of awaiting one at a time.
+            // Each store opens its own SqlConnection per call so there's no
+            // shared-state contention. Latency drops from 6x to ~1x slowest
+            // call on the BD first screen.
+            var pipelineTask = _primePipeline.GetAllAsync(ct);
+            var oppsTask = _opportunities.ListAsync(ct, includeClosed: false, includeNonPrime: false);
+            var openStructuralSeatsTask = _bdDashboard.GetOpenStructuralSeatsAsync(12, ct);
+            var competitorWatchTask = _bdDashboard.GetCompetitorWatchAsync(12, ct);
+            var forwardPipelineTask = _bdDashboard.GetForwardPipelineAsync(12, ct);
+            var funnelTask = _bdDashboard.GetPipelineFunnelAsync(ct);
+            await Task.WhenAll(pipelineTask, oppsTask, openStructuralSeatsTask, competitorWatchTask, forwardPipelineTask, funnelTask).ConfigureAwait(true);
+            var pipeline = pipelineTask.Result;
+            var opps = oppsTask.Result;
+            var openStructuralSeats = openStructuralSeatsTask.Result;
+            var competitorWatch = competitorWatchTask.Result;
+            var forwardPipeline = forwardPipelineTask.Result;
+            var funnel = funnelTask.Result;
             ct.ThrowIfCancellationRequested();
 
             var now = DateTimeOffset.UtcNow;
@@ -271,6 +301,10 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
+            // T4.002 audit fix (2026-05-30): log the failure to Serilog before
+            // setting the user-facing status string so post-incident telemetry
+            // has a durable record of what broke the BD first screen.
+            _logger?.LogError(ex, "BD dashboard load failed.");
             StatusMessage = $"Dashboard load failed: {ex.GetType().Name}: {ex.Message}";
         }
     }

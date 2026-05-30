@@ -11,8 +11,15 @@ using Kor.Opportunities.Data.IndustryEvents;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
-public sealed class EventsViewModel : INotifyPropertyChanged
+public sealed class EventsViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // T5.001 audit fix (2026-05-30): expose Events state to AI.
+    public string ProviderName => "BD Events";
+    public bool HasData => Events.Count > 0;
+    public string BuildContext()
+        => $"BD Industry Events — {Events.Count:N0} upcoming events tracked.";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly IIndustryEventStore _store;
     private string _statusMessage = "Ready.";
 

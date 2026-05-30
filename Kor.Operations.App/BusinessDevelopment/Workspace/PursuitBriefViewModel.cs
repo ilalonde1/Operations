@@ -15,8 +15,17 @@ using Kor.Opportunities.Data.MajorProjects;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
-public sealed class PursuitBriefViewModel : INotifyPropertyChanged
+public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // T5.001 audit fix (2026-05-30): expose Pursuit Brief state to AI.
+    public string ProviderName => "BD Pursuit Brief";
+    public bool HasData => _brief is not null;
+    public string BuildContext()
+        => _brief is null
+            ? "BD Pursuit Brief — no brief loaded."
+            : $"BD Pursuit Brief — project: {_brief.Project.ProjectName}; owner: {_brief.Project.Owner ?? "(unnamed)"}; architect: {_brief.Architect.ArchitectName ?? "(unnamed)"}; market: {_brief.Project.Market ?? "?"}.";
+    public string BuildLocalContext() => BuildContext();
+
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
     private readonly IPursuitBriefStore _store;
     private readonly IDeltekClientContextService _deltek;

@@ -8,6 +8,7 @@ namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 public partial class AdminView : UserControl
 {
     private CancellationTokenSource? _cts;
+    private bool _registered;
 
     public AdminView(AdminViewModel vm)
     {
@@ -22,6 +23,12 @@ public partial class AdminView : UserControl
             return;
         }
 
+        if (!_registered)
+        {
+            Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Register(vm);
+            _registered = true;
+        }
+
         var cts = ReplaceCts();
         try
         {
@@ -34,6 +41,12 @@ public partial class AdminView : UserControl
 
     private void AdminView_Unloaded(object sender, System.Windows.RoutedEventArgs e)
     {
+        if (_registered && DataContext is AdminViewModel vm)
+        {
+            Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(vm);
+            _registered = false;
+        }
+
         CancelAndDisposeCts();
     }
 

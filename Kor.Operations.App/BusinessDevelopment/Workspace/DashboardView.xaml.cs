@@ -26,10 +26,17 @@ public partial class DashboardView : UserControl
         DataContext = vm ?? throw new ArgumentNullException(nameof(vm));
     }
 
+    private bool _aiRegistered;
+
     private async void DashboardView_Loaded(object sender, System.Windows.RoutedEventArgs e)
     {
         if (DataContext is DashboardViewModel vm)
         {
+            if (!_aiRegistered)
+            {
+                AppServices.Get<AppAiContextBuilder>().Register(vm);
+                _aiRegistered = true;
+            }
             var cts = ReplaceCts();
             try
             {
@@ -47,6 +54,11 @@ public partial class DashboardView : UserControl
 
     private void DashboardView_Unloaded(object sender, System.Windows.RoutedEventArgs e)
     {
+        if (_aiRegistered && DataContext is DashboardViewModel vm)
+        {
+            AppServices.Get<AppAiContextBuilder>().Unregister(vm);
+            _aiRegistered = false;
+        }
         CancelAndDisposeCts();
     }
 

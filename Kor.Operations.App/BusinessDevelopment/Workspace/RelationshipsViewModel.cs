@@ -10,8 +10,18 @@ using Kor.Opportunities.Data.Awards;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
-public sealed class RelationshipsViewModel : INotifyPropertyChanged
+public sealed class RelationshipsViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // T5.001 audit fix (2026-05-30): expose Relationships state to AI.
+    public string ProviderName => "BD Relationships";
+    public bool HasData => Orgs.Count > 0;
+    public string BuildContext()
+        => $"BD Relationships — {CountDisplay}. Search='{SearchText}'; KindFilter='{KindFilter ?? "(all)"}'.";
+    public string BuildLocalContext()
+        => SelectedOrg is null
+            ? BuildContext()
+            : $"{BuildContext()} Selected: {SelectedOrg.DisplayName} (kind={SelectedOrg.Kind}, id={SelectedOrg.Id}).";
+
     private readonly ICanonicalOrgStore _store;
     private string _searchText = string.Empty;
     private string? _kindFilter;

@@ -73,7 +73,7 @@
                         <TextBlock Text="Website" FontSize="10" Foreground="#666"/>
                         <TextBlock>
                             <Hyperlink NavigateUri="{Binding AgentVendorWebsite}" RequestNavigate="OnHyperlinkRequestNavigate">
-                                <Run Text="{Binding AgentVendorWebsite}"/>
+                                <Run Text="{Binding AgentVendorWebsite, Mode=OneWay}"/>
                             </Hyperlink>
                         </TextBlock>
                     </StackPanel>
@@ -81,7 +81,7 @@
                         <TextBlock Text="LinkedIn" FontSize="10" Foreground="#666"/>
                         <TextBlock>
                             <Hyperlink NavigateUri="{Binding AgentVendorLinkedInUrl}" RequestNavigate="OnHyperlinkRequestNavigate">
-                                <Run Text="{Binding AgentVendorLinkedInUrl}"/>
+                                <Run Text="{Binding AgentVendorLinkedInUrl, Mode=OneWay}"/>
                             </Hyperlink>
                         </TextBlock>
                     </StackPanel>
@@ -168,9 +168,9 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock FontSize="12.5">
-                                    <Run Text="{Binding Name}" FontWeight="SemiBold"/>
+                                    <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
                                     <Run Text="  " Foreground="#999"/>
-                                    <Run Text="{Binding Title, FallbackValue=''}" Foreground="#444"/>
+                                    <Run Text="{Binding Title, FallbackValue='', Mode=OneWay}" Foreground="#444"/>
                                 </TextBlock>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -185,7 +185,7 @@
                                 <StackPanel Margin="0,0,0,4">
                                     <TextBlock FontSize="12.5">
                                         <Hyperlink NavigateUri="{Binding Url}" RequestNavigate="OnHyperlinkRequestNavigate">
-                                            <Run Text="{Binding Headline}"/>
+                                            <Run Text="{Binding Headline, Mode=OneWay}"/>
                                         </Hyperlink>
                                     </TextBlock>
                                     <TextBlock Text="{Binding Date, FallbackValue=''}" FontSize="10" Foreground="#888"/>

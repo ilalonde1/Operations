@@ -353,7 +353,8 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
                 // Source-side timeout is enforced inside the provider via a linked
                 // CancellationTokenSource — keep the HttpClient default so a sane fallback exists.
                 c.Timeout = TimeSpan.FromSeconds(120);
-            });
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "GenericCsvOpportunity"));
             builder.Services.AddSingleton<GenericCsvOpportunityProvider>(sp =>
             {
                 var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
@@ -405,7 +406,8 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddHttpClient(nameof(GenericJsonOpportunityProvider), c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(120);
-            });
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "GenericJsonOpportunity"));
             builder.Services.AddSingleton<GenericJsonOpportunityProvider>(sp =>
             {
                 var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
@@ -441,13 +443,15 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddHttpClient<RssOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(120);
-            });
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "RssOpportunity"));
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<RssOpportunityProvider>());
             builder.Services.AddHttpClient<CivicInfoHtmlOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromMinutes(3);
-            });
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "CivicInfoHtml"));
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<CivicInfoHtmlOpportunityProvider>());
 
@@ -493,7 +497,8 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddHttpClient<SamGovOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(180);
-            });
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "SamGov"));
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
             {
                 var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(SamGovOpportunityProvider));

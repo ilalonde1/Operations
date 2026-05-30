@@ -529,9 +529,11 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
                         .FirstOrDefault();
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // best-effort; leave URL/description null
+                // T4.003 audit fix: best-effort but logged so the data gap is
+                // diagnosable from the log even when the panel falls back gracefully.
+                Serilog.Log.Warning(ex, "Observation lookup for opportunity {OpportunityId} failed; URL/description left null.", current.Model.Id);
             }
 
             try
@@ -547,9 +549,11 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
                     OnPropertyChanged(nameof(ScoreFactorsHeader));
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // best-effort; leave factors empty
+                // T4.003 audit fix: log the failure so silent score-factor losses
+                // are traceable post-incident.
+                Serilog.Log.Warning(ex, "Score explanation for opportunity {OpportunityId} failed; factors left empty.", current.Model.Id);
             }
 
             if (engagement is null)
