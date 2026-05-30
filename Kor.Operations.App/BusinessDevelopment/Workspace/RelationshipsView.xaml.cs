@@ -94,6 +94,44 @@ public partial class RelationshipsView : UserControl
         }
     }
 
+    private async void GenerateOrgBriefButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedOrg is not { } row)
+        {
+            MessageBox.Show(OwnerWindow(), "Select an organization first.", "Generate Brief", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var briefStore = _services.GetRequiredService<Kor.Opportunities.Data.Briefs.IBriefDataStore>();
+        var generator = _services.GetRequiredService<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefGenerator>();
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        var path = System.IO.Path.Combine(
+            desktop,
+            $"KOR-Org-Brief-{row.Id}-{DateTime.Now:yyyyMMdd-HHmmss}.docx");
+
+        GenerateOrgBriefButton.IsEnabled = false;
+        try
+        {
+            var data = await briefStore.GetOrgBriefAsync(row.Id, CancellationToken.None).ConfigureAwait(true);
+            if (data is null)
+            {
+                MessageBox.Show(OwnerWindow(), "Organization not found.", "Generate Brief", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            await Task.Run(() => generator.WriteOrgBrief(data, path)).ConfigureAwait(true);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(OwnerWindow(), "Brief generation failed: " + ex.Message, "Generate Brief", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            GenerateOrgBriefButton.IsEnabled = true;
+        }
+    }
+
     private async Task SearchAsync()
     {
         var cts = ReplaceSearchCts();
