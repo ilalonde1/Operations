@@ -130,6 +130,14 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         }
     }
 
+    // Pre-navigation filter slots used by the cross-view filter broker
+    // (BdWorkspaceWindow.NavigateToForwardPipelineWithFilter). LoadAsync
+    // applies these AFTER the filter-option lists are populated and then
+    // clears them so a fresh LoadAsync doesn't double-apply.
+    public string? PendingProvinceFilter { get; set; }
+    public string? PendingStageFilter { get; set; }
+    public string? PendingSectorFilter { get; set; }
+
     public bool IndigenousOnly
     {
         get => _indigenousOnly;
@@ -206,6 +214,13 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
                 .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
                 .Select(g => $"{g.Count():N0} {g.Key}");
             StatusMessage = $"{Projects.Count:N0} projects - {string.Join(", ", byProvince)}";
+
+            // Apply any filter values that were set before LoadAsync was
+            // called (e.g. dashboard bar-chart drill-down). Setting the
+            // filter triggers FilteredProjectsView.Refresh() via the existing
+            // property setters; clear the slots so a subsequent reload via
+            // the Refresh button doesn't re-stamp them.
+            ApplyPendingFilters();
         }
         catch (OperationCanceledException)
         {
@@ -221,6 +236,27 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private void ApplyPendingFilters()
+    {
+        if (PendingProvinceFilter is { Length: > 0 } p)
+        {
+            ProvinceFilter = p;
+            PendingProvinceFilter = null;
+        }
+
+        if (PendingStageFilter is { Length: > 0 } s)
+        {
+            StageFilter = s;
+            PendingStageFilter = null;
+        }
+
+        if (PendingSectorFilter is { Length: > 0 } se)
+        {
+            SectorFilter = se;
+            PendingSectorFilter = null;
         }
     }
 

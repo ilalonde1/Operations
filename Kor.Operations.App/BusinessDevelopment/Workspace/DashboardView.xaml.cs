@@ -185,6 +185,76 @@ public partial class DashboardView : UserControl
     private void MarketValueChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
     private void DeadlineMonthChart_Click(object sender, RoutedEventArgs e) => GoToRfps();
 
+    /// <summary>
+    /// Per-bar click. Inner Button's Click stops bubbling so the outer chart
+    /// card's *_Chart_Click doesn't also fire. We discriminate which chart
+    /// the bar belongs to by walking up to the parent ItemsControl and
+    /// comparing its ItemsSource against the VM's chart collections — that
+    /// way one handler covers all four filter-aware charts.
+    /// </summary>
+    private void Bar_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.Tag is not string label || string.IsNullOrWhiteSpace(label))
+        {
+            return;
+        }
+
+        if (DataContext is not DashboardViewModel vm)
+        {
+            return;
+        }
+
+        var items = FindAncestorItemsControl(fe);
+        if (items is null)
+        {
+            return;
+        }
+
+        if (Window.GetWindow(this) is not BdWorkspaceWindow workspace)
+        {
+            return;
+        }
+
+        // Route by which chart's collection this bar's ItemsControl is bound to.
+        if (ReferenceEquals(items.ItemsSource, vm.SectorBars))
+        {
+            workspace.NavigateToForwardPipelineWithFilter(province: null, stage: null, sector: label);
+        }
+        else if (ReferenceEquals(items.ItemsSource, vm.MarketBars)
+            || ReferenceEquals(items.ItemsSource, vm.MarketValueBars))
+        {
+            workspace.NavigateToForwardPipelineWithFilter(province: label, stage: null, sector: null);
+        }
+        else if (ReferenceEquals(items.ItemsSource, vm.StageBars))
+        {
+            workspace.NavigateToForwardPipelineWithFilter(province: null, stage: label, sector: null);
+        }
+        else if (ReferenceEquals(items.ItemsSource, vm.DeadlineMonthBars))
+        {
+            // No per-month filter on the RFPs screen yet; fall back to the
+            // card-level navigation (open RFPs unfiltered). Better than the
+            // alternative of stuffing the month into FilterText, which would
+            // narrow by substring match — fragile.
+            workspace.NavigateToRfps();
+        }
+    }
+
+    private static ItemsControl? FindAncestorItemsControl(DependencyObject child)
+    {
+        var current = System.Windows.Media.VisualTreeHelper.GetParent(child);
+        while (current is not null)
+        {
+            if (current is ItemsControl ic)
+            {
+                return ic;
+            }
+
+            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
+    }
+
     private void GoToRfps()
     {
         if (Window.GetWindow(this) is BdWorkspaceWindow workspace)

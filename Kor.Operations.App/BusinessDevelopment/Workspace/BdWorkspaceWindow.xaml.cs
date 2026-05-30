@@ -62,8 +62,27 @@ public partial class BdWorkspaceWindow : Window
 
     public void NavigateToForwardPipeline()
     {
+        NavigateToForwardPipelineWithFilter(null, null, null);
+    }
+
+    /// <summary>
+    /// Like <see cref="NavigateToForwardPipeline"/> but pre-stamps one or more
+    /// filter values on the Forward Pipeline VM before its first load. Used by
+    /// the dashboard bar charts — clicking a "BC" bar in "By market" drills
+    /// straight into the Forward Pipeline filtered to BC.
+    /// </summary>
+    public void NavigateToForwardPipelineWithFilter(string? province, string? stage, string? sector)
+    {
         SetActiveNav(UpcomingButton);
-        ContentHost.Content = _services.GetRequiredService<App.Opportunities.MajorProjectsInventoryView>();
+        var view = _services.GetRequiredService<App.Opportunities.MajorProjectsInventoryView>();
+        if (view.DataContext is App.Opportunities.MajorProjectsInventoryViewModel vm)
+        {
+            vm.PendingProvinceFilter = province;
+            vm.PendingStageFilter = stage;
+            vm.PendingSectorFilter = sector;
+        }
+
+        ContentHost.Content = view;
     }
 
     public void NavigateToRelationships()

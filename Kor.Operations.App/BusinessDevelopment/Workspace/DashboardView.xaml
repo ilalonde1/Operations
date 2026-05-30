@@ -280,12 +280,15 @@
                                             <RowDefinition Height="*"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
-                                        <Border Grid.Row="0"
-                                                Background="{StaticResource Brand.Primary.Brush}"
-                                                CornerRadius="3,3,0,0"
-                                                Width="22"
+                                        <Button Grid.Row="0"
+                                                Style="{StaticResource Chart.BarButton}"
+                                                Tag="{Binding Label}"
+                                                Click="Bar_Click"
                                                 VerticalAlignment="Bottom"
                                                 HorizontalAlignment="Center">
+                                        <Border Background="{StaticResource Brand.Primary.Brush}"
+                                                CornerRadius="3,3,0,0"
+                                                Width="22">
                                             <Border.ToolTip>
                                                 <TextBlock>
                                                     <Run Text="{Binding Label, Mode=OneWay}"/>
@@ -300,6 +303,7 @@
                                                 </MultiBinding>
                                             </Border.Height>
                                         </Border>
+                                        </Button>
                                         <TextBlock Grid.Row="1"
                                                    Text="{Binding Label}"
                                                    FontSize="9"
@@ -466,12 +470,15 @@
                                             <RowDefinition Height="*"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
-                                        <Border Grid.Row="0"
-                                                Background="{StaticResource Brand.Primary.Brush}"
-                                                CornerRadius="3,3,0,0"
-                                                Width="22"
+                                        <Button Grid.Row="0"
+                                                Style="{StaticResource Chart.BarButton}"
+                                                Tag="{Binding Label}"
+                                                Click="Bar_Click"
                                                 VerticalAlignment="Bottom"
                                                 HorizontalAlignment="Center">
+                                        <Border Background="{StaticResource Brand.Primary.Brush}"
+                                                CornerRadius="3,3,0,0"
+                                                Width="22">
                                             <Border.ToolTip>
                                                 <TextBlock>
                                                     <Run Text="{Binding Label, Mode=OneWay}"/>
@@ -486,6 +493,7 @@
                                                 </MultiBinding>
                                             </Border.Height>
                                         </Border>
+                                        </Button>
                                         <TextBlock Grid.Row="1"
                                                    Text="{Binding Label}"
                                                    FontSize="9"
@@ -524,12 +532,15 @@
                                             <RowDefinition Height="*"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
-                                        <Border Grid.Row="0"
-                                                Background="{StaticResource Brand.Primary.Brush}"
-                                                CornerRadius="3,3,0,0"
-                                                Width="22"
+                                        <Button Grid.Row="0"
+                                                Style="{StaticResource Chart.BarButton}"
+                                                Tag="{Binding Label}"
+                                                Click="Bar_Click"
                                                 VerticalAlignment="Bottom"
                                                 HorizontalAlignment="Center">
+                                        <Border Background="{StaticResource Brand.Primary.Brush}"
+                                                CornerRadius="3,3,0,0"
+                                                Width="22">
                                             <Border.ToolTip>
                                                 <TextBlock>
                                                     <Run Text="{Binding Label, Mode=OneWay}"/>
@@ -544,6 +555,7 @@
                                                 </MultiBinding>
                                             </Border.Height>
                                         </Border>
+                                        </Button>
                                         <TextBlock Grid.Row="1"
                                                    Text="{Binding Label}"
                                                    FontSize="9"
@@ -582,12 +594,15 @@
                                             <RowDefinition Height="*"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
-                                        <Border Grid.Row="0"
-                                                Background="{StaticResource Brand.Primary.Brush}"
-                                                CornerRadius="3,3,0,0"
-                                                Width="22"
+                                        <Button Grid.Row="0"
+                                                Style="{StaticResource Chart.BarButton}"
+                                                Tag="{Binding Label}"
+                                                Click="Bar_Click"
                                                 VerticalAlignment="Bottom"
                                                 HorizontalAlignment="Center">
+                                        <Border Background="{StaticResource Brand.Primary.Brush}"
+                                                CornerRadius="3,3,0,0"
+                                                Width="22">
                                             <Border.ToolTip>
                                                 <TextBlock>
                                                     <Run Text="{Binding Label, Mode=OneWay}"/>
@@ -602,6 +617,7 @@
                                                 </MultiBinding>
                                             </Border.Height>
                                         </Border>
+                                        </Button>
                                         <TextBlock Grid.Row="1"
                                                    Text="{Binding Label}"
                                                    FontSize="9"
@@ -706,12 +722,15 @@
                                             <RowDefinition Height="*"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
-                                        <Border Grid.Row="0"
-                                                Background="{StaticResource Brand.Primary.Brush}"
-                                                CornerRadius="3,3,0,0"
-                                                Width="22"
+                                        <Button Grid.Row="0"
+                                                Style="{StaticResource Chart.BarButton}"
+                                                Tag="{Binding Label}"
+                                                Click="Bar_Click"
                                                 VerticalAlignment="Bottom"
                                                 HorizontalAlignment="Center">
+                                        <Border Background="{StaticResource Brand.Primary.Brush}"
+                                                CornerRadius="3,3,0,0"
+                                                Width="22">
                                             <Border.ToolTip>
                                                 <TextBlock>
                                                     <Run Text="{Binding Label, Mode=OneWay}"/>
@@ -726,6 +745,7 @@
                                                 </MultiBinding>
                                             </Border.Height>
                                         </Border>
+                                        </Button>
                                         <TextBlock Grid.Row="1"
                                                    Text="{Binding Label}"
                                                    FontSize="9"
