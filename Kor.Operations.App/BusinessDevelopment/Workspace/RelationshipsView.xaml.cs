@@ -95,6 +95,12 @@ public partial class RelationshipsView : UserControl
     }
 
     private async void GenerateOrgBriefButton_Click(object sender, RoutedEventArgs e)
+        => await GenerateOrgBriefAsync(asPdf: true).ConfigureAwait(true);
+
+    private async void GenerateOrgBriefAsWord_Click(object sender, RoutedEventArgs e)
+        => await GenerateOrgBriefAsync(asPdf: false).ConfigureAwait(true);
+
+    private async Task GenerateOrgBriefAsync(bool asPdf)
     {
         if (_vm.SelectedOrg is not { } row)
         {
@@ -103,11 +109,11 @@ public partial class RelationshipsView : UserControl
         }
 
         var briefStore = _services.GetRequiredService<Kor.Opportunities.Data.Briefs.IBriefDataStore>();
-        var generator = _services.GetRequiredService<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefGenerator>();
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        var ext = asPdf ? "pdf" : "docx";
         var path = System.IO.Path.Combine(
             desktop,
-            $"KOR-Org-Brief-{row.Id}-{DateTime.Now:yyyyMMdd-HHmmss}.docx");
+            $"KOR-Org-Brief-{row.Id}-{DateTime.Now:yyyyMMdd-HHmmss}.{ext}");
 
         GenerateOrgBriefButton.IsEnabled = false;
         try
@@ -119,7 +125,17 @@ public partial class RelationshipsView : UserControl
                 return;
             }
 
-            await Task.Run(() => generator.WriteOrgBrief(data, path)).ConfigureAwait(true);
+            if (asPdf)
+            {
+                var pdf = _services.GetRequiredService<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefPdfGenerator>();
+                await Task.Run(() => pdf.WriteOrgBrief(data, path)).ConfigureAwait(true);
+            }
+            else
+            {
+                var docx = _services.GetRequiredService<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefGenerator>();
+                await Task.Run(() => docx.WriteOrgBrief(data, path)).ConfigureAwait(true);
+            }
+
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)

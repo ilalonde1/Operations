@@ -74,6 +74,12 @@ public partial class OpportunitiesView : UserControl
     }
 
     private async void GenerateBriefButton_Click(object sender, RoutedEventArgs e)
+        => await GenerateOpportunityBriefAsync(asPdf: true).ConfigureAwait(true);
+
+    private async void GenerateBriefAsWord_Click(object sender, RoutedEventArgs e)
+        => await GenerateOpportunityBriefAsync(asPdf: false).ConfigureAwait(true);
+
+    private async Task GenerateOpportunityBriefAsync(bool asPdf)
     {
         var row = _vm.Selected;
         if (row is null)
@@ -83,11 +89,11 @@ public partial class OpportunitiesView : UserControl
         }
 
         var briefStore = AppServices.Get<Kor.Opportunities.Data.Briefs.IBriefDataStore>();
-        var generator = AppServices.Get<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefGenerator>();
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        var ext = asPdf ? "pdf" : "docx";
         var path = System.IO.Path.Combine(
             desktop,
-            $"KOR-Pursuit-Brief-{row.Id}-{DateTime.Now:yyyyMMdd-HHmmss}.docx");
+            $"KOR-Pursuit-Brief-{row.Id}-{DateTime.Now:yyyyMMdd-HHmmss}.{ext}");
 
         var previousStatus = _vm.StatusMessage;
         _vm.StatusMessage = "Generating pursuit brief…";
@@ -101,7 +107,17 @@ public partial class OpportunitiesView : UserControl
                 return;
             }
 
-            await Task.Run(() => generator.WriteOpportunityBrief(data, path)).ConfigureAwait(true);
+            if (asPdf)
+            {
+                var pdf = AppServices.Get<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefPdfGenerator>();
+                await Task.Run(() => pdf.WriteOpportunityBrief(data, path)).ConfigureAwait(true);
+            }
+            else
+            {
+                var docx = AppServices.Get<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefGenerator>();
+                await Task.Run(() => docx.WriteOpportunityBrief(data, path)).ConfigureAwait(true);
+            }
+
             _vm.StatusMessage = "Brief saved: " + path;
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
         }

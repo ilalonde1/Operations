@@ -29,7 +29,14 @@
                     Content="Generate Brief"
                     Width="140"
                     Click="GenerateOrgBriefButton_Click"
-                    ToolTip="Generate a one-page Word brief on this organization (saved to Desktop)."/>
+                    ToolTip="Generate a one-page PDF brief on this organization (saved to Desktop). Right-click to export as Word.">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Export as PDF (default)" Click="GenerateOrgBriefButton_Click"/>
+                        <MenuItem Header="Export as Word (.docx)" Click="GenerateOrgBriefAsWord_Click"/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
         </StackPanel>
 
         <ContentControl x:Name="ViewHost" Grid.Row="2"/>

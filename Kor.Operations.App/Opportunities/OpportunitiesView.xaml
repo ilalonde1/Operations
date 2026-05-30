@@ -49,7 +49,14 @@
                     Width="130"
                     Margin="0,0,8,0"
                     Click="GenerateBriefButton_Click"
-                    ToolTip="Generate a one-page Word pursuit brief for the selected opportunity (saved to Desktop)."/>
+                    ToolTip="Generate a one-page PDF pursuit brief for the selected opportunity (saved to Desktop). Right-click to export as Word.">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Export as PDF (default)" Click="GenerateBriefButton_Click"/>
+                        <MenuItem Header="Export as Word (.docx)" Click="GenerateBriefAsWord_Click"/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
 
             <Button x:Name="ClientIntelligenceButton"
                     Content="Client Intelligence"
