@@ -18,7 +18,7 @@
         </Style>
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#506070"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="Margin" Value="0,2,10,2"/>
         </Style>
     </UserControl.Resources>
@@ -36,7 +36,7 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="{Binding DisplayName}" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                            <Border Background="#1E5BA8" CornerRadius="999" Padding="8,3" Margin="14,2,0,0" VerticalAlignment="Top">
+                            <Border Background="{StaticResource CorporateBlue}" CornerRadius="999" Padding="8,3" Margin="14,2,0,0" VerticalAlignment="Top">
                                 <TextBlock Text="{Binding Kind}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
                             </Border>
                         </StackPanel>
@@ -178,7 +178,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Border Grid.Row="2" Padding="12,6" Background="#F0F0F2">
+        <Border Grid.Row="2" Padding="12,6" Background="{StaticResource App.Background}">
             <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
         </Border>
     </Grid>

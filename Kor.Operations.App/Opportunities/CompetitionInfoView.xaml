@@ -13,7 +13,7 @@
         <TabItem Header="Historical RFPs">
             <Grid DataContext="{Binding Rfps}">
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="#F4F4F6" Padding="10">
+                    <Border DockPanel.Dock="Top" Background="{StaticResource App.Background}" Padding="10">
                         <WrapPanel Orientation="Horizontal">
                             <StackPanel Margin="0,0,12,0">
                                 <TextBlock Text="Keyword" FontSize="11" Foreground="#666"/>
@@ -45,7 +45,7 @@
                                     Click="OpenAboutSources_Click"/>
                         </WrapPanel>
                     </Border>
-                    <Border DockPanel.Dock="Bottom" Background="#F4F4F6" Padding="10,6">
+                    <Border DockPanel.Dock="Bottom" Background="{StaticResource App.Background}" Padding="10,6">
                         <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#444"/>
                     </Border>
                     <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
@@ -76,7 +76,7 @@
         <TabItem Header="Awards">
             <Grid DataContext="{Binding Awards}">
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="#F4F4F6" Padding="10">
+                    <Border DockPanel.Dock="Top" Background="{StaticResource App.Background}" Padding="10">
                         <WrapPanel Orientation="Horizontal">
                             <StackPanel Margin="0,0,12,0">
                                 <TextBlock Text="Keyword (title/buyer/winner)" FontSize="11" Foreground="#666"/>
@@ -108,7 +108,7 @@
                                     Click="OpenAboutSources_Click"/>
                         </WrapPanel>
                     </Border>
-                    <Border DockPanel.Dock="Bottom" Background="#F4F4F6" Padding="10,6">
+                    <Border DockPanel.Dock="Bottom" Background="{StaticResource App.Background}" Padding="10,6">
                         <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#444"/>
                     </Border>
                     <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
@@ -120,7 +120,7 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock HorizontalAlignment="Center" FontWeight="Bold" FontSize="14"
-                                                   Foreground="#16A34A"
+                                                   Foreground="{StaticResource Risk.HighConfidence.Foreground}"
                                                    Text="{Binding AgentCompetesWithKor, Converter={StaticResource BoolToCheckConverter}, FallbackValue=''}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -128,7 +128,7 @@
                             <DataGridTemplateColumn Header="Winner" Width="220" SortMemberPath="AwardedToOrganization" CanUserSort="True">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding AwardedToOrganization}" Foreground="#1B6EC2"
+                                        <TextBlock Text="{Binding AwardedToOrganization}" Foreground="{StaticResource CorporateBlue}"
                                                    TextDecorations="Underline" Cursor="Hand"
                                                    MouseLeftButtonUp="WinnerCell_Click"
                                                    ToolTip="{Binding AwardedToOrganization}"/>
@@ -150,7 +150,7 @@
                             <DataGridTemplateColumn Header="Buyer" Width="200" SortMemberPath="AwardingOrganization" CanUserSort="True">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding AwardingOrganization}" Foreground="#1B6EC2"
+                                        <TextBlock Text="{Binding AwardingOrganization}" Foreground="{StaticResource CorporateBlue}"
                                                    TextDecorations="Underline" Cursor="Hand"
                                                    MouseLeftButtonUp="BuyerCell_Click"
                                                    ToolTip="{Binding AwardingOrganization}"/>

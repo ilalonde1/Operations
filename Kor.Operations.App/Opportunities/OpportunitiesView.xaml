@@ -101,7 +101,7 @@
         </StackPanel>
 
         <!-- Filter ribbon -->
-        <Border Grid.Row="3" Margin="12,0,12,8" Padding="10,6" Background="#F0F0F2" CornerRadius="4">
+        <Border Grid.Row="3" Margin="12,0,12,8" Padding="10,6" Background="{StaticResource App.Background}" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Filter:" Margin="0,4,8,0" FontWeight="SemiBold"/>
                 <TextBox Width="240" Margin="0,0,12,0"
@@ -169,7 +169,7 @@
                     <DataGridTemplateColumn Header="Repeat" Width="70" SortMemberPath="IsRepeatClient">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border Background="#1F7A1F" CornerRadius="999"
+                                <Border Background="{StaticResource Risk.HighConfidence.Foreground}" CornerRadius="999"
                                         Margin="2" Padding="6,2" HorizontalAlignment="Left"
                                         Visibility="{Binding IsRepeatClient, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                     <TextBlock Text="Repeat" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
@@ -201,7 +201,7 @@
                     <DataGridTemplateColumn Header="Prime" Width="70" SortMemberPath="IsPrimeConsultantRfp">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border Background="#3B6E8F" CornerRadius="999"
+                                <Border Background="{StaticResource CorporateBlue}" CornerRadius="999"
                                         Margin="2" Padding="6,2" HorizontalAlignment="Left"
                                         Visibility="{Binding IsPrimeConsultantRfp, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                     <TextBlock Text="Prime" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
@@ -221,7 +221,7 @@
             </DataGrid>
 
             <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                          Background="#D0D0D2" ResizeBehavior="PreviousAndNext"/>
+                          Background="{StaticResource Panel.Border}" ResizeBehavior="PreviousAndNext"/>
 
             <Border Grid.Column="2" Width="420" Background="White" Padding="14" Margin="0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -231,17 +231,17 @@
                                    FontSize="16" FontWeight="SemiBold"
                                    TextWrapping="Wrap" Margin="0,0,0,4"/>
                         <TextBlock Text="{Binding Selected.OpportunityKey}"
-                                   FontSize="11" Foreground="#506070" Margin="0,0,0,10"/>
+                                   FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,10"/>
 
                         <!-- Chips: Tier / Score / Status -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                             <Border Background="{Binding Selected.TierBrush}" CornerRadius="999" Padding="8,3" Margin="0,0,6,0">
                                 <TextBlock Text="{Binding Selected.TierDisplay}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
                             </Border>
-                            <Border Background="#506070" CornerRadius="999" Padding="8,3" Margin="0,0,6,0">
+                            <Border Background="{StaticResource Text.Secondary}" CornerRadius="999" Padding="8,3" Margin="0,0,6,0">
                                 <TextBlock Text="{Binding Selected.ScoreDisplay, StringFormat='Score {0}'}" Foreground="White" FontSize="11"/>
                             </Border>
-                            <Border Background="#1E5BA8" CornerRadius="999" Padding="8,3">
+                            <Border Background="{StaticResource CorporateBlue}" CornerRadius="999" Padding="8,3">
                                 <TextBlock Text="{Binding Selected.Model.Status}" Foreground="White" FontSize="11"/>
                             </Border>
                         </StackPanel>
@@ -261,10 +261,10 @@
                                                        FontWeight="SemiBold" TextAlignment="Right" Margin="0,0,8,0">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="#1F7A1F"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsPositive}" Value="False">
-                                                                <Setter Property="Foreground" Value="#C11E1E"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -294,28 +294,28 @@
                                 <RowDefinition/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Buyer" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Buyer" Foreground="{StaticResource Text.Secondary}" Margin="0,2"/>
                             <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Selected.BuyerName}" TextWrapping="Wrap" Margin="0,2"/>
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Location" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Location" Foreground="{StaticResource Text.Secondary}" Margin="0,2"/>
                             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Selected.LocationDisplay}" TextWrapping="Wrap" Margin="0,2"/>
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Value" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Value" Foreground="{StaticResource Text.Secondary}" Margin="0,2"/>
                             <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Selected.EstimatedValueDisplay}" Margin="0,2"/>
 
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Deadline" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Deadline" Foreground="{StaticResource Text.Secondary}" Margin="0,2"/>
                             <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Selected.DeadlineDisplay}" Margin="0,2"/>
 
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Owner" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Owner" Foreground="{StaticResource Text.Secondary}" Margin="0,2"/>
                             <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Selected.OwnerStaffId, TargetNullValue=''}" Margin="0,2"/>
 
-                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Prime sector" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Prime sector" Foreground="{StaticResource Text.Secondary}" Margin="0,2"/>
                             <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Selected.PrimeProjectSector}" Margin="0,2"/>
 
-                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Likely prime" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Likely prime" Foreground="{StaticResource Text.Secondary}" Margin="0,2"/>
                             <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Selected.PrimeLikelyType}" Margin="0,2"/>
 
-                            <TextBlock Grid.Row="7" Grid.Column="0" Text="KOR fit" Foreground="#506070" Margin="0,2"/>
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="KOR fit" Foreground="{StaticResource Text.Secondary}" Margin="0,2"/>
                             <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Selected.KorFitDisplay}" Margin="0,2"/>
                         </Grid>
 
@@ -331,25 +331,25 @@
                         <!-- Description from the freshest linked OpportunityObservation. -->
                         <StackPanel Visibility="{Binding HasDescription, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                                     Margin="0,0,0,12">
-                            <TextBlock Text="Description" FontWeight="SemiBold" Foreground="#506070" Margin="0,0,0,4"/>
+                            <TextBlock Text="Description" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
                             <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
                                 <TextBlock Text="{Binding SelectedDescription}" TextWrapping="Wrap" FontSize="12"/>
                             </ScrollViewer>
                         </StackPanel>
 
                         <!-- No-engagement state -->
-                        <Border Background="#F4F8FB" BorderBrush="#C7D7E2" BorderThickness="1" CornerRadius="3"
+                        <Border Background="#F4F8FB" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="3"
                                 Padding="10" Margin="0,4,0,0"
                                 Visibility="{Binding NoEngagement, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                             <TextBlock Text="Not yet a Pursuit. Click 'Promote to Pursuit' above to start tracking activity, contacts, and proposal work."
-                                       TextWrapping="Wrap" FontSize="11" Foreground="#506070"/>
+                                       TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
                         </Border>
 
                         <!-- Engagement section -->
                         <StackPanel Visibility="{Binding HasEngagement, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" Margin="0,4,0,0">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <TextBlock Text="PURSUIT:" FontWeight="SemiBold" Foreground="#506070" Margin="0,3,8,0"/>
-                                <Border Background="#1F7A1F" CornerRadius="999" Padding="8,3">
+                                <TextBlock Text="PURSUIT:" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,3,8,0"/>
+                                <Border Background="{StaticResource Risk.HighConfidence.Foreground}" CornerRadius="999" Padding="8,3">
                                     <TextBlock Text="{Binding SelectedEngagementStageDisplay}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
                                 </Border>
                                 <Button Content="Open in Pursuits..." Margin="12,0,0,0" Padding="8,3"
@@ -371,11 +371,11 @@
                         <ItemsControl ItemsSource="{Binding SelectedActivities}" Margin="0,0,0,10">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="#E0E0E2" BorderThickness="0,0,0,1" Padding="0,4">
+                                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,0,0,1" Padding="0,4">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding OccurredAtUtc, StringFormat='{}{0:yyyy-MM-dd}'}" Foreground="#506070" FontSize="11" Margin="0,0,8,0"/>
-                                                <TextBlock Text="{Binding ActivityType}" Foreground="#506070" FontSize="11" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding OccurredAtUtc, StringFormat='{}{0:yyyy-MM-dd}'}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding ActivityType}" Foreground="{StaticResource Text.Secondary}" FontSize="11" FontWeight="SemiBold"/>
                                             </StackPanel>
                                             <TextBlock Text="{Binding Subject}" TextWrapping="Wrap" Margin="0,2,0,0"/>
                                         </StackPanel>
@@ -404,16 +404,16 @@
                         <ItemsControl ItemsSource="{Binding SelectedContacts}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="#E0E0E2" BorderThickness="0,0,0,1" Padding="0,4">
+                                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,0,0,1" Padding="0,4">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="*" Foreground="#E5A800" Margin="0,0,4,0"
+                                                <TextBlock Text="*" Foreground="{StaticResource Risk.AtRisk.Foreground}" Margin="0,0,4,0"
                                                            Visibility="{Binding IsPrimary, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
                                                 <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
-                                                <TextBlock Text="{Binding Role, StringFormat='  {0}'}" Foreground="#506070"/>
+                                                <TextBlock Text="{Binding Role, StringFormat='  {0}'}" Foreground="{StaticResource Text.Secondary}"/>
                                             </StackPanel>
-                                            <TextBlock Text="{Binding Email}" Foreground="#506070" FontSize="11"/>
-                                            <TextBlock Text="{Binding Phone}" Foreground="#506070" FontSize="11"/>
+                                            <TextBlock Text="{Binding Email}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                            <TextBlock Text="{Binding Phone}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -424,7 +424,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="5" Padding="12,6" Background="#F0F0F2">
+        <Border Grid.Row="5" Padding="12,6" Background="{StaticResource App.Background}">
             <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
         </Border>
     </Grid>

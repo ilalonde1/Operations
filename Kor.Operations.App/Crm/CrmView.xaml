@@ -40,13 +40,13 @@
         </StackPanel>
 
         <Border Grid.Row="1" Margin="0,0,0,8" Padding="10,6"
-                Background="#F4F8FB" BorderBrush="#C7D7E2" BorderThickness="1"
+                Background="#F4F8FB" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
                 CornerRadius="3"
                 Visibility="{Binding HasAnalytics, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
             <StackPanel Orientation="Vertical">
                 <TextBlock Text="{Binding AnalyticsHeadline}" FontWeight="SemiBold"/>
                 <TextBlock Text="{Binding AnalyticsBuyerTypeSummary}"
-                           Foreground="#506070" FontSize="11" Margin="0,2,0,0"
+                           Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"
                            TextTrimming="CharacterEllipsis"/>
             </StackPanel>
         </Border>
@@ -97,7 +97,7 @@
             </Border>
 
             <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                          Background="#D0D0D2" ResizeBehavior="PreviousAndNext"/>
+                          Background="{StaticResource Panel.Border}" ResizeBehavior="PreviousAndNext"/>
 
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
@@ -137,12 +137,12 @@
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                        <Border Background="#22588B" CornerRadius="999"
+                                        <Border Background="{StaticResource CorporateBlue}" CornerRadius="999"
                                                 Padding="6,2" Margin="0,0,6,0"
                                                 Visibility="{Binding DeltekContext.Company.PriorWork, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                             <TextBlock Text="Prior work" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
                                         </Border>
-                                        <Border Background="#1F7A1F" CornerRadius="999"
+                                        <Border Background="{StaticResource Risk.HighConfidence.Foreground}" CornerRadius="999"
                                                 Padding="6,2" Margin="0,0,6,0"
                                                 Visibility="{Binding DeltekContext.Company.Recommend, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                             <TextBlock Text="Recommended" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
@@ -152,7 +152,7 @@
                                                 Visibility="{Binding DeltekContext.Company.GovernmentAgency, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                             <TextBlock Text="Government" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
                                         </Border>
-                                        <Border Background="#C11E1E" CornerRadius="999"
+                                        <Border Background="{StaticResource Risk.Critical.Foreground}" CornerRadius="999"
                                                 Padding="6,2" Margin="0,0,6,0"
                                                 Visibility="{Binding DeltekContext.Company.Competitor, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                             <TextBlock Text="Competitor" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
@@ -240,7 +240,7 @@
             </Grid>
         </Grid>
 
-        <Border Grid.Row="3" Padding="12,6" Background="#F0F0F2">
+        <Border Grid.Row="3" Padding="12,6" Background="{StaticResource App.Background}">
             <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
         </Border>
     </Grid>

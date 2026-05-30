@@ -15,7 +15,7 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="#1E3A8A"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Padding" Value="12,8"/>
             <Setter Property="Margin" Value="0,2"/>
@@ -24,10 +24,10 @@
         </Style>
 
         <Style x:Key="ActiveNavButton" TargetType="Button" BasedOn="{StaticResource NavButton}">
-            <Setter Property="Background" Value="#EAF1FF"/>
-            <Setter Property="BorderBrush" Value="#2563EB"/>
+            <Setter Property="Background" Value="#EDEEF1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brand.Primary.Brush}"/>
             <Setter Property="BorderThickness" Value="3,0,0,0"/>
-            <Setter Property="Foreground" Value="#2563EB"/>
+            <Setter Property="Foreground" Value="{StaticResource Brand.Primary.Brush}"/>
         </Style>
     </Window.Resources>
 
@@ -58,11 +58,11 @@
                                  Height="32"
                                  Padding="10,6"
                                  Background="#FFFFFFFF"
-                                 BorderBrush="#D0D7E2"
+                                 BorderBrush="{StaticResource Panel.Border}"
                                  BorderThickness="1"/>
                         <TextBlock Text="Search org / project / person"
                                    Margin="12,0,0,0"
-                                   Foreground="#7A8798"
+                                   Foreground="{StaticResource Text.Secondary}"
                                    VerticalAlignment="Center"
                                    IsHitTestVisible="False">
                             <TextBlock.Style>
