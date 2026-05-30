@@ -50,9 +50,7 @@ public partial class BdWorkspaceWindow : Window
     private void Upcoming_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(UpcomingButton);
-        var win = _services.GetRequiredService<App.Opportunities.MajorProjectsInventoryWindow>();
-        win.Owner = this;
-        win.Show();
+        ContentHost.Content = _services.GetRequiredService<App.Opportunities.MajorProjectsInventoryView>();
     }
 
     private void Relationships_Click(object sender, RoutedEventArgs e)
@@ -65,12 +63,6 @@ public partial class BdWorkspaceWindow : Window
     {
         SetActiveNav(EventsButton);
         ContentHost.Content = _services.GetRequiredService<EventsView>();
-    }
-
-    private void People_Click(object sender, RoutedEventArgs e)
-    {
-        SetActiveNav(PeopleButton);
-        ContentHost.Content = "Relationships folding into the workspace next.";
     }
 
     private void Competition_Click(object sender, RoutedEventArgs e)
@@ -128,7 +120,6 @@ public partial class BdWorkspaceWindow : Window
             UpcomingButton,
             RelationshipsButton,
             EventsButton,
-            PeopleButton,
             CompetitionButton,
             AdminButton,
             RegionBriefButton,

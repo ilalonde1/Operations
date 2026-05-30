@@ -80,6 +80,7 @@ internal static class OpportunitiesModule
         services.AddTransient<OpportunitiesWindow>();
         services.AddTransient<MajorProjectsInventoryViewModel>();
         services.AddTransient<MajorProjectsInventoryWindow>();
+        services.AddTransient<MajorProjectsInventoryView>();
         services.AddTransient<PrimePipelineViewModel>();
         services.AddTransient<PrimePipelineWindow>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardViewModel>();

@@ -83,7 +83,6 @@
                     <Button x:Name="UpcomingButton" Content="Upcoming" Style="{StaticResource NavButton}" Click="Upcoming_Click"/>
                     <Button x:Name="RelationshipsButton" Content="Relationships" Style="{StaticResource NavButton}" Click="Relationships_Click"/>
                     <Button x:Name="EventsButton" Content="Events" Style="{StaticResource NavButton}" Click="Events_Click"/>
-                    <Button x:Name="PeopleButton" Content="People" Style="{StaticResource NavButton}" Click="People_Click"/>
                     <Button x:Name="CompetitionButton" Content="Competition" Style="{StaticResource NavButton}" Click="Competition_Click"/>
                     <Button x:Name="AdminButton" Content="Admin" Style="{StaticResource NavButton}" Click="Admin_Click"/>
                     <Button x:Name="RegionBriefButton" Content="Region Brief…" Style="{StaticResource NavButton}" Click="RegionBrief_Click"/>
