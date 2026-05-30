@@ -140,6 +140,7 @@ internal static class Program
             if (Run("incumbent-rosters")) await ImportIncumbentRostersAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("capital-funding-signals")) await ImportCapitalFundingSignalsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("seismic-pipeline")) await ImportSeismicPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("island-okanagan-pairing")) await ImportIslandOkanaganPairingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -3729,6 +3730,145 @@ internal static class Program
                 Province = ProvinceFromSeismicRegion(region),
                 StructuralEngineerName = structuralOrg,
                 StructuralEngineerCanonicalOrgId = structuralId,
+            };
+
+            await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+        }
+    }
+
+    // === KOR-Island-Okanagan-Pairing (pairings.jsonl) ================================
+    // Round 2 of the Island/Okanagan ecosystem mapping (Round 1 produced the org +
+    // project anchor lists at ..\KOR-Island-Okanagan-Ecosystem). One JSON object per
+    // line. Each row is a verified architect / structural-engineer pairing on a
+    // specific Island or Okanagan public building project, 2021-2026. The killer
+    // intel: every row has BOTH architectOrg AND structuralOrg confirmed from a
+    // primary source URL, so the StructuralPartnerMap dossier section and the
+    // Competitor Watch panel can finally answer "who pairs with whom".
+    //
+    // Upserts as MajorProjectsInventory with ProjectStage="IslandOkanaganPairing"
+    // so the Forward Pipeline view can isolate this dataset. Owner / architect /
+    // structural / GC names all resolve through CanonicalOrgResolver so the
+    // network graph hangs together.
+    private static async Task ImportIslandOkanaganPairingAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Island-Okanagan-Pairing", "outputs", "pairings.jsonl");
+        if (!File.Exists(path))
+        {
+            Console.WriteLine($"[WARN] Missing payload: {path}");
+            stats.FilesMissing++;
+            return;
+        }
+
+        Console.WriteLine($"[FILE] {path}");
+        var lines = File.ReadAllLines(path);
+        foreach (var raw in lines)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            using var doc = JsonDocument.Parse(raw, JsonOptions);
+            var project = doc.RootElement;
+
+            var projectName = String(project, "projectName");
+            if (string.IsNullOrWhiteSpace(projectName))
+            {
+                stats.ProjectRowsSkipped++;
+                continue;
+            }
+
+            var owner = String(project, "owner");
+            var architectOrg = String(project, "architectOrg");
+            var structuralOrg = String(project, "structuralOrg");
+            var gcOrg = String(project, "gcOrConstructionManager");
+            var region = String(project, "region");
+            var sector = String(project, "sector");
+            var stage = String(project, "stage");
+            var notes = String(project, "notes");
+            var mep = String(project, "mepConsultants");
+            var year = Short(project, "year");
+
+            var ownerId = await ResolveAsync(resolver, options, stats, owner, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+            var architectId = await ResolveAsync(resolver, options, stats, architectOrg, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+            var structuralId = await ResolveAsync(resolver, options, stats, structuralOrg, OrgKinds.Competitor, "IslandOkanaganPairing.Structural", ct).ConfigureAwait(false);
+            var gcId = await ResolveAsync(resolver, options, stats, gcOrg, OrgKinds.GeneralContractor, "IslandOkanaganPairing.Gc", ct).ConfigureAwait(false);
+
+            var scheduleParts = new List<string>();
+            if (year.HasValue) scheduleParts.Add(year.Value.ToString());
+            if (!string.IsNullOrWhiteSpace(mep)) scheduleParts.Add("MEP: " + mep);
+            if (!string.IsNullOrWhiteSpace(notes)) scheduleParts.Add(notes);
+
+            // year on a "Completed" row is completion year; on Construction /
+            // Design / RFP rows it's "year of record" for the team-assembly
+            // event. Map both ways so the Forward Pipeline view sorts sensibly.
+            short? completionYear = null;
+            short? startYear = null;
+            if (year.HasValue)
+            {
+                if (string.Equals(stage, "Completed", StringComparison.OrdinalIgnoreCase))
+                {
+                    completionYear = year;
+                }
+                else
+                {
+                    startYear = year;
+                }
+            }
+
+            var record = new MajorProjectRecord(
+                Source: "IslandOkanaganPairing",
+                SourceKey: Sha1($"IslandOkanaganPairing|{projectName}|{region}"),
+                ProjectName: projectName,
+                ProjectDescription: notes,
+                EstimatedCostCad: LongOrNull(project, "valueCad"),
+                EstimatedCostText: null,
+                Sector: sector,
+                SubSector: null,
+                ConstructionType: null,
+                ConstructionSubtype: null,
+                ProjectType: null,
+                RegionName: region,
+                MunicipalityName: null,
+                ProponentName: owner,
+                ProponentCanonicalOrgId: ownerId,
+                ArchitectName: architectOrg,
+                ArchitectCanonicalOrgId: architectId,
+                Stage: stage,
+                ProjectStatus: stage,
+                ProjectStage: "IslandOkanaganPairing",
+                ProjectCategoryName: null,
+                PublicFundingInd: true,
+                ProvincialFunding: null,
+                FederalFunding: null,
+                MunicipalFunding: null,
+                OtherPublicFunding: null,
+                GreenBuildingInd: null,
+                IndigenousInd: null,
+                IndigenousNames: null,
+                ConstructionJobs: null,
+                OperatingJobs: null,
+                StandardizedStartDate: null,
+                StandardizedCompletionDate: null,
+                StartYear: startYear,
+                CompletionYear: completionYear,
+                ScheduleNotes: scheduleParts.Count == 0 ? null : string.Join(" | ", scheduleParts),
+                Latitude: null,
+                Longitude: null,
+                ProjectWebsite: null,
+                SourceUrl: FirstSourceUrl(project),
+                RawJson: project.GetRawText())
+            {
+                Province = ProvinceFromSeismicRegion(region),  // Island/Okanagan -> BC; reuses Seismic mapper
+                StructuralEngineerName = structuralOrg,
+                StructuralEngineerCanonicalOrgId = structuralId,
+                GeneralContractorName = gcOrg,
+                GeneralContractorCanonicalOrgId = gcId,
             };
 
             await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
