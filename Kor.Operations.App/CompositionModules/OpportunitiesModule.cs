@@ -122,6 +122,7 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.Opportunities.HistoricalOpportunityDetailViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.KorPursuitDialogViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoWindow>();
+        services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoView>();
         services.AddTransient<IngestionRunsWindow>();
 
         // Phase 3A: rules-based scoring. Singletons everywhere - the accessor

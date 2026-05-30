@@ -68,9 +68,7 @@ public partial class BdWorkspaceWindow : Window
     private void Competition_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(CompetitionButton);
-        var win = _services.GetRequiredService<App.Opportunities.CompetitionInfoWindow>();
-        win.Owner = this;
-        win.Show();
+        ContentHost.Content = _services.GetRequiredService<App.Opportunities.CompetitionInfoView>();
     }
 
     private void Admin_Click(object sender, RoutedEventArgs e)
