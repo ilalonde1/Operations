@@ -141,6 +141,7 @@ internal static class Program
             if (Run("capital-funding-signals")) await ImportCapitalFundingSignalsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("seismic-pipeline")) await ImportSeismicPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("island-okanagan-pairing")) await ImportIslandOkanaganPairingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("bd-tracking")) await ImportBdTrackingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -3874,6 +3875,425 @@ internal static class Program
             await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
         }
     }
+
+    // === BD Tracking Spreadsheet (bd-tracking.jsonl) =================================
+    // Source: docs/KOR Structural BD Tracking 2026.xlsx, 6 regional sheets, extracted
+    // to tools/BdTrackingImport/inputs/bd-tracking.jsonl by extract.py. Each row is one
+    // BD touchpoint between a KOR initiator (Omar/Conor/Islam/Jim/Rory/Ian) and a
+    // contact at an external firm (the "Company" column).
+    //
+    // Import groups rows by (Initiator, Company, Region) and upserts ONE CrmEngagement
+    // per group; each spreadsheet row becomes one CrmActivity under that engagement;
+    // Proposals$ sum into ProposalsSubmittedCad/AcceptedCad on the engagement. USA rows
+    // (USD) convert at 1.36 (DASHBOARD sheet's $US Conv. rate). Companies resolve via
+    // CanonicalOrgResolver — Concord Pacifid->Concord Pacific kind of fixes courtesy
+    // of NormalizeForFuzzyMatch from Round 35a's audit work.
+    private static async Task ImportBdTrackingAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "inputs", "bd-tracking.jsonl");
+        if (!File.Exists(path))
+        {
+            Console.WriteLine($"[WARN] Missing payload: {path}");
+            stats.FilesMissing++;
+            return;
+        }
+
+        Console.WriteLine($"[FILE] {path}");
+
+        // Parse all rows into typed records.
+        var rows = new List<BdTrackingRow>();
+        foreach (var raw in File.ReadAllLines(path))
+        {
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            using var doc = JsonDocument.Parse(raw, JsonOptions);
+            rows.Add(BdTrackingRow.FromJson(doc.RootElement));
+        }
+        Console.WriteLine($"[BD] parsed {rows.Count} rows");
+
+        // Group by normalized (Initiator, Company, Region). Each group becomes one
+        // engagement with N activities under it.
+        var groups = rows
+            .Where(r => !string.IsNullOrWhiteSpace(r.Company))
+            .GroupBy(r => new
+            {
+                Initiator = NormalizeInitiator(r.Initiator),
+                Company = (r.Company ?? string.Empty).Trim(),
+                Region = r.Region ?? string.Empty,
+            })
+            .ToList();
+
+        Console.WriteLine($"[BD] grouped into {groups.Count} engagements");
+
+        var skipped = 0;
+        var engagementsCreated = 0;
+        var engagementsUpdated = 0;
+        var activitiesInserted = 0;
+        var contactsInserted = 0;
+        var unresolvedCompanies = new List<string>();
+        var reconciliation = new List<string>
+        {
+            "Region,Initiator,Company,BuyerCanonicalOrgId,EngagementId,Activities,ProposalsSubmittedCad,ProposalsAcceptedCad,Status",
+        };
+
+        foreach (var g in groups)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var initiator = g.Key.Initiator;
+            var company = g.Key.Company;
+            var region = g.Key.Region;
+            var groupRows = g.OrderBy(r => r.Date ?? DateTimeOffset.MinValue).ToList();
+
+            // Resolve Company -> CanonicalOrg. We use Unknown kind for genuinely new
+            // canonicals because BD-tracking companies are a mix of Developers /
+            // Architects / Buyers / GCs and the spreadsheet doesn't tag them. The
+            // resolver matches existing canonicals by NormalizedName first
+            // (preserving their existing Kind), so this default only affects
+            // truly new firms — the next data-honing pass reclassifies them
+            // based on actual research.
+            var buyerId = await ResolveAsync(resolver, options, stats, company, OrgKinds.Unknown, "BdTracking.Company", ct).ConfigureAwait(false);
+            if (buyerId is null && !options.DryRun)
+            {
+                unresolvedCompanies.Add(company);
+            }
+
+            // Roll up Submitted/Accepted across rows in this group (USA -> CAD).
+            decimal? submitted = null;
+            decimal? accepted = null;
+            foreach (var r in groupRows)
+            {
+                if (r.ProposalsSubmittedCad.HasValue)
+                {
+                    var v = r.Currency == "USD" ? r.ProposalsSubmittedCad.Value * 1.36m : r.ProposalsSubmittedCad.Value;
+                    submitted = (submitted ?? 0) + v;
+                }
+                if (r.ProposalsAcceptedCad.HasValue)
+                {
+                    var v = r.Currency == "USD" ? r.ProposalsAcceptedCad.Value * 1.36m : r.ProposalsAcceptedCad.Value;
+                    accepted = (accepted ?? 0) + v;
+                }
+            }
+
+            // Collect freeform "Potential Projects" text from any rows that have it.
+            var potentialBag = groupRows
+                .Select(r => r.PotentialProjects)
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Distinct()
+                .ToList();
+            var potentialProjects = potentialBag.Count == 0 ? null : string.Join(" | ", potentialBag);
+
+            // Upsert engagement.
+            long engagementId = 0;
+            string status;
+            if (options.DryRun)
+            {
+                Console.WriteLine($"[DRY-RUN] BdTracking engagement: initiator={initiator}; company={company}; region={region}; activities={groupRows.Count}; submitted={submitted ?? 0:N0}; accepted={accepted ?? 0:N0}");
+                status = "DryRun";
+            }
+            else
+            {
+                var upsert = await UpsertBdTrackingEngagementAsync(options.OpportunitiesDb!, initiator, region, buyerId, submitted, accepted, potentialProjects, ct).ConfigureAwait(false);
+                engagementId = upsert.Id;
+                if (upsert.WasInsert) engagementsCreated++;
+                else engagementsUpdated++;
+                status = upsert.WasInsert ? "Created" : "Updated";
+
+                // Contact: if any row has a Contact name, upsert one (de-dup by display name).
+                var contactByName = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                foreach (var r in groupRows)
+                {
+                    if (string.IsNullOrWhiteSpace(r.Contact)) continue;
+                    if (contactByName.ContainsKey(r.Contact)) continue;
+                    var contactId = await UpsertBdTrackingContactAsync(options.OpportunitiesDb!, engagementId, r.Contact, r.ContactInfo, initiator, ct).ConfigureAwait(false);
+                    contactByName[r.Contact] = contactId;
+                    contactsInserted++;
+                }
+
+                // Activities (one per row).
+                foreach (var r in groupRows)
+                {
+                    long? contactId = null;
+                    if (!string.IsNullOrWhiteSpace(r.Contact) && contactByName.TryGetValue(r.Contact, out var c)) contactId = c;
+                    await InsertBdTrackingActivityAsync(options.OpportunitiesDb!, engagementId, r, contactId, initiator, ct).ConfigureAwait(false);
+                    activitiesInserted++;
+                }
+            }
+
+            reconciliation.Add(string.Join(',', new[]
+            {
+                CsvEscape(region),
+                CsvEscape(initiator),
+                CsvEscape(company),
+                buyerId?.ToString() ?? "",
+                engagementId == 0 ? "" : engagementId.ToString(),
+                groupRows.Count.ToString(),
+                submitted?.ToString("F2") ?? "",
+                accepted?.ToString("F2") ?? "",
+                status,
+            }));
+        }
+
+        // Skipped rows summary
+        foreach (var r in rows.Where(r => string.IsNullOrWhiteSpace(r.Company)))
+        {
+            skipped++;
+            stats.ProjectRowsSkipped++;
+        }
+
+        // Write the reconciliation CSV alongside the input so Ian can review.
+        var outDir = Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "outputs");
+        Directory.CreateDirectory(outDir);
+        var reconPath = Path.Combine(outDir, options.DryRun ? "reconciliation-dryrun.csv" : "reconciliation.csv");
+        File.WriteAllLines(reconPath, reconciliation);
+        Console.WriteLine($"[BD] reconciliation written to {reconPath}");
+
+        Console.WriteLine($"[BD] groups={groups.Count}; activities-rows={rows.Count - skipped}; skipped={skipped}");
+        Console.WriteLine($"[BD] engagements-created={engagementsCreated}; engagements-updated={engagementsUpdated}; activities-inserted={activitiesInserted}; contacts-inserted={contactsInserted}");
+        if (unresolvedCompanies.Count > 0)
+        {
+            Console.WriteLine($"[BD] unresolved companies (no canonical match — auto-created): {unresolvedCompanies.Count}");
+            foreach (var c in unresolvedCompanies.Take(10)) Console.WriteLine($"       - {c}");
+        }
+    }
+
+    // Initiator names from the spreadsheet have typos and casing inconsistency
+    // ("Omar ALcazar", "Conor Murtagh"). Normalize to a stable first-name token
+    // for CrmEngagement.OwnerStaffId.
+    private static string NormalizeInitiator(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "Unknown";
+        var first = raw.Trim().Split(' ', 2)[0];
+        // Title-case: "ALcazar" -> ignore (we only use the first name token anyway)
+        if (first.Length == 0) return "Unknown";
+        return char.ToUpperInvariant(first[0]) + first[1..].ToLowerInvariant();
+    }
+
+    private static string CsvEscape(string? s)
+    {
+        if (s is null) return "";
+        if (s.Contains(',') || s.Contains('"') || s.Contains('\n'))
+            return "\"" + s.Replace("\"", "\"\"") + "\"";
+        return s;
+    }
+
+    private sealed class BdTrackingRow
+    {
+        public string Region { get; set; } = "";
+        public int RowNumber { get; set; }
+        public DateTimeOffset? Date { get; set; }
+        public string? Initiator { get; set; }
+        public string? Contact { get; set; }
+        public string? Company { get; set; }
+        public string? ContactInfo { get; set; }
+        public string? Location { get; set; }
+        public string? Type { get; set; }
+        public string? PotentialProjects { get; set; }
+        public decimal? ProposalsSubmittedCad { get; set; }
+        public decimal? ProposalsAcceptedCad { get; set; }
+        public string? Notes { get; set; }
+        public string Currency { get; set; } = "CAD";
+
+        public static BdTrackingRow FromJson(JsonElement e)
+        {
+            return new BdTrackingRow
+            {
+                Region = e.GetProperty("region").GetString() ?? "",
+                RowNumber = e.TryGetProperty("rowNumber", out var rn) && rn.ValueKind == JsonValueKind.Number ? rn.GetInt32() : 0,
+                Date = TryDate(e, "date"),
+                Initiator = TryStr(e, "initiator"),
+                Contact = TryStr(e, "contact"),
+                Company = TryStr(e, "company"),
+                ContactInfo = TryStr(e, "contactInfo"),
+                Location = TryStr(e, "location"),
+                Type = TryStr(e, "type"),
+                PotentialProjects = TryStr(e, "potentialProjects"),
+                ProposalsSubmittedCad = TryDec(e, "proposalsSubmittedCad"),
+                ProposalsAcceptedCad = TryDec(e, "proposalsAcceptedCad"),
+                Notes = TryStr(e, "notes"),
+                Currency = TryStr(e, "currency") ?? "CAD",
+            };
+        }
+
+        private static string? TryStr(JsonElement e, string n)
+            => e.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        private static decimal? TryDec(JsonElement e, string n)
+        {
+            if (!e.TryGetProperty(n, out var v) || v.ValueKind != JsonValueKind.Number) return null;
+            return v.GetDecimal();
+        }
+        private static DateTimeOffset? TryDate(JsonElement e, string n)
+        {
+            var s = TryStr(e, n);
+            return DateTimeOffset.TryParse(s, out var d) ? d : null;
+        }
+    }
+
+    private record EngagementUpsertResult(long Id, bool WasInsert);
+
+    private static async Task<EngagementUpsertResult> UpsertBdTrackingEngagementAsync(
+        string connStr, string initiator, string region, long? buyerId, decimal? submitted, decimal? accepted, string? potentialProjects, CancellationToken ct)
+    {
+        // Natural key: (OwnerStaffId, Region, BuyerCanonicalOrgId) where
+        // OpportunityId IS NULL (only BD-tracking engagements; existing
+        // opportunity-linked engagements stay in their own lane).
+        await using var con = new SqlConnection(connStr);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        const string lookupSql = @"
+SELECT TOP 1 Id
+FROM   opportunities.CrmEngagements
+WHERE  OpportunityId IS NULL
+  AND  OwnerStaffId = @init
+  AND  Region = @region
+  AND  (@buyer IS NULL OR BuyerCanonicalOrgId = @buyer);";
+
+        long? existing = null;
+        await using (var cmd = new SqlCommand(lookupSql, con))
+        {
+            cmd.Parameters.Add("@init", System.Data.SqlDbType.NVarChar, 20).Value = initiator;
+            cmd.Parameters.Add("@region", System.Data.SqlDbType.NVarChar, 40).Value = region;
+            cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = (object?)buyerId ?? DBNull.Value;
+            var r = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            if (r is long lid) existing = lid;
+            else if (r is int iid) existing = iid;
+        }
+
+        if (existing is long eId)
+        {
+            const string updateSql = @"
+UPDATE opportunities.CrmEngagements
+SET    BuyerCanonicalOrgId    = COALESCE(BuyerCanonicalOrgId, @buyer),
+       ProposalsSubmittedCad  = @submitted,
+       ProposalsAcceptedCad   = @accepted,
+       PotentialProjects      = @potential,
+       UpdatedAtUtc           = SYSDATETIMEOFFSET(),
+       UpdatedBy              = @actor
+WHERE  Id = @id;";
+            await using var cmd = new SqlCommand(updateSql, con);
+            cmd.Parameters.Add("@id", System.Data.SqlDbType.BigInt).Value = eId;
+            cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = (object?)buyerId ?? DBNull.Value;
+            cmd.Parameters.Add("@submitted", System.Data.SqlDbType.Decimal).Value = (object?)submitted ?? DBNull.Value;
+            cmd.Parameters.Add("@accepted", System.Data.SqlDbType.Decimal).Value = (object?)accepted ?? DBNull.Value;
+            cmd.Parameters.Add("@potential", System.Data.SqlDbType.NVarChar, -1).Value = (object?)potentialProjects ?? DBNull.Value;
+            cmd.Parameters.Add("@actor", System.Data.SqlDbType.NVarChar, 150).Value = $"{initiator} (BdTrackingImport)";
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            return new EngagementUpsertResult(eId, false);
+        }
+
+        const string insertSql = @"
+INSERT INTO opportunities.CrmEngagements
+    (OpportunityId, Stage, OwnerStaffId, BuyerCanonicalOrgId, Region,
+     ProposalsSubmittedCad, ProposalsAcceptedCad, PotentialProjects,
+     CreatedBy, UpdatedBy)
+OUTPUT INSERTED.Id
+VALUES
+    (NULL, 1, @init, @buyer, @region,
+     @submitted, @accepted, @potential,
+     @actor, @actor);";
+        await using (var cmd = new SqlCommand(insertSql, con))
+        {
+            cmd.Parameters.Add("@init", System.Data.SqlDbType.NVarChar, 20).Value = initiator;
+            cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = (object?)buyerId ?? DBNull.Value;
+            cmd.Parameters.Add("@region", System.Data.SqlDbType.NVarChar, 40).Value = region;
+            cmd.Parameters.Add("@submitted", System.Data.SqlDbType.Decimal).Value = (object?)submitted ?? DBNull.Value;
+            cmd.Parameters.Add("@accepted", System.Data.SqlDbType.Decimal).Value = (object?)accepted ?? DBNull.Value;
+            cmd.Parameters.Add("@potential", System.Data.SqlDbType.NVarChar, -1).Value = (object?)potentialProjects ?? DBNull.Value;
+            cmd.Parameters.Add("@actor", System.Data.SqlDbType.NVarChar, 150).Value = $"{initiator} (BdTrackingImport)";
+            var r = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            var newId = r is long lid ? lid : Convert.ToInt64(r);
+            return new EngagementUpsertResult(newId, true);
+        }
+    }
+
+    private static async Task<long> UpsertBdTrackingContactAsync(
+        string connStr, long engagementId, string displayName, string? contactInfo, string actor, CancellationToken ct)
+    {
+        // Split contactInfo into email vs phone heuristically (most are emails).
+        string? email = null, phone = null;
+        if (!string.IsNullOrWhiteSpace(contactInfo))
+        {
+            if (contactInfo.Contains('@')) email = contactInfo.Trim();
+            else phone = contactInfo.Trim();
+        }
+
+        await using var con = new SqlConnection(connStr);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        const string lookupSql = "SELECT TOP 1 Id FROM opportunities.CrmContacts WHERE EngagementId = @eid AND DisplayName = @name;";
+        await using (var cmd = new SqlCommand(lookupSql, con))
+        {
+            cmd.Parameters.Add("@eid", System.Data.SqlDbType.BigInt).Value = engagementId;
+            cmd.Parameters.Add("@name", System.Data.SqlDbType.NVarChar, 200).Value = displayName;
+            var r = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            if (r is long lid) return lid;
+            if (r is int iid) return iid;
+        }
+
+        const string insertSql = @"
+INSERT INTO opportunities.CrmContacts (EngagementId, DisplayName, Email, Phone, IsPrimary, CreatedBy, UpdatedBy)
+OUTPUT INSERTED.Id
+VALUES (@eid, @name, @email, @phone, 0, @actor, @actor);";
+        await using (var cmd = new SqlCommand(insertSql, con))
+        {
+            cmd.Parameters.Add("@eid", System.Data.SqlDbType.BigInt).Value = engagementId;
+            cmd.Parameters.Add("@name", System.Data.SqlDbType.NVarChar, 200).Value = displayName;
+            cmd.Parameters.Add("@email", System.Data.SqlDbType.NVarChar, 300).Value = (object?)email ?? DBNull.Value;
+            cmd.Parameters.Add("@phone", System.Data.SqlDbType.NVarChar, 60).Value = (object?)phone ?? DBNull.Value;
+            cmd.Parameters.Add("@actor", System.Data.SqlDbType.NVarChar, 150).Value = $"{actor} (BdTrackingImport)";
+            var r = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            return r is long lid ? lid : Convert.ToInt64(r);
+        }
+    }
+
+    private static async Task InsertBdTrackingActivityAsync(
+        string connStr, long engagementId, BdTrackingRow row, long? contactId, string actor, CancellationToken ct)
+    {
+        var activityType = MapBdTrackingActivityType(row.Type);
+        var subject = BuildBdTrackingSubject(row);
+        var body = row.Notes;
+        var occurredAt = row.Date ?? DateTimeOffset.UtcNow;
+
+        await using var con = new SqlConnection(connStr);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        const string sql = @"
+INSERT INTO opportunities.CrmActivities (EngagementId, ActivityType, OccurredAtUtc, Subject, Body, ContactId, CreatedBy)
+VALUES (@eid, @type, @occurred, @subject, @body, @contact, @actor);";
+        await using var cmd = new SqlCommand(sql, con);
+        cmd.Parameters.Add("@eid", System.Data.SqlDbType.BigInt).Value = engagementId;
+        cmd.Parameters.Add("@type", System.Data.SqlDbType.Int).Value = activityType;
+        cmd.Parameters.Add("@occurred", System.Data.SqlDbType.DateTimeOffset).Value = occurredAt;
+        cmd.Parameters.Add("@subject", System.Data.SqlDbType.NVarChar, 300).Value = subject;
+        cmd.Parameters.Add("@body", System.Data.SqlDbType.NVarChar, -1).Value = (object?)body ?? DBNull.Value;
+        cmd.Parameters.Add("@contact", System.Data.SqlDbType.BigInt).Value = (object?)contactId ?? DBNull.Value;
+        cmd.Parameters.Add("@actor", System.Data.SqlDbType.NVarChar, 150).Value = $"{actor} (BdTrackingImport)";
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    private static int MapBdTrackingActivityType(string? type) => (type?.Trim().ToLowerInvariant()) switch
+    {
+        "meeting" => 3,
+        "phone call" or "phone" or "call" => 2,
+        "email" => 4,
+        "rfp" => 6,
+        "event" or "presentation" => 99,
+        "note" => 1,
+        _ => 99,
+    };
+
+    private static string BuildBdTrackingSubject(BdTrackingRow row)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(row.Type)) parts.Add(row.Type);
+        if (!string.IsNullOrWhiteSpace(row.Contact)) parts.Add(row.Contact!);
+        if (!string.IsNullOrWhiteSpace(row.PotentialProjects)) parts.Add(Truncate(row.PotentialProjects!, 80));
+        return parts.Count == 0 ? "(BD touchpoint)" : string.Join(" — ", parts);
+    }
+
+    private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max] + "…";
 
     // Seismic-pipeline regions are sub-regional labels (LowerMainland, GreaterVictoria,
     // Okanagan, etc.) rather than 2-letter codes; the existing NormalizeProvince
