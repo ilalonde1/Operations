@@ -2,25 +2,123 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:Kor.Operations.Controls"
+             xmlns:local="clr-namespace:Kor.Operations.App.Opportunities"
              Background="{StaticResource App.Background}"
              FontFamily="Mulish, Segoe UI"
              Loaded="OrgDossierView_Loaded"
              Unloaded="OrgDossierView_Unloaded">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <local:DossierValueKindConverter x:Key="ValueKind"/>
+        <local:UrlSplitConverter x:Key="UrlSplit"/>
+
         <Style x:Key="SectionCard" TargetType="Border">
             <Setter Property="Background" Value="White"/>
-            <Setter Property="BorderBrush" Value="#DDD"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Panel.Border}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="14"/>
             <Setter Property="Margin" Value="8,0,8,10"/>
         </Style>
+
+        <!-- Small-caps technical label, slate, less shouty than the old SemiBold. -->
         <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
-            <Setter Property="Margin" Value="0,2,10,2"/>
+            <Setter Property="Margin" Value="0,4,10,2"/>
+            <Setter Property="Typography.Capitals" Value="AllSmallCaps"/>
+            <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
         </Style>
+
+        <!-- Research-dossier inner section. White card with a 4px
+             Brand.Primary slate accent on the left so each provider block
+             reads as its own thing without pulling focus from the page. -->
+        <DataTemplate DataType="{x:Type local:DossierSection}">
+            <Border Background="White" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                    CornerRadius="4" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0"
+                            Background="{StaticResource Brand.Primary.Brush}"
+                            CornerRadius="4,0,0,4"/>
+                    <StackPanel Grid.Column="1" Margin="14,10,14,12">
+                        <!-- Section header: ProviderName larger + slate, refreshed timestamp tiny + muted. -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="{Binding ProviderName}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource Brand.Primary.Brush}"/>
+                            <TextBlock Text="{Binding RefreshedAt, StringFormat='  refreshed {0}'}"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       FontSize="10"
+                                       VerticalAlignment="Center"
+                                       Margin="8,2,0,0"/>
+                        </StackPanel>
+
+                        <!-- Field rows: small-caps label + value with three visual modes
+                             (plain text, single-URL hyperlink, multi-URL bullet list). -->
+                        <ItemsControl ItemsSource="{Binding Fields}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type local:DossierField}">
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Label}"
+                                                   Style="{StaticResource FieldLabel}"/>
+
+                                        <!-- Plain text (most fields) -->
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding Value}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,3"
+                                                   Visibility="{Binding Value, Converter={StaticResource ValueKind}, ConverterParameter=Plain}"/>
+
+                                        <!-- Single URL -> Hyperlink (Website, Source Url, etc.) -->
+                                        <TextBlock Grid.Column="1"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,3"
+                                                   Visibility="{Binding Value, Converter={StaticResource ValueKind}, ConverterParameter=SingleUrl}">
+                                            <Hyperlink NavigateUri="{Binding Value}"
+                                                       RequestNavigate="OnHyperlinkRequestNavigate"
+                                                       Foreground="{StaticResource CorporateBlue}">
+                                                <Run Text="{Binding Value, Mode=OneWay}"/>
+                                            </Hyperlink>
+                                        </TextBlock>
+
+                                        <!-- Multi URL -> bullet list of hyperlinks (Source Urls with two/three links) -->
+                                        <ItemsControl Grid.Column="1"
+                                                      Margin="0,3"
+                                                      ItemsSource="{Binding Value, Converter={StaticResource UrlSplit}}"
+                                                      Visibility="{Binding Value, Converter={StaticResource ValueKind}, ConverterParameter=MultiUrl}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,2">
+                                                        <Run Text="•  " Foreground="{StaticResource Text.Secondary}"/>
+                                                        <Hyperlink NavigateUri="{Binding}"
+                                                                   RequestNavigate="OnHyperlinkRequestNavigate"
+                                                                   Foreground="{StaticResource CorporateBlue}">
+                                                            <Run Text="{Binding Mode=OneWay}"/>
+                                                        </Hyperlink>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid>
@@ -66,38 +164,10 @@
                 <Border Style="{StaticResource SectionCard}">
                     <StackPanel>
                         <TextBlock Text="Research Dossiers" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <ItemsControl ItemsSource="{Binding Sections}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="#F8FAFC" BorderBrush="#DDE5EC" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,10">
-                                        <StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                                <TextBlock Text="{Binding ProviderName}" FontWeight="SemiBold" FontSize="13"/>
-                                                <TextBlock Text="{Binding RefreshedAt, StringFormat='  refreshed {0}'}"
-                                                           Foreground="#666"
-                                                           FontSize="11"
-                                                           VerticalAlignment="Center"
-                                                           Margin="8,0,0,0"/>
-                                            </StackPanel>
-                                            <ItemsControl ItemsSource="{Binding Fields}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Grid Margin="0,2">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="190"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                            </Grid.ColumnDefinitions>
-                                                            <TextBlock Grid.Column="0" Text="{Binding Label}" Style="{StaticResource FieldLabel}"/>
-                                                            <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Margin="0,2"/>
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <!-- DataTemplate for DossierSection is defined in
+                             UserControl.Resources so the rendering is the
+                             same whether the list is empty or full. -->
+                        <ItemsControl ItemsSource="{Binding Sections}"/>
                     </StackPanel>
                 </Border>
 
