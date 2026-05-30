@@ -11,6 +11,8 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <local:DossierValueKindConverter x:Key="ValueKind"/>
         <local:UrlSplitConverter x:Key="UrlSplit"/>
+        <local:CommaSplitConverter x:Key="CommaSplit"/>
+        <local:PriorityToBrushConverter x:Key="PriorityBrush"/>
 
         <Style x:Key="SectionCard" TargetType="Border">
             <Setter Property="Background" Value="White"/>
@@ -79,13 +81,13 @@
                                                    Text="{Binding Value}"
                                                    TextWrapping="Wrap"
                                                    Margin="0,3"
-                                                   Visibility="{Binding Value, Converter={StaticResource ValueKind}, ConverterParameter=Plain}"/>
+                                                   Visibility="{Binding Converter={StaticResource ValueKind}, ConverterParameter=Plain}"/>
 
                                         <!-- Single URL -> Hyperlink (Website, Source Url, etc.) -->
                                         <TextBlock Grid.Column="1"
                                                    TextWrapping="Wrap"
                                                    Margin="0,3"
-                                                   Visibility="{Binding Value, Converter={StaticResource ValueKind}, ConverterParameter=SingleUrl}">
+                                                   Visibility="{Binding Converter={StaticResource ValueKind}, ConverterParameter=SingleUrl}">
                                             <Hyperlink NavigateUri="{Binding Value}"
                                                        RequestNavigate="OnHyperlinkRequestNavigate"
                                                        Foreground="{StaticResource CorporateBlue}">
@@ -97,7 +99,7 @@
                                         <ItemsControl Grid.Column="1"
                                                       Margin="0,3"
                                                       ItemsSource="{Binding Value, Converter={StaticResource UrlSplit}}"
-                                                      Visibility="{Binding Value, Converter={StaticResource ValueKind}, ConverterParameter=MultiUrl}">
+                                                      Visibility="{Binding Converter={StaticResource ValueKind}, ConverterParameter=MultiUrl}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,2">
@@ -111,6 +113,56 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
+
+                                        <!-- Sectors / comma-list -> chip row -->
+                                        <ItemsControl Grid.Column="1"
+                                                      Margin="0,3,0,3"
+                                                      ItemsSource="{Binding Value, Converter={StaticResource CommaSplit}}"
+                                                      Visibility="{Binding Converter={StaticResource ValueKind}, ConverterParameter=ChipList}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{StaticResource App.Background}"
+                                                            BorderBrush="{StaticResource Panel.Border}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="999"
+                                                            Padding="8,2"
+                                                            Margin="0,2,4,2">
+                                                        <TextBlock Text="{Binding}"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource Text.Primary}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Person / partner row -> bullet -->
+                                        <TextBlock Grid.Column="1"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,3"
+                                                   Visibility="{Binding Converter={StaticResource ValueKind}, ConverterParameter=Bullet}">
+                                            <Run Text="•  " Foreground="{StaticResource CorporateBlue}" FontWeight="Bold"/>
+                                            <Run Text="{Binding Value, Mode=OneWay}"/>
+                                        </TextBlock>
+
+                                        <!-- Priority / status -> colored pill -->
+                                        <Border Grid.Column="1"
+                                                Background="{Binding Value, Converter={StaticResource PriorityBrush}}"
+                                                CornerRadius="999"
+                                                Padding="10,3"
+                                                Margin="0,3"
+                                                HorizontalAlignment="Left"
+                                                Visibility="{Binding Converter={StaticResource ValueKind}, ConverterParameter=PriorityChip}">
+                                            <TextBlock Text="{Binding Value}"
+                                                       Foreground="White"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Typography.Capitals="AllSmallCaps"/>
+                                        </Border>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
