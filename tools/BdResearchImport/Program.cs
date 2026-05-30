@@ -139,6 +139,7 @@ internal static class Program
             if (Run("db-contractors")) await ImportDbContractorsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("incumbent-rosters")) await ImportIncumbentRostersAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("capital-funding-signals")) await ImportCapitalFundingSignalsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("seismic-pipeline")) await ImportSeismicPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
@@ -3612,6 +3613,160 @@ internal static class Program
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
             }
         }
+    }
+
+    // === KOR-Seismic-Pipeline (seismic-pipeline.jsonl) ==============================
+    // One JSON object per line. Each row is a publicly-funded seismic-upgrade
+    // building project (school / hospital / post-sec / civic / housing) in BC, WA,
+    // or OR for the 2026-2031 window. Upserts each as a MajorProjectsInventory row
+    // tagged ProjectStage="Seismic" so the Forward Pipeline view can filter to
+    // KOR's most distinctively winnable scope. Owner / architect / structural names
+    // resolve to canonical orgs via the existing CanonicalOrgResolver.
+    private static async Task ImportSeismicPipelineAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Seismic-Pipeline", "outputs", "seismic-pipeline.jsonl");
+        if (!File.Exists(path))
+        {
+            Console.WriteLine($"[WARN] Missing payload: {path}");
+            stats.FilesMissing++;
+            return;
+        }
+
+        Console.WriteLine($"[FILE] {path}");
+        var lines = File.ReadAllLines(path);
+        foreach (var raw in lines)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            using var doc = JsonDocument.Parse(raw, JsonOptions);
+            var project = doc.RootElement;
+
+            var projectName = String(project, "projectName");
+            if (string.IsNullOrWhiteSpace(projectName))
+            {
+                stats.ProjectRowsSkipped++;
+                continue;
+            }
+
+            var ownerOrg = String(project, "ownerOrg");
+            var architectOrg = String(project, "architectOrg");
+            var structuralOrg = String(project, "structuralOrg");
+            var program = String(project, "program");
+            var region = String(project, "region");
+            var addressOrCity = String(project, "addressOrCity");
+            var facilityType = String(project, "facilityType");
+            var stage = String(project, "stage");
+            var scopeNotes = String(project, "scopeNotes");
+            var notes = String(project, "notes");
+            var fundingSource = String(project, "fundingSource");
+            var expectedRfp = String(project, "expectedRfpWindow");
+            var fundingYear = Short(project, "fundingYear");
+
+            var ownerId = await ResolveAsync(resolver, options, stats, ownerOrg, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+            var architectId = await ResolveAsync(resolver, options, stats, architectOrg, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+            var structuralId = await ResolveAsync(resolver, options, stats, structuralOrg, OrgKinds.Competitor, "SeismicPipeline.Structural", ct).ConfigureAwait(false);
+
+            var scheduleParts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(program)) scheduleParts.Add("Program: " + program);
+            if (fundingYear.HasValue) scheduleParts.Add("Funded " + fundingYear.Value);
+            if (!string.IsNullOrWhiteSpace(fundingSource)) scheduleParts.Add("Funding: " + fundingSource);
+            if (!string.IsNullOrWhiteSpace(expectedRfp)) scheduleParts.Add("RFP " + expectedRfp);
+            if (!string.IsNullOrWhiteSpace(notes)) scheduleParts.Add(notes);
+
+            var description = string.IsNullOrWhiteSpace(scopeNotes) ? notes : scopeNotes;
+
+            var record = new MajorProjectRecord(
+                Source: "SeismicPipeline",
+                SourceKey: Sha1($"SeismicPipeline|{projectName}|{addressOrCity}"),
+                ProjectName: projectName,
+                ProjectDescription: description,
+                EstimatedCostCad: LongOrNull(project, "fundingValueCad"),
+                EstimatedCostText: null,
+                Sector: facilityType,
+                SubSector: null,
+                ConstructionType: null,
+                ConstructionSubtype: null,
+                ProjectType: null,
+                RegionName: region,
+                MunicipalityName: addressOrCity,
+                ProponentName: ownerOrg,
+                ProponentCanonicalOrgId: ownerId,
+                ArchitectName: architectOrg,
+                ArchitectCanonicalOrgId: architectId,
+                Stage: stage,
+                ProjectStatus: stage,
+                ProjectStage: "Seismic",
+                ProjectCategoryName: program,
+                PublicFundingInd: true,
+                ProvincialFunding: ProvincialFlag(fundingSource),
+                FederalFunding: FederalFlag(fundingSource),
+                MunicipalFunding: MunicipalFlag(fundingSource),
+                OtherPublicFunding: null,
+                GreenBuildingInd: null,
+                IndigenousInd: null,
+                IndigenousNames: null,
+                ConstructionJobs: null,
+                OperatingJobs: null,
+                StandardizedStartDate: null,
+                StandardizedCompletionDate: null,
+                StartYear: fundingYear,
+                CompletionYear: null,
+                ScheduleNotes: scheduleParts.Count == 0 ? null : string.Join(" | ", scheduleParts),
+                Latitude: null,
+                Longitude: null,
+                ProjectWebsite: null,
+                SourceUrl: FirstSourceUrl(project),
+                RawJson: project.GetRawText())
+            {
+                Province = ProvinceFromSeismicRegion(region),
+                StructuralEngineerName = structuralOrg,
+                StructuralEngineerCanonicalOrgId = structuralId,
+            };
+
+            await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+        }
+    }
+
+    // Seismic-pipeline regions are sub-regional labels (LowerMainland, GreaterVictoria,
+    // Okanagan, etc.) rather than 2-letter codes; the existing NormalizeProvince
+    // would truncate "LowerMainland" to "LO". Map by prefix instead — WA-* / OR-*
+    // are the cross-border programs, everything else is BC.
+    private static string ProvinceFromSeismicRegion(string? region)
+    {
+        if (string.IsNullOrWhiteSpace(region)) return string.Empty;
+        var r = region.Trim();
+        if (r.StartsWith("WA-", StringComparison.OrdinalIgnoreCase) || r.Equals("WA", StringComparison.OrdinalIgnoreCase)) return "WA";
+        if (r.StartsWith("OR-", StringComparison.OrdinalIgnoreCase) || r.Equals("OR", StringComparison.OrdinalIgnoreCase)) return "OR";
+        return "BC";
+    }
+
+    private static bool? ProvincialFlag(string? fundingSource)
+    {
+        if (string.IsNullOrWhiteSpace(fundingSource)) return null;
+        var f = fundingSource.ToLowerInvariant();
+        return f.Contains("province") || f.Contains("provincial") || f.Contains("joint") || f.Contains("mixed");
+    }
+
+    private static bool? FederalFlag(string? fundingSource)
+    {
+        if (string.IsNullOrWhiteSpace(fundingSource)) return null;
+        var f = fundingSource.ToLowerInvariant();
+        return f.Contains("federal") || f.Contains("joint") || f.Contains("mixed");
+    }
+
+    private static bool? MunicipalFlag(string? fundingSource)
+    {
+        if (string.IsNullOrWhiteSpace(fundingSource)) return null;
+        var f = fundingSource.ToLowerInvariant();
+        return f.Contains("municipal") || f.Contains("district") || f.Contains("mixed");
     }
 
     private static async Task<long?> UpsertOrgAsync(
