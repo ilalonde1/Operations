@@ -186,4 +186,95 @@ public sealed class CanonicalOrgResolver
             .Replace(")", "", StringComparison.Ordinal)
             .Replace("+", "", StringComparison.Ordinal);
     }
+
+    // Pre-compiled patterns for the fuzzy normalizer.
+    private static readonly System.Text.RegularExpressions.Regex SchoolDistrictNumberRegex = new(
+        @"\b(?:school\s+district|sd)\s*(?:no\.?\s*)?#?\s*(\d+)\b",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex CityOfSuffixRegex = new(
+        @"^(.+?)\s*\(city of\)$",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex CityOfPrefixRegex = new(
+        @"^city of\s+(.+)$",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly string[] CorporateSuffixes =
+    {
+        " incorporated", " corporation", " limited",
+        " inc", " inc.", " ltd", " ltd.", " llp", " llp.",
+        " corp", " corp.", " co", " co.",
+    };
+
+    /// <summary>
+    /// More aggressive normalization for FUZZY duplicate detection. Use this
+    /// in dedup tooling and audit reports — NEVER in the resolver's fast-path
+    /// lookup, because the persisted <c>CanonicalOrg.NormalizedName</c>
+    /// computed column (schema migration 22) uses the strict <see cref="NormalizeName"/>
+    /// formula and these two functions intentionally diverge.
+    ///
+    /// Beyond strict normalization, this fuzzy variant:
+    /// - normalizes <c>&amp;</c> / <c>and</c> to the same token
+    /// - canonicalizes school-district forms: <c>SD68</c>, <c>SD #68</c>,
+    ///   <c>School District 68</c>, <c>School District No. 68</c> all
+    ///   collapse to <c>schooldistrict68</c>
+    /// - canonicalizes civic forms: <c>City of Vancouver</c> and
+    ///   <c>Vancouver (City of)</c> both collapse to <c>cityofvancouver</c>
+    /// - strips corporate suffixes (Ltd, Inc, LLP, Corp, Co, Corporation,
+    ///   Incorporated, Limited) so <c>Acme Ltd.</c> and <c>Acme</c> match
+    /// </summary>
+    public static string NormalizeForFuzzyMatch(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+
+        var s = input.Trim().ToLowerInvariant();
+
+        // & / and equivalence — preserve word boundaries via surrounding spaces
+        // so "AT&T" doesn't become "ATandT" (it'd be "at&t" lowercased, then this
+        // would only fire if there was a space).
+        s = s.Replace(" & ", " and ", StringComparison.Ordinal);
+
+        // Civic forms
+        var cityPrefix = CityOfPrefixRegex.Match(s);
+        if (cityPrefix.Success)
+        {
+            s = "city of " + cityPrefix.Groups[1].Value;
+        }
+        else
+        {
+            var citySuffix = CityOfSuffixRegex.Match(s);
+            if (citySuffix.Success)
+            {
+                s = "city of " + citySuffix.Groups[1].Value;
+            }
+        }
+
+        // School district forms — replace any matched form with the canonical
+        // "school district NNN" so downstream punctuation strip collapses to
+        // "schooldistrictNNN".
+        s = SchoolDistrictNumberRegex.Replace(s, "school district $1");
+
+        // Corporate suffixes — strip trailing forms. Iterate so e.g. "Inc. Ltd."
+        // (rare but possible from data sources) collapses fully.
+        bool changed;
+        do
+        {
+            changed = false;
+            foreach (var suffix in CorporateSuffixes)
+            {
+                if (s.EndsWith(suffix, StringComparison.Ordinal))
+                {
+                    s = s[..^suffix.Length].TrimEnd(' ', ',', '.');
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        while (changed);
+
+        // Final pass: strict-normalize for punctuation/space removal so the
+        // result is directly comparable to NormalizedName-style values.
+        return NormalizeName(s);
+    }
 }

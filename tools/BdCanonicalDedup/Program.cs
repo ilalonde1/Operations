@@ -173,6 +173,53 @@ internal static class Program
         }
     }
 
+    // T1.001 similarity-gate helpers (post 2026-05-30 Abbotsford incident).
+    // The honing pass's merge-pairs.csv emitted a wrong SurvivorId that this
+    // tool committed unchallenged; now every --pairs row must clear a
+    // fuzzy-name match (or be allowlisted) before commit.
+
+    private static readonly HashSet<(long Loser, long Survivor)> _allowlistCache = LoadDedupAllowlist();
+
+    private static bool IsAllowlistedNonSimilar(long loserId, long survivorId)
+        => _allowlistCache.Contains((loserId, survivorId));
+
+    private static HashSet<(long, long)> LoadDedupAllowlist()
+    {
+        var path = Path.Combine(Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? ".", "dedup-non-similar-allowlist.csv");
+        var set = new HashSet<(long, long)>();
+        if (!File.Exists(path)) return set;
+        foreach (var line in File.ReadAllLines(path))
+        {
+            var parts = line.Split(',');
+            if (parts.Length < 2) continue;
+            if (long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var l)
+                && long.TryParse(parts[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s))
+            {
+                set.Add((l, s));
+            }
+        }
+        return set;
+    }
+
+    private static readonly object _rejectedLock = new();
+    private static bool _rejectedHeaderWritten;
+
+    private static void AppendRejectedPair(ImportOptions options, long loserId, long survivorId, string loserName, string survivorName, string loserFuzzy, string survivorFuzzy)
+    {
+        var path = Path.Combine(options.OutputDirectory, "rejected-pairs.csv");
+        Directory.CreateDirectory(options.OutputDirectory);
+        lock (_rejectedLock)
+        {
+            if (!_rejectedHeaderWritten)
+            {
+                File.WriteAllText(path, "LoserId,SurvivorId,LoserName,SurvivorName,LoserFuzzy,SurvivorFuzzy,RejectedAtUtc\r\n");
+                _rejectedHeaderWritten = true;
+            }
+            var ts = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            File.AppendAllText(path, $"{loserId},{survivorId},\"{loserName.Replace("\"", "\"\"")}\",\"{survivorName.Replace("\"", "\"\"")}\",{loserFuzzy},{survivorFuzzy},{ts}\r\n");
+        }
+    }
+
     // Explicit-pair merge: loser -> survivor pairs chosen by the data-honing pass
     // (often different display names the fuzzy grouper can't match). Reuses the
     // tested per-group FK-repoint/commit logic; survivor is fixed (not chosen).
@@ -201,6 +248,24 @@ internal static class Program
             if (!byId.TryGetValue(loserId, out var loser) || !byId.TryGetValue(survivorId, out var survivor))
             {
                 Console.Error.WriteLine($"[WARN] pair {loserId}->{survivorId}: org row not found; skipped.");
+                summary.GroupsFailed++;
+                continue;
+            }
+
+            // Similarity gate (audit finding T1.001 / 2026-05-30): the 2026-05-30
+            // Abbotsford-SD -> Alterra-Power-Corp incident shipped because this
+            // path trusted the honing pass's merge-pairs.csv SurvivorId without
+            // any name-similarity check. Now we require the loser and survivor
+            // to resolve to the same fuzzy-normalized name (which collapses
+            // suffix / SD-number / "City of X" / "&" vs "and" variants). Pairs
+            // that fail the gate are written to rejected-pairs.csv for human
+            // review and skipped.
+            var loserFuzzy = Kor.Opportunities.Data.Awards.CanonicalOrgResolver.NormalizeForFuzzyMatch(loser.DisplayName);
+            var survivorFuzzy = Kor.Opportunities.Data.Awards.CanonicalOrgResolver.NormalizeForFuzzyMatch(survivor.DisplayName);
+            if (!string.Equals(loserFuzzy, survivorFuzzy, StringComparison.Ordinal) && !IsAllowlistedNonSimilar(loserId, survivorId))
+            {
+                Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): names not similar (fuzzy '{loserFuzzy}' vs '{survivorFuzzy}'); written to rejected-pairs.csv.");
+                AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, loserFuzzy, survivorFuzzy);
                 summary.GroupsFailed++;
                 continue;
             }

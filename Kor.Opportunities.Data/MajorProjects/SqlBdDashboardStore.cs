@@ -192,21 +192,24 @@ GROUP BY ProviderName
 
 UNION ALL
 
+-- Audit T1.004: every MPI health metric must filter RetiredAtUtc IS NULL so
+-- the dashboard doesn't drift upward as the nightly DataRetirementJob retires
+-- stale rows. Active-rows only.
 SELECT N'MPI (BC)' AS Category, N'architect-resolved' AS Label, COUNT_BIG(*) AS CountValue
 FROM opportunities.MajorProjectsInventory
-WHERE Province = N'BC' AND ArchitectCanonicalOrgId IS NOT NULL
+WHERE Province = N'BC' AND RetiredAtUtc IS NULL AND ArchitectCanonicalOrgId IS NOT NULL
 
 UNION ALL
 
 SELECT N'MPI (BC)' AS Category, N'structural-resolved' AS Label, COUNT_BIG(*) AS CountValue
 FROM opportunities.MajorProjectsInventory
-WHERE Province = N'BC' AND StructuralEngineerCanonicalOrgId IS NOT NULL
+WHERE Province = N'BC' AND RetiredAtUtc IS NULL AND StructuralEngineerCanonicalOrgId IS NOT NULL
 
 UNION ALL
 
 SELECT N'MPI (BC)' AS Category, N'total' AS Label, COUNT_BIG(*) AS CountValue
 FROM opportunities.MajorProjectsInventory
-WHERE Province = N'BC'
+WHERE Province = N'BC' AND RetiredAtUtc IS NULL
 
 ORDER BY Category, Label;";
 
