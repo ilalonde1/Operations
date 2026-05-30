@@ -278,7 +278,6 @@
                               CanUserDeleteRows="False"
                               HeadersVisibility="Column"
                               GridLinesVisibility="Horizontal"
-                              RowHeight="Auto"
                               ItemsSource="{Binding OpenStructuralSeats}"
                               MouseDoubleClick="OpenStructuralSeatsGrid_MouseDoubleClick">
                         <DataGrid.Columns>
@@ -349,7 +348,6 @@
                               CanUserDeleteRows="False"
                               HeadersVisibility="Column"
                               GridLinesVisibility="Horizontal"
-                              RowHeight="Auto"
                               ItemsSource="{Binding CompetitorWatch}"
                               MouseDoubleClick="CompetitorWatchGrid_MouseDoubleClick">
                         <DataGrid.Columns>
