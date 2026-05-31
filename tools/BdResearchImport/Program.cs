@@ -3887,8 +3887,15 @@ internal static class Program
     // per group; each spreadsheet row becomes one CrmActivity under that engagement;
     // Proposals$ sum into ProposalsSubmittedCad/AcceptedCad on the engagement. USA rows
     // (USD) convert at 1.36 (DASHBOARD sheet's $US Conv. rate). Companies resolve via
-    // CanonicalOrgResolver — Concord Pacifid->Concord Pacific kind of fixes courtesy
-    // of NormalizeForFuzzyMatch from Round 35a's audit work.
+    // CanonicalOrgResolver, which currently uses NormalizeName (strict) — Round 35a's
+    // NormalizeForFuzzyMatch helper exists but is NOT wired into the resolver, so
+    // typos like "Concord Pacifid" still create a separate canonical here. The next
+    // data-honing pass is the de-facto fuzzy reconciler (it consolidates via aliases).
+    //
+    // Idempotency (Round 37a T1.003): re-running this importer deletes the
+    // BdTracking-owned child rows (Activities + Contacts where CreatedBy ends in
+    // "(BdTrackingImport)") on each engagement before re-inserting from spreadsheet
+    // truth. Manually-added activities/contacts (different CreatedBy) survive.
     private static async Task ImportBdTrackingAsync(
         ImportOptions options,
         CanonicalOrgResolver? resolver,
@@ -4002,6 +4009,15 @@ internal static class Program
                 if (upsert.WasInsert) engagementsCreated++;
                 else engagementsUpdated++;
                 status = upsert.WasInsert ? "Created" : "Updated";
+
+                // Round 37a (T1.003): re-run idempotency. Delete BdTracking-owned
+                // child rows (activities then contacts to respect the FK) before
+                // re-inserting from spreadsheet truth. Manually-added rows with a
+                // different CreatedBy survive. No-ops on first run.
+                if (!upsert.WasInsert)
+                {
+                    await DeleteBdTrackingChildrenAsync(options.OpportunitiesDb!, engagementId, ct).ConfigureAwait(false);
+                }
 
                 // Contact: if any row has a Contact name, upsert one (de-dup by display name).
                 var contactByName = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
@@ -4201,6 +4217,7 @@ BEGIN
     VALUES (@eid, @mpi, @conf, @text, N'BdTrackingCrossLink');
 END;";
             var inserted = 0;
+            var raced = 0;
             foreach (var l in highConfidenceLinks)
             {
                 ct.ThrowIfCancellationRequested();
@@ -4209,10 +4226,22 @@ END;";
                 cmd.Parameters.Add("@mpi", System.Data.SqlDbType.BigInt).Value = l.MpiId;
                 cmd.Parameters.Add("@conf", System.Data.SqlDbType.Decimal).Value = l.Confidence;
                 cmd.Parameters.Add("@text", System.Data.SqlDbType.NVarChar, 500).Value = (object?)l.MatchedText ?? DBNull.Value;
-                await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
-                inserted++;
+                try
+                {
+                    await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                    inserted++;
+                }
+                catch (SqlException sqlex) when (sqlex.Number is 2627 or 2601)
+                {
+                    // Round 37b (T4.001): the IF-NOT-EXISTS/INSERT pattern is
+                    // not atomic — a parallel cross-link run can sneak its row
+                    // in between the check and the insert. The unique index on
+                    // (EngagementId, MajorProjectsInventoryId) raises 2627/2601;
+                    // both mean "the row already exists" — skip and continue.
+                    raced++;
+                }
             }
-            Console.WriteLine($"[BD-CROSSLINK] high-confidence links inserted: {inserted}");
+            Console.WriteLine($"[BD-CROSSLINK] high-confidence links inserted: {inserted}; skipped (already existed / raced): {raced}");
         }
 
         var outDir = Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "outputs");
@@ -4526,6 +4555,36 @@ VALUES (@eid, @type, @occurred, @subject, @body, @contact, @actor);";
         "note" => 1,
         _ => 99,
     };
+
+    // Round 37a (T1.003): wipe BdTracking-created children for one engagement
+    // so re-runs replace, not append. Activities first (they FK to contacts).
+    // Filter on CreatedBy LIKE '%(BdTrackingImport)' so any future manually-
+    // added activity/contact with a different actor display survives.
+    private static async Task DeleteBdTrackingChildrenAsync(string connStr, long engagementId, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(connStr);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        const string deleteActivitiesSql = @"
+DELETE FROM opportunities.CrmActivities
+WHERE  EngagementId = @eid
+  AND  CreatedBy LIKE '%(BdTrackingImport)';";
+        await using (var cmd = new SqlCommand(deleteActivitiesSql, con))
+        {
+            cmd.Parameters.Add("@eid", System.Data.SqlDbType.BigInt).Value = engagementId;
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+
+        const string deleteContactsSql = @"
+DELETE FROM opportunities.CrmContacts
+WHERE  EngagementId = @eid
+  AND  CreatedBy LIKE '%(BdTrackingImport)';";
+        await using (var cmd = new SqlCommand(deleteContactsSql, con))
+        {
+            cmd.Parameters.Add("@eid", System.Data.SqlDbType.BigInt).Value = engagementId;
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+    }
 
     private static string BuildBdTrackingSubject(BdTrackingRow row)
     {

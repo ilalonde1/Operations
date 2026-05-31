@@ -96,6 +96,10 @@ public partial class ClientIntelligenceWindow : Window
         }
     }
 
+    // Fire-and-forget from the search-popup UI events (MouseLeftButtonUp /
+    // Enter key). LoadClientAsync swallows OCE and the VM surfaces other
+    // failures via status text.
+    // async-void OK: see above
     private async void LoadSelectedSearchResult()
     {
         if (ClientSearchResults.SelectedItem is not DeltekClientCandidate c) return;
@@ -104,6 +108,8 @@ public partial class ClientIntelligenceWindow : Window
         await LoadClientAsync(c.ClientId);
     }
 
+    // async-void OK: fire-and-forget from the search-box Enter handler.
+    // Same justification as LoadSelectedSearchResult above.
     private async void LoadByRawText()
     {
         var id = ClientSearchBox?.Text?.Trim();

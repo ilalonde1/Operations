@@ -74,10 +74,12 @@ public sealed class BdTrackingViewModel : INotifyPropertyChanged, Kor.Operations
     /// <summary>All loaded rows. Filtered for display via FilteredEngagements.</summary>
     public ObservableCollection<BdTrackingEngagementRow> Engagements { get; } = new();
 
-    public IEnumerable<BdTrackingEngagementRow> FilteredEngagements =>
-        Engagements.Where(r =>
-            (SelectedRegion == AllRegions || string.Equals(r.Region, SelectedRegion, StringComparison.OrdinalIgnoreCase)) &&
-            (SelectedInitiator == AllInitiators || string.Equals(r.Initiator, SelectedInitiator, StringComparison.OrdinalIgnoreCase)));
+    // Round 37c (T3.002): materialize the filtered set into a stable
+    // ObservableCollection so XAML bindings don't recompute the LINQ query on
+    // every read and the grid's selection / scroll position survive filter
+    // toggles. RefreshFiltered() is the single mutator.
+    private readonly ObservableCollection<BdTrackingEngagementRow> _filteredEngagements = new();
+    public ObservableCollection<BdTrackingEngagementRow> FilteredEngagements => _filteredEngagements;
 
     public string SelectedRegion
     {
@@ -86,8 +88,9 @@ public sealed class BdTrackingViewModel : INotifyPropertyChanged, Kor.Operations
         {
             if (SetField(ref _selectedRegion, value ?? AllRegions))
             {
-                OnPropertyChanged(nameof(FilteredEngagements));
+                RefreshFiltered();
                 OnPropertyChanged(nameof(Rollup));
+                UpdateFilteredStatus();
             }
         }
     }
@@ -99,10 +102,35 @@ public sealed class BdTrackingViewModel : INotifyPropertyChanged, Kor.Operations
         {
             if (SetField(ref _selectedInitiator, value ?? AllInitiators))
             {
-                OnPropertyChanged(nameof(FilteredEngagements));
+                RefreshFiltered();
                 OnPropertyChanged(nameof(Rollup));
+                UpdateFilteredStatus();
             }
         }
+    }
+
+    private void RefreshFiltered()
+    {
+        _filteredEngagements.Clear();
+        foreach (var r in Engagements.Where(r =>
+            (SelectedRegion == AllRegions || string.Equals(r.Region, SelectedRegion, StringComparison.OrdinalIgnoreCase)) &&
+            (SelectedInitiator == AllInitiators || string.Equals(r.Initiator, SelectedInitiator, StringComparison.OrdinalIgnoreCase))))
+        {
+            _filteredEngagements.Add(r);
+        }
+    }
+
+    // Round 37c (T6.001): the status line used to say "Loaded N..." forever,
+    // even after the user changed region/initiator. Switch it to "Showing
+    // X of N..." once a filter is active so the count matches what the grid
+    // is actually displaying.
+    private void UpdateFilteredStatus()
+    {
+        var total = Engagements.Count;
+        var shown = _filteredEngagements.Count;
+        StatusMessage = (SelectedRegion == AllRegions && SelectedInitiator == AllInitiators)
+            ? $"Showing all {total:N0} BD-tracking engagements."
+            : $"Showing {shown:N0} of {total:N0} BD-tracking engagements (region={SelectedRegion}, initiator={SelectedInitiator}).";
     }
 
     public BdTrackingEngagementRow? Selected
@@ -170,6 +198,12 @@ public sealed class BdTrackingViewModel : INotifyPropertyChanged, Kor.Operations
             await con.OpenAsync(ct).ConfigureAwait(true);
 
             // Load engagement rows joined to canonical buyer + activity counts.
+            // Round 37c (T3.001): collapsed 4 correlated subqueries to OUTER
+            // APPLYs. SQL Server's optimizer fuses these into seek-based joins
+            // and walks CrmActivities once per engagement instead of four
+            // times. The ordinal contract (Id, OwnerStaffId, Region, ...,
+            // LatestActivityType) is preserved so the reader code below
+            // doesn't shift.
             const string sql = @"
 SELECT  e.Id, e.OwnerStaffId, e.Region,
         e.BuyerCanonicalOrgId,
@@ -177,12 +211,29 @@ SELECT  e.Id, e.OwnerStaffId, e.Region,
         e.ProposalsSubmittedCad, e.ProposalsAcceptedCad,
         e.PotentialProjects,
         e.OpenedAtUtc, e.UpdatedAtUtc, e.Stage,
-        (SELECT COUNT(*) FROM opportunities.CrmActivities a WHERE a.EngagementId = e.Id) AS ActivityCount,
-        (SELECT TOP 1 OccurredAtUtc FROM opportunities.CrmActivities a WHERE a.EngagementId = e.Id ORDER BY OccurredAtUtc DESC) AS LatestActivityUtc,
-        (SELECT TOP 1 DisplayName FROM opportunities.CrmContacts c WHERE c.EngagementId = e.Id ORDER BY c.Id) AS PrimaryContact,
-        (SELECT TOP 1 a.ActivityType FROM opportunities.CrmActivities a WHERE a.EngagementId = e.Id ORDER BY a.OccurredAtUtc DESC) AS LatestActivityType
+        ISNULL(ag.ActivityCount, 0) AS ActivityCount,
+        latest.OccurredAtUtc        AS LatestActivityUtc,
+        cx.PrimaryContact           AS PrimaryContact,
+        latest.ActivityType         AS LatestActivityType
 FROM    opportunities.CrmEngagements e
 LEFT    JOIN opportunities.CanonicalOrg co ON co.Id = e.BuyerCanonicalOrgId
+OUTER APPLY (
+    SELECT  COUNT(*) AS ActivityCount
+    FROM    opportunities.CrmActivities a
+    WHERE   a.EngagementId = e.Id
+) ag
+OUTER APPLY (
+    SELECT TOP 1 a.OccurredAtUtc, a.ActivityType
+    FROM   opportunities.CrmActivities a
+    WHERE  a.EngagementId = e.Id
+    ORDER  BY a.OccurredAtUtc DESC
+) latest
+OUTER APPLY (
+    SELECT TOP 1 c.DisplayName AS PrimaryContact
+    FROM   opportunities.CrmContacts c
+    WHERE  c.EngagementId = e.Id
+    ORDER  BY c.Id
+) cx
 WHERE   e.OpportunityId IS NULL
   AND   e.Region IS NOT NULL
 ORDER   BY e.Region, e.OwnerStaffId, BuyerDisplayName;";
@@ -216,10 +267,11 @@ ORDER   BY e.Region, e.OwnerStaffId, BuyerDisplayName;";
             Engagements.Clear();
             foreach (var row in rows) Engagements.Add(row);
 
-            OnPropertyChanged(nameof(FilteredEngagements));
+            // Round 37c: materialize the filtered view exactly once per load;
+            // setters then mutate it directly via RefreshFiltered.
+            RefreshFiltered();
             OnPropertyChanged(nameof(Rollup));
-
-            StatusMessage = $"Loaded {rows.Count:N0} BD-tracking engagements across {rows.Select(r => r.Region).Distinct().Count()} regions.";
+            UpdateFilteredStatus();
         }
         catch (OperationCanceledException)
         {
@@ -227,6 +279,11 @@ ORDER   BY e.Region, e.OwnerStaffId, BuyerDisplayName;";
         }
         catch (Exception ex)
         {
+            // Round 37b (T4.002): the main load is the most diagnostic-worthy
+            // event in this VM (gate to everything BdTracking surfaces). The
+            // status line was the only signal before — now logger gets the
+            // stack too so we can triage from logs without UI repro.
+            _logger?.LogError(ex, "BdTracking LoadAsync failed.");
             StatusMessage = $"Load failed: {ex.GetType().Name}: {ex.Message}";
         }
         finally
@@ -312,11 +369,14 @@ ORDER  BY IsPrimary DESC, DisplayName;";
             if (ct.IsCancellationRequested || Selected?.Id != capturedId) return;
 
             // Cross-linked MPI projects from Round 36a.
+            // Round 37b (T1.005): exclude rows the nightly DataRetirementJob
+            // has retired — those are archive, not live BD targets.
             const string linkSql = @"
 SELECT l.MajorProjectsInventoryId, m.ProjectName, m.Province, m.Stage, l.Confidence, l.MatchedText
 FROM   opportunities.CrmEngagementProjectLink l
 JOIN   opportunities.MajorProjectsInventory m ON m.Id = l.MajorProjectsInventoryId
 WHERE  l.EngagementId = @eid
+  AND  m.RetiredAtUtc IS NULL
 ORDER  BY l.Confidence DESC;";
             await using (var cmd = new SqlCommand(linkSql, con))
             {

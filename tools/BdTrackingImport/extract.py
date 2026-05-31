@@ -36,8 +36,16 @@ import os
 
 warnings.filterwarnings('ignore')
 
-XLSX = r'C:/VIsual Studio Projects/Operations/docs/KOR Structural BD Tracking 2026.xlsx'
-OUT_DIR = r'C:/VIsual Studio Projects/Operations/tools/BdTrackingImport/inputs'
+# Round 37c (T7.001): discover paths relative to this script's location instead
+# of hardcoding "C:/VIsual Studio Projects/...". Lets the importer run from any
+# checkout location, any user, any drive — and unblocks CI/agent execution.
+# Layout: <repo>/tools/BdTrackingImport/extract.py  (this file)
+#         <repo>/docs/KOR Structural BD Tracking 2026.xlsx
+#         <repo>/tools/BdTrackingImport/inputs/bd-tracking.jsonl
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.abspath(os.path.join(_THIS_DIR, os.pardir, os.pardir))
+XLSX = os.path.join(_REPO_ROOT, 'docs', 'KOR Structural BD Tracking 2026.xlsx')
+OUT_DIR = os.path.join(_THIS_DIR, 'inputs')
 OUT = os.path.join(OUT_DIR, 'bd-tracking.jsonl')
 
 REGION_MAP = {

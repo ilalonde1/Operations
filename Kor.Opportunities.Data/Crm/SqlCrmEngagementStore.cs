@@ -13,10 +13,15 @@ public sealed class SqlCrmEngagementStore : ICrmEngagementStore
 {
     private const int CommandTimeoutSeconds = 30;
 
+    // Round 37a (BD-AUDIT-20260530-R2 T1.001): adds the five migration-48
+    // BD-tracking columns to the shared column list. Order must stay in sync
+    // with MapReader's ordinal access below — append-at-end-before-audit keeps
+    // existing call sites' Id/OpportunityId/Stage/... ordinals stable.
     private const string AllColumns = @"
 Id, OpportunityId, Stage, OwnerStaffId, AssignedStaffIds,
 TargetMargin, ProposedFee, ProposedHours, Notes,
 OpenedAtUtc, ClosedAtUtc, OutcomeNotes,
+BuyerCanonicalOrgId, Region, ProposalsSubmittedCad, ProposalsAcceptedCad, PotentialProjects,
 CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy, RowVersion";
 
     private readonly string _connectionString;
@@ -89,16 +94,19 @@ INSERT INTO opportunities.CrmEngagements
     (OpportunityId, Stage, OwnerStaffId, AssignedStaffIds,
      TargetMargin, ProposedFee, ProposedHours, Notes,
      OpenedAtUtc, ClosedAtUtc, OutcomeNotes,
+     BuyerCanonicalOrgId, Region, ProposalsSubmittedCad, ProposalsAcceptedCad, PotentialProjects,
      CreatedBy, UpdatedBy)
 OUTPUT
     inserted.Id, inserted.OpportunityId, inserted.Stage, inserted.OwnerStaffId, inserted.AssignedStaffIds,
     inserted.TargetMargin, inserted.ProposedFee, inserted.ProposedHours, inserted.Notes,
     inserted.OpenedAtUtc, inserted.ClosedAtUtc, inserted.OutcomeNotes,
+    inserted.BuyerCanonicalOrgId, inserted.Region, inserted.ProposalsSubmittedCad, inserted.ProposalsAcceptedCad, inserted.PotentialProjects,
     inserted.CreatedAtUtc, inserted.CreatedBy, inserted.UpdatedAtUtc, inserted.UpdatedBy, inserted.RowVersion
 VALUES
     (@oppId, @stage, @owner, @assigned,
      @margin, @fee, @hours, @notes,
      @openedAt, @closedAt, @outcomeNotes,
+     @buyerCanonicalOrgId, @region, @proposalsSubmittedCad, @proposalsAcceptedCad, @potentialProjects,
      @actor, @actor);";
 
         await using var con = new SqlConnection(_connectionString);
@@ -120,22 +128,28 @@ VALUES
     {
         var sql = $@"
 UPDATE opportunities.CrmEngagements
-SET Stage           = @stage,
-    OwnerStaffId    = @owner,
-    AssignedStaffIds= @assigned,
-    TargetMargin    = @margin,
-    ProposedFee     = @fee,
-    ProposedHours   = @hours,
-    Notes           = @notes,
-    OpenedAtUtc     = @openedAt,
-    ClosedAtUtc     = @closedAt,
-    OutcomeNotes    = @outcomeNotes,
-    UpdatedAtUtc    = sysdatetimeoffset(),
-    UpdatedBy       = @actor
+SET Stage                 = @stage,
+    OwnerStaffId          = @owner,
+    AssignedStaffIds      = @assigned,
+    TargetMargin          = @margin,
+    ProposedFee           = @fee,
+    ProposedHours         = @hours,
+    Notes                 = @notes,
+    OpenedAtUtc           = @openedAt,
+    ClosedAtUtc           = @closedAt,
+    OutcomeNotes          = @outcomeNotes,
+    BuyerCanonicalOrgId   = @buyerCanonicalOrgId,
+    Region                = @region,
+    ProposalsSubmittedCad = @proposalsSubmittedCad,
+    ProposalsAcceptedCad  = @proposalsAcceptedCad,
+    PotentialProjects     = @potentialProjects,
+    UpdatedAtUtc          = sysdatetimeoffset(),
+    UpdatedBy             = @actor
 OUTPUT
     inserted.Id, inserted.OpportunityId, inserted.Stage, inserted.OwnerStaffId, inserted.AssignedStaffIds,
     inserted.TargetMargin, inserted.ProposedFee, inserted.ProposedHours, inserted.Notes,
     inserted.OpenedAtUtc, inserted.ClosedAtUtc, inserted.OutcomeNotes,
+    inserted.BuyerCanonicalOrgId, inserted.Region, inserted.ProposalsSubmittedCad, inserted.ProposalsAcceptedCad, inserted.PotentialProjects,
     inserted.CreatedAtUtc, inserted.CreatedBy, inserted.UpdatedAtUtc, inserted.UpdatedBy, inserted.RowVersion
 WHERE Id = @id AND RowVersion = @rv;";
 
@@ -171,6 +185,12 @@ WHERE Id = @id AND RowVersion = @rv;";
         cmd.Parameters.Add("@openedAt", SqlDbType.DateTimeOffset).Value = e.OpenedAtUtc;
         cmd.Parameters.Add("@closedAt", SqlDbType.DateTimeOffset).Value = (object?)e.ClosedAtUtc ?? DBNull.Value;
         cmd.Parameters.Add("@outcomeNotes", SqlDbType.NVarChar, -1).Value = (object?)e.OutcomeNotes ?? DBNull.Value;
+        // Round 37a (T1.001): migration-48 BD-tracking columns.
+        cmd.Parameters.Add("@buyerCanonicalOrgId", SqlDbType.BigInt).Value = (object?)e.BuyerCanonicalOrgId ?? DBNull.Value;
+        cmd.Parameters.Add("@region", SqlDbType.NVarChar, 40).Value = (object?)e.Region ?? DBNull.Value;
+        AddDecimal(cmd, "@proposalsSubmittedCad", precision: 18, scale: 2, value: e.ProposalsSubmittedCad);
+        AddDecimal(cmd, "@proposalsAcceptedCad", precision: 18, scale: 2, value: e.ProposalsAcceptedCad);
+        cmd.Parameters.Add("@potentialProjects", SqlDbType.NVarChar, -1).Value = (object?)e.PotentialProjects ?? DBNull.Value;
     }
 
     private static void AddDecimal(SqlCommand cmd, string name, byte precision, byte scale, decimal? value)
@@ -198,10 +218,16 @@ WHERE Id = @id AND RowVersion = @rv;";
         OpenedAtUtc = r.GetDateTimeOffset(9),
         ClosedAtUtc = r.IsDBNull(10) ? null : r.GetDateTimeOffset(10),
         OutcomeNotes = r.IsDBNull(11) ? null : r.GetString(11),
-        CreatedAtUtc = r.GetDateTimeOffset(12),
-        CreatedBy = r.GetString(13),
-        UpdatedAtUtc = r.GetDateTimeOffset(14),
-        UpdatedBy = r.GetString(15),
-        RowVersion = (byte[])r.GetValue(16),
+        // Round 37a (T1.001): migration-48 BD-tracking columns at ordinals 12-16.
+        BuyerCanonicalOrgId = r.IsDBNull(12) ? null : r.GetInt64(12),
+        Region = r.IsDBNull(13) ? null : r.GetString(13),
+        ProposalsSubmittedCad = r.IsDBNull(14) ? null : r.GetDecimal(14),
+        ProposalsAcceptedCad = r.IsDBNull(15) ? null : r.GetDecimal(15),
+        PotentialProjects = r.IsDBNull(16) ? null : r.GetString(16),
+        CreatedAtUtc = r.GetDateTimeOffset(17),
+        CreatedBy = r.GetString(18),
+        UpdatedAtUtc = r.GetDateTimeOffset(19),
+        UpdatedBy = r.GetString(20),
+        RowVersion = (byte[])r.GetValue(21),
     };
 }

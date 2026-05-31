@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -33,7 +34,26 @@ public partial class CompetitionInfoView : UserControl
         }
 
         _initialized = true;
-        await _vm.InitializeAsync().ConfigureAwait(true);
+        // Round 37a (T2.001): async void without try/catch crashes the app on
+        // header-load / DB-init failure. The popup CompetitionInfoWindow was
+        // fixed in Round 35b; the inline view (hosted in BdWorkspaceWindow) was
+        // missed. Mirror the inline-view try/catch pattern from BdTrackingView.
+        try
+        {
+            await _vm.InitializeAsync().ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                Window.GetWindow(this) ?? Application.Current?.MainWindow,
+                ex.Message,
+                "Competition Info — Load Failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private void OpenAboutSources_Click(object sender, RoutedEventArgs e)

@@ -68,6 +68,11 @@ internal static class Program
         new("NewsArticleOrgMention", "CanonicalOrgId"),
         new("OrgAlias", "CanonicalOrgId"),
         new("CanonicalOrgEnrichment", "CanonicalOrgId"),
+        // Round 37a (BD-AUDIT-20260530-R2 T1.002): migration 48 added
+        // CrmEngagements.BuyerCanonicalOrgId. Missing from this list meant the
+        // next merge would fail FK validation or leave BD-tracking engagements
+        // attached to the loser canonical id.
+        new("CrmEngagements", "BuyerCanonicalOrgId"),
     };
 
     private static async Task<int> Main(string[] args)

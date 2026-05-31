@@ -588,8 +588,16 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             // window closing or row changed
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // Round 37c (BD-AUDIT-20260530-R2 T4.003): the inner catches got
+            // a logger in Round 35b but this outer net was missed — every
+            // unhandled detail-load failure (engagement store crash, activity
+            // listing crash, contact store crash) cleared the panels silently.
+            // Now it logs the stack first so the root cause is traceable
+            // before the UI fallback kicks in.
+            Serilog.Log.Warning(ex, "Opportunity detail load failed for opportunity {OpportunityId}; panels cleared.", current.Model.Id);
+
             if (_selected?.Model.Id == current.Model.Id)
             {
                 SelectedEngagement = null;

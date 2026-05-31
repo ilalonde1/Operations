@@ -101,6 +101,16 @@
                         <TextBlock Text="Project type" FontSize="10" Foreground="#666"/>
                         <TextBlock Text="{Binding AgentContractProjectType}" FontSize="12.5"/>
                     </StackPanel>
+                    <!-- Round 37d (R2 audit follow-up): AgentKorOverlapScore was set
+                         by the VM (Round 6f) but the XAML binding was missed, so the
+                         chip never showed and the property tripped UnusedViewModelPropertyTests.
+                         Wired back into the agent-stat strip per Round 6f intent. -->
+                    <StackPanel Margin="0,0,28,4" Visibility="{Binding AgentKorOverlapScore, Converter={StaticResource NullToVisHide}}">
+                        <TextBlock Text="KOR overlap" FontSize="10" Foreground="#666"/>
+                        <TextBlock FontSize="12.5">
+                            <Run Text="{Binding AgentKorOverlapScore, Mode=OneWay}"/><Run Text="/10"/>
+                        </TextBlock>
+                    </StackPanel>
                     <StackPanel Margin="0,0,28,4">
                         <TextBlock Text="Ownership" FontSize="10" Foreground="#666"/>
                         <TextBlock Text="{Binding AgentVendorOwnershipStatus, FallbackValue=''}" FontSize="12.5"/>
