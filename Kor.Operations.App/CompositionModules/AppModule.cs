@@ -163,9 +163,27 @@ internal static class AppModule
         // Round 38c: the legacy PmToolsWindow is decommissioned. The chooser
         // routes to one of two dedicated windows below, both backed by the
         // singleton VMs registered above.
+        //
+        // Round 47 (PM Tools crash fix): both PM child windows have internal
+        // ctors (Round 38a kept them internal to dodge CS0051 cascades from
+        // the internal PmToolsViewModel and its internal property types like
+        // BulkObservableCollection<T>, PmProjectRow, PmGroupViewModel,
+        // UtilizationRow, DraftUtilizationRow). Microsoft.Extensions.DI's
+        // CallSiteFactory only considers PUBLIC constructors when no factory
+        // is supplied — so a bare `AddTransient<T>()` registration of either
+        // window throws "A suitable constructor for type 'T' could not be
+        // located" at GetRequiredService<T>() time. Explicit factory lambdas
+        // are the idiomatic workaround: they call the internal ctor from
+        // inside the same assembly (where C# accessibility allows it) and
+        // hand DI back a fully-constructed instance.
         services.AddTransient<PMTools.PmToolsChooserWindow>();
-        services.AddTransient<PMTools.WorkloadMeetingWindow>();
-        services.AddTransient<PMTools.PmCapacityWindow>();
+        services.AddTransient<PMTools.WorkloadMeetingWindow>(sp => new PMTools.WorkloadMeetingWindow(
+            sp.GetRequiredService<WorkloadMeetingPanelViewModel>(),
+            sp.GetRequiredService<PMTools.PmToolsViewModel>()));
+        services.AddTransient<PMTools.PmCapacityWindow>(sp => new PMTools.PmCapacityWindow(
+            sp.GetRequiredService<PMTools.PmToolsViewModel>(),
+            sp.GetRequiredService<WorkloadMeetingPanelViewModel>(),
+            sp.GetRequiredService<DeltekOdbcOptions>()));
         services.AddTransient<EngineeringTools.EngineeringToolsWindow>(sp =>
             new EngineeringTools.EngineeringToolsWindow(sp));
         services.AddTransient<EngineeringTools.PdfToSafe.PdfToSafeWindow>();
