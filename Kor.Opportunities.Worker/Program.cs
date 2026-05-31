@@ -661,6 +661,23 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  // Round 46: weekly canonical-org dedup. Catches the ~25-30 dup groups the
+  // live ingest sources produce per week. Only the safe canonical-name pass
+  // runs here — honing-pass / --pairs / DBA merges stay manual (need curation).
+  var canonicalDedupKey = new JobKey("CanonicalOrgDedupJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.CanonicalOrgDedupJob>(opts => opts.WithIdentity(canonicalDedupKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: Sundays at 03:00 Pacific. After the Saturday-overnight ingest
+      // crons settle and before the AbMajorProjectsInventory Sunday-03:30 import
+      // (next week's dedup catches dups that one introduces).
+      var cron = builder.Configuration["CanonicalOrgDedupCronSchedule"] ?? "0 0 3 ? * SUN";
+      t.ForJob(canonicalDedupKey)
+       .WithIdentity("CanonicalOrgDedupTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   q.AddTrigger(t =>
   {
       // Default: 05:00 Pacific daily, before SamGov's 06:00 and permits' 06:30 ticks.

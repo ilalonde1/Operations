@@ -181,6 +181,16 @@ public sealed class OpportunitiesWorkerOptions
     public int StaleProjectMonths { get; set; } = 6;
     public string? DataRetirementCronSchedule { get; set; }
 
+    // --- Round 46: weekly canonical-org dedup (auto-merge name-equivalent
+    // canonicals introduced by background ingestion). Only the canonical-name
+    // pass runs in the worker; --pairs / --merge-dba / honing-pass merges
+    // stay manual via the CLI tool because they require curation. Hard cap on
+    // groups merged per run prevents a runaway algorithm regression from
+    // collapsing the org graph silently every Sunday.
+    public bool CanonicalOrgDedupEnabled { get; set; } = true;
+    public int CanonicalOrgDedupMaxGroupsPerRun { get; set; } = 200;
+    public string? CanonicalOrgDedupCronSchedule { get; set; }
+
     public string DeltekDsn { get; set; } = "Deltek";
     public string DeltekUser { get; set; } = "";
     public string DeltekPassword { get; set; } = "";
