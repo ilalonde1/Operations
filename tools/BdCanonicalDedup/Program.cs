@@ -10,7 +10,33 @@ namespace Kor.BdCanonicalDedup;
 internal static class Program
 {
     private const string AliasSource = "DedupeMerge";
-    private const string DefaultOutputDirectory = @"tools\BdCanonicalDedup\output";
+
+    // Round 45 (R6-T3.001): default output dir used to be the cwd-relative
+    // string "tools\BdCanonicalDedup\output". That produced a nested
+    // tools/BdCanonicalDedup/tools/BdCanonicalDedup/output/dedupe-plan.csv
+    // whenever the tool was launched from inside its own directory (R41 hit
+    // this — almost reviewed the wrong plan file). Resolve the default by
+    // walking up from the assembly location to the repo root (a directory
+    // containing a `.git` folder), so the path is stable no matter where the
+    // user runs the tool from. Falls back to the assembly directory if no
+    // repo-root marker is found (e.g. when running a published single-file).
+    private static readonly string DefaultOutputDirectory = ResolveDefaultOutputDirectory();
+
+    private static string ResolveDefaultOutputDirectory()
+    {
+        var asmDir = Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? Directory.GetCurrentDirectory();
+        var probe = new DirectoryInfo(asmDir);
+        while (probe is not null)
+        {
+            if (Directory.Exists(Path.Combine(probe.FullName, ".git")))
+            {
+                return Path.Combine(probe.FullName, "tools", "BdCanonicalDedup", "output");
+            }
+            probe = probe.Parent;
+        }
+        return asmDir;
+    }
+
     private static readonly Regex DbaRegex = new(@"^(.*)\s+dba[:\s]+(.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly string[] StripTrailingTokens = new[]
@@ -87,6 +113,10 @@ internal static class Program
             }
 
             Directory.CreateDirectory(options.OutputDirectory);
+            // Round 45 (R6-T3.001): always show the absolute output path up
+            // front. Avoids "did I just inspect a stale CSV?" confusion when
+            // the cwd / --out interaction is non-obvious.
+            Console.WriteLine($"Output directory: {Path.GetFullPath(options.OutputDirectory)}");
             var planPath = Path.Combine(options.OutputDirectory, "dedupe-plan.csv");
 
             await using var con = new SqlConnection(options.OpportunitiesDb);
@@ -296,8 +326,24 @@ internal static class Program
 
             try
             {
-                await CommitGroupAsync(con, group, schema.NewsMentionTypeKeyExists).ConfigureAwait(false);
+                // Round 45 (R6-T3.002): capture the commit result so its
+                // counters and per-table FK repoint counts roll up into the
+                // summary. The canonical-name merge path already does this
+                // (above, lines 145-154); the pair-merge path used to discard
+                // the result, so the final "FK repoints by table" report was a
+                // misleading zero even when pairs really did touch graph
+                // edges (R42 hit this). Mirroring all four fields the
+                // canonical path aggregates keeps the two report shapes equal.
+                var result = await CommitGroupAsync(con, group, schema.NewsMentionTypeKeyExists).ConfigureAwait(false);
+                summary.EnrichmentCollisionsResolved += result.EnrichmentCollisionsResolved;
+                summary.NewsMentionCollisionsResolved += result.NewsMentionCollisionsResolved;
+                summary.AliasesPreserved += result.AliasesPreserved;
                 summary.GroupsCommitted++;
+                foreach (var (table, count) in result.FkRepointsByTable)
+                {
+                    summary.FkRepointsByTable.TryGetValue(table, out var existing);
+                    summary.FkRepointsByTable[table] = existing + count;
+                }
             }
             catch (Exception ex)
             {
