@@ -423,10 +423,22 @@ namespace Kor.Operations.PMTools
             // VM's CurrentProjects (the canonical source) before awaiting.
             var previousPriority = _meetingPanel.CurrentProjects
                 .FirstOrDefault(p => string.Equals(p.Wbs1, row.Wbs1, StringComparison.OrdinalIgnoreCase))?.Priority ?? 0;
+            var attemptedPriority = priority;
 
             var ok = await _meetingPanel.UpsertPriorityFromUiAsync(row.Wbs1, priority);
             if (!ok)
             {
+                // Round 40 (R4-T2.002): if the user changed priority again before
+                // our failure landed, the row has moved on — reverting would
+                // clobber a later successful save. Log the stale failure and
+                // leave the UI alone.
+                if (row.MeetingPriority != attemptedPriority)
+                {
+                    Serilog.Log.Information(
+                        "PM Tools: priority save for {Wbs1} failed (attempted {Attempted}) but row has moved to {Current}; skipping revert.",
+                        row.Wbs1, attemptedPriority, row.MeetingPriority);
+                    return;
+                }
                 _isSyncingMeetingPriorities = true;
                 try { row.MeetingPriority = previousPriority; }
                 finally { _isSyncingMeetingPriorities = false; }

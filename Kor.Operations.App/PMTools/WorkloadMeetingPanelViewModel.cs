@@ -144,22 +144,59 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     /// window shows priorities even when it is opened in isolation (without
     /// PmCapacityWindow). The optional <paramref name="enrich"/> lookup lets
     /// the capacity window inject ProjectName / PmName from its own
-    /// PmToolsViewModel rows; if no enricher is supplied we fall back to the
-    /// Wbs1 number as the display name.
+    /// PmToolsViewModel rows.
+    ///
+    /// Round 40 (R4-T2.001): when no enricher is supplied, preserve any
+    /// existing enriched ProjectName / PmName already on PriorityProjects
+    /// instead of falling back to the Wbs1 number. This matters after a
+    /// successful priority save: <see cref="UpsertPriorityFromUiAsync"/>
+    /// rebuilds CurrentProjects, the capacity window's CollectionChanged
+    /// handler fires during the rebuild and enriches via its lookup, and
+    /// THEN the VM calls this method with no enricher. Without the preserve
+    /// step that final call clobbered the enriched names back to Wbs1.
     /// </summary>
     public void RefreshPriorityProjects(Func<string, (string? Name, string? Pm)>? enrich = null)
     {
+        // Snapshot existing enrichment (Wbs1 -> ProjectName/PmName) when we're
+        // running without an enricher, so we keep what the capacity window
+        // already wrote.
+        var preserved = enrich is null
+            ? PriorityProjects.ToDictionary(p => p.Wbs1, p => (p.ProjectName, p.PmName), StringComparer.OrdinalIgnoreCase)
+            : null;
+
         var projected = CurrentProjects.Select(p =>
         {
-            var hit = enrich?.Invoke(p.Wbs1);
+            string? name = null;
+            string? pm = null;
+            if (enrich is not null)
+            {
+                var hit = enrich(p.Wbs1);
+                name = hit.Name;
+                pm = hit.Pm;
+            }
+            else if (preserved is not null && preserved.TryGetValue(p.Wbs1, out var prior))
+            {
+                // Treat "ProjectName == Wbs1" as un-enriched so we don't lock
+                // in the fallback name forever.
+                if (!string.IsNullOrWhiteSpace(prior.ProjectName)
+                    && !string.Equals(prior.ProjectName, p.Wbs1, StringComparison.OrdinalIgnoreCase))
+                {
+                    name = prior.ProjectName;
+                }
+                if (!string.IsNullOrWhiteSpace(prior.PmName))
+                {
+                    pm = prior.PmName;
+                }
+            }
+
             return new WorkloadMeetingProjectRow
             {
                 MeetingId = p.MeetingId,
                 Wbs1 = p.Wbs1,
                 Priority = p.Priority,
                 Notes = p.Notes ?? string.Empty,
-                ProjectName = !string.IsNullOrWhiteSpace(hit?.Name) ? hit.Value.Name! : p.Wbs1,
-                PmName = hit?.Pm ?? string.Empty,
+                ProjectName = !string.IsNullOrWhiteSpace(name) ? name! : p.Wbs1,
+                PmName = pm ?? string.Empty,
             };
         });
         SetPriorityProjectRows(projected);
