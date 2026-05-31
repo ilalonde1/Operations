@@ -5,8 +5,8 @@
         Title="KOR NewerForma — PM Tools"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
-        Width="780"
-        Height="500"
+        Width="960"
+        Height="640"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         SizeToContent="Manual"
@@ -68,11 +68,14 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- Round 48a: match HomeWindow's KorHeader sizing (AvatarDiameter=96,
+             AvatarBorderThickness=2) so the chooser doesn't look like a tiny
+             one-off relative to the rest of the app. -->
         <controls:KorHeader Grid.Row="0"
                             x:Name="HeaderBar"
                             HeaderText="PM Tools"
                             SubtitleText="Pick a tool."
-                            AvatarDiameter="64"
+                            AvatarDiameter="96"
                             AvatarBorderThickness="2"
                             Margin="0,0,0,16"/>
 
