@@ -18,4 +18,13 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.8" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Round 42: source-controlled allowlist of (LoserId,SurvivorId) pairs that
+         legitimately bypass the Round-37 fuzzy-name similarity gate. Used for
+         historical-rename merges (e.g. BMZ -> KOR Structural Ltd.) where the
+         names cannot be reconciled by any normalization. -->
+    <Content Include="dedup-non-similar-allowlist.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

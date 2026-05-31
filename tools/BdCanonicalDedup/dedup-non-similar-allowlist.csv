@@ -1,0 +1,12 @@
+LoserId,SurvivorId,Reason
+# Round 42 (2026-05-30): BMZ -> KOR Structural Ltd. (id 38918).
+# Per saved memory reference_kor_bmz_rename: KOR was "Bryson Markulin Zickmantel"
+# before the 2021 rebrand. The fuzzy-name gate added in the Round 37 audit
+# (post-Abbotsford-SD -> Alterra-Power-Corp incident) correctly rejects these
+# pairs because the names are not similar in any normalization. This allowlist
+# is the curated escape hatch for legitimate historical-rename pairs.
+69930,38918
+69934,38918
+70675,38918
+70948,38918
+71123,38918
