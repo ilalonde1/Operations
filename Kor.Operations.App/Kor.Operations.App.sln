@@ -56,6 +56,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrimeRfpClassifierBackfill"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdDeltekLink", "..\tools\BdDeltekLink\BdDeltekLink.csproj", "{F8F1B91E-0B96-4C81-8A34-82B662566852}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdOpportunityPurge", "..\tools\BdOpportunityPurge\BdOpportunityPurge.csproj", "{4D76C191-BC7F-40C6-93D7-AD3268A39FB5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BdOrphanOrgPurge", "..\tools\BdOrphanOrgPurge\BdOrphanOrgPurge.csproj", "{A64B6C8E-7E6C-4C1C-A7CE-0BB1582AD7A1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -162,6 +166,14 @@ Global
 		{F8F1B91E-0B96-4C81-8A34-82B662566852}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F8F1B91E-0B96-4C81-8A34-82B662566852}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F8F1B91E-0B96-4C81-8A34-82B662566852}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D76C191-BC7F-40C6-93D7-AD3268A39FB5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D76C191-BC7F-40C6-93D7-AD3268A39FB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D76C191-BC7F-40C6-93D7-AD3268A39FB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D76C191-BC7F-40C6-93D7-AD3268A39FB5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A64B6C8E-7E6C-4C1C-A7CE-0BB1582AD7A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A64B6C8E-7E6C-4C1C-A7CE-0BB1582AD7A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A64B6C8E-7E6C-4C1C-A7CE-0BB1582AD7A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A64B6C8E-7E6C-4C1C-A7CE-0BB1582AD7A1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
