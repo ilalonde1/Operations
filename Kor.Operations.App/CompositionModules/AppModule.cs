@@ -177,12 +177,19 @@ internal static class AppModule
         // inside the same assembly (where C# accessibility allows it) and
         // hand DI back a fully-constructed instance.
         services.AddTransient<PMTools.PmToolsChooserWindow>();
+        // Round 48: WorkloadMeetingWindow now also hosts the KPI strip,
+        // Portfolio Health bar, and PM Groups grid (moved from PmCapacityWindow).
+        // Ctor signature matches the pre-split PmToolsWindow exactly:
+        // (PmToolsViewModel, WorkloadMeetingPanelViewModel, DeltekOdbcOptions).
         services.AddTransient<PMTools.WorkloadMeetingWindow>(sp => new PMTools.WorkloadMeetingWindow(
-            sp.GetRequiredService<WorkloadMeetingPanelViewModel>(),
-            sp.GetRequiredService<PMTools.PmToolsViewModel>()));
-        services.AddTransient<PMTools.PmCapacityWindow>(sp => new PMTools.PmCapacityWindow(
             sp.GetRequiredService<PMTools.PmToolsViewModel>(),
             sp.GetRequiredService<WorkloadMeetingPanelViewModel>(),
+            sp.GetRequiredService<DeltekOdbcOptions>()));
+        // Round 48: PmCapacityWindow no longer takes WorkloadMeetingPanelViewModel.
+        // The window is now Eng/Draft Capacity Risk tabs only — meeting board +
+        // PM Groups moved to WorkloadMeetingWindow per Ian's design intent.
+        services.AddTransient<PMTools.PmCapacityWindow>(sp => new PMTools.PmCapacityWindow(
+            sp.GetRequiredService<PMTools.PmToolsViewModel>(),
             sp.GetRequiredService<DeltekOdbcOptions>()));
         services.AddTransient<EngineeringTools.EngineeringToolsWindow>(sp =>
             new EngineeringTools.EngineeringToolsWindow(sp));
