@@ -141,6 +141,8 @@ internal static class Program
             if (Run("capital-funding-signals")) await ImportCapitalFundingSignalsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("seismic-pipeline")) await ImportSeismicPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("island-okanagan-pairing")) await ImportIslandOkanaganPairingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("lower-mainland-pairing")) await ImportLowerMainlandPairingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("edmonton-pairing")) await ImportEdmontonPairingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("bd-tracking")) await ImportBdTrackingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("bd-tracking-crosslink")) await ImportBdTrackingCrossLinkAsync(options, stats, cts.Token).ConfigureAwait(false);
 
@@ -3751,13 +3753,57 @@ internal static class Program
     // so the Forward Pipeline view can isolate this dataset. Owner / architect /
     // structural / GC names all resolve through CanonicalOrgResolver so the
     // network graph hangs together.
-    private static async Task ImportIslandOkanaganPairingAsync(
+    // Round 41: thin wrappers for the three Pairing sessions. Share one body
+    // since the JSONL schemas are identical (year / projectName / region /
+    // sector / owner / valueCad / stage / architectOrg / structuralOrg /
+    // mepConsultants / gcOrConstructionManager / sourceUrls / notes). Only
+    // the input directory, the Source label, and the Province differ.
+    private static Task ImportIslandOkanaganPairingAsync(
         ImportOptions options,
         CanonicalOrgResolver? resolver,
         ImportStats stats,
         CancellationToken ct)
+        => ImportPairingAsync(options, resolver, stats,
+            directoryName: "KOR-Island-Okanagan-Pairing",
+            sourceLabel: "IslandOkanaganPairing",
+            // Island + Okanagan are all BC; ProvinceFromSeismicRegion would
+            // also return "BC" for these regions so the behaviour matches
+            // the pre-Round-41 single-handler implementation.
+            province: "BC",
+            ct: ct);
+
+    private static Task ImportLowerMainlandPairingAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+        => ImportPairingAsync(options, resolver, stats,
+            directoryName: "KOR-LowerMainland-Pairing",
+            sourceLabel: "LowerMainlandPairing",
+            province: "BC",
+            ct: ct);
+
+    private static Task ImportEdmontonPairingAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+        => ImportPairingAsync(options, resolver, stats,
+            directoryName: "KOR-Edmonton-Pairing",
+            sourceLabel: "EdmontonPairing",
+            province: "AB",
+            ct: ct);
+
+    private static async Task ImportPairingAsync(
+        ImportOptions options,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        string directoryName,
+        string sourceLabel,
+        string province,
+        CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Island-Okanagan-Pairing", "outputs", "pairings.jsonl");
+        var path = Path.Combine(options.BaseDirectory, directoryName, "outputs", "pairings.jsonl");
         if (!File.Exists(path))
         {
             Console.WriteLine($"[WARN] Missing payload: {path}");
@@ -3798,8 +3844,8 @@ internal static class Program
 
             var ownerId = await ResolveAsync(resolver, options, stats, owner, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
             var architectId = await ResolveAsync(resolver, options, stats, architectOrg, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
-            var structuralId = await ResolveAsync(resolver, options, stats, structuralOrg, OrgKinds.Competitor, "IslandOkanaganPairing.Structural", ct).ConfigureAwait(false);
-            var gcId = await ResolveAsync(resolver, options, stats, gcOrg, OrgKinds.GeneralContractor, "IslandOkanaganPairing.Gc", ct).ConfigureAwait(false);
+            var structuralId = await ResolveAsync(resolver, options, stats, structuralOrg, OrgKinds.Competitor, $"{sourceLabel}.Structural", ct).ConfigureAwait(false);
+            var gcId = await ResolveAsync(resolver, options, stats, gcOrg, OrgKinds.GeneralContractor, $"{sourceLabel}.Gc", ct).ConfigureAwait(false);
 
             var scheduleParts = new List<string>();
             if (year.HasValue) scheduleParts.Add(year.Value.ToString());
@@ -3824,8 +3870,8 @@ internal static class Program
             }
 
             var record = new MajorProjectRecord(
-                Source: "IslandOkanaganPairing",
-                SourceKey: Sha1($"IslandOkanaganPairing|{projectName}|{region}"),
+                Source: sourceLabel,
+                SourceKey: Sha1($"{sourceLabel}|{projectName}|{region}"),
                 ProjectName: projectName,
                 ProjectDescription: notes,
                 EstimatedCostCad: LongOrNull(project, "valueCad"),
@@ -3843,7 +3889,7 @@ internal static class Program
                 ArchitectCanonicalOrgId: architectId,
                 Stage: stage,
                 ProjectStatus: stage,
-                ProjectStage: "IslandOkanaganPairing",
+                ProjectStage: sourceLabel,
                 ProjectCategoryName: null,
                 PublicFundingInd: true,
                 ProvincialFunding: null,
@@ -3866,7 +3912,7 @@ internal static class Program
                 SourceUrl: FirstSourceUrl(project),
                 RawJson: project.GetRawText())
             {
-                Province = ProvinceFromSeismicRegion(region),  // Island/Okanagan -> BC; reuses Seismic mapper
+                Province = province,
                 StructuralEngineerName = structuralOrg,
                 StructuralEngineerCanonicalOrgId = structuralId,
                 GeneralContractorName = gcOrg,
