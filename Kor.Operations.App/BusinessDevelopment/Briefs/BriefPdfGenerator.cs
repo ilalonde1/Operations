@@ -12,13 +12,20 @@ using QuestPDF.Infrastructure;
 namespace Kor.Operations.App.BusinessDevelopment.Briefs;
 
 /// <summary>
-/// QuestPDF renderer for the three Pursuit Brief shapes. Brand-matches
-/// <c>PursuitBriefPdfExporter</c>: Letter, Mulish, navy header band, section
-/// strip + body. Stateless + thread-safe (register as Singleton).
+/// QuestPDF renderer for the three Pursuit Brief shapes. Brand-matched to
+/// KOR's slate primary (<c>#3F5364</c> — same as
+/// <c>Themes/KorTheme.xaml::Brand.Primary.Brush</c>): Letter, Mulish, slate
+/// header band, section strip + body. Stateless + thread-safe (register as
+/// Singleton).
 /// </summary>
 public sealed class BriefPdfGenerator : IBriefPdfGenerator
 {
-    private const string Navy = "#1E3A8A";
+    // Round 49: brand-matched to KorTheme.xaml. The old "#1E3A8A" was generic
+    // Tailwind navy and looked like a stock template — see ss1 from 2026-05-30.
+    private const string Brand = "#3F5364";          // KOR slate primary (header band fill + section heading)
+    private const string BrandEyebrow = "#C4CCD3";   // light slate tint for the eyebrow label on the band
+    private const string BrandSubtle = "#D9DEE3";    // lighter slate for the italic subtitle line
+    private const string BrandFactLabel = "#9FA9B3"; // muted slate for the small fact labels inside the band
     private const string Text = "#111827";
     private const string Muted = "#6B7280";
     private const string Border = "#E5E7EB";
@@ -72,16 +79,18 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void OppHeaderBand(IContainer container, OpportunityBriefData d)
     {
-        container.Background(Navy).Padding(16).Column(column =>
+        // Round 49: tighter padding + tighter spacing + smaller title so the
+        // header band stops eating ~25-30% of the page (see ss1).
+        container.Background(Brand).Padding(10).Column(column =>
         {
-            column.Spacing(10);
+            column.Spacing(4);
             column.Item().Text("PURSUIT BRIEF")
-                .FontSize(9).LetterSpacing(0.2f).FontColor("#BFD3FF");
-            column.Item().Text(Nz(d.Name)).FontSize(18).Bold().FontColor(Colors.White);
+                .FontSize(8).LetterSpacing(0.2f).FontColor(BrandEyebrow);
+            column.Item().Text(Nz(d.Name)).FontSize(15).Bold().FontColor(Colors.White);
             column.Item().Text("Warmest live target — recommended next move")
-                .FontSize(10).Italic().FontColor("#DDE5FA");
+                .FontSize(9).Italic().FontColor(BrandSubtle);
 
-            column.Item().PaddingTop(6).Table(table =>
+            column.Item().PaddingTop(3).Table(table =>
             {
                 table.ColumnsDefinition(columns =>
                 {
@@ -209,14 +218,14 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     private static void RegionHeaderBand(IContainer container, RegionBriefData d)
     {
         var scope = string.IsNullOrWhiteSpace(d.City) ? d.Province : $"{d.Province} — {d.City}";
-        container.Background(Navy).Padding(16).Column(column =>
+        container.Background(Brand).Padding(10).Column(column =>
         {
-            column.Spacing(8);
+            column.Spacing(4);
             column.Item().Text("REGION BRIEF")
-                .FontSize(9).LetterSpacing(0.2f).FontColor("#BFD3FF");
-            column.Item().Text(scope).FontSize(20).Bold().FontColor(Colors.White);
+                .FontSize(8).LetterSpacing(0.2f).FontColor(BrandEyebrow);
+            column.Item().Text(scope).FontSize(16).Bold().FontColor(Colors.White);
 
-            column.Item().PaddingTop(6).Table(table =>
+            column.Item().PaddingTop(3).Table(table =>
             {
                 table.ColumnsDefinition(columns =>
                 {
@@ -317,16 +326,16 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void OrgHeaderBand(IContainer container, OrgBriefData d, OrgEnrichment enrichment)
     {
-        container.Background(Navy).Padding(16).Column(column =>
+        container.Background(Brand).Padding(10).Column(column =>
         {
-            column.Spacing(8);
+            column.Spacing(4);
             column.Item().Text("ORGANIZATION BRIEF")
-                .FontSize(9).LetterSpacing(0.2f).FontColor("#BFD3FF");
-            column.Item().Text(d.DisplayName).FontSize(20).Bold().FontColor(Colors.White);
+                .FontSize(8).LetterSpacing(0.2f).FontColor(BrandEyebrow);
+            column.Item().Text(d.DisplayName).FontSize(16).Bold().FontColor(Colors.White);
             column.Item().Text($"({d.Kind})")
-                .FontSize(10).Italic().FontColor("#DDE5FA");
+                .FontSize(9).Italic().FontColor(BrandSubtle);
 
-            column.Item().PaddingTop(6).Table(table =>
+            column.Item().PaddingTop(3).Table(table =>
             {
                 table.ColumnsDefinition(columns =>
                 {
@@ -433,7 +442,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         {
             column.Spacing(6);
             column.Item().BorderBottom(1).BorderColor(Border).PaddingBottom(4)
-                .Text(heading).FontSize(11.5f).Bold().FontColor(Navy);
+                .Text(heading).FontSize(11.5f).Bold().FontColor(Brand);
 
             foreach (var bullet in bullets)
             {
@@ -448,11 +457,12 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void HeaderFact(TableDescriptor table, string label, string value)
     {
-        table.Cell().Padding(3).Column(column =>
+        // Round 49: smaller fact rows so the band can be shorter overall.
+        table.Cell().Padding(2).Column(column =>
         {
-            column.Item().Text(label).FontSize(8).LetterSpacing(0.1f).FontColor("#9FB4F2");
+            column.Item().Text(label).FontSize(7).LetterSpacing(0.1f).FontColor(BrandFactLabel);
             column.Item().Text(string.IsNullOrWhiteSpace(value) ? "—" : value)
-                .FontSize(10).FontColor(Colors.White);
+                .FontSize(9).FontColor(Colors.White);
         });
     }
 

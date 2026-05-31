@@ -22,7 +22,11 @@ public sealed record PursuitBriefPdfSnapshot(
 
 public static class PursuitBriefPdfExporter
 {
-    private const string Navy = "#1E3A8A";
+    // Round 49: brand-matched to KorTheme.xaml (Brand.Primary.Brush = #3F5364).
+    // The old "#1E3A8A" navy was generic Tailwind and looked like a stock template.
+    private const string Brand = "#3F5364";          // KOR slate primary
+    private const string BrandEyebrow = "#C4CCD3";   // light slate tint for labels on the band
+    private const string BrandFactLabel = "#9FA9B3"; // muted slate for header-fact small labels
     private const string Purple = "#7C3AED";
     private const string Text = "#111827";
     private const string Muted = "#6B7280";
@@ -70,17 +74,19 @@ public static class PursuitBriefPdfExporter
 
     private static void RenderHeaderBand(IContainer container, PursuitBrief brief)
     {
+        // Round 49: trimmed padding + spacing + font size so the band stops
+        // dominating the page (see ss1 from 2026-05-30).
         container
-            .Background(Navy)
-            .Padding(16)
+            .Background(Brand)
+            .Padding(10)
             .Column(column =>
             {
-                column.Spacing(10);
+                column.Spacing(4);
                 column.Item().Text(Placeholder(brief.Project.ProjectName))
-                    .FontSize(20)
+                    .FontSize(16)
                     .Bold()
                     .FontColor(Colors.White);
-                column.Item().Table(table =>
+                column.Item().PaddingTop(3).Table(table =>
                 {
                     table.ColumnsDefinition(columns =>
                     {
@@ -102,10 +108,11 @@ public static class PursuitBriefPdfExporter
 
     private static void RenderHeaderFact(TableDescriptor table, string label, string? value)
     {
-        table.Cell().PaddingRight(10).PaddingBottom(8).Column(column =>
+        // Round 49: tighter cell padding + brand-tint label.
+        table.Cell().PaddingRight(8).PaddingBottom(4).Column(column =>
         {
-            column.Item().Text(label).FontSize(7.5f).FontColor("#BFDBFE").SemiBold();
-            column.Item().Text(Placeholder(value)).FontSize(9.5f).FontColor(Colors.White);
+            column.Item().Text(label).FontSize(7).FontColor(BrandFactLabel).SemiBold();
+            column.Item().Text(Placeholder(value)).FontSize(9).FontColor(Colors.White);
         });
     }
 
@@ -226,7 +233,7 @@ public static class PursuitBriefPdfExporter
             .Column(column =>
             {
                 column.Spacing(5);
-                column.Item().Text(title).FontSize(13).Bold().FontColor(Navy);
+                column.Item().Text(title).FontSize(13).Bold().FontColor(Brand);
                 column.Item().LineHorizontal(0.5f).LineColor(Border);
                 renderBody(column);
             });
