@@ -16,7 +16,7 @@ using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
 {
-    public partial class PmToolsWindow : Window
+    internal partial class PmCapacityWindow : Window
     {
         private readonly PmToolsViewModel _vm;
         private readonly WorkloadMeetingPanelViewModel _meetingPanel;
@@ -31,7 +31,7 @@ namespace Kor.Operations.PMTools
         // (its members reference internal types like BulkObservableCollection
         // and PmProjectRow). DI's ActivatorUtilities calls internal ctors in
         // the same assembly without trouble.
-        internal PmToolsWindow(PmToolsViewModel vm, WorkloadMeetingPanelViewModel meetingPanel, DeltekOdbcOptions odbcOptions)
+        internal PmCapacityWindow(PmToolsViewModel vm, WorkloadMeetingPanelViewModel meetingPanel, DeltekOdbcOptions odbcOptions)
         {
             _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             _meetingPanel = meetingPanel ?? throw new ArgumentNullException(nameof(meetingPanel));
@@ -87,25 +87,6 @@ namespace Kor.Operations.PMTools
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             await _vm.RefreshAsync(forceRefresh: true, _cts.Token);
-            SyncMeetingPrioritiesToRows();
-        }
-
-        private async void DeleteMeetingBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var meeting = _meetingPanel.SelectedMeeting;
-            if (meeting == null) return;
-
-            var label = meeting.MeetingDate.ToString("MMM d, yyyy");
-            var result = MessageBox.Show(
-                this,
-                $"Delete the meeting from {label} and all its priority data?\n\nThis cannot be undone.",
-                "PM Tools — Delete Meeting",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result != MessageBoxResult.Yes) return;
-
-            await _meetingPanel.DeleteMeetingAsync();
             SyncMeetingPrioritiesToRows();
         }
 
@@ -254,68 +235,6 @@ namespace Kor.Operations.PMTools
             finally
             {
                 _vm.SetExporting(false);
-            }
-        }
-
-        private async void ExportMeetingBtn_Click(object sender, RoutedEventArgs e)
-        {
-            var meeting = _meetingPanel.SelectedMeeting;
-            if (meeting == null)
-                return;
-
-            // Warn the user if any filter is active — the export only includes visible projects.
-            var activeFilters = new System.Collections.Generic.List<string>();
-            if (_vm.ShowWatchlistOnly)
-                activeFilters.Add("Scope: Watchlist only (default)");
-            if (!string.IsNullOrWhiteSpace(_vm.SelectedPhase) && !string.Equals(_vm.SelectedPhase, "All", StringComparison.OrdinalIgnoreCase))
-                activeFilters.Add($"Phase: {_vm.SelectedPhase}");
-            if (!string.IsNullOrWhiteSpace(_vm.SelectedConstructionType) && !string.Equals(_vm.SelectedConstructionType, "All", StringComparison.OrdinalIgnoreCase))
-                activeFilters.Add($"Construction Type: {_vm.SelectedConstructionType}");
-            if (_vm.ShowMyProjectsOnly)
-                activeFilters.Add("My Projects Only");
-            if (!string.IsNullOrWhiteSpace(_vm.ProjectSearchText))
-                activeFilters.Add($"Search: \"{_vm.ProjectSearchText}\"");
-
-            if (activeFilters.Count > 0)
-            {
-                var msg = "The export will only include projects matching your current filters:\n\n  "
-                        + string.Join("\n  ", activeFilters)
-                        + "\n\nContinue?";
-                var result = MessageBox.Show(this, msg, "PM Tools — Export Filters Active",
-                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                if (result != MessageBoxResult.Yes)
-                    return;
-            }
-
-            var sfd = new SaveFileDialog
-            {
-                Title = "Export Workload Meeting",
-                Filter = "Excel Workbook|*.xlsx",
-                FileName = $"WorkloadMeeting_{meeting.MeetingDate:yyyyMMdd}.xlsx",
-                AddExtension = true,
-                OverwritePrompt = true,
-            };
-
-            if (sfd.ShowDialog(this) != true)
-                return;
-
-            var dateLabel = meeting.MeetingDate.ToString("MMM d, yyyy");
-            var priorityByWbs1 = new System.Collections.Generic.Dictionary<string, WorkloadMeetingProjectRow>(StringComparer.OrdinalIgnoreCase);
-            foreach (var pr in _meetingPanel.PriorityProjects.ToList())
-                priorityByWbs1.TryAdd(pr.Wbs1, pr);
-
-            var groups = _vm.PmGroups.ToList();
-            var notes = _meetingPanel.MeetingNotes ?? string.Empty;
-            var path = sfd.FileName;
-
-            try
-            {
-                await Task.Run(() => PmToolsExportService.ExportMeeting(path, dateLabel, groups, priorityByWbs1, notes)).ConfigureAwait(true);
-                MessageBox.Show(this, "Export completed.", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "PM Tools — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

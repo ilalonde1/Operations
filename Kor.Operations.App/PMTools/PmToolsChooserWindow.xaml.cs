@@ -44,14 +44,8 @@ namespace Kor.Operations.PMTools
 
         private void OpenPmCapacity_Click(object sender, RoutedEventArgs e)
         {
-            // 38a placeholder: both buttons open the legacy PmToolsWindow. 38c
-            // will replace this with a dedicated PmCapacityWindow.
-            OpenLegacyPmTools();
-        }
-
-        private void OpenLegacyPmTools()
-        {
-            var win = _services.GetRequiredService<PmToolsWindow>();
+            // Round 38c: routes to the dedicated PmCapacityWindow.
+            var win = _services.GetRequiredService<PmCapacityWindow>();
             win.Owner = Owner ?? Application.Current?.MainWindow;
             win.Show();
             Close();

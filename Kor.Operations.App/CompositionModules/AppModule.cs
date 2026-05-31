@@ -160,16 +160,12 @@ internal static class AppModule
             sp.GetRequiredService<ILogger<EmailFilePickerWindow>>()));
         services.AddTransient<GeneralToolsWindow>();
         services.AddTransient<BrochureBuilderWindow>();
-        services.AddTransient<PMTools.PmToolsWindow>();
-        // Round 38a: chooser sits between the Home card and the two new PM Tools
-        // windows (Workload Meeting / PM Capacity & Risk). 38c will replace the
-        // legacy fallback for the capacity card; the meeting card now opens
-        // the dedicated WorkloadMeetingWindow.
+        // Round 38c: the legacy PmToolsWindow is decommissioned. The chooser
+        // routes to one of two dedicated windows below, both backed by the
+        // singleton VMs registered above.
         services.AddTransient<PMTools.PmToolsChooserWindow>();
-        // Round 38b: dedicated workload-meeting window. Owns the meeting picker,
-        // priority board, per-project notes, and meeting export. Lives on the
-        // shared singleton meeting VM (registered above as Singleton).
         services.AddTransient<PMTools.WorkloadMeetingWindow>();
+        services.AddTransient<PMTools.PmCapacityWindow>();
         services.AddTransient<EngineeringTools.EngineeringToolsWindow>(sp =>
             new EngineeringTools.EngineeringToolsWindow(sp));
         services.AddTransient<EngineeringTools.PdfToSafe.PdfToSafeWindow>();
