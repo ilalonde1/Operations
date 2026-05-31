@@ -9,7 +9,7 @@
         Height="640"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
-        SizeToContent="Manual"
+        SizeToContent="Height"
         Loaded="Window_Loaded">
     <Window.Resources>
         <!-- Same card style used by HomeWindow so the chooser visually matches the
@@ -61,10 +61,13 @@
             </Setter>
         </Style>
     </Window.Resources>
+    <!-- Round 51: cards row becomes Auto + UniformGrid VerticalAlignment=Top
+         so cards size to content (matches EngineeringToolsWindow chooser height
+         per ss4) rather than stretching to fill a fixed 640px window. -->
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -79,7 +82,8 @@
                             AvatarBorderThickness="2"
                             Margin="0,0,0,16"/>
 
-        <UniformGrid Grid.Row="1" Columns="2" Rows="1" Margin="0,0,0,12">
+        <UniformGrid Grid.Row="1" Columns="2" Rows="1" Margin="0,0,0,12"
+                     VerticalAlignment="Top">
             <Button x:Name="WorkloadMeetingCard"
                     Click="OpenWorkloadMeeting_Click"
                     Margin="0,0,8,0"
