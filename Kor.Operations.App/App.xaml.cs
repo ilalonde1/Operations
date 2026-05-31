@@ -124,6 +124,21 @@ namespace Kor.Operations
         {
             try { _pipeServer?.StopAsync().GetAwaiter().GetResult(); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Pipe server stop failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message); } // sync-over-async OK: app shutdown; UI message pump tearing down
             try { _guard?.Dispose(); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Single-instance guard dispose failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message); }
+
+            // Round 39c (T2.003): dispose the DI root so Singleton IDisposables
+            // (WorkloadMeetingPanelViewModel cancels _disposeCts; Serilog provider
+            // flushes; ODBC handles release; etc.) run their disposers. Without
+            // this, those background CTSs keep running until the process exits,
+            // and any in-flight notes flush silently aborts.
+            try
+            {
+                (_services as IDisposable)?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<OperationsApp>().Warning(ex, "DI service provider dispose failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
+            }
+
             base.OnExit(e);
         }
 

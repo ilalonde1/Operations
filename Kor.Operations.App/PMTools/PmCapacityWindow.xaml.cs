@@ -23,6 +23,14 @@ namespace Kor.Operations.PMTools
         private DeltekOdbcOptions? _odbcOptions;
         private CancellationTokenSource? _cts;
         private bool _isSyncingMeetingPriorities;
+        // Round 39a (T1.001): stored handlers so Window_Closing can unsubscribe
+        // from the singleton meeting VM. Without this, every close/reopen of
+        // the capacity window left a closure capturing `this` reachable from
+        // the singleton — closed window, visual tree, and VM references could
+        // not be GC'd, and a single priority change ran the sync method
+        // against every leaked window in turn.
+        private PropertyChangedEventHandler? _meetingPanelPropertyChangedHandler;
+        private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _meetingPanelCurrentProjectsHandler;
 
         // Round 38a: both VMs now arrive from DI as singletons so the upcoming
         // PM Tools window split can share them across two windows. EngRate /
@@ -43,13 +51,15 @@ namespace Kor.Operations.PMTools
             contextBuilder.Register(_vm);
             AiPanel.Initialize(Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>(), _vm);
 
-            _meetingPanel.PropertyChanged += (_, e) =>
+            _meetingPanelPropertyChangedHandler = (_, e) =>
             {
                 if (e.PropertyName is nameof(WorkloadMeetingPanelViewModel.CurrentProjects)
                                     or nameof(WorkloadMeetingPanelViewModel.SelectedMeeting))
                     SyncMeetingPrioritiesToRows();
             };
-            _meetingPanel.CurrentProjects.CollectionChanged += (_, _) => SyncMeetingPrioritiesToRows();
+            _meetingPanelCurrentProjectsHandler = (_, _) => SyncMeetingPrioritiesToRows();
+            _meetingPanel.PropertyChanged += _meetingPanelPropertyChangedHandler;
+            _meetingPanel.CurrentProjects.CollectionChanged += _meetingPanelCurrentProjectsHandler;
         }
 
         public WorkloadMeetingPanelViewModel MeetingPanel => _meetingPanel;
@@ -240,8 +250,26 @@ namespace Kor.Operations.PMTools
 
         private async void Window_Closing(object? sender, CancelEventArgs e)
         {
+            // Round 39a (T1.001): drop our two subscriptions to the singleton
+            // meeting VM before anything else; the lambdas capture `this`, so
+            // leaving them attached pins the closed window in memory and runs
+            // the sync method against a dead visual tree on every priority
+            // change. Idempotent — null-coalescing handles a torn-down ctor.
+            if (_meetingPanelPropertyChangedHandler is not null)
+            {
+                _meetingPanel.PropertyChanged -= _meetingPanelPropertyChangedHandler;
+                _meetingPanelPropertyChangedHandler = null;
+            }
+            if (_meetingPanelCurrentProjectsHandler is not null)
+            {
+                _meetingPanel.CurrentProjects.CollectionChanged -= _meetingPanelCurrentProjectsHandler;
+                _meetingPanelCurrentProjectsHandler = null;
+            }
+
             Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
             _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = null;
             try
             {
                 // Small yield so any in-flight priority ComboBox SelectionChanged can reach UpsertPriorityFromUiAsync
@@ -262,32 +290,23 @@ namespace Kor.Operations.PMTools
             _isSyncingMeetingPriorities = true;
             try
             {
+                // Step 1: badge the PM Capacity grid rows with their current priority.
                 var lookup = _meetingPanel.CurrentProjects
                     .ToDictionary(p => p.Wbs1, p => p.Priority, StringComparer.OrdinalIgnoreCase);
                 foreach (var row in _vm.ProjectRows)
                     row.MeetingPriority = lookup.TryGetValue(row.Wbs1, out var p) ? p : 0;
 
+                // Step 2: enrich the meeting VM's PriorityProjects with ProjectName
+                // and PM from our PmToolsViewModel rows. Round 39b (T2.001): the VM
+                // already does a basic projection on its own so the meeting window
+                // shows something when opened alone; this just overwrites with the
+                // richer ProjectName / PmName while we're here.
                 var projectLookup = _vm.ProjectRows
                     .ToDictionary(r => r.Wbs1, r => r, StringComparer.OrdinalIgnoreCase);
-
-                var enrichedRows = _meetingPanel.CurrentProjects
-                    .Select(p =>
-                    {
-                        projectLookup.TryGetValue(p.Wbs1, out var proj);
-                        return new Kor.Operations.App.PMTools.WorkloadMeetingProjectRow
-                        {
-                            MeetingId = p.MeetingId,
-                            Wbs1 = p.Wbs1,
-                            Priority = p.Priority,
-                            Notes = p.Notes ?? string.Empty,
-                            ProjectName = proj?.Name ?? p.Wbs1,
-                            PmName = proj?.Pm ?? string.Empty,
-                        };
-                    })
-                    .OrderBy(r => r.Priority)
-                    .ThenBy(r => r.ProjectName);
-
-                _meetingPanel.SetPriorityProjectRows(enrichedRows);
+                _meetingPanel.RefreshPriorityProjects(wbs1 =>
+                    projectLookup.TryGetValue(wbs1, out var proj)
+                        ? ((string?)proj.Name, (string?)proj.Pm)
+                        : (null, null));
             }
             finally
             {
@@ -396,7 +415,27 @@ namespace Kor.Operations.PMTools
                 Serilog.Log.Warning("PM Tools: invalid priority value {Priority} for {Wbs1}; ignoring.", priority, row.Wbs1);
                 return;
             }
-            await _meetingPanel.UpsertPriorityFromUiAsync(row.Wbs1, priority);
+
+            // Round 39b (T2.002): the ComboBox two-way binding has already updated
+            // row.MeetingPriority before this handler ran. If the store rejects the
+            // save, roll the row back so the grid doesn't keep showing a priority
+            // the database refused. Snapshot the previous value from the meeting
+            // VM's CurrentProjects (the canonical source) before awaiting.
+            var previousPriority = _meetingPanel.CurrentProjects
+                .FirstOrDefault(p => string.Equals(p.Wbs1, row.Wbs1, StringComparison.OrdinalIgnoreCase))?.Priority ?? 0;
+
+            var ok = await _meetingPanel.UpsertPriorityFromUiAsync(row.Wbs1, priority);
+            if (!ok)
+            {
+                _isSyncingMeetingPriorities = true;
+                try { row.MeetingPriority = previousPriority; }
+                finally { _isSyncingMeetingPriorities = false; }
+                MessageBox.Show(this,
+                    $"Failed to save priority for {row.Wbs1}.\n\n{_meetingPanel.MeetingError ?? "See logs for details."}",
+                    "PM Capacity & Risk — Priority Save Failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
 
         private Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts BuildPortfolioCounts()

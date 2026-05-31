@@ -61,58 +61,9 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="Button.Accent" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-            <Setter Property="Background" Value="#EFF6FF"/>
-            <Setter Property="BorderBrush" Value="#93C5FD"/>
-            <Setter Property="Foreground" Value="#1D4ED8"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#DBEAFE"/>
-                    <Setter Property="BorderBrush" Value="#60A5FA"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#BFDBFE"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        <Style x:Key="Button.Danger" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-            <Setter Property="Background" Value="#FEE2E2"/>
-            <Setter Property="BorderBrush" Value="#FCA5A5"/>
-            <Setter Property="Foreground" Value="#DC2626"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FECACA"/>
-                    <Setter Property="BorderBrush" Value="#F87171"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#FCA5A5"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        <Style x:Key="SortHeaderButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <ContentPresenter/>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="#374151"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+        <!-- Round 39c (T3.001): Button.Accent / Button.Danger / SortHeaderButton
+             were leftovers from the workload-meeting block that moved out in
+             Round 38b. They have no references left in this window. -->
         <Style x:Key="PhaseFilterButton" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
             <Setter Property="MinWidth" Value="52"/>
             <Setter Property="Height" Value="32"/>

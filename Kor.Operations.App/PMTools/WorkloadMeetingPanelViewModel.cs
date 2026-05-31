@@ -138,6 +138,33 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         }
     }
 
+    /// <summary>
+    /// Round 39b (T2.001): project <see cref="CurrentProjects"/> into the
+    /// <see cref="PriorityProjects"/> grid. Owned by the VM so the meeting
+    /// window shows priorities even when it is opened in isolation (without
+    /// PmCapacityWindow). The optional <paramref name="enrich"/> lookup lets
+    /// the capacity window inject ProjectName / PmName from its own
+    /// PmToolsViewModel rows; if no enricher is supplied we fall back to the
+    /// Wbs1 number as the display name.
+    /// </summary>
+    public void RefreshPriorityProjects(Func<string, (string? Name, string? Pm)>? enrich = null)
+    {
+        var projected = CurrentProjects.Select(p =>
+        {
+            var hit = enrich?.Invoke(p.Wbs1);
+            return new WorkloadMeetingProjectRow
+            {
+                MeetingId = p.MeetingId,
+                Wbs1 = p.Wbs1,
+                Priority = p.Priority,
+                Notes = p.Notes ?? string.Empty,
+                ProjectName = !string.IsNullOrWhiteSpace(hit?.Name) ? hit.Value.Name! : p.Wbs1,
+                PmName = hit?.Pm ?? string.Empty,
+            };
+        });
+        SetPriorityProjectRows(projected);
+    }
+
     public bool IsBusy
     {
         get => _isBusy;
@@ -208,13 +235,20 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     public string ProjectSortHeader  => "Project"  + (_sortColumn == "Project"  ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
     public string PmSortHeader       => "PM"       + (_sortColumn == "PM"       ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
 
-    public async Task UpsertPriorityFromUiAsync(string wbs1, int priority)
+    /// <summary>
+    /// Round 39b (T2.002): now returns whether the priority was persisted.
+    /// The capacity window uses this to revert <c>MeetingPriority</c> on the
+    /// affected row when the store rejects the change \u2014 without it the row
+    /// kept showing the new priority while the database had the old one.
+    /// </summary>
+    public async Task<bool> UpsertPriorityFromUiAsync(string wbs1, int priority)
     {
         var selection = SelectedMeeting;
-        if (selection == null || string.IsNullOrWhiteSpace(wbs1)) return;
+        if (selection == null || string.IsNullOrWhiteSpace(wbs1)) return false;
         // Snapshot the current meeting selection generation so we can detect if the user switched meetings
         // while our async work was in flight.
         var genAtStart = System.Threading.Interlocked.Read(ref _meetingSelectionGeneration);
+        var ok = false;
         await RunBusyAsync(async () =>
         {
             ActivityText = "Saving\u2026";
@@ -224,12 +258,22 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                 await _store.UpsertProjectPriorityAsync(selection.Id, wbs1, priority, notes: null).ConfigureAwait(false);
                 var projects = await _store.GetProjectsForMeetingAsync(selection.Id).ConfigureAwait(false);
                 // Drop stale refresh if the user switched meetings after our save began.
-                if (System.Threading.Interlocked.Read(ref _meetingSelectionGeneration) != genAtStart) return;
+                if (System.Threading.Interlocked.Read(ref _meetingSelectionGeneration) != genAtStart)
+                {
+                    ok = true; // the save itself succeeded; only the local refresh was dropped
+                    return;
+                }
                 await _dispatcher.InvokeAsync(() =>
                 {
                     CurrentProjects.Clear();
                     foreach (var project in projects) CurrentProjects.Add(project);
+                    // Round 39b (T2.001): own the projection so the meeting
+                    // window shows priorities without help from the capacity
+                    // window. Basic enrichment only; the capacity window will
+                    // overwrite with ProjectName/PmName when it's open.
+                    RefreshPriorityProjects();
                 });
+                ok = true;
             }
             catch (Exception ex)
             {
@@ -238,6 +282,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             }
         }).ConfigureAwait(false);
         ActivityText = string.Empty;
+        return ok;
     }
 
     public async Task LoadAsync()
@@ -645,6 +690,12 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                 {
                     CurrentProjects.Add(project);
                 }
+
+                // Round 39b (T2.001): refresh PriorityProjects so the meeting
+                // window has data on first open without the capacity window's
+                // sync handler. Basic projection; capacity window enriches if
+                // it's also open.
+                RefreshPriorityProjects();
 
                 MeetingNotes = meeting?.Notes ?? string.Empty;
                 OnPropertyChanged(nameof(IsCurrentMeeting));
