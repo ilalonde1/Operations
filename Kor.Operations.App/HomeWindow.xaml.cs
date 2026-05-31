@@ -22,7 +22,10 @@ namespace Kor.Operations
     {
         private readonly IServiceProvider _services;
         private readonly Func<BrochureBuilderWindow> _brochureBuilderWindowFactory;
-        private PMTools.PmToolsWindow? _pmToolsWindow;
+        // Round 38a: the legacy PmToolsWindow is being split into Workload
+        // Meeting + PM Capacity & Risk. The Home card now opens a chooser; the
+        // chooser owns the per-window lifecycle.
+        private PMTools.PmToolsChooserWindow? _pmToolsChooserWindow;
 
         public HomeWindow(IServiceProvider services, Func<BrochureBuilderWindow> brochureBuilderWindowFactory)
         {
@@ -135,14 +138,14 @@ namespace Kor.Operations
 
         private void OpenPMTools_Click(object sender, RoutedEventArgs e)
         {
-            if (_pmToolsWindow is { IsLoaded: true })
+            if (_pmToolsChooserWindow is { IsLoaded: true })
             {
-                _pmToolsWindow.Activate();
+                _pmToolsChooserWindow.Activate();
                 return;
             }
-            _pmToolsWindow = _services.GetRequiredService<PMTools.PmToolsWindow>();
-            _pmToolsWindow.Owner = this;
-            _pmToolsWindow.Show();
+            _pmToolsChooserWindow = _services.GetRequiredService<PMTools.PmToolsChooserWindow>();
+            _pmToolsChooserWindow.Owner = this;
+            _pmToolsChooserWindow.Show();
         }
 
         private void OpenStandardDetails_Click(object sender, RoutedEventArgs e)

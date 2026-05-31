@@ -14,6 +14,11 @@ using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
 {
+    // Round 38a: stays internal (its property types include internal helpers
+    // like BulkObservableCollection&lt;T&gt;, PmProjectRow, PmGroupViewModel —
+    // promoting the VM would cascade through all of them). The PM Tools window
+    // ctors take this type via internal-modifier ctors so DI in the same
+    // assembly resolves cleanly without leaking these internals.
     internal sealed class PmToolsViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
     {
         private readonly FinancialsService _svc;

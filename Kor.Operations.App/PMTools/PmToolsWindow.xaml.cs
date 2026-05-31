@@ -24,14 +24,18 @@ namespace Kor.Operations.PMTools
         private CancellationTokenSource? _cts;
         private bool _isSyncingMeetingPriorities;
 
-        public PmToolsWindow(FinancialsService financialsService, WorkloadMeetingPanelViewModel meetingPanel, DeltekOdbcOptions odbcOptions)
+        // Round 38a: both VMs now arrive from DI as singletons so the upcoming
+        // PM Tools window split can share them across two windows. EngRate /
+        // DraftRate / TargetBilling are applied in AppModule's VM factory, no
+        // longer here. Ctor is `internal` because PmToolsViewModel is internal
+        // (its members reference internal types like BulkObservableCollection
+        // and PmProjectRow). DI's ActivatorUtilities calls internal ctors in
+        // the same assembly without trouble.
+        internal PmToolsWindow(PmToolsViewModel vm, WorkloadMeetingPanelViewModel meetingPanel, DeltekOdbcOptions odbcOptions)
         {
-            _vm = new PmToolsViewModel(financialsService);
+            _vm = vm ?? throw new ArgumentNullException(nameof(vm));
             _meetingPanel = meetingPanel ?? throw new ArgumentNullException(nameof(meetingPanel));
             _odbcOptions = odbcOptions;
-            _vm.EngRate = odbcOptions?.EngRate ?? 474;
-            _vm.DraftRate = odbcOptions?.DraftRate ?? 655;
-            _vm.TargetBilling = odbcOptions?.TargetBillingRate ?? 185;
             InitializeComponent();
             DataContext = _vm;
 
@@ -328,7 +332,10 @@ namespace Kor.Operations.PMTools
                 await _meetingPanel.ForceSaveAllAsync(flushCts.Token);
             }
             catch (Exception ex) { Serilog.Log.Warning(ex, "Failed to save meeting data on window close."); }
-            _meetingPanel.Dispose();
+            // Round 38a: meetingPanel is a Singleton in DI now, so the DI
+            // container disposes it on app shutdown. Disposing here would kill
+            // the VM for any other window (chooser, future Workload Meeting /
+            // PM Capacity windows) that still wants to use it.
         }
 
         private void SyncMeetingPrioritiesToRows()

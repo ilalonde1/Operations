@@ -89,10 +89,30 @@ internal static class AppModule
 
         services.AddTransient<BrochureBuilderViewModel>();
         services.AddTransient<FeeProposalBuilderViewModel>();
-        services.AddTransient(sp => new WorkloadMeetingPanelViewModel(
+        // Round 38a: promoted to Singleton so the upcoming PM Tools window split
+        // (Workload Meeting + PM Capacity & Risk) can share one VM across both
+        // windows — the per-row priority ComboBox in the capacity window writes
+        // through this VM, and the meeting window subscribes to the same
+        // instance's PropertyChanged so the priority badges stay live without a
+        // refresh. DI container disposes the VM on app shutdown (it implements
+        // IDisposable); individual window Close() flushes pending notes but
+        // does NOT dispose.
+        services.AddSingleton(sp => new WorkloadMeetingPanelViewModel(
             sp.GetRequiredService<IWorkloadMeetingStore>(),
             userUpn,
             sp.GetRequiredService<ILogger<WorkloadMeetingPanelViewModel>>()));
+        // Round 38a: PmToolsViewModel used to be constructed inline in
+        // PmToolsWindow's ctor. Moved here as a Singleton for the same
+        // window-split reason — both new windows hold the same instance.
+        services.AddSingleton(sp =>
+        {
+            var vm = new PMTools.PmToolsViewModel(sp.GetRequiredService<FinancialsService>());
+            var odbc = sp.GetService<DeltekOdbcOptions>();
+            vm.EngRate = odbc?.EngRate ?? 474;
+            vm.DraftRate = odbc?.DraftRate ?? 655;
+            vm.TargetBilling = odbc?.TargetBillingRate ?? 185;
+            return vm;
+        });
         services.AddSingleton<AppAiContextBuilder>();
         services.AddSingleton<FirmContextProvider>();
         services.AddSingleton(sp => new AppAiService(
@@ -141,6 +161,10 @@ internal static class AppModule
         services.AddTransient<GeneralToolsWindow>();
         services.AddTransient<BrochureBuilderWindow>();
         services.AddTransient<PMTools.PmToolsWindow>();
+        // Round 38a: chooser sits between the Home card and the two new PM Tools
+        // windows (Workload Meeting / PM Capacity & Risk). Until 38b+38c land
+        // both buttons on the chooser open the legacy PmToolsWindow.
+        services.AddTransient<PMTools.PmToolsChooserWindow>();
         services.AddTransient<EngineeringTools.EngineeringToolsWindow>(sp =>
             new EngineeringTools.EngineeringToolsWindow(sp));
         services.AddTransient<EngineeringTools.PdfToSafe.PdfToSafeWindow>();
