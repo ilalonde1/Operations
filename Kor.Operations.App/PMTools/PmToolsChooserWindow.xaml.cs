@@ -35,9 +35,11 @@ namespace Kor.Operations.PMTools
 
         private void OpenWorkloadMeeting_Click(object sender, RoutedEventArgs e)
         {
-            // 38a placeholder: both buttons open the legacy PmToolsWindow. 38b
-            // will replace this with a dedicated WorkloadMeetingWindow.
-            OpenLegacyPmTools();
+            // Round 38b: routes to the dedicated WorkloadMeetingWindow.
+            var win = _services.GetRequiredService<WorkloadMeetingWindow>();
+            win.Owner = Owner ?? Application.Current?.MainWindow;
+            win.Show();
+            Close();
         }
 
         private void OpenPmCapacity_Click(object sender, RoutedEventArgs e)
