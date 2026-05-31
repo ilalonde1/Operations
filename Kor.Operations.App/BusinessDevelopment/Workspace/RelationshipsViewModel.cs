@@ -80,6 +80,19 @@ public sealed class RelationshipsViewModel : INotifyPropertyChanged, Kor.Operati
         var kind = string.IsNullOrWhiteSpace(KindFilter) ? null : KindFilter;
         const int take = 500;
 
+        // Round 50 (ss2 fix): autocomplete-style behaviour. With 1,400+ Buyer
+        // canonicals (and 56K+ total), the old "load TOP 500 alphabetical when
+        // empty search" UI capped at letter "C" and offered no way to find
+        // anything past it. Instead: empty search shows nothing and prompts the
+        // user to start typing. ShowAll keeps the browse-everything escape
+        // hatch (zero-relationship canonicals included).
+        if (q is null && !ShowAll)
+        {
+            Orgs.Clear();
+            CountDisplay = "Type to search…";
+            return;
+        }
+
         var rows = ShowAll
             ? await _store.SearchCanonicalOrgsAsync(q, kind, take, ct).ConfigureAwait(true)
             : await _store.SearchCanonicalOrgsWithRelationshipsAsync(q, kind, take, ct).ConfigureAwait(true);
