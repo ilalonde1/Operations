@@ -210,9 +210,10 @@ WHERE RetiredAtUtc IS NULL AND Province = @prov
         string? website;
         int korProjects;
         DateTimeOffset? lastKor;
+        string? deltekClientId;
         {
             const string sql = @"
-SELECT Id, Kind, DisplayName, Website, ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc
+SELECT Id, Kind, DisplayName, Website, ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc, ClendorClientId
 FROM opportunities.CanonicalOrg
 WHERE Id = @id;";
             await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -229,6 +230,7 @@ WHERE Id = @id;";
             website = r.IsDBNull(3) ? null : r.GetString(3);
             korProjects = Convert.ToInt32(r.GetValue(4));
             lastKor = r.IsDBNull(5) ? null : r.GetDateTimeOffset(5);
+            deltekClientId = r.IsDBNull(6) ? null : r.GetString(6);
         }
 
         var korId = await GetKorIdAsync(con, ct).ConfigureAwait(false);
@@ -286,7 +288,8 @@ ORDER BY UpdatedAtUtc DESC;";
 
         return new OrgBriefData(
             id, kind, displayName, website, korProjects, lastKor,
-            recentProjects, korJointCount, korJointProjects, enrichmentJson);
+            recentProjects, korJointCount, korJointProjects, enrichmentJson,
+            deltekClientId, Deltek: null);
     }
 
     // === Helpers ===
@@ -441,7 +444,8 @@ SELECT TOP 5 c.Id, c.DisplayName,
      WHERE m.{mpiFkColumn} = c.Id AND m.Province = @prov
        AND m.RetiredAtUtc IS NULL
 {BuildCityClause(cityTokens, AliasedMpiCityColumns, "c1")}) AS ProjectCount,
-  {korJointSql} AS KorJointCount
+  {korJointSql} AS KorJointCount,
+  c.ClendorClientId AS ClendorClientId
 FROM opportunities.CanonicalOrg c
 WHERE c.Kind = @kind AND EXISTS (
   SELECT 1 FROM opportunities.MajorProjectsInventory m
@@ -468,7 +472,8 @@ ORDER BY ProjectCount DESC, c.DisplayName;";
                 r.GetInt64(0),
                 r.GetString(1),
                 Convert.ToInt32(r.GetValue(2)),
-                Convert.ToInt32(r.GetValue(3))));
+                Convert.ToInt32(r.GetValue(3)),
+                r.IsDBNull(4) ? null : r.GetString(4)));
         }
 
         return rows;
@@ -482,7 +487,8 @@ SELECT TOP 5 c.Id, c.DisplayName,
      WHERE m.ProponentCanonicalOrgId = c.Id AND m.Province = @prov
        AND m.RetiredAtUtc IS NULL
 {BuildCityClause(cityTokens, AliasedMpiCityColumns, "c1")}) AS ProjectCount,
-  ISNULL(c.KorProjectsCount, 0) AS KorJointCount
+  ISNULL(c.KorProjectsCount, 0) AS KorJointCount,
+  c.ClendorClientId AS ClendorClientId
 FROM opportunities.CanonicalOrg c
 WHERE c.Kind IN (N'Buyer', N'Client', N'KorClient', N'Developer') AND EXISTS (
   SELECT 1 FROM opportunities.MajorProjectsInventory m
@@ -503,7 +509,8 @@ ORDER BY ProjectCount DESC, c.DisplayName;";
                 r.GetInt64(0),
                 r.GetString(1),
                 Convert.ToInt32(r.GetValue(2)),
-                Convert.ToInt32(r.GetValue(3))));
+                Convert.ToInt32(r.GetValue(3)),
+                r.IsDBNull(4) ? null : r.GetString(4)));
         }
 
         return rows;

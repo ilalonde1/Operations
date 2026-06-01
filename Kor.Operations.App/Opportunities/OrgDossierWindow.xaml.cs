@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -59,6 +60,23 @@ public partial class OrgDossierWindow : Window
                 return;
             }
 
+            if (data is { DeltekClientId: { Length: > 0 } cid })
+            {
+                try
+                {
+                    var deltekSvc = AppServices.Get<Kor.Operations.App.Crm.IDeltekClientContextService>();
+                    var intel = await deltekSvc.LoadAsync(cid, CancellationToken.None).ConfigureAwait(true);
+                    if (intel is not null)
+                    {
+                        data = data with { Deltek = BuildDeltekSection(intel) };
+                    }
+                }
+                catch
+                {
+                    // Deltek enrichment is best-effort; the BD-canonical brief still renders.
+                }
+            }
+
             if (asPdf)
             {
                 var pdf = AppServices.Get<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefPdfGenerator>();
@@ -80,5 +98,34 @@ public partial class OrgDossierWindow : Window
         {
             GenerateOrgBriefButton.IsEnabled = true;
         }
+    }
+
+    private static Kor.Opportunities.Data.Briefs.OrgBriefDeltekSection BuildDeltekSection(
+        Kor.Operations.App.Crm.DeltekClientIntelligence intel)
+    {
+        var topProjects = new List<Kor.Opportunities.Data.Briefs.OrgBriefDeltekProject>();
+        foreach (var p in intel.Projects)
+        {
+            if (topProjects.Count >= 5)
+            {
+                break;
+            }
+
+            topProjects.Add(new Kor.Opportunities.Data.Briefs.OrgBriefDeltekProject(
+                p.Wbs1, p.Name, p.OpenDate, p.Status, p.Fee, p.FeeBilled));
+        }
+
+        return new Kor.Opportunities.Data.Briefs.OrgBriefDeltekSection(
+            DeltekClientId: intel.ClientId,
+            ClientName: intel.ClientName,
+            ProjectCount: intel.ProjectCount,
+            LifetimeFee: intel.LifetimeFee,
+            LatestProjectStart: intel.LatestProjectStart,
+            LatestProjectName: intel.LatestProjectName,
+            RecentProjects: topProjects,
+            ContactCount: intel.Contacts.Count,
+            ArOutstanding: intel.Ar?.TotalOutstanding ?? 0m,
+            Ar90Plus: intel.Ar?.Outstanding90Plus ?? 0m,
+            DegradedSections: intel.HasDegradedSections);
     }
 }

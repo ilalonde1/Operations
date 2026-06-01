@@ -41,7 +41,8 @@ public sealed record RegionTopOrg(
     long Id,
     string DisplayName,
     int ProjectCount,
-    int KorJointCount);
+    int KorJointCount,
+    string? ClendorClientId);
 
 public sealed record RegionLiveRfp(
     long Id,
@@ -78,6 +79,27 @@ public sealed record OrgRecentProject(
     string? Sector,
     string? Province);
 
+public sealed record OrgBriefDeltekProject(
+    string Wbs1,
+    string Name,
+    DateTime? OpenDate,
+    string? Status,
+    decimal Fee,
+    decimal FeeBilled);
+
+public sealed record OrgBriefDeltekSection(
+    string DeltekClientId,
+    string ClientName,
+    int ProjectCount,
+    decimal LifetimeFee,
+    DateTime? LatestProjectStart,
+    string? LatestProjectName,
+    IReadOnlyList<OrgBriefDeltekProject> RecentProjects,
+    int ContactCount,
+    decimal ArOutstanding,
+    decimal Ar90Plus,
+    bool DegradedSections);
+
 public sealed record OrgBriefData(
     long Id,
     string Kind,
@@ -88,4 +110,6 @@ public sealed record OrgBriefData(
     IReadOnlyList<OrgRecentProject> RecentProjects,
     int KorJointProjectCount,
     IReadOnlyList<OrgRecentProject> KorJointProjects,
-    string? DataHoningEnrichmentJson);
+    string? DataHoningEnrichmentJson,
+    string? DeltekClientId,
+    OrgBriefDeltekSection? Deltek);

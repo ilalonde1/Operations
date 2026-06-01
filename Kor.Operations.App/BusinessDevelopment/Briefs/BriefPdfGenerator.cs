@@ -255,7 +255,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                     ? (o.KorJointCount > 0 ? $"; {o.KorJointCount} KOR project(s) on record" : "; no prior KOR project on file")
                     : (o.KorJointCount > 0 ? $"; KOR has teamed with them {o.KorJointCount}x" : "; no KOR joint history yet"))
                 : string.Empty;
-            yield return $"{o.DisplayName} — {o.ProjectCount} project(s) {countSuffix}{korPart}.";
+            yield return $"{RegionOrgDisplayName(o)} — {o.ProjectCount} project(s) {countSuffix}{korPart}.";
         }
     }
 
@@ -315,6 +315,11 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                     OrgHistoryBullets(d)));
                 column.Item().Element(c => Section(c, "Their recent work",
                     OrgRecentBullets(d)));
+                if (d.Deltek is not null)
+                {
+                    column.Item().Element(c => Section(c, "KOR engagement history (Deltek)",
+                        OrgDeltekBullets(d.Deltek)));
+                }
                 column.Item().Element(c => Section(c, "Key people",
                     OrgKeyPeopleBullets(enrichment)));
                 column.Item().Element(c => Section(c, "Talking points for the visit",
@@ -397,6 +402,46 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         foreach (var p in d.RecentProjects)
         {
             yield return $"{p.ProjectName} ({p.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "year n/a"}, {Nz(p.Sector)}, {Nz(p.Province)})";
+        }
+    }
+
+    private static IEnumerable<string> OrgDeltekBullets(OrgBriefDeltekSection dk)
+    {
+        var summary = $"Deltek client {dk.DeltekClientId} ({Nz(dk.ClientName)})";
+        if (dk.ProjectCount > 0)
+        {
+            summary += $" — {dk.ProjectCount:N0} project(s); lifetime billed {dk.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)}";
+        }
+        if (dk.LatestProjectStart.HasValue)
+        {
+            var latest = string.IsNullOrWhiteSpace(dk.LatestProjectName) ? "latest engagement" : dk.LatestProjectName!;
+            summary += $"; latest {latest} opened {dk.LatestProjectStart.Value:yyyy-MM-dd}";
+        }
+        yield return summary + ".";
+
+        foreach (var p in dk.RecentProjects)
+        {
+            var meta = new List<string>(4);
+            if (p.OpenDate.HasValue) meta.Add(p.OpenDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            if (!string.IsNullOrWhiteSpace(p.Status)) meta.Add(p.Status!);
+            if (p.Fee > 0) meta.Add($"Fee {p.Fee.ToString("C0", CultureInfo.CurrentCulture)}");
+            if (p.FeeBilled > 0) meta.Add($"Billed {p.FeeBilled.ToString("C0", CultureInfo.CurrentCulture)}");
+            yield return meta.Count > 0
+                ? $"{p.Name} ({string.Join("; ", meta)})"
+                : p.Name;
+        }
+
+        if (dk.ContactCount > 0)
+        {
+            yield return $"{dk.ContactCount:N0} Deltek contact(s) on file.";
+        }
+        if (dk.ArOutstanding > 0)
+        {
+            yield return $"AR outstanding {dk.ArOutstanding.ToString("C0", CultureInfo.CurrentCulture)} (90+ days {dk.Ar90Plus.ToString("C0", CultureInfo.CurrentCulture)}).";
+        }
+        if (dk.DegradedSections)
+        {
+            yield return "Some Deltek sections were unavailable for this client.";
         }
     }
 
@@ -484,6 +529,9 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     // === Helpers ===
 
     private static string Nz(string? s) => string.IsNullOrWhiteSpace(s) ? "(unspecified)" : s!;
+
+    private static string RegionOrgDisplayName(RegionTopOrg org)
+        => string.IsNullOrWhiteSpace(org.ClendorClientId) ? org.DisplayName : "* " + org.DisplayName;
 
     private static string FormatDeadline(DateTimeOffset? deadline)
     {

@@ -142,7 +142,7 @@ public sealed class BriefGenerator : IBriefGenerator
             foreach (var a in data.TopArchitects)
             {
                 var korNote = a.KorJointCount > 0 ? $"; KOR has teamed with them {a.KorJointCount}x" : "; no KOR joint history yet";
-                AppendBullet(body, $"{a.DisplayName} — {a.ProjectCount} project(s) here{korNote}.");
+                AppendBullet(body, $"{RegionOrgDisplayName(a)} — {a.ProjectCount} project(s) here{korNote}.");
             }
         }
 
@@ -156,7 +156,7 @@ public sealed class BriefGenerator : IBriefGenerator
             foreach (var o in data.TopOwners)
             {
                 var korNote = o.KorJointCount > 0 ? $"; {o.KorJointCount} KOR project(s) on record" : "; no prior KOR project on file";
-                AppendBullet(body, $"{o.DisplayName} — {o.ProjectCount} project(s) here{korNote}.");
+                AppendBullet(body, $"{RegionOrgDisplayName(o)} — {o.ProjectCount} project(s) here{korNote}.");
             }
         }
 
@@ -169,7 +169,7 @@ public sealed class BriefGenerator : IBriefGenerator
         {
             foreach (var c in data.TopCompetitors)
             {
-                AppendBullet(body, $"{c.DisplayName} — {c.ProjectCount} project(s) as structural EOR here.");
+                AppendBullet(body, $"{RegionOrgDisplayName(c)} — {c.ProjectCount} project(s) as structural EOR here.");
             }
         }
 
@@ -280,6 +280,28 @@ public sealed class BriefGenerator : IBriefGenerator
             }
         }
 
+        if (data.Deltek is { } dk)
+        {
+            AppendHeading(body, "KOR engagement history (Deltek)");
+            AppendBullet(body, FormatDeltekSummary(dk));
+            foreach (var p in dk.RecentProjects)
+            {
+                AppendBullet(body, FormatDeltekProject(p));
+            }
+            if (dk.ContactCount > 0)
+            {
+                AppendBullet(body, $"{dk.ContactCount:N0} Deltek contact(s) on file.");
+            }
+            if (dk.ArOutstanding > 0)
+            {
+                AppendBullet(body, $"AR outstanding {dk.ArOutstanding.ToString("C0", CultureInfo.CurrentCulture)} (90+ days {dk.Ar90Plus.ToString("C0", CultureInfo.CurrentCulture)}).");
+            }
+            if (dk.DegradedSections)
+            {
+                AppendBullet(body, "Some Deltek sections were unavailable for this client.");
+            }
+        }
+
         AppendHeading(body, "Key people");
         if (enrichment.KeyPeople.Count == 0)
         {
@@ -374,6 +396,37 @@ public sealed class BriefGenerator : IBriefGenerator
     // === Formatting + parsing helpers ===
 
     private static string Nz(string? s) => string.IsNullOrWhiteSpace(s) ? "(unspecified)" : s!;
+
+    private static string RegionOrgDisplayName(RegionTopOrg org)
+        => string.IsNullOrWhiteSpace(org.ClendorClientId) ? org.DisplayName : "* " + org.DisplayName;
+
+    private static string FormatDeltekSummary(OrgBriefDeltekSection dk)
+    {
+        var summary = $"Deltek client {dk.DeltekClientId} ({Nz(dk.ClientName)})";
+        if (dk.ProjectCount > 0)
+        {
+            summary += $" — {dk.ProjectCount:N0} project(s); lifetime billed {dk.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)}";
+        }
+        if (dk.LatestProjectStart.HasValue)
+        {
+            var latest = string.IsNullOrWhiteSpace(dk.LatestProjectName) ? "latest engagement" : dk.LatestProjectName!;
+            summary += $"; latest {latest} opened {dk.LatestProjectStart.Value:yyyy-MM-dd}";
+        }
+
+        return summary + ".";
+    }
+
+    private static string FormatDeltekProject(OrgBriefDeltekProject p)
+    {
+        var meta = new List<string>(4);
+        if (p.OpenDate.HasValue) meta.Add(p.OpenDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        if (!string.IsNullOrWhiteSpace(p.Status)) meta.Add(p.Status!);
+        if (p.Fee > 0) meta.Add($"Fee {p.Fee.ToString("C0", CultureInfo.CurrentCulture)}");
+        if (p.FeeBilled > 0) meta.Add($"Billed {p.FeeBilled.ToString("C0", CultureInfo.CurrentCulture)}");
+        return meta.Count > 0
+            ? $"{p.Name} ({string.Join("; ", meta)})"
+            : p.Name;
+    }
 
     private static string FormatDeadline(DateTimeOffset? deadline)
     {
