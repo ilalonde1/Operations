@@ -211,5 +211,116 @@ internal static partial class FinancialMetricDefinitions
                 "Operational health: if Inserted goes to zero across consecutive runs, the source has gone stale or the Worker is broken. The HeartbeatBrush / HeartbeatHealth on the Opportunities window is computed from the freshness of the latest run.",
             Formula = "IngestionRun = { Provider, StartedAtUtc, EndedAtUtc, InsertedCount, DuplicateCount, SkippedCount, FailedCount, Success, ErrorSummary }"
         };
+
+        // ── BD Dashboard tiles ──────────────────────────────────────────
+        // Round 52: every tile / list / badge on the BD Dashboard gets a
+        // definition the user can hover for. The funnel hero (top row) is
+        // narrowed to KOR's target sector basket — schools / hospitals /
+        // health / recreation / civic / cultural / university / college /
+        // library / community / education / housing / institution / care /
+        // fire / police plus a small set of explicit values — so the three
+        // counts agree on the same denominator.
+
+        d["BdDashboard_OpenSeats"] = new FinancialMetricDefinition
+        {
+            Key = "BdDashboard_OpenSeats", Category = "BD",
+            DisplayName = "Funnel — Open Seats",
+            Description =
+                "WHAT:\n" +
+                "Count of Major Projects Inventory (MPI) projects in KOR's institutional / civic sector basket where the structural seat is 'likely-open' — i.e. no competitor is locked in and the architect's structural partner relationship is rotating or undeclared.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "These are the highest-probability pursuit targets on the board today: the project is real (in the public MPI), in a sector KOR pursues, and the structural slot is reachable.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "MajorProjectsInventory rows where Sector matches the institutional/civic basket (schools, hospitals, health, recreation, civic, cultural, universities, colleges, libraries, community, education, housing, institutions, care, fire, police) AND SeatStatus = 'likely-open' AND RetiredAtUtc IS NULL.",
+            Formula = "OpenSeats = COUNT MPI rows WHERE Sector ∈ institutional-basket AND SeatStatus = 'likely-open' AND not retired"
+        };
+
+        d["BdDashboard_InBidWindow"] = new FinancialMetricDefinition
+        {
+            Key = "BdDashboard_InBidWindow", Category = "BD",
+            DisplayName = "Funnel — In Bid Window",
+            Description =
+                "WHAT:\n" +
+                "Count of MPI projects (same institutional/civic basket) currently in or near procurement — i.e. their Stage matches procurement / RFP / RFQ / tender / design.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "These are the projects the procurement clock is on. Forward Pipeline (early planning) flows into In Bid Window, which flows out into the Latest RFPs feed once the actual RFP is posted.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "MajorProjectsInventory rows in the same institutional basket where Stage LIKE '%procure%' OR '%RFP%' OR '%RFQ%' OR '%tender%' OR '%design%'. RetiredAtUtc IS NULL.",
+            Formula = "InBidWindow = COUNT MPI rows WHERE Sector ∈ basket AND Stage matches procurement/RFP/RFQ/tender/design"
+        };
+
+        d["BdDashboard_Radar"] = new FinancialMetricDefinition
+        {
+            Key = "BdDashboard_Radar", Category = "BD",
+            DisplayName = "Funnel — Radar",
+            Description =
+                "WHAT:\n" +
+                "Total count of MPI projects in KOR's institutional / civic sector basket. The widest cut on the funnel — everything worth knowing about, regardless of seat status or stage.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Radar is the denominator the other two funnel numbers narrow from: Radar → In Bid Window → Open Seats. If Radar shrinks, ingestion is broken or the basket is too tight.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "COUNT(*) of MajorProjectsInventory rows where Sector ∈ institutional-basket AND RetiredAtUtc IS NULL.",
+            Formula = "Radar = COUNT MPI rows WHERE Sector ∈ institutional-basket AND not retired"
+        };
+
+        d["BdDashboard_LatestRfps"] = new FinancialMetricDefinition
+        {
+            Key = "BdDashboard_LatestRfps", Category = "BD",
+            DisplayName = "Latest RFPs",
+            Description =
+                "WHAT:\n" +
+                "The 15 most recently ingested rows from the live RFP feed (Opportunities table) — i.e. live, posted, actively-procuring solicitations from CanadaBuys, BCBid, Bonfire/Euna tenants, APC, SAM.gov, GraphEmail subscriptions, and the other Worker providers.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "This is the live action queue — RFPs/RFQs with deadlines, where a proposal could be submitted today. Distinct from Forward Pipeline (long-horizon planning, NOT yet at procurement).\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "ORDER BY Opportunity.CreatedAtUtc DESC TAKE 15. Closed / Won / Lost opportunities are excluded. Double-click a row to open the Opportunity entry dialog.",
+            Formula = "LatestRfps = TOP 15 Opportunities ORDER BY CreatedAtUtc DESC WHERE not closed"
+        };
+
+        d["BdDashboard_ForwardPipeline"] = new FinancialMetricDefinition
+        {
+            Key = "BdDashboard_ForwardPipeline", Category = "BD",
+            DisplayName = "Forward Pipeline",
+            Description =
+                "WHAT:\n" +
+                "Top 12 Major Projects Inventory projects in early planning stages ('CapitalPlan' or 'FacilityRenewal'), ranked by estimated cost. These are projects the buyer has publicly committed to but has NOT yet posted an RFP/RFQ for.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Forward Pipeline is the long-horizon (multi-year) positioning intel — buyers, architects, and structural seats KOR should be having conversations about before the procurement clock starts. The opposite of Latest RFPs.\n\n" +
+                "HOW IS IT DIFFERENT FROM LATEST RFPs?\n" +
+                "Latest RFPs = LIVE, today, action-now (Opportunities table — what the Worker ingested in the last few hours).\n" +
+                "Forward Pipeline = PLANNED, not-yet-procured, action-this-year (MajorProjectsInventory — capital-plan and facility-renewal stages).\n" +
+                "A Forward Pipeline project should ideally appear in Latest RFPs once it actually hits procurement.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "TOP 12 MajorProjectsInventory rows WHERE ProjectStage IN ('CapitalPlan', 'FacilityRenewal') AND RetiredAtUtc IS NULL ORDER BY EstimatedCostCad DESC.",
+            Formula = "ForwardPipeline = TOP 12 MPI rows WHERE ProjectStage ∈ {CapitalPlan, FacilityRenewal} ORDER BY EstimatedCostCad DESC"
+        };
+
+        d["BdDashboard_OpenStructuralSeats"] = new FinancialMetricDefinition
+        {
+            Key = "BdDashboard_OpenStructuralSeats", Category = "BD",
+            DisplayName = "Open Structural Seats (org list)",
+            Description =
+                "WHAT:\n" +
+                "ORG-level list — architects in KOR's relationship graph whose structural-partner status is 'open' or 'rotating' AND whose KOR priority is 'high'. These are firms KOR should be courting for joint pursuit.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Distinct from the 'Open Seats' funnel count at the top of the page, which counts PROJECTS where a seat is reachable. This list answers 'which RELATIONSHIPS should we deepen' — architects where KOR has the strategic permission to displace an incumbent.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "CanonicalOrgEnrichment rows where ProviderName = 'StructuralPartnerMap' AND structuralPartnerStatus ∈ ('open','rotating') AND korPriority = 'high'. Joined to CanonicalOrg for the display name. Double-click to open the org dossier.",
+            Formula = "OpenStructuralSeats = CanonicalOrgs WHERE StructuralPartnerMap.status ∈ {open, rotating} AND korPriority = 'high'"
+        };
+
+        d["BdDashboard_CompetitorWatch"] = new FinancialMetricDefinition
+        {
+            Key = "BdDashboard_CompetitorWatch", Category = "BD",
+            DisplayName = "Competitor Watch",
+            Description =
+                "WHAT:\n" +
+                "List of structural-engineering competitors with a capacity-read enrichment on file — e.g. 'fully booked through Q3', 'lost a senior PM, capacity gap', 'aggressive on BC institutional this cycle'.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Capacity reads tell BD which competitors are stretched (better win odds) vs which are leaning into a market (harder pursuit). Drives lane selection: where to push, where to wait.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "CanonicalOrgEnrichment rows where ProviderName = 'CompetitorSignals'. Joined to CanonicalOrg for the display name; the capacityRead JSON field renders alongside. Double-click to open the org dossier for full context.",
+            Formula = "CompetitorWatch = CanonicalOrgs WHERE CompetitorSignals enrichment is present"
+        };
     }
 }
