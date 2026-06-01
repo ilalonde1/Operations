@@ -50,7 +50,23 @@ public sealed class BdDeltekLinkDryRunJob : IJob
         var ct = context.CancellationToken;
         try
         {
-            var config = DeltekLinkConfig.FromEnvironment();
+            var dsn = string.IsNullOrWhiteSpace(opt.DeltekDsn) ? "Deltek" : opt.DeltekDsn;
+            var catalog = string.IsNullOrWhiteSpace(opt.DeltekCatalog)
+                ? "C0000052267P_1_KOR00000000"
+                : opt.DeltekCatalog;
+            var config = new DeltekLinkConfig(
+                dsn,
+                opt.DeltekUser ?? string.Empty,
+                opt.DeltekPassword ?? string.Empty,
+                catalog);
+            if (string.IsNullOrWhiteSpace(opt.DeltekUser))
+            {
+                _logger.LogInformation(
+                    "{Job}: Deltek connection using bare DSN '{Dsn}' (no UID/PWD options; relying on system DSN credentials).",
+                    nameof(BdDeltekLinkDryRunJob),
+                    config.Dsn);
+            }
+
             var clients = LoadClients(config);
             var linked = await LoadLinkedAsync(opt.OpportunitiesDb, ct).ConfigureAwait(false);
             var targets = await LoadTargetsAsync(opt.OpportunitiesDb, TargetKinds, ct).ConfigureAwait(false);
@@ -333,30 +349,23 @@ ORDER BY DisplayName;";
 
     private sealed record DeltekLinkConfig(string Dsn, string User, string Password, string Catalog)
     {
-        private const string DefaultCatalog = "C0000052267P_1_KOR00000000";
-
-        public string OdbcConnectionString => $"DSN={Dsn};UID={User};PWD={Password};";
-
-        public static DeltekLinkConfig FromEnvironment()
+        public string OdbcConnectionString
         {
-            return new DeltekLinkConfig(
-                Required("KOR_BD_DELTEK_DSN"),
-                Required("KOR_BD_DELTEK_USER"),
-                Required("KOR_BD_DELTEK_PWD"),
-                Environment.GetEnvironmentVariable("KOR_BD_DELTEK_CATALOG")?.Trim() is { Length: > 0 } catalog
-                    ? catalog
-                    : DefaultCatalog);
-        }
-
-        private static string Required(string name)
-        {
-            var value = Environment.GetEnvironmentVariable(name);
-            if (string.IsNullOrWhiteSpace(value))
+            get
             {
-                throw new InvalidOperationException($"Required environment variable {name} is missing.");
-            }
+                var sb = new StringBuilder($"DSN={Dsn};");
+                if (!string.IsNullOrWhiteSpace(User))
+                {
+                    sb.Append($"UID={User};");
+                }
 
-            return value.Trim();
+                if (!string.IsNullOrWhiteSpace(Password))
+                {
+                    sb.Append($"PWD={Password};");
+                }
+
+                return sb.ToString();
+            }
         }
     }
 
