@@ -71,9 +71,17 @@ public partial class OrgDossierWindow : Window
                         data = data with { Deltek = BuildDeltekSection(intel) };
                     }
                 }
-                catch
+                catch (Exception deltekEx)
                 {
-                    // Deltek enrichment is best-effort; the BD-canonical brief still renders.
+                    // R67: Deltek enrichment is best-effort, but a silent failure
+                    // hides real bugs. Show the exception so the operator can
+                    // diagnose; the brief still renders the BD-canonical sections.
+                    MessageBox.Show(
+                        "Deltek section omitted from brief.\n\n"
+                            + deltekEx.GetType().Name + ": " + deltekEx.Message,
+                        "Generate Brief  Deltek skipped",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
                 }
             }
 
