@@ -16,6 +16,7 @@ public sealed record MajorProjectRow(
     string? Stage,
     string? ProjectStage,
     string? ProjectStatus,
+    string? SeatStatus,
     decimal? EstimatedCostCad,
     string? EstimatedCostText,
     string? ProponentName,

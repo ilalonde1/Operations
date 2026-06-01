@@ -85,6 +85,25 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = view;
     }
 
+    /// <summary>
+    /// Like <see cref="NavigateToForwardPipeline"/> but pre-stamps a
+    /// funnel category (Open Seats / In Bid Window / Radar) on the
+    /// Forward Pipeline VM. Used by the three dashboard funnel badges
+    /// so clicking "Open Seats" drills into the same likely-open subset
+    /// the count badge represents.
+    /// </summary>
+    public void NavigateToForwardPipelineWithFunnel(App.Opportunities.PipelineFunnel funnel)
+    {
+        SetActiveNav(UpcomingButton);
+        var view = _services.GetRequiredService<App.Opportunities.MajorProjectsInventoryView>();
+        if (view.DataContext is App.Opportunities.MajorProjectsInventoryViewModel vm)
+        {
+            vm.PendingFunnelFilter = funnel;
+        }
+
+        ContentHost.Content = view;
+    }
+
     public void NavigateToRelationships()
     {
         SetActiveNav(RelationshipsButton);

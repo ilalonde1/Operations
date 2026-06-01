@@ -107,6 +107,14 @@ public partial class MajorProjectsInventoryView : UserControl
         }
     }
 
+    private void ClearFunnel_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MajorProjectsInventoryViewModel vm)
+        {
+            vm.ClearFunnelFilter();
+        }
+    }
+
     private void OpenOrgDossier(long canonicalOrgId)
     {
         var win = new OrgDossierWindow(_services.GetRequiredService<OrgDossierViewModel>(), canonicalOrgId)

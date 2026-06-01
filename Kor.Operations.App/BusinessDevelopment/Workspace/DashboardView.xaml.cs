@@ -193,9 +193,9 @@ public partial class DashboardView : UserControl
 
     // Round 56: top-row funnel badges drill into the same MPI viewer that
     // sources their counts. Same pattern as the Row 2 stat tiles above.
-    private void OpenSeatsTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
-    private void InBidWindowTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
-    private void RadarTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+    private void OpenSeatsTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipelineWithFunnel(Kor.Operations.App.Opportunities.PipelineFunnel.OpenSeats);
+    private void InBidWindowTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipelineWithFunnel(Kor.Operations.App.Opportunities.PipelineFunnel.BidWindow);
+    private void RadarTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipelineWithFunnel(Kor.Operations.App.Opportunities.PipelineFunnel.Radar);
 
     private void SectorChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
     private void MarketChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
@@ -286,6 +286,14 @@ public partial class DashboardView : UserControl
         if (Window.GetWindow(this) is BdWorkspaceWindow workspace)
         {
             workspace.NavigateToForwardPipeline();
+        }
+    }
+
+    private void GoToForwardPipelineWithFunnel(Kor.Operations.App.Opportunities.PipelineFunnel funnel)
+    {
+        if (Window.GetWindow(this) is BdWorkspaceWindow workspace)
+        {
+            workspace.NavigateToForwardPipelineWithFunnel(funnel);
         }
     }
 

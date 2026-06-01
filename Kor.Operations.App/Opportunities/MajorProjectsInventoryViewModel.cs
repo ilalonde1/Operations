@@ -16,6 +16,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.App.Opportunities;
 
+public enum PipelineFunnel
+{
+    None = 0,
+    OpenSeats,
+    BidWindow,
+    Radar,
+}
+
 public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiContextProvider
 {
     public const string Provider = "Major Projects Inventory (BD)";
@@ -31,6 +39,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     private string _provinceFilter = AllFilter;
     private string _stageFilter = AllFilter;
     private string _sectorFilter = AllFilter;
+    private PipelineFunnel _funnelFilter = PipelineFunnel.None;
     private bool _indigenousOnly;
     private decimal? _minCost;
     private string _statusMessage = "Ready.";
@@ -130,6 +139,30 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         }
     }
 
+    public PipelineFunnel FunnelFilter
+    {
+        get => _funnelFilter;
+        set
+        {
+            if (SetField(ref _funnelFilter, value))
+            {
+                OnPropertyChanged(nameof(FunnelFilterDisplay));
+                OnPropertyChanged(nameof(HasFunnelFilter));
+                FilteredProjectsView.Refresh();
+            }
+        }
+    }
+
+    public bool HasFunnelFilter => _funnelFilter != PipelineFunnel.None;
+
+    public string FunnelFilterDisplay => _funnelFilter switch
+    {
+        PipelineFunnel.OpenSeats => "Open Seats",
+        PipelineFunnel.BidWindow => "In Bid Window",
+        PipelineFunnel.Radar => "Radar",
+        _ => string.Empty,
+    };
+
     // Pre-navigation filter slots used by the cross-view filter broker
     // (BdWorkspaceWindow.NavigateToForwardPipelineWithFilter). LoadAsync
     // applies these AFTER the filter-option lists are populated and then
@@ -137,6 +170,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     public string? PendingProvinceFilter { get; set; }
     public string? PendingStageFilter { get; set; }
     public string? PendingSectorFilter { get; set; }
+    public PipelineFunnel? PendingFunnelFilter { get; set; }
 
     public bool IndigenousOnly
     {
@@ -258,13 +292,36 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
             SectorFilter = se;
             PendingSectorFilter = null;
         }
+
+        if (PendingFunnelFilter is { } f)
+        {
+            FunnelFilter = f;
+            PendingFunnelFilter = null;
+        }
     }
+
+    public void ClearFunnelFilter() => FunnelFilter = PipelineFunnel.None;
 
     private bool ProjectFilterPredicate(object obj)
     {
         if (obj is not MajorProjectRow row)
         {
             return false;
+        }
+
+        if (_funnelFilter != PipelineFunnel.None)
+        {
+            var match = _funnelFilter switch
+            {
+                PipelineFunnel.OpenSeats => IsOpenSeat(row),
+                PipelineFunnel.BidWindow => IsInBidWindow(row),
+                PipelineFunnel.Radar => IsInRadar(row),
+                _ => true,
+            };
+            if (!match)
+            {
+                return false;
+            }
         }
 
         if (!IsAll(ProvinceFilter) && !string.Equals(row.Province, ProvinceFilter, StringComparison.OrdinalIgnoreCase))
@@ -321,6 +378,64 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
             "AB" => 1,
             _ => 2,
         };
+
+    private static readonly string[] RadarSectorKeywords =
+    {
+        "school", "hospital", "health", "recreation", "civic",
+        "cultural", "universit", "college", "library", "communit",
+        "education", "housing", "institution", "care", "fire", "police",
+    };
+
+    private static readonly string[] RadarSectorExactMatches =
+    {
+        "Civic", "Tourism / Recreation", "Government", "Mixed-use",
+    };
+
+    private static readonly string[] BidWindowStageKeywords =
+    {
+        "procure", "RFP", "RFQ", "tender", "design",
+    };
+
+    private static bool IsInRadar(MajorProjectRow row)
+    {
+        var sector = row.Sector;
+        if (string.IsNullOrWhiteSpace(sector)) return false;
+        foreach (var kw in RadarSectorKeywords)
+        {
+            if (sector.IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+        }
+        foreach (var exact in RadarSectorExactMatches)
+        {
+            if (string.Equals(sector, exact, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    private static bool IsInBidWindow(MajorProjectRow row)
+    {
+        if (!IsInRadar(row)) return false;
+        // The funnel SQL OR's across ProjectStage/Stage/ProjectStatus
+        // implicitly via Stage; here we mirror by checking all three
+        // string columns the row model exposes.
+        foreach (var src in new[] { row.ProjectStage, row.Stage, row.ProjectStatus })
+        {
+            if (string.IsNullOrWhiteSpace(src)) continue;
+            foreach (var kw in BidWindowStageKeywords)
+            {
+                if (src.IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool IsOpenSeat(MajorProjectRow row)
+    {
+        if (!IsInRadar(row)) return false;
+        return string.Equals(row.SeatStatus, "likely-open", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static void ReplaceOptions(ObservableCollection<string> target, IReadOnlyList<string> values)
     {
