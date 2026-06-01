@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Generate Region Brief"
         Width="460"
-        Height="280"
+        SizeToContent="Height"
+        MinHeight="340"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{StaticResource App.Background}"
@@ -39,7 +40,7 @@
             </ComboBox>
         </StackPanel>
 
-        <TextBlock x:Name="StatusText" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        <TextBlock x:Name="StatusText" Grid.Row="5" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
         <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button x:Name="GenerateButton"
