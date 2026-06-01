@@ -83,7 +83,10 @@
                     <Button x:Name="UpcomingButton" Content="Forward Pipeline" Style="{StaticResource NavButton}" Click="Upcoming_Click"/>
                     <Button x:Name="RelationshipsButton" Content="Relationships" Style="{StaticResource NavButton}" Click="Relationships_Click"/>
                     <Button x:Name="EventsButton" Content="Events" Style="{StaticResource NavButton}" Click="Events_Click"/>
-                    <Button x:Name="CompetitionButton" Content="Competition" Style="{StaticResource NavButton}" Click="Competition_Click"/>
+                    <!-- Round 54: relabeled from "Competition" — the tab contains
+                         Historical RFPs + Awards (past public procurements);
+                         "Competition" only fit half of it. -->
+                    <Button x:Name="CompetitionButton" Content="Market History" Style="{StaticResource NavButton}" Click="Competition_Click"/>
                     <Button x:Name="AdminButton" Content="Admin" Style="{StaticResource NavButton}" Click="Admin_Click"/>
                     <Button x:Name="RegionBriefButton" Content="Region Brief…" Style="{StaticResource NavButton}" Click="RegionBrief_Click"/>
                     <Separator Margin="0,8"/>

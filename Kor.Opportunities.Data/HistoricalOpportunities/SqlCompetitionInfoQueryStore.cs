@@ -27,7 +27,12 @@ public sealed class SqlCompetitionInfoQueryStore : ICompetitionInfoQueryStore
         CompetitionInfoFilter f,
         CancellationToken ct)
     {
-        var maxRows = Math.Min(f.MaxRows ?? 10_000, 5000);
+        // Round 54: cap raised 5K → 15K. The grid is virtualized, but the
+        // join + LIKE filter passes still pay per row. 15K keeps the UI
+        // responsive while letting a relevance-filtered slice fit without
+        // truncation. The KOR-relevant filter on the VM side does most of
+        // the narrowing — this is the hard safety ceiling.
+        var maxRows = Math.Min(f.MaxRows ?? 15_000, 15_000);
         var sb = new StringBuilder(@"
 SELECT TOP (@maxRows)
     h.Id, h.OpportunityKey, h.BcBidInternalId, h.Name, h.BuyerName,
@@ -72,6 +77,14 @@ WHERE 1 = 1
         if (f.HasDocuments == true)
         {
             sb.AppendLine(@"  AND ISNULL(d.DownloadedCount, 0) > 0");
+        }
+        if (f.KorRelevantOnly == true)
+        {
+            // Round 54: KOR-markets gate. Province codes covering BC + AB
+            // (primary), plus the western US states that occasionally surface
+            // in the archive when a cross-border ingestion runs. Drops the
+            // ON/QC/MB long-tail.
+            sb.AppendLine(@"  AND h.ProjectProvince IN (N'BC', N'AB', N'WA', N'OR', N'CA')");
         }
 
         sb.AppendLine(@"ORDER BY h.RfpReleaseDate DESC, h.Id DESC;");

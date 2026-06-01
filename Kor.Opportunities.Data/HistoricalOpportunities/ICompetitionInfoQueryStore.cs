@@ -16,6 +16,16 @@ public sealed record CompetitionInfoFilter
     public decimal? MinEstimatedValue { get; init; }
     public bool? HasDocuments { get; init; }
     public int? MaxRows { get; init; }
+
+    /// <summary>
+    /// Round 54: KOR-markets relevance gate. When true (the VM default),
+    /// the store restricts ProjectProvince to KOR's active markets
+    /// (BC + AB primarily, plus the western-states codes that surface
+    /// in the historical archive). Toggled off, the full uncurated
+    /// archive is returned. Null is treated as false at the store layer
+    /// so old call sites remain unfiltered.
+    /// </summary>
+    public bool? KorRelevantOnly { get; init; }
 }
 
 public sealed record HistoricalOpportunityDetail

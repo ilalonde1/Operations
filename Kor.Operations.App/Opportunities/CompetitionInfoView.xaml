@@ -35,6 +35,9 @@
                                 <TextBlock Text="Min Est. Value" FontSize="11" Foreground="#666"/>
                                 <TextBox Width="120" Text="{Binding MinEstimatedValue, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"/>
                             </StackPanel>
+                            <CheckBox Content="KOR markets only" IsChecked="{Binding KorRelevantOnly}"
+                                      VerticalAlignment="Bottom" Margin="0,0,16,4"
+                                      ToolTip="On (default): only BC, AB, WA, OR, CA. Untick to see every province/state in the historical archive."/>
                             <CheckBox Content="Has downloaded docs" IsChecked="{Binding HasDocumentsOnly}"
                                       VerticalAlignment="Bottom" Margin="0,0,16,4"/>
                             <Button Content="Apply" Width="80" Height="28"

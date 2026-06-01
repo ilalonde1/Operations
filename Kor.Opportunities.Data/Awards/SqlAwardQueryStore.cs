@@ -25,7 +25,10 @@ public sealed class SqlAwardQueryStore : IAwardQueryStore
 
     public async Task<IReadOnlyList<AwardListing>> ListAsync(AwardQueryFilter f, CancellationToken ct)
     {
-        var maxRows = Math.Min(f.MaxRows ?? 10_000, 5000);
+        // Round 54: cap raised 5K → 15K. Matches the Historical RFPs store
+        // ceiling. The CompetesWithKorOnly filter (default ON in the VM)
+        // does most of the narrowing — this is the hard safety ceiling.
+        var maxRows = Math.Min(f.MaxRows ?? 15_000, 15_000);
         var sb = new StringBuilder(@"
 SELECT TOP (@maxRows)
     a.Id, a.ExternalReference, s.Name AS SourceName, a.Title, a.SolicitationType,

@@ -53,6 +53,12 @@ public sealed class CompetitionRfpsViewModel : INotifyPropertyChanged
     private bool _hasDocumentsOnly;
     public bool HasDocumentsOnly { get => _hasDocumentsOnly; set { _hasDocumentsOnly = value; OnPropertyChanged(); } }
 
+    // Round 54: KOR-relevance toggle. Default ON so the first paint shows
+    // the BC/AB/WA/OR/CA slice (~the markets KOR actually pursues). Users
+    // who want the full uncurated archive untick it.
+    private bool _korRelevantOnly = true;
+    public bool KorRelevantOnly { get => _korRelevantOnly; set { _korRelevantOnly = value; OnPropertyChanged(); } }
+
     private string _statusText = "Loading";
     public string StatusText { get => _statusText; set { _statusText = value; OnPropertyChanged(); } }
 
@@ -93,14 +99,16 @@ public sealed class CompetitionRfpsViewModel : INotifyPropertyChanged
                 HistoricalStatus = SelectedStatus,
                 MinEstimatedValue = MinEstimatedValue,
                 HasDocuments = HasDocumentsOnly ? true : (bool?)null,
-                MaxRows = 5000,
+                KorRelevantOnly = KorRelevantOnly ? true : (bool?)null,
+                MaxRows = 15_000,
             };
 
             var rows = await _store.ListAsync(filter, CancellationToken.None).ConfigureAwait(true);
             Rows.Clear();
             foreach (var r in rows) Rows.Add(r);
-            StatusText = $"{rows.Count:N0} rows"
-                + (rows.Count == 5000 ? " (capped at 5,000  narrow filters to see more)" : "");
+            var scope = KorRelevantOnly ? "KOR markets" : "all markets";
+            StatusText = $"{rows.Count:N0} rows ({scope})"
+                + (rows.Count >= 15_000 ? " — capped at 15,000; narrow filters to see more" : "");
         }
         catch (Exception ex)
         {

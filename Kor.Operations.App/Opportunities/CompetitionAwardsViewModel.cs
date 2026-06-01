@@ -46,7 +46,10 @@ public sealed class CompetitionAwardsViewModel : INotifyPropertyChanged
     private decimal? _minContractValue;
     public decimal? MinContractValue { get => _minContractValue; set { _minContractValue = value; OnPropertyChanged(); } }
 
-    private bool _competesWithKorOnly;
+    // Round 54: AI-derived AgentCompetesWithKor is the relevance signal
+    // for the awards archive. Default ON so the first paint shows the
+    // KOR-relevant slice; untick to see the full APC/BC Bid awards firehose.
+    private bool _competesWithKorOnly = true;
     public bool CompetesWithKorOnly { get => _competesWithKorOnly; set { _competesWithKorOnly = value; OnPropertyChanged(); } }
 
     private string _statusText = "Loading";
@@ -87,14 +90,15 @@ public sealed class CompetitionAwardsViewModel : INotifyPropertyChanged
                 Year = SelectedYear,
                 SourceName = SelectedSource,
                 MinContractValue = MinContractValue,
-                MaxRows = 5000,
+                MaxRows = 15_000,
                 CompetesWithKorOnly = CompetesWithKorOnly ? true : (bool?)null,
             };
             var rows = await _store.ListAsync(filter, CancellationToken.None).ConfigureAwait(true);
             Rows.Clear();
             foreach (var r in rows) Rows.Add(r);
-            StatusText = $"{rows.Count:N0} awards"
-                + (rows.Count == 5000 ? " (capped at 5,000  narrow filters to see more)" : "");
+            var scope = CompetesWithKorOnly ? "competes with KOR" : "all vendors";
+            StatusText = $"{rows.Count:N0} awards ({scope})"
+                + (rows.Count >= 15_000 ? " — capped at 15,000; narrow filters to see more" : "");
         }
         catch (Exception ex)
         {
