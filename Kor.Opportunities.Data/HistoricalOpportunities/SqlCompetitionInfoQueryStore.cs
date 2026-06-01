@@ -14,6 +14,69 @@ public sealed class SqlCompetitionInfoQueryStore : ICompetitionInfoQueryStore
 {
     private const int CommandTimeoutSeconds = 30;
 
+    // Round 55: view-only noise filter — never affects ingestion. Applied
+    // ONLY when KorRelevantOnly is true. These are titles that the historical
+    // archive carries but KOR (structural engineering for buildings) is
+    // never going to bid on. Patterns are case-insensitive LIKEs against
+    // both Name and Commodities. Untick "KOR markets only" to bypass.
+    //
+    // Add a term here when a new noise pattern recurs in ss screenshots —
+    // safer to over-include than to add weak positive heuristics that risk
+    // dropping real structural work.
+    private static readonly string[] NoiseTerms =
+    {
+        "snow removal",
+        "snow plow",
+        "janitorial",
+        "janitor service",
+        "cleaning service",
+        "carpet cleaning",
+        "window cleaning",
+        "supply truck",
+        "utility truck",
+        "dump truck",
+        "garbage truck",
+        "vehicle parts",
+        "tire ",
+        "painting service",
+        "interior painting",
+        "exterior painting",
+        "spring painting",
+        "fall painting",
+        "landscaping",
+        "groundskeeping",
+        "lawn care",
+        "tree pruning",
+        "tree removal",
+        "catering",
+        "food service",
+        "uniform service",
+        "locksmith",
+        "pest control",
+        "fumigation",
+        "waste collection",
+        "recycling collection",
+        "security service",
+        "security guard",
+        "office supplies",
+        "office furniture",
+        "fitness equipment",
+        "playground equipment",
+        "it package",
+        "it services",
+        "it support",
+        "software license",
+        "software subscription",
+        "telecom",
+        "wireless service",
+        "cellular service",
+        "internet service",
+        "translation service",
+        "interpretation service",
+        "courier service",
+        "moving service",
+    };
+
     private readonly string _connectionString;
 
     public SqlCompetitionInfoQueryStore(string connectionString)
@@ -85,6 +148,15 @@ WHERE 1 = 1
             // in the archive when a cross-border ingestion runs. Drops the
             // ON/QC/MB long-tail.
             sb.AppendLine(@"  AND h.ProjectProvince IN (N'BC', N'AB', N'WA', N'OR', N'CA')");
+
+            // Round 55: noise-keyword exclusion list. Each term becomes an
+            // AND NOT LIKE on Name + Commodities (commodities sometimes
+            // carries the category text when the title is generic).
+            for (int i = 0; i < NoiseTerms.Length; i++)
+            {
+                sb.AppendLine(
+                    $"  AND h.Name NOT LIKE @noise{i} AND (h.Commodities IS NULL OR h.Commodities NOT LIKE @noise{i})");
+            }
         }
 
         sb.AppendLine(@"ORDER BY h.RfpReleaseDate DESC, h.Id DESC;");
@@ -110,6 +182,13 @@ WHERE 1 = 1
                 Value = f.MinEstimatedValue.Value,
             };
             cmd.Parameters.Add(p);
+        }
+        if (f.KorRelevantOnly == true)
+        {
+            for (int i = 0; i < NoiseTerms.Length; i++)
+            {
+                cmd.Parameters.Add($"@noise{i}", SqlDbType.NVarChar, 100).Value = "%" + NoiseTerms[i] + "%";
+            }
         }
 
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
