@@ -42,7 +42,7 @@
                             Margin="2,0,2,8"
                             HeaderText="Business Development"
                             SubtitleText="Workspace"
-                            AvatarDiameter="64"
+                            AvatarDiameter="96"
                             AvatarBorderThickness="2"/>
 
         <Grid Grid.Row="1" Margin="10,0,10,10">

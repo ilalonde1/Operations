@@ -53,7 +53,9 @@
                               AlternatingRowBackground="#FAFAFA" CanUserSortColumns="True"
                               MouseDoubleClick="RfpRow_DoubleClick">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding OpportunityKey}" Width="180"/>
+                            <!-- Round 53: ID column (OpportunityKey, internal lookup
+                                 like "BCBID-NXC-J7H6N") dropped — not actionable
+                                 for browsing; double-click opens the full record. -->
                             <DataGridTextColumn Header="Title" Binding="{Binding Name}" Width="*"/>
                             <DataGridTextColumn Header="Buyer" Binding="{Binding BuyerName}" Width="250"/>
                             <DataGridTextColumn Header="Province" Binding="{Binding ProjectProvince}" Width="60"/>
