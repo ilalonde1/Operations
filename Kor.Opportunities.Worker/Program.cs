@@ -700,6 +700,18 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  var bdResearchQueueBuilderKey = new JobKey("BdResearchQueueBuilderJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.BdResearchQueueBuilderJob>(opts => opts.WithIdentity(bdResearchQueueBuilderKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 06:00 Pacific daily, after the 05:00 KOR-project signal refresh.
+      var cron = builder.Configuration["BdResearchQueueBuilderCronSchedule"] ?? "0 0 6 * * ?";
+      t.ForJob(bdResearchQueueBuilderKey)
+       .WithIdentity("BdResearchQueueBuilderTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   var korPursuitDeltekSyncKey = new JobKey("KorPursuitDeltekSyncJob");
   q.AddJob<Kor.Opportunities.Worker.Services.KorPursuitDeltekSyncJob>(opts => opts.WithIdentity(korPursuitDeltekSyncKey));
 

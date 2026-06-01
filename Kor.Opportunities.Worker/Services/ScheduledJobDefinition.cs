@@ -24,6 +24,7 @@ internal static class ScheduledJobDefinitions
         new(nameof(BuildingPermitsImportJob), "BuildingPermitsCronSchedule", "0 30 6 * * ?", o => o.BuildingPermitsImportEnabled),
         new(nameof(DataRetirementJob), "DataRetirementCronSchedule", "0 30 4 * * ?", o => o.DataRetirementEnabled),
         new(nameof(BdDeltekLinkDryRunJob), "BdDeltekLinkDryRunCronSchedule", "0 0 4 * * ?", o => o.BdDeltekLinkDryRunEnabled),
+        new(nameof(BdResearchQueueBuilderJob), "BdResearchQueueBuilderCronSchedule", "0 0 6 * * ?", o => o.BdResearchQueueEnabled),
         new(nameof(CanonicalOrgKorProjectSignalRefreshJob), "CanonicalOrgKorProjectSignalRefreshCronSchedule", "0 0 5 * * ?", o => o.CanonicalOrgKorProjectSignalRefreshEnabled),
         new(nameof(KorPursuitDeltekSyncJob), "KorPursuitDeltekSyncCronSchedule", "0 30 5 * * ?", o => o.KorPursuitDeltekSyncEnabled),
         new(nameof(AbMajorProjectsInventoryJob), "AbMajorProjectsInventoryCronSchedule", "0 30 3 ? * SUN", _ => true),

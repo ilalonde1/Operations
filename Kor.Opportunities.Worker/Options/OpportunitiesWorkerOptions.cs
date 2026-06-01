@@ -197,6 +197,11 @@ public sealed class OpportunitiesWorkerOptions
     public string BdDeltekLinkDryRunOutputDir { get; set; } =
         @"C:\ProgramData\KorOperations\BdDeltekLink\nightly";
 
+    public bool BdResearchQueueEnabled { get; set; } = true;
+    public int BdResearchQueueBatchSize { get; set; } = 50;
+    public string BdResearchQueueOutputDir { get; set; } =
+        @"C:\ProgramData\KorOperations\BdResearchQueue";
+
     public string DeltekDsn { get; set; } = "Deltek";
     public string DeltekUser { get; set; } = "";
     public string DeltekPassword { get; set; } = "";
