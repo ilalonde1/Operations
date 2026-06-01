@@ -151,48 +151,49 @@ WHERE ArchitectCanonicalOrgId = @arch AND StructuralEngineerCanonicalOrgId = @ko
 
         var korId = await GetKorIdAsync(con, ct).ConfigureAwait(false);
         var korIdVal = korId ?? -1L;
-        var cityParam = string.IsNullOrWhiteSpace(city) ? null : city.Trim();
+        var cityTokens = TokenizeCity(city);
+        var cityLabel = string.IsNullOrWhiteSpace(city) ? null : city.Trim();
 
-        var liveRfpCount = await ScalarIntAsync(con, @"
+        var liveRfpCount = await ScalarIntAsync(con, $@"
 SELECT COUNT(*) FROM opportunities.Opportunities
 WHERE Status = 1 AND IsPrimeConsultantRfp = 1 AND ProjectProvince = @prov
-  AND (@city IS NULL OR ProjectCity LIKE '%' + @city + '%');",
+{BuildCityClause(cityTokens, OpportunityCityColumns, "c")};",
             cmd =>
             {
                 cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
-                cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)cityParam ?? DBNull.Value;
+                BindCityTokens(cmd, cityTokens, "c");
             }, ct).ConfigureAwait(false);
 
-        var forwardCount = await ScalarIntAsync(con, @"
+        var forwardCount = await ScalarIntAsync(con, $@"
 SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL AND Province = @prov
-  AND (@city IS NULL OR MunicipalityName LIKE '%' + @city + '%')
+{BuildCityClause(cityTokens, MpiCityColumns, "c")}
   AND ProjectStage IN (N'CapitalPlan', N'FacilityRenewal');",
             cmd =>
             {
                 cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
-                cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)cityParam ?? DBNull.Value;
+                BindCityTokens(cmd, cityTokens, "c");
             }, ct).ConfigureAwait(false);
 
-        var activeMpiCount = await ScalarIntAsync(con, @"
+        var activeMpiCount = await ScalarIntAsync(con, $@"
 SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL AND Province = @prov
-  AND (@city IS NULL OR MunicipalityName LIKE '%' + @city + '%');",
+{BuildCityClause(cityTokens, MpiCityColumns, "c")};",
             cmd =>
             {
                 cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
-                cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)cityParam ?? DBNull.Value;
+                BindCityTokens(cmd, cityTokens, "c");
             }, ct).ConfigureAwait(false);
 
-        var topArchitects = await GetTopOrgsAsync(con, province, cityParam, korIdVal, "Architect", "ArchitectCanonicalOrgId", includeKorJointSubquery: true, ct).ConfigureAwait(false);
-        var topOwners = await GetTopOwnersAsync(con, province, cityParam, ct).ConfigureAwait(false);
-        var topCompetitors = await GetTopOrgsAsync(con, province, cityParam, korIdVal, "Competitor", "StructuralEngineerCanonicalOrgId", includeKorJointSubquery: false, ct).ConfigureAwait(false);
-        var liveRfps = await GetRegionLiveRfpsAsync(con, province, cityParam, ct).ConfigureAwait(false);
-        var forwardProjects = await GetRegionForwardProjectsAsync(con, province, cityParam, ct).ConfigureAwait(false);
-        var events = await GetRegionEventsAsync(con, province, cityParam, ct).ConfigureAwait(false);
+        var topArchitects = await GetTopOrgsAsync(con, province, cityTokens, korIdVal, "Architect", "ArchitectCanonicalOrgId", includeKorJointSubquery: true, ct).ConfigureAwait(false);
+        var topOwners = await GetTopOwnersAsync(con, province, cityTokens, ct).ConfigureAwait(false);
+        var topCompetitors = await GetTopOrgsAsync(con, province, cityTokens, korIdVal, "Competitor", "StructuralEngineerCanonicalOrgId", includeKorJointSubquery: false, ct).ConfigureAwait(false);
+        var liveRfps = await GetRegionLiveRfpsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
+        var forwardProjects = await GetRegionForwardProjectsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
+        var events = await GetRegionEventsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
 
         return new RegionBriefData(
-            province, cityParam,
+            province, cityLabel,
             liveRfpCount, forwardCount, activeMpiCount,
             topArchitects, topOwners, topCompetitors,
             liveRfps, forwardProjects, events);
@@ -306,6 +307,86 @@ ORDER BY UpdatedAtUtc DESC;";
         return v is null or DBNull ? 0 : Convert.ToInt32(v);
     }
 
+    // City input is free-text; split common separators into independent LIKE matches.
+    private static readonly char[] CitySeparators = { '/', ',', ';', '&' };
+    private static readonly string[] OpportunityCityColumns = { "ProjectCity" };
+    private static readonly string[] MpiCityColumns = { "MunicipalityName", "RegionName" };
+    private static readonly string[] AliasedMpiCityColumns = { "m.MunicipalityName", "m.RegionName" };
+    private static readonly string[] EventCityColumns = { "City" };
+
+    private static IReadOnlyList<string> TokenizeCity(string? city)
+    {
+        if (string.IsNullOrWhiteSpace(city))
+        {
+            return Array.Empty<string>();
+        }
+
+        var parts = city.Split(CitySeparators, StringSplitOptions.RemoveEmptyEntries);
+        var list = new List<string>(parts.Length);
+        foreach (var p in parts)
+        {
+            var t = p.Trim();
+            if (t.Length > 0 && !list.Exists(x => string.Equals(x, t, StringComparison.OrdinalIgnoreCase)))
+            {
+                list.Add(t);
+            }
+        }
+
+        return list;
+    }
+
+    private static string BuildCityClause(IReadOnlyList<string> tokens, string[] columns, string paramPrefix)
+    {
+        if (tokens.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var sb = new System.Text.StringBuilder(" AND (");
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            if (i > 0) sb.Append(" OR ");
+            for (var j = 0; j < columns.Length; j++)
+            {
+                if (j > 0) sb.Append(" OR ");
+                sb.Append(columns[j]).Append(" LIKE '%' + @").Append(paramPrefix).Append(i).Append(" + '%'");
+            }
+        }
+
+        sb.Append(')');
+        return sb.ToString();
+    }
+
+    private static string BuildCityOrClause(IReadOnlyList<string> tokens, string[] columns, string paramPrefix)
+    {
+        if (tokens.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var sb = new System.Text.StringBuilder(" OR (");
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            if (i > 0) sb.Append(" OR ");
+            for (var j = 0; j < columns.Length; j++)
+            {
+                if (j > 0) sb.Append(" OR ");
+                sb.Append(columns[j]).Append(" LIKE '%' + @").Append(paramPrefix).Append(i).Append(" + '%'");
+            }
+        }
+
+        sb.Append(')');
+        return sb.ToString();
+    }
+
+    private static void BindCityTokens(SqlCommand cmd, IReadOnlyList<string> tokens, string paramPrefix)
+    {
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            cmd.Parameters.Add("@" + paramPrefix + i, SqlDbType.NVarChar, 150).Value = tokens[i];
+        }
+    }
+
     private static async Task<EventMatch?> GetMatchedEventAsync(SqlConnection con, string? province, string? sector, CancellationToken ct)
     {
         const string sql = @"
@@ -342,7 +423,7 @@ ORDER BY CASE WHEN SectorsThemes LIKE '%' + @sector + '%' THEN 0 ELSE 1 END,
     private static async Task<IReadOnlyList<RegionTopOrg>> GetTopOrgsAsync(
         SqlConnection con,
         string province,
-        string? city,
+        IReadOnlyList<string> cityTokens,
         long korId,
         string kind,
         string mpiFkColumn,
@@ -359,19 +440,20 @@ SELECT TOP 5 c.Id, c.DisplayName,
   (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
      WHERE m.{mpiFkColumn} = c.Id AND m.Province = @prov
        AND m.RetiredAtUtc IS NULL
-       AND (@city IS NULL OR m.MunicipalityName LIKE '%' + @city + '%')) AS ProjectCount,
+{BuildCityClause(cityTokens, AliasedMpiCityColumns, "c1")}) AS ProjectCount,
   {korJointSql} AS KorJointCount
 FROM opportunities.CanonicalOrg c
 WHERE c.Kind = @kind AND EXISTS (
   SELECT 1 FROM opportunities.MajorProjectsInventory m
   WHERE m.{mpiFkColumn} = c.Id AND m.Province = @prov
     AND m.RetiredAtUtc IS NULL
-    AND (@city IS NULL OR m.MunicipalityName LIKE '%' + @city + '%'))
+{BuildCityClause(cityTokens, AliasedMpiCityColumns, "c2")})
 ORDER BY ProjectCount DESC, c.DisplayName;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
-        cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)city ?? DBNull.Value;
+        BindCityTokens(cmd, cityTokens, "c1");
+        BindCityTokens(cmd, cityTokens, "c2");
         cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = kind;
         if (includeKorJointSubquery)
         {
@@ -392,25 +474,26 @@ ORDER BY ProjectCount DESC, c.DisplayName;";
         return rows;
     }
 
-    private static async Task<IReadOnlyList<RegionTopOrg>> GetTopOwnersAsync(SqlConnection con, string province, string? city, CancellationToken ct)
+    private static async Task<IReadOnlyList<RegionTopOrg>> GetTopOwnersAsync(SqlConnection con, string province, IReadOnlyList<string> cityTokens, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP 5 c.Id, c.DisplayName,
   (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
      WHERE m.ProponentCanonicalOrgId = c.Id AND m.Province = @prov
        AND m.RetiredAtUtc IS NULL
-       AND (@city IS NULL OR m.MunicipalityName LIKE '%' + @city + '%')) AS ProjectCount,
+{BuildCityClause(cityTokens, AliasedMpiCityColumns, "c1")}) AS ProjectCount,
   ISNULL(c.KorProjectsCount, 0) AS KorJointCount
 FROM opportunities.CanonicalOrg c
 WHERE c.Kind IN (N'Buyer', N'Client', N'KorClient', N'Developer') AND EXISTS (
   SELECT 1 FROM opportunities.MajorProjectsInventory m
   WHERE m.ProponentCanonicalOrgId = c.Id AND m.Province = @prov
     AND m.RetiredAtUtc IS NULL
-    AND (@city IS NULL OR m.MunicipalityName LIKE '%' + @city + '%'))
+{BuildCityClause(cityTokens, AliasedMpiCityColumns, "c2")})
 ORDER BY ProjectCount DESC, c.DisplayName;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
-        cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)city ?? DBNull.Value;
+        BindCityTokens(cmd, cityTokens, "c1");
+        BindCityTokens(cmd, cityTokens, "c2");
 
         var rows = new List<RegionTopOrg>();
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -426,17 +509,17 @@ ORDER BY ProjectCount DESC, c.DisplayName;";
         return rows;
     }
 
-    private static async Task<IReadOnlyList<RegionLiveRfp>> GetRegionLiveRfpsAsync(SqlConnection con, string province, string? city, CancellationToken ct)
+    private static async Task<IReadOnlyList<RegionLiveRfp>> GetRegionLiveRfpsAsync(SqlConnection con, string province, IReadOnlyList<string> cityTokens, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP 5 Id, Name, BuyerName, SubmissionDeadlineUtc, PrimeProjectSector, PrimeConfidence
 FROM opportunities.Opportunities
 WHERE Status = 1 AND IsPrimeConsultantRfp = 1 AND ProjectProvince = @prov
-  AND (@city IS NULL OR ProjectCity LIKE '%' + @city + '%')
+{BuildCityClause(cityTokens, OpportunityCityColumns, "c")}
 ORDER BY PrimeConfidence DESC, SubmissionDeadlineUtc ASC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
-        cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)city ?? DBNull.Value;
+        BindCityTokens(cmd, cityTokens, "c");
 
         var rows = new List<RegionLiveRfp>();
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -454,17 +537,17 @@ ORDER BY PrimeConfidence DESC, SubmissionDeadlineUtc ASC;";
         return rows;
     }
 
-    private static async Task<IReadOnlyList<RegionForwardProject>> GetRegionForwardProjectsAsync(SqlConnection con, string province, string? city, CancellationToken ct)
+    private static async Task<IReadOnlyList<RegionForwardProject>> GetRegionForwardProjectsAsync(SqlConnection con, string province, IReadOnlyList<string> cityTokens, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP 5 Id, ProjectName, ProponentName, Stage, EstimatedCostCad
 FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL AND Province = @prov
-  AND (@city IS NULL OR MunicipalityName LIKE '%' + @city + '%')
+{BuildCityClause(cityTokens, MpiCityColumns, "c")}
 ORDER BY EstimatedCostCad DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
-        cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)city ?? DBNull.Value;
+        BindCityTokens(cmd, cityTokens, "c");
 
         var rows = new List<RegionForwardProject>();
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -481,18 +564,18 @@ ORDER BY EstimatedCostCad DESC;";
         return rows;
     }
 
-    private static async Task<IReadOnlyList<EventMatch>> GetRegionEventsAsync(SqlConnection con, string province, string? city, CancellationToken ct)
+    private static async Task<IReadOnlyList<EventMatch>> GetRegionEventsAsync(SqlConnection con, string province, IReadOnlyList<string> cityTokens, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP 5 Name, StartDate, City, Market, SectorsThemes, Audience, TargetsPresent, RegistrationUrl
 FROM opportunities.IndustryEvents
 WHERE RetiredAtUtc IS NULL
   AND (EndDate IS NULL OR EndDate >= CAST(sysdatetimeoffset() AS date))
-  AND (Market LIKE '%' + @prov + '%' OR (@city IS NOT NULL AND City LIKE '%' + @city + '%'))
+  AND (Market LIKE '%' + @prov + '%'{BuildCityOrClause(cityTokens, EventCityColumns, "c")})
 ORDER BY ISNULL(KorRelevance, 0) DESC, StartDate ASC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 50).Value = province;
-        cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)city ?? DBNull.Value;
+        BindCityTokens(cmd, cityTokens, "c");
 
         var rows = new List<EventMatch>();
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);

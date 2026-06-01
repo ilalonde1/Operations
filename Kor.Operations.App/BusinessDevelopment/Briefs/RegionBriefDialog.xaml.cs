@@ -44,6 +44,18 @@ public partial class RegionBriefDialog : Window
                 $"KOR-Region-Brief-{province}{citySuffix}-{DateTime.Now:yyyyMMdd-HHmmss}.{ext}");
 
             var data = await briefStore.GetRegionBriefAsync(province, city, CancellationToken.None).ConfigureAwait(true);
+            if (!string.IsNullOrEmpty(city))
+            {
+                var regionHits = data.LivePrimeRfpCount + data.ForwardPipelineCount + data.ActiveMpiCount
+                    + data.TopArchitects.Count + data.TopOwners.Count + data.TopCompetitors.Count
+                    + data.LiveRfps.Count + data.ForwardProjects.Count;
+                if (regionHits == 0)
+                {
+                    StatusText.Text = $"No data matched \"{city}\" as a city or region in {province}. Try a simpler name (e.g. just \"Vancouver\") or leave the City field blank for a province-wide brief.";
+                    return;
+                }
+            }
+
             if (asPdf)
             {
                 var pdf = AppServices.Get<IBriefPdfGenerator>();

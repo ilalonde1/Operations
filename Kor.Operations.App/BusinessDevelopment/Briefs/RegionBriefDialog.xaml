@@ -29,7 +29,7 @@
             <ComboBoxItem Content="OR"/>
         </ComboBox>
 
-        <TextBlock Grid.Row="2" Text="City (optional — fragment match)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <TextBlock Grid.Row="2" Text="City or region (optional — splits on '/', ',', ';', '&amp;')" FontWeight="SemiBold" Margin="0,0,0,4"/>
         <!-- Round 57c: drop all local overrides on the TextBox. Themes/
              KorTheme.xaml has a global TextBox style (MinHeight=28,
              Padding=8,5, FontSize=13, custom border + focus template).
