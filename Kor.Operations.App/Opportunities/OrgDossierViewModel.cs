@@ -226,10 +226,23 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         }
     }
 
+    // Round 56: paginated-search-envelope keys to suppress when rendering a
+    // dossier. BcRegistry's payload is `{ total, pageSize, page, firstIndex,
+    // lastIndex, next, results: [...] }` — the user sees the plumbing, not
+    // the data. We keep `total` (informative count) but drop the rest.
+    private static readonly HashSet<string> PaginationNoiseKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "pageSize", "page", "firstIndex", "lastIndex", "next", "previous",
+        "offset", "limit", "hasMore",
+    };
+
     private static DossierSection BuildSection(EnrichmentTrackingRow row)
     {
+        // Round 56: ProviderName comes in as a camelCase database value
+        // ("CompetitorSignals", "DataHoning", "BcRegistry"). Humanize it
+        // to the same Title Case the field labels already use.
         var section = new DossierSection(
-            row.ProviderName,
+            HumanizeLabel(row.ProviderName),
             row.LastRefreshAtUtc?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
         if (string.IsNullOrWhiteSpace(row.ResultJson))
         {
@@ -243,6 +256,10 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             {
                 foreach (var property in doc.RootElement.EnumerateObject())
                 {
+                    if (PaginationNoiseKeys.Contains(property.Name))
+                    {
+                        continue;
+                    }
                     AddProperty(section.Fields, property.Name, property.Value);
                 }
             }
@@ -319,26 +336,31 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             return;
         }
 
-        var i = 1;
-        foreach (var item in items)
+        // Round 56: collapse arrays of objects when SummarizeObject produces
+        // the same string for every entry — BcRegistry's results array did
+        // this (10 rows all rendered as "registration.registries.ca", which
+        // the user reported as ss9 noise). One labeled line is enough.
+        var summaries = items.Select(item => item.ValueKind == JsonValueKind.Object
+                ? SummarizeObject(item)
+                : RenderScalar(item) ?? string.Empty)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToList();
+        if (summaries.Count == 0)
         {
-            if (item.ValueKind == JsonValueKind.Object)
-            {
-                var summary = SummarizeObject(item);
-                if (!string.IsNullOrWhiteSpace(summary))
-                {
-                    fields.Add(new DossierField($"{label} {i}", summary));
-                }
-            }
-            else
-            {
-                var rendered = RenderScalar(item);
-                if (!string.IsNullOrWhiteSpace(rendered))
-                {
-                    fields.Add(new DossierField($"{label} {i}", rendered));
-                }
-            }
+            return;
+        }
 
+        var distinct = summaries.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (distinct.Count == 1)
+        {
+            fields.Add(new DossierField(label, $"{summaries.Count} entries — {distinct[0]}"));
+            return;
+        }
+
+        var i = 1;
+        foreach (var summary in summaries)
+        {
+            fields.Add(new DossierField($"{label} {i}", summary));
             i++;
         }
     }

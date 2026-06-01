@@ -60,6 +60,58 @@
             </Setter>
         </Style>
 
+        <!-- Round 56: funnel badge style — Button that preserves the colored
+             card visual via TemplateBinding on Background, gives Cursor=Hand,
+             and adds a subtle hover dim. Lets the whole badge be clickable
+             so Open Seats / In Bid Window / Radar can navigate to Forward
+             Pipeline like the Row 2 stat tiles. -->
+        <Style x:Key="FunnelBadgeButton" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Stretch"
+                                              VerticalAlignment="Stretch"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.78"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Round 56: standard info-circle pattern, mirrored from
+             WorkloadMeetingWindow.xaml so every module uses the same hover
+             affordance for "this has a definition". The icon is overlaid as
+             a small "ⓘ" badge in the corner of clickable tiles (Cursor=Hand
+             stays on the parent so hover still feels clickable, not just
+             "info"). -->
+        <Style x:Key="InfoBadgeOverlay" TargetType="Border">
+            <Setter Property="Width" Value="18"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="Background" Value="#33FFFFFF"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+
         <!-- Bar inside the bar-chart ItemsControl rendered as a transparent
              button so clicking the bar drills into the relevant screen. -->
         <Style x:Key="Chart.BarButton" TargetType="Button">
@@ -106,12 +158,19 @@
                         <ColumnDefinition Width="1.05*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Round 52: every funnel badge + list header gets a
-                         FinancialMetricTooltip so hover reveals the methodology
-                         (matches the PM Tools / Financials pattern). -->
-                    <Border Grid.Column="0" Background="{StaticResource Brand.Accent.Brush}" CornerRadius="6" Padding="16" Margin="0,0,10,0"
-                            ToolTip="{fin:FinancialMetricTooltip Key=BdDashboard_OpenSeats}"
-                            Cursor="Help">
+                    <!-- Round 56: funnel badges promoted from <Border> to
+                         clickable <Button>. Each routes to Forward Pipeline
+                         (the MPI viewer those counts come from) — same
+                         convention as the Row 2 stat tiles below. Tooltip
+                         on the Button still resolves to the methodology
+                         entry via FinancialMetricTooltip; the small "ⓘ"
+                         overlay marks "has a definition" without competing
+                         with the badge's primary read. -->
+                    <Button Grid.Column="0" Style="{StaticResource FunnelBadgeButton}"
+                            Background="{StaticResource Brand.Accent.Brush}"
+                            Padding="16" Margin="0,0,10,0"
+                            Click="OpenSeatsTile_Click"
+                            ToolTip="{fin:FinancialMetricTooltip Key=BdDashboard_OpenSeats}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -127,12 +186,18 @@
                                        FontSize="30"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center"/>
+                            <Border Style="{StaticResource InfoBadgeOverlay}">
+                                <TextBlock Text="ⓘ" Foreground="White" FontSize="11"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
                         </Grid>
-                    </Border>
+                    </Button>
 
-                    <Border Grid.Column="1" Background="{StaticResource Brand.Primary.Brush}" CornerRadius="6" Padding="14" Margin="0,0,10,0"
-                            ToolTip="{fin:FinancialMetricTooltip Key=BdDashboard_InBidWindow}"
-                            Cursor="Help">
+                    <Button Grid.Column="1" Style="{StaticResource FunnelBadgeButton}"
+                            Background="{StaticResource Brand.Primary.Brush}"
+                            Padding="14" Margin="0,0,10,0"
+                            Click="InBidWindowTile_Click"
+                            ToolTip="{fin:FinancialMetricTooltip Key=BdDashboard_InBidWindow}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -148,12 +213,18 @@
                                        FontSize="26"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center"/>
+                            <Border Style="{StaticResource InfoBadgeOverlay}">
+                                <TextBlock Text="ⓘ" Foreground="White" FontSize="11"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
                         </Grid>
-                    </Border>
+                    </Button>
 
-                    <Border Grid.Column="2" Background="#6B7280" CornerRadius="6" Padding="14"
-                            ToolTip="{fin:FinancialMetricTooltip Key=BdDashboard_Radar}"
-                            Cursor="Help">
+                    <Button Grid.Column="2" Style="{StaticResource FunnelBadgeButton}"
+                            Background="#6B7280"
+                            Padding="14"
+                            Click="RadarTile_Click"
+                            ToolTip="{fin:FinancialMetricTooltip Key=BdDashboard_Radar}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -169,8 +240,12 @@
                                        FontSize="24"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center"/>
+                            <Border Style="{StaticResource InfoBadgeOverlay}">
+                                <TextBlock Text="ⓘ" Foreground="White" FontSize="11"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
                         </Grid>
-                    </Border>
+                    </Button>
                 </Grid>
             </Grid>
         </Border>

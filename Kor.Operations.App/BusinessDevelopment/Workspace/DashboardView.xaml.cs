@@ -191,6 +191,12 @@ public partial class DashboardView : UserControl
     private void ClosingSoonTile_Click(object sender, RoutedEventArgs e) => GoToRfps();
     private void PipelineValueTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
 
+    // Round 56: top-row funnel badges drill into the same MPI viewer that
+    // sources their counts. Same pattern as the Row 2 stat tiles above.
+    private void OpenSeatsTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+    private void InBidWindowTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+    private void RadarTile_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
+
     private void SectorChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
     private void MarketChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();
     private void StageChart_Click(object sender, RoutedEventArgs e) => GoToForwardPipeline();

@@ -24,13 +24,25 @@
         </Style>
 
         <!-- Small-caps technical label, slate, less shouty than the old SemiBold. -->
+        <!-- Round 56: bumped from 10→11 so the small-caps label reads at the
+             same weight as the value text next to it. -->
         <Style x:Key="FieldLabel" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="Margin" Value="0,4,10,2"/>
             <Setter Property="Typography.Capitals" Value="AllSmallCaps"/>
             <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
+        </Style>
+
+        <!-- Round 56: every value mode (plain / single-url / multi-url / bullet)
+             renders at 13px instead of WPF's default 12. The user flagged the
+             dossier values as "tiny font" in ss8 — this gets them closer to a
+             normal-document feel without making the small-caps labels look weak. -->
+        <Style x:Key="FieldValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,3"/>
         </Style>
 
         <!-- Research-dossier inner section. White card with a 4px
@@ -78,15 +90,13 @@
 
                                         <!-- Plain text (most fields) -->
                                         <TextBlock Grid.Column="1"
+                                                   Style="{StaticResource FieldValue}"
                                                    Text="{Binding Value}"
-                                                   TextWrapping="Wrap"
-                                                   Margin="0,3"
                                                    Visibility="{Binding Converter={StaticResource ValueKind}, ConverterParameter=Plain}"/>
 
                                         <!-- Single URL -> Hyperlink (Website, Source Url, etc.) -->
                                         <TextBlock Grid.Column="1"
-                                                   TextWrapping="Wrap"
-                                                   Margin="0,3"
+                                                   Style="{StaticResource FieldValue}"
                                                    Visibility="{Binding Converter={StaticResource ValueKind}, ConverterParameter=SingleUrl}">
                                             <Hyperlink NavigateUri="{Binding Value}"
                                                        RequestNavigate="OnHyperlinkRequestNavigate"
