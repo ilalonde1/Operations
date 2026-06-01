@@ -30,12 +30,13 @@
         </ComboBox>
 
         <TextBlock Grid.Row="2" Text="City (optional — fragment match)" FontWeight="SemiBold" Margin="0,0,0,4"/>
-        <!-- Round 57b: fixed Height=28 + vertical Padding=4 clipped the
-             descenders ('g', 'p', 'y') of typed entries. Bumped to 32,
-             vertical padding to 6, VerticalContentAlignment=Center so the
-             baseline sits centered in the box. -->
-        <TextBox x:Name="CityBox" Grid.Row="3" Margin="0,0,0,12" Height="32" Padding="6,6"
-                 VerticalContentAlignment="Center"/>
+        <!-- Round 57c: drop all local overrides on the TextBox. Themes/
+             KorTheme.xaml has a global TextBox style (MinHeight=28,
+             Padding=8,5, FontSize=13, custom border + focus template).
+             The fight between the local Height/Padding/VAlign and the
+             theme's ScrollViewer-based PART_ContentHost is what was
+             clipping typed entries. Trust the theme. -->
+        <TextBox x:Name="CityBox" Grid.Row="3" Margin="0,0,0,12"/>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,8">
             <TextBlock Text="Format:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
