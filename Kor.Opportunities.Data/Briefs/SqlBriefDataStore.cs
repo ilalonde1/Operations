@@ -229,7 +229,7 @@ WHERE Id = @id;";
             displayName = r.GetString(2);
             website = r.IsDBNull(3) ? null : r.GetString(3);
             korProjects = Convert.ToInt32(r.GetValue(4));
-            lastKor = r.IsDBNull(5) ? null : r.GetDateTimeOffset(5);
+            lastKor = r.IsDBNull(5) ? null : new DateTimeOffset(r.GetDateTime(5), TimeSpan.Zero);
             deltekClientId = r.IsDBNull(6) ? null : r.GetString(6);
         }
 
