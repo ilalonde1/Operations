@@ -191,6 +191,12 @@ public sealed class OpportunitiesWorkerOptions
     public int CanonicalOrgDedupMaxGroupsPerRun { get; set; } = 200;
     public string? CanonicalOrgDedupCronSchedule { get; set; }
 
+    public bool BdDeltekLinkDryRunEnabled { get; set; } = true;
+    public int BdDeltekLinkDryRunMaxTargets { get; set; } = 5000;
+    public int BdDeltekLinkDryRunAlertThreshold { get; set; } = 25;
+    public string BdDeltekLinkDryRunOutputDir { get; set; } =
+        @"C:\ProgramData\KorOperations\BdDeltekLink\nightly";
+
     public string DeltekDsn { get; set; } = "Deltek";
     public string DeltekUser { get; set; } = "";
     public string DeltekPassword { get; set; } = "";

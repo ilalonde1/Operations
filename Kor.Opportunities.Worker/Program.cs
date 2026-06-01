@@ -678,6 +678,19 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  var bdDeltekLinkDryRunKey = new JobKey("BdDeltekLinkDryRunJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob>(opts => opts.WithIdentity(bdDeltekLinkDryRunKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 04:00 Pacific daily. Dry-run only; reviewers apply approved
+      // pairs manually before the 05:00 KOR-project signal refresh if needed.
+      var cron = builder.Configuration["BdDeltekLinkDryRunCronSchedule"] ?? "0 0 4 * * ?";
+      t.ForJob(bdDeltekLinkDryRunKey)
+       .WithIdentity("BdDeltekLinkDryRunTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   q.AddTrigger(t =>
   {
       // Default: 05:00 Pacific daily, before SamGov's 06:00 and permits' 06:30 ticks.

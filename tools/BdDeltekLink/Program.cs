@@ -83,7 +83,13 @@ internal static class Program
             }
 
             var top = match.Top[0];
-            if (match.TopScore >= 1.0d)
+            var targetTokenCount = DeltekFuzzyMatch.NormalizeCompany(target.DisplayName)
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+            var candidateTokenCount = DeltekFuzzyMatch.NormalizeCompany(top.Name)
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+            var twoTokenSafe = targetTokenCount >= 2 && candidateTokenCount >= 2;
+
+            if (match.TopScore >= 1.0d && twoTokenSafe)
             {
                 if (linked.TryGetValue(top.ClientId, out var existingOrgIds) && existingOrgIds.Count > 0)
                 {
@@ -111,7 +117,8 @@ internal static class Program
                 linkRows.Add(row);
                 plannedByClientId[top.ClientId] = row;
             }
-            else if (match.TopScore >= 0.85d)
+            else if (match.TopScore >= 0.85d ||
+                     (match.TopScore >= 1.0d && !twoTokenSafe))
             {
                 reviewRows.Add(new ReviewRow(target.Id, target.DisplayName, target.Kind, top.ClientId, top.Name, top.SimilarityScore));
             }
@@ -621,15 +628,15 @@ internal static class DeltekFuzzyMatch
 
     private static readonly HashSet<string> CompanySuffixTokens = new(StringComparer.Ordinal)
     {
+        // Legal-entity boilerplate only. Distinctive-name tokens
+        // (properties / construction / architecture / engineering /
+        // development / consulting / group / holdings) MUST stay
+        // in the name so two firms that share a first word but
+        // differ in line-of-business don't collide
+        // (R60 audit: Fort Properties Ltd vs FORT Architecture).
         "inc", "incorporated", "ltd", "limited", "llc", "llp", "lp",
         "corp", "corporation", "co", "company",
-        "group", "holdings", "international", "intl",
-        "properties", "property",
-        "construction", "constructors",
-        "development", "developments", "developers", "dev",
-        "consulting", "consultants",
-        "architects", "architecture",
-        "engineering", "engineers"
+        "international", "intl",
     };
 
     internal static int Levenshtein(string a, string b)

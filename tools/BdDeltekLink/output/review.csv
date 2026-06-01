@@ -1,19 +1,55 @@
 ﻿OrgId,OrgName,Kind,ClendorClientId,DeltekName,Score
+38959,ACDF Architecture,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.882
+69626,ACI Architects Inc.,Architect,8AD125221437485BBD9B90F70204D7C2,Amu Architects,0.857
 69653,ADC Management LP,Buyer,CL00347,RDG Management Ltd.,0.857
 70644,Alan Lowe Architect Inc.,Architect,CL00517,Alan Brown Architect,0.85
-55115,Chernoff Thompson Architects / B+H Architects,Architect,71B4D18C2C5940EB9E906CEFB533928A,Chernoff Thompson Architects,0.85
+68970,AR Architecture,Architect,CL00465,Co.lab Architecture,0.875
+68904,ARC Architects,Architect,8AD125221437485BBD9B90F70204D7C2,Amu Architects,0.857
+2579,Architecture49 Inc.,Architect,CL00450,Architecture 49,0.933
+70015,Berry Architecture and Associates,Architect,500bbbf39b724d979b50f3eca443e445,Berry Architecture + Associates Ltd.,0.879
+70599,BJK Architecture Inc.,Architect,e67d66d431ff4d048f38825f63014e2a,BHA Architecture Inc.,0.875
+68762,BR2 Architecture Inc.,Architect,e67d66d431ff4d048f38825f63014e2a,BHA Architecture Inc.,0.875
+70679,CEI Architecture Associates Inc.,Architect,651F513E2AEF464EA7378F32AAAC4459,"HDR Architecture Associates, Inc.",0.889
+69273,CMTC Architects,Architect,5EA71CBBF09442108C5B1D5E6074FBF1,HMC Architects,0.867
 68840,County of Los Angeles,Buyer,1E9FA981D07E4504B136CBF5C848F86E,City of Los Angeles,0.857
-70806,David Nairne and Associates,Architect,CL00466,David Nairne & Associates,0.852
+70590,D-Architecture,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.933
 873,District of West Vancouver,Buyer,CL00562,District of North Vancouver,0.852
 70546,Faction Projects Inc.,Architect,D284E007D7C54FE69E5551250D206B60,Action Projects Inc.,0.938
-69789,IBI Group Architects + Carscadden Stokes McDonald Architects,Architect,CL00534,Carscadden Stokes McDonald Architects Inc.,0.867
-69676,James K. M. Cheng Architects Inc.,Architect,ef0ce24805b04c5881896e4ab09ad804,James KM Cheng Architects,0.933
-70543,Kasian Architecture Interior Design and Planning,Architect,CL00486,Kasian Architecture Interior Design & Planning,0.886
-69780,MCM Architects (Musson Cattell Mackey Partnership),Architect,CL00493,Musson Cattell Mackey Partnership,0.892
-69943,MCMP Architects (Musson Cattell Mackey Partnership),Architect,CL00493,Musson Cattell Mackey Partnership,0.868
-69674,Millenium Development Corp.,Buyer,CL00277,Millennium Group,0.9
-69864,Musson Cattell MacKay Partnership (MCM),Architect,CL00493,Musson Cattell Mackey Partnership,0.865
-69642,Musson Cattell Mackey Partnership (MCM),Architect,CL00493,Musson Cattell Mackey Partnership,0.892
-38969,office of mcfarlane biggar architects + designers (OMB),Architect,CL00496,Office of Mcfarlane Biggar Architects + Designers Inc.,0.9
-70156,"The Miller Hull Partnership, LLP",Architect,D2E45DA750954198AEA48FC25A40818E,Miller Hull Partnership,0.852
-69796,Trammel Crow Residential,Buyer,43E08C863F394AC9ABE4B911F5A38679,Trammell Crow  Residential,0.96
+68887,Flad Architects,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.867
+70626,Fold Architecture Inc.,Architect,312C54275B714411AA5F27AB04830856,FORT Architecture,0.882
+70655,G3 Architecture Inc.,Architect,2E9A6A188399401D93EB759F14ABE7C0,GEC Architecture,0.875
+68892,GBD Architects,Architect,CL00154,GBL Architects Inc.,0.929
+8538,Group2 Architecture Interior Design Ltd.,Architect,672F104537E045BAA2AD60ADC0925A3F,Noble Architecture + Interior Design,0.857
+70605,H Development Group,Buyer,B31F0266BCD64C09B0C1BCB9C9015736,CMP Development Group,0.857
+71187,H2 Architecture,Architect,5AD40D65095A4BFB9FAA98D39DECFDED,M2 Architecture Inc.,0.933
+8799,hcma architecture + design,Architect,7d1537293589432ea3191bdb41ecf15f,CTA Architecture & Design Ltd.,0.917
+69110,"HDR | CEI Architecture Associates, Inc.",Architect,651F513E2AEF464EA7378F32AAAC4459,"HDR Architecture Associates, Inc.",0.871
+69656,IBI Group Architects,Architect,CL00058,BTY Group Architects,0.85
+70746,JM Architecture Inc.,Architect,cef31ccbb1cb4e3a91cb3a5a9fcb6aac,JIM Architecture,0.938
+55064,Jyom Architecture,Architect,cef31ccbb1cb4e3a91cb3a5a9fcb6aac,JIM Architecture,0.882
+69120,Kasian Architecture,Architect,1D186F8B3F6F41FE9AA7B32FE29E4ED9,Salikan Architecture Inc.,0.85
+70805,Keystone Architecture and Planning,Architect,CL00487,Keystone Architecture & Planning,0.882
+38966,KMBR Architects Planners Inc.,Architect,C5694C7A98E947F8AD60B435C38F1E06,NORR Architects Planners,0.875
+69765,KPMB Architects,Architect,CL00581,KMBR Architects,0.867
+68891,LEVER Architecture,Architect,CL00454,Revery Architecture,0.895
+70765,Lime Architecture Inc.,Architect,cef31ccbb1cb4e3a91cb3a5a9fcb6aac,JIM Architecture,0.882
+68695,LMN Architects,Architect,8AD125221437485BBD9B90F70204D7C2,Amu Architects,0.857
+69915,Mallen Gowing Berzins Architecture (MGBA),Architect,CL00257,Mallen Gowing Berzins Architecture Inc.,0.872
+71105,Matrix Architecture,Architect,2E239CFA084145B494F03A4C91F12A79,Metric Architecture,0.895
+69738,MCM Architects,Architect,5EA71CBBF09442108C5B1D5E6074FBF1,HMC Architects,0.857
+69293,MGBA (Mallen Gowing Berzins Architecture),Architect,CL00257,Mallen Gowing Berzins Architecture Inc.,0.872
+70154,MJMA Architecture & Design,Architect,1A3ECE47D623464598EC718A637C3337,AKA Architecture + Design,0.875
+68913,MQN Architects,Architect,CL00283,MMC International Architects,0.857
+68885,NAC Architecture,Architect,CL00465,Co.lab Architecture,0.875
+70601,OCA Architects,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.857
+69272,OMB Architects,Architect,CL00581,KMBR Architects,0.867
+70734,Pacific West Architecture,Architect,CL00498,Pacific Coast Architecture,0.885
+71084,ph5 Architecture,Architect,e67d66d431ff4d048f38825f63014e2a,BHA Architecture Inc.,0.875
+69136,RNT Architects,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.857
+70625,SKALE Properties Inc,Buyer,B74CEF4B40974E24ACBAF61A2AF94BD7,Shape Properties Corp.,0.875
+69345,Stand Architecture Inc.,Architect,64eb09fe28d34bcb9ca6ee5e9e9d972d,Stark Architecture,0.889
+69109,Thinkspace Architecture Planning Interior Design Ltd.,Architect,CL00404,Thinkspace Architecture Planning Interior,0.854
+70024,TKA+D Architecture and Design Inc.,Architect,9D935154A8CD458FAE085B74C2636CF2,TKA+D Architecture + Design Inc.,0.857
+68886,TVA Architects,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.857
+70707,Unison Architecture,Architect,700feabcb69e4fc993359c2ea438749b,"Union Architecture, Inc.",0.947
+70616,WPT Architecture,Architect,9d8126b4629d4961bba46714df2a0bf7,W G Architecture Inc,0.875
