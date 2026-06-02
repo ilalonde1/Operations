@@ -70,12 +70,19 @@ public partial class OrgDossierWindow : Window
                     {
                         data = data with { Deltek = BuildDeltekSection(intel) };
                     }
+                    else
+                    {
+                        MessageBox.Show(
+                            "Deltek section omitted: IDeltekClientContextService.LoadAsync returned null for ClientId '"
+                                + cid
+                                + "'.\n\nMost likely cause: no row in Deltek's Clendor table matches that ClientId from the App's ODBC connection.",
+                            "Generate Brief  Deltek returned no intel",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    }
                 }
                 catch (Exception deltekEx)
                 {
-                    // R67: Deltek enrichment is best-effort, but a silent failure
-                    // hides real bugs. Show the exception so the operator can
-                    // diagnose; the brief still renders the BD-canonical sections.
                     MessageBox.Show(
                         "Deltek section omitted from brief.\n\n"
                             + deltekEx.GetType().Name + ": " + deltekEx.Message,
@@ -83,6 +90,16 @@ public partial class OrgDossierWindow : Window
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                 }
+            }
+            else
+            {
+                MessageBox.Show(
+                    "Deltek section omitted: OrgBriefData.DeltekClientId was null/empty for canonical org "
+                        + data.Id
+                        + " (" + data.DisplayName + ").\n\nCheck opportunities.CanonicalOrg.ClendorClientId for this Id.",
+                    "Generate Brief  no Deltek link",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
 
             if (asPdf)
