@@ -282,24 +282,7 @@ public sealed class BriefGenerator : IBriefGenerator
 
         if (data.Deltek is { } dk)
         {
-            AppendHeading(body, "KOR engagement history (Deltek)");
-            AppendBullet(body, FormatDeltekSummary(dk));
-            foreach (var p in dk.RecentProjects)
-            {
-                AppendBullet(body, FormatDeltekProject(p));
-            }
-            if (dk.ContactCount > 0)
-            {
-                AppendBullet(body, $"{dk.ContactCount:N0} Deltek contact(s) on file.");
-            }
-            if (dk.ArOutstanding > 0)
-            {
-                AppendBullet(body, $"AR outstanding {dk.ArOutstanding.ToString("C0", CultureInfo.CurrentCulture)} (90+ days {dk.Ar90Plus.ToString("C0", CultureInfo.CurrentCulture)}).");
-            }
-            if (dk.DegradedSections)
-            {
-                AppendBullet(body, "Some Deltek sections were unavailable for this client.");
-            }
+            AppendOrgDeltekSection(body, dk);
         }
 
         AppendHeading(body, "Key people");
@@ -370,6 +353,115 @@ public sealed class BriefGenerator : IBriefGenerator
         body.AppendChild(BuildPara(FooterText, FooterPt, bold: false, italic: true, JustificationValues.Center, bullet: false));
     }
 
+    private static void AppendOrgDeltekSection(Body body, OrgBriefDeltekSection dk)
+    {
+        AppendHeading(body, "KOR engagement history (Deltek)");
+
+        var facts = new List<(string Label, string Value)>
+        {
+            ("Client", $"{dk.DeltekClientId}  {Nz(dk.ClientName)}"),
+        };
+        if (dk.ProjectCount > 0)
+        {
+            facts.Add(("Lifetime billed",
+                $"{dk.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)} across {dk.ProjectCount:N0} project(s)"));
+        }
+        if (dk.LatestProjectStart.HasValue)
+        {
+            var latest = string.IsNullOrWhiteSpace(dk.LatestProjectName) ? "latest engagement" : dk.LatestProjectName!;
+            facts.Add(("Latest",
+                $"{latest} (opened {dk.LatestProjectStart.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)})"));
+        }
+        facts.Add(("Contacts", dk.ContactCount.ToString("N0", CultureInfo.InvariantCulture)));
+        if (dk.ArOutstanding > 0)
+        {
+            facts.Add(("AR outstanding",
+                $"{dk.ArOutstanding.ToString("C0", CultureInfo.CurrentCulture)} (90+ days: {dk.Ar90Plus.ToString("C0", CultureInfo.CurrentCulture)})"));
+        }
+        AppendLabelValueTable(body, facts);
+
+        if (dk.RecentProjects.Count > 0)
+        {
+            AppendBody(body, "Recent projects");
+            var rows = new List<IReadOnlyList<string>>();
+            foreach (var p in dk.RecentProjects)
+            {
+                rows.Add(new[]
+                {
+                    p.Name,
+                    p.OpenDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "",
+                    p.Status ?? "",
+                    p.Fee > 0 ? p.Fee.ToString("C0", CultureInfo.CurrentCulture) : "",
+                    p.FeeBilled > 0 ? p.FeeBilled.ToString("C0", CultureInfo.CurrentCulture) : "",
+                });
+            }
+            AppendTable(body, new[] { "Project", "Opened", "Status", "Fee", "Billed" }, rows);
+        }
+
+        if (dk.DegradedSections)
+        {
+            body.AppendChild(BuildPara("Some Deltek sections were unavailable for this client.",
+                BodyPt, bold: false, italic: true, align: null, bullet: false));
+        }
+    }
+
+    private static void AppendLabelValueTable(Body body, IReadOnlyList<(string Label, string Value)> rows)
+    {
+        var table = CreateTable();
+        foreach (var (label, value) in rows)
+        {
+            table.AppendChild(new TableRow(
+                BuildCell(label, bold: true, widthDxa: "2200"),
+                BuildCell(value, bold: false, widthDxa: "7200")));
+        }
+        body.AppendChild(table);
+    }
+
+    private static void AppendTable(Body body, IReadOnlyList<string> headers, IReadOnlyList<IReadOnlyList<string>> rows)
+    {
+        var table = CreateTable();
+        var headerRow = new TableRow();
+        foreach (var header in headers)
+        {
+            headerRow.AppendChild(BuildCell(header, bold: true));
+        }
+        table.AppendChild(headerRow);
+
+        foreach (var row in rows)
+        {
+            var tableRow = new TableRow();
+            foreach (var cell in row)
+            {
+                tableRow.AppendChild(BuildCell(cell, bold: false));
+            }
+            table.AppendChild(tableRow);
+        }
+
+        body.AppendChild(table);
+    }
+
+    private static Table CreateTable()
+        => new(new TableProperties(
+            new TableWidth { Width = "5000", Type = TableWidthUnitValues.Pct },
+            new TableBorders(
+                new TopBorder { Val = BorderValues.Single, Size = 4, Color = "E5E7EB" },
+                new BottomBorder { Val = BorderValues.Single, Size = 4, Color = "E5E7EB" },
+                new LeftBorder { Val = BorderValues.Single, Size = 4, Color = "E5E7EB" },
+                new RightBorder { Val = BorderValues.Single, Size = 4, Color = "E5E7EB" },
+                new InsideHorizontalBorder { Val = BorderValues.Single, Size = 4, Color = "E5E7EB" },
+                new InsideVerticalBorder { Val = BorderValues.Single, Size = 4, Color = "E5E7EB" })));
+
+    private static TableCell BuildCell(string? text, bool bold, string? widthDxa = null)
+    {
+        var props = new TableCellProperties();
+        if (!string.IsNullOrWhiteSpace(widthDxa))
+        {
+            props.AppendChild(new TableCellWidth { Width = widthDxa, Type = TableWidthUnitValues.Dxa });
+        }
+
+        return new TableCell(props, BuildPara(string.IsNullOrWhiteSpace(text) ? "—" : text!, BodyPt, bold, italic: false, align: null, bullet: false));
+    }
+
     private static Paragraph BuildPara(string text, int sizeHalf, bool bold, bool italic, JustificationValues? align, bool bullet)
     {
         var pProps = new ParagraphProperties();
@@ -399,34 +491,6 @@ public sealed class BriefGenerator : IBriefGenerator
 
     private static string RegionOrgDisplayName(RegionTopOrg org)
         => string.IsNullOrWhiteSpace(org.ClendorClientId) ? org.DisplayName : "* " + org.DisplayName;
-
-    private static string FormatDeltekSummary(OrgBriefDeltekSection dk)
-    {
-        var summary = $"Deltek client {dk.DeltekClientId} ({Nz(dk.ClientName)})";
-        if (dk.ProjectCount > 0)
-        {
-            summary += $" — {dk.ProjectCount:N0} project(s); lifetime billed {dk.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)}";
-        }
-        if (dk.LatestProjectStart.HasValue)
-        {
-            var latest = string.IsNullOrWhiteSpace(dk.LatestProjectName) ? "latest engagement" : dk.LatestProjectName!;
-            summary += $"; latest {latest} opened {dk.LatestProjectStart.Value:yyyy-MM-dd}";
-        }
-
-        return summary + ".";
-    }
-
-    private static string FormatDeltekProject(OrgBriefDeltekProject p)
-    {
-        var meta = new List<string>(4);
-        if (p.OpenDate.HasValue) meta.Add(p.OpenDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-        if (!string.IsNullOrWhiteSpace(p.Status)) meta.Add(p.Status!);
-        if (p.Fee > 0) meta.Add($"Fee {p.Fee.ToString("C0", CultureInfo.CurrentCulture)}");
-        if (p.FeeBilled > 0) meta.Add($"Billed {p.FeeBilled.ToString("C0", CultureInfo.CurrentCulture)}");
-        return meta.Count > 0
-            ? $"{p.Name} ({string.Join("; ", meta)})"
-            : p.Name;
-    }
 
     private static string FormatDeadline(DateTimeOffset? deadline)
     {

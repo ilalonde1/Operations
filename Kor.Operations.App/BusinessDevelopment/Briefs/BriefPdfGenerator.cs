@@ -317,8 +317,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                     OrgRecentBullets(d)));
                 if (d.Deltek is not null)
                 {
-                    column.Item().Element(c => Section(c, "KOR engagement history (Deltek)",
-                        OrgDeltekBullets(d.Deltek)));
+                    ComposeOrgDeltekSection(column, d.Deltek);
                 }
                 column.Item().Element(c => Section(c, "Key people",
                     OrgKeyPeopleBullets(enrichment)));
@@ -364,6 +363,99 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         });
     }
 
+    private static void ComposeOrgDeltekSection(ColumnDescriptor column, OrgBriefDeltekSection dk)
+    {
+        column.Item().BorderBottom(1).BorderColor(Border).PaddingBottom(4)
+            .Text("KOR engagement history (Deltek)").FontSize(11.5f).Bold().FontColor(Brand);
+
+        column.Item().Table(table =>
+        {
+            table.ColumnsDefinition(columns =>
+            {
+                columns.ConstantColumn(110);
+                columns.RelativeColumn();
+            });
+
+            DeltekFactRow(table, "Client", $"{dk.DeltekClientId}  {Nz(dk.ClientName)}");
+            if (dk.ProjectCount > 0)
+            {
+                DeltekFactRow(table, "Lifetime billed",
+                    $"{dk.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)} across {dk.ProjectCount:N0} project(s)");
+            }
+            if (dk.LatestProjectStart.HasValue)
+            {
+                var latest = string.IsNullOrWhiteSpace(dk.LatestProjectName) ? "latest engagement" : dk.LatestProjectName!;
+                DeltekFactRow(table, "Latest",
+                    $"{latest} (opened {dk.LatestProjectStart.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)})");
+            }
+            DeltekFactRow(table, "Contacts", dk.ContactCount.ToString("N0", CultureInfo.InvariantCulture));
+            if (dk.ArOutstanding > 0)
+            {
+                DeltekFactRow(table, "AR outstanding",
+                    $"{dk.ArOutstanding.ToString("C0", CultureInfo.CurrentCulture)} (90+ days: {dk.Ar90Plus.ToString("C0", CultureInfo.CurrentCulture)})");
+            }
+        });
+
+        if (dk.RecentProjects.Count > 0)
+        {
+            column.Item().PaddingTop(8).Text("Recent projects")
+                .FontSize(8).LetterSpacing(0.1f).FontColor(Muted);
+            column.Item().Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn();
+                    columns.ConstantColumn(58);
+                    columns.ConstantColumn(58);
+                    columns.ConstantColumn(56);
+                    columns.ConstantColumn(56);
+                });
+
+                DeltekProjectHeader(table, "Project");
+                DeltekProjectHeader(table, "Opened");
+                DeltekProjectHeader(table, "Status");
+                DeltekProjectHeader(table, "Fee");
+                DeltekProjectHeader(table, "Billed");
+
+                foreach (var p in dk.RecentProjects)
+                {
+                    DeltekProjectCell(table, p.Name);
+                    DeltekProjectCell(table, p.OpenDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "");
+                    DeltekProjectCell(table, p.Status ?? "");
+                    DeltekProjectCell(table, p.Fee > 0 ? p.Fee.ToString("C0", CultureInfo.CurrentCulture) : "");
+                    DeltekProjectCell(table, p.FeeBilled > 0 ? p.FeeBilled.ToString("C0", CultureInfo.CurrentCulture) : "");
+                }
+            });
+        }
+
+        if (dk.DegradedSections)
+        {
+            column.Item().PaddingTop(6)
+                .Text("Some Deltek sections were unavailable for this client.")
+                .FontSize(9).Italic().FontColor(Muted);
+        }
+    }
+
+    private static void DeltekFactRow(TableDescriptor table, string label, string value)
+    {
+        table.Cell().PaddingVertical(2).Text(label)
+            .FontSize(8).LetterSpacing(0.1f).FontColor(Muted);
+        table.Cell().PaddingVertical(2).Text(string.IsNullOrWhiteSpace(value) ? "—" : value)
+            .FontSize(10).FontColor(Text);
+    }
+
+    private static void DeltekProjectHeader(TableDescriptor table, string text)
+    {
+        table.Cell().BorderBottom(1).BorderColor(Border).Padding(3)
+            .Text(text).FontSize(8).Bold().FontColor(Brand);
+    }
+
+    private static void DeltekProjectCell(TableDescriptor table, string? text)
+    {
+        table.Cell().BorderBottom(1).BorderColor(Border).Padding(3)
+            .Text(string.IsNullOrWhiteSpace(text) ? "—" : text).FontSize(8.5f).FontColor(Text);
+    }
+
     private static IEnumerable<string> OrgHistoryBullets(OrgBriefData d)
     {
         if (d.KorProjectsCount > 0)
@@ -402,46 +494,6 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         foreach (var p in d.RecentProjects)
         {
             yield return $"{p.ProjectName} ({p.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "year n/a"}, {Nz(p.Sector)}, {Nz(p.Province)})";
-        }
-    }
-
-    private static IEnumerable<string> OrgDeltekBullets(OrgBriefDeltekSection dk)
-    {
-        var summary = $"Deltek client {dk.DeltekClientId} ({Nz(dk.ClientName)})";
-        if (dk.ProjectCount > 0)
-        {
-            summary += $" — {dk.ProjectCount:N0} project(s); lifetime billed {dk.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)}";
-        }
-        if (dk.LatestProjectStart.HasValue)
-        {
-            var latest = string.IsNullOrWhiteSpace(dk.LatestProjectName) ? "latest engagement" : dk.LatestProjectName!;
-            summary += $"; latest {latest} opened {dk.LatestProjectStart.Value:yyyy-MM-dd}";
-        }
-        yield return summary + ".";
-
-        foreach (var p in dk.RecentProjects)
-        {
-            var meta = new List<string>(4);
-            if (p.OpenDate.HasValue) meta.Add(p.OpenDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-            if (!string.IsNullOrWhiteSpace(p.Status)) meta.Add(p.Status!);
-            if (p.Fee > 0) meta.Add($"Fee {p.Fee.ToString("C0", CultureInfo.CurrentCulture)}");
-            if (p.FeeBilled > 0) meta.Add($"Billed {p.FeeBilled.ToString("C0", CultureInfo.CurrentCulture)}");
-            yield return meta.Count > 0
-                ? $"{p.Name} ({string.Join("; ", meta)})"
-                : p.Name;
-        }
-
-        if (dk.ContactCount > 0)
-        {
-            yield return $"{dk.ContactCount:N0} Deltek contact(s) on file.";
-        }
-        if (dk.ArOutstanding > 0)
-        {
-            yield return $"AR outstanding {dk.ArOutstanding.ToString("C0", CultureInfo.CurrentCulture)} (90+ days {dk.Ar90Plus.ToString("C0", CultureInfo.CurrentCulture)}).";
-        }
-        if (dk.DegradedSections)
-        {
-            yield return "Some Deltek sections were unavailable for this client.";
         }
     }
 
