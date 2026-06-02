@@ -23,6 +23,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     // Round 49: brand-matched to KorTheme.xaml. The old "#1E3A8A" was generic
     // Tailwind navy and looked like a stock template — see ss1 from 2026-05-30.
     private const string Brand = "#3F5364";          // KOR slate primary (header band fill + section heading)
+    private const string BrandAccent = "#FF5B35";    // KOR orange accent
     private const string BrandEyebrow = "#C4CCD3";   // light slate tint for the eyebrow label on the band
     private const string BrandSubtle = "#D9DEE3";    // lighter slate for the italic subtitle line
     private const string BrandFactLabel = "#9FA9B3"; // muted slate for the small fact labels inside the band
@@ -365,7 +366,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void ComposeOrgDeltekSection(ColumnDescriptor column, OrgBriefDeltekSection dk)
     {
-        column.Item().BorderBottom(1).BorderColor(Border).PaddingBottom(4)
+        column.Item().BorderBottom(2).BorderColor(BrandAccent).PaddingBottom(4)
             .Text("KOR engagement history (Deltek)").FontSize(11.5f).Bold().FontColor(Brand);
 
         column.Item().Table(table =>
@@ -446,7 +447,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void DeltekProjectHeader(TableDescriptor table, string text)
     {
-        table.Cell().BorderBottom(1).BorderColor(Border).Padding(3)
+        table.Cell().BorderBottom(2).BorderColor(BrandAccent).Padding(3)
             .Text(text).FontSize(8).Bold().FontColor(Brand);
     }
 
@@ -538,14 +539,14 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         container.Column(column =>
         {
             column.Spacing(6);
-            column.Item().BorderBottom(1).BorderColor(Border).PaddingBottom(4)
+            column.Item().BorderBottom(2).BorderColor(BrandAccent).PaddingBottom(4)
                 .Text(heading).FontSize(11.5f).Bold().FontColor(Brand);
 
             foreach (var bullet in bullets)
             {
                 column.Item().Row(row =>
                 {
-                    row.ConstantItem(12).Text("•").FontColor(Muted);
+                    row.ConstantItem(12).Text("•").FontColor(BrandAccent);
                     row.RelativeItem().Text(bullet).FontSize(10).FontColor(Text);
                 });
             }

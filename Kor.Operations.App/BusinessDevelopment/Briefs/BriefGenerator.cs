@@ -26,6 +26,7 @@ public sealed class BriefGenerator : IBriefGenerator
     private const int BodyPt = 22;      // 11 pt
     private const int FooterPt = 18;    //  9 pt
 
+    private const string BrandAccent = "FF5B35"; // KOR orange accent
     private const string FooterText = "KOR Structural — Confidential / Internal";
 
     public void WriteOpportunityBrief(OpportunityBriefData data, string outputPath)
@@ -335,6 +336,7 @@ public sealed class BriefGenerator : IBriefGenerator
     {
         body.AppendChild(new Paragraph());
         body.AppendChild(BuildPara(text, HeadingPt, bold: true, italic: false, align: null, bullet: false));
+        AppendAccentRule(body);
     }
 
     private static void AppendBody(Body body, string text)
@@ -423,7 +425,7 @@ public sealed class BriefGenerator : IBriefGenerator
         var headerRow = new TableRow();
         foreach (var header in headers)
         {
-            headerRow.AppendChild(BuildCell(header, bold: true));
+            headerRow.AppendChild(BuildCell(header, bold: true, accentBottom: true));
         }
         table.AppendChild(headerRow);
 
@@ -451,15 +453,28 @@ public sealed class BriefGenerator : IBriefGenerator
                 new InsideHorizontalBorder { Val = BorderValues.Single, Size = 4, Color = "E5E7EB" },
                 new InsideVerticalBorder { Val = BorderValues.Single, Size = 4, Color = "E5E7EB" })));
 
-    private static TableCell BuildCell(string? text, bool bold, string? widthDxa = null)
+    private static TableCell BuildCell(string? text, bool bold, string? widthDxa = null, bool accentBottom = false)
     {
         var props = new TableCellProperties();
         if (!string.IsNullOrWhiteSpace(widthDxa))
         {
             props.AppendChild(new TableCellWidth { Width = widthDxa, Type = TableWidthUnitValues.Dxa });
         }
+        if (accentBottom)
+        {
+            props.AppendChild(new TableCellBorders(
+                new BottomBorder { Val = BorderValues.Single, Size = 12, Color = BrandAccent }));
+        }
 
         return new TableCell(props, BuildPara(string.IsNullOrWhiteSpace(text) ? "—" : text!, BodyPt, bold, italic: false, align: null, bullet: false));
+    }
+
+    private static void AppendAccentRule(Body body)
+    {
+        var props = new ParagraphProperties(
+            new ParagraphBorders(
+                new BottomBorder { Val = BorderValues.Single, Size = 8, Color = BrandAccent }));
+        body.AppendChild(new Paragraph(props, new Run(new Text(""))));
     }
 
     private static Paragraph BuildPara(string text, int sizeHalf, bool bold, bool italic, JustificationValues? align, bool bullet)
@@ -479,10 +494,19 @@ public sealed class BriefGenerator : IBriefGenerator
         if (bold) rProps.AppendChild(new Bold());
         if (italic) rProps.AppendChild(new Italic());
 
-        var displayText = bullet ? "•  " + text : text;
-        var run = new Run(rProps, new Text(displayText) { Space = SpaceProcessingModeValues.Preserve });
+        var paragraph = new Paragraph(pProps);
+        if (bullet)
+        {
+            var bulletProps = new RunProperties(
+                new FontSize { Val = sizeHalf.ToString(CultureInfo.InvariantCulture) },
+                new Color { Val = BrandAccent });
+            paragraph.AppendChild(new Run(bulletProps, new Text("•  ") { Space = SpaceProcessingModeValues.Preserve }));
+            paragraph.AppendChild(new Run(rProps, new Text(text) { Space = SpaceProcessingModeValues.Preserve }));
+            return paragraph;
+        }
 
-        return new Paragraph(pProps, run);
+        paragraph.AppendChild(new Run(rProps, new Text(text) { Space = SpaceProcessingModeValues.Preserve }));
+        return paragraph;
     }
 
     // === Formatting + parsing helpers ===
