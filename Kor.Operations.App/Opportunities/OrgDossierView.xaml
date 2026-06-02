@@ -223,6 +223,87 @@
                     </StackPanel>
                 </Border>
 
+                <Border Style="{StaticResource SectionCard}"
+                        Visibility="{Binding HasDeltekSnapshot, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Deltek snapshot" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+                        <TextBlock Text="{Binding DeltekSnapshot.ErrorMessage}"
+                                   Style="{StaticResource FieldValue}"
+                                   Foreground="#8A3A3A"
+                                   Visibility="{Binding DeltekSnapshot.HasError, Converter={StaticResource BoolToVis}}"/>
+
+                        <StackPanel Visibility="{Binding DeltekSnapshot.HasNoError, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Style="{StaticResource FieldValue}" Margin="0,0,0,8">
+                                <Run Text="Deltek client "/>
+                                <Run Text="{Binding DeltekSnapshot.ClientId, Mode=OneWay}"/>
+                                <Run Text=" ("/>
+                                <Run Text="{Binding DeltekSnapshot.ClientName, Mode=OneWay}"/>
+                                <Run Text=")"/>
+                            </TextBlock>
+
+                            <TextBlock Style="{StaticResource FieldValue}"
+                                       Visibility="{Binding DeltekSnapshot.HasProjects, Converter={StaticResource BoolToVis}}">
+                                <Run Text="Lifetime billed: "/>
+                                <Run Text="{Binding DeltekSnapshot.LifetimeFee, StringFormat={}{0:C0}, Mode=OneWay}"/>
+                                <Run Text=" across "/>
+                                <Run Text="{Binding DeltekSnapshot.ProjectCount, StringFormat={}{0:N0}, Mode=OneWay}"/>
+                                <Run Text=" project(s)"/>
+                            </TextBlock>
+
+                            <TextBlock Style="{StaticResource FieldValue}"
+                                       Visibility="{Binding DeltekSnapshot.HasLatestProject, Converter={StaticResource BoolToVis}}">
+                                <Run Text="Latest: "/>
+                                <Run Text="{Binding DeltekSnapshot.LatestProjectName, Mode=OneWay}"/>
+                                <Run Text=" (opened "/>
+                                <Run Text="{Binding DeltekSnapshot.LatestProjectStart, StringFormat={}{0:yyyy-MM-dd}, Mode=OneWay}"/>
+                                <Run Text=")"/>
+                            </TextBlock>
+
+                            <ItemsControl ItemsSource="{Binding DeltekSnapshot.RecentProjects}"
+                                          Margin="0,6,0,6"
+                                          Visibility="{Binding DeltekSnapshot.HasRecentProjects, Converter={StaticResource BoolToVis}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type local:DossierDeltekProject}">
+                                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,3">
+                                            <Run Text="•  " Foreground="{StaticResource CorporateBlue}" FontWeight="Bold"/>
+                                            <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            <Run Text="  "/>
+                                            <Run Text="{Binding OpenDate, StringFormat={}{0:yyyy-MM-dd}, Mode=OneWay}"/>
+                                            <Run Text="  "/>
+                                            <Run Text="{Binding Status, Mode=OneWay}"/>
+                                            <Run Text="  Fee "/>
+                                            <Run Text="{Binding Fee, StringFormat={}{0:C0}, Mode=OneWay}"/>
+                                            <Run Text="  Billed "/>
+                                            <Run Text="{Binding FeeBilled, StringFormat={}{0:C0}, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Style="{StaticResource FieldValue}">
+                                <Run Text="{Binding DeltekSnapshot.ContactCount, StringFormat={}{0:N0}, Mode=OneWay}"/>
+                                <Run Text=" Deltek contact(s)"/>
+                            </TextBlock>
+
+                            <TextBlock Style="{StaticResource FieldValue}"
+                                       Visibility="{Binding DeltekSnapshot.HasArOutstanding, Converter={StaticResource BoolToVis}}">
+                                <Run Text="AR outstanding: "/>
+                                <Run Text="{Binding DeltekSnapshot.ArOutstanding, StringFormat={}{0:C0}, Mode=OneWay}"/>
+                                <Run Text=" (90+ days: "/>
+                                <Run Text="{Binding DeltekSnapshot.Ar90Plus, StringFormat={}{0:C0}, Mode=OneWay}"/>
+                                <Run Text=")"/>
+                            </TextBlock>
+
+                            <TextBlock Text="Some Deltek sections were unavailable for this client."
+                                       Style="{StaticResource FieldValue}"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       FontStyle="Italic"
+                                       Visibility="{Binding DeltekSnapshot.DegradedSections, Converter={StaticResource BoolToVis}}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <Border Style="{StaticResource SectionCard}">
                     <StackPanel>
                         <TextBlock Text="Research Dossiers" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>

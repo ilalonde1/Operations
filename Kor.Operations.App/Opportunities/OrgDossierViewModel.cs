@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Crm;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
@@ -26,6 +27,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private readonly IEnrichmentTrackingStore _enrichmentStore;
     private readonly IMajorProjectsInventoryStore _majorProjectsStore;
     private readonly IVendorAnalyticsStore _vendorAnalyticsStore;
+    private readonly IDeltekClientContextService _deltekService;
     private readonly ILogger<OrgDossierViewModel> _logger;
 
     private long? _canonicalOrgId;
@@ -33,6 +35,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private string _kind = "";
     private string? _website;
     private string? _clendorClientId;
+    private DossierDeltekSnapshot? _deltekSnapshot;
     private string? _notes;
     private string _statusMessage = "Ready.";
     private decimal _lifetimeValue;
@@ -46,12 +49,14 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         IEnrichmentTrackingStore enrichmentStore,
         IMajorProjectsInventoryStore majorProjectsStore,
         IVendorAnalyticsStore vendorAnalyticsStore,
+        IDeltekClientContextService deltekService,
         ILogger<OrgDossierViewModel> logger)
     {
         _canonicalStore = canonicalStore ?? throw new ArgumentNullException(nameof(canonicalStore));
         _enrichmentStore = enrichmentStore ?? throw new ArgumentNullException(nameof(enrichmentStore));
         _majorProjectsStore = majorProjectsStore ?? throw new ArgumentNullException(nameof(majorProjectsStore));
         _vendorAnalyticsStore = vendorAnalyticsStore ?? throw new ArgumentNullException(nameof(vendorAnalyticsStore));
+        _deltekService = deltekService ?? throw new ArgumentNullException(nameof(deltekService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -91,6 +96,18 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             if (SetField(ref _clendorClientId, value))
             {
                 OnPropertyChanged(nameof(HasClendorClientId));
+            }
+        }
+    }
+
+    public DossierDeltekSnapshot? DeltekSnapshot
+    {
+        get => _deltekSnapshot;
+        private set
+        {
+            if (SetField(ref _deltekSnapshot, value))
+            {
+                OnPropertyChanged(nameof(HasDeltekSnapshot));
             }
         }
     }
@@ -140,6 +157,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     public bool HeaderLoaded => _canonicalOrgId.HasValue;
     public bool HasWebsite => !string.IsNullOrWhiteSpace(Website);
     public bool HasClendorClientId => !string.IsNullOrWhiteSpace(ClendorClientId);
+    public bool HasDeltekSnapshot => _deltekSnapshot is not null;
     public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
     public bool HasAwards => LifetimeCount > 0;
     public int ProjectCount => Projects.Count;
@@ -171,6 +189,8 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             Kind = org.Kind;
             Website = org.Website;
             ClendorClientId = org.ClendorClientId;
+            DeltekSnapshot = null;
+            OnPropertyChanged(nameof(HasDeltekSnapshot));
             Notes = org.Notes;
 
             var enrichments = await _enrichmentStore.ListByOrgAsync(canonicalOrgId, ct).ConfigureAwait(true);
@@ -213,6 +233,79 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             _recentWinsContextSnapshot = RecentWins.ToArray();
 
             StatusMessage = $"Loaded {Sections.Count:N0} dossiers, {Projects.Count:N0} projects, {LifetimeCount:N0} award wins.";
+
+            var deltekTrigger = string.IsNullOrWhiteSpace(ClendorClientId)
+                ? null
+                : ClendorClientId;
+            if (deltekTrigger is not null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var intel = await _deltekService.LoadAsync(deltekTrigger, CancellationToken.None).ConfigureAwait(false);
+                        if (intel is null)
+                        {
+                            SetDeltekSnapshotIfCurrent(canonicalOrgId, deltekTrigger, new DossierDeltekSnapshot(
+                                ClientId: deltekTrigger,
+                                ClientName: "(no Clendor row)",
+                                ProjectCount: 0,
+                                LifetimeFee: 0m,
+                                LatestProjectStart: null,
+                                LatestProjectName: null,
+                                RecentProjects: Array.Empty<DossierDeltekProject>(),
+                                ContactCount: 0,
+                                ArOutstanding: 0m,
+                                Ar90Plus: 0m,
+                                DegradedSections: false,
+                                ErrorMessage: "IDeltekClientContextService.LoadAsync returned null - Clendor has no row for this ClientId on the App's ODBC connection."));
+                            return;
+                        }
+
+                        var projects = new List<DossierDeltekProject>();
+                        foreach (var p in intel.Projects)
+                        {
+                            if (projects.Count >= 5)
+                            {
+                                break;
+                            }
+
+                            projects.Add(new DossierDeltekProject(p.Wbs1, p.Name, p.OpenDate, p.Status, p.Fee, p.FeeBilled));
+                        }
+
+                        SetDeltekSnapshotIfCurrent(canonicalOrgId, deltekTrigger, new DossierDeltekSnapshot(
+                            ClientId: intel.ClientId,
+                            ClientName: intel.ClientName,
+                            ProjectCount: intel.ProjectCount,
+                            LifetimeFee: intel.LifetimeFee,
+                            LatestProjectStart: intel.LatestProjectStart,
+                            LatestProjectName: intel.LatestProjectName,
+                            RecentProjects: projects,
+                            ContactCount: intel.Contacts.Count,
+                            ArOutstanding: intel.Ar?.TotalOutstanding ?? 0m,
+                            Ar90Plus: intel.Ar?.Outstanding90Plus ?? 0m,
+                            DegradedSections: intel.HasDegradedSections,
+                            ErrorMessage: null));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Org dossier Deltek snapshot failed for {ClendorClientId}.", deltekTrigger);
+                        SetDeltekSnapshotIfCurrent(canonicalOrgId, deltekTrigger, new DossierDeltekSnapshot(
+                            ClientId: deltekTrigger,
+                            ClientName: "",
+                            ProjectCount: 0,
+                            LifetimeFee: 0m,
+                            LatestProjectStart: null,
+                            LatestProjectName: null,
+                            RecentProjects: Array.Empty<DossierDeltekProject>(),
+                            ContactCount: 0,
+                            ArOutstanding: 0m,
+                            Ar90Plus: 0m,
+                            DegradedSections: false,
+                            ErrorMessage: ex.GetType().Name + ": " + ex.Message));
+                    }
+                });
+            }
         }
         catch (OperationCanceledException)
         {
@@ -224,6 +317,21 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             StatusMessage = $"Load failed: {ex.GetType().Name}: {ex.Message}";
             throw;
         }
+    }
+
+    private void SetDeltekSnapshotIfCurrent(long canonicalOrgId, string clendorClientId, DossierDeltekSnapshot snapshot)
+    {
+        if (_canonicalOrgId != canonicalOrgId)
+        {
+            return;
+        }
+
+        if (!string.Equals(ClendorClientId, clendorClientId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        DeltekSnapshot = snapshot;
     }
 
     // Round 56: paginated-search-envelope keys to suppress when rendering a
@@ -505,6 +613,36 @@ public sealed record DossierSection(string ProviderName, string? RefreshedAt)
 }
 
 public sealed record DossierField(string Label, string Value);
+
+public sealed record DossierDeltekSnapshot(
+    string ClientId,
+    string ClientName,
+    int ProjectCount,
+    decimal LifetimeFee,
+    DateTime? LatestProjectStart,
+    string? LatestProjectName,
+    IReadOnlyList<DossierDeltekProject> RecentProjects,
+    int ContactCount,
+    decimal ArOutstanding,
+    decimal Ar90Plus,
+    bool DegradedSections,
+    string? ErrorMessage)
+{
+    public bool HasProjects => ProjectCount > 0;
+    public bool HasLatestProject => !string.IsNullOrWhiteSpace(LatestProjectName) || LatestProjectStart.HasValue;
+    public bool HasRecentProjects => RecentProjects.Count > 0;
+    public bool HasArOutstanding => ArOutstanding > 0m;
+    public bool HasNoError => string.IsNullOrWhiteSpace(ErrorMessage);
+    public bool HasError => !HasNoError;
+}
+
+public sealed record DossierDeltekProject(
+    string Wbs1,
+    string Name,
+    DateTime? OpenDate,
+    string? Status,
+    decimal Fee,
+    decimal FeeBilled);
 
 public sealed class DossierProjectRow
 {
