@@ -1,0 +1,28 @@
+LoserId,SurvivorId,Reason
+54889,53679,BC Ministry of Transportation and Transit -> Infrastructure (same ministry renamed)
+54956,53679,BC Ministry of Transportation & Transit (Client variant) -> Buyer canonical
+70250,53679,BC Ministry of Transportation and Transit (MoTT) -> Infrastructure canonical
+54752,53679,Ministry of Transportation and Infrastructure (no BC prefix) -> with-BC canonical
+54277,880,Fraser Health -> Fraser Health Authority (largest+earliest)
+54959,54979,Island Health (Vancouver Island Health Authority) -> Island Health single canonical
+740,54979,Vancouver Island Health Authority -> Island Health single canonical
+54639,54979,Island Health Authority -> Island Health single canonical
+69454,54979,Vancouver Island Health Authority (Island Health) -> Island Health single canonical
+18880,54976,Northern Health Authority -> Northern Health
+69455,18917,Vancouver Coastal Health Authority (VCH) -> Vancouver Coastal Health (has Clendor)
+472,53678,School District 36 Surrey -> School District 36 (largest)
+54606,53968,School District 61 -> SD 61 Greater Victoria
+69672,69075,School District #62 -> School District 62 Sooke (largest)
+18894,54340,School District 35 Langley -> SD 35
+69477,54415,School District 23 Central Okanagan -> SD 23
+69133,54542,School District 33 Chilliwack -> SD 33 (largest by projects)
+54194,69071,School District 37 (Unknown kind) -> SD 37 Delta (Buyer kind survivor)
+18895,54821,School District 38 Richmond -> SD 38 (mostly the same)
+70247,54821,School District 38 (City of Richmond) -> SD 38
+69178,53840,School District 39 (Vancouver) -> SD 39 (largest)
+18896,53687,School District 40 New Westminster -> SD 40
+69080,54416,School District 42 Maple Ridge -> SD 42
+69179,53966,School District 43 (Coquitlam) -> SD 43 (largest)
+68940,54361,School District 44 North Vancouver -> SD 44
+54434,854,School District 57 -> SD 57 Prince George
+69072,54197,School District 60 Peace River North -> SD 60

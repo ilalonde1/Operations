@@ -1,0 +1,26 @@
+LoserId,SurvivorId,Reason
+69907,38971,Perkins+Will (community master plan) -> Perkins&Will (Vancouver studio)
+69956,38971,Perkins+Will (formerly Busby Perkins+Will) -> Perkins&Will
+54221,29895,Henriquez Pantners (typo) -> Henriquez Partners Architects
+69125,38975,ZGF Architects (Vancouver) -> ZGF Architects
+69938,38975,ZGF Architects (schematic design phase noted) -> ZGF Architects
+54278,69646,Walter Francl Architecture Inc. (Walter Francl is principal) -> Francl Architecture
+54658,69646,Francl Architecture (newline-corrupted dup) -> Francl Architecture
+69582,38974,Revery Architecture -> Revery Architecture Inc. (formerly Bing Thom Architects)
+54463,38974,Bing Thom Architects (predecessor name) -> Revery Architecture
+71053,38974,Revery Architecture (Bing Thom Architects) -> Revery Architecture
+69656,153,IBI Group Architects -> Arcadis IBI Group (Clendor-linked survivor)
+70936,153,IBI Group Architects (Arcadis IBI Group) -> Arcadis IBI Group
+68978,54571,KMBR Architects Planners (Okanagan projects) -> KMBR Architects
+70136,54571,KMBR Architects (Bassem Tawfik) -> KMBR Architects
+68926,54753,Diamond Schmitt (Vancouver studio) -> Diamond Schmitt Architects
+71259,54753,DSAI (Diamond Schmitt Architects Inc.) -> Diamond Schmitt Architects
+69165,69760,Michael Green Architecture (MGA) -> Michael Green Architecture
+69231,69760,MGA | Michael Green Architecture -> Michael Green Architecture
+8541,8538,Group2 Architecture -> Group2 Architecture Interior Design Ltd.
+54665,7,Chris Dikeakos Architects Inc. (newline-corrupted dup) -> Chris Dikeakos Architects Inc.
+71026,4,NSDA Architects (Neale Staniszkis Doll Adams Architects) -> NSDA Architects
+70584,70,BFA Studio Arch (Besharat Friars Architects) -> BFA Studio Architects
+69630,68919,Reimagine Architects -> Reimagine Architects (formerly Manasc Isaac)
+69633,68919,Manasc Isaac (Reimagine) -> Reimagine Architects
+69791,68913,Wally Neumann MQN Architects (principal-named dup) -> MQN Architects

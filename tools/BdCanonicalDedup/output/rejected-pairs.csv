@@ -1,8 +1,38 @@
 LoserId,SurvivorId,LoserName,SurvivorName,LoserFuzzy,SurvivorFuzzy,RejectedAtUtc
-69674,163,"Millenium Development Corp.","Millennium Group",milleniumdevelopment,millenniumgroup,2026-06-02T03:19:26.5470748Z
-69642,69589,"Musson Cattell Mackey Partnership (MCM)","Musson Cattell Mackey Partnership",mussoncattellmackeypartnershipmcm,mussoncattellmackeypartnership,2026-06-02T03:19:26.5480313Z
-69780,69589,"MCM Architects (Musson Cattell Mackey Partnership)","Musson Cattell Mackey Partnership",mcmarchitectsmussoncattellmackeypartnership,mussoncattellmackeypartnership,2026-06-02T03:19:26.5483249Z
-69864,69589,"Musson Cattell MacKay Partnership (MCM)","Musson Cattell Mackey Partnership",mussoncattellmackaypartnershipmcm,mussoncattellmackeypartnership,2026-06-02T03:19:26.5485499Z
-69943,69589,"MCMP Architects (Musson Cattell Mackey Partnership)","Musson Cattell Mackey Partnership",mcmparchitectsmussoncattellmackeypartnership,mussoncattellmackeypartnership,2026-06-02T03:19:26.5487892Z
-69771,38969,"Office of McFarlane Biggar Architects + Designers","office of mcfarlane biggar architects + designers (OMB)",officeofmcfarlanebiggararchitectsdesigners,officeofmcfarlanebiggararchitectsdesignersomb,2026-06-02T03:19:26.5490275Z
-70156,68912,"The Miller Hull Partnership, LLP","Miller Hull Partnership",themillerhullpartnership,millerhullpartnership,2026-06-02T03:19:26.5493438Z
+69907,38971,"Perkins+Will (community master plan)","Perkins&Will (Vancouver studio)",perkinswillcommunitymasterplan,perkinswillvancouverstudio,2026-06-02T20:43:04.6703230Z
+69956,38971,"Perkins+Will (formerly Busby Perkins+Will)","Perkins&Will (Vancouver studio)",perkinswillformerlybusbyperkinswill,perkinswillvancouverstudio,2026-06-02T20:43:04.6711792Z
+54221,29895,"Henriquez Pantners","Henriquez Partners Architects",henriquezpantners,henriquezpartnersarchitects,2026-06-02T20:43:04.6713712Z
+69125,38975,"ZGF Architects (Vancouver)","ZGF Architects",zgfarchitectsvancouver,zgfarchitects,2026-06-02T20:43:04.6715553Z
+69938,38975,"ZGF Architects (schematic design phase noted)","ZGF Architects",zgfarchitectsschematicdesignphasenoted,zgfarchitects,2026-06-02T20:43:04.6744643Z
+54278,69646,"Walter Francl Architecture Inc.","Francl Architecture
+Francl Architecture
+Francl Architecture",walterfranclarchitecture,franclarchitecture
+franclarchitecture
+franclarchitecture,2026-06-02T20:43:04.6747713Z
+54658,69646,"Francl Architecture
+Francl Architecture","Francl Architecture
+Francl Architecture
+Francl Architecture",franclarchitecture
+franclarchitecture,franclarchitecture
+franclarchitecture
+franclarchitecture,2026-06-02T20:43:04.6749296Z
+69582,38974,"Revery Architecture","Revery Architecture Inc. (formerly Bing Thom Architects)",reveryarchitecture,reveryarchitectureincformerlybingthomarchitects,2026-06-02T20:43:04.6750719Z
+54463,38974,"Bing Thom Architects","Revery Architecture Inc. (formerly Bing Thom Architects)",bingthomarchitects,reveryarchitectureincformerlybingthomarchitects,2026-06-02T20:43:04.6752089Z
+71053,38974,"Revery Architecture (Bing Thom Architects)","Revery Architecture Inc. (formerly Bing Thom Architects)",reveryarchitecturebingthomarchitects,reveryarchitectureincformerlybingthomarchitects,2026-06-02T20:43:04.6753372Z
+69656,153,"IBI Group Architects","Arcadis IBI Group",ibigrouparchitects,arcadisibigroup,2026-06-02T20:43:04.6754487Z
+70936,153,"IBI Group Architects (Arcadis IBI Group)","Arcadis IBI Group",ibigrouparchitectsarcadisibigroup,arcadisibigroup,2026-06-02T20:43:04.6755962Z
+68978,54571,"KMBR Architects Planners (Okanagan projects)","KMBR Architects",kmbrarchitectsplannersokanaganprojects,kmbrarchitects,2026-06-02T20:43:04.6757171Z
+70136,54571,"KMBR Architects (Bassem Tawfik)","KMBR Architects",kmbrarchitectsbassemtawfik,kmbrarchitects,2026-06-02T20:43:04.6758272Z
+68926,54753,"Diamond Schmitt (Vancouver studio)","Diamond Schmitt Architects",diamondschmittvancouverstudio,diamondschmittarchitects,2026-06-02T20:43:04.6759548Z
+71259,54753,"DSAI (Diamond Schmitt Architects Inc.)","Diamond Schmitt Architects",dsaidiamondschmittarchitectsinc,diamondschmittarchitects,2026-06-02T20:43:04.6761718Z
+69165,69760,"Michael Green Architecture (MGA)","Michael Green Architecture",michaelgreenarchitecturemga,michaelgreenarchitecture,2026-06-02T20:43:04.6765175Z
+69231,69760,"MGA | Michael Green Architecture","Michael Green Architecture",mga|michaelgreenarchitecture,michaelgreenarchitecture,2026-06-02T20:43:04.6767628Z
+8541,8538,"Group2 Architecture","Group2 Architecture Interior Design Ltd.",group2architecture,group2architectureinteriordesign,2026-06-02T20:43:04.6769867Z
+54665,7,"Chris Dikeakos Architects Inc.
+Chris Dikeakos Architects Inc.","Chris Dikeakos Architects Inc.",chrisdikeakosarchitectsinc
+chrisdikeakosarchitects,chrisdikeakosarchitects,2026-06-02T20:43:04.6772091Z
+71026,4,"NSDA Architects (Neale Staniszkis Doll Adams Architects)","NSDA Architects",nsdaarchitectsnealestaniszkisdolladamsarchitects,nsdaarchitects,2026-06-02T20:43:04.6774855Z
+70584,70,"BFA Studio Arch (Besharat Friars Architects)","BFA Studio Architects",bfastudioarchbesharatfriarsarchitects,bfastudioarchitects,2026-06-02T20:43:04.6776101Z
+69630,68919,"Reimagine Architects","Reimagine Architects (formerly Manasc Isaac)",reimaginearchitects,reimaginearchitectsformerlymanascisaac,2026-06-02T20:43:04.6777238Z
+69633,68919,"Manasc Isaac (Reimagine)","Reimagine Architects (formerly Manasc Isaac)",manascisaacreimagine,reimaginearchitectsformerlymanascisaac,2026-06-02T20:43:04.6778440Z
+69791,68913,"Wally Neumann MQN Architects","MQN Architects",wallyneumannmqnarchitects,mqnarchitects,2026-06-02T20:43:04.6779840Z

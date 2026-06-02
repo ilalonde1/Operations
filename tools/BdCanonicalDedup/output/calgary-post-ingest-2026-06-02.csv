@@ -1,0 +1,4 @@
+LoserId,SurvivorId,Reason
+71360,69614,GGA-Architecture (formerly Gibbs Gage) -> existing GGA Architect canonical
+71361,68756,ACI Architecture Inc. (incl. Stephens Kozak ACI and H2 Architecture) -> base ACI canonical
+71363,68791,AHS / AB Infra (Health Capital) duplicate -> existing AHS canonical

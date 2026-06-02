@@ -1,0 +1,10 @@
+LoserId,SurvivorId,Reason
+71339,691,City of Burnaby exact-name dup; survivor has Clendor CL00540
+71340,53119,City of Calgary exact-name dup; survivor has Clendor CL00542
+71341,68833,City of Los Angeles exact-name dup; survivor has Clendor
+71342,18838,City of Surrey exact-name dup; survivor has Clendor CL00553
+71343,399,City of Vancouver exact-name dup; survivor has Clendor CL00554
+71344,18917,Vancouver Coastal Health exact-name dup; survivor has Clendor
+71345,71316,Heiltsuk Nation (Heiltsuk Tribal Council) -> Heiltsuk Nation (modular followup variant)
+71346,71320,Squamish Nation / Hiy'am Housing Society (Hiyam Housing) -> Squamish Nation / Hiyam Housing Society (modular followup variant)
+71347,71338,Nanoose First Nation (Snaw-naw-as) -> Nanoose First Nation (modular followup variant)
