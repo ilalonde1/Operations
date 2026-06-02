@@ -59,23 +59,31 @@
                     <Border Grid.Column="0"
                             Background="{StaticResource Brand.Primary.Brush}"
                             CornerRadius="4,0,0,4"/>
-                    <StackPanel Grid.Column="1" Margin="14,10,14,12">
-                        <!-- Section header: ProviderName larger + slate, refreshed timestamp tiny + muted. -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBlock Text="{Binding ProviderName}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource Brand.Primary.Brush}"/>
-                            <TextBlock Text="{Binding RefreshedAt, StringFormat='  refreshed {0}'}"
-                                       Foreground="{StaticResource Text.Secondary}"
-                                       FontSize="10"
-                                       VerticalAlignment="Center"
-                                       Margin="8,2,0,0"/>
-                        </StackPanel>
+                    <Expander Grid.Column="1" Margin="14,8,14,10" IsExpanded="False">
+                        <Expander.Header>
+                            <StackPanel Orientation="Vertical">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding ProviderName}"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource Brand.Primary.Brush}"/>
+                                    <TextBlock Text="{Binding RefreshedAt, StringFormat='  refreshed {0}'}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="10"
+                                               VerticalAlignment="Center"
+                                               Margin="8,2,0,0"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding Summary}"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="12"
+                                           Margin="0,2,0,0"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Expander.Header>
 
                         <!-- Field rows: small-caps label + value with three visual modes
                              (plain text, single-URL hyperlink, multi-URL bullet list). -->
-                        <ItemsControl ItemsSource="{Binding Fields}">
+                        <ItemsControl ItemsSource="{Binding Fields}" Margin="0,8,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type local:DossierField}">
                                     <Grid Margin="0,2">
@@ -177,7 +185,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </StackPanel>
+                    </Expander>
                 </Grid>
             </Border>
         </DataTemplate>
@@ -220,6 +228,87 @@
                             <TextBlock Text="Notes" FontSize="10" Foreground="#666" Margin="0,0,0,2"/>
                             <TextBlock Text="{Binding Notes}" TextWrapping="Wrap"/>
                         </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SectionCard}"
+                        Visibility="{Binding HasAtAGlance, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="AT A GLANCE"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource Brand.Primary.Brush}"
+                                   Typography.Capitals="AllSmallCaps"
+                                   Margin="0,0,0,10"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="HQ"
+                                       Style="{StaticResource FieldLabel}"
+                                       Visibility="{Binding AtAGlance.HasHqCity, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{Binding AtAGlance.HqCity}"
+                                       Style="{StaticResource FieldValue}"
+                                       Visibility="{Binding AtAGlance.HasHqCity, Converter={StaticResource BoolToVis}}"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0"
+                                       Text="Sectors"
+                                       Style="{StaticResource FieldLabel}"
+                                       Visibility="{Binding AtAGlance.HasSectors, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1"
+                                       Text="{Binding AtAGlance.SectorsDisplay}"
+                                       Style="{StaticResource FieldValue}"
+                                       Visibility="{Binding AtAGlance.HasSectors, Converter={StaticResource BoolToVis}}"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0"
+                                       Text="Key people"
+                                       Style="{StaticResource FieldLabel}"
+                                       Visibility="{Binding AtAGlance.HasKeyPeople, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1"
+                                       Text="{Binding AtAGlance.KeyPeopleDisplay}"
+                                       Style="{StaticResource FieldValue}"
+                                       Visibility="{Binding AtAGlance.HasKeyPeople, Converter={StaticResource BoolToVis}}"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0"
+                                       Text="BC Registry"
+                                       Style="{StaticResource FieldLabel}"
+                                       Visibility="{Binding AtAGlance.HasRegistryStatus, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1"
+                                       Text="{Binding AtAGlance.RegistryDisplay}"
+                                       Style="{StaticResource FieldValue}"
+                                       Visibility="{Binding AtAGlance.HasRegistryStatus, Converter={StaticResource BoolToVis}}"/>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0"
+                                       Text="Last KOR"
+                                       Style="{StaticResource FieldLabel}"
+                                       Visibility="{Binding AtAGlance.HasLastKorEngagement, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1"
+                                       Text="{Binding AtAGlance.LastKorEngagementUtc, StringFormat={}{0:yyyy-MM-dd}}"
+                                       Style="{StaticResource FieldValue}"
+                                       Visibility="{Binding AtAGlance.HasLastKorEngagement, Converter={StaticResource BoolToVis}}"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0"
+                                       Text="KOR projs"
+                                       Style="{StaticResource FieldLabel}"
+                                       Visibility="{Binding AtAGlance.HasKorProjects, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1"
+                                       Text="{Binding AtAGlance.KorProjectsCount, StringFormat={}{0:N0}}"
+                                       Style="{StaticResource FieldValue}"
+                                       Visibility="{Binding AtAGlance.HasKorProjects, Converter={StaticResource BoolToVis}}"/>
+                        </Grid>
                     </StackPanel>
                 </Border>
 

@@ -138,7 +138,8 @@ SELECT @existingId;";
     public async Task<CanonicalOrgRow?> GetCanonicalOrgAsync(long id, CancellationToken ct)
     {
         const string sql = @"
-SELECT Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc
+SELECT Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
+       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc
 FROM   opportunities.CanonicalOrg
 WHERE  Id = @id;";
         return await ReadSingleOrgAsync(sql, new[] { ("@id", (object)id, SqlDbType.BigInt, 0) }, ct)
@@ -152,7 +153,8 @@ WHERE  Id = @id;";
         CancellationToken ct)
     {
         const string sql = @"
-SELECT TOP (@take) Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc
+SELECT TOP (@take) Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
+       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc
 FROM   opportunities.CanonicalOrg
 WHERE  (@q IS NULL OR DisplayName LIKE '%' + @q + '%' ESCAPE '\')
    AND (@kind IS NULL OR Kind = @kind)
@@ -173,7 +175,8 @@ ORDER BY DisplayName;";
         // schema 22_OpportunityCanonicalLinks.sql, 38_MajorProjectsInventory.sql,
         // 20_KorPursuits.sql) so the OR doesn't fan out into a table scan.
         const string sql = @"
-SELECT TOP (@take) co.Id, co.Kind, co.DisplayName, co.ClendorClientId, co.Website, co.Notes, co.CreatedAtUtc, co.UpdatedAtUtc
+SELECT TOP (@take) co.Id, co.Kind, co.DisplayName, co.ClendorClientId, co.Website, co.Notes, co.CreatedAtUtc, co.UpdatedAtUtc,
+       ISNULL(co.KorProjectsCount, 0) AS KorProjectsCount, co.LastKorProjectAtUtc
 FROM   opportunities.CanonicalOrg co
 WHERE  (@q IS NULL OR co.DisplayName LIKE '%' + @q + '%' ESCAPE '\')
    AND (@kind IS NULL OR co.Kind = @kind)
@@ -224,7 +227,8 @@ ORDER BY co.DisplayName;";
     public async Task<CanonicalOrgRow?> GetCanonicalOrgByClendorIdAsync(string clendorClientId, CancellationToken ct)
     {
         const string sql = @"
-SELECT TOP 1 Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc
+SELECT TOP 1 Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
+       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc
 FROM   opportunities.CanonicalOrg
 WHERE  ClendorClientId = @cl;";
         return await ReadSingleOrgAsync(sql, new[] { ("@cl", (object)clendorClientId, SqlDbType.VarChar, 32) }, ct)
@@ -455,7 +459,9 @@ FROM opportunities.OrgAlias;";
             r.IsDBNull(4) ? null : r.GetString(4),
             r.IsDBNull(5) ? null : r.GetString(5),
             r.GetDateTimeOffset(6),
-            r.GetDateTimeOffset(7));
+            r.GetDateTimeOffset(7),
+            r.GetInt32(8),
+            r.IsDBNull(9) ? null : new DateTimeOffset(r.GetDateTime(9), TimeSpan.Zero));
 
     private static string EscapeLikeQuery(string query)
         => query

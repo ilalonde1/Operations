@@ -36,6 +36,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private string? _website;
     private string? _clendorClientId;
     private DossierDeltekSnapshot? _deltekSnapshot;
+    private DossierAtAGlance? _atAGlance;
     private string? _notes;
     private string _statusMessage = "Ready.";
     private decimal _lifetimeValue;
@@ -112,6 +113,18 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         }
     }
 
+    public DossierAtAGlance? AtAGlance
+    {
+        get => _atAGlance;
+        private set
+        {
+            if (SetField(ref _atAGlance, value))
+            {
+                OnPropertyChanged(nameof(HasAtAGlance));
+            }
+        }
+    }
+
     public string? Notes
     {
         get => _notes;
@@ -158,6 +171,13 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     public bool HasWebsite => !string.IsNullOrWhiteSpace(Website);
     public bool HasClendorClientId => !string.IsNullOrWhiteSpace(ClendorClientId);
     public bool HasDeltekSnapshot => _deltekSnapshot is not null;
+    public bool HasAtAGlance => _atAGlance is not null && (
+        !string.IsNullOrWhiteSpace(_atAGlance.HqCity)
+        || _atAGlance.Sectors.Count > 0
+        || _atAGlance.KeyPeople.Count > 0
+        || !string.IsNullOrWhiteSpace(_atAGlance.RegistryStatus)
+        || _atAGlance.LastKorEngagementUtc.HasValue
+        || _atAGlance.KorProjectsCount > 0);
     public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
     public bool HasAwards => LifetimeCount > 0;
     public int ProjectCount => Projects.Count;
@@ -170,6 +190,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         _sectionsContextSnapshot = Array.Empty<ContextDossierSection>();
         _projectsContextSnapshot = Array.Empty<DossierProjectRow>();
         _recentWinsContextSnapshot = Array.Empty<AwardListing>();
+        AtAGlance = null;
         OnPropertyChanged(nameof(HeaderLoaded));
         StatusMessage = "Loading dossier...";
 
@@ -231,6 +252,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
                 .ToArray();
             _projectsContextSnapshot = Projects.ToArray();
             _recentWinsContextSnapshot = RecentWins.ToArray();
+            AtAGlance = BuildAtAGlance(org);
 
             StatusMessage = $"Loaded {Sections.Count:N0} dossiers, {Projects.Count:N0} projects, {LifetimeCount:N0} award wins.";
 
@@ -385,7 +407,78 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             section.Fields.Add(new DossierField("Result", "Provider returned a non-JSON payload."));
         }
 
+        section.Summary = string.Join("  ",
+            section.Fields
+                .Where(f => !string.IsNullOrWhiteSpace(f.Value))
+                .Select(f => f.Value.Trim())
+                .Take(3));
+
         return section;
+    }
+
+    private DossierAtAGlance BuildAtAGlance(CanonicalOrgRow org)
+    {
+        string? hqCity = null;
+        var sectors = new List<string>();
+        var keyPeople = new List<string>();
+        string? regStatus = null;
+        string? regJurisdiction = null;
+
+        foreach (var section in Sections)
+        {
+            var provider = section.ProviderName ?? "";
+            var isDataHoning = provider.Contains("Honing", StringComparison.OrdinalIgnoreCase);
+            var isBcRegistry = provider.Contains("Registry", StringComparison.OrdinalIgnoreCase);
+
+            foreach (var f in section.Fields)
+            {
+                var label = (f.Label ?? "").Trim();
+                var value = (f.Value ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                if (isDataHoning)
+                {
+                    if (label.Equals("Hq City", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hqCity = value;
+                    }
+                    else if (label.Equals("Sectors", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sectors.AddRange(value.Split(new[] { ',', ';' },
+                            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    }
+                    else if (label.Equals("Key People", StringComparison.OrdinalIgnoreCase))
+                    {
+                        keyPeople.AddRange(value.Split(';',
+                            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    }
+                }
+
+                if (isBcRegistry)
+                {
+                    if (label.Equals("Status", StringComparison.OrdinalIgnoreCase))
+                    {
+                        regStatus = value;
+                    }
+                    else if (label.Equals("Jurisdiction", StringComparison.OrdinalIgnoreCase))
+                    {
+                        regJurisdiction = value;
+                    }
+                }
+            }
+        }
+
+        return new DossierAtAGlance(
+            HqCity: hqCity,
+            Sectors: sectors.Distinct(StringComparer.OrdinalIgnoreCase).Take(6).ToArray(),
+            KeyPeople: keyPeople.Distinct(StringComparer.OrdinalIgnoreCase).Take(4).ToArray(),
+            RegistryStatus: regStatus,
+            RegistryJurisdiction: regJurisdiction,
+            LastKorEngagementUtc: org.LastKorProjectAtUtc,
+            KorProjectsCount: org.KorProjectsCount);
     }
 
     private static void AddProperty(ObservableCollection<DossierField> fields, string name, JsonElement value)
@@ -609,10 +702,33 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
 
 public sealed record DossierSection(string ProviderName, string? RefreshedAt)
 {
+    public string? Summary { get; set; }
     public ObservableCollection<DossierField> Fields { get; } = new();
 }
 
 public sealed record DossierField(string Label, string Value);
+
+public sealed record DossierAtAGlance(
+    string? HqCity,
+    IReadOnlyList<string> Sectors,
+    IReadOnlyList<string> KeyPeople,
+    string? RegistryStatus,
+    string? RegistryJurisdiction,
+    DateTimeOffset? LastKorEngagementUtc,
+    int KorProjectsCount)
+{
+    public bool HasHqCity => !string.IsNullOrWhiteSpace(HqCity);
+    public bool HasSectors => Sectors.Count > 0;
+    public string SectorsDisplay => string.Join(", ", Sectors);
+    public bool HasKeyPeople => KeyPeople.Count > 0;
+    public string KeyPeopleDisplay => string.Join(", ", KeyPeople);
+    public bool HasRegistryStatus => !string.IsNullOrWhiteSpace(RegistryStatus);
+    public string RegistryDisplay => string.IsNullOrWhiteSpace(RegistryJurisdiction)
+        ? RegistryStatus ?? string.Empty
+        : $"{RegistryStatus} ({RegistryJurisdiction})";
+    public bool HasLastKorEngagement => LastKorEngagementUtc.HasValue;
+    public bool HasKorProjects => KorProjectsCount > 0;
+}
 
 public sealed record DossierDeltekSnapshot(
     string ClientId,

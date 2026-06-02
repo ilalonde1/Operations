@@ -35,7 +35,9 @@ public sealed record CanonicalOrgRow(
     string? Website,
     string? Notes,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc,
+    int KorProjectsCount,
+    DateTimeOffset? LastKorProjectAtUtc);
 
 public sealed record OrgAliasRow(
     long Id,
