@@ -315,79 +315,116 @@
                 <Border Style="{StaticResource SectionCard}"
                         Visibility="{Binding HasDeltekSnapshot, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
-                        <TextBlock Text="Deltek snapshot" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                        <TextBlock Text="DELTEK SNAPSHOT"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource Brand.Primary.Brush}"
+                                   Typography.Capitals="AllSmallCaps"
+                                   Margin="0,0,0,10"/>
 
                         <TextBlock Text="{Binding DeltekSnapshot.ErrorMessage}"
                                    Style="{StaticResource FieldValue}"
                                    Foreground="#8A3A3A"
+                                   TextWrapping="Wrap"
                                    Visibility="{Binding DeltekSnapshot.HasError, Converter={StaticResource BoolToVis}}"/>
 
                         <StackPanel Visibility="{Binding DeltekSnapshot.HasNoError, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Style="{StaticResource FieldValue}" Margin="0,0,0,8">
-                                <Run Text="Deltek client "/>
-                                <Run Text="{Binding DeltekSnapshot.ClientId, Mode=OneWay}"/>
-                                <Run Text=" ("/>
-                                <Run Text="{Binding DeltekSnapshot.ClientName, Mode=OneWay}"/>
-                                <Run Text=")"/>
-                            </TextBlock>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                            <TextBlock Style="{StaticResource FieldValue}"
-                                       Visibility="{Binding DeltekSnapshot.HasProjects, Converter={StaticResource BoolToVis}}">
-                                <Run Text="Lifetime billed: "/>
-                                <Run Text="{Binding DeltekSnapshot.LifetimeFee, StringFormat={}{0:C0}, Mode=OneWay}"/>
-                                <Run Text=" across "/>
-                                <Run Text="{Binding DeltekSnapshot.ProjectCount, StringFormat={}{0:N0}, Mode=OneWay}"/>
-                                <Run Text=" project(s)"/>
-                            </TextBlock>
+                                <TextBlock Grid.Row="0" Grid.Column="0"
+                                           Text="Client"
+                                           Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1"
+                                           Style="{StaticResource FieldValue}">
+                                    <Run Text="{Binding DeltekSnapshot.ClientId, Mode=OneWay}"/>
+                                    <Run Text="  "/>
+                                    <Run Text="{Binding DeltekSnapshot.ClientName, Mode=OneWay}"/>
+                                </TextBlock>
 
-                            <TextBlock Style="{StaticResource FieldValue}"
-                                       Visibility="{Binding DeltekSnapshot.HasLatestProject, Converter={StaticResource BoolToVis}}">
-                                <Run Text="Latest: "/>
-                                <Run Text="{Binding DeltekSnapshot.LatestProjectName, Mode=OneWay}"/>
-                                <Run Text=" (opened "/>
-                                <Run Text="{Binding DeltekSnapshot.LatestProjectStart, StringFormat={}{0:yyyy-MM-dd}, Mode=OneWay}"/>
-                                <Run Text=")"/>
-                            </TextBlock>
+                                <TextBlock Grid.Row="1" Grid.Column="0"
+                                           Text="Lifetime billed"
+                                           Style="{StaticResource FieldLabel}"
+                                           Visibility="{Binding DeltekSnapshot.HasProjects, Converter={StaticResource BoolToVis}}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1"
+                                           Style="{StaticResource FieldValue}"
+                                           Visibility="{Binding DeltekSnapshot.HasProjects, Converter={StaticResource BoolToVis}}">
+                                    <Run Text="{Binding DeltekSnapshot.LifetimeFee, StringFormat={}{0:C0}, Mode=OneWay}"/>
+                                    <Run Text=" across "/>
+                                    <Run Text="{Binding DeltekSnapshot.ProjectCount, StringFormat={}{0:N0}, Mode=OneWay}"/>
+                                    <Run Text=" project(s)"/>
+                                </TextBlock>
 
-                            <ItemsControl ItemsSource="{Binding DeltekSnapshot.RecentProjects}"
-                                          Margin="0,6,0,6"
-                                          Visibility="{Binding DeltekSnapshot.HasRecentProjects, Converter={StaticResource BoolToVis}}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type local:DossierDeltekProject}">
-                                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,3">
-                                            <Run Text="•  " Foreground="{StaticResource CorporateBlue}" FontWeight="Bold"/>
-                                            <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
-                                            <Run Text="  "/>
-                                            <Run Text="{Binding OpenDate, StringFormat={}{0:yyyy-MM-dd}, Mode=OneWay}"/>
-                                            <Run Text="  "/>
-                                            <Run Text="{Binding Status, Mode=OneWay}"/>
-                                            <Run Text="  Fee "/>
-                                            <Run Text="{Binding Fee, StringFormat={}{0:C0}, Mode=OneWay}"/>
-                                            <Run Text="  Billed "/>
-                                            <Run Text="{Binding FeeBilled, StringFormat={}{0:C0}, Mode=OneWay}"/>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                <TextBlock Grid.Row="2" Grid.Column="0"
+                                           Text="Latest"
+                                           Style="{StaticResource FieldLabel}"
+                                           Visibility="{Binding DeltekSnapshot.HasLatestProject, Converter={StaticResource BoolToVis}}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1"
+                                           Style="{StaticResource FieldValue}"
+                                           Visibility="{Binding DeltekSnapshot.HasLatestProject, Converter={StaticResource BoolToVis}}">
+                                    <Run Text="{Binding DeltekSnapshot.LatestProjectName, Mode=OneWay}"/>
+                                    <Run Text=" (opened "/>
+                                    <Run Text="{Binding DeltekSnapshot.LatestProjectStart, StringFormat={}{0:yyyy-MM-dd}, Mode=OneWay}"/>
+                                    <Run Text=")"/>
+                                </TextBlock>
 
-                            <TextBlock Style="{StaticResource FieldValue}">
-                                <Run Text="{Binding DeltekSnapshot.ContactCount, StringFormat={}{0:N0}, Mode=OneWay}"/>
-                                <Run Text=" Deltek contact(s)"/>
-                            </TextBlock>
+                                <TextBlock Grid.Row="3" Grid.Column="0"
+                                           Text="Contacts"
+                                           Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Grid.Row="3" Grid.Column="1"
+                                           Text="{Binding DeltekSnapshot.ContactCount, StringFormat={}{0:N0}, Mode=OneWay}"
+                                           Style="{StaticResource FieldValue}"/>
 
-                            <TextBlock Style="{StaticResource FieldValue}"
-                                       Visibility="{Binding DeltekSnapshot.HasArOutstanding, Converter={StaticResource BoolToVis}}">
-                                <Run Text="AR outstanding: "/>
-                                <Run Text="{Binding DeltekSnapshot.ArOutstanding, StringFormat={}{0:C0}, Mode=OneWay}"/>
-                                <Run Text=" (90+ days: "/>
-                                <Run Text="{Binding DeltekSnapshot.Ar90Plus, StringFormat={}{0:C0}, Mode=OneWay}"/>
-                                <Run Text=")"/>
-                            </TextBlock>
+                                <TextBlock Grid.Row="4" Grid.Column="0"
+                                           Text="AR outstanding"
+                                           Style="{StaticResource FieldLabel}"
+                                           Visibility="{Binding DeltekSnapshot.HasArOutstanding, Converter={StaticResource BoolToVis}}"/>
+                                <TextBlock Grid.Row="4" Grid.Column="1"
+                                           Style="{StaticResource FieldValue}"
+                                           Visibility="{Binding DeltekSnapshot.HasArOutstanding, Converter={StaticResource BoolToVis}}">
+                                    <Run Text="{Binding DeltekSnapshot.ArOutstanding, StringFormat={}{0:C0}, Mode=OneWay}"/>
+                                    <Run Text=" (90+ days: "/>
+                                    <Run Text="{Binding DeltekSnapshot.Ar90Plus, StringFormat={}{0:C0}, Mode=OneWay}"/>
+                                    <Run Text=")"/>
+                                </TextBlock>
+                            </Grid>
+
+                            <TextBlock Text="Recent projects"
+                                       Style="{StaticResource FieldLabel}"
+                                       Margin="0,12,0,4"
+                                       Visibility="{Binding DeltekSnapshot.HasRecentProjects, Converter={StaticResource BoolToVis}}"/>
+                            <DataGrid ItemsSource="{Binding DeltekSnapshot.RecentProjects}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="Horizontal"
+                                      RowHeight="22"
+                                      MaxHeight="180"
+                                      Visibility="{Binding DeltekSnapshot.HasRecentProjects, Converter={StaticResource BoolToVis}}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Project" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Opened" Binding="{Binding OpenDate, StringFormat={}{0:yyyy-MM-dd}}" Width="100"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="80"/>
+                                    <DataGridTextColumn Header="Fee" Binding="{Binding Fee, StringFormat={}{0:C0}}" Width="110"/>
+                                    <DataGridTextColumn Header="Billed" Binding="{Binding FeeBilled, StringFormat={}{0:C0}}" Width="110"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
 
                             <TextBlock Text="Some Deltek sections were unavailable for this client."
                                        Style="{StaticResource FieldValue}"
                                        Foreground="{StaticResource Text.Secondary}"
                                        FontStyle="Italic"
+                                       Margin="0,8,0,0"
                                        Visibility="{Binding DeltekSnapshot.DegradedSections, Converter={StaticResource BoolToVis}}"/>
                         </StackPanel>
                     </StackPanel>
