@@ -463,7 +463,7 @@ public sealed class BriefGenerator : IBriefGenerator
         if (accentBottom)
         {
             props.AppendChild(new TableCellBorders(
-                new BottomBorder { Val = BorderValues.Single, Size = 12, Color = BrandAccent }));
+                new BottomBorder { Val = BorderValues.Single, Size = 6, Color = BrandAccent }));
         }
 
         return new TableCell(props, BuildPara(string.IsNullOrWhiteSpace(text) ? "—" : text!, BodyPt, bold, italic: false, align: null, bullet: false));
@@ -473,7 +473,7 @@ public sealed class BriefGenerator : IBriefGenerator
     {
         var props = new ParagraphProperties(
             new ParagraphBorders(
-                new BottomBorder { Val = BorderValues.Single, Size = 8, Color = BrandAccent }));
+                new BottomBorder { Val = BorderValues.Single, Size = 4, Color = BrandAccent }));
         body.AppendChild(new Paragraph(props, new Run(new Text(""))));
     }
 

@@ -366,7 +366,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void ComposeOrgDeltekSection(ColumnDescriptor column, OrgBriefDeltekSection dk)
     {
-        column.Item().BorderBottom(2).BorderColor(BrandAccent).PaddingBottom(4)
+        column.Item().BorderBottom(1).BorderColor(BrandAccent).PaddingBottom(4)
             .Text("KOR engagement history (Deltek)").FontSize(11.5f).Bold().FontColor(Brand);
 
         column.Item().Table(table =>
@@ -447,7 +447,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void DeltekProjectHeader(TableDescriptor table, string text)
     {
-        table.Cell().BorderBottom(2).BorderColor(BrandAccent).Padding(3)
+        table.Cell().BorderBottom(1).BorderColor(BrandAccent).Padding(3)
             .Text(text).FontSize(8).Bold().FontColor(Brand);
     }
 
@@ -539,7 +539,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         container.Column(column =>
         {
             column.Spacing(6);
-            column.Item().BorderBottom(2).BorderColor(BrandAccent).PaddingBottom(4)
+            column.Item().BorderBottom(1).BorderColor(BrandAccent).PaddingBottom(4)
                 .Text(heading).FontSize(11.5f).Bold().FontColor(Brand);
 
             foreach (var bullet in bullets)
