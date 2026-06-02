@@ -10,3 +10,14 @@ LoserId,SurvivorId,Reason
 70675,38918
 70948,38918
 71123,38918
+# 2026-06-01: Clendor-share dedup pairs. Each row pair shares the same
+# Deltek Clendor.ClientID (verified by the same ClendorClientId column on
+# both rows), which is a stronger truth-source than fuzzy name match.
+# Names differ via typo / acronym-prefix / paren-suffix / "The" / "LLP".
+69674,163
+69642,69589
+69780,69589
+69864,69589
+69943,69589
+69771,38969
+70156,68912
