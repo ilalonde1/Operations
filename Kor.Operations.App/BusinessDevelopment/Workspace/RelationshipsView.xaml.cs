@@ -1,10 +1,12 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.Opportunities;
+using Kor.Operations.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
@@ -138,6 +140,48 @@ public partial class RelationshipsView : UserControl
                 return;
             }
 
+            if (data is { DeltekClientId: { Length: > 0 } cid })
+            {
+                try
+                {
+                    var deltekSvc = AppServices.Get<Kor.Operations.App.Crm.IDeltekClientContextService>();
+                    var intel = await deltekSvc.LoadAsync(cid, CancellationToken.None).ConfigureAwait(true);
+                    if (intel is not null)
+                    {
+                        data = data with { Deltek = BuildDeltekSection(intel) };
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "Deltek section omitted: IDeltekClientContextService.LoadAsync returned null for ClientId '"
+                                + cid
+                                + "'.\n\nMost likely cause: no row in Deltek's Clendor table matches that ClientId from the App's ODBC connection.",
+                            "Generate Brief  Deltek returned no intel",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    }
+                }
+                catch (Exception deltekEx)
+                {
+                    MessageBox.Show(
+                        "Deltek section omitted from brief.\n\n"
+                            + deltekEx.GetType().Name + ": " + deltekEx.Message,
+                        "Generate Brief  Deltek skipped",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+            else
+            {
+                MessageBox.Show(
+                    "Deltek section omitted: OrgBriefData.DeltekClientId was null/empty for canonical org "
+                        + data.Id
+                        + " (" + data.DisplayName + ").\n\nCheck opportunities.CanonicalOrg.ClendorClientId for this Id.",
+                    "Generate Brief  no Deltek link",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+
             if (asPdf)
             {
                 var pdf = _services.GetRequiredService<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefPdfGenerator>();
@@ -159,6 +203,35 @@ public partial class RelationshipsView : UserControl
         {
             GenerateOrgBriefButton.IsEnabled = true;
         }
+    }
+
+    private static Kor.Opportunities.Data.Briefs.OrgBriefDeltekSection BuildDeltekSection(
+        Kor.Operations.App.Crm.DeltekClientIntelligence intel)
+    {
+        var topProjects = new List<Kor.Opportunities.Data.Briefs.OrgBriefDeltekProject>();
+        foreach (var p in intel.Projects)
+        {
+            if (topProjects.Count >= 5)
+            {
+                break;
+            }
+
+            topProjects.Add(new Kor.Opportunities.Data.Briefs.OrgBriefDeltekProject(
+                p.Wbs1, p.Name, p.OpenDate, p.Status, p.Fee, p.FeeBilled));
+        }
+
+        return new Kor.Opportunities.Data.Briefs.OrgBriefDeltekSection(
+            DeltekClientId: intel.ClientId,
+            ClientName: intel.ClientName,
+            ProjectCount: intel.ProjectCount,
+            LifetimeFee: intel.LifetimeFee,
+            LatestProjectStart: intel.LatestProjectStart,
+            LatestProjectName: intel.LatestProjectName,
+            RecentProjects: topProjects,
+            ContactCount: intel.Contacts.Count,
+            ArOutstanding: intel.Ar?.TotalOutstanding ?? 0m,
+            Ar90Plus: intel.Ar?.Outstanding90Plus ?? 0m,
+            DegradedSections: intel.HasDegradedSections);
     }
 
     private async Task SearchAsync()
