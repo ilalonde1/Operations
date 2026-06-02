@@ -80,18 +80,19 @@ public sealed class CanonicalOrgResolver
     {
         if (string.IsNullOrWhiteSpace(rawName)) return null;
         var trimmed = rawName.Trim();
-        var normalized = NormalizeName(trimmed);
+        var cleaned = StripIntakeNoise(trimmed);
+        var normalized = NormalizeName(cleaned);
 
         if (GenericNameDenylist.Contains(normalized))
         {
-            await RecordUnclassifiedAliasAsync(trimmed, source, 5, "denylist", "Generic organization name denylist", ct)
+            await RecordUnclassifiedAliasAsync(cleaned, source, 5, "denylist", "Generic organization name denylist", ct)
                 .ConfigureAwait(false);
             return null;
         }
 
         if (normalized.Length < 3)
         {
-            await RecordUnclassifiedAliasAsync(trimmed, source, 5, "too-short", "Normalized organization name shorter than 3 characters", ct)
+            await RecordUnclassifiedAliasAsync(cleaned, source, 5, "too-short", "Normalized organization name shorter than 3 characters", ct)
                 .ConfigureAwait(false);
             return null;
         }
@@ -112,15 +113,15 @@ public sealed class CanonicalOrgResolver
         {
             if (!allowCreate)
             {
-                await RecordUnclassifiedAliasAsync(trimmed, source, 10, "auto-unresolved", "Creation disabled for this source", ct)
+                await RecordUnclassifiedAliasAsync(cleaned, source, 10, "auto-unresolved", "Creation disabled for this source", ct)
                     .ConfigureAwait(false);
-                _logger.LogDebug("Org '{RawName}' ({Source}) was not resolved; creation disabled.", trimmed, source);
+                _logger.LogDebug("Org '{RawName}' ({Source}) was not resolved; creation disabled.", cleaned, source);
                 return null;
             }
 
             canonicalId = await _store.UpsertCanonicalOrgAsync(
                 kind: kind,
-                displayName: trimmed,
+                displayName: cleaned,
                 clendorClientId: null,
                 website: null,
                 notes: null,
@@ -147,7 +148,7 @@ public sealed class CanonicalOrgResolver
                 ct: ct).ConfigureAwait(false);
         }
 
-        _logger.LogDebug("Resolved org '{RawName}' ({Source}) to CanonicalOrgId {CanonicalOrgId}.", trimmed, source, canonicalId);
+        _logger.LogDebug("Resolved org '{RawName}' ({Source}) to CanonicalOrgId {CanonicalOrgId}.", cleaned, source, canonicalId);
         return canonicalId;
     }
 
@@ -186,6 +187,102 @@ public sealed class CanonicalOrgResolver
             .Replace(")", "", StringComparison.Ordinal)
             .Replace("+", "", StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Strips intake-time noise from a raw organization name so the resolver
+    /// lookup and (when creating) the DisplayName both reflect the firm's
+    /// actual brand. Applied BEFORE NormalizeName for lookup, and used as
+    /// the stored DisplayName when creating a new canonical.
+    ///
+    /// Patterns stripped:
+    /// - "PersonName DBA: BrandName" -> "BrandName"
+    /// - "1234567 BC Ltd o/a Brand" -> "Brand"
+    /// - Trailing procurement-status noise (Pre-Qualified, Bid Received,
+    ///   Successful Proponent, Contract Awarded, Weighted Evaluation,
+    ///   "is the successful", "Awarded" as trailing word, etc.)
+    ///
+    /// Returns the cleaned name. If the result is empty or under 3 chars,
+    /// returns the original trimmed input (caller's length check still applies).
+    /// Idempotent: StripIntakeNoise(StripIntakeNoise(x)) == StripIntakeNoise(x).
+    /// </summary>
+    public static string StripIntakeNoise(string input)
+    {
+        var original = input?.Trim() ?? string.Empty;
+        if (original.Length == 0)
+        {
+            return original;
+        }
+
+        var cleaned = original;
+
+        var dba = DbaPrefixRegex.Match(cleaned);
+        if (dba.Success)
+        {
+            cleaned = TrimLeadingIntakePunctuation(dba.Groups[1].Value);
+        }
+
+        var numberedWrapper = NumberedCorpOaRegex.Match(cleaned);
+        if (numberedWrapper.Success)
+        {
+            cleaned = numberedWrapper.Groups[1].Value.TrimStart();
+        }
+
+        var oaMatches = GenericOaRegex.Matches(cleaned);
+        if (oaMatches.Count > 0)
+        {
+            var last = oaMatches[^1];
+            cleaned = cleaned[(last.Index + last.Length)..].TrimStart();
+        }
+
+        cleaned = ProcurementNoiseRegex.Replace(cleaned, string.Empty);
+        cleaned = TrailingAwardedRegex.Replace(cleaned, string.Empty);
+        cleaned = TidyIntakeName(cleaned);
+
+        return VisibleCharCount(cleaned) < 3
+            ? original
+            : cleaned;
+    }
+
+    private static int VisibleCharCount(string value)
+    {
+        var count = 0;
+        foreach (var c in value)
+        {
+            if (!char.IsWhiteSpace(c))
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static string TrimLeadingIntakePunctuation(string value)
+        => value.TrimStart(' ', '\t', '\r', '\n', '.', ',', ';', ':', '-');
+
+    private static string TidyIntakeName(string value)
+        => value
+            .TrimEnd(' ', '\t', '\r', '\n', ',', ';', ':', '-')
+            .TrimStart(' ', '\t', '\r', '\n', ',', ':');
+
+    private static readonly System.Text.RegularExpressions.Regex DbaPrefixRegex = new(
+        @"\bdba\s*:\s*(.+)$",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex NumberedCorpOaRegex = new(
+        @"^\s*[\d()\s]+\s+(?:BC|Alberta|Ontario|Manitoba|Canada|Quebec|British\s+Columbia)\s+(?:Ltd|Inc|Corp|Limited|Incorporated|Corporation)\.?\s+o/a\s+(.+)$",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex GenericOaRegex = new(
+        @"\s+o/a\s+",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex ProcurementNoiseRegex = new(
+        @"\s+(?:(?:successfully\s+|successful\s+)?pre-?qualified|bid\s+received|bid\s+has\s+been\s+received|bid\s+has\s+not\s+been|bids?\s+have\s+not\s+been|received\s*[-/]?\s*not\s+reviewed|proposal\s+received\s+not\s+reviewed|proposal\s+have\s+not\s+been\s+reviewed|successful\s+(?:proponent|vendor|proposal|prequalified|bidder|tenderer|respondent|bid)|is\s+the\s+successful|contract\s+awarded|tender\s+awarded|weighted\s+evaluation|evaluation\s+is\s+under\s+review|the\s+short\s+listed\s+firms|highest\s+scoring|top\s+(?:ranked|scoring)|selected\s+(?:proponent|vendor|firm)|selected\s+as\s+(?:the\s+)?(?:successful|winning)|1\s+bid\s+received)\b.*$",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex TrailingAwardedRegex = new(
+        @"\s+awarded\b\s*$",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     // Pre-compiled patterns for the fuzzy normalizer.
     private static readonly System.Text.RegularExpressions.Regex SchoolDistrictNumberRegex = new(
