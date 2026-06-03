@@ -43,6 +43,7 @@ public sealed class JobScheduleRegistryHostedService : IHostedService
                     job.JobName,
                     cron,
                     job.Enabled(opt),
+                    job.Category,
                     cancellationToken).ConfigureAwait(false);
                 count++;
             }
