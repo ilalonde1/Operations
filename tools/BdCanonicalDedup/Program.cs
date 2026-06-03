@@ -105,6 +105,15 @@ internal static class Program
         // The table has UNIQUE(ArchitectCanonicalOrgId) so the collision
         // handler (DeleteDisplacementBriefCollisionsAsync) runs before repoint.
         new("ArchitectDisplacementBriefs", "ArchitectCanonicalOrgId"),
+        // Round 61a (2026-06-03): migration 60 added OpportunityInterestedFirms
+        // with FK to CanonicalOrg (NO CASCADE - resolver re-resolves on next
+        // pass). Without this entry, merges of any canonical that has been
+        // resolved as an interested firm fail with FK reference constraint
+        // violation. The table's unique key is (OpportunityId, RawFirmName)
+        // so no collision handler is needed - the same firm registering on
+        // the same opp via two different canonicals is impossible by design
+        // (resolver returns one canonical id per name).
+        new("OpportunityInterestedFirms", "ResolvedCanonicalOrgId"),
     };
 
     private static async Task<int> Main(string[] args)

@@ -892,3 +892,8 @@ LoserId,SurvivorId,Reason
 69737,69589
 71137,6154
 69111,38934
+# 2026-06-03 Round 61a: APC InterestedFirms backfill created a new "Kor Structural"
+# Competitor canonical (71524) when KOR self-registered on AB-2026-04147. Merge
+# into KOR's own canonical 38918 (KorStructural kind). The dedup tool's BestKind
+# logic preserves the KorStructural Kind on the survivor.
+71524,38918
