@@ -1,11 +1,5 @@
 ﻿GroupKey,SurvivorId,SurvivorName,SurvivorKind,LoserId,LoserName,LoserKind,FkRefsRepointed
-archaeologybranchministryofforests,860,Archaeology Branch Ministry of Forests,Buyer,71448,"Archaeology Branch
-Ministry of Forests",Buyer,3
-attorneygeneralprocurementservicesbranch,501,Attorney GeneralProcurement Services Branch,Buyer,71447,"Attorney General
-Procurement Services Branch",Buyer,3
-babinebctimbersalesbranch,71449,"Babine
-BC Timber Sales Branch",Buyer,539,Babine BC Timber Sales Branch,Buyer,4
-ministryofagricultureandfoodprocurementservicesbranch,858,Ministry of Agriculture and FoodProcurement Services Branch,Buyer,71451,"Ministry of Agriculture and Food
-Procurement Services Branch",Buyer,3
-ministryofcitizensservicesroyalbritishcolumbiamuseum,245,Ministry of Citizens' ServicesRoyal British Columbia Museum,Buyer,71450,"Ministry of Citizens' Services
-Royal British Columbia Museum",Buyer,3
+architecture49,2579,Architecture49 Inc.,Architect,71242,Architecture49,Architect,3
+francl,69646,Francl Architecture,Architect,71457,Francl Architecture Inc.,Architect,1
+gbl,54190,GBL Architects,Architect,71458,GBL Architects Inc.,Architect,1
+kmbrarchitectsplanners,71369,KMBR Architects Planners,Architect,71460,KMBR Architects Planners Inc.,Architect,1
