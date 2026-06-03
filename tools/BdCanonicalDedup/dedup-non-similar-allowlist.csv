@@ -881,3 +881,14 @@ LoserId,SurvivorId,Reason
 # 54823 "BC Transit / BC Ministry of Transportation and Infrastructure" is the reverse-name
 # variant of 54369 (decomposed Session 2). BC Transit is the operational transit authority. MPI=0.
 54823,71488
+# 2026-06-03 Round 60h: Deltek Bridge sweep linked 252 canonicals to Clendor. 11 Clendor
+# collisions surfaced (same ClendorClientId = same firm verified by KOR's ERP — stronger
+# than fuzzy name match per the Round 14c pattern). 7 merges below; 4 composite-name
+# canonicals (71466, 71485, 71480, 71476, 69234) left for Phase 3 decomposition.
+68615,38931
+38962,69123
+69607,2579
+38965,153
+69737,69589
+71137,6154
+69111,38934
