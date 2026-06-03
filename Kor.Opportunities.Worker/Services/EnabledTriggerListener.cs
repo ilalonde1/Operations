@@ -47,7 +47,13 @@ internal sealed class EnabledTriggerListener : ITriggerListener
             return false;
         }
 
-        if (trigger.JobDataMap.GetBooleanValue("manualTrigger"))
+        // Quartz.JobDataMap.GetBooleanValue throws KeyNotFoundException when the
+        // key is absent — which is the common case for scheduled fires. Guard
+        // with ContainsKey so we don't throw out of the listener (which Quartz
+        // converts to "Trigger and Job will NOT be fired", silently breaking
+        // the scheduler).
+        if (trigger.JobDataMap.ContainsKey("manualTrigger")
+            && trigger.JobDataMap.GetBooleanValue("manualTrigger"))
         {
             return false;
         }
