@@ -26,6 +26,14 @@ public sealed class SqlJobScheduleStore : IJobScheduleStore
 
     public async Task UpsertScheduleAsync(string jobName, string? cron, bool enabled, string? category, CancellationToken ct)
     {
+        // Contract:
+        // - Cron + Category come from the code-defined ScheduledJobDefinition and ARE
+        //   refreshed on every startup (code is authoritative).
+        // - Enabled is user-toggleable via UpdateEnabledAsync and the WPF admin grid.
+        //   We DO NOT overwrite it on UPDATE; the @enabled parameter is only used on
+        //   the first-create INSERT branch. Previously the UPDATE included
+        //   "Enabled = @enabled", which silently reverted every user toggle on the
+        //   next Worker restart.
         const string sql = @"
 SET XACT_ABORT ON;
 
@@ -33,7 +41,6 @@ BEGIN TRAN;
 
 UPDATE opportunities.JobSchedules WITH (UPDLOCK, HOLDLOCK)
 SET CronSchedule = @cron,
-    Enabled = @enabled,
     Category = @category,
     UpdatedAtUtc = sysdatetimeoffset()
 WHERE JobName = @jobName;
