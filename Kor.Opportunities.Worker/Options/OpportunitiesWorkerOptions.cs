@@ -191,6 +191,11 @@ public sealed class OpportunitiesWorkerOptions
     public int CanonicalOrgDedupMaxGroupsPerRun { get; set; } = 200;
     public string? CanonicalOrgDedupCronSchedule { get; set; }
 
+    public bool DataHealthAuditEnabled { get; set; } = true;
+    public string? DataHealthAuditCronSchedule { get; set; }
+    public string DataHealthAuditOutputDir { get; set; } =
+        @"C:\ProgramData\KorOperations\DataHealthAudit";
+
     public bool BdDeltekLinkDryRunEnabled { get; set; } = true;
     public int BdDeltekLinkDryRunMaxTargets { get; set; } = 5000;
     public int BdDeltekLinkDryRunAlertThreshold { get; set; } = 25;

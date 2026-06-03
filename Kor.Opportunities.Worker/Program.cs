@@ -678,6 +678,18 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  var dataHealthAuditKey = new JobKey("DataHealthAuditJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.DataHealthAuditJob>(opts => opts.WithIdentity(dataHealthAuditKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: Sundays at 07:00 Pacific, after the weekly dedup and ingest jobs settle.
+      var cron = builder.Configuration["DataHealthAuditCronSchedule"] ?? "0 0 7 ? * SUN";
+      t.ForJob(dataHealthAuditKey)
+       .WithIdentity("DataHealthAuditTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   var bdDeltekLinkDryRunKey = new JobKey("BdDeltekLinkDryRunJob");
   q.AddJob<Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob>(opts => opts.WithIdentity(bdDeltekLinkDryRunKey));
 
