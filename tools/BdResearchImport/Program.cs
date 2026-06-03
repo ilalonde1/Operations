@@ -3102,10 +3102,31 @@ internal static class Program
                     continue;
                 }
 
-                var ownerName = String(project, "owner");
-                var architectName = String(project, "architect");
-                var structuralName = String(project, "structuralEngineer");
-                var gcName = String(project, "generalContractor");
+                // Round 60g (2026-06-03): accept both base-schema field names
+                // (owner/architect/structuralEngineer/generalContractor) and the
+                // backfill-schema variants (proponentName/architectName/
+                // structuralName/generalContractorName) used by the overnight
+                // MPI NULL-team-backfill Sonnet session. Fall back to the
+                // original key when the backfill key isn't present.
+                var ownerName = String(project, "owner") ?? String(project, "proponentName");
+                var architectName = String(project, "architect") ?? String(project, "architectName");
+                var structuralName = String(project, "structuralEngineer") ?? String(project, "structuralName");
+                var gcName = String(project, "generalContractor") ?? String(project, "generalContractorName");
+
+                // Round 60g: if the entry includes mpiId, repoint the existing
+                // MPI row's FK columns directly (only when currently NULL — never
+                // overwrite existing attributions). Skip the full upsert path
+                // so we don't insert a duplicate MPI row.
+                var mpiId = LongOrNull(project, "mpiId");
+                if (mpiId.HasValue && mpiId.Value > 0)
+                {
+                    var architectIdForBackfill = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                    var structuralIdForBackfill = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectTeamsStructural", ct).ConfigureAwait(false);
+                    var gcIdForBackfill = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "ProjectTeamsGC", ct).ConfigureAwait(false);
+                    await BackfillMpiTeamAsync(options, stats, mpiId.Value, architectIdForBackfill, structuralIdForBackfill, gcIdForBackfill, architectName, structuralName, gcName, ct).ConfigureAwait(false);
+                    continue;
+                }
+
                 var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
                 var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectTeamsStructural", ct).ConfigureAwait(false);
@@ -4919,6 +4940,83 @@ WHERE  EngagementId = @eid
         }
 
         return id;
+    }
+
+    // Round 60g (2026-06-03): backfill team FKs onto an EXISTING MPI row by
+    // primary key. Only fills NULL columns - never overwrites existing
+    // attributions. Used by the project-teams backfill path when an entry
+    // includes mpiId. The Sonnet overnight session sourced rows from
+    // SELECT * FROM opportunities.MajorProjectsInventory WHERE FK IS NULL,
+    // so mpiId is authoritative.
+    private static async Task BackfillMpiTeamAsync(
+        ImportOptions options,
+        ImportStats stats,
+        long mpiId,
+        long? architectId,
+        long? structuralId,
+        long? gcId,
+        string? architectName,
+        string? structuralName,
+        string? gcName,
+        CancellationToken ct)
+    {
+        if (architectId is null && structuralId is null && gcId is null)
+        {
+            stats.ProjectRowsSkipped++;
+            if (!options.Quiet)
+            {
+                Console.WriteLine($"[SKIP] project-teams mpiId={mpiId}: no resolvable team IDs");
+            }
+            return;
+        }
+
+        if (options.DryRun)
+        {
+            if (!options.Quiet)
+            {
+                Console.WriteLine($"[DRY-RUN] project-teams mpiId={mpiId}: arch={architectId?.ToString() ?? "-"}; se={structuralId?.ToString() ?? "-"}; gc={gcId?.ToString() ?? "-"}");
+            }
+            return;
+        }
+
+        const string sql = @"
+UPDATE opportunities.MajorProjectsInventory
+SET
+    ArchitectCanonicalOrgId           = COALESCE(ArchitectCanonicalOrgId,           @archId),
+    StructuralEngineerCanonicalOrgId  = COALESCE(StructuralEngineerCanonicalOrgId,  @seId),
+    GeneralContractorCanonicalOrgId   = COALESCE(GeneralContractorCanonicalOrgId,   @gcId),
+    ArchitectName                     = CASE WHEN ArchitectCanonicalOrgId IS NULL AND @archName IS NOT NULL THEN @archName ELSE ArchitectName END,
+    StructuralEngineerName            = CASE WHEN StructuralEngineerCanonicalOrgId IS NULL AND @seName IS NOT NULL THEN @seName ELSE StructuralEngineerName END,
+    GeneralContractorName             = CASE WHEN GeneralContractorCanonicalOrgId IS NULL AND @gcName IS NOT NULL THEN @gcName ELSE GeneralContractorName END,
+    UpdatedAtUtc                      = sysdatetimeoffset()
+WHERE Id = @mpiId;";
+
+        await using var con = new Microsoft.Data.SqlClient.SqlConnection(options.OpportunitiesDb);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new Microsoft.Data.SqlClient.SqlCommand(sql, con) { CommandTimeout = 30 };
+        cmd.Parameters.Add("@mpiId", System.Data.SqlDbType.BigInt).Value = mpiId;
+        cmd.Parameters.Add("@archId", System.Data.SqlDbType.BigInt).Value = (object?)architectId ?? DBNull.Value;
+        cmd.Parameters.Add("@seId", System.Data.SqlDbType.BigInt).Value = (object?)structuralId ?? DBNull.Value;
+        cmd.Parameters.Add("@gcId", System.Data.SqlDbType.BigInt).Value = (object?)gcId ?? DBNull.Value;
+        cmd.Parameters.Add("@archName", System.Data.SqlDbType.NVarChar, 400).Value = string.IsNullOrWhiteSpace(architectName) ? DBNull.Value : (object)architectName;
+        cmd.Parameters.Add("@seName", System.Data.SqlDbType.NVarChar, 400).Value = string.IsNullOrWhiteSpace(structuralName) ? DBNull.Value : (object)structuralName;
+        cmd.Parameters.Add("@gcName", System.Data.SqlDbType.NVarChar, 400).Value = string.IsNullOrWhiteSpace(gcName) ? DBNull.Value : (object)gcName;
+        var rows = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+
+        if (rows == 0)
+        {
+            if (!options.Quiet)
+            {
+                Console.WriteLine($"[WARN] project-teams mpiId={mpiId}: row not found in opportunities.MajorProjectsInventory");
+            }
+            return;
+        }
+
+        IncrementProjectSource(stats, "project-teams-backfill");
+        if (!options.Quiet)
+        {
+            Console.WriteLine($"[BACKFILL] mpiId={mpiId}: arch={architectId?.ToString() ?? "-"}; se={structuralId?.ToString() ?? "-"}; gc={gcId?.ToString() ?? "-"}");
+        }
     }
 
     private static async Task UpsertMajorProjectAsync(ImportOptions options, ImportStats stats, MajorProjectRecord r, CancellationToken ct)

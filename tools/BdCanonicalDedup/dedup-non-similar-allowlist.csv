@@ -841,3 +841,26 @@ LoserId,SurvivorId,Reason
 # 55019 "Revery Architecture (design); Kasian (architect of record)" is a Bucket-B composite;
 # Revery is the design lead, Kasian is AOR. Names don't fuzzy-match so gate bypass required.
 55019,38974
+# 2026-06-02 Phase 3 Session 2: 3XN composites → new standalone 3XN canonical (71487)
+# 3XN is a Danish design architect; Ryder Architecture is the local Vancouver AOR on UBC Lower Mall Phase 1.
+# Composite names "3XN with Ryder Architecture" / "3XN GXN with Ryder Architecture" / "3XN (design architect)..."
+# don't fuzzy-match the standalone "3XN" canonical. UBC Lower Mall MPI rows (3070, 3956) repointed before merge.
+68877,71487
+70078,71487
+69921,71487
+# 2026-06-03 Round 60g: Project-Teams ingest follow-up. The 87 MPI backfills
+# created 16 new canonicals via name-resolution; 10 fold cleanly. For Yellowridge
+# (69893) and Urban One (69942) the EXISTING canonical carried parenthetical
+# intake-bug names; the new clean-named canonical survives. The remaining 6
+# composites (KPMB/Stantec, Gibbs Gage/Diamond Schmitt, Teeple/Stantec, Ledcor/
+# Balfour Beatty, Bow Transit Connectors, WSP/McElhanney) are Phase 3 fodder.
+69893,71504
+69942,71503
+71499,20517
+71498,70973
+71497,71495
+71496,69671
+71492,7017
+71491,38920
+71490,38934
+71505,18657
