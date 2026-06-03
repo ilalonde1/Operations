@@ -778,3 +778,25 @@ LoserId,SurvivorId,Reason
 67978,940
 68006,940
 54768,26929
+# 2026-06-02 Round 60b: Fast+Epp truncation / narrative-noise variants -> 7345
+# - "Fast" (truncated), "FAST & EPP STRUCTURAL ENGINEERS INC" (Deltek vendor name),
+#   parenthetical narrative variants where Fast+Epp is the only firm referenced.
+# - Composites that mention a 2nd firm (Hatch, WSP) are EXCLUDED from this merge
+#   (Ids 69834, 71262) - those need a separate MPI-row decomposition pass.
+69016,7345
+70384,7345
+69840,7345
+69837,7345
+# 2026-06-02 Round 60b: HDR-acquired CEI Architecture cleanup -> survivor 70635 "HDR".
+# - Pre-acquisition independent "CEI Architecture" (id 4552) STAYS as a separate
+#   canonical so projects from that era keep their attribution.
+# - Post-acquisition / hdrinc.com-domain variants merge into HDR.
+# - Composites that name a 2nd firm (HOK, Parkin) are excluded from this merge
+#   (Ids 54291, 69924) - separate decomposition pass needed.
+70679,70635
+68933,70635
+69028,70635
+69920,70635
+# Stage-leaked variant: "Shortlisted" status word in the canonical's DisplayName.
+# Same firm as the pre-acquisition CEI Architecture (id 4552, MPI=5).
+4553,4552
