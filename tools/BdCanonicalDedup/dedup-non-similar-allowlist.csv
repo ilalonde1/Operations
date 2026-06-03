@@ -800,3 +800,16 @@ LoserId,SurvivorId,Reason
 # Stage-leaked variant: "Shortlisted" status word in the canonical's DisplayName.
 # Same firm as the pre-acquisition CEI Architecture (id 4552, MPI=5).
 4553,4552
+# 2026-06-02 Round 60c: Phase-2 backfill surfaced 4 same-website duplicates.
+# Each pair shares an identical Website URL - strongest possible signal.
+# 53747 "Port Metro Vancouver" -> 54058 "Vancouver Fraser Port Authority"
+#   (Port Metro Vancouver was the public brand until 2014-15; VFPA is the legal entity)
+53747,54058
+# 53784 "Bosa Developments" -> 69677 "Bosa Development" (Nat Bosa's firm; Surrey)
+# Survivor 69677 will be reclassified Developer post-merge (currently mis-tagged Buyer).
+53784,69677
+# 53699 "Wall Group of Companies" -> 69250 "Wall Financial Corporation"
+#   (69250 is the legal name; 53699 is the trade-brand variant)
+53699,69250
+# 70097 "Intracorp" -> 53705 "Intracorp Developments"
+70097,53705
