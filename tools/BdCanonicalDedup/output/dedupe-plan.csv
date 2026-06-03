@@ -1,1 +1,32 @@
 ﻿GroupKey,SurvivorId,SurvivorName,SurvivorKind,LoserId,LoserName,LoserKind,FkRefsRepointed
+afwconstruction,41742,AFW CONSTRUCTION LTD,GC,63809,AFW Construction Ltd.,GC,3
+albercoconstruction,1977,Alberco Construction Ltd,GC,1980,Alberco Construction Ltd.,GC,3
+arteroofingandconstruction,2645,Arte Roofing and Construction Inc.,GC,2646,Arte Roofing and Construction Ltd.,GC,3
+binnieassociates,3324,Binnie & Associates Ltd.,Architect,3323,Binnie & Associates Ltd.,Vendor,4
+birdconstruction,54928,Bird Construction Inc.,GC,3359,Bird Construction Group Ltd,GC,3
+bremnerengineeringandconstruction,3693,Bremner Engineering and Construction Ltd.,GC,3694,Bremner Engineering and Construction Ltd.,GC,3
+carbonconstructors,4330,Carbon Constructors Inc,GC,4332,Carbon Constructors Inc.,GC,3
+collabor8architecturedesign,23970,collabor8 Architecture + Design Inc.,Architect,32566,collabor8 Architecture + Design Inc.,Architect,6
+diamondandschmitt,6179,Diamond and Schmitt Architects Inc.,Architect,6181,Diamond and Schmitt Architects Inc.,Architect,3
+driedgerconstruction,6404,Driedger Construction,GC,937,Driedger Construction,GC,3
+fencocontracting,7370,Fenco Contracting Ltd,GC,7371,FENCO Contracting Ltd.,GC,3
+gatewayassociationforcommunityliving,7946,Gateway Association for Community Living,Developer,7945,Gateway Association for Community Living,Vendor,3
+insightslearninganddevelopment,60821,Insights Learning and Development,Developer,57269,Insights Learning and Development,Developer,2
+jacobbrosconstruction,71076,Jacob Bros Construction,GC,9858,Jacob Bros. Construction Ltd.,GC,3
+johnstondavidsonarchitectureplanning,22529,Johnston Davidson Architecture + Planning Inc.,Architect,29922,Johnston Davidson Architecture + Planning,Architect,11
+kasianarchitectureinteriordesignandplanning,70543,Kasian Architecture Interior Design and Planning,Architect,35559,Kasian Architecture Interior Design and Planning,Architect,6
+kherahomes,23126,Khera Homes Ltd.,Developer,23128,Khera Homes Ltd,Unknown,34
+loracconstruction,11075,Lorac Construction Ltd,GC,11079,Lorac Construction Ltd.,GC,3
+louveccontracting,11096,Louvec Contracting Ltd,GC,1068,Louvec Contracting,GC,3
+nuenergymechanicalservices,12670,NuEnergy Mechanical Services Inc.,GC,12669,NuEnergy Mechanical Services Inc.,Vendor,3
+ripleyconstruction,996,Ripley Construction Ltd,GC,14488,ripley construction,GC,3
+rockylayneconstruction,44682,ROCKY LAYNE CONSTRUCTION LTD,GC,44710,Rocky Layne Construction Ltd,GC,5
+rulamcontracting,14787,Rulam Contracting Ltd,GC,14793,Rulam Contracting Ltd.,GC,3
+smithcarterarchitectsandengineers,15538,Smith Carter Architects and Engineers Inc.,Architect,63111,Smith Carter Architects and Engineers Inc.,Architect,3
+stantec,38934,Stantec Inc.,Competitor,15933,Stantec Architecture,Architect,3
+tmrrestorationconstruction,63728,TMR Restoration & Construction Inc.,GC,48880,TMR Restoration & Construction inc,Vendor,5
+tokerassociatesarchitectureindustrialdesign,17074,Toker & Associates Architecture Industrial Design Ltd.,Architect,17076,Toker + Associates Architecture Industrial Design Ltd.,Architect,3
+tokerassociatesarchitectureindustrialdesign,17074,Toker & Associates Architecture Industrial Design Ltd.,Architect,17077,Toker + Associates Architecture Industrial Design Ltd.,Architect,3
+uniballercontracting,17518,Uni-Baller Contracting,GC,17519,Uni-baller Contracting,GC,3
+unitechelectricalcontracting,17554,Unitech Electrical Contracting Inc.,GC,17553,UNITECH ELECTRICAL CONTRACTING INC,Vendor,16
+veenstracontracting,41401,VEENSTRA CONTRACTING,GC,63168,Veenstra Contracting,GC,3
