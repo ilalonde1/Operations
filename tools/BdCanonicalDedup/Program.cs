@@ -99,6 +99,12 @@ internal static class Program
         // next merge would fail FK validation or leave BD-tracking engagements
         // attached to the loser canonical id.
         new("CrmEngagements", "BuyerCanonicalOrgId"),
+        // Round 60e (2026-06-02): migration 59 added ArchitectDisplacementBriefs
+        // with FK ON DELETE CASCADE. Without this entry, every merge of an
+        // architect canonical silently destroyed its displacement brief.
+        // The table has UNIQUE(ArchitectCanonicalOrgId) so the collision
+        // handler (DeleteDisplacementBriefCollisionsAsync) runs before repoint.
+        new("ArchitectDisplacementBriefs", "ArchitectCanonicalOrgId"),
     };
 
     private static async Task<int> Main(string[] args)
@@ -175,6 +181,7 @@ internal static class Program
                         var result = await CommitGroupAsync(con, group, schema.NewsMentionTypeKeyExists).ConfigureAwait(false);
                         summary.EnrichmentCollisionsResolved += result.EnrichmentCollisionsResolved;
                         summary.NewsMentionCollisionsResolved += result.NewsMentionCollisionsResolved;
+                        summary.DisplacementBriefCollisionsResolved += result.DisplacementBriefCollisionsResolved;
                         summary.AliasesPreserved += result.AliasesPreserved;
                         summary.GroupsCommitted++;
                         foreach (var (table, count) in result.FkRepointsByTable)
@@ -337,6 +344,7 @@ internal static class Program
                 var result = await CommitGroupAsync(con, group, schema.NewsMentionTypeKeyExists).ConfigureAwait(false);
                 summary.EnrichmentCollisionsResolved += result.EnrichmentCollisionsResolved;
                 summary.NewsMentionCollisionsResolved += result.NewsMentionCollisionsResolved;
+                summary.DisplacementBriefCollisionsResolved += result.DisplacementBriefCollisionsResolved;
                 summary.AliasesPreserved += result.AliasesPreserved;
                 summary.GroupsCommitted++;
                 foreach (var (table, count) in result.FkRepointsByTable)
@@ -685,6 +693,7 @@ ORDER BY co.Id;";
             var result = new GroupCommitResult();
             result.EnrichmentCollisionsResolved = await DeleteEnrichmentCollisionsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
             result.NewsMentionCollisionsResolved = await DeleteNewsMentionCollisionsAsync(con, tx, group.Survivor.Id, newsMentionTypeKeyExists).ConfigureAwait(false);
+            result.DisplacementBriefCollisionsResolved = await DeleteDisplacementBriefCollisionsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
 
             foreach (var target in FkTargets)
             {
@@ -792,6 +801,40 @@ WHERE EXISTS (
     FROM opportunities.CanonicalOrgEnrichment survivor
     WHERE survivor.CanonicalOrgId = @survivor
       AND survivor.ProviderName = loser.ProviderName
+);";
+        await using var cmd = new SqlCommand(sql, con, tx);
+        cmd.Parameters.Add("@survivor", SqlDbType.BigInt).Value = survivorId;
+        return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
+    // ArchitectDisplacementBriefs has UNIQUE(ArchitectCanonicalOrgId): one row per
+    // architect. Repointing a loser's brief to a survivor that already has one
+    // would violate the unique key. Resolve by deleting loser rows when:
+    //   (a) two losers in the group both have briefs - keep the one with the
+    //       lowest Id (deterministic, matches the enrichment-collision pattern); OR
+    //   (b) survivor already has a brief - drop the loser's brief.
+    // The dropped brief is reproducible: re-running BdResearchImport with
+    // --only displacement-briefs upserts the JSON payload back onto the survivor.
+    private static async Task<int> DeleteDisplacementBriefCollisionsAsync(SqlConnection con, SqlTransaction tx, long survivorId)
+    {
+        const string sql = @"
+DELETE loser
+FROM opportunities.ArchitectDisplacementBriefs loser
+JOIN #Losers l ON l.Id = loser.ArchitectCanonicalOrgId
+WHERE EXISTS (
+    SELECT 1
+    FROM opportunities.ArchitectDisplacementBriefs other
+    JOIN #Losers otherLoser ON otherLoser.Id = other.ArchitectCanonicalOrgId
+    WHERE other.Id < loser.Id
+);
+
+DELETE loser
+FROM opportunities.ArchitectDisplacementBriefs loser
+JOIN #Losers l ON l.Id = loser.ArchitectCanonicalOrgId
+WHERE EXISTS (
+    SELECT 1
+    FROM opportunities.ArchitectDisplacementBriefs survivor
+    WHERE survivor.ArchitectCanonicalOrgId = @survivor
 );";
         await using var cmd = new SqlCommand(sql, con, tx);
         cmd.Parameters.Add("@survivor", SqlDbType.BigInt).Value = survivorId;
@@ -965,6 +1008,10 @@ JOIN #Losers l ON l.Id = co.Id;";
         {
             Console.WriteLine($"  News mention collisions resolved: {summary.NewsMentionCollisionsResolved}");
         }
+        if (summary.DisplacementBriefCollisionsResolved > 0)
+        {
+            Console.WriteLine($"  Displacement brief collisions resolved: {summary.DisplacementBriefCollisionsResolved}");
+        }
 
         Console.WriteLine("  FK repoints by table:");
         foreach (var target in FkTargets.Select(t => t.Table).Distinct().OrderBy(t => t, StringComparer.OrdinalIgnoreCase))
@@ -1033,6 +1080,7 @@ JOIN #Losers l ON l.Id = co.Id;";
         public int GroupsFailed { get; set; }
         public int EnrichmentCollisionsResolved { get; set; }
         public int NewsMentionCollisionsResolved { get; set; }
+        public int DisplacementBriefCollisionsResolved { get; set; }
         public int AliasesPreserved { get; set; }
         public int DbaGroups { get; set; }
         public int DbaMergeRows { get; set; }
@@ -1043,6 +1091,7 @@ JOIN #Losers l ON l.Id = co.Id;";
     {
         public int EnrichmentCollisionsResolved { get; set; }
         public int NewsMentionCollisionsResolved { get; set; }
+        public int DisplacementBriefCollisionsResolved { get; set; }
         public int AliasesPreserved { get; set; }
         public int LosersDeleted { get; set; }
         public Dictionary<string, long> FkRepointsByTable { get; } = new(StringComparer.OrdinalIgnoreCase);
