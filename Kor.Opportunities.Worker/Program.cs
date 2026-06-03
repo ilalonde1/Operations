@@ -495,6 +495,16 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.AlbertaPurchasingAwardsScraper>();
             builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IAwardProvider>(
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.AlbertaPurchasingAwardsScraper>());
+            // Round 61b: APC InterestedFirms continuous enrichment - shared
+            // extractor + per-canonical store. Both the Worker job and the
+            // one-shot ApcInterestBackfill tool resolve to the same extractor.
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ApcInterestExtractor>();
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore>(
+                sp =>
+                {
+                    var opts = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                    return new Kor.Opportunities.Data.Awards.SqlOpportunityInterestedFirmStore(opts.OpportunitiesDb!);
+                });
             builder.Services.AddHttpClient<SamGovOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(180);
@@ -701,6 +711,18 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["JobTriggerPollerCronSchedule"] ?? "0/15 * * * * ?";
       t.ForJob(jobTriggerPollerKey)
        .WithIdentity("JobTriggerPollerTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  // Round 61b: APC InterestedFirms continuous enrichment. Cadence: every hour
+  // at :17 past so it never lines up with the list-scrape passes.
+  var apcInterestEnrichmentKey = new JobKey(nameof(Kor.Opportunities.Worker.Services.ApcInterestEnrichmentJob));
+  q.AddJob<Kor.Opportunities.Worker.Services.ApcInterestEnrichmentJob>(opts => opts.WithIdentity(apcInterestEnrichmentKey));
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["ApcInterestEnrichmentCronSchedule"] ?? "0 17 0/1 * * ?";
+      t.ForJob(apcInterestEnrichmentKey)
+       .WithIdentity("ApcInterestEnrichmentTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 

@@ -200,6 +200,15 @@ public sealed class OpportunitiesWorkerOptions
     public string? JobTriggerPollerCronSchedule { get; set; }
     public int JobTriggerPollerBatchSize { get; set; } = 50;
 
+    // Round 61b: APC InterestedFirms continuous enrichment. After each APC
+    // list-scrape, the new postings have no detail-page data. This job
+    // queries unenriched APC opps and walks the detail page to populate
+    // opportunities.OpportunityInterestedFirms via the same scrape logic
+    // tools/ApcInterestBackfill uses.
+    public bool ApcInterestEnrichmentEnabled { get; set; } = true;
+    public string? ApcInterestEnrichmentCronSchedule { get; set; }
+    public int ApcInterestEnrichmentBatchSize { get; set; } = 30;
+
     public bool BdDeltekLinkDryRunEnabled { get; set; } = true;
     public int BdDeltekLinkDryRunMaxTargets { get; set; } = 5000;
     public int BdDeltekLinkDryRunAlertThreshold { get; set; } = 25;

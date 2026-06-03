@@ -37,5 +37,9 @@ internal static class ScheduledJobDefinitions
         new(nameof(GraphEmailIngestionJob), "GraphEmailCronSchedule", "0 0/15 * * * ?", _ => true, "Ingestion"),
         new(nameof(BcBidHistoricalEnrichmentJob), "BcBidHistoricalEnrichmentCronSchedule", "0 */5 * * * ?", _ => true, "Enrichment"),
         new(nameof(JobTriggerPollerJob), "JobTriggerPollerCronSchedule", "0/15 * * * * ?", o => o.JobTriggerPollerEnabled, "Maintenance"),
+        // Round 61b (2026-06-03): continuous APC detail-page enrichment.
+        // Default cadence: 30 minutes (matches APC list-scrape pace + leaves
+        // breathing room for the source query to find new unenriched opps).
+        new(nameof(ApcInterestEnrichmentJob), "ApcInterestEnrichmentCronSchedule", "0 17 0/1 * * ?", o => o.ApcInterestEnrichmentEnabled, "Enrichment"),
     ];
 }
