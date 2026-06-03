@@ -51,20 +51,6 @@ public partial class AdminView : UserControl
         CancelAndDisposeCts();
     }
 
-    private void ScheduledJobEnabled_Click(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is not AdminViewModel vm ||
-            sender is not CheckBox { DataContext: AdminViewModel.ScheduledJobRow row })
-        {
-            return;
-        }
-
-        if (vm.ToggleEnabledCommand.CanExecute(row))
-        {
-            vm.ToggleEnabledCommand.Execute(row);
-        }
-    }
-
     private CancellationTokenSource ReplaceCts()
     {
         var old = _cts;

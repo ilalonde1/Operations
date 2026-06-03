@@ -1,4 +1,5 @@
 <UserControl x:Class="Kor.Operations.App.BusinessDevelopment.Workspace.AdminView"
+             x:Name="AdminViewRoot"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
@@ -115,7 +116,8 @@
                                 <DataTemplate>
                                     <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                               HorizontalAlignment="Center"
-                                              Click="ScheduledJobEnabled_Click"/>
+                                              Command="{Binding DataContext.ToggleEnabledCommand, ElementName=AdminViewRoot}"
+                                              CommandParameter="{Binding}"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
