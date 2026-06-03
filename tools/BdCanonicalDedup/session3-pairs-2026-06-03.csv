@@ -1,0 +1,12 @@
+LoserId,SurvivorId,Reason
+# Phase 3 Session 3 — 2026-06-03
+# Group 1: Revery/Kasian composites → 38974 (Revery Architecture Inc.)
+69846,38974,Revery design lead Kasian AOR — MPI=0 variant
+69885,38974,Revery design lead Kasian AOR — South Burrard (MpiId=1294 repointed)
+69375,38974,Revery design lead Kasian AOR — Senakw (MpiId=4871 repointed)
+# Group 2: Squamish Nation composites → 71489 (Squamish Nation)
+69377,71489,Squamish Nation primary — Hiyam+Nchkay subsidiaries (MpiId=4873 repointed)
+69378,71489,Squamish Nation primary — Hiyam housing arm (MpiId=4874 repointed)
+71418,71489,Squamish Nation primary — apostrophe-variant MPI=0
+# Group 3: BC Transit reverse → 71488 (BC Transit)
+54823,71488,BC Transit primary — reverse-name variant of 54369 MPI=0

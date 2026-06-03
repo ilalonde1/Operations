@@ -864,3 +864,20 @@ LoserId,SurvivorId,Reason
 71491,38920
 71490,38934
 71505,18657
+# 2026-06-03 Phase 3 Session 3: Revery/Kasian variant composites → Revery Architecture Inc. (38974)
+# Three remaining composite variants of the 55019 pattern (decomposed Session 1).
+# Revery is design lead; Kasian is AOR. Names don't fuzzy-match standalone "Revery Architecture Inc."
+# MPI repoints: MpiId=1294 (Arch 69885→38974), MpiId=4871 (Arch 69375→38974). 69846 was MPI=0.
+69846,38974
+69885,38974
+69375,38974
+# 2026-06-03 Phase 3 Session 3: Squamish Nation composite variants → Squamish Nation canonical (71489)
+# All three are Nation-subsidiary composites (housing arm Hiy̓ám̓ ta Sḵwx̱wú7mesh / dev arm Nch'ḵay̓).
+# MPI repoints: MpiId=4873 (Prop 69377→71489), MpiId=4874 (Prop 69378→71489). 71418 was MPI=0.
+69377,71489
+69378,71489
+71418,71489
+# 2026-06-03 Phase 3 Session 3: BC Transit reverse composite → BC Transit canonical (71488)
+# 54823 "BC Transit / BC Ministry of Transportation and Infrastructure" is the reverse-name
+# variant of 54369 (decomposed Session 2). BC Transit is the operational transit authority. MPI=0.
+54823,71488
