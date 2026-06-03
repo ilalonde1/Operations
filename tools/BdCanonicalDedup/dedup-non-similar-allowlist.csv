@@ -813,3 +813,27 @@ LoserId,SurvivorId,Reason
 53699,69250
 # 70097 "Intracorp" -> 53705 "Intracorp Developments"
 70097,53705
+# 2026-06-02 Round 60d: displacement-brief import name-resolution created
+# 25 new architect canonicals. 16 of them fold cleanly into pre-existing
+# canonicals (same firm, different name punctuation/branch/legal-form/typo).
+# 10 are true composites left for Phase 3 decomposition.
+71467,38974
+71462,2579
+71478,38934
+71474,17
+71477,38960
+71475,68913
+71484,54674
+71479,70635
+71481,69703
+71470,153
+71473,70543
+71472,69109
+71471,38969
+71469,54571
+71468,69688
+# dHK / deHoog & Kierulf cluster (all share dhk.ca; survivor=54246 legal name)
+70800,54246
+61,54246
+69170,54246
+69171,54246
