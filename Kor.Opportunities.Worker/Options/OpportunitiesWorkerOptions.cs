@@ -196,6 +196,10 @@ public sealed class OpportunitiesWorkerOptions
     public string DataHealthAuditOutputDir { get; set; } =
         @"C:\ProgramData\KorOperations\DataHealthAudit";
 
+    public bool JobTriggerPollerEnabled { get; set; } = true;
+    public string? JobTriggerPollerCronSchedule { get; set; }
+    public int JobTriggerPollerBatchSize { get; set; } = 50;
+
     public bool BdDeltekLinkDryRunEnabled { get; set; } = true;
     public int BdDeltekLinkDryRunMaxTargets { get; set; } = 5000;
     public int BdDeltekLinkDryRunAlertThreshold { get; set; } = 25;

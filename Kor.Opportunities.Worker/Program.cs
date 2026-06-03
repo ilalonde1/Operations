@@ -26,6 +26,7 @@ using Microsoft.Extensions.Options;
 using Polly;
 using Polly.Extensions.Http;
 using Quartz;
+using Quartz.Impl.Matchers;
 using Serilog;
 
 namespace Kor.Opportunities.Worker;
@@ -543,6 +544,8 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddSingleton<IIngestionService, IngestionService>();
             builder.Services.AddSingleton<IIngestionDispatcher, IngestionDispatcher>();
             builder.Services.AddSingleton<AwardIngestionService>();
+            builder.Services.AddSingleton<EnabledTriggerListener>();
+            builder.Services.AddSingleton<LastReportPathListener>();
 
             /*
              * Quartz cadence design:
@@ -690,6 +693,17 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  var jobTriggerPollerKey = new JobKey(nameof(Kor.Opportunities.Worker.Services.JobTriggerPollerJob));
+  q.AddJob<Kor.Opportunities.Worker.Services.JobTriggerPollerJob>(opts => opts.WithIdentity(jobTriggerPollerKey));
+
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["JobTriggerPollerCronSchedule"] ?? "0/15 * * * * ?";
+      t.ForJob(jobTriggerPollerKey)
+       .WithIdentity("JobTriggerPollerTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   var bdDeltekLinkDryRunKey = new JobKey("BdDeltekLinkDryRunJob");
   q.AddJob<Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob>(opts => opts.WithIdentity(bdDeltekLinkDryRunKey));
 
@@ -822,6 +836,9 @@ builder.Services.AddQuartz(q =>
                      .WithIdentity("BcBidHistoricalEnrichmentTrigger")
                      .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
                 });
+
+                q.AddTriggerListener<EnabledTriggerListener>(EverythingMatcher<TriggerKey>.AllTriggers());
+                q.AddJobListener<LastReportPathListener>(EverythingMatcher<JobKey>.AllJobs());
             });
             builder.Services.AddHostedService<JobScheduleRegistryHostedService>();
             builder.Services.AddHostedService<JobRunLoggingListenerHostedService>();

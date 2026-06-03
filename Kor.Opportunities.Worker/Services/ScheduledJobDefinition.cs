@@ -36,5 +36,6 @@ internal static class ScheduledJobDefinitions
         new(nameof(SamGovIngestionJob), "SamGovCronSchedule", "0 0 6 * * ?", _ => true, "Ingestion"),
         new(nameof(GraphEmailIngestionJob), "GraphEmailCronSchedule", "0 0/15 * * * ?", _ => true, "Ingestion"),
         new(nameof(BcBidHistoricalEnrichmentJob), "BcBidHistoricalEnrichmentCronSchedule", "0 */5 * * * ?", _ => true, "Enrichment"),
+        new(nameof(JobTriggerPollerJob), "JobTriggerPollerCronSchedule", "0/15 * * * * ?", o => o.JobTriggerPollerEnabled, "Maintenance"),
     ];
 }
