@@ -68,6 +68,7 @@ internal static class Program
             var orgStore = db is null ? null : new SqlCanonicalOrgStore(db);
             var enrichmentStore = db is null ? null : new SqlEnrichmentTrackingStore(db);
             var industryEventStore = db is null ? null : new SqlIndustryEventStore(db);
+            var displacementBriefStore = db is null ? null : new SqlArchitectDisplacementBriefStore(db);
             var resolver = orgStore is null
                 ? null
                 : new CanonicalOrgResolver(orgStore, NullLogger<CanonicalOrgResolver>.Instance);
@@ -127,6 +128,7 @@ internal static class Program
             if (Run("owner-procurement")) await ImportOwnerProcurementAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("competitor-signals")) await ImportCompetitorSignalsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("structural-partner-map")) await ImportStructuralPartnerMapAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            if (Run("displacement-briefs")) await ImportDisplacementBriefsAsync(options, displacementBriefStore, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("sub-consultants")) await ImportSubConsultantsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
             if (Run("facility-renewal")) await ImportFacilityRenewalAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
             if (Run("projects-honing")) await ImportProjectsHoningAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
@@ -2111,6 +2113,118 @@ internal static class Program
                     orgName,
                     ct).ConfigureAwait(false);
             }
+        }
+    }
+
+    private static async Task ImportDisplacementBriefsAsync(
+        ImportOptions options,
+        SqlArchitectDisplacementBriefStore? briefStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        var path = Path.Combine(options.BaseDirectory, "KOR-Structural-Partner-Map", "outputs", "displacement-briefs.json");
+        if (!TryLoadJson(path, out var doc))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var written = 0;
+            var skippedNoArchitect = 0;
+            var skippedLowConfidence = 0;
+
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+
+                // architectId is the primary key. The Sonnet brief writes it
+                // verbatim from structural-partner-map.json; we trust it but
+                // verify the canonical row still exists. If it's been merged
+                // into a survivor, fall back to resolving by architectName so
+                // a merge does not silently drop the brief.
+                var architectId = LongOrNull(element, "architectId");
+                var architectName = String(element, "architectName");
+
+                if (!architectId.HasValue && string.IsNullOrWhiteSpace(architectName))
+                {
+                    skippedNoArchitect++;
+                    continue;
+                }
+
+                if (!architectId.HasValue && !string.IsNullOrWhiteSpace(architectName))
+                {
+                    architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, "DisplacementBrief", ct).ConfigureAwait(false);
+                }
+
+                if (!architectId.HasValue)
+                {
+                    skippedNoArchitect++;
+                    continue;
+                }
+
+                // Hard rule from the Sonnet prompt: confidenceScore < 0.3
+                // briefs are written as "skipped" entries. Defensive guard
+                // here in case any slipped through.
+                var confidence = Decimal(element, "confidenceScore");
+                if (confidence.HasValue && confidence.Value < 0.30m)
+                {
+                    skippedLowConfidence++;
+                    continue;
+                }
+
+                var market = String(element, "market");
+                var korPriority = String(element, "korPriority");
+                var generatedAt = DateTimeOffset.UtcNow;
+                if (element.TryGetProperty("_meta", out var metaEl) && metaEl.ValueKind == JsonValueKind.Object)
+                {
+                    var raw = String(metaEl, "generatedAt");
+                    if (!string.IsNullOrWhiteSpace(raw)
+                        && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
+                    {
+                        generatedAt = parsed;
+                    }
+                }
+
+                if (options.DryRun)
+                {
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine($"[DRY-RUN] DisplacementBrief: architectId={architectId} priority={korPriority} confidence={confidence}");
+                    }
+                    written++;
+                    continue;
+                }
+
+                if (briefStore is null)
+                {
+                    throw new InvalidOperationException("Displacement brief store is not available.");
+                }
+
+                await briefStore.UpsertAsync(
+                    architectCanonicalOrgId: architectId.Value,
+                    market: market,
+                    korPriority: korPriority,
+                    confidenceScore: confidence,
+                    briefJson: element.GetRawText(),
+                    generatedAtUtc: generatedAt,
+                    ct: ct).ConfigureAwait(false);
+
+                written++;
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"[WRITE ] DisplacementBrief: architectId={architectId} priority={korPriority} confidence={confidence}");
+                }
+            }
+
+            Console.WriteLine($"Displacement briefs: written={written}; skippedNoArchitect={skippedNoArchitect}; skippedLowConfidence={skippedLowConfidence}");
         }
     }
 
