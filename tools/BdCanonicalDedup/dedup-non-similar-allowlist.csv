@@ -837,3 +837,7 @@ LoserId,SurvivorId,Reason
 61,54246
 69170,54246
 69171,54246
+# 2026-06-02 Phase 3 Composite Decomposition: Revery/Kasian composites → Revery Architecture Inc. (38974)
+# 55019 "Revery Architecture (design); Kasian (architect of record)" is a Bucket-B composite;
+# Revery is the design lead, Kasian is AOR. Names don't fuzzy-match so gate bypass required.
+55019,38974
