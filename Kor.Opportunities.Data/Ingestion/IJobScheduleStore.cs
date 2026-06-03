@@ -16,6 +16,8 @@ public interface IJobScheduleStore
 
     Task UpdateLastReportPathAsync(string jobName, string? reportPath, CancellationToken ct);
 
+    Task UpdateNextFireAsync(string jobName, DateTimeOffset? nextFireAtUtc, CancellationToken ct);
+
     Task<long> EnqueueTriggerAsync(string jobName, string? requestedBy, CancellationToken ct);
 
     Task<IReadOnlyList<JobTriggerRequestRow>> ListPendingTriggersAsync(int top, CancellationToken ct);
@@ -25,6 +27,10 @@ public interface IJobScheduleStore
     Task MarkTriggerFailedAsync(long requestId, string errorMessage, CancellationToken ct);
 
     Task<IReadOnlyList<JobRunRow>> GetRecentRunsAsync(string jobName, int top, CancellationToken ct);
+
+    Task<IReadOnlyList<BareBdTargetRow>> GetBareTopTargetsAsync(int top, int minMpiRefs, CancellationToken ct);
+
+    Task<DateTimeOffset?> GetMostRecentJobRunStartedAtUtcAsync(CancellationToken ct);
 }
 
 public sealed record JobTriggerRequestRow(

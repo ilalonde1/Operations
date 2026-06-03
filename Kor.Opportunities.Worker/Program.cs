@@ -841,6 +841,7 @@ builder.Services.AddQuartz(q =>
                 q.AddJobListener<LastReportPathListener>(EverythingMatcher<JobKey>.AllJobs());
             });
             builder.Services.AddHostedService<JobScheduleRegistryHostedService>();
+            builder.Services.AddHostedService<JobScheduleNextFireUpdaterHostedService>();
             builder.Services.AddHostedService<JobRunLoggingListenerHostedService>();
             builder.Services.AddQuartzHostedService(opts =>
             {

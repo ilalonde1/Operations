@@ -84,7 +84,8 @@ SELECT
     s.LastReportPath,
     r.StartedAtUtc AS LastRunAtUtc,
     r.Success AS LastSuccess,
-    r.Summary AS LastSummary
+    r.Summary AS LastSummary,
+    s.NextFireAtUtc
 FROM opportunities.JobSchedules s
 LEFT JOIN LatestRuns r
     ON r.JobName = s.JobName
@@ -107,7 +108,8 @@ ORDER BY s.JobName;";
                 reader.IsDBNull(4) ? null : reader.GetString(4),
                 reader.IsDBNull(5) ? null : reader.GetDateTimeOffset(5),
                 reader.IsDBNull(6) ? null : reader.GetBoolean(6),
-                reader.IsDBNull(7) ? null : reader.GetString(7)));
+                reader.IsDBNull(7) ? null : reader.GetString(7),
+                reader.IsDBNull(8) ? null : reader.GetDateTimeOffset(8)));
         }
 
         return rows;
@@ -142,6 +144,22 @@ WHERE JobName = @j;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@j", SqlDbType.NVarChar, 100).Value = TrimTo(jobName, 100);
         cmd.Parameters.Add("@p", SqlDbType.NVarChar, 500).Value = (object?)TrimTo(reportPath, 500) ?? DBNull.Value;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task UpdateNextFireAsync(string jobName, DateTimeOffset? nextFireAtUtc, CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE opportunities.JobSchedules
+SET NextFireAtUtc = @next,
+    UpdatedAtUtc = sysdatetimeoffset()
+WHERE JobName = @j;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@j", SqlDbType.NVarChar, 100).Value = TrimTo(jobName, 100);
+        cmd.Parameters.Add("@next", SqlDbType.DateTimeOffset).Value = (object?)nextFireAtUtc ?? DBNull.Value;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
@@ -260,6 +278,54 @@ ORDER BY StartedAtUtc DESC;";
         }
 
         return rows;
+    }
+
+    public async Task<IReadOnlyList<BareBdTargetRow>> GetBareTopTargetsAsync(int top, int minMpiRefs, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (@top) co.Kind, co.Id, co.DisplayName,
+  (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
+     WHERE ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id
+        OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id) AS MpiRefs
+FROM opportunities.CanonicalOrg co
+WHERE co.Kind IN ('Architect','Buyer','Developer','GC','Competitor')
+  AND co.Website IS NULL
+  AND (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
+         WHERE ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id
+            OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id) >= @minRefs
+ORDER BY MpiRefs DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@top", SqlDbType.Int).Value = top;
+        cmd.Parameters.Add("@minRefs", SqlDbType.Int).Value = minMpiRefs;
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.Default, ct).ConfigureAwait(false);
+
+        var rows = new List<BareBdTargetRow>();
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new BareBdTargetRow(
+                reader.GetString(0),
+                reader.GetInt64(1),
+                reader.GetString(2),
+                Convert.ToInt64(reader.GetValue(3))));
+        }
+
+        return rows;
+    }
+
+    public async Task<DateTimeOffset?> GetMostRecentJobRunStartedAtUtcAsync(CancellationToken ct)
+    {
+        const string sql = @"
+SELECT MAX(StartedAtUtc)
+FROM opportunities.JobRuns;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        var value = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return value is null || value == DBNull.Value ? null : (DateTimeOffset)value;
     }
 
     private static string? TrimTo(string? value, int maxLength)

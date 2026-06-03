@@ -21,13 +21,35 @@
 
     <Grid Margin="14">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="2*"/>
             <RowDefinition Height="2*"/>
             <RowDefinition Height="2*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,12">
+        <Border Grid.Row="0" Padding="10,6" Margin="0,0,0,6">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="#E8E8E8"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ServiceStatusKind}" Value="Healthy">
+                            <Setter Property="Background" Value="#DFF0D8"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding ServiceStatusKind}" Value="Idle">
+                            <Setter Property="Background" Value="#FCF8E3"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding ServiceStatusKind}" Value="Stale">
+                            <Setter Property="Background" Value="#F2DEDE"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="{Binding ServiceStatusLine}" FontWeight="SemiBold"/>
+        </Border>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -55,7 +77,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,12">
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -84,9 +106,10 @@
                             </GroupStyle.HeaderTemplate>
                         </GroupStyle>
                     </DataGrid.GroupStyle>
-                    <DataGrid.Columns>
+                        <DataGrid.Columns>
                         <DataGridTextColumn Header="Job" Binding="{Binding JobName}" Width="240" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Cron" Binding="{Binding CronSchedule}" Width="150" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Next fire" Binding="{Binding NextFireDisplay}" Width="110" IsReadOnly="True"/>
                         <DataGridTemplateColumn Header="Enabled" Width="70">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -129,7 +152,7 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="*"/>
@@ -193,7 +216,38 @@
             </Border>
         </Grid>
 
-        <TextBlock Grid.Row="3"
+        <Border Grid.Row="4" Style="{StaticResource Card}" Padding="12" Margin="0,12,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Bare BD Targets (high-MPI canonicals lacking website / enrichment)"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding BareBdTargets}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          MaxHeight="260">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="90"/>
+                        <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="70"/>
+                        <DataGridTextColumn Header="Display name" Binding="{Binding DisplayName}" Width="*"/>
+                        <DataGridTextColumn Header="MPI refs" Binding="{Binding MpiRefs}" Width="90"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="5"
                    Text="{Binding StatusMessage}"
                    Margin="0,10,0,0"
                    Foreground="{StaticResource Text.Secondary}"

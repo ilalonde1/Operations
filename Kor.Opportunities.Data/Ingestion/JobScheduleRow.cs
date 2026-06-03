@@ -11,4 +11,5 @@ public sealed record JobScheduleRow(
     string? LastReportPath,
     DateTimeOffset? LastRunAtUtc,
     bool? LastSuccess,
-    string? LastSummary);
+    string? LastSummary,
+    DateTimeOffset? NextFireAtUtc);

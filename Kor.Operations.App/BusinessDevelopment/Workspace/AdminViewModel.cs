@@ -31,6 +31,8 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
     private readonly IJobScheduleStore _schedules;
     private readonly IBdDashboardStore _dashboard;
     private string _statusMessage = "Ready.";
+    private string _serviceStatusLine = "Worker status: ";
+    private string _serviceStatusKind = "Unknown";
 
     public AdminViewModel(
         IOpportunitySourceStore sources,
@@ -61,6 +63,8 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
 
     public ObservableCollection<DataHealthRow> Health { get; } = new();
 
+    public ObservableCollection<BareBdTargetRow> BareBdTargets { get; } = new();
+
     public ICommand RunNowCommand { get; }
 
     public ICommand ToggleEnabledCommand { get; }
@@ -75,6 +79,18 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         private set => SetField(ref _statusMessage, value);
     }
 
+    public string ServiceStatusLine
+    {
+        get => _serviceStatusLine;
+        private set => SetField(ref _serviceStatusLine, value);
+    }
+
+    public string ServiceStatusKind
+    {
+        get => _serviceStatusKind;
+        private set => SetField(ref _serviceStatusKind, value);
+    }
+
     public async Task LoadAsync(CancellationToken ct)
     {
         try
@@ -84,13 +100,17 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
             var runs = await _runs.ListRecentAsync(50, ct).ConfigureAwait(true);
             var schedules = await _schedules.ListWithLastRunAsync(ct).ConfigureAwait(true);
             var health = await _dashboard.GetDataHealthAsync(ct).ConfigureAwait(true);
+            var mostRecent = await _schedules.GetMostRecentJobRunStartedAtUtcAsync(ct).ConfigureAwait(true);
+            var bare = await _schedules.GetBareTopTargetsAsync(top: 25, minMpiRefs: 5, ct).ConfigureAwait(true);
             ct.ThrowIfCancellationRequested();
 
             Replace(Sources, sources);
             Replace(RecentRuns, runs.Select(ToRunRow));
             Replace(ScheduledJobs, schedules.Select(ToScheduledJobRow));
             Replace(Health, health);
-            StatusMessage = $"Loaded {sources.Count:N0} sources, {schedules.Count:N0} job schedules, {runs.Count:N0} recent runs, {health.Count:N0} health rows.";
+            Replace(BareBdTargets, bare);
+            UpdateServiceStatus(mostRecent);
+            StatusMessage = $"Loaded {sources.Count:N0} sources, {schedules.Count:N0} job schedules, {runs.Count:N0} recent runs, {health.Count:N0} health rows, {bare.Count:N0} bare BD targets.";
         }
         catch (OperationCanceledException)
         {
@@ -121,7 +141,36 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
             row.Category,
             row.LastReportPath,
             row.LastRunAtUtc?.LocalDateTime.ToString("yyyy-MM-dd HH:mm") ?? "",
-            FormatScheduleResult(row.LastSuccess, row.LastSummary));
+            FormatScheduleResult(row.LastSuccess, row.LastSummary),
+            row.NextFireAtUtc);
+
+    private void UpdateServiceStatus(DateTimeOffset? mostRecent)
+    {
+        if (mostRecent is null)
+        {
+            ServiceStatusLine = "Worker status: no JobRuns history yet.";
+            ServiceStatusKind = "Unknown";
+            return;
+        }
+
+        var age = DateTimeOffset.UtcNow - mostRecent.Value;
+        var ageMin = age.TotalMinutes;
+        if (ageMin < 2)
+        {
+            ServiceStatusKind = "Healthy";
+            ServiceStatusLine = $"Worker: Healthy - last job {(int)age.TotalSeconds}s ago.";
+        }
+        else if (ageMin < 15)
+        {
+            ServiceStatusKind = "Idle";
+            ServiceStatusLine = $"Worker: Idle - last job {(int)ageMin}m ago.";
+        }
+        else
+        {
+            ServiceStatusKind = "Stale";
+            ServiceStatusLine = $"Worker: STALE - last job {(int)ageMin}m ago. Service may be down.";
+        }
+    }
 
     private async Task RunNowAsync(ScheduledJobRow? row)
     {
@@ -262,6 +311,7 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         private bool _isEnabled;
         private string? _category;
         private string? _lastReportPath;
+        private DateTimeOffset? _nextFireAtUtc;
 
         public ScheduledJobRow(
             string jobName,
@@ -270,7 +320,8 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
             string? category,
             string? lastReportPath,
             string lastRun,
-            string result)
+            string result,
+            DateTimeOffset? nextFireAtUtc)
         {
             JobName = jobName;
             CronSchedule = cronSchedule;
@@ -279,6 +330,7 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
             _lastReportPath = lastReportPath;
             LastRun = lastRun;
             Result = result;
+            _nextFireAtUtc = nextFireAtUtc;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -311,6 +363,52 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         {
             get => _isEnabled;
             set => SetField(ref _isEnabled, value);
+        }
+
+        public DateTimeOffset? NextFireAtUtc
+        {
+            get => _nextFireAtUtc;
+            set
+            {
+                if (SetField(ref _nextFireAtUtc, value))
+                {
+                    OnPropertyChanged(nameof(NextFireDisplay));
+                }
+            }
+        }
+
+        public string NextFireDisplay
+        {
+            get
+            {
+                if (NextFireAtUtc is null)
+                {
+                    return string.Empty;
+                }
+
+                var delta = NextFireAtUtc.Value - DateTimeOffset.UtcNow;
+                if (delta.TotalSeconds < -5)
+                {
+                    return "missed";
+                }
+
+                if (delta.TotalSeconds < 60)
+                {
+                    return $"in {(int)Math.Max(0, delta.TotalSeconds)}s";
+                }
+
+                if (delta.TotalMinutes < 60)
+                {
+                    return $"in {(int)delta.TotalMinutes}m";
+                }
+
+                if (delta.TotalHours < 24)
+                {
+                    return $"in {(int)delta.TotalHours}h {(int)(delta.TotalMinutes % 60)}m";
+                }
+
+                return NextFireAtUtc.Value.ToLocalTime().ToString("MMM d HH:mm");
+            }
         }
 
         public string LastRun { get; }
