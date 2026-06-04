@@ -16,6 +16,15 @@ The main Claude account ingests the JSON when it's back online.
 |---|---|---|---|---|
 | A — Polish gathered evidence | `AgentA-PolishEvidence.md` | `gathered-evidence-<date>/evidence/evidence-*.json` (Step 2 output) | `outputs/polished-batch-NN.json` + summary | Anything after Step 2 finishes |
 | B — Architect-Pipelines deep research | `AgentB-ArchitectDeepResearch.md` | `discovered-websites.csv` (Step 1 output) | `outputs/architects-deep-batch-NN.json` + summary | Step 2, Agent A, anything |
+| **C — AB forward pipeline (trip-prep)** | `AgentC-AlbertaForwardPipeline.md` | Owner capital plans (researched live) | `outputs/alberta-pipeline-batch-NN.json` (MPI-shape) + summary | Anything |
+| **D — Calgary architect targets (trip-prep)** | `AgentD-CalgaryArchitectTargets.md` | Top-30 Calgary architects researched live | `outputs/calgary-architects-batch-NN.json` (Architect-Pipelines shape) + summary | Anything |
+| **E — AB competitors + decision-makers (trip-prep)** | `AgentE-AlbertaCompetitorAndDecisionMakers.md` | Competitor + owner research live | `outputs/alberta-competitors-batch-NN.json` + `alberta-decision-makers-batch-NN.json` + summary | Anything |
+
+Agents **C / D / E are trip-prep**: focused on Alberta as a whole with Calgary + southern AB priority. Run all three in parallel under different accounts to maximize coverage before the BD team's trip next week. Together they feed:
+- MPI forward-pipeline rows (Agent C) → Region Brief "forward pipeline" + "live RFPs"
+- Architect dossiers (Agent D) → Region Brief "top architects" + OrgDossier active-pursuit tabs
+- Competitor profiles (Agent E Part 1) → Architect Displacement Briefs + competitor sectional in Region Brief
+- Owner decision-makers (Agent E Part 2) → Region Brief "decision-makers to call" + OrgDossier people layer
 
 ## How to fire
 
