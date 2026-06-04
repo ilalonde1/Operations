@@ -317,6 +317,31 @@ ORDER BY UpdatedAtUtc DESC;";
     private static readonly string[] AliasedMpiCityColumns = { "m.MunicipalityName", "m.RegionName" };
     private static readonly string[] EventCityColumns = { "City" };
 
+    // Region aliases — single user-typed token expands to the underlying
+    // member-municipality list. Per reference_gvrd_geography: Greater Vancouver /
+    // GVRD / Metro Vancouver / Metro Vancouver Regional District are the same
+    // place (the 21 municipalities of the Metro Vancouver Regional District).
+    private static readonly string[] MetroVancouverMunicipalities = new[]
+    {
+        "Vancouver", "Burnaby", "Surrey", "Richmond", "Coquitlam", "Port Coquitlam",
+        "Port Moody", "New Westminster", "Delta", "Langley", "Maple Ridge",
+        "Pitt Meadows", "North Vancouver", "West Vancouver", "White Rock",
+        "Bowen Island", "Anmore", "Belcarra", "Lions Bay",
+        "Metro Vancouver", "Greater Vancouver",
+    };
+
+    private static readonly Dictionary<string, string[]> RegionAliases =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            { "greater vancouver",                     MetroVancouverMunicipalities },
+            { "greater vancouver regional district",   MetroVancouverMunicipalities },
+            { "gvrd",                                  MetroVancouverMunicipalities },
+            { "metro vancouver",                       MetroVancouverMunicipalities },
+            { "metro vancouver regional district",     MetroVancouverMunicipalities },
+            { "metro van",                             MetroVancouverMunicipalities },
+            { "lower mainland",                        MetroVancouverMunicipalities },
+        };
+
     private static IReadOnlyList<string> TokenizeCity(string? city)
     {
         if (string.IsNullOrWhiteSpace(city))
@@ -329,7 +354,25 @@ ORDER BY UpdatedAtUtc DESC;";
         foreach (var p in parts)
         {
             var t = p.Trim();
-            if (t.Length > 0 && !list.Exists(x => string.Equals(x, t, StringComparison.OrdinalIgnoreCase)))
+            if (t.Length == 0) continue;
+
+            // Region-alias expansion. If the user-typed token is a regional
+            // identifier (e.g. "GVRD", "Metro Vancouver"), expand to the
+            // underlying member-municipality list so the LIKE clauses match
+            // city/region columns that store specific muni names.
+            if (RegionAliases.TryGetValue(t, out var expanded))
+            {
+                foreach (var member in expanded)
+                {
+                    if (!list.Exists(x => string.Equals(x, member, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        list.Add(member);
+                    }
+                }
+                continue;
+            }
+
+            if (!list.Exists(x => string.Equals(x, t, StringComparison.OrdinalIgnoreCase)))
             {
                 list.Add(t);
             }
