@@ -10,6 +10,7 @@ using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.IndustryEvents;
 using Kor.Opportunities.Data.Ingestion;
+using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
@@ -117,6 +118,13 @@ internal static class OpportunitiesModule
         services.AddSingleton<Kor.Opportunities.Data.Awards.IArchitectDisplacementBriefStore>(
             _ => new Kor.Opportunities.Data.Awards.SqlArchitectDisplacementBriefStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>();
+        services.AddSingleton<IIntelExtractor, DataHoningExtractor>();
+        services.AddSingleton<IIntelExtractor, PublicSectorResearchExtractor>();
+        services.AddSingleton<IIntelExtractor, CompetitorProfileExtractor>();
+        services.AddSingleton<IIntelExtractor, FirmNarrativeExtractor>();
+        services.AddSingleton<DefaultIntelExtractor>();
+        services.AddSingleton<IntelExtractorRegistry>();
+        services.AddSingleton<IntelPersistenceService>(_ => new IntelPersistenceService(options.OpportunitiesDb));
         services.AddSingleton<Kor.Operations.App.Opportunities.CustomProposalImportService>();
         services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierView>();
