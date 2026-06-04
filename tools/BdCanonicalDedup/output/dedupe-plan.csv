@@ -1,45 +1,612 @@
 ﻿GroupKey,SurvivorId,SurvivorName,SurvivorKind,LoserId,LoserName,LoserKind,FkRefsRepointed
-aci,69626,ACI Architects Inc.,Architect,72356,ACI Architecture,Architect,1
-actonostry,38960,Acton Ostry Architects Inc.,Architect,72265,Acton Ostry Architects,Architect,1
-anthemproperties,207,Anthem Properties Group Ltd.,KorClient,72245,Anthem Properties,Developer,1
-architecture49,2579,Architecture49 Inc.,Architect,72138,Architecture49,Architect,4
-battersbyhowat,24317,BattersbyHowat Architects Inc.,Architect,72279,BattersbyHowat Architects,Architect,1
-bcferries,53730,BC Ferries Corporation,Buyer,72228,BC Ferries,Buyer,2
-brianporter,72287,Brian Porter Architect Inc.,Architect,72363,Brian Porter Architect,Architect,1
-bushbohlman,38920,"Bush, Bohlman & Partners LLP",Competitor,72400,BushBohlman & Partners,Competitor,1
-chandosconstruction,4708,Chandos Construction Ltd.,GC,72157,Chandos Construction,GC,2
-concertpropertiespeterson,54915,Concert Properties/ Peterson,Developer,72242,Concert Properties / Peterson Group,Developer,1
-dub,68760,Dub Architects Ltd.,Architect,72355,DUB Architects,Architect,1
-ellisdon,22257,EllisDon Corporation,GC,72415,EllisDon,GC,1
-ellisdondesignbuild,69850,EllisDon Design Build Inc.,GC,72182,EllisDon Design Build,GC,3
-equilibriumconsulting,38925,Equilibrium Consulting Inc.,Competitor,72294,Equilibrium Consulting,Competitor,1
-falconengineering,69519,Falcon Engineering,Competitor,72298,Falcon Engineering Ltd.,Competitor,1
-grahamconstructionengineering,8349,Graham Construction & Engineering Inc.,GC,72137,Graham Construction & Engineering LP,GC,2
-group2architectureinteriordesign,8538,Group2 Architecture Interior Design Ltd.,Architect,72352,Group2 Architecture Interior Design,Architect,1
-hdr,70635,HDR,Competitor,72462,HDR Inc.,Architect,1
-hdrarchitectureassociates,72190,HDR Architecture Associates,Architect,72404,HDR Architecture Associates Inc.,Architect,1
-hhangusassociates,72414,H.H. Angus & Associates,Competitor,8624,H.H. Angus & Associates Limited,Vendor,3
-islengineeringandlandservices,59847,ISL Engineering and Land Services Ltd.,Competitor,72365,ISL Engineering and Land Services,Competitor,1
-johnstondavidson,69214,Johnston Davidson Architecture,Architect,72140,Johnston Davidson Architecture Inc.,Architect,2
-kasianarchitectureinteriordesignandplanning,70543,Kasian Architecture Interior Design and Planning,Architect,72441,Kasian Architecture Interior Design and Planning Ltd.,Architect,1
-kineticconstruction,48505,Kinetic Construction,GC,72141,Kinetic Construction Ltd.,GC,2
-kmbrarchitectsplanners,72169,KMBR Architects Planners Inc.,Architect,72285,KMBR Architects Planners,Architect,1
-marcboutinarchitecturalcollaborative,71199,Marc Boutin Architectural Collaborative Inc.,Architect,72361,Marc Boutin Architectural Collaborative,Architect,1
-mcfarlanebiggararchitectsdesigners,27564,McFarlane Biggar Architects + Designers Inc.,Architect,72360,McFarlane Biggar Architects + Designers,Architect,1
-norrarchitectsengineers,46132,NORR ARCHITECTS & ENGINEERS LIMITED,Architect,72161,NORR Architects & Engineers,Architect,2
-norrarchitectsengineers,46132,NORR ARCHITECTS & ENGINEERS LIMITED,Architect,72451,NORR Architects & Engineers Ltd.,Architect,1
-parkinarchitectswestern,68865,Parkin Architects Western,Architect,72188,Parkin Architects Western Ltd.,Architect,2
-pclconstructionmanagement,70811,PCL Construction Management,GC,72178,PCL Construction Management Inc.,GC,4
-perkinswill,69688,Perkins + Will Architects,Architect,72142,Perkins & Will,Architect,3
-pomerleau,13537,Pomerleau Inc.,GC,72174,Pomerleau,GC,2
-reinboldengineering,70074,Reinbold Engineering,Competitor,72303,Reinbold Engineering Group,Competitor,1
-scottconstruction,54932,Scott Construction Group,GC,72210,Scott Construction,GC,1
-smithandersencalgary,72368,Smith + Andersen (Calgary),Competitor,15533,Smith + Andersen (Calgary) Ltd.,Vendor,5
-stantec,38934,Stantec Inc.,Competitor,72207,Stantec Architecture,Architect,4
-stantec,38934,Stantec Inc.,Competitor,72436,Stantec Architecture Ltd.,Architect,4
-start,16018,START Architecture Inc,Architect,72351,START Architecture,Architect,1
-studioone,145,Studio One Architecture Inc.,Architect,72288,Studio One Architecture,Architect,1
-unitechconstructionmanagement,70562,Unitech Construction Management Ltd.,GC,72168,Unitech Construction Management,GC,2
-urbanarts,69121,Urban Arts Architecture,Architect,72205,Urban Arts Architecture Inc.,Architect,1
-ventanaconstruction,191,Ventana Construction Corp.,KorClient,72139,Ventana Construction Corporation,GC,4
-wesgroupproperties,12,Wesgroup Properties Ltd.,KorClient,72251,Wesgroup Properties,Developer,3
+1026219bcunlimitedliability,56943,1026219 B.C. UNLIMITED LIABILITY,Vendor,72765,1026219 B.C. UNLIMITED LIABILITY CO,Vendor,2
+1956466ont,48054,1956466 Ont Inc,Vendor,73391,1956466 Ont Ltd.,Vendor,2
+3dsystems,1322,3D Systems Corporation,Vendor,73332,3D SYSTEMS INC.,Vendor,2
+3vgeomatics,65473,3VGEOMATICS,Vendor,73333,3V GEOMATICS INC,Vendor,2
+51northcontracting,1370,51 North Contracting,GC,73698,51 North Contracting Ltd.,Vendor,3
+7159650canada,64336,7159650 CANADA INC,Vendor,72723,7159650 CANADA INCORPORATED,Vendor,3
+abrailservices,1482,A & B Rail Services Limited,Vendor,73289,A&B RAIL SERVICES LTD.,Vendor,8
+access,1628,ACCESS GROUP INC.,Vendor,73353,ACCESS CORP,Vendor,4
+accuratedesigncommunication,59108,Accurate Design & Communication,Vendor,72711,ACCURATE DESIGN & COMMUNICATION INC,Vendor,3
+accuratedesigncommunications,72599,Accurate Design & Communications,Vendor,39110,ACCURATE DESIGN COMMUNICATIONS INC.,Vendor,4
+acfassociates,63376,ACF Associates,Vendor,73450,ACF Associates INC.,Vendor,3
+aci,69626,ACI Architects Inc.,Architect,73059,ACI Architecture Inc.,Vendor,4
+adgagroupconsultants,40492,ADGA GROUP CONSULTANTS INC.,Vendor,73383,ADGA Group Consultants,Vendor,6
+adirondackinformationmanagement,55806,ADIRONDACK INFORMATION MANAGEMENT,Vendor,73380,Adirondack Information Management Inc.,Vendor,2
+adreducation,39358,ADR EDUCATION,Vendor,73027,ADR Education Partnership,Vendor,4
+adrmtechnologyconsulting,39170,ADRM TECHNOLOGY CONSULTING GROUP,Vendor,72653,ADRM TECHNOLOGY CONSULTING GROUP CORP,Vendor,3
+adrmtechnologyconsulting,39170,ADRM TECHNOLOGY CONSULTING GROUP,Vendor,72672,ADRM TECHNOLOGY CONSULTING,Vendor,7
+adrmtechnologyconsulting,39170,ADRM TECHNOLOGY CONSULTING GROUP,Vendor,72697,ADRM TECHNOLOGY CONSULTING CORP,Vendor,11
+advancedenergymanagement,40779,ADVANCED ENERGY MANAGEMENT LTD.,Vendor,73365,ADVANCED ENERGY MANAGEMENT,Vendor,3
+advancedenergymanagement,40779,ADVANCED ENERGY MANAGEMENT LTD.,Vendor,73385,ADVANCED ENERGY MANAGEMENT LIMITED,Vendor,3
+advancedhepatechnologies,46465,ADVANCED H E P A TECHNOLOGIES INC,Vendor,73261,ADVANCED H.E.P.A. TECHNOLOGIES,Vendor,3
+aecomcanada,1818,AECOM Canada Ltd.,Competitor,72703,AECOM CANADA ARCHITECTS LTD.,Vendor,2
+aecomcanada,1818,AECOM Canada Ltd.,Competitor,73017,AECOM Canada Limited,Vendor,28
+aecomcanada,1818,AECOM Canada Ltd.,Competitor,73364,AECOM CANADA,Vendor,18
+aecomcanada,1818,AECOM Canada Ltd.,Competitor,73468,Aecom Canada INc,Vendor,2
+afnengineering,42871,AFN ENGINEERING,Vendor,72803,AFN ENGINEERING INC.,Vendor,11
+agatlaboratoire,48170,AGAT LABORATOIRE,Vendor,73451,AGAT LABORATOIRE LTD,Vendor,2
+agatlaboratoires,48626,AGAT LABORATOIRES LTD,Vendor,73458,AGAT LABORATOIRES,Vendor,2
+agatlaboratories,72786,AGAT LABORATORIES LTD,Vendor,1866,AGAT Laboratories,Vendor,8
+agcassociates,41794,AGC & ASSOCIATES INC,Vendor,73430,AGC & Associates,Vendor,4
+agilenttechnologies,1883,"Agilent Technologies, Inc",Vendor,72763,AGILENT TECHNOLOGIES,Vendor,3
+ainleygrahamassociates,73286,AINLEY GRAHAM & ASSOCIATES LTD.,Vendor,51504,AINLEY GRAHAM & ASSOCIATES LIMITED,Vendor,19
+ajhannaconstruction,46646,A&J Hanna Construction,GC,73678,A & J HANNA CONSTRUCTION LTD,Vendor,2
+akendi,1961,Akendi,Vendor,72522,Akendi Inc.,Vendor,2
+alantraleasing,48190,ALANTRA LEASING,Vendor,73397,Alantra Leasing Inc,Vendor,4
+allsteelcoatings,43133,ALLSTEEL COATINGS LTD.,Vendor,73664,ALL STEEL COATINGS LIMITED,Vendor,5
+alltechenvironmentalservices,47891,All-Tech Environmental Services Ltd,Vendor,72806,ALL-TECH ENVIRONMENTAL SERVICES,Vendor,3
+alscanada,2219,ALS Canada Ltd,Vendor,73399,ALS Canada,Vendor,2
+altatechenvironmentalservices,2237,Alta Tech Environmental Services Inc.,Vendor,73096,Alta Tech Environmental Services,Vendor,3
+altisspr,56239,ALTISSPR,Vendor,73318,ALTIS SPR INC,Vendor,10
+amecearthenvironmental,2313,AMEC Earth & Environmental,Vendor,73088,AMEC EARTH & ENVIRONMENTAL LTD,Vendor,3
+amecfosterwheeleramericas,51348,AMEC FOSTER WHEELER AMERICAS,Vendor,73086,AMEC Foster Wheeler Americas Ltd,Vendor,5
+amecfosterwheeleramericas,51348,AMEC FOSTER WHEELER AMERICAS,Vendor,73443,AMEC FOSTER WHEELER AMERICAS LIMITED,Vendor,3
+amlpainting,51496,AML PAINTING LTD,Vendor,73706,A.M.L. PAINTING LIMITED,Vendor,2
+amsimaging,62652,AMS IMAGING INC,Vendor,73437,AMS Imaging,Vendor,2
+amtechaeronautical,63411,Amtech Aeronautical,Vendor,73401,Amtech Aeronautical Limited,Vendor,2
+andersonengineeringconsultants,43011,ANDERSON ENGINEERING CONSULTANTS LTD,Vendor,73070,ANDERSON ENGINEERING CONSULTANTS,Vendor,7
+ankrommoisan,68681,Ankrom Moisan,Architect,73777,Ankrom Moisan Architects,Architect,1
+anthemproperties,207,Anthem Properties Group Ltd.,KorClient,73794,Anthem Properties Group,Developer,2
+apexresourcemanagementsolutions,58614,APEX RESOURCE MANAGEMENT SOLUTIONS LTD.,Vendor,73197,APEX RESOURCE MANAGEMENT SOLUTIONS,Vendor,3
+aplinmartinconsultants,70693,Aplin Martin Consultants,Architect,72756,APLIN & MARTIN CONSULTANTS LTD,Vendor,3
+appliedelectronics,2482,Applied Electronics Limited,Vendor,73357,APPLIED ELECTRONICS LTD,Vendor,2
+appliedengineeringsolutions,43453,APPLIED ENGINEERING SOLUTIONS,Vendor,72835,APPLIED ENGINEERING SOLUTIONS LTD.,Vendor,6
+arconstruction,1502,A&R Construction,GC,73646,AR CONSTRUCTION LTD,Vendor,2
+artemppersonnelservices,39161,ARTEMP PERSONNEL SERVICES INC.,Vendor,72725,ARTEMP PERSONNEL SERVICES,Vendor,2
+ascenseurslumar,55305,ASCENSEURS LUMAR,Vendor,72999,ASCENSEURS LUMAR INC,Vendor,4
+ascribemarketingcommunications,62242,ASCRIBE MARKETING COMMUNICATIONS,Vendor,72596,Ascribe Marketing Communications Inc.,Vendor,2
+asokanbusinessinteriors,39104,ASOKAN BUSINESS INTERIORS INC.,Vendor,72815,Asokan Business Interiors,Vendor,5
+assaabloyentrancesystemscanada,40991,ASSA ABLOY ENTRANCE SYSTEMS CANADA INC.,Vendor,73701,Assa Abloy Entrance Systems Canada,Vendor,3
+atcostructureslogistics,2763,ATCO Structures & Logistics Ltd,Vendor,73250,ATCO STRUCTURES & LOGISTICS,Vendor,52
+atkinsréaliscanada,2775,ATKINSRÉALIS CANADA INC,Vendor,73379,AtkinsRéalis Canada,Vendor,6
+atlanticbusinessinteriors,51917,Atlantic Business Interiors Limited,Vendor,73655,ATLANTIC BUSINESS INTERIORS,Vendor,3
+atlanticroofers,46787,Atlantic Roofers Limited,Vendor,73438,ATLANTIC ROOFERS LTD,Vendor,2
+atlanticundergroundservices,50542,Atlantic Underground Services,Vendor,73650,ATLANTIC UNDERGROUND SERVICES LTD,Vendor,3
+atlasapexroofing,46701,Atlas- Apex Roofing Inc.,Vendor,73695,ATLAS-APEX ROOFING,Vendor,4
+atlishumanresources,40153,ATLIS HUMAN RESOURCES INC.,Vendor,73135,ATLIS HUMAN RESOURCES,Vendor,3
+avernatechnologies,40343,AVERNA TECHNOLOGIES INC.,Vendor,73331,AVERNA TECHNOLOGIES,Vendor,2
+baiameconsulting,56175,Baiame Consulting,Vendor,72682,BAIAME CONSULTING LTD.,Vendor,3
+baiametechnologyandconsulting,72550,Baiame Technology and Consulting,Vendor,55776,BAIAME TECHNOLOGY AND CONSULTING LTD.,Vendor,3
+balodis,43321,BALODIS INC.,Vendor,73638,Balodis Incorporated,Vendor,5
+bangthetablecanada,2997,Bang the Table Canada Limited,Vendor,72510,BANG THE TABLE CANADA LTD,Vendor,4
+barbaramcneilassociates,3022,Barbara McNeil & Associates,Vendor,73028,Barbara McNeil & Associates Ltd.,Vendor,3
+basincontracting,48507,Basin Contracting Ltd,GC,73649,BASIN CONTRACTING LIMITED,Vendor,2
+bbaengineering,3085,BBA Engineering,Vendor,73319,BBA ENGINEERING LTD,Vendor,2
+bdocanada,3109,BDO Canada LLP,Vendor,72635,BDO Canada Limited,Vendor,2
+bdwroofing,44780,BDW ROOFING LTD,Vendor,73558,BDW ROOFING INC,Vendor,2
+belangerconsulting,60525,Belanger Consulting LTD,Vendor,73341,BELANGER CONSULTING,Vendor,3
+bellebayconstruction,42966,BELLEBAY CONSTRUCTION INC,GC,73416,BELLEBAY CONSTRUCTION,Vendor,2
+bellmobility,3180,Bell Mobility Inc,Vendor,72919,BELL MOBILITY,Vendor,3
+bennettsconstructionsupplies,42674,BENNETT'S CONSTRUCTION & SUPPLIES LTD,Vendor,73619,BENNETT'S CONSTRUCTION & SUPPLIES,Vendor,4
+beyond2020,57316,BEYOND 20/20 INC,Vendor,72658,BEYOND 20/20,Vendor,4
+bgcengineering,69559,BGC Engineering,Subcontractor,72997,BGC ENGINEERING INC.,Vendor,4
+birdconstruction,54928,Bird Construction Inc.,GC,73402,Bird Construction Group,Vendor,31
+birddesignbuildconstruction,3361,Bird Design-Build Construction Inc.,GC,73409,Bird Design-Build Construction,Vendor,2
+blackandmacdonald,63697,Black and MacDonald Ltd,Vendor,73419,BLACK AND MACDONALD LIMITED,Vendor,2
+blackandmcdonald,3395,Black and McDonald Ltd,Vendor,73433,BLACK AND MCDONALD LIMITED,Vendor,2
+blackgoldpaveseal,51736,BLACK GOLD PAVE&SEAL INC,Vendor,73517,BLACK GOLD PAVE & SEAL,Vendor,2
+blackmacdonald,46589,Black & MacDonald Ltd,Vendor,73411,Black & MacDonald,Vendor,6
+blackmacdonald,46589,Black & MacDonald Ltd,Vendor,73426,Black & MacDonald Limited,Vendor,24
+blackmcdonald,3387,Black & McDonald Ltd,Vendor,73291,BLACK & MCDONALD LIMITED,Vendor,12
+blackmcdonald,3387,Black & McDonald Ltd,Vendor,73509,BLACK & MCDONALD,Vendor,10
+blackpress,63466,Black Press Group,Vendor,73412,Black Press Group Ltd,Vendor,2
+blueskystrategy,62660,BLUESKY STRATEGY GROUP,Vendor,72734,BLUESKY STRATEGY GROUP INC,Vendor,3
+blueskystrategy,62660,BLUESKY STRATEGY GROUP,Vendor,73170,BLUESKY STRATEGY GROUP INCORPORATED,Vendor,4
+bmbconsultingservices,57309,BMB CONSULTING SERVICES INC.,Vendor,72899,BMB CONSULTING SERVICES,Vendor,3
+bordenladnergervais,3557,BORDEN LADNER GERVAIS LLP,Vendor,73356,BORDEN LADNER GERVAIS,Vendor,7
+bostonconstruction,43596,BOSTON CONSTRUCTION CORPORATION,GC,73654,BOSTON CONSTRUCTION CORP,Vendor,2
+bridgehousing,68654,BRIDGE Housing Corporation,Developer,73743,BRIDGE Housing,Developer,1
+bronsonconsulting,56826,BRONSON CONSULTING GROUP,Vendor,72641,Bronson Consulting Group Inc.,Vendor,2
+bryconconstruction,49421,Brycon Construction Limited,Vendor,73675,BRYCON CONSTRUCTION LTD,Vendor,2
+businesssherpa,64864,BUSINESS SHERPA GROUP INC.,Vendor,73181,BUSINESS SHERPA GROUP,Vendor,3
+bvlinvestments,50359,BVL INVESTMENTS,Vendor,73705,BVL Investments Ltd.,Vendor,2
+calgaryarchives,3992,Calgary Archives,Vendor,73493,CALGARY ARCHIVES CORP.,Vendor,2
+calian,4019,Calian Ltd,Vendor,72654,CALIAN,Vendor,76
+calian,4019,Calian Ltd,Vendor,73435,Calian Group,Vendor,3
+canadaworks,62461,CANADA WORKS LTD.,Vendor,73345,CANADA WORKS INC.,Vendor,2
+canadiannationalrailway,69628,Canadian National Railway,Buyer,73290,CANADIAN NATIONAL RAILWAY COMPANY,Vendor,2
+cannonbyeconstruction,40176,CANNONBYE CONSTRUCTION LTD,GC,73633,Cannonbye Construction,Vendor,6
+capitalofficeinteriors,39197,CAPITAL OFFICE INTERIORS LTD.,Vendor,73591,CAPITAL OFFICE INTERIORS LIMITED,Vendor,4
+carahsofttechnology,4324,Carahsoft Technology Corp,Vendor,73193,CARAHSOFT TECHNOLOGY CORPORATION,Vendor,4
+carlsonconstruction,71167,Carlson Construction,GC,73590,Carlson Construction Ltd.,Vendor,5
+carmichaelengineering,39832,CARMICHAEL ENGINEERING LTD,Vendor,73392,CARMICHAEL ENGINEERING LIMITED,Vendor,7
+cascadianstructuralengineering,71032,Cascadian Structural Engineering Inc.,Competitor,73312,CASCADIAN STRUCTURAL ENGINEERING,Vendor,2
+casolakoppe,69636,Casola Koppe,Architect,72812,Casola Koppe Architects Ltd.,Vendor,10
+castlerockconstruction,4454,Castle Rock Construction,GC,73669,CASTLE ROCK CONSTRUCTION LTD.,Vendor,4
+castlerockenterprises,42268,CASTLE ROCK ENTERPRISES,Vendor,73700,Castle Rock Enterprises Limited,Vendor,2
+catherinegagnearchitecte,65439,CATHERINE GAGNE ARCHITECTE,Vendor,73212,CATHERINE GAGNE ARCHITECTE INC.,Vendor,3
+cbcitelecom,51367,CBCI TELECOM,Vendor,73257,CBCI TELECOM INC.,Vendor,5
+cbcl,40886,CBCL LIMITED,Vendor,73414,CBCL Ltd.,Vendor,4
+cdwcanada,4540,CDW CANADA INC,Vendor,73552,CDW CANADA,Vendor,2
+celerityengineering,69551,Celerity Engineering,Subcontractor,73304,CELERITY ENGINEERING LIMITED,Vendor,3
+century,69751,Century Group,Buyer,72720,CENTURY GROUP INC,Vendor,6
+cfmservices,46563,cfm services,Vendor,73004,CFM SERVICES INC.,Vendor,3
+chandosconstruction,4708,Chandos Construction Ltd.,GC,73589,CHANDOS CONSTRUCTION LP,Vendor,23
+charronhumanresources,55230,CHARRON HUMAN RESOURCES INC.,Vendor,73258,CHARRON HUMAN RESOURCES,Vendor,4
+cheminfoservices,4756,Cheminfo Services Inc.,Vendor,72655,CHEMINFO SERVICES,Vendor,4
+cintascanada,4865,Cintas Canada,Vendor,73315,CINTAS CANADA LIMITED,Vendor,3
+clarkconstruction,54950,"Clark Construction Group, LLC",GC,73710,Clark Construction Co. LTD.,Vendor,2
+clelandjardineengineering,45944,Cleland Jardine Engineering Ltd,Vendor,72810,CLELAND JARDINE ENGINEERING LIMITED,Vendor,7
+climaterisksolutions,65804,CLIMATE RISK SOLUTIONS LTD,Vendor,72889,CLIMATE RISK SOLUTIONS,Vendor,2
+clotureprovinciale,53201,CLOTURE PROVINCIALE INC,Vendor,73481,CLOTURE PROVINCIALE,Vendor,2
+coastalconservation,42618,Coastal Conservation Inc,Vendor,73055,Coastal Conservation,Vendor,3
+coastalrestorationmasonry,46844,Coastal Restoration & Masonry Ltd,Vendor,73626,COASTAL RESTORATION & MASONRY,Vendor,62
+codenext,63998,CodeNext,Vendor,72793,CodeNext Inc.,Vendor,3
+cohlmeyer,67996,COHLMEYER ARCHITECTURE LIMITED,Architect,72796,COHLMEYER ARCHITECTS LIMITED,Vendor,3
+colbournekembel,63194,Colbourne & Kembel Architects Inc.,Architect,73453,COLBOURNE & KEMBEL ARCHITECTS,Vendor,2
+colinlindsaydevelopment,59032,COLIN LINDSAY DEVELOPMENT,Developer,72525,COLIN LINDSAY DEVELOPMENT CORP.,Vendor,2
+colliersprojectleaders,70132,Colliers Project Leaders Inc.,Architect,73474,Colliers Project Leaders,Vendor,2
+connextelecommunications,5267,Connex Telecommunications,Vendor,72640,Connex Telecommunications Inc,Vendor,2
+constructioncouturetanguay,52665,CONSTRUCTION COUTURE & TANGUAY INC.,Vendor,73543,CONSTRUCTION COUTURE & TANGUAY,Vendor,2
+constructionlmorin,41216,CONSTRUCTION L MORIN,Vendor,73635,Construction L. Morin Inc,Vendor,2
+contractcommunity,38985,Contract Community Inc.,Vendor,72892,CONTRACT COMMUNITY,Vendor,4
+controlledenvironments,5323,CONTROLLED ENVIRONMENTS LTD,Vendor,73297,CONTROLLED ENVIRONMENTS LIMITED,Vendor,2
+converginttechnologies,5337,Convergint Technologies LTD,Vendor,73514,CONVERGINT TECHNOLOGIES,Vendor,8
+conversartconsulting,55207,CONVERSART CONSULTING LTD,Vendor,72476,ConversArt Consulting Limited,Vendor,5
+coradixtechnologyconsulting,56642,CORADIX TECHNOLOGY CONSULTING LTD,Vendor,73271,CORADIX TECHNOLOGY CONSULTING,Vendor,3
+coradixtechnologyconsulting,56642,CORADIX TECHNOLOGY CONSULTING LTD,Vendor,73407,Coradix Technology Consulting Inc.,Vendor,5
+coretracks,72647,CoreTracks Inc.,Vendor,72649,CoreTracks,Vendor,2
+corkumselectricalsalesservice,46850,Corkum's Electrical Sales & Service Ltd.,Vendor,73707,CORKUM'S ELECTRICAL SALES & SERVICE,Vendor,4
+corrosionservice,5423,Corrosion Service Company Ltd.,Vendor,72799,CORROSION SERVICE COMPANY,Vendor,5
+couplandkraemer,72827,COUPLAND KRAEMER ARCHITECTURE,Vendor,5463,Coupland Kraemer,Vendor,6
+courageousleadershipproject,61901,COURAGEOUS LEADERSHIP PROJECT LIMITED,Vendor,73276,COURAGEOUS LEADERSHIP PROJECT,Vendor,2
+couttscommunicates,39135,COUTTS COMMUNICATES INC.,Vendor,73281,Coutts Communicates,Vendor,2
+cpcstranscom,5499,CPCS Transcom Ltd,Vendor,73239,CPCS TRANSCOM LIMITED,Vendor,2
+crestroncanada,40399,CRESTRON CANADA LTD,Vendor,73133,CRESTRON CANADA INC,Vendor,3
+darehumanresources,63015,DARE HUMAN RESOURCES CORPORATION,Vendor,72887,DARE HUMAN RESOURCES,Vendor,2
+davidjcupidoconstruction,46596,David J. Cupido Construction Ltd,GC,73360,DAVID J. CUPIDO CONSTRUCTION,Vendor,2
+decisivetechnologies,39210,DECISIVE TECHNOLOGIES INC.,Vendor,72772,DECISIVE TECHNOLOGIES,Vendor,3
+defran,39981,DEFRAN INC.,Vendor,72779,DEFRAN,Vendor,3
+delnorconstruction,70243,Delnor Construction,GC,73625,DELNOR CONSTRUCTION LTD.,Vendor,3
+deloitte,6018,Deloitte Inc,Vendor,72634,Deloitte,Vendor,2
+deloitte,6018,Deloitte Inc,Vendor,72656,DELOITTE LLP,Vendor,58
+dewolfeandmorsesurveying,63130,DEWOLFE AND MORSE SURVEYING LTD.,Vendor,73366,dewolfe and morse surveying,Vendor,2
+dexterconstruction,43653,DEXTER CONSTRUCTION COMPANY LIMITED,Vendor,73371,Dexter Construction,Vendor,2
+dexterconstruction,43653,DEXTER CONSTRUCTION COMPANY LIMITED,Vendor,73377,Dexter Construction Company Ltd.,Vendor,2
+dfs,50730,D.F.S. INC.,Vendor,72745,DFS ARCHITECTURE,Vendor,3
+dfs,50730,D.F.S. INC.,Vendor,72749,DFS ARCHITECTURE INC,Vendor,2
+dialogalberta,71514,DIALOG (Alberta),Architect,73307,DIALOG ALBERTA INC.,Vendor,4
+diamondandschmitt,6179,Diamond and Schmitt Architects Inc.,Architect,73292,DIAMOND AND SCHMITT ARCHITECTS,Vendor,7
+dillonconsulting,6231,Dillon Consulting Limited,Vendor,73471,Dillon Consulting Ltd,Vendor,2
+diversipro,56001,DIVERSIPRO INC,Vendor,72543,DiversiPro,Vendor,2
+dmmorashsteeplejacks,44443,D&M MORASH STEEPLEJACKS COMPANY LTD,Vendor,73622,D & M MORASH STEEPLEJACKS,Vendor,2
+donnacona,39262,Donna Cona Inc,Vendor,72552,Donna Cona,Vendor,9
+donwehagetrucking,48582,Don Wehage Trucking,Vendor,73387,Don Wehage Trucking Ltd,Vendor,3
+drakeinternational,63412,Drake International,Vendor,73302,DRAKE INTERNATIONAL INC,Vendor,2
+dssmarine,59367,DSS MARINE INC.,Vendor,73637,Dss Marine Incorporated,Vendor,3
+dumacenergy,51087,DUMAC ENERGY LIMITED,Vendor,72842,Dumac Energy Ltd.,Vendor,3
+dynamicpainting,42748,DYNAMIC PAINTING,Vendor,73670,DYNAMIC PAINTING LTD,Vendor,2
+eastdive,48797,EAST DIVE LIMITED,Vendor,73683,EAST DIVE LTD,Vendor,2
+easterncontracting,43876,EASTERN CONTRACTING LTD.,GC,73672,EASTERN CONTRACTING LIMITED,Vendor,3
+eastlakewelding,41196,EAST LAKE WELDING,Vendor,73627,EAST LAKE WELDING LTD,Vendor,5
+eastpointengineering,46699,EastPoint Engineering Limited,Vendor,73359,EastPoint Engineering Ltd,Vendor,46
+eastpointengineering,46699,EastPoint Engineering Limited,Vendor,73410,Eastpoint Engineering,Vendor,6
+eclipsyssolutions,6629,Eclipsys Solutions Inc,Vendor,72744,ECLIPSYS SOLUTIONS,Vendor,3
+ecokareinternational,58296,ECO-KARE INTERNATIONAL,Vendor,73003,Eco-Kare International Ltd.,Vendor,3
+ecoledelangueseagle,39136,ECOLE DE LANGUES EAGLE INC.,Vendor,72659,ECOLE DE LANGUES EAGLE,Vendor,3
+eileenroofing,41763,EILEEN ROOFING INC,Vendor,73444,Eileen Roofing,Vendor,2
+emco,6892,EMCO Corporation,Vendor,73583,EMCO LIMITED,Vendor,5
+emondharnden,72633,Emond Harnden LLP,Vendor,68481,Emond Harnden,Vendor,4
+englobe,6972,Englobe Corp,Competitor,73012,Englobe Corporation,Vendor,14
+englobe,6972,Englobe Corp,Competitor,73400,Englobe,Vendor,5
+englobe,6972,Englobe Corp,Competitor,73404,Englobe Corp Limited,Vendor,2
+ennissafetyservices,39949,ENNIS SAFETY SERVICES LTD,Vendor,72728,ENNIS SAFETY SERVICES,Vendor,2
+entuitive,7017,Entuitive Corporation,Competitor,73790,Entuitive,Competitor,2
+environicsresearch,7030,Environics Research Group,Vendor,72617,Environics Research Group Ltd.,Vendor,3
+environmentallcontractingservices,41145,ENVIRONMENTALL CONTRACTING SERVICES INC,GC,73368,ENVIRONMENTALL CONTRACTING SERVICES,Vendor,2
+epsilonconsultingmanagement,39354,Epsilon Consulting & Management Group Inc.,Vendor,72824,EPSILON CONSULTING & MANAGEMENT,Vendor,3
+equifaxcanada,56595,EQUIFAX CANADA CO.,Vendor,72906,EQUIFAX CANADA,Vendor,3
+equifaxcanada,56595,EQUIFAX CANADA CO.,Vendor,72912,EQUIFAX CANADA INC,Vendor,4
+equilibriumconsulting,38925,Equilibrium Consulting Inc.,Competitor,73786,EQUILIBRIUM Consulting,Competitor,2
+ernstyoung,7107,ERNST & YOUNG LLP,Vendor,72676,ERNST & YOUNG,Vendor,5
+esricanada,7138,ESRI Canada Limited,Vendor,72690,ESRI CANADA,Vendor,9
+estunisandassociates,55564,E.S. TUNIS AND ASSOCIATES INCORPORATED,Vendor,73348,E.S TUNIS AND ASSOCIATES INC.,Vendor,2
+eurofinsenvironmenttestingcanada,72819,Eurofins Environment Testing Canada,Vendor,42419,EUROFINS ENVIRONMENT TESTING CANADA INC.,Vendor,4
+excavationsdarche,49831,Excavations Darche,Vendor,73630,Excavations Darche Inc,Vendor,4
+excelhumanresources,56687,EXCEL HUMAN RESOURCES,Vendor,72480,Excel Human Resources Inc.,Vendor,10
+exp,69535,EXP,Subcontractor,72691,EXP ARCHITECTS INC.,Vendor,44
+exploitsweldingandmachineshop,43235,EXPLOITS WELDING AND MACHINE SHOP LTD,Vendor,73641,EXPLOITS WELDING AND MACHINE SHOP,Vendor,4
+expservicesinclesservicesexp,72792,EXP SERVICES INC./LES SERVICES EXP,Vendor,7256,EXP SERVICES INC. LES SERVICES EXP INC.,Vendor,5
+falconengineering,69519,Falcon Engineering,Competitor,73542,FALCON ENGINEERING LTD,Vendor,2
+fasteppstructuralengineers,72197,Fast + Epp Structural Engineers,Competitor,73282,FAST & EPP STRUCTURAL ENGINEERS INC,Vendor,2
+fastforwardfrench,39993,FAST FORWARD FRENCH INC.,Vendor,72541,FAST FORWARD FRENCH,Vendor,3
+fasttrackstaffing,39137,FAST TRACK STAFFING INC.,Vendor,72660,FAST TRACK STAFFING,Vendor,3
+fconeillscrivenandassocs,51027,"F.C. O'NEILL, SCRIVEN AND ASSOC.'S",Vendor,72830,"F.C O'Neill, Scriven and Assoc.'s Limited",Vendor,3
+felthamsconstruction,43835,FELTHAM'S CONSTRUCTION LTD,GC,73616,FELTHAM'S CONSTRUCTION LIMITED,Vendor,3
+fidelityengineeringconstruction,49990,Fidelity Engineering & Construction,GC,73445,Fidelity Engineering & Construction Inc.,Vendor,2
+filtrationplus,46877,Filtration Plus,Vendor,73615,FILTRATION PLUS LIMITED,Vendor,2
+finlinkconstruction,73610,FINLINK CONSTRUCTION LTD,Vendor,7423,Finlink Construction Limited,Vendor,5
+fisherscientific,7499,Fisher Scientific,Vendor,73339,FISHER SCIENTIFIC COMPANY,Vendor,3
+flagshipconstruction,41155,FLAGSHIP CONSTRUCTION LTD,GC,73609,FLAGSHIP CONSTRUCTION LIMITED,Vendor,11
+flightsafetycanada,67885,FLIGHTSAFETY CANADA LTD.,Vendor,72727,FLIGHTSAFETY CANADA,Vendor,4
+flyerelectric,39536,FLYER ELECTRIC LP,Vendor,73546,FLYER ELECTRIC LTD.,Vendor,1
+fortisalberta,47085,FortisAlberta Inc,Vendor,73448,FORTIS ALBERTA,Vendor,4
+fortisbc,69716,Fortis BC Inc.,Buyer,73580,FORTISBC,Vendor,1
+fourpointsolutions,7703,Four Point Solutions,Vendor,73186,FOUR POINT SOLUTIONS LTD.,Vendor,3
+freconconstruction,41133,FRECON CONSTRUCTION LTD,GC,73668,FRECON CONSTRUCTION LIMITED,Vendor,3
+freshartdesign,39244,FRESH ART & DESIGN INC.,Vendor,72714,FRESH ART DESIGN,Vendor,2
+fundycontractors,42665,FUNDY CONTRACTORS LIMITED,Vendor,73618,"FUNDY CONTRACTORS, LTD.",Vendor,14
+furlowfinancial,66080,FURLOW FINANCIAL CORP.,Vendor,73141,Furlow Financial Corporation,Vendor,2
+gagneroy,40602,GAGNE & ROY,Vendor,73323,GAGNE & ROY INC.,Vendor,2
+gallagherbenefitservicescanada,7902,Gallagher Benefit Services (Canada) Group Inc.,Vendor,73325,GALLAGHER BENEFIT SERVICES (CANADA),Vendor,2
+gartner,7931,Gartner,Vendor,73317,GARTNER GROUP,Vendor,3
+gartnercanada,7932,Gartner Canada Co,Vendor,72710,GARTNER CANADA INC.,Vendor,16
+gartnercanada,7932,Gartner Canada Co,Vendor,73454,Gartner Canada,Vendor,3
+gateworks,7961,GateWorks,Vendor,73079,"GateWorks, Inc",Vendor,4
+gcstrategies,39445,GC STRATEGIES INC,Vendor,72531,GC STRATEGIES,Vendor,2
+geldergingrasassociates,72607,"Gelder, Gingras & Associates Inc.",Vendor,72861,"GELDER,GINGRAS ASSOCIATES",Vendor,2
+gemtec,44133,GEMTEC LTD,Vendor,73011,Gemtec Limited,Vendor,28
+gemtecconsultingengandscientists,63459,Gemtec Consulting Eng and Scientists Ltd,Vendor,73461,Gemtec Consulting Eng and Scientists Limited,Vendor,3
+gemtecconsultingengineersandscientists,47230,Gemtec Consulting Engineers and Scientists,Vendor,73417,GEMTEC CONSULTING ENGINEERS AND SCIENTISTS LIMITED,Vendor,2
+gemtecconsultingengineersscientists,63310,Gemtec Consulting Engineers & Scientists,Vendor,73467,Gemtec Consulting Engineers & ScientistsLimited,Vendor,2
+generaldynamicslandsystemscanada,63795,GENERAL DYNAMICS LAND SYSTEMS-CANADA CORPORATION,Vendor,73422,General Dynamics Land Systems Canada,Vendor,2
+generalmotorsofcanada,39808,GENERAL MOTORS OF CANADA LTD.,Vendor,73482,GENERAL MOTORS OF CANADA LIMITED,Vendor,4
+geofirmaengineering,62796,GEOFIRMA ENGINEERING LTD.,Vendor,73241,GEOFIRMA ENGINEERING LIMITED,Vendor,3
+geoprocessresearchassociates,59359,GEOPROCESS RESEARCH ASSOCIATES,Vendor,73037,GEOPROCESS RESEARCH ASSOCIATES INC.,Vendor,3
+georgedowningestatedrilling,42316,GEORGE DOWNING ESTATE DRILLING LTD.,Vendor,73657,GEORGE DOWNING ESTATE DRILLING,Vendor,2
+gerrieelectricwholesale,41958,GERRIE ELECTRIC WHOLESALE LTD.,Vendor,73652,GERRIE ELECTRIC WHOLESALE LIMITED,Vendor,2
+gestionaerotech,67624,GESTION AEROTECH INC,Vendor,72652,GESTION AEROTECH,Vendor,3
+ghdconsultants,52188,Ghd Consultants Ltd.,Vendor,73393,GHD Consultants,Vendor,4
+ghlconsultants,69552,GHL Consultants,Subcontractor,73303,GHL CONSULTANTS LTD,Vendor,2
+globaladvantageconsulting,55754,GLOBAL ADVANTAGE CONSULTING GROUP,Vendor,73295,GLOBAL ADVANTAGE CONSULTING,Vendor,17
+globalknowledgenetworkcanada,39162,GLOBAL KNOWLEDGE NETWORK (CANADA) INC.,Vendor,73489,GLOBAL KNOWLEDGE NETWORK (CANADA),Vendor,1
+globalmechanical,41285,GLOBAL MECHANICAL LTD,Vendor,73522,GLOBAL MECHANICAL INC.,Vendor,2
+gnjohnstonequipment,7873,G.N. JOHNSTON EQUIPMENT CO. LTD.,Vendor,73624,G N JOHNSTON EQUIPMENT CO,Vendor,3
+golderassociates,59988,Golder Associates,Buyer,72822,GOLDER ASSOCIATES LTD,Vendor,18
+golderassociates,59988,Golder Associates,Buyer,73082,GOLDER ASSOCIATES LIMITED,Vendor,3
+goodfellow,8291,Goodfellow,Vendor,73061,Goodfellow inc.,Vendor,2
+goodkeyweedmarkassociates,46457,"GOODKEY, WEEDMARK & ASSOCIATES",Vendor,73283,"GOODKEY, WEEDMARK & ASSOCIATES LTD",Vendor,20
+grahamconstruction,69232,Graham Construction,GC,73686,GRAHAM CONSTRUCTION LTD.,Vendor,2
+grandtoy,8375,Grand & Toy Limited,Vendor,73658,GRAND & TOY,Vendor,7
+grc,55734,GRC ARCHITECTS INC.,Architect,72834,GRC ARCHITECT INC.,Vendor,7
+groundtrutharchaeology,63226,Ground Truth Archaeology,Vendor,73469,Ground Truth Archaeology Limited,Vendor,3
+groupectt,62267,GROUPE CTT INC,Vendor,73340,GROUPE CTT GROUP,Vendor,2
+groupeintersol,55731,GROUPE INTERSOL GROUP LTD.,Vendor,72518,Groupe Intersol Group,Vendor,15
+groupeintersol,55731,GROUPE INTERSOL GROUP LTD.,Vendor,73270,GROUPE INTERSOL,Vendor,2
+groupeintersol,55731,GROUPE INTERSOL GROUP LTD.,Vendor,73273,GROUPE INTERSOL GROUP INC.,Vendor,2
+gsholdings,8560,GS Holdings Co Ltd,Vendor,73396,GS Holdings Company Ltd,Vendor,2
+gshuntenterprises,51320,G.S. HUNT ENTERPRISES LTD.,Vendor,73680,G.S. HUNT ENTERPRISES.,Vendor,2
+guillevininternational,8592,Guillevin International Co,Vendor,73648,GUILLEVIN INTERNATIONAL COMPANY,Vendor,2
+gwlrealtyadvisors,69629,GWL Realty Advisors,Buyer,73595,GWL REALTY ADVISORS INC.,Vendor,4
+h2analytics,61279,H2 Analytics,Vendor,72874,H2 ANALYTICS INC.,Vendor,2
+habitatsystems,8645,Habitat Systems Inc.,Vendor,73084,Habitat Systems Incorporated,Vendor,5
+hansenelectric,51134,HANSEN ELECTRIC LTD,Vendor,73697,Hansen Electric,Vendor,3
+hatch,8742,Hatch Ltd,Vendor,73240,HATCH CORPORATION,Vendor,3
+heritagefoodservice,48575,HERITAGE FOOD SERVICE,Vendor,73613,HERITAGE FOOD SERVICE GROUP,Vendor,3
+heroldengineering,68998,Herold Engineering,Competitor,73040,Herold Engineering Limited,Vendor,3
+hewlettpackardcanada,8906,Hewlett Packard (Canada) Co.,Vendor,72904,HEWLETT-PACKARD CANADA LTD,Vendor,3
+hicklingarthurslow,56304,HICKLING ARTHURS LOW CORPORATION,Vendor,72639,Hickling Arthurs Low,Vendor,2
+highereducationstrategyassociates,8951,Higher Education Strategy Associates,Vendor,73184,HIGHER EDUCATION STRATEGY ASSOCIATES INC.,Vendor,3
+highfieldconstruction,49636,Highfield Construction Co. Ltd.,Vendor,73620,HIGHFIELD CONSTRUCTION COMPANY,Vendor,8
+hilladvisoryservices,55327,HILL ADVISORY SERVICES INC.,Vendor,73337,HILL ADVISORY SERVICES,Vendor,3
+hillandknowltoncanada,56635,HILL AND KNOWLTON CANADA,Vendor,72642,Hill and Knowlton Canada Ltd.,Vendor,3
+hippersonconstruction,50960,HIPPERSON CONSTRUCTION PARTNERSHIP,Vendor,73512,HIPPERSON CONSTRUCTION,Vendor,8
+hldemolitionwastemanagement,42991,HL DEMOLITION & WASTE MANAGEMENT LTD,Vendor,73666,H L DEMOLITION & WASTE MANAGEMENT,Vendor,2
+hoganpaving,52592,HOGAN PAVING LTD.,Vendor,73403,HOGAN PAVING LIMITED,Vendor,2
+hok,68633,HOK,Architect,72841,HOK ARCHITECTS CORPORATION,Vendor,4
+honeywell,39606,HONEYWELL LIMITED,Vendor,73010,Honeywell Ltd.,Vendor,3
+houleelectric,39753,HOULE ELECTRIC LTD,Vendor,72807,HOULE ELECTRIC LIMITED,Vendor,31
+howattstrategichrconsulting,9107,Howatt Strategic HR Consulting Incorporated,Vendor,72885,HOWATT STRATEGIC HR CONSULTING INC,Vendor,2
+humanresourcesystems,72717,HUMAN RESOURCE SYSTEMS GROUP LTD.,Vendor,9148,Human Resource Systems Group,Vendor,7
+ifathom,9295,Ifathom Corporation,Vendor,73142,IFATHOM CORP,Vendor,4
+illerdoorsystems,49542,ILLER DOOR SYSTEMS LTD,Vendor,73682,ILLER DOOR SYSTEMS LIMITED,Vendor,2
+inchecktechnologies,9383,In-Check Technologies,Vendor,73628,INCHECK TECHNOLOGIES INC.,Vendor,3
+independentcontrolservices,9397,Independent Control Services Ltd,Vendor,73505,INDEPENDENT CONTROL SERVICES,Vendor,6
+industraconstruction,43318,INDUSTRA CONSTRUCTION CORP,GC,73462,Industra Construction Corporation,Vendor,2
+infotechresearch,9455,Info-Tech Research Group Inc.,Vendor,72687,INFO-TECH RESEARCH GROUP,Vendor,8
+inlandaudiovisual,9475,Inland Audio Visual Limited,Vendor,72840,INLAND AUDIO VISUAL,Vendor,3
+inlinecontracting,9379,In Line Contracting Partnership,GC,73581,IN-LINE CONTRACTING LTD,Vendor,3
+innovativefacilitation,61889,INNOVATIVE FACILITATION INC.,Vendor,73169,INNOVATIVE FACILITATION INCORPORATED,Vendor,3
+insideoutlandscapesmaintenance,9529,Insideout Landscapes & Maintenance Ltd.,Vendor,73704,Insideout Landscapes & Maintenance,Vendor,2
+insituformtechnologies,9544,Insituform Technologies,Vendor,73709,Insituform Technologies Limited,Vendor,2
+integralgroupconsultingbc,9569,INTEGRAL GROUP CONSULTING (BC) LLP,Vendor,73541,INTEGRAL GROUP CONSULTING (BC) LLC,Vendor,1
+interactiveaudiovisual,40171,INTERACTIVE AUDIO VISUAL INC,Vendor,73398,Interactive Audio Visual,Vendor,2
+intersol,40362,INTERSOL GROUP LTD,Vendor,72901,INTERSOL GROUP LIMITED,Vendor,3
+ironmountaincanada,9735,Iron Mountain Canada,Vendor,73287,IRON MOUNTAIN CANADA CORPORATION,Vendor,6
+islandtechnicalinstallations,44276,ISLAND TECHNICAL INSTALLATIONS,Vendor,73464,Island Technical Installations Ltd,Vendor,2
+islengineeringandlandservices,59847,ISL Engineering and Land Services Ltd.,Competitor,72801,ISL ENGINEERING AND LAND SERVICES,Vendor,23
+javelintechnologies,9906,Javelin Technologies,Vendor,73347,JAVELIN TECHNOLOGIES INC,Vendor,2
+jenkinspowersheetmetal,43995,JENKINS POWER SHEET METAL INC,Vendor,73665,JENKINS POWERSHEET METAL,Vendor,2
+jensen,47792,Jensen Group Architects,Architect,73284,JENSEN GROUP ARCHITECTS INC.,Vendor,3
+jlrichardsassociates,46865,J.L. RICHARDS & ASSOCIATES LIMITED,Vendor,73378,JL RICHARDS & ASSOCIATES,Vendor,4
+jmasoncontracting,44099,J. MASON CONTRACTING LTD,GC,73629,J. MASON CONTRACTING LIMITED,Vendor,2
+johnsoncontrolscanada,10035,JOHNSON CONTROLS CANADA LP,Vendor,73418,Johnson Controls Canada,Vendor,3
+johnsoncontrolscanada,10035,JOHNSON CONTROLS CANADA LP,Vendor,73574,JOHNSON CONTROLS CANADA LTD,Vendor,2
+jonasbuildingrestoration,46553,JONAS BUILDING RESTORATION LIMITED,Vendor,73692,JONAS BUILDING RESTORATION LTD.,Vendor,2
+joneljimconcreteconstruction1994,48775,JONELJIM CONCRETE CONSTRUCTION (1994) LTD.,Vendor,73679,Joneljim Concrete Construction (1994) Limited,Vendor,2
+jscottbroughtonconsulting,72855,J SCOTT BROUGHTON CONSULTING INC,Vendor,72864,J SCOTT BROUGHTON CONSULTING,Vendor,2
+jumpingelephants,40501,JUMPING ELEPHANTS INCORPORATED,Vendor,73346,JUMPING ELEPHANTS INC.,Vendor,2
+junorisksolutions,39950,JUNO RISK SOLUTIONS INC.,Vendor,73131,JUNO RISK SOLUTIONS INCORPORATED,Vendor,6
+junorisksolutions,39950,JUNO RISK SOLUTIONS INC.,Vendor,73456,Juno Risk Solutions,Vendor,2
+kbiconstruction,47774,KBI Construction Inc.,GC,73440,KBI Construction,Vendor,2
+kellyservicescanada,57171,KELLY SERVICES CANADA LTD,Vendor,73263,KELLY SERVICES CANADA,Vendor,4
+kermodeifuelservices,42727,KERMODEI FUEL SERVICES,Vendor,73687,KERMODEI FUEL SERVICES LTD,Vendor,2
+kgs,41152,KGS GROUP,Vendor,72732,KGS GROUP INC.,Vendor,5
+kineticconstruction,48505,Kinetic Construction,GC,73395,Kinetic Construction Ltd.,Vendor,26
+klineconstruction,42958,K-LINE CONSTRUCTION LTD,GC,73370,K-Line Construction Limited,Vendor,3
+knowledgecirclelearningservices,39148,KNOWLEDGE CIRCLE LEARNING SERVICES INC.,Vendor,73485,KNOWLEDGE CIRCLE LEARNING SERVICES,Vendor,3
+kpmg,10509,KPMG LLP,Vendor,73251,KPMG,Vendor,4
+kristaconstruction,42140,KRISTA CONSTRUCTION LTD.,GC,73667,KRISTA CONSTRUCTION LIMITED,Vendor,2
+krmckrivonosovriskmanagement,64487,KRMC-KRIVONOSOV RISK MANAGEMENT,Vendor,72750,KRMC-KRIVONOSOV RISK MANAGEMENT INC,Vendor,3
+kyndrylcanada,10574,Kyndryl Canada Ltd.,Vendor,72678,KYNDRYL CANADA LIMITED,Vendor,3
+lafargecanada,69625,Lafarge Canada,Buyer,73533,LAFARGE CANADA INC,Vendor,2
+lagouvernanceaufeminin,64112,LA GOUVERNANCE AU FEMININ,Vendor,72516,La Gouvernance au Feminin Inc,Vendor,2
+lamarcheelectric,49048,LAMARCHE ELECTRIC INC.,Vendor,73537,LAMARCHE ELECTRIC,Vendor,2
+landtecgroundexperts,40747,LANDTEC GROUND EXPERTS,Vendor,73696,LANDTEC GROUND EXPERTS LTD.,Vendor,6
+lecabinetderelationspubliquesnational,63472,Le Cabinet de relations publiques NATIONAL inc.,Vendor,73388,Le Cabinet de Relations Publiques National,Vendor,4
+ledcorconstruction,69671,Ledcor Construction,GC,72823,LEDCOR CONSTRUCTION LIMITED,Vendor,10
+leehechtharrisonknightsbridge,60542,Lee Hecht Harrison Knightsbridge Co,Vendor,73124,LEE HECHT HARRISON KNIGHTSBRIDGE CORP.,Vendor,4
+legroupepfbrissonpeinture,52540,LE GROUPE P.F. BRISSON PEINTURE INC,Vendor,73676,LE GROUPE P. F. BRISSON PEINTURE,Vendor,2
+lemay,71176,Lemay,Architect,72789,LEMAY CO INC.,Vendor,9
+lengkeekvesselengineering,59235,LENGKEEK VESSEL ENGINEERING,Vendor,72739,LENGKEEK VESSEL ENGINEERING INC.,Vendor,7
+leopiscesservices,57611,LEO-PISCES SERVICES GROUP INC.,Vendor,72922,LEO-PISCES SERVICES GROUP,Vendor,3
+levesqueassociesconstruction,47393,Levesque & Associes Construction Inc.,GC,73586,LEVESQUE & ASSOCIES CONSTRUCTION,Vendor,3
+levittsafety,10900,Levitt-Safety,Vendor,73293,LEVITT SAFETY LTD.,Vendor,4
+levittsafety,10900,Levitt-Safety,Vendor,73309,LEVITT SAFETY LIMITED,Vendor,11
+lifetechnologies,10935,Life Technologies Inc,Vendor,72743,LIFE TECHNOLOGIES,Vendor,3
+lightningmedia,56369,LIGHTNING MEDIA INC.,Vendor,73343,LIGHTNING MEDIA,Vendor,2
+linkedin,10984,LinkedIn Corp.,Vendor,73179,LINKEDIN CORPORATION,Vendor,4
+linkedinireland,73334,LINKEDIN IRELAND LIMITED,Vendor,40139,LINKEDIN IRELAND,Vendor,5
+locallanguagetraining,65066,LOCAL LANGUAGE TRAINING,Vendor,73299,LOCAL LANGUAGE TRAINING INC,Vendor,2
+lrostaffing,55740,LRO STAFFING,Vendor,72628,LRO Staffing Inc.,Vendor,3
+lsdynaonline,64515,LSDYNA ONLINE LLC,Vendor,73322,LSDYNA-ONLINE,Vendor,2
+lsteinerconstruction,46714,L. Steiner Construction LTD,GC,73457,L Steiner Construction,Vendor,4
+luminait,39304,LUMINA IT INC.,Vendor,72564,LUMINA IT,Vendor,6
+lundopsahl,68696,Lund Opsahl LLC,Competitor,73736,Lund Opsahl,Competitor,1
+lwgarchitecturalinteriors,59057,LWG Architectural Interiors Inc,Vendor,73176,LWG ARCHITECTURAL INTERIORS INCORPORATED,Vendor,4
+lynkelectric,44630,LYNK ELECTRIC LIMITED,Vendor,73089,LYNK ELECTRIC,Vendor,12
+mackbuiltcontracting,49612,Mackbuilt Contracting Inc.,GC,73527,MACK BUILT CONTRACTING,Vendor,2
+mackinnoncharlton,59040,MACKINNON-CHARLTON LIMITED,Vendor,72579,MacKinnon-Charlton Ltd.,Vendor,2
+maderraengineering,59632,MADERRA ENGINEERING INC,Vendor,73305,MADERRA ENGINEERING LTD.,Vendor,5
+magnaivengineering,11222,Magna IV Engineering,Vendor,73033,"Magna IV Engineering, Inc.",Vendor,3
+makwaresourcing,55791,MAKWA RESOURCING INC,Vendor,72924,MAKWA RESOURCING,Vendor,5
+mallengowingberzins,70684,Mallen Gowing Berzins Architecture,Architect,72794,MALLEN GOWING BERZINS,Vendor,38
+marblemasterrestoration,39574,MARBLEMASTER RESTORATION,Vendor,73582,MARBLEMASTER RESTORATION INC,Vendor,2
+marshcanada,11372,Marsh Canada Limited,Vendor,73352,MARSH CANADA LTD.,Vendor,5
+massindustrial,49746,Mass Industrial,Vendor,73072,Mass Industrial Inc,Vendor,2
+maxsysstaffingandconsulting,39281,MAXSY'S STAFFING AND CONSULTING INC,Vendor,72900,MAXSYS STAFFING AND CONSULTING,Vendor,3
+mccarthytetrault,57104,MCCARTHY TETRAULT,Vendor,72604,MCCARTHY TETRAULT LLP,Vendor,2
+mccreaexcavating,48807,MCCREA EXCAVATING,Vendor,73389,McCrea Excavating Ltd.,Vendor,2
+mcelhanney,69529,McElhanney,Competitor,73362,MCELHANNEY LTD,Vendor,7
+mcgconsultingsolutions,67472,MCG CONSULTING SOLUTIONS INC.,Vendor,72719,MCG CONSULTING SOLUTIONS,Vendor,2
+mclaughlinconsultants,62096,MCLAUGHLIN CONSULTANTS,Vendor,73226,McLAUGHLIN CONSULTANTS INC.,Vendor,2
+mcluhandaviescommunications,39008,McLuhan & Davies Communications Inc.,Vendor,72563,McLuhan & Davies Communications,Vendor,2
+mcwcustomenergysolutions,11587,MCW Custom Energy Solutions Ltd.,Vendor,73421,MCW Custom Energy Solutions,Vendor,6
+mdageospatialservices,40383,MDA GEOSPATIAL SERVICES INC,Vendor,73329,MDA GEOSPATIAL SERVICES,Vendor,7
+mediumcube,62934,MediumCube,Vendor,73154,Medium Cube Inc.,Vendor,3
+mephillipsson,51038,M.E. PHILLIPS & SON,Vendor,73685,M.E. PHILLIPS & SON LTD,Vendor,2
+mercatorgeologicalservices,67122,MERCATOR GEOLOGICAL SERVICES,Vendor,73190,MERCATOR GEOLOGICAL SERVICES LTD,Vendor,3
+mercercanada,11674,Mercer (Canada) Limited,Vendor,72646,Mercer Canada Ltd.,Vendor,2
+metrographics,11730,Metrographics,Vendor,73043,Metrographics Ltd.,Vendor,2
+meyersnorrispenny,11744,Meyers Norris Penny,Vendor,73254,MEYERS NORRIS PENNY LLP,Vendor,3
+microsoftcanada,11798,MICROSOFT CANADA INC,Vendor,72759,MICROSOFT CANADA LTD.,Vendor,3
+mjchahleyconstruction,44289,MJ CHAHLEY CONSTRUCTION GROUP LTD.,GC,73463,MJ Chahley Construction Group,Vendor,2
+mjsarrazinconsulting,62679,MJ SARRAZIN CONSULTING INC/,Vendor,72852,MJ SARRAZIN CONSULTING,Vendor,3
+mmm,11916,MMM Group Limited,Vendor,72831,MMM GROUP,Vendor,3
+mobileresources,63322,Mobile Resources,Vendor,73162,Mobile Resources Group Inc.,Vendor,3
+mobius,69733,Mobius Architecture,Architect,72742,MOBIUS ARCHITECTURE INC.,Vendor,3
+morneaushepell,12009,Morneau Shepell,Vendor,72961,MORNEAU SHEPELL LTD,Vendor,5
+morrisonhershfield,69543,Morrison Hershfield,Competitor,72757,MORRISON HERSHFIELD LTD.,Vendor,3
+morrisonhershfield,69543,Morrison Hershfield,Competitor,72805,MORRISON HERSHFIELD LIMITED,Vendor,52
+motorolasolutionscanada,12046,Motorola Solutions Canada Inc,Vendor,73497,MOTOROLA SOLUTIONS CANADA,Vendor,2
+murraymanagementconsulting,58700,MURRAY MANAGEMENT CONSULTING,Vendor,73285,MURRAY MANAGEMENT CONSULTING INC,Vendor,2
+mvcocean,42677,MVC OCEAN,Vendor,73048,MVC OCEAN INC,Vendor,8
+narwhalplumbingheating,50880,NARWHAL PLUMBING & HEATING LTD,Vendor,73554,NARWHAL PLUMBING & HEATING,Vendor,3
+nationalartscentre,59094,NATIONAL ARTS CENTRE CORPORATION,Vendor,72755,NATIONAL ARTS CENTRE,Vendor,3
+nationalcapitalcontracting,48932,National Capital Contracting Inc.,GC,73584,NATIONAL CAPITAL CONTRACTING,Vendor,9
+nationalpublicrelations,12249,NATIONAL Public Relations,Vendor,72964,NATIONAL PUBLIC RELATIONS INC.,Vendor,3
+nationalspeakersbureau,57449,NATIONAL SPEAKERS BUREAU INC,Vendor,73103,NATIONAL SPEAKERS BUREAU,Vendor,3
+nationstranslation,56934,NATIONS TRANSLATION GROUP LP,Vendor,73694,NATIONS TRANSLATION GROUP INC.,Vendor,2
+nattiq,12259,NATTIQ Inc.,Vendor,72748,NATTIQ,Vendor,6
+nautsamawtresources,57185,NAUT'SA MAWT RESOURCES GROUP INC.,Vendor,72895,NAUT'SA MAWT RESOURCES GROUP,Vendor,3
+navigantconsulting,59026,NAVIGANT CONSULTING,Vendor,73248,NAVIGANT CONSULTING INC.,Vendor,4
+naviusresearch,12272,Navius Research Inc.,Vendor,73204,NAVIUS RESEARCH,Vendor,6
+newfoundrecruiting,56213,NEWFOUND RECRUITING CORPORATION,Vendor,72716,NEWFOUND RECRUITING,Vendor,3
+newleafperformance,55498,NewLeaf Performance Inc,Vendor,72704,NEW LEAF PERFORMANCE,Vendor,5
+newmanelectric,51180,NEWMAN ELECTRIC CO. INC.,Vendor,73640,Newman Electric Company Inc.,Vendor,2
+nichetechnology,12414,Niche Technology Inc.,Vendor,72771,NICHE TECHNOLOGY,Vendor,3
+nicholsappliedmanagement,12415,Nichols Applied Management,Vendor,73073,NICHOLS APPLIED MANAGEMENT INC.,Vendor,3
+nordastelo,43261,NORDA STELO INC,Vendor,73344,NORDA STELO,Vendor,2
+norichelectric,39415,NORICH ELECTRIC LTD,Vendor,73459,Norich Electric,Vendor,2
+norr,69623,NORR,Architect,72708,NORR LIMITED,Vendor,15
+norr,69623,NORR,Architect,73774,NORR Architects,Architect,1
+northerncontracting,43889,NORTHERN CONTRACTING LIMITED,GC,73702,Northern Contracting Ltd,Vendor,6
+northwesthydraulicconsultants,12597,Northwest Hydraulic Consultants Ltd.,Vendor,73049,Northwest Hydraulic Consultants,Vendor,5
+norvonenterprises,43064,NORVON ENTERPRISES LTD,Vendor,73632,Norvon Enterprises Limited,Vendor,4
+novanetworks,12629,Nova Networks,Vendor,73551,NOVA NETWORKS INC.,Vendor,2
+nunamistantec,68139,NUNAMI STANTEC LIMITED,Vendor,73367,Nunami Stantec Ltd,Vendor,2
+obliqueconsultants,60924,Oblique Consultants Ltd.,Vendor,73350,OBLIQUE CONSULTANTS,Vendor,2
+okanagankootenaywelldrilling,51662,OKANAGAN KOOTENAY WELL DRILLING,Vendor,73659,OKANAGAN KOOTENAY WELL DRILLING LTD,Vendor,2
+olavconsulting,59573,OLAV CONSULTING CORP,Vendor,73220,OLAV CONSULTING CORPORATION,Vendor,3
+oneruleconstruction,12834,One Rule Construction,GC,73538,ONE RULE CONSTRUCTION LTD.,Vendor,2
+opalrttechnologies,12882,Opal RT Technologies,Vendor,73301,OPAL-RT TECHNOLOGIES INC.,Vendor,1
+opengeospatialconsortium,59302,OPEN GEOSPATIAL CONSORTIUM INC,Vendor,73429,Open Geospatial Consortium,Vendor,2
+orbisriskconsulting,39649,ORBIS RISK CONSULTING INC,Vendor,73326,ORBIS RISK CONSULTING,Vendor,3
+orkincanada,12954,ORKIN CANADA CORP,Vendor,73643,ORKIN CANADA CORPORATION,Vendor,2
+ottawabusinessinteriors,39468,OTTAWA BUSINESS INTERIORS,Vendor,72621,Ottawa Business Interiors Ltd.,Vendor,2
+ottawaconventioncentre,56203,OTTAWA CONVENTION CENTRE CORP.,Vendor,72867,OTTAWA CONVENTION CENTRE CORPORATION,Vendor,3
+oxfordconstruction,40896,OXFORD CONSTRUCTION,GC,73611,OXFORD CONSTRUCTION LTD,Vendor,3
+paceplumbingheating,46932,Pace Plumbing & Heating Ltd.,Vendor,73684,PACE PLUMBING & HEATING LIMITED,Vendor,2
+pacificindustrialmarine,42672,PACIFIC INDUSTRIAL & MARINE,Vendor,73470,Pacific Industrial & Marine Ltd,Vendor,10
+paladintechnologies,13073,PALADIN TECHNOLOGIES INC.,Vendor,73477,PALADIN TECHNOLOGIES,Vendor,5
+parkin,68972,Parkin Architects,Architect,72718,PARKIN ARCHITECTS LIMITED,Vendor,3
+parkinarchitectswestern,68865,Parkin Architects Western,Architect,72698,PARKIN ARCHITECTS  WESTERN LIMITED,Vendor,5
+parkland,69706,Parkland Corp.,Buyer,73608,PARKLAND CORPORATION,Vendor,5
+patkau,69282,Patkau Architects,Architect,73268,PATKAU ARCHITECTS INC,Vendor,3
+patlonaircraftindustries,48685,Patlon Aircraft & industries limited,Vendor,73693,PATLON AIRCRAFT & INDUSTRIES,Vendor,2
+pclconstructionmanagement,70811,PCL Construction Management,GC,73499,PCL CONSTRUCTION MANAGEMENT INC,Vendor,1
+performancemanagementnetwork,39736,PERFORMANCE MANAGEMENT NETWORK INC.,Vendor,72784,PERFORMANCE MANAGEMENT NETWORK,Vendor,3
+perkinswillcanada,66168,Perkins + Will Canada Inc,Vendor,73592,PERKINS+WILL CANADA CORPORATION,Vendor,3
+petomaccallum,59564,PETO MACCALLUM LTD.,Vendor,72839,PETO MACCALLUM LIMITED,Vendor,3
+petrotagtechnologies,46950,Petrotag Technologies Inc,Vendor,73436,Petrotag Technologies,Vendor,3
+pleiadcanada,39184,PLEIAD CANADA INC.,Vendor,72857,PLEIAD CANADA INCORPORATED,Vendor,2
+plumbcrazymechanical,50892,PLUMB CRAZY MECHANICAL LTD.,Vendor,73101,PLUMB CRAZY MECHANICAL,Vendor,4
+porpealiarepair,73041,Porpealia Repair Ltd,Vendor,42679,PORPEALIA REPAIR,Vendor,4
+portagepersonnel,56462,Portage Personnel Inc.,Vendor,73413,Portage Personnel,Vendor,2
+powersteelbuildings,52632,POWER STEEL BUILDINGS INC,Vendor,73523,POWER STEEL BUILDINGS,Vendor,2
+prairierubberpaving,49572,Prairie Rubber Paving Ltd.,Vendor,73579,PRAIRIE RUBBER PAVING,Vendor,1
+prepservicesinternational,65688,P.R.E.P. SERVICES INTERNATIONAL LTD,Vendor,73316,P.R.E.P. SERVICES INTERNATIONAL,Vendor,2
+presidiasecurityconsulting,39200,PRESIDIA SECURITY CONSULTING INC,Vendor,72683,PRESIDIA SECURITY CONSULTING,Vendor,6
+presidiasecurityconsulting,39200,PRESIDIA SECURITY CONSULTING INC,Vendor,73178,PRESIDIA SECURITY CONSULTING INCORPORATED,Vendor,4
+primexprojectmanagement,64468,PRIMEX PROJECT MANAGEMENT LIMITED,Vendor,73600,Primex Project Management Ltd,Vendor,2
+procurementallianceofcanada,57380,PROCUREMENT ALLIANCE OF CANADA INC.,Vendor,73294,PROCUREMENT ALLIANCE OF CANADA,Vendor,3
+promaxis,63300,Promaxis,Vendor,73375,Promaxis Inc.,Vendor,2
+prosagmecanique,48562,PRO-SAG MECANIQUE,Vendor,73671,PRO-SAG MECANIQUE INC,Vendor,2
+proto3000,13844,Proto3000 Inc,Vendor,73473,Proto3000,Vendor,2
+protolabs,64956,"PROTO LABS, INC",Vendor,73342,PROTOLABS,Vendor,2
+puriconsulting,62220,PURI CONSULTING LIMITED,Vendor,72591,Puri Consulting Ltd.,Vendor,2
+pyramidconstruction,42887,PYRAMID CONSTRUCTION LTD,GC,73639,Pyramid Construction Limited,Vendor,2
+qdrillingremediation,48307,Q-DRILLING & REMEDIATION INC.,Vendor,73386,Q-Drilling & Remediation,Vendor,4
+qmrstaffingsolutions,55451,QMR Staffing Solutions Inc.,Vendor,72506,QMR STAFFING SOLUTIONS INCORPORATED,Vendor,46
+qmrstaffingsolutions,55451,QMR Staffing Solutions Inc.,Vendor,72910,QMR STAFFING SOLUTIONS,Vendor,3
+quaileengineering,64452,QUAILE ENGINEERING LIMITED,Vendor,73077,QUAILE ENGINEERING LTD.,Vendor,4
+quatrosenseenvironmental,47725,Quatrosense Environmental Ltd,Vendor,73602,QUATROSENSE ENVIRONMENTAL LIMITED,Vendor,2
+quintekawarthaalarmsystems,47948,Quinte-Kawartha Alarm Systems,Vendor,73465,Quinte-Kawartha Alarm Systems Limited,Vendor,2
+quintetconsulting,39132,QUINTET CONSULTING CORPORATION,Vendor,72487,QUINTET CONSULTING CORP.,Vendor,5
+quintetconsulting,39132,QUINTET CONSULTING CORPORATION,Vendor,73288,QUINTET CONSULTING,Vendor,9
+rain,62955,"RAIN Group, LLC",Vendor,73349,RAIN GROUP,Vendor,2
+rainmakersconsultingservices,62632,RAINMAKERS CONSULTING SERVICES INC,Vendor,72685,RAINMAKERS CONSULTING SERVICES,Vendor,3
+ralphconnor,46702,Ralph Connor Co Ltd,Vendor,73617,RALPH CONNOR COMPANY LIMITED,Vendor,6
+ranwalplumbingheating,14122,Ranwal Plumbing & Heating LTD.,Vendor,73496,RANWAL PLUMBING & HEATING,Vendor,2
+raylecpower,41966,RAYLEC POWER LP,Vendor,73673,RAYLEC POWER LIMITED PARTNERSHIP,Vendor,2
+raymondchabotgrantthornton,50735,RAYMOND CHABOT GRANT THORNTON,Vendor,72971,Raymond Chabot Grant Thornton Inc.,Vendor,2
+raymondemcenclosures,47084,RAYMOND EMC ENCLOSURES LTD,Vendor,73338,RAYMOND EMC ENCLOSURES LIMITED,Vendor,2
+rcsconstruction,53067,RCS Construction Incorporated,GC,73361,RCS Construction Inc,Vendor,2
+rdhbuildingscience,69542,RDH Building Science,Subcontractor,72804,RDH BUILDING SCIENCE INC,Vendor,10
+redwoodconstruction,42893,REDWOOD CONSTRUCTION LIMITED,Vendor,73599,REDWOOD CONSTRUCTION LTD.,Vendor,3
+republic,42463,REPUBLIC ARCHITECTURE INC,Architect,73390,Republic Architecture Incorporated,Vendor,10
+resortsofthecanadianrockies,69702,Resorts of the Canadian Rockies,Buyer,73603,RESORTS OF THE CANADIAN ROCKIES INC,Vendor,2
+revery,72266,Revery Architecture,Architect,73009,Revery Architecture Inc.,Vendor,3
+rfpsolutions,14409,RFP Solutions Inc.,Vendor,73177,RFP SOLUTIONS,Vendor,3
+rigakuamericas,73242,RIGAKU AMERICAS CORPORATION,Vendor,14472,Rigaku Americas Corp,Vendor,6
+rikjakconstruction,46824,RIKJAK CONSTRUCTION LTD.,GC,73663,RIKJAK CONSTRUCTION LIMITED,Vendor,2
+robertson,59055,ROBERTSON & COMPANY LTD,Vendor,73550,ROBERTSON GROUP LTD,Vendor,2
+rockwoodtransportation,43988,ROCKWOOD TRANSPORTATION LTD,Vendor,73661,ROCKWOOD TRANSPORTATION CO LTD,Vendor,2
+rockysplumbingheating,50890,ROCKY'S PLUMBING & HEATING LTD.,Vendor,73042,ROCKY'S PLUMBING & HEATING,Vendor,3
+rogerscommunications,14665,Rogers Communications,Vendor,73484,ROGERS COMMUNICATIONS PARTNERSHIP,Vendor,4
+rogerscommunications,14665,Rogers Communications,Vendor,73636,Rogers Communications Inc.,Vendor,2
+roystruckinglandscaping,44651,ROY'S TRUCKING & LANDSCAPING LTD,Vendor,73612,ROY'S TRUCKING & LANDSCAPING,Vendor,2
+rrhvacandcontrols,43746,R&R HVAC AND CONTROLS LTD,Vendor,73561,R&R HVAC AND CONTROLS LIMITED,Vendor,2
+ryzukgeotechnical,59617,Ryzuk Geotechnical,Subcontractor,73054,RYZUK GEOTECHNICAL LTD.,Vendor,3
+sahdisasterrestorationservices,41657,S A H DISASTER RESTORATION SERVICES LTD,Vendor,73623,S.A.H DISASTER RESTORATION SERVICES,Vendor,2
+salishseaindustrialservices,42975,SALISH SEA INDUSTRIAL SERVICES,Vendor,73478,SALISH SEA INDUSTRIAL SERVICES LTD,Vendor,3
+samsonassociéscpaconsultation,39373,SAMSON & ASSOCIÉS CPA/CONSULTATION INC,Vendor,72943,Samson & Associés CPA/Consultation,Vendor,2
+saskpower,53104,SASK POWER CORPORATION,Vendor,73502,SASKPOWER,Vendor,2
+scashippingconsultantsassociated,63196,SCA Shipping Consultants Associated Ltd.,Vendor,73425,S.C.A. - Shipping Consultants Associated,Vendor,2
+scottbuilders,15089,Scott Builders Inc.,GC,73524,SCOTT BUILDERS,Vendor,2
+seacrestelectric,41178,SEACREST ELECTRIC LTD,Vendor,73662,SEACREST ELECTRIC LIMITED,Vendor,2
+sedesignandconsulting,15109,SE Design and Consulting,Vendor,73439,SE Design and Consulting Inc.,Vendor,2
+sepw,52679,SEPW ARCHITECTURE INC.,Architect,72706,SEPW ARCHITECTURE ltd.,Vendor,16
+sepw,52679,SEPW ARCHITECTURE INC.,Architect,73434,SEPW,Vendor,2
+servantdunbrackmckenziemacdonald,63386,"Servant, Dunbrack, McKenzie & MacDonald",Vendor,73466,"Servant, Dunbrack, McKenzie & MacDonald Ltd.",Vendor,2
+shawelectricalservices,43179,SHAW ELECTRICAL SERVICES,Vendor,73529,SHAW ELECTRICAL SERVICES LTD,Vendor,2
+shippingconsultantsassociated,63218,Shipping Consultants Associated Ltd,Vendor,73424,Shipping Consultants Associated,Vendor,2
+shuot,63341,S. Huot Inc,Vendor,73423,S. HUOT,Vendor,5
+simner,39270,SIMNER CORPORATION,Vendor,73449,Simner Corp.,Vendor,2
+simpsonbuildingcontractors,51829,SIMPSON BUILDING CONTRACTORS LTD.,Vendor,73415,SIMPSON BUILDING CONTRACTORS LIMITED,Vendor,2
+simsonmaxwell,15444,Simson Maxwell,Vendor,73026,Simson-Maxwell Ltd.,Vendor,3
+sisystems,14856,S.i. Systems,Vendor,72694,S.I. SYSTEMS PARTNERSHIP,Vendor,7
+slobodanpsimonovicconsulting,64756,SLOBODAN P. SIMONOVIC CONSULTING,Vendor,72880,SLOBODAN P SIMONOVIC CONSULTING LTD,Vendor,3
+smcnconsulting,69516,SMCN Consulting,Subcontractor,73311,SMCN CONSULTING INC,Vendor,3
+snclavalin,15558,SNC Lavalin Inc.,Vendor,73406,SNC Lavalin,Vendor,4
+softchoice,15583,SoftChoice,Vendor,72777,SOFTCHOICE CORPORATION,Vendor,3
+solotech,15619,SOLOTECH INC.,Vendor,73518,SOLOTECH,Vendor,2
+southsidecommunications,39071,Southside Communications Inc.,Buyer,73080,Southside Communications,Vendor,3
+spacesavermobilestoragesystems,15741,Spacesaver Mobile Storage Systems Corporation,Vendor,73634,Spacesaver Mobile Storage Systems,Vendor,2
+spacesaversystemsmaritime,43687,SPACESAVER SYSTEMS MARITIME,Vendor,73631,Spacesaver Systems Maritime Ltd,Vendor,2
+sparkpowerhighvoltageservices,42098,SPARK POWER HIGH VOLTAGE SERVICES INC,Vendor,73605,SPARK POWER HIGH VOLTAGE SERVICES,Vendor,2
+spearheadmanagementcanada,55761,SPEARHEAD MANAGEMENT CANADA LTD,Vendor,72921,SPEARHEAD MANAGEMENT CANADA LIMITED,Vendor,2
+spectrum360lrrt,57835,SPECTRUM 360 LR-RT INCORPORATED,Vendor,72520,SPECTRUM 360 LR-RT INC.,Vendor,3
+sperraconstruction,49427,Sperra Construction,GC,73647,SPERRA CONSTRUCTION GROUP INC.,Vendor,6
+sphyrnasecurity,55444,Sphyrna Security Inc.,Vendor,73205,SPHYRNA SECURITY INCORPORATED,Vendor,3
+stagconstructionsolutions,47991,Stag Construction Solutions ltd,Vendor,73428,STAG CONSTRUCTION SOLUTIONS,Vendor,3
+stantec,38934,Stantec Inc.,Competitor,72666,Stantec,Vendor,3
+stantec,38934,Stantec Inc.,Competitor,72692,STANTEC ARCHITECTURE LTD.,Vendor,84
+stantec,38934,Stantec Inc.,Competitor,72700,STANTEC ARCHITECTURE LIMITED,Vendor,12
+stantecconsulting,15944,Stantec Consulting Ltd,Competitor,73376,Stantec Consulting Limited,Vendor,5
+stantecconsulting,15944,Stantec Consulting Ltd,Competitor,73405,Stantec Consulting,Vendor,6
+stasesonkleinapplicators,52904,STASESON - KLEIN APPLICATORS LTD,Vendor,73511,STASESON KLEIN APPLICATORS,Vendor,2
+stoneleighstrategies,61996,STONELEIGH STRATEGIES INC.,Vendor,73351,STONELEIGH STRATEGIES,Vendor,2
+stonhard,41290,STONHARD,Vendor,73656,STONHARD LTD,Vendor,2
+storyconstruction,51309,STORY CONSTRUCTION LTD,GC,73476,STORY CONSTRUCTION,Vendor,2
+strangemoreelectricalservices,43877,STRANGEMORE' ELECTRICAL SERVICES LTD.,Vendor,73645,STRANGEMORE ELECTRICAL SERVICES,Vendor,2
+strongbrosgeneralcontracting,41451,STRONG BROS GENERAL CONTRACTING LTD,GC,73431,Strong Bros General Contracting,Vendor,6
+suncorenergyproducts,16246,Suncor Energy Products Partnership,Vendor,73596,SUNCOR ENERGY PRODUCTS,Vendor,3
+supercleanservices,46906,Super Clean Services Ltd,Vendor,73688,SUPER CLEAN SERVICES LIMITED,Vendor,2
+survivalsystemstraining,60018,SURVIVAL SYSTEMS TRAINING LIMITED,Vendor,73446,Survival Systems Training Ltd,Vendor,2
+sweetlandsaggregate,43879,SWEETLANDS AGGREGATE,Vendor,73681,SWEETLANDS AGGREGATE LTD.,Vendor,2
+swiftunderground,53081,SWIFT UNDERGROUND LTD,Vendor,73513,SWIFT UNDERGROUND,Vendor,2
+systematixitsolutions,56991,SYSTEMATIX IT SOLUTIONS INC.,Vendor,73185,SYSTEMATIX IT SOLUTIONS,Vendor,3
+systematixsolutionsti,62541,SYSTEMATIX SOLUTIONS TI INC,Vendor,72686,SYSTEMATIX SOLUTIONS TI,Vendor,3
+systemeincendieleclerc,42242,SYSTEME INCENDIE LECLERC INC,Vendor,73460,Systeme Incendie Leclerc,Vendor,2
+tabproductsofcanada,16460,"TAB PRODUCTS OF CANADA, CO.",Vendor,73660,TAB PRODUCTS OF CANADA LIMITED,Vendor,3
+taghrtheassociates,61844,TAG HR - THE ASSOCIATES GROUP,Vendor,72849,TAG HR THE ASSOCIATES GROUP INC.,Vendor,3
+talonenergyservices,40952,TALON ENERGY SERVICES,Vendor,73601,TALON ENERGY SERVICES INC.,Vendor,4
+tannasconservationservices,16498,Tannas Conservation Services,Vendor,72813,Tannas Conservation Services Ltd.,Vendor,6
+targetfabrication,41253,TARGET FABRICATION INC,Vendor,73472,Target Fabrication,Vendor,2
+teameagle,16558,Team Eagle Ltd,Vendor,73455,Team Eagle,Vendor,2
+tekconsultants,51296,TEK CONSULTANTS LTD,Vendor,73369,TEK CONSULTANTS LIMITED,Vendor,2
+teknionfurnituresystems,39692,TEKNION FURNITURE SYSTEMS LTD.,Vendor,72920,TEKNION FURNITURE SYSTEMS,Vendor,2
+teksystemscanada,57576,TEKSYSTEMS CANADA CORP,Vendor,72674,TEKSYSTEMS CANADA INC.,Vendor,6
+telecomcomputer,39218,TELECOM COMPUTER INC,Vendor,73490,TELECOM COMPUTER,Vendor,4
+teluscommunications,16624,TELUS Communications Inc,Vendor,73132,TELUS COMMUNICATIONS CO.,Vendor,3
+teluscommunications,16624,TELUS Communications Inc,Vendor,73487,TELUS COMMUNICATIONS COMPANY,Vendor,2
+tenaquip,16635,Tenaquip Ltd,Vendor,73621,Tenaquip Limited,Vendor,2
+terrylavalleeconstruction,43033,TERRY LAVALLEE CONSTRUCTION,GC,73479,TERRY LAVALLEE CONSTRUCTION LTD,Vendor,2
+theaim,39303,THE AIM GROUP INC,Vendor,72554,The Aim Group,Vendor,5
+thelansdowneconsulting,49148,THE LANSDOWNE CONSULTING GROUP INC,Vendor,73227,THE LANSDOWNE CONSULTING GROUP,Vendor,4
+themanufacturerslifeinsurance,51298,THE MANUFACTURERS LIFE INSURANCE,Vendor,73597,THE MANUFACTURERS LIFE INSURANCE CO,Vendor,3
+themashakrupptranslation,16854,The Masha Krupp Translation Group Limited,Vendor,72540,The Masha Krupp Translation,Vendor,4
+themashakrupptranslation,16854,The Masha Krupp Translation Group Limited,Vendor,73187,THE MASHA KRUPP TRANSLATION GROUP LTD.,Vendor,4
+thinkpoint,62270,THINKPOINT INC.,Vendor,73384,ThinkPoint,Vendor,5
+thomasschmidt,56272,Thomas & Schmidt Inc,Vendor,73381,Thomas & Schmidt.,Vendor,5
+timberlakeconstruction,49965,Timberlake Construction Co. Ltd.,Vendor,73691,TIMBERLAKE CONSTRUCTION LTD.,Vendor,2
+tireefacilitysolutions,67828,TIREE FACILITY SOLUTIONS,Vendor,72613,Tiree Facility Solutions Inc.,Vendor,15
+tlseengineering,70728,TLSE Engineering,Competitor,73324,TLSE ENGINEERING INC.,Vendor,2
+tmpconsultingengineersalberta,17064,TMP Consulting Engineers (Alberta) Ltd,Vendor,73067,TMP Consulting Engineers (Alberta),Vendor,4
+topdeskcanada,17123,TOPdesk Canada,Vendor,73165,TOPDESK CANADA INC.,Vendor,3
+toromontarctic,51713,TOROMONT ARCTIC LTD,Vendor,73569,TOROMONT ARCTIC LIMITED,Vendor,3
+torontometropolitanuniversity,57713,TORONTO METROPOLITAN UNIVERSITY,Vendor,72945,TORONTO METROPOLITAN UNIVERSITY c/o,Vendor,2
+touchstonesolutions,61999,TOUCHSTONE SOLUTIONS LIMITED,Vendor,73280,TOUCHSTONE SOLUTIONS LTD.,Vendor,2
+tpcrawford,46522,T.P. CRAWFORD LIMITED,Vendor,73373,T.P. Crawford Ltd,Vendor,2
+transoftsolutions,63588,Transoft Solutions,Vendor,73441,Transoft Solutions Inc.,Vendor,2
+trigenex,68103,TRIGENEX,Vendor,73363,TRIGENEX INC,Vendor,3
+trmtechnologies,39153,TRM TECHNOLOGIES INC.,Vendor,72781,TRM TECHNOLOGIES,Vendor,2
+trylontsf,43334,TRYLON T.S.F.,Vendor,73058,TRYLON TSF INC.,Vendor,3
+tundratechnicalsolutions,17415,Tundra Technical Solutions Inc.,Vendor,72925,TUNDRA TECHNICAL SOLUTIONS,Vendor,2
+turningtechnologiescanada,17438,TURNING TECHNOLOGIES CANADA INC.,Vendor,73136,TURNING TECHNOLOGIES CANADA,Vendor,3
+turtleislandstaffing,50636,TURTLE ISLAND STAFFING INC.,Vendor,72519,Turtle Island Staffing,Vendor,6
+twoworldsconsulting,17458,Two Worlds Consulting Ltd.,Vendor,72947,Two Worlds Consulting,Vendor,2
+ubiquscanada,17481,Ubiqus Canada Inc.,Vendor,73336,UBIQUS CANADA,Vendor,3
+ultimateprogressleadership,59109,"Ultimate Progress Leadership Group,",Vendor,72673,ULTIMATE PROGRESS LEADERSHIP,Vendor,3
+unigec,39652,UNIGEC INC.,Vendor,73335,UNIGEC,Vendor,4
+upperleveldoors,47464,UPPER LEVEL DOORS,Vendor,73699,Upper Level Doors Inc,Vendor,2
+urbanarts,69121,Urban Arts Architecture,Architect,73235,URBAN ARTS ARCHITECTURE INC.,Vendor,3
+valcomconsulting,59127,VALCOM CONSULTING GROUP INC,Vendor,73382,Valcom Consulting Group,Vendor,8
+valcomconsulting,59127,VALCOM CONSULTING GROUP INC,Vendor,73427,Valcom Consulting Group Ltd.,Vendor,4
+victoriashipyards,47756,Victoria Shipyards Co Ltd.,Vendor,73642,VICTORIA SHIPYARDS COMPANY LIMITED,Vendor,2
+vviconstruction,70827,VVI Construction,GC,73708,VVI Construction Ltd,Vendor,2
+w3design,73018,W3 Design Group,Vendor,17985,W3 Design Group Inc.,Vendor,4
+wahlconstruction,17998,Wahl Construction Ltd,GC,73374,WAHL CONSTRUCTION,Vendor,7
+wajax,18006,Wajax,Vendor,73614,WAJAX LIMITED,Vendor,2
+waterdonconstruction,40934,WATERDON CONSTRUCTION LIMITED,Vendor,73432,Waterdon Construction,Vendor,2
+waterworksconstruction,46735,Waterworks Construction,GC,73689,WATERWORKS CONSTRUCTION LIMITED,Vendor,3
+wellspringworldwide,64509,WELLSPRING WORLDWIDE,Vendor,73306,WELLSPRING WORLDWIDE INC,Vendor,3
+wesgroupproperties,12,Wesgroup Properties Ltd.,KorClient,73653,WESGROUP PROPERTIES LP,Vendor,2
+wesgroupproperties,12,Wesgroup Properties Ltd.,KorClient,73793,Wesgroup Properties,Developer,2
+westhawkassociates,18216,West Hawk Associates Inc.,Vendor,73279,WEST  HAWK ASSOCIATES,Vendor,2
+westowercommunications,18359,Westower Communications Ltd,Vendor,72699,WESTOWER COMMUNICATIONS,Vendor,5
+wf,18390,WF Architecture Inc,Architect,73475,WF Group Inc.,Unknown,2
+williamsengineeringcanada,71127,Williams Engineering Canada,Competitor,73035,Williams Engineering Canada Inc,Vendor,3
+workplacemedical,18604,Workplace Medical Corp.,Vendor,73125,WORKPLACE MEDICAL CORPORATION,Vendor,3
+wppgroupcanadacommunications,62905,WPP Group Canada Communications Limited,Vendor,72560,WPP GROUP CANADA COMMUNICATIONS LTD,Vendor,2
+wppgroupcanadacommunications,62905,WPP Group Canada Communications Limited,Vendor,72853,WPP GROUP CANADA COMMUNICATIONS,Vendor,4
+wspcanada,18657,WSP Canada Inc.,Competitor,72820,Wsp Canada Group Limited,Vendor,88
+wspcanada,18657,WSP Canada Inc.,Competitor,73452,WSP CANADA,Vendor,2
+wspeicanada,18670,WSP E & I Canada Limited,Vendor,73358,WSP E&I Canada Ltd,Vendor,13
+wspeicanada,18670,WSP E & I Canada Limited,Vendor,73372,WSP E&I Canada,Vendor,2
+xylemcanada,18713,Xylem Canada Company,Vendor,73007,Xylem Canada Lp,Vendor,4
+yardsticksoftware,65360,YARDSTICK SOFTWARE INC,Vendor,73274,YARDSTICK SOFTWARE,Vendor,3
+zeidler,18771,Zeidler Architecture,Architect,72791,Zeidler Architecture Inc.,Vendor,16
+zuluaggregates,18808,Zulu Aggregates,Vendor,73703,Zulu Aggregates Inc,Vendor,2
