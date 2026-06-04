@@ -897,3 +897,15 @@ LoserId,SurvivorId,Reason
 # into KOR's own canonical 38918 (KorStructural kind). The dedup tool's BestKind
 # logic preserves the KorStructural Kind on the survivor.
 71524,38918
+# 2026-06-03 Architect-Pipelines Session 2 follow-up: Formline Architecture (55057,
+# older shorter name) and Formline Architecture + Urbanism (69095, current name).
+# Same Indigenous architecture firm — they expanded to add Urbanism practice. The
+# VAG win was credited to "Formline Architecture + Urbanism" so 69095 is the
+# survivor. Fuzzy match rejects because the "+ Urbanism" suffix differs.
+55057,69095
+# 2026-06-04 Phase 3 Session 4: Concert-Bird Partners dup merge (71221 → 71162)
+# Both are the same AB P3 Schools Bundle 2 JV entity. 71221 is the verbose legal-name form
+# ("Bird Design-Build Construction Inc. / Wright Construction Western Inc." with "Inc.") vs
+# 71162 shorter form ("Bird Design-Build / Wright Construction Western"). MPI rows repointed
+# to Bird Construction Inc. (54928) before this merge. 71162 is the survivor (higher-MPI original).
+71221,71162
