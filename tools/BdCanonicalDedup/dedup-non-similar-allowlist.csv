@@ -909,3 +909,10 @@ LoserId,SurvivorId,Reason
 # 71162 shorter form ("Bird Design-Build / Wright Construction Western"). MPI rows repointed
 # to Bird Construction Inc. (54928) before this merge. 71162 is the survivor (higher-MPI original).
 71221,71162
+# 2026-06-04 Bare-Orgs Session 5: NCL - Northern Contracting Limited dup merge.
+# 43889 "NCL – Northern Contracting Limited" (en-dash form, survivor) and 51859
+# "NCL - NORTHERN CONTRACTING LIMITED" (hyphen + upper) are the same Sydney Mines NS
+# GC (835 Main Street, owner Sheldon Marinelli, ncltd.ca). Same address, owner, and
+# website confirmed during Sonnet verify pass. Fuzzy match rejects on the en-dash
+# vs hyphen difference.
+51859,43889
