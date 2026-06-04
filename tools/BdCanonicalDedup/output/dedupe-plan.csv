@@ -1,1 +1,45 @@
 ﻿GroupKey,SurvivorId,SurvivorName,SurvivorKind,LoserId,LoserName,LoserKind,FkRefsRepointed
+aci,69626,ACI Architects Inc.,Architect,72356,ACI Architecture,Architect,1
+actonostry,38960,Acton Ostry Architects Inc.,Architect,72265,Acton Ostry Architects,Architect,1
+anthemproperties,207,Anthem Properties Group Ltd.,KorClient,72245,Anthem Properties,Developer,1
+architecture49,2579,Architecture49 Inc.,Architect,72138,Architecture49,Architect,4
+battersbyhowat,24317,BattersbyHowat Architects Inc.,Architect,72279,BattersbyHowat Architects,Architect,1
+bcferries,53730,BC Ferries Corporation,Buyer,72228,BC Ferries,Buyer,2
+brianporter,72287,Brian Porter Architect Inc.,Architect,72363,Brian Porter Architect,Architect,1
+bushbohlman,38920,"Bush, Bohlman & Partners LLP",Competitor,72400,BushBohlman & Partners,Competitor,1
+chandosconstruction,4708,Chandos Construction Ltd.,GC,72157,Chandos Construction,GC,2
+concertpropertiespeterson,54915,Concert Properties/ Peterson,Developer,72242,Concert Properties / Peterson Group,Developer,1
+dub,68760,Dub Architects Ltd.,Architect,72355,DUB Architects,Architect,1
+ellisdon,22257,EllisDon Corporation,GC,72415,EllisDon,GC,1
+ellisdondesignbuild,69850,EllisDon Design Build Inc.,GC,72182,EllisDon Design Build,GC,3
+equilibriumconsulting,38925,Equilibrium Consulting Inc.,Competitor,72294,Equilibrium Consulting,Competitor,1
+falconengineering,69519,Falcon Engineering,Competitor,72298,Falcon Engineering Ltd.,Competitor,1
+grahamconstructionengineering,8349,Graham Construction & Engineering Inc.,GC,72137,Graham Construction & Engineering LP,GC,2
+group2architectureinteriordesign,8538,Group2 Architecture Interior Design Ltd.,Architect,72352,Group2 Architecture Interior Design,Architect,1
+hdr,70635,HDR,Competitor,72462,HDR Inc.,Architect,1
+hdrarchitectureassociates,72190,HDR Architecture Associates,Architect,72404,HDR Architecture Associates Inc.,Architect,1
+hhangusassociates,72414,H.H. Angus & Associates,Competitor,8624,H.H. Angus & Associates Limited,Vendor,3
+islengineeringandlandservices,59847,ISL Engineering and Land Services Ltd.,Competitor,72365,ISL Engineering and Land Services,Competitor,1
+johnstondavidson,69214,Johnston Davidson Architecture,Architect,72140,Johnston Davidson Architecture Inc.,Architect,2
+kasianarchitectureinteriordesignandplanning,70543,Kasian Architecture Interior Design and Planning,Architect,72441,Kasian Architecture Interior Design and Planning Ltd.,Architect,1
+kineticconstruction,48505,Kinetic Construction,GC,72141,Kinetic Construction Ltd.,GC,2
+kmbrarchitectsplanners,72169,KMBR Architects Planners Inc.,Architect,72285,KMBR Architects Planners,Architect,1
+marcboutinarchitecturalcollaborative,71199,Marc Boutin Architectural Collaborative Inc.,Architect,72361,Marc Boutin Architectural Collaborative,Architect,1
+mcfarlanebiggararchitectsdesigners,27564,McFarlane Biggar Architects + Designers Inc.,Architect,72360,McFarlane Biggar Architects + Designers,Architect,1
+norrarchitectsengineers,46132,NORR ARCHITECTS & ENGINEERS LIMITED,Architect,72161,NORR Architects & Engineers,Architect,2
+norrarchitectsengineers,46132,NORR ARCHITECTS & ENGINEERS LIMITED,Architect,72451,NORR Architects & Engineers Ltd.,Architect,1
+parkinarchitectswestern,68865,Parkin Architects Western,Architect,72188,Parkin Architects Western Ltd.,Architect,2
+pclconstructionmanagement,70811,PCL Construction Management,GC,72178,PCL Construction Management Inc.,GC,4
+perkinswill,69688,Perkins + Will Architects,Architect,72142,Perkins & Will,Architect,3
+pomerleau,13537,Pomerleau Inc.,GC,72174,Pomerleau,GC,2
+reinboldengineering,70074,Reinbold Engineering,Competitor,72303,Reinbold Engineering Group,Competitor,1
+scottconstruction,54932,Scott Construction Group,GC,72210,Scott Construction,GC,1
+smithandersencalgary,72368,Smith + Andersen (Calgary),Competitor,15533,Smith + Andersen (Calgary) Ltd.,Vendor,5
+stantec,38934,Stantec Inc.,Competitor,72207,Stantec Architecture,Architect,4
+stantec,38934,Stantec Inc.,Competitor,72436,Stantec Architecture Ltd.,Architect,4
+start,16018,START Architecture Inc,Architect,72351,START Architecture,Architect,1
+studioone,145,Studio One Architecture Inc.,Architect,72288,Studio One Architecture,Architect,1
+unitechconstructionmanagement,70562,Unitech Construction Management Ltd.,GC,72168,Unitech Construction Management,GC,2
+urbanarts,69121,Urban Arts Architecture,Architect,72205,Urban Arts Architecture Inc.,Architect,1
+ventanaconstruction,191,Ventana Construction Corp.,KorClient,72139,Ventana Construction Corporation,GC,4
+wesgroupproperties,12,Wesgroup Properties Ltd.,KorClient,72251,Wesgroup Properties,Developer,3
