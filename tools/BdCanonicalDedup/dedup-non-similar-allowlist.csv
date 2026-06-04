@@ -926,3 +926,9 @@ LoserId,SurvivorId,Reason
 54558,69704
 70778,69217
 53867,69730
+# 2026-06-04 Round 76 spot-check: Calgary Board of Education (CBE) paren-suffix
+# variant. 68780 "Calgary Board of Education (CBE)" and 72042 "Calgary Board of
+# Education" are the same school district (CBE is the standard public acronym).
+# Both have 14 MPI Proponent rows and 0 KorProjects. Fuzzy gate rejects because
+# the (CBE) suffix survives bracket-strip as "cbe". 72042 (cleaner name) survives.
+68780,72042
