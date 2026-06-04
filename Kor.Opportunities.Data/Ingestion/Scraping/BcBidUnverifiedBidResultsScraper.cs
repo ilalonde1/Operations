@@ -36,7 +36,15 @@ public sealed class BcBidUnverifiedBidResultsScraper
         RegexOptions.Compiled);
 
     private static readonly Regex AddressHintRegex = new(
-        @"(?:\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b|\b(?:Alberta|British\s+Columbia|Manitoba|New\s+Brunswick|Newfoundland|Nova\s+Scotia|Ontario|Prince\s+Edward\s+Island|Quebec|Saskatchewan|Yukon|Northwest\s+Territories|Nunavut)\b)",
+        @"(?:\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b|\b(?:Alberta|British\s+Columbia|Manitoba|New\s+Brunswick|Newfoundland|Nova\s+Scotia|Ontario|Prince\s+Edward\s+Island|Quebec|Saskatchewan|Yukon|Northwest\s+Territories|Nunavut)\b|,\s*(?:AB|BC|MB|NB|NL|NS|NT|NU|ON|PE|QC|SK|YT)\b)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex BidderPlaceholderRegex = new(
+        @"^(?:not publicly disclosed|n/a|tba|tbd|unknown)$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex CompanyKeywordRegex = new(
+        @"\b(?:CORP(?:ORATION)?|LTD|LIMITED|INC(?:ORPORATED)?|LLP|LLC|GROUP|COMPANY|CO|CONTRACTING|CONSTRUCTION|CONSULTANTS?|CONSULTING|ENGINEERING|SERVICES|HOLDINGS|ENTERPRISES|RESOURCES|SOLUTIONS|SYSTEMS|INDUSTRIES|TECHNOLOGIES|LANDSCAPING|EXCAVATING|EQUIPMENT|MECHANICAL|ELECTRICAL|ROOFING|PAVING|PLUMBING|HVAC)\.?\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex RankRegex = new(
@@ -417,36 +425,8 @@ public sealed class BcBidUnverifiedBidResultsScraper
             cellTexts.Add((await cell.InnerTextAsync().ConfigureAwait(false)).Trim());
         }
 
-        // Stage 2 detail-view column layout (verified 2026-05-21 via diagnostic):
-        //   0 Opportunity ID
-        //   1 Opportunity Description
-        //   2 Issuing Organization
-        //   3 Closing Date and Time (Pacific Time)
-        //   4 Opening Date and Time (Pacific Time)
-        //   5 Supplier Location           <-- bidder address
-        //   6 Supplier Name               <-- BidderName
-        //   7 Bid amount/rank             <-- $ + optional rank
-        // When the page is still in Stage 1 list mode (e.g. detail filter
-        // didn't transition), rows have only 5 cells — skip those.
-        string? bidderName;
-        string? bidderAddress;
-        decimal? bidAmount;
-        int? bidderRank;
-        if (cellTexts.Count >= 8)
-        {
-            bidderAddress = string.IsNullOrWhiteSpace(cellTexts[5]) ? null : cellTexts[5];
-            bidderName    = string.IsNullOrWhiteSpace(cellTexts[6]) ? null : cellTexts[6];
-            bidAmount     = ParseBidAmount(cellTexts[7]);
-            bidderRank    = ParseRankFromCombined(cellTexts[7]);
-        }
-        else
-        {
-            // Fallback heuristic for non-8-column rows (defensive — e.g. layout drift).
-            bidderName    = FindBidderName(cellTexts, externalReference);
-            bidderAddress = FindBidderAddress(cellTexts);
-            bidAmount     = FindBidAmount(cellTexts);
-            bidderRank    = FindBidderRank(cellTexts);
-        }
+        var mapping = MapBidCells(cellTexts, externalReference);
+        var bidderName = mapping.BidderName;
 
         if (string.IsNullOrWhiteSpace(bidderName))
         {
@@ -466,13 +446,60 @@ public sealed class BcBidUnverifiedBidResultsScraper
             OpportunitySourceId = source.Id,
             ExternalReference = externalReference,
             BidderName = bidderName,
-            BidAmount = bidAmount,
+            BidAmount = mapping.BidAmount,
             BidCurrency = "CAD",
-            BidderRank = bidderRank,
-            BidderAddress = bidderAddress,
+            BidderRank = mapping.BidderRank,
+            BidderAddress = mapping.BidderAddress,
             SourceUrl = sourceUrl,
             RawJson = string.Join("|", cellTexts),
         };
+    }
+
+    internal static BidRowMapping MapBidCells(IReadOnlyList<string> cellTexts, string externalReference)
+    {
+        var issuingOrganization = cellTexts.Count > 2 ? cellTexts[2] : null;
+        var bidderCells = GetBidderDetailCells(cellTexts);
+
+        // BC Timber Sales has shipped at least three Stage 2 bidder layouts:
+        //   A: 5 Supplier Location, 6 Supplier Name,     7 Amount
+        //   B: 5 Supplier Name,     6 Supplier Location, 7 Amount
+        //   C: 5 Amount,            6 Supplier Location, 7 Supplier Name
+        // Content-driven extraction is safer than trusting these positions:
+        // the stable signal is the cell content (currency, location text,
+        // company-name terms), not the supplier/name/location ordering.
+        // Reference: DQ audit 2026-06-03 + SQL re-parse at
+        // C:\Users\ilalonde\AppData\Local\Temp\fix_bids.ps1 produced 55.5%
+        // canonical-resolution rate (was 5.2%); this scraper rewrite should
+        // preserve that bar going forward.
+        var amountCell = FindBidAmountCell(bidderCells);
+        var bidAmount = amountCell is null ? null : ParseBidAmount(amountCell);
+        var bidderRank = amountCell is null
+            ? FindBidderRank(bidderCells)
+            : ParseRankFromCombined(amountCell);
+
+        return new BidRowMapping(
+            FindBidderName(bidderCells, externalReference, issuingOrganization),
+            FindBidderAddress(bidderCells),
+            bidAmount,
+            bidderRank);
+    }
+
+    internal readonly record struct BidRowMapping(
+        string? BidderName,
+        string? BidderAddress,
+        decimal? BidAmount,
+        int? BidderRank);
+
+    private static List<string> GetBidderDetailCells(IReadOnlyList<string> cellTexts)
+    {
+        var start = cellTexts.Count >= 8 ? 5 : 0;
+        var bidderCells = new List<string>(Math.Max(0, cellTexts.Count - start));
+        for (var i = start; i < cellTexts.Count; i++)
+        {
+            bidderCells.Add(cellTexts[i]);
+        }
+
+        return bidderCells;
     }
 
     private static decimal? ParseBidAmount(string cell)
@@ -501,13 +528,23 @@ public sealed class BcBidUnverifiedBidResultsScraper
             : (int?)null;
     }
 
-    private static string? FindBidderName(IReadOnlyList<string> cellTexts, string externalReference)
+    private static string? FindBidderName(
+        IReadOnlyList<string> cellTexts,
+        string externalReference,
+        string? issuingOrganization)
     {
+        string? fallback = null;
         foreach (var text in cellTexts)
         {
             var candidate = text.Trim();
+            if (BidderPlaceholderRegex.IsMatch(candidate))
+            {
+                return null;
+            }
+
             if (candidate.Length < 4
-                || string.Equals(candidate, externalReference, StringComparison.OrdinalIgnoreCase)
+                || IsSameText(candidate, externalReference)
+                || IsSameText(candidate, issuingOrganization)
                 || BidAmountRegex.IsMatch(candidate)
                 || AddressHintRegex.IsMatch(candidate)
                 || FindBidderRank(new[] { candidate }) is not null
@@ -516,14 +553,26 @@ public sealed class BcBidUnverifiedBidResultsScraper
                 continue;
             }
 
-            return candidate;
+            if (CompanyKeywordRegex.IsMatch(candidate))
+            {
+                return candidate;
+            }
+
+            fallback ??= candidate;
         }
 
-        return null;
+        return fallback;
     }
 
     private static decimal? FindBidAmount(IReadOnlyList<string> cellTexts)
     {
+        var amountCell = FindBidAmountCell(cellTexts);
+        return amountCell is null ? null : ParseBidAmount(amountCell);
+    }
+
+    private static string? FindBidAmountCell(IReadOnlyList<string> cellTexts)
+    {
+        string? amountCell = null;
         foreach (var text in cellTexts)
         {
             var match = BidAmountRegex.Match(text);
@@ -532,14 +581,10 @@ public sealed class BcBidUnverifiedBidResultsScraper
                 continue;
             }
 
-            var cleaned = match.Value.Replace("$", "").Replace(",", "").Trim();
-            if (decimal.TryParse(cleaned, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount))
-            {
-                return amount;
-            }
+            amountCell = text;
         }
 
-        return null;
+        return amountCell;
     }
 
     private static int? FindBidderRank(IReadOnlyList<string> cellTexts)
@@ -559,6 +604,10 @@ public sealed class BcBidUnverifiedBidResultsScraper
 
         return null;
     }
+
+    private static bool IsSameText(string left, string? right)
+        => !string.IsNullOrWhiteSpace(right)
+            && string.Equals(left.Trim(), right.Trim(), StringComparison.OrdinalIgnoreCase);
 
     private static string? FindBidderAddress(IReadOnlyList<string> cellTexts)
     {
