@@ -916,3 +916,13 @@ LoserId,SurvivorId,Reason
 # website confirmed during Sonnet verify pass. Fuzzy match rejects on the en-dash
 # vs hyphen difference.
 51859,43889
+# 2026-06-04 BdDeltekLink review-cleanup: KOR-side dedup pairs surfaced where two
+# canonicals fuzzy-matched the same Deltek client at confidence >= 0.95. Each is
+# a typo or singular/plural variant of the same firm. Survivors are the canonicals
+# already carrying the Deltek ClendorClientId; losers are duplicates the dedup tool
+# couldn't auto-merge because of the spelling difference. Fuzzy gate rejects on
+# Mackay/Mackey, Dembeck/Dembek, Sawchuck/Sawchuk, Developments/Development-Corp.
+54472,69589
+54558,69704
+70778,69217
+53867,69730
