@@ -35,6 +35,7 @@ USING (SELECT @sourceId AS OpportunitySourceId,
   AND target.ExternalReference = src.ExternalReference
   AND target.BidderName = src.BidderName
 WHEN MATCHED THEN UPDATE SET
+    BidderCanonicalOrgId = @bidderCanonicalOrgId,
     BidAmount = @amount,
     BidCurrency = @currency,
     BidderRank = @rank,
@@ -44,11 +45,11 @@ WHEN MATCHED THEN UPDATE SET
     UpdatedAtUtc = sysdatetimeoffset(),
     IngestionRunId = COALESCE(@runId, target.IngestionRunId)
 WHEN NOT MATCHED THEN INSERT
-    (OpportunitySourceId, ExternalReference, BidderName, BidAmount,
+    (OpportunitySourceId, ExternalReference, BidderName, BidderCanonicalOrgId, BidAmount,
      BidCurrency, BidderRank, BidderAddress, SourceUrl, RawJson,
      IngestionRunId)
 VALUES
-    (@sourceId, @extRef, @bidderName, @amount,
+    (@sourceId, @extRef, @bidderName, @bidderCanonicalOrgId, @amount,
      @currency, @rank, @address, @url, @raw,
      @runId)
 OUTPUT CASE WHEN $action = 'INSERT' THEN INSERTED.Id ELSE CONVERT(BIGINT, 0) END;";
@@ -59,6 +60,7 @@ OUTPUT CASE WHEN $action = 'INSERT' THEN INSERTED.Id ELSE CONVERT(BIGINT, 0) END
         cmd.Parameters.Add("@sourceId", SqlDbType.UniqueIdentifier).Value = bid.OpportunitySourceId;
         cmd.Parameters.Add("@extRef", SqlDbType.NVarChar, 200).Value = bid.ExternalReference;
         cmd.Parameters.Add("@bidderName", SqlDbType.NVarChar, 300).Value = bid.BidderName;
+        cmd.Parameters.Add("@bidderCanonicalOrgId", SqlDbType.BigInt).Value = (object?)bid.BidderCanonicalOrgId ?? DBNull.Value;
         cmd.Parameters.Add("@amount", SqlDbType.Decimal).Value = (object?)bid.BidAmount ?? DBNull.Value;
         ((SqlParameter)cmd.Parameters["@amount"]).Precision = 18;
         ((SqlParameter)cmd.Parameters["@amount"]).Scale = 2;

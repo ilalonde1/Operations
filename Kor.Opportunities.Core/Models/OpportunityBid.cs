@@ -18,6 +18,8 @@ public sealed record OpportunityBid
 
     public string BidderName { get; init; } = "";
 
+    public long? BidderCanonicalOrgId { get; init; }
+
     public decimal? BidAmount { get; init; }
 
     public string BidCurrency { get; init; } = "CAD";

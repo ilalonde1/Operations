@@ -480,7 +480,13 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidAwardsScraper>();
             builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IAwardProvider>(
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BcBidAwardsScraper>());
-            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidUnverifiedBidResultsScraper>();
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidUnverifiedBidResultsScraper>(sp =>
+                new Kor.Opportunities.Data.Ingestion.Scraping.BcBidUnverifiedBidResultsScraper(
+                    sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.PlaywrightBrowserPool>(),
+                    sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Ingestion.Scraping.BcBidUnverifiedBidResultsScraper>>(),
+                    sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BcBidCredentials>(),
+                    sp.GetRequiredService<Kor.Opportunities.Data.Bids.IOpportunityBidStore>(),
+                    sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>()));
             builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IAwardProvider>(
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BcBidUnverifiedBidResultsScraper>());
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BidsAndTendersScraper>();

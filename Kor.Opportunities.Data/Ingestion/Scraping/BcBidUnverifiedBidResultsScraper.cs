@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.Bids;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
@@ -53,13 +54,14 @@ public sealed class BcBidUnverifiedBidResultsScraper
 
     private readonly BcBidCredentials _credentials;
     private readonly IOpportunityBidStore? _bidStore;
+    private readonly CanonicalOrgResolver? _canonicalResolver;
     private readonly ILogger<BcBidUnverifiedBidResultsScraper> _logger;
 
     public BcBidUnverifiedBidResultsScraper(
         PlaywrightBrowserPool pool,
         ILogger<BcBidUnverifiedBidResultsScraper> logger,
         BcBidCredentials credentials)
-        : this(pool, logger, credentials, bidStore: null)
+        : this(pool, logger, credentials, bidStore: null, canonicalResolver: null)
     {
     }
 
@@ -68,10 +70,21 @@ public sealed class BcBidUnverifiedBidResultsScraper
         ILogger<BcBidUnverifiedBidResultsScraper> logger,
         BcBidCredentials credentials,
         IOpportunityBidStore? bidStore)
+        : this(pool, logger, credentials, bidStore, canonicalResolver: null)
+    {
+    }
+
+    public BcBidUnverifiedBidResultsScraper(
+        PlaywrightBrowserPool pool,
+        ILogger<BcBidUnverifiedBidResultsScraper> logger,
+        BcBidCredentials credentials,
+        IOpportunityBidStore? bidStore,
+        CanonicalOrgResolver? canonicalResolver)
         : base(pool, logger)
     {
         _credentials = credentials;
         _bidStore = bidStore;
+        _canonicalResolver = canonicalResolver;
         _logger = logger;
     }
 
@@ -349,7 +362,7 @@ public sealed class BcBidUnverifiedBidResultsScraper
         {
             ct.ThrowIfCancellationRequested();
 
-            var bid = await TryMapBidRowAsync(row, source, candidate.ExternalReference, baseUri)
+            var bid = await TryMapBidRowAsync(row, source, candidate.ExternalReference, baseUri, ct)
                 .ConfigureAwait(false);
             if (bid is null)
             {
@@ -407,11 +420,12 @@ public sealed class BcBidUnverifiedBidResultsScraper
         return false;
     }
 
-    private static async Task<OpportunityBid?> TryMapBidRowAsync(
+    private async Task<OpportunityBid?> TryMapBidRowAsync(
         IElementHandle row,
         OpportunitySource source,
         string externalReference,
-        Uri baseUri)
+        Uri baseUri,
+        CancellationToken ct)
     {
         var cells = await row.QuerySelectorAllAsync(":scope > td").ConfigureAwait(false);
         if (cells.Count == 0)
@@ -425,14 +439,6 @@ public sealed class BcBidUnverifiedBidResultsScraper
             cellTexts.Add((await cell.InnerTextAsync().ConfigureAwait(false)).Trim());
         }
 
-        var mapping = MapBidCells(cellTexts, externalReference);
-        var bidderName = mapping.BidderName;
-
-        if (string.IsNullOrWhiteSpace(bidderName))
-        {
-            return null;
-        }
-
         var anchor = await row.QuerySelectorAsync("a[href]").ConfigureAwait(false);
         var href = anchor is null
             ? null
@@ -441,11 +447,48 @@ public sealed class BcBidUnverifiedBidResultsScraper
             ? baseUri.AbsoluteUri
             : new Uri(baseUri, href).AbsoluteUri;
 
+        return await CreateOpportunityBidAsync(
+                cellTexts,
+                source,
+                externalReference,
+                sourceUrl,
+                _canonicalResolver,
+                _logger,
+                ct)
+            .ConfigureAwait(false);
+    }
+
+    internal static async Task<OpportunityBid?> CreateOpportunityBidAsync(
+        IReadOnlyList<string> cellTexts,
+        OpportunitySource source,
+        string externalReference,
+        string sourceUrl,
+        CanonicalOrgResolver? canonicalResolver,
+        ILogger? logger,
+        CancellationToken ct)
+    {
+        var mapping = MapBidCells(cellTexts, externalReference);
+        var bidderName = mapping.BidderName;
+
+        if (string.IsNullOrWhiteSpace(bidderName))
+        {
+            return null;
+        }
+
+        var bidderCanonicalOrgId = await ResolveBidderCanonicalOrgIdAsync(
+                canonicalResolver,
+                logger,
+                bidderName,
+                externalReference,
+                ct)
+            .ConfigureAwait(false);
+
         return new OpportunityBid
         {
             OpportunitySourceId = source.Id,
             ExternalReference = externalReference,
             BidderName = bidderName,
+            BidderCanonicalOrgId = bidderCanonicalOrgId,
             BidAmount = mapping.BidAmount,
             BidCurrency = "CAD",
             BidderRank = mapping.BidderRank,
@@ -453,6 +496,44 @@ public sealed class BcBidUnverifiedBidResultsScraper
             SourceUrl = sourceUrl,
             RawJson = string.Join("|", cellTexts),
         };
+    }
+
+    private static async Task<long?> ResolveBidderCanonicalOrgIdAsync(
+        CanonicalOrgResolver? canonicalResolver,
+        ILogger? logger,
+        string bidderName,
+        string externalReference,
+        CancellationToken ct)
+    {
+        if (canonicalResolver is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await canonicalResolver.ResolveAsync(
+                    bidderName,
+                    OrgKinds.Vendor,
+                    "BcBidUnverified.Bidder",
+                    ct,
+                    allowCreate: true,
+                    minConfidenceForCreate: 70)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(
+                ex,
+                "BC Bid Unverified bidder canonical resolution failed for {ExternalReference} bidder {BidderName}.",
+                externalReference,
+                bidderName);
+            return null;
+        }
     }
 
     internal static BidRowMapping MapBidCells(IReadOnlyList<string> cellTexts, string externalReference)
