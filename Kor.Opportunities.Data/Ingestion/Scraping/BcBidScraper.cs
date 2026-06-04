@@ -28,8 +28,18 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
     private const int DefaultMaxPages = 10;       // 15 rows/page  10 = 150 max
     private const int PageWaitTimeoutMs = 30_000;
     private const string LoginEntryUrl = "https://bcbid.gov.bc.ca/page.aspx/en/buy/homepage";
+    internal const string KeywordConfigKey = "bcbid.keyword";
+    internal const string KeywordInputSelector = "input[aria-label='Keyword(s)']";
+    private static readonly string[] KeywordInputSelectors =
+    [
+        KeywordInputSelector,
+        "input[id*='keyword' i]",
+        "input[name*='keyword' i]",
+        "input[placeholder*='Keyword' i]",
+    ];
 
     private readonly BcBidCredentials _credentials;
+    private readonly ILogger<BcBidScraper> _logger;
 
     public BcBidScraper(
         PlaywrightBrowserPool pool,
@@ -38,6 +48,7 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         : base(pool, logger)
     {
         _credentials = credentials;
+        _logger = logger;
     }
 
     public override OpportunitySourceType SourceType => OpportunitySourceType.BcBid;
@@ -82,6 +93,8 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
                 Timeout = PageWaitTimeoutMs,
             }).ConfigureAwait(false);
         }
+
+        await TryApplyKeywordFilterAsync(page, sourceConfig).ConfigureAwait(false);
 
         // BC Bid loads with the Status filter defaulted to "Open" but the
         // results grid stays empty until the user clicks Search. Click it
@@ -167,6 +180,64 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
 
         return candidates;
     }
+
+    private async Task TryApplyKeywordFilterAsync(
+        IPage page,
+        IReadOnlyDictionary<string, string> sourceConfig)
+    {
+        var keyword = ResolveKeywordFilter(sourceConfig);
+        if (keyword is null)
+        {
+            return;
+        }
+
+        foreach (var selector in KeywordInputSelectors)
+        {
+            try
+            {
+                var keywordInput = page.Locator(selector);
+                if (await keywordInput.CountAsync().ConfigureAwait(false) == 0)
+                {
+                    continue;
+                }
+
+                await keywordInput.First.FillAsync(keyword, new LocatorFillOptions
+                {
+                    Timeout = PageWaitTimeoutMs,
+                }).ConfigureAwait(false);
+
+                _logger.LogInformation("BC Bid scrape filtered by keyword: {Keyword}", keyword);
+                return;
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "BC Bid keyword filter '{Keyword}' selector timed out ({Selector}).",
+                    keyword,
+                    selector);
+            }
+            catch (PlaywrightException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "BC Bid keyword filter '{Keyword}' selector failed ({Selector}).",
+                    keyword,
+                    selector);
+            }
+        }
+
+        _logger.LogWarning(
+            "BC Bid keyword filter '{Keyword}' skipped: keyword input selector not found ({Selector}).",
+            keyword,
+            string.Join(", ", KeywordInputSelectors));
+    }
+
+    internal static string? ResolveKeywordFilter(IReadOnlyDictionary<string, string> sourceConfig)
+        => sourceConfig.TryGetValue(KeywordConfigKey, out var keyword)
+           && !string.IsNullOrWhiteSpace(keyword)
+            ? keyword.Trim()
+            : null;
 
     private static async Task<List<OpportunityCandidate>> ExtractPageAsync(
         IPage page, Uri baseUri, CancellationToken ct)

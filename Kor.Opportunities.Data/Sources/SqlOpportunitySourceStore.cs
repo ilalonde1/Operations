@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
@@ -112,24 +113,60 @@ WHERE Name = @name;";
 
     public async Task<IReadOnlyDictionary<string, string>> GetMappingsAsync(Guid opportunitySourceId, CancellationToken ct)
     {
-        const string sql = @"
+        const string configSql = @"
+SELECT ConfigJson
+FROM opportunities.OpportunitySources
+WHERE Id = @id;";
+
+        const string mappingsSql = @"
 SELECT [Key], ValueJson
 FROM opportunities.OpportunitySourceMappings
 WHERE OpportunitySourceId = @id;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        cmd.Parameters.Add("@id", SqlDbType.UniqueIdentifier).Value = opportunitySourceId;
-        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
 
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        await using (var configCmd = new SqlCommand(configSql, con) { CommandTimeout = CommandTimeoutSeconds })
+        {
+            configCmd.Parameters.Add("@id", SqlDbType.UniqueIdentifier).Value = opportunitySourceId;
+            var configJson = await configCmd.ExecuteScalarAsync(ct).ConfigureAwait(false) as string;
+            AddConfigJsonMappings(dict, configJson);
+        }
+
+        await using var cmd = new SqlCommand(mappingsSql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.UniqueIdentifier).Value = opportunitySourceId;
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         while (await reader.ReadAsync(ct).ConfigureAwait(false))
         {
             dict[reader.GetString(0)] = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
         }
 
         return dict;
+    }
+
+    internal static void AddConfigJsonMappings(IDictionary<string, string> target, string? configJson)
+    {
+        if (string.IsNullOrWhiteSpace(configJson))
+        {
+            return;
+        }
+
+        using var document = JsonDocument.Parse(configJson);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            if (property.Value.ValueKind == JsonValueKind.String
+                && !target.ContainsKey(property.Name))
+            {
+                target[property.Name] = property.Value.GetString() ?? string.Empty;
+            }
+        }
     }
 
     public async Task SetMappingAsync(Guid opportunitySourceId, string key, string valueJson, CancellationToken ct)
