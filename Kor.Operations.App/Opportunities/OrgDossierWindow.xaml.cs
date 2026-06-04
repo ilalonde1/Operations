@@ -72,34 +72,27 @@ public partial class OrgDossierWindow : Window
                     }
                     else
                     {
-                        MessageBox.Show(
-                            "Deltek section omitted: IDeltekClientContextService.LoadAsync returned null for ClientId '"
-                                + cid
-                                + "'.\n\nMost likely cause: no row in Deltek's Clendor table matches that ClientId from the App's ODBC connection.",
-                            "Generate Brief  Deltek returned no intel",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
+                        Serilog.Log.Information(
+                            "Generate Brief: Deltek lookup returned null for ClientId {DeltekClientId} on canonical org {CanonicalOrgId} ({DisplayName}).",
+                            cid, data.Id, data.DisplayName);
+                        data = data with { DeltekNote = "No Deltek engagement history on file for this organization." };
                     }
                 }
                 catch (Exception deltekEx)
                 {
-                    MessageBox.Show(
-                        "Deltek section omitted from brief.\n\n"
-                            + deltekEx.GetType().Name + ": " + deltekEx.Message,
-                        "Generate Brief  Deltek skipped",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    Serilog.Log.Warning(
+                        deltekEx,
+                        "Generate Brief: Deltek lookup failed for ClientId {DeltekClientId} on canonical org {CanonicalOrgId} ({DisplayName}).",
+                        cid, data.Id, data.DisplayName);
+                    data = data with { DeltekNote = "Deltek engagement history temporarily unavailable." };
                 }
             }
             else
             {
-                MessageBox.Show(
-                    "Deltek section omitted: OrgBriefData.DeltekClientId was null/empty for canonical org "
-                        + data.Id
-                        + " (" + data.DisplayName + ").\n\nCheck opportunities.CanonicalOrg.ClendorClientId for this Id.",
-                    "Generate Brief  no Deltek link",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                Serilog.Log.Information(
+                    "Generate Brief: canonical org {CanonicalOrgId} ({DisplayName}) has no ClendorClientId — Deltek section skipped.",
+                    data.Id, data.DisplayName);
+                data = data with { DeltekNote = "No Deltek connection on file for this organization." };
             }
 
             if (asPdf)

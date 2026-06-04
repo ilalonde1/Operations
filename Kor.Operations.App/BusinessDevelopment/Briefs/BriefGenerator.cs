@@ -285,6 +285,11 @@ public sealed class BriefGenerator : IBriefGenerator
         {
             AppendOrgDeltekSection(body, dk);
         }
+        else if (!string.IsNullOrWhiteSpace(data.DeltekNote))
+        {
+            AppendHeading(body, "KOR engagement history (Deltek)");
+            AppendBullet(body, data.DeltekNote!);
+        }
 
         AppendHeading(body, "Key people");
         if (enrichment.KeyPeople.Count == 0)

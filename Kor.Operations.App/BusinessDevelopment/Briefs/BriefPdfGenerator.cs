@@ -320,6 +320,14 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                 {
                     ComposeOrgDeltekSection(column, d.Deltek);
                 }
+                else if (!string.IsNullOrWhiteSpace(d.DeltekNote))
+                {
+                    column.Item().PaddingTop(6).Text(text =>
+                    {
+                        text.Span("KOR engagement history (Deltek): ").FontSize(10).Bold().FontColor(Brand);
+                        text.Span(d.DeltekNote).FontSize(10).Italic().FontColor(Colors.Grey.Darken2);
+                    });
+                }
                 column.Item().Element(c => Section(c, "Key people",
                     OrgKeyPeopleBullets(enrichment)));
                 column.Item().Element(c => Section(c, "Talking points for the visit",

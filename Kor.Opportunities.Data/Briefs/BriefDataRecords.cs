@@ -112,4 +112,13 @@ public sealed record OrgBriefData(
     IReadOnlyList<OrgRecentProject> KorJointProjects,
     string? DataHoningEnrichmentJson,
     string? DeltekClientId,
-    OrgBriefDeltekSection? Deltek);
+    OrgBriefDeltekSection? Deltek)
+{
+    /// <summary>
+    /// User-friendly note explaining why the Deltek engagement-history section
+    /// is absent (no link / no matching Deltek client / lookup error). Rendered
+    /// inline by the PDF + DOCX brief generators when <see cref="Deltek"/> is
+    /// null. Null = silently skip (no note shown).
+    /// </summary>
+    public string? DeltekNote { get; init; }
+}
