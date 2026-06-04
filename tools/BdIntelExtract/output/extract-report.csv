@@ -1,0 +1,11 @@
+﻿EnrichmentId,CanonicalOrgId,ProviderName,ExtractorType,Persons,Affiliations,Signals,Actions,Works,Risks,Narratives,Inserted,Updated,Status,ErrorMessage
+23507,2579,DataHoning,DataHoningExtractor,0,0,0,0,11,0,0,0,11,Persisted,
+23508,8538,DataHoning,DataHoningExtractor,1,1,0,0,3,0,0,0,5,Persisted,
+23509,11381,DataHoning,DataHoningExtractor,4,4,0,0,3,0,0,0,11,Persisted,
+23510,12496,DataHoning,DataHoningExtractor,0,0,0,0,13,0,0,0,13,Persisted,
+23511,14871,DataHoning,DataHoningExtractor,1,1,0,0,2,0,0,0,4,Persisted,
+23512,14910,DataHoning,DataHoningExtractor,3,3,0,0,3,0,0,0,9,Persisted,
+23513,17644,DataHoning,DataHoningExtractor,0,0,0,0,0,0,0,0,0,Empty,
+23514,18771,DataHoning,DataHoningExtractor,0,0,0,0,2,0,0,0,2,Persisted,
+23516,29895,DataHoning,DataHoningExtractor,0,0,0,0,0,0,0,0,0,Empty,
+23517,38959,DataHoning,DataHoningExtractor,0,0,0,0,0,0,0,0,0,Empty,
