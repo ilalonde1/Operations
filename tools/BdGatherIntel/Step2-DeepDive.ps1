@@ -107,28 +107,35 @@ function Get-PageEvidence([string]$url, [int]$timeout = 15) {
 
 function Get-FollowonPages($homepage, [string]$apex) {
     # Follow up to 5 useful links from the homepage (about/contact/projects/team)
-    if (-not $homepage -or -not $homepage.UsefulLinks) { return @() }
-    $followups = New-Object System.Collections.Generic.List[object]
-    $seen = New-Object System.Collections.Generic.HashSet[string]
-    foreach ($link in $homepage.UsefulLinks) {
+    $empty = [object[]]@()
+    if (-not $homepage) { return ,$empty }
+    if (-not $homepage.PSObject.Properties['UsefulLinks']) { return ,$empty }
+    $links = $homepage.UsefulLinks
+    if (-not $links) { return ,$empty }
+    $followups = New-Object System.Collections.ArrayList
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]'
+    foreach ($link in $links) {
         if ($followups.Count -ge 5) { break }
         $href = $link.Href
         if ([string]::IsNullOrWhiteSpace($href)) { continue }
         if ($href.StartsWith('mailto:') -or $href.StartsWith('tel:') -or $href.StartsWith('javascript:')) { continue }
-        # Normalize to absolute URL
+        $absolute = $null
         try {
-            $absolute = if ($href -match '^https?://') { $href } elseif ($href.StartsWith('/')) { "https://$apex$href" } else { "https://$apex/$href" }
+            if ($href -match '^https?://') { $absolute = $href }
+            elseif ($href.StartsWith('/')) { $absolute = "https://$apex$href" }
+            else { $absolute = "https://$apex/$href" }
         } catch { continue }
+        if (-not $absolute) { continue }
         if (-not $seen.Add($absolute)) { continue }
         $page = Get-PageEvidence $absolute 12
-        if ($page -and -not $page.Error) {
-            $followups.Add([pscustomobject]@{
+        if ($page -and -not $page.PSObject.Properties['Error']) {
+            [void]$followups.Add([pscustomobject]@{
                 Label = $link.Text
                 Page  = $page
             })
         }
     }
-    return @($followups)
+    return ,([object[]]$followups.ToArray())
 }
 
 function Try-MxLookup([string]$apex) {
