@@ -6,6 +6,8 @@
                  Height="32"
                  Padding="10,6"
                  Background="#FFFFFFFF"
+                 Foreground="#FF111111"
+                 CaretBrush="#FF111111"
                  BorderBrush="{StaticResource Panel.Border}"
                  BorderThickness="1"
                  TextChanged="SearchBox_TextChanged"
@@ -16,18 +18,7 @@
                    Margin="12,0,0,0"
                    Foreground="{StaticResource Text.Secondary}"
                    VerticalAlignment="Center"
-                   IsHitTestVisible="False">
-            <TextBlock.Style>
-                <Style TargetType="TextBlock">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
-                            <Setter Property="Visibility" Value="Visible"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </TextBlock.Style>
-        </TextBlock>
+                   IsHitTestVisible="False"/>
 
         <Popup x:Name="ResultsPopup"
                PlacementTarget="{Binding ElementName=SearchBox}"

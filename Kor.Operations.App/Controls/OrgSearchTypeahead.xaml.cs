@@ -44,6 +44,13 @@ public partial class OrgSearchTypeahead : UserControl
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
+        // Code-behind placeholder toggle: DataTrigger-on-ElementName didn't
+        // refresh on every keystroke in some host themes, so typed text was
+        // hidden behind the placeholder TextBlock.
+        Placeholder.Visibility = string.IsNullOrEmpty(SearchBox.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         if (_suppressTextChanged)
         {
             return;
