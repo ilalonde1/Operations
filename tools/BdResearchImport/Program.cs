@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.IndustryEvents;
+using Kor.Opportunities.Data.Intel;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -25,6 +26,7 @@ internal static class Program
     private const string ContractorKind = "Contractor";
     private const string OwnerKind = "Owner";
     private static readonly Regex KorRegex = new(@"\bKOR\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex CanonicalIngestFileSkipRegex = new(@"(progress|summary|README|INSTRUCTIONS)\.", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly string[] DataHoningRecognizedKinds =
     [
         OrgKinds.Architect,
@@ -49,7 +51,8 @@ internal static class Program
         try
         {
             var options = ImportOptions.Parse(args);
-            if (!options.DryRun && string.IsNullOrWhiteSpace(options.OpportunitiesDb))
+            var canonicalIngestMode = !string.IsNullOrWhiteSpace(options.IngestCanonicalFolder);
+            if ((!options.DryRun || canonicalIngestMode) && string.IsNullOrWhiteSpace(options.OpportunitiesDb))
             {
                 Console.Error.WriteLine("Missing connection string. Set KOR_OPPORTUNITIES_OPPORTUNITIESDB or pass --db.");
                 return 2;
@@ -64,9 +67,17 @@ internal static class Program
                 cts.Cancel();
             };
 
-            var db = options.DryRun ? null : options.OpportunitiesDb;
+            var db = options.DryRun && !canonicalIngestMode ? null : options.OpportunitiesDb;
             var orgStore = db is null ? null : new SqlCanonicalOrgStore(db);
-            var enrichmentStore = db is null ? null : new SqlEnrichmentTrackingStore(db);
+            SqlEnrichmentTrackingStore? enrichmentStore = null;
+            if (db is not null)
+            {
+                var fallback = new DefaultIntelExtractor();
+                var registry = new IntelExtractorRegistry(IntelExtractorBootstrap.GetDefaultExtractors(), fallback);
+                var persistence = new IntelPersistenceService(db);
+                enrichmentStore = new SqlEnrichmentTrackingStore(db, registry, persistence);
+            }
+
             var industryEventStore = db is null ? null : new SqlIndustryEventStore(db);
             var displacementBriefStore = db is null ? null : new SqlArchitectDisplacementBriefStore(db);
             var resolver = orgStore is null
@@ -74,6 +85,11 @@ internal static class Program
                 : new CanonicalOrgResolver(orgStore, NullLogger<CanonicalOrgResolver>.Instance);
 
             Console.WriteLine($"BD Research import starting: base={options.BaseDirectory}; dry-run={options.DryRun.ToString().ToLowerInvariant()}; fx-rate={options.FxRate.ToString(CultureInfo.InvariantCulture)}");
+
+            if (canonicalIngestMode)
+            {
+                return await RunIngestCanonicalAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
+            }
 
             bool Run(string tag) => string.IsNullOrWhiteSpace(options.Only)
                 || string.Equals(options.Only, tag, StringComparison.OrdinalIgnoreCase);
@@ -162,6 +178,306 @@ internal static class Program
             Console.Error.WriteLine($"BD Research import failed: {ex.GetType().Name}: {ex.Message}");
             return 1;
         }
+    }
+
+    private static async Task<int> RunIngestCanonicalAsync(
+        ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
+        SqlEnrichmentTrackingStore? enrichmentStore,
+        CanonicalOrgResolver? resolver,
+        ImportStats stats,
+        CancellationToken ct)
+    {
+        if (orgStore is null || resolver is null)
+        {
+            Console.Error.WriteLine("--ingest-canonical requires a database-backed CanonicalOrgResolver.");
+            return 2;
+        }
+
+        if (!options.DryRun && enrichmentStore is null)
+        {
+            Console.Error.WriteLine("--ingest-canonical requires a database-backed enrichment store.");
+            return 2;
+        }
+
+        var folder = options.IngestCanonicalFolder!;
+        if (!Path.IsPathFullyQualified(folder))
+        {
+            Console.Error.WriteLine("--ingest-canonical requires an absolute folder path.");
+            return 2;
+        }
+
+        if (!Directory.Exists(folder))
+        {
+            Console.Error.WriteLine($"--ingest-canonical folder does not exist: {folder}");
+            return 2;
+        }
+
+        var ingestStats = new CanonicalIngestStats();
+        var prefix = options.DryRun ? "[DRY-RUN] " : string.Empty;
+
+        async Task IngestRecordAsync(CanonicalIngestFileStats fileStats, string relPath, JsonElement record, int index)
+        {
+            fileStats.RecordCount++;
+            if (record.ValueKind != JsonValueKind.Object)
+            {
+                fileStats.Skipped++;
+                AddCount(ingestStats.SkippedByReason, "missing _providerName");
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"  SKIP {relPath}#{index}: missing _providerName and no --provider fallback");
+                }
+
+                return;
+            }
+
+            var providerName = String(record, "_providerName") ?? options.IngestCanonicalProviderOverride;
+            if (string.IsNullOrWhiteSpace(providerName))
+            {
+                fileStats.Skipped++;
+                AddCount(ingestStats.SkippedByReason, "missing _providerName");
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"  SKIP {relPath}#{index}: missing _providerName and no --provider fallback");
+                }
+
+                return;
+            }
+
+            var displayName = GetDisplayName(record, out var aliasField);
+            if (aliasField is not null)
+            {
+                fileStats.AliasFallbacks++;
+                AddCount(ingestStats.AliasFallbacksByField, aliasField);
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"  WARN {relPath}#{index} ({providerName}): PROMPT used legacy alias '{aliasField}'; prefer displayName");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                fileStats.Skipped++;
+                AddCount(ingestStats.SkippedByReason, "missing displayName");
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"  SKIP {relPath}#{index} ({providerName}): no displayName field");
+                }
+
+                return;
+            }
+
+            var kind = String(record, "kind") ?? OrgKinds.Unknown;
+            var wouldMatch = await AlreadyResolvableAsync(displayName).ConfigureAwait(false);
+            long? orgId;
+            if (options.DryRun)
+            {
+                orgId = wouldMatch ? 0L : null;
+            }
+            else
+            {
+                orgId = await resolver.ResolveAsync(
+                    displayName,
+                    kind,
+                    source: "research-ingest",
+                    ct: ct,
+                    allowCreate: true).ConfigureAwait(false);
+
+                if (!orgId.HasValue)
+                {
+                    fileStats.Skipped++;
+                    AddCount(ingestStats.SkippedByReason, "resolver-null");
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine($"  SKIP {relPath}#{index} ({displayName}): resolver returned null");
+                    }
+
+                    return;
+                }
+            }
+
+            if (wouldMatch)
+            {
+                ingestStats.CanonicalOrgMatches++;
+            }
+            else
+            {
+                ingestStats.CanonicalOrgCreates++;
+            }
+
+            if (!options.DryRun)
+            {
+                if (enrichmentStore is null)
+                {
+                    throw new InvalidOperationException("Enrichment store is not available.");
+                }
+
+                var json = record.GetRawText();
+                var result = new EnrichmentResult(
+                    EnrichmentStatuses.Ok,
+                    null,
+                    json,
+                    $"Ingested via --ingest-canonical at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}");
+                var nextRefresh = DateTimeOffset.UtcNow.AddDays(21);
+                await enrichmentStore.RecordAttemptAsync(
+                    orgId.Value,
+                    providerName,
+                    result,
+                    nextRefresh,
+                    ct).ConfigureAwait(false);
+                stats.EnrichmentRowsWritten++;
+                AddCount(stats.EnrichmentRowsByProvider, providerName);
+            }
+
+            fileStats.Ingested++;
+            AddCount(ingestStats.IngestedByProvider, providerName);
+        }
+
+        async Task<bool> AlreadyResolvableAsync(string displayName)
+        {
+            var trimmed = displayName.Trim();
+            var alias = await orgStore.LookupAliasAsync(trimmed, "research-ingest", ct).ConfigureAwait(false);
+            if (alias is not null && alias.CanonicalOrgId.HasValue)
+            {
+                return true;
+            }
+
+            var normalized = CanonicalOrgResolver.NormalizeName(displayName);
+            if (normalized.Length == 0)
+            {
+                return false;
+            }
+
+            return (await orgStore.FindByNormalizedNameAsync(normalized, ct).ConfigureAwait(false)).HasValue;
+        }
+
+        static string? GetDisplayName(JsonElement record, out string? aliasField)
+        {
+            var displayName = String(record, "displayName");
+            if (!string.IsNullOrWhiteSpace(displayName))
+            {
+                aliasField = null;
+                return displayName;
+            }
+
+            foreach (var field in new[] { "orgDisplayName", "organizationName", "firmName" })
+            {
+                var value = String(record, field);
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    aliasField = field;
+                    return value;
+                }
+            }
+
+            aliasField = null;
+            return null;
+        }
+
+        void WriteCanonicalSummary()
+        {
+            Console.WriteLine($"Canonical research ingest (dry-run={options.DryRun.ToString().ToLowerInvariant()}) complete.");
+            Console.WriteLine($"  Files walked:                  {ingestStats.FilesWalked}");
+            Console.WriteLine($"  Files with records:            {ingestStats.FilesWithRecords}");
+            Console.WriteLine($"  Files skipped (none parseable): {ingestStats.FilesSkippedNoParseable}");
+
+            Console.WriteLine("  Records ingested by provider:");
+            foreach (var (provider, count) in ingestStats.IngestedByProvider.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"    {provider}: {count}");
+            }
+
+            Console.WriteLine("  Records skipped by reason:");
+            foreach (var (reason, count) in ingestStats.SkippedByReason.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"    {reason}: {count}");
+            }
+
+            Console.WriteLine("  Alias fallback usage:");
+            foreach (var (field, count) in ingestStats.AliasFallbacksByField.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"    {field}: {count}");
+            }
+
+            Console.WriteLine($"  CanonicalOrg creates:          {ingestStats.CanonicalOrgCreates}");
+            Console.WriteLine($"  CanonicalOrg matches:          {ingestStats.CanonicalOrgMatches}");
+        }
+
+        foreach (var path in Directory.EnumerateFiles(folder, "*.json", SearchOption.AllDirectories)
+                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+        {
+            ct.ThrowIfCancellationRequested();
+            ingestStats.FilesWalked++;
+
+            var relPath = Path.GetRelativePath(folder, path);
+            if (CanonicalIngestFileSkipRegex.IsMatch(Path.GetFileName(path)))
+            {
+                ingestStats.FilesSkippedNoParseable++;
+                AddCount(ingestStats.SkippedByReason, "file name-filter match");
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"{prefix}  SKIP {relPath}: file name-filter match");
+                }
+
+                continue;
+            }
+
+            JsonDocument doc;
+            try
+            {
+                doc = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
+            }
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+            {
+                ingestStats.FilesSkippedNoParseable++;
+                AddCount(ingestStats.SkippedByReason, "file unparseable");
+                if (!options.Quiet)
+                {
+                    Console.WriteLine($"{prefix}  SKIP {relPath}: file unparseable ({ex.GetType().Name}: {ex.Message})");
+                }
+
+                continue;
+            }
+
+            var fileStats = new CanonicalIngestFileStats();
+            using (doc)
+            {
+                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    var index = 0;
+                    foreach (var record in doc.RootElement.EnumerateArray())
+                    {
+                        await IngestRecordAsync(fileStats, relPath, record, index++).ConfigureAwait(false);
+                    }
+                }
+                else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    await IngestRecordAsync(fileStats, relPath, doc.RootElement, 0).ConfigureAwait(false);
+                }
+                else
+                {
+                    AddCount(ingestStats.SkippedByReason, "file unparseable");
+                    if (!options.Quiet)
+                    {
+                        Console.WriteLine($"{prefix}  SKIP {relPath}: root JSON is not an object or array");
+                    }
+                }
+            }
+
+            if (fileStats.RecordCount > 0)
+            {
+                ingestStats.FilesWithRecords++;
+            }
+            else
+            {
+                ingestStats.FilesSkippedNoParseable++;
+            }
+
+            Console.WriteLine($"{prefix}  {relPath}: ingested={fileStats.Ingested} skipped={fileStats.Skipped} aliasFallbacks={fileStats.AliasFallbacks}");
+        }
+
+        WriteCanonicalSummary();
+        return 0;
     }
 
     private static async Task ImportContractorResearchAsync(
@@ -5655,7 +5971,16 @@ WHERE Id = @id
         }
     }
 
-    private sealed record ImportOptions(string BaseDirectory, string OpportunitiesDb, bool DryRun, bool Quiet, decimal FxRate, string? Only, string? PipelinesFile)
+    private sealed record ImportOptions(
+        string BaseDirectory,
+        string OpportunitiesDb,
+        bool DryRun,
+        bool Quiet,
+        decimal FxRate,
+        string? Only,
+        string? PipelinesFile,
+        string? IngestCanonicalFolder,
+        string? IngestCanonicalProviderOverride)
     {
         public static ImportOptions Parse(string[] args)
         {
@@ -5666,6 +5991,8 @@ WHERE Id = @id
             var fxRate = 1.36m;
             string? only = null;
             string? pipelinesFile = null;
+            string? ingestCanonicalFolder = null;
+            string? ingestCanonicalProviderOverride = null;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -5692,12 +6019,27 @@ WHERE Id = @id
                     case "--pipelines-file":
                         pipelinesFile = RequireValue(args, ref i, "--pipelines-file");
                         break;
+                    case "--ingest-canonical":
+                        ingestCanonicalFolder = RequireValue(args, ref i, "--ingest-canonical");
+                        break;
+                    case "--provider":
+                        ingestCanonicalProviderOverride = RequireValue(args, ref i, "--provider");
+                        break;
                     default:
                         throw new ArgumentException($"Unknown argument '{args[i]}'.");
                 }
             }
 
-            return new ImportOptions(baseDir, db, dryRun, quiet, fxRate, only, pipelinesFile);
+            return new ImportOptions(
+                baseDir,
+                db,
+                dryRun,
+                quiet,
+                fxRate,
+                only,
+                pipelinesFile,
+                ingestCanonicalFolder,
+                ingestCanonicalProviderOverride);
         }
 
         private static decimal ParseFxRate(string value)
@@ -5738,6 +6080,26 @@ WHERE Id = @id
         public Dictionary<string, int> OrgsBySource { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> EnrichmentRowsByProvider { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> ProjectUpsertsBySource { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private sealed class CanonicalIngestStats
+    {
+        public int FilesWalked { get; set; }
+        public int FilesWithRecords { get; set; }
+        public int FilesSkippedNoParseable { get; set; }
+        public int CanonicalOrgCreates { get; set; }
+        public int CanonicalOrgMatches { get; set; }
+        public Dictionary<string, int> IngestedByProvider { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, int> SkippedByReason { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, int> AliasFallbacksByField { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private sealed class CanonicalIngestFileStats
+    {
+        public int RecordCount { get; set; }
+        public int Ingested { get; set; }
+        public int Skipped { get; set; }
+        public int AliasFallbacks { get; set; }
     }
 
     private sealed record MajorProjectRecord(
