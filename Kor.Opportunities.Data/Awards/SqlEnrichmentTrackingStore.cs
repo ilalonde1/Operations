@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -140,6 +141,7 @@ ORDER  BY ProviderName;";
         DateTimeOffset nextRefreshAtUtc,
         CancellationToken ct)
     {
+        var refreshStartTime = DateTimeOffset.UtcNow;
         const string sql = @"
 MERGE opportunities.CanonicalOrgEnrichment AS t
 USING (SELECT @id AS CanonicalOrgId, @prov AS ProviderName) AS s
@@ -174,7 +176,7 @@ WHEN NOT MATCHED THEN INSERT
         cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)result.Notes ?? DBNull.Value;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
 
-        await TryExtractIntelAsync(con, canonicalOrgId, providerName, result, ct).ConfigureAwait(false);
+        await TryExtractIntelAsync(con, canonicalOrgId, providerName, result, refreshStartTime, ct).ConfigureAwait(false);
     }
 
     private async Task TryExtractIntelAsync(
@@ -182,6 +184,7 @@ WHEN NOT MATCHED THEN INSERT
         long canonicalOrgId,
         string providerName,
         EnrichmentResult result,
+        DateTimeOffset refreshStartTime,
         CancellationToken ct)
     {
         if (result.Status != EnrichmentStatuses.Ok
@@ -237,6 +240,7 @@ WHEN NOT MATCHED THEN INSERT
             }
 
             await _intelPersistence.PersistAsync(drafts, ctxIntel, ct).ConfigureAwait(false);
+            await RetireSupersededIntelAsync(con, canonicalOrgId, providerName, refreshStartTime, ct).ConfigureAwait(false);
         }
         catch (JsonException ex)
         {
@@ -254,6 +258,83 @@ WHEN NOT MATCHED THEN INSERT
                 canonicalOrgId,
                 ex.Message);
         }
+    }
+
+    private static async Task<int> RetireSupersededIntelAsync(
+        SqlConnection con,
+        long canonicalOrgId,
+        string sourceProviderName,
+        DateTimeOffset refreshStartTime,
+        CancellationToken ct)
+    {
+        const string sql = @"
+DECLARE @retired int = 0;
+DECLARE @reason nvarchar(200) = N'Superseded by refresh at ' +
+    CONVERT(nvarchar(30), @cutoff, 127);
+
+UPDATE opportunities.IntelPersonAffiliation
+SET RetiredAtUtc = sysdatetimeoffset(), RetiredReason = @reason
+WHERE CanonicalOrgId = @org
+  AND SourceProviderName = @prov
+  AND RetiredAtUtc IS NULL
+  AND LastSeenAtUtc < @cutoff;
+SET @retired += @@ROWCOUNT;
+
+UPDATE opportunities.IntelSignal
+SET RetiredAtUtc = sysdatetimeoffset(), RetiredReason = @reason
+WHERE CanonicalOrgId = @org
+  AND SourceProviderName = @prov
+  AND RetiredAtUtc IS NULL
+  AND LastSeenAtUtc < @cutoff;
+SET @retired += @@ROWCOUNT;
+
+UPDATE opportunities.IntelAction
+SET RetiredAtUtc = sysdatetimeoffset(), RetiredReason = @reason
+WHERE CanonicalOrgId = @org
+  AND SourceProviderName = @prov
+  AND RetiredAtUtc IS NULL
+  AND Status = 'Open'
+  AND LastSeenAtUtc < @cutoff;
+SET @retired += @@ROWCOUNT;
+
+UPDATE opportunities.IntelWork
+SET RetiredAtUtc = sysdatetimeoffset(), RetiredReason = @reason
+WHERE CanonicalOrgId = @org
+  AND SourceProviderName = @prov
+  AND RetiredAtUtc IS NULL
+  AND LastSeenAtUtc < @cutoff;
+SET @retired += @@ROWCOUNT;
+
+UPDATE opportunities.IntelRisk
+SET RetiredAtUtc = sysdatetimeoffset(), RetiredReason = @reason
+WHERE CanonicalOrgId = @org
+  AND SourceProviderName = @prov
+  AND RetiredAtUtc IS NULL
+  AND LastSeenAtUtc < @cutoff;
+SET @retired += @@ROWCOUNT;
+
+-- IntelNarrative is intentionally omitted because it already upserts cleanly
+-- on (CanonicalOrgId, SourceProviderName, NarrativeType).
+
+SELECT @retired;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@org", SqlDbType.BigInt).Value = canonicalOrgId;
+        cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 60).Value = sourceProviderName;
+        cmd.Parameters.Add("@cutoff", SqlDbType.DateTimeOffset).Value = refreshStartTime;
+        var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        var count = Convert.ToInt32(result, CultureInfo.InvariantCulture);
+        if (count > 0)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "Intel retirement: org {0} provider {1} cutoff {2:O} retired {3} rows.",
+                canonicalOrgId,
+                sourceProviderName,
+                refreshStartTime,
+                count);
+        }
+
+        return count;
     }
 
     public async Task<int> CountByStatusAsync(string providerName, string status, CancellationToken ct)
