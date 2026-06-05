@@ -220,6 +220,9 @@ public sealed class OpportunitiesWorkerOptions
     public string BdResearchQueueOutputDir { get; set; } =
         @"C:\ProgramData\KorOperations\BdResearchQueue";
 
+    /// <summary>Round 83: Anthropic-backed BD research executor settings.</summary>
+    public BdResearchExecutorOptions BdResearchExecutor { get; set; } = new();
+
     public string DeltekDsn { get; set; } = "Deltek";
     public string DeltekUser { get; set; } = "";
     public string DeltekPassword { get; set; } = "";

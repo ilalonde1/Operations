@@ -18,6 +18,7 @@ using Kor.Opportunities.Data.Sources;
 using Kor.Opportunities.Worker.Logging;
 using Kor.Opportunities.Worker.Options;
 using Kor.Opportunities.Worker.Services;
+using Kor.Opportunities.Worker.Services.Research;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -128,6 +129,9 @@ internal static class Program
                     o => !string.IsNullOrWhiteSpace(o.OpportunitiesDb),
                     "OpportunitiesDb connection string is required (set via KOR_OPPORTUNITIES_OPPORTUNITIESDB env var or appsettings).")
                 .ValidateOnStart();
+            builder.Services
+                .AddOptions<BdResearchExecutorOptions>()
+                .Bind(builder.Configuration.GetSection("BdResearchExecutor"));
 
             // Stores take the connection string directly (rather than an Options type) so
             // Kor.Opportunities.Data stays free of any host-specific Options class.
@@ -147,6 +151,9 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHi
     new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityDocumentStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidHistoricalEnrichmentService>();
 builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.BcBidHistoricalDocumentDownloadService>();
+builder.Services.AddSingleton<BdResearchExecutorService>();
+builder.Services.AddSingleton<IResearchExecutorService, AnthropicResearchExecutorService>();
+builder.Services.AddSingleton<IResearchPromptCatalog, FileSystemResearchPromptCatalog>();
 builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>(c =>
 {
     c.Timeout = TimeSpan.FromSeconds(120);
@@ -217,6 +224,7 @@ builder.Services.AddSingleton<IIntelExtractor, MassTimberProjectsCatalogExtracto
 builder.Services.AddSingleton<DefaultIntelExtractor>();
 builder.Services.AddSingleton<IntelExtractorRegistry>();
 builder.Services.AddSingleton<IntelPersistenceService>(sp => new IntelPersistenceService(Cs(sp)));
+builder.Services.AddSingleton<IntelReadService>(sp => new IntelReadService(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentTrackingStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore(
         Cs(sp),
@@ -829,6 +837,24 @@ builder.Services.AddQuartz(q =>
       t.ForJob(bdResearchQueueBuilderKey)
        .WithIdentity("BdResearchQueueBuilderTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var bdResearchExecutorKey = new JobKey("BdResearchExecutorJob");
+  q.AddJob<Kor.Opportunities.Worker.Jobs.BdResearchExecutorJob>(opts => opts.WithIdentity(bdResearchExecutorKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 07:00 Pacific daily. 1 hour after BdResearchQueueBuilderJob (06:00 Pacific),
+      // so any queue-builder freshness improvements are visible by the time the executor picks
+      // its batch. The executor self-throttles via MaxOrgsPerRun (default 3) and StalenessDays
+      // (default 21)  see BdResearchExecutorOptions for cost controls.
+      var cron = builder.Configuration["BdResearchExecutorCronSchedule"] ?? "0 0 7 * * ?";
+      t.ForJob(bdResearchExecutorKey)
+       .WithIdentity("BdResearchExecutorTrigger")
+       .WithCronSchedule(
+           cron,
+           cb => cb.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"))
+                   .WithMisfireHandlingInstructionFireAndProceed());
   });
 
   var korPursuitDeltekSyncKey = new JobKey("KorPursuitDeltekSyncJob");
