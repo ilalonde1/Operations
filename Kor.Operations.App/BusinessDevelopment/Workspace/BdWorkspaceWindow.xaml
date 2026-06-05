@@ -54,8 +54,11 @@
 
             <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,10,0">
                 <StackPanel>
+                    <TextBlock Text="Find an organization"
+                               FontSize="11"
+                               Foreground="{StaticResource Text.Secondary}"
+                               Margin="0,0,0,4"/>
                     <appControls:OrgSearchTypeahead x:Name="GlobalSearch"
-                                                    PlaceholderText="Search org / project / person"
                                                     Margin="0,0,0,10"/>
 
                     <Button x:Name="DashboardButton" Content="Dashboard" Style="{StaticResource ActiveNavButton}" Click="Dashboard_Click"/>

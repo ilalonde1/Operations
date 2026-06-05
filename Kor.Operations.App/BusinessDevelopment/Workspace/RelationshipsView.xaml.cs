@@ -266,10 +266,29 @@ public partial class RelationshipsView : UserControl
         catch (OperationCanceledException)
         {
         }
+        catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (IsCancellationSqlError(sqlEx))
+        {
+            // R88 fix: SqlCommand cancellation surfaces as a SqlException
+            // with message "Operation cancelled by user" rather than the
+            // managed OperationCanceledException. Treat both as silent.
+        }
         catch (Exception ex)
         {
             MessageBox.Show(OwnerWindow(), ex.Message, "Relationships — Search Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private static bool IsCancellationSqlError(Microsoft.Data.SqlClient.SqlException ex)
+    {
+        // SQL Server cancel errors land as "Operation cancelled by user" or
+        // "A severe error occurred ... The batch has been aborted." on the
+        // managed driver — both fire when our CTS cancels the in-flight query
+        // as the user types the next character.
+        var msg = ex.Message ?? string.Empty;
+        return msg.Contains("Operation cancelled", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("Operation canceled", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("batch is aborted", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("batch has been aborted", StringComparison.OrdinalIgnoreCase);
     }
 
     private CancellationTokenSource ReplaceSearchCts()
