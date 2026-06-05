@@ -92,6 +92,98 @@ public sealed class IntelReadService
         return new OpportunityIntelBundle(buyer, architect);
     }
 
+    /// <summary>
+    /// BD Dashboard Priority Actions queue. Returns up to <paramref name="take"/>
+    /// open IntelAction rows joined to their CanonicalOrg, ranked High→Low
+    /// confidence then most-recently-refreshed. Supports optional filter by
+    /// province (via MPI canonical-org membership), action type, and minimum
+    /// confidence.
+    /// </summary>
+    public async Task<IReadOnlyList<PriorityActionRow>> GetPriorityActionsAsync(
+        PriorityActionFilter? filter,
+        int take,
+        CancellationToken ct)
+    {
+        if (take <= 0) take = 25;
+        filter ??= new PriorityActionFilter();
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        var provinceClause = string.IsNullOrWhiteSpace(filter.Province)
+            ? string.Empty
+            : @"  AND a.CanonicalOrgId IN (
+              SELECT DISTINCT v.CanonicalOrgId
+              FROM opportunities.MajorProjectsInventory m
+              CROSS APPLY (VALUES
+                  (m.ArchitectCanonicalOrgId),
+                  (m.ProponentCanonicalOrgId),
+                  (m.StructuralEngineerCanonicalOrgId),
+                  (m.GeneralContractorCanonicalOrgId)
+              ) v(CanonicalOrgId)
+              WHERE m.RetiredAtUtc IS NULL AND m.Province = @prov AND v.CanonicalOrgId IS NOT NULL)
+";
+
+        var actionTypeClause = string.IsNullOrWhiteSpace(filter.ActionType)
+            ? string.Empty
+            : "  AND a.ActionType = @actionType\n";
+
+        var minConfidenceClause = filter.MinConfidence is null
+            ? string.Empty
+            : $"  AND {IntelConfidenceSql.RankClause("a.SourceConfidence")} >= @minConfidenceRank\n";
+
+        var sql = $@"
+SELECT TOP (@take)
+       a.Id, a.CanonicalOrgId,
+       co.DisplayName AS OrgDisplayName, co.Kind AS OrgKind, co.ClendorClientId,
+       a.ActionType, a.Recommendation, a.TargetPersonName, a.TimingNotes,
+       a.SourceProviderName, a.SourceConfidence, a.LastSeenAtUtc
+FROM opportunities.IntelAction a
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+WHERE a.Status = N'Open'
+  AND a.RetiredAtUtc IS NULL
+{provinceClause}{actionTypeClause}{minConfidenceClause}ORDER BY {IntelConfidenceSql.RankClause("a.SourceConfidence")} DESC,
+         a.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = take;
+        if (!string.IsNullOrWhiteSpace(filter.Province))
+            cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = filter.Province;
+        if (!string.IsNullOrWhiteSpace(filter.ActionType))
+            cmd.Parameters.Add("@actionType", SqlDbType.NVarChar, 50).Value = filter.ActionType;
+        if (filter.MinConfidence is { } mc)
+            cmd.Parameters.Add("@minConfidenceRank", SqlDbType.Int).Value = mc switch
+            {
+                IntelConfidence.High => 3,
+                IntelConfidence.Medium => 2,
+                IntelConfidence.Low => 1,
+                _ => 0,
+            };
+
+        var now = DateTimeOffset.UtcNow;
+        var rows = new List<PriorityActionRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            var refreshed = r.GetDateTimeOffset(11);
+            rows.Add(new PriorityActionRow(
+                ActionId: r.GetInt64(0),
+                CanonicalOrgId: r.GetInt64(1),
+                OrgDisplayName: r.GetString(2),
+                OrgKind: r.GetString(3),
+                OrgClendorClientId: r.IsDBNull(4) ? null : r.GetString(4),
+                ActionType: r.GetString(5),
+                Recommendation: r.GetString(6),
+                TargetPersonName: r.IsDBNull(7) ? null : r.GetString(7),
+                TimingNotes: r.IsDBNull(8) ? null : r.GetString(8),
+                SourceProviderName: r.GetString(9),
+                Confidence: ParseConfidence(r.GetString(10)),
+                RefreshedAtUtc: refreshed,
+                Freshness: ComputeFreshness(now, refreshed)));
+        }
+        return rows;
+    }
+
     private static async Task<IReadOnlyList<IntelPersonRow>> GetPeopleAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
     {
         var sql = $@"

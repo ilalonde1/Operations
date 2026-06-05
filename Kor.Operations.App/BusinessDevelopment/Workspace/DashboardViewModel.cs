@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Opportunities;
 
@@ -31,6 +32,8 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
     private readonly IPrimePipelineStore _primePipeline;
     private readonly IOpportunityStore _opportunities;
     private readonly IBdDashboardStore _bdDashboard;
+    private readonly IntelReadService _intelRead;
+    private readonly IntelPersistenceService _intelPersistence;
     private string _totalPipelineDisplay = "0";
     private string _openRfpsDisplay = "0";
     private string _upcomingProjectsDisplay = "0";
@@ -50,12 +53,110 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
         IPrimePipelineStore primePipeline,
         IOpportunityStore opportunities,
         IBdDashboardStore bdDashboard,
+        IntelReadService intelRead,
+        IntelPersistenceService intelPersistence,
         Microsoft.Extensions.Logging.ILogger<DashboardViewModel>? logger = null)
     {
         _primePipeline = primePipeline ?? throw new ArgumentNullException(nameof(primePipeline));
         _opportunities = opportunities ?? throw new ArgumentNullException(nameof(opportunities));
         _bdDashboard = bdDashboard ?? throw new ArgumentNullException(nameof(bdDashboard));
+        _intelRead = intelRead ?? throw new ArgumentNullException(nameof(intelRead));
+        _intelPersistence = intelPersistence ?? throw new ArgumentNullException(nameof(intelPersistence));
         _logger = logger;
+    }
+
+    // R82: BD Dashboard Priority Actions queue. Top-25 open IntelAction rows
+    // ranked High→Low confidence then most-recently-refreshed. Filterable by
+    // Province / ActionType / MinConfidence. Surfaces actionable intel without
+    // hunting through individual dossiers.
+    public ObservableCollection<PriorityActionRow> PriorityActions { get; } = new();
+
+    private string? _priorityProvinceFilter;
+    public string? PriorityProvinceFilter
+    {
+        get => _priorityProvinceFilter;
+        set { if (_priorityProvinceFilter != value) { _priorityProvinceFilter = value; OnPropertyChanged(); } }
+    }
+
+    private string? _priorityActionTypeFilter;
+    public string? PriorityActionTypeFilter
+    {
+        get => _priorityActionTypeFilter;
+        set { if (_priorityActionTypeFilter != value) { _priorityActionTypeFilter = value; OnPropertyChanged(); } }
+    }
+
+    private IntelConfidence? _priorityMinConfidence;
+    public IntelConfidence? PriorityMinConfidence
+    {
+        get => _priorityMinConfidence;
+        set { if (_priorityMinConfidence != value) { _priorityMinConfidence = value; OnPropertyChanged(); } }
+    }
+
+    public int PriorityActionsCount => PriorityActions.Count;
+    public bool HasPriorityActions => PriorityActions.Count > 0;
+
+    public IReadOnlyList<string> PriorityProvinceOptions { get; } = new[] { "All", "BC", "AB", "WA", "OR", "CA" };
+    public IReadOnlyList<string> PriorityActionTypeOptions { get; } = new[]
+    {
+        "All", "PursuitAngle", "ContactStrategy", "TimingWindow",
+        "HowToGetOnRoster", "KorDisplacementRead", "Other",
+    };
+    public IReadOnlyList<string> PriorityConfidenceOptions { get; } = new[] { "All", "High", "Medium", "Low" };
+
+    public async Task LoadPriorityActionsAsync(CancellationToken ct)
+    {
+        try
+        {
+            var filter = new PriorityActionFilter(
+                Province: NormalizeFilter(PriorityProvinceFilter),
+                ActionType: NormalizeFilter(PriorityActionTypeFilter),
+                MinConfidence: ParseMinConfidence(PriorityMinConfidence));
+            var rows = await _intelRead.GetPriorityActionsAsync(filter, take: 25, ct).ConfigureAwait(true);
+            PriorityActions.Clear();
+            foreach (var row in rows) PriorityActions.Add(row);
+            OnPropertyChanged(nameof(PriorityActionsCount));
+            OnPropertyChanged(nameof(HasPriorityActions));
+        }
+        catch (OperationCanceledException) { /* expected on tab switch */ }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "DashboardViewModel: Priority Actions load failed.");
+        }
+
+        static string? NormalizeFilter(string? v) =>
+            string.IsNullOrWhiteSpace(v) || string.Equals(v, "All", StringComparison.OrdinalIgnoreCase) ? null : v;
+
+        static IntelConfidence? ParseMinConfidence(IntelConfidence? v) => v;
+    }
+
+    /// <summary>Mark an action Done or Dismissed and remove it from the queue.
+    /// Returns true on success.</summary>
+    public async Task<bool> SetActionStatusAsync(long actionId, string status, CancellationToken ct)
+    {
+        try
+        {
+            var user = Environment.UserName;
+            var ok = await _intelPersistence.SetActionStatusAsync(actionId, status, user, ct).ConfigureAwait(true);
+            if (ok)
+            {
+                for (var i = PriorityActions.Count - 1; i >= 0; i--)
+                {
+                    if (PriorityActions[i].ActionId == actionId)
+                    {
+                        PriorityActions.RemoveAt(i);
+                        break;
+                    }
+                }
+                OnPropertyChanged(nameof(PriorityActionsCount));
+                OnPropertyChanged(nameof(HasPriorityActions));
+            }
+            return ok;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "DashboardViewModel: SetActionStatus failed for action {ActionId}.", actionId);
+            return false;
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

@@ -141,10 +141,147 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Row 0: Pipeline Funnel hero -->
+        <!-- R82 Row 0: Priority Actions queue. Top-25 open IntelAction rows
+             ranked High→Low confidence + recency. Per-row Done/Dismiss/CRM
+             buttons. Filters at the header. -->
         <Border Grid.Row="0" Style="{StaticResource Card}" Padding="14" Margin="0,0,0,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Priority Actions"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <Border Background="{StaticResource Brand.Accent.Brush}"
+                                CornerRadius="9" Padding="6,1" Margin="8,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding PriorityActionsCount}"
+                                       Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                        </Border>
+                        <TextBlock Text="top open recommendations across all orgs — acknowledge or move to CRM"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Filter row -->
+                <Grid Grid.Row="1" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="180"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Province:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource Text.Secondary}"/>
+                    <ComboBox Grid.Column="1" x:Name="PriorityProvinceCombo" Height="26"
+                              ItemsSource="{Binding PriorityProvinceOptions}"
+                              SelectedIndex="0"
+                              SelectionChanged="PriorityFilter_Changed"/>
+                    <TextBlock Grid.Column="3" Text="Type:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource Text.Secondary}"/>
+                    <ComboBox Grid.Column="4" x:Name="PriorityTypeCombo" Height="26"
+                              ItemsSource="{Binding PriorityActionTypeOptions}"
+                              SelectedIndex="0"
+                              SelectionChanged="PriorityFilter_Changed"/>
+                    <TextBlock Grid.Column="6" Text="Min confidence:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource Text.Secondary}"/>
+                    <ComboBox Grid.Column="7" x:Name="PriorityConfidenceCombo" Height="26"
+                              ItemsSource="{Binding PriorityConfidenceOptions}"
+                              SelectedIndex="0"
+                              SelectionChanged="PriorityFilter_Changed"/>
+                </Grid>
+
+                <ItemsControl Grid.Row="2" ItemsSource="{Binding PriorityActions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="0,8,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                            <Button Content="{Binding OrgDisplayName}"
+                                                    Click="PriorityAction_OpenOrg_Click"
+                                                    Tag="{Binding}"
+                                                    FontWeight="SemiBold" FontSize="13"
+                                                    Foreground="{StaticResource Brand.Primary.Brush}"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Padding="0" Margin="0,0,8,0" Cursor="Hand"
+                                                    ToolTip="Open Org Dossier"/>
+                                            <TextBlock Text="{Binding OrgKind}" FontSize="10" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <Border Background="#EDEEF1" CornerRadius="9" Padding="6,1" VerticalAlignment="Center">
+                                                <TextBlock FontSize="10" Foreground="{StaticResource Text.Secondary}"
+                                                           Text="{Binding Confidence}"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,2,8,0">
+                                            <Run FontWeight="SemiBold" Text="{Binding ActionType, Mode=OneWay}"/><Run Text=": "/><Run Text="{Binding Recommendation, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                            <TextBlock FontSize="11" Foreground="{StaticResource Text.Secondary}"
+                                                       Text="{Binding TargetPersonName, StringFormat=target: {0}}"
+                                                       Margin="0,0,12,0"/>
+                                            <TextBlock FontSize="11" Foreground="{StaticResource Text.Secondary}"
+                                                       Text="{Binding TimingNotes, StringFormat=timing: {0}}"
+                                                       Margin="0,0,12,0"/>
+                                            <TextBlock FontSize="11" Foreground="{StaticResource Text.Secondary}"
+                                                       Text="{Binding RefreshedAtUtc, StringFormat=as of {0:yyyy-MM-dd}}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="✓ Done" Click="PriorityAction_Done_Click" Tag="{Binding}"
+                                                Padding="8,4" Margin="0,0,4,0" FontSize="11"
+                                                ToolTip="Mark this action as done."/>
+                                        <Button Content="✕ Dismiss" Click="PriorityAction_Dismiss_Click" Tag="{Binding}"
+                                                Padding="8,4" Margin="0,0,4,0" FontSize="11"
+                                                ToolTip="Dismiss this recommendation."/>
+                                        <Button Content="→ CRM" Click="PriorityAction_OpenCrm_Click" Tag="{Binding}"
+                                                Padding="8,4" FontSize="11"
+                                                ToolTip="Open the CRM panel for this org."/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Grid.Row="2"
+                           Text="No open priority actions match the current filters."
+                           Foreground="{StaticResource Text.Secondary}"
+                           HorizontalAlignment="Center" Margin="0,18,0,8">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasPriorityActions}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </Border>
+
+        <!-- Row 1: Pipeline Funnel hero -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="14" Margin="0,0,0,12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -250,8 +387,8 @@
             </Grid>
         </Border>
 
-        <!-- Row 1: 5 stat tiles -->
-        <Grid Grid.Row="1" Margin="0,0,0,12">
+        <!-- Row 2: 5 stat tiles -->
+        <Grid Grid.Row="2" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -306,8 +443,8 @@
             </Button>
         </Grid>
 
-        <!-- Row 2: Latest RFPs (clickable) + Pipeline by sector chart -->
-        <Grid Grid.Row="2" Margin="0,0,0,12" Height="300">
+        <!-- Row 3: Latest RFPs (clickable) + Pipeline by sector chart -->
+        <Grid Grid.Row="3" Margin="0,0,0,12" Height="300">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="*"/>
@@ -409,10 +546,10 @@
             </Button>
         </Grid>
 
-        <!-- Row 3: 3 clickable lists side-by-side — Open Structural Seats /
+        <!-- Row 4: 3 clickable lists side-by-side — Open Structural Seats /
              Forward Pipeline / Competitor Watch. Competitor capacity-read
              column wraps + uses the muted slate so it's readable at a glance. -->
-        <Grid Grid.Row="3" Margin="0,0,0,12" Height="300">
+        <Grid Grid.Row="4" Margin="0,0,0,12" Height="300">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -531,8 +668,8 @@
             </Border>
         </Grid>
 
-        <!-- Row 4: Bar-chart row — By market / By Stage / Value by Market -->
-        <Grid Grid.Row="4" Margin="0,0,0,12" Height="220">
+        <!-- Row 5: Bar-chart row — By market / By Stage / Value by Market -->
+        <Grid Grid.Row="5" Margin="0,0,0,12" Height="220">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -730,7 +867,7 @@
              Moved below the big tables/charts so it doesn't squeeze them.
              ListBox is height-capped so 20+ items scroll inside, not push the
              dashboard. -->
-        <Grid Grid.Row="5" Margin="0,0,0,0" Height="360">
+        <Grid Grid.Row="6" Margin="0,0,0,0" Height="360">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="*"/>

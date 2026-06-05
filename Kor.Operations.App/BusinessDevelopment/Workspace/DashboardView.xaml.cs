@@ -41,6 +41,7 @@ public partial class DashboardView : UserControl
             try
             {
                 await vm.LoadAsync(cts.Token).ConfigureAwait(true);
+                await vm.LoadPriorityActionsAsync(cts.Token).ConfigureAwait(true);
             }
             catch (OperationCanceledException)
             {
@@ -49,6 +50,83 @@ public partial class DashboardView : UserControl
             {
                 MessageBox.Show(OwnerWindow(), ex.Message, "BD Dashboard — Load Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+    }
+
+    // R82: Priority Actions surface handlers.
+
+    private async void PriorityFilter_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (DataContext is not DashboardViewModel vm) return;
+        if (PriorityProvinceCombo is null) return; // not yet bound during template apply
+
+        vm.PriorityProvinceFilter = PriorityProvinceCombo.SelectedItem as string;
+        vm.PriorityActionTypeFilter = PriorityTypeCombo.SelectedItem as string;
+        vm.PriorityMinConfidence = (PriorityConfidenceCombo.SelectedItem as string) switch
+        {
+            "High" => Kor.Opportunities.Data.Intel.IntelConfidence.High,
+            "Medium" => Kor.Opportunities.Data.Intel.IntelConfidence.Medium,
+            "Low" => Kor.Opportunities.Data.Intel.IntelConfidence.Low,
+            _ => null,
+        };
+
+        var cts = ReplaceCts();
+        try { await vm.LoadPriorityActionsAsync(cts.Token).ConfigureAwait(true); }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { MessageBox.Show(OwnerWindow(), ex.Message, "Priority Actions — Filter Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private async void PriorityAction_Done_Click(object sender, RoutedEventArgs e)
+        => await UpdateActionStatusAsync(sender, "Done").ConfigureAwait(true);
+
+    private async void PriorityAction_Dismiss_Click(object sender, RoutedEventArgs e)
+        => await UpdateActionStatusAsync(sender, "Dismissed").ConfigureAwait(true);
+
+    private async Task UpdateActionStatusAsync(object sender, string status)
+    {
+        if (DataContext is not DashboardViewModel vm) return;
+        if (sender is not Button btn || btn.Tag is not Kor.Opportunities.Data.Intel.PriorityActionRow row) return;
+        await vm.SetActionStatusAsync(row.ActionId, status, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private void PriorityAction_OpenOrg_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not Kor.Opportunities.Data.Intel.PriorityActionRow row) return;
+        if (_services is null) return;
+        try
+        {
+            var vm = _services.GetRequiredService<Kor.Operations.App.Opportunities.OrgDossierViewModel>();
+            var win = new Kor.Operations.App.Opportunities.OrgDossierWindow(vm, row.CanonicalOrgId)
+            {
+                Owner = OwnerWindow(),
+            };
+            win.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(OwnerWindow(), ex.Message, "Priority Actions — Open Dossier Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void PriorityAction_OpenCrm_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not Kor.Opportunities.Data.Intel.PriorityActionRow row) return;
+        // R82 MVP: open the org Dossier — the dedicated CRM panel hookup is
+        // covered by the separate CRM rebuild task. For now the Dossier is
+        // the org-rooted surface and the user can navigate to CRM from there.
+        if (_services is null) return;
+        try
+        {
+            var vm = _services.GetRequiredService<Kor.Operations.App.Opportunities.OrgDossierViewModel>();
+            var win = new Kor.Operations.App.Opportunities.OrgDossierWindow(vm, row.CanonicalOrgId)
+            {
+                Owner = OwnerWindow(),
+            };
+            win.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(OwnerWindow(), ex.Message, "Priority Actions — Open CRM Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

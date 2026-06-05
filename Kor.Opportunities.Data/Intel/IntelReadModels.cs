@@ -64,3 +64,35 @@ public sealed record RegionIntelRollup(
 public sealed record OpportunityIntelBundle(
     OrgIntelBundle? BuyerIntel,
     OrgIntelBundle? ArchitectIntel);
+
+/// <summary>
+/// One row in the BD-Dashboard Priority Actions surface. Joins
+/// IntelAction (Status='Open') to its CanonicalOrg so the queue can
+/// show the org name + provide drill-down to the Dossier without an
+/// extra round-trip.
+/// </summary>
+public sealed record PriorityActionRow(
+    long ActionId,
+    long CanonicalOrgId,
+    string OrgDisplayName,
+    string OrgKind,
+    string? OrgClendorClientId,
+    string ActionType,
+    string Recommendation,
+    string? TargetPersonName,
+    string? TimingNotes,
+    string SourceProviderName,
+    IntelConfidence Confidence,
+    DateTimeOffset RefreshedAtUtc,
+    IntelFreshness Freshness);
+
+/// <summary>
+/// Filter parameters for the Priority Actions queue. All optional —
+/// any null/empty value means "no filter on this dimension." Province
+/// scopes via MPI canonical-org membership (matches the Region Brief
+/// rollup's region-membership logic).
+/// </summary>
+public sealed record PriorityActionFilter(
+    string? Province = null,
+    string? ActionType = null,
+    IntelConfidence? MinConfidence = null);
