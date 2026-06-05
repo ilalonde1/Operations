@@ -1,12 +1,14 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.Opportunities;
 using Kor.Operations.Services;
+using Kor.Opportunities.Data.Awards;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
@@ -114,6 +116,30 @@ public partial class RelationshipsView : UserControl
 
     private async void GenerateOrgBriefAsWord_Click(object sender, RoutedEventArgs e)
         => await GenerateOrgBriefAsync(asPdf: false).ConfigureAwait(true);
+
+    public async Task SelectOrgAsync(long orgId)
+    {
+        var store = _services.GetRequiredService<ICanonicalOrgStore>();
+        var row = await store.GetCanonicalOrgAsync(orgId, CancellationToken.None).ConfigureAwait(true);
+        if (row is null)
+        {
+            return;
+        }
+
+        _vm.SearchText = row.DisplayName;
+        await SearchAsync().ConfigureAwait(true);
+
+        var match = _vm.Orgs.FirstOrDefault(o => o.Id == orgId);
+        if (match is null)
+        {
+            _vm.Orgs.Insert(0, row);
+            match = row;
+        }
+
+        _vm.SelectedOrg = match;
+        OrgList.SelectedItem = match;
+        OrgList.ScrollIntoView(match);
+    }
 
     private async Task GenerateOrgBriefAsync(bool asPdf)
     {

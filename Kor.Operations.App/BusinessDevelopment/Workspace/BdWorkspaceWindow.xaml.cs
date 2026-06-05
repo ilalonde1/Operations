@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.Brochures;
 using Kor.Operations.Services;
+using Kor.Opportunities.Data.Awards;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
@@ -18,6 +19,7 @@ public partial class BdWorkspaceWindow : Window
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _brochureFactory = brochureFactory ?? throw new ArgumentNullException(nameof(brochureFactory));
         InitializeComponent();
+        GlobalSearch.Store = _services.GetRequiredService<ICanonicalOrgStore>();
     }
 
     private async void BdWorkspaceWindow_Loaded(object sender, RoutedEventArgs e)
@@ -33,6 +35,7 @@ public partial class BdWorkspaceWindow : Window
 
         SetActiveNav(DashboardButton);
         ContentHost.Content = _services.GetRequiredService<DashboardView>();
+        GlobalSearch.OrgSelected += (_, orgId) => OpenOrgDossier(orgId);
     }
 
     private void Dashboard_Click(object sender, RoutedEventArgs e) => NavigateToDashboard();
@@ -108,6 +111,17 @@ public partial class BdWorkspaceWindow : Window
     {
         SetActiveNav(RelationshipsButton);
         ContentHost.Content = _services.GetRequiredService<RelationshipsView>();
+    }
+
+    private void OpenOrgDossier(long canonicalOrgId)
+    {
+        NavigateToRelationships();
+        if (ContentHost.Content is not RelationshipsView relView)
+        {
+            return;
+        }
+
+        _ = relView.SelectOrgAsync(canonicalOrgId);
     }
 
     public void NavigateToEvents()

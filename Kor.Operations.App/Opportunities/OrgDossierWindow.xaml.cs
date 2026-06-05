@@ -5,18 +5,21 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Kor.Operations.Services;
+using Kor.Opportunities.Data.Awards;
 
 namespace Kor.Operations.App.Opportunities;
 
 public partial class OrgDossierWindow : Window
 {
-    private readonly long _canonicalOrgId;
+    private long _canonicalOrgId;
     private readonly OrgDossierView _view;
 
     public OrgDossierWindow(OrgDossierViewModel vm, long canonicalOrgId)
     {
         _canonicalOrgId = canonicalOrgId;
         InitializeComponent();
+        JumpToOrg.Store = AppServices.Get<ICanonicalOrgStore>();
+        JumpToOrg.OrgSelected += JumpToOrg_OrgSelected;
         _view = new OrgDossierView(vm ?? throw new ArgumentNullException(nameof(vm)));
         ViewHost.Content = _view;
     }
@@ -33,6 +36,12 @@ public partial class OrgDossierWindow : Window
         }
 
         await _view.ShowOrgAsync(_canonicalOrgId, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async void JumpToOrg_OrgSelected(object? sender, long canonicalOrgId)
+    {
+        _canonicalOrgId = canonicalOrgId;
+        await _view.ShowOrgAsync(canonicalOrgId, CancellationToken.None).ConfigureAwait(true);
     }
 
     private async void GenerateOrgBriefButton_Click(object sender, RoutedEventArgs e)
