@@ -215,6 +215,11 @@ internal static class Program
 
         var ingestStats = new CanonicalIngestStats();
         var prefix = options.DryRun ? "[DRY-RUN] " : string.Empty;
+        var aggressiveIndex = await BuildAggressiveKeyIndexAsync(options.OpportunitiesDb, ct).ConfigureAwait(false);
+        if (!options.Quiet)
+        {
+            Console.WriteLine($"{prefix}  Aggressive-key canonical index loaded: {aggressiveIndex.Count} keys");
+        }
 
         async Task IngestRecordAsync(CanonicalIngestFileStats fileStats, string relPath, JsonElement record, int index)
         {
@@ -268,41 +273,78 @@ internal static class Program
             }
 
             var kind = String(record, "kind") ?? OrgKinds.Unknown;
-            var wouldMatch = await AlreadyResolvableAsync(displayName).ConfigureAwait(false);
-            long? orgId;
-            if (options.DryRun)
+            var aggressiveKey = CanonicalOrgResolver.NormalizeAggressiveKey(displayName);
+            long? orgId = null;
+            var aggressiveHit = false;
+            if (aggressiveKey.Length > 0 && aggressiveIndex.TryGetValue(aggressiveKey, out var hitId))
             {
-                orgId = wouldMatch ? 0L : null;
-            }
-            else
-            {
-                orgId = await resolver.ResolveAsync(
-                    displayName,
-                    kind,
-                    source: "research-ingest",
-                    ct: ct,
-                    allowCreate: true).ConfigureAwait(false);
-
-                if (!orgId.HasValue)
+                orgId = hitId;
+                aggressiveHit = true;
+                ingestStats.AggressiveKeyMatches++;
+                if (!options.Quiet)
                 {
-                    fileStats.Skipped++;
-                    AddCount(ingestStats.SkippedByReason, "resolver-null");
-                    if (!options.Quiet)
-                    {
-                        Console.WriteLine($"  SKIP {relPath}#{index} ({displayName}): resolver returned null");
-                    }
-
-                    return;
+                    Console.WriteLine($"  AGGRESSIVE-MATCH {relPath}#{index} ({displayName}): -> canonicalOrgId={hitId} via stripped-suffix key '{aggressiveKey}'");
                 }
             }
 
-            if (wouldMatch)
+            if (orgId is null)
             {
-                ingestStats.CanonicalOrgMatches++;
+                var wouldMatch = await AlreadyResolvableAsync(displayName).ConfigureAwait(false);
+                if (options.DryRun)
+                {
+                    orgId = wouldMatch ? 0L : null;
+                }
+                else
+                {
+                    orgId = await resolver.ResolveAsync(
+                        displayName,
+                        kind,
+                        source: "research-ingest",
+                        ct: ct,
+                        allowCreate: true).ConfigureAwait(false);
+
+                    if (!orgId.HasValue)
+                    {
+                        fileStats.Skipped++;
+                        AddCount(ingestStats.SkippedByReason, "resolver-null");
+                        if (!options.Quiet)
+                        {
+                            Console.WriteLine($"  SKIP {relPath}#{index} ({displayName}): resolver returned null");
+                        }
+
+                        return;
+                    }
+                }
+
+                if (wouldMatch)
+                {
+                    ingestStats.CanonicalOrgMatches++;
+                }
+                else
+                {
+                    ingestStats.CanonicalOrgCreates++;
+                }
             }
             else
             {
-                ingestStats.CanonicalOrgCreates++;
+                ingestStats.CanonicalOrgMatches++;
+            }
+
+            if (!options.DryRun && aggressiveKey.Length > 0 && orgId.HasValue && !aggressiveIndex.ContainsKey(aggressiveKey))
+            {
+                aggressiveIndex[aggressiveKey] = orgId.Value;
+            }
+
+            if (aggressiveHit && !options.DryRun)
+            {
+                await orgStore.UpsertAliasAsync(
+                    rawName: displayName.Trim(),
+                    source: "research-ingest",
+                    canonicalOrgId: orgId.Value,
+                    confidence: 70,
+                    classifiedBy: "auto-aggressive-key",
+                    notes: $"Matched via NormalizeAggressiveKey -> '{aggressiveKey}'",
+                    ct: ct).ConfigureAwait(false);
             }
 
             if (!options.DryRun)
@@ -401,6 +443,7 @@ internal static class Program
 
             Console.WriteLine($"  CanonicalOrg creates:          {ingestStats.CanonicalOrgCreates}");
             Console.WriteLine($"  CanonicalOrg matches:          {ingestStats.CanonicalOrgMatches}");
+            Console.WriteLine($"  Matched via aggressive-key fallback: {ingestStats.AggressiveKeyMatches}");
         }
 
         foreach (var path in Directory.EnumerateFiles(folder, "*.json", SearchOption.AllDirectories)
@@ -478,6 +521,39 @@ internal static class Program
 
         WriteCanonicalSummary();
         return 0;
+    }
+
+    private static async Task<Dictionary<string, long>> BuildAggressiveKeyIndexAsync(
+        string connectionString,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT Id, DisplayName
+FROM opportunities.CanonicalOrg
+ORDER BY Id;";
+
+        var dict = new Dictionary<string, long>(StringComparer.Ordinal);
+        await using var con = new SqlConnection(connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con);
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            var id = r.GetInt64(0);
+            var displayName = r.GetString(1);
+            var key = CanonicalOrgResolver.NormalizeAggressiveKey(displayName);
+            if (key.Length == 0)
+            {
+                continue;
+            }
+
+            if (!dict.ContainsKey(key))
+            {
+                dict[key] = id;
+            }
+        }
+
+        return dict;
     }
 
     private static async Task ImportContractorResearchAsync(
@@ -6089,6 +6165,7 @@ WHERE Id = @id
         public int FilesSkippedNoParseable { get; set; }
         public int CanonicalOrgCreates { get; set; }
         public int CanonicalOrgMatches { get; set; }
+        public int AggressiveKeyMatches { get; set; }
         public Dictionary<string, int> IngestedByProvider { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> SkippedByReason { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> AliasFallbacksByField { get; } = new(StringComparer.OrdinalIgnoreCase);

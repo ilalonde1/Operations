@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
@@ -187,6 +188,57 @@ public sealed class CanonicalOrgResolver
             .Replace(")", "", StringComparison.Ordinal)
             .Replace("+", "", StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Aggressive normalization that strips trailing corporate/role suffixes
+    /// iteratively after stripping all non-alphanumeric chars. Single source
+    /// of truth shared with BdCanonicalDedup so the resolver collapses
+    /// "ACI Architecture" / "ACI Architects Inc." / "ACI Architecture Inc."
+    /// to the same key preventing the dup-creation cycle where the
+    /// resolver creates a new canonical that BdCanonicalDedup then has to
+    /// merge away.
+    ///
+    /// Mirrors NormalizeKey in tools/BdCanonicalDedup/Program.cs (extracted
+    /// here so both call the same code).
+    /// </summary>
+    public static string NormalizeAggressiveKey(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        var sb = new StringBuilder(input.Length);
+        foreach (var ch in input.ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(ch)) sb.Append(ch);
+        }
+
+        var normalized = sb.ToString();
+        bool stripped;
+        do
+        {
+            stripped = false;
+            foreach (var token in AggressiveStripTokens)
+            {
+                if (normalized.Length >= token.Length && normalized.EndsWith(token, StringComparison.Ordinal))
+                {
+                    // Guard short tokens (e.g. "co", "lp") to avoid collapsing unrelated names.
+                    if (token.Length <= 2 && normalized.Length - token.Length < 4) continue;
+                    normalized = normalized[..^token.Length];
+                    stripped = true;
+                    break;
+                }
+            }
+        }
+        while (stripped);
+
+        return normalized;
+    }
+
+    private static readonly string[] AggressiveStripTokens = new[]
+    {
+        "inc", "incorporated", "ltd", "limited", "llp", "llc", "lp",
+        "corp", "corporation", "co", "company",
+        "architects", "architect", "architecture",
+        "partnership", "partners", "group",
+    };
 
     /// <summary>
     /// Strips intake-time noise from a raw organization name so the resolver

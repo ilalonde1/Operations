@@ -3,6 +3,7 @@ using System.Data;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Kor.Opportunities.Data.Awards;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.BdCanonicalDedup;
@@ -38,27 +39,6 @@ internal static class Program
     }
 
     private static readonly Regex DbaRegex = new(@"^(.*)\s+dba[:\s]+(.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static readonly string[] StripTrailingTokens = new[]
-    {
-        "inc",
-        "incorporated",
-        "ltd",
-        "limited",
-        "llp",
-        "llc",
-        "lp",
-        "corp",
-        "corporation",
-        "co",
-        "company",
-        "architects",
-        "architect",
-        "architecture",
-        "partnership",
-        "partners",
-        "group",
-    };
 
     private static readonly Dictionary<string, int> KindRank = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -637,49 +617,7 @@ ORDER BY co.Id;";
     }
 
     private static string NormalizeKey(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return string.Empty;
-        }
-
-        var sb = new StringBuilder(value.Length);
-        foreach (var ch in value.ToLowerInvariant())
-        {
-            if (char.IsLetterOrDigit(ch))
-            {
-                sb.Append(ch);
-            }
-        }
-
-        var normalized = sb.ToString();
-        bool stripped;
-        do
-        {
-            stripped = false;
-            foreach (var token in StripTrailingTokens)
-            {
-                if (normalized.Length >= token.Length && normalized.EndsWith(token, StringComparison.Ordinal))
-                {
-                    // Guard short, ambiguous tokens (e.g. "co", "lp") that are also common
-                    // word-endings: only strip if the remaining base stays >= 4 chars.
-                    // Prevents "SISCO" -> "sis" colliding with an unrelated "SIS", while still
-                    // collapsing "Gregg Distributors Co Ltd" -> "Gregg Distributors".
-                    if (token.Length <= 2 && normalized.Length - token.Length < 4)
-                    {
-                        continue;
-                    }
-
-                    normalized = normalized[..^token.Length];
-                    stripped = true;
-                    break;
-                }
-            }
-        }
-        while (stripped);
-
-        return normalized;
-    }
+        => CanonicalOrgResolver.NormalizeAggressiveKey(value);
 
     private static OrgRow ChooseSurvivor(IReadOnlyList<OrgRow> members)
         => members
