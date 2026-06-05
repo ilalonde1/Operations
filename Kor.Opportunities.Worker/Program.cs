@@ -7,6 +7,7 @@ using Kor.Opportunities.Core.Deltek;
 using Kor.Opportunities.Core.Ingestion.EmailAdapters;
 using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Core.Scoring;
+using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.Ingestion.Providers;
@@ -184,6 +185,10 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichment
             builder.Services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(
                 Cs(sp),
                 sp.GetRequiredService<ILogger<SqlIngestionTriggerStore>>()));
+            builder.Services.AddSingleton<IBdResearchTriggerStore>(sp =>
+                new SqlBdResearchTriggerStore(
+                    sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value.OpportunitiesDb,
+                    sp.GetService<ILogger<SqlBdResearchTriggerStore>>()));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(
         Cs(sp),
@@ -970,6 +975,7 @@ builder.Services.AddQuartz(q =>
             builder.Services.AddHostedService<HeartbeatBackgroundService>();
             builder.Services.AddHostedService<SourceBootstrapHostedService>();
             builder.Services.AddHostedService<IngestionTriggerPollerBackgroundService>();
+            builder.Services.AddHostedService<BdResearchTriggerPollerBackgroundService>();
             builder.Services.AddHostedService<OpportunitySourceCronScheduler>();
 
             using var host = builder.Build();

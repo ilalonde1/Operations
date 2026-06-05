@@ -32,6 +32,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private readonly IArchitectDisplacementBriefStore _displacementBriefStore;
     private readonly IntelReadService _intelReadService;
     private readonly IntelPersistenceService _intelPersistence;
+    private readonly IBdResearchTriggerStore _researchTriggerStore;
     private readonly ILogger<OrgDossierViewModel> _logger;
 
     private long? _canonicalOrgId;
@@ -47,6 +48,9 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private string? _synopsisP2;
     private string? _intelLastRefreshedText;
     private bool _hasStaleIntel;
+    private bool _refreshRequestPending;
+    private bool _refreshAlreadyQueued;
+    private string? _refreshRequestStatus;
     private string _statusMessage = "Ready.";
     private decimal _lifetimeValue;
     private int _lifetimeCount;
@@ -63,6 +67,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         IArchitectDisplacementBriefStore displacementBriefStore,
         IntelReadService intelReadService,
         IntelPersistenceService intelPersistence,
+        IBdResearchTriggerStore researchTriggerStore,
         ILogger<OrgDossierViewModel> logger)
     {
         _canonicalStore = canonicalStore ?? throw new ArgumentNullException(nameof(canonicalStore));
@@ -73,6 +78,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         _displacementBriefStore = displacementBriefStore ?? throw new ArgumentNullException(nameof(displacementBriefStore));
         _intelReadService = intelReadService ?? throw new ArgumentNullException(nameof(intelReadService));
         _intelPersistence = intelPersistence ?? throw new ArgumentNullException(nameof(intelPersistence));
+        _researchTriggerStore = researchTriggerStore ?? throw new ArgumentNullException(nameof(researchTriggerStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // R81: KOR-side Status mutation for IntelAction rows. Done/Dismissed
@@ -80,10 +86,14 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         // resolved actions after 30 days.
         MarkActionDoneCommand = new RelayCommand(o => _ = SetActionStatusAsync(o as IntelActionRow, "Done"));
         MarkActionDismissedCommand = new RelayCommand(o => _ = SetActionStatusAsync(o as IntelActionRow, "Dismissed"));
+        RefreshIntelCommand = new RelayCommand(
+            _ => _ = RequestIntelRefreshAsync(),
+            _ => CanRequestIntelRefresh);
     }
 
     public RelayCommand MarkActionDoneCommand { get; }
     public RelayCommand MarkActionDismissedCommand { get; }
+    public RelayCommand RefreshIntelCommand { get; }
 
     private async Task SetActionStatusAsync(IntelActionRow? row, string status)
     {
@@ -312,6 +322,20 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     public bool HasIntelRisks => IntelRisks.Count > 0;
     public bool HasAnyIntel => HasAnySynopsis || HasIntelActions || HasIntelPeople || HasIntelSignals || HasIntelWorks || HasIntelRisks;
     public bool HasIntelLastRefreshedText => !string.IsNullOrWhiteSpace(IntelLastRefreshedText);
+    public bool CanRequestIntelRefresh => _canonicalOrgId.HasValue && !_refreshRequestPending && !_refreshAlreadyQueued;
+    public string? RefreshRequestStatus
+    {
+        get => _refreshRequestStatus;
+        private set
+        {
+            if (SetField(ref _refreshRequestStatus, value))
+            {
+                OnPropertyChanged(nameof(HasRefreshRequestStatus));
+            }
+        }
+    }
+
+    public bool HasRefreshRequestStatus => !string.IsNullOrWhiteSpace(RefreshRequestStatus);
     public int ProjectCount => Projects.Count;
     public decimal ProjectTotalValue => Projects.Where(p => p.EstimatedCostCad.HasValue).Sum(p => p.EstimatedCostCad!.Value);
     public string ProjectFootprintHeader => $"{ProjectCount:N0} linked projects - {ProjectTotalValue:C0}";
@@ -325,6 +349,8 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         ClearIntel();
         AtAGlance = null;
         OnPropertyChanged(nameof(HeaderLoaded));
+        OnPropertyChanged(nameof(CanRequestIntelRefresh));
+        System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         StatusMessage = "Loading dossier...";
 
         try
@@ -339,6 +365,8 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
 
             _canonicalOrgId = canonicalOrgId;
             OnPropertyChanged(nameof(HeaderLoaded));
+            OnPropertyChanged(nameof(CanRequestIntelRefresh));
+            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
             DisplayName = org.DisplayName;
             Kind = org.Kind;
             Website = org.Website;
@@ -428,6 +456,10 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
                 _logger.LogWarning(ex, "Org dossier intel load failed for CanonicalOrgId {CanonicalOrgId}.", canonicalOrgId);
                 ClearIntel();
             }
+            _refreshAlreadyQueued = false;
+            RefreshRequestStatus = null;
+            OnPropertyChanged(nameof(CanRequestIntelRefresh));
+            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
 
             StatusMessage = $"Loaded {Sections.Count:N0} dossiers, {Projects.Count:N0} projects, {LifetimeCount:N0} award wins.";
 
@@ -543,6 +575,52 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         IntelLastRefreshedText = null;
         HasStaleIntel = false;
         RaiseIntelCollectionProperties();
+    }
+
+    private async Task RequestIntelRefreshAsync()
+    {
+        if (_canonicalOrgId is not { } orgId) return;
+        _refreshRequestPending = true;
+        OnPropertyChanged(nameof(CanRequestIntelRefresh));
+        System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+        try
+        {
+            var alreadyPending = await _researchTriggerStore
+                .HasPendingForOrgAsync(orgId, "FirmNarrative", CancellationToken.None)
+                .ConfigureAwait(true);
+            if (alreadyPending)
+            {
+                _refreshAlreadyQueued = true;
+                OnPropertyChanged(nameof(CanRequestIntelRefresh));
+                RefreshRequestStatus = "Refresh already queued for this org  Worker is on it.";
+                return;
+            }
+
+            var triggerId = await _researchTriggerStore
+                .EnqueueAsync(orgId, "FirmNarrative", Environment.UserName, CancellationToken.None)
+                .ConfigureAwait(true);
+            RefreshRequestStatus =
+                $"Refresh queued at {DateTime.UtcNow:yyyy-MM-dd HH:mm 'UTC'}  Worker picks up within 30s; " +
+                "research takes ~6 min. Re-open this dossier afterward to see updates.";
+            _refreshAlreadyQueued = true;
+            OnPropertyChanged(nameof(CanRequestIntelRefresh));
+            _logger.LogInformation(
+                "Manual intel refresh queued. CanonicalOrgId={Org} TriggerId={Trigger} RequestedBy={User}.",
+                orgId,
+                triggerId,
+                Environment.UserName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to queue manual intel refresh for CanonicalOrgId {CanonicalOrgId}.", orgId);
+            RefreshRequestStatus = $"Couldn't queue refresh: {ex.GetType().Name}: {ex.Message}";
+        }
+        finally
+        {
+            _refreshRequestPending = false;
+            OnPropertyChanged(nameof(CanRequestIntelRefresh));
+            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     private void ApplyIntel(OrgIntelBundle bundle)

@@ -75,6 +75,10 @@ internal static class OpportunitiesModule
         services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(
             options.OpportunitiesDb,
             sp.GetRequiredService<ILogger<SqlIngestionTriggerStore>>()));
+        services.AddSingleton<Kor.Opportunities.Data.Awards.IBdResearchTriggerStore>(sp =>
+            new Kor.Opportunities.Data.Awards.SqlBdResearchTriggerStore(
+                options.OpportunitiesDb,
+                sp.GetService<ILogger<Kor.Opportunities.Data.Awards.SqlBdResearchTriggerStore>>()));
 
         // Phase 2B: WPF feature window. Both transient so a Close+reopen cycle
         // gets a fresh VM (no stale data from a previous session). Mirrors the

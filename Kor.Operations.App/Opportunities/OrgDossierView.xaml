@@ -224,6 +224,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0"
                                        Text="AT A GLANCE"
@@ -231,7 +232,15 @@
                                        FontWeight="SemiBold"
                                        Foreground="{StaticResource Brand.Primary.Brush}"
                                        Typography.Capitals="AllSmallCaps"/>
-                            <TextBlock Grid.Column="1"
+                            <Button Grid.Column="1"
+                                    Content="🔄 Refresh now"
+                                    Command="{Binding RefreshIntelCommand}"
+                                    Padding="8,2"
+                                    FontSize="11"
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center"
+                                    ToolTip="Queues a Sonnet re-research; Worker picks it up within 30s; refresh takes ~6 min. Reload this dossier afterward to see updates."/>
+                            <TextBlock Grid.Column="2"
                                        Text="{Binding IntelLastRefreshedText}"
                                        FontSize="11"
                                        Visibility="{Binding HasIntelLastRefreshedText, Converter={StaticResource BoolToVis}}">
@@ -247,6 +256,14 @@
                                 </TextBlock.Style>
                             </TextBlock>
                         </Grid>
+
+                        <TextBlock Text="{Binding RefreshRequestStatus}"
+                                   TextWrapping="Wrap"
+                                   FontSize="11"
+                                   FontStyle="Italic"
+                                   Foreground="{StaticResource Brand.Primary.Brush}"
+                                   Margin="0,0,0,8"
+                                   Visibility="{Binding HasRefreshRequestStatus, Converter={StaticResource BoolToVis}}"/>
 
                         <TextBlock Text="{Binding SynopsisP1}"
                                    TextWrapping="Wrap"
