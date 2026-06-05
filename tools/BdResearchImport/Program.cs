@@ -27,6 +27,23 @@ internal static class Program
     private const string OwnerKind = "Owner";
     private static readonly Regex KorRegex = new(@"\bKOR\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex CanonicalIngestFileSkipRegex = new(@"(progress|summary|README|INSTRUCTIONS)\.", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly HashSet<string> StrictCanonicalKinds = new(StringComparer.Ordinal)
+    {
+        "Architect",
+        "Developer",
+        "GC",
+        "Designer",
+        "Modular",
+        "Competitor",
+        "Buyer",
+        "Government",
+        "Subcontractor",
+        "Vendor",
+        "KorClient",
+        "Unknown",
+    };
+
+    private const string StrictCanonicalKindList = "{Architect, Developer, GC, Designer, Modular, Competitor, Buyer, Government, Subcontractor, Vendor, KorClient, Unknown}";
     private static readonly string[] DataHoningRecognizedKinds =
     [
         OrgKinds.Architect,
@@ -239,6 +256,12 @@ internal static class Program
             var providerName = String(record, "_providerName") ?? options.IngestCanonicalProviderOverride;
             if (string.IsNullOrWhiteSpace(providerName))
             {
+                if (options.StrictCanonicalSchema)
+                {
+                    ingestStats.StrictViolations++;
+                    Console.WriteLine($"  STRICT-ERROR {relPath}#{index}: missing _providerName and no --provider fallback");
+                }
+
                 fileStats.Skipped++;
                 AddCount(ingestStats.SkippedByReason, "missing _providerName");
                 if (!options.Quiet)
@@ -254,10 +277,16 @@ internal static class Program
             {
                 fileStats.AliasFallbacks++;
                 AddCount(ingestStats.AliasFallbacksByField, aliasField);
-                if (!options.Quiet)
+                if (options.StrictCanonicalSchema)
+                {
+                    Console.WriteLine($"  STRICT-ERROR {relPath}#{index} ({providerName}): PROMPT used legacy alias '{aliasField}'; prefer displayName");
+                }
+                else if (!options.Quiet)
                 {
                     Console.WriteLine($"  WARN {relPath}#{index} ({providerName}): PROMPT used legacy alias '{aliasField}'; prefer displayName");
                 }
+
+                if (options.StrictCanonicalSchema) ingestStats.StrictViolations++;
             }
 
             if (string.IsNullOrWhiteSpace(displayName))
@@ -272,7 +301,20 @@ internal static class Program
                 return;
             }
 
+            var kindFieldPresent = record.TryGetProperty("kind", out var kindElement)
+                && kindElement.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined;
             var kind = String(record, "kind") ?? OrgKinds.Unknown;
+            if (options.StrictCanonicalSchema && !kindFieldPresent)
+            {
+                ingestStats.StrictViolations++;
+                Console.WriteLine($"  STRICT-ERROR {relPath}#{index} ({displayName}): missing 'kind' field; canonical schema requires kind {StrictCanonicalKindList}");
+            }
+            else if (options.StrictCanonicalSchema && !StrictCanonicalKinds.Contains(kind))
+            {
+                ingestStats.StrictViolations++;
+                Console.WriteLine($"  STRICT-ERROR {relPath}#{index} ({displayName}): kind value '{kind}' not in enum {StrictCanonicalKindList}");
+            }
+
             var aggressiveKey = CanonicalOrgResolver.NormalizeAggressiveKey(displayName);
             long? orgId = null;
             var aggressiveHit = false;
@@ -444,6 +486,7 @@ internal static class Program
             Console.WriteLine($"  CanonicalOrg creates:          {ingestStats.CanonicalOrgCreates}");
             Console.WriteLine($"  CanonicalOrg matches:          {ingestStats.CanonicalOrgMatches}");
             Console.WriteLine($"  Matched via aggressive-key fallback: {ingestStats.AggressiveKeyMatches}");
+            Console.WriteLine($"  Strict-mode violations: {ingestStats.StrictViolations}");
         }
 
         foreach (var path in Directory.EnumerateFiles(folder, "*.json", SearchOption.AllDirectories)
@@ -520,7 +563,7 @@ internal static class Program
         }
 
         WriteCanonicalSummary();
-        return 0;
+        return options.StrictCanonicalSchema && ingestStats.StrictViolations > 0 ? 3 : 0;
     }
 
     private static async Task<Dictionary<string, long>> BuildAggressiveKeyIndexAsync(
@@ -6056,7 +6099,8 @@ WHERE Id = @id
         string? Only,
         string? PipelinesFile,
         string? IngestCanonicalFolder,
-        string? IngestCanonicalProviderOverride)
+        string? IngestCanonicalProviderOverride,
+        bool StrictCanonicalSchema)
     {
         public static ImportOptions Parse(string[] args)
         {
@@ -6069,6 +6113,7 @@ WHERE Id = @id
             string? pipelinesFile = null;
             string? ingestCanonicalFolder = null;
             string? ingestCanonicalProviderOverride = null;
+            var strictCanonicalSchema = false;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -6101,6 +6146,9 @@ WHERE Id = @id
                     case "--provider":
                         ingestCanonicalProviderOverride = RequireValue(args, ref i, "--provider");
                         break;
+                    case "--strict":
+                        strictCanonicalSchema = true;
+                        break;
                     default:
                         throw new ArgumentException($"Unknown argument '{args[i]}'.");
                 }
@@ -6115,7 +6163,8 @@ WHERE Id = @id
                 only,
                 pipelinesFile,
                 ingestCanonicalFolder,
-                ingestCanonicalProviderOverride);
+                ingestCanonicalProviderOverride,
+                strictCanonicalSchema);
         }
 
         private static decimal ParseFxRate(string value)
@@ -6166,6 +6215,7 @@ WHERE Id = @id
         public int CanonicalOrgCreates { get; set; }
         public int CanonicalOrgMatches { get; set; }
         public int AggressiveKeyMatches { get; set; }
+        public int StrictViolations { get; set; }
         public Dictionary<string, int> IngestedByProvider { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> SkippedByReason { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> AliasFallbacksByField { get; } = new(StringComparer.OrdinalIgnoreCase);
