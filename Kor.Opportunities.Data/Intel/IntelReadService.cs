@@ -449,20 +449,31 @@ ORDER BY {IntelConfidenceSql.RankClause("x.SourceConfidence")} DESC,
     }
 
     /// <summary>
-    /// Builds an "AND (m.MunicipalityName LIKE '%' + @c0 + '%' OR m.RegionName LIKE '%' + @c0 + '%' OR ...)"
-    /// fragment for the supplied tokens. Returns empty string when tokens is empty (province-wide query).
+    /// Builds an "AND (m.MunicipalityName IN (@c0,@c1,...) OR m.RegionName IN (@c0,@c1,...))"
+    /// fragment for the supplied tokens. Returns empty string when tokens is empty
+    /// (province-wide query).
+    ///
+    /// Uses IN match (sargable) rather than LIKE '%X%' (non-sargable) because
+    /// IntelRegionTokenizer expands aliases to exact municipality names. A
+    /// 21-muni GVRD expansion ran in &gt;30s as LIKE; under IN it runs in
+    /// sub-second against the MajorProjectsInventory indexes.
     /// </summary>
     private static string BuildMpiCityClause(IReadOnlyList<string> tokens, string paramPrefix)
     {
         if (tokens.Count == 0) return string.Empty;
-        var sb = new System.Text.StringBuilder(" AND (");
+        var sb = new System.Text.StringBuilder(" AND (m.MunicipalityName IN (");
         for (var i = 0; i < tokens.Count; i++)
         {
-            if (i > 0) sb.Append(" OR ");
-            sb.Append("m.MunicipalityName LIKE '%' + @").Append(paramPrefix).Append(i).Append(" + '%'");
-            sb.Append(" OR m.RegionName LIKE '%' + @").Append(paramPrefix).Append(i).Append(" + '%'");
+            if (i > 0) sb.Append(", ");
+            sb.Append('@').Append(paramPrefix).Append(i);
         }
-        sb.Append(')');
+        sb.Append(") OR m.RegionName IN (");
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            if (i > 0) sb.Append(", ");
+            sb.Append('@').Append(paramPrefix).Append(i);
+        }
+        sb.Append("))");
         return sb.ToString();
     }
 
