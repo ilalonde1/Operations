@@ -2,6 +2,8 @@
 using System.Data;
 using System.Globalization;
 using System.Text.Json;
+using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Worker.Options;
 using Microsoft.Data.SqlClient;
@@ -20,6 +22,7 @@ public sealed class BdResearchExecutorService
     private readonly IResearchExecutorService _executor;
     private readonly IResearchPromptCatalog _catalog;
     private readonly IntelReadService _intelReadService;
+    private readonly IEnrichmentTrackingStore _enrichmentStore;
     private readonly ILogger<BdResearchExecutorService> _logger;
 
     public BdResearchExecutorService(
@@ -28,6 +31,7 @@ public sealed class BdResearchExecutorService
         IResearchExecutorService executor,
         IResearchPromptCatalog catalog,
         IntelReadService intelReadService,
+        IEnrichmentTrackingStore enrichmentStore,
         ILogger<BdResearchExecutorService> logger)
     {
         _workerOptions = workerOptions?.Value ?? throw new ArgumentNullException(nameof(workerOptions));
@@ -35,6 +39,7 @@ public sealed class BdResearchExecutorService
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _intelReadService = intelReadService ?? throw new ArgumentNullException(nameof(intelReadService));
+        _enrichmentStore = enrichmentStore ?? throw new ArgumentNullException(nameof(enrichmentStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -98,6 +103,7 @@ public sealed class BdResearchExecutorService
                 }
 
                 await WriteOutputAsync(result, ct).ConfigureAwait(false);
+                await PushThroughChokepointAsync(result, ct).ConfigureAwait(false);
                 successes++;
                 totalInputTokens += result.InputTokens;
                 totalOutputTokens += result.OutputTokens;
@@ -163,6 +169,7 @@ public sealed class BdResearchExecutorService
             }
 
             await WriteOutputAsync(result, ct).ConfigureAwait(false);
+            await PushThroughChokepointAsync(result, ct).ConfigureAwait(false);
             return result;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -273,6 +280,38 @@ WHERE Id = @id;";
         Directory.CreateDirectory(dir);
         var path = Path.Combine(dir, $"refresh-{result.CanonicalOrgId}-{SafeFilePart(result.ProviderName)}.json");
         await File.WriteAllTextAsync(path, result.ResultJson, ct).ConfigureAwait(false);
+    }
+
+    private async Task PushThroughChokepointAsync(ExecutedResearch executed, CancellationToken ct)
+    {
+        try
+        {
+            var result = new EnrichmentResult(
+                EnrichmentStatuses.Ok,
+                null,
+                executed.ResultJson,
+                $"Auto-refreshed via BdResearchExecutor at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}");
+            var nextRefresh = DateTimeOffset.UtcNow.AddDays(Math.Max(7, _options.StalenessDays));
+            await _enrichmentStore.RecordAttemptAsync(
+                executed.CanonicalOrgId,
+                executed.ProviderName,
+                result,
+                nextRefresh,
+                ct).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "BD research executor pushed result through R79 chokepoint for org {CanonicalOrgId}/{ProviderName}. Intel* auto-decomposition will run inline.",
+                executed.CanonicalOrgId,
+                executed.ProviderName);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                ex,
+                "BD research executor saved file but chokepoint push failed for org {CanonicalOrgId}/{ProviderName}. Catch-up will pick it up.",
+                executed.CanonicalOrgId,
+                executed.ProviderName);
+        }
     }
 
     private static string SafeFilePart(string value)

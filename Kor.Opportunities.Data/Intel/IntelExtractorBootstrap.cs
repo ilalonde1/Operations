@@ -27,7 +27,7 @@ public static class IntelExtractorBootstrap
         // Hard-coded ProviderName extractors
         new DataHoningExtractor(),
         new PublicSectorResearchExtractor(),
-        new FirmNarrativeExtractor(),
+        new CanonicalSchemaExtractor("FirmNarrative"),
         new ArchitectPipelineResearchExtractor(),
         new DeveloperPipelineResearchExtractor(),
         new StructuralPartnerMapExtractor(),

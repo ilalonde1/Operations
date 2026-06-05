@@ -207,7 +207,10 @@ public sealed class AnthropicResearchExecutorService : IResearchExecutorService
         ""notes"": { ""type"": [""string"", ""null""] }
       }
     }},
-    ""risks"": { ""type"": ""array"", ""items"": {
+    ""risks"": {
+      ""type"": ""array"",
+      ""description"": ""Flag risks the org carries (capacity strain on their preferred SE partner, key-person dependency, ownership uncertainty, exploitable competitor weakness). Leave empty only if no risks are evident from research."",
+      ""items"": {
       ""type"": ""object"",
       ""properties"": {
         ""riskType"": { ""type"": ""string"" },
@@ -215,15 +218,21 @@ public sealed class AnthropicResearchExecutorService : IResearchExecutorService
         ""mitigationNotes"": { ""type"": [""string"", ""null""] }
       }
     }},
-    ""narratives"": { ""type"": ""array"", ""items"": {
-      ""type"": ""object"",
-      ""properties"": {
-        ""narrativeType"": { ""type"": ""string"" },
-        ""paragraphText"": { ""type"": ""string"" }
+    ""narratives"": {
+      ""type"": ""array"",
+      ""minItems"": 2,
+      ""description"": ""Always include at least 2 narratives: one with narrativeType=Current summarizing the org's current state in 2-4 sentences, and one with narrativeType=Action summarizing what KOR should do this quarter in 2-4 sentences. May include additional History or Summary narratives."",
+      ""items"": {
+        ""type"": ""object"",
+        ""properties"": {
+          ""narrativeType"": { ""type"": ""string"", ""enum"": [""Current"", ""History"", ""Action"", ""Summary""] },
+          ""paragraphText"": { ""type"": ""string"" }
+        },
+        ""required"": [""narrativeType"", ""paragraphText""]
       }
-    }}
+    }
   },
-  ""required"": [""displayName"", ""kind"", ""_providerName"", ""_generatedAt"", ""_confidence""]
+  ""required"": [""displayName"", ""kind"", ""_providerName"", ""_generatedAt"", ""_confidence"", ""narratives""]
 }";
 
         var formatSystemPrompt =

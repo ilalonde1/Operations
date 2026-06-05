@@ -199,7 +199,7 @@ builder.Services.AddSingleton<IIntelExtractor, PublicSectorResearchExtractor>();
 builder.Services.AddSingleton<IIntelExtractor, CompetitorProfileExtractor>();
 builder.Services.AddSingleton<IIntelExtractor>(_ => new CompetitorProfileExtractor("ContractorResearch"));
 builder.Services.AddSingleton<IIntelExtractor>(_ => new CompetitorProfileExtractor("ProcurementProfile"));
-builder.Services.AddSingleton<IIntelExtractor, FirmNarrativeExtractor>();
+builder.Services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("FirmNarrative"));
 builder.Services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("PacNWMarketResearch"));
 builder.Services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("MassTimberResearch"));
 builder.Services.AddSingleton<IIntelExtractor, ArchitectPipelineResearchExtractor>();

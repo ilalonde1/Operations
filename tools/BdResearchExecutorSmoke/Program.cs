@@ -1,4 +1,5 @@
 #nullable enable
+using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Worker.Options;
 using Kor.Opportunities.Worker.Services.Research;
@@ -53,6 +54,14 @@ try
     }));
     services.AddSingleton<IResearchExecutorService, AnthropicResearchExecutorService>();
     services.AddSingleton<IResearchPromptCatalog, FileSystemResearchPromptCatalog>();
+    services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("FirmNarrative"));
+    services.AddSingleton<DefaultIntelExtractor>();
+    services.AddSingleton<IntelExtractorRegistry>();
+    services.AddSingleton(_ => new IntelPersistenceService(opportunitiesDb));
+    services.AddSingleton<IEnrichmentTrackingStore>(sp => new SqlEnrichmentTrackingStore(
+        opportunitiesDb,
+        sp.GetRequiredService<IntelExtractorRegistry>(),
+        sp.GetRequiredService<IntelPersistenceService>()));
     services.AddSingleton(_ => new IntelReadService(opportunitiesDb));
     services.AddSingleton<BdResearchExecutorService>();
 
