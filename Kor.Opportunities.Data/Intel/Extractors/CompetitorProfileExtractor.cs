@@ -5,7 +5,17 @@ namespace Kor.Opportunities.Data.Intel;
 
 public sealed class CompetitorProfileExtractor : IIntelExtractor
 {
-    public string ProviderName => "CompetitorProfile";
+    public CompetitorProfileExtractor()
+        : this("CompetitorProfile")
+    {
+    }
+
+    public CompetitorProfileExtractor(string providerName)
+    {
+        ProviderName = providerName;
+    }
+
+    public string ProviderName { get; }
 
     public ExtractedIntel Extract(IntelExtractionContext ctx)
     {
@@ -21,8 +31,7 @@ public sealed class CompetitorProfileExtractor : IIntelExtractor
             var risks = new List<IntelRiskDraft>();
             var narratives = new List<IntelNarrativeDraft>();
 
-            if (root.ValueKind == JsonValueKind.Object
-                && root.TryGetProperty("keyPeople", out var keyPeople))
+            if (TryGetProperty(root, out var keyPeople, "keyPeople", "leadership", "key_people", "key_contacts"))
             {
                 foreach (var item in EnumerateObjectOrArray(keyPeople))
                 {
@@ -53,12 +62,12 @@ public sealed class CompetitorProfileExtractor : IIntelExtractor
                 }
             }
 
-            AddWorks(root, "notableProjects", ctx.CanonicalOrgId, rowConfidence, works);
-            AddWorks(root, "recentWinsKnown", ctx.CanonicalOrgId, rowConfidence, works);
-            AddSignals(root, "recentSignals", ctx.CanonicalOrgId, rowConfidence, signals);
-            AddSignals(root, "signalsLast12Mo", ctx.CanonicalOrgId, rowConfidence, signals);
+            AddWorks(root, ctx.CanonicalOrgId, rowConfidence, works, "notableProjects", "notable_projects", "areas_of_expertise");
+            AddWorks(root, ctx.CanonicalOrgId, rowConfidence, works, "recentWinsKnown", "recent_wins_known");
+            AddSignals(root, ctx.CanonicalOrgId, rowConfidence, signals, "recentSignals", "recent_signals");
+            AddSignals(root, ctx.CanonicalOrgId, rowConfidence, signals, "signalsLast12Mo", "signals_last_12mo");
 
-            var exploitableWeakness = GetStringProperty(root, "exploitableWeakness");
+            var exploitableWeakness = GetStringPropertyAny(root, "exploitableWeakness", "exploitable_weakness");
             if (!string.IsNullOrWhiteSpace(exploitableWeakness))
             {
                 risks.Add(new IntelRiskDraft(
@@ -69,7 +78,7 @@ public sealed class CompetitorProfileExtractor : IIntelExtractor
                     Confidence: rowConfidence));
             }
 
-            var korOverlap = GetStringProperty(root, "korOverlap");
+            var korOverlap = GetStringPropertyAny(root, "korOverlap", "kor_overlap");
             if (!string.IsNullOrWhiteSpace(korOverlap))
             {
                 narratives.Add(new IntelNarrativeDraft(
@@ -79,7 +88,7 @@ public sealed class CompetitorProfileExtractor : IIntelExtractor
                     Confidence: rowConfidence));
             }
 
-            var korRelevanceNotes = GetStringProperty(root, "korRelevanceNotes");
+            var korRelevanceNotes = GetStringPropertyAny(root, "korRelevanceNotes", "kor_relevance_notes");
             if (!string.IsNullOrWhiteSpace(korRelevanceNotes))
             {
                 actions.Add(new IntelActionDraft(
@@ -118,14 +127,12 @@ public sealed class CompetitorProfileExtractor : IIntelExtractor
 
     private static void AddWorks(
         JsonElement root,
-        string propertyName,
         long canonicalOrgId,
         IntelConfidence confidence,
-        List<IntelWorkDraft> works)
+        List<IntelWorkDraft> works,
+        params string[] propertyNames)
     {
-        if (root.ValueKind != JsonValueKind.Object
-            || !root.TryGetProperty(propertyName, out var projects)
-            || projects.ValueKind != JsonValueKind.Array)
+        if (!TryGetArray(root, out var projects, propertyNames))
         {
             return;
         }
@@ -152,14 +159,12 @@ public sealed class CompetitorProfileExtractor : IIntelExtractor
 
     private static void AddSignals(
         JsonElement root,
-        string propertyName,
         long canonicalOrgId,
         IntelConfidence confidence,
-        List<IntelSignalDraft> signals)
+        List<IntelSignalDraft> signals,
+        params string[] propertyNames)
     {
-        if (root.ValueKind != JsonValueKind.Object
-            || !root.TryGetProperty(propertyName, out var signalItems)
-            || signalItems.ValueKind != JsonValueKind.Array)
+        if (!TryGetArray(root, out var signalItems, propertyNames))
         {
             return;
         }
@@ -252,6 +257,64 @@ public sealed class CompetitorProfileExtractor : IIntelExtractor
             && property.ValueKind == JsonValueKind.String
                 ? property.GetString()
                 : null;
+    }
+
+    private static string? GetStringPropertyAny(JsonElement element, params string[] propertyNames)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var propertyName in propertyNames)
+        {
+            if (element.TryGetProperty(propertyName, out var property)
+                && property.ValueKind == JsonValueKind.String)
+            {
+                var value = property.GetString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryGetProperty(JsonElement root, out JsonElement value, params string[] propertyNames)
+    {
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (root.TryGetProperty(propertyName, out value))
+                {
+                    return true;
+                }
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static bool TryGetArray(JsonElement root, out JsonElement value, params string[] propertyNames)
+    {
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (root.TryGetProperty(propertyName, out value)
+                    && value.ValueKind == JsonValueKind.Array)
+                {
+                    return true;
+                }
+            }
+        }
+
+        value = default;
+        return false;
     }
 
     private static string? GetStringValue(JsonElement element) =>
