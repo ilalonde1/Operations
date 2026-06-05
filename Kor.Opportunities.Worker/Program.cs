@@ -10,6 +10,7 @@ using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.Ingestion.Providers;
+using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
 using Kor.Opportunities.Data.Scoring;
@@ -186,8 +187,41 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStor
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.ICanonicalOrgStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlCanonicalOrgStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>();
+builder.Services.AddSingleton<IIntelExtractor, DataHoningExtractor>();
+builder.Services.AddSingleton<IIntelExtractor, PublicSectorResearchExtractor>();
+builder.Services.AddSingleton<IIntelExtractor, CompetitorProfileExtractor>();
+builder.Services.AddSingleton<IIntelExtractor>(_ => new CompetitorProfileExtractor("ContractorResearch"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new CompetitorProfileExtractor("ProcurementProfile"));
+builder.Services.AddSingleton<IIntelExtractor, FirmNarrativeExtractor>();
+builder.Services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("PacNWMarketResearch"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("MassTimberResearch"));
+builder.Services.AddSingleton<IIntelExtractor, ArchitectPipelineResearchExtractor>();
+builder.Services.AddSingleton<IIntelExtractor, DeveloperPipelineResearchExtractor>();
+builder.Services.AddSingleton<IIntelExtractor>(_ => new PersonListExtractor("DecisionMakers"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new PersonListExtractor("PrimeContacts"));
+builder.Services.AddSingleton<IIntelExtractor, CompetitorSignalsExtractor>();
+builder.Services.AddSingleton<IIntelExtractor, StructuralPartnerMapExtractor>();
+builder.Services.AddSingleton<IIntelExtractor, IncumbentRostersExtractor>();
+builder.Services.AddSingleton<IIntelExtractor, InstitutionalOwnerResearchExtractor>();
+builder.Services.AddSingleton<IIntelExtractor, PrimeTargetingExtractor>();
+builder.Services.AddSingleton<IIntelExtractor, SubConsultantExtractor>();
+builder.Services.AddSingleton<IIntelExtractor>(_ => new MarketResearchExtractor("AlbertaMarketResearch"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new MarketResearchExtractor("LAMarketResearch"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new MarketResearchExtractor("IslandOkanaganEcosystem"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new IndigenousResearchExtractor("IndigenousDevResearch"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new IndigenousResearchExtractor("IndigenousPartnerGraph"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new IndigenousResearchExtractor("DesignBuildContractors"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new CompetitorProfileExtractor("CompetitionResearch"));
+builder.Services.AddSingleton<IIntelExtractor>(_ => new PersonListExtractor("IndigenousDev"));
+builder.Services.AddSingleton<IIntelExtractor, MassTimberProjectsCatalogExtractor>();
+builder.Services.AddSingleton<DefaultIntelExtractor>();
+builder.Services.AddSingleton<IntelExtractorRegistry>();
+builder.Services.AddSingleton<IntelPersistenceService>(sp => new IntelPersistenceService(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentTrackingStore>(sp =>
-    new Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore(Cs(sp)));
+    new Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore(
+        Cs(sp),
+        sp.GetRequiredService<IntelExtractorRegistry>(),
+        sp.GetRequiredService<IntelPersistenceService>()));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.EnrichmentDispatcher>();
 
 builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.BcRegistryProvider>(c =>
@@ -678,6 +712,20 @@ builder.Services.AddQuartz(q =>
       t.ForJob(dataRetirementKey)
        .WithIdentity("DataRetirementTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var intelExtractionCatchUpKey = new JobKey("IntelExtractionCatchUpJob");
+  q.AddJob<Kor.Opportunities.Worker.Jobs.IntelExtractionCatchUpJob>(opts => opts.WithIdentity(intelExtractionCatchUpKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 03:30 UTC daily, after the main overnight enrichment writers.
+      var cron = builder.Configuration["IntelExtractionCatchUpCronSchedule"] ?? "0 30 3 * * ?";
+      t.ForJob(intelExtractionCatchUpKey)
+       .WithIdentity("IntelExtractionCatchUpTrigger")
+       .WithCronSchedule(
+           cron,
+           cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
   });
 
   // Round 46: weekly canonical-org dedup. Catches the ~25-30 dup groups the

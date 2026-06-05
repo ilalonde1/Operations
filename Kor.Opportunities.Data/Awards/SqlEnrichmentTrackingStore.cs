@@ -2,9 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Intel;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.Awards;
@@ -12,14 +14,28 @@ namespace Kor.Opportunities.Data.Awards;
 public sealed class SqlEnrichmentTrackingStore : IEnrichmentTrackingStore
 {
     private const int CommandTimeoutSeconds = 30;
+    private static long _missingExtractorCount;
+    private static long _extractedCount;
     private readonly string _connectionString;
+    private readonly IntelExtractorRegistry? _intelRegistry;
+    private readonly IntelPersistenceService? _intelPersistence;
 
-    public SqlEnrichmentTrackingStore(string connectionString)
+    public SqlEnrichmentTrackingStore(
+        string connectionString,
+        IntelExtractorRegistry? intelRegistry = null,
+        IntelPersistenceService? intelPersistence = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new ArgumentException("Connection string is required.", nameof(connectionString));
         _connectionString = connectionString;
+        _intelRegistry = intelRegistry;
+        _intelPersistence = intelPersistence;
     }
+
+    public static (long Extracted, long MissingExtractor) GetIntelCounters() =>
+        (
+            System.Threading.Interlocked.Read(ref _extractedCount),
+            System.Threading.Interlocked.Read(ref _missingExtractorCount));
 
     public async Task<IReadOnlyList<long>> ListDueAsync(string providerName, int batchSize, CancellationToken ct)
     {
@@ -157,6 +173,87 @@ WHEN NOT MATCHED THEN INSERT
         cmd.Parameters.Add("@json", SqlDbType.NVarChar, -1).Value = (object?)result.ResultJson ?? DBNull.Value;
         cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)result.Notes ?? DBNull.Value;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+
+        await TryExtractIntelAsync(con, canonicalOrgId, providerName, result, ct).ConfigureAwait(false);
+    }
+
+    private async Task TryExtractIntelAsync(
+        SqlConnection con,
+        long canonicalOrgId,
+        string providerName,
+        EnrichmentResult result,
+        CancellationToken ct)
+    {
+        if (result.Status != EnrichmentStatuses.Ok
+            || string.IsNullOrWhiteSpace(result.ResultJson)
+            || _intelRegistry is null
+            || _intelPersistence is null)
+        {
+            return;
+        }
+
+        try
+        {
+            const string idSql = @"SELECT Id FROM opportunities.CanonicalOrgEnrichment WHERE CanonicalOrgId = @id AND ProviderName = @prov;";
+            await using var idCmd = new SqlCommand(idSql, con) { CommandTimeout = CommandTimeoutSeconds };
+            idCmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+            idCmd.Parameters.Add("@prov", SqlDbType.NVarChar, 60).Value = providerName;
+            var idResult = await idCmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            if (idResult is null or DBNull)
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    "Intel extraction skipped: enrichment id not found for {0}/{1}.",
+                    providerName,
+                    canonicalOrgId);
+                return;
+            }
+
+            var enrichmentId = Convert.ToInt64(idResult);
+            var extractor = _intelRegistry.Resolve(providerName);
+            if (extractor.ProviderName == "*" || extractor is DefaultIntelExtractor)
+            {
+                System.Threading.Interlocked.Increment(ref _missingExtractorCount);
+                System.Diagnostics.Trace.TraceInformation(
+                    "Intel extractor missing for provider {0}; row archived only.",
+                    providerName);
+                return;
+            }
+
+            using var doc = JsonDocument.Parse(result.ResultJson);
+            var ctxIntel = new IntelExtractionContext(
+                CanonicalOrgId: canonicalOrgId,
+                SourceEnrichmentId: enrichmentId,
+                ProviderName: providerName,
+                ResultJson: doc,
+                RefreshedAtUtc: DateTimeOffset.UtcNow);
+
+            var drafts = extractor.Extract(ctxIntel);
+            System.Threading.Interlocked.Increment(ref _extractedCount);
+            if (drafts.People.Count + drafts.Affiliations.Count + drafts.Signals.Count
+                + drafts.Actions.Count + drafts.Works.Count + drafts.Risks.Count
+                + drafts.Narratives.Count == 0)
+            {
+                return;
+            }
+
+            await _intelPersistence.PersistAsync(drafts, ctxIntel, ct).ConfigureAwait(false);
+        }
+        catch (JsonException ex)
+        {
+            System.Diagnostics.Trace.TraceWarning(
+                "Intel extraction skipped: ResultJson parse failed for {0}/{1}: {2}",
+                providerName,
+                canonicalOrgId,
+                ex.Message);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceWarning(
+                "Intel extraction failed for {0}/{1}: {2}",
+                providerName,
+                canonicalOrgId,
+                ex.Message);
+        }
     }
 
     public async Task<int> CountByStatusAsync(string providerName, string status, CancellationToken ct)

@@ -1,6 +1,13 @@
 #nullable enable
 using System.Text.Json;
+using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.Intel;
+using Kor.Opportunities.Worker.Jobs;
+using Kor.Opportunities.Worker.Options;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Kor.Operations.Tests;
@@ -406,6 +413,111 @@ public sealed class IntelExtractorTests
         Assert.Contains("Year: 2020", result.Works[0].Notes);
     }
 
+    /// <summary>
+    /// Integration test requiring KOR_OPPORTUNITIES_OPPORTUNITIESDB to point at a live KorOpportunitiesDb.
+    /// Returns without SQL work when the env var is missing.
+    /// </summary>
+    [Fact]
+    public async Task SqlEnrichmentTrackingStore_recordAttempt_withOkStatusAndJson_persistsIntel()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        const long canonicalOrgId = 38918;
+        const string displayName = "R79TestPerson";
+
+        await CleanupR79TestPersonAsync(connectionString, displayName);
+        try
+        {
+            var before = await CountIntelPeopleAsync(connectionString, displayName);
+            var fallback = new DefaultIntelExtractor();
+            var registry = new IntelExtractorRegistry(
+                new IIntelExtractor[] { new DataHoningExtractor() },
+                fallback);
+            var persistence = new IntelPersistenceService(connectionString);
+            var store = new SqlEnrichmentTrackingStore(connectionString, registry, persistence);
+            var result = new EnrichmentResult(
+                EnrichmentStatuses.Ok,
+                ErrorMessage: null,
+                ResultJson: "{\"keyPeople\":[{\"name\":\"R79TestPerson\",\"title\":\"Test Title\"}]}",
+                Notes: null);
+
+            await store.RecordAttemptAsync(
+                canonicalOrgId,
+                "DataHoning",
+                result,
+                DateTimeOffset.UtcNow.AddDays(1),
+                CancellationToken.None);
+
+            var after = await CountIntelPeopleAsync(connectionString, displayName);
+            Assert.True(before == 0);
+            Assert.True(after >= 1);
+        }
+        finally
+        {
+            await CleanupR79TestPersonAsync(connectionString, displayName);
+        }
+    }
+
+    /// <summary>
+    /// Smoke test requiring KOR_OPPORTUNITIES_OPPORTUNITIESDB to point at a live KorOpportunitiesDb.
+    /// Returns without SQL work when the env var is missing.
+    /// </summary>
+    [Fact]
+    public async Task IntelExtractionCatchUpJob_smokeTest_runsWithoutError()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        var fallback = new DefaultIntelExtractor();
+        var registry = new IntelExtractorRegistry(
+            new IIntelExtractor[]
+            {
+                new DataHoningExtractor(),
+                new PublicSectorResearchExtractor(),
+                new CompetitorProfileExtractor(),
+                new CompetitorProfileExtractor("ContractorResearch"),
+                new CompetitorProfileExtractor("ProcurementProfile"),
+                new FirmNarrativeExtractor(),
+                new CanonicalSchemaExtractor("PacNWMarketResearch"),
+                new CanonicalSchemaExtractor("MassTimberResearch"),
+                new ArchitectPipelineResearchExtractor(),
+                new DeveloperPipelineResearchExtractor(),
+                new PersonListExtractor("DecisionMakers"),
+                new PersonListExtractor("PrimeContacts"),
+                new CompetitorSignalsExtractor(),
+                new StructuralPartnerMapExtractor(),
+                new IncumbentRostersExtractor(),
+                new InstitutionalOwnerResearchExtractor(),
+                new PrimeTargetingExtractor(),
+                new SubConsultantExtractor(),
+                new MarketResearchExtractor("AlbertaMarketResearch"),
+                new MarketResearchExtractor("LAMarketResearch"),
+                new MarketResearchExtractor("IslandOkanaganEcosystem"),
+                new IndigenousResearchExtractor("IndigenousDevResearch"),
+                new IndigenousResearchExtractor("IndigenousPartnerGraph"),
+                new IndigenousResearchExtractor("DesignBuildContractors"),
+                new CompetitorProfileExtractor("CompetitionResearch"),
+                new PersonListExtractor("IndigenousDev"),
+                new MassTimberProjectsCatalogExtractor(),
+            },
+            fallback);
+        var persistence = new IntelPersistenceService(connectionString);
+        var job = new IntelExtractionCatchUpJob(
+            Options.Create(new OpportunitiesWorkerOptions { OpportunitiesDb = connectionString }),
+            registry,
+            persistence,
+            NullLogger<IntelExtractionCatchUpJob>.Instance);
+
+        await job.Execute(null!);
+    }
+
     private static JsonDocument LoadFixture(string filename)
     {
         var path = System.IO.Path.Combine(System.AppContext.BaseDirectory, "Intel", "Fixtures", filename);
@@ -416,5 +528,32 @@ public sealed class IntelExtractorTests
         }
 
         return JsonDocument.Parse(text);
+    }
+
+    private static async Task<int> CountIntelPeopleAsync(string connectionString, string displayName)
+    {
+        const string sql = "SELECT COUNT(*) FROM opportunities.IntelPerson WHERE DisplayName = @name;";
+        await using var con = new SqlConnection(connectionString);
+        await con.OpenAsync();
+        await using var cmd = new SqlCommand(sql, con);
+        cmd.Parameters.AddWithValue("@name", displayName);
+        var result = await cmd.ExecuteScalarAsync();
+        return result is null or DBNull ? 0 : Convert.ToInt32(result);
+    }
+
+    private static async Task CleanupR79TestPersonAsync(string connectionString, string displayName)
+    {
+        const string sql = @"
+DELETE FROM opportunities.IntelPersonAffiliation
+WHERE IntelPersonId IN (SELECT Id FROM opportunities.IntelPerson WHERE DisplayName = @name);
+
+DELETE FROM opportunities.IntelPerson
+WHERE DisplayName = @name;";
+
+        await using var con = new SqlConnection(connectionString);
+        await con.OpenAsync();
+        await using var cmd = new SqlCommand(sql, con);
+        cmd.Parameters.AddWithValue("@name", displayName);
+        await cmd.ExecuteNonQueryAsync();
     }
 }

@@ -111,8 +111,11 @@ internal static class OpportunitiesModule
             _ => new Kor.Opportunities.Data.Awards.SqlKorPursuitStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.ICanonicalOrgStore>(
             _ => new Kor.Opportunities.Data.Awards.SqlCanonicalOrgStore(options.OpportunitiesDb));
-        services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentTrackingStore>(
-            _ => new Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore(options.OpportunitiesDb));
+        services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentTrackingStore>(sp =>
+            new Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore(
+                options.OpportunitiesDb,
+                sp.GetRequiredService<IntelExtractorRegistry>(),
+                sp.GetRequiredService<IntelPersistenceService>()));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IKorClientBdIntelligenceStore>(
             _ => new Kor.Opportunities.Data.Awards.SqlKorClientBdIntelligenceStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IArchitectDisplacementBriefStore>(

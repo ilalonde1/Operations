@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
     <ProjectReference Include="..\..\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj" />
     <ProjectReference Include="..\..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
+    <ProjectReference Include="..\..\Kor.Opportunities.Worker\Kor.Opportunities.Worker.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />
