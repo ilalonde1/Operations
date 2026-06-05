@@ -106,7 +106,13 @@
         <Setter Property="Foreground"                 Value="{StaticResource Text.Primary}"/>
         <Setter Property="BorderBrush"                Value="#D1D5DB"/>
         <Setter Property="BorderThickness"            Value="1"/>
-        <Setter Property="VerticalContentAlignment"   Value="Top"/>
+        <!-- R88 fix: was "Top". With the modern rounded border + small Padding
+             the top of the text was clipped against the border, making typed
+             characters appear as faint dots at the box's top edge. "Center"
+             matches the placeholder TextBlock convention used across the app
+             and is the correct default for a single-line input. Recurring
+             "I can't see what I typed" bug across the BD/Forms screens. -->
+        <Setter Property="VerticalContentAlignment"   Value="Center"/>
         <Setter Property="SnapsToDevicePixels"        Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
