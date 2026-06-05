@@ -8,8 +8,9 @@
              project / person" label in the parent host). -->
         <TextBox x:Name="SearchBox"
                  Height="32"
-                 Padding="10,6"
+                 Padding="10,0"
                  FontSize="13"
+                 VerticalContentAlignment="Center"
                  Background="#FFFFFFFF"
                  Foreground="#FF111111"
                  CaretBrush="#FF111111"
