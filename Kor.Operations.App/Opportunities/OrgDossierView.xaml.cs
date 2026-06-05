@@ -1,9 +1,12 @@
 #nullable enable
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Navigation;
 using Kor.Operations.Services;
 
@@ -98,4 +101,43 @@ public partial class OrgDossierView : UserControl
         old?.Cancel();
         old?.Dispose();
     }
+}
+
+public sealed class FalseToVisibilityConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is bool b && !b ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => Binding.DoNothing;
+}
+
+public sealed class IntelTypeLabelConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var s = value as string ?? string.Empty;
+        return s switch
+        {
+            "LeadershipChange" => "Leadership change",
+            "HiringSurge" => "Hiring surge",
+            "OfficeMove" => "Office move",
+            "OwnershipMnA" => "Ownership / M&A",
+            "CapacityStrain" => "Capacity strain",
+            "RecentWin" => "Recent win",
+            "ContactStrategy" => "Contact strategy",
+            "PursuitAngle" => "Pursuit angle",
+            "TimingWindow" => "Timing window",
+            "HowToGetOnRoster" => "How to get on roster",
+            "KorDisplacementRead" => "Displacement read",
+            "KeyPersonDependency" => "Key person dependency",
+            "OwnershipUncertainty" => "Ownership uncertainty",
+            "ExploitableWeakness" => "Exploitable weakness",
+            "DataIssue" => "Data issue",
+            _ => s,
+        };
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => Binding.DoNothing;
 }

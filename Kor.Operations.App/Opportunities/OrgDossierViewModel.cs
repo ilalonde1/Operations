@@ -14,6 +14,7 @@ using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
+using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.MajorProjects;
 using Microsoft.Extensions.Logging;
 
@@ -29,6 +30,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private readonly IVendorAnalyticsStore _vendorAnalyticsStore;
     private readonly IDeltekClientContextService _deltekService;
     private readonly IArchitectDisplacementBriefStore _displacementBriefStore;
+    private readonly IntelReadService _intelReadService;
     private readonly ILogger<OrgDossierViewModel> _logger;
 
     private long? _canonicalOrgId;
@@ -40,6 +42,10 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private DossierAtAGlance? _atAGlance;
     private DossierDisplacementBrief? _displacementBrief;
     private string? _notes;
+    private string? _synopsisP1;
+    private string? _synopsisP2;
+    private string? _intelLastRefreshedText;
+    private bool _hasStaleIntel;
     private string _statusMessage = "Ready.";
     private decimal _lifetimeValue;
     private int _lifetimeCount;
@@ -54,6 +60,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         IVendorAnalyticsStore vendorAnalyticsStore,
         IDeltekClientContextService deltekService,
         IArchitectDisplacementBriefStore displacementBriefStore,
+        IntelReadService intelReadService,
         ILogger<OrgDossierViewModel> logger)
     {
         _canonicalStore = canonicalStore ?? throw new ArgumentNullException(nameof(canonicalStore));
@@ -62,12 +69,18 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         _vendorAnalyticsStore = vendorAnalyticsStore ?? throw new ArgumentNullException(nameof(vendorAnalyticsStore));
         _deltekService = deltekService ?? throw new ArgumentNullException(nameof(deltekService));
         _displacementBriefStore = displacementBriefStore ?? throw new ArgumentNullException(nameof(displacementBriefStore));
+        _intelReadService = intelReadService ?? throw new ArgumentNullException(nameof(intelReadService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public ObservableCollection<DossierSection> Sections { get; } = new();
     public ObservableCollection<DossierProjectRow> Projects { get; } = new();
     public ObservableCollection<AwardListing> RecentWins { get; } = new();
+    public ObservableCollection<IntelActionRow> IntelActions { get; } = new();
+    public ObservableCollection<IntelPersonRow> IntelPeople { get; } = new();
+    public ObservableCollection<IntelSignalRow> IntelSignals { get; } = new();
+    public ObservableCollection<IntelWorkRow> IntelWorks { get; } = new();
+    public ObservableCollection<IntelRiskRow> IntelRisks { get; } = new();
 
     public string DisplayName
     {
@@ -161,6 +174,52 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         }
     }
 
+    public string? SynopsisP1
+    {
+        get => _synopsisP1;
+        private set
+        {
+            if (SetField(ref _synopsisP1, value))
+            {
+                OnPropertyChanged(nameof(HasSynopsisP1));
+                OnPropertyChanged(nameof(HasAnySynopsis));
+                OnPropertyChanged(nameof(HasAnyIntel));
+            }
+        }
+    }
+
+    public string? SynopsisP2
+    {
+        get => _synopsisP2;
+        private set
+        {
+            if (SetField(ref _synopsisP2, value))
+            {
+                OnPropertyChanged(nameof(HasSynopsisP2));
+                OnPropertyChanged(nameof(HasAnySynopsis));
+                OnPropertyChanged(nameof(HasAnyIntel));
+            }
+        }
+    }
+
+    public string? IntelLastRefreshedText
+    {
+        get => _intelLastRefreshedText;
+        private set
+        {
+            if (SetField(ref _intelLastRefreshedText, value))
+            {
+                OnPropertyChanged(nameof(HasIntelLastRefreshedText));
+            }
+        }
+    }
+
+    public bool HasStaleIntel
+    {
+        get => _hasStaleIntel;
+        private set => SetField(ref _hasStaleIntel, value);
+    }
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -204,6 +263,16 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         || _atAGlance.KorProjectsCount > 0);
     public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
     public bool HasAwards => LifetimeCount > 0;
+    public bool HasSynopsisP1 => !string.IsNullOrWhiteSpace(SynopsisP1);
+    public bool HasSynopsisP2 => !string.IsNullOrWhiteSpace(SynopsisP2);
+    public bool HasAnySynopsis => HasSynopsisP1 || HasSynopsisP2;
+    public bool HasIntelActions => IntelActions.Count > 0;
+    public bool HasIntelPeople => IntelPeople.Count > 0;
+    public bool HasIntelSignals => IntelSignals.Count > 0;
+    public bool HasIntelWorks => IntelWorks.Count > 0;
+    public bool HasIntelRisks => IntelRisks.Count > 0;
+    public bool HasAnyIntel => HasAnySynopsis || HasIntelActions || HasIntelPeople || HasIntelSignals || HasIntelWorks || HasIntelRisks;
+    public bool HasIntelLastRefreshedText => !string.IsNullOrWhiteSpace(IntelLastRefreshedText);
     public int ProjectCount => Projects.Count;
     public decimal ProjectTotalValue => Projects.Where(p => p.EstimatedCostCad.HasValue).Sum(p => p.EstimatedCostCad!.Value);
     public string ProjectFootprintHeader => $"{ProjectCount:N0} linked projects - {ProjectTotalValue:C0}";
@@ -214,6 +283,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         _sectionsContextSnapshot = Array.Empty<ContextDossierSection>();
         _projectsContextSnapshot = Array.Empty<DossierProjectRow>();
         _recentWinsContextSnapshot = Array.Empty<AwardListing>();
+        ClearIntel();
         AtAGlance = null;
         OnPropertyChanged(nameof(HeaderLoaded));
         StatusMessage = "Loading dossier...";
@@ -302,6 +372,22 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
                 {
                     _logger.LogWarning(ex, "Org dossier displacement brief load failed for CanonicalOrgId {CanonicalOrgId}.", canonicalOrgId);
                 }
+            }
+
+            try
+            {
+                var bundle = await _intelReadService.GetOrgIntelAsync(canonicalOrgId, ct).ConfigureAwait(true);
+                ct.ThrowIfCancellationRequested();
+                ApplyIntel(bundle);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Org dossier intel load failed for CanonicalOrgId {CanonicalOrgId}.", canonicalOrgId);
+                ClearIntel();
             }
 
             StatusMessage = $"Loaded {Sections.Count:N0} dossiers, {Projects.Count:N0} projects, {LifetimeCount:N0} award wins.";
@@ -404,6 +490,87 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         }
 
         DeltekSnapshot = snapshot;
+    }
+
+    private void ClearIntel()
+    {
+        SynopsisP1 = null;
+        SynopsisP2 = null;
+        IntelActions.Clear();
+        IntelPeople.Clear();
+        IntelSignals.Clear();
+        IntelWorks.Clear();
+        IntelRisks.Clear();
+        IntelLastRefreshedText = null;
+        HasStaleIntel = false;
+        RaiseIntelCollectionProperties();
+    }
+
+    private void ApplyIntel(OrgIntelBundle bundle)
+    {
+        IntelActions.Clear();
+        IntelPeople.Clear();
+        IntelSignals.Clear();
+        IntelWorks.Clear();
+        IntelRisks.Clear();
+
+        SynopsisP1 = bundle.SynopsisParagraph1;
+        SynopsisP2 = bundle.SynopsisParagraph2;
+
+        foreach (var row in bundle.Actions)
+        {
+            IntelActions.Add(row);
+        }
+        foreach (var row in bundle.People)
+        {
+            IntelPeople.Add(row);
+        }
+        foreach (var row in bundle.Signals)
+        {
+            IntelSignals.Add(row);
+        }
+        foreach (var row in bundle.Works)
+        {
+            IntelWorks.Add(row);
+        }
+        foreach (var row in bundle.Risks)
+        {
+            IntelRisks.Add(row);
+        }
+
+        RefreshIntelStatus();
+        RaiseIntelCollectionProperties();
+    }
+
+    private void RefreshIntelStatus()
+    {
+        var allRows = IntelActions.Select(x => (x.RefreshedAtUtc, x.Freshness))
+            .Concat(IntelPeople.Select(x => (x.RefreshedAtUtc, x.Freshness)))
+            .Concat(IntelSignals.Select(x => (x.RefreshedAtUtc, x.Freshness)))
+            .Concat(IntelWorks.Select(x => (x.RefreshedAtUtc, x.Freshness)))
+            .Concat(IntelRisks.Select(x => (x.RefreshedAtUtc, x.Freshness)))
+            .ToArray();
+
+        if (allRows.Length == 0)
+        {
+            IntelLastRefreshedText = null;
+            HasStaleIntel = false;
+            return;
+        }
+
+        var max = allRows.Max(x => x.RefreshedAtUtc).ToUniversalTime();
+        IntelLastRefreshedText = "Intel as of " + max.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
+        HasStaleIntel = allRows.Any(x => x.Freshness == IntelFreshness.Stale);
+    }
+
+    private void RaiseIntelCollectionProperties()
+    {
+        OnPropertyChanged(nameof(HasIntelActions));
+        OnPropertyChanged(nameof(HasIntelPeople));
+        OnPropertyChanged(nameof(HasIntelSignals));
+        OnPropertyChanged(nameof(HasIntelWorks));
+        OnPropertyChanged(nameof(HasIntelRisks));
+        OnPropertyChanged(nameof(HasAnyIntel));
     }
 
     // Round 56: paginated-search-envelope keys to suppress when rendering a
@@ -699,6 +866,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         sb.AppendLine($"Research providers: {string.Join(", ", sections.Select(s => s.ProviderName))}");
         sb.AppendLine($"Linked major projects: {projects.Count:N0}");
         sb.AppendLine($"Lifetime award value: {LifetimeValue:C0} across {LifetimeCount:N0} wins.");
+        AppendIntelContext(sb);
         return sb.ToString();
     }
 
@@ -711,6 +879,8 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         sb.AppendLine($"Org dossier: {DisplayName}");
         sb.AppendLine($"Kind: {Kind}");
         if (!string.IsNullOrWhiteSpace(Notes)) sb.AppendLine($"Notes: {Notes}");
+
+        AppendIntelContext(sb);
 
         foreach (var section in sections)
         {
@@ -745,6 +915,94 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         }
 
         return sb.ToString();
+    }
+
+    private void AppendIntelContext(StringBuilder sb)
+    {
+        if (!HasAnyIntel)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(SynopsisP1) || !string.IsNullOrWhiteSpace(SynopsisP2))
+        {
+            sb.AppendLine();
+            sb.AppendLine("AT A GLANCE:");
+            if (!string.IsNullOrWhiteSpace(SynopsisP1)) sb.AppendLine($"  {SynopsisP1}");
+            if (!string.IsNullOrWhiteSpace(SynopsisP2)) sb.AppendLine($"  {SynopsisP2}");
+        }
+
+        if (IntelActions.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("RECOMMENDED ACTIONS:");
+            foreach (var a in IntelActions)
+            {
+                sb.AppendLine($"  - {HumanizeIntelType(a.ActionType)}: {a.Recommendation}{OptionalParen("target", a.TargetPersonName)}{OptionalInline("Timing", a.TimingNotes)} ({a.Confidence}, {a.Freshness}, {a.RefreshedAtUtc:yyyy-MM-dd})");
+            }
+        }
+
+        if (IntelPeople.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("KEY PEOPLE:");
+            foreach (var p in IntelPeople)
+            {
+                var prefix = p.IsCurrent ? "" : "(former) ";
+                var title = string.IsNullOrWhiteSpace(p.Title) ? "" : " - " + p.Title;
+                sb.AppendLine($"  - {prefix}{p.DisplayName}{title} ({p.Confidence}, {p.Freshness}, {p.RefreshedAtUtc:yyyy-MM-dd})");
+            }
+        }
+
+        if (IntelSignals.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("RECENT SIGNALS:");
+            foreach (var s in IntelSignals)
+            {
+                var detail = string.IsNullOrWhiteSpace(s.Detail) ? "" : " - " + s.Detail;
+                sb.AppendLine($"  - {HumanizeIntelType(s.SignalType)}: {s.Subject}{detail} ({s.Confidence}, {s.Freshness}, {s.RefreshedAtUtc:yyyy-MM-dd})");
+            }
+        }
+
+        if (IntelWorks.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("RESEARCH PORTFOLIO:");
+            foreach (var w in IntelWorks)
+            {
+                var role = string.IsNullOrWhiteSpace(w.Role) ? "" : " - " + w.Role;
+                var year = string.IsNullOrWhiteSpace(w.YearApprox) ? "" : " (" + w.YearApprox + ")";
+                sb.AppendLine($"  - {w.ProjectName}{role}{year} ({w.Confidence}, {w.Freshness}, {w.RefreshedAtUtc:yyyy-MM-dd})");
+            }
+        }
+
+        if (IntelRisks.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("RISKS / VULNERABILITIES:");
+            foreach (var r in IntelRisks)
+            {
+                var mitigation = string.IsNullOrWhiteSpace(r.MitigationNotes) ? "" : " Mitigation: " + r.MitigationNotes;
+                sb.AppendLine($"  - {HumanizeIntelType(r.RiskType)}: {r.Description}{mitigation} ({r.Confidence}, {r.Freshness}, {r.RefreshedAtUtc:yyyy-MM-dd})");
+            }
+        }
+    }
+
+    private static string OptionalParen(string label, string? value)
+        => string.IsNullOrWhiteSpace(value) ? "" : $" ({label}: {value})";
+
+    private static string OptionalInline(string label, string? value)
+        => string.IsNullOrWhiteSpace(value) ? "" : $"  {label}: {value}";
+
+    private static string HumanizeIntelType(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "";
+        }
+
+        return CamelBoundary.Replace(value, " ");
     }
 
     private sealed record ContextDossierSection(string ProviderName, IReadOnlyList<DossierField> Fields);

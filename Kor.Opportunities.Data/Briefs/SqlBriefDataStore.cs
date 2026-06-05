@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Data.Intel;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.Briefs;
@@ -19,8 +20,9 @@ public sealed class SqlBriefDataStore : IBriefDataStore
     private const int CommandTimeoutSeconds = 30;
 
     private readonly string _connectionString;
+    private readonly IntelReadService _intelReadService;
 
-    public SqlBriefDataStore(string connectionString)
+    public SqlBriefDataStore(string connectionString, IntelReadService intelReadService)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -28,6 +30,7 @@ public sealed class SqlBriefDataStore : IBriefDataStore
         }
 
         _connectionString = connectionString;
+        _intelReadService = intelReadService ?? throw new ArgumentNullException(nameof(intelReadService));
     }
 
     public async Task<OpportunityBriefData?> GetOpportunityBriefAsync(long opportunityId, CancellationToken ct)
@@ -130,13 +133,17 @@ WHERE ArchitectCanonicalOrgId = @arch AND StructuralEngineerCanonicalOrgId = @ko
         }
 
         var matchedEvent = await GetMatchedEventAsync(con, province, sector, ct).ConfigureAwait(false);
+        var oppIntel = await _intelReadService.GetOpportunityIntelAsync(buyerOrgId, likelyArchId, ct).ConfigureAwait(false);
 
         return new OpportunityBriefData(
             id, name, buyerName, buyerOrgId, deadline, estVal,
             primeConf, sector, province, city,
             ownerKor, ownerPipeline,
             likelyArch, likelyArchId, likelyArchProjects, korArchJoint,
-            matchedEvent);
+            matchedEvent)
+        {
+            Intel = oppIntel,
+        };
     }
 
     public async Task<RegionBriefData> GetRegionBriefAsync(string province, string? city, CancellationToken ct)
@@ -191,12 +198,16 @@ WHERE RetiredAtUtc IS NULL AND Province = @prov
         var liveRfps = await GetRegionLiveRfpsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
         var forwardProjects = await GetRegionForwardProjectsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
         var events = await GetRegionEventsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
+        var rollup = await _intelReadService.GetRegionIntelAsync(province, city, ct).ConfigureAwait(false);
 
         return new RegionBriefData(
             province, cityLabel,
             liveRfpCount, forwardCount, activeMpiCount,
             topArchitects, topOwners, topCompetitors,
-            liveRfps, forwardProjects, events);
+            liveRfps, forwardProjects, events)
+        {
+            Intel = rollup,
+        };
     }
 
     public async Task<OrgBriefData?> GetOrgBriefAsync(long canonicalOrgId, CancellationToken ct)
@@ -286,10 +297,14 @@ ORDER BY UpdatedAtUtc DESC;";
             enrichmentJson = v is null or DBNull ? null : (string)v;
         }
 
+        var intelBundle = await _intelReadService.GetOrgIntelAsync(canonicalOrgId, ct).ConfigureAwait(false);
         return new OrgBriefData(
             id, kind, displayName, website, korProjects, lastKor,
             recentProjects, korJointCount, korJointProjects, enrichmentJson,
-            deltekClientId, Deltek: null);
+            deltekClientId, Deltek: null)
+        {
+            Intel = intelBundle,
+        };
     }
 
     // === Helpers ===

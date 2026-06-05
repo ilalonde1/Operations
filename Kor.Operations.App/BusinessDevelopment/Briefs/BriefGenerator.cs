@@ -3,11 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Kor.Opportunities.Data.Briefs;
+using Kor.Opportunities.Data.Intel;
 
 namespace Kor.Operations.App.BusinessDevelopment.Briefs;
 
@@ -112,6 +114,17 @@ public sealed class BriefGenerator : IBriefGenerator
         AppendBullet(body, "If attending the event, brief the team beforehand and target specific introductions in the room.");
         AppendBullet(body, "Confirm owner's procurement timeline + submission requirements; align KOR resourcing for the deadline.");
 
+        if (data.Intel?.BuyerIntel is not null)
+        {
+            AppendHeading(body, $"About the buyer ({data.BuyerName ?? "buyer"})");
+            AppendOpportunityBuyerIntel(body, data.Intel.BuyerIntel);
+        }
+        if (data.Intel?.ArchitectIntel is not null && !string.IsNullOrWhiteSpace(data.LikelyArchitectName))
+        {
+            AppendHeading(body, $"About the likely architect ({data.LikelyArchitectName})");
+            AppendOpportunityArchitectIntel(body, data.Intel.ArchitectIntel);
+        }
+
         AppendFooter(body);
     }
 
@@ -214,6 +227,66 @@ public sealed class BriefGenerator : IBriefGenerator
             }
         }
 
+        if (data.Intel is not null)
+        {
+            AppendHeading(body, "Cross-org actionables in this region");
+            if (data.Intel.TopActions.Count == 0)
+            {
+                AppendBullet(body, "No cross-org actionables on file yet.");
+            }
+            else
+            {
+                foreach (var a in data.Intel.TopActions)
+                {
+                    var text = HumanizeActionType(a.ActionType) + ": " + a.Recommendation;
+                    if (!string.IsNullOrWhiteSpace(a.TargetPersonName))
+                    {
+                        text += " (target: " + a.TargetPersonName + ")";
+                    }
+                    if (!string.IsNullOrWhiteSpace(a.TimingNotes))
+                    {
+                        text += "  Timing: " + a.TimingNotes;
+                    }
+
+                    AppendBullet(body, FormatIntelBullet(text, a.Confidence, a.Freshness, a.RefreshedAtUtc));
+                }
+            }
+
+            if (data.Intel.RecentLeadershipChanges.Count > 0)
+            {
+                AppendHeading(body, "Recent leadership changes in this region (last 90 days)");
+                foreach (var s in data.Intel.RecentLeadershipChanges)
+                {
+                    var text = s.Subject;
+                    if (!string.IsNullOrWhiteSpace(s.Detail))
+                    {
+                        text += "  " + s.Detail;
+                    }
+                    if (!string.IsNullOrWhiteSpace(s.OccurredAtApprox))
+                    {
+                        text += " [" + s.OccurredAtApprox + "]";
+                    }
+
+                    AppendBullet(body, FormatIntelBullet(text, s.Confidence, s.Freshness, s.RefreshedAtUtc));
+                }
+            }
+
+            if (data.Intel.TopCapacityRisks.Count > 0)
+            {
+                AppendHeading(body, "Capacity-strain signals (competitor displacement opportunities)");
+                foreach (var r in data.Intel.TopCapacityRisks)
+                {
+                    var text = r.Description;
+                    if (!string.IsNullOrWhiteSpace(r.MitigationNotes))
+                    {
+                        text += " (Mitigation: " + r.MitigationNotes + ")";
+                    }
+
+                    AppendBullet(body, FormatIntelBullet(text, r.Confidence, r.Freshness, r.RefreshedAtUtc));
+                }
+            }
+        }
+
         AppendFooter(body);
     }
 
@@ -243,6 +316,15 @@ public sealed class BriefGenerator : IBriefGenerator
             AppendBody(body, $"Sectors they work in: {string.Join(", ", enrichment.Sectors)}");
         }
 
+        if (!string.IsNullOrWhiteSpace(data.Intel?.SynopsisParagraph1))
+        {
+            AppendItalicBody(body, data.Intel.SynopsisParagraph1!);
+        }
+        if (!string.IsNullOrWhiteSpace(data.Intel?.SynopsisParagraph2))
+        {
+            AppendItalicBody(body, data.Intel.SynopsisParagraph2!);
+        }
+
         AppendHeading(body, "KOR's history with this organization");
         if (data.KorProjectsCount > 0)
         {
@@ -268,6 +350,67 @@ public sealed class BriefGenerator : IBriefGenerator
             AppendBullet(body, "No joint major-project record where KOR was the structural EOR with this org — there's an opening to be on their next team.");
         }
 
+        AppendHeading(body, "Recommended actions");
+        if (data.Intel is null || data.Intel.Actions.Count == 0)
+        {
+            AppendBullet(body, "No recommended actions on file yet.");
+        }
+        else
+        {
+            foreach (var a in data.Intel.Actions)
+            {
+                var text = HumanizeActionType(a.ActionType) + ": " + a.Recommendation;
+                if (!string.IsNullOrWhiteSpace(a.TargetPersonName))
+                {
+                    text += " (target: " + a.TargetPersonName + ")";
+                }
+                if (!string.IsNullOrWhiteSpace(a.TimingNotes))
+                {
+                    text += "  Timing: " + a.TimingNotes;
+                }
+
+                AppendBullet(body, FormatIntelBullet(text, a.Confidence, a.Freshness, a.RefreshedAtUtc));
+            }
+        }
+
+        AppendHeading(body, "Key people on file");
+        if (data.Intel is null || data.Intel.People.Count == 0)
+        {
+            AppendBullet(body, "No key people on file yet.");
+        }
+        else
+        {
+            foreach (var p in data.Intel.People)
+            {
+                var text = (!p.IsCurrent ? "(former) " : string.Empty) + p.DisplayName;
+                if (!string.IsNullOrWhiteSpace(p.Title))
+                {
+                    text += "  " + p.Title;
+                }
+
+                AppendBullet(body, FormatIntelBullet(text, p.Confidence, p.Freshness, p.RefreshedAtUtc));
+            }
+        }
+
+        AppendHeading(body, "Recent signals");
+        if (data.Intel is null || data.Intel.Signals.Count == 0)
+        {
+            AppendBullet(body, "No recent signals tracked.");
+        }
+        else
+        {
+            foreach (var s in data.Intel.Signals)
+            {
+                var text = HumanizeSignalType(s.SignalType) + ": " + s.Subject;
+                if (!string.IsNullOrWhiteSpace(s.Detail))
+                {
+                    text += "  " + s.Detail;
+                }
+
+                AppendBullet(body, FormatIntelBullet(text, s.Confidence, s.Freshness, s.RefreshedAtUtc));
+            }
+        }
+
         AppendHeading(body, "Their recent work");
         if (data.RecentProjects.Count == 0)
         {
@@ -281,6 +424,25 @@ public sealed class BriefGenerator : IBriefGenerator
             }
         }
 
+        if (data.Intel is { Works.Count: > 0 })
+        {
+            AppendHeading(body, "Their portfolio (from research)");
+            foreach (var w in data.Intel.Works)
+            {
+                var text = w.ProjectName;
+                if (!string.IsNullOrWhiteSpace(w.Role))
+                {
+                    text += "  " + w.Role;
+                }
+                if (!string.IsNullOrWhiteSpace(w.YearApprox))
+                {
+                    text += " (" + w.YearApprox + ")";
+                }
+
+                AppendBullet(body, FormatIntelBullet(text, w.Confidence, w.Freshness, w.RefreshedAtUtc));
+            }
+        }
+
         if (data.Deltek is { } dk)
         {
             AppendOrgDeltekSection(body, dk);
@@ -291,34 +453,20 @@ public sealed class BriefGenerator : IBriefGenerator
             AppendBullet(body, data.DeltekNote!);
         }
 
-        AppendHeading(body, "Key people");
-        if (enrichment.KeyPeople.Count == 0)
+        if (data.Intel is { Risks.Count: > 0 })
         {
-            AppendBullet(body, "No key people captured yet — flag for the next honing pass.");
-        }
-        else
-        {
-            foreach (var (name, title) in enrichment.KeyPeople)
+            AppendHeading(body, "Risks / vulnerabilities");
+            foreach (var r in data.Intel.Risks)
             {
-                AppendBullet(body, string.IsNullOrWhiteSpace(title) ? name : $"{name} — {title}");
+                var text = HumanizeRiskType(r.RiskType) + ": " + r.Description;
+                if (!string.IsNullOrWhiteSpace(r.MitigationNotes))
+                {
+                    text += " (Mitigation: " + r.MitigationNotes + ")";
+                }
+
+                AppendBullet(body, FormatIntelBullet(text, r.Confidence, r.Freshness, r.RefreshedAtUtc));
             }
         }
-
-        AppendHeading(body, "Talking points for the visit");
-        if (data.KorProjectsCount > 0 || data.KorJointProjectCount > 0)
-        {
-            AppendBullet(body, "Lead with the shared history — reference the most recent KOR project together by name.");
-        }
-        else
-        {
-            AppendBullet(body, "Lead with KOR's relevant sector capability one-pager; this is a new-relationship visit.");
-        }
-        if (data.RecentProjects.Count > 0)
-        {
-            AppendBullet(body, "Reference their recent project(s) above to show our team has done its homework.");
-        }
-        AppendBullet(body, "Surface one specific live or upcoming pursuit where KOR could be their structural partner.");
-        AppendBullet(body, "Confirm decision-maker for structural selection on their typical projects.");
 
         AppendFooter(body);
     }
@@ -347,6 +495,55 @@ public sealed class BriefGenerator : IBriefGenerator
     private static void AppendBody(Body body, string text)
     {
         body.AppendChild(BuildPara(text, BodyPt, bold: false, italic: false, align: null, bullet: false));
+    }
+
+    private static void AppendItalicBody(Body body, string text)
+    {
+        body.AppendChild(BuildPara(text, BodyPt, bold: false, italic: true, align: null, bullet: false));
+    }
+
+    private static void AppendOpportunityBuyerIntel(Body body, OrgIntelBundle intel)
+    {
+        if (intel.Actions.Count + intel.People.Count + intel.Signals.Count == 0)
+        {
+            AppendBullet(body, "No intel on file for this buyer.");
+            return;
+        }
+
+        foreach (var a in intel.Actions)
+        {
+            AppendBullet(body, FormatIntelBullet(FormatActionBody(a), a.Confidence, a.Freshness, a.RefreshedAtUtc));
+        }
+        foreach (var p in intel.People)
+        {
+            AppendBullet(body, FormatIntelBullet(FormatPersonBody(p), p.Confidence, p.Freshness, p.RefreshedAtUtc));
+        }
+        foreach (var s in intel.Signals)
+        {
+            AppendBullet(body, FormatIntelBullet(FormatSignalBody(s), s.Confidence, s.Freshness, s.RefreshedAtUtc));
+        }
+    }
+
+    private static void AppendOpportunityArchitectIntel(Body body, OrgIntelBundle intel)
+    {
+        if (intel.Actions.Count + intel.Risks.Count + intel.Signals.Count == 0)
+        {
+            AppendBullet(body, "No intel on file for this architect yet  likely a cold lead.");
+            return;
+        }
+
+        foreach (var a in intel.Actions)
+        {
+            AppendBullet(body, FormatIntelBullet(FormatActionBody(a), a.Confidence, a.Freshness, a.RefreshedAtUtc));
+        }
+        foreach (var r in intel.Risks)
+        {
+            AppendBullet(body, FormatIntelBullet(FormatRiskBody(r), r.Confidence, r.Freshness, r.RefreshedAtUtc));
+        }
+        foreach (var s in intel.Signals)
+        {
+            AppendBullet(body, FormatIntelBullet(FormatSignalBody(s), s.Confidence, s.Freshness, s.RefreshedAtUtc));
+        }
     }
 
     private static void AppendBullet(Body body, string text)
@@ -536,6 +733,110 @@ public sealed class BriefGenerator : IBriefGenerator
             : "not stated";
     }
 
+    private static string FormatIntelBullet(
+        string body,
+        IntelConfidence confidence,
+        IntelFreshness freshness,
+        DateTimeOffset refreshedAtUtc)
+    {
+        var sb = new StringBuilder();
+        if (confidence == IntelConfidence.Low)
+        {
+            sb.Append("(unverified) ");
+        }
+
+        sb.Append(body);
+        if (freshness == IntelFreshness.Stale)
+        {
+            sb.Append($" (as of {refreshedAtUtc:yyyy-MM}, stale)");
+        }
+        else if (freshness == IntelFreshness.Aged)
+        {
+            sb.Append($" (as of {refreshedAtUtc:yyyy-MM})");
+        }
+
+        return sb.ToString();
+    }
+
+    private static string FormatActionBody(IntelActionRow a)
+    {
+        var body = HumanizeActionType(a.ActionType) + ": " + a.Recommendation;
+        if (!string.IsNullOrWhiteSpace(a.TargetPersonName))
+        {
+            body += " (target: " + a.TargetPersonName + ")";
+        }
+        if (!string.IsNullOrWhiteSpace(a.TimingNotes))
+        {
+            body += "  Timing: " + a.TimingNotes;
+        }
+
+        return body;
+    }
+
+    private static string FormatPersonBody(IntelPersonRow p)
+    {
+        var body = (!p.IsCurrent ? "(former) " : string.Empty) + p.DisplayName;
+        if (!string.IsNullOrWhiteSpace(p.Title))
+        {
+            body += "  " + p.Title;
+        }
+
+        return body;
+    }
+
+    private static string FormatSignalBody(IntelSignalRow s)
+    {
+        var body = HumanizeSignalType(s.SignalType) + ": " + s.Subject;
+        if (!string.IsNullOrWhiteSpace(s.Detail))
+        {
+            body += "  " + s.Detail;
+        }
+
+        return body;
+    }
+
+    private static string FormatRiskBody(IntelRiskRow r)
+    {
+        var body = HumanizeRiskType(r.RiskType) + ": " + r.Description;
+        if (!string.IsNullOrWhiteSpace(r.MitigationNotes))
+        {
+            body += " (Mitigation: " + r.MitigationNotes + ")";
+        }
+
+        return body;
+    }
+
+    private static string HumanizeSignalType(string type) => type switch
+    {
+        "LeadershipChange" => "Leadership change",
+        "HiringSurge" => "Hiring surge",
+        "OfficeMove" => "Office move",
+        "OwnershipMnA" => "Ownership / M&A",
+        "CapacityStrain" => "Capacity strain",
+        "RecentWin" => "Recent win",
+        _ => type,
+    };
+
+    private static string HumanizeRiskType(string type) => type switch
+    {
+        "CapacityStrain" => "Capacity strain",
+        "KeyPersonDependency" => "Key person dependency",
+        "OwnershipUncertainty" => "Ownership uncertainty",
+        "ExploitableWeakness" => "Exploitable weakness",
+        "DataIssue" => "Data issue",
+        _ => type,
+    };
+
+    private static string HumanizeActionType(string type) => type switch
+    {
+        "ContactStrategy" => "Contact strategy",
+        "PursuitAngle" => "Pursuit angle",
+        "TimingWindow" => "Timing window",
+        "HowToGetOnRoster" => "How to get on roster",
+        "KorDisplacementRead" => "Displacement read",
+        _ => type,
+    };
+
     private static void EnsureDirectory(string outputPath)
     {
         var dir = Path.GetDirectoryName(outputPath);
@@ -545,7 +846,7 @@ public sealed class BriefGenerator : IBriefGenerator
         }
     }
 
-    // Parses the DataHoning enrichment JSON blob (matches KOR-Data-Honing PROMPT shape).
+    // Parses the DataHoning enrichment JSON blob for header metadata only.
     // Defensive — returns empty enrichment on any malformed input.
     private static OrgEnrichment ParseEnrichment(string? json)
     {
@@ -573,19 +874,6 @@ public sealed class BriefGenerator : IBriefGenerator
                     }
                 }
             }
-            if (root.TryGetProperty("keyPeople", out var people) && people.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var p in people.EnumerateArray())
-                {
-                    if (p.ValueKind != JsonValueKind.Object) continue;
-                    var name = p.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
-                    var title = p.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
-                    if (!string.IsNullOrWhiteSpace(name))
-                    {
-                        enrichment.KeyPeople.Add((name!, title));
-                    }
-                }
-            }
         }
         catch
         {
@@ -599,6 +887,5 @@ public sealed class BriefGenerator : IBriefGenerator
     {
         public string? HqCity { get; set; }
         public List<string> Sectors { get; } = new();
-        public List<(string Name, string? Title)> KeyPeople { get; } = new();
     }
 }

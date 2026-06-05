@@ -9,6 +9,8 @@
              Unloaded="OrgDossierView_Unloaded">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <local:FalseToVisibilityConverter x:Key="FalseToVis"/>
+        <local:IntelTypeLabelConverter x:Key="IntelTypeLabel"/>
         <local:DossierValueKindConverter x:Key="ValueKind"/>
         <local:UrlSplitConverter x:Key="UrlSplit"/>
         <local:CommaSplitConverter x:Key="CommaSplit"/>
@@ -43,6 +45,21 @@
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Margin" Value="0,3"/>
+        </Style>
+
+        <Style x:Key="IntelSubhead" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Brand.Primary.Brush}"/>
+            <Setter Property="Typography.Capitals" Value="AllSmallCaps"/>
+            <Setter Property="Margin" Value="0,12,0,5"/>
+        </Style>
+
+        <Style x:Key="IntelItemText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,2"/>
         </Style>
 
         <!-- Research-dossier inner section. White card with a 4px
@@ -200,6 +217,225 @@
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
+                <Border Style="{StaticResource SectionCard}"
+                        Visibility="{Binding HasAnyIntel, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="AT A GLANCE"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource Brand.Primary.Brush}"
+                                       Typography.Capitals="AllSmallCaps"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding IntelLastRefreshedText}"
+                                       FontSize="11"
+                                       Visibility="{Binding HasIntelLastRefreshedText, Converter={StaticResource BoolToVis}}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasStaleIntel}" Value="True">
+                                                <Setter Property="Foreground" Value="#A03A3A"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+
+                        <TextBlock Text="{Binding SynopsisP1}"
+                                   TextWrapping="Wrap"
+                                   FontSize="14"
+                                   FontStyle="Italic"
+                                   Foreground="{StaticResource Brand.Primary.Brush}"
+                                   Margin="0,0,0,6"
+                                   Visibility="{Binding HasSynopsisP1, Converter={StaticResource BoolToVis}}"/>
+                        <TextBlock Text="{Binding SynopsisP2}"
+                                   TextWrapping="Wrap"
+                                   FontSize="14"
+                                   FontStyle="Italic"
+                                   Foreground="{StaticResource Brand.Primary.Brush}"
+                                   Margin="0,0,0,8"
+                                   Visibility="{Binding HasSynopsisP2, Converter={StaticResource BoolToVis}}"/>
+
+                        <TextBlock Text="Recommended actions" Style="{StaticResource IntelSubhead}"/>
+                        <TextBlock Text="No recommended actions on file yet."
+                                   Style="{StaticResource FieldValue}"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Visibility="{Binding HasIntelActions, Converter={StaticResource FalseToVis}}"/>
+                        <ItemsControl ItemsSource="{Binding IntelActions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Style="{StaticResource IntelItemText}">
+                                        <TextBlock.ToolTip>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding TargetPersonName, StringFormat=Target: {0}}"/>
+                                                <TextBlock Text="{Binding TimingNotes, StringFormat=Timing: {0}}"/>
+                                                <TextBlock>
+                                                    <Run Text="Confidence: "/>
+                                                    <Run Text="{Binding Confidence, Mode=OneWay}"/>
+                                                    <Run Text="  Freshness: "/>
+                                                    <Run Text="{Binding Freshness, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
+                                            </StackPanel>
+                                        </TextBlock.ToolTip>
+                                        <Run Text="•  " Foreground="{StaticResource Brand.Primary.Brush}" FontWeight="Bold"/>
+                                        <Run Text="{Binding ActionType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        <Run Text=": "/>
+                                        <Run Text="{Binding Recommendation, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Key people on file" Style="{StaticResource IntelSubhead}"/>
+                        <TextBlock Text="No key people on file yet."
+                                   Style="{StaticResource FieldValue}"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Visibility="{Binding HasIntelPeople, Converter={StaticResource FalseToVis}}"/>
+                        <ItemsControl ItemsSource="{Binding IntelPeople}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <StackPanel.ToolTip>
+                                            <StackPanel>
+                                                <TextBlock>
+                                                    <Run Text="Confidence: "/>
+                                                    <Run Text="{Binding Confidence, Mode=OneWay}"/>
+                                                    <Run Text="  Freshness: "/>
+                                                    <Run Text="{Binding Freshness, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
+                                            </StackPanel>
+                                        </StackPanel.ToolTip>
+                                        <TextBlock Text="•  "
+                                                   Foreground="{StaticResource Brand.Primary.Brush}"
+                                                   FontWeight="Bold"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Top"/>
+                                        <Border Background="#FDECEC"
+                                                BorderBrush="#E2A0A0"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="4,1"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Top"
+                                                Visibility="{Binding IsCurrent, Converter={StaticResource FalseToVis}}">
+                                            <TextBlock Text="former"
+                                                       Foreground="#A03A3A"
+                                                       FontSize="10"
+                                                       FontWeight="SemiBold"/>
+                                        </Border>
+                                        <TextBlock Style="{StaticResource IntelItemText}">
+                                            <Run Text="{Binding DisplayName, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            <Run Text="  "/>
+                                            <Run Text="{Binding Title, Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Recent signals" Style="{StaticResource IntelSubhead}"/>
+                        <TextBlock Text="No recent signals tracked."
+                                   Style="{StaticResource FieldValue}"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Visibility="{Binding HasIntelSignals, Converter={StaticResource FalseToVis}}"/>
+                        <ItemsControl ItemsSource="{Binding IntelSignals}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Style="{StaticResource IntelItemText}">
+                                        <TextBlock.ToolTip>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding SourceUrl, StringFormat=Source: {0}}"/>
+                                                <TextBlock>
+                                                    <Run Text="Confidence: "/>
+                                                    <Run Text="{Binding Confidence, Mode=OneWay}"/>
+                                                    <Run Text="  Freshness: "/>
+                                                    <Run Text="{Binding Freshness, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
+                                            </StackPanel>
+                                        </TextBlock.ToolTip>
+                                        <Run Text="•  " Foreground="{StaticResource Brand.Primary.Brush}" FontWeight="Bold"/>
+                                        <Run Text="{Binding SignalType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        <Run Text=": "/>
+                                        <Run Text="{Binding Subject, Mode=OneWay}"/>
+                                        <Run Text="  "/>
+                                        <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Their portfolio (from research)" Style="{StaticResource IntelSubhead}"/>
+                        <TextBlock Text="No research portfolio entries on file yet."
+                                   Style="{StaticResource FieldValue}"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Visibility="{Binding HasIntelWorks, Converter={StaticResource FalseToVis}}"/>
+                        <ItemsControl ItemsSource="{Binding IntelWorks}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Style="{StaticResource IntelItemText}">
+                                        <TextBlock.ToolTip>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Notes}"/>
+                                                <TextBlock>
+                                                    <Run Text="Confidence: "/>
+                                                    <Run Text="{Binding Confidence, Mode=OneWay}"/>
+                                                    <Run Text="  Freshness: "/>
+                                                    <Run Text="{Binding Freshness, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
+                                            </StackPanel>
+                                        </TextBlock.ToolTip>
+                                        <Run Text="•  " Foreground="{StaticResource Brand.Primary.Brush}" FontWeight="Bold"/>
+                                        <Run Text="{Binding ProjectName, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        <Run Text="  "/>
+                                        <Run Text="{Binding Role, Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"/>
+                                        <Run Text=" "/>
+                                        <Run Text="{Binding YearApprox, StringFormat=({0}), Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Visibility="{Binding HasIntelRisks, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Risks / vulnerabilities" Style="{StaticResource IntelSubhead}"/>
+                            <ItemsControl ItemsSource="{Binding IntelRisks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Style="{StaticResource IntelItemText}">
+                                            <TextBlock.ToolTip>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding MitigationNotes, StringFormat=Mitigation: {0}}"/>
+                                                    <TextBlock>
+                                                        <Run Text="Confidence: "/>
+                                                        <Run Text="{Binding Confidence, Mode=OneWay}"/>
+                                                        <Run Text="  Freshness: "/>
+                                                        <Run Text="{Binding Freshness, Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
+                                                </StackPanel>
+                                            </TextBlock.ToolTip>
+                                            <Run Text="•  " Foreground="#A03A3A" FontWeight="Bold"/>
+                                            <Run Text="{Binding RiskType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            <Run Text=": "/>
+                                            <Run Text="{Binding Description, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <Border Style="{StaticResource SectionCard}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -668,15 +904,20 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource SectionCard}">
+                <Expander Header="Raw research sources (debug view)"
+                          IsExpanded="False"
+                          Margin="8,0,8,10"
+                          Foreground="{StaticResource Brand.Primary.Brush}">
                     <StackPanel>
-                        <TextBlock Text="Research Dossiers" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <!-- DataTemplate for DossierSection is defined in
-                             UserControl.Resources so the rendering is the
-                             same whether the list is empty or full. -->
-                        <ItemsControl ItemsSource="{Binding Sections}"/>
-                    </StackPanel>
-                </Border>
+                        <Border Style="{StaticResource SectionCard}">
+                            <StackPanel>
+                                <TextBlock Text="Research Dossiers" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <!-- DataTemplate for DossierSection is defined in
+                                     UserControl.Resources so the rendering is the
+                                     same whether the list is empty or full. -->
+                                <ItemsControl ItemsSource="{Binding Sections}"/>
+                            </StackPanel>
+                        </Border>
 
                 <Border Style="{StaticResource SectionCard}">
                     <DockPanel>
@@ -752,6 +993,8 @@
                         </DataGrid>
                     </DockPanel>
                 </Border>
+                    </StackPanel>
+                </Expander>
             </StackPanel>
         </ScrollViewer>
 

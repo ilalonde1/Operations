@@ -35,7 +35,10 @@ public sealed record OpportunityBriefData(
     long? LikelyArchitectCanonicalOrgId,
     int LikelyArchitectOwnerProjectCount,
     int KorArchitectJointProjectCount,
-    EventMatch? MatchedEvent);
+    EventMatch? MatchedEvent)
+{
+    public Kor.Opportunities.Data.Intel.OpportunityIntelBundle? Intel { get; init; }
+}
 
 public sealed record RegionTopOrg(
     long Id,
@@ -70,7 +73,10 @@ public sealed record RegionBriefData(
     IReadOnlyList<RegionTopOrg> TopCompetitors,
     IReadOnlyList<RegionLiveRfp> LiveRfps,
     IReadOnlyList<RegionForwardProject> ForwardProjects,
-    IReadOnlyList<EventMatch> UpcomingEvents);
+    IReadOnlyList<EventMatch> UpcomingEvents)
+{
+    public Kor.Opportunities.Data.Intel.RegionIntelRollup? Intel { get; init; }
+}
 
 public sealed record OrgRecentProject(
     long Id,
@@ -121,4 +127,6 @@ public sealed record OrgBriefData(
     /// null. Null = silently skip (no note shown).
     /// </summary>
     public string? DeltekNote { get; init; }
+
+    public Kor.Opportunities.Data.Intel.OrgIntelBundle? Intel { get; init; }
 }

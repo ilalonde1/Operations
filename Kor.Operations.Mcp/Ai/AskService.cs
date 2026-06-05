@@ -733,6 +733,114 @@ KEY DELTEK TABLES (use 4-part naming)
 Trust this column list — don't burn tool iterations on `SELECT TOP 1` schema
 discovery unless a query fails with an unknown-column error.
 
+================================================================
+## Intel relational layer (R77/R78/R79/R80)
+
+The opportunities.CanonicalOrgEnrichment table holds raw JSON research blobs
+(one per (CanonicalOrgId, ProviderName) pair). Those blobs are also
+DECOMPOSED into 7 typed Intel* tables at intake time. PREFER the typed
+tables for any query about people, actions, signals, projects, risks, or
+narrative paragraphs  they are queryable, joinable, and have built-in
+freshness/confidence/provenance.
+
+Tables (all in opportunities schema):
+
+opportunities.IntelPerson
+  (Id, DisplayName, NormalizedName, Email, Phone, LinkedinUrl, Notes,
+   Corroborations, SourceProviderName, SourceConfidence ('High'/'Medium'/'Low'),
+   FirstSeenAtUtc, LastSeenAtUtc, RetiredAtUtc)
+  - Each row is one named individual surfaced by research. NaturalKey by name.
+
+opportunities.IntelPersonAffiliation
+  (Id, IntelPersonId, CanonicalOrgId, Title, Department, IsCurrent (BIT),
+   StartDateApprox, EndDateApprox, Notes, ... lifecycle columns)
+  - Many-to-many: a person can have multiple affiliations across orgs.
+  - IsCurrent=0 means departed  look at Notes for "departed Nov 2023" etc.
+
+opportunities.IntelSignal
+  (Id, CanonicalOrgId, SignalType, Subject, Detail, OccurredAtApprox,
+   SourceUrl, Corroborations, ... lifecycle)
+  - SignalType values: 'LeadershipChange', 'HiringSurge', 'OfficeMove',
+    'OwnershipMnA', 'CapacityStrain', 'RecentWin', 'Other'.
+
+opportunities.IntelAction
+  (Id, CanonicalOrgId, ActionType, Recommendation, TargetPersonName,
+   TimingNotes, Status, StatusChangedByUser, StatusChangedAtUtc, ...)
+  - ActionType values: 'ContactStrategy', 'PursuitAngle', 'TimingWindow',
+    'HowToGetOnRoster', 'KorDisplacementRead', 'Other'.
+  - Status is KOR-side mutable: 'Open' (default), 'Done', 'Dismissed'.
+  - For ""what should we do about X"" queries, filter Status='Open'.
+
+opportunities.IntelWork
+  (Id, CanonicalOrgId, ProjectName, NormalizedProjectName, Role, YearApprox,
+   EstimatedValueCad, EstimatedValueText, Notes, MajorProjectsInventoryId,
+   ... lifecycle)
+  - One project the org has performed (architect, structural, GC, etc.).
+  - MajorProjectsInventoryId is a soft-link to the MPI pipeline table (often NULL).
+
+opportunities.IntelRisk
+  (Id, CanonicalOrgId, RiskType, Description, MitigationNotes, ... lifecycle)
+  - RiskType: 'CapacityStrain', 'KeyPersonDependency', 'OwnershipUncertainty',
+    'ExploitableWeakness', 'DataIssue', 'Other'.
+
+opportunities.IntelNarrative
+  (Id, CanonicalOrgId, NarrativeType, ParagraphText, ... lifecycle)
+  - NarrativeType: 'Current', 'History', 'Action', 'Summary'.
+  - These are pre-written paragraphs from research (e.g., FirmNarrative.paragraphCurrent).
+
+### Common query recipes
+
+-- Decision-makers (current) at a known org:
+SELECT p.DisplayName, a.Title, p.Email, a.Notes
+FROM opportunities.IntelPerson p
+JOIN opportunities.IntelPersonAffiliation a ON a.IntelPersonId = p.Id
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+WHERE co.DisplayName LIKE N'%Fraser Health%'
+  AND a.IsCurrent = 1 AND a.RetiredAtUtc IS NULL
+ORDER BY p.LastSeenAtUtc DESC;
+
+-- Recent leadership changes in a region:
+SELECT s.Subject, s.Detail, s.OccurredAtApprox, co.DisplayName AS Org
+FROM opportunities.IntelSignal s
+JOIN opportunities.CanonicalOrg co ON co.Id = s.CanonicalOrgId
+WHERE s.SignalType = N'LeadershipChange'
+  AND s.RetiredAtUtc IS NULL
+  AND s.LastSeenAtUtc >= DATEADD(DAY, -120, sysdatetimeoffset())
+ORDER BY s.LastSeenAtUtc DESC;
+
+-- Open recommended actions for a region:
+SELECT TOP 20 a.ActionType, a.Recommendation, co.DisplayName AS Org, a.SourceConfidence
+FROM opportunities.IntelAction a
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+JOIN opportunities.MajorProjectsInventory mpi ON
+   mpi.ProponentCanonicalOrgId = co.Id OR mpi.ArchitectCanonicalOrgId = co.Id
+WHERE a.Status = N'Open' AND a.RetiredAtUtc IS NULL
+  AND mpi.Province = N'BC' AND mpi.MunicipalityName LIKE N'%Vancouver%'
+ORDER BY CASE a.SourceConfidence WHEN 'High' THEN 3 WHEN 'Medium' THEN 2 ELSE 1 END DESC,
+         a.LastSeenAtUtc DESC;
+
+-- Capacity-strain competitors (displacement opportunities):
+SELECT co.DisplayName, r.Description, r.MitigationNotes
+FROM opportunities.IntelRisk r
+JOIN opportunities.CanonicalOrg co ON co.Id = r.CanonicalOrgId
+WHERE r.RiskType = N'CapacityStrain' AND r.RetiredAtUtc IS NULL
+ORDER BY r.LastSeenAtUtc DESC;
+
+### Freshness + confidence
+
+- Stale: LastSeenAtUtc > 90 days old  caveat the answer ("as of YYYY-MM").
+- Confidence: SourceConfidence='Low' means the source flagged DataIssues OR
+  skipped/uncertain extraction. Mention it when surfacing facts.
+- Corroborations > 1 (IntelPerson, IntelSignal) means multiple research runs
+  agreed on this row  higher trust.
+
+### Things to NOT query as intel
+
+- BcRegistry / Registry / KorDeltekHistory / KorCapability provider names 
+  these are metadata-only, not actionable intel. They appear in
+  CanonicalOrgEnrichment but are deliberately NOT decomposed into Intel*.
+================================================================
+
 KOR KPI METHODOLOGY (canonical formulas — Batch 69)
 These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Financials\MetricDefinitions\Definitions.*.cs — the same dictionary the FinancialMetricDictionaryWindow surfaces to engineers). When you cite or compute one of these KPIs — in an ad-hoc /ask answer, in a Monday Briefing section, or in a COO Card item — use the formula listed. Do NOT substitute generic AEC industry formulas; they will not reproduce KOR's predicates.
 
