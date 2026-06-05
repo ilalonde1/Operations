@@ -47,38 +47,10 @@ internal static class Program
             Console.WriteLine($"Mode: {(options.Commit ? "commit" : "dry-run")}");
 
             var reportPath = Path.Combine(options.OutputDirectory, "extract-report.csv");
-            var extractors = new IIntelExtractor[]
-            {
-                new DataHoningExtractor(),
-                new PublicSectorResearchExtractor(),
-                new CompetitorProfileExtractor(),
-                new CompetitorProfileExtractor("ContractorResearch"),
-                new CompetitorProfileExtractor("ProcurementProfile"),
-                new FirmNarrativeExtractor(),
-                new CanonicalSchemaExtractor("PacNWMarketResearch"),
-                new CanonicalSchemaExtractor("MassTimberResearch"),
-                new ArchitectPipelineResearchExtractor(),
-                new DeveloperPipelineResearchExtractor(),
-                new PersonListExtractor("DecisionMakers"),
-                new PersonListExtractor("PrimeContacts"),
-                new CompetitorSignalsExtractor(),
-                new StructuralPartnerMapExtractor(),
-                new IncumbentRostersExtractor(),
-                new InstitutionalOwnerResearchExtractor(),
-                new PrimeTargetingExtractor(),
-                new SubConsultantExtractor(),
-                new MarketResearchExtractor("AlbertaMarketResearch"),
-                new MarketResearchExtractor("LAMarketResearch"),
-                new MarketResearchExtractor("IslandOkanaganEcosystem"),
-                new IndigenousResearchExtractor("IndigenousDevResearch"),
-                new IndigenousResearchExtractor("IndigenousPartnerGraph"),
-                new IndigenousResearchExtractor("DesignBuildContractors"),
-                new CompetitorProfileExtractor("CompetitionResearch"),
-                new PersonListExtractor("IndigenousDev"),
-                new MassTimberProjectsCatalogExtractor(),
-            };
+            // Extractor list lives in IntelExtractorBootstrap so DI (app),
+            // CLI (this tool), and tests all share the same canonical set.
             var fallback = new DefaultIntelExtractor();
-            var registry = new IntelExtractorRegistry(extractors, fallback);
+            var registry = new IntelExtractorRegistry(IntelExtractorBootstrap.GetDefaultExtractors(), fallback);
             var persistence = options.Commit ? new IntelPersistenceService(options.OpportunitiesDb) : null;
 
             var summary = new RunSummary();

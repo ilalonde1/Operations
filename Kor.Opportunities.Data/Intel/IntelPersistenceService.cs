@@ -28,6 +28,43 @@ public sealed class IntelPersistenceService
         _connectionString = opportunitiesConnectionString;
     }
 
+    /// <summary>
+    /// R81: KOR-side mutation of IntelAction.Status. Allowed transitions:
+    /// any non-retired action → 'Open' / 'Done' / 'Dismissed'. Updates
+    /// Status, StatusChangedByUser, StatusChangedAtUtc, UpdatedAtUtc.
+    /// Returns true when the row was found and updated; false when the
+    /// action id does not exist or is already retired (RetiredAtUtc set).
+    /// </summary>
+    public async Task<bool> SetActionStatusAsync(long actionId, string newStatus, string? changedByUser, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(newStatus))
+        {
+            throw new ArgumentException("Status is required.", nameof(newStatus));
+        }
+        if (newStatus is not ("Open" or "Done" or "Dismissed"))
+        {
+            throw new ArgumentException($"Status must be 'Open', 'Done', or 'Dismissed' (got '{newStatus}').", nameof(newStatus));
+        }
+
+        const string sql = @"
+UPDATE opportunities.IntelAction
+   SET Status = @status,
+       StatusChangedByUser = @user,
+       StatusChangedAtUtc = sysdatetimeoffset(),
+       UpdatedAtUtc = sysdatetimeoffset()
+ WHERE Id = @id
+   AND RetiredAtUtc IS NULL;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = actionId;
+        cmd.Parameters.Add("@status", SqlDbType.NVarChar, 20).Value = newStatus;
+        cmd.Parameters.Add("@user", SqlDbType.NVarChar, 100).Value = (object?)changedByUser ?? DBNull.Value;
+        var rowsAffected = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        return rowsAffected > 0;
+    }
+
     public async Task<IntelPersistResult> PersistAsync(ExtractedIntel drafts, IntelExtractionContext ctx, CancellationToken ct)
     {
         await using var con = new SqlConnection(_connectionString);

@@ -728,6 +728,23 @@ builder.Services.AddQuartz(q =>
            cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  // R81: Intel retirement job — soft-deletes stale Intel* rows (not seen
+  // in 180 days) and resolved IntelActions (Done/Dismissed for 30+ days).
+  // Runs at 02:00 UTC, 90 minutes before the catch-up job (which would
+  // otherwise re-extract retired rows).
+  var intelRetirementKey = new JobKey("IntelRetirementJob");
+  q.AddJob<Kor.Opportunities.Worker.Jobs.IntelRetirementJob>(opts => opts.WithIdentity(intelRetirementKey));
+
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["IntelRetirementCronSchedule"] ?? "0 0 2 * * ?";
+      t.ForJob(intelRetirementKey)
+       .WithIdentity("IntelRetirementTrigger")
+       .WithCronSchedule(
+           cron,
+           cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   // Round 46: weekly canonical-org dedup. Catches the ~25-30 dup groups the
   // live ingest sources produce per week. Only the safe canonical-name pass
   // runs here — honing-pass / --pairs / DBA merges stay manual (need curation).

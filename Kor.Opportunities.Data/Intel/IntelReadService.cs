@@ -64,10 +64,16 @@ public sealed class IntelReadService
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
 
-        var cityValue = string.IsNullOrWhiteSpace(city) ? null : city.Trim();
-        var topActions = await GetRegionActionsAsync(con, province, cityValue, ct).ConfigureAwait(false);
-        var leadership = await GetRegionLeadershipSignalsAsync(con, province, cityValue, ct).ConfigureAwait(false);
-        var capacity = await GetRegionCapacityRisksAsync(con, province, cityValue, ct).ConfigureAwait(false);
+        // R81: Tokenize city via shared IntelRegionTokenizer so "GVRD" /
+        // "Lower Mainland" / "Metro Vancouver" expand to the 21 munis, matching
+        // SqlBriefDataStore.TokenizeCity. Previously the region intel queries
+        // used a single LIKE '%@city%' and silently returned 0 rows for these
+        // aliases, while the brief header counts were correct — visible
+        // inconsistency on the rendered brief.
+        var cityTokens = IntelRegionTokenizer.Tokenize(city);
+        var topActions = await GetRegionActionsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
+        var leadership = await GetRegionLeadershipSignalsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
+        var capacity = await GetRegionCapacityRisksAsync(con, province, cityTokens, ct).ConfigureAwait(false);
         return new RegionIntelRollup(topActions, leadership, capacity);
     }
 
@@ -88,7 +94,7 @@ public sealed class IntelReadService
 
     private static async Task<IReadOnlyList<IntelPersonRow>> GetPeopleAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP 20 p.Id, p.DisplayName, p.Email, p.Phone, p.LinkedinUrl,
        a.Title, a.IsCurrent, a.Notes,
        p.Corroborations, a.SourceProviderName, a.SourceConfidence, a.LastSeenAtUtc
@@ -97,7 +103,9 @@ JOIN opportunities.IntelPersonAffiliation a ON a.IntelPersonId = p.Id
 WHERE a.CanonicalOrgId = @id
   AND a.RetiredAtUtc IS NULL
   AND p.RetiredAtUtc IS NULL
-ORDER BY a.IsCurrent DESC, p.LastSeenAtUtc DESC;";
+ORDER BY a.IsCurrent DESC,
+         {IntelConfidenceSql.RankClause("a.SourceConfidence")} DESC,
+         p.LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
 
@@ -128,13 +136,14 @@ ORDER BY a.IsCurrent DESC, p.LastSeenAtUtc DESC;";
 
     private static async Task<IReadOnlyList<IntelSignalRow>> GetSignalsAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP 20 Id, SignalType, Subject, Detail, OccurredAtApprox, SourceUrl,
        Corroborations, SourceProviderName, SourceConfidence, LastSeenAtUtc
 FROM opportunities.IntelSignal
 WHERE CanonicalOrgId = @id
   AND RetiredAtUtc IS NULL
-ORDER BY LastSeenAtUtc DESC;";
+ORDER BY {IntelConfidenceSql.RankClause("SourceConfidence")} DESC,
+         LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
         return await ReadSignalsAsync(cmd, ct).ConfigureAwait(false);
@@ -142,14 +151,14 @@ ORDER BY LastSeenAtUtc DESC;";
 
     private static async Task<IReadOnlyList<IntelActionRow>> GetActionsAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP 20 Id, ActionType, Recommendation, TargetPersonName, TimingNotes, Status,
        SourceProviderName, SourceConfidence, LastSeenAtUtc
 FROM opportunities.IntelAction
 WHERE CanonicalOrgId = @id
   AND Status = N'Open'
   AND RetiredAtUtc IS NULL
-ORDER BY CASE SourceConfidence WHEN N'High' THEN 3 WHEN N'Medium' THEN 2 WHEN N'Low' THEN 1 ELSE 0 END DESC,
+ORDER BY {IntelConfidenceSql.RankClause("SourceConfidence")} DESC,
          LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
@@ -158,13 +167,14 @@ ORDER BY CASE SourceConfidence WHEN N'High' THEN 3 WHEN N'Medium' THEN 2 WHEN N'
 
     private static async Task<IReadOnlyList<IntelWorkRow>> GetWorksAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP 20 Id, ProjectName, Role, YearApprox, EstimatedValueCad, EstimatedValueText,
        Notes, MajorProjectsInventoryId, SourceProviderName, SourceConfidence, LastSeenAtUtc
 FROM opportunities.IntelWork
 WHERE CanonicalOrgId = @id
   AND RetiredAtUtc IS NULL
-ORDER BY LastSeenAtUtc DESC;";
+ORDER BY {IntelConfidenceSql.RankClause("SourceConfidence")} DESC,
+         LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
 
@@ -194,12 +204,12 @@ ORDER BY LastSeenAtUtc DESC;";
 
     private static async Task<IReadOnlyList<IntelRiskRow>> GetRisksAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP 20 Id, RiskType, Description, MitigationNotes, SourceProviderName, SourceConfidence, LastSeenAtUtc
 FROM opportunities.IntelRisk
 WHERE CanonicalOrgId = @id
   AND RetiredAtUtc IS NULL
-ORDER BY CASE SourceConfidence WHEN N'High' THEN 3 WHEN N'Medium' THEN 2 WHEN N'Low' THEN 1 ELSE 0 END DESC,
+ORDER BY {IntelConfidenceSql.RankClause("SourceConfidence")} DESC,
          LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
@@ -223,10 +233,11 @@ ORDER BY CASE NarrativeType WHEN N'Current' THEN 0 WHEN N'Action' THEN 1 WHEN N'
     private static async Task<IReadOnlyList<IntelActionRow>> GetRegionActionsAsync(
         SqlConnection con,
         string province,
-        string? city,
+        IReadOnlyList<string> cityTokens,
         CancellationToken ct)
     {
-        const string sql = @"
+        var cityClause = BuildMpiCityClause(cityTokens, "c");
+        var sql = $@"
 WITH RegionOrgIds AS (
     SELECT DISTINCT v.CanonicalOrgId
     FROM opportunities.MajorProjectsInventory m
@@ -238,7 +249,7 @@ WITH RegionOrgIds AS (
     ) v(CanonicalOrgId)
     WHERE m.RetiredAtUtc IS NULL
       AND m.Province = @prov
-      AND (@city IS NULL OR m.MunicipalityName LIKE N'%' + @city + N'%' OR m.RegionName LIKE N'%' + @city + N'%')
+      {cityClause}
       AND v.CanonicalOrgId IS NOT NULL
 )
 SELECT TOP 20 a.Id, a.ActionType, a.Recommendation, a.TargetPersonName, a.TimingNotes, a.Status,
@@ -247,20 +258,22 @@ FROM opportunities.IntelAction a
 JOIN RegionOrgIds r ON r.CanonicalOrgId = a.CanonicalOrgId
 WHERE a.Status = N'Open'
   AND a.RetiredAtUtc IS NULL
-ORDER BY CASE a.SourceConfidence WHEN N'High' THEN 3 WHEN N'Medium' THEN 2 WHEN N'Low' THEN 1 ELSE 0 END DESC,
+ORDER BY {IntelConfidenceSql.RankClause("a.SourceConfidence")} DESC,
          a.LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        BindRegion(cmd, province, city);
+        BindProvince(cmd, province);
+        BindCityTokens(cmd, cityTokens, "c");
         return await ReadActionsAsync(cmd, ct).ConfigureAwait(false);
     }
 
     private static async Task<IReadOnlyList<IntelSignalRow>> GetRegionLeadershipSignalsAsync(
         SqlConnection con,
         string province,
-        string? city,
+        IReadOnlyList<string> cityTokens,
         CancellationToken ct)
     {
-        const string sql = @"
+        var cityClause = BuildMpiCityClause(cityTokens, "c");
+        var sql = $@"
 WITH RegionOrgIds AS (
     SELECT DISTINCT v.CanonicalOrgId
     FROM opportunities.MajorProjectsInventory m
@@ -272,7 +285,7 @@ WITH RegionOrgIds AS (
     ) v(CanonicalOrgId)
     WHERE m.RetiredAtUtc IS NULL
       AND m.Province = @prov
-      AND (@city IS NULL OR m.MunicipalityName LIKE N'%' + @city + N'%' OR m.RegionName LIKE N'%' + @city + N'%')
+      {cityClause}
       AND v.CanonicalOrgId IS NOT NULL
 )
 SELECT TOP 20 s.Id, s.SignalType, s.Subject, s.Detail, s.OccurredAtApprox, s.SourceUrl,
@@ -282,19 +295,22 @@ JOIN RegionOrgIds r ON r.CanonicalOrgId = s.CanonicalOrgId
 WHERE s.SignalType = N'LeadershipChange'
   AND s.LastSeenAtUtc >= DATEADD(DAY, -90, sysdatetimeoffset())
   AND s.RetiredAtUtc IS NULL
-ORDER BY s.LastSeenAtUtc DESC;";
+ORDER BY {IntelConfidenceSql.RankClause("s.SourceConfidence")} DESC,
+         s.LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        BindRegion(cmd, province, city);
+        BindProvince(cmd, province);
+        BindCityTokens(cmd, cityTokens, "c");
         return await ReadSignalsAsync(cmd, ct).ConfigureAwait(false);
     }
 
     private static async Task<IReadOnlyList<IntelRiskRow>> GetRegionCapacityRisksAsync(
         SqlConnection con,
         string province,
-        string? city,
+        IReadOnlyList<string> cityTokens,
         CancellationToken ct)
     {
-        const string sql = @"
+        var cityClause = BuildMpiCityClause(cityTokens, "c");
+        var sql = $@"
 WITH RegionOrgIds AS (
     SELECT DISTINCT v.CanonicalOrgId
     FROM opportunities.MajorProjectsInventory m
@@ -306,7 +322,7 @@ WITH RegionOrgIds AS (
     ) v(CanonicalOrgId)
     WHERE m.RetiredAtUtc IS NULL
       AND m.Province = @prov
-      AND (@city IS NULL OR m.MunicipalityName LIKE N'%' + @city + N'%' OR m.RegionName LIKE N'%' + @city + N'%')
+      {cityClause}
       AND v.CanonicalOrgId IS NOT NULL
 )
 SELECT TOP 20 x.Id, x.RiskType, x.Description, x.MitigationNotes,
@@ -315,10 +331,11 @@ FROM opportunities.IntelRisk x
 JOIN RegionOrgIds r ON r.CanonicalOrgId = x.CanonicalOrgId
 WHERE x.RiskType = N'CapacityStrain'
   AND x.RetiredAtUtc IS NULL
-ORDER BY CASE x.SourceConfidence WHEN N'High' THEN 3 WHEN N'Medium' THEN 2 WHEN N'Low' THEN 1 ELSE 0 END DESC,
+ORDER BY {IntelConfidenceSql.RankClause("x.SourceConfidence")} DESC,
          x.LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        BindRegion(cmd, province, city);
+        BindProvince(cmd, province);
+        BindCityTokens(cmd, cityTokens, "c");
         return await ReadRisksAsync(cmd, ct).ConfigureAwait(false);
     }
 
@@ -414,10 +431,39 @@ ORDER BY CASE x.SourceConfidence WHEN N'High' THEN 3 WHEN N'Medium' THEN 2 WHEN 
         return rows;
     }
 
-    private static void BindRegion(SqlCommand cmd, string province, string? city)
+    private static void BindProvince(SqlCommand cmd, string province)
     {
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
-        cmd.Parameters.Add("@city", SqlDbType.NVarChar, 150).Value = (object?)city ?? DBNull.Value;
+    }
+
+    /// <summary>
+    /// Binds @{prefix}0, @{prefix}1, ... for each city token. Matches the
+    /// fragment built by <see cref="BuildMpiCityClause"/>.
+    /// </summary>
+    private static void BindCityTokens(SqlCommand cmd, IReadOnlyList<string> tokens, string paramPrefix)
+    {
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            cmd.Parameters.Add("@" + paramPrefix + i.ToString(System.Globalization.CultureInfo.InvariantCulture), SqlDbType.NVarChar, 150).Value = tokens[i];
+        }
+    }
+
+    /// <summary>
+    /// Builds an "AND (m.MunicipalityName LIKE '%' + @c0 + '%' OR m.RegionName LIKE '%' + @c0 + '%' OR ...)"
+    /// fragment for the supplied tokens. Returns empty string when tokens is empty (province-wide query).
+    /// </summary>
+    private static string BuildMpiCityClause(IReadOnlyList<string> tokens, string paramPrefix)
+    {
+        if (tokens.Count == 0) return string.Empty;
+        var sb = new System.Text.StringBuilder(" AND (");
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            if (i > 0) sb.Append(" OR ");
+            sb.Append("m.MunicipalityName LIKE '%' + @").Append(paramPrefix).Append(i).Append(" + '%'");
+            sb.Append(" OR m.RegionName LIKE '%' + @").Append(paramPrefix).Append(i).Append(" + '%'");
+        }
+        sb.Append(')');
+        return sb.ToString();
     }
 
     private static string? FirstNarrative(IReadOnlyList<IntelNarrativeRow> narratives, string narrativeType)

@@ -47,7 +47,13 @@ public sealed class IntelExtractionCatchUpJob : IJob
 
         await using var con = new SqlConnection(_options.Value.OpportunitiesDb);
         await con.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(@"
+
+        // Sweep window widened to 7 days (R81): the original 36h cap was a
+        // performance assumption; in practice the table is well-indexed and a
+        // weekly sweep catches longer outages without measurable cost. The
+        // chokepoint in SqlEnrichmentTrackingStore handles the live case;
+        // this is the safety net.
+        var sql = @"
 SELECT Id,
        CanonicalOrgId,
        ProviderName,
@@ -56,9 +62,10 @@ SELECT Id,
 FROM opportunities.CanonicalOrgEnrichment
 WHERE Status = N'ok'
   AND ResultJson IS NOT NULL
-  AND ProviderName NOT IN (N'BcRegistry', N'Registry', N'KorDeltekHistory', N'KorCapability')
-  AND UpdatedAtUtc >= DATEADD(HOUR, -36, sysdatetimeoffset())
-ORDER BY Id;", con)
+  AND " + IntelNoiseProviders.SqlNotInClause("ProviderName") + @"
+  AND UpdatedAtUtc >= DATEADD(DAY, -7, sysdatetimeoffset())
+ORDER BY Id;";
+        await using var cmd = new SqlCommand(sql, con)
         {
             CommandType = CommandType.Text,
             CommandTimeout = CommandTimeoutSeconds,
@@ -108,14 +115,22 @@ ORDER BY Id;", con)
         }
 
         sw.Stop();
+
+        // R81: surface the live-ingest counters from the chokepoint store
+        // (SqlEnrichmentTrackingStore) so cumulative live extracted /
+        // missing-extractor counts get logged alongside this run's per-row
+        // counts. Drift surfaces nightly via the structured log.
+        var (liveExtracted, liveMissing) = Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore.GetIntelCounters();
         _logger.LogInformation(
-            "{Job}: completed. processed={Processed}; persisted={Persisted}; skippedNoExtractor={Skipped}; empty={Empty}; errors={Errors}; elapsedMs={ElapsedMs}.",
+            "{Job}: completed. processed={Processed}; persisted={Persisted}; skippedNoExtractor={Skipped}; empty={Empty}; errors={Errors}; liveExtractedCumulative={LiveExtracted}; liveMissingExtractorCumulative={LiveMissing}; elapsedMs={ElapsedMs}.",
             nameof(IntelExtractionCatchUpJob),
             processed,
             persisted,
             skipped,
             empty,
             errors,
+            liveExtracted,
+            liveMissing,
             sw.ElapsedMilliseconds);
     }
 

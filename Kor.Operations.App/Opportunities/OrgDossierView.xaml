@@ -271,25 +271,46 @@
                         <ItemsControl ItemsSource="{Binding IntelActions}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Style="{StaticResource IntelItemText}">
-                                        <TextBlock.ToolTip>
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding TargetPersonName, StringFormat=Target: {0}}"/>
-                                                <TextBlock Text="{Binding TimingNotes, StringFormat=Timing: {0}}"/>
-                                                <TextBlock>
-                                                    <Run Text="Confidence: "/>
-                                                    <Run Text="{Binding Confidence, Mode=OneWay}"/>
-                                                    <Run Text="  Freshness: "/>
-                                                    <Run Text="{Binding Freshness, Mode=OneWay}"/>
-                                                </TextBlock>
-                                                <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
-                                            </StackPanel>
-                                        </TextBlock.ToolTip>
-                                        <Run Text="•  " Foreground="{StaticResource Brand.Primary.Brush}" FontWeight="Bold"/>
-                                        <Run Text="{Binding ActionType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}" FontWeight="SemiBold"/>
-                                        <Run Text=": "/>
-                                        <Run Text="{Binding Recommendation, Mode=OneWay}"/>
-                                    </TextBlock>
+                                    <Grid Margin="0,1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Style="{StaticResource IntelItemText}">
+                                            <TextBlock.ToolTip>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding TargetPersonName, StringFormat=Target: {0}}"/>
+                                                    <TextBlock Text="{Binding TimingNotes, StringFormat=Timing: {0}}"/>
+                                                    <TextBlock>
+                                                        <Run Text="Confidence: "/>
+                                                        <Run Text="{Binding Confidence, Mode=OneWay}"/>
+                                                        <Run Text="  Freshness: "/>
+                                                        <Run Text="{Binding Freshness, Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
+                                                </StackPanel>
+                                            </TextBlock.ToolTip>
+                                            <Run Text="•  " Foreground="{StaticResource Brand.Primary.Brush}" FontWeight="Bold"/>
+                                            <Run Text="{Binding ActionType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            <Run Text=": "/>
+                                            <Run Text="{Binding Recommendation, Mode=OneWay}"/>
+                                        </TextBlock>
+                                        <!-- R81: KOR-side Status mutation. Removing an action drops it
+                                             from the IntelActions collection; the next dossier load
+                                             also re-queries (read filter is Status='Open'). -->
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
+                                            <Button Content="✓ Done"
+                                                    Command="{Binding DataContext.MarkActionDoneCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Padding="6,1" FontSize="10" Margin="0,0,4,0"
+                                                    ToolTip="Mark this action as done (KOR has completed it)."/>
+                                            <Button Content="✕ Dismiss"
+                                                    Command="{Binding DataContext.MarkActionDismissedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Padding="6,1" FontSize="10"
+                                                    ToolTip="Dismiss this recommendation (KOR has decided not to pursue)."/>
+                                        </StackPanel>
+                                    </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

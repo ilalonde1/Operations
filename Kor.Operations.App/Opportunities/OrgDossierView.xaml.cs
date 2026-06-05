@@ -114,28 +114,25 @@ public sealed class FalseToVisibilityConverter : IValueConverter
 
 public sealed class IntelTypeLabelConverter : IValueConverter
 {
+    // R81: Mappings live in Kor.Opportunities.Data.Intel.IntelTypeHumanizer
+    // (shared with PDF + DOCX brief generators). Adding a new SignalType /
+    // ActionType / RiskType requires updating IntelTypeHumanizer only.
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         var s = value as string ?? string.Empty;
-        return s switch
-        {
-            "LeadershipChange" => "Leadership change",
-            "HiringSurge" => "Hiring surge",
-            "OfficeMove" => "Office move",
-            "OwnershipMnA" => "Ownership / M&A",
-            "CapacityStrain" => "Capacity strain",
-            "RecentWin" => "Recent win",
-            "ContactStrategy" => "Contact strategy",
-            "PursuitAngle" => "Pursuit angle",
-            "TimingWindow" => "Timing window",
-            "HowToGetOnRoster" => "How to get on roster",
-            "KorDisplacementRead" => "Displacement read",
-            "KeyPersonDependency" => "Key person dependency",
-            "OwnershipUncertainty" => "Ownership uncertainty",
-            "ExploitableWeakness" => "Exploitable weakness",
-            "DataIssue" => "Data issue",
-            _ => s,
-        };
+        if (string.IsNullOrEmpty(s)) return s;
+
+        // The converter doesn't know which type the raw string is. Probe each
+        // map in turn; the maps are disjoint by construction except for
+        // "CapacityStrain" which means the same thing as both Signal and Risk
+        // ("Capacity strain"). Returns the input string if no map matches.
+        var signal = Kor.Opportunities.Data.Intel.IntelTypeHumanizer.SignalType(s);
+        if (!ReferenceEquals(signal, s) && signal != s) return signal;
+        var action = Kor.Opportunities.Data.Intel.IntelTypeHumanizer.ActionType(s);
+        if (!ReferenceEquals(action, s) && action != s) return action;
+        var risk = Kor.Opportunities.Data.Intel.IntelTypeHumanizer.RiskType(s);
+        if (!ReferenceEquals(risk, s) && risk != s) return risk;
+        return s;
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

@@ -806,36 +806,16 @@ public sealed class BriefGenerator : IBriefGenerator
         return body;
     }
 
-    private static string HumanizeSignalType(string type) => type switch
-    {
-        "LeadershipChange" => "Leadership change",
-        "HiringSurge" => "Hiring surge",
-        "OfficeMove" => "Office move",
-        "OwnershipMnA" => "Ownership / M&A",
-        "CapacityStrain" => "Capacity strain",
-        "RecentWin" => "Recent win",
-        _ => type,
-    };
+    // R81: Humanizers moved to Kor.Opportunities.Data.Intel.IntelTypeHumanizer
+    // (single source of truth shared with PDF brief and Dossier converter).
+    private static string HumanizeSignalType(string type) =>
+        Kor.Opportunities.Data.Intel.IntelTypeHumanizer.SignalType(type);
 
-    private static string HumanizeRiskType(string type) => type switch
-    {
-        "CapacityStrain" => "Capacity strain",
-        "KeyPersonDependency" => "Key person dependency",
-        "OwnershipUncertainty" => "Ownership uncertainty",
-        "ExploitableWeakness" => "Exploitable weakness",
-        "DataIssue" => "Data issue",
-        _ => type,
-    };
+    private static string HumanizeRiskType(string type) =>
+        Kor.Opportunities.Data.Intel.IntelTypeHumanizer.RiskType(type);
 
-    private static string HumanizeActionType(string type) => type switch
-    {
-        "ContactStrategy" => "Contact strategy",
-        "PursuitAngle" => "Pursuit angle",
-        "TimingWindow" => "Timing window",
-        "HowToGetOnRoster" => "How to get on roster",
-        "KorDisplacementRead" => "Displacement read",
-        _ => type,
-    };
+    private static string HumanizeActionType(string type) =>
+        Kor.Opportunities.Data.Intel.IntelTypeHumanizer.ActionType(type);
 
     private static void EnsureDirectory(string outputPath)
     {

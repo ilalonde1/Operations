@@ -476,38 +476,7 @@ public sealed class IntelExtractorTests
         }
 
         var fallback = new DefaultIntelExtractor();
-        var registry = new IntelExtractorRegistry(
-            new IIntelExtractor[]
-            {
-                new DataHoningExtractor(),
-                new PublicSectorResearchExtractor(),
-                new CompetitorProfileExtractor(),
-                new CompetitorProfileExtractor("ContractorResearch"),
-                new CompetitorProfileExtractor("ProcurementProfile"),
-                new FirmNarrativeExtractor(),
-                new CanonicalSchemaExtractor("PacNWMarketResearch"),
-                new CanonicalSchemaExtractor("MassTimberResearch"),
-                new ArchitectPipelineResearchExtractor(),
-                new DeveloperPipelineResearchExtractor(),
-                new PersonListExtractor("DecisionMakers"),
-                new PersonListExtractor("PrimeContacts"),
-                new CompetitorSignalsExtractor(),
-                new StructuralPartnerMapExtractor(),
-                new IncumbentRostersExtractor(),
-                new InstitutionalOwnerResearchExtractor(),
-                new PrimeTargetingExtractor(),
-                new SubConsultantExtractor(),
-                new MarketResearchExtractor("AlbertaMarketResearch"),
-                new MarketResearchExtractor("LAMarketResearch"),
-                new MarketResearchExtractor("IslandOkanaganEcosystem"),
-                new IndigenousResearchExtractor("IndigenousDevResearch"),
-                new IndigenousResearchExtractor("IndigenousPartnerGraph"),
-                new IndigenousResearchExtractor("DesignBuildContractors"),
-                new CompetitorProfileExtractor("CompetitionResearch"),
-                new PersonListExtractor("IndigenousDev"),
-                new MassTimberProjectsCatalogExtractor(),
-            },
-            fallback);
+        var registry = new IntelExtractorRegistry(IntelExtractorBootstrap.GetDefaultExtractors(), fallback);
         var persistence = new IntelPersistenceService(connectionString);
         var job = new IntelExtractionCatchUpJob(
             Options.Create(new OpportunitiesWorkerOptions { OpportunitiesDb = connectionString }),

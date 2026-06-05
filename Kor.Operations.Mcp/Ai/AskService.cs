@@ -769,7 +769,12 @@ opportunities.IntelAction
   - ActionType values: 'ContactStrategy', 'PursuitAngle', 'TimingWindow',
     'HowToGetOnRoster', 'KorDisplacementRead', 'Other'.
   - Status is KOR-side mutable: 'Open' (default), 'Done', 'Dismissed'.
+    Mutation goes through IntelPersistenceService.SetActionStatusAsync
+    (called from the Org Dossier ""Done"" / ""Dismiss"" buttons). When you
+    see Status != 'Open' for an action, treat it as historical context not
+    something to recommend again.
   - For ""what should we do about X"" queries, filter Status='Open'.
+  - StatusChangedByUser + StatusChangedAtUtc track who mutated and when.
 
 opportunities.IntelWork
   (Id, CanonicalOrgId, ProjectName, NormalizedProjectName, Role, YearApprox,

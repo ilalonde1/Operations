@@ -31,6 +31,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private readonly IDeltekClientContextService _deltekService;
     private readonly IArchitectDisplacementBriefStore _displacementBriefStore;
     private readonly IntelReadService _intelReadService;
+    private readonly IntelPersistenceService _intelPersistence;
     private readonly ILogger<OrgDossierViewModel> _logger;
 
     private long? _canonicalOrgId;
@@ -61,6 +62,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         IDeltekClientContextService deltekService,
         IArchitectDisplacementBriefStore displacementBriefStore,
         IntelReadService intelReadService,
+        IntelPersistenceService intelPersistence,
         ILogger<OrgDossierViewModel> logger)
     {
         _canonicalStore = canonicalStore ?? throw new ArgumentNullException(nameof(canonicalStore));
@@ -70,7 +72,44 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         _deltekService = deltekService ?? throw new ArgumentNullException(nameof(deltekService));
         _displacementBriefStore = displacementBriefStore ?? throw new ArgumentNullException(nameof(displacementBriefStore));
         _intelReadService = intelReadService ?? throw new ArgumentNullException(nameof(intelReadService));
+        _intelPersistence = intelPersistence ?? throw new ArgumentNullException(nameof(intelPersistence));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        // R81: KOR-side Status mutation for IntelAction rows. Done/Dismissed
+        // both hit the same writer; the catch-up retirement job will retire
+        // resolved actions after 30 days.
+        MarkActionDoneCommand = new RelayCommand(o => _ = SetActionStatusAsync(o as IntelActionRow, "Done"));
+        MarkActionDismissedCommand = new RelayCommand(o => _ = SetActionStatusAsync(o as IntelActionRow, "Dismissed"));
+    }
+
+    public RelayCommand MarkActionDoneCommand { get; }
+    public RelayCommand MarkActionDismissedCommand { get; }
+
+    private async Task SetActionStatusAsync(IntelActionRow? row, string status)
+    {
+        if (row is null) return;
+        try
+        {
+            var user = Environment.UserName;
+            var ok = await _intelPersistence.SetActionStatusAsync(row.Id, status, user, CancellationToken.None).ConfigureAwait(true);
+            if (ok)
+            {
+                // Open-only list — once an action moves Done/Dismissed it
+                // drops out of the dossier view. Read queries filter on
+                // Status='Open' so a refresh would do the same.
+                IntelActions.Remove(row);
+                OnPropertyChanged(nameof(HasIntelActions));
+                OnPropertyChanged(nameof(HasAnyIntel));
+            }
+            else
+            {
+                _logger.LogWarning("IntelAction {ActionId} status update returned no rows.", row.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "IntelAction {ActionId} status update failed.", row.Id);
+        }
     }
 
     public ObservableCollection<DossierSection> Sections { get; } = new();
@@ -1006,6 +1045,31 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     }
 
     private sealed record ContextDossierSection(string ProviderName, IReadOnlyList<DossierField> Fields);
+
+    // R81: same pattern as other VMs in the App project (AdminViewModel /
+    // CompetitionAwardsViewModel / CompetitionRfpsViewModel) — local
+    // RelayCommand. No shared base type exists in this project; matching
+    // the established pattern instead of introducing one mid-cleanup.
+    public sealed class RelayCommand : System.Windows.Input.ICommand
+    {
+        private readonly Action<object?> _execute;
+        private readonly Predicate<object?>? _canExecute;
+
+        public RelayCommand(Action<object?> execute, Predicate<object?>? canExecute = null)
+        {
+            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            _canExecute = canExecute;
+        }
+
+        public event EventHandler? CanExecuteChanged
+        {
+            add => System.Windows.Input.CommandManager.RequerySuggested += value;
+            remove => System.Windows.Input.CommandManager.RequerySuggested -= value;
+        }
+
+        public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
+        public void Execute(object? parameter) => _execute(parameter);
+    }
 }
 
 public sealed record DossierSection(string ProviderName, string? RefreshedAt)
