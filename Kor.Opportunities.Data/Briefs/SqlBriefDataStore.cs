@@ -302,6 +302,12 @@ WHERE Id = @id AND RetiredAtUtc IS NULL;";
             actionMentions = await LoadProjectOpenActionMentionsAsync(con, tokens, ct).ConfigureAwait(false);
         }
 
+        var projectIntel = await LoadProjectIntelAsync(con, id, ct).ConfigureAwait(false);
+        var projectIntelSignals = await LoadProjectIntelSignalsAsync(con, id, ct).ConfigureAwait(false);
+        var projectIntelActions = await LoadProjectIntelActionsAsync(con, id, ct).ConfigureAwait(false);
+        var projectIntelRisks = await LoadProjectIntelRisksAsync(con, id, ct).ConfigureAwait(false);
+        var projectIntelKeyPeople = await LoadProjectIntelKeyPeopleAsync(con, id, ct).ConfigureAwait(false);
+
         return new ProjectBriefData(
             id,
             projectName,
@@ -328,7 +334,15 @@ WHERE Id = @id AND RetiredAtUtc IS NULL;";
             gcSummary,
             workMentions,
             signalMentions,
-            actionMentions);
+            actionMentions,
+            projectIntel.Description,
+            projectIntel.Schedule,
+            projectIntel.Status,
+            projectIntel.KorAngle,
+            projectIntelKeyPeople,
+            projectIntelSignals,
+            projectIntelActions,
+            projectIntelRisks);
     }
 
     public async Task<IReadOnlyList<PersonSearchRow>> SearchPeopleAsync(string query, int take, CancellationToken ct)
@@ -656,6 +670,160 @@ WHERE co.Id = @id;";
             Convert.ToInt32(r.GetValue(4)),
             Convert.ToInt32(r.GetValue(5)),
             r.IsDBNull(6) ? null : r.GetDateTimeOffset(6));
+    }
+
+    private static async Task<(string? Description, string? Schedule, string? Status, string? KorAngle)> LoadProjectIntelAsync(
+        SqlConnection con,
+        long mpiId,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP 1 Description, Schedule, Status, KorAngle
+FROM opportunities.IntelProject
+WHERE MajorProjectsInventoryId = @id
+  AND RetiredAtUtc IS NULL
+ORDER BY LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            return (null, null, null, null);
+        }
+
+        return (
+            r.IsDBNull(0) ? null : r.GetString(0),
+            r.IsDBNull(1) ? null : r.GetString(1),
+            r.IsDBNull(2) ? null : r.GetString(2),
+            r.IsDBNull(3) ? null : r.GetString(3));
+    }
+
+    private static async Task<IReadOnlyList<ProjectIntelSignalRow>> LoadProjectIntelSignalsAsync(
+        SqlConnection con,
+        long mpiId,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (10) SignalType, Subject, Detail, OccurredAtApprox, LastSeenAtUtc
+FROM opportunities.IntelProjectSignal
+WHERE MajorProjectsInventoryId = @id
+  AND RetiredAtUtc IS NULL
+ORDER BY LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
+        var rows = new List<ProjectIntelSignalRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ProjectIntelSignalRow(
+                r.GetString(0),
+                r.GetString(1),
+                r.IsDBNull(2) ? null : r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.GetDateTimeOffset(4)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<ProjectIntelActionRow>> LoadProjectIntelActionsAsync(
+        SqlConnection con,
+        long mpiId,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (10)
+    a.ActionType,
+    a.Recommendation,
+    a.TargetPersonName,
+    co.DisplayName AS TargetOrgName,
+    a.TimingNotes,
+    a.LastSeenAtUtc
+FROM opportunities.IntelProjectAction a
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = a.TargetCanonicalOrgId
+WHERE a.MajorProjectsInventoryId = @id
+  AND a.RetiredAtUtc IS NULL
+  AND a.Status = N'Open'
+ORDER BY a.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
+        var rows = new List<ProjectIntelActionRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ProjectIntelActionRow(
+                r.GetString(0),
+                r.GetString(1),
+                r.IsDBNull(2) ? null : r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.GetDateTimeOffset(5)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<ProjectIntelRiskRow>> LoadProjectIntelRisksAsync(
+        SqlConnection con,
+        long mpiId,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (10) RiskType, Description, MitigationNotes
+FROM opportunities.IntelProjectRisk
+WHERE MajorProjectsInventoryId = @id
+  AND RetiredAtUtc IS NULL
+ORDER BY LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
+        var rows = new List<ProjectIntelRiskRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ProjectIntelRiskRow(
+                r.GetString(0),
+                r.GetString(1),
+                r.IsDBNull(2) ? null : r.GetString(2)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<ProjectIntelKeyPersonRow>> LoadProjectIntelKeyPeopleAsync(
+        SqlConnection con,
+        long mpiId,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (20)
+    p.DisplayName,
+    p.Title,
+    p.Side,
+    co.DisplayName AS OrgName
+FROM opportunities.IntelProjectKeyPerson p
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = p.CanonicalOrgId
+WHERE p.MajorProjectsInventoryId = @id
+  AND p.RetiredAtUtc IS NULL
+ORDER BY p.Side ASC, p.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
+        var rows = new List<ProjectIntelKeyPersonRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ProjectIntelKeyPersonRow(
+                r.GetString(0),
+                r.IsDBNull(1) ? null : r.GetString(1),
+                r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3)));
+        }
+
+        return rows;
     }
 
     // Tokens are case-preserved (for SQL LIKE bind), filtered:

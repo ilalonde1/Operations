@@ -96,6 +96,32 @@ public sealed record ProjectOpenActionMention(
     string? TimingNotes,
     DateTimeOffset LastSeenAtUtc);
 
+public sealed record ProjectIntelSignalRow(
+    string SignalType,
+    string Subject,
+    string? Detail,
+    string? OccurredAtApprox,
+    DateTimeOffset LastSeenAtUtc);
+
+public sealed record ProjectIntelActionRow(
+    string ActionType,
+    string Recommendation,
+    string? TargetPersonName,
+    string? TargetOrgName,
+    string? TimingNotes,
+    DateTimeOffset LastSeenAtUtc);
+
+public sealed record ProjectIntelRiskRow(
+    string RiskType,
+    string Description,
+    string? MitigationNotes);
+
+public sealed record ProjectIntelKeyPersonRow(
+    string DisplayName,
+    string? Title,
+    string Side,
+    string? OrgName);
+
 public sealed record ProjectBriefData(
     long Id,
     string ProjectName,
@@ -122,7 +148,15 @@ public sealed record ProjectBriefData(
     LinkedOrgSummary? GeneralContractorSummary,
     IReadOnlyList<ProjectMentionInWorkHistory> MentionsInWorkHistory,
     IReadOnlyList<ProjectRecentMentionSignal> RecentMentionSignals,
-    IReadOnlyList<ProjectOpenActionMention> OpenActionsMentioning);
+    IReadOnlyList<ProjectOpenActionMention> OpenActionsMentioning,
+    string? IntelDescription,
+    string? IntelSchedule,
+    string? IntelStatus,
+    string? IntelKorAngle,
+    IReadOnlyList<ProjectIntelKeyPersonRow> IntelKeyPeople,
+    IReadOnlyList<ProjectIntelSignalRow> IntelSignals,
+    IReadOnlyList<ProjectIntelActionRow> IntelActions,
+    IReadOnlyList<ProjectIntelRiskRow> IntelRisks);
 
 public sealed record PersonSearchRow(
     long IntelPersonId,

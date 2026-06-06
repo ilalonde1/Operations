@@ -14,6 +14,7 @@ using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
+using Kor.Opportunities.Data.Projects;
 using Kor.Opportunities.Data.Scoring;
 using Kor.Opportunities.Data.Sources;
 using Microsoft.Extensions.DependencyInjection;
@@ -140,6 +141,19 @@ internal static class OpportunitiesModule
         services.AddSingleton<DefaultIntelExtractor>();
         services.AddSingleton<IntelExtractorRegistry>();
         services.AddSingleton<IntelPersistenceService>(_ => new IntelPersistenceService(options.OpportunitiesDb));
+        services.AddSingleton<IProjectIntelExtractor, ProjectBriefExtractor>();
+        services.AddSingleton<DefaultProjectIntelExtractor>();
+        services.AddSingleton<ProjectIntelExtractorRegistry>();
+        services.AddSingleton<ProjectIntelPersistenceService>(sp =>
+            new ProjectIntelPersistenceService(
+                options.OpportunitiesDb,
+                sp.GetRequiredService<ILogger<ProjectIntelPersistenceService>>()));
+        services.AddSingleton<IMajorProjectEnrichmentTrackingStore>(sp =>
+            new SqlMajorProjectEnrichmentTrackingStore(
+                options.OpportunitiesDb,
+                sp.GetRequiredService<ProjectIntelExtractorRegistry>(),
+                sp.GetRequiredService<ProjectIntelPersistenceService>(),
+                sp.GetRequiredService<ILogger<SqlMajorProjectEnrichmentTrackingStore>>()));
         services.AddSingleton<Kor.Operations.App.Opportunities.CustomProposalImportService>();
         services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierView>();

@@ -150,10 +150,13 @@ public sealed class BriefGenerator : IBriefGenerator
             ("Estimated value", FormatProjectValue(data)),
         });
 
+        var description = !string.IsNullOrWhiteSpace(data.IntelDescription)
+            ? data.IntelDescription!
+            : (string.IsNullOrWhiteSpace(data.ProjectDescription)
+                ? "No project description on file yet."
+                : data.ProjectDescription!);
         AppendHeading(body, "Project description");
-        AppendBody(body, string.IsNullOrWhiteSpace(data.ProjectDescription)
-            ? "No project description on file yet."
-            : data.ProjectDescription!);
+        AppendBody(body, description);
 
         AppendHeading(body, "Schedule");
         AppendBody(body, $"{data.StartYear?.ToString(CultureInfo.InvariantCulture) ?? "?"} - {data.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "?"}");
@@ -162,11 +165,23 @@ public sealed class BriefGenerator : IBriefGenerator
             AppendBody(body, data.ScheduleNotes!);
         }
 
+        if (!string.IsNullOrWhiteSpace(data.IntelStatus))
+        {
+            AppendHeading(body, "Status");
+            AppendBody(body, data.IntelStatus!);
+        }
+
         AppendHeading(body, "Team & KOR angle");
         AppendLinkedOrgBlock(body, "Proponent", data.ProponentName, data.ProponentSummary, structuralCallout: false);
         AppendLinkedOrgBlock(body, "Architect", data.ArchitectName, data.ArchitectSummary, structuralCallout: false);
         AppendLinkedOrgBlock(body, "Structural Engineer", data.StructuralEngineerName, data.StructuralSummary, structuralCallout: true);
         AppendLinkedOrgBlock(body, "GC", data.GeneralContractorName, data.GeneralContractorSummary, structuralCallout: false);
+
+        if (!string.IsNullOrWhiteSpace(data.IntelKorAngle))
+        {
+            AppendHeading(body, "KOR angle");
+            AppendBody(body, data.IntelKorAngle!);
+        }
 
         if (data.MentionsInWorkHistory.Count > 0)
         {
@@ -203,6 +218,49 @@ public sealed class BriefGenerator : IBriefGenerator
                 }
                 text += $" (via {a.OrgDisplayName})";
                 AppendBullet(body, text);
+            }
+        }
+
+        if (data.IntelKeyPeople.Count > 0)
+        {
+            AppendHeading(body, "Key people on this project");
+            foreach (var p in data.IntelKeyPeople)
+            {
+                AppendBullet(body, $"{p.DisplayName} ({p.Side})  {Nz(p.Title)}{(p.OrgName is null ? "" : "  " + p.OrgName)}");
+            }
+        }
+
+        if (data.IntelSignals.Count > 0)
+        {
+            AppendHeading(body, "Project signals");
+            foreach (var s in data.IntelSignals)
+            {
+                var when = s.OccurredAtApprox ?? s.LastSeenAtUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                AppendBullet(body, $"{when}  {s.SignalType}: {s.Subject}");
+            }
+        }
+
+        if (data.IntelActions.Count > 0)
+        {
+            AppendHeading(body, "KOR actions on this project");
+            foreach (var a in data.IntelActions)
+            {
+                var text = $"{a.ActionType}: {a.Recommendation}";
+                var targets = new List<string>();
+                if (!string.IsNullOrWhiteSpace(a.TargetPersonName)) targets.Add(a.TargetPersonName!);
+                if (!string.IsNullOrWhiteSpace(a.TargetOrgName)) targets.Add(a.TargetOrgName!);
+                if (targets.Count > 0) text += " (target: " + string.Join(" / ", targets) + ")";
+                if (!string.IsNullOrWhiteSpace(a.TimingNotes)) text += " [" + a.TimingNotes + "]";
+                AppendBullet(body, text);
+            }
+        }
+
+        if (data.IntelRisks.Count > 0)
+        {
+            AppendHeading(body, "Project risks");
+            foreach (var r in data.IntelRisks)
+            {
+                AppendBullet(body, $"{r.RiskType}: {r.Description}{(r.MitigationNotes is null ? "" : "  mitigation: " + r.MitigationNotes)}");
             }
         }
 

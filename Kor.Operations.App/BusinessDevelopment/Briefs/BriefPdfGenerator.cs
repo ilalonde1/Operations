@@ -264,14 +264,24 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             {
                 column.Spacing(12);
                 column.Item().Element(c => ProjectHeaderBand(c, d));
-                column.Item().Element(c => ParagraphSection(c, "Project description",
-                    string.IsNullOrWhiteSpace(d.ProjectDescription)
+                var description = !string.IsNullOrWhiteSpace(d.IntelDescription)
+                    ? d.IntelDescription!
+                    : (string.IsNullOrWhiteSpace(d.ProjectDescription)
                         ? "No project description on file yet."
-                        : d.ProjectDescription!));
+                        : d.ProjectDescription!);
+                column.Item().Element(c => ParagraphSection(c, "Project description", description));
                 column.Item().Element(c => Section(c, "Schedule",
                     ProjectScheduleBullets(d)));
+                if (!string.IsNullOrWhiteSpace(d.IntelStatus))
+                {
+                    column.Item().Element(c => ParagraphSection(c, "Status", d.IntelStatus!));
+                }
                 column.Item().Element(c => Section(c, "Team & KOR angle",
                     ProjectTeamBullets(d)));
+                if (!string.IsNullOrWhiteSpace(d.IntelKorAngle))
+                {
+                    column.Item().Element(c => ParagraphSection(c, "KOR angle", d.IntelKorAngle!));
+                }
                 if (d.MentionsInWorkHistory.Count > 0)
                 {
                     column.Item().Element(c => Section(c, "On other portfolios",
@@ -286,6 +296,26 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                 {
                     column.Item().Element(c => Section(c, "KOR open actions mentioning this project",
                         ProjectMentionActionBullets(d)));
+                }
+                if (d.IntelKeyPeople.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Key people on this project",
+                        ProjectKeyPeopleBullets(d)));
+                }
+                if (d.IntelSignals.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Project signals",
+                        ProjectIntelSignalBullets(d)));
+                }
+                if (d.IntelActions.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "KOR actions on this project",
+                        ProjectIntelActionBullets(d)));
+                }
+                if (d.IntelRisks.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Project risks",
+                        ProjectIntelRiskBullets(d)));
                 }
                 column.Item().Element(c => ProjectSourceSection(c, d));
             });
@@ -359,6 +389,45 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             if (!string.IsNullOrWhiteSpace(m.YearApprox)) bits.Add(m.YearApprox);
             var meta = bits.Count == 0 ? "" : "  " + string.Join(", ", bits);
             yield return $"{m.OrgDisplayName} ({m.Kind}){meta}";
+        }
+    }
+
+    private static IEnumerable<string> ProjectKeyPeopleBullets(ProjectBriefData d)
+    {
+        foreach (var p in d.IntelKeyPeople)
+        {
+            yield return $"{p.DisplayName} ({p.Side})  {Nz(p.Title)}{(p.OrgName is null ? "" : "  " + p.OrgName)}";
+        }
+    }
+
+    private static IEnumerable<string> ProjectIntelSignalBullets(ProjectBriefData d)
+    {
+        foreach (var s in d.IntelSignals)
+        {
+            var when = s.OccurredAtApprox ?? s.LastSeenAtUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            yield return $"{when}  {s.SignalType}: {s.Subject}";
+        }
+    }
+
+    private static IEnumerable<string> ProjectIntelActionBullets(ProjectBriefData d)
+    {
+        foreach (var a in d.IntelActions)
+        {
+            var text = $"{a.ActionType}: {a.Recommendation}";
+            var targets = new List<string>();
+            if (!string.IsNullOrWhiteSpace(a.TargetPersonName)) targets.Add(a.TargetPersonName!);
+            if (!string.IsNullOrWhiteSpace(a.TargetOrgName)) targets.Add(a.TargetOrgName!);
+            if (targets.Count > 0) text += " (target: " + string.Join(" / ", targets) + ")";
+            if (!string.IsNullOrWhiteSpace(a.TimingNotes)) text += " [" + a.TimingNotes + "]";
+            yield return text;
+        }
+    }
+
+    private static IEnumerable<string> ProjectIntelRiskBullets(ProjectBriefData d)
+    {
+        foreach (var r in d.IntelRisks)
+        {
+            yield return $"{r.RiskType}: {r.Description}{(r.MitigationNotes is null ? "" : "  mitigation: " + r.MitigationNotes)}";
         }
     }
 
