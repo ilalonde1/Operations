@@ -10,6 +10,7 @@ using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.IndustryEvents;
 using Kor.Opportunities.Data.Intel;
+using Kor.Opportunities.Data.ResearchEnvelope;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -2252,12 +2253,40 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            // Try envelope first (new path).
+            var validation = ResearchEnvelopeValidator.Validate(doc, "competitor-profiles");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine(
+                        "competitor-profiles: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                // Legacy fallback. Log so we can track when legacy callers
+                // stop coming in (and eventually delete the fallback).
+                Console.WriteLine(
+                    $"competitor-profiles: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"competitor-profiles: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var c in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"competitor-profiles: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var c in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var name = String(c, "name");
