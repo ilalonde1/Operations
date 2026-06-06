@@ -1,6 +1,7 @@
 #nullable enable
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Kor.Opportunities.Data.Briefs;
 
@@ -12,6 +13,12 @@ public interface IBriefDataStore
 {
     /// <summary>Returns the brief data for a specific live opportunity, or null if it does not exist.</summary>
     Task<OpportunityBriefData?> GetOpportunityBriefAsync(long opportunityId, CancellationToken ct);
+
+    Task<IReadOnlyList<ProjectSearchRow>> SearchProjectsAsync(
+        string query, int take, CancellationToken ct);
+
+    Task<ProjectBriefData?> GetProjectBriefAsync(
+        long mpiId, CancellationToken ct);
 
     /// <summary>Returns market-wide brief data for a province (and optional city fragment).</summary>
     Task<RegionBriefData> GetRegionBriefAsync(string province, string? city, CancellationToken ct);

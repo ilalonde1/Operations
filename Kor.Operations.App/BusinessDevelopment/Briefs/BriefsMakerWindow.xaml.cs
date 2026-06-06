@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,6 +32,8 @@ public partial class BriefsMakerWindow : Window
     private CanonicalOrgRow? _selectedOrg;
     private string? _selectedProvince;
     private string? _selectedCity;
+    private ProjectBriefData? _selectedProject;
+    private long? _selectedProjectId;
 
     public BriefsMakerWindow(
         ICanonicalOrgStore canonicalOrgStore,
@@ -46,6 +49,8 @@ public partial class BriefsMakerWindow : Window
         InitializeComponent();
         OrgPicker.Store = canonicalOrgStore;
         OrgPicker.OrgSelected += OrgPicker_OrgSelected;
+        ProjectPicker.Search = (q, ct) => _briefStore.SearchProjectsAsync(q, 20, ct);
+        ProjectPicker.ProjectSelected += ProjectPicker_ProjectSelected;
         TypeTabs.SelectionChanged += TypeTabs_SelectionChanged;
     }
 
@@ -64,6 +69,30 @@ public partial class BriefsMakerWindow : Window
         OrgPreviewName.Text = row.DisplayName;
         OrgPreviewMeta.Text = $"{row.Kind}  canonical org id {row.Id}";
         OrgPreview.Visibility = Visibility.Visible;
+        UpdateGenerateButtonsEnabled();
+    }
+
+    private async void ProjectPicker_ProjectSelected(object? sender, long id)
+    {
+        _selectedProjectId = id;
+        var data = await _briefStore.GetProjectBriefAsync(id, CancellationToken.None)
+            .ConfigureAwait(true);
+        if (data is null)
+        {
+            _selectedProject = null;
+            ProjectPreview.Visibility = Visibility.Collapsed;
+            UpdateGenerateButtonsEnabled();
+            return;
+        }
+
+        _selectedProject = data;
+        ProjectPreviewName.Text = data.ProjectName;
+        var meta = $"{data.Stage ?? ""}    {data.City ?? data.Province}    " +
+                   (data.EstimatedCostCad is { } v
+                       ? v.ToString("C0", CultureInfo.CurrentCulture)
+                       : data.EstimatedCostText ?? "");
+        ProjectPreviewMeta.Text = meta.Trim();
+        ProjectPreview.Visibility = Visibility.Visible;
         UpdateGenerateButtonsEnabled();
     }
 
@@ -123,7 +152,8 @@ public partial class BriefsMakerWindow : Window
     {
         var ready =
             (TypeTabs.SelectedIndex == 0 && _selectedOrg is not null) ||
-            (TypeTabs.SelectedIndex == 1 && _selectedProvince is not null);
+            (TypeTabs.SelectedIndex == 1 && _selectedProvince is not null) ||
+            (TypeTabs.SelectedIndex == 2 && _selectedProject is not null);
         GeneratePdfButton.IsEnabled = ready;
         GenerateDocxButton.IsEnabled = ready;
     }
@@ -178,6 +208,18 @@ public partial class BriefsMakerWindow : Window
                 else
                 {
                     await Task.Run(() => _wordGen.WriteRegionBrief(data, path)).ConfigureAwait(true);
+                }
+            }
+            else if (TypeTabs.SelectedIndex == 2 && _selectedProject is { } proj)
+            {
+                path = Path.Combine(desktop, $"KOR-Project-Brief-{_selectedProjectId ?? proj.Id}-{ts}.{ext}");
+                if (asPdf)
+                {
+                    await Task.Run(() => _pdfGen.WriteProjectBrief(proj, path)).ConfigureAwait(true);
+                }
+                else
+                {
+                    await Task.Run(() => _wordGen.WriteProjectBrief(proj, path)).ConfigureAwait(true);
                 }
             }
             else

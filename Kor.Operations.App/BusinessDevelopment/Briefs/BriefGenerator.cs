@@ -128,6 +128,59 @@ public sealed class BriefGenerator : IBriefGenerator
         AppendFooter(body);
     }
 
+    public void WriteProjectBrief(ProjectBriefData data, string outputPath)
+    {
+        if (data is null) throw new ArgumentNullException(nameof(data));
+        if (string.IsNullOrWhiteSpace(outputPath)) throw new ArgumentException("Output path is required.", nameof(outputPath));
+
+        EnsureDirectory(outputPath);
+        using var doc = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
+        var main = doc.AddMainDocumentPart();
+        main.Document = new Document(new Body());
+        var body = main.Document.Body!;
+
+        AppendTitle(body, "Project Brief");
+        AppendSubtitle(body, "Pursuit prep for one forward-pipeline project");
+        AppendHeading(body, data.ProjectName);
+        AppendLabelValueTable(body, new List<(string Label, string Value)>
+        {
+            ("Stage", Nz(data.Stage)),
+            ("Location", ProjectLocation(data)),
+            ("Sector", ProjectSector(data)),
+            ("Estimated value", FormatProjectValue(data)),
+        });
+
+        AppendHeading(body, "Project description");
+        AppendBody(body, string.IsNullOrWhiteSpace(data.ProjectDescription)
+            ? "No project description on file yet."
+            : data.ProjectDescription!);
+
+        AppendHeading(body, "Schedule");
+        AppendBody(body, $"{data.StartYear?.ToString(CultureInfo.InvariantCulture) ?? "?"} - {data.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "?"}");
+        if (!string.IsNullOrWhiteSpace(data.ScheduleNotes))
+        {
+            AppendBody(body, data.ScheduleNotes!);
+        }
+
+        AppendHeading(body, "Team & KOR angle");
+        AppendLinkedOrgBlock(body, "Proponent", data.ProponentName, data.ProponentSummary, structuralCallout: false);
+        AppendLinkedOrgBlock(body, "Architect", data.ArchitectName, data.ArchitectSummary, structuralCallout: false);
+        AppendLinkedOrgBlock(body, "Structural Engineer", data.StructuralEngineerName, data.StructuralSummary, structuralCallout: true);
+        AppendLinkedOrgBlock(body, "GC", data.GeneralContractorName, data.GeneralContractorSummary, structuralCallout: false);
+
+        AppendHeading(body, "Source");
+        if (string.IsNullOrWhiteSpace(data.SourceUrl))
+        {
+            AppendBody(body, "No source URL on file.");
+        }
+        else
+        {
+            AppendHyperlinkBody(main, body, data.SourceUrl!);
+        }
+
+        AppendFooter(body);
+    }
+
     public void WriteRegionBrief(RegionBriefData data, string outputPath)
     {
         if (data is null) throw new ArgumentNullException(nameof(data));
@@ -502,6 +555,24 @@ public sealed class BriefGenerator : IBriefGenerator
         body.AppendChild(BuildPara(text, BodyPt, bold: false, italic: true, align: null, bullet: false));
     }
 
+    private static void AppendHyperlinkBody(MainDocumentPart main, Body body, string url)
+    {
+        var rel = main.AddHyperlinkRelationship(new Uri(url), isExternal: true);
+        var hyperlink = new Hyperlink(
+            new Run(
+                new RunProperties(
+                    new FontSize { Val = BodyPt.ToString(CultureInfo.InvariantCulture) },
+                    new Color { Val = BrandAccent },
+                    new Underline { Val = UnderlineValues.Single }),
+                new Text(url) { Space = SpaceProcessingModeValues.Preserve }))
+        {
+            Id = rel.Id,
+            History = true,
+        };
+
+        body.AppendChild(new Paragraph(hyperlink));
+    }
+
     private static void AppendOpportunityBuyerIntel(Body body, OrgIntelBundle intel)
     {
         if (intel.Actions.Count + intel.People.Count + intel.Signals.Count == 0)
@@ -543,6 +614,37 @@ public sealed class BriefGenerator : IBriefGenerator
         foreach (var s in intel.Signals)
         {
             AppendBullet(body, FormatIntelBullet(FormatSignalBody(s), s.Confidence, s.Freshness, s.RefreshedAtUtc));
+        }
+    }
+
+    private static void AppendLinkedOrgBlock(
+        Body body,
+        string roleLabel,
+        string? sourceName,
+        LinkedOrgSummary? summary,
+        bool structuralCallout)
+    {
+        if (summary is null)
+        {
+            AppendBullet(body, $"{roleLabel}: {Nz(sourceName)} — Not on file.");
+            if (structuralCallout && !string.IsNullOrWhiteSpace(sourceName))
+            {
+                AppendItalicBody(body, $"KOR's competitor on this pursuit. Consider angle: {sourceName} vs KOR.");
+            }
+
+            return;
+        }
+
+        var refreshed = summary.LastRefreshAtUtc.HasValue
+            ? summary.LastRefreshAtUtc.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            : "not refreshed";
+        AppendBullet(
+            body,
+            $"{roleLabel}: {summary.DisplayName} — {summary.IntelPersonCount} people, {summary.OpenActionCount} open actions, {summary.RecentSignalCount} recent signals; last refreshed {refreshed}.");
+
+        if (structuralCallout)
+        {
+            AppendItalicBody(body, $"KOR's competitor on this pursuit. Consider angle: {summary.DisplayName} vs KOR.");
         }
     }
 
@@ -731,6 +833,29 @@ public sealed class BriefGenerator : IBriefGenerator
         return value.HasValue && value.Value > 0
             ? "CAD " + value.Value.ToString("N0", CultureInfo.InvariantCulture)
             : "not stated";
+    }
+
+    private static string FormatProjectValue(ProjectBriefData data)
+        => data.EstimatedCostCad.HasValue && data.EstimatedCostCad.Value > 0
+            ? "CAD " + data.EstimatedCostCad.Value.ToString("N0", CultureInfo.InvariantCulture)
+            : string.IsNullOrWhiteSpace(data.EstimatedCostText) ? "not stated" : data.EstimatedCostText!;
+
+    private static string ProjectLocation(ProjectBriefData data)
+    {
+        var cityPart = string.IsNullOrWhiteSpace(data.City) ? data.Province : $"{data.Province} / {data.City}";
+        return string.IsNullOrWhiteSpace(data.Region) ? cityPart : $"{cityPart} / {data.Region}";
+    }
+
+    private static string ProjectSector(ProjectBriefData data)
+    {
+        if (string.IsNullOrWhiteSpace(data.Sector))
+        {
+            return Nz(data.SubSector);
+        }
+
+        return string.IsNullOrWhiteSpace(data.SubSector)
+            ? data.Sector!
+            : $"{data.Sector} / {data.SubSector}";
     }
 
     private static string FormatIntelBullet(

@@ -42,6 +42,13 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         Document.Create(c => ComposeOpportunity(c, data)).GeneratePdf(outputPath);
     }
 
+    public void WriteProjectBrief(ProjectBriefData data, string outputPath)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        EnsureDirectory(outputPath);
+        Document.Create(c => ComposeProject(c, data)).GeneratePdf(outputPath);
+    }
+
     public void WriteRegionBrief(RegionBriefData data, string outputPath)
     {
         ArgumentNullException.ThrowIfNull(data);
@@ -236,6 +243,114 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         foreach (var s in intel.Signals)
         {
             yield return FormatIntelBullet(FormatSignalBody(s), s.Confidence, s.Freshness, s.RefreshedAtUtc);
+        }
+    }
+
+    // === Project brief ===
+
+    private static void ComposeProject(IDocumentContainer container, ProjectBriefData d)
+    {
+        container.Page(page =>
+        {
+            ConfigurePage(page);
+            page.Content().Column(column =>
+            {
+                column.Spacing(12);
+                column.Item().Element(c => ProjectHeaderBand(c, d));
+                column.Item().Element(c => ParagraphSection(c, "Project description",
+                    string.IsNullOrWhiteSpace(d.ProjectDescription)
+                        ? "No project description on file yet."
+                        : d.ProjectDescription!));
+                column.Item().Element(c => Section(c, "Schedule",
+                    ProjectScheduleBullets(d)));
+                column.Item().Element(c => Section(c, "Team & KOR angle",
+                    ProjectTeamBullets(d)));
+                column.Item().Element(c => ProjectSourceSection(c, d));
+            });
+            page.Footer().Element(PageFooter);
+        });
+    }
+
+    private static void ProjectHeaderBand(IContainer container, ProjectBriefData d)
+    {
+        container.Background(Brand).Padding(10).Column(column =>
+        {
+            column.Spacing(4);
+            column.Item().Text("PROJECT BRIEF")
+                .FontSize(8).LetterSpacing(0.2f).FontColor(BrandEyebrow);
+            column.Item().Text(Nz(d.ProjectName)).FontSize(15).Bold().FontColor(Colors.White);
+            column.Item().Text("Pursuit prep for one forward-pipeline project")
+                .FontSize(9).Italic().FontColor(BrandSubtle);
+
+            column.Item().PaddingTop(3).Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                });
+                HeaderFact(table, "Stage", Nz(d.Stage));
+                HeaderFact(table, "Location", ProjectLocation(d));
+                HeaderFact(table, "Sector", ProjectSector(d));
+                HeaderFact(table, "Estimated value", FormatProjectValue(d));
+            });
+        });
+    }
+
+    private static IEnumerable<string> ProjectScheduleBullets(ProjectBriefData d)
+    {
+        yield return $"{d.StartYear?.ToString(CultureInfo.InvariantCulture) ?? "?"} - {d.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "?"}";
+        if (!string.IsNullOrWhiteSpace(d.ScheduleNotes))
+        {
+            yield return d.ScheduleNotes!;
+        }
+    }
+
+    private static IEnumerable<string> ProjectTeamBullets(ProjectBriefData d)
+    {
+        foreach (var line in ProjectLinkedOrgBullets("Proponent", d.ProponentName, d.ProponentSummary, structuralCallout: false))
+        {
+            yield return line;
+        }
+        foreach (var line in ProjectLinkedOrgBullets("Architect", d.ArchitectName, d.ArchitectSummary, structuralCallout: false))
+        {
+            yield return line;
+        }
+        foreach (var line in ProjectLinkedOrgBullets("Structural Engineer", d.StructuralEngineerName, d.StructuralSummary, structuralCallout: true))
+        {
+            yield return line;
+        }
+        foreach (var line in ProjectLinkedOrgBullets("GC", d.GeneralContractorName, d.GeneralContractorSummary, structuralCallout: false))
+        {
+            yield return line;
+        }
+    }
+
+    private static IEnumerable<string> ProjectLinkedOrgBullets(
+        string roleLabel,
+        string? sourceName,
+        LinkedOrgSummary? summary,
+        bool structuralCallout)
+    {
+        if (summary is null)
+        {
+            yield return $"{roleLabel}: {Nz(sourceName)} — Not on file.";
+            if (structuralCallout && !string.IsNullOrWhiteSpace(sourceName))
+            {
+                yield return $"KOR's competitor on this pursuit. Consider angle: {sourceName} vs KOR.";
+            }
+            yield break;
+        }
+
+        var refreshed = summary.LastRefreshAtUtc.HasValue
+            ? summary.LastRefreshAtUtc.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            : "not refreshed";
+        yield return $"{roleLabel}: {summary.DisplayName} — {summary.IntelPersonCount} people, {summary.OpenActionCount} open actions, {summary.RecentSignalCount} recent signals; last refreshed {refreshed}.";
+        if (structuralCallout)
+        {
+            yield return $"KOR's competitor on this pursuit. Consider angle: {summary.DisplayName} vs KOR.";
         }
     }
 
@@ -805,6 +920,38 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         });
     }
 
+    private static void ParagraphSection(IContainer container, string heading, string paragraph)
+    {
+        container.Column(column =>
+        {
+            column.Spacing(6);
+            column.Item().BorderBottom(1).BorderColor(BrandAccent).PaddingBottom(4)
+                .Text(heading).FontSize(11.5f).Bold().FontColor(Brand);
+            column.Item().Text(paragraph).FontSize(10).FontColor(Text);
+        });
+    }
+
+    private static void ProjectSourceSection(IContainer container, ProjectBriefData data)
+    {
+        container.Column(column =>
+        {
+            column.Spacing(6);
+            column.Item().BorderBottom(1).BorderColor(BrandAccent).PaddingBottom(4)
+                .Text("Source").FontSize(11.5f).Bold().FontColor(Brand);
+            if (string.IsNullOrWhiteSpace(data.SourceUrl))
+            {
+                column.Item().Text("No source URL on file.").FontSize(10).FontColor(Text);
+            }
+            else
+            {
+                column.Item().Text(t =>
+                {
+                    t.Hyperlink(data.SourceUrl!, data.SourceUrl!).FontSize(10).FontColor(Brand).Underline(true);
+                });
+            }
+        });
+    }
+
     private static void HeaderFact(TableDescriptor table, string label, string value)
     {
         // Round 49: smaller fact rows so the band can be shorter overall.
@@ -851,6 +998,29 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         return value.HasValue && value.Value > 0
             ? "CAD " + value.Value.ToString("N0", CultureInfo.InvariantCulture)
             : "not stated";
+    }
+
+    private static string FormatProjectValue(ProjectBriefData data)
+        => data.EstimatedCostCad.HasValue && data.EstimatedCostCad.Value > 0
+            ? "CAD " + data.EstimatedCostCad.Value.ToString("N0", CultureInfo.InvariantCulture)
+            : string.IsNullOrWhiteSpace(data.EstimatedCostText) ? "not stated" : data.EstimatedCostText!;
+
+    private static string ProjectLocation(ProjectBriefData data)
+    {
+        var cityPart = string.IsNullOrWhiteSpace(data.City) ? data.Province : $"{data.Province} / {data.City}";
+        return string.IsNullOrWhiteSpace(data.Region) ? cityPart : $"{cityPart} / {data.Region}";
+    }
+
+    private static string ProjectSector(ProjectBriefData data)
+    {
+        if (string.IsNullOrWhiteSpace(data.Sector))
+        {
+            return Nz(data.SubSector);
+        }
+
+        return string.IsNullOrWhiteSpace(data.SubSector)
+            ? data.Sector!
+            : $"{data.Sector} / {data.SubSector}";
     }
 
     private static string FormatIntelBullet(

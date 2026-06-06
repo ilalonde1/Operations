@@ -40,6 +40,62 @@ public sealed record OpportunityBriefData(
     public Kor.Opportunities.Data.Intel.OpportunityIntelBundle? Intel { get; init; }
 }
 
+public sealed record ProjectSearchRow(
+    long Id,
+    string ProjectName,
+    string? ProponentName,
+    string? Stage,
+    string? City,
+    string Province)
+{
+    public string Subtitle
+    {
+        get
+        {
+            var location = string.IsNullOrWhiteSpace(City) ? Province : $"{City}, {Province}";
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(Stage)) parts.Add(Stage);
+            if (!string.IsNullOrWhiteSpace(ProponentName)) parts.Add(ProponentName);
+            if (!string.IsNullOrWhiteSpace(location)) parts.Add(location);
+            return string.Join("  ", parts);
+        }
+    }
+}
+
+public sealed record LinkedOrgSummary(
+    long CanonicalOrgId,
+    string DisplayName,
+    string Kind,
+    int IntelPersonCount,
+    int OpenActionCount,
+    int RecentSignalCount,
+    DateTimeOffset? LastRefreshAtUtc);
+
+public sealed record ProjectBriefData(
+    long Id,
+    string ProjectName,
+    string Province,
+    string? City,
+    string? Region,
+    string? Sector,
+    string? SubSector,
+    string? Stage,
+    decimal? EstimatedCostCad,
+    string? EstimatedCostText,
+    short? StartYear,
+    short? CompletionYear,
+    string? ScheduleNotes,
+    string? ProponentName,
+    string? ArchitectName,
+    string? StructuralEngineerName,
+    string? GeneralContractorName,
+    string? SourceUrl,
+    string? ProjectDescription,
+    LinkedOrgSummary? ProponentSummary,
+    LinkedOrgSummary? ArchitectSummary,
+    LinkedOrgSummary? StructuralSummary,
+    LinkedOrgSummary? GeneralContractorSummary);
+
 public sealed record RegionTopOrg(
     long Id,
     string DisplayName,

@@ -146,6 +146,154 @@ WHERE ArchitectCanonicalOrgId = @arch AND StructuralEngineerCanonicalOrgId = @ko
         };
     }
 
+    public async Task<IReadOnlyList<ProjectSearchRow>> SearchProjectsAsync(string query, int take, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (@take) m.Id, m.ProjectName, m.ProponentName,
+       m.Stage, m.MunicipalityName, m.Province
+FROM opportunities.MajorProjectsInventory m
+WHERE m.RetiredAtUtc IS NULL
+  AND (@q IS NULL
+       OR m.ProjectName LIKE '%' + @q + '%' ESCAPE '\'
+       OR m.ProponentName LIKE '%' + @q + '%' ESCAPE '\'
+       OR m.ArchitectName LIKE '%' + @q + '%' ESCAPE '\')
+ORDER BY m.UpdatedAtUtc DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = Math.Max(1, take);
+        cmd.Parameters.Add("@q", SqlDbType.NVarChar, 300).Value =
+            string.IsNullOrWhiteSpace(query) ? DBNull.Value : EscapeLikeQuery(query.Trim());
+
+        var rows = new List<ProjectSearchRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ProjectSearchRow(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.IsDBNull(2) ? null : r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.GetString(5)));
+        }
+
+        return rows;
+    }
+
+    public async Task<ProjectBriefData?> GetProjectBriefAsync(long mpiId, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        const string sql = @"
+SELECT Id, ProjectName, Province, MunicipalityName, RegionName, Sector, SubSector,
+       Stage, EstimatedCostCad, EstimatedCostText, StartYear, CompletionYear,
+       ScheduleNotes, ProponentName, ArchitectName, StructuralEngineerName,
+       GeneralContractorName, SourceUrl, ProjectDescription,
+       ProponentCanonicalOrgId, ArchitectCanonicalOrgId,
+       StructuralEngineerCanonicalOrgId, GeneralContractorCanonicalOrgId
+FROM opportunities.MajorProjectsInventory
+WHERE Id = @id AND RetiredAtUtc IS NULL;";
+
+        long id;
+        string projectName;
+        string province;
+        string? city;
+        string? region;
+        string? sector;
+        string? subSector;
+        string? stage;
+        decimal? estimatedCostCad;
+        string? estimatedCostText;
+        short? startYear;
+        short? completionYear;
+        string? scheduleNotes;
+        string? proponentName;
+        string? architectName;
+        string? structuralEngineerName;
+        string? generalContractorName;
+        string? sourceUrl;
+        string? projectDescription;
+        long? proponentOrgId;
+        long? architectOrgId;
+        long? structuralOrgId;
+        long? gcOrgId;
+
+        await using (var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds })
+        {
+            cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (!await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                return null;
+            }
+
+            id = r.GetInt64(0);
+            projectName = r.GetString(1);
+            province = r.GetString(2);
+            city = r.IsDBNull(3) ? null : r.GetString(3);
+            region = r.IsDBNull(4) ? null : r.GetString(4);
+            sector = r.IsDBNull(5) ? null : r.GetString(5);
+            subSector = r.IsDBNull(6) ? null : r.GetString(6);
+            stage = r.IsDBNull(7) ? null : r.GetString(7);
+            estimatedCostCad = r.IsDBNull(8) ? null : r.GetDecimal(8);
+            estimatedCostText = r.IsDBNull(9) ? null : r.GetString(9);
+            startYear = r.IsDBNull(10) ? null : r.GetInt16(10);
+            completionYear = r.IsDBNull(11) ? null : r.GetInt16(11);
+            scheduleNotes = r.IsDBNull(12) ? null : r.GetString(12);
+            proponentName = r.IsDBNull(13) ? null : r.GetString(13);
+            architectName = r.IsDBNull(14) ? null : r.GetString(14);
+            structuralEngineerName = r.IsDBNull(15) ? null : r.GetString(15);
+            generalContractorName = r.IsDBNull(16) ? null : r.GetString(16);
+            sourceUrl = r.IsDBNull(17) ? null : r.GetString(17);
+            projectDescription = r.IsDBNull(18) ? null : r.GetString(18);
+            proponentOrgId = r.IsDBNull(19) ? null : r.GetInt64(19);
+            architectOrgId = r.IsDBNull(20) ? null : r.GetInt64(20);
+            structuralOrgId = r.IsDBNull(21) ? null : r.GetInt64(21);
+            gcOrgId = r.IsDBNull(22) ? null : r.GetInt64(22);
+        }
+
+        var proponentSummary = proponentOrgId.HasValue
+            ? await BuildLinkedOrgSummaryAsync(con, proponentOrgId.Value, ct).ConfigureAwait(false)
+            : null;
+        var architectSummary = architectOrgId.HasValue
+            ? await BuildLinkedOrgSummaryAsync(con, architectOrgId.Value, ct).ConfigureAwait(false)
+            : null;
+        var structuralSummary = structuralOrgId.HasValue
+            ? await BuildLinkedOrgSummaryAsync(con, structuralOrgId.Value, ct).ConfigureAwait(false)
+            : null;
+        var gcSummary = gcOrgId.HasValue
+            ? await BuildLinkedOrgSummaryAsync(con, gcOrgId.Value, ct).ConfigureAwait(false)
+            : null;
+
+        return new ProjectBriefData(
+            id,
+            projectName,
+            province,
+            city,
+            region,
+            sector,
+            subSector,
+            stage,
+            estimatedCostCad,
+            estimatedCostText,
+            startYear,
+            completionYear,
+            scheduleNotes,
+            proponentName,
+            architectName,
+            structuralEngineerName,
+            generalContractorName,
+            sourceUrl,
+            string.IsNullOrWhiteSpace(projectDescription) ? scheduleNotes : projectDescription,
+            proponentSummary,
+            architectSummary,
+            structuralSummary,
+            gcSummary);
+    }
+
     public async Task<RegionBriefData> GetRegionBriefAsync(string province, string? city, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(province))
@@ -315,6 +463,59 @@ ORDER BY UpdatedAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
         return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
+    private static async Task<LinkedOrgSummary?> BuildLinkedOrgSummaryAsync(
+        SqlConnection con,
+        long canonicalOrgId,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT co.Id, co.DisplayName, co.Kind,
+  (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a
+   WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL)
+      AS PeopleCount,
+  (SELECT COUNT(*) FROM opportunities.IntelAction x
+   WHERE x.CanonicalOrgId = co.Id AND x.Status = 'Open'
+     AND x.RetiredAtUtc IS NULL)
+      AS OpenActions,
+  (SELECT COUNT(*) FROM opportunities.IntelSignal s
+   WHERE s.CanonicalOrgId = co.Id
+     AND s.RetiredAtUtc IS NULL
+     AND s.LastSeenAtUtc >= DATEADD(DAY, -180, sysdatetimeoffset()))
+      AS RecentSignals,
+  (SELECT MAX(e.LastRefreshAtUtc)
+   FROM opportunities.CanonicalOrgEnrichment e
+   WHERE e.CanonicalOrgId = co.Id)
+      AS LastRefreshAtUtc
+FROM opportunities.CanonicalOrg co
+WHERE co.Id = @id;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        return new LinkedOrgSummary(
+            r.GetInt64(0),
+            r.GetString(1),
+            r.GetString(2),
+            Convert.ToInt32(r.GetValue(3)),
+            Convert.ToInt32(r.GetValue(4)),
+            Convert.ToInt32(r.GetValue(5)),
+            r.IsDBNull(6) ? null : r.GetDateTimeOffset(6));
+    }
+
+    private static string EscapeLikeQuery(string value)
+    {
+        return value
+            .Replace(@"\", @"\\", StringComparison.Ordinal)
+            .Replace("%", @"\%", StringComparison.Ordinal)
+            .Replace("_", @"\_", StringComparison.Ordinal)
+            .Replace("[", @"\[", StringComparison.Ordinal);
     }
 
     private static async Task<int> ScalarIntAsync(SqlConnection con, string sql, Action<SqlCommand> bind, CancellationToken ct)
