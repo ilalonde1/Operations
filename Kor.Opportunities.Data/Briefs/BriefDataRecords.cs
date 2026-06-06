@@ -96,6 +96,69 @@ public sealed record ProjectBriefData(
     LinkedOrgSummary? StructuralSummary,
     LinkedOrgSummary? GeneralContractorSummary);
 
+public sealed record PersonSearchRow(
+    long IntelPersonId,
+    string DisplayName,
+    string? CurrentTitle,
+    string? CurrentEmployerName)
+{
+    public string Subtitle
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(CurrentTitle) && !string.IsNullOrWhiteSpace(CurrentEmployerName))
+            {
+                return $"{CurrentTitle} @ {CurrentEmployerName}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(CurrentTitle))
+            {
+                return CurrentTitle!;
+            }
+
+            return string.IsNullOrWhiteSpace(CurrentEmployerName) ? "Unaffiliated" : "@ " + CurrentEmployerName;
+        }
+    }
+}
+
+public sealed record PersonAffiliationRow(
+    string OrgName,
+    long CanonicalOrgId,
+    string? Title,
+    string? Department,
+    bool IsCurrent,
+    string? StartDateApprox,
+    string? EndDateApprox);
+
+public sealed record PersonSignalRow(
+    string? OccurredAtApprox,
+    string SignalType,
+    string Subject,
+    string? Detail,
+    string OrgName);
+
+public sealed record PersonActionRow(
+    string ActionType,
+    string Recommendation,
+    string? TimingNotes,
+    string OrgName);
+
+public sealed record PersonBriefData(
+    long IntelPersonId,
+    string DisplayName,
+    string? CurrentTitle,
+    string? CurrentEmployerName,
+    long? CurrentEmployerCanonicalOrgId,
+    string? Email,
+    string? Phone,
+    string? LinkedinUrl,
+    string? Notes,
+    DateTimeOffset? LastSeenAtUtc,
+    IReadOnlyList<PersonAffiliationRow> CurrentAffiliations,
+    IReadOnlyList<PersonAffiliationRow> FormerAffiliations,
+    IReadOnlyList<PersonSignalRow> RecentSignals,
+    IReadOnlyList<PersonActionRow> OpenActions);
+
 public sealed record RegionTopOrg(
     long Id,
     string DisplayName,

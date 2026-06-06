@@ -49,6 +49,13 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         Document.Create(c => ComposeProject(c, data)).GeneratePdf(outputPath);
     }
 
+    public void WritePersonBrief(PersonBriefData data, string outputPath)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        EnsureDirectory(outputPath);
+        Document.Create(c => ComposePerson(c, data)).GeneratePdf(outputPath);
+    }
+
     public void WriteRegionBrief(RegionBriefData data, string outputPath)
     {
         ArgumentNullException.ThrowIfNull(data);
@@ -353,6 +360,145 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             yield return $"KOR's competitor on this pursuit. Consider angle: {summary.DisplayName} vs KOR.";
         }
     }
+
+    // === Person brief ===
+
+    private static void ComposePerson(IDocumentContainer container, PersonBriefData d)
+    {
+        container.Page(page =>
+        {
+            ConfigurePage(page);
+            page.Content().Column(column =>
+            {
+                column.Spacing(12);
+                column.Item().Element(c => PersonHeaderBand(c, d));
+                if (!string.IsNullOrWhiteSpace(d.Email)
+                    || !string.IsNullOrWhiteSpace(d.Phone)
+                    || !string.IsNullOrWhiteSpace(d.LinkedinUrl))
+                {
+                    column.Item().Element(c => Section(c, "Contact", PersonContactBullets(d)));
+                }
+                if (!string.IsNullOrWhiteSpace(d.Notes))
+                {
+                    column.Item().Element(c => ParagraphSection(c, "Notes", d.Notes!));
+                }
+                if (d.CurrentAffiliations.Count > 0)
+                {
+                    column.Item().Element(c => PersonAffiliationTable(c, "Current roles", d.CurrentAffiliations, includeEndDate: false));
+                }
+                if (d.FormerAffiliations.Count > 0)
+                {
+                    column.Item().Element(c => PersonAffiliationTable(c, "Career history", d.FormerAffiliations, includeEndDate: true));
+                }
+                if (d.RecentSignals.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Recent activity", PersonSignalBullets(d)));
+                }
+                if (d.OpenActions.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "KOR open actions targeting this person", PersonActionBullets(d)));
+                }
+            });
+            page.Footer().Element(PageFooter);
+        });
+    }
+
+    private static void PersonHeaderBand(IContainer container, PersonBriefData d)
+    {
+        container.Background(Brand).Padding(10).Column(column =>
+        {
+            column.Spacing(4);
+            column.Item().Text("PERSON BRIEF")
+                .FontSize(8).LetterSpacing(0.2f).FontColor(BrandEyebrow);
+            column.Item().Text(Nz(d.DisplayName)).FontSize(15).Bold().FontColor(Colors.White);
+            column.Item().Text("Contact prep for one named individual")
+                .FontSize(9).Italic().FontColor(BrandSubtle);
+
+            column.Item().PaddingTop(3).Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                });
+                HeaderFact(table, "Current title", Nz(d.CurrentTitle));
+                HeaderFact(table, "Current employer", Nz(d.CurrentEmployerName));
+                HeaderFact(table, "Last seen", d.LastSeenAtUtc?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "not recorded");
+            });
+        });
+    }
+
+    private static IEnumerable<string> PersonContactBullets(PersonBriefData d)
+    {
+        if (!string.IsNullOrWhiteSpace(d.Email)) yield return d.Email!;
+        if (!string.IsNullOrWhiteSpace(d.Phone)) yield return d.Phone!;
+        if (!string.IsNullOrWhiteSpace(d.LinkedinUrl)) yield return d.LinkedinUrl!;
+    }
+
+    private static IEnumerable<string> PersonSignalBullets(PersonBriefData d)
+    {
+        foreach (var s in d.RecentSignals)
+        {
+            yield return $"{s.OccurredAtApprox ?? "?"}  {s.SignalType}: {s.Subject} (via {s.OrgName})";
+        }
+    }
+
+    private static IEnumerable<string> PersonActionBullets(PersonBriefData d)
+    {
+        foreach (var a in d.OpenActions)
+        {
+            var text = $"{a.ActionType}: {a.Recommendation}";
+            if (!string.IsNullOrWhiteSpace(a.TimingNotes))
+            {
+                text += " [" + a.TimingNotes + "]";
+            }
+            text += $" (re {a.OrgName})";
+            yield return text;
+        }
+    }
+
+    private static void PersonAffiliationTable(
+        IContainer container,
+        string heading,
+        IReadOnlyList<PersonAffiliationRow> rows,
+        bool includeEndDate)
+    {
+        container.Column(column =>
+        {
+            column.Spacing(6);
+            column.Item().BorderBottom(1).BorderColor(BrandAccent).PaddingBottom(4)
+                .Text(heading).FontSize(11.5f).Bold().FontColor(Brand);
+            column.Item().Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn(2);
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                });
+
+                AffiliationHeaderCell(table, "Org");
+                AffiliationHeaderCell(table, "Title");
+                AffiliationHeaderCell(table, includeEndDate ? "End" : "Department");
+
+                foreach (var row in rows)
+                {
+                    AffiliationBodyCell(table, row.OrgName);
+                    AffiliationBodyCell(table, Nz(row.Title));
+                    AffiliationBodyCell(table, includeEndDate ? Nz(row.EndDateApprox) : Nz(row.Department));
+                }
+            });
+        });
+    }
+
+    private static void AffiliationHeaderCell(TableDescriptor table, string text)
+        => table.Cell().Background(Pale).Border(1).BorderColor(Border).Padding(4)
+            .Text(text).FontSize(8).Bold().FontColor(Brand);
+
+    private static void AffiliationBodyCell(TableDescriptor table, string text)
+        => table.Cell().Border(1).BorderColor(Border).Padding(4)
+            .Text(text).FontSize(9).FontColor(Text);
 
     // === Region brief ===
 

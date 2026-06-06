@@ -20,6 +20,12 @@ public interface IBriefDataStore
     Task<ProjectBriefData?> GetProjectBriefAsync(
         long mpiId, CancellationToken ct);
 
+    Task<IReadOnlyList<PersonSearchRow>> SearchPeopleAsync(
+        string query, int take, CancellationToken ct);
+
+    Task<PersonBriefData?> GetPersonBriefAsync(
+        long intelPersonId, CancellationToken ct);
+
     /// <summary>Returns market-wide brief data for a province (and optional city fragment).</summary>
     Task<RegionBriefData> GetRegionBriefAsync(string province, string? city, CancellationToken ct);
 

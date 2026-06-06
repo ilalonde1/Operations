@@ -294,6 +294,118 @@ WHERE Id = @id AND RetiredAtUtc IS NULL;";
             gcSummary);
     }
 
+    public async Task<IReadOnlyList<PersonSearchRow>> SearchPeopleAsync(string query, int take, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (@take)
+    p.Id,
+    p.DisplayName,
+    cur.Title       AS CurrentTitle,
+    co.DisplayName  AS CurrentEmployerName
+FROM opportunities.IntelPerson p
+OUTER APPLY (
+    SELECT TOP 1 a.Title, a.CanonicalOrgId
+    FROM opportunities.IntelPersonAffiliation a
+    WHERE a.IntelPersonId = p.Id
+      AND a.IsCurrent = 1
+      AND a.RetiredAtUtc IS NULL
+    ORDER BY a.LastSeenAtUtc DESC
+) cur
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = cur.CanonicalOrgId
+WHERE p.RetiredAtUtc IS NULL
+  AND (@q IS NULL OR p.DisplayName LIKE '%' + @q + '%' ESCAPE '\')
+ORDER BY p.LastSeenAtUtc DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = Math.Max(1, take);
+        cmd.Parameters.Add("@q", SqlDbType.NVarChar, 300).Value =
+            string.IsNullOrWhiteSpace(query) ? DBNull.Value : EscapeLikeQuery(query.Trim());
+
+        var rows = new List<PersonSearchRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new PersonSearchRow(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.IsDBNull(2) ? null : r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3)));
+        }
+
+        return rows;
+    }
+
+    public async Task<PersonBriefData?> GetPersonBriefAsync(long intelPersonId, CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        long id;
+        string displayName;
+        string? email;
+        string? phone;
+        string? linkedinUrl;
+        string? notes;
+        DateTimeOffset lastSeen;
+
+        {
+            const string sql = @"
+SELECT Id, DisplayName, Email, Phone, LinkedinUrl, Notes, LastSeenAtUtc
+FROM opportunities.IntelPerson
+WHERE Id = @id AND RetiredAtUtc IS NULL;";
+            await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+            cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = intelPersonId;
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (!await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                return null;
+            }
+
+            id = r.GetInt64(0);
+            displayName = r.GetString(1);
+            email = r.IsDBNull(2) ? null : r.GetString(2);
+            phone = r.IsDBNull(3) ? null : r.GetString(3);
+            linkedinUrl = r.IsDBNull(4) ? null : r.GetString(4);
+            notes = r.IsDBNull(5) ? null : r.GetString(5);
+            lastSeen = r.GetDateTimeOffset(6);
+        }
+
+        var affiliations = await GetPersonAffiliationsAsync(con, id, ct).ConfigureAwait(false);
+        var currentWithSeen = affiliations
+            .Where(a => a.Row.IsCurrent)
+            .OrderByDescending(a => a.LastSeenAtUtc)
+            .ToList();
+        var current = currentWithSeen.Select(a => a.Row).ToList();
+        var former = affiliations
+            .Where(a => !a.Row.IsCurrent)
+            .OrderBy(a => string.IsNullOrWhiteSpace(a.Row.EndDateApprox))
+            .ThenByDescending(a => a.Row.EndDateApprox ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+            .Select(a => a.Row)
+            .ToList();
+
+        var primaryCurrent = currentWithSeen.FirstOrDefault();
+        var signals = await GetPersonSignalsAsync(con, displayName, ct).ConfigureAwait(false);
+        var actions = await GetPersonActionsAsync(con, displayName, ct).ConfigureAwait(false);
+
+        return new PersonBriefData(
+            id,
+            displayName,
+            primaryCurrent?.Row.Title,
+            primaryCurrent?.Row.OrgName,
+            primaryCurrent?.Row.CanonicalOrgId,
+            email,
+            phone,
+            linkedinUrl,
+            notes,
+            lastSeen,
+            current,
+            former,
+            signals,
+            actions);
+    }
+
     public async Task<RegionBriefData> GetRegionBriefAsync(string province, string? city, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(province))
@@ -508,6 +620,105 @@ WHERE co.Id = @id;";
             Convert.ToInt32(r.GetValue(5)),
             r.IsDBNull(6) ? null : r.GetDateTimeOffset(6));
     }
+
+    private static async Task<IReadOnlyList<PersonAffiliationWithSeen>> GetPersonAffiliationsAsync(
+        SqlConnection con,
+        long intelPersonId,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT co.DisplayName, a.CanonicalOrgId, a.Title, a.Department, a.IsCurrent,
+       a.StartDateApprox, a.EndDateApprox, a.LastSeenAtUtc
+FROM opportunities.IntelPersonAffiliation a
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+WHERE a.IntelPersonId = @id
+  AND a.RetiredAtUtc IS NULL
+ORDER BY a.IsCurrent DESC, a.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = intelPersonId;
+        var rows = new List<PersonAffiliationWithSeen>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new PersonAffiliationWithSeen(
+                new PersonAffiliationRow(
+                    r.GetString(0),
+                    r.GetInt64(1),
+                    r.IsDBNull(2) ? null : r.GetString(2),
+                    r.IsDBNull(3) ? null : r.GetString(3),
+                    r.GetBoolean(4),
+                    r.IsDBNull(5) ? null : r.GetString(5),
+                    r.IsDBNull(6) ? null : r.GetString(6)),
+                r.GetDateTimeOffset(7)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<PersonSignalRow>> GetPersonSignalsAsync(
+        SqlConnection con,
+        string displayName,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP 10 s.OccurredAtApprox, s.SignalType, s.Subject, s.Detail, co.DisplayName
+FROM opportunities.IntelSignal s
+JOIN opportunities.CanonicalOrg co ON co.Id = s.CanonicalOrgId
+WHERE s.RetiredAtUtc IS NULL
+  AND s.LastSeenAtUtc >= DATEADD(DAY, -180, sysdatetimeoffset())
+  AND (s.Subject LIKE '%' + @name + '%' ESCAPE '\'
+       OR s.Detail LIKE '%' + @name + '%' ESCAPE '\')
+ORDER BY s.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@name", SqlDbType.NVarChar, 300).Value = EscapeLikeQuery(displayName);
+        var rows = new List<PersonSignalRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new PersonSignalRow(
+                r.IsDBNull(0) ? null : r.GetString(0),
+                r.GetString(1),
+                r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.GetString(4)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<PersonActionRow>> GetPersonActionsAsync(
+        SqlConnection con,
+        string displayName,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP 10 a.ActionType, a.Recommendation, a.TimingNotes, co.DisplayName
+FROM opportunities.IntelAction a
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+WHERE a.TargetPersonName = @name
+  AND a.Status = N'Open'
+  AND a.RetiredAtUtc IS NULL
+ORDER BY a.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@name", SqlDbType.NVarChar, 200).Value = displayName;
+        var rows = new List<PersonActionRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new PersonActionRow(
+                r.GetString(0),
+                r.GetString(1),
+                r.IsDBNull(2) ? null : r.GetString(2),
+                r.GetString(3)));
+        }
+
+        return rows;
+    }
+
+    private sealed record PersonAffiliationWithSeen(PersonAffiliationRow Row, DateTimeOffset LastSeenAtUtc);
 
     private static string EscapeLikeQuery(string value)
     {

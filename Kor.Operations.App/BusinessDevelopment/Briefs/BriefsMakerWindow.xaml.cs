@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -34,6 +35,8 @@ public partial class BriefsMakerWindow : Window
     private string? _selectedCity;
     private ProjectBriefData? _selectedProject;
     private long? _selectedProjectId;
+    private PersonBriefData? _selectedPerson;
+    private long? _selectedPersonId;
 
     public BriefsMakerWindow(
         ICanonicalOrgStore canonicalOrgStore,
@@ -51,6 +54,8 @@ public partial class BriefsMakerWindow : Window
         OrgPicker.OrgSelected += OrgPicker_OrgSelected;
         ProjectPicker.Search = (q, ct) => _briefStore.SearchProjectsAsync(q, 20, ct);
         ProjectPicker.ProjectSelected += ProjectPicker_ProjectSelected;
+        PersonPicker.Search = (q, ct) => _briefStore.SearchPeopleAsync(q, 20, ct);
+        PersonPicker.PersonSelected += PersonPicker_PersonSelected;
         TypeTabs.SelectionChanged += TypeTabs_SelectionChanged;
     }
 
@@ -93,6 +98,29 @@ public partial class BriefsMakerWindow : Window
                        : data.EstimatedCostText ?? "");
         ProjectPreviewMeta.Text = meta.Trim();
         ProjectPreview.Visibility = Visibility.Visible;
+        UpdateGenerateButtonsEnabled();
+    }
+
+    private async void PersonPicker_PersonSelected(object? sender, long id)
+    {
+        _selectedPersonId = id;
+        var data = await _briefStore.GetPersonBriefAsync(id, CancellationToken.None)
+            .ConfigureAwait(true);
+        if (data is null)
+        {
+            _selectedPerson = null;
+            PersonPreview.Visibility = Visibility.Collapsed;
+            UpdateGenerateButtonsEnabled();
+            return;
+        }
+
+        _selectedPerson = data;
+        PersonPreviewName.Text = data.DisplayName;
+        var bits = new List<string>();
+        if (!string.IsNullOrWhiteSpace(data.CurrentTitle)) bits.Add(data.CurrentTitle);
+        if (!string.IsNullOrWhiteSpace(data.CurrentEmployerName)) bits.Add("@ " + data.CurrentEmployerName);
+        PersonPreviewMeta.Text = bits.Count == 0 ? "Unaffiliated" : string.Join("    ", bits);
+        PersonPreview.Visibility = Visibility.Visible;
         UpdateGenerateButtonsEnabled();
     }
 
@@ -153,7 +181,8 @@ public partial class BriefsMakerWindow : Window
         var ready =
             (TypeTabs.SelectedIndex == 0 && _selectedOrg is not null) ||
             (TypeTabs.SelectedIndex == 1 && _selectedProvince is not null) ||
-            (TypeTabs.SelectedIndex == 2 && _selectedProject is not null);
+            (TypeTabs.SelectedIndex == 2 && _selectedProject is not null) ||
+            (TypeTabs.SelectedIndex == 3 && _selectedPerson is not null);
         GeneratePdfButton.IsEnabled = ready;
         GenerateDocxButton.IsEnabled = ready;
     }
@@ -220,6 +249,26 @@ public partial class BriefsMakerWindow : Window
                 else
                 {
                     await Task.Run(() => _wordGen.WriteProjectBrief(proj, path)).ConfigureAwait(true);
+                }
+            }
+            else if (TypeTabs.SelectedIndex == 3 && _selectedPerson is { } person)
+            {
+                var safeName = new string(person.DisplayName
+                    .Where(ch => char.IsLetterOrDigit(ch) || ch == '-' || ch == '_')
+                    .ToArray());
+                if (safeName.Length == 0)
+                {
+                    safeName = "person";
+                }
+
+                path = Path.Combine(desktop, $"KOR-Person-Brief-{_selectedPersonId ?? person.IntelPersonId}-{safeName}-{ts}.{ext}");
+                if (asPdf)
+                {
+                    await Task.Run(() => _pdfGen.WritePersonBrief(person, path)).ConfigureAwait(true);
+                }
+                else
+                {
+                    await Task.Run(() => _wordGen.WritePersonBrief(person, path)).ConfigureAwait(true);
                 }
             }
             else

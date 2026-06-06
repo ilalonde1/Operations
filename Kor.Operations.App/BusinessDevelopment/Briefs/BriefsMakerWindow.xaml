@@ -114,13 +114,32 @@
             </TabItem>
 
             <TabItem Header="Person">
-                <Grid>
-                    <TextBlock Text="Coming in R90c"
-                               FontSize="14"
+                <StackPanel Margin="0,12,0,0">
+                    <TextBlock Text="Pick a person"
+                               FontSize="11"
                                Foreground="{StaticResource Text.Secondary}"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
-                </Grid>
+                               Margin="0,0,0,4"/>
+                    <appControls:PersonSearchTypeahead
+                        x:Name="PersonPicker"
+                        Margin="0,0,0,12"/>
+                    <Border x:Name="PersonPreview"
+                            Padding="12"
+                            Background="#F9FAFB"
+                            BorderBrush="{StaticResource Panel.Border}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock x:Name="PersonPreviewName"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock x:Name="PersonPreviewMeta"
+                                       FontSize="11"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </TabItem>
         </TabControl>
 

@@ -181,6 +181,87 @@ public sealed class BriefGenerator : IBriefGenerator
         AppendFooter(body);
     }
 
+    public void WritePersonBrief(PersonBriefData data, string outputPath)
+    {
+        if (data is null) throw new ArgumentNullException(nameof(data));
+        if (string.IsNullOrWhiteSpace(outputPath)) throw new ArgumentException("Output path is required.", nameof(outputPath));
+
+        EnsureDirectory(outputPath);
+        using var doc = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
+        var main = doc.AddMainDocumentPart();
+        main.Document = new Document(new Body());
+        var body = main.Document.Body!;
+
+        AppendTitle(body, "Person Brief");
+        AppendSubtitle(body, "Contact prep for one named individual");
+        AppendHeading(body, data.DisplayName);
+        AppendBody(body, $"Current title: {Nz(data.CurrentTitle)}");
+        AppendBody(body, $"Current employer: {Nz(data.CurrentEmployerName)}");
+        AppendBody(body, "Last seen: " + (data.LastSeenAtUtc?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "not recorded"));
+
+        if (!string.IsNullOrWhiteSpace(data.Email)
+            || !string.IsNullOrWhiteSpace(data.Phone)
+            || !string.IsNullOrWhiteSpace(data.LinkedinUrl))
+        {
+            AppendHeading(body, "Contact");
+            if (!string.IsNullOrWhiteSpace(data.Email)) AppendBody(body, data.Email!);
+            if (!string.IsNullOrWhiteSpace(data.Phone)) AppendBody(body, data.Phone!);
+            if (!string.IsNullOrWhiteSpace(data.LinkedinUrl)) AppendHyperlinkBody(main, body, data.LinkedinUrl!);
+        }
+
+        if (!string.IsNullOrWhiteSpace(data.Notes))
+        {
+            AppendHeading(body, "Notes");
+            AppendBody(body, data.Notes!);
+        }
+
+        if (data.CurrentAffiliations.Count > 0)
+        {
+            AppendHeading(body, "Current roles");
+            AppendTable(body,
+                new[] { "Org", "Title", "Department" },
+                data.CurrentAffiliations
+                    .Select(a => (IReadOnlyList<string>)new[] { a.OrgName, Nz(a.Title), Nz(a.Department) })
+                    .ToList());
+        }
+
+        if (data.FormerAffiliations.Count > 0)
+        {
+            AppendHeading(body, "Career history");
+            AppendTable(body,
+                new[] { "Org", "Title", "End" },
+                data.FormerAffiliations
+                    .Select(a => (IReadOnlyList<string>)new[] { a.OrgName, Nz(a.Title), Nz(a.EndDateApprox) })
+                    .ToList());
+        }
+
+        if (data.RecentSignals.Count > 0)
+        {
+            AppendHeading(body, "Recent activity");
+            foreach (var s in data.RecentSignals)
+            {
+                AppendBullet(body, $"{s.OccurredAtApprox ?? "?"}  {s.SignalType}: {s.Subject} (via {s.OrgName})");
+            }
+        }
+
+        if (data.OpenActions.Count > 0)
+        {
+            AppendHeading(body, "KOR open actions targeting this person");
+            foreach (var a in data.OpenActions)
+            {
+                var text = $"{a.ActionType}: {a.Recommendation}";
+                if (!string.IsNullOrWhiteSpace(a.TimingNotes))
+                {
+                    text += " [" + a.TimingNotes + "]";
+                }
+                text += $" (re {a.OrgName})";
+                AppendBullet(body, text);
+            }
+        }
+
+        AppendFooter(body);
+    }
+
     public void WriteRegionBrief(RegionBriefData data, string outputPath)
     {
         if (data is null) throw new ArgumentNullException(nameof(data));
@@ -557,7 +638,13 @@ public sealed class BriefGenerator : IBriefGenerator
 
     private static void AppendHyperlinkBody(MainDocumentPart main, Body body, string url)
     {
-        var rel = main.AddHyperlinkRelationship(new Uri(url), isExternal: true);
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            AppendBody(body, url);
+            return;
+        }
+
+        var rel = main.AddHyperlinkRelationship(uri, isExternal: true);
         var hyperlink = new Hyperlink(
             new Run(
                 new RunProperties(
