@@ -29,6 +29,10 @@ public interface IBriefDataStore
     /// <summary>Returns market-wide brief data for a province (and optional city fragment).</summary>
     Task<RegionBriefData> GetRegionBriefAsync(string province, string? city, CancellationToken ct);
 
+    Task<SectorBriefData> GetSectorBriefAsync(
+        SectorBriefRequest request,
+        CancellationToken ct);
+
     /// <summary>Returns brief data for a specific canonical organization, or null if it does not exist.</summary>
     Task<OrgBriefData?> GetOrgBriefAsync(long canonicalOrgId, CancellationToken ct);
 }

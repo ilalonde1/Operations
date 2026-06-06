@@ -16,6 +16,8 @@ public interface IBriefPdfGenerator
 
     void WritePersonBrief(PersonBriefData data, string outputPath);
 
+    void WriteSectorBrief(SectorBriefData data, string outputPath);
+
     void WriteRegionBrief(RegionBriefData data, string outputPath);
 
     void WriteOrgBrief(OrgBriefData data, string outputPath);

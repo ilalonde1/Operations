@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:appControls="clr-namespace:Kor.Operations.App.Controls"
         Title="Make a Brief"
-        Width="640"
-        Height="520"
+        Width="760"
+        Height="700"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI">
@@ -140,6 +140,190 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Sector">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Text="Province"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,4"/>
+                        <ComboBox x:Name="SectorProvinceCombo"
+                                  Height="32"
+                                  VerticalContentAlignment="Center"
+                                  SelectionChanged="SectorProvinceCombo_SelectionChanged"
+                                  Margin="0,0,0,12">
+                            <ComboBoxItem Content="BC"/>
+                            <ComboBoxItem Content="AB"/>
+                            <ComboBoxItem Content="ON"/>
+                            <ComboBoxItem Content="QC"/>
+                            <ComboBoxItem Content="Other"/>
+                        </ComboBox>
+
+                        <TextBlock Text="City (optional)"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,4"/>
+                        <ComboBox x:Name="SectorCityCombo"
+                                  Height="32"
+                                  VerticalContentAlignment="Center"
+                                  IsEnabled="False"
+                                  SelectionChanged="SectorCityCombo_SelectionChanged"
+                                  Margin="0,0,0,16"/>
+
+                        <TextBlock Text="Sector buckets (pick any combination)"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,6"/>
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10"
+                                Margin="0,0,0,16">
+                            <UniformGrid Columns="2"
+                                         x:Name="SectorBucketsGrid">
+                                <CheckBox Content="Healthcare"
+                                          Tag="Healthcare"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorBucketChanged"
+                                          Unchecked="SectorBucketChanged"/>
+                                <CheckBox Content="K-12"
+                                          Tag="K-12"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorBucketChanged"
+                                          Unchecked="SectorBucketChanged"/>
+                                <CheckBox Content="Post-Secondary"
+                                          Tag="Post-Secondary"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorBucketChanged"
+                                          Unchecked="SectorBucketChanged"/>
+                                <CheckBox Content="Civic"
+                                          Tag="Civic"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorBucketChanged"
+                                          Unchecked="SectorBucketChanged"/>
+                                <CheckBox Content="Recreation"
+                                          Tag="Recreation"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorBucketChanged"
+                                          Unchecked="SectorBucketChanged"/>
+                                <CheckBox Content="Residential  Low-Rise"
+                                          Tag="Residential-LowRise"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorBucketChanged"
+                                          Unchecked="SectorBucketChanged"/>
+                                <CheckBox Content="Residential  High-Rise"
+                                          Tag="Residential-HighRise"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorBucketChanged"
+                                          Unchecked="SectorBucketChanged"/>
+                                <CheckBox Content="Industrial / Other"
+                                          Tag="Industrial-Other"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorBucketChanged"
+                                          Unchecked="SectorBucketChanged"/>
+                            </UniformGrid>
+                        </Border>
+
+                        <TextBlock Text="Structural type (pick any combination)"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,6"/>
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10"
+                                Margin="0,0,0,16">
+                            <UniformGrid Columns="2">
+                                <CheckBox Content="Wood-Frame"
+                                          Tag="Wood-Frame"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorStructuralChanged"
+                                          Unchecked="SectorStructuralChanged"/>
+                                <CheckBox Content="Concrete Tower"
+                                          Tag="Concrete-Tower"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorStructuralChanged"
+                                          Unchecked="SectorStructuralChanged"/>
+                                <CheckBox Content="Mass Timber"
+                                          Tag="Mass-Timber"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorStructuralChanged"
+                                          Unchecked="SectorStructuralChanged"/>
+                                <CheckBox Content="Steel"
+                                          Tag="Steel"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorStructuralChanged"
+                                          Unchecked="SectorStructuralChanged"/>
+                                <CheckBox Content="Hybrid"
+                                          Tag="Hybrid"
+                                          Margin="0,2,8,2"
+                                          Checked="SectorStructuralChanged"
+                                          Unchecked="SectorStructuralChanged"/>
+                            </UniformGrid>
+                        </Border>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10"
+                                Margin="0,0,0,16">
+                            <StackPanel>
+                                <CheckBox x:Name="SectorIndigenousToggle"
+                                          Content="Indigenous projects only"
+                                          Checked="SectorIndigenousToggleChanged"
+                                          Unchecked="SectorIndigenousToggleChanged"
+                                          Margin="0,0,0,8"/>
+                                <TextBlock Text="Nation filter (optional, e.g. Squamish, Musqueam, Tsleil-Waututh)"
+                                           FontSize="11"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           Margin="0,0,0,4"/>
+                                <TextBox x:Name="SectorNationBox"
+                                         Height="32"
+                                         Padding="10,0"
+                                         FontSize="13"
+                                         IsEnabled="False"
+                                         VerticalContentAlignment="Center"
+                                         Background="#FFFFFFFF"
+                                         Foreground="#FF111111"
+                                         CaretBrush="#FF111111"
+                                         BorderBrush="{StaticResource Panel.Border}"
+                                         BorderThickness="1"
+                                         TextChanged="SectorFilterTextChanged"/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Extra keyword (LIKE-match on ProjectName + Description)"
+                                   FontSize="11"
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   Margin="0,0,0,4"/>
+                        <TextBox x:Name="SectorExtraKeywordBox"
+                                 Height="32"
+                                 Padding="10,0"
+                                 FontSize="13"
+                                 VerticalContentAlignment="Center"
+                                 Background="#FFFFFFFF"
+                                 Foreground="#FF111111"
+                                 CaretBrush="#FF111111"
+                                 BorderBrush="{StaticResource Panel.Border}"
+                                 BorderThickness="1"
+                                 TextChanged="SectorFilterTextChanged"
+                                 Margin="0,0,0,16"/>
+
+                        <Border x:Name="SectorPreview"
+                                Padding="12"
+                                Background="#F9FAFB"
+                                BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Visibility="Collapsed">
+                            <TextBlock x:Name="SectorPreviewText"
+                                       FontSize="13"
+                                       TextWrapping="Wrap"/>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
 

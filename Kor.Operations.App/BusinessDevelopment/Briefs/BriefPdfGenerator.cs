@@ -56,6 +56,13 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         Document.Create(c => ComposePerson(c, data)).GeneratePdf(outputPath);
     }
 
+    public void WriteSectorBrief(SectorBriefData data, string outputPath)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        EnsureDirectory(outputPath);
+        Document.Create(c => ComposeSector(c, data)).GeneratePdf(outputPath);
+    }
+
     public void WriteRegionBrief(RegionBriefData data, string outputPath)
     {
         ArgumentNullException.ThrowIfNull(data);
@@ -68,6 +75,215 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         ArgumentNullException.ThrowIfNull(data);
         EnsureDirectory(outputPath);
         Document.Create(c => ComposeOrg(c, data)).GeneratePdf(outputPath);
+    }
+
+    // === Sector brief ===
+
+    private static void ComposeSector(IDocumentContainer container, SectorBriefData d)
+    {
+        container.Page(page =>
+        {
+            ConfigurePage(page);
+            page.Content().Column(column =>
+            {
+                column.Spacing(12);
+                column.Item().Element(c => SectorHeaderBand(c, d));
+                column.Item().Element(c => Section(c, "Filter criteria",
+                    SectorFilterBullets(d)));
+                if (d.LiveRfps.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Live RFPs in this slice",
+                        SectorLiveRfpBullets(d)));
+                }
+                if (d.ForwardProjects.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Forward pipeline in this slice",
+                        SectorForwardProjectBullets(d)));
+                }
+                if (d.RecentAwards.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Recent awards in this slice (last 12 months)",
+                        SectorRecentAwardBullets(d)));
+                }
+                if (d.TopArchitects.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Top architects active in this slice",
+                        SectorTopOrgBullets(d.TopArchitects)));
+                }
+                if (d.TopOwners.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Top owners commissioning in this slice",
+                        SectorTopOrgBullets(d.TopOwners)));
+                }
+                if (d.TopGcs.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Top GCs in this slice",
+                        SectorTopOrgBullets(d.TopGcs)));
+                }
+                if (d.TopStructuralCompetitors.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Top structural competitors in this slice",
+                        SectorTopOrgBullets(d.TopStructuralCompetitors)));
+                }
+                if (d.KorPortfolio.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "KOR's own track record in this slice",
+                        SectorKorPortfolioBullets(d)));
+                }
+                if (d.RelevantSignals.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Relevant Intel signals",
+                        SectorIntelSignalBullets(d)));
+                }
+            });
+            page.Footer().Element(PageFooter);
+        });
+    }
+
+    private static void SectorHeaderBand(IContainer container, SectorBriefData d)
+    {
+        container.Background(Brand).Padding(10).Column(column =>
+        {
+            column.Spacing(4);
+            column.Item().Text("SECTOR BRIEF").FontSize(8)
+                .LetterSpacing(0.2f).FontColor(BrandEyebrow);
+            column.Item().Text(SectorHeaderTitle(d.Request)).FontSize(15)
+                .Bold().FontColor(Colors.White);
+            column.Item().Text("Slice across the forward pipeline, live RFPs, and recent awards")
+                .FontSize(9).Italic().FontColor(BrandSubtle);
+
+            column.Item().PaddingTop(3).Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                    columns.RelativeColumn();
+                });
+                HeaderFact(table, "Live RFPs", d.Counts.LiveRfpCount.ToString(CultureInfo.InvariantCulture));
+                HeaderFact(table, "Forward pipeline",
+                    d.Counts.ForwardPipelineCount.ToString(CultureInfo.InvariantCulture));
+                HeaderFact(table, "Recent awards",
+                    d.Counts.RecentAwardCount.ToString(CultureInfo.InvariantCulture));
+                HeaderFact(table, "Pipeline $",
+                    d.Counts.TotalForwardPipelineCostCad is { } v
+                        ? v.ToString("C0", CultureInfo.CurrentCulture)
+                        : "");
+            });
+        });
+    }
+
+    private static string SectorHeaderTitle(SectorBriefRequest r)
+    {
+        var geo = string.IsNullOrWhiteSpace(r.City) ? r.Province : $"{r.City}, {r.Province}";
+        string sectorBit;
+        if (r.SectorBuckets.Count == 0 && r.StructuralTypes.Count == 0 && string.IsNullOrWhiteSpace(r.ExtraKeyword))
+        {
+            sectorBit = "All sectors";
+        }
+        else
+        {
+            var bits = new List<string>();
+            if (r.SectorBuckets.Count > 0) bits.Add(string.Join(" + ", r.SectorBuckets));
+            if (r.StructuralTypes.Count > 0) bits.Add(string.Join(" + ", r.StructuralTypes));
+            if (!string.IsNullOrWhiteSpace(r.ExtraKeyword)) bits.Add($"{r.ExtraKeyword}");
+            sectorBit = string.Join(" / ", bits);
+        }
+        if (r.IndigenousOnly)
+        {
+            var nation = string.IsNullOrWhiteSpace(r.IndigenousNationFilter)
+                ? "Indigenous"
+                : $"Indigenous ({r.IndigenousNationFilter})";
+            sectorBit = sectorBit + "    " + nation;
+        }
+        return sectorBit + "  " + geo;
+    }
+
+    private static IEnumerable<string> SectorFilterBullets(SectorBriefData d)
+    {
+        var r = d.Request;
+        yield return $"Geography: {(string.IsNullOrWhiteSpace(r.City) ? r.Province : r.City + ", " + r.Province)}";
+        if (r.SectorBuckets.Count > 0)
+            yield return $"Sectors: {string.Join(", ", r.SectorBuckets)}";
+        if (r.StructuralTypes.Count > 0)
+            yield return $"Structural types: {string.Join(", ", r.StructuralTypes)}";
+        if (r.IndigenousOnly)
+            yield return r.IndigenousNationFilter is { Length: > 0 } n
+                ? $"Indigenous lens, nation filter: {n}"
+                : "Indigenous lens (all nations)";
+        if (!string.IsNullOrWhiteSpace(r.ExtraKeyword))
+            yield return $"Extra keyword: \"{r.ExtraKeyword}\"";
+    }
+
+    private static IEnumerable<string> SectorLiveRfpBullets(SectorBriefData d)
+    {
+        foreach (var r in d.LiveRfps)
+        {
+            var deadline = r.SubmissionDeadlineUtc?.ToString("yyyy-MM-dd",
+                CultureInfo.InvariantCulture) ?? "no deadline";
+            var sector = string.IsNullOrWhiteSpace(r.PrimeProjectSector) ? "" : $"  {r.PrimeProjectSector}";
+            yield return $"{r.Name} ({r.BuyerName})  submit by {deadline}{sector}";
+        }
+    }
+
+    private static IEnumerable<string> SectorForwardProjectBullets(SectorBriefData d)
+    {
+        foreach (var p in d.ForwardProjects)
+        {
+            var v = p.EstimatedCostCad is { } cad
+                ? cad.ToString("C0", CultureInfo.CurrentCulture)
+                : "";
+            var prop = string.IsNullOrWhiteSpace(p.ProponentName) ? "" : $"  {p.ProponentName}";
+            var stage = string.IsNullOrWhiteSpace(p.Stage) ? "" : $" [{p.Stage}]";
+            yield return $"{p.ProjectName}{prop}{stage}  {v}";
+        }
+    }
+
+    private static IEnumerable<string> SectorRecentAwardBullets(SectorBriefData d)
+    {
+        foreach (var a in d.RecentAwards)
+        {
+            var v = a.AwardedValueCad is { } cad
+                ? cad.ToString("C0", CultureInfo.CurrentCulture)
+                : "";
+            var when = a.AwardedAtUtc?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "";
+            yield return $"{a.ProjectName} ({a.BuyerName})  {a.AwardedToName ?? "(no winner)"}  {v} on {when}";
+        }
+    }
+
+    private static IEnumerable<string> SectorTopOrgBullets(IReadOnlyList<SectorTopOrg> orgs)
+    {
+        foreach (var o in orgs)
+        {
+            var joint = o.KorJointCount > 0
+                ? $"  {o.KorJointCount} joint with KOR"
+                : "";
+            yield return $"{o.DisplayName} ({o.Kind})  {o.ProjectCount} project{(o.ProjectCount == 1 ? "" : "s")}{joint}";
+        }
+    }
+
+    private static IEnumerable<string> SectorKorPortfolioBullets(SectorBriefData d)
+    {
+        foreach (var k in d.KorPortfolio)
+        {
+            var v = k.EstimatedCostCad is { } cad
+                ? cad.ToString("C0", CultureInfo.CurrentCulture)
+                : "";
+            var city = string.IsNullOrWhiteSpace(k.City) ? "" : $"  {k.City}";
+            var stage = string.IsNullOrWhiteSpace(k.Stage) ? "" : $" [{k.Stage}]";
+            yield return $"{k.ProjectName}{city}{stage}  {v}";
+        }
+    }
+
+    private static IEnumerable<string> SectorIntelSignalBullets(SectorBriefData d)
+    {
+        foreach (var s in d.RelevantSignals)
+        {
+            var when = s.OccurredAtApprox
+                ?? s.LastSeenAtUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            yield return $"{when}  {s.SignalType}: {s.Subject} (via {s.OrgDisplayName})";
+        }
     }
 
     // === Opportunity brief ===

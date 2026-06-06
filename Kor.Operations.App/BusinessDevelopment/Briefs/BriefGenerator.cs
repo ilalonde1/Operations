@@ -128,6 +128,237 @@ public sealed class BriefGenerator : IBriefGenerator
         AppendFooter(body);
     }
 
+    public void WriteSectorBrief(SectorBriefData data, string outputPath)
+    {
+        if (data is null) throw new ArgumentNullException(nameof(data));
+        if (string.IsNullOrWhiteSpace(outputPath))
+            throw new ArgumentException("Output path is required.", nameof(outputPath));
+
+        EnsureDirectory(outputPath);
+        using var doc = WordprocessingDocument.Create(outputPath, WordprocessingDocumentType.Document);
+        var main = doc.AddMainDocumentPart();
+        main.Document = new Document(new Body());
+        var body = main.Document.Body!;
+
+        AppendTitle(body, "Sector Brief");
+        AppendSubtitle(body, "Slice across the forward pipeline, live RFPs, and recent awards");
+        AppendHeading(body, SectorHeaderTitle(data.Request));
+
+        AppendLabelValueTable(body, new List<(string Label, string Value)>
+        {
+            ("Live RFPs", data.Counts.LiveRfpCount.ToString(CultureInfo.InvariantCulture)),
+            ("Forward pipeline", data.Counts.ForwardPipelineCount.ToString(CultureInfo.InvariantCulture)),
+            ("Recent awards", data.Counts.RecentAwardCount.ToString(CultureInfo.InvariantCulture)),
+            ("Pipeline $",
+                data.Counts.TotalForwardPipelineCostCad is { } v
+                    ? v.ToString("C0", CultureInfo.CurrentCulture)
+                    : ""),
+        });
+
+        AppendHeading(body, "Filter criteria");
+        foreach (var line in SectorFilterBulletsForWord(data))
+        {
+            AppendBullet(body, line);
+        }
+
+        if (data.LiveRfps.Count > 0)
+        {
+            AppendHeading(body, "Live RFPs in this slice");
+            foreach (var line in SectorLiveRfpBullets(data))
+            {
+                AppendBullet(body, line);
+            }
+        }
+
+        if (data.ForwardProjects.Count > 0)
+        {
+            AppendHeading(body, "Forward pipeline in this slice");
+            foreach (var line in SectorForwardProjectBullets(data))
+            {
+                AppendBullet(body, line);
+            }
+        }
+
+        if (data.RecentAwards.Count > 0)
+        {
+            AppendHeading(body, "Recent awards in this slice (last 12 months)");
+            foreach (var line in SectorRecentAwardBullets(data))
+            {
+                AppendBullet(body, line);
+            }
+        }
+
+        if (data.TopArchitects.Count > 0)
+        {
+            AppendHeading(body, "Top architects active in this slice");
+            foreach (var line in SectorTopOrgBullets(data.TopArchitects))
+            {
+                AppendBullet(body, line);
+            }
+        }
+
+        if (data.TopOwners.Count > 0)
+        {
+            AppendHeading(body, "Top owners commissioning in this slice");
+            foreach (var line in SectorTopOrgBullets(data.TopOwners))
+            {
+                AppendBullet(body, line);
+            }
+        }
+
+        if (data.TopGcs.Count > 0)
+        {
+            AppendHeading(body, "Top GCs in this slice");
+            foreach (var line in SectorTopOrgBullets(data.TopGcs))
+            {
+                AppendBullet(body, line);
+            }
+        }
+
+        if (data.TopStructuralCompetitors.Count > 0)
+        {
+            AppendHeading(body, "Top structural competitors in this slice");
+            foreach (var line in SectorTopOrgBullets(data.TopStructuralCompetitors))
+            {
+                AppendBullet(body, line);
+            }
+        }
+
+        if (data.KorPortfolio.Count > 0)
+        {
+            AppendHeading(body, "KOR's own track record in this slice");
+            foreach (var line in SectorKorPortfolioBullets(data))
+            {
+                AppendBullet(body, line);
+            }
+        }
+
+        if (data.RelevantSignals.Count > 0)
+        {
+            AppendHeading(body, "Relevant Intel signals");
+            foreach (var line in SectorIntelSignalBullets(data))
+            {
+                AppendBullet(body, line);
+            }
+        }
+
+        AppendFooter(body);
+    }
+
+    // Tiny dup of the PDF helper so Word doesn't reach into a private
+    // static on the PDF class. Same logic, identical strings.
+    private static string SectorHeaderTitle(SectorBriefRequest r)
+    {
+        var geo = string.IsNullOrWhiteSpace(r.City) ? r.Province : $"{r.City}, {r.Province}";
+        string sectorBit;
+        if (r.SectorBuckets.Count == 0 && r.StructuralTypes.Count == 0 && string.IsNullOrWhiteSpace(r.ExtraKeyword))
+        {
+            sectorBit = "All sectors";
+        }
+        else
+        {
+            var bits = new List<string>();
+            if (r.SectorBuckets.Count > 0) bits.Add(string.Join(" + ", r.SectorBuckets));
+            if (r.StructuralTypes.Count > 0) bits.Add(string.Join(" + ", r.StructuralTypes));
+            if (!string.IsNullOrWhiteSpace(r.ExtraKeyword)) bits.Add($"{r.ExtraKeyword}");
+            sectorBit = string.Join(" / ", bits);
+        }
+        if (r.IndigenousOnly)
+        {
+            var nation = string.IsNullOrWhiteSpace(r.IndigenousNationFilter)
+                ? "Indigenous"
+                : $"Indigenous ({r.IndigenousNationFilter})";
+            sectorBit = sectorBit + "    " + nation;
+        }
+        return sectorBit + "  " + geo;
+    }
+
+    private static IEnumerable<string> SectorFilterBulletsForWord(SectorBriefData d)
+    {
+        var r = d.Request;
+        yield return $"Geography: {(string.IsNullOrWhiteSpace(r.City) ? r.Province : r.City + ", " + r.Province)}";
+        if (r.SectorBuckets.Count > 0)
+            yield return $"Sectors: {string.Join(", ", r.SectorBuckets)}";
+        if (r.StructuralTypes.Count > 0)
+            yield return $"Structural types: {string.Join(", ", r.StructuralTypes)}";
+        if (r.IndigenousOnly)
+            yield return r.IndigenousNationFilter is { Length: > 0 } n
+                ? $"Indigenous lens, nation filter: {n}"
+                : "Indigenous lens (all nations)";
+        if (!string.IsNullOrWhiteSpace(r.ExtraKeyword))
+            yield return $"Extra keyword: \"{r.ExtraKeyword}\"";
+    }
+
+    private static IEnumerable<string> SectorLiveRfpBullets(SectorBriefData d)
+    {
+        foreach (var r in d.LiveRfps)
+        {
+            var deadline = r.SubmissionDeadlineUtc?.ToString("yyyy-MM-dd",
+                CultureInfo.InvariantCulture) ?? "no deadline";
+            var sector = string.IsNullOrWhiteSpace(r.PrimeProjectSector) ? "" : $"  {r.PrimeProjectSector}";
+            yield return $"{r.Name} ({r.BuyerName})  submit by {deadline}{sector}";
+        }
+    }
+
+    private static IEnumerable<string> SectorForwardProjectBullets(SectorBriefData d)
+    {
+        foreach (var p in d.ForwardProjects)
+        {
+            var v = p.EstimatedCostCad is { } cad
+                ? cad.ToString("C0", CultureInfo.CurrentCulture)
+                : "";
+            var prop = string.IsNullOrWhiteSpace(p.ProponentName) ? "" : $"  {p.ProponentName}";
+            var stage = string.IsNullOrWhiteSpace(p.Stage) ? "" : $" [{p.Stage}]";
+            yield return $"{p.ProjectName}{prop}{stage}  {v}";
+        }
+    }
+
+    private static IEnumerable<string> SectorRecentAwardBullets(SectorBriefData d)
+    {
+        foreach (var a in d.RecentAwards)
+        {
+            var v = a.AwardedValueCad is { } cad
+                ? cad.ToString("C0", CultureInfo.CurrentCulture)
+                : "";
+            var when = a.AwardedAtUtc?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "";
+            yield return $"{a.ProjectName} ({a.BuyerName})  {a.AwardedToName ?? "(no winner)"}  {v} on {when}";
+        }
+    }
+
+    private static IEnumerable<string> SectorTopOrgBullets(IReadOnlyList<SectorTopOrg> orgs)
+    {
+        foreach (var o in orgs)
+        {
+            var joint = o.KorJointCount > 0
+                ? $"  {o.KorJointCount} joint with KOR"
+                : "";
+            yield return $"{o.DisplayName} ({o.Kind})  {o.ProjectCount} project{(o.ProjectCount == 1 ? "" : "s")}{joint}";
+        }
+    }
+
+    private static IEnumerable<string> SectorKorPortfolioBullets(SectorBriefData d)
+    {
+        foreach (var k in d.KorPortfolio)
+        {
+            var v = k.EstimatedCostCad is { } cad
+                ? cad.ToString("C0", CultureInfo.CurrentCulture)
+                : "";
+            var city = string.IsNullOrWhiteSpace(k.City) ? "" : $"  {k.City}";
+            var stage = string.IsNullOrWhiteSpace(k.Stage) ? "" : $" [{k.Stage}]";
+            yield return $"{k.ProjectName}{city}{stage}  {v}";
+        }
+    }
+
+    private static IEnumerable<string> SectorIntelSignalBullets(SectorBriefData d)
+    {
+        foreach (var s in d.RelevantSignals)
+        {
+            var when = s.OccurredAtApprox
+                ?? s.LastSeenAtUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            yield return $"{when}  {s.SignalType}: {s.Subject} (via {s.OrgDisplayName})";
+        }
+    }
+
     public void WriteProjectBrief(ProjectBriefData data, string outputPath)
     {
         if (data is null) throw new ArgumentNullException(nameof(data));

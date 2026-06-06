@@ -521,6 +521,75 @@ WHERE RetiredAtUtc IS NULL AND Province = @prov
         };
     }
 
+    public async Task<SectorBriefData> GetSectorBriefAsync(
+        SectorBriefRequest request,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        var (mpiWhere, mpiParams) = BuildSectorMpiFilter(request);
+        var (oppWhere, oppParams) = BuildSectorOpportunityFilter(request);
+        var (awardWhere, awardParams) = BuildSectorAwardFilter(request);
+        var korId = await GetKorIdAsync(con, ct).ConfigureAwait(false) ?? -1L;
+
+        var liveRfpCount = await ScalarIntAsync(con, $@"
+SELECT COUNT(*)
+FROM opportunities.Opportunities o
+WHERE {oppWhere};",
+            cmd => AddClonedParameters(cmd, oppParams), ct).ConfigureAwait(false);
+
+        var forwardPipelineCount = await ScalarIntAsync(con, $@"
+SELECT COUNT(*)
+FROM opportunities.MajorProjectsInventory mpi
+WHERE {mpiWhere};",
+            cmd => AddClonedParameters(cmd, mpiParams), ct).ConfigureAwait(false);
+
+        var recentAwardCount = await ScalarIntAsync(con, $@"
+SELECT COUNT(*)
+FROM opportunities.OpportunityAwards a
+WHERE {awardWhere}
+  AND a.AwardedAtUtc >= DATEADD(DAY, -365, sysdatetimeoffset());",
+            cmd => AddClonedParameters(cmd, awardParams), ct).ConfigureAwait(false);
+
+        var totalForwardPipelineCostCad = await ScalarDecimalAsync(con, $@"
+SELECT SUM(mpi.EstimatedCostCad)
+FROM opportunities.MajorProjectsInventory mpi
+WHERE {mpiWhere};",
+            cmd => AddClonedParameters(cmd, mpiParams), ct).ConfigureAwait(false);
+
+        var counts = new SectorBriefCounts(
+            liveRfpCount,
+            forwardPipelineCount,
+            recentAwardCount,
+            totalForwardPipelineCostCad);
+
+        var liveRfps = await GetSectorLiveRfpsAsync(con, oppWhere, oppParams, ct).ConfigureAwait(false);
+        var forwardProjects = await GetSectorForwardProjectsAsync(con, mpiWhere, mpiParams, ct).ConfigureAwait(false);
+        var recentAwards = await GetSectorRecentAwardsAsync(con, awardWhere, awardParams, ct).ConfigureAwait(false);
+        var topArchitects = await GetSectorTopOrgsAsync(con, mpiWhere, mpiParams, "ArchitectCanonicalOrgId", includeKorJointCount: true, korId, excludeKor: false, ct).ConfigureAwait(false);
+        var topOwners = await GetSectorTopOwnersAsync(con, mpiWhere, mpiParams, ct).ConfigureAwait(false);
+        var topGcs = await GetSectorTopOrgsAsync(con, mpiWhere, mpiParams, "GeneralContractorCanonicalOrgId", includeKorJointCount: true, korId, excludeKor: false, ct).ConfigureAwait(false);
+        var topStructuralCompetitors = await GetSectorTopOrgsAsync(con, mpiWhere, mpiParams, "StructuralEngineerCanonicalOrgId", includeKorJointCount: false, korId, excludeKor: true, ct).ConfigureAwait(false);
+        var korPortfolio = await GetSectorKorPortfolioAsync(con, mpiWhere, mpiParams, korId, ct).ConfigureAwait(false);
+        var relevantSignals = await GetSectorRelevantSignalsAsync(con, mpiWhere, mpiParams, ct).ConfigureAwait(false);
+
+        return new SectorBriefData(
+            request,
+            counts,
+            liveRfps,
+            forwardProjects,
+            recentAwards,
+            topArchitects,
+            topOwners,
+            topGcs,
+            topStructuralCompetitors,
+            korPortfolio,
+            relevantSignals);
+    }
+
     public async Task<OrgBriefData?> GetOrgBriefAsync(long canonicalOrgId, CancellationToken ct)
     {
         await using var con = new SqlConnection(_connectionString);
@@ -1127,6 +1196,570 @@ ORDER BY a.LastSeenAtUtc DESC;";
         bind(cmd);
         var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
         return v is null or DBNull ? 0 : Convert.ToInt32(v);
+    }
+
+    private static async Task<decimal?> ScalarDecimalAsync(SqlConnection con, string sql, Action<SqlCommand> bind, CancellationToken ct)
+    {
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        bind(cmd);
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToDecimal(v);
+    }
+
+    // Maps a canonical sector bucket name to the WHERE-clause fragment
+    // that matches MPI rows in that bucket. Returns null for unknown
+    // buckets (defensive).
+    private static string? BuildSectorBucketWhere(string bucket)
+    {
+        return bucket switch
+        {
+            "Healthcare" =>
+                "(mpi.Sector = N'Healthcare' OR mpi.SubSector LIKE N'%hospital%' " +
+                "OR mpi.SubSector LIKE N'%health%' OR mpi.ProjectName LIKE N'%hospital%' " +
+                "OR mpi.ProjectName LIKE N'%medical%')",
+            "K-12" =>
+                "(mpi.Sector IN (N'School', N'K-12') " +
+                "OR (mpi.Sector = N'Education' AND mpi.SubSector LIKE N'%K-12%') " +
+                "OR mpi.SubSector LIKE N'%K-12%' " +
+                "OR mpi.ProjectName LIKE N'%elementary%' " +
+                "OR mpi.ProjectName LIKE N'%middle school%' " +
+                "OR mpi.ProjectName LIKE N'%high school%' " +
+                "OR mpi.ProjectName LIKE N'%secondary school%')",
+            "Post-Secondary" =>
+                "(mpi.Sector IN (N'Post-Secondary', N'Institutional') " +
+                "OR (mpi.Sector = N'Education' AND " +
+                    "(mpi.SubSector LIKE N'%university%' OR mpi.SubSector LIKE N'%college%')) " +
+                "OR mpi.ProjectName LIKE N'%university%' " +
+                "OR mpi.ProjectName LIKE N'%college%')",
+            "Civic" =>
+                "(mpi.Sector IN (N'Civic', N'Government', N'Public Safety') " +
+                "OR mpi.ProjectName LIKE N'%fire hall%' " +
+                "OR mpi.ProjectName LIKE N'%fire station%' " +
+                "OR mpi.ProjectName LIKE N'%city hall%' " +
+                "OR mpi.ProjectName LIKE N'%library%' " +
+                "OR mpi.ProjectName LIKE N'%community centre%')",
+            "Recreation" =>
+                "(mpi.Sector IN (N'recreation', N'Recreation') " +
+                "OR mpi.SubSector LIKE N'%recreation%' " +
+                "OR mpi.ProjectName LIKE N'%aquatic%' " +
+                "OR mpi.ProjectName LIKE N'%arena%' " +
+                "OR mpi.ProjectName LIKE N'%pool%' " +
+                "OR mpi.ProjectName LIKE N'%gymnasium%')",
+            "Residential-LowRise" =>
+                "(mpi.Sector IN (N'Residential', N'Housing') " +
+                "AND (mpi.SubSector IS NULL OR mpi.SubSector NOT LIKE N'%High%') " +
+                "AND mpi.ProjectName NOT LIKE N'%tower%' " +
+                "AND mpi.ProjectName NOT LIKE N'%high-rise%')",
+            "Residential-HighRise" =>
+                "(mpi.Sector = N'Residential High-Rise' " +
+                "OR (mpi.Sector IN (N'Residential', N'Housing', N'Mixed-use') " +
+                "    AND (mpi.ProjectName LIKE N'%tower%' " +
+                "         OR mpi.ProjectName LIKE N'%high-rise%' " +
+                "         OR mpi.ProjectName LIKE N'%highrise%')))",
+            "Industrial-Other" =>
+                "(mpi.Sector IN (N'Industrial', N'Commercial', N'Mixed-use', N'Other', N'Manufacturing'))",
+            _ => null,
+        };
+    }
+
+    private static string? BuildStructuralTypeWhere(string type)
+    {
+        return type switch
+        {
+            "Wood-Frame" =>
+                "(mpi.ProjectName LIKE N'%wood frame%' " +
+                "OR mpi.ProjectName LIKE N'%woodframe%' " +
+                "OR mpi.ProjectDescription LIKE N'%wood frame%' " +
+                "OR mpi.ProjectDescription LIKE N'%woodframe%')",
+            "Concrete-Tower" =>
+                "(mpi.ProjectName LIKE N'%tower%' " +
+                "OR mpi.ProjectName LIKE N'%high-rise%' " +
+                "OR mpi.ProjectName LIKE N'%highrise%' " +
+                "OR mpi.Sector = N'Residential High-Rise')",
+            "Mass-Timber" =>
+                "(mpi.ProjectName LIKE N'%mass timber%' " +
+                "OR mpi.ProjectName LIKE N'%mass-timber%' " +
+                "OR mpi.ProjectName LIKE N'%CLT%' " +
+                "OR mpi.ProjectDescription LIKE N'%mass timber%' " +
+                "OR mpi.ProjectDescription LIKE N'%cross-laminated%')",
+            "Steel" =>
+                "(mpi.ProjectName LIKE N'%steel frame%' " +
+                "OR mpi.ProjectName LIKE N'%steel structure%' " +
+                "OR mpi.ProjectName LIKE N'%steel-framed%' " +
+                "OR mpi.ProjectDescription LIKE N'%steel frame%' " +
+                "OR mpi.ProjectDescription LIKE N'%steel structure%')",
+            "Hybrid" =>
+                "(mpi.ProjectName LIKE N'%hybrid%' " +
+                "OR mpi.ProjectDescription LIKE N'%hybrid%')",
+            _ => null,
+        };
+    }
+
+    private static (string MpiWhere, List<SqlParameter> Params) BuildSectorMpiFilter(SectorBriefRequest req)
+    {
+        var clauses = new List<string>
+        {
+            "mpi.RetiredAtUtc IS NULL",
+            "mpi.Province = @province",
+        };
+        var ps = new List<SqlParameter>
+        {
+            new("@province", SqlDbType.NVarChar, 100) { Value = req.Province },
+        };
+
+        if (!string.IsNullOrWhiteSpace(req.City))
+        {
+            clauses.Add("mpi.MunicipalityName = @city");
+            ps.Add(new SqlParameter("@city", SqlDbType.NVarChar, 200) { Value = req.City });
+        }
+
+        var sectorFrags = req.SectorBuckets
+            .Select(BuildSectorBucketWhere)
+            .Where(f => f is not null)
+            .Select(f => f!)
+            .ToList();
+        if (sectorFrags.Count > 0)
+        {
+            clauses.Add("(" + string.Join(" OR ", sectorFrags) + ")");
+        }
+
+        var typeFrags = req.StructuralTypes
+            .Select(BuildStructuralTypeWhere)
+            .Where(f => f is not null)
+            .Select(f => f!)
+            .ToList();
+        if (typeFrags.Count > 0)
+        {
+            clauses.Add("(" + string.Join(" OR ", typeFrags) + ")");
+        }
+
+        if (req.IndigenousOnly)
+        {
+            clauses.Add("mpi.IndigenousInd = 1");
+            if (!string.IsNullOrWhiteSpace(req.IndigenousNationFilter))
+            {
+                clauses.Add("mpi.IndigenousNames LIKE '%' + @nation + '%' ESCAPE '\\'");
+                ps.Add(new SqlParameter("@nation", SqlDbType.NVarChar, 200)
+                    { Value = EscapeLikeQuery(req.IndigenousNationFilter.Trim()) });
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(req.ExtraKeyword))
+        {
+            clauses.Add(
+                "(mpi.ProjectName LIKE '%' + @extraKw + '%' ESCAPE '\\' " +
+                "OR mpi.ProjectDescription LIKE '%' + @extraKw + '%' ESCAPE '\\')");
+            ps.Add(new SqlParameter("@extraKw", SqlDbType.NVarChar, 300)
+                { Value = EscapeLikeQuery(req.ExtraKeyword.Trim()) });
+        }
+
+        return (string.Join(" AND ", clauses), ps);
+    }
+
+    private static (string Where, List<SqlParameter> Params) BuildSectorOpportunityFilter(SectorBriefRequest req)
+    {
+        var clauses = new List<string>
+        {
+            "o.Status = 1",
+            "o.IsPrimeConsultantRfp = 1",
+            "o.ProjectProvince = @oppProvince",
+        };
+        var ps = new List<SqlParameter>
+        {
+            new("@oppProvince", SqlDbType.NVarChar, 100) { Value = req.Province },
+        };
+
+        if (!string.IsNullOrWhiteSpace(req.City))
+        {
+            clauses.Add("o.ProjectCity = @oppCity");
+            ps.Add(new SqlParameter("@oppCity", SqlDbType.NVarChar, 200) { Value = req.City });
+        }
+
+        AddSectorTextClauses(req.SectorBuckets, clauses, "o.PrimeProjectSector", "o.Name");
+        AddStructuralTextClauses(req.StructuralTypes, clauses, "o.Name", "o.Name");
+
+        if (req.IndigenousOnly)
+        {
+            clauses.Add("(o.Name LIKE N'%Indigenous%' OR o.BuyerName LIKE N'%First Nation%' OR o.BuyerName LIKE N'%Nation%')");
+            if (!string.IsNullOrWhiteSpace(req.IndigenousNationFilter))
+            {
+                clauses.Add("(o.Name LIKE '%' + @oppNation + '%' ESCAPE '\\' OR o.BuyerName LIKE '%' + @oppNation + '%' ESCAPE '\\')");
+                ps.Add(new SqlParameter("@oppNation", SqlDbType.NVarChar, 200) { Value = EscapeLikeQuery(req.IndigenousNationFilter.Trim()) });
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(req.ExtraKeyword))
+        {
+            clauses.Add("(o.Name LIKE '%' + @oppExtraKw + '%' ESCAPE '\\' OR o.BuyerName LIKE '%' + @oppExtraKw + '%' ESCAPE '\\')");
+            ps.Add(new SqlParameter("@oppExtraKw", SqlDbType.NVarChar, 300) { Value = EscapeLikeQuery(req.ExtraKeyword.Trim()) });
+        }
+
+        return (string.Join(" AND ", clauses), ps);
+    }
+
+    private static (string Where, List<SqlParameter> Params) BuildSectorAwardFilter(SectorBriefRequest req)
+    {
+        var clauses = new List<string>
+        {
+            "(a.IssuingLocation LIKE '%' + @awardProvince + '%' OR a.Title LIKE '%' + @awardProvince + '%')",
+        };
+        var ps = new List<SqlParameter>
+        {
+            new("@awardProvince", SqlDbType.NVarChar, 100) { Value = req.Province },
+        };
+
+        if (!string.IsNullOrWhiteSpace(req.City))
+        {
+            clauses.Add("(a.IssuingLocation LIKE '%' + @awardCity + '%' ESCAPE '\\' OR a.Title LIKE '%' + @awardCity + '%' ESCAPE '\\')");
+            ps.Add(new SqlParameter("@awardCity", SqlDbType.NVarChar, 200) { Value = EscapeLikeQuery(req.City.Trim()) });
+        }
+
+        AddSectorTextClauses(req.SectorBuckets, clauses, "a.Title", "a.Title");
+        AddStructuralTextClauses(req.StructuralTypes, clauses, "a.Title", "a.Title");
+
+        if (req.IndigenousOnly)
+        {
+            clauses.Add("(a.Title LIKE N'%Indigenous%' OR a.AwardingOrganization LIKE N'%First Nation%' OR a.AwardingOrganization LIKE N'%Nation%')");
+            if (!string.IsNullOrWhiteSpace(req.IndigenousNationFilter))
+            {
+                clauses.Add("(a.Title LIKE '%' + @awardNation + '%' ESCAPE '\\' OR a.AwardingOrganization LIKE '%' + @awardNation + '%' ESCAPE '\\')");
+                ps.Add(new SqlParameter("@awardNation", SqlDbType.NVarChar, 200) { Value = EscapeLikeQuery(req.IndigenousNationFilter.Trim()) });
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(req.ExtraKeyword))
+        {
+            clauses.Add("(a.Title LIKE '%' + @awardExtraKw + '%' ESCAPE '\\' OR a.AwardingOrganization LIKE '%' + @awardExtraKw + '%' ESCAPE '\\' OR a.AwardedToOrganization LIKE '%' + @awardExtraKw + '%' ESCAPE '\\')");
+            ps.Add(new SqlParameter("@awardExtraKw", SqlDbType.NVarChar, 300) { Value = EscapeLikeQuery(req.ExtraKeyword.Trim()) });
+        }
+
+        return (string.Join(" AND ", clauses), ps);
+    }
+
+    private static void AddSectorTextClauses(
+        IReadOnlyList<string> buckets,
+        List<string> clauses,
+        string sectorColumn,
+        string titleColumn)
+    {
+        var frags = buckets.Select(bucket => bucket switch
+            {
+                "Healthcare" => $"({sectorColumn} LIKE N'%health%' OR {titleColumn} LIKE N'%hospital%' OR {titleColumn} LIKE N'%medical%')",
+                "K-12" => $"({sectorColumn} LIKE N'%school%' OR {titleColumn} LIKE N'%elementary%' OR {titleColumn} LIKE N'%middle school%' OR {titleColumn} LIKE N'%high school%' OR {titleColumn} LIKE N'%secondary school%')",
+                "Post-Secondary" => $"({sectorColumn} LIKE N'%post%' OR {titleColumn} LIKE N'%university%' OR {titleColumn} LIKE N'%college%')",
+                "Civic" => $"({sectorColumn} LIKE N'%civic%' OR {sectorColumn} LIKE N'%government%' OR {titleColumn} LIKE N'%fire hall%' OR {titleColumn} LIKE N'%city hall%' OR {titleColumn} LIKE N'%library%' OR {titleColumn} LIKE N'%community centre%')",
+                "Recreation" => $"({sectorColumn} LIKE N'%recreation%' OR {titleColumn} LIKE N'%aquatic%' OR {titleColumn} LIKE N'%arena%' OR {titleColumn} LIKE N'%pool%' OR {titleColumn} LIKE N'%gymnasium%')",
+                "Residential-LowRise" => $"({sectorColumn} LIKE N'%residential%' AND {titleColumn} NOT LIKE N'%tower%' AND {titleColumn} NOT LIKE N'%high-rise%' AND {titleColumn} NOT LIKE N'%highrise%')",
+                "Residential-HighRise" => $"({sectorColumn} LIKE N'%high%' OR ({sectorColumn} LIKE N'%residential%' AND ({titleColumn} LIKE N'%tower%' OR {titleColumn} LIKE N'%high-rise%' OR {titleColumn} LIKE N'%highrise%')))",
+                "Industrial-Other" => $"({sectorColumn} LIKE N'%industrial%' OR {sectorColumn} LIKE N'%commercial%' OR {sectorColumn} LIKE N'%mixed%' OR {sectorColumn} LIKE N'%manufacturing%')",
+                _ => null,
+            })
+            .Where(f => f is not null)
+            .Select(f => f!)
+            .ToList();
+
+        if (frags.Count > 0)
+        {
+            clauses.Add("(" + string.Join(" OR ", frags) + ")");
+        }
+    }
+
+    private static void AddStructuralTextClauses(
+        IReadOnlyList<string> types,
+        List<string> clauses,
+        string titleColumn,
+        string descriptionColumn)
+    {
+        var frags = types.Select(type => type switch
+            {
+                "Wood-Frame" => $"({titleColumn} LIKE N'%wood frame%' OR {titleColumn} LIKE N'%woodframe%' OR {descriptionColumn} LIKE N'%wood frame%' OR {descriptionColumn} LIKE N'%woodframe%')",
+                "Concrete-Tower" => $"({titleColumn} LIKE N'%tower%' OR {titleColumn} LIKE N'%high-rise%' OR {titleColumn} LIKE N'%highrise%')",
+                "Mass-Timber" => $"({titleColumn} LIKE N'%mass timber%' OR {titleColumn} LIKE N'%mass-timber%' OR {titleColumn} LIKE N'%CLT%' OR {descriptionColumn} LIKE N'%mass timber%')",
+                "Steel" => $"({titleColumn} LIKE N'%steel frame%' OR {titleColumn} LIKE N'%steel structure%' OR {titleColumn} LIKE N'%steel-framed%' OR {descriptionColumn} LIKE N'%steel frame%')",
+                "Hybrid" => $"({titleColumn} LIKE N'%hybrid%' OR {descriptionColumn} LIKE N'%hybrid%')",
+                _ => null,
+            })
+            .Where(f => f is not null)
+            .Select(f => f!)
+            .ToList();
+
+        if (frags.Count > 0)
+        {
+            clauses.Add("(" + string.Join(" OR ", frags) + ")");
+        }
+    }
+
+    private static void AddClonedParameters(SqlCommand cmd, IReadOnlyList<SqlParameter> parameters)
+    {
+        foreach (var p in parameters)
+        {
+            var clone = new SqlParameter(p.ParameterName, p.SqlDbType, p.Size)
+            {
+                Value = p.Value,
+            };
+            cmd.Parameters.Add(clone);
+        }
+    }
+
+    private static async Task<IReadOnlyList<RegionLiveRfp>> GetSectorLiveRfpsAsync(
+        SqlConnection con,
+        string oppWhere,
+        IReadOnlyList<SqlParameter> parameters,
+        CancellationToken ct)
+    {
+        var sql = $@"
+SELECT TOP (15) o.Id, o.Name, o.BuyerName, o.SubmissionDeadlineUtc, o.PrimeProjectSector, o.PrimeConfidence
+FROM opportunities.Opportunities o
+WHERE {oppWhere}
+ORDER BY o.PrimeConfidence DESC, o.SubmissionDeadlineUtc ASC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        AddClonedParameters(cmd, parameters);
+        var rows = new List<RegionLiveRfp>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new RegionLiveRfp(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetDateTimeOffset(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.IsDBNull(5) ? 0m : r.GetDecimal(5)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<RegionForwardProject>> GetSectorForwardProjectsAsync(
+        SqlConnection con,
+        string mpiWhere,
+        IReadOnlyList<SqlParameter> parameters,
+        CancellationToken ct)
+    {
+        var sql = $@"
+SELECT TOP (15) mpi.Id, mpi.ProjectName, mpi.ProponentName, mpi.Stage, mpi.EstimatedCostCad
+FROM opportunities.MajorProjectsInventory mpi
+WHERE {mpiWhere}
+ORDER BY mpi.EstimatedCostCad DESC, mpi.ProjectName;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        AddClonedParameters(cmd, parameters);
+        var rows = new List<RegionForwardProject>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new RegionForwardProject(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.IsDBNull(2) ? null : r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetDecimal(4)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<SectorRecentAward>> GetSectorRecentAwardsAsync(
+        SqlConnection con,
+        string awardWhere,
+        IReadOnlyList<SqlParameter> parameters,
+        CancellationToken ct)
+    {
+        var sql = $@"
+SELECT TOP (15) a.Id, a.Title, a.AwardingOrganization, a.AwardedToOrganization, a.ContractValue, a.AwardedAtUtc
+FROM opportunities.OpportunityAwards a
+WHERE {awardWhere}
+  AND a.AwardedAtUtc >= DATEADD(DAY, -365, sysdatetimeoffset())
+ORDER BY a.AwardedAtUtc DESC, a.Id DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        AddClonedParameters(cmd, parameters);
+        var rows = new List<SectorRecentAward>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new SectorRecentAward(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetDecimal(4),
+                r.IsDBNull(5) ? null : r.GetDateTimeOffset(5)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<SectorTopOrg>> GetSectorTopOrgsAsync(
+        SqlConnection con,
+        string mpiWhere,
+        IReadOnlyList<SqlParameter> parameters,
+        string fkColumn,
+        bool includeKorJointCount,
+        long korId,
+        bool excludeKor,
+        CancellationToken ct)
+    {
+        var korJointSql = includeKorJointCount
+            ? "SUM(CASE WHEN mpi.StructuralEngineerCanonicalOrgId = @kor THEN 1 ELSE 0 END)"
+            : "0";
+        var excludeKorSql = excludeKor ? "AND co.Id <> @kor" : "";
+        var sql = $@"
+SELECT TOP (10)
+    co.Id,
+    co.DisplayName,
+    co.Kind,
+    COUNT(*) AS ProjectCount,
+    {korJointSql} AS KorJointCount
+FROM opportunities.MajorProjectsInventory mpi
+JOIN opportunities.CanonicalOrg co ON co.Id = mpi.{fkColumn}
+WHERE {mpiWhere}
+  AND mpi.{fkColumn} IS NOT NULL
+  {excludeKorSql}
+GROUP BY co.Id, co.DisplayName, co.Kind
+ORDER BY ProjectCount DESC, co.DisplayName;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        AddClonedParameters(cmd, parameters);
+        if (includeKorJointCount || excludeKor)
+        {
+            cmd.Parameters.Add("@kor", SqlDbType.BigInt).Value = korId;
+        }
+
+        var rows = new List<SectorTopOrg>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new SectorTopOrg(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.GetString(2),
+                Convert.ToInt32(r.GetValue(3)),
+                Convert.ToInt32(r.GetValue(4))));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<SectorTopOrg>> GetSectorTopOwnersAsync(
+        SqlConnection con,
+        string mpiWhere,
+        IReadOnlyList<SqlParameter> parameters,
+        CancellationToken ct)
+    {
+        var sql = $@"
+SELECT TOP (10)
+    co.Id,
+    co.DisplayName,
+    co.Kind,
+    COUNT(*) AS ProjectCount,
+    ISNULL(MAX(co.KorProjectsCount), 0) AS KorJointCount
+FROM opportunities.MajorProjectsInventory mpi
+JOIN opportunities.CanonicalOrg co ON co.Id = mpi.ProponentCanonicalOrgId
+WHERE {mpiWhere}
+  AND mpi.ProponentCanonicalOrgId IS NOT NULL
+GROUP BY co.Id, co.DisplayName, co.Kind
+ORDER BY ProjectCount DESC, co.DisplayName;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        AddClonedParameters(cmd, parameters);
+        var rows = new List<SectorTopOrg>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new SectorTopOrg(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.GetString(2),
+                Convert.ToInt32(r.GetValue(3)),
+                Convert.ToInt32(r.GetValue(4))));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<SectorKorPortfolioRow>> GetSectorKorPortfolioAsync(
+        SqlConnection con,
+        string mpiWhere,
+        IReadOnlyList<SqlParameter> parameters,
+        long korId,
+        CancellationToken ct)
+    {
+        var sql = $@"
+SELECT TOP (15) mpi.Id, mpi.ProjectName, mpi.Stage, mpi.EstimatedCostCad, mpi.MunicipalityName
+FROM opportunities.MajorProjectsInventory mpi
+WHERE {mpiWhere}
+  AND mpi.StructuralEngineerCanonicalOrgId = @kor
+ORDER BY mpi.EstimatedCostCad DESC, mpi.ProjectName;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        AddClonedParameters(cmd, parameters);
+        cmd.Parameters.Add("@kor", SqlDbType.BigInt).Value = korId;
+        var rows = new List<SectorKorPortfolioRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new SectorKorPortfolioRow(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.IsDBNull(2) ? null : r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetDecimal(3),
+                r.IsDBNull(4) ? null : r.GetString(4)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<SectorIntelSignalRow>> GetSectorRelevantSignalsAsync(
+        SqlConnection con,
+        string mpiWhere,
+        IReadOnlyList<SqlParameter> parameters,
+        CancellationToken ct)
+    {
+        var sql = $@"
+WITH SliceOrgIds AS (
+    SELECT DISTINCT v.CanonicalOrgId
+    FROM opportunities.MajorProjectsInventory mpi
+    CROSS APPLY (VALUES
+        (mpi.ArchitectCanonicalOrgId),
+        (mpi.ProponentCanonicalOrgId),
+        (mpi.GeneralContractorCanonicalOrgId),
+        (mpi.StructuralEngineerCanonicalOrgId)
+    ) v(CanonicalOrgId)
+    WHERE {mpiWhere}
+      AND v.CanonicalOrgId IS NOT NULL
+)
+SELECT TOP (10)
+    co.DisplayName,
+    s.SignalType,
+    s.Subject,
+    s.Detail,
+    s.OccurredAtApprox,
+    s.LastSeenAtUtc
+FROM opportunities.IntelSignal s
+JOIN SliceOrgIds soi ON soi.CanonicalOrgId = s.CanonicalOrgId
+JOIN opportunities.CanonicalOrg co ON co.Id = s.CanonicalOrgId
+WHERE s.RetiredAtUtc IS NULL
+  AND s.LastSeenAtUtc >= DATEADD(DAY, -365, sysdatetimeoffset())
+ORDER BY s.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        AddClonedParameters(cmd, parameters);
+        var rows = new List<SectorIntelSignalRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new SectorIntelSignalRow(
+                r.GetString(0),
+                r.GetString(1),
+                r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.GetDateTimeOffset(5)));
+        }
+
+        return rows;
     }
 
     // City input is free-text; split common separators into independent LIKE matches.

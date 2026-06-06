@@ -311,3 +311,90 @@ public sealed record OrgBriefData(
 
     public Kor.Opportunities.Data.Intel.OrgIntelBundle? Intel { get; init; }
 }
+
+// === Sector Brief ===
+
+public sealed record SectorBriefRequest(
+    string Province,
+    string? City,
+    IReadOnlyList<string> SectorBuckets,
+    IReadOnlyList<string> StructuralTypes,
+    bool IndigenousOnly,
+    string? IndigenousNationFilter,
+    string? ExtraKeyword)
+{
+    // Canonical sector bucket names  magic strings that
+    // SqlBriefDataStore.GetSectorBriefAsync maps to MPI Sector/
+    // SubSector LIKE clauses. Adding a new bucket requires extending
+    // BOTH this list AND the SQL bucket mapper.
+    public static IReadOnlyList<string> AllSectorBuckets { get; } = new[]
+    {
+        "Healthcare",
+        "K-12",
+        "Post-Secondary",
+        "Civic",
+        "Recreation",
+        "Residential-LowRise",
+        "Residential-HighRise",
+        "Industrial-Other",
+    };
+
+    // Canonical structural-type names. Same magic-string contract.
+    public static IReadOnlyList<string> AllStructuralTypes { get; } = new[]
+    {
+        "Wood-Frame",
+        "Concrete-Tower",
+        "Mass-Timber",
+        "Steel",
+        "Hybrid",
+    };
+}
+
+public sealed record SectorBriefCounts(
+    int LiveRfpCount,
+    int ForwardPipelineCount,
+    int RecentAwardCount,
+    decimal? TotalForwardPipelineCostCad);
+
+public sealed record SectorTopOrg(
+    long CanonicalOrgId,
+    string DisplayName,
+    string Kind,
+    int ProjectCount,
+    int KorJointCount);
+
+public sealed record SectorRecentAward(
+    long OpportunityId,
+    string ProjectName,
+    string BuyerName,
+    string? AwardedToName,
+    decimal? AwardedValueCad,
+    DateTimeOffset? AwardedAtUtc);
+
+public sealed record SectorKorPortfolioRow(
+    long MpiId,
+    string ProjectName,
+    string? Stage,
+    decimal? EstimatedCostCad,
+    string? City);
+
+public sealed record SectorIntelSignalRow(
+    string OrgDisplayName,
+    string SignalType,
+    string Subject,
+    string? Detail,
+    string? OccurredAtApprox,
+    DateTimeOffset LastSeenAtUtc);
+
+public sealed record SectorBriefData(
+    SectorBriefRequest Request,
+    SectorBriefCounts Counts,
+    IReadOnlyList<RegionLiveRfp> LiveRfps,
+    IReadOnlyList<RegionForwardProject> ForwardProjects,
+    IReadOnlyList<SectorRecentAward> RecentAwards,
+    IReadOnlyList<SectorTopOrg> TopArchitects,
+    IReadOnlyList<SectorTopOrg> TopOwners,
+    IReadOnlyList<SectorTopOrg> TopGcs,
+    IReadOnlyList<SectorTopOrg> TopStructuralCompetitors,
+    IReadOnlyList<SectorKorPortfolioRow> KorPortfolio,
+    IReadOnlyList<SectorIntelSignalRow> RelevantSignals);

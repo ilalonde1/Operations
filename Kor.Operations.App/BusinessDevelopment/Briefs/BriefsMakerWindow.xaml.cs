@@ -37,6 +37,10 @@ public partial class BriefsMakerWindow : Window
     private long? _selectedProjectId;
     private PersonBriefData? _selectedPerson;
     private long? _selectedPersonId;
+    private string? _sectorProvince;
+    private string? _sectorCity;
+    private readonly HashSet<string> _sectorBuckets = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _sectorStructuralTypes = new(StringComparer.Ordinal);
 
     public BriefsMakerWindow(
         ICanonicalOrgStore canonicalOrgStore,
@@ -166,6 +170,101 @@ public partial class BriefsMakerWindow : Window
         UpdateGenerateButtonsEnabled();
     }
 
+    private void SectorProvinceCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var province = SelectedText(SectorProvinceCombo);
+        _sectorProvince = string.IsNullOrWhiteSpace(province) ? null : province;
+        _sectorCity = null;
+
+        SectorCityCombo.ItemsSource = null;
+        SectorCityCombo.SelectedIndex = -1;
+        SectorCityCombo.IsEnabled = false;
+
+        if (_sectorProvince is not null && CityByProvince.TryGetValue(_sectorProvince, out var cities))
+        {
+            SectorCityCombo.ItemsSource = cities;
+            SectorCityCombo.IsEnabled = true;
+        }
+
+        RefreshSectorPreview();
+        UpdateGenerateButtonsEnabled();
+    }
+
+    private void SectorCityCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var city = SelectedText(SectorCityCombo);
+        _sectorCity = string.Equals(city, "(All cities)", StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(city)
+                ? null
+                : city;
+        RefreshSectorPreview();
+        UpdateGenerateButtonsEnabled();
+    }
+
+    private void SectorBucketChanged(object sender, RoutedEventArgs e)
+    {
+        ToggleHashSet(sender, _sectorBuckets);
+        RefreshSectorPreview();
+        UpdateGenerateButtonsEnabled();
+    }
+
+    private void SectorStructuralChanged(object sender, RoutedEventArgs e)
+    {
+        ToggleHashSet(sender, _sectorStructuralTypes);
+        RefreshSectorPreview();
+        UpdateGenerateButtonsEnabled();
+    }
+
+    private void SectorIndigenousToggleChanged(object sender, RoutedEventArgs e)
+    {
+        SectorNationBox.IsEnabled = SectorIndigenousToggle.IsChecked == true;
+        if (SectorIndigenousToggle.IsChecked != true)
+        {
+            SectorNationBox.Text = string.Empty;
+        }
+        RefreshSectorPreview();
+        UpdateGenerateButtonsEnabled();
+    }
+
+    private void SectorFilterTextChanged(object sender, TextChangedEventArgs e)
+    {
+        RefreshSectorPreview();
+        UpdateGenerateButtonsEnabled();
+    }
+
+    private static void ToggleHashSet(object sender, HashSet<string> set)
+    {
+        if (sender is CheckBox cb && cb.Tag is string tag && !string.IsNullOrEmpty(tag))
+        {
+            if (cb.IsChecked == true) set.Add(tag);
+            else set.Remove(tag);
+        }
+    }
+
+    private void RefreshSectorPreview()
+    {
+        if (_sectorProvince is null)
+        {
+            SectorPreview.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var geo = _sectorCity is null ? _sectorProvince : $"{_sectorCity}, {_sectorProvince}";
+        var bits = new List<string> { geo };
+        if (_sectorBuckets.Count > 0) bits.Add(string.Join(" + ", _sectorBuckets));
+        if (_sectorStructuralTypes.Count > 0) bits.Add(string.Join(" + ", _sectorStructuralTypes));
+        if (SectorIndigenousToggle.IsChecked == true)
+        {
+            var nation = SectorNationBox.Text?.Trim();
+            bits.Add(string.IsNullOrWhiteSpace(nation) ? "Indigenous" : $"Indigenous: {nation}");
+        }
+        var kw = SectorExtraKeywordBox.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(kw)) bits.Add($"\"{kw}\"");
+
+        SectorPreviewText.Text = "Sector brief  " + string.Join("    ", bits);
+        SectorPreview.Visibility = Visibility.Visible;
+    }
+
     private void TypeTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!ReferenceEquals(e.Source, TypeTabs))
@@ -182,7 +281,8 @@ public partial class BriefsMakerWindow : Window
             (TypeTabs.SelectedIndex == 0 && _selectedOrg is not null) ||
             (TypeTabs.SelectedIndex == 1 && _selectedProvince is not null) ||
             (TypeTabs.SelectedIndex == 2 && _selectedProject is not null) ||
-            (TypeTabs.SelectedIndex == 3 && _selectedPerson is not null);
+            (TypeTabs.SelectedIndex == 3 && _selectedPerson is not null) ||
+            (TypeTabs.SelectedIndex == 4 && _sectorProvince is not null);
         GeneratePdfButton.IsEnabled = ready;
         GenerateDocxButton.IsEnabled = ready;
     }
@@ -271,6 +371,34 @@ public partial class BriefsMakerWindow : Window
                     await Task.Run(() => _wordGen.WritePersonBrief(person, path)).ConfigureAwait(true);
                 }
             }
+            else if (TypeTabs.SelectedIndex == 4 && _sectorProvince is { } sp)
+            {
+                var request = new SectorBriefRequest(
+                    Province: sp,
+                    City: _sectorCity,
+                    SectorBuckets: _sectorBuckets.ToArray(),
+                    StructuralTypes: _sectorStructuralTypes.ToArray(),
+                    IndigenousOnly: SectorIndigenousToggle.IsChecked == true,
+                    IndigenousNationFilter: string.IsNullOrWhiteSpace(SectorNationBox.Text)
+                        ? null
+                        : SectorNationBox.Text.Trim(),
+                    ExtraKeyword: string.IsNullOrWhiteSpace(SectorExtraKeywordBox.Text)
+                        ? null
+                        : SectorExtraKeywordBox.Text.Trim());
+
+                path = Path.Combine(desktop, $"KOR-Sector-Brief-{BuildSectorSlug(request)}-{ts}.{ext}");
+                var data = await _briefStore.GetSectorBriefAsync(request, CancellationToken.None)
+                    .ConfigureAwait(true);
+
+                if (asPdf)
+                {
+                    await Task.Run(() => _pdfGen.WriteSectorBrief(data, path)).ConfigureAwait(true);
+                }
+                else
+                {
+                    await Task.Run(() => _wordGen.WriteSectorBrief(data, path)).ConfigureAwait(true);
+                }
+            }
             else
             {
                 return;
@@ -311,5 +439,17 @@ public partial class BriefsMakerWindow : Window
             string value => value,
             _ => null,
         };
+    }
+
+    private static string BuildSectorSlug(SectorBriefRequest r)
+    {
+        var parts = new List<string> { r.Province };
+        if (!string.IsNullOrWhiteSpace(r.City)) parts.Add(r.City);
+        if (r.SectorBuckets.Count > 0) parts.AddRange(r.SectorBuckets);
+        if (r.StructuralTypes.Count > 0) parts.AddRange(r.StructuralTypes);
+        if (r.IndigenousOnly) parts.Add("Indigenous");
+        var raw = string.Join("-", parts);
+        var safe = new string(raw.Where(ch => char.IsLetterOrDigit(ch) || ch == '-').ToArray());
+        return safe.Length == 0 ? "sector" : safe;
     }
 }
