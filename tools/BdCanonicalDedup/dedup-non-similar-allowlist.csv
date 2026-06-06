@@ -8,6 +8,17 @@ LoserId,SurvivorId,Reason
 69930,38918
 69934,38918
 70675,38918
+# Round 90 (2026-06-05): AHS canonical sprawl. The fuzzy gate (which strips
+# corporate suffixes + canonicalizes civic forms but NOT parentheticals or
+# slash-joined alternates) correctly flags these as not-similar. Curated
+# allowlist for legitimate AHS-variant merges per the audit performed today.
+72342,476
+68831,476
+72471,476
+72343,476
+72432,476
+72045,476
+73919,72389
 70948,38918
 71123,38918
 # 2026-06-01: Clendor-share dedup pairs. Each row pair shares the same
