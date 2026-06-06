@@ -34,6 +34,14 @@ public sealed record IntelRiskRow(
     string SourceProviderName, IntelConfidence Confidence,
     DateTimeOffset RefreshedAtUtc, IntelFreshness Freshness);
 
+public sealed record RegionCapacityRiskRow(
+    string OrgDisplayName,
+    string Description,
+    string? MitigationNotes,
+    IntelConfidence Confidence,
+    IntelFreshness Freshness,
+    DateTimeOffset RefreshedAtUtc);
+
 public sealed record IntelNarrativeRow(
     long Id, string NarrativeType, string ParagraphText,
     string SourceProviderName, IntelConfidence Confidence,
@@ -59,7 +67,7 @@ public sealed record OrgIntelBundle(
 public sealed record RegionIntelRollup(
     IReadOnlyList<IntelActionRow> TopActions,
     IReadOnlyList<IntelSignalRow> RecentLeadershipChanges,
-    IReadOnlyList<IntelRiskRow> TopCapacityRisks);
+    IReadOnlyList<RegionCapacityRiskRow> TopCapacityRisks);
 
 public sealed record OpportunityIntelBundle(
     OrgIntelBundle? BuyerIntel,

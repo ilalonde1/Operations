@@ -422,7 +422,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     {
         foreach (var r in intel.TopCapacityRisks)
         {
-            var body = r.Description;
+            var body = $"{r.OrgDisplayName}: {r.Description}";
             if (!string.IsNullOrWhiteSpace(r.MitigationNotes))
             {
                 body += " (Mitigation: " + r.MitigationNotes + ")";

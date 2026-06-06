@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -395,13 +396,14 @@ ORDER BY {IntelConfidenceSql.RankClause("s.SourceConfidence")} DESC,
         return await ReadSignalsAsync(cmd, ct).ConfigureAwait(false);
     }
 
-    private static async Task<IReadOnlyList<IntelRiskRow>> GetRegionCapacityRisksAsync(
+    private static async Task<IReadOnlyList<RegionCapacityRiskRow>> GetRegionCapacityRisksAsync(
         SqlConnection con,
         string province,
         IReadOnlyList<string> cityTokens,
         CancellationToken ct)
     {
         var cityClause = BuildMpiCityClause(cityTokens, "c");
+        var cityIncludes = BuildRegionRelevanceCityIncludes(cityTokens);
         var sql = $@"
 WITH RegionOrgIds AS (
     SELECT DISTINCT v.CanonicalOrgId
@@ -416,19 +418,64 @@ WITH RegionOrgIds AS (
       AND m.Province = @prov
       {cityClause}
       AND v.CanonicalOrgId IS NOT NULL
+),
+Candidates AS (
+    SELECT TOP 50 x.Id, x.RiskType, x.Description, x.MitigationNotes,
+           x.SourceProviderName, x.SourceConfidence, x.LastSeenAtUtc,
+           co.DisplayName AS OrgDisplayName,
+           LOWER(x.Description) AS LowerDesc
+    FROM opportunities.IntelRisk x
+    JOIN RegionOrgIds r ON r.CanonicalOrgId = x.CanonicalOrgId
+    JOIN opportunities.CanonicalOrg co ON co.Id = x.CanonicalOrgId
+    WHERE x.RiskType = N'CapacityStrain'
+      AND x.RetiredAtUtc IS NULL
+    ORDER BY {IntelConfidenceSql.RankClause("x.SourceConfidence")} DESC,
+             x.LastSeenAtUtc DESC
 )
-SELECT TOP 20 x.Id, x.RiskType, x.Description, x.MitigationNotes,
-       x.SourceProviderName, x.SourceConfidence, x.LastSeenAtUtc
-FROM opportunities.IntelRisk x
-JOIN RegionOrgIds r ON r.CanonicalOrgId = x.CanonicalOrgId
-WHERE x.RiskType = N'CapacityStrain'
-  AND x.RetiredAtUtc IS NULL
-ORDER BY {IntelConfidenceSql.RankClause("x.SourceConfidence")} DESC,
-         x.LastSeenAtUtc DESC;";
+SELECT TOP 20 Id, RiskType, Description, MitigationNotes,
+       SourceProviderName, SourceConfidence, LastSeenAtUtc, OrgDisplayName
+FROM Candidates c
+WHERE
+    c.LowerDesc LIKE N'%' + LOWER(@prov) + N'%'
+    OR (@provLong IS NOT NULL AND c.LowerDesc LIKE N'%' + @provLong + N'%')
+    {cityIncludes}
+    OR NOT (
+        c.LowerDesc LIKE N'%vancouver%' OR c.LowerDesc LIKE N'%toronto%'
+        OR c.LowerDesc LIKE N'%halifax%' OR c.LowerDesc LIKE N'%winnipeg%'
+        OR c.LowerDesc LIKE N'%montreal%' OR c.LowerDesc LIKE N'%ottawa%'
+        OR c.LowerDesc LIKE N'%kelowna%' OR c.LowerDesc LIKE N'%edmonton%'
+        OR c.LowerDesc LIKE N'%saskatoon%' OR c.LowerDesc LIKE N'%regina%'
+        OR c.LowerDesc LIKE N'% bc %' OR c.LowerDesc LIKE N'% on %'
+        OR c.LowerDesc LIKE N'% qc %' OR c.LowerDesc LIKE N'% ns %'
+        OR c.LowerDesc LIKE N'% mb %' OR c.LowerDesc LIKE N'% sk %'
+        OR c.LowerDesc LIKE N'%british columbia%'
+        OR c.LowerDesc LIKE N'%ontario%' OR c.LowerDesc LIKE N'%quebec%'
+        OR c.LowerDesc LIKE N'%nova scotia%' OR c.LowerDesc LIKE N'%manitoba%'
+    )
+ORDER BY {IntelConfidenceSql.RankClause("SourceConfidence")} DESC,
+         LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         BindProvince(cmd, province);
+        cmd.Parameters.Add("@provLong", SqlDbType.NVarChar, 50).Value =
+            (object?)ProvinceLongName(province) ?? DBNull.Value;
         BindCityTokens(cmd, cityTokens, "c");
-        return await ReadRisksAsync(cmd, ct).ConfigureAwait(false);
+
+        var now = DateTimeOffset.UtcNow;
+        var rows = new List<RegionCapacityRiskRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            var refreshed = r.GetDateTimeOffset(6);
+            rows.Add(new RegionCapacityRiskRow(
+                OrgDisplayName: r.GetString(7),
+                Description: r.GetString(2),
+                MitigationNotes: r.IsDBNull(3) ? null : r.GetString(3),
+                Confidence: ParseConfidence(r.GetString(5)),
+                Freshness: ComputeFreshness(now, refreshed),
+                RefreshedAtUtc: refreshed));
+        }
+
+        return rows;
     }
 
     private static async Task<IReadOnlyList<IntelActionRow>> ReadActionsAsync(SqlCommand cmd, CancellationToken ct)
@@ -538,6 +585,40 @@ ORDER BY {IntelConfidenceSql.RankClause("x.SourceConfidence")} DESC,
         {
             cmd.Parameters.Add("@" + paramPrefix + i.ToString(System.Globalization.CultureInfo.InvariantCulture), SqlDbType.NVarChar, 150).Value = tokens[i];
         }
+    }
+
+    private static string? ProvinceLongName(string province) =>
+        province switch
+        {
+            "BC" => "british columbia",
+            "AB" => "alberta",
+            "ON" => "ontario",
+            "QC" => "quebec",
+            "NS" => "nova scotia",
+            "MB" => "manitoba",
+            "SK" => "saskatchewan",
+            "NB" => "new brunswick",
+            "NL" => "newfoundland",
+            "PE" => "prince edward",
+            _ => null,
+        };
+
+    private static string BuildRegionRelevanceCityIncludes(IReadOnlyList<string> cityTokens)
+    {
+        if (cityTokens.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder();
+        for (var i = 0; i < cityTokens.Count; i++)
+        {
+            sb.Append(" OR c.LowerDesc LIKE N'%' + LOWER(@c")
+              .Append(i)
+              .Append(") + N'%'");
+        }
+
+        return sb.ToString();
     }
 
     /// <summary>

@@ -65,6 +65,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefPdfGenerator,
             Kor.Operations.App.BusinessDevelopment.Briefs.BriefPdfGenerator>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Briefs.RegionBriefDialog>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Briefs.BriefsMakerWindow>();
 
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityStore(options.OpportunitiesDb));

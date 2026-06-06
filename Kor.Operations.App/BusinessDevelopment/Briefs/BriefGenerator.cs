@@ -276,7 +276,7 @@ public sealed class BriefGenerator : IBriefGenerator
                 AppendHeading(body, "Capacity-strain signals (competitor displacement opportunities)");
                 foreach (var r in data.Intel.TopCapacityRisks)
                 {
-                    var text = r.Description;
+                    var text = $"{r.OrgDisplayName}: {r.Description}";
                     if (!string.IsNullOrWhiteSpace(r.MitigationNotes))
                     {
                         text += " (Mitigation: " + r.MitigationNotes + ")";

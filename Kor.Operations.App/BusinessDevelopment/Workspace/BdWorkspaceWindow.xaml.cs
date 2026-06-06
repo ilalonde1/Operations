@@ -170,12 +170,11 @@ public partial class BdWorkspaceWindow : Window
         win.Show();
     }
 
-    private void RegionBrief_Click(object sender, RoutedEventArgs e)
+    private void BriefsMaker_Click(object sender, RoutedEventArgs e)
     {
-        // Modal action — does not switch screens, so we don't call SetActiveNav.
-        var dlg = _services.GetRequiredService<Kor.Operations.App.BusinessDevelopment.Briefs.RegionBriefDialog>();
-        dlg.Owner = this;
-        dlg.ShowDialog();
+        var win = _services.GetRequiredService<Kor.Operations.App.BusinessDevelopment.Briefs.BriefsMakerWindow>();
+        win.Owner = this;
+        win.ShowDialog();
     }
 
     private void SetActiveNav(Button active)
@@ -189,7 +188,6 @@ public partial class BdWorkspaceWindow : Window
             EventsButton,
             CompetitionButton,
             AdminButton,
-            RegionBriefButton,
             BdTrackingButton,
             PursuitsButton,
             ProposalsButton,
