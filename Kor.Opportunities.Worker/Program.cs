@@ -14,6 +14,7 @@ using Kor.Opportunities.Data.Ingestion.Providers;
 using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
+using Kor.Opportunities.Data.Projects;
 using Kor.Opportunities.Data.Scoring;
 using Kor.Opportunities.Data.Sources;
 using Kor.Opportunities.Worker.Logging;
@@ -133,6 +134,9 @@ internal static class Program
             builder.Services
                 .AddOptions<BdResearchExecutorOptions>()
                 .Bind(builder.Configuration.GetSection("BdResearchExecutor"));
+            builder.Services
+                .AddOptions<BdProjectResearchExecutorOptions>()
+                .Bind(builder.Configuration.GetSection("BdProjectResearchExecutor"));
 
             // Stores take the connection string directly (rather than an Options type) so
             // Kor.Opportunities.Data stays free of any host-specific Options class.
@@ -155,6 +159,21 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.BcB
 builder.Services.AddSingleton<BdResearchExecutorService>();
 builder.Services.AddSingleton<IResearchExecutorService, AnthropicResearchExecutorService>();
 builder.Services.AddSingleton<IResearchPromptCatalog, FileSystemResearchPromptCatalog>();
+builder.Services.AddSingleton<IProjectIntelExtractor, ProjectBriefExtractor>();
+builder.Services.AddSingleton<DefaultProjectIntelExtractor>();
+builder.Services.AddSingleton<ProjectIntelExtractorRegistry>();
+builder.Services.AddSingleton<ProjectIntelPersistenceService>(sp =>
+    new ProjectIntelPersistenceService(
+        Cs(sp),
+        sp.GetRequiredService<ILogger<ProjectIntelPersistenceService>>()));
+builder.Services.AddSingleton<IMajorProjectEnrichmentTrackingStore>(sp =>
+    new SqlMajorProjectEnrichmentTrackingStore(
+        Cs(sp),
+        sp.GetRequiredService<ProjectIntelExtractorRegistry>(),
+        sp.GetRequiredService<ProjectIntelPersistenceService>(),
+        sp.GetRequiredService<ILogger<SqlMajorProjectEnrichmentTrackingStore>>()));
+builder.Services.AddSingleton<IProjectResearchPromptCatalog, FileSystemProjectResearchPromptCatalog>();
+builder.Services.AddSingleton<BdProjectResearchExecutorService>();
 builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>(c =>
 {
     c.Timeout = TimeSpan.FromSeconds(120);
@@ -856,6 +875,22 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["BdResearchExecutorCronSchedule"] ?? "0 0 7 * * ?";
       t.ForJob(bdResearchExecutorKey)
        .WithIdentity("BdResearchExecutorTrigger")
+       .WithCronSchedule(
+           cron,
+           cb => cb.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"))
+                   .WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var bdProjectResearchExecutorKey = new JobKey("BdProjectResearchExecutorJob");
+  q.AddJob<Kor.Opportunities.Worker.Jobs.BdProjectResearchExecutorJob>(
+      opts => opts.WithIdentity(bdProjectResearchExecutorKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 07:30 Pacific daily, offset 30 minutes after the org executor.
+      var cron = builder.Configuration["BdProjectResearchExecutorCronSchedule"] ?? "0 30 7 * * ?";
+      t.ForJob(bdProjectResearchExecutorKey)
+       .WithIdentity("BdProjectResearchExecutorTrigger")
        .WithCronSchedule(
            cron,
            cb => cb.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"))
