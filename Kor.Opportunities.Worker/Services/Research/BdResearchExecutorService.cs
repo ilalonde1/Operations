@@ -203,13 +203,22 @@ SELECT TOP (@max) co.Id,
        last_seen.LastSeenAtUtc
 FROM opportunities.CanonicalOrg co
 LEFT JOIN (
+    -- Staleness rollup is scoped to SourceProviderName='FirmNarrative'
+    -- so that rows from other providers (PersonBrief-*, DataHoning,
+    -- StructuralPartnerMap, etc.) cannot make an org appear fresh to
+    -- the FirmNarrative auto-refresher. Without this scope, R91c
+    -- person-side writes to a CanonicalOrg's IntelAction set would
+    -- bump LastSeenAtUtc and skip the org's own dossier refresh.
     SELECT CanonicalOrgId, MAX(LastSeenAtUtc) AS LastSeenAtUtc
     FROM (
-        SELECT a.CanonicalOrgId, a.LastSeenAtUtc FROM opportunities.IntelAction a WHERE a.RetiredAtUtc IS NULL
+        SELECT a.CanonicalOrgId, a.LastSeenAtUtc FROM opportunities.IntelAction a
+         WHERE a.RetiredAtUtc IS NULL AND a.SourceProviderName = N'FirmNarrative'
         UNION ALL
-        SELECT s.CanonicalOrgId, s.LastSeenAtUtc FROM opportunities.IntelSignal s WHERE s.RetiredAtUtc IS NULL
+        SELECT s.CanonicalOrgId, s.LastSeenAtUtc FROM opportunities.IntelSignal s
+         WHERE s.RetiredAtUtc IS NULL AND s.SourceProviderName = N'FirmNarrative'
         UNION ALL
-        SELECT n.CanonicalOrgId, n.LastSeenAtUtc FROM opportunities.IntelNarrative n WHERE n.RetiredAtUtc IS NULL
+        SELECT n.CanonicalOrgId, n.LastSeenAtUtc FROM opportunities.IntelNarrative n
+         WHERE n.RetiredAtUtc IS NULL AND n.SourceProviderName = N'FirmNarrative'
     ) u
     GROUP BY u.CanonicalOrgId
 ) last_seen ON last_seen.CanonicalOrgId = co.Id

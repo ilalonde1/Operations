@@ -154,6 +154,13 @@ internal static class OpportunitiesModule
                 sp.GetRequiredService<ProjectIntelExtractorRegistry>(),
                 sp.GetRequiredService<ProjectIntelPersistenceService>(),
                 sp.GetRequiredService<ILogger<SqlMajorProjectEnrichmentTrackingStore>>()));
+        services.AddSingleton<PersonBriefExtractor>();
+        services.AddSingleton<Kor.Opportunities.Data.People.IPersonRefreshChokepoint>(sp =>
+            new Kor.Opportunities.Data.People.SqlPersonRefreshChokepoint(
+                options.OpportunitiesDb,
+                sp.GetRequiredService<PersonBriefExtractor>(),
+                sp.GetRequiredService<IntelPersistenceService>(),
+                sp.GetRequiredService<ILogger<Kor.Opportunities.Data.People.SqlPersonRefreshChokepoint>>()));
         services.AddSingleton<Kor.Operations.App.Opportunities.CustomProposalImportService>();
         services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierView>();

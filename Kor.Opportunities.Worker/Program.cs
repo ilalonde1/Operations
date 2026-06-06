@@ -174,6 +174,19 @@ builder.Services.AddSingleton<IMajorProjectEnrichmentTrackingStore>(sp =>
         sp.GetRequiredService<ILogger<SqlMajorProjectEnrichmentTrackingStore>>()));
 builder.Services.AddSingleton<IProjectResearchPromptCatalog, FileSystemProjectResearchPromptCatalog>();
 builder.Services.AddSingleton<BdProjectResearchExecutorService>();
+
+// R91c — Person refresh chokepoint. Parallels the org and project
+// chokepoints; uses the existing IntelPersistenceService to write
+// IntelPerson + IntelPersonAffiliation + IntelSignal + IntelAction
+// drafts tagged with SourceProviderName = "PersonBrief-{personId}".
+builder.Services.AddSingleton<PersonBriefExtractor>();
+builder.Services.AddSingleton<Kor.Opportunities.Data.People.IPersonRefreshChokepoint>(sp =>
+    new Kor.Opportunities.Data.People.SqlPersonRefreshChokepoint(
+        Cs(sp),
+        sp.GetRequiredService<PersonBriefExtractor>(),
+        sp.GetRequiredService<IntelPersistenceService>(),
+        sp.GetRequiredService<ILogger<Kor.Opportunities.Data.People.SqlPersonRefreshChokepoint>>()));
+
 builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>(c =>
 {
     c.Timeout = TimeSpan.FromSeconds(120);
