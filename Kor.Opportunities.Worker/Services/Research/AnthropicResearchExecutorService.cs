@@ -15,6 +15,88 @@ namespace Kor.Opportunities.Worker.Services.Research;
 
 public sealed class AnthropicResearchExecutorService : IResearchExecutorService
 {
+    // Fallback structured-output schema used when a ResearchTarget does
+    // not supply its own. Matches the org/FirmNarrative shape consumed
+    // by CanonicalSchemaExtractor("FirmNarrative") and the dossier UI.
+    // Project research (R91b) passes its own schema via
+    // ResearchTarget.StructuredOutputJsonSchema and never hits this.
+    private const string OrgFirmNarrativeSchema = @"{
+  ""type"": ""object"",
+  ""properties"": {
+    ""displayName"": { ""type"": ""string"" },
+    ""kind"": { ""type"": ""string"" },
+    ""_providerName"": { ""type"": ""string"" },
+    ""_generatedAt"": { ""type"": ""string"" },
+    ""_confidence"": { ""type"": ""string"" },
+    ""decisionMakers"": { ""type"": ""array"", ""items"": {
+      ""type"": ""object"",
+      ""properties"": {
+        ""name"": { ""type"": ""string"" },
+        ""title"": { ""type"": [""string"", ""null""] },
+        ""email"": { ""type"": [""string"", ""null""] },
+        ""phone"": { ""type"": [""string"", ""null""] },
+        ""linkedinUrl"": { ""type"": [""string"", ""null""] },
+        ""notes"": { ""type"": [""string"", ""null""] }
+      }
+    }},
+    ""signals"": { ""type"": ""array"", ""items"": {
+      ""type"": ""object"",
+      ""properties"": {
+        ""signalType"": { ""type"": ""string"" },
+        ""subject"": { ""type"": ""string"" },
+        ""detail"": { ""type"": [""string"", ""null""] },
+        ""occurredAtApprox"": { ""type"": [""string"", ""null""] },
+        ""sourceUrl"": { ""type"": [""string"", ""null""] }
+      }
+    }},
+    ""actions"": { ""type"": ""array"", ""items"": {
+      ""type"": ""object"",
+      ""properties"": {
+        ""actionType"": { ""type"": ""string"" },
+        ""recommendation"": { ""type"": ""string"" },
+        ""targetPersonName"": { ""type"": [""string"", ""null""] },
+        ""timingNotes"": { ""type"": [""string"", ""null""] }
+      }
+    }},
+    ""works"": { ""type"": ""array"", ""items"": {
+      ""type"": ""object"",
+      ""properties"": {
+        ""projectName"": { ""type"": ""string"" },
+        ""role"": { ""type"": [""string"", ""null""] },
+        ""yearApprox"": { ""type"": [""string"", ""null""] },
+        ""estimatedValueCad"": { ""type"": [""number"", ""null""] },
+        ""estimatedValueText"": { ""type"": [""string"", ""null""] },
+        ""notes"": { ""type"": [""string"", ""null""] }
+      }
+    }},
+    ""risks"": {
+      ""type"": ""array"",
+      ""description"": ""Flag risks the org carries (capacity strain on their preferred SE partner, key-person dependency, ownership uncertainty, exploitable competitor weakness). Leave empty only if no risks are evident from research."",
+      ""items"": {
+      ""type"": ""object"",
+      ""properties"": {
+        ""riskType"": { ""type"": ""string"" },
+        ""description"": { ""type"": ""string"" },
+        ""mitigationNotes"": { ""type"": [""string"", ""null""] }
+      }
+    }},
+    ""narratives"": {
+      ""type"": ""array"",
+      ""minItems"": 2,
+      ""description"": ""Always include at least 2 narratives: one with narrativeType=Current summarizing the org's current state in 2-4 sentences, and one with narrativeType=Action summarizing what KOR should do this quarter in 2-4 sentences. May include additional History or Summary narratives."",
+      ""items"": {
+        ""type"": ""object"",
+        ""properties"": {
+          ""narrativeType"": { ""type"": ""string"", ""enum"": [""Current"", ""History"", ""Action"", ""Summary""] },
+          ""paragraphText"": { ""type"": ""string"" }
+        },
+        ""required"": [""narrativeType"", ""paragraphText""]
+      }
+    }
+  },
+  ""required"": [""displayName"", ""kind"", ""_providerName"", ""_generatedAt"", ""_confidence"", ""narratives""]
+}";
+
     private readonly BdResearchExecutorOptions _options;
     private readonly ILogger<AnthropicResearchExecutorService> _logger;
 
@@ -158,87 +240,14 @@ public sealed class AnthropicResearchExecutorService : IResearchExecutorService
     {
         const string submitToolName = "submit_research";
         const string submitToolDescription = "Submit the structured research findings for this organization.";
-        const string submitToolSchema = @"{
-  ""type"": ""object"",
-  ""properties"": {
-    ""displayName"": { ""type"": ""string"" },
-    ""kind"": { ""type"": ""string"" },
-    ""_providerName"": { ""type"": ""string"" },
-    ""_generatedAt"": { ""type"": ""string"" },
-    ""_confidence"": { ""type"": ""string"" },
-    ""decisionMakers"": { ""type"": ""array"", ""items"": {
-      ""type"": ""object"",
-      ""properties"": {
-        ""name"": { ""type"": ""string"" },
-        ""title"": { ""type"": [""string"", ""null""] },
-        ""email"": { ""type"": [""string"", ""null""] },
-        ""phone"": { ""type"": [""string"", ""null""] },
-        ""linkedinUrl"": { ""type"": [""string"", ""null""] },
-        ""notes"": { ""type"": [""string"", ""null""] }
-      }
-    }},
-    ""signals"": { ""type"": ""array"", ""items"": {
-      ""type"": ""object"",
-      ""properties"": {
-        ""signalType"": { ""type"": ""string"" },
-        ""subject"": { ""type"": ""string"" },
-        ""detail"": { ""type"": [""string"", ""null""] },
-        ""occurredAtApprox"": { ""type"": [""string"", ""null""] },
-        ""sourceUrl"": { ""type"": [""string"", ""null""] }
-      }
-    }},
-    ""actions"": { ""type"": ""array"", ""items"": {
-      ""type"": ""object"",
-      ""properties"": {
-        ""actionType"": { ""type"": ""string"" },
-        ""recommendation"": { ""type"": ""string"" },
-        ""targetPersonName"": { ""type"": [""string"", ""null""] },
-        ""timingNotes"": { ""type"": [""string"", ""null""] }
-      }
-    }},
-    ""works"": { ""type"": ""array"", ""items"": {
-      ""type"": ""object"",
-      ""properties"": {
-        ""projectName"": { ""type"": ""string"" },
-        ""role"": { ""type"": [""string"", ""null""] },
-        ""yearApprox"": { ""type"": [""string"", ""null""] },
-        ""estimatedValueCad"": { ""type"": [""number"", ""null""] },
-        ""estimatedValueText"": { ""type"": [""string"", ""null""] },
-        ""notes"": { ""type"": [""string"", ""null""] }
-      }
-    }},
-    ""risks"": {
-      ""type"": ""array"",
-      ""description"": ""Flag risks the org carries (capacity strain on their preferred SE partner, key-person dependency, ownership uncertainty, exploitable competitor weakness). Leave empty only if no risks are evident from research."",
-      ""items"": {
-      ""type"": ""object"",
-      ""properties"": {
-        ""riskType"": { ""type"": ""string"" },
-        ""description"": { ""type"": ""string"" },
-        ""mitigationNotes"": { ""type"": [""string"", ""null""] }
-      }
-    }},
-    ""narratives"": {
-      ""type"": ""array"",
-      ""minItems"": 2,
-      ""description"": ""Always include at least 2 narratives: one with narrativeType=Current summarizing the org's current state in 2-4 sentences, and one with narrativeType=Action summarizing what KOR should do this quarter in 2-4 sentences. May include additional History or Summary narratives."",
-      ""items"": {
-        ""type"": ""object"",
-        ""properties"": {
-          ""narrativeType"": { ""type"": ""string"", ""enum"": [""Current"", ""History"", ""Action"", ""Summary""] },
-          ""paragraphText"": { ""type"": ""string"" }
-        },
-        ""required"": [""narrativeType"", ""paragraphText""]
-      }
-    }
-  },
-  ""required"": [""displayName"", ""kind"", ""_providerName"", ""_generatedAt"", ""_confidence"", ""narratives""]
-}";
+        var submitToolSchema = target.StructuredOutputJsonSchema ?? OrgFirmNarrativeSchema;
 
+        var includeSentence = target.StructuredOutputFormatInstruction
+            ?? "Include all decisionMakers, signals, actions, works, risks, and narratives found in the research.";
         var formatSystemPrompt =
             "You are a JSON formatter. Convert the research findings below into a single submit_research tool call. " +
             "Do not perform additional research. Do not emit text. Call the submit_research tool exactly once with the structured arguments. " +
-            "Omit fields where you have no information. Include all decisionMakers, signals, actions, works, risks, and narratives found in the research.";
+            "Omit fields where you have no information. " + includeSentence;
 
         var formatUserPrompt =
             $"Research findings for {target.OrgDisplayName}:{Environment.NewLine}{Environment.NewLine}{researchText}{Environment.NewLine}{Environment.NewLine}" +

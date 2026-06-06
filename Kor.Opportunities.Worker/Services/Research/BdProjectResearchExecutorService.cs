@@ -15,6 +15,67 @@ public sealed class BdProjectResearchExecutorService
     private const string BatchProviderName = "ProjectBrief";
     private const int CommandTimeoutSeconds = 120;
 
+    // Structured-output schema passed into the AnthropicResearchExecutorService
+    // format phase. Matches the JSON shape ProjectBriefExtractor parses
+    // (description / schedule / status / korAngle / signals / actions /
+    // risks / keyPeople). When this is null the executor falls back to
+    // the org/FirmNarrative schema, which is the wrong shape for projects.
+    private const string ProjectBriefSchema = @"{
+  ""type"": ""object"",
+  ""properties"": {
+    ""overallConfidence"": { ""type"": ""number"", ""description"": ""0.0 to 1.0"" },
+    ""description"": { ""type"": [""string"", ""null""], ""description"": ""Long-form description of the project scope, drivers, owner intent."" },
+    ""schedule"":    { ""type"": [""string"", ""null""], ""description"": ""Timing notes, milestones, expected RFP windows."" },
+    ""status"":      { ""type"": [""string"", ""null""], ""description"": ""Current stage and recent status updates."" },
+    ""korAngle"":    { ""type"": [""string"", ""null""], ""description"": ""How KOR competes here, displacement read."" },
+    ""signals"": { ""type"": ""array"", ""items"": {
+      ""type"": ""object"",
+      ""properties"": {
+        ""type"":    { ""type"": ""string"", ""description"": ""StageChange | Awarded | Delayed | ScopeChange | BudgetChange | TeamChange | Other"" },
+        ""subject"": { ""type"": ""string"" },
+        ""detail"":  { ""type"": [""string"", ""null""] },
+        ""occurredAt"": { ""type"": [""string"", ""null""], ""description"": ""YYYY-MM or YYYY-MM-DD when known"" },
+        ""sourceUrl"":  { ""type"": [""string"", ""null""] }
+      },
+      ""required"": [""type"", ""subject""]
+    }},
+    ""actions"": { ""type"": ""array"", ""items"": {
+      ""type"": ""object"",
+      ""properties"": {
+        ""type"":           { ""type"": ""string"", ""description"": ""ContactStrategy | PursuitAngle | TimingWindow | TeamingMove | Other"" },
+        ""recommendation"": { ""type"": ""string"" },
+        ""targetPerson"":   { ""type"": [""string"", ""null""] },
+        ""targetOrg"":      { ""type"": [""string"", ""null""] },
+        ""timingNotes"":    { ""type"": [""string"", ""null""] }
+      },
+      ""required"": [""type"", ""recommendation""]
+    }},
+    ""risks"": { ""type"": ""array"", ""items"": {
+      ""type"": ""object"",
+      ""properties"": {
+        ""type"":        { ""type"": ""string"", ""description"": ""StageDelay | BudgetCut | ScopeShrink | TeamFlip | CompetitorEntrenched | DataIssue | Other"" },
+        ""description"": { ""type"": ""string"" },
+        ""mitigation"":  { ""type"": [""string"", ""null""] }
+      },
+      ""required"": [""type"", ""description""]
+    }},
+    ""keyPeople"": { ""type"": ""array"", ""items"": {
+      ""type"": ""object"",
+      ""properties"": {
+        ""name"":    { ""type"": ""string"" },
+        ""title"":   { ""type"": [""string"", ""null""] },
+        ""side"":    { ""type"": ""string"", ""description"": ""Owner | Architect | GC | Structural | Other"" },
+        ""orgName"": { ""type"": [""string"", ""null""] }
+      },
+      ""required"": [""name"", ""side""]
+    }}
+  },
+  ""required"": [""overallConfidence""]
+}";
+
+    private const string ProjectBriefFormatInstruction =
+        "Include all description, schedule, status, korAngle, signals, actions, risks, and keyPeople fields supported by the research.";
+
     private readonly OpportunitiesWorkerOptions _workerOptions;
     private readonly BdProjectResearchExecutorOptions _options;
     private readonly IResearchExecutorService _executor;
@@ -91,7 +152,9 @@ public sealed class BdProjectResearchExecutorService
                         candidate.Stage,
                         BatchProviderName,
                         prompt.SystemPrompt,
-                        prompt.UserPrompt.Replace("{CURRENT_INTEL_JSON}", "{}", StringComparison.Ordinal)),
+                        prompt.UserPrompt.Replace("{CURRENT_INTEL_JSON}", "{}", StringComparison.Ordinal),
+                        ProjectBriefSchema,
+                        ProjectBriefFormatInstruction),
                     ct).ConfigureAwait(false);
 
                 if (result is null)
@@ -161,7 +224,9 @@ public sealed class BdProjectResearchExecutorService
                     project.Stage,
                     providerName,
                     prompt.SystemPrompt,
-                    prompt.UserPrompt.Replace("{CURRENT_INTEL_JSON}", "{}", StringComparison.Ordinal)),
+                    prompt.UserPrompt.Replace("{CURRENT_INTEL_JSON}", "{}", StringComparison.Ordinal),
+                    ProjectBriefSchema,
+                    ProjectBriefFormatInstruction),
                 ct).ConfigureAwait(false);
 
             if (result is null)

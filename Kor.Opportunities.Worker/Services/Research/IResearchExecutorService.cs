@@ -12,7 +12,9 @@ public sealed record ResearchTarget(
     string OrgKind,
     string ProviderName,
     string SystemPromptOverride,
-    string UserPromptOverride);
+    string UserPromptOverride,
+    string? StructuredOutputJsonSchema = null,
+    string? StructuredOutputFormatInstruction = null);
 
 public sealed record ExecutedResearch(
     long CanonicalOrgId,
