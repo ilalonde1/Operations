@@ -16,11 +16,30 @@ public sealed class BdProjectResearchExecutorOptions
     public long DailyOutputTokenBudget { get; set; } = 200_000;
 
     /// <summary>
-    /// MPI Stage values eligible for auto-refresh. Default = active-pipeline stages.
+    /// MPI Stage values eligible for auto-refresh. Calibrated against
+    /// production data on 2026-06-06 — the original speculative list
+    /// ("Construction Pursuit / Pursuit / Capital Plan") matched zero
+    /// rows, leaving the project executor a silent no-op. These 14
+    /// values cover ~78% of active MPI rows (top 15 by count, less
+    /// Under-Construction). The long tail of free-text Sonnet-emitted
+    /// stages doesn't auto-refresh, but those are 1-of-a-kind anyway.
     /// </summary>
     public string[] EligibleStages { get; set; } = new[]
     {
-        "Construction Pursuit", "Pursuit", "Capital Plan",
+        "Planned",
+        "Design",
+        "planning",
+        "Concept",
+        "Announced-Funded",
+        "Approved",
+        "funding-approved",
+        "Procurement",
+        "Approved-Funded",
+        "Pre-design",
+        "capital-approved",
+        "Design-RFP-Open",
+        "Years 4-5 priority",
+        "Announced",
     };
 
     public int StalenessDays { get; set; } = 60;
