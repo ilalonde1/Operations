@@ -253,13 +253,26 @@ public sealed class BdPersonResearchExecutorService
             return Array.Empty<ResearchPersonCandidate>();
         }
 
+        // Staleness is measured by the last DEDICATED PersonBrief refresh
+        // (CanonicalOrgEnrichment row whose ProviderName matches the
+        // synthetic "PersonBrief-{personId}" tag this executor writes).
+        //
+        // Why not IntelPerson.LastSeenAtUtc: org-side R83 refreshes bump
+        // LastSeenAtUtc on every IntelPerson the model mentions, which
+        // would make this cron a no-op as long as the org executor is
+        // running. The dedicated-refresh check is independent and gives
+        // each person their own refresh budget.
+        //
+        // LEFT JOIN on ProviderName alone (not CanonicalOrgId) so a person
+        // who's switched employers between refreshes still finds their
+        // last refresh row (which was archived against the prior employer).
         const string sql = @"
 SELECT TOP (@max)
     p.Id,
     p.DisplayName,
-    cur.Title         AS CurrentTitle,
-    cur.OrgName       AS CurrentEmployerName,
-    p.LastSeenAtUtc
+    cur.Title             AS CurrentTitle,
+    cur.OrgName           AS CurrentEmployerName,
+    e.LastRefreshAtUtc    AS LastPersonRefreshAtUtc
 FROM opportunities.IntelPerson p
 OUTER APPLY (
     SELECT TOP 1
@@ -274,10 +287,13 @@ OUTER APPLY (
       AND a.RetiredAtUtc IS NULL
     ORDER BY a.LastSeenAtUtc DESC
 ) cur
+LEFT JOIN opportunities.CanonicalOrgEnrichment e
+    ON e.ProviderName = N'PersonBrief-' + CAST(p.Id AS NVARCHAR(20))
 WHERE p.RetiredAtUtc IS NULL
   AND cur.CanonicalOrgId IS NOT NULL
-  AND p.LastSeenAtUtc < DATEADD(DAY, -@staleness, sysdatetimeoffset())
-ORDER BY p.LastSeenAtUtc ASC;";
+  AND (e.LastRefreshAtUtc IS NULL
+       OR e.LastRefreshAtUtc < DATEADD(DAY, -@staleness, sysdatetimeoffset()))
+ORDER BY ISNULL(e.LastRefreshAtUtc, '0001-01-01') ASC, p.Id ASC;";
 
         var rows = new List<ResearchPersonCandidate>();
         await using var con = new SqlConnection(_workerOptions.OpportunitiesDb);

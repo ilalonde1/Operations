@@ -29,7 +29,13 @@ public sealed class BdPersonResearchExecutorOptions
     /// <summary>Soft cap on total output tokens per scheduled run. Job stops queueing once exceeded.</summary>
     public long DailyOutputTokenBudget { get; set; } = 200_000;
 
-    /// <summary>Days since LastSeenAtUtc above which a person is eligible for refresh.</summary>
+    /// <summary>
+    /// Days since the last DEDICATED PersonBrief refresh above which a
+    /// person is eligible. People who've never had a PersonBrief refresh
+    /// are eligible immediately. Org-side R83 refreshes do NOT count —
+    /// they bump IntelPerson.LastSeenAtUtc but don't satisfy person-side
+    /// refresh budget. See R91c-tune.
+    /// </summary>
     public int StalenessDays { get; set; } = 90;
 
     /// <summary>Output folder where executed-research JSON files are archived.</summary>
