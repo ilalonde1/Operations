@@ -186,6 +186,8 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.People.IPersonRefreshChokep
         sp.GetRequiredService<PersonBriefExtractor>(),
         sp.GetRequiredService<IntelPersistenceService>(),
         sp.GetRequiredService<ILogger<Kor.Opportunities.Data.People.SqlPersonRefreshChokepoint>>()));
+builder.Services.AddSingleton<IPersonResearchPromptCatalog, FileSystemPersonResearchPromptCatalog>();
+builder.Services.AddSingleton<BdPersonResearchExecutorService>();
 
 builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.AwardAgentEnrichmentService>(c =>
 {
@@ -904,6 +906,22 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["BdProjectResearchExecutorCronSchedule"] ?? "0 30 7 * * ?";
       t.ForJob(bdProjectResearchExecutorKey)
        .WithIdentity("BdProjectResearchExecutorTrigger")
+       .WithCronSchedule(
+           cron,
+           cb => cb.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"))
+                   .WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var bdPersonResearchExecutorKey = new JobKey("BdPersonResearchExecutorJob");
+  q.AddJob<Kor.Opportunities.Worker.Jobs.BdPersonResearchExecutorJob>(
+      opts => opts.WithIdentity(bdPersonResearchExecutorKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 08:00 Pacific daily, 30 minutes after the project executor.
+      var cron = builder.Configuration["BdPersonResearchExecutorCronSchedule"] ?? "0 0 8 * * ?";
+      t.ForJob(bdPersonResearchExecutorKey)
+       .WithIdentity("BdPersonResearchExecutorTrigger")
        .WithCronSchedule(
            cron,
            cb => cb.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"))
