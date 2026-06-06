@@ -272,6 +272,21 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                     ProjectScheduleBullets(d)));
                 column.Item().Element(c => Section(c, "Team & KOR angle",
                     ProjectTeamBullets(d)));
+                if (d.MentionsInWorkHistory.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "On other portfolios",
+                        ProjectMentionWorkBullets(d)));
+                }
+                if (d.RecentMentionSignals.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "Recent signals mentioning this project",
+                        ProjectMentionSignalBullets(d)));
+                }
+                if (d.OpenActionsMentioning.Count > 0)
+                {
+                    column.Item().Element(c => Section(c, "KOR open actions mentioning this project",
+                        ProjectMentionActionBullets(d)));
+                }
                 column.Item().Element(c => ProjectSourceSection(c, d));
             });
             page.Footer().Element(PageFooter);
@@ -332,6 +347,41 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         foreach (var line in ProjectLinkedOrgBullets("GC", d.GeneralContractorName, d.GeneralContractorSummary, structuralCallout: false))
         {
             yield return line;
+        }
+    }
+
+    private static IEnumerable<string> ProjectMentionWorkBullets(ProjectBriefData d)
+    {
+        foreach (var m in d.MentionsInWorkHistory)
+        {
+            var bits = new List<string>();
+            if (!string.IsNullOrWhiteSpace(m.Role)) bits.Add(m.Role);
+            if (!string.IsNullOrWhiteSpace(m.YearApprox)) bits.Add(m.YearApprox);
+            var meta = bits.Count == 0 ? "" : "  " + string.Join(", ", bits);
+            yield return $"{m.OrgDisplayName} ({m.Kind}){meta}";
+        }
+    }
+
+    private static IEnumerable<string> ProjectMentionSignalBullets(ProjectBriefData d)
+    {
+        foreach (var s in d.RecentMentionSignals)
+        {
+            var when = s.OccurredAtApprox ?? s.LastSeenAtUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            yield return $"{when}  {s.SignalType}: {s.Subject} (via {s.OrgDisplayName})";
+        }
+    }
+
+    private static IEnumerable<string> ProjectMentionActionBullets(ProjectBriefData d)
+    {
+        foreach (var a in d.OpenActionsMentioning)
+        {
+            var text = $"{a.ActionType}: {a.Recommendation}";
+            if (!string.IsNullOrWhiteSpace(a.TimingNotes))
+            {
+                text += " [" + a.TimingNotes + "]";
+            }
+            text += $" (via {a.OrgDisplayName})";
+            yield return text;
         }
     }
 

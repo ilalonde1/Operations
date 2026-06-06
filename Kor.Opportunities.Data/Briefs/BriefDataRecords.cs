@@ -71,6 +71,31 @@ public sealed record LinkedOrgSummary(
     int RecentSignalCount,
     DateTimeOffset? LastRefreshAtUtc);
 
+public sealed record ProjectMentionInWorkHistory(
+    string OrgDisplayName,
+    long CanonicalOrgId,
+    string Kind,
+    string? Role,
+    string? YearApprox,
+    string? Notes);
+
+public sealed record ProjectRecentMentionSignal(
+    string OrgDisplayName,
+    long CanonicalOrgId,
+    string SignalType,
+    string Subject,
+    string? Detail,
+    string? OccurredAtApprox,
+    DateTimeOffset LastSeenAtUtc);
+
+public sealed record ProjectOpenActionMention(
+    string OrgDisplayName,
+    long CanonicalOrgId,
+    string ActionType,
+    string Recommendation,
+    string? TimingNotes,
+    DateTimeOffset LastSeenAtUtc);
+
 public sealed record ProjectBriefData(
     long Id,
     string ProjectName,
@@ -94,7 +119,10 @@ public sealed record ProjectBriefData(
     LinkedOrgSummary? ProponentSummary,
     LinkedOrgSummary? ArchitectSummary,
     LinkedOrgSummary? StructuralSummary,
-    LinkedOrgSummary? GeneralContractorSummary);
+    LinkedOrgSummary? GeneralContractorSummary,
+    IReadOnlyList<ProjectMentionInWorkHistory> MentionsInWorkHistory,
+    IReadOnlyList<ProjectRecentMentionSignal> RecentMentionSignals,
+    IReadOnlyList<ProjectOpenActionMention> OpenActionsMentioning);
 
 public sealed record PersonSearchRow(
     long IntelPersonId,

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Data.Intel;
@@ -18,6 +19,27 @@ namespace Kor.Opportunities.Data.Briefs;
 public sealed class SqlBriefDataStore : IBriefDataStore
 {
     private const int CommandTimeoutSeconds = 30;
+
+    // Stopwords are the generic infra/admin words that show up in
+    // nearly every MPI name and produce false-positive LIKE matches.
+    // Lowercase; matched case-insensitively.
+    private static readonly HashSet<string> ProjectNameStopwords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "new", "old", "stand", "alone", "stand-alone", "the", "of", "and",
+        "or", "in", "for", "at", "to", "with", "by", "from", "on",
+        "north", "south", "east", "west", "central", "northern", "southern",
+        "primary", "secondary", "main",
+        "project", "projects", "phase", "site", "campus", "facility",
+        "facilities", "building", "buildings", "tower", "towers", "complex",
+        "construction", "redevelopment", "renewal", "replacement",
+        "expansion", "upgrade", "renovation", "renovations", "addition",
+        "modernization", "improvement", "improvements", "rehabilitation",
+        "refurbishment",
+        "hospital", "centre", "center", "school", "schools", "regional",
+        "general", "community", "health", "medical", "clinic",
+        "children", "children's", "elementary", "secondary",
+        "planning", "design", "build", "development",
+    };
 
     private readonly string _connectionString;
     private readonly IntelReadService _intelReadService;
@@ -268,6 +290,18 @@ WHERE Id = @id AND RetiredAtUtc IS NULL;";
             ? await BuildLinkedOrgSummaryAsync(con, gcOrgId.Value, ct).ConfigureAwait(false)
             : null;
 
+        var tokens = ExtractDistinctiveTokens(projectName);
+        IReadOnlyList<ProjectMentionInWorkHistory> workMentions = Array.Empty<ProjectMentionInWorkHistory>();
+        IReadOnlyList<ProjectRecentMentionSignal> signalMentions = Array.Empty<ProjectRecentMentionSignal>();
+        IReadOnlyList<ProjectOpenActionMention> actionMentions = Array.Empty<ProjectOpenActionMention>();
+
+        if (tokens.Count > 0)
+        {
+            workMentions = await LoadProjectWorkMentionsAsync(con, id, tokens, ct).ConfigureAwait(false);
+            signalMentions = await LoadProjectSignalMentionsAsync(con, tokens, ct).ConfigureAwait(false);
+            actionMentions = await LoadProjectOpenActionMentionsAsync(con, tokens, ct).ConfigureAwait(false);
+        }
+
         return new ProjectBriefData(
             id,
             projectName,
@@ -291,7 +325,10 @@ WHERE Id = @id AND RetiredAtUtc IS NULL;";
             proponentSummary,
             architectSummary,
             structuralSummary,
-            gcSummary);
+            gcSummary,
+            workMentions,
+            signalMentions,
+            actionMentions);
     }
 
     public async Task<IReadOnlyList<PersonSearchRow>> SearchPeopleAsync(string query, int take, CancellationToken ct)
@@ -619,6 +656,193 @@ WHERE co.Id = @id;";
             Convert.ToInt32(r.GetValue(4)),
             Convert.ToInt32(r.GetValue(5)),
             r.IsDBNull(6) ? null : r.GetDateTimeOffset(6));
+    }
+
+    // Tokens are case-preserved (for SQL LIKE bind), filtered:
+    //   - drop parentheticals "(...)"
+    //   - split on whitespace + comma + slash + dash + colon
+    //   - drop stopwords
+    //   - drop tokens with length < 5
+    //   - drop pure-digit tokens
+    //   - dedup case-insensitively
+    //   - pick up to 3 longest (proper nouns are usually longest)
+    private static IReadOnlyList<string> ExtractDistinctiveTokens(string projectName)
+    {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return Array.Empty<string>();
+        }
+
+        var cleaned = System.Text.RegularExpressions.Regex.Replace(projectName, @"\([^)]*\)", " ");
+        var raw = cleaned.Split(
+            new[] { ' ', '\t', ',', '/', '-', ':', ';', '.', '"' },
+            StringSplitOptions.RemoveEmptyEntries);
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var keepers = new List<string>(raw.Length);
+        foreach (var t in raw)
+        {
+            var trim = t.Trim('\'', '"');
+            if (trim.Length < 5)
+            {
+                continue;
+            }
+            if (ProjectNameStopwords.Contains(trim))
+            {
+                continue;
+            }
+            if (trim.All(char.IsDigit))
+            {
+                continue;
+            }
+            if (!seen.Add(trim))
+            {
+                continue;
+            }
+
+            keepers.Add(trim);
+        }
+
+        return keepers
+            .OrderByDescending(s => s.Length)
+            .Take(3)
+            .ToList();
+    }
+
+    private static async Task<IReadOnlyList<ProjectMentionInWorkHistory>> LoadProjectWorkMentionsAsync(
+        SqlConnection con,
+        long mpiId,
+        IReadOnlyList<string> tokens,
+        CancellationToken ct)
+    {
+        var likeClauses = string.Join(" OR ",
+            Enumerable.Range(0, tokens.Count).Select(i => $"iw.ProjectName LIKE '%' + @t{i} + '%' ESCAPE '\\'"));
+        var sql = $@"
+SELECT TOP (10)
+    co.DisplayName,
+    co.Id,
+    co.Kind,
+    iw.Role,
+    iw.YearApprox,
+    iw.Notes
+FROM opportunities.IntelWork iw
+INNER JOIN opportunities.CanonicalOrg co ON co.Id = iw.CanonicalOrgId
+WHERE iw.RetiredAtUtc IS NULL
+  AND (
+      iw.MajorProjectsInventoryId = @id
+      OR {likeClauses}
+  )
+ORDER BY iw.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
+        BindProjectMentionTokens(cmd, tokens);
+        var rows = new List<ProjectMentionInWorkHistory>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ProjectMentionInWorkHistory(
+                r.GetString(0),
+                r.GetInt64(1),
+                r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.IsDBNull(5) ? null : r.GetString(5)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<ProjectRecentMentionSignal>> LoadProjectSignalMentionsAsync(
+        SqlConnection con,
+        IReadOnlyList<string> tokens,
+        CancellationToken ct)
+    {
+        var likeClauses = string.Join(" OR ",
+            Enumerable.Range(0, tokens.Count).Select(i =>
+                $"s.Subject LIKE '%' + @t{i} + '%' ESCAPE '\\' OR s.Detail LIKE '%' + @t{i} + '%' ESCAPE '\\'"));
+        var sql = $@"
+SELECT TOP (10)
+    co.DisplayName,
+    co.Id,
+    s.SignalType,
+    s.Subject,
+    s.Detail,
+    s.OccurredAtApprox,
+    s.LastSeenAtUtc
+FROM opportunities.IntelSignal s
+INNER JOIN opportunities.CanonicalOrg co ON co.Id = s.CanonicalOrgId
+WHERE s.RetiredAtUtc IS NULL
+  AND s.LastSeenAtUtc >= DATEADD(DAY, -365, sysdatetimeoffset())
+  AND ( {likeClauses} )
+ORDER BY s.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        BindProjectMentionTokens(cmd, tokens);
+        var rows = new List<ProjectRecentMentionSignal>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ProjectRecentMentionSignal(
+                r.GetString(0),
+                r.GetInt64(1),
+                r.GetString(2),
+                r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.IsDBNull(5) ? null : r.GetString(5),
+                r.GetDateTimeOffset(6)));
+        }
+
+        return rows;
+    }
+
+    private static async Task<IReadOnlyList<ProjectOpenActionMention>> LoadProjectOpenActionMentionsAsync(
+        SqlConnection con,
+        IReadOnlyList<string> tokens,
+        CancellationToken ct)
+    {
+        var likeClauses = string.Join(" OR ",
+            Enumerable.Range(0, tokens.Count).Select(i =>
+                $"a.Recommendation LIKE '%' + @t{i} + '%' ESCAPE '\\'"));
+        var sql = $@"
+SELECT TOP (10)
+    co.DisplayName,
+    co.Id,
+    a.ActionType,
+    a.Recommendation,
+    a.TimingNotes,
+    a.LastSeenAtUtc
+FROM opportunities.IntelAction a
+INNER JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+WHERE a.RetiredAtUtc IS NULL
+  AND a.Status = N'Open'
+  AND ( {likeClauses} )
+ORDER BY a.LastSeenAtUtc DESC;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        BindProjectMentionTokens(cmd, tokens);
+        var rows = new List<ProjectOpenActionMention>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new ProjectOpenActionMention(
+                r.GetString(0),
+                r.GetInt64(1),
+                r.GetString(2),
+                r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.GetDateTimeOffset(5)));
+        }
+
+        return rows;
+    }
+
+    private static void BindProjectMentionTokens(SqlCommand cmd, IReadOnlyList<string> tokens)
+    {
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            cmd.Parameters.Add($"@t{i}", SqlDbType.NVarChar, 200).Value = EscapeLikeQuery(tokens[i]);
+        }
     }
 
     private static async Task<IReadOnlyList<PersonAffiliationWithSeen>> GetPersonAffiliationsAsync(

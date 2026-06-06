@@ -168,6 +168,44 @@ public sealed class BriefGenerator : IBriefGenerator
         AppendLinkedOrgBlock(body, "Structural Engineer", data.StructuralEngineerName, data.StructuralSummary, structuralCallout: true);
         AppendLinkedOrgBlock(body, "GC", data.GeneralContractorName, data.GeneralContractorSummary, structuralCallout: false);
 
+        if (data.MentionsInWorkHistory.Count > 0)
+        {
+            AppendHeading(body, "On other portfolios");
+            foreach (var m in data.MentionsInWorkHistory)
+            {
+                var bits = new List<string>();
+                if (!string.IsNullOrWhiteSpace(m.Role)) bits.Add(m.Role);
+                if (!string.IsNullOrWhiteSpace(m.YearApprox)) bits.Add(m.YearApprox);
+                var meta = bits.Count == 0 ? "" : "  " + string.Join(", ", bits);
+                AppendBullet(body, $"{m.OrgDisplayName} ({m.Kind}){meta}");
+            }
+        }
+
+        if (data.RecentMentionSignals.Count > 0)
+        {
+            AppendHeading(body, "Recent signals mentioning this project");
+            foreach (var s in data.RecentMentionSignals)
+            {
+                var when = s.OccurredAtApprox ?? s.LastSeenAtUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                AppendBullet(body, $"{when}  {s.SignalType}: {s.Subject} (via {s.OrgDisplayName})");
+            }
+        }
+
+        if (data.OpenActionsMentioning.Count > 0)
+        {
+            AppendHeading(body, "KOR open actions mentioning this project");
+            foreach (var a in data.OpenActionsMentioning)
+            {
+                var text = $"{a.ActionType}: {a.Recommendation}";
+                if (!string.IsNullOrWhiteSpace(a.TimingNotes))
+                {
+                    text += " [" + a.TimingNotes + "]";
+                }
+                text += $" (via {a.OrgDisplayName})";
+                AppendBullet(body, text);
+            }
+        }
+
         AppendHeading(body, "Source");
         if (string.IsNullOrWhiteSpace(data.SourceUrl))
         {
