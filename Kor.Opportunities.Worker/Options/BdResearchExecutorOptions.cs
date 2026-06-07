@@ -21,11 +21,8 @@ public sealed class BdResearchExecutorOptions
     /// <summary>Soft cap on total output tokens per scheduled run. Job stops queueing new orgs once exceeded.</summary>
     public long DailyOutputTokenBudget { get; set; } = 200_000;
 
-    /// <summary>Restrict auto-refresh to canonical orgs whose Kind is one of these values. Default = KOR-relevant kinds only (skip noise Vendor mass).</summary>
-    public string[] EligibleKinds { get; set; } = new[]
-    {
-        "Architect", "Buyer", "Competitor", "Developer", "GC", "KorClient", "KorStructural",
-    };
+    /// <summary>Restrict auto-refresh to canonical orgs whose Kind is one of these values. Source of truth = appsettings.json (in-code default empty so Bind() replaces rather than appends).</summary>
+    public string[] EligibleKinds { get; set; } = System.Array.Empty<string>();
 
     /// <summary>Days since LastSeenAtUtc above which an org is eligible for refresh.</summary>
     public int StalenessDays { get; set; } = 21;

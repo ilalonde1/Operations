@@ -101,6 +101,13 @@ public sealed class BdProjectResearchExecutorService
 
     public async Task<BdProjectResearchExecutorRunResult> RunBatchAsync(CancellationToken ct)
     {
+        _logger.LogInformation(
+            "BD project research executor run: Enabled={Enabled}, MaxProjectsPerRun={Max}, StalenessDays={Staleness}, EligibleStages=[{Stages}]",
+            _options.Enabled,
+            _options.MaxProjectsPerRun,
+            _options.StalenessDays,
+            string.Join(", ", _options.EligibleStages ?? Array.Empty<string>()));
+
         if (!_options.Enabled)
         {
             _logger.LogInformation("BD project research executor is disabled.");
@@ -108,6 +115,7 @@ public sealed class BdProjectResearchExecutorService
         }
 
         var candidates = await LoadCandidatesAsync(ct).ConfigureAwait(false);
+        _logger.LogInformation("BD project research executor: loaded {Count} candidate(s).", candidates.Count);
         var executed = 0;
         var successes = 0;
         var failures = 0;

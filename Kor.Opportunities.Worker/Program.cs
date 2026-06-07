@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 using System.Net.Http;
 using Kor.Operations.Data;
 using Kor.Operations.Data.Deltek;
@@ -133,10 +134,15 @@ internal static class Program
                 .ValidateOnStart();
             builder.Services
                 .AddOptions<BdResearchExecutorOptions>()
-                .Bind(builder.Configuration.GetSection("BdResearchExecutor"));
+                .Bind(builder.Configuration.GetSection("BdResearchExecutor"))
+                .PostConfigure(o => o.EligibleKinds = o.EligibleKinds.Distinct().ToArray());
             builder.Services
                 .AddOptions<BdProjectResearchExecutorOptions>()
-                .Bind(builder.Configuration.GetSection("BdProjectResearchExecutor"));
+                .Bind(builder.Configuration.GetSection("BdProjectResearchExecutor"))
+                .PostConfigure(o => o.EligibleStages = o.EligibleStages.Distinct().ToArray());
+            builder.Services
+                .AddOptions<BdPersonResearchExecutorOptions>()
+                .Bind(builder.Configuration.GetSection("BdPersonResearchExecutor"));
 
             // Stores take the connection string directly (rather than an Options type) so
             // Kor.Opportunities.Data stays free of any host-specific Options class.
