@@ -709,8 +709,29 @@ ORDER BY Id;";
 
             using (doc)
             {
-                var buyer = doc.RootElement;
-                var buyerName = String(buyer, "buyerName");
+                var validation = ResearchEnvelopeValidator.Validate(doc, "public-sector-buyer-profile");
+                JsonElement buyer;
+                string source;
+                if (validation.IsValid && validation.Envelope is { } env
+                    && env.Items.ValueKind == JsonValueKind.Array
+                    && env.Items.GetArrayLength() >= 1)
+                {
+                    buyer = env.Items.EnumerateArray().First();
+                    source = $"envelope v{env.SchemaVersion}";
+                }
+                else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    buyer = doc.RootElement;
+                    source = "legacy single-object root";
+                }
+                else
+                {
+                    Console.WriteLine($"public-sector: {path} has neither envelope nor legacy shape ({validation.Reason}); skipping.");
+                    continue;
+                }
+
+                Console.WriteLine($"public-sector: {path} ingesting via {source}.");
+                var buyerName = String(buyer, "buyerName") ?? String(buyer, "ownerName");
                 if (string.IsNullOrWhiteSpace(buyerName))
                 {
                     stats.OrgRowsSkipped++;
@@ -723,8 +744,8 @@ ORDER BY Id;";
                     stats,
                     ClientKind,
                     buyerName,
-                    String(buyer, "websiteUrl"),
-                    String(buyer, "korRelevanceReason"),
+                    String(buyer, "websiteUrl") ?? String(buyer, "capitalPlanUrl"),
+                    String(buyer, "korRelevanceReason") ?? String(buyer, "procurementProcess"),
                     "PublicSectorResearch",
                     ct).ConfigureAwait(false);
 
@@ -824,37 +845,40 @@ ORDER BY Id;";
         {
             using (devCorpsDoc)
             {
-                foreach (var org in EnumerateArray(devCorpsDoc.RootElement, "orgs"))
+                if (TrySelectEnvelopeOrLegacyItems(devCorpsDoc, "indigenous-dev-corps", "indigenous-development", "dev-corps", "orgs", out var orgItems))
                 {
-                    ct.ThrowIfCancellationRequested();
-                    var orgName = String(org, "org_name");
-                    if (string.IsNullOrWhiteSpace(orgName))
+                    foreach (var org in orgItems.EnumerateArray())
                     {
-                        stats.OrgRowsSkipped++;
-                        continue;
+                        ct.ThrowIfCancellationRequested();
+                        var orgName = String(org, "org_name") ?? String(org, "name");
+                        if (string.IsNullOrWhiteSpace(orgName))
+                        {
+                            stats.OrgRowsSkipped++;
+                            continue;
+                        }
+
+                        var orgId = await UpsertOrgAsync(
+                            orgStore,
+                            options,
+                            stats,
+                            DeveloperKind,
+                            orgName,
+                            String(org, "website"),
+                            String(org, "notes"),
+                            "IndigenousDevResearch",
+                            ct).ConfigureAwait(false);
+
+                        await WriteEnrichmentAsync(
+                            enrichmentStore,
+                            options,
+                            stats,
+                            orgId,
+                            "IndigenousDevResearch",
+                            org.GetRawText(),
+                            null,
+                            orgName,
+                            ct).ConfigureAwait(false);
                     }
-
-                    var orgId = await UpsertOrgAsync(
-                        orgStore,
-                        options,
-                        stats,
-                        DeveloperKind,
-                        orgName,
-                        String(org, "website"),
-                        String(org, "notes"),
-                        "IndigenousDevResearch",
-                        ct).ConfigureAwait(false);
-
-                    await WriteEnrichmentAsync(
-                        enrichmentStore,
-                        options,
-                        stats,
-                        orgId,
-                        "IndigenousDevResearch",
-                        org.GetRawText(),
-                        null,
-                        orgName,
-                        ct).ConfigureAwait(false);
                 }
             }
         }
@@ -868,19 +892,24 @@ ORDER BY Id;";
         {
             using (projectsDoc)
             {
-                foreach (var project in EnumerateArray(projectsDoc.RootElement, "projects"))
+                if (!TrySelectEnvelopeOrLegacyItems(projectsDoc, "indigenous-dev-projects", "indigenous-development", "projects", "projects", out var projectItems))
+                {
+                    return;
+                }
+
+                foreach (var project in projectItems.EnumerateArray())
                 {
                     ct.ThrowIfCancellationRequested();
-                    var projectName = String(project, "ProjectName");
+                    var projectName = String(project, "ProjectName") ?? String(project, "projectName");
                     if (string.IsNullOrWhiteSpace(projectName))
                     {
                         stats.ProjectRowsSkipped++;
                         continue;
                     }
 
-                    var proponentName = String(project, "ProponentName");
-                    var architectName = String(project, "ArchitectName");
-                    var structuralEngineer = String(project, "StructuralEngineer");
+                    var proponentName = String(project, "ProponentName") ?? String(project, "owner");
+                    var architectName = String(project, "ArchitectName") ?? String(project, "architect");
+                    var structuralEngineer = String(project, "StructuralEngineer") ?? String(project, "structuralEngineer");
                     var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
                     var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                     var record = new MajorProjectRecord(
@@ -889,20 +918,20 @@ ORDER BY Id;";
                         ProjectName: projectName,
                         ProjectDescription: null,
                         EstimatedCostCad: Money(project, "EstimatedCostCad"),
-                        EstimatedCostText: CostText(project, "EstimatedCostCad"),
-                        Sector: String(project, "Sector"),
+                        EstimatedCostText: CostText(project, "EstimatedCostCad") ?? String(project, "estimatedCost"),
+                        Sector: String(project, "Sector") ?? String(project, "sector"),
                         SubSector: null,
                         ConstructionType: null,
                         ConstructionSubtype: null,
                         ProjectType: null,
                         RegionName: null,
-                        MunicipalityName: String(project, "Location"),
+                        MunicipalityName: String(project, "Location") ?? String(project, "city"),
                         ProponentName: proponentName,
                         ProponentCanonicalOrgId: proponentId,
                         ArchitectName: architectName,
                         ArchitectCanonicalOrgId: architectId,
-                        Stage: String(project, "Status"),
-                        ProjectStatus: String(project, "Status"),
+                        Stage: String(project, "Status") ?? String(project, "stage"),
+                        ProjectStatus: String(project, "Status") ?? String(project, "stage"),
                         ProjectStage: "Indigenous",
                         ProjectCategoryName: null,
                         PublicFundingInd: null,
@@ -912,18 +941,18 @@ ORDER BY Id;";
                         OtherPublicFunding: null,
                         GreenBuildingInd: null,
                         IndigenousInd: true,
-                        IndigenousNames: String(project, "IndigenousNames"),
+                        IndigenousNames: String(project, "IndigenousNames") ?? String(project, "owner"),
                         ConstructionJobs: null,
                         OperatingJobs: null,
                         StandardizedStartDate: null,
                         StandardizedCompletionDate: null,
                         StartYear: null,
                         CompletionYear: null,
-                        ScheduleNotes: BuildIndigenousScheduleNotes(String(project, "ExpectedTimeline"), structuralEngineer),
+                        ScheduleNotes: BuildIndigenousScheduleNotes(String(project, "ExpectedTimeline") ?? String(project, "expectedTimeline"), structuralEngineer),
                         Latitude: null,
                         Longitude: null,
                         ProjectWebsite: null,
-                        SourceUrl: String(project, "SourceUrl"),
+                        SourceUrl: String(project, "SourceUrl") ?? String(project, "sourceUrl"),
                         RawJson: project.GetRawText());
 
                     await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
@@ -940,37 +969,40 @@ ORDER BY Id;";
         {
             using (partnerGraphDoc)
             {
-                foreach (var firm in EnumerateArray(partnerGraphDoc.RootElement, "firms"))
+                if (TrySelectEnvelopeOrLegacyItems(partnerGraphDoc, "indigenous-partner-graph", "indigenous-development", "partner-graph", "firms", out var firmItems))
                 {
-                    ct.ThrowIfCancellationRequested();
-                    var firmName = String(firm, "firm_name");
-                    if (string.IsNullOrWhiteSpace(firmName))
+                    foreach (var firm in firmItems.EnumerateArray())
                     {
-                        stats.OrgRowsSkipped++;
-                        continue;
+                        ct.ThrowIfCancellationRequested();
+                        var firmName = String(firm, "firm_name") ?? String(firm, "firmName") ?? String(firm, "name");
+                        if (string.IsNullOrWhiteSpace(firmName))
+                        {
+                            stats.OrgRowsSkipped++;
+                            continue;
+                        }
+
+                        var orgId = await UpsertOrgAsync(
+                            orgStore,
+                            options,
+                            stats,
+                            MapPartnerKind(String(firm, "kind")),
+                            firmName,
+                            null,
+                            null,
+                            "IndigenousPartnerGraph",
+                            ct).ConfigureAwait(false);
+
+                        await WriteEnrichmentAsync(
+                            enrichmentStore,
+                            options,
+                            stats,
+                            orgId,
+                            "IndigenousPartnerGraph",
+                            firm.GetRawText(),
+                            String(firm, "kor_signal"),
+                            firmName,
+                            ct).ConfigureAwait(false);
                     }
-
-                    var orgId = await UpsertOrgAsync(
-                        orgStore,
-                        options,
-                        stats,
-                        MapPartnerKind(String(firm, "kind")),
-                        firmName,
-                        null,
-                        null,
-                        "IndigenousPartnerGraph",
-                        ct).ConfigureAwait(false);
-
-                    await WriteEnrichmentAsync(
-                        enrichmentStore,
-                        options,
-                        stats,
-                        orgId,
-                        "IndigenousPartnerGraph",
-                        firm.GetRawText(),
-                        String(firm, "kor_signal"),
-                        firmName,
-                        ct).ConfigureAwait(false);
                 }
             }
         }
@@ -1112,37 +1144,40 @@ ORDER BY Id;";
         {
             using (firmsDoc)
             {
-                foreach (var firm in EnumerateArray(firmsDoc.RootElement, "firms"))
+                if (TrySelectEnvelopeOrLegacyItems(firmsDoc, "us-market-firms", "us-market", "firms", "firms", out var firmItems))
                 {
-                    ct.ThrowIfCancellationRequested();
-                    var firmName = String(firm, "firmName");
-                    if (string.IsNullOrWhiteSpace(firmName))
+                    foreach (var firm in firmItems.EnumerateArray())
                     {
-                        stats.OrgRowsSkipped++;
-                        continue;
+                        ct.ThrowIfCancellationRequested();
+                        var firmName = String(firm, "firmName");
+                        if (string.IsNullOrWhiteSpace(firmName))
+                        {
+                            stats.OrgRowsSkipped++;
+                            continue;
+                        }
+
+                        var orgId = await UpsertOrgAsync(
+                            orgStore,
+                            options,
+                            stats,
+                            MapResearchFirmKind(String(firm, "kind")),
+                            firmName,
+                            String(firm, "website") ?? String(firm, "websiteUrl"),
+                            String(firm, "researchNotes"),
+                            enrichmentProviderName,
+                            ct).ConfigureAwait(false);
+
+                        await WriteEnrichmentAsync(
+                            enrichmentStore,
+                            options,
+                            stats,
+                            orgId,
+                            enrichmentProviderName,
+                            firm.GetRawText(),
+                            null,
+                            firmName,
+                            ct).ConfigureAwait(false);
                     }
-
-                    var orgId = await UpsertOrgAsync(
-                        orgStore,
-                        options,
-                        stats,
-                        MapResearchFirmKind(String(firm, "kind")),
-                        firmName,
-                        String(firm, "website"),
-                        String(firm, "researchNotes"),
-                        enrichmentProviderName,
-                        ct).ConfigureAwait(false);
-
-                    await WriteEnrichmentAsync(
-                        enrichmentStore,
-                        options,
-                        stats,
-                        orgId,
-                        enrichmentProviderName,
-                        firm.GetRawText(),
-                        null,
-                        firmName,
-                        ct).ConfigureAwait(false);
                 }
             }
         }
@@ -1161,18 +1196,23 @@ ORDER BY Id;";
         using (projectsDoc)
         {
             var sourceKeysSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var project in EnumerateArray(projectsDoc.RootElement, "projects"))
+            if (!TrySelectEnvelopeOrLegacyItems(projectsDoc, "us-market-projects", "us-market", "projects", "projects", out var projectItems))
+            {
+                return;
+            }
+
+            foreach (var project in projectItems.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
-                var projectName = String(project, "ProjectName");
+                var projectName = String(project, "ProjectName") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
                 {
                     stats.ProjectRowsSkipped++;
                     continue;
                 }
 
-                var municipality = String(project, "Municipality");
-                var rawState = String(project, "State");
+                var municipality = String(project, "Municipality") ?? String(project, "city");
+                var rawState = String(project, "State") ?? String(project, "state");
                 if (includeStateInSourceKey && string.IsNullOrWhiteSpace(rawState))
                 {
                     stats.ProjectRowsSkipped++;
@@ -1181,8 +1221,8 @@ ORDER BY Id;";
                 }
 
                 var province = NormalizeProvince(includeStateInSourceKey ? rawState : defaultProvince, defaultProvince);
-                var proponentName = String(project, "ProponentName");
-                var architectName = String(project, "ArchitectName");
+                var proponentName = String(project, "ProponentName") ?? String(project, "owner");
+                var architectName = String(project, "ArchitectName") ?? String(project, "architect");
                 var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
                 var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var usd = Decimal(project, "EstimatedCostUsd");
@@ -1203,7 +1243,7 @@ ORDER BY Id;";
                     ProjectDescription: String(project, "FullDescription"),
                     EstimatedCostCad: UsdToCad(usd, options.FxRate),
                     EstimatedCostText: UsdCostText(usd, options.FxRate),
-                    Sector: String(project, "Sector"),
+                    Sector: String(project, "Sector") ?? String(project, "sector"),
                     SubSector: null,
                     ConstructionType: null,
                     ConstructionSubtype: null,
@@ -1214,8 +1254,8 @@ ORDER BY Id;";
                     ProponentCanonicalOrgId: proponentId,
                     ArchitectName: architectName,
                     ArchitectCanonicalOrgId: architectId,
-                    Stage: String(project, "Stage"),
-                    ProjectStatus: String(project, "Stage"),
+                    Stage: String(project, "Stage") ?? String(project, "stage"),
+                    ProjectStatus: String(project, "Stage") ?? String(project, "stage"),
                     ProjectStage: "USMarketResearch",
                     ProjectCategoryName: null,
                     PublicFundingInd: null,
@@ -1236,7 +1276,7 @@ ORDER BY Id;";
                     Latitude: null,
                     Longitude: null,
                     ProjectWebsite: null,
-                    SourceUrl: String(project, "SourceUrl"),
+                    SourceUrl: String(project, "SourceUrl") ?? String(project, "sourceUrl"),
                     RawJson: project.GetRawText())
                 {
                     Province = province,
@@ -1263,37 +1303,40 @@ ORDER BY Id;";
         {
             using (firmsDoc)
             {
-                foreach (var firm in EnumerateArray(firmsDoc.RootElement, "firms"))
+                if (TrySelectEnvelopeOrLegacyItems(firmsDoc, "alberta-firms", "alberta", "firms", "firms", out var firmItems))
                 {
-                    ct.ThrowIfCancellationRequested();
-                    var firmName = String(firm, "firmName");
-                    if (string.IsNullOrWhiteSpace(firmName))
+                    foreach (var firm in firmItems.EnumerateArray())
                     {
-                        stats.OrgRowsSkipped++;
-                        continue;
+                        ct.ThrowIfCancellationRequested();
+                        var firmName = String(firm, "firmName");
+                        if (string.IsNullOrWhiteSpace(firmName))
+                        {
+                            stats.OrgRowsSkipped++;
+                            continue;
+                        }
+
+                        var orgId = await UpsertOrgAsync(
+                            orgStore,
+                            options,
+                            stats,
+                            MapResearchFirmKind(String(firm, "kind")),
+                            firmName,
+                            String(firm, "website") ?? String(firm, "websiteUrl"),
+                            String(firm, "researchNotes"),
+                            enrichmentProviderName,
+                            ct).ConfigureAwait(false);
+
+                        await WriteEnrichmentAsync(
+                            enrichmentStore,
+                            options,
+                            stats,
+                            orgId,
+                            enrichmentProviderName,
+                            firm.GetRawText(),
+                            null,
+                            firmName,
+                            ct).ConfigureAwait(false);
                     }
-
-                    var orgId = await UpsertOrgAsync(
-                        orgStore,
-                        options,
-                        stats,
-                        MapResearchFirmKind(String(firm, "kind")),
-                        firmName,
-                        String(firm, "website"),
-                        String(firm, "researchNotes"),
-                        enrichmentProviderName,
-                        ct).ConfigureAwait(false);
-
-                    await WriteEnrichmentAsync(
-                        enrichmentStore,
-                        options,
-                        stats,
-                        orgId,
-                        enrichmentProviderName,
-                        firm.GetRawText(),
-                        null,
-                        firmName,
-                        ct).ConfigureAwait(false);
                 }
             }
         }
@@ -1312,17 +1355,22 @@ ORDER BY Id;";
         using (projectsDoc)
         {
             var sourceKeysSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var project in EnumerateArray(projectsDoc.RootElement, "projects"))
+            if (!TrySelectEnvelopeOrLegacyItems(projectsDoc, "alberta-projects", "alberta", "projects", "projects", out var projectItems))
+            {
+                return;
+            }
+
+            foreach (var project in projectItems.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
-                var projectName = String(project, "ProjectName");
+                var projectName = String(project, "ProjectName") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
                 {
                     stats.ProjectRowsSkipped++;
                     continue;
                 }
 
-                var municipality = String(project, "Municipality");
+                var municipality = String(project, "Municipality") ?? String(project, "city");
                 var sourceKey = "ABMKT-" + Sha1($"{projectName}|{municipality}");
                 if (!sourceKeysSeen.Add(sourceKey))
                 {
@@ -1330,8 +1378,8 @@ ORDER BY Id;";
                     Console.WriteLine($"[WARN] AlbertaMarketProjects: duplicate SourceKey in this run ({sourceKey}); later row may overwrite earlier row. project={projectName}");
                 }
 
-                var proponentName = String(project, "ProponentName");
-                var architectName = String(project, "ArchitectName");
+                var proponentName = String(project, "ProponentName") ?? String(project, "owner");
+                var architectName = String(project, "ArchitectName") ?? String(project, "architect");
                 var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
                 var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
 
@@ -1342,7 +1390,7 @@ ORDER BY Id;";
                     ProjectDescription: String(project, "FullDescription"),
                     EstimatedCostCad: Money(project, "EstimatedCostCad"),
                     EstimatedCostText: CostText(project, "EstimatedCostCad"),
-                    Sector: String(project, "Sector"),
+                    Sector: String(project, "Sector") ?? String(project, "sector"),
                     SubSector: null,
                     ConstructionType: null,
                     ConstructionSubtype: null,
@@ -1353,8 +1401,8 @@ ORDER BY Id;";
                     ProponentCanonicalOrgId: proponentId,
                     ArchitectName: architectName,
                     ArchitectCanonicalOrgId: architectId,
-                    Stage: String(project, "Stage"),
-                    ProjectStatus: String(project, "Stage"),
+                    Stage: String(project, "Stage") ?? String(project, "stage"),
+                    ProjectStatus: String(project, "Stage") ?? String(project, "stage"),
                     ProjectStage: "AlbertaMarketResearch",
                     ProjectCategoryName: null,
                     PublicFundingInd: null,
@@ -1375,7 +1423,7 @@ ORDER BY Id;";
                     Latitude: null,
                     Longitude: null,
                     ProjectWebsite: null,
-                    SourceUrl: String(project, "SourceUrl"),
+                    SourceUrl: String(project, "SourceUrl") ?? String(project, "sourceUrl"),
                     RawJson: project.GetRawText())
                 {
                     Province = "AB",
@@ -1401,37 +1449,40 @@ ORDER BY Id;";
         {
             using (ownersDoc)
             {
-                foreach (var owner in EnumerateArray(ownersDoc.RootElement, "owners"))
+                if (TrySelectEnvelopeOrLegacyItems(ownersDoc, "institutional-owners", "institutional", "owners", "owners", out var ownerItems))
                 {
-                    ct.ThrowIfCancellationRequested();
-                    var ownerName = String(owner, "ownerName");
-                    if (string.IsNullOrWhiteSpace(ownerName))
+                    foreach (var owner in ownerItems.EnumerateArray())
                     {
-                        stats.OrgRowsSkipped++;
-                        continue;
+                        ct.ThrowIfCancellationRequested();
+                        var ownerName = String(owner, "ownerName");
+                        if (string.IsNullOrWhiteSpace(ownerName))
+                        {
+                            stats.OrgRowsSkipped++;
+                            continue;
+                        }
+
+                        var orgId = await UpsertOrgAsync(
+                            orgStore,
+                            options,
+                            stats,
+                            OrgKinds.Buyer,
+                            ownerName,
+                            String(owner, "publishedCapitalPlanUrl") ?? String(owner, "capitalPlanUrl"),
+                            String(owner, "korRelevanceReason"),
+                            "InstitutionalOwnerResearch",
+                            ct).ConfigureAwait(false);
+
+                        await WriteEnrichmentAsync(
+                            enrichmentStore,
+                            options,
+                            stats,
+                            orgId,
+                            "InstitutionalOwnerResearch",
+                            owner.GetRawText(),
+                            null,
+                            ownerName,
+                            ct).ConfigureAwait(false);
                     }
-
-                    var orgId = await UpsertOrgAsync(
-                        orgStore,
-                        options,
-                        stats,
-                        OrgKinds.Buyer,
-                        ownerName,
-                        String(owner, "publishedCapitalPlanUrl"),
-                        String(owner, "korRelevanceReason"),
-                        "InstitutionalOwnerResearch",
-                        ct).ConfigureAwait(false);
-
-                    await WriteEnrichmentAsync(
-                        enrichmentStore,
-                        options,
-                        stats,
-                        orgId,
-                        "InstitutionalOwnerResearch",
-                        owner.GetRawText(),
-                        null,
-                        ownerName,
-                        ct).ConfigureAwait(false);
                 }
             }
         }
@@ -1449,18 +1500,23 @@ ORDER BY Id;";
 
         using (projectsDoc)
         {
-            foreach (var project in EnumerateArray(projectsDoc.RootElement, "projects"))
+            if (!TrySelectEnvelopeOrLegacyItems(projectsDoc, "institutional-projects", "institutional", "projects", "projects", out var projectItems))
+            {
+                return;
+            }
+
+            foreach (var project in projectItems.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
-                var projectName = String(project, "ProjectName");
+                var projectName = String(project, "ProjectName") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
                 {
                     stats.ProjectRowsSkipped++;
                     continue;
                 }
 
-                var ownerName = String(project, "OwnerName");
-                var architectName = String(project, "ArchitectName");
+                var ownerName = String(project, "OwnerName") ?? String(project, "owner");
+                var architectName = String(project, "ArchitectName") ?? String(project, "architect");
                 var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
                 var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var sourceCost = Decimal(project, "EstimatedCostCad");
@@ -1478,19 +1534,19 @@ ORDER BY Id;";
                     ProjectDescription: null,
                     EstimatedCostCad: costCad,
                     EstimatedCostText: costText,
-                    Sector: String(project, "Sector"),
-                    SubSector: String(project, "SubSector"),
+                    Sector: String(project, "Sector") ?? String(project, "sector"),
+                    SubSector: String(project, "SubSector") ?? String(project, "subSector"),
                     ConstructionType: null,
                     ConstructionSubtype: null,
                     ProjectType: null,
                     RegionName: null,
-                    MunicipalityName: String(project, "Municipality"),
+                    MunicipalityName: String(project, "Municipality") ?? String(project, "city"),
                     ProponentName: ownerName,
                     ProponentCanonicalOrgId: proponentId,
                     ArchitectName: architectName,
                     ArchitectCanonicalOrgId: architectId,
-                    Stage: String(project, "Stage"),
-                    ProjectStatus: String(project, "Stage"),
+                    Stage: String(project, "Stage") ?? String(project, "stage"),
+                    ProjectStatus: String(project, "Stage") ?? String(project, "stage"),
                     ProjectStage: "InstitutionalPipeline",
                     ProjectCategoryName: null,
                     PublicFundingInd: null,
@@ -1511,10 +1567,10 @@ ORDER BY Id;";
                     Latitude: null,
                     Longitude: null,
                     ProjectWebsite: null,
-                    SourceUrl: String(project, "SourceUrl"),
+                    SourceUrl: String(project, "SourceUrl") ?? String(project, "sourceUrl"),
                     RawJson: project.GetRawText())
                 {
-                    Province = ProvinceFromMarket(String(project, "Province"), String(project, "Market")),
+                    Province = ProvinceFromMarket(String(project, "Province") ?? String(project, "province"), String(project, "Market") ?? String(project, "market")),
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
@@ -1694,9 +1750,9 @@ ORDER BY Id;";
         {
             using (orgsDoc)
             {
-                if (orgsDoc.RootElement.ValueKind == JsonValueKind.Array)
+                if (TrySelectEnvelopeOrLegacyItems(orgsDoc, "island-okanagan-orgs", "island-okanagan", "orgs", null, out var orgItems))
                 {
-                    foreach (var org in orgsDoc.RootElement.EnumerateArray())
+                    foreach (var org in orgItems.EnumerateArray())
                     {
                         ct.ThrowIfCancellationRequested();
                         var name = String(org, "name");
@@ -1745,12 +1801,12 @@ ORDER BY Id;";
 
         using (projectsDoc)
         {
-            if (projectsDoc.RootElement.ValueKind != JsonValueKind.Array)
+            if (!TrySelectEnvelopeOrLegacyItems(projectsDoc, "island-okanagan-projects", "island-okanagan", "projects", null, out var projectItems))
             {
                 return;
             }
 
-            foreach (var project in projectsDoc.RootElement.EnumerateArray())
+            foreach (var project in projectItems.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "name");
@@ -1867,6 +1923,57 @@ ORDER BY Id;";
         return null;
     }
 
+    private static bool TrySelectEnvelopeOrLegacyItems(
+        JsonDocument doc,
+        string expectedKind,
+        string logPrefix,
+        string fileLabel,
+        string? legacyArrayProperty,
+        out JsonElement items)
+    {
+        var validation = ResearchEnvelopeValidator.Validate(doc, expectedKind);
+        string source;
+        if (validation.IsValid && validation.Envelope is { } env)
+        {
+            if (env.Items.ValueKind != JsonValueKind.Array)
+            {
+                Console.WriteLine($"{logPrefix}: {fileLabel} envelope items is not an array; skipping that file.");
+                items = default;
+                return false;
+            }
+
+            items = env.Items;
+            source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+        }
+        else if (legacyArrayProperty is null && doc.RootElement.ValueKind == JsonValueKind.Array)
+        {
+            Console.WriteLine(
+                $"{logPrefix}: {fileLabel} payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+            items = doc.RootElement;
+            source = "legacy flat-array";
+        }
+        else if (legacyArrayProperty is not null
+                 && doc.RootElement.ValueKind == JsonValueKind.Object
+                 && doc.RootElement.TryGetProperty(legacyArrayProperty, out var legacyArr)
+                 && legacyArr.ValueKind == JsonValueKind.Array)
+        {
+            Console.WriteLine(
+                $"{logPrefix}: {fileLabel} payload is legacy {{{legacyArrayProperty}:[]}} shape (no envelope: {validation.Reason}); ingesting via legacy path.");
+            items = legacyArr;
+            source = $"legacy {{{legacyArrayProperty}:[]}}";
+        }
+        else
+        {
+            Console.WriteLine(
+                $"{logPrefix}: {fileLabel} has neither envelope nor legacy shape ({validation.Reason}); skipping that file.");
+            items = default;
+            return false;
+        }
+
+        Console.WriteLine($"{logPrefix}: {fileLabel} ingesting {items.GetArrayLength()} item(s) via {source}.");
+        return true;
+    }
+
     private static async Task ImportIntelGatheringAsync(
         ImportOptions options,
         SqlCanonicalOrgStore? orgStore,
@@ -1887,15 +1994,15 @@ ORDER BY Id;";
 
         using (teamDoc)
         {
-            if (teamDoc.RootElement.ValueKind != JsonValueKind.Array)
+            if (!TrySelectEnvelopeOrLegacyItems(teamDoc, "intel-gathering-team-awards", "intel-gathering", "team-awards", null, out var teamItems))
             {
                 return;
             }
 
-            foreach (var t in teamDoc.RootElement.EnumerateArray())
+            foreach (var t in teamItems.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
-                var projectName = String(t, "project");
+                var projectName = String(t, "project") ?? String(t, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
                 {
                     stats.ProjectRowsSkipped++;
@@ -2250,7 +2357,7 @@ ORDER BY Id;";
             }
         }
 
-        return null;
+        return String(org, "sourceUrl");
     }
 
     private static async Task<HashSet<long>> LoadValidOrgIdsAsync(string db, CancellationToken ct)
@@ -3976,7 +4083,12 @@ ORDER BY Id;";
         using (projectsDoc)
         using (rosterDoc)
         {
-            if (projectsDoc.RootElement.ValueKind != JsonValueKind.Array || rosterDoc.RootElement.ValueKind != JsonValueKind.Array)
+            if (!TrySelectEnvelopeOrLegacyItems(projectsDoc, "kor-capability-corpus", "kor-capability", "corpus", null, out var projectItems))
+            {
+                return;
+            }
+
+            if (!TrySelectEnvelopeOrLegacyItems(rosterDoc, "kor-roster", "kor-capability", "roster", null, out var rosterItems))
             {
                 return;
             }
@@ -3987,7 +4099,7 @@ ORDER BY Id;";
             var sectorSystemMatrix = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
             var orgsResolved = 0;
 
-            foreach (var project in projectsDoc.RootElement.EnumerateArray())
+            foreach (var project in projectItems.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
@@ -4027,7 +4139,7 @@ ORDER BY Id;";
             }
 
             var pEngCount = 0;
-            foreach (var person in rosterDoc.RootElement.EnumerateArray())
+            foreach (var person in rosterItems.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var credentials = StringArray(person, "credentials");
@@ -4957,16 +5069,41 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Seismic-Pipeline", "outputs", "seismic-pipeline.jsonl");
-        if (!File.Exists(path))
+        var jsonlPath = Path.Combine(options.BaseDirectory, "KOR-Seismic-Pipeline", "outputs", "seismic-pipeline.jsonl");
+        var envelopePath = Path.ChangeExtension(jsonlPath, ".json");
+        string[]? lines = null;
+
+        if (File.Exists(envelopePath) && TryLoadJson(envelopePath, out var envelopeDoc))
         {
-            Console.WriteLine($"[WARN] Missing payload: {path}");
-            stats.FilesMissing++;
-            return;
+            using (envelopeDoc)
+            {
+                var validation = ResearchEnvelopeValidator.Validate(envelopeDoc, "seismic-pipeline");
+                if (validation.IsValid && validation.Envelope is { } env && env.Items.ValueKind == JsonValueKind.Array)
+                {
+                    Console.WriteLine($"seismic-pipeline: envelope v{env.SchemaVersion} ingesting {env.Items.GetArrayLength()} item(s).");
+                    lines = env.Items.EnumerateArray().Select(item => item.GetRawText()).ToArray();
+                }
+                else
+                {
+                    Console.WriteLine($"seismic-pipeline: envelope path exists but invalid ({validation.Reason}); falling through to JSONL legacy.");
+                }
+            }
         }
 
-        Console.WriteLine($"[FILE] {path}");
-        var lines = File.ReadAllLines(path);
+        if (lines is null)
+        {
+            if (!File.Exists(jsonlPath))
+            {
+                Console.WriteLine($"[WARN] Missing payload: {jsonlPath}");
+                stats.FilesMissing++;
+                return;
+            }
+
+            Console.WriteLine($"[FILE] {jsonlPath}");
+            lines = File.ReadAllLines(jsonlPath);
+            Console.WriteLine($"seismic-pipeline: legacy JSONL ingesting {lines.Length} item(s).");
+        }
+
         foreach (var raw in lines)
         {
             ct.ThrowIfCancellationRequested();
@@ -4985,12 +5122,12 @@ ORDER BY Id;";
                 continue;
             }
 
-            var ownerOrg = String(project, "ownerOrg");
-            var architectOrg = String(project, "architectOrg");
-            var structuralOrg = String(project, "structuralOrg");
+            var ownerOrg = String(project, "ownerOrg") ?? String(project, "owner");
+            var architectOrg = String(project, "architectOrg") ?? String(project, "architect");
+            var structuralOrg = String(project, "structuralOrg") ?? String(project, "structuralEngineer");
             var program = String(project, "program");
             var region = String(project, "region");
-            var addressOrCity = String(project, "addressOrCity");
+            var addressOrCity = String(project, "addressOrCity") ?? String(project, "city");
             var facilityType = String(project, "facilityType");
             var stage = String(project, "stage");
             var scopeNotes = String(project, "scopeNotes");
@@ -5127,16 +5264,42 @@ ORDER BY Id;";
         string province,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, directoryName, "outputs", "pairings.jsonl");
-        if (!File.Exists(path))
+        var jsonlPath = Path.Combine(options.BaseDirectory, directoryName, "outputs", "pairings.jsonl");
+        var envelopePath = Path.ChangeExtension(jsonlPath, ".json");
+        var logPrefix = $"pairing:{sourceLabel}";
+        string[]? lines = null;
+
+        if (File.Exists(envelopePath) && TryLoadJson(envelopePath, out var envelopeDoc))
         {
-            Console.WriteLine($"[WARN] Missing payload: {path}");
-            stats.FilesMissing++;
-            return;
+            using (envelopeDoc)
+            {
+                var validation = ResearchEnvelopeValidator.Validate(envelopeDoc, "pairing");
+                if (validation.IsValid && validation.Envelope is { } env && env.Items.ValueKind == JsonValueKind.Array)
+                {
+                    Console.WriteLine($"{logPrefix}: envelope v{env.SchemaVersion} ingesting {env.Items.GetArrayLength()} item(s).");
+                    lines = env.Items.EnumerateArray().Select(item => item.GetRawText()).ToArray();
+                }
+                else
+                {
+                    Console.WriteLine($"{logPrefix}: envelope path exists but invalid ({validation.Reason}); falling through to JSONL legacy.");
+                }
+            }
         }
 
-        Console.WriteLine($"[FILE] {path}");
-        var lines = File.ReadAllLines(path);
+        if (lines is null)
+        {
+            if (!File.Exists(jsonlPath))
+            {
+                Console.WriteLine($"[WARN] Missing payload: {jsonlPath}");
+                stats.FilesMissing++;
+                return;
+            }
+
+            Console.WriteLine($"[FILE] {jsonlPath}");
+            lines = File.ReadAllLines(jsonlPath);
+            Console.WriteLine($"{logPrefix}: legacy JSONL ingesting {lines.Length} item(s).");
+        }
+
         foreach (var raw in lines)
         {
             ct.ThrowIfCancellationRequested();
@@ -5156,8 +5319,8 @@ ORDER BY Id;";
             }
 
             var owner = String(project, "owner");
-            var architectOrg = String(project, "architectOrg");
-            var structuralOrg = String(project, "structuralOrg");
+            var architectOrg = String(project, "architectOrg") ?? String(project, "architectName");
+            var structuralOrg = String(project, "structuralOrg") ?? String(project, "structuralPartner");
             var gcOrg = String(project, "gcOrConstructionManager");
             var region = String(project, "region");
             var sector = String(project, "sector");
@@ -5272,19 +5435,44 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "inputs", "bd-tracking.jsonl");
-        if (!File.Exists(path))
+        var jsonlPath = Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "inputs", "bd-tracking.jsonl");
+        var envelopePath = Path.ChangeExtension(jsonlPath, ".json");
+        string[]? lines = null;
+
+        if (File.Exists(envelopePath) && TryLoadJson(envelopePath, out var envelopeDoc))
         {
-            Console.WriteLine($"[WARN] Missing payload: {path}");
-            stats.FilesMissing++;
-            return;
+            using (envelopeDoc)
+            {
+                var validation = ResearchEnvelopeValidator.Validate(envelopeDoc, "bd-tracking");
+                if (validation.IsValid && validation.Envelope is { } env && env.Items.ValueKind == JsonValueKind.Array)
+                {
+                    Console.WriteLine($"bd-tracking: envelope v{env.SchemaVersion} ingesting {env.Items.GetArrayLength()} item(s).");
+                    lines = env.Items.EnumerateArray().Select(item => item.GetRawText()).ToArray();
+                }
+                else
+                {
+                    Console.WriteLine($"bd-tracking: envelope path exists but invalid ({validation.Reason}); falling through to JSONL legacy.");
+                }
+            }
         }
 
-        Console.WriteLine($"[FILE] {path}");
+        if (lines is null)
+        {
+            if (!File.Exists(jsonlPath))
+            {
+                Console.WriteLine($"[WARN] Missing payload: {jsonlPath}");
+                stats.FilesMissing++;
+                return;
+            }
+
+            Console.WriteLine($"[FILE] {jsonlPath}");
+            lines = File.ReadAllLines(jsonlPath);
+            Console.WriteLine($"bd-tracking: legacy JSONL ingesting {lines.Length} item(s).");
+        }
 
         // Parse all rows into typed records.
         var rows = new List<BdTrackingRow>();
-        foreach (var raw in File.ReadAllLines(path))
+        foreach (var raw in lines)
         {
             if (string.IsNullOrWhiteSpace(raw)) continue;
             using var doc = JsonDocument.Parse(raw, JsonOptions);
