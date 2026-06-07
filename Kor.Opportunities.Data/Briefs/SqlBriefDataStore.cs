@@ -1511,6 +1511,13 @@ ORDER BY a.LastSeenAtUtc DESC;";
 SELECT TOP (15) o.Id, o.Name, o.BuyerName, o.SubmissionDeadlineUtc, o.PrimeProjectSector, o.PrimeConfidence
 FROM opportunities.Opportunities o
 WHERE {oppWhere}
+  AND o.BuyerName IS NOT NULL
+  AND LEN(LTRIM(RTRIM(o.BuyerName))) >= 4
+  AND LOWER(o.BuyerName) NOT LIKE N'unknown%'
+  AND LOWER(o.BuyerName) NOT LIKE N'%tbd%'
+  AND LOWER(o.BuyerName) NOT LIKE N'%tba%'
+  AND o.BuyerName NOT LIKE N'%<%'
+  AND o.BuyerName NOT LIKE N'%>%'
 ORDER BY o.PrimeConfidence DESC, o.SubmissionDeadlineUtc ASC;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -1541,6 +1548,13 @@ ORDER BY o.PrimeConfidence DESC, o.SubmissionDeadlineUtc ASC;";
 SELECT TOP (15) mpi.Id, mpi.ProjectName, mpi.ProponentName, mpi.Stage, mpi.EstimatedCostCad
 FROM opportunities.MajorProjectsInventory mpi
 WHERE {mpiWhere}
+  AND mpi.ProponentName IS NOT NULL
+  AND LEN(LTRIM(RTRIM(mpi.ProponentName))) >= 4
+  AND LOWER(mpi.ProponentName) NOT LIKE N'unknown%'
+  AND LOWER(mpi.ProponentName) NOT LIKE N'%tbd%'
+  AND LOWER(mpi.ProponentName) NOT LIKE N'%tba%'
+  AND mpi.ProponentName NOT LIKE N'%<%'
+  AND mpi.ProponentName NOT LIKE N'%>%'
 ORDER BY mpi.EstimatedCostCad DESC, mpi.ProjectName;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -1960,6 +1974,13 @@ SELECT TOP 5 Id, Name, BuyerName, SubmissionDeadlineUtc, PrimeProjectSector, Pri
 FROM opportunities.Opportunities
 WHERE Status = 1 AND IsPrimeConsultantRfp = 1 AND ProjectProvince = @prov
 {BuildCityClause(cityTokens, OpportunityCityColumns, "c")}
+  AND BuyerName IS NOT NULL
+  AND LEN(LTRIM(RTRIM(BuyerName))) >= 4
+  AND LOWER(BuyerName) NOT LIKE N'unknown%'
+  AND LOWER(BuyerName) NOT LIKE N'%tbd%'
+  AND LOWER(BuyerName) NOT LIKE N'%tba%'
+  AND BuyerName NOT LIKE N'%<%'
+  AND BuyerName NOT LIKE N'%>%'
 ORDER BY PrimeConfidence DESC, SubmissionDeadlineUtc ASC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
@@ -1988,6 +2009,13 @@ SELECT TOP 5 Id, ProjectName, ProponentName, Stage, EstimatedCostCad
 FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL AND Province = @prov
 {BuildCityClause(cityTokens, MpiCityColumns, "c")}
+  AND ProponentName IS NOT NULL
+  AND LEN(LTRIM(RTRIM(ProponentName))) >= 4
+  AND LOWER(ProponentName) NOT LIKE N'unknown%'
+  AND LOWER(ProponentName) NOT LIKE N'%tbd%'
+  AND LOWER(ProponentName) NOT LIKE N'%tba%'
+  AND ProponentName NOT LIKE N'%<%'
+  AND ProponentName NOT LIKE N'%>%'
 ORDER BY EstimatedCostCad DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
