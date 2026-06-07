@@ -1511,20 +1511,6 @@ ORDER BY a.LastSeenAtUtc DESC;";
 SELECT TOP (15) o.Id, o.Name, o.BuyerName, o.SubmissionDeadlineUtc, o.PrimeProjectSector, o.PrimeConfidence
 FROM opportunities.Opportunities o
 WHERE {oppWhere}
-  AND o.Name IS NOT NULL
-  AND LEN(LTRIM(RTRIM(o.Name))) >= 1
-  AND LOWER(o.Name) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(o.Name) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(o.Name) + N' ') = 0
-  AND o.Name NOT LIKE N'%<%'
-  AND o.Name NOT LIKE N'%>%'
-  AND o.BuyerName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(o.BuyerName))) >= 1
-  AND LOWER(o.BuyerName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(o.BuyerName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(o.BuyerName) + N' ') = 0
-  AND o.BuyerName NOT LIKE N'%<%'
-  AND o.BuyerName NOT LIKE N'%>%'
 ORDER BY o.PrimeConfidence DESC, o.SubmissionDeadlineUtc ASC;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -1555,20 +1541,6 @@ ORDER BY o.PrimeConfidence DESC, o.SubmissionDeadlineUtc ASC;";
 SELECT TOP (15) mpi.Id, mpi.ProjectName, mpi.ProponentName, mpi.Stage, mpi.EstimatedCostCad
 FROM opportunities.MajorProjectsInventory mpi
 WHERE {mpiWhere}
-  AND mpi.ProjectName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(mpi.ProjectName))) >= 1
-  AND LOWER(mpi.ProjectName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(mpi.ProjectName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(mpi.ProjectName) + N' ') = 0
-  AND mpi.ProjectName NOT LIKE N'%<%'
-  AND mpi.ProjectName NOT LIKE N'%>%'
-  AND mpi.ProponentName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(mpi.ProponentName))) >= 1
-  AND LOWER(mpi.ProponentName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(mpi.ProponentName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(mpi.ProponentName) + N' ') = 0
-  AND mpi.ProponentName NOT LIKE N'%<%'
-  AND mpi.ProponentName NOT LIKE N'%>%'
 ORDER BY mpi.EstimatedCostCad DESC, mpi.ProjectName;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -1645,13 +1617,6 @@ JOIN opportunities.CanonicalOrg co ON co.Id = mpi.{fkColumn}
 WHERE {mpiWhere}
   AND mpi.{fkColumn} IS NOT NULL
   {excludeKorSql}
-  AND co.DisplayName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(co.DisplayName))) >= 1
-  AND LOWER(co.DisplayName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(co.DisplayName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(co.DisplayName) + N' ') = 0
-  AND co.DisplayName NOT LIKE N'%<%'
-  AND co.DisplayName NOT LIKE N'%>%'
 GROUP BY co.Id, co.DisplayName, co.Kind
 ORDER BY ProjectCount DESC, co.DisplayName;";
 
@@ -1694,13 +1659,6 @@ FROM opportunities.MajorProjectsInventory mpi
 JOIN opportunities.CanonicalOrg co ON co.Id = mpi.ProponentCanonicalOrgId
 WHERE {mpiWhere}
   AND mpi.ProponentCanonicalOrgId IS NOT NULL
-  AND co.DisplayName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(co.DisplayName))) >= 1
-  AND LOWER(co.DisplayName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(co.DisplayName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(co.DisplayName) + N' ') = 0
-  AND co.DisplayName NOT LIKE N'%<%'
-  AND co.DisplayName NOT LIKE N'%>%'
 GROUP BY co.Id, co.DisplayName, co.Kind
 ORDER BY ProjectCount DESC, co.DisplayName;";
 
@@ -1931,13 +1889,6 @@ WHERE c.Kind = @kind AND EXISTS (
   WHERE m.{mpiFkColumn} = c.Id AND m.Province = @prov
     AND m.RetiredAtUtc IS NULL
 {BuildCityClause(cityTokens, AliasedMpiCityColumns, "c2")})
-  AND c.DisplayName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(c.DisplayName))) >= 1
-  AND LOWER(c.DisplayName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(c.DisplayName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(c.DisplayName) + N' ') = 0
-  AND c.DisplayName NOT LIKE N'%<%'
-  AND c.DisplayName NOT LIKE N'%>%'
 ORDER BY ProjectCount DESC, c.DisplayName;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -1981,13 +1932,6 @@ WHERE c.Kind IN (N'Buyer', N'Client', N'KorClient', N'Developer') AND EXISTS (
   WHERE m.ProponentCanonicalOrgId = c.Id AND m.Province = @prov
     AND m.RetiredAtUtc IS NULL
 {BuildCityClause(cityTokens, AliasedMpiCityColumns, "c2")})
-  AND c.DisplayName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(c.DisplayName))) >= 1
-  AND LOWER(c.DisplayName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(c.DisplayName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(c.DisplayName) + N' ') = 0
-  AND c.DisplayName NOT LIKE N'%<%'
-  AND c.DisplayName NOT LIKE N'%>%'
 ORDER BY ProjectCount DESC, c.DisplayName;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
@@ -2016,20 +1960,6 @@ SELECT TOP 5 Id, Name, BuyerName, SubmissionDeadlineUtc, PrimeProjectSector, Pri
 FROM opportunities.Opportunities
 WHERE Status = 1 AND IsPrimeConsultantRfp = 1 AND ProjectProvince = @prov
 {BuildCityClause(cityTokens, OpportunityCityColumns, "c")}
-  AND Name IS NOT NULL
-  AND LEN(LTRIM(RTRIM(Name))) >= 1
-  AND LOWER(Name) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(Name) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(Name) + N' ') = 0
-  AND Name NOT LIKE N'%<%'
-  AND Name NOT LIKE N'%>%'
-  AND BuyerName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(BuyerName))) >= 1
-  AND LOWER(BuyerName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(BuyerName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(BuyerName) + N' ') = 0
-  AND BuyerName NOT LIKE N'%<%'
-  AND BuyerName NOT LIKE N'%>%'
 ORDER BY PrimeConfidence DESC, SubmissionDeadlineUtc ASC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
@@ -2058,20 +1988,6 @@ SELECT TOP 5 Id, ProjectName, ProponentName, Stage, EstimatedCostCad
 FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL AND Province = @prov
 {BuildCityClause(cityTokens, MpiCityColumns, "c")}
-  AND ProjectName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(ProjectName))) >= 1
-  AND LOWER(ProjectName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(ProjectName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(ProjectName) + N' ') = 0
-  AND ProjectName NOT LIKE N'%<%'
-  AND ProjectName NOT LIKE N'%>%'
-  AND ProponentName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(ProponentName))) >= 1
-  AND LOWER(ProponentName) NOT LIKE N'unknown%'
-  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(ProponentName) + N' ') = 0
-  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(ProponentName) + N' ') = 0
-  AND ProponentName NOT LIKE N'%<%'
-  AND ProponentName NOT LIKE N'%>%'
 ORDER BY EstimatedCostCad DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
