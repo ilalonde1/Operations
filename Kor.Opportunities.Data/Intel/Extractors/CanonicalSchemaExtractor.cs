@@ -25,47 +25,75 @@ public sealed class CanonicalSchemaExtractor : IIntelExtractor
 
     public ExtractedIntel Extract(IntelExtractionContext ctx)
     {
+        // Top-level try/catch handles only fundamental failures (root not
+        // parseable, confidence read fails). Each per-section call below
+        // owns its own try/catch via TrySection so a single bad block
+        // (e.g. malformed signals array) doesn't lose every other valid
+        // section. R94: caught 2026-06-07 when Bird Design-Build Construction
+        // silently produced zero Intel rows despite having decisionMakers,
+        // signals, actions, narratives, works — one bad type somewhere
+        // killed the whole extract under the old method-wide try/catch.
+        JsonElement root;
+        IntelConfidence rowConfidence;
         try
         {
-            var root = ctx.ResultJson.RootElement;
-            var rowConfidence = ParseConfidence(root);
-            var people = new List<IntelPersonDraft>();
-            var affiliations = new List<IntelPersonAffiliationDraft>();
-            var signals = new List<IntelSignalDraft>();
-            var actions = new List<IntelActionDraft>();
-            var works = new List<IntelWorkDraft>();
-            var risks = new List<IntelRiskDraft>();
-            var narratives = new List<IntelNarrativeDraft>();
-
-            AddDecisionMakers(root, ctx.CanonicalOrgId, rowConfidence, people, affiliations, signals);
-            AddSignals(root, ctx.CanonicalOrgId, rowConfidence, signals);
-            AddActions(root, ctx.CanonicalOrgId, rowConfidence, actions);
-            AddWorks(root, ctx.CanonicalOrgId, rowConfidence, works);
-            AddRisks(root, ctx.CanonicalOrgId, rowConfidence, risks);
-            AddNarratives(root, ctx.CanonicalOrgId, rowConfidence, narratives);
-
-            if (people.Count == 0
-                && affiliations.Count == 0
-                && signals.Count == 0
-                && actions.Count == 0
-                && works.Count == 0
-                && risks.Count == 0
-                && narratives.Count == 0)
-            {
-                return ExtractedIntel.Empty;
-            }
-
-            return new ExtractedIntel(people, affiliations, signals, actions, works, risks, narratives);
+            root = ctx.ResultJson.RootElement;
+            rowConfidence = ParseConfidence(root);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Trace.TraceWarning(
-                "Intel extractor failed for provider {0}, canonical org id {1}: {2}",
-                ctx.ProviderName,
-                ctx.CanonicalOrgId,
-                ex.Message);
-
+                "Intel extractor top-level read failed for provider {0}, canonical org id {1}: {2}",
+                ctx.ProviderName, ctx.CanonicalOrgId, ex.Message);
             return ExtractedIntel.Empty;
+        }
+
+        var people = new List<IntelPersonDraft>();
+        var affiliations = new List<IntelPersonAffiliationDraft>();
+        var signals = new List<IntelSignalDraft>();
+        var actions = new List<IntelActionDraft>();
+        var works = new List<IntelWorkDraft>();
+        var risks = new List<IntelRiskDraft>();
+        var narratives = new List<IntelNarrativeDraft>();
+
+        TrySection(ctx, "decisionMakers",
+            () => AddDecisionMakers(root, ctx.CanonicalOrgId, rowConfidence, people, affiliations, signals));
+        TrySection(ctx, "signals",
+            () => AddSignals(root, ctx.CanonicalOrgId, rowConfidence, signals));
+        TrySection(ctx, "actions",
+            () => AddActions(root, ctx.CanonicalOrgId, rowConfidence, actions));
+        TrySection(ctx, "works",
+            () => AddWorks(root, ctx.CanonicalOrgId, rowConfidence, works));
+        TrySection(ctx, "risks",
+            () => AddRisks(root, ctx.CanonicalOrgId, rowConfidence, risks));
+        TrySection(ctx, "narratives",
+            () => AddNarratives(root, ctx.CanonicalOrgId, rowConfidence, narratives));
+
+        if (people.Count == 0
+            && affiliations.Count == 0
+            && signals.Count == 0
+            && actions.Count == 0
+            && works.Count == 0
+            && risks.Count == 0
+            && narratives.Count == 0)
+        {
+            return ExtractedIntel.Empty;
+        }
+
+        return new ExtractedIntel(people, affiliations, signals, actions, works, risks, narratives);
+    }
+
+    private static void TrySection(IntelExtractionContext ctx, string section, Action body)
+    {
+        try
+        {
+            body();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceWarning(
+                "Intel extractor section '{0}' failed for provider {1}, canonical org id {2}: {3}. Other sections continue.",
+                section, ctx.ProviderName, ctx.CanonicalOrgId, ex.Message);
         }
     }
 
