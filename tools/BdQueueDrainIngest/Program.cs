@@ -26,9 +26,9 @@ static string? ReadArg(string[] args, string name)
 }
 
 var kind = ReadArg(args, "--kind");
-if (kind is not ("people" or "orgs" or "ab-projects"))
+if (kind is not ("people" or "orgs" or "ab-projects" or "proponents"))
 {
-    return Fail("Usage: BdQueueDrainIngest --kind people|orgs|ab-projects [--dir <path>]");
+    return Fail("Usage: BdQueueDrainIngest --kind people|orgs|ab-projects|proponents [--dir <path>]");
 }
 
 var inputDir = ReadArg(args, "--dir")
@@ -81,6 +81,12 @@ services.AddSingleton<IMajorProjectEnrichmentTrackingStore>(sp =>
         sp.GetRequiredService<ProjectIntelPersistenceService>(),
         sp.GetRequiredService<ILogger<SqlMajorProjectEnrichmentTrackingStore>>()));
 
+// Proponent-side dependencies — resolver + store so we can resolve a
+// researched name to an existing CanonicalOrg (auto-resurrects if
+// retired) and write the FK back to MPI.
+services.AddSingleton<ICanonicalOrgStore>(_ => new SqlCanonicalOrgStore(cs));
+services.AddSingleton<CanonicalOrgResolver>();
+
 await using var sp = services.BuildServiceProvider();
 var log = sp.GetRequiredService<ILogger<Program>>();
 
@@ -89,6 +95,7 @@ var idPattern = kind switch
     "people"      => new Regex(@"^refresh-person-(\d+)\.json$", RegexOptions.IgnoreCase),
     "orgs"        => new Regex(@"^refresh-org-(\d+)\.json$", RegexOptions.IgnoreCase),
     "ab-projects" => new Regex(@"^refresh-project-(\d+)\.json$", RegexOptions.IgnoreCase),
+    "proponents"  => new Regex(@"^refresh-proponent-(\d+)\.json$", RegexOptions.IgnoreCase),
     _             => throw new InvalidOperationException(),
 };
 
@@ -97,6 +104,7 @@ var expectedEnvelopeKind = kind switch
     "people"      => "person-brief-refresh",
     "orgs"        => "org-brief-refresh",
     "ab-projects" => "project-brief-refresh",
+    "proponents"  => "proponent-research",
     _             => throw new InvalidOperationException(),
 };
 
@@ -208,6 +216,51 @@ foreach (var file in files)
                 await sp.GetRequiredService<IMajorProjectEnrichmentTrackingStore>()
                     .RecordAttemptAsync(id, "ProjectBrief", result, nextRefresh, CancellationToken.None)
                     .ConfigureAwait(false);
+                break;
+            case "proponents":
+                {
+                    // Envelope items[0]: { mpiId, proponentName, proponentWebsite, confidence, evidence, notes }
+                    using var pDoc = JsonDocument.Parse(briefJson);
+                    var root = pDoc.RootElement;
+                    string? proponentName = null;
+                    if (root.TryGetProperty("proponentName", out var nameProp) && nameProp.ValueKind == JsonValueKind.String)
+                    {
+                        proponentName = nameProp.GetString();
+                    }
+                    if (string.IsNullOrWhiteSpace(proponentName))
+                    {
+                        log.LogWarning("{Name}: missing proponentName in envelope items[0]; skipping.", name);
+                        skipped++;
+                        continue;
+                    }
+
+                    // Resolve to existing canonical (auto-resurrects retired matches) or create.
+                    // Kind defaults to "Unknown" — a later R95d-style classifier promotes it.
+                    var resolver = sp.GetRequiredService<CanonicalOrgResolver>();
+                    var canonicalId = await resolver.ResolveAsync(
+                        proponentName, "Unknown", "proponent-drain", CancellationToken.None,
+                        allowCreate: true, minConfidenceForCreate: 70).ConfigureAwait(false);
+
+                    // Write back to MPI: ProponentName + ProponentCanonicalOrgId.
+                    await using var con = new Microsoft.Data.SqlClient.SqlConnection(cs);
+                    await con.OpenAsync().ConfigureAwait(false);
+                    await using var cmd = new Microsoft.Data.SqlClient.SqlCommand(
+                        @"UPDATE opportunities.MajorProjectsInventory
+                          SET ProponentName = @name,
+                              ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @canonId)
+                          WHERE Id = @id;", con);
+                    cmd.Parameters.AddWithValue("@name", proponentName.Trim());
+                    cmd.Parameters.AddWithValue("@canonId", (object?)canonicalId ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    var rows = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    if (rows == 0)
+                    {
+                        log.LogWarning("{Name}: MPI Id={Id} not found; skipping.", name, id);
+                        skipped++;
+                        continue;
+                    }
+                    log.LogInformation("Proponent applied: MPI {Id} -> '{Name}' (canonical={Canon})", id, proponentName, canonicalId);
+                }
                 break;
         }
 
