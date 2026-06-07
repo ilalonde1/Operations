@@ -290,6 +290,7 @@ OUTER APPLY (
     WHERE a.IntelPersonId = p.Id
       AND a.IsCurrent = 1
       AND a.RetiredAtUtc IS NULL
+      AND co.RetiredAtUtc IS NULL
     ORDER BY a.LastSeenAtUtc DESC
 ) cur
 LEFT JOIN opportunities.CanonicalOrgEnrichment e
@@ -344,6 +345,7 @@ OUTER APPLY (
     WHERE a.IntelPersonId = p.Id
       AND a.IsCurrent = 1
       AND a.RetiredAtUtc IS NULL
+      AND co.RetiredAtUtc IS NULL
     ORDER BY a.LastSeenAtUtc DESC
 ) cur
 WHERE p.Id = @id

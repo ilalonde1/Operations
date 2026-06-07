@@ -37,7 +37,7 @@ public sealed class SqlKorClientBdIntelligenceStore : IKorClientBdIntelligenceSt
         long? canonId = null;
         {
             await using var cmd = new SqlCommand(
-                "SELECT TOP 1 Id FROM opportunities.CanonicalOrg WHERE ClendorClientId = @cl",
+                "SELECT TOP 1 Id FROM opportunities.CanonicalOrg WHERE ClendorClientId = @cl AND RetiredAtUtc IS NULL",
                 con)
             { CommandTimeout = CommandTimeoutSeconds };
             cmd.Parameters.Add("@cl", SqlDbType.VarChar, 32).Value = clendorClientId;

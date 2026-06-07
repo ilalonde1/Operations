@@ -54,17 +54,19 @@ public sealed class IntelExtractionCatchUpJob : IJob
         // chokepoint in SqlEnrichmentTrackingStore handles the live case;
         // this is the safety net.
         var sql = @"
-SELECT Id,
-       CanonicalOrgId,
-       ProviderName,
-       ResultJson,
-       ISNULL(LastRefreshAtUtc, CreatedAtUtc) AS RefreshedAtUtc
-FROM opportunities.CanonicalOrgEnrichment
-WHERE Status = N'ok'
-  AND ResultJson IS NOT NULL
-  AND " + IntelNoiseProviders.SqlNotInClause("ProviderName") + @"
-  AND UpdatedAtUtc >= DATEADD(DAY, -7, sysdatetimeoffset())
-ORDER BY Id;";
+SELECT e.Id,
+       e.CanonicalOrgId,
+       e.ProviderName,
+       e.ResultJson,
+       ISNULL(e.LastRefreshAtUtc, e.CreatedAtUtc) AS RefreshedAtUtc
+FROM opportunities.CanonicalOrgEnrichment e
+JOIN opportunities.CanonicalOrg co ON co.Id = e.CanonicalOrgId
+WHERE e.Status = N'ok'
+  AND e.ResultJson IS NOT NULL
+  AND " + IntelNoiseProviders.SqlNotInClause("e.ProviderName") + @"
+  AND e.UpdatedAtUtc >= DATEADD(DAY, -7, sysdatetimeoffset())
+  AND co.RetiredAtUtc IS NULL
+ORDER BY e.Id;";
         await using var cmd = new SqlCommand(sql, con)
         {
             CommandType = CommandType.Text,

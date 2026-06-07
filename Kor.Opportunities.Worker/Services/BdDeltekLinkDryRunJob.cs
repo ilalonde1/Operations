@@ -230,7 +230,8 @@ WHERE ClientInd = 'Y'
         const string sql = @"
 SELECT Id, ClendorClientId
 FROM opportunities.CanonicalOrg
-WHERE ClendorClientId IS NOT NULL;";
+WHERE ClendorClientId IS NOT NULL
+  AND RetiredAtUtc IS NULL;";
 
         await using var con = new SqlConnection(connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -264,6 +265,7 @@ WHERE ClendorClientId IS NOT NULL;";
 SELECT Id, DisplayName, Kind
 FROM opportunities.CanonicalOrg
 WHERE ClendorClientId IS NULL
+  AND RetiredAtUtc IS NULL
   AND Kind IN ({string.Join(", ", kindParams)})
 ORDER BY DisplayName;";
 

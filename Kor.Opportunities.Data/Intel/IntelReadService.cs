@@ -122,7 +122,8 @@ public sealed class IntelReadService
                   (m.StructuralEngineerCanonicalOrgId),
                   (m.GeneralContractorCanonicalOrgId)
               ) v(CanonicalOrgId)
-              WHERE m.RetiredAtUtc IS NULL AND m.Province = @prov AND v.CanonicalOrgId IS NOT NULL)
+              JOIN opportunities.CanonicalOrg co2 ON co2.Id = v.CanonicalOrgId
+              WHERE m.RetiredAtUtc IS NULL AND m.Province = @prov AND v.CanonicalOrgId IS NOT NULL AND co2.RetiredAtUtc IS NULL)
 ";
 
         var actionTypeClause = string.IsNullOrWhiteSpace(filter.ActionType)
@@ -143,6 +144,7 @@ FROM opportunities.IntelAction a
 JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
 WHERE a.Status = N'Open'
   AND a.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
 {provinceClause}{actionTypeClause}{minConfidenceClause}ORDER BY {IntelConfidenceSql.RankClause("a.SourceConfidence")} DESC,
          a.LastSeenAtUtc DESC;";
 
@@ -340,10 +342,12 @@ WITH RegionOrgIds AS (
         (m.StructuralEngineerCanonicalOrgId),
         (m.GeneralContractorCanonicalOrgId)
     ) v(CanonicalOrgId)
+    JOIN opportunities.CanonicalOrg co ON co.Id = v.CanonicalOrgId
     WHERE m.RetiredAtUtc IS NULL
       AND m.Province = @prov
       {cityClause}
       AND v.CanonicalOrgId IS NOT NULL
+      AND co.RetiredAtUtc IS NULL
 )
 SELECT TOP 20 a.Id, a.ActionType, a.Recommendation, a.TargetPersonName, a.TimingNotes, a.Status,
        a.SourceProviderName, a.SourceConfidence, a.LastSeenAtUtc
@@ -376,10 +380,12 @@ WITH RegionOrgIds AS (
         (m.StructuralEngineerCanonicalOrgId),
         (m.GeneralContractorCanonicalOrgId)
     ) v(CanonicalOrgId)
+    JOIN opportunities.CanonicalOrg co ON co.Id = v.CanonicalOrgId
     WHERE m.RetiredAtUtc IS NULL
       AND m.Province = @prov
       {cityClause}
       AND v.CanonicalOrgId IS NOT NULL
+      AND co.RetiredAtUtc IS NULL
 )
 SELECT TOP 20 s.Id, s.SignalType, s.Subject, s.Detail, s.OccurredAtApprox, s.SourceUrl,
        s.Corroborations, s.SourceProviderName, s.SourceConfidence, s.LastSeenAtUtc
@@ -414,10 +420,12 @@ WITH RegionOrgIds AS (
         (m.StructuralEngineerCanonicalOrgId),
         (m.GeneralContractorCanonicalOrgId)
     ) v(CanonicalOrgId)
+    JOIN opportunities.CanonicalOrg co ON co.Id = v.CanonicalOrgId
     WHERE m.RetiredAtUtc IS NULL
       AND m.Province = @prov
       {cityClause}
       AND v.CanonicalOrgId IS NOT NULL
+      AND co.RetiredAtUtc IS NULL
 ),
 Candidates AS (
     SELECT TOP 50 x.Id, x.RiskType, x.Description, x.MitigationNotes,
@@ -429,6 +437,7 @@ Candidates AS (
     JOIN opportunities.CanonicalOrg co ON co.Id = x.CanonicalOrgId
     WHERE x.RiskType = N'CapacityStrain'
       AND x.RetiredAtUtc IS NULL
+      AND co.RetiredAtUtc IS NULL
     ORDER BY {IntelConfidenceSql.RankClause("x.SourceConfidence")} DESC,
              x.LastSeenAtUtc DESC
 )

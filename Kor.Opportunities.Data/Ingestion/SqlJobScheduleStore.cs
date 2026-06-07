@@ -289,6 +289,7 @@ SELECT TOP (@top) co.Kind, co.Id, co.DisplayName,
         OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id) AS MpiRefs
 FROM opportunities.CanonicalOrg co
 WHERE co.Kind IN ('Architect','Buyer','Developer','GC','Competitor')
+  AND co.RetiredAtUtc IS NULL
   AND co.Website IS NULL
   AND (co.Notes IS NULL OR co.Notes NOT LIKE 'WebSearchNotFound:%')
   AND (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory

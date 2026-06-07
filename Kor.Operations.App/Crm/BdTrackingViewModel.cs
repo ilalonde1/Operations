@@ -236,6 +236,7 @@ OUTER APPLY (
 ) cx
 WHERE   e.OpportunityId IS NULL
   AND   e.Region IS NOT NULL
+  AND   (e.BuyerCanonicalOrgId IS NULL OR co.RetiredAtUtc IS NULL)
 ORDER   BY e.Region, e.OwnerStaffId, BuyerDisplayName;";
 
             var rows = new List<BdTrackingEngagementRow>();

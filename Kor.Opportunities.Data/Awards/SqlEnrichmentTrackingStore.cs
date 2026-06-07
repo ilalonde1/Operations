@@ -45,8 +45,9 @@ SELECT TOP (@batch) co.Id
 FROM   opportunities.CanonicalOrg co
 LEFT   JOIN opportunities.CanonicalOrgEnrichment e
        ON e.CanonicalOrgId = co.Id AND e.ProviderName = @provider
-WHERE  (e.Id IS NULL)
-   OR  (e.Status NOT IN ('blocked') AND (e.NextRefreshAtUtc IS NULL OR e.NextRefreshAtUtc <= sysdatetimeoffset()))
+WHERE  co.RetiredAtUtc IS NULL
+  AND ((e.Id IS NULL)
+   OR  (e.Status NOT IN ('blocked') AND (e.NextRefreshAtUtc IS NULL OR e.NextRefreshAtUtc <= sysdatetimeoffset())))
 ORDER  BY CASE WHEN e.Id IS NULL THEN 0 ELSE 1 END,
           COALESCE(e.LastAttemptAtUtc, '1900-01-01'),
           co.Id;";

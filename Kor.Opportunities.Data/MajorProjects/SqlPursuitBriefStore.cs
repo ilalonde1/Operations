@@ -89,7 +89,7 @@ public sealed class SqlPursuitBriefStore : IPursuitBriefStore
 SELECT mpi.Id,
        mpi.ProjectName,
        mpi.ProponentName,
-       mpi.ProponentCanonicalOrgId,
+       ownerOrg.Id AS ProponentCanonicalOrgId,
        mpi.RegionName,
        mpi.MunicipalityName,
        mpi.Sector,
@@ -98,14 +98,16 @@ SELECT mpi.Id,
        mpi.EstimatedCostCad,
        mpi.SourceUrl,
        mpi.ArchitectName,
-       mpi.ArchitectCanonicalOrgId,
+       architectOrg.Id AS ArchitectCanonicalOrgId,
        ownerOrg.ClendorClientId AS OwnerClendorClientId,
        architectOrg.ClendorClientId AS ArchitectClendorClientId
 FROM opportunities.MajorProjectsInventory mpi
 LEFT JOIN opportunities.CanonicalOrg ownerOrg
     ON ownerOrg.Id = mpi.ProponentCanonicalOrgId
+   AND ownerOrg.RetiredAtUtc IS NULL
 LEFT JOIN opportunities.CanonicalOrg architectOrg
     ON architectOrg.Id = mpi.ArchitectCanonicalOrgId
+   AND architectOrg.RetiredAtUtc IS NULL
 WHERE mpi.Id = @id;";
 
         await using var con = new SqlConnection(_connectionString);
@@ -183,6 +185,7 @@ SELECT TOP 1 Id
 FROM opportunities.CanonicalOrg
 WHERE Kind = N'Competitor'
   AND DisplayName = @name
+  AND RetiredAtUtc IS NULL
 ORDER BY Id;";
 
         await using var con = new SqlConnection(_connectionString);

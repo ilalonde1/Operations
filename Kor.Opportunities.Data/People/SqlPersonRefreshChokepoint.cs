@@ -180,9 +180,11 @@ FROM opportunities.IntelPerson p
 OUTER APPLY (
     SELECT TOP 1 a.CanonicalOrgId
     FROM opportunities.IntelPersonAffiliation a
+    INNER JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
     WHERE a.IntelPersonId = p.Id
       AND a.IsCurrent = 1
       AND a.RetiredAtUtc IS NULL
+      AND co.RetiredAtUtc IS NULL
     ORDER BY a.LastSeenAtUtc DESC
 ) cur
 WHERE p.Id = @id
