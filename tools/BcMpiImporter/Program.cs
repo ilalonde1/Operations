@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
+using Kor.Opportunities.Data.MajorProjects;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -262,6 +263,7 @@ SET
     Stage = CASE WHEN @incomingIssueScore > COALESCE(IssueYear * 4 + IssueQuarter, -1) THEN @stage ELSE Stage END,
     ProjectStatus = CASE WHEN @incomingIssueScore > COALESCE(IssueYear * 4 + IssueQuarter, -1) THEN @projectStatus ELSE ProjectStatus END,
     ProjectStage = CASE WHEN @incomingIssueScore > COALESCE(IssueYear * 4 + IssueQuarter, -1) THEN @projectStage ELSE ProjectStage END,
+    KorPipelineTag = CASE WHEN @incomingIssueScore > COALESCE(IssueYear * 4 + IssueQuarter, -1) THEN @korPipelineTag ELSE KorPipelineTag END,
     ProjectCategoryName = CASE WHEN @incomingIssueScore > COALESCE(IssueYear * 4 + IssueQuarter, -1) THEN @projectCategoryName ELSE ProjectCategoryName END,
     PublicFundingInd = CASE WHEN @incomingIssueScore > COALESCE(IssueYear * 4 + IssueQuarter, -1) THEN @publicFundingInd ELSE PublicFundingInd END,
     ProvincialFunding = CASE WHEN @incomingIssueScore > COALESCE(IssueYear * 4 + IssueQuarter, -1) THEN @provincialFunding ELSE ProvincialFunding END,
@@ -294,7 +296,7 @@ BEGIN
         (Province, SourceKey, ExternalProjectId, ProjectName, ProjectDescription, EstimatedCostCad,
          EstimatedCostText, Sector, SubSector, ConstructionType, ConstructionSubtype, ProjectType,
          RegionName, MunicipalityName, ProponentName, ProponentCanonicalOrgId, ArchitectName,
-         ArchitectCanonicalOrgId, Stage, ProjectStatus, ProjectStage, ProjectCategoryName,
+         ArchitectCanonicalOrgId, Stage, ProjectStatus, ProjectStage, KorPipelineTag, ProjectCategoryName,
          PublicFundingInd, ProvincialFunding, FederalFunding, MunicipalFunding, OtherPublicFunding,
          GreenBuildingInd, IndigenousInd, IndigenousNames, ConstructionJobs, OperatingJobs,
          StandardizedStartDate, StandardizedCompletionDate, StartYear, CompletionYear,
@@ -305,7 +307,7 @@ BEGIN
         (@province, @sourceKey, @externalProjectId, @projectName, @projectDescription, @estimatedCostCad,
          @estimatedCostText, @sector, @subSector, @constructionType, @constructionSubtype, @projectType,
          @regionName, @municipalityName, @proponentName, @proponentCanonicalOrgId, @architectName,
-         @architectCanonicalOrgId, @stage, @projectStatus, @projectStage, @projectCategoryName,
+         @architectCanonicalOrgId, @stage, @projectStatus, @projectStage, @korPipelineTag, @projectCategoryName,
          @publicFundingInd, @provincialFunding, @federalFunding, @municipalFunding, @otherPublicFunding,
          @greenBuildingInd, @indigenousInd, @indigenousNames, @constructionJobs, @operatingJobs,
          @standardizedStartDate, @standardizedCompletionDate, @startYear, @completionYear,
@@ -326,7 +328,7 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
 
     private static void AddParams(SqlCommand cmd, BcMpiRecord r)
     {
-        AddString(cmd, "@province", Province, 2);
+        AddString(cmd, "@province", ProvinceNormalizer.Normalize(Province, Province), 2);
         AddString(cmd, "@sourceKey", r.SourceKey, 200);
         AddString(cmd, "@externalProjectId", r.ExternalProjectId, 50);
         AddString(cmd, "@projectName", r.ProjectName, 500);
@@ -346,7 +348,9 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
         AddLong(cmd, "@architectCanonicalOrgId", r.ArchitectCanonicalOrgId);
         AddString(cmd, "@stage", r.Stage, 50);
         AddString(cmd, "@projectStatus", r.ProjectStatus, 100);
-        AddString(cmd, "@projectStage", r.ProjectStage, 100);
+        ProjectStageRouter.Route(r.ProjectStage, out var routedStage, out var routedTag, out _);
+        AddString(cmd, "@projectStage", routedStage, 100);
+        AddString(cmd, "@korPipelineTag", routedTag, 80);
         AddString(cmd, "@projectCategoryName", r.ProjectCategoryName, 200);
         AddBool(cmd, "@publicFundingInd", r.PublicFundingInd);
         AddBool(cmd, "@provincialFunding", r.ProvincialFunding);

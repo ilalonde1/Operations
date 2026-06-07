@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
+using Kor.Opportunities.Data.MajorProjects;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
@@ -245,7 +246,8 @@ SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
 
     private static void AddParams(SqlCommand cmd, MajorProjectRecord record)
     {
-        cmd.Parameters.Add("@province", SqlDbType.NVarChar, 2).Value = record.Province;
+        cmd.Parameters.Add("@province", SqlDbType.NVarChar, 2).Value =
+            ProvinceNormalizer.Normalize(record.Province, record.Province ?? "");
         cmd.Parameters.Add("@sourceKey", SqlDbType.NVarChar, 200).Value = record.SourceKey;
         cmd.Parameters.Add("@projectName", SqlDbType.NVarChar, 500).Value = Truncate(record.ProjectName, 500);
         cmd.Parameters.Add("@sector", SqlDbType.NVarChar, 100).Value = Db(record.Sector, 100);
