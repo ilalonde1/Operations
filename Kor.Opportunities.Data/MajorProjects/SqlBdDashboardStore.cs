@@ -104,7 +104,7 @@ SELECT TOP (@take)
        Stage
 FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL
-  AND ProjectStage IN (N'CapitalPlan', N'FacilityRenewal')
+  AND (ProjectStage = N'CapitalPlan' OR KorPipelineTag = N'FacilityRenewal')
 ORDER BY EstimatedCostCad DESC;";
 
         await using var con = new SqlConnection(_connectionString);

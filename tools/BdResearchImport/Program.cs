@@ -10,6 +10,7 @@ using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.IndustryEvents;
 using Kor.Opportunities.Data.Intel;
+using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.ResearchEnvelope;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -6440,6 +6441,7 @@ SET
     Stage = @stage,
     ProjectStatus = @projectStatus,
     ProjectStage = @projectStage,
+    KorPipelineTag = @korPipelineTag,
     ProjectCategoryName = @projectCategoryName,
     PublicFundingInd = @publicFundingInd,
     ProvincialFunding = @provincialFunding,
@@ -6476,7 +6478,7 @@ BEGIN
         (Province, SourceKey, ExternalProjectId, ProjectName, ProjectDescription, EstimatedCostCad,
          EstimatedCostText, Sector, SubSector, ConstructionType, ConstructionSubtype, ProjectType,
          RegionName, MunicipalityName, ProponentName, ProponentCanonicalOrgId, ArchitectName,
-         ArchitectCanonicalOrgId, Stage, ProjectStatus, ProjectStage, ProjectCategoryName,
+         ArchitectCanonicalOrgId, Stage, ProjectStatus, ProjectStage, KorPipelineTag, ProjectCategoryName,
          PublicFundingInd, ProvincialFunding, FederalFunding, MunicipalFunding, OtherPublicFunding,
          GreenBuildingInd, IndigenousInd, IndigenousNames, ConstructionJobs, OperatingJobs,
          StandardizedStartDate, StandardizedCompletionDate, StartYear, CompletionYear,
@@ -6488,7 +6490,7 @@ BEGIN
         (@province, @sourceKey, @externalProjectId, @projectName, @projectDescription, @estimatedCostCad,
          @estimatedCostText, @sector, @subSector, @constructionType, @constructionSubtype, @projectType,
          @regionName, @municipalityName, @proponentName, @proponentCanonicalOrgId, @architectName,
-         @architectCanonicalOrgId, @stage, @projectStatus, @projectStage, @projectCategoryName,
+         @architectCanonicalOrgId, @stage, @projectStatus, @projectStage, @korPipelineTag, @projectCategoryName,
          @publicFundingInd, @provincialFunding, @federalFunding, @municipalFunding, @otherPublicFunding,
          @greenBuildingInd, @indigenousInd, @indigenousNames, @constructionJobs, @operatingJobs,
          @standardizedStartDate, @standardizedCompletionDate, @startYear, @completionYear,
@@ -6720,7 +6722,9 @@ WHERE Id = @id
         AddLong(cmd, "@architectCanonicalOrgId", r.ArchitectCanonicalOrgId);
         AddString(cmd, "@stage", r.Stage, 50);
         AddString(cmd, "@projectStatus", r.ProjectStatus, 100);
-        AddString(cmd, "@projectStage", r.ProjectStage, 100);
+        ProjectStageRouter.Route(r.ProjectStage, out var routedStage, out var routedTag, out _);
+        AddString(cmd, "@projectStage", routedStage, 100);
+        AddString(cmd, "@korPipelineTag", routedTag, 80);
         AddString(cmd, "@projectCategoryName", r.ProjectCategoryName, 200);
         AddBool(cmd, "@publicFundingInd", r.PublicFundingInd);
         AddBool(cmd, "@provincialFunding", r.ProvincialFunding);
