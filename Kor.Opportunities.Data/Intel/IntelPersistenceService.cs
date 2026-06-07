@@ -161,6 +161,12 @@ UPDATE opportunities.IntelAction
         IntelExtractionContext ctx,
         CancellationToken ct)
     {
+        if (!IntelPersonNameGuard.IsValid(draft.DisplayName, out var reason))
+        {
+            System.Diagnostics.Trace.TraceWarning("IntelPerson row rejected: name='{0}', reason={1}, provider={2}, enrichmentId={3}.", draft.DisplayName, reason, ctx.ProviderName, ctx.SourceEnrichmentId);
+            return Task.FromResult(default(MergeCounts));
+        }
+
         const string sql = @"
 DECLARE @actions table ([Action] nvarchar(10) NOT NULL);
 
@@ -217,6 +223,12 @@ FROM @actions;";
         IntelExtractionContext ctx,
         CancellationToken ct)
     {
+        if (!IntelPersonNameGuard.IsValid(draft.PersonDisplayName, out var affReason))
+        {
+            System.Diagnostics.Trace.TraceWarning("IntelPersonAffiliation row rejected: name='{0}', reason={1}, provider={2}.", draft.PersonDisplayName, affReason, ctx.ProviderName);
+            return Task.FromResult(default(MergeCounts));
+        }
+
         const string sql = @"
 DECLARE @actions table ([Action] nvarchar(10) NOT NULL);
 

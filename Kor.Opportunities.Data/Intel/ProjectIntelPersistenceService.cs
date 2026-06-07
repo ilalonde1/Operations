@@ -317,6 +317,12 @@ WHEN NOT MATCHED THEN INSERT
         DateTimeOffset refreshedAtUtc,
         CancellationToken ct)
     {
+        if (!IntelPersonNameGuard.IsValid(draft.DisplayName, out var reason))
+        {
+            System.Diagnostics.Trace.TraceWarning("IntelProjectKeyPerson row rejected: name='{0}', reason={1}, provider={2}, enrichmentId={3}.", draft.DisplayName, reason, providerName, sourceEnrichmentId);
+            return Task.CompletedTask;
+        }
+
         const string sql = @"
 MERGE opportunities.IntelProjectKeyPerson WITH (HOLDLOCK) AS T
 USING (SELECT @naturalKey AS NaturalKey) AS S
