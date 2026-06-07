@@ -234,11 +234,32 @@ foreach (var file in files)
                         continue;
                     }
 
-                    // Resolve to existing canonical (auto-resurrects retired matches) or create.
-                    // Kind defaults to "Unknown" — a later R95d-style classifier promotes it.
+                    // PRE-FLIGHT: verify MPI Id exists BEFORE creating canonical. This
+                    // prevents the audit-found gap where ResolveAsync mints a canonical
+                    // (or auto-resurrects one) and then the MPI UPDATE finds 0 rows,
+                    // leaving an orphan canonical with no back-link.
+                    var trimmedName = proponentName.Trim();
+                    await using (var verifyCon = new Microsoft.Data.SqlClient.SqlConnection(cs))
+                    {
+                        await verifyCon.OpenAsync().ConfigureAwait(false);
+                        await using var verify = new Microsoft.Data.SqlClient.SqlCommand(
+                            "SELECT COUNT(*) FROM opportunities.MajorProjectsInventory WHERE Id = @id;", verifyCon);
+                        verify.Parameters.AddWithValue("@id", id);
+                        var exists = (int)(await verify.ExecuteScalarAsync().ConfigureAwait(false) ?? 0);
+                        if (exists == 0)
+                        {
+                            log.LogWarning("{Name}: MPI Id={Id} does not exist; skipping (no canonical created).", name, id);
+                            skipped++;
+                            continue;
+                        }
+                    }
+
+                    // MPI exists. Now safe to resolve/create canonical (auto-resurrects
+                    // retired matches). Defaults to Kind=Unknown — a later R95d-style
+                    // classifier promotes it.
                     var resolver = sp.GetRequiredService<CanonicalOrgResolver>();
                     var canonicalId = await resolver.ResolveAsync(
-                        proponentName, "Unknown", "proponent-drain", CancellationToken.None,
+                        trimmedName, "Unknown", "proponent-drain", CancellationToken.None,
                         allowCreate: true, minConfidenceForCreate: 70).ConfigureAwait(false);
 
                     // Write back to MPI: ProponentName + ProponentCanonicalOrgId.
@@ -249,17 +270,18 @@ foreach (var file in files)
                           SET ProponentName = @name,
                               ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @canonId)
                           WHERE Id = @id;", con);
-                    cmd.Parameters.AddWithValue("@name", proponentName.Trim());
+                    cmd.Parameters.AddWithValue("@name", trimmedName);
                     cmd.Parameters.AddWithValue("@canonId", (object?)canonicalId ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@id", id);
                     var rows = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
                     if (rows == 0)
                     {
-                        log.LogWarning("{Name}: MPI Id={Id} not found; skipping.", name, id);
-                        skipped++;
+                        // Should be impossible after pre-flight check, but handle defensively.
+                        log.LogError("{Name}: MPI Id={Id} UPDATE affected 0 rows after pre-flight succeeded — concurrent delete? CanonicalOrg {Canon} may now be orphaned.", name, id, canonicalId);
+                        failed++;
                         continue;
                     }
-                    log.LogInformation("Proponent applied: MPI {Id} -> '{Name}' (canonical={Canon})", id, proponentName, canonicalId);
+                    log.LogInformation("Proponent applied: MPI {Id} -> '{Name}' (canonical={Canon})", id, trimmedName, canonicalId);
                 }
                 break;
         }
