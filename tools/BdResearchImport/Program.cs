@@ -6806,9 +6806,7 @@ WHERE Id = @id
 
     private static string NormalizeProvince(string? value, string fallback)
     {
-        var trimmed = NullIfBlank(value) ?? fallback;
-        trimmed = trimmed.ToUpperInvariant();
-        return trimmed.Length <= 2 ? trimmed : trimmed[..2];
+        return ProvinceNormalizer.Normalize(value, fallback);
     }
 
     private static string NormalizeToken(string? value)
