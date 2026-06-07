@@ -616,7 +616,38 @@ ORDER BY Id;";
 
         using (doc)
         {
-            foreach (var firm in EnumerateArray(doc.RootElement, "firms"))
+            var validation = ResearchEnvelopeValidator.Validate(doc, "contractor");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
+            {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("contractor: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Object
+                     && doc.RootElement.TryGetProperty("firms", out var legacyArr)
+                     && legacyArr.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"contractor: payload is legacy {{firms:[]}} shape (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = legacyArr;
+                source = "legacy {firms:[]}";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"contractor: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
+                return;
+            }
+
+            Console.WriteLine($"contractor: ingesting {itemsArray.GetArrayLength()} firm item(s) via {source}.");
+
+            foreach (var firm in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var firmName = String(firm, "firmName");
@@ -964,7 +995,38 @@ ORDER BY Id;";
 
         using (doc)
         {
-            foreach (var project in EnumerateArray(doc.RootElement, "projects"))
+            var validation = ResearchEnvelopeValidator.Validate(doc, "bc-dev");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
+            {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("bc-dev: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Object
+                     && doc.RootElement.TryGetProperty("projects", out var legacyArr)
+                     && legacyArr.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"bc-dev: payload is legacy {{projects:[]}} shape (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = legacyArr;
+                source = "legacy {projects:[]}";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"bc-dev: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
+                return;
+            }
+
+            Console.WriteLine($"bc-dev: ingesting {itemsArray.GetArrayLength()} project item(s) via {source}.");
+
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "ProjectName");
@@ -1476,7 +1538,38 @@ ORDER BY Id;";
 
         using (doc)
         {
-            foreach (var prime in EnumerateArray(doc.RootElement, "primes"))
+            var validation = ResearchEnvelopeValidator.Validate(doc, "prime-targeting");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
+            {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("prime-targeting: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Object
+                     && doc.RootElement.TryGetProperty("primes", out var legacyArr)
+                     && legacyArr.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"prime-targeting: payload is legacy {{primes:[]}} shape (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = legacyArr;
+                source = "legacy {primes:[]}";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"prime-targeting: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
+                return;
+            }
+
+            Console.WriteLine($"prime-targeting: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var prime in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var firmName = String(prime, "firmName");
@@ -1517,8 +1610,39 @@ ORDER BY Id;";
 
         using (doc)
         {
+            var validation = ResearchEnvelopeValidator.Validate(doc, "prime-contacts");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
+            {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("prime-contacts: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Object
+                     && doc.RootElement.TryGetProperty("people", out var legacyArr)
+                     && legacyArr.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"prime-contacts: payload is legacy {{people:[]}} shape (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = legacyArr;
+                source = "legacy {people:[]}";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"prime-contacts: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
+                return;
+            }
+
+            Console.WriteLine($"prime-contacts: ingesting {itemsArray.GetArrayLength()} person item(s) via {source}.");
+
             var peopleByFirm = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-            foreach (var person in EnumerateArray(doc.RootElement, "people"))
+            foreach (var person in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var firmName = String(person, "firmName");
@@ -2017,16 +2141,40 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "data-honing");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("data-honing: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"data-honing: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"data-honing: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
+
+            Console.WriteLine($"data-honing: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
             var validIds = options.DryRun
                 ? null
                 : await LoadValidOrgIdsAsync(options.OpportunitiesDb, ct).ConfigureAwait(false);
 
-            foreach (var org in doc.RootElement.EnumerateArray())
+            foreach (var org in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(org, "id");
@@ -2163,12 +2311,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "owner-pipelines");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("owner-pipelines: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"owner-pipelines: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"owner-pipelines: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var p in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"owner-pipelines: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var p in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(p, "projectName");
@@ -2324,13 +2496,38 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "decision-makers");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine(
+                        "decision-makers: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"decision-makers: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"decision-makers: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
+            Console.WriteLine($"decision-makers: ingesting {itemsArray.GetArrayLength()} person item(s) via {source}.");
+
             var groups = new Dictionary<string, (long? OrgId, string? Name, string Kind, List<string> People)>(StringComparer.OrdinalIgnoreCase);
-            foreach (var person in doc.RootElement.EnumerateArray())
+            foreach (var person in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var orgName = String(person, "orgName");
@@ -2388,12 +2585,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "registries");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("registries: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"registries: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"registries: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var firm in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"registries: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var firm in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var name = String(firm, "name");
@@ -2458,15 +2679,39 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "owner-procurement");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("owner-procurement: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"owner-procurement: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"owner-procurement: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var element in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"owner-procurement: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var element in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
-                var orgName = String(element, "orgName");
+                var orgName = String(element, "orgName") ?? String(element, "ownerName");
                 if (string.IsNullOrWhiteSpace(orgName))
                 {
                     stats.OrgRowsSkipped++;
@@ -2504,12 +2749,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "competitor-signals");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("competitor-signals: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"competitor-signals: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"competitor-signals: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var element in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"competitor-signals: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var element in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var orgName = String(element, "orgName");
@@ -2550,12 +2819,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "structural-partner-map");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("structural-partner-map: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"structural-partner-map: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"structural-partner-map: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var element in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"structural-partner-map: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var element in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var orgName = String(element, "orgName");
@@ -2596,16 +2889,40 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "displacement-briefs");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("displacement-briefs: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"displacement-briefs: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"displacement-briefs: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
+
+            Console.WriteLine($"displacement-briefs: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
             var written = 0;
             var skippedNoArchitect = 0;
             var skippedLowConfidence = 0;
 
-            foreach (var element in doc.RootElement.EnumerateArray())
+            foreach (var element in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
 
@@ -2708,15 +3025,39 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "sub-consultants");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("sub-consultants: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"sub-consultants: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"sub-consultants: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var element in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"sub-consultants: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var element in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
-                var name = String(element, "name");
+                var name = String(element, "name") ?? String(element, "firmName");
                 if (string.IsNullOrWhiteSpace(name))
                 {
                     stats.OrgRowsSkipped++;
@@ -2763,15 +3104,39 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "facility-renewal");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("facility-renewal: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"facility-renewal: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"facility-renewal: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var element in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"facility-renewal: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var element in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
-                var facilityName = String(element, "facilityName");
+                var facilityName = String(element, "facilityName") ?? String(element, "projectName");
                 if (string.IsNullOrWhiteSpace(facilityName))
                 {
                     stats.ProjectRowsSkipped++;
@@ -2846,13 +3211,37 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "capital-plans");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("capital-plans: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"capital-plans: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"capital-plans: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
+            Console.WriteLine($"capital-plans: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
             var sourceKeysSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var project in doc.RootElement.EnumerateArray())
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
@@ -2937,12 +3326,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "projects-honing");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("projects-honing: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"projects-honing: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"projects-honing: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var project in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"projects-honing: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(project, "id");
@@ -2952,11 +3365,11 @@ ORDER BY Id;";
                     continue;
                 }
 
-                var projectName = String(project, "projectName");
-                var architectName = String(project, "architectName");
-                var structuralName = String(project, "structuralEngineerName");
-                var gcName = String(project, "generalContractorName");
-                var proponentName = String(project, "proponentName");
+                var projectName = String(project, "projectName") ?? String(project, "ProjectName");
+                var architectName = String(project, "architectName") ?? String(project, "ArchitectName");
+                var structuralName = String(project, "structuralEngineerName") ?? String(project, "StructuralEngineerName");
+                var gcName = String(project, "generalContractorName") ?? String(project, "GeneralContractorName");
+                var proponentName = String(project, "proponentName") ?? String(project, "ProponentName");
 
                 var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, "ProjectsHoning", ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectsHoning", ct).ConfigureAwait(false);
@@ -2974,8 +3387,8 @@ ORDER BY Id;";
                     gcId,
                     proponentName,
                     proponentId,
-                    String(project, "stage"),
-                    Short(project, "completionYear"),
+                    String(project, "stage") ?? String(project, "Stage"),
+                    Short(project, "completionYear") ?? Short(project, "CompletionYear"),
                     ct).ConfigureAwait(false);
 
                 if (updated)
@@ -3015,15 +3428,39 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "midmarket");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("midmarket: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"midmarket: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"midmarket: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var project in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"midmarket: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
-                var projectName = String(project, "name");
+                var projectName = String(project, "name") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
                 {
                     stats.ProjectRowsSkipped++;
@@ -3033,7 +3470,7 @@ ORDER BY Id;";
                 var ownerName = String(project, "owner");
                 var architectName = String(project, "architect");
                 var structuralName = String(project, "structuralEngineer");
-                var municipality = String(project, "municipality");
+                var municipality = String(project, "municipality") ?? String(project, "city");
                 var ownerId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
                 var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "MidMarketStructural", ct).ConfigureAwait(false);
@@ -3106,18 +3543,42 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "architect-forecast");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("architect-forecast: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"architect-forecast: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"architect-forecast: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
+            Console.WriteLine($"architect-forecast: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
             var stamped = 0;
             var skipped = 0;
-            foreach (var project in doc.RootElement.EnumerateArray())
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(project, "id");
-                var architectName = String(project, "likelyArchitect");
+                var architectName = String(project, "likelyArchitect") ?? String(project, "architectName");
                 var confidence = String(project, "architectConfidence");
                 if (id is not > 0 || !IsConfirmedOrProbable(confidence) || IsUnknownName(architectName))
                 {
@@ -3169,15 +3630,39 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "pipeline-seats");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("pipeline-seats: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"pipeline-seats: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"pipeline-seats: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
+
+            Console.WriteLine($"pipeline-seats: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
             var seatStatusCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var orgsResolved = 0;
             var projectsStamped = 0;
-            foreach (var project in doc.RootElement.EnumerateArray())
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(project, "id");
@@ -3191,7 +3676,7 @@ ORDER BY Id;";
                 var architectName = CleanTeamName(String(project, "architect"));
                 var structuralName = CleanTeamName(String(project, "structuralEngineer"));
                 var gcName = CleanTeamName(String(project, "generalContractor"));
-                var seatStatus = String(project, "seatStatus");
+                var seatStatus = String(project, "seatStatus") ?? String(project, "structuralSeatStatus");
                 AddCount(seatStatusCounts, string.IsNullOrWhiteSpace(seatStatus) ? "(blank)" : seatStatus.Trim());
 
                 orgsResolved += CountName(architectName) + CountName(structuralName) + CountName(gcName);
@@ -3257,16 +3742,40 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "project-reverify");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("project-reverify: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"project-reverify: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"project-reverify: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
+
+            Console.WriteLine($"project-reverify: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
             var verdictCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var updated = 0;
             var retired = 0;
             var kept = 0;
-            foreach (var project in doc.RootElement.EnumerateArray())
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(project, "id");
@@ -3276,7 +3785,7 @@ ORDER BY Id;";
                     continue;
                 }
 
-                var verdict = String(project, "statusVerdict");
+                var verdict = String(project, "statusVerdict") ?? String(project, "verdict");
                 var verdictKey = string.IsNullOrWhiteSpace(verdict) ? "(blank)" : verdict.Trim();
                 AddCount(verdictCounts, verdictKey);
 
@@ -3350,13 +3859,37 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "industry-events");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("industry-events: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"industry-events: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"industry-events: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
+            Console.WriteLine($"industry-events: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
             var upserted = 0;
-            foreach (var item in doc.RootElement.EnumerateArray())
+            foreach (var item in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var name = String(item, "name");
@@ -3551,12 +4084,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "project-teams");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("project-teams: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"project-teams: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"project-teams: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var project in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"project-teams: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
@@ -3666,12 +4223,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "competitor-projects");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("competitor-projects: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"competitor-projects: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"competitor-projects: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var project in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"competitor-projects: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
@@ -3756,12 +4337,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "structural-pipeline");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("structural-pipeline: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"structural-pipeline: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"structural-pipeline: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var project in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"structural-pipeline: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
@@ -3846,12 +4451,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "indigenous-projects");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("indigenous-projects: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"indigenous-projects: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"indigenous-projects: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var project in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"indigenous-projects: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
@@ -3933,12 +4562,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "indigenous-orgs");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("indigenous-orgs: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"indigenous-orgs: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"indigenous-orgs: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var org in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"indigenous-orgs: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var org in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var name = String(org, "name");
@@ -4008,12 +4661,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "db-contractors");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("db-contractors: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"db-contractors: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"db-contractors: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var contractor in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"db-contractors: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var contractor in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var name = String(contractor, "name");
@@ -4072,12 +4749,36 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "incumbent-rosters");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("incumbent-rosters: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"incumbent-rosters: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"incumbent-rosters: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var roster in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"incumbent-rosters: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var roster in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var owner = String(roster, "owner");
@@ -4134,30 +4835,54 @@ ORDER BY Id;";
 
         using (doc)
         {
-            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            var validation = ResearchEnvelopeValidator.Validate(doc, "capital-funding-signals");
+            JsonElement itemsArray;
+            string source;
+            if (validation.IsValid && validation.Envelope is { } env)
             {
+                if (env.Items.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("capital-funding-signals: envelope items is not an array; skipping.");
+                    return;
+                }
+                itemsArray = env.Items;
+                source = $"envelope v{env.SchemaVersion} generated {env.GeneratedAtUtc:yyyy-MM-dd}";
+            }
+            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                Console.WriteLine(
+                    $"capital-funding-signals: payload is legacy flat-array (no envelope: {validation.Reason}); ingesting via legacy path.");
+                itemsArray = doc.RootElement;
+                source = "legacy flat-array";
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"capital-funding-signals: payload has neither envelope nor legacy shape ({validation.Reason}); skipping.");
                 return;
             }
 
-            foreach (var project in doc.RootElement.EnumerateArray())
+            Console.WriteLine($"capital-funding-signals: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
+
+            foreach (var project in itemsArray.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
-                var projectName = String(project, "name");
+                var projectName = String(project, "name") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
                 {
                     stats.ProjectRowsSkipped++;
                     continue;
                 }
 
-                var owner = String(project, "owner");
+                var owner = String(project, "owner") ?? String(project, "ownerName");
                 var architect = String(project, "architectSelected");
                 var market = String(project, "market");
-                var municipality = String(project, "municipality");
+                var municipality = String(project, "municipality") ?? String(project, "city");
                 var sector = String(project, "sector");
                 var stage = String(project, "stage");
-                var notableScope = String(project, "notableScope");
+                var notableScope = String(project, "notableScope") ?? String(project, "detail");
                 var fundingSource = String(project, "fundingSource");
-                var announcedDate = String(project, "announcedDate");
+                var announcedDate = String(project, "announcedDate") ?? String(project, "occurredAt");
                 var expectedProcurementWindow = String(project, "expectedProcurementWindow");
 
                 var ownerId = await ResolveAsync(resolver, options, stats, owner, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
@@ -4174,7 +4899,7 @@ ORDER BY Id;";
                     ProjectName: projectName,
                     ProjectDescription: notableScope,
                     EstimatedCostCad: LongOrNull(project, "fundingAmountCad"),
-                    EstimatedCostText: null,
+                    EstimatedCostText: String(project, "estimatedCost"),
                     Sector: sector,
                     SubSector: null,
                     ConstructionType: null,
