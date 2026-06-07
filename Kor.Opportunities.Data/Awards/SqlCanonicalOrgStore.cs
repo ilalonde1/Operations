@@ -280,6 +280,26 @@ WHERE  Id = @id;";
         return (r.GetString(0), r.GetString(1));
     }
 
+    public async Task<bool> UnretireAsync(long canonicalOrgId, string reason, CancellationToken ct)
+    {
+        _ = reason;
+
+        const string sql = @"
+UPDATE opportunities.CanonicalOrg
+SET RetiredAtUtc = NULL,
+    RetiredReason = NULL
+OUTPUT INSERTED.Id, DELETED.RetiredAtUtc
+WHERE Id = @id AND RetiredAtUtc IS NOT NULL;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        return await r.ReadAsync(ct).ConfigureAwait(false);
+    }
+
     private static bool IsDuplicateKey(SqlException ex)
         => ex.Errors.Cast<SqlError>().Any(e => e.Number is 2601 or 2627);
 

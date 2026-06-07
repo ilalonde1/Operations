@@ -223,6 +223,7 @@ LEFT JOIN (
     GROUP BY u.CanonicalOrgId
 ) last_seen ON last_seen.CanonicalOrgId = co.Id
 WHERE co.Kind IN (" + kindParameters + @")
+  AND co.RetiredAtUtc IS NULL
   AND (last_seen.LastSeenAtUtc IS NULL
        OR last_seen.LastSeenAtUtc < DATEADD(DAY, -@staleness, sysdatetimeoffset()))
 ORDER BY ISNULL(last_seen.LastSeenAtUtc, '0001-01-01') ASC;";
@@ -259,7 +260,8 @@ ORDER BY ISNULL(last_seen.LastSeenAtUtc, '0001-01-01') ASC;";
         const string sql = @"
 SELECT Id, DisplayName, Kind
 FROM opportunities.CanonicalOrg
-WHERE Id = @id;";
+WHERE Id = @id
+  AND RetiredAtUtc IS NULL;";
 
         await using var con = new SqlConnection(_workerOptions.OpportunitiesDb);
         await con.OpenAsync(ct).ConfigureAwait(false);

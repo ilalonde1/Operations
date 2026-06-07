@@ -46,6 +46,8 @@ public interface ICanonicalOrgStore
     /// <summary>Load just the DisplayName + Kind so providers can decide what to search.</summary>
     Task<(string DisplayName, string Kind)?> GetNameAndKindAsync(long canonicalOrgId, CancellationToken ct);
 
+    Task<bool> UnretireAsync(long canonicalOrgId, string reason, CancellationToken ct);
+
     /// <summary>
     /// Find the first CanonicalOrg whose NormalizedName matches the given
     /// already-normalized value. Returns null if no match.

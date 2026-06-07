@@ -164,6 +164,9 @@ public sealed class BcBidUnverifiedBidResultsScraperTests
         public Task<(string DisplayName, string Kind)?> GetNameAndKindAsync(long canonicalOrgId, CancellationToken ct)
             => Task.FromResult<(string DisplayName, string Kind)?>(null);
 
+        public Task<bool> UnretireAsync(long canonicalOrgId, string reason, CancellationToken ct)
+            => Task.FromResult(false);
+
         public Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)
             => Task.FromResult<long?>(null);
 

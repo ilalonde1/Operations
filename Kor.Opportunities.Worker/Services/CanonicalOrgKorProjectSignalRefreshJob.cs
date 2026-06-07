@@ -104,7 +104,8 @@ SET    LastKorProjectAtUtc = s.LastStartDate,
        KorProjectsCount = s.ProjectCount,
        UpdatedAtUtc = sysdatetimeoffset()
 FROM   opportunities.CanonicalOrg co
-JOIN   #KorProjectSignal s ON s.ClendorClientId = co.ClendorClientId;";
+JOIN   #KorProjectSignal s ON s.ClendorClientId = co.ClendorClientId
+WHERE  co.RetiredAtUtc IS NULL;";
             updated = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
 

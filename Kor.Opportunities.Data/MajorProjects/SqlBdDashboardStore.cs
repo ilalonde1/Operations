@@ -36,6 +36,7 @@ SELECT TOP (@take)
 FROM opportunities.CanonicalOrgEnrichment e
 JOIN opportunities.CanonicalOrg co ON co.Id = e.CanonicalOrgId
 WHERE e.ProviderName = N'StructuralPartnerMap'
+  AND co.RetiredAtUtc IS NULL
   AND JSON_VALUE(e.ResultJson,'$.structuralPartnerStatus') IN (N'open', N'rotating')
   AND JSON_VALUE(e.ResultJson,'$.korPriority') = N'high'
 ORDER BY co.DisplayName;";
@@ -71,6 +72,7 @@ SELECT TOP (@take)
 FROM opportunities.CanonicalOrgEnrichment e
 JOIN opportunities.CanonicalOrg co ON co.Id = e.CanonicalOrgId
 WHERE e.ProviderName = N'CompetitorSignals'
+  AND co.RetiredAtUtc IS NULL
 ORDER BY co.DisplayName;";
 
         await using var con = new SqlConnection(_connectionString);
@@ -182,6 +184,7 @@ FROM Base;";
 SELECT N'Orgs' AS Category, Kind AS Label, COUNT_BIG(*) AS CountValue
 FROM opportunities.CanonicalOrg
 WHERE Kind IN (N'Architect', N'Competitor', N'GC', N'Subcontractor', N'Developer', N'Buyer', N'KorClient')
+  AND RetiredAtUtc IS NULL
 GROUP BY Kind
 
 UNION ALL

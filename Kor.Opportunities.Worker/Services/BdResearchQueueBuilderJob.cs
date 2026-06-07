@@ -109,6 +109,7 @@ WITH OrgGap AS
     ) e ON e.CanonicalOrgId = co.Id
     WHERE co.Kind IN
         (N'Architect', N'Buyer', N'Competitor', N'Developer')
+      AND co.RetiredAtUtc IS NULL
       AND ISNULL(e.RichCount, 0) < 3
     ORDER BY co.KorProjectsCount DESC,
              co.LastKorProjectAtUtc DESC,

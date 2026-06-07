@@ -108,7 +108,7 @@ WHERE Id = @id;";
         if (buyerOrgId.HasValue)
         {
             {
-                const string sql = "SELECT ISNULL(KorProjectsCount, 0) FROM opportunities.CanonicalOrg WHERE Id = @id;";
+                const string sql = "SELECT ISNULL(KorProjectsCount, 0) FROM opportunities.CanonicalOrg WHERE Id = @id AND RetiredAtUtc IS NULL;";
                 await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
                 cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = buyerOrgId.Value;
                 var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
@@ -363,6 +363,7 @@ OUTER APPLY (
     ORDER BY a.LastSeenAtUtc DESC
 ) cur
 LEFT JOIN opportunities.CanonicalOrg co ON co.Id = cur.CanonicalOrgId
+    AND co.RetiredAtUtc IS NULL
 WHERE p.RetiredAtUtc IS NULL
   AND (@q IS NULL OR p.DisplayName LIKE '%' + @q + '%' ESCAPE '\')
 ORDER BY p.LastSeenAtUtc DESC;";
@@ -606,7 +607,8 @@ WHERE {mpiWhere};",
             const string sql = @"
 SELECT Id, Kind, DisplayName, Website, ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc, ClendorClientId
 FROM opportunities.CanonicalOrg
-WHERE Id = @id;";
+WHERE Id = @id
+  AND RetiredAtUtc IS NULL;";
             await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
             cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
             await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -691,7 +693,7 @@ ORDER BY UpdatedAtUtc DESC;";
 
     private static async Task<long?> GetKorIdAsync(SqlConnection con, CancellationToken ct)
     {
-        const string sql = "SELECT TOP 1 Id FROM opportunities.CanonicalOrg WHERE Kind = N'KorStructural';";
+        const string sql = "SELECT TOP 1 Id FROM opportunities.CanonicalOrg WHERE Kind = N'KorStructural' AND RetiredAtUtc IS NULL;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
         return v is null or DBNull ? null : Convert.ToInt64(v);
@@ -721,7 +723,8 @@ SELECT co.Id, co.DisplayName, co.Kind,
    WHERE e.CanonicalOrgId = co.Id)
       AS LastRefreshAtUtc
 FROM opportunities.CanonicalOrg co
-WHERE co.Id = @id;";
+WHERE co.Id = @id
+  AND co.RetiredAtUtc IS NULL;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
@@ -812,6 +815,7 @@ SELECT TOP (10)
     a.LastSeenAtUtc
 FROM opportunities.IntelProjectAction a
 LEFT JOIN opportunities.CanonicalOrg co ON co.Id = a.TargetCanonicalOrgId
+    AND co.RetiredAtUtc IS NULL
 WHERE a.MajorProjectsInventoryId = @id
   AND a.RetiredAtUtc IS NULL
   AND a.Status = N'Open'
@@ -875,6 +879,7 @@ SELECT TOP (20)
     co.DisplayName AS OrgName
 FROM opportunities.IntelProjectKeyPerson p
 LEFT JOIN opportunities.CanonicalOrg co ON co.Id = p.CanonicalOrgId
+    AND co.RetiredAtUtc IS NULL
 WHERE p.MajorProjectsInventoryId = @id
   AND p.RetiredAtUtc IS NULL
 ORDER BY p.Side ASC, p.LastSeenAtUtc DESC;";
@@ -965,6 +970,7 @@ SELECT TOP (10)
 FROM opportunities.IntelWork iw
 INNER JOIN opportunities.CanonicalOrg co ON co.Id = iw.CanonicalOrgId
 WHERE iw.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
   AND (
       iw.MajorProjectsInventoryId = @id
       OR {likeClauses}
@@ -1010,6 +1016,7 @@ SELECT TOP (10)
 FROM opportunities.IntelSignal s
 INNER JOIN opportunities.CanonicalOrg co ON co.Id = s.CanonicalOrgId
 WHERE s.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
   AND s.LastSeenAtUtc >= DATEADD(DAY, -365, sysdatetimeoffset())
   AND ( {likeClauses} )
 ORDER BY s.LastSeenAtUtc DESC;";
@@ -1052,6 +1059,7 @@ SELECT TOP (10)
 FROM opportunities.IntelAction a
 INNER JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
 WHERE a.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
   AND a.Status = N'Open'
   AND ( {likeClauses} )
 ORDER BY a.LastSeenAtUtc DESC;";
@@ -1094,6 +1102,7 @@ FROM opportunities.IntelPersonAffiliation a
 JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
 WHERE a.IntelPersonId = @id
   AND a.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
 ORDER BY a.IsCurrent DESC, a.LastSeenAtUtc DESC;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -1127,6 +1136,7 @@ SELECT TOP 10 s.OccurredAtApprox, s.SignalType, s.Subject, s.Detail, co.DisplayN
 FROM opportunities.IntelSignal s
 JOIN opportunities.CanonicalOrg co ON co.Id = s.CanonicalOrgId
 WHERE s.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
   AND s.LastSeenAtUtc >= DATEADD(DAY, -180, sysdatetimeoffset())
   AND (s.Subject LIKE '%' + @name + '%' ESCAPE '\'
        OR s.Detail LIKE '%' + @name + '%' ESCAPE '\')
@@ -1161,6 +1171,7 @@ JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
 WHERE a.TargetPersonName = @name
   AND a.Status = N'Open'
   AND a.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
 ORDER BY a.LastSeenAtUtc DESC;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -1617,6 +1628,7 @@ JOIN opportunities.CanonicalOrg co ON co.Id = mpi.{fkColumn}
 WHERE {mpiWhere}
   AND mpi.{fkColumn} IS NOT NULL
   {excludeKorSql}
+  AND co.RetiredAtUtc IS NULL
 GROUP BY co.Id, co.DisplayName, co.Kind
 ORDER BY ProjectCount DESC, co.DisplayName;";
 
@@ -1659,6 +1671,7 @@ FROM opportunities.MajorProjectsInventory mpi
 JOIN opportunities.CanonicalOrg co ON co.Id = mpi.ProponentCanonicalOrgId
 WHERE {mpiWhere}
   AND mpi.ProponentCanonicalOrgId IS NOT NULL
+  AND co.RetiredAtUtc IS NULL
 GROUP BY co.Id, co.DisplayName, co.Kind
 ORDER BY ProjectCount DESC, co.DisplayName;";
 
@@ -1741,6 +1754,7 @@ FROM opportunities.IntelSignal s
 JOIN SliceOrgIds soi ON soi.CanonicalOrgId = s.CanonicalOrgId
 JOIN opportunities.CanonicalOrg co ON co.Id = s.CanonicalOrgId
 WHERE s.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
   AND s.LastSeenAtUtc >= DATEADD(DAY, -365, sysdatetimeoffset())
 ORDER BY s.LastSeenAtUtc DESC;";
 
@@ -1889,6 +1903,7 @@ WHERE c.Kind = @kind AND EXISTS (
   WHERE m.{mpiFkColumn} = c.Id AND m.Province = @prov
     AND m.RetiredAtUtc IS NULL
 {BuildCityClause(cityTokens, AliasedMpiCityColumns, "c2")})
+  AND c.RetiredAtUtc IS NULL
 ORDER BY ProjectCount DESC, c.DisplayName;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -1932,6 +1947,7 @@ WHERE c.Kind IN (N'Buyer', N'Client', N'KorClient', N'Developer') AND EXISTS (
   WHERE m.ProponentCanonicalOrgId = c.Id AND m.Province = @prov
     AND m.RetiredAtUtc IS NULL
 {BuildCityClause(cityTokens, AliasedMpiCityColumns, "c2")})
+  AND c.RetiredAtUtc IS NULL
 ORDER BY ProjectCount DESC, c.DisplayName;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;

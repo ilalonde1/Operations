@@ -745,6 +745,10 @@ freshness/confidence/provenance.
 
 Tables (all in opportunities schema):
 
+When a query reads opportunities.CanonicalOrg directly or joins it as co/c,
+always filter the CanonicalOrg alias with RetiredAtUtc IS NULL. Retired
+canonical orgs are merge/noise rows and should not be surfaced in answers.
+
 opportunities.IntelPerson
   (Id, DisplayName, NormalizedName, Email, Phone, LinkedinUrl, Notes,
    Corroborations, SourceProviderName, SourceConfidence ('High'/'Medium'/'Low'),
@@ -801,6 +805,7 @@ FROM opportunities.IntelPerson p
 JOIN opportunities.IntelPersonAffiliation a ON a.IntelPersonId = p.Id
 JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
 WHERE co.DisplayName LIKE N'%Fraser Health%'
+  AND co.RetiredAtUtc IS NULL
   AND a.IsCurrent = 1 AND a.RetiredAtUtc IS NULL
 ORDER BY p.LastSeenAtUtc DESC;
 
@@ -809,6 +814,7 @@ SELECT s.Subject, s.Detail, s.OccurredAtApprox, co.DisplayName AS Org
 FROM opportunities.IntelSignal s
 JOIN opportunities.CanonicalOrg co ON co.Id = s.CanonicalOrgId
 WHERE s.SignalType = N'LeadershipChange'
+  AND co.RetiredAtUtc IS NULL
   AND s.RetiredAtUtc IS NULL
   AND s.LastSeenAtUtc >= DATEADD(DAY, -120, sysdatetimeoffset())
 ORDER BY s.LastSeenAtUtc DESC;
@@ -820,6 +826,7 @@ JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
 JOIN opportunities.MajorProjectsInventory mpi ON
    mpi.ProponentCanonicalOrgId = co.Id OR mpi.ArchitectCanonicalOrgId = co.Id
 WHERE a.Status = N'Open' AND a.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
   AND mpi.Province = N'BC' AND mpi.MunicipalityName LIKE N'%Vancouver%'
 ORDER BY CASE a.SourceConfidence WHEN 'High' THEN 3 WHEN 'Medium' THEN 2 ELSE 1 END DESC,
          a.LastSeenAtUtc DESC;
@@ -829,6 +836,7 @@ SELECT co.DisplayName, r.Description, r.MitigationNotes
 FROM opportunities.IntelRisk r
 JOIN opportunities.CanonicalOrg co ON co.Id = r.CanonicalOrgId
 WHERE r.RiskType = N'CapacityStrain' AND r.RetiredAtUtc IS NULL
+  AND co.RetiredAtUtc IS NULL
 ORDER BY r.LastSeenAtUtc DESC;
 
 ### Freshness + confidence
