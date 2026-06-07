@@ -1512,10 +1512,10 @@ SELECT TOP (15) o.Id, o.Name, o.BuyerName, o.SubmissionDeadlineUtc, o.PrimeProje
 FROM opportunities.Opportunities o
 WHERE {oppWhere}
   AND o.BuyerName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(o.BuyerName))) >= 4
+  AND LEN(LTRIM(RTRIM(o.BuyerName))) >= 1
   AND LOWER(o.BuyerName) NOT LIKE N'unknown%'
-  AND LOWER(o.BuyerName) NOT LIKE N'%tbd%'
-  AND LOWER(o.BuyerName) NOT LIKE N'%tba%'
+  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(o.BuyerName) + N' ') = 0
+  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(o.BuyerName) + N' ') = 0
   AND o.BuyerName NOT LIKE N'%<%'
   AND o.BuyerName NOT LIKE N'%>%'
 ORDER BY o.PrimeConfidence DESC, o.SubmissionDeadlineUtc ASC;";
@@ -1549,10 +1549,10 @@ SELECT TOP (15) mpi.Id, mpi.ProjectName, mpi.ProponentName, mpi.Stage, mpi.Estim
 FROM opportunities.MajorProjectsInventory mpi
 WHERE {mpiWhere}
   AND mpi.ProponentName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(mpi.ProponentName))) >= 4
+  AND LEN(LTRIM(RTRIM(mpi.ProponentName))) >= 1
   AND LOWER(mpi.ProponentName) NOT LIKE N'unknown%'
-  AND LOWER(mpi.ProponentName) NOT LIKE N'%tbd%'
-  AND LOWER(mpi.ProponentName) NOT LIKE N'%tba%'
+  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(mpi.ProponentName) + N' ') = 0
+  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(mpi.ProponentName) + N' ') = 0
   AND mpi.ProponentName NOT LIKE N'%<%'
   AND mpi.ProponentName NOT LIKE N'%>%'
 ORDER BY mpi.EstimatedCostCad DESC, mpi.ProjectName;";
@@ -1975,10 +1975,10 @@ FROM opportunities.Opportunities
 WHERE Status = 1 AND IsPrimeConsultantRfp = 1 AND ProjectProvince = @prov
 {BuildCityClause(cityTokens, OpportunityCityColumns, "c")}
   AND BuyerName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(BuyerName))) >= 4
+  AND LEN(LTRIM(RTRIM(BuyerName))) >= 1
   AND LOWER(BuyerName) NOT LIKE N'unknown%'
-  AND LOWER(BuyerName) NOT LIKE N'%tbd%'
-  AND LOWER(BuyerName) NOT LIKE N'%tba%'
+  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(BuyerName) + N' ') = 0
+  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(BuyerName) + N' ') = 0
   AND BuyerName NOT LIKE N'%<%'
   AND BuyerName NOT LIKE N'%>%'
 ORDER BY PrimeConfidence DESC, SubmissionDeadlineUtc ASC;";
@@ -2010,10 +2010,10 @@ FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL AND Province = @prov
 {BuildCityClause(cityTokens, MpiCityColumns, "c")}
   AND ProponentName IS NOT NULL
-  AND LEN(LTRIM(RTRIM(ProponentName))) >= 4
+  AND LEN(LTRIM(RTRIM(ProponentName))) >= 1
   AND LOWER(ProponentName) NOT LIKE N'unknown%'
-  AND LOWER(ProponentName) NOT LIKE N'%tbd%'
-  AND LOWER(ProponentName) NOT LIKE N'%tba%'
+  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' ' + LOWER(ProponentName) + N' ') = 0
+  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' ' + LOWER(ProponentName) + N' ') = 0
   AND ProponentName NOT LIKE N'%<%'
   AND ProponentName NOT LIKE N'%>%'
 ORDER BY EstimatedCostCad DESC;";
