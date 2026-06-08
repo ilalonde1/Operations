@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "org-brief-refresh",
+  "generatedAtUtc": "2026-06-08T00:00:00Z",
+  "items": [
+    {
+      "displayName": "GRAHAM Design Builders LP",
+      "kind": "GC",
+      "_providerName": "FirmNarrative",
+      "_generatedAt": "2026-06-08",
+      "_confidence": 0.85,
+      "decisionMakers": [
+        {
+          "name": "Alex Trifunov",
+          "title": "Pre-construction Manager (Vancouver office)",
+          "email": null,
+          "phone": null,
+          "linkedinUrl": null,
+          "notes": "Strategic KOR BD target #1. Pre-construction is where structural sub-consultant conversations happen on Graham's $3.4B+ BC healthcare pipeline. Direct outreach is the entry move. Identified via Glassdoor + Graham Vancouver office web profiles 2026-06-08."
+        },
+        {
+          "name": "Blake Christian",
+          "title": "Executive Vice President, Buildings U.S. Division",
+          "email": null,
+          "phone": null,
+          "linkedinUrl": null,
+          "notes": "30+ years experience leading complex building projects across North America. Healthcare, life sciences, civic, residential, education sectors. US-side relationship but valuable for KOR US West Coast pursuits (Mithun-UCLA channel parallel)."
+        }
+      ],
+      "signals": [
+        {
+          "signalType": "Award",
+          "subject": "Yurkovich Family Pavilion — Richmond Hospital Phase 2 awarded to Graham + HDR Alliance",
+          "detail": "$1.96B Alliance Partnership delivery model. Vancouver Coastal Health selected Graham Design Builders LP + HDR Architecture Associates Sept 2024. Contract award Feb 2025. Phase 2 construction starts 2026, completes 2029. STRUCTURAL ENGINEER = Entuitive (confirmed via Entuitive's Jan 2026 15-year anniversary scholarship announcement: 'Alliance Partnership at Richmond Hospital in B.C.'). Yurkovich structural scope is locked for KOR.",
+          "occurredAtApprox": "2024-09",
+          "sourceUrl": "https://www.vch.ca/en/news/proponent-selected-new-acute-care-tower-richmond-hospital-redevelopment"
+        },
+        {
+          "signalType": "Award",
+          "subject": "Cariboo Memorial Hospital ($366M) awarded to Stantec + Graham (progressive design-build)",
+          "detail": "Williams Lake / Cariboo-Chilcotin. Progressive design-build model, one of the first BC healthcare projects to use this delivery. Stantec provides clinical planning, equipment planning, architectural design, structural and civil engineering IN HOUSE — closed shop, no external structural sub slot.",
+          "occurredAtApprox": "2023-01",
+          "sourceUrl": "https://www.stantec.com/en/news/2023/stantec-graham-awarded-next-phase-cariboo-memorial-hospital"
+        },
+        {
+          "signalType": "Award",
+          "subject": "Dawson Creek and District Hospital ($590M) awarded to Graham Design Builders + HDR",
+          "detail": "263,000 sq ft greenfield replacement hospital. Northern Health + Infrastructure BC. Graham signed design-build agreement; HDR is prime consultant. Infracon contracted for civil earthworks. STRUCTURAL ENGINEER NOT PUBLICLY NAMED — this is a LIVE KOR INTEL GAP. Substantial completion Fall 2026, patients 2027. Verify with Trifunov.",
+          "occurredAtApprox": "2024-08",
+          "sourceUrl": "https://www.grahambuilds.com/dawson-creek-and-district-hospital/"
+        },
+        {
+          "signalType": "Award",
+          "subject": "Stuart Lake Hospital Redevelopment — Design-Build Agreement signed",
+          "detail": "Fort St. James, BC. 70,000 sq ft Progressive Design-Build. Design Early Works Agreement signed first, then Design-Build Agreement. Exterior envelope largely complete with finishes/commissioning underway. Full structural team NOT disclosed publicly — potential KOR intel gap.",
+          "occurredAtApprox": "2024-01",
+          "sourceUrl": "https://www.grahambuilds.com/stuart-lake-hospital-redevelopment/"
+        },
+        {
+          "signalType": "Other",
+          "subject": "Graham named on ReNew Canada Top 100 Infrastructure Projects 2026",
+          "detail": "Industry recognition confirms Graham's position as a top-tier Canadian infrastructure GC. BC healthcare wave is core to their growth story.",
+          "occurredAtApprox": "2026-01",
+          "sourceUrl": "https://www.grahambuilds.com/news/graham-recognized-on-renew-canadas-top100-infrastructure-projects-list-2026/"
+        },
+        {
+          "signalType": "Other",
+          "subject": "Granville Bridge South Approach Ramps Rehabilitation — Vancouver",
+          "detail": "Major components complete, finishes progressing. Confirms Graham's continued Vancouver-area infrastructure footprint beyond healthcare. TransLink and MoTi adjacency.",
+          "occurredAtApprox": "2025-01",
+          "sourceUrl": "https://www.grahambuilds.com/"
+        }
+      ],
+      "actions": [
+        {
+          "actionType": "ContactStrategy",
+          "recommendation": "Direct outreach to Alex Trifunov (Pre-construction Manager, Graham Vancouver office) via LinkedIn or email. Ask about Graham's next 2-3 BC healthcare pursuits and where they need structural depth they don't already have via HDR or Stantec captive teams. Reference Graham's recent Vancouver pipeline + KOR's BC healthcare structural portfolio.",
+          "targetPersonName": "Alex Trifunov",
+          "timingNotes": "Month 1 — now."
+        },
+        {
+          "actionType": "PursuitAngle",
+          "recommendation": "VERIFY DAWSON CREEK STRUCTURAL ENGINEER STATUS. Public sources name HDR as prime consultant but do NOT name the structural engineer. If HDR did not bring a captive structural sub, this slot may still be live. Worth a targeted call to Trifunov to verify and position KOR for Dawson Creek or future Northern Health pursuits.",
+          "targetPersonName": "Alex Trifunov",
+          "timingNotes": "Month 1-2 — Dawson Creek substantial completion Fall 2026, so structural scope is mostly done, but Northern Health has more in pipeline."
+        },
+        {
+          "actionType": "PursuitAngle",
+          "recommendation": "VERIFY STUART LAKE STRUCTURAL TEAM. Progressive Design-Build means early team formation. Full team not publicly disclosed. Engaging Graham pre-con NOW could land KOR in a structural-sub position before lock-in.",
+          "targetPersonName": "Alex Trifunov",
+          "timingNotes": "Month 1-3."
+        },
+        {
+          "actionType": "TeamingMove",
+          "recommendation": "Build the strategic Graham relationship for future BC pursuits. Graham is on ReNew Top 100 and clearly committed to BC. The next 5 years of BC healthcare design-build pursuits will likely include Graham. Trifunov is the durable relationship that pays compounding returns across multiple pursuits.",
+          "targetPersonName": "Alex Trifunov",
+          "timingNotes": "Sustained 12-month engagement."
+        },
+        {
+          "actionType": "ContactStrategy",
+          "recommendation": "Secondary outreach to Blake Christian (EVP Buildings U.S. Division) on the KOR US West Coast strategy. Healthcare + life sciences focus aligns with KOR's LA + Seattle ambitions. Less urgent than Trifunov but valuable for the US expansion play.",
+          "targetPersonName": "Blake Christian",
+          "timingNotes": "Month 3-6."
+        }
+      ],
+      "works": [
+        {
+          "projectName": "Richmond Hospital Yurkovich Family Pavilion",
+          "role": "General Contractor / Alliance Partner (with HDR + Entuitive)",
+          "yearApprox": "2026",
+          "estimatedValueCad": 1960000000,
+          "estimatedValueText": "$1.96B",
+          "notes": "Phase 2 acute care tower. 9 storeys. 113 hospital beds, 3 ORs, 24 ED bays. Construction starts 2026, completes 2029. Alliance Partnership delivery model. ENTUITIVE holds the structural scope — KOR cannot pursue this."
+        },
+        {
+          "projectName": "Cariboo Memorial Hospital Redevelopment",
+          "role": "Design-Build (progressive) with Stantec",
+          "yearApprox": "2023",
+          "estimatedValueCad": 366000000,
+          "estimatedValueText": "$366M",
+          "notes": "Williams Lake / Cariboo-Chilcotin. 100,000 sq ft addition + 3 stories. New ED, 36-bed medical/surgical, 6-bed maternity, mental-health units. Stantec captive structural. KOR cannot pursue this."
+        },
+        {
+          "projectName": "Dawson Creek and District Hospital",
+          "role": "Design-Build with HDR (prime consultant)",
+          "yearApprox": "2024",
+          "estimatedValueCad": 590000000,
+          "estimatedValueText": "$590M",
+          "notes": "263,000 sq ft greenfield replacement. Northern Health + Infrastructure BC. STRUCTURAL ENGINEER NOT PUBLICLY NAMED — LIVE KOR INTEL GAP. Substantial completion Fall 2026, patients 2027."
+        },
+        {
+          "projectName": "Stuart Lake Hospital Redevelopment",
+          "role": "Progressive Design-Build (Design Early Works + Design-Build)",
+          "yearApprox": "2024",
+          "estimatedValueCad": null,
+          "estimatedValueText": "70,000 sq ft",
+          "notes": "Fort St. James, BC. Exterior envelope largely complete, finishes/commissioning underway. Full team not disclosed. POTENTIAL KOR INTEL GAP."
+        },
+        {
+          "projectName": "Granville Bridge South Approach Ramps Rehabilitation",
+          "role": "Construction",
+          "yearApprox": "2025",
+          "estimatedValueCad": null,
+          "estimatedValueText": "TBD",
+          "notes": "Vancouver. Major components complete. Non-healthcare but confirms Graham's continued Vancouver-area infrastructure footprint and TransLink/MoTi relationships."
+        }
+      ],
+      "risks": [
+        {
+          "riskType": "Other",
+          "description": "Engineering team flagged the Yurkovich Pavilion pursuit error: original BD report listed Richmond Hospital as a KOR opportunity, but structural is locked with Entuitive via the Alliance Partnership. This corrects the record going forward — Graham is a STRATEGIC RELATIONSHIP target for future pursuits, NOT a Yurkovich entry path.",
+          "mitigationNotes": "Updated 2026-06-08. Going forward, KOR pursuit logic on Graham-led projects must check: (1) is prime architect Stantec? (closed shop) or HDR / other? (potential KOR sub slot). (2) Has structural engineer been publicly named? (3) Is delivery model Alliance? (locked at team selection)."
+        },
+        {
+          "riskType": "DataIssue",
+          "description": "Graham EVP Richard [surname truncated in web sources]. Full name not yet identified via standard searches. Senior sponsorship relationship needs this surfaced for an effective top-down approach.",
+          "mitigationNotes": "Honing pass needed — search Graham executive bio pages, LinkedIn Sales Navigator, or industry award lists for Richard's full surname."
+        }
+      ],
+      "narratives": [
+        {
+          "narrativeType": "Current",
+          "paragraphText": "Graham Design Builders LP is a Calgary-headquartered, employee-owned construction solutions partner providing general contracting, design-build, construction management, and P3 services. Their BC office network covers Vancouver, Coquitlam, Abbotsford, Kamloops, and Kelowna. Over the last 24 months Graham has built a $3.4B+ active BC healthcare design-build pipeline: Richmond Hospital Yurkovich Pavilion ($1.96B with HDR + Entuitive Alliance), Cariboo Memorial Hospital ($366M with Stantec progressive design-build), Dawson Creek and District Hospital ($590M with HDR), and Stuart Lake Hospital. They are on ReNew Canada Top 100 Infrastructure Projects 2026. Their structural-engineering partnering pattern is HDR-paired projects get an external structural sub (Entuitive on Richmond), Stantec-paired projects get Stantec in-house structural (closed shop)."
+        },
+        {
+          "narrativeType": "Action",
+          "paragraphText": "Direct outreach to Alex Trifunov (Pre-construction Manager, Vancouver office) to position KOR on Graham's next BC healthcare pursuits — especially HDR-paired projects where the external structural sub slot is open. Two specific live intel gaps: Dawson Creek Hospital structural engineer is not publicly named, and Stuart Lake Hospital full team is undisclosed. Verifying these with Trifunov is the immediate move. The 12-month play is Month 1-2 LinkedIn or email outreach plus in-person meeting at Graham Vancouver office, Month 3-6 KOR positioned on Graham's pre-qualified structural-sub list, Month 6-12 pursuit response on a non-Stantec Graham pursuit. Secondary outreach to Blake Christian (EVP US Buildings) for KOR's US West Coast healthcare strategy. KOR's BC healthcare structural portfolio plus mid-rise concrete plus seismic experience is the pitch — concrete, named, with case studies."
+        }
+      ]
+    }
+  ]
+}
