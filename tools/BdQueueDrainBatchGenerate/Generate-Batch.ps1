@@ -120,6 +120,13 @@ WHERE co.RetiredAtUtc IS NULL
   AND co.DisplayName NOT LIKE N'% Bidder'
   AND co.DisplayName NOT LIKE N'% Tender'
   AND co.DisplayName NOT LIKE N'% Tender %'
+  -- m101-found pollution variants
+  AND co.DisplayName NOT LIKE N'%(in-house%' AND co.DisplayName NOT LIKE N'%(consultant%'
+  AND co.DisplayName NOT LIKE N'%(structural%' AND co.DisplayName NOT LIKE N'%(architect of record%'
+  AND co.DisplayName NOT LIKE N'%(prime%' AND co.DisplayName NOT LIKE N'%(design lead%'
+  AND co.DisplayName NOT LIKE N'% Ltd. and %' AND co.DisplayName NOT LIKE N'% Inc. and %'
+  AND co.DisplayName NOT LIKE N'% Ltd and %' AND co.DisplayName NOT LIKE N'% Inc and %'
+  AND co.DisplayName NOT LIKE N'% in Joint Venture%' AND co.DisplayName NOT LIKE N'% IN JOINT VENTURE%'
   -- Architecture: prefix (parser artifact)
   AND co.DisplayName NOT LIKE N'Architecture: %'
   -- Person-name concatenated (" - FirstName LastName" suffix)
