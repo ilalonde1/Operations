@@ -21,7 +21,11 @@
     - Minimum length + must-contain-space
 
 .PARAMETER Kind
-    One of: orgs | projects | people | proponents
+    One of: orgs | projects | people | proponents | honing-orgs | honing-people | honing-projects
+
+    Honing kinds package each target's existing first-pass enrichment payload
+    alongside its identifiers, so Sonnet's honing PROMPT can read the prior
+    research and dig deeper on the remaining BD gaps without duplicating work.
 
 .PARAMETER BatchNumber
     The batch number to write (e.g., 5 produces batch-005.json).
@@ -47,7 +51,8 @@
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('orgs', 'projects', 'people', 'proponents')]
+    [Parameter(Mandatory)][ValidateSet('orgs', 'projects', 'people', 'proponents',
+                                        'honing-orgs', 'honing-people', 'honing-projects')]
     [string] $Kind,
 
     [Parameter(Mandatory)][int] $BatchNumber,
@@ -270,6 +275,123 @@ ORDER BY CASE WHEN EstimatedCostCad IS NULL THEN 1 ELSE 0 END, EstimatedCostCad 
                     category = if ($r.IsDBNull(6)) { $null } else { $r.GetValue(6) }
                     estimatedCost = if ($r.IsDBNull(7)) { $null } else { $r.GetValue(7).ToString() }
                 }
+            }
+            $r.Close()
+        }
+        'honing-orgs' {
+            # Pulls already-enriched orgs and packages each with its first-pass FirmNarrative JSON.
+            # Priority: KorClient > Architect > Competitor > Buyer > Developer.
+            $cmd.CommandText = @"
+WITH TopTargets AS (
+    SELECT TOP (@take) co.Id, co.DisplayName, co.Kind, e.ResultJson AS FirstPassNarrative,
+        (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m WHERE m.RetiredAtUtc IS NULL AND (m.ArchitectCanonicalOrgId=co.Id OR m.GeneralContractorCanonicalOrgId=co.Id OR m.StructuralEngineerCanonicalOrgId=co.Id OR m.ProponentCanonicalOrgId=co.Id)) AS BdValue
+    FROM opportunities.CanonicalOrg co
+    INNER JOIN opportunities.CanonicalOrgEnrichment e ON e.CanonicalOrgId = co.Id AND e.ProviderName = N'FirmNarrative'
+        AND e.LastRefreshAtUtc >= DATEADD(DAY, -14, sysdatetimeoffset())
+        AND e.Status = N'Ok'
+    WHERE co.RetiredAtUtc IS NULL
+      AND co.Kind IN (N'Architect', N'Competitor', N'KorClient', N'Buyer', N'Developer')
+      AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
+      AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment eh WHERE eh.CanonicalOrgId = co.Id AND eh.ProviderName = N'FirmNarrativeHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()))
+    ORDER BY
+        CASE co.Kind WHEN N'KorClient' THEN 0 WHEN N'Architect' THEN 1 WHEN N'Competitor' THEN 2 WHEN N'Buyer' THEN 3 WHEN N'Developer' THEN 4 END,
+        BdValue DESC
+)
+SELECT * FROM TopTargets;
+"@
+            $r = $cmd.ExecuteReader()
+            $rows = @()
+            while ($r.Read()) {
+                try {
+                    $payload = $r.GetValue(3)
+                    $rows += [ordered]@{
+                        id = [int]$r.GetValue(0)
+                        displayName = $r.GetValue(1)
+                        kind = $r.GetValue(2)
+                        firstPassNarrative = $payload | ConvertFrom-Json
+                        bdValue = [int]$r.GetValue(4)
+                    }
+                } catch {}
+            }
+            $r.Close()
+        }
+        'honing-people' {
+            # Already-enriched people, packaged with first-pass PersonBrief.
+            # PersonBrief enrichments live in CanonicalOrgEnrichment with ProviderName='PersonBrief-{personId}'
+            # CanonicalOrgId on the enrichment = the person's current-affiliation org.
+            $cmd.CommandText = @"
+WITH TopTargets AS (
+    SELECT TOP (@take) p.Id, p.DisplayName, pa.Title AS CurrentTitle, co.DisplayName AS CurrentEmployer,
+        e.ResultJson AS FirstPassBrief, e.LastRefreshAtUtc AS EnrichedAt
+    FROM opportunities.IntelPerson p
+    INNER JOIN opportunities.IntelPersonAffiliation pa ON pa.IntelPersonId = p.Id AND pa.IsCurrent = 1 AND pa.RetiredAtUtc IS NULL
+    INNER JOIN opportunities.CanonicalOrg co ON co.Id = pa.CanonicalOrgId AND co.RetiredAtUtc IS NULL
+    INNER JOIN opportunities.CanonicalOrgEnrichment e ON e.CanonicalOrgId = pa.CanonicalOrgId
+        AND e.ProviderName = N'PersonBrief-' + CAST(p.Id AS NVARCHAR(20))
+        AND e.LastRefreshAtUtc >= DATEADD(DAY, -14, sysdatetimeoffset())
+        AND e.Status = N'Ok'
+    WHERE p.RetiredAtUtc IS NULL
+      AND p.DisplayName IS NOT NULL AND LEN(p.DisplayName) >= 6
+      AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
+      AND NOT EXISTS (
+          SELECT 1 FROM opportunities.CanonicalOrgEnrichment eh
+          WHERE eh.CanonicalOrgId = pa.CanonicalOrgId
+            AND eh.ProviderName = N'PersonBriefHoning-' + CAST(p.Id AS NVARCHAR(20))
+            AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()))
+    ORDER BY e.LastRefreshAtUtc DESC
+)
+SELECT * FROM TopTargets;
+"@
+            $r = $cmd.ExecuteReader()
+            $rows = @()
+            while ($r.Read()) {
+                try {
+                    $payload = $r.GetValue(4)
+                    $rows += [ordered]@{
+                        personId = [int]$r.GetValue(0)
+                        displayName = $r.GetValue(1)
+                        currentTitle = if ($r.IsDBNull(2)) { $null } else { $r.GetValue(2) }
+                        currentEmployerName = if ($r.IsDBNull(3)) { $null } else { $r.GetValue(3) }
+                        firstPassBrief = $payload | ConvertFrom-Json
+                    }
+                } catch {}
+            }
+            $r.Close()
+        }
+        'honing-projects' {
+            # Already-enriched MPI rows, packaged with first-pass ProjectBrief.
+            # Priority: highest BD value (cost + actions) + recent enrichment.
+            $cmd.CommandText = @"
+WITH TopTargets AS (
+    SELECT TOP (@take) m.Id, m.ProjectName, m.ProjectStage, m.Province, m.MunicipalityName, m.ProponentName,
+        e.ResultJson AS FirstPassBrief, m.EstimatedCostCad,
+        (SELECT COUNT(*) FROM opportunities.IntelProjectAction a WHERE a.MajorProjectsInventoryId = m.Id) AS ActionCount
+    FROM opportunities.MajorProjectsInventory m
+    INNER JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBrief'
+        AND e.LastRefreshAtUtc >= DATEADD(DAY, -14, sysdatetimeoffset())
+    WHERE m.RetiredAtUtc IS NULL
+      AND m.ProjectStage IN (N'CapitalPlan',N'Planned',N'Concept',N'Design',N'Permitting',N'Procurement',N'Approved',N'Announced')
+      AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
+      AND NOT EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment eh WHERE eh.MajorProjectsInventoryId = m.Id AND eh.ProviderName = N'ProjectBriefHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()))
+    ORDER BY ActionCount DESC, m.EstimatedCostCad DESC
+)
+SELECT * FROM TopTargets;
+"@
+            $r = $cmd.ExecuteReader()
+            $rows = @()
+            while ($r.Read()) {
+                try {
+                    $payload = $r.GetValue(6)
+                    $rows += [ordered]@{
+                        id = [int64]$r.GetValue(0)
+                        projectName = $r.GetValue(1)
+                        stage = if ($r.IsDBNull(2)) { $null } else { $r.GetValue(2) }
+                        province = if ($r.IsDBNull(3)) { $null } else { $r.GetValue(3) }
+                        city = if ($r.IsDBNull(4)) { $null } else { $r.GetValue(4) }
+                        proponentName = if ($r.IsDBNull(5)) { $null } else { $r.GetValue(5) }
+                        firstPassBrief = $payload | ConvertFrom-Json
+                    }
+                } catch {}
             }
             $r.Close()
         }
