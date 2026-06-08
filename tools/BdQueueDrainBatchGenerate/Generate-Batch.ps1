@@ -104,9 +104,29 @@ WHERE co.RetiredAtUtc IS NULL
   AND co.DisplayName NOT LIKE N'%(confirmed)%'
   AND co.DisplayName NOT LIKE N'%(design-build%'
   AND co.DisplayName NOT LIKE N'%(Construction Manager)%'
-  -- Multi-entity garbage (slash / semicolon-joined)
+  -- Multi-entity garbage (slash / semicolon / plus / pipe joined)
   AND co.DisplayName NOT LIKE N'%/%'
   AND co.DisplayName NOT LIKE N'%;%'
+  AND co.DisplayName NOT LIKE N'% + %'
+  AND co.DisplayName NOT LIKE N'% | %'
+  AND co.DisplayName NOT LIKE N'% in association with %'
+  AND co.DisplayName NOT LIKE N'% In Association With %'
+  -- m98-found bid-status pollution variants
+  AND co.DisplayName NOT LIKE N'% Award'
+  AND co.DisplayName NOT LIKE N'% Award %'
+  AND co.DisplayName NOT LIKE N'% Proposal'
+  AND co.DisplayName NOT LIKE N'% Submission'
+  AND co.DisplayName NOT LIKE N'% Submissions'
+  AND co.DisplayName NOT LIKE N'% Bidder'
+  AND co.DisplayName NOT LIKE N'% Tender'
+  AND co.DisplayName NOT LIKE N'% Tender %'
+  -- Architecture: prefix (parser artifact)
+  AND co.DisplayName NOT LIKE N'Architecture: %'
+  -- Person-name concatenated (" - FirstName LastName" suffix)
+  AND co.DisplayName NOT LIKE N'% - [A-Z]% [A-Z]%'
+  -- Multi-entity " and " patterns (two architect/architecture mentions = JV)
+  AND NOT (co.DisplayName LIKE N'%Architect% and %Architect%')
+  AND NOT (co.DisplayName LIKE N'%Architecture and %Architecture%')
   -- Parenthetical scope descriptors
   AND co.DisplayName NOT LIKE N'%(master plan%'
   AND co.DisplayName NOT LIKE N'%(phase %' AND co.DisplayName NOT LIKE N'%(Phase %'
