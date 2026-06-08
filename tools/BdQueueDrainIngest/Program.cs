@@ -208,14 +208,49 @@ foreach (var file in files)
                     .ConfigureAwait(false);
                 break;
             case "orgs":
-                await sp.GetRequiredService<IEnrichmentTrackingStore>()
-                    .RecordAttemptAsync(id, "FirmNarrative", result, nextRefresh, CancellationToken.None)
-                    .ConfigureAwait(false);
+                {
+                    // Detect honing marker — Sonnet's honing PROMPT writes
+                    // `_providerName: "FirmNarrativeHoning"` inside items[0].
+                    // When present, persist with that ProviderName so the honing
+                    // exclusion filter on subsequent batch generation works.
+                    var orgProvider = "FirmNarrative";
+                    try
+                    {
+                        using var pDoc = JsonDocument.Parse(briefJson);
+                        if (pDoc.RootElement.TryGetProperty("_providerName", out var pn)
+                            && pn.ValueKind == JsonValueKind.String)
+                        {
+                            var v = pn.GetString();
+                            if (!string.IsNullOrWhiteSpace(v)) orgProvider = v;
+                        }
+                    }
+                    catch { /* fall back to FirmNarrative */ }
+
+                    await sp.GetRequiredService<IEnrichmentTrackingStore>()
+                        .RecordAttemptAsync(id, orgProvider, result, nextRefresh, CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
                 break;
             case "ab-projects":
-                await sp.GetRequiredService<IMajorProjectEnrichmentTrackingStore>()
-                    .RecordAttemptAsync(id, "ProjectBrief", result, nextRefresh, CancellationToken.None)
-                    .ConfigureAwait(false);
+                {
+                    // Same honing-marker detection for project briefs.
+                    var projProvider = "ProjectBrief";
+                    try
+                    {
+                        using var pDoc = JsonDocument.Parse(briefJson);
+                        if (pDoc.RootElement.TryGetProperty("_providerName", out var pn)
+                            && pn.ValueKind == JsonValueKind.String)
+                        {
+                            var v = pn.GetString();
+                            if (!string.IsNullOrWhiteSpace(v)) projProvider = v;
+                        }
+                    }
+                    catch { /* fall back to ProjectBrief */ }
+
+                    await sp.GetRequiredService<IMajorProjectEnrichmentTrackingStore>()
+                        .RecordAttemptAsync(id, projProvider, result, nextRefresh, CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
                 break;
             case "proponents":
                 {
