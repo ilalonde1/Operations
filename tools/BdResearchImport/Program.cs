@@ -1257,7 +1257,15 @@ ORDER BY Id;";
                     ArchitectCanonicalOrgId: architectId,
                     Stage: String(project, "Stage") ?? String(project, "stage"),
                     ProjectStatus: String(project, "Stage") ?? String(project, "stage"),
-                    ProjectStage: "USMarketResearch",
+                    // Pass the raw stage from the research JSON so ProjectStageRouter
+                    // can normalize it to a canonical lifecycle stage. Default to
+                    // "Planned" when the research didn't surface one — this keeps US
+                    // projects visible in the BD-actionable drain flow. The
+                    // "USMarketResearch" pipeline tag is retained via the source-key
+                    // prefix and provider name; it should NEVER be used as the
+                    // lifecycle stage (router would classify it as a tag and leave
+                    // canonical stage NULL — the exact bug this fix closes).
+                    ProjectStage: String(project, "Stage") ?? String(project, "stage") ?? "Planned",
                     ProjectCategoryName: null,
                     PublicFundingInd: null,
                     ProvincialFunding: null,
@@ -1404,7 +1412,11 @@ ORDER BY Id;";
                     ArchitectCanonicalOrgId: architectId,
                     Stage: String(project, "Stage") ?? String(project, "stage"),
                     ProjectStatus: String(project, "Stage") ?? String(project, "stage"),
-                    ProjectStage: "AlbertaMarketResearch",
+                    // Same fix as ImportUsMarketAsync — pass the raw research stage so
+                    // ProjectStageRouter can normalize it. Default to "Planned".
+                    // "AlbertaMarketResearch" was a pipeline-tag (not a lifecycle
+                    // stage); using it as ProjectStage left canonical stage NULL.
+                    ProjectStage: String(project, "Stage") ?? String(project, "stage") ?? "Planned",
                     ProjectCategoryName: null,
                     PublicFundingInd: null,
                     ProvincialFunding: null,
