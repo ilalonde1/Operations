@@ -114,7 +114,7 @@ $seismic = $pursue | Where-Object { $_.Name -match 'Seismic' }
 foreach ($p in $seismic) {
     B ("Id $($p.Id): ") "$($p.Name)"
     P "Province: $($p.Province) | Proponent: $($p.Proponent) | Cost: $($p.Cost)"
-    P ($p.korAngle.Substring(0, [Math]::Min(450, $p.korAngle.Length)))
+    P ((Safe $p.korAngle 450))
     Italic ("Status: " + $p.status)
     P ''
 }
@@ -125,7 +125,7 @@ $bcNew = $pursue | Where-Object { $_.Province -eq 'BC' -and $_.Name -notmatch 'S
 foreach ($p in $bcNew) {
     B ("Id $($p.Id): ") "$($p.Name)"
     P "Proponent: $($p.Proponent) | Cost: $($p.Cost)"
-    P ($p.korAngle.Substring(0, [Math]::Min(400, $p.korAngle.Length)))
+    P ((Safe $p.korAngle 400))
     Italic ("Status: " + $p.status)
     P ''
 }
@@ -136,7 +136,7 @@ $abPursue = $pursue | Where-Object { $_.Province -eq 'AB' }
 foreach ($p in $abPursue) {
     B ("Id $($p.Id): ") "$($p.Name)"
     P "Proponent: $($p.Proponent) | Cost: $($p.Cost)"
-    P ($p.korAngle.Substring(0, [Math]::Min(400, $p.korAngle.Length)))
+    P ((Safe $p.korAngle 400))
     Italic ("Status: " + $p.status)
     P ''
 }
@@ -148,8 +148,8 @@ P 'Current project locked but the School District has additional projects in the
 MakeTable @('Id','Project','Proponent','Cost','Province') @(
     @(($monitor | ForEach-Object {
         @($_.Id,
-          $_.Name.Substring(0, [Math]::Min(60, $_.Name.Length)),
-          ($_.Proponent.Substring(0, [Math]::Min(35, $_.Proponent.Length))),
+          (Safe $_.Name 60),
+          ((Safe $_.Proponent 35)),
           $_.Cost,
           $_.Province)
     }))
@@ -164,7 +164,7 @@ P ('DEAD projects by province: BC ' + (($dead | Where-Object {$_.Province -eq 'B
 # Just list briefly, no detail
 MakeTable @('Id','Project','Province') @(
     @(($dead | ForEach-Object {
-        @($_.Id, $_.Name.Substring(0, [Math]::Min(80, $_.Name.Length)), $_.Province)
+        @($_.Id, (Safe $_.Name 80), $_.Province)
     }))
 )
 
@@ -175,8 +175,8 @@ P 'Pre-procurement projects where KOR should be building the SD relationship NOW
 MakeTable @('Id','Project','Proponent','Province','Cost') @(
     @(($discover | ForEach-Object {
         @($_.Id,
-          $_.Name.Substring(0, [Math]::Min(50, $_.Name.Length)),
-          ($_.Proponent.Substring(0, [Math]::Min(35, $_.Proponent.Length))),
+          (Safe $_.Name 50),
+          ((Safe $_.Proponent 35)),
           $_.Province,
           $_.Cost)
     }))
