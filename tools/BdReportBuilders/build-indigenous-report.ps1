@@ -1,5 +1,8 @@
 $ErrorActionPreference = 'Stop'
 $briefs = Get-Content 'C:\Users\ilalonde\Desktop\Polish\.indigenous-final.json' -Raw | ConvertFrom-Json
+if (-not $briefs -or $briefs.Count -eq 0) {
+    throw "No briefs in .indigenous-final.json. Re-run the indigenous pull query."
+}
 # Filter to actually indigenous projects (drop defense MPI overlap)
 $indigenous = $briefs | Where-Object { $_.Id -lt 7161 -or $_.Id -gt 7166 }
 $pursueOnly = $indigenous | Where-Object {$_.Verdict -eq 'PURSUE'}
@@ -46,6 +49,7 @@ function Italic { param($t)
     $sel.Style = $doc.Styles.Item('Normal'); $sel.Font.Italic = 1; $sel.Font.Size = 9
     $sel.TypeText($t); $sel.Font.Italic = 0; $sel.Font.Size = 10; $sel.TypeParagraph()
 }
+function Safe { param($v, $max) if (-not $v) { return '' }; $s = [string]$v; if ($s.Length -le $max) { return $s }; return $s.Substring(0, $max) }
 function MakeTable { param($headers, $rows)
     $c = $headers.Count
     if ($rows.Count -gt 0 -and -not ($rows[0] -is [System.Collections.IList] -or $rows[0] -is [array])) {

@@ -1,5 +1,8 @@
 $ErrorActionPreference = 'Stop'
 $briefs = Get-Content 'C:\Users\ilalonde\Desktop\Polish\.schools-final.json' -Raw | ConvertFrom-Json
+if (-not $briefs -or $briefs.Count -eq 0) {
+    throw "No briefs in .schools-final.json. Re-run the schools pull query."
+}
 $pursue = $briefs | Where-Object {$_.Verdict -eq 'PURSUE'}
 $monitor = $briefs | Where-Object {$_.Verdict -eq 'MONITOR'}
 $dead = $briefs | Where-Object {$_.Verdict -eq 'DEAD'}
@@ -44,6 +47,7 @@ function Italic { param($t)
     $sel.Style = $doc.Styles.Item('Normal'); $sel.Font.Italic = 1; $sel.Font.Size = 9
     $sel.TypeText($t); $sel.Font.Italic = 0; $sel.Font.Size = 10; $sel.TypeParagraph()
 }
+function Safe { param($v, $max) if (-not $v) { return '' }; $s = [string]$v; if ($s.Length -le $max) { return $s }; return $s.Substring(0, $max) }
 function MakeTable { param($headers, $rows)
     $c = $headers.Count
     # Robustness: if $rows got pipeline-flattened to a 1D array of strings
