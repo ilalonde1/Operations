@@ -94,6 +94,31 @@ internal static class Program
         // the same opp via two different canonicals is impossible by design
         // (resolver returns one canonical id per name).
         new("OpportunityInterestedFirms", "ResolvedCanonicalOrgId"),
+        // BD-Audit-2026-06-09 C5: migration 61 added OpportunityBids with FK
+        // ON DELETE SET NULL — every merge since 2026-06-03 of an org that
+        // appeared as a bidder silently NULLed those bid links instead of
+        // repointing them (no error because SET NULL never throws).
+        new("OpportunityBids", "BidderCanonicalOrgId"),
+        // BD-Audit-2026-06-09 C5: migration 65 (BdResearchTriggers) and 66
+        // (IntelProject* org references) added NO_ACTION FKs that made merges
+        // of any referenced org fail with an FK violation and roll back.
+        new("BdResearchTriggers", "CanonicalOrgId"),
+        new("IntelProjectAction", "TargetCanonicalOrgId"),
+        new("IntelProjectKeyPerson", "CanonicalOrgId"),
+    };
+
+    // Tables whose CanonicalOrgId rows are deliberately DELETED (not repointed)
+    // by DeleteIntelDependentsAsync — loser org intel regenerates via
+    // BdIntelExtract. Used by the FK-completeness guard in VerifySchemaAsync
+    // so that a real FK is never silently unhandled.
+    private static readonly HashSet<string> IntelDeleteTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "IntelNarrative.CanonicalOrgId",
+        "IntelRisk.CanonicalOrgId",
+        "IntelWork.CanonicalOrgId",
+        "IntelAction.CanonicalOrgId",
+        "IntelSignal.CanonicalOrgId",
+        "IntelPersonAffiliation.CanonicalOrgId",
     };
 
     private static async Task<int> Main(string[] args)
@@ -405,6 +430,48 @@ WHERE s.name = N'opportunities'
         if (missing.Count > 0)
         {
             throw new InvalidOperationException("Missing expected schema column(s): " + string.Join(", ", missing));
+        }
+
+        // BD-Audit-2026-06-09 C5: completeness guard. The FkTargets list has
+        // drifted behind the schema four times (migrations 48, 59, 60, 61/65/66)
+        // because nothing verified it against the real FK graph. Enumerate every
+        // FK that references CanonicalOrg and refuse to run if any of them is
+        // neither repointed (FkTargets) nor deliberately deleted
+        // (IntelDeleteTargets). A new migration adding an FK now stops the tool
+        // until the list is updated, instead of silently stranding rows.
+        const string fkSql = @"
+SELECT t.name AS RefTable, c.name AS RefColumn
+FROM sys.foreign_keys fk
+JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+JOIN sys.tables t ON t.object_id = fk.parent_object_id
+JOIN sys.columns c ON c.object_id = fkc.parent_object_id AND c.column_id = fkc.parent_column_id
+WHERE fk.referenced_object_id = OBJECT_ID('opportunities.CanonicalOrg');";
+
+        var handled = new HashSet<string>(
+            FkTargets.Select(t => $"{t.Table}.{t.Column}"),
+            StringComparer.OrdinalIgnoreCase);
+        handled.UnionWith(IntelDeleteTargets);
+
+        var unhandled = new List<string>();
+        await using (var fkCmd = new SqlCommand(fkSql, con))
+        await using (var reader = await fkCmd.ExecuteReaderAsync().ConfigureAwait(false))
+        {
+            while (await reader.ReadAsync().ConfigureAwait(false))
+            {
+                var key = $"{reader.GetString(0)}.{reader.GetString(1)}";
+                if (!handled.Contains(key))
+                {
+                    unhandled.Add(key);
+                }
+            }
+        }
+
+        if (unhandled.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "FK(s) referencing opportunities.CanonicalOrg are not covered by FkTargets or IntelDeleteTargets — "
+                + "merging would strand or violate them. Add handling for: "
+                + string.Join(", ", unhandled.OrderBy(x => x, StringComparer.OrdinalIgnoreCase)));
         }
 
         var newsMentionTypeKeyExists = await ColumnExistsAsync(con, "NewsArticleOrgMention", "MentionTypeKey").ConfigureAwait(false);
