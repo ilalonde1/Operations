@@ -1,0 +1,260 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "org-brief-refresh",
+  "generatedAtUtc": "2026-06-08T00:00:00Z",
+  "items": [
+    {
+      "displayName": "EllisDon Corporation",
+      "kind": "GC",
+      "_providerName": "FirmNarrativeHoning",
+      "_generatedAt": "2026-06-08",
+      "_confidence": 0.78,
+      "decisionMakers": [
+        {
+          "name": "Craig Enns",
+          "title": "Senior Vice President and Area Manager, British Columbia",
+          "email": "cenns@ellisdon.com",
+          "phone": null,
+          "linkedinUrl": "https://ca.linkedin.com/in/craig-enns",
+          "notes": "Top BC regional executive. 2025 VRCA Board of Directors. Oversees nearly $1.5B BC revenue. Has spoken publicly about Esquimalt JNCM and BC Cancer Kamloops. PRIMARY CONTACT for strategic BC relationship. Confirmed via EllisDon news, VRCA board list, Canadian Defence Review CAF feature."
+        },
+        {
+          "name": "Daniel Murphy",
+          "title": "Vice President, Preconstruction Services",
+          "email": "dmurphy@ellisdon.com",
+          "phone": null,
+          "linkedinUrl": "https://ca.linkedin.com/in/daniel-murphy-99259741",
+          "notes": "VP Pre-Construction Services for EllisDon — the key pre-construction decision-maker across BC projects. Vancouver-based. MBA from UBC. 15+ years at EllisDon. Led pre-construction for UVic EllisDon-Kinetic JV ($135M student housing). KEY TARGET for Esquimalt JNCM structural sub-consultant inquiry. Confirmed via ZoomInfo, LinkedIn, RocketReach, ConstructConnect supply-chain article 2022."
+        },
+        {
+          "name": "Keeli Husband",
+          "title": "Director, Business Development",
+          "email": "khusband@ellisdon.com",
+          "phone": null,
+          "linkedinUrl": null,
+          "notes": "Vancouver office BD Director. Elected Vice Chair of VRCA Young Construction Leaders Executive Committee, March 2025. 'Manages countless new project pursuits from Vancouver office' (Globe Newswire, March 2025). 10 years with EllisDon. KOR's most direct BD entry point at EllisDon Vancouver — manages new project pursuits and GC-sub relationships."
+        },
+        {
+          "name": "Candace MacDonald",
+          "title": "Director, Special Projects BC",
+          "email": "cmacdonald@ellisdon.com",
+          "phone": null,
+          "linkedinUrl": "https://www.linkedin.com/in/cmacdonald1985/",
+          "notes": "Promoted to Director Special Projects BC, May 2025 (Storeys BC Hires article). Healthcare track record: Burnaby Hospital Redevelopment, Women's Hospital Redevelopment. Active on sub-contractor relationships for special projects (smaller value, accelerated delivery). Possible channel for Esquimalt JNCM if categorized as Special Projects."
+        },
+        {
+          "name": "Ian Kerr",
+          "title": "Senior Vice President, Western Market Development",
+          "email": "ikerr@ellisdon.com",
+          "phone": null,
+          "linkedinUrl": "https://ca.linkedin.com/in/ian-kerr-b6310a15",
+          "notes": "Promoted to SVP Western Market Development June 2022. Prior: VP Business Development for BC (2019-2022), Director BD for BC (2016-2019). The strategic BD brain for all western Canada pursuits. KOR relationship at this level would open pursuit teaming conversations well in advance of RFPs. Confirmed via On-Site Magazine, ReNew Canada promotions."
+        },
+        {
+          "name": "David McFarlane",
+          "title": "Chief Operating Officer & Executive Vice President, Construction, Western Canada",
+          "email": "dmcfarlane@ellisdon.com",
+          "phone": null,
+          "linkedinUrl": "https://ca.linkedin.com/in/david-mcfarlane-33092214a",
+          "notes": "COO-level, Western Canada construction operations. Vancouver-based since 2007. Mentioned alongside Craig Enns in the Canadian Defence Review CAF infrastructure feature covering Esquimalt JNCM. Overarching authority on Western Canada construction delivery. Higher-level relationship target for KOR principal conversations."
+        },
+        {
+          "name": "Garreth Maybury",
+          "title": "Director of Operations, British Columbia",
+          "email": "gmaybury@ellisdon.com",
+          "phone": null,
+          "linkedinUrl": null,
+          "notes": "Promoted May 2025. 2025 VRCA Outstanding Achievement Award for Educational Leadership. Oversees BC operational delivery. Confirmed via Storeys BC Hires, VRCA awards page."
+        }
+      ],
+      "signals": [
+        {
+          "signalType": "Award",
+          "subject": "GAP 2 CLOSED: BC Cancer Centre Kamloops — Glotman Simpson confirmed as structural engineer",
+          "detail": "Glotman Simpson Consulting Engineers confirmed as structural engineer on BC Cancer Centre Kamloops ($386M, construction started July 2025, opening 2028). Full project team: EllisDon (GC/design-build), Thinkspace Architecture (compliance architect), H.H. Angus (M&E, ICAT, vertical transport), Glotman Simpson (structural). Confirmed from Glotman Simpson's own project page: 'Glotman Simpson is proud to serve as the structural engineer on this important project.' STRUCTURAL SCOPE IS LOCKED with Glotman Simpson. KOR no direct entry on this project as structural slot is taken.",
+          "occurredAtApprox": "2025-07",
+          "sourceUrl": "https://glotmansimpson.com/strengthening-cancer-care-in-bcs-interior-kamloops-cancer-centre/"
+        },
+        {
+          "signalType": "Other",
+          "subject": "GAP 3 REMAINS OPEN: Esquimalt JNCM structural sub-consultant NOT publicly named",
+          "detail": "After searching buyandsell.gc.ca (now CanadaBuys), DCC procurement notices, IAAC environmental review, EllisDon project page, Canadian Defence Review, and multiple news sources: the structural sub-consultant for the $165M CFB Esquimalt JNCM Accommodations Facility (EllisDon design prime Aug 2024) is NOT publicly disclosed. The project was described as 'currently under design' (Canadian Defence Review, late 2024). RECOMMENDED INTERNAL ACTION: Direct outreach to Daniel Murphy (VP Preconstruction) or Craig Enns (SVP BC) at EllisDon asking about sub-consultant team composition for Esquimalt JNCM design. KOR's Victoria-area institutional experience + DND clearance track record is the pitch. Alternatively: enquire with DCC (Defence Construction Canada) procurement officer for the project.",
+          "occurredAtApprox": "2024-08",
+          "sourceUrl": "https://www.canada.ca/en/department-national-defence/news/2024/08/minister-blair-announces-contract-award-for-new-480-room-military-accommodations-facility-at-cfb-esquimalt-and-highlights-plan-to-build-more-homes-.html"
+        },
+        {
+          "signalType": "Award",
+          "subject": "NEW (not in first-pass): UHNBC Acute Care Tower Prince George — EllisDon + DIALOG preferred proponent ($1.57B)",
+          "detail": "October 2025: Northern Health selected EllisDon Corporation (construction) + DIALOG BC (design) as preferred proponent for the University Hospital of Northern British Columbia Acute Care Tower Phase 1 ($1.579B). Alliance team: EllisDon, DIALOG, PML Professional Mechanical, Houle Electric. Infrastructure BC alliance model. Construction to begin fall 2026. No structural engineer named publicly — NEW LIVE KOR INTEL GAP. DIALOG has structural engineering in-house capability but typically sub-consults on major healthcare. Worth investigating DIALOG's structural engagement strategy on this project.",
+          "occurredAtApprox": "2025-10",
+          "sourceUrl": "https://dialogdesign.ca/news-events/dialog-and-ellisdon-announced-as-preferred-design-and-construction-proponent-for-uhnbc-acute-care-tower-project/"
+        },
+        {
+          "signalType": "Other",
+          "subject": "NEW: Richmond Hospital Yurkovich Family Pavilion — EllisDon shortlisted ($1.9B total, Phase 2)",
+          "detail": "EllisDon among 3 shortlisted teams for Richmond Hospital Yurkovich Family Pavilion Phase 2 (216 beds), part of $1.9B phased redevelopment. Phase 2 contract award expected 2025, construction start 2026, completion 2029. EllisDon team includes DIALOG, PML Professional Mechanical, and Houle Electric — same alliance as UHNBC. Structural sub not yet named. If EllisDon wins: KOR structural opportunity.",
+          "occurredAtApprox": "2025-01",
+          "sourceUrl": "https://canada.constructconnect.com/joc/news/infrastructure/2025/02/more-than-6-4b-in-b-c-hospital-construction-starting-in-2025"
+        },
+        {
+          "signalType": "Award",
+          "subject": "EllisDon BC structural partnering pattern: Glotman Simpson is the primary structural sub-consultant",
+          "detail": "Research confirms Glotman Simpson Consulting Engineers as EllisDon's primary structural sub-consultant for BC healthcare and institutional design-build projects, with confirmed partnership on: (1) Royal Inland Hospital Phase 1+2 (Glotman Simpson named as structural, EllisDon as client/GC); (2) BC Cancer Centre Kamloops 2025 (confirmed from Glotman Simpson project page); (3) BC Cancer Research Facility (implied from Glotman Simpson's portfolio with EllisDon as client). Exception: Cowichan District Hospital — structural is Bush Bohlman, but that's Alliance-mandated (Nuts'a'maat Alliance structure), not EllisDon's direct sub-consultant choice. Pattern: on EllisDon-controlled design-build procurements in BC healthcare, Glotman Simpson is the go-to structural partner. KOR must displace an entrenched incumbent on EllisDon projects.",
+          "occurredAtApprox": "2025-01",
+          "sourceUrl": "https://glotmansimpson.com/project/royal-inland-hospital-phase-1-2/"
+        },
+        {
+          "signalType": "Award",
+          "subject": "EllisDon selected as design partner for RCAF Future Aircrew Training (FAcT) — 25-year program",
+          "detail": "September 2025: EllisDon selected by SkyAlyne as infrastructure design partner for the $multi-billion Future Aircrew Training (FAcT) program for the Royal Canadian Air Force. Infrastructure at 15 Wing Moose Jaw (SK), Southport (MB), 17 Wing Winnipeg. Hangars, accommodations, dining, classrooms. Design 2025-2026, construction 2026-2032. NOTE: BC-based bases (Cold Lake is AB, not BC) — limited direct KOR opportunity, but builds EllisDon's defense infrastructure expertise profile. Structural sub not named.",
+          "occurredAtApprox": "2025-09",
+          "sourceUrl": "https://skyalyne.ca/latest-updates/skyalyne-signs-ellisdon-for-design-of-fact-infrastructure-buildings/"
+        },
+        {
+          "signalType": "Award",
+          "subject": "Cowichan District Hospital ($1B+) — Bush Bohlman structural LOCKED via Alliance",
+          "detail": "Confirmed from first-pass: Bush Bohlman holds structural scope via Nuts'a'maat Alliance (Alliance-mandated, not EllisDon's independent sub choice). KOR no direct entry on Phase 1. Monitor Cowichan Phase 2-3 expansion if Alliance structure changes.",
+          "occurredAtApprox": "2023-01",
+          "sourceUrl": "https://www.zgf.com/work/6425-island-health-cowichan-district-hospital"
+        }
+      ],
+      "actions": [
+        {
+          "actionType": "ContactStrategy",
+          "recommendation": "Immediate outreach to Keeli Husband (Director BD, EllisDon Vancouver) RE: Esquimalt JNCM $165M structural sub-consultant slot — is it named or open? This is KOR's highest-value near-term BC action. Keeli Husband's role ('manages countless new project pursuits') means she can route the conversation to Daniel Murphy (VP Preconstruction) directly. Lead with KOR's CFB Esquimalt proximity, institutional structural depth, and prior DND clearance experience (if applicable).",
+          "targetPersonName": "Keeli Husband",
+          "timingNotes": "IMMEDIATE — Month 1. Design phase Aug 2024 to ~2026. Sub-consultant team is being confirmed NOW. If Glotman Simpson hasn't been named for JNCM, KOR has a window."
+        },
+        {
+          "actionType": "ContactStrategy",
+          "recommendation": "Follow-up with Daniel Murphy (VP Preconstruction) directly if Keeli Husband route doesn't confirm sub-consultant status within 2 weeks. Murphy is the final decision-maker on structural sub-consultant selection for EllisDon design-build projects in BC. Frame as: 'KOR has Victoria-area capacity and DND institutional experience — are you looking for structural support on the Esquimalt JNCM design?' Email: dmurphy@ellisdon.com.",
+          "targetPersonName": "Daniel Murphy",
+          "timingNotes": "Month 1-2. Escalation path from Keeli Husband introduction."
+        },
+        {
+          "actionType": "PursuitAngle",
+          "recommendation": "Position KOR for UHNBC Acute Care Tower structural sub-consultant ($1.579B, construction fall 2026). EllisDon + DIALOG is preferred proponent. DIALOG is an architect-led firm (architecture + engineering) but typically relies on external structural sub-consultants for healthcare hospitals of this scale. Contact DIALOG directly to understand their structural engagement plan. Contact Daniel Murphy at EllisDon for the same. This is a Prince George project — Northern BC regional focus, but the structural scope is significant.",
+          "targetPersonName": "Daniel Murphy (EllisDon) + DIALOG BC leadership",
+          "timingNotes": "Month 1-3. RFP was issued in April 2025; preferred proponent announced Oct 2025. Design phase is live NOW."
+        },
+        {
+          "actionType": "PursuitAngle",
+          "recommendation": "Monitor Richmond Hospital Yurkovich Family Pavilion shortlist outcome. If EllisDon wins (3-team shortlist), contact Daniel Murphy immediately for structural sub-consultant opportunity on Phase 2 ($216-bed tower, 2026 construction start). EllisDon has Glotman Simpson as their typical structural partner — KOR pitch must differentiate (e.g., speed, hospital-specific seismic detailing, VDC capability).",
+          "targetPersonName": "Daniel Murphy",
+          "timingNotes": "Month 1 — watch for award announcement. Contact same week as announcement if EllisDon wins."
+        },
+        {
+          "actionType": "TeamingMove",
+          "recommendation": "Build sustained EllisDon BC relationship at Craig Enns (SVP BC) level. Craig Enns is the most visible BC decision-maker (VRCA board, public spokesperson, BC cancer + defense projects). A principal-to-principal relationship between KOR and Enns opens ALL future EllisDon BC pursuits. Aim for a coffee/meeting in the first 60 days, not just email. Leverage VRCA or CCA event to make the introduction.",
+          "targetPersonName": "Craig Enns",
+          "timingNotes": "Month 1-2. VRCA events calendar 2025-2026 as entry point."
+        },
+        {
+          "actionType": "TeamingMove",
+          "recommendation": "Engage Ian Kerr (SVP Western Market Development) at the BD-strategy level. Kerr drives all western Canada pursuit strategy and has deep BC roots (former BC Director BD 2016-2019). A relationship at this level would give KOR advance visibility into EllisDon's BC pipeline before RFPs are issued. Target: invite Kerr to a KOR project tour (Freedom Mobile Arch Vancouver, Cowichan, or Esquimalt area if accessible).",
+          "targetPersonName": "Ian Kerr",
+          "timingNotes": "Month 2-3. Follow on from Keeli Husband / Craig Enns introductions."
+        },
+        {
+          "actionType": "MonitorPhase",
+          "recommendation": "Monitor Cowichan Phase 2-3 expansion procurement. Bush Bohlman locked for Phase 1 via Nuts'a'maat Alliance. Phase 2+ may involve separate procurement where EllisDon has sub-consultant flexibility. Island Health capital projects update expected 2027-2028.",
+          "targetPersonName": "Island Health Capital Projects + Craig Enns",
+          "timingNotes": "Ongoing 2026-2028."
+        }
+      ],
+      "works": [
+        {
+          "projectName": "BC Cancer Centre Kamloops",
+          "role": "General Contractor (Design-Build)",
+          "yearApprox": "2025",
+          "estimatedValueCad": 386000000,
+          "estimatedValueText": "$386M",
+          "notes": "Construction started July 2025. 5-storey facility, 470-stall parkade. Opening 2028. STRUCTURAL: Glotman Simpson (CONFIRMED, locked). Architecture: Thinkspace (compliance architect). M&E: H.H. Angus. GAP 2 CLOSED."
+        },
+        {
+          "projectName": "Esquimalt JNCM Accommodations Facility",
+          "role": "Design Prime (DCC procurement)",
+          "yearApprox": "2024",
+          "estimatedValueCad": 165000000,
+          "estimatedValueText": "$165M",
+          "notes": "$10.1M design contract Aug 2024. 480 single-occupancy rooms, dining/galley, admin. Construction expected early 2026, completion early 2030s. STRUCTURAL SUB-CONSULTANT: NOT PUBLICLY NAMED — GAP 3 REMAINS OPEN. Project 'currently under design' per Canadian Defence Review (late 2024)."
+        },
+        {
+          "projectName": "UHNBC Acute Care Tower Phase 1 — Prince George",
+          "role": "General Contractor (Infrastructure BC Alliance, preferred proponent)",
+          "yearApprox": "2025",
+          "estimatedValueCad": 1579000000,
+          "estimatedValueText": "$1.579B",
+          "notes": "Northern Health. Preferred proponent Oct 2025 (EllisDon + DIALOG BC + PML Mechanical + Houle Electric). Construction fall 2026. Structural sub-consultant NOT named — LIVE KOR INTEL GAP. New project not in first-pass."
+        },
+        {
+          "projectName": "Richmond Hospital Yurkovich Family Pavilion (Phase 2)",
+          "role": "Shortlisted GC (3-team shortlist)",
+          "yearApprox": "2025",
+          "estimatedValueCad": null,
+          "estimatedValueText": "Part of $1.9B phased redevelopment",
+          "notes": "216-bed acute care tower. Contract award expected 2025. Construction 2026-2029. EllisDon team includes DIALOG, PML, Houle. New project not in first-pass."
+        },
+        {
+          "projectName": "Cowichan District Hospital Replacement",
+          "role": "General Contractor (Nuts'a'maat Alliance)",
+          "yearApprox": "2023",
+          "estimatedValueCad": 1000000000,
+          "estimatedValueText": "$1B+",
+          "notes": "9-storey, 204 beds, LEED Gold. Alliance with Parkin + ZGF + Bush Bohlman. STRUCTURAL LOCKED with Bush Bohlman (Alliance-mandated)."
+        },
+        {
+          "projectName": "Royal Inland Hospital Phase 1+2",
+          "role": "General Contractor",
+          "yearApprox": "2020",
+          "estimatedValueCad": 417000000,
+          "estimatedValueText": "$417M",
+          "notes": "STRUCTURAL: Glotman Simpson (confirmed from Glotman Simpson project page, EllisDon as client). Confirms EllisDon-Glotman Simpson structural partnership in BC."
+        },
+        {
+          "projectName": "RCAF Future Aircrew Training (FAcT) Program — Infrastructure Design",
+          "role": "Infrastructure Design Partner (SkyAlyne sub)",
+          "yearApprox": "2025",
+          "estimatedValueCad": null,
+          "estimatedValueText": "25-year program, multi-billion",
+          "notes": "Sept 2025. Bases: 15 Wing Moose Jaw (SK), Southport + 17 Wing Winnipeg (MB). Not BC-based — limited KOR opportunity but builds EllisDon defense infrastructure credibility."
+        },
+        {
+          "projectName": "Freedom Mobile Arch Vancouver",
+          "role": "General Contractor",
+          "yearApprox": "2025",
+          "estimatedValueCad": null,
+          "estimatedValueText": "TBD",
+          "notes": "World's largest mass timber canopy. 10,000 seats. Vancouver landmark."
+        }
+      ],
+      "risks": [
+        {
+          "riskType": "CompetitiveBarrier",
+          "description": "Glotman Simpson is deeply embedded as EllisDon's structural sub-consultant partner on BC healthcare and institutional projects. Confirmed on Royal Inland Hospital Phase 1+2 AND BC Cancer Centre Kamloops. Displacing an entrenched structural partner is difficult — Glotman Simpson likely receives preferred consideration on EllisDon-led BC design-builds. KOR must offer a differentiating value proposition (e.g., seismic innovation, DND clearance, mass timber specialty, faster design-phase turnaround, VDC capability).",
+          "mitigationNotes": "Focus KOR pitch on project types or geographies where Glotman Simpson is NOT the incumbent: (1) Defense/DND projects (Esquimalt JNCM — Glotman Simpson's defense portfolio is smaller than healthcare); (2) Alliance projects where structural slot is open (if Nuts'a'maat Phase 2 opens); (3) Richmond Hospital Phase 2 if EllisDon wins (Glotman Simpson may or may not be locked in early)."
+        },
+        {
+          "riskType": "DataIssue",
+          "description": "Gap 1 partially closed: Named VP Preconstruction (Daniel Murphy) and BD Director (Keeli Husband) at Vancouver level. However, no named Victoria-specific pre-construction manager found in public sources. The Esquimalt JNCM and Victoria/Vancouver Island defense projects appear to be managed from the Vancouver office at the VP/Director level, without a separate Victoria-office pre-construction manager.",
+          "mitigationNotes": "Victoria pre-construction is likely handled centrally by Daniel Murphy (VP Preconstruction, Vancouver) with site coordination from project-level PMs. Route Victoria/Esquimalt outreach through Murphy or Keeli Husband."
+        },
+        {
+          "riskType": "Other",
+          "description": "EllisDon subsidiary routing: Healthcare = EllisDon Infrastructure Healthcare; Defense + infrastructure = EllisDon Corporation; Special Projects = EllisDon Construction Sciences/Special Projects. JNCM Esquimalt is EllisDon Corporation (defense prime), BC Cancer Kamloops is EllisDon Corporation (healthcare GC), UHNBC is EllisDon Corporation. Route sub-consultant conversations to the correct entity.",
+          "mitigationNotes": "All named contacts (Enns, Murphy, Kerr, Husband) are at the EllisDon Corporation parent level and span subsidiaries."
+        }
+      ],
+      "narratives": [
+        {
+          "narrativeType": "Current",
+          "paragraphText": "EllisDon Corporation is KOR's highest-priority BC GC target for structural sub-consultant relationship-building. Active BC pipeline: (1) BC Cancer Centre Kamloops ($386M, under construction, Glotman Simpson holding structural — LOCKED); (2) Esquimalt JNCM $165M accommodations (design phase, EllisDon prime, STRUCTURAL SUB NOT NAMED — LIVE KOR WINDOW); (3) UHNBC Acute Care Tower Prince George ($1.579B, preferred proponent Oct 2025, structural not named — LIVE KOR WINDOW); (4) Richmond Hospital Yurkovich Family Pavilion (shortlisted, contract pending). EllisDon's BC structural partner pattern is Glotman Simpson on healthcare projects — KOR must differentiate or target the defense/DND verticals where Glotman Simpson is less entrenched. BC leadership: Craig Enns (SVP BC), David McFarlane (COO Western), Ian Kerr (SVP Western BD), Daniel Murphy (VP Preconstruction), Keeli Husband (Director BD Vancouver), Candace MacDonald (Director Special Projects BC)."
+        },
+        {
+          "narrativeType": "Action",
+          "paragraphText": "Month 1 priorities: (1) Contact Keeli Husband (Director BD, Vancouver, khusband@ellisdon.com) re Esquimalt JNCM structural sub status — is it named or open? (2) Contact Daniel Murphy (VP Preconstruction, dmurphy@ellisdon.com) re UHNBC Acute Care Tower structural engagement — who holds structural on that project? (3) Begin Craig Enns (cenns@ellisdon.com) relationship at principal level for long-term BC pipeline visibility. The Glotman Simpson incumbent barrier is real — KOR's differentiated pitch must lead with DND institutional experience + seismic innovation + Victoria proximity for the Esquimalt gap. If Glotman Simpson already holds the JNCM slot, the next pursuit window is Richmond Hospital (if EllisDon wins) and UHNBC (structural slot open)."
+        }
+      ]
+    }
+  ]
+}
