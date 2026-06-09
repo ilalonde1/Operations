@@ -70,6 +70,7 @@ services.AddSingleton<IPersonRefreshChokepoint>(sp =>
 
 // Project-side chokepoint.
 services.AddSingleton<IProjectIntelExtractor, ProjectBriefExtractor>();
+services.AddSingleton<IProjectIntelExtractor, ProjectBriefHoningExtractor>();
 services.AddSingleton<DefaultProjectIntelExtractor>();
 services.AddSingleton<ProjectIntelExtractorRegistry>();
 services.AddSingleton(sp => new ProjectIntelPersistenceService(

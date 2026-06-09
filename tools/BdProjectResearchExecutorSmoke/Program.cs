@@ -98,6 +98,7 @@ try
     services.AddSingleton<IProjectResearchPromptCatalog, FileSystemProjectResearchPromptCatalog>();
 
     services.AddSingleton<IProjectIntelExtractor, ProjectBriefExtractor>();
+    services.AddSingleton<IProjectIntelExtractor, ProjectBriefHoningExtractor>();
     services.AddSingleton<DefaultProjectIntelExtractor>();
     services.AddSingleton<ProjectIntelExtractorRegistry>();
     services.AddSingleton(sp => new ProjectIntelPersistenceService(

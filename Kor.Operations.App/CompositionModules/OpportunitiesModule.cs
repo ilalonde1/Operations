@@ -142,6 +142,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<IntelExtractorRegistry>();
         services.AddSingleton<IntelPersistenceService>(_ => new IntelPersistenceService(options.OpportunitiesDb));
         services.AddSingleton<IProjectIntelExtractor, ProjectBriefExtractor>();
+        services.AddSingleton<IProjectIntelExtractor, ProjectBriefHoningExtractor>();
         services.AddSingleton<DefaultProjectIntelExtractor>();
         services.AddSingleton<ProjectIntelExtractorRegistry>();
         services.AddSingleton<ProjectIntelPersistenceService>(sp =>

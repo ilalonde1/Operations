@@ -166,6 +166,7 @@ builder.Services.AddSingleton<BdResearchExecutorService>();
 builder.Services.AddSingleton<IResearchExecutorService, AnthropicResearchExecutorService>();
 builder.Services.AddSingleton<IResearchPromptCatalog, FileSystemResearchPromptCatalog>();
 builder.Services.AddSingleton<IProjectIntelExtractor, ProjectBriefExtractor>();
+builder.Services.AddSingleton<IProjectIntelExtractor, ProjectBriefHoningExtractor>();
 builder.Services.AddSingleton<DefaultProjectIntelExtractor>();
 builder.Services.AddSingleton<ProjectIntelExtractorRegistry>();
 builder.Services.AddSingleton<ProjectIntelPersistenceService>(sp =>
