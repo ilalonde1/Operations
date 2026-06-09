@@ -209,10 +209,14 @@ foreach (var file in files)
                 break;
             case "orgs":
                 {
-                    // Detect honing marker — Sonnet's honing PROMPT writes
-                    // `_providerName: "FirmNarrativeHoning"` inside items[0].
-                    // When present, persist with that ProviderName so the honing
-                    // exclusion filter on subsequent batch generation works.
+                    // Detect honing marker — Sonnet's honing PROMPT may either:
+                    //   (a) write `_providerName: "FirmNarrativeHoning"` at root of items[0]
+                    //   (b) embed `[providerName: FirmNarrativeHoning]` inside a description /
+                    //       narrative text field (some PROMPTs use this pattern)
+                    // Detect both. Without this, every honing ingest requires a manual
+                    // UPDATE ... SET ProviderName = 'FirmNarrativeHoning' SQL pass and risks
+                    // unique-key conflicts (UQ_MajorProjectEnrichment_ProjectProvider) on
+                    // projects that already have a honing row from a sibling category.
                     var orgProvider = "FirmNarrative";
                     try
                     {
@@ -222,6 +226,11 @@ foreach (var file in files)
                         {
                             var v = pn.GetString();
                             if (!string.IsNullOrWhiteSpace(v)) orgProvider = v;
+                        }
+                        else if (briefJson.IndexOf("[providerName: FirmNarrativeHoning]",
+                                    StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            orgProvider = "FirmNarrativeHoning";
                         }
                     }
                     catch { /* fall back to FirmNarrative */ }
@@ -234,6 +243,8 @@ foreach (var file in files)
             case "ab-projects":
                 {
                     // Same honing-marker detection for project briefs.
+                    // Supports both root `_providerName` field AND `[providerName: ProjectBriefHoning]`
+                    // marker embedded in description / narrative text.
                     var projProvider = "ProjectBrief";
                     try
                     {
@@ -243,6 +254,11 @@ foreach (var file in files)
                         {
                             var v = pn.GetString();
                             if (!string.IsNullOrWhiteSpace(v)) projProvider = v;
+                        }
+                        else if (briefJson.IndexOf("[providerName: ProjectBriefHoning]",
+                                    StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            projProvider = "ProjectBriefHoning";
                         }
                     }
                     catch { /* fall back to ProjectBrief */ }
