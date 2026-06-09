@@ -27,7 +27,19 @@ function P  { param($t) $sel.Style = $doc.Styles.Item('Normal');    $sel.TypeTex
 function B  { param($lbl, $val) $sel.Style = $doc.Styles.Item('Normal'); $sel.Font.Bold = 1; $sel.TypeText($lbl); $sel.Font.Bold = 0; $sel.TypeText($val); $sel.TypeParagraph() }
 function Italic { param($t) $sel.Style = $doc.Styles.Item('Normal'); $sel.Font.Italic = 1; $sel.Font.Size = 9; $sel.TypeText($t); $sel.Font.Italic = 0; $sel.Font.Size = 10; $sel.TypeParagraph() }
 function MakeTable { param($headers, $rows)
-    $r = $rows.Count + 1; $c = $headers.Count
+    $c = $headers.Count
+    if ($rows.Count -gt 0 -and -not ($rows[0] -is [System.Collections.IList] -or $rows[0] -is [array])) {
+        $chunked = New-Object System.Collections.ArrayList
+        for ($i = 0; $i -lt $rows.Count; $i += $c) {
+            $row = @()
+            for ($j = 0; $j -lt $c; $j++) {
+                if ($i + $j -lt $rows.Count) { $row += [string]$rows[$i + $j] } else { $row += '' }
+            }
+            [void]$chunked.Add($row)
+        }
+        $rows = $chunked
+    }
+    $r = $rows.Count + 1
     $rng = $sel.Range; $tbl = $doc.Tables.Add($rng, $r, $c); $tbl.Style = "Table Grid"; $tbl.Range.Font.Size = 9
     for ($i = 0; $i -lt $c; $i++) { $tbl.Cell(1, $i+1).Range.Text = $headers[$i]; $tbl.Cell(1, $i+1).Range.Bold = $true }
     for ($r2 = 0; $r2 -lt $rows.Count; $r2++) {

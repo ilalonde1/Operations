@@ -47,7 +47,19 @@ function Italic { param($t)
     $sel.TypeText($t); $sel.Font.Italic = 0; $sel.Font.Size = 10; $sel.TypeParagraph()
 }
 function MakeTable { param($headers, $rows)
-    $r = $rows.Count + 1; $c = $headers.Count
+    $c = $headers.Count
+    if ($rows.Count -gt 0 -and -not ($rows[0] -is [System.Collections.IList] -or $rows[0] -is [array])) {
+        $chunked = New-Object System.Collections.ArrayList
+        for ($i = 0; $i -lt $rows.Count; $i += $c) {
+            $row = @()
+            for ($j = 0; $j -lt $c; $j++) {
+                if ($i + $j -lt $rows.Count) { $row += [string]$rows[$i + $j] } else { $row += '' }
+            }
+            [void]$chunked.Add($row)
+        }
+        $rows = $chunked
+    }
+    $r = $rows.Count + 1
     $rng = $sel.Range
     $tbl = $doc.Tables.Add($rng, $r, $c)
     $tbl.Style = "Table Grid"
