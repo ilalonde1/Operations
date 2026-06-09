@@ -89,7 +89,19 @@ BEGIN
         END,
         DisplayName = @name,
         Website = COALESCE(@website, Website),
-        Notes = COALESCE(@notes, Notes),
+        Notes = CASE
+            WHEN RetiredAtUtc IS NOT NULL THEN
+                COALESCE(COALESCE(@notes, Notes) + NCHAR(13) + NCHAR(10), N'')
+                     + N'[Auto-resurrected by GetOrCreate match on ' + CONVERT(nvarchar(33), sysdatetimeoffset(), 127)
+                     + N'; was retired: ' + COALESCE(RetiredReason, N'(no reason)') + N']'
+            ELSE COALESCE(@notes, Notes)
+        END,
+        -- BD-Audit-2026-06-09 C4/M8: a matched-but-retired org must resurrect,
+        -- not absorb fresh data invisibly. Direct GetOrCreate callers (Deltek
+        -- pursuit sync, --ingest-canonical, custom-proposal import) bypass
+        -- CanonicalOrgResolver's UnretireAsync, so the resurrect lives here too.
+        RetiredAtUtc = NULL,
+        RetiredReason = NULL,
         UpdatedAtUtc = sysdatetimeoffset()
     WHERE Id = @existingId;
 END;
@@ -156,7 +168,8 @@ WHERE  Id = @id;";
 SELECT TOP (@take) Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
        ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc
 FROM   opportunities.CanonicalOrg
-WHERE  (@q IS NULL OR DisplayName LIKE '%' + @q + '%' ESCAPE '\')
+WHERE  RetiredAtUtc IS NULL
+   AND (@q IS NULL OR DisplayName LIKE '%' + @q + '%' ESCAPE '\')
    AND (@kind IS NULL OR Kind = @kind)
    AND (@kind IS NOT NULL OR Kind NOT IN ('Vendor','Unknown'))
 ORDER BY DisplayName;";
@@ -178,15 +191,16 @@ ORDER BY DisplayName;";
 SELECT TOP (@take) co.Id, co.Kind, co.DisplayName, co.ClendorClientId, co.Website, co.Notes, co.CreatedAtUtc, co.UpdatedAtUtc,
        ISNULL(co.KorProjectsCount, 0) AS KorProjectsCount, co.LastKorProjectAtUtc
 FROM   opportunities.CanonicalOrg co
-WHERE  (@q IS NULL OR co.DisplayName LIKE '%' + @q + '%' ESCAPE '\')
+WHERE  co.RetiredAtUtc IS NULL
+   AND (@q IS NULL OR co.DisplayName LIKE '%' + @q + '%' ESCAPE '\')
    AND (@kind IS NULL OR co.Kind = @kind)
    AND (@kind IS NOT NULL OR co.Kind NOT IN ('Vendor','Unknown'))
    AND (co.ClendorClientId IS NOT NULL
      OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment e WHERE e.CanonicalOrgId = co.Id)
-     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.ProponentCanonicalOrgId = co.Id)
-     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.ArchitectCanonicalOrgId = co.Id)
-     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.StructuralEngineerCanonicalOrgId = co.Id)
-     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.GeneralContractorCanonicalOrgId = co.Id)
+     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.ProponentCanonicalOrgId = co.Id AND mp.RetiredAtUtc IS NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.ArchitectCanonicalOrgId = co.Id AND mp.RetiredAtUtc IS NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.StructuralEngineerCanonicalOrgId = co.Id AND mp.RetiredAtUtc IS NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.GeneralContractorCanonicalOrgId = co.Id AND mp.RetiredAtUtc IS NULL)
      OR EXISTS (SELECT 1 FROM opportunities.Opportunities o WHERE o.BuyerCanonicalOrgId = co.Id)
      OR EXISTS (SELECT 1 FROM opportunities.OpportunityAwards a WHERE a.AwardingCanonicalOrgId = co.Id OR a.AwardedToCanonicalOrgId = co.Id)
      OR EXISTS (SELECT 1 FROM opportunities.KorPursuits p WHERE p.BuyerCanonicalOrgId = co.Id OR p.LostToCanonicalOrgId = co.Id))
@@ -282,12 +296,17 @@ WHERE  Id = @id;";
 
     public async Task<bool> UnretireAsync(long canonicalOrgId, string reason, CancellationToken ct)
     {
-        _ = reason;
-
+        // BD-Audit-2026-06-09 M8: the resurrect reason used to be discarded
+        // (`_ = reason;`) — the only audit trail was a log line. Persist it
+        // into Notes alongside the original RetiredReason so the data itself
+        // records why a retired org came back.
         const string sql = @"
 UPDATE opportunities.CanonicalOrg
 SET RetiredAtUtc = NULL,
-    RetiredReason = NULL
+    RetiredReason = NULL,
+    Notes = COALESCE(Notes + NCHAR(13) + NCHAR(10), N'')
+            + N'[Unretired ' + CONVERT(nvarchar(33), sysdatetimeoffset(), 127) + N': ' + COALESCE(@reason, N'(unspecified)')
+            + N'; was retired: ' + COALESCE(RetiredReason, N'(no reason)') + N']'
 OUTPUT INSERTED.Id, DELETED.RetiredAtUtc
 WHERE Id = @id AND RetiredAtUtc IS NOT NULL;";
 
@@ -295,6 +314,7 @@ WHERE Id = @id AND RetiredAtUtc IS NOT NULL;";
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        cmd.Parameters.Add("@reason", SqlDbType.NVarChar, 500).Value = (object?)reason ?? DBNull.Value;
 
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         return await r.ReadAsync(ct).ConfigureAwait(false);
