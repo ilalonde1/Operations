@@ -1,7 +1,10 @@
 $ErrorActionPreference = 'Stop'
 $all = Get-Content 'C:\Users\ilalonde\Desktop\Polish\.all-honed.json' -Raw | ConvertFrom-Json
 # Hospitals (incl Other since those are also healthcare-adjacent)
-$briefs = $all | Where-Object { $_.Category -ne 'BC Housing' }
+$briefs = $all | Where-Object { $_.Category -eq 'Hospital' -or $_.Category -eq 'Other' }
+if (-not $briefs -or $briefs.Count -eq 0) {
+    throw "No 'Hospital' / 'Other' briefs in .all-honed.json (only categories present: $(($all | Group-Object Category | ForEach-Object { $_.Name }) -join ', ')). Re-run the cross-category pull query to refresh .all-honed.json before regenerating this report."
+}
 $urgent = $briefs | Where-Object {$_.Verdict -eq 'PURSUE_URGENT' -or ($_.Verdict -eq 'PURSUE' -and $_.korAngle -match 'URGENT')}
 $pursue = $briefs | Where-Object {$_.Verdict -eq 'PURSUE' -and $_.korAngle -notmatch 'URGENT'}
 $monitor = $briefs | Where-Object {$_.Verdict -eq 'MONITOR'}
