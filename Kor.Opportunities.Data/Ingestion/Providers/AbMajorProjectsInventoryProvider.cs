@@ -78,6 +78,7 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
         var rowNumber = 0;
         var inserted = 0;
         var updated = 0;
+        var nameMatched = 0;
         var skipped = 0;
         var processed = 0;
 
@@ -106,21 +107,26 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
                 continue;
             }
 
-            var wasInserted = await UpsertAsync(record, ct).ConfigureAwait(false);
-            if (wasInserted)
+            var outcome = await UpsertAsync(record, ct).ConfigureAwait(false);
+            switch (outcome)
             {
-                inserted++;
-            }
-            else
-            {
-                updated++;
+                case UpsertOutcome.Inserted:
+                    inserted++;
+                    break;
+                case UpsertOutcome.NameMatched:
+                    nameMatched++;
+                    break;
+                default:
+                    updated++;
+                    break;
             }
         }
 
         _logger.LogInformation(
-            "AB Major Projects Inventory ingestion: inserted={Inserted} updated={Updated} skipped={Skipped} processed={Processed}.",
+            "AB Major Projects Inventory ingestion: inserted={Inserted} updated={Updated} nameMatched={NameMatched} skipped={Skipped} processed={Processed}.",
             inserted,
             updated,
+            nameMatched,
             skipped,
             processed);
 
@@ -186,12 +192,20 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
             rawJson);
     }
 
-    private async Task<bool> UpsertAsync(MajorProjectRecord record, CancellationToken ct)
+    private enum UpsertOutcome
+    {
+        Updated,
+        Inserted,
+        NameMatched,
+    }
+
+    private async Task<UpsertOutcome> UpsertAsync(MajorProjectRecord record, CancellationToken ct)
     {
         const string sql = @"
 SET XACT_ABORT ON;
 
 DECLARE @inserted table (Id bigint NOT NULL);
+DECLARE @nameMatchedId bigint;
 
 BEGIN TRAN;
 
@@ -219,29 +233,91 @@ WHERE Province = @province
 
 IF @@ROWCOUNT = 0
 BEGIN
-    INSERT INTO opportunities.MajorProjectsInventory
-        (Province, SourceKey, ProjectName, Sector, SubSector, EstimatedCostCad,
-         EstimatedCostText, Stage, ProponentName, ProponentCanonicalOrgId,
-         MunicipalityName, RegionName, StartYear, CompletionYear, ScheduleNotes,
-         SourceUrl, RawJson)
-    OUTPUT inserted.Id INTO @inserted
-    VALUES
-        (@province, @sourceKey, @projectName, @sector, @subSector, @estimatedCostCad,
-         @estimatedCostText, @stage, @proponentName, @proponentCanonicalOrgId,
-         @municipalityName, @regionName, @startYear, @completionYear, @scheduleNotes,
-         @sourceUrl, @rawJson);
+    -- C9 guard: the same project arriving via a different SourceKey must not fork
+    -- a duplicate row. Match active rows on normalized name + compatible
+    -- municipality; generic names known to repeat across distinct projects are
+    -- exempt from the check.
+    IF LOWER(LTRIM(RTRIM(@projectName))) NOT IN
+        (N'condominium development', N'residential condominium', N'mixed-use development',
+         N'condo development', N'apartment building')
+    BEGIN
+        SELECT TOP (1) @nameMatchedId = Id
+        FROM opportunities.MajorProjectsInventory WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+        WHERE RetiredAtUtc IS NULL
+          AND Province = @province
+          AND LOWER(LTRIM(RTRIM(ProjectName))) = LOWER(LTRIM(RTRIM(@projectName)))
+          AND (MunicipalityName IS NULL OR LTRIM(RTRIM(MunicipalityName)) = N''
+               OR @municipalityName IS NULL OR LTRIM(RTRIM(@municipalityName)) = N''
+               OR LOWER(LTRIM(RTRIM(MunicipalityName))) = LOWER(LTRIM(RTRIM(@municipalityName))))
+        ORDER BY Id;
+    END;
+
+    IF @nameMatchedId IS NOT NULL
+    BEGIN
+        -- Same project under another SourceKey: refresh seen timestamps and
+        -- COALESCE-fill gaps only; never overwrite existing non-null values.
+        UPDATE opportunities.MajorProjectsInventory
+        SET
+            Sector                  = COALESCE(Sector, @sector),
+            SubSector               = COALESCE(SubSector, @subSector),
+            EstimatedCostCad        = COALESCE(EstimatedCostCad, @estimatedCostCad),
+            EstimatedCostText       = COALESCE(EstimatedCostText, @estimatedCostText),
+            Stage                   = COALESCE(Stage, @stage),
+            ProponentName           = COALESCE(ProponentName, @proponentName),
+            ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @proponentCanonicalOrgId),
+            MunicipalityName        = COALESCE(MunicipalityName, @municipalityName),
+            RegionName              = COALESCE(RegionName, @regionName),
+            StartYear               = COALESCE(StartYear, @startYear),
+            CompletionYear          = COALESCE(CompletionYear, @completionYear),
+            ScheduleNotes           = COALESCE(ScheduleNotes, @scheduleNotes),
+            SourceUrl               = COALESCE(SourceUrl, @sourceUrl),
+            RawJson                 = COALESCE(RawJson, @rawJson),
+            LastSeenAtUtc           = sysdatetimeoffset(),
+            UpdatedAtUtc            = sysdatetimeoffset()
+        WHERE Id = @nameMatchedId;
+    END
+    ELSE
+    BEGIN
+        INSERT INTO opportunities.MajorProjectsInventory
+            (Province, SourceKey, ProjectName, Sector, SubSector, EstimatedCostCad,
+             EstimatedCostText, Stage, ProponentName, ProponentCanonicalOrgId,
+             MunicipalityName, RegionName, StartYear, CompletionYear, ScheduleNotes,
+             SourceUrl, RawJson)
+        OUTPUT inserted.Id INTO @inserted
+        VALUES
+            (@province, @sourceKey, @projectName, @sector, @subSector, @estimatedCostCad,
+             @estimatedCostText, @stage, @proponentName, @proponentCanonicalOrgId,
+             @municipalityName, @regionName, @startYear, @completionYear, @scheduleNotes,
+             @sourceUrl, @rawJson);
+    END;
 END;
 
 COMMIT TRAN;
 
-SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
+SELECT
+    CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1
+         WHEN @nameMatchedId IS NOT NULL THEN 2
+         ELSE 0 END AS Outcome,
+    @nameMatchedId AS NameMatchedId;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
         AddParams(cmd, record);
-        var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        return Convert.ToInt32(result, CultureInfo.InvariantCulture) == 1;
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        await reader.ReadAsync(ct).ConfigureAwait(false);
+        var outcome = Convert.ToInt32(reader.GetValue(0), CultureInfo.InvariantCulture);
+        if (outcome == 2)
+        {
+            _logger.LogInformation(
+                "AB Major Projects Inventory name-matched existing MPI {MatchedId}: project '{ProjectName}' arrived with new SourceKey {SourceKey}; merged into existing row instead of inserting.",
+                reader.GetInt64(1),
+                record.ProjectName,
+                record.SourceKey);
+            return UpsertOutcome.NameMatched;
+        }
+
+        return outcome == 1 ? UpsertOutcome.Inserted : UpsertOutcome.Updated;
     }
 
     private static void AddParams(SqlCommand cmd, MajorProjectRecord record)

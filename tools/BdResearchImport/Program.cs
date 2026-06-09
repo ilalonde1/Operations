@@ -6427,6 +6427,7 @@ WHERE Id = @mpiId;";
 SET XACT_ABORT ON;
 
 DECLARE @inserted table (Id bigint NOT NULL);
+DECLARE @nameMatchedId bigint;
 
 BEGIN TRAN;
 
@@ -6486,41 +6487,138 @@ WHERE Province = @province
 
 IF @@ROWCOUNT = 0
 BEGIN
-    INSERT INTO opportunities.MajorProjectsInventory
-        (Province, SourceKey, ExternalProjectId, ProjectName, ProjectDescription, EstimatedCostCad,
-         EstimatedCostText, Sector, SubSector, ConstructionType, ConstructionSubtype, ProjectType,
-         RegionName, MunicipalityName, ProponentName, ProponentCanonicalOrgId, ArchitectName,
-         ArchitectCanonicalOrgId, Stage, ProjectStatus, ProjectStage, KorPipelineTag, ProjectCategoryName,
-         PublicFundingInd, ProvincialFunding, FederalFunding, MunicipalFunding, OtherPublicFunding,
-         GreenBuildingInd, IndigenousInd, IndigenousNames, ConstructionJobs, OperatingJobs,
-         StandardizedStartDate, StandardizedCompletionDate, StartYear, CompletionYear,
-         ScheduleNotes, Latitude, Longitude, ProjectWebsite, SourceUrl, IssueYear,
-         IssueQuarter, StructuralEngineerName, StructuralEngineerCanonicalOrgId,
-         GeneralContractorName, GeneralContractorCanonicalOrgId, RawJson)
-    OUTPUT inserted.Id INTO @inserted
-    VALUES
-        (@province, @sourceKey, @externalProjectId, @projectName, @projectDescription, @estimatedCostCad,
-         @estimatedCostText, @sector, @subSector, @constructionType, @constructionSubtype, @projectType,
-         @regionName, @municipalityName, @proponentName, @proponentCanonicalOrgId, @architectName,
-         @architectCanonicalOrgId, @stage, @projectStatus, @projectStage, @korPipelineTag, @projectCategoryName,
-         @publicFundingInd, @provincialFunding, @federalFunding, @municipalFunding, @otherPublicFunding,
-         @greenBuildingInd, @indigenousInd, @indigenousNames, @constructionJobs, @operatingJobs,
-         @standardizedStartDate, @standardizedCompletionDate, @startYear, @completionYear,
-         @scheduleNotes, @latitude, @longitude, @projectWebsite, @sourceUrl, @issueYear,
-         @issueQuarter, @structuralEngineerName, @structuralEngineerCanonicalOrgId,
-         @generalContractorName, @generalContractorCanonicalOrgId, @rawJson);
+    -- C9 guard: the same project arriving via a different SourceKey must not fork
+    -- a duplicate row. Match active rows on normalized name + compatible
+    -- municipality; generic names known to repeat across distinct projects are
+    -- exempt from the check.
+    IF LOWER(LTRIM(RTRIM(@projectName))) NOT IN
+        (N'condominium development', N'residential condominium', N'mixed-use development',
+         N'condo development', N'apartment building')
+    BEGIN
+        SELECT TOP (1) @nameMatchedId = Id
+        FROM opportunities.MajorProjectsInventory WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+        WHERE RetiredAtUtc IS NULL
+          AND Province = @province
+          AND LOWER(LTRIM(RTRIM(ProjectName))) = LOWER(LTRIM(RTRIM(@projectName)))
+          AND (MunicipalityName IS NULL OR LTRIM(RTRIM(MunicipalityName)) = N''
+               OR @municipalityName IS NULL OR LTRIM(RTRIM(@municipalityName)) = N''
+               OR LOWER(LTRIM(RTRIM(MunicipalityName))) = LOWER(LTRIM(RTRIM(@municipalityName))))
+        ORDER BY Id;
+    END;
+
+    IF @nameMatchedId IS NOT NULL
+    BEGIN
+        -- Same project under another SourceKey: refresh seen timestamps and
+        -- COALESCE-fill gaps only; never overwrite existing non-null values.
+        UPDATE opportunities.MajorProjectsInventory
+        SET
+            LastSeenAtUtc = sysdatetimeoffset(),
+            UpdatedAtUtc = sysdatetimeoffset(),
+            ExternalProjectId = COALESCE(ExternalProjectId, @externalProjectId),
+            ProjectDescription = COALESCE(ProjectDescription, @projectDescription),
+            EstimatedCostCad = COALESCE(EstimatedCostCad, @estimatedCostCad),
+            EstimatedCostText = COALESCE(EstimatedCostText, @estimatedCostText),
+            Sector = COALESCE(Sector, @sector),
+            SubSector = COALESCE(SubSector, @subSector),
+            ConstructionType = COALESCE(ConstructionType, @constructionType),
+            ConstructionSubtype = COALESCE(ConstructionSubtype, @constructionSubtype),
+            ProjectType = COALESCE(ProjectType, @projectType),
+            RegionName = COALESCE(RegionName, @regionName),
+            MunicipalityName = COALESCE(MunicipalityName, @municipalityName),
+            ProponentName = COALESCE(ProponentName, @proponentName),
+            ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @proponentCanonicalOrgId),
+            ArchitectName = COALESCE(ArchitectName, @architectName),
+            ArchitectCanonicalOrgId = COALESCE(ArchitectCanonicalOrgId, @architectCanonicalOrgId),
+            Stage = COALESCE(Stage, @stage),
+            ProjectStatus = COALESCE(ProjectStatus, @projectStatus),
+            ProjectStage = COALESCE(ProjectStage, @projectStage),
+            KorPipelineTag = COALESCE(KorPipelineTag, @korPipelineTag),
+            ProjectCategoryName = COALESCE(ProjectCategoryName, @projectCategoryName),
+            PublicFundingInd = COALESCE(PublicFundingInd, @publicFundingInd),
+            ProvincialFunding = COALESCE(ProvincialFunding, @provincialFunding),
+            FederalFunding = COALESCE(FederalFunding, @federalFunding),
+            MunicipalFunding = COALESCE(MunicipalFunding, @municipalFunding),
+            OtherPublicFunding = COALESCE(OtherPublicFunding, @otherPublicFunding),
+            GreenBuildingInd = COALESCE(GreenBuildingInd, @greenBuildingInd),
+            IndigenousInd = COALESCE(IndigenousInd, @indigenousInd),
+            IndigenousNames = COALESCE(IndigenousNames, @indigenousNames),
+            ConstructionJobs = COALESCE(ConstructionJobs, @constructionJobs),
+            OperatingJobs = COALESCE(OperatingJobs, @operatingJobs),
+            StandardizedStartDate = COALESCE(StandardizedStartDate, @standardizedStartDate),
+            StandardizedCompletionDate = COALESCE(StandardizedCompletionDate, @standardizedCompletionDate),
+            StartYear = COALESCE(StartYear, @startYear),
+            CompletionYear = COALESCE(CompletionYear, @completionYear),
+            ScheduleNotes = COALESCE(ScheduleNotes, @scheduleNotes),
+            Latitude = COALESCE(Latitude, @latitude),
+            Longitude = COALESCE(Longitude, @longitude),
+            ProjectWebsite = COALESCE(ProjectWebsite, @projectWebsite),
+            SourceUrl = COALESCE(SourceUrl, @sourceUrl),
+            IssueYear = COALESCE(IssueYear, @issueYear),
+            IssueQuarter = COALESCE(IssueQuarter, @issueQuarter),
+            StructuralEngineerName = COALESCE(StructuralEngineerName, @structuralEngineerName),
+            StructuralEngineerCanonicalOrgId = COALESCE(StructuralEngineerCanonicalOrgId, @structuralEngineerCanonicalOrgId),
+            GeneralContractorName = COALESCE(GeneralContractorName, @generalContractorName),
+            GeneralContractorCanonicalOrgId = COALESCE(GeneralContractorCanonicalOrgId, @generalContractorCanonicalOrgId),
+            RawJson = COALESCE(RawJson, @rawJson)
+        WHERE Id = @nameMatchedId;
+    END
+    ELSE
+    BEGIN
+        INSERT INTO opportunities.MajorProjectsInventory
+            (Province, SourceKey, ExternalProjectId, ProjectName, ProjectDescription, EstimatedCostCad,
+             EstimatedCostText, Sector, SubSector, ConstructionType, ConstructionSubtype, ProjectType,
+             RegionName, MunicipalityName, ProponentName, ProponentCanonicalOrgId, ArchitectName,
+             ArchitectCanonicalOrgId, Stage, ProjectStatus, ProjectStage, KorPipelineTag, ProjectCategoryName,
+             PublicFundingInd, ProvincialFunding, FederalFunding, MunicipalFunding, OtherPublicFunding,
+             GreenBuildingInd, IndigenousInd, IndigenousNames, ConstructionJobs, OperatingJobs,
+             StandardizedStartDate, StandardizedCompletionDate, StartYear, CompletionYear,
+             ScheduleNotes, Latitude, Longitude, ProjectWebsite, SourceUrl, IssueYear,
+             IssueQuarter, StructuralEngineerName, StructuralEngineerCanonicalOrgId,
+             GeneralContractorName, GeneralContractorCanonicalOrgId, RawJson)
+        OUTPUT inserted.Id INTO @inserted
+        VALUES
+            (@province, @sourceKey, @externalProjectId, @projectName, @projectDescription, @estimatedCostCad,
+             @estimatedCostText, @sector, @subSector, @constructionType, @constructionSubtype, @projectType,
+             @regionName, @municipalityName, @proponentName, @proponentCanonicalOrgId, @architectName,
+             @architectCanonicalOrgId, @stage, @projectStatus, @projectStage, @korPipelineTag, @projectCategoryName,
+             @publicFundingInd, @provincialFunding, @federalFunding, @municipalFunding, @otherPublicFunding,
+             @greenBuildingInd, @indigenousInd, @indigenousNames, @constructionJobs, @operatingJobs,
+             @standardizedStartDate, @standardizedCompletionDate, @startYear, @completionYear,
+             @scheduleNotes, @latitude, @longitude, @projectWebsite, @sourceUrl, @issueYear,
+             @issueQuarter, @structuralEngineerName, @structuralEngineerCanonicalOrgId,
+             @generalContractorName, @generalContractorCanonicalOrgId, @rawJson);
+    END;
 END;
 
 COMMIT TRAN;
 
-SELECT CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1 ELSE 0 END;";
+SELECT
+    CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1
+         WHEN @nameMatchedId IS NOT NULL THEN 2
+         ELSE 0 END AS Outcome,
+    @nameMatchedId AS NameMatchedId;";
 
         await using var con = new SqlConnection(options.OpportunitiesDb);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 60 };
         AddParams(cmd, r);
-        await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        if (!options.Quiet)
+        long? nameMatchedId = null;
+        await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            await reader.ReadAsync(ct).ConfigureAwait(false);
+            var outcome = Convert.ToInt32(reader.GetValue(0), CultureInfo.InvariantCulture);
+            if (outcome == 2)
+            {
+                nameMatchedId = reader.GetInt64(1);
+            }
+        }
+
+        if (nameMatchedId.HasValue)
+        {
+            stats.MpiNameMatchDedups++;
+            Console.WriteLine($"[MPI] {r.Source}: name-matched existing MPI {nameMatchedId.Value}; project={r.ProjectName} (new SourceKey {r.SourceKey} not inserted)");
+        }
+        else if (!options.Quiet)
         {
             Console.WriteLine($"[MPI] {r.Source}: {r.SourceKey}; project={r.ProjectName}");
         }
@@ -7025,6 +7123,7 @@ WHERE Id = @id
         Console.WriteLine($"  Architects resolved:       {stats.ArchitectsResolved}");
         Console.WriteLine($"  Missing payloads:          {stats.FilesMissing}");
         Console.WriteLine($"  SourceKey collisions:      {stats.SourceKeyCollisions}");
+        Console.WriteLine($"  MPI name-match dedups:     {stats.MpiNameMatchDedups}");
         Console.WriteLine($"  Orgs reclassified:         {stats.OrgsReclassified}");
         Console.WriteLine($"  Orgs hidden:               {stats.OrgsHidden}");
         Console.WriteLine("  Orgs upserted per source:");
@@ -7156,6 +7255,7 @@ WHERE Id = @id
         public int ProponentsResolved { get; set; }
         public int ArchitectsResolved { get; set; }
         public int SourceKeyCollisions { get; set; }
+        public int MpiNameMatchDedups { get; set; }
         public int OrgsReclassified { get; set; }
         public int OrgsHidden { get; set; }
         public Dictionary<string, int> OrgsBySource { get; } = new(StringComparer.OrdinalIgnoreCase);
