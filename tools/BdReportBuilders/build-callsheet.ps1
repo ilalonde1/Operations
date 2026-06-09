@@ -23,17 +23,31 @@ $r = $cmd.ExecuteReader()
 $briefs = @()
 while ($r.Read()) {
     $item = $r.GetValue(6) | ConvertFrom-Json
-    $isUrgent = $item.korAngle -match 'URGENT'
-    $verdict = if ($item.korAngle -match '\b(PURSUE|MONITOR|DEAD|DISCOVER|DUPLICATE)\b') { $matches[1] } else { '?' }
+    # BD-Audit-2026-06-09 C8: read the structured verdict first
+    # (honingPass.verdict, then top-level verdict); korAngle text is the
+    # last resort. NOTE: '_' is a word character, so '\bPURSUE\b' can NOT
+    # match inside 'PURSUE_URGENT' — the longer token must be tried first
+    # and without trailing \b.
+    $verdict = $item.honingPass.verdict
+    if (-not $verdict) { $verdict = $item.verdict }
+    if (-not $verdict) {
+        $verdict = if ($item.korAngle -match '(PURSUE_URGENT|PURSUE|MONITOR|DEAD|DISCOVER|DUPLICATE)') { $matches[1] } else { '?' }
+    }
+    $isUrgent = ($verdict -eq 'PURSUE_URGENT') -or ($item.korAngle -match 'URGENT')
     if ($isUrgent -and $verdict -eq 'PURSUE') { $verdict = 'PURSUE_URGENT' }
     if ($verdict -eq 'PURSUE_URGENT' -or $verdict -eq 'PURSUE') {
+        # Nested honing shape keeps these under honingPass — coalesce.
+        $korAngle = $item.honingPass.korAngle; if (-not $korAngle) { $korAngle = $item.korAngle }
+        $status = $item.honingPass.status; if (-not $status) { $status = $item.status }
+        $keyPeople = $item.honingPass.keyPeople; if (-not $keyPeople) { $keyPeople = $item.keyPeople }
+        $actions = $item.honingPass.actions; if (-not $actions) { $actions = $item.actions }
         $briefs += [PSCustomObject]@{
             Id=$r.GetValue(0); Name=$r.GetValue(1); Province=$r.GetValue(2)
             City=if($r.IsDBNull(3)){''}else{$r.GetValue(3)}
             Proponent=if($r.IsDBNull(4)){''}else{$r.GetValue(4)}
             Cost=if($r.IsDBNull(5)){''}else{$r.GetValue(5)}
-            Verdict=$verdict; korAngle=$item.korAngle; status=$item.status
-            keyPeople=$item.keyPeople; actions=$item.actions
+            Verdict=$verdict; korAngle=$korAngle; status=$status
+            keyPeople=$keyPeople; actions=$actions
         }
     }
 }

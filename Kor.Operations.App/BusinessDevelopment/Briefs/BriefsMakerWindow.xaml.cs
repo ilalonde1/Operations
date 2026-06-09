@@ -31,6 +31,11 @@ public partial class BriefsMakerWindow : Window
     private readonly IBriefPdfGenerator _pdfGen;
 
     private CanonicalOrgRow? _selectedOrg;
+    // Latest-requested picker ids. Each picker handler awaits a load and then
+    // re-checks these before writing _selected* — two rapid picks A->B where
+    // A's load lands last must not leave A's data under B's id (the Generate
+    // path names the output file by id but writes _selected* content).
+    private long? _selectedOrgId;
     private string? _selectedProvince;
     private string? _selectedCity;
     private ProjectBriefData? _selectedProject;
@@ -65,7 +70,13 @@ public partial class BriefsMakerWindow : Window
 
     private async void OrgPicker_OrgSelected(object? sender, long orgId)
     {
+        _selectedOrgId = orgId;
         var row = await _canonicalOrgStore.GetCanonicalOrgAsync(orgId, CancellationToken.None).ConfigureAwait(true);
+        if (_selectedOrgId != orgId)
+        {
+            return; // stale load — a newer pick superseded this one
+        }
+
         if (row is null)
         {
             _selectedOrg = null;
@@ -86,6 +97,11 @@ public partial class BriefsMakerWindow : Window
         _selectedProjectId = id;
         var data = await _briefStore.GetProjectBriefAsync(id, CancellationToken.None)
             .ConfigureAwait(true);
+        if (_selectedProjectId != id)
+        {
+            return; // stale load — a newer pick superseded this one
+        }
+
         if (data is null)
         {
             _selectedProject = null;
@@ -110,6 +126,11 @@ public partial class BriefsMakerWindow : Window
         _selectedPersonId = id;
         var data = await _briefStore.GetPersonBriefAsync(id, CancellationToken.None)
             .ConfigureAwait(true);
+        if (_selectedPersonId != id)
+        {
+            return; // stale load — a newer pick superseded this one
+        }
+
         if (data is null)
         {
             _selectedPerson = null;

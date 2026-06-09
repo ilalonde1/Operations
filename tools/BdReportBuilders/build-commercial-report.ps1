@@ -3,8 +3,11 @@ $briefs = Get-Content 'C:\Users\ilalonde\Desktop\Polish\.commercial-final.json' 
 if (-not $briefs -or $briefs.Count -eq 0) {
     throw "No commercial briefs in .commercial-final.json — re-run the commercial pull query."
 }
-$urgent = $briefs | Where-Object {$_.Verdict -eq 'PURSUE_URGENT'}
-$pursue = $briefs | Where-Object {$_.Verdict -eq 'PURSUE'}
+# BD-Audit-2026-06-09 C8/Minor-1: $urgent was computed but never rendered —
+# any PURSUE_URGENT brief was silently dropped from the report. Urgent items
+# also stay in $pursue so the open-opportunities section keeps showing them.
+$urgent = @($briefs | Where-Object {$_.Verdict -eq 'PURSUE_URGENT'})
+$pursue = @($briefs | Where-Object {$_.Verdict -in @('PURSUE','PURSUE_URGENT')})
 $monitor = $briefs | Where-Object {$_.Verdict -eq 'MONITOR'}
 $dead = $briefs | Where-Object {$_.Verdict -eq 'DEAD'}
 $discover = $briefs | Where-Object {$_.Verdict -eq 'DISCOVER'}
@@ -56,12 +59,26 @@ Italic 'Commercial office tower pipeline in BC and Alberta. Compiled 2026-06-09 
 
 H2 'Executive Summary'
 B ('Commercial office projects honed: ') ($briefs.Count.ToString())
-B ('PURSUE — open opportunities: ') ($pursue.Count.ToString())
+B ('PURSUE_URGENT — act this week: ') ($urgent.Count.ToString())
+B ('PURSUE — open opportunities (incl. urgent): ') ($pursue.Count.ToString())
 B ('MONITOR — locked but pipeline open: ') ($monitor.Count.ToString())
 B ('DISCOVER — pre-anchor-tenant: ') ($discover.Count.ToString())
 B ('DEAD — fully awarded / delivered: ') ($dead.Count.ToString())
 
 P 'Commercial office market is heavily anchor-tenant-driven. Pre-lease secures viability, then RFP timing predictable. Most BC commercial office projects are developer-led with selected GC + pre-qualified subs.'
+
+if ($urgent.Count -gt 0) {
+    H2 ("URGENT — act this week ($($urgent.Count))")
+    foreach ($p in $urgent) {
+        H3 ("$($p.Id): $($p.Name)")
+        B 'Province: ' $p.Province
+        B 'Proponent: ' $p.Proponent
+        B 'Cost: ' $p.Cost
+        B 'Status: ' (Safe $p.status 400)
+        P (Safe $p.korAngle 600)
+        P ''
+    }
+}
 
 H2 'PURSUE — Open opportunities'
 foreach ($p in $pursue) {
@@ -69,18 +86,18 @@ foreach ($p in $pursue) {
     B 'Province: ' $p.Province
     B 'Proponent: ' $p.Proponent
     B 'Cost: ' $p.Cost
-    B 'Status: ' $p.status
-    P ($p.korAngle.Substring(0, [Math]::Min(600, $p.korAngle.Length)))
+    B 'Status: ' (Safe $p.status 400)
+    P (Safe $p.korAngle 600)
     P ''
 }
 
 H2 'MONITOR — Locked but pipeline open'
 MakeTable @('Id','Project','Proponent','Province','Cost','Why MONITOR') @(
     @(($monitor | ForEach-Object {
-        @($_.Id, $_.Name.Substring(0, [Math]::Min(50, $_.Name.Length)),
-          $_.Proponent.Substring(0, [Math]::Min(30, $_.Proponent.Length)),
+        @($_.Id, (Safe $_.Name 50),
+          (Safe $_.Proponent 30),
           $_.Province, $_.Cost,
-          $_.korAngle.Substring(0, [Math]::Min(100, $_.korAngle.Length)))
+          (Safe $_.korAngle 100))
     }))
 )
 

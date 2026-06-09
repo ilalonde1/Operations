@@ -13,14 +13,27 @@ namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
 public partial class PursuitBriefWindow : Window
 {
+    private readonly PursuitBriefViewModel _vm;
+    private bool _aiRegistered;
+
     public PursuitBriefWindow(PursuitBriefViewModel vm)
     {
         InitializeComponent();
-        DataContext = vm ?? throw new ArgumentNullException(nameof(vm));
+        _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+        DataContext = _vm;
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        // T5.001 made the VM an IAiContextProvider but nothing ever
+        // registered it, so the AI never saw an open Pursuit Brief
+        // (BD-Audit-2026-06-09 M16).
+        if (!_aiRegistered)
+        {
+            AppServices.Get<AppAiContextBuilder>().Register(_vm);
+            _aiRegistered = true;
+        }
+
         try
         {
             await HeaderLoader.ApplyAsync(HeaderBar).ConfigureAwait(true);
@@ -29,6 +42,17 @@ public partial class PursuitBriefWindow : Window
         {
             // Header identity is cosmetic and should not block loading the brief.
         }
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        if (_aiRegistered)
+        {
+            AppServices.Get<AppAiContextBuilder>().Unregister(_vm);
+            _aiRegistered = false;
+        }
+
+        base.OnClosed(e);
     }
 
     private void OnHyperlinkRequestNavigate(object sender, RequestNavigateEventArgs e)

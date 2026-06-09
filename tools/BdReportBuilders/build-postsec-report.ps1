@@ -1,8 +1,12 @@
 $ErrorActionPreference = 'Stop'
 $briefs = Get-Content 'C:\Users\ilalonde\Desktop\Polish\.postsec-final.json' -Raw | ConvertFrom-Json
 if (-not $briefs -or $briefs.Count -eq 0) { throw "No post-sec briefs in .postsec-final.json" }
-$urgent = $briefs | Where-Object {$_.Verdict -eq 'PURSUE_URGENT'}
-$pursue = $briefs | Where-Object {$_.Verdict -eq 'PURSUE'}
+# BD-Audit-2026-06-09 C8/Minor-1: $urgent was counted in the summary but its
+# items rendered nowhere (the "Top 5" section below is hardcoded prose).
+# Urgent items also stay in $pursue so the open-opportunities section keeps
+# showing them.
+$urgent = @($briefs | Where-Object {$_.Verdict -eq 'PURSUE_URGENT'})
+$pursue = @($briefs | Where-Object {$_.Verdict -in @('PURSUE','PURSUE_URGENT')})
 $monitor = $briefs | Where-Object {$_.Verdict -eq 'MONITOR'}
 $dead = $briefs | Where-Object {$_.Verdict -eq 'DEAD'}
 $discover = $briefs | Where-Object {$_.Verdict -eq 'DISCOVER'}
@@ -69,6 +73,17 @@ P '4. **NorQuest College CSC (MPI 7062)** — $240-250M, no incumbent, open comp
 P '5. **UCalgary MDSH (MPI 3838)** — $450M, initiate relationship 18 months before RFP.'
 
 function Safe { param($v, $max) if (-not $v) { return '' }; $s = [string]$v; if ($s.Length -le $max) { return $s }; return $s.Substring(0, $max) }
+
+if ($urgent.Count -gt 0) {
+    H2 ("URGENT — PURSUE_URGENT verdicts from honing ($($urgent.Count))")
+    foreach ($p in $urgent) {
+        B ("Id $($p.Id): ") "$($p.Name) ($($p.Province))"
+        P "Proponent: $($p.Proponent) | Cost: $($p.Cost)"
+        P (Safe $p.korAngle 500)
+        if ($p.status) { Italic ("Status: " + (Safe $p.status 400)) }
+        P ''
+    }
+}
 
 H2 '1. PURSUE — Open opportunities'
 foreach ($p in $pursue) {

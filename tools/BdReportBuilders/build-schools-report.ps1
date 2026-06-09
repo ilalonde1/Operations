@@ -3,10 +3,15 @@ $briefs = Get-Content 'C:\Users\ilalonde\Desktop\Polish\.schools-final.json' -Ra
 if (-not $briefs -or $briefs.Count -eq 0) {
     throw "No briefs in .schools-final.json. Re-run the schools pull query."
 }
-$pursue = $briefs | Where-Object {$_.Verdict -eq 'PURSUE'}
-$monitor = $briefs | Where-Object {$_.Verdict -eq 'MONITOR'}
-$dead = $briefs | Where-Object {$_.Verdict -eq 'DEAD'}
-$discover = $briefs | Where-Object {$_.Verdict -eq 'DISCOVER'}
+# PURSUE_URGENT is a first-class verdict (BD-Audit-2026-06-09 C8: the old
+# four-bucket split silently dropped every PURSUE_URGENT brief — the most
+# time-sensitive items in the file). Urgent items also stay in $pursue so
+# the sector sections keep showing them.
+$urgent = @($briefs | Where-Object {$_.Verdict -eq 'PURSUE_URGENT' -or ($_.Verdict -eq 'PURSUE' -and $_.korAngle -match 'URGENT')})
+$pursue = @($briefs | Where-Object {$_.Verdict -in @('PURSUE','PURSUE_URGENT')})
+$monitor = @($briefs | Where-Object {$_.Verdict -eq 'MONITOR'})
+$dead = @($briefs | Where-Object {$_.Verdict -eq 'DEAD'})
+$discover = @($briefs | Where-Object {$_.Verdict -eq 'DISCOVER'})
 
 $word = New-Object -ComObject Word.Application
 $word.Visible = $false
@@ -91,20 +96,27 @@ Italic 'K-12 school construction pipeline in BC and Alberta. Compiled 2026-06-08
 
 H2 'Executive Summary'
 B ('Projects honed: ') ($briefs.Count.ToString() + ' (290 BC + AB K-12 school MPIs)')
-B ('PURSUE — open opportunities: ') ($pursue.Count.ToString())
+B ('PURSUE_URGENT — act this week: ') ($urgent.Count.ToString())
+B ('PURSUE — open opportunities (incl. urgent): ') ($pursue.Count.ToString())
 B ('MONITOR — locked but SD has more pipeline: ') ($monitor.Count.ToString())
 B ('DEAD — fully awarded or unviable: ') ($dead.Count.ToString())
 B ('DISCOVER — pre-procurement build-SD-relationship-now: ') ($discover.Count.ToString())
 
 P 'Schools market is rolling procurement — SDs typically procure 1-5 projects per year via pre-qualified consultant lists. Landing one SD opens the whole pipeline.'
 
-H2 'URGENT — 3 named time-sensitive actions'
-P 'From Sonnet honing status notes:'
-P '1. CALL Brian Jonker SD62 (Sooke) at 250-474-9800 re: North Langford Secondary $220M — design procurement ACTIVE NOW.'
-P '2. CHECK BidCentral for École Beausoleil $73M RFP — design procurement active.'
-P '3. CHECK BidCentral for Matthew McNair Secondary SD38 (Richmond) RFP — design RFP imminent or recently opened, SE not yet selected.'
+H2 ("URGENT — time-sensitive actions ($($urgent.Count))")
+if ($urgent.Count -eq 0) {
+    P 'No PURSUE_URGENT verdicts in the current honing data.'
+}
+foreach ($p in $urgent) {
+    B ("Id $($p.Id): ") "$($p.Name)"
+    P "Proponent: $($p.Proponent) | Cost: $($p.Cost)"
+    P ((Safe $p.korAngle 450))
+    Italic ("Status: " + $p.status)
+    P ''
+}
 
-H2 '1. PURSUE — Open opportunities (50 projects)'
+H2 ("1. PURSUE — Open opportunities ($($pursue.Count) projects)")
 
 P 'Each project flagged as PURSUE has an active or pending design RFP, OR an unawarded structural-engineer slot KOR can position for. The BC seismic upgrade pipeline (Province of BC SMP — Seismic Mitigation Program) dominates the PURSUE list — direct KOR specialty.'
 
@@ -141,7 +153,7 @@ foreach ($p in $abPursue) {
     P ''
 }
 
-H2 '2. MONITOR — SD relationships worth building (45 projects)'
+H2 ("2. MONITOR — SD relationships worth building ($($monitor.Count) projects)")
 
 P 'Current project locked but the School District has additional projects in their capital plan. Sustained SD relationship positions KOR for future pursuits. Note any SDs appearing multiple times in this list — those are the highest-leverage relationship targets.'
 
