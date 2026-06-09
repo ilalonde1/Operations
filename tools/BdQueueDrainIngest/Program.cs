@@ -126,8 +126,12 @@ var nextRefresh = DateTimeOffset.UtcNow.AddDays(90);
 // Resolution rules:
 //   1. Root `_providerName` (string) wins, but must be whitelisted; an
 //      empty/whitespace or unknown value REJECTS the file (no default).
-//   2. Else a `[providerName: X]` marker is honoured only inside the
-//      `description` field (tolerant of spacing/case); unknown X REJECTS.
+//   2. Else `[providerName: X]` markers are searched across the whole
+//      items[0] payload (tolerant of spacing/case) — honing outputs in the
+//      legacy nested `honingPass` shape carry the marker inside honingPass,
+//      not in a root description, so scoping to one field would silently
+//      default them to first-pass (the exact C1 failure). Multiple DISTINCT
+//      provider names in one payload REJECT (ambiguous); unknown X REJECTS.
 //   3. No field and no marker -> the kind's default first-pass provider.
 var providerMarker = new Regex(@"\[\s*providerName\s*:\s*([A-Za-z0-9._-]+)\s*\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 var orgProviderWhitelist = new[] { "FirmNarrative", "FirmNarrativeHoning" };
@@ -154,17 +158,22 @@ var projectProviderWhitelist = new[] { "ProjectBrief", "ProjectBriefHoning", "Pr
                 : (null, $"_providerName '{field}' is not in the provider whitelist [{string.Join(", ", whitelist)}]");
         }
 
-        if (root.TryGetProperty("description", out var desc) && desc.ValueKind == JsonValueKind.String)
+        var distinctMarked = providerMarker.Matches(briefJson)
+            .Select(mm => mm.Groups[1].Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (distinctMarked.Count > 1)
         {
-            var markerMatch = providerMarker.Match(desc.GetString() ?? string.Empty);
-            if (markerMatch.Success)
-            {
-                var marked = markerMatch.Groups[1].Value;
-                var canonical = whitelist.FirstOrDefault(w => string.Equals(w, marked, StringComparison.OrdinalIgnoreCase));
-                return canonical is not null
-                    ? (canonical, null)
-                    : (null, $"description marker '[providerName: {marked}]' is not in the provider whitelist [{string.Join(", ", whitelist)}]");
-            }
+            return (null, $"payload contains multiple distinct provider markers [{string.Join(", ", distinctMarked)}] — ambiguous, refusing");
+        }
+
+        if (distinctMarked.Count == 1)
+        {
+            var marked = distinctMarked[0];
+            var canonical = whitelist.FirstOrDefault(w => string.Equals(w, marked, StringComparison.OrdinalIgnoreCase));
+            return canonical is not null
+                ? (canonical, null)
+                : (null, $"provider marker '[providerName: {marked}]' is not in the provider whitelist [{string.Join(", ", whitelist)}]");
         }
 
         return (defaultProvider, null);
