@@ -77,7 +77,7 @@ foreach ($p in $urgent) {
     B ('Proponent: ') $p.Proponent
     B ('Cost: ') $p.Cost
     B ('Status: ') $p.status
-    P ($p.korAngle.Substring(0, [Math]::Min(600, $p.korAngle.Length)))
+    P ((Safe $p.korAngle 600))
     P ''
     $rank++
 }
@@ -86,7 +86,7 @@ H2 'PURSUE — Open opportunities (not yet urgent)'
 foreach ($p in $pursue) {
     B ("Id $($p.Id): ") "$($p.Name) ($($p.Province))"
     P "Proponent: $($p.Proponent) | Cost: $($p.Cost)"
-    P ($p.korAngle.Substring(0, [Math]::Min(450, $p.korAngle.Length)))
+    P ((Safe $p.korAngle 450))
     Italic ('Status: ' + $p.status)
     P ''
 }
@@ -94,18 +94,18 @@ foreach ($p in $pursue) {
 H2 'MONITOR — Current phase locked, future phases open'
 MakeTable @('Id','Project','Proponent','Province','Cost','Why MONITOR') @(
     @(($monitor | ForEach-Object {
-        @($_.Id, $_.Name.Substring(0, [Math]::Min(55, $_.Name.Length)),
-          $_.Proponent.Substring(0, [Math]::Min(30, $_.Proponent.Length)),
+        @($_.Id, (Safe $_.Name 55),
+          (Safe $_.Proponent 30),
           $_.Province, $_.Cost,
-          $_.korAngle.Substring(0, [Math]::Min(110, $_.korAngle.Length)))
+          (Safe $_.korAngle 110))
     }))
 )
 
 H2 'DISCOVER — Pre-procurement relationship-build'
 MakeTable @('Id','Project','Proponent','Province','Cost') @(
     @(($discover | ForEach-Object {
-        @($_.Id, $_.Name.Substring(0, [Math]::Min(60, $_.Name.Length)),
-          $_.Proponent.Substring(0, [Math]::Min(30, $_.Proponent.Length)),
+        @($_.Id, (Safe $_.Name 60),
+          (Safe $_.Proponent 30),
           $_.Province, $_.Cost)
     }))
 )
@@ -113,9 +113,9 @@ MakeTable @('Id','Project','Proponent','Province','Cost') @(
 H2 'DEAD — Locked (Alliance / P3 / Stantec-captive / Delivered)'
 MakeTable @('Id','Project','Province','Why DEAD') @(
     @(($dead | ForEach-Object {
-        @($_.Id, $_.Name.Substring(0, [Math]::Min(60, $_.Name.Length)),
+        @($_.Id, (Safe $_.Name 60),
           $_.Province,
-          $_.korAngle.Substring(0, [Math]::Min(140, $_.korAngle.Length)))
+          (Safe $_.korAngle 140))
     }))
 )
 
