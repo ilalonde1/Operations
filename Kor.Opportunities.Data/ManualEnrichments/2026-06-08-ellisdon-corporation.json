@@ -1,0 +1,180 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "org-brief-refresh",
+  "generatedAtUtc": "2026-06-08T00:00:00Z",
+  "items": [
+    {
+      "displayName": "EllisDon Corporation",
+      "kind": "GC",
+      "_providerName": "FirmNarrative",
+      "_generatedAt": "2026-06-08",
+      "_confidence": 0.85,
+      "decisionMakers": [
+        {
+          "name": "EllisDon Vancouver Pre-Construction",
+          "title": "Pre-Construction Manager (BC office)",
+          "email": null,
+          "phone": null,
+          "linkedinUrl": null,
+          "notes": "KOR strategic target #1 for EllisDon-led BC pursuits. Pre-construction is where structural sub-consultant conversations happen. Identified via defense honing 2026-06-08 — Esquimalt JNCM design phase is open with EllisDon as prime, structural sub NOT publicly named."
+        },
+        {
+          "name": "EllisDon Victoria Pre-Construction",
+          "title": "Pre-Construction Manager (Victoria office)",
+          "email": null,
+          "phone": null,
+          "linkedinUrl": null,
+          "notes": "Closer to CFB Esquimalt and VanIsland healthcare pursuits (Cowichan + future Nanaimo NRGH). Strategic relationship for KOR on VanIsland + South Coast pursuits."
+        }
+      ],
+      "signals": [
+        {
+          "signalType": "Award",
+          "subject": "Cowichan District Hospital ($1B+) — EllisDon GC in Nuts'a'maat Alliance",
+          "detail": "9-storey, 204-bed LEED Gold hospital. Alliance partnership with Parkin Architects + ZGF (design architect) + Bush Bohlman (structural). Structural scope LOCKED with Bush Bohlman. Future phases at Cowichan may open structural slot if Alliance dissolves post-Phase 1.",
+          "occurredAtApprox": "2023-01",
+          "sourceUrl": "https://www.zgf.com/work/6425-island-health-cowichan-district-hospital"
+        },
+        {
+          "signalType": "Award",
+          "subject": "BC Cancer Centre Kamloops — EllisDon construction start July 2025",
+          "detail": "Cancer centre at Royal Inland Hospital, BC Cancer + Interior Health partnership. Construction kicked off July 2025. Structural engineer not yet publicly named in my research — POTENTIAL KOR INTEL GAP.",
+          "occurredAtApprox": "2025-07",
+          "sourceUrl": "https://canada.constructconnect.com/joc/news/infrastructure/2025/07/ellisdon-starts-construction-on-new-bc-cancer-centre-in-kamloops"
+        },
+        {
+          "signalType": "Other",
+          "subject": "Esquimalt DoD JNCM Accommodations — EllisDon design prime Aug 2024 ($10.1M)",
+          "detail": "$165M total project. Design contract $10.1M awarded to EllisDon Aug 2024. Construction start 2026. STRUCTURAL SUB-CONSULTANT NOT PUBLICLY NAMED — KOR LIVE INTEL GAP. DCC procurement, Reliability or Secret clearance likely required.",
+          "occurredAtApprox": "2024-08",
+          "sourceUrl": "https://buyandsell.gc.ca/"
+        },
+        {
+          "signalType": "Other",
+          "subject": "CFB Cold Lake FFCP FSF — EllisDon design-build with Stantec captive structural",
+          "detail": "Future Fighter Capability Project Fighter Squadron Facility. EllisDon as GC + Stantec providing in-house structural. KOR no direct entry on this work package, but Hangar 6+7 replacement TBD = future opportunity.",
+          "occurredAtApprox": "2024-01",
+          "sourceUrl": "https://www.dcc-cdc.gc.ca/"
+        },
+        {
+          "signalType": "Other",
+          "subject": "Freedom Mobile Arch Vancouver — 10,000-seat mass timber canopy",
+          "detail": "Vancouver landmark open-air venue. World's largest mass timber canopy. Structural complexity = direct KOR specialty. Confirms EllisDon's commitment to BC infrastructure beyond healthcare.",
+          "occurredAtApprox": "2025-01",
+          "sourceUrl": "https://www.ellisdon.com/projects"
+        },
+        {
+          "signalType": "Other",
+          "subject": "TELUS Ocean Vancouver — innovation and employment hub",
+          "detail": "Office tower for 250+ TELUS employees. Construction 2025. Adjacent to TELUS Living portfolio (Manasweeta Bhatia program). KOR connection: TELUS Living strategic relationship (see Bhatia notes on canonical 8361 sibling brief).",
+          "occurredAtApprox": "2025-01",
+          "sourceUrl": "https://www.ellisdon.com/projects/telus-ocean"
+        }
+      ],
+      "actions": [
+        {
+          "actionType": "ContactStrategy",
+          "recommendation": "Direct outreach to EllisDon Vancouver pre-construction team RE: Esquimalt JNCM $165M design phase open. Structural sub-consultant slot not publicly named — verify status and position KOR. KOR's BC institutional structural depth + Esquimalt proximity is the pitch.",
+          "targetPersonName": "EllisDon Vancouver Pre-Construction Manager",
+          "timingNotes": "Month 1 — IMMEDIATE. Design phase Aug 2024-2026, sub-list will close before construction RFP."
+        },
+        {
+          "actionType": "PursuitAngle",
+          "recommendation": "VERIFY BC CANCER CENTRE KAMLOOPS STRUCTURAL ENGINEER. EllisDon started construction July 2025; structural firm not publicly disclosed. If Interior Health partnership channel + BC Cancer joint procurement = potential external structural sub, this is a live KOR pursuit window.",
+          "targetPersonName": "EllisDon Pre-Construction",
+          "timingNotes": "Month 1-3 — construction is starting, sub team being finalized."
+        },
+        {
+          "actionType": "TeamingMove",
+          "recommendation": "Build sustained EllisDon BC relationship for compounding returns. EllisDon is to BC defense + healthcare what Graham Design Builders LP (canonical 8361) is to BC healthcare. Long-term strategic relationship = multiple future pursuits.",
+          "targetPersonName": "EllisDon BC Leadership",
+          "timingNotes": "Sustained 12-month engagement."
+        },
+        {
+          "actionType": "MonitorPhase",
+          "recommendation": "Monitor Cowichan Phase 2-3 expansion announcements. Bush Bohlman holds Phase 1 structural via Nuts'a'maat Alliance, but future expansion phases may open separate procurement.",
+          "targetPersonName": "Island Health Capital Projects",
+          "timingNotes": "Ongoing 2026-2028."
+        },
+        {
+          "actionType": "PursuitAngle",
+          "recommendation": "Position for newly discovered defense MPIs (Ids 7161 19 Wing Comox CMMA Hangar, 7163 19 Wing Comox CFHA P2, 7162 CFB Esquimalt CFHA 120 Units). EllisDon may be a likely D-B contender — pre-position with their pre-con team.",
+          "targetPersonName": "EllisDon Pre-Construction",
+          "timingNotes": "Month 1-2 alongside JNCM outreach."
+        }
+      ],
+      "works": [
+        {
+          "projectName": "Cowichan District Hospital Replacement",
+          "role": "General Contractor (Nuts'a'maat Alliance)",
+          "yearApprox": "2023",
+          "estimatedValueCad": 1000000000,
+          "estimatedValueText": "$1B+",
+          "notes": "9-storey, 204 beds, LEED Gold. Alliance with Parkin + ZGF + Bush Bohlman. Structural LOCKED with Bush Bohlman."
+        },
+        {
+          "projectName": "BC Cancer Centre Kamloops",
+          "role": "General Contractor",
+          "yearApprox": "2025",
+          "estimatedValueCad": null,
+          "estimatedValueText": "TBD",
+          "notes": "BC Cancer + Interior Health partnership. Construction started July 2025. STRUCTURAL FIRM NOT PUBLICLY NAMED — POTENTIAL KOR LIVE INTEL GAP."
+        },
+        {
+          "projectName": "Esquimalt JNCM Accommodations Facility",
+          "role": "Design Prime (DCC procurement)",
+          "yearApprox": "2024",
+          "estimatedValueCad": 165000000,
+          "estimatedValueText": "$165M",
+          "notes": "$10.1M design contract Aug 2024. Construction 2026. STRUCTURAL SUB NOT PUBLICLY NAMED — KOR LIVE INTEL GAP."
+        },
+        {
+          "projectName": "CFB Cold Lake FFCP Fighter Squadron Facility",
+          "role": "Design-Build",
+          "yearApprox": "2024",
+          "estimatedValueCad": null,
+          "estimatedValueText": "TBD",
+          "notes": "Stantec captive structural. KOR no direct entry. Hangar 6+7 replacement TBD = future opportunity."
+        },
+        {
+          "projectName": "Freedom Mobile Arch Vancouver",
+          "role": "General Contractor",
+          "yearApprox": "2025",
+          "estimatedValueCad": null,
+          "estimatedValueText": "TBD",
+          "notes": "10,000-seat open-air venue, world's largest mass timber canopy. Confirms EllisDon BC infrastructure commitment."
+        },
+        {
+          "projectName": "TELUS Ocean Vancouver",
+          "role": "General Contractor",
+          "yearApprox": "2025",
+          "estimatedValueCad": null,
+          "estimatedValueText": "TBD",
+          "notes": "TELUS innovation/employment hub. Adjacent to TELUS Living portfolio (Bhatia channel)."
+        }
+      ],
+      "risks": [
+        {
+          "riskType": "DataIssue",
+          "description": "EllisDon BC pre-construction manager names + direct contacts not yet surfaced via web research. Need direct LinkedIn searches or industry referrals to identify the named person at EllisDon Vancouver and Victoria offices.",
+          "mitigationNotes": "Honing pass needed — search LinkedIn for EllisDon Vancouver office leadership."
+        },
+        {
+          "riskType": "Other",
+          "description": "Multiple EllisDon subsidiaries (Corporation, Kinetic, Infrastructure, Infrastructure Healthcare) — KOR pursuit conversations need to be routed to the right entity per project. Healthcare goes through Infrastructure Healthcare; defense + infrastructure goes through Corporation or Infrastructure.",
+          "mitigationNotes": "Identify which EllisDon subsidiary leads each pursuit. Use canonical org tagging in BD module to track."
+        }
+      ],
+      "narratives": [
+        {
+          "narrativeType": "Current",
+          "paragraphText": "EllisDon Corporation is a strategic-target BC general contractor with an active $1B+ healthcare design-build pipeline (Cowichan District Hospital, BC Cancer Centre Kamloops) plus major BC infrastructure work (Freedom Mobile Arch Vancouver mass timber canopy, TELUS Ocean Vancouver). On the defense side, EllisDon holds the Esquimalt JNCM design prime ($165M, $10.1M design phase Aug 2024) and the CFB Cold Lake FFCP FSF design-build. Subsidiaries: EllisDon Kinetic, EllisDon Infrastructure, EllisDon Infrastructure Healthcare. BC offices in Vancouver and Victoria. EllisDon is comparable in strategic importance to Graham Design Builders LP (canonical 8361) — both are go-to BC GCs for the next 5-10 years of healthcare + infrastructure pursuits."
+        },
+        {
+          "narrativeType": "Action",
+          "paragraphText": "Direct outreach to EllisDon Vancouver pre-construction RE: Esquimalt JNCM $165M structural sub-consultant slot (NOT publicly named, possibly open). Verify BC Cancer Centre Kamloops structural status (construction started July 2025, firm not disclosed). Pre-position with EllisDon for the 3 newly discovered BC defense MPIs (19 Wing Comox CMMA Hangar, 19 Wing Comox CFHA Housing Phase 2, CFB Esquimalt CFHA 120 Units — Ids 7161-7163 inserted via m109). Monitor Cowichan Phase 2-3 expansion procurement. Build sustained 12-month EllisDon relationship for compounding returns across BC healthcare + defense + infrastructure pipeline."
+        }
+      ]
+    }
+  ]
+}
