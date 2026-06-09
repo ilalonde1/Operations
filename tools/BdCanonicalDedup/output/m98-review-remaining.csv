@@ -1,0 +1,10 @@
+Id,DisplayName,Kind,EnrichRows,Question,SuggestedAction
+69298,"Public Architecture + Design Inc.",Architect,6,"Same firm as PUBLIC: Architecture + Communication Inc. (38972, now active) or a distinct 'Public Design' firm?","If same firm: allowlist pair 69298->38972 and run BdCanonicalDedup --pairs; else un-retire as its own firm"
+21715,"WMW Public Architecture + Communication Inc.",Architect,1,"Earlier legal name of PUBLIC: (38972)? The WMW prefix suggests a predecessor entity.","If predecessor: allowlist pair 21715->38972; else leave retired"
+24547,"HNPA Architecture + Planning",Architect,1,"HNPA vs HPNA (18983) — one is a typo of the other; which spelling is the real firm?","Verify firm registry; un-retire the correct one, pair the typo to it"
+18983,"HPNA Architecture + Planning Inc.",Architect,1,"See 24547 — same question, opposite spelling.","See 24547"
+70148,"Bora Architecture + Interiors (Studio Petretti Architecture)",Architect,3,"Bora (Portland) with Studio Petretti as parenthetical partner — one engagement team or an alias?","If team artifact: leave retired; if alias of Bora: un-retire and trim the parenthetical"
+70763,"MGA | Architecture + Design (Mark Aquilon)",Architect,2,"MGA usually = Michael Green Architecture; 'Mark Aquilon' parenthetical contradicts that. Real firm or research artifact?","Verify principal name; un-retire only if a real MGA-branded firm"
+71122,"TKA+D Architecture + Design (with RDHA)",Architect,2,"TKA+D is a real Toronto firm; '(with RDHA)' is a team note. No active TKA+D canonical exists.","Likely un-retire with name trimmed to 'TKA+D Architecture + Design'"
+71482,"Ryder Architecture + Hotson Architecture",Architect,3,"Ryder acquired Hotson (Vancouver) — post-acquisition single entity or a pre-acquisition two-firm team?","If post-acquisition single entity: un-retire (possibly rename 'Ryder Architecture'); else leave retired"
+10867,"Lemay + Toker / Toker + Associates Architecture Industrial Design",Architect,1,"Concatenated dual-name; Toker + Associates (17075) is now active.","Likely leave retired; any FK refs should move to 17075"
