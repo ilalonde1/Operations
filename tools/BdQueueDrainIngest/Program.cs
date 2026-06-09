@@ -118,6 +118,63 @@ var envelopeWrapped = 0;
 var legacyShape = 0;
 var nextRefresh = DateTimeOffset.UtcNow.AddDays(90);
 
+// BD-Audit-2026-06-09 C1/M2/M3: provider resolution is whitelist-gated and
+// refuse-on-miss. On 2026-06-09 the bc-ab-primes drain emitted
+// "[providerName: PrimeConsultantResearch]", which the old exact-substring
+// detection didn't recognize — 181 outputs silently defaulted to
+// "ProjectBrief" and the upsert overwrote the first-pass briefs.
+// Resolution rules:
+//   1. Root `_providerName` (string) wins, but must be whitelisted; an
+//      empty/whitespace or unknown value REJECTS the file (no default).
+//   2. Else a `[providerName: X]` marker is honoured only inside the
+//      `description` field (tolerant of spacing/case); unknown X REJECTS.
+//   3. No field and no marker -> the kind's default first-pass provider.
+var providerMarker = new Regex(@"\[\s*providerName\s*:\s*([A-Za-z0-9._-]+)\s*\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+var orgProviderWhitelist = new[] { "FirmNarrative", "FirmNarrativeHoning" };
+var projectProviderWhitelist = new[] { "ProjectBrief", "ProjectBriefHoning", "PrimeConsultantResearch" };
+
+(string? Provider, string? Reason) ResolveDrainProvider(string briefJson, string defaultProvider, string[] whitelist)
+{
+    try
+    {
+        using var pDoc = JsonDocument.Parse(briefJson);
+        var root = pDoc.RootElement;
+
+        if (root.TryGetProperty("_providerName", out var pn))
+        {
+            if (pn.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(pn.GetString()))
+            {
+                return (null, "_providerName is present but empty/non-string — refusing to guess (defaulting would overwrite the first-pass row)");
+            }
+
+            var field = pn.GetString()!.Trim();
+            var canonical = whitelist.FirstOrDefault(w => string.Equals(w, field, StringComparison.OrdinalIgnoreCase));
+            return canonical is not null
+                ? (canonical, null)
+                : (null, $"_providerName '{field}' is not in the provider whitelist [{string.Join(", ", whitelist)}]");
+        }
+
+        if (root.TryGetProperty("description", out var desc) && desc.ValueKind == JsonValueKind.String)
+        {
+            var markerMatch = providerMarker.Match(desc.GetString() ?? string.Empty);
+            if (markerMatch.Success)
+            {
+                var marked = markerMatch.Groups[1].Value;
+                var canonical = whitelist.FirstOrDefault(w => string.Equals(w, marked, StringComparison.OrdinalIgnoreCase));
+                return canonical is not null
+                    ? (canonical, null)
+                    : (null, $"description marker '[providerName: {marked}]' is not in the provider whitelist [{string.Join(", ", whitelist)}]");
+            }
+        }
+
+        return (defaultProvider, null);
+    }
+    catch (JsonException ex)
+    {
+        return (null, $"payload is not parseable JSON for provider resolution: {ex.Message}");
+    }
+}
+
 foreach (var file in files)
 {
     var name = Path.GetFileName(file);
@@ -209,31 +266,13 @@ foreach (var file in files)
                 break;
             case "orgs":
                 {
-                    // Detect honing marker — Sonnet's honing PROMPT may either:
-                    //   (a) write `_providerName: "FirmNarrativeHoning"` at root of items[0]
-                    //   (b) embed `[providerName: FirmNarrativeHoning]` inside a description /
-                    //       narrative text field (some PROMPTs use this pattern)
-                    // Detect both. Without this, every honing ingest requires a manual
-                    // UPDATE ... SET ProviderName = 'FirmNarrativeHoning' SQL pass and risks
-                    // unique-key conflicts (UQ_MajorProjectEnrichment_ProjectProvider) on
-                    // projects that already have a honing row from a sibling category.
-                    var orgProvider = "FirmNarrative";
-                    try
+                    var (orgProvider, orgReject) = ResolveDrainProvider(briefJson, "FirmNarrative", orgProviderWhitelist);
+                    if (orgProvider is null)
                     {
-                        using var pDoc = JsonDocument.Parse(briefJson);
-                        if (pDoc.RootElement.TryGetProperty("_providerName", out var pn)
-                            && pn.ValueKind == JsonValueKind.String)
-                        {
-                            var v = pn.GetString();
-                            if (!string.IsNullOrWhiteSpace(v)) orgProvider = v;
-                        }
-                        else if (briefJson.IndexOf("[providerName: FirmNarrativeHoning]",
-                                    StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            orgProvider = "FirmNarrativeHoning";
-                        }
+                        log.LogWarning("Skipping {Name}: {Reason}.", name, orgReject);
+                        skipped++;
+                        continue;
                     }
-                    catch { /* fall back to FirmNarrative */ }
 
                     await sp.GetRequiredService<IEnrichmentTrackingStore>()
                         .RecordAttemptAsync(id, orgProvider, result, nextRefresh, CancellationToken.None)
@@ -242,26 +281,40 @@ foreach (var file in files)
                 break;
             case "ab-projects":
                 {
-                    // Same honing-marker detection for project briefs.
-                    // Supports both root `_providerName` field AND `[providerName: ProjectBriefHoning]`
-                    // marker embedded in description / narrative text.
-                    var projProvider = "ProjectBrief";
-                    try
+                    var (projProvider, projReject) = ResolveDrainProvider(briefJson, "ProjectBrief", projectProviderWhitelist);
+                    if (projProvider is null)
                     {
-                        using var pDoc = JsonDocument.Parse(briefJson);
-                        if (pDoc.RootElement.TryGetProperty("_providerName", out var pn)
-                            && pn.ValueKind == JsonValueKind.String)
+                        log.LogWarning("Skipping {Name}: {Reason}.", name, projReject);
+                        skipped++;
+                        continue;
+                    }
+
+                    // BD-Audit-2026-06-09 M1: 53 intel rows were written to MPIs
+                    // that had already been retired (batches generated before the
+                    // retirement landed). Refuse here — survivor mapping is a
+                    // migration/human decision, not an ingest-time guess. The
+                    // file stays in outputs/ so the refusal is visible.
+                    await using (var verifyCon = new Microsoft.Data.SqlClient.SqlConnection(cs))
+                    {
+                        await verifyCon.OpenAsync().ConfigureAwait(false);
+                        await using var verify = new Microsoft.Data.SqlClient.SqlCommand(
+                            "SELECT CASE WHEN RetiredAtUtc IS NULL THEN 0 ELSE 1 END FROM opportunities.MajorProjectsInventory WHERE Id = @id;", verifyCon);
+                        verify.Parameters.AddWithValue("@id", id);
+                        var mpiState = await verify.ExecuteScalarAsync().ConfigureAwait(false);
+                        if (mpiState is null)
                         {
-                            var v = pn.GetString();
-                            if (!string.IsNullOrWhiteSpace(v)) projProvider = v;
+                            log.LogWarning("{Name}: MPI Id={Id} does not exist; skipping.", name, id);
+                            skipped++;
+                            continue;
                         }
-                        else if (briefJson.IndexOf("[providerName: ProjectBriefHoning]",
-                                    StringComparison.OrdinalIgnoreCase) >= 0)
+
+                        if ((int)mpiState == 1)
                         {
-                            projProvider = "ProjectBriefHoning";
+                            log.LogWarning("{Name}: MPI Id={Id} is retired; refusing to attach enrichment/intel. Re-point the batch to the survivor MPI and re-run.", name, id);
+                            skipped++;
+                            continue;
                         }
                     }
-                    catch { /* fall back to ProjectBrief */ }
 
                     await sp.GetRequiredService<IMajorProjectEnrichmentTrackingStore>()
                         .RecordAttemptAsync(id, projProvider, result, nextRefresh, CancellationToken.None)
