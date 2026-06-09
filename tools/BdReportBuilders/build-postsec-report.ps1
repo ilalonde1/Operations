@@ -68,12 +68,14 @@ P '3. **U of A LIFT Centre (MPI 6979)** — $218.7M, SE RFP expected 2026.'
 P '4. **NorQuest College CSC (MPI 7062)** — $240-250M, no incumbent, open competition.'
 P '5. **UCalgary MDSH (MPI 3838)** — $450M, initiate relationship 18 months before RFP.'
 
+function Safe { param($v, $max) if (-not $v) { return '' }; $s = [string]$v; if ($s.Length -le $max) { return $s }; return $s.Substring(0, $max) }
+
 H2 '1. PURSUE — Open opportunities'
 foreach ($p in $pursue) {
     B ("Id $($p.Id): ") "$($p.Name) ($($p.Province))"
     P "Proponent: $($p.Proponent) | Cost: $($p.Cost)"
-    P ($p.korAngle.Substring(0, [Math]::Min(500, $p.korAngle.Length)))
-    Italic ("Status: " + $p.status)
+    P (Safe $p.korAngle 500)
+    if ($p.status) { Italic ("Status: " + (Safe $p.status 400)) }
     P ''
 }
 
@@ -81,8 +83,8 @@ H2 '2. MONITOR — Future opportunities'
 foreach ($p in $monitor) {
     B ("Id $($p.Id): ") "$($p.Name) ($($p.Province))"
     P "Proponent: $($p.Proponent) | Cost: $($p.Cost)"
-    P ($p.korAngle.Substring(0, [Math]::Min(400, $p.korAngle.Length)))
-    Italic ("Status: " + $p.status)
+    P (Safe $p.korAngle 400)
+    if ($p.status) { Italic ("Status: " + (Safe $p.status 400)) }
     P ''
 }
 
@@ -91,7 +93,7 @@ if ($discover.Count -gt 0) {
     foreach ($p in $discover) {
         B ("Id $($p.Id): ") "$($p.Name) ($($p.Province))"
         P "Proponent: $($p.Proponent) | Cost: $($p.Cost)"
-        P ($p.korAngle.Substring(0, [Math]::Min(400, $p.korAngle.Length)))
+        P (Safe $p.korAngle 400)
         P ''
     }
 }
