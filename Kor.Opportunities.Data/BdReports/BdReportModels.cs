@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 
 namespace Kor.Opportunities.Data.BdReports;
 
@@ -102,3 +103,24 @@ public sealed record BdExecHeadline(
     int TotalActiveMpis,
     int HonedCount,
     decimal HonedCostCad);
+
+/// <summary>
+/// One architect ranked by pipeline leverage. Built from the STRUCTURED org
+/// graph (MajorProjectsInventory.ArchitectCanonicalOrgId + org-scoped Intel
+/// rows) — the original .architect-freq.json text-mining pull was never saved
+/// and its counts are not reconstructible from any table, so this is the
+/// auditable replacement (same intent: one architect relationship = N
+/// projects).
+/// </summary>
+public sealed record ArchitectLeverageRow(
+    long CanonicalOrgId,
+    string DisplayName,
+    int ActiveProjects,
+    decimal PipelineCostCad,
+    int Signals,
+    int People,
+    int OpenActions,
+    IReadOnlyList<string> TopProjects)
+{
+    public int TotalRefs => Signals + People + OpenActions;
+}

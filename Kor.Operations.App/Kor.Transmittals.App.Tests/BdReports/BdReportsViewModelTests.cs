@@ -36,6 +36,14 @@ public sealed class BdReportsViewModelTests
         public Task<BdExecHeadline> GetExecHeadlineAsync(CancellationToken ct)
             => Task.FromResult(new BdExecHeadline(1942, 1425, 93_822_000_000m));
 
+        public Task<IReadOnlyList<ArchitectLeverageRow>> GetArchitectLeverageAsync(int take, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<ArchitectLeverageRow>>(new[]
+            {
+                new ArchitectLeverageRow(7, "Chris Dikeakos Architects Inc.", 21, 887_000_000m, 12, 4, 14,
+                    new[] { "100: Tower One (BC) — $400M" }),
+                new ArchitectLeverageRow(99, "Unknown Firm", 3, 10_000_000m, 0, 1, 0, Array.Empty<string>()),
+            });
+
         public List<(string Category, string Format)> Logged { get; } = new();
 
         public Task LogReportGeneratedAsync(string category, string format, string generatedByUser, int? recordCount, string? notes, CancellationToken ct)

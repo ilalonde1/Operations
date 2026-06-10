@@ -205,6 +205,80 @@ WHERE m.RetiredAtUtc IS NULL;";
         return new BdExecHeadline(r.GetInt32(0), r.GetInt32(1), r.GetDecimal(2));
     }
 
+    public async Task<IReadOnlyList<ArchitectLeverageRow>> GetArchitectLeverageAsync(int take, CancellationToken ct)
+    {
+        const string rankingSql = @"
+SELECT TOP (@take) co.Id, co.DisplayName,
+       COUNT(DISTINCT m.Id) AS ActiveProjects,
+       COALESCE(SUM(m.EstimatedCostCad), 0) AS PipelineCostCad,
+       (SELECT COUNT(*) FROM opportunities.IntelSignal s
+         WHERE s.CanonicalOrgId = co.Id AND s.RetiredAtUtc IS NULL) AS Signals,
+       (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation pa
+         JOIN opportunities.IntelPerson p ON p.Id = pa.IntelPersonId AND p.RetiredAtUtc IS NULL
+         WHERE pa.CanonicalOrgId = co.Id AND pa.RetiredAtUtc IS NULL) AS People,
+       (SELECT COUNT(*) FROM opportunities.IntelAction a
+         WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL AND a.Status = N'Open') AS OpenActions
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.CanonicalOrg co
+  ON co.Id = m.ArchitectCanonicalOrgId AND co.RetiredAtUtc IS NULL
+WHERE m.RetiredAtUtc IS NULL
+GROUP BY co.Id, co.DisplayName
+ORDER BY COUNT(DISTINCT m.Id) DESC, COALESCE(SUM(m.EstimatedCostCad), 0) DESC, co.DisplayName;";
+
+        // Top-8 projects per ranked architect, by estimated cost. The PS
+        // builder approximated this with a first-word LIKE over ResultJson;
+        // the structured ArchitectCanonicalOrgId link is exact.
+        const string projectsSql = @"
+SELECT ArchitectCanonicalOrgId, Id, ProjectName, Province, CostDisplay
+FROM (
+    SELECT m.ArchitectCanonicalOrgId, m.Id, m.ProjectName, m.Province,
+           COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS NVARCHAR(64)), N'TBD') AS CostDisplay,
+           ROW_NUMBER() OVER (
+               PARTITION BY m.ArchitectCanonicalOrgId
+               ORDER BY CASE WHEN m.EstimatedCostCad IS NULL THEN 1 ELSE 0 END, m.EstimatedCostCad DESC) AS rn
+    FROM opportunities.MajorProjectsInventory m
+    WHERE m.RetiredAtUtc IS NULL AND m.ArchitectCanonicalOrgId IS NOT NULL
+) x
+WHERE x.rn <= 8;";
+
+        var ranking = new List<(long OrgId, string Name, int Projects, decimal Cost, int Signals, int People, int Actions)>();
+        var projectsByOrg = new Dictionary<long, List<string>>();
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        await using (var cmd = new SqlCommand(rankingSql, con) { CommandTimeout = CommandTimeoutSeconds })
+        {
+            cmd.Parameters.Add("@take", System.Data.SqlDbType.Int).Value = Math.Clamp(take, 1, 100);
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                ranking.Add((r.GetInt64(0), r.GetString(1), r.GetInt32(2), r.GetDecimal(3), r.GetInt32(4), r.GetInt32(5), r.GetInt32(6)));
+            }
+        }
+
+        await using (var cmd = new SqlCommand(projectsSql, con) { CommandTimeout = CommandTimeoutSeconds })
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var orgId = r.GetInt64(0);
+                if (!projectsByOrg.TryGetValue(orgId, out var list))
+                {
+                    projectsByOrg[orgId] = list = new List<string>();
+                }
+
+                list.Add($"{r.GetInt64(1)}: {r.GetString(2)} ({r.GetString(3)}) — {r.GetString(4)}");
+            }
+        }
+
+        return ranking
+            .Select(x => new ArchitectLeverageRow(
+                x.OrgId, x.Name, x.Projects, x.Cost, x.Signals, x.People, x.Actions,
+                projectsByOrg.TryGetValue(x.OrgId, out var projects) ? projects : Array.Empty<string>()))
+            .ToList();
+    }
+
     public async Task LogReportGeneratedAsync(
         string category,
         string format,

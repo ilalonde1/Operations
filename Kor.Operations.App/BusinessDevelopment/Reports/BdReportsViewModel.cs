@@ -43,6 +43,9 @@ public sealed record SectorCardVm(
     public bool HasAging => AgingCount > 0 && StaleCount == 0;
 }
 
+/// <summary>One cross-cutting analytical report entry in the left-hand list.</summary>
+public sealed record AnalyticalReportVm(string Key, string Title, string Description);
+
 public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
     private readonly IBdReportService _reportService;
@@ -76,6 +79,29 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     public string BuildLocalContext() => BuildContext();
 
     public ObservableCollection<SectorCardVm> Sectors { get; } = new();
+
+    public IReadOnlyList<AnalyticalReportVm> AnalyticalReports { get; } = new[]
+    {
+        new AnalyticalReportVm("call-sheet", "Weekly Call Sheet", "Cross-sector URGENT + PURSUE pool — what to act on this week."),
+        new AnalyticalReportVm("exec-overview", "Executive Overview", "Cross-sector headline, heatmap, and strategic synthesis."),
+        new AnalyticalReportVm("architect-frequency", "Architect Frequency", "Warm-intro priority list from the structured org graph."),
+    };
+
+    private AnalyticalReportVm? _selectedAnalytical;
+    public AnalyticalReportVm? SelectedAnalytical
+    {
+        get => _selectedAnalytical;
+        set { if (!ReferenceEquals(_selectedAnalytical, value)) { _selectedAnalytical = value; OnPropertyChanged(); } }
+    }
+
+    /// <summary>Dispatches to the analytical generator for the selected entry.</summary>
+    public Task<string?> BuildAnalyticalPreviewAsync(CancellationToken ct) => SelectedAnalytical?.Key switch
+    {
+        "call-sheet" => BuildCallSheetPreviewAsync(ct),
+        "exec-overview" => BuildExecSummaryPreviewAsync(ct),
+        "architect-frequency" => BuildArchitectFrequencyPreviewAsync(ct),
+        _ => Task.FromResult<string?>(null),
+    };
 
     public SectorCardVm? SelectedSector
     {
@@ -164,6 +190,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             var document = SectorReportGenerator.Build(definition, prose, rows, DateTimeOffset.UtcNow);
             _currentDocument = document;
             _currentDocumentKey = sector.Key;
+            SelectedAnalytical = null;
             _currentRecordCount = rows.Count(r => r.Verdict is not null);
             PreviewHtml = HtmlPreviewBuilder.Render(document);
 
@@ -261,6 +288,44 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         catch (Exception ex)
         {
             _logger?.LogError(ex, "BD Reports: executive overview generation failed.");
+            StatusMessage = $"Generation failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            IsBusy = false;
+            OnPropertyChanged(nameof(CanExportDocx));
+        }
+    }
+
+    /// <summary>Builds the architect warm-intro priority report; DOCX export then matches it.</summary>
+    public async Task<string?> BuildArchitectFrequencyPreviewAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        StatusMessage = "Generating architect frequency report…";
+        try
+        {
+            var architects = await _reportService.GetArchitectLeverageAsync(60, ct).ConfigureAwait(true);
+
+            var document = ArchitectFrequencyReportGenerator.Build(architects, DateTimeOffset.UtcNow);
+            _currentDocument = document;
+            _currentDocumentKey = "architect-frequency";
+            _currentRecordCount = architects.Count;
+            SelectedSector = null;
+            PreviewHtml = HtmlPreviewBuilder.Render(document);
+
+            LogGenerateBestEffort("html");
+            StatusMessage = $"Architect frequency: {architects.Count} ranked architects, top linked {architects.FirstOrDefault()?.ActiveProjects ?? 0} active projects.";
+            return PreviewHtml;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Generation cancelled.";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "BD Reports: architect frequency generation failed.");
             StatusMessage = $"Generation failed: {ex.Message}";
             return null;
         }

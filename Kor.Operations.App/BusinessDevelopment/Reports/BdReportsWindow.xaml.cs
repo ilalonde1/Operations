@@ -75,26 +75,18 @@ public partial class BdReportsWindow : Window
         await RegeneratePreviewAsync().ConfigureAwait(true);
     }
 
-    private async void CallSheet_Click(object sender, RoutedEventArgs e)
+    private async void AnalyticalList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        _previewCts?.Cancel();
-        _previewCts?.Dispose();
-        _previewCts = new CancellationTokenSource();
-
-        var html = await _vm.BuildCallSheetPreviewAsync(_previewCts.Token).ConfigureAwait(true);
-        if (html is not null && _previewReady)
+        if (_vm.SelectedAnalytical is null)
         {
-            Preview.NavigateToString(html);
+            return; // selection was cleared by picking a sector
         }
-    }
 
-    private async void ExecSummary_Click(object sender, RoutedEventArgs e)
-    {
         _previewCts?.Cancel();
         _previewCts?.Dispose();
         _previewCts = new CancellationTokenSource();
 
-        var html = await _vm.BuildExecSummaryPreviewAsync(_previewCts.Token).ConfigureAwait(true);
+        var html = await _vm.BuildAnalyticalPreviewAsync(_previewCts.Token).ConfigureAwait(true);
         if (html is not null && _previewReady)
         {
             Preview.NavigateToString(html);

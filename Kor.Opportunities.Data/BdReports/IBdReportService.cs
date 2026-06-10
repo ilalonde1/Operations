@@ -34,6 +34,13 @@ public interface IBdReportService
     Task<BdExecHeadline> GetExecHeadlineAsync(CancellationToken ct);
 
     /// <summary>
+    /// Architects ranked by linked active projects then pipeline $ (the
+    /// warm-intro priority list), with org-scoped intel depth and a top-8
+    /// project drill-down per architect.
+    /// </summary>
+    Task<IReadOnlyList<ArchitectLeverageRow>> GetArchitectLeverageAsync(int take, CancellationToken ct);
+
+    /// <summary>
     /// Compliance audit log (opportunities.BdReportAuditLog, migration 121):
     /// one row per generate. Format is "html" (preview) or "docx" (export).
     /// Best-effort from the UI — a logging failure must not block the report.
