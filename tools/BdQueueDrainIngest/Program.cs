@@ -311,6 +311,34 @@ foreach (var file in files)
                         continue;
                     }
 
+                    // Same lifecycle guard the ab-projects path got after audit
+                    // M1: orgs can be merged/purged between batch generation and
+                    // ingest (2026-06-10: 6 orphan-purged orgs hit the
+                    // CanonicalOrgEnrichment FK as raw SqlExceptions). Refuse
+                    // cleanly; the file stays in outputs/ so the refusal is
+                    // visible.
+                    await using (var verifyCon = new Microsoft.Data.SqlClient.SqlConnection(cs))
+                    {
+                        await verifyCon.OpenAsync().ConfigureAwait(false);
+                        await using var verify = new Microsoft.Data.SqlClient.SqlCommand(
+                            "SELECT CASE WHEN RetiredAtUtc IS NULL THEN 0 ELSE 1 END FROM opportunities.CanonicalOrg WHERE Id = @id;", verifyCon);
+                        verify.Parameters.AddWithValue("@id", id);
+                        var orgState = await verify.ExecuteScalarAsync().ConfigureAwait(false);
+                        if (orgState is null)
+                        {
+                            log.LogWarning("{Name}: CanonicalOrg Id={Id} does not exist (merged/purged since batch generation); skipping.", name, id);
+                            skipped++;
+                            continue;
+                        }
+
+                        if ((int)orgState == 1)
+                        {
+                            log.LogWarning("{Name}: CanonicalOrg Id={Id} is retired; refusing to attach enrichment. Re-point to the survivor and re-run.", name, id);
+                            skipped++;
+                            continue;
+                        }
+                    }
+
                     await sp.GetRequiredService<IEnrichmentTrackingStore>()
                         .RecordAttemptAsync(id, orgProvider, result, NextRefreshFor(orgProvider), CancellationToken.None)
                         .ConfigureAwait(false);
