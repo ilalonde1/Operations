@@ -31,8 +31,13 @@ using Microsoft.Data.SqlClient;
 internal static class Program
 {
     private const string DefaultCsvPath = @"C:\Users\ilalonde\Desktop\Claude\APC_historical_data_June_7_2024.csv";
-    private const string DefaultConnectionString =
-        @"Server=KOR-APP01\SQLEXPRESS;Database=KorOpportunitiesDb;User Id=opportunities_app;Password=$$$RW3sbChamp2021!!!;Encrypt=True;TrustServerCertificate=True;";
+    // BD-Audit-2026-06-09 C7: the connection string (with the opportunities_app
+    // password) used to be a compiled-in constant — the only tool in the
+    // pipeline that didn't read the standard env var. Resolved at startup now;
+    // the credential itself must be rotated since it lives in git history.
+    private static readonly string DefaultConnectionString =
+        Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB")
+        ?? throw new InvalidOperationException("KOR_OPPORTUNITIES_OPPORTUNITIESDB env var missing (pass --db to override).");
     private const string SourceName = "APC_Historical_2024";
     private const int SourceTypeAlbertaPurchasingConnectionAwards = 13;
 
