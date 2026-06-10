@@ -71,3 +71,8 @@ Kor.Operations.App/EngineeringTools/.claude/
 
 # Local-only env-var setup scripts (contain client secret + SQL password)
 set-filesync-env*.ps1
+
+# Codex-era scratch build outputs (untracked 2026-06-10, m-cleanup)
+._codex_obj/
+.codex_builds/
+obj2/
