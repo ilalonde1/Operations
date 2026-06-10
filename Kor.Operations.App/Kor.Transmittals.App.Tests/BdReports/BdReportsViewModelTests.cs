@@ -29,6 +29,9 @@ public sealed class BdReportsViewModelTests
                     BdVerdicts.Pursue, "URGENT — teams forming", "RFP stage", "desc", 0.9,
                     DateTimeOffset.Parse("2026-06-08T00:00:00Z"), true),
             });
+
+        public Task<IReadOnlyList<PursuitBriefRow>> GetCallSheetPoolAsync(CancellationToken ct)
+            => GetSectorPursuitsAsync("hospitals", ct);
     }
 
     [Fact]

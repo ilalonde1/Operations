@@ -75,6 +75,19 @@ public partial class BdReportsWindow : Window
         await RegeneratePreviewAsync().ConfigureAwait(true);
     }
 
+    private async void CallSheet_Click(object sender, RoutedEventArgs e)
+    {
+        _previewCts?.Cancel();
+        _previewCts?.Dispose();
+        _previewCts = new CancellationTokenSource();
+
+        var html = await _vm.BuildCallSheetPreviewAsync(_previewCts.Token).ConfigureAwait(true);
+        if (html is not null && _previewReady)
+        {
+            Preview.NavigateToString(html);
+        }
+    }
+
     private async void Refresh_Click(object sender, RoutedEventArgs e)
     {
         await _vm.LoadAsync(CancellationToken.None).ConfigureAwait(true);

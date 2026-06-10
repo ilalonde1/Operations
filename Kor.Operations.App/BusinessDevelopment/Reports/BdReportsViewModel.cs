@@ -43,6 +43,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     private string _statusMessage = "Ready.";
     private string? _previewHtml;
     private BdReportDocument? _currentDocument;
+    private string? _currentDocumentKey;
 
     public BdReportsViewModel(IBdReportService reportService, ILogger<BdReportsViewModel>? logger = null)
     {
@@ -150,6 +151,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
 
             var document = SectorReportGenerator.Build(definition, prose, rows, DateTimeOffset.UtcNow);
             _currentDocument = document;
+            _currentDocumentKey = sector.Key;
             PreviewHtml = HtmlPreviewBuilder.Render(document);
 
             var honed = rows.Count(r => r.Verdict is not null);
@@ -174,6 +176,46 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
     }
 
+    /// <summary>
+    /// Builds the cross-cutting weekly call sheet (all sectors, URGENT +
+    /// PURSUE pool) and returns the HTML preview; DOCX export then matches it.
+    /// </summary>
+    public async Task<string?> BuildCallSheetPreviewAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        StatusMessage = "Generating weekly call sheet…";
+        try
+        {
+            var pool = await _reportService.GetCallSheetPoolAsync(ct).ConfigureAwait(true);
+            var summaries = await _reportService.GetSectorSummariesAsync(ct).ConfigureAwait(true);
+
+            var document = CallSheetReportGenerator.Build(pool, summaries, DateTimeOffset.UtcNow);
+            _currentDocument = document;
+            _currentDocumentKey = "call-sheet";
+            SelectedSector = null;
+            PreviewHtml = HtmlPreviewBuilder.Render(document);
+
+            StatusMessage = $"Call sheet: {pool.Count(r => r.IsUrgent)} URGENT + {pool.Count(r => !r.IsUrgent)} PURSUE across all sectors.";
+            return PreviewHtml;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Generation cancelled.";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "BD Reports: call sheet generation failed.");
+            StatusMessage = $"Generation failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            IsBusy = false;
+            OnPropertyChanged(nameof(CanExportDocx));
+        }
+    }
+
     /// <summary>Renders the previewed document to DOCX bytes (same content as the preview).</summary>
     public byte[] RenderCurrentDocx()
     {
@@ -183,7 +225,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     }
 
     public string SuggestedDocxFileName =>
-        $"KOR-{SelectedSector?.Key ?? "report"}-BD-Report-{DateTime.Now:yyyy-MM-dd}.docx";
+        $"KOR-{_currentDocumentKey ?? "report"}-BD-Report-{DateTime.Now:yyyy-MM-dd}.docx";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

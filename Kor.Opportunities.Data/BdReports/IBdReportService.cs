@@ -21,4 +21,12 @@ public interface IBdReportService
     /// estimated cost descending.
     /// </summary>
     Task<IReadOnlyList<PursuitBriefRow>> GetSectorPursuitsAsync(string sectorKey, CancellationToken ct);
+
+    /// <summary>
+    /// Cross-cutting call-sheet pool: every active MPI honed PURSUE or
+    /// PURSUE_URGENT across ALL sectors (deduped by MPI — sector filters may
+    /// overlap, this query has none). Urgent rows first, then by estimated
+    /// cost descending.
+    /// </summary>
+    Task<IReadOnlyList<PursuitBriefRow>> GetCallSheetPoolAsync(CancellationToken ct);
 }
