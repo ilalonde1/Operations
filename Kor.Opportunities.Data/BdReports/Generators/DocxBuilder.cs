@@ -132,8 +132,32 @@ public static class DocxBuilder
             run.Append(props);
         }
 
-        run.Append(new Text(text) { Space = SpaceProcessingModeValues.Preserve });
+        // DB prose (drain-written JSON) can legally carry XML-illegal control
+        // characters that make the OpenXml XmlWriter throw, and embedded
+        // newlines that one Text node would silently flatten. Strip the
+        // former, render the latter as explicit line breaks (review M4).
+        var lines = (text ?? string.Empty).Replace("\r\n", "\n").Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (i > 0)
+            {
+                run.Append(new Break());
+            }
+
+            run.Append(new Text(Sanitize(lines[i])) { Space = SpaceProcessingModeValues.Preserve });
+        }
+
         return run;
+    }
+
+    private static string Sanitize(string value)
+    {
+        if (value.All(c => !char.IsControl(c) || c == '\t'))
+        {
+            return value;
+        }
+
+        return new string(value.Where(c => !char.IsControl(c) || c == '\t').ToArray());
     }
 
     private static Table RenderTable(TableBlock block)

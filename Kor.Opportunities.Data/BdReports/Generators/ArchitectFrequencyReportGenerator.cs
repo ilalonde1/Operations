@@ -39,7 +39,7 @@ public static class ArchitectFrequencyReportGenerator
             {
                 a.DisplayName,
                 a.ActiveProjects.ToString(CultureInfo.InvariantCulture),
-                $"${a.PipelineCostCad / 1_000_000m:N0}M",
+                "$" + (a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture) + "M",
                 a.Signals.ToString(CultureInfo.InvariantCulture),
                 a.People.ToString(CultureInfo.InvariantCulture),
                 a.OpenActions.ToString(CultureInfo.InvariantCulture),
@@ -51,7 +51,7 @@ public static class ArchitectFrequencyReportGenerator
         foreach (var a in architects.Take(10))
         {
             b.H3(a.DisplayName);
-            b.B("Linked active projects: ", $"{a.ActiveProjects} (${a.PipelineCostCad / 1_000_000m:N0}M pipeline)");
+            b.B("Linked active projects: ", $"{a.ActiveProjects} (${(a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture)}M pipeline)");
             b.B("Intel depth: ", $"Signals: {a.Signals} | People: {a.People} | Open actions: {a.OpenActions}");
             b.B("KOR relationship: ", IsKorAligned(a.DisplayName)
                 ? "KOR-aligned (per memory client list)"
@@ -111,7 +111,7 @@ public static class ArchitectFrequencyReportGenerator
         var rank = 1;
         foreach (var a in architects.Take(5))
         {
-            b.P($"  {rank}. {a.DisplayName} — {a.ActiveProjects} linked active projects (${a.PipelineCostCad / 1_000_000m:N0}M)");
+            b.P($"  {rank}. {a.DisplayName} — {a.ActiveProjects} linked active projects (${(a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture)}M)");
             rank++;
         }
 

@@ -42,7 +42,7 @@ public static class ExecSummaryReportGenerator
             : (int)Math.Round(100.0 * headline.HonedCount / headline.TotalActiveMpis);
         b.B("Total active MPIs (cross-sector, distinct): ", headline.TotalActiveMpis.ToString("N0", CultureInfo.InvariantCulture));
         b.B("Honed (deep BD intel — verified, named, action-ready): ", $"{headline.HonedCount:N0} ({honedPct}%)");
-        b.B("Total $ honed pipeline (estimated cost rollup): ", $"~${headline.HonedCostCad / 1_000_000_000m:F1}B CAD");
+        b.B("Total $ live pipeline (PURSUE/MONITOR/DISCOVER cost rollup): ", "~$" + (headline.HonedCostCad / 1_000_000_000m).ToString("F1", CultureInfo.InvariantCulture) + "B CAD");
         b.B("URGENT items live right now: ", callSheetPool.Count(x => x.IsUrgent).ToString(CultureInfo.InvariantCulture));
         b.B("Open PURSUE pool: ", callSheetPool.Count(x => !x.IsUrgent).ToString(CultureInfo.InvariantCulture));
         b.P(string.Empty);
@@ -76,10 +76,10 @@ public static class ExecSummaryReportGenerator
                     s.Total.ToString("N0", CultureInfo.InvariantCulture),
                     honed.ToString("N0", CultureInfo.InvariantCulture),
                     $"{pct}%",
-                    $"${s.HonedCostCad / 1_000_000m:N0}M",
+                    "$" + (s.HonedCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture) + "M",
                 };
             }).ToList());
-        b.P("Sector filters deliberately overlap (a BC Housing project is also Residential), so the heatmap rows do not sum to the distinct headline totals.");
+        b.P("$ Pipeline counts live verdicts only (PURSUE/MONITOR/DISCOVER — DEAD and DUPLICATE excluded). Sector filters deliberately overlap (a BC Housing project is also Residential), so the heatmap rows do not sum to the distinct headline totals.");
 
         foreach (var section in ProseSections)
         {

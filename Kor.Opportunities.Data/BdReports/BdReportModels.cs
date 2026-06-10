@@ -105,14 +105,6 @@ public sealed record BdExecHeadline(
     decimal HonedCostCad);
 
 /// <summary>
-/// One architect ranked by pipeline leverage. Built from the STRUCTURED org
-/// graph (MajorProjectsInventory.ArchitectCanonicalOrgId + org-scoped Intel
-/// rows) — the original .architect-freq.json text-mining pull was never saved
-/// and its counts are not reconstructible from any table, so this is the
-/// auditable replacement (same intent: one architect relationship = N
-/// projects).
-/// </summary>
-/// <summary>
 /// One structural-engineering competitor's footprint across KOR's pipeline:
 /// org-scoped Intel counts (the verified recipe behind the shipped
 /// competitor report) plus exact StructuralEngineerCanonicalOrgId links.
@@ -168,6 +160,14 @@ public sealed record PrimeConsultantRow(
     public bool HasPrime => !string.IsNullOrWhiteSpace(PrimeFirm);
 }
 
+/// <summary>
+/// One architect ranked by pipeline leverage. Built from the STRUCTURED org
+/// graph (MajorProjectsInventory.ArchitectCanonicalOrgId + org-scoped Intel
+/// rows) — the original .architect-freq.json text-mining pull was never saved
+/// and its counts are not reconstructible from any table, so this is the
+/// auditable replacement (same intent: one architect relationship = N
+/// projects).
+/// </summary>
 public sealed record ArchitectLeverageRow(
     long CanonicalOrgId,
     string DisplayName,

@@ -79,19 +79,25 @@ GROUP BY {VerdictExpr};";
                 }
             }
 
-            // Freshness buckets (decision 6: 30/90-day boundaries) over rows
-            // that HAVE honing data — never-honed rows are NoVerdict, not stale.
+            // Freshness buckets (decision 6: 30/90-day boundaries) over
+            // VERDICT-BEARING rows only — queued/failed enrichment rows
+            // (Status='pending', NULL ResultJson) are NotHoned on the card and
+            // must not surface as "stale" here (adversarial review C2). The
+            // cost rollup counts live verdicts only (PURSUE/MONITOR/DISCOVER):
+            // DEAD is locked work and DUPLICATEs would double-count (M1).
             var freshnessSql = $@"
 SELECT SUM(CASE WHEN e.LastRefreshAtUtc >= DATEADD(day, -30, sysdatetimeoffset()) THEN 1 ELSE 0 END),
        SUM(CASE WHEN e.LastRefreshAtUtc <  DATEADD(day, -30, sysdatetimeoffset())
                  AND e.LastRefreshAtUtc >= DATEADD(day, -90, sysdatetimeoffset()) THEN 1 ELSE 0 END),
        SUM(CASE WHEN e.LastRefreshAtUtc <  DATEADD(day, -90, sysdatetimeoffset())
                  OR e.LastRefreshAtUtc IS NULL THEN 1 ELSE 0 END),
-       COALESCE(SUM(m.EstimatedCostCad), 0)
+       COALESCE(SUM(CASE WHEN {VerdictExpr} IN (N'{BdVerdicts.PursueUrgent}', N'{BdVerdicts.Pursue}', N'{BdVerdicts.Monitor}', N'{BdVerdicts.Discover}')
+                          THEN m.EstimatedCostCad END), 0)
 FROM opportunities.MajorProjectsInventory m
 JOIN opportunities.MajorProjectEnrichment e
   ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
 WHERE m.RetiredAtUtc IS NULL
+  AND {VerdictExpr} IS NOT NULL
   AND {def.MpiWhere};";
 
             int fresh = 0, aging = 0, stale = 0;
@@ -187,11 +193,15 @@ WHERE m.RetiredAtUtc IS NULL
     public async Task<BdExecHeadline> GetExecHeadlineAsync(CancellationToken ct)
     {
         // DISTINCT active MPIs — per-sector totals double-count (overlapping
-        // sector filters by design).
-        const string sql = @"
+        // sector filters by design). "Honed" = verdict-bearing, NOT merely
+        // enrichment-row-exists: queued drains create Status='pending' rows
+        // with NULL ResultJson that must not count (adversarial review C2).
+        // $ rollup = live verdicts only (DEAD locked / DUPLICATE double-counts).
+        var sql = $@"
 SELECT COUNT(*),
-       SUM(CASE WHEN e.Id IS NOT NULL THEN 1 ELSE 0 END),
-       COALESCE(SUM(CASE WHEN e.Id IS NOT NULL THEN m.EstimatedCostCad END), 0)
+       COALESCE(SUM(CASE WHEN {VerdictExpr} IS NOT NULL THEN 1 ELSE 0 END), 0),
+       COALESCE(SUM(CASE WHEN {VerdictExpr} IN (N'{BdVerdicts.PursueUrgent}', N'{BdVerdicts.Pursue}', N'{BdVerdicts.Monitor}', N'{BdVerdicts.Discover}')
+                          THEN m.EstimatedCostCad END), 0)
 FROM opportunities.MajorProjectsInventory m
 LEFT JOIN opportunities.MajorProjectEnrichment e
   ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'

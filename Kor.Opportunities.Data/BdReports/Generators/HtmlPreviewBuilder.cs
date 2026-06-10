@@ -56,23 +56,23 @@ public static class HtmlPreviewBuilder
 
             case ParagraphBlock p:
                 // Empty paragraphs are deliberate spacers in the PS builders.
-                sb.Append("<p>").Append(string.IsNullOrEmpty(p.Text) ? "&nbsp;" : WebUtility.HtmlEncode(p.Text)).AppendLine("</p>");
+                sb.Append("<p>").Append(string.IsNullOrEmpty(p.Text) ? "&nbsp;" : Encode(p.Text)).AppendLine("</p>");
                 break;
 
             case LabelValueBlock lv:
-                sb.Append("<p><b>").Append(WebUtility.HtmlEncode(lv.Label)).Append("</b>")
-                  .Append(WebUtility.HtmlEncode(lv.Value)).AppendLine("</p>");
+                sb.Append("<p><b>").Append(Encode(lv.Label)).Append("</b>")
+                  .Append(Encode(lv.Value)).AppendLine("</p>");
                 break;
 
             case ItalicNoteBlock n:
-                sb.Append("<p class=\"note\">").Append(WebUtility.HtmlEncode(n.Text)).AppendLine("</p>");
+                sb.Append("<p class=\"note\">").Append(Encode(n.Text)).AppendLine("</p>");
                 break;
 
             case TableBlock t:
                 sb.AppendLine("<table><thead><tr>");
                 foreach (var header in t.Headers)
                 {
-                    sb.Append("<th>").Append(WebUtility.HtmlEncode(header)).AppendLine("</th>");
+                    sb.Append("<th>").Append(Encode(header)).AppendLine("</th>");
                 }
 
                 sb.AppendLine("</tr></thead><tbody>");
@@ -82,7 +82,7 @@ public static class HtmlPreviewBuilder
                     for (var i = 0; i < t.Headers.Count; i++)
                     {
                         var cell = i < row.Count ? row[i] : string.Empty;
-                        sb.Append("<td>").Append(WebUtility.HtmlEncode(cell)).Append("</td>");
+                        sb.Append("<td>").Append(Encode(cell)).Append("</td>");
                     }
 
                     sb.AppendLine("</tr>");
@@ -95,4 +95,9 @@ public static class HtmlPreviewBuilder
                 throw new NotSupportedException($"Unknown report block type {block.GetType().Name}.");
         }
     }
+
+    // Encode-then-break: newlines in DB prose render as explicit line breaks,
+    // matching the DOCX renderer's Break() handling (one model, two renderers).
+    private static string Encode(string text)
+        => WebUtility.HtmlEncode(text).Replace("\r\n", "<br/>").Replace("\n", "<br/>");
 }

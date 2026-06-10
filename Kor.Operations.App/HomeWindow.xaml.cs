@@ -269,6 +269,9 @@ namespace Kor.Operations
                 var canSeeOpportunities = SecurityGroupAccess.IsUserInGroup(KnownRoles.Opportunities, userIdentity);
                 var canSeeBd = SecurityGroupAccess.IsUserInGroup(KnownRoles.BusinessDevelopment, userIdentity);
                 BusinessDevelopmentTileHost.Visibility = canSeeBd ? Visibility.Visible : Visibility.Collapsed;
+                // BD Reports shares the BD gate — pursuit intel is partner/BD-lead
+                // material, not firm-wide.
+                BdReportsTileHost.Visibility = canSeeBd ? Visibility.Visible : Visibility.Collapsed;
 
                 // BD bundles Opportunities + FeeProposal + Brochure. When the BD tile
                 // is visible we hide the three sub-tiles from the Home grid so the
@@ -300,6 +303,7 @@ namespace Kor.Operations
                 CooCardCard.Visibility = Visibility.Collapsed;
                 OpportunitiesTileHost.Visibility = Visibility.Collapsed;
                 BusinessDevelopmentTileHost.Visibility = Visibility.Collapsed;
+                BdReportsTileHost.Visibility = Visibility.Collapsed;
                 RebuildHomeCardsLayout();
             }
         }
@@ -322,6 +326,7 @@ namespace Kor.Operations
                 PmToolsTileHost,
                 StandardDetailsTileHost,
                 BusinessDevelopmentTileHost,
+                BdReportsTileHost,
                 GeneralToolsCard,
                 FeeProposalBuilderCard,
                 OpportunitiesTileHost,

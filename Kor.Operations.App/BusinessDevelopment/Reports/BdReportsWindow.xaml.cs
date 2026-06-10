@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -87,16 +88,37 @@ public partial class BdReportsWindow : Window
         _previewCts = new CancellationTokenSource();
 
         var html = await _vm.BuildAnalyticalPreviewAsync(_previewCts.Token).ConfigureAwait(true);
-        if (html is not null && _previewReady)
-        {
-            Preview.NavigateToString(html);
-        }
+        TryShowPreview(html);
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e)
     {
+        // LoadAsync clears the Sectors collection, which nulls SelectedSector
+        // through the TwoWay binding — capture and restore so Refresh keeps
+        // the user's place instead of stranding the old preview.
+        var sectorKey = _vm.SelectedSector?.Key;
+        var hadAnalytical = _vm.SelectedAnalytical is not null;
+
         await _vm.LoadAsync(CancellationToken.None).ConfigureAwait(true);
-        await RegeneratePreviewAsync().ConfigureAwait(true);
+
+        if (sectorKey is not null)
+        {
+            var restored = _vm.Sectors.FirstOrDefault(s => s.Key == sectorKey);
+            if (restored is not null)
+            {
+                SectorList.SelectedItem = restored; // SelectionChanged regenerates
+                return;
+            }
+        }
+
+        if (hadAnalytical)
+        {
+            _previewCts?.Cancel();
+            _previewCts?.Dispose();
+            _previewCts = new CancellationTokenSource();
+            var html = await _vm.BuildAnalyticalPreviewAsync(_previewCts.Token).ConfigureAwait(true);
+            TryShowPreview(html);
+        }
     }
 
     private async Task RegeneratePreviewAsync()
@@ -112,9 +134,26 @@ public partial class BdReportsWindow : Window
         _previewCts = new CancellationTokenSource();
 
         var html = await _vm.BuildPreviewAsync(_previewCts.Token).ConfigureAwait(true);
-        if (html is not null && _previewReady)
+        TryShowPreview(html);
+    }
+
+    // NavigateToString can throw (runtime failures, ~2MB content cap) and these
+    // call sites are async void handlers — an unhandled throw here would crash
+    // the app (adversarial review M3).
+    private void TryShowPreview(string? html)
+    {
+        if (html is null || !_previewReady)
+        {
+            return;
+        }
+
+        try
         {
             Preview.NavigateToString(html);
+        }
+        catch (Exception ex)
+        {
+            _vm.StatusMessage = $"Preview render failed: {ex.Message}. Save DOCX still works.";
         }
     }
 

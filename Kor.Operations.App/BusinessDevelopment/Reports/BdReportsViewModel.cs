@@ -59,6 +59,12 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     private string? _currentDocumentKey;
     private int _currentRecordCount;
 
+    // Generation sequence: a build that finished after a newer one started
+    // must not commit its document/status over the newer one (adversarial
+    // review M2 — the window cancels superseded CTSs, but a build whose
+    // awaits had already completed would still have committed).
+    private int _generationSeq;
+
     public BdReportsViewModel(IBdReportService reportService, ILogger<BdReportsViewModel>? logger = null)
     {
         _reportService = reportService ?? throw new ArgumentNullException(nameof(reportService));
@@ -118,7 +124,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     public bool IsBusy
     {
         get => _isBusy;
-        private set { if (_isBusy != value) { _isBusy = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsIdle)); } }
+        private set { if (_isBusy != value) { _isBusy = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsIdle)); OnPropertyChanged(nameof(CanExportDocx)); } }
     }
 
     public bool IsIdle => !IsBusy;
@@ -140,8 +146,9 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
 
     public async Task LoadAsync(CancellationToken ct)
     {
+        var generation = ++_generationSeq;
         IsBusy = true;
-        StatusMessage = "Loading sector summaries…";
+        StatusMessage ="Loading sector summaries…";
         try
         {
             var summaries = await _reportService.GetSectorSummariesAsync(ct).ConfigureAwait(true);
@@ -168,7 +175,13 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         finally
         {
-            IsBusy = false;
+            // Only the newest generation owns the busy flag — a superseded
+            // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
             OnPropertyChanged(nameof(CanExportDocx));
         }
     }
@@ -185,8 +198,9 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             return null;
         }
 
+        var generation = ++_generationSeq;
         IsBusy = true;
-        StatusMessage = $"Generating {sector.Title} report…";
+        StatusMessage =$"Generating {sector.Title} report…";
         try
         {
             var definition = SectorReportDefinitionCatalog.All.Single(d => d.Key == sector.Key);
@@ -194,8 +208,14 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             var rows = await _reportService.GetSectorPursuitsAsync(sector.Key, ct).ConfigureAwait(true);
 
             var document = SectorReportGenerator.Build(definition, prose, rows, DateTimeOffset.UtcNow);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
             _currentDocument = document;
-            _currentDocumentKey = sector.Key;
+            _currentDocumentKey =sector.Key;
             SelectedAnalytical = null;
             _currentRecordCount = rows.Count(r => r.Verdict is not null);
             PreviewHtml = HtmlPreviewBuilder.Render(document);
@@ -206,7 +226,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Generation cancelled.";
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
             return null;
         }
         catch (Exception ex)
@@ -217,7 +241,13 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         finally
         {
-            IsBusy = false;
+            // Only the newest generation owns the busy flag — a superseded
+            // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
             OnPropertyChanged(nameof(CanExportDocx));
         }
     }
@@ -228,16 +258,23 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     /// </summary>
     public async Task<string?> BuildCallSheetPreviewAsync(CancellationToken ct)
     {
+        var generation = ++_generationSeq;
         IsBusy = true;
-        StatusMessage = "Generating weekly call sheet…";
+        StatusMessage ="Generating weekly call sheet…";
         try
         {
             var pool = await _reportService.GetCallSheetPoolAsync(ct).ConfigureAwait(true);
             var summaries = await _reportService.GetSectorSummariesAsync(ct).ConfigureAwait(true);
 
             var document = CallSheetReportGenerator.Build(pool, summaries, DateTimeOffset.UtcNow);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
             _currentDocument = document;
-            _currentDocumentKey = "call-sheet";
+            _currentDocumentKey ="call-sheet";
             _currentRecordCount = pool.Count;
             SelectedSector = null;
             PreviewHtml = HtmlPreviewBuilder.Render(document);
@@ -248,7 +285,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Generation cancelled.";
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
             return null;
         }
         catch (Exception ex)
@@ -259,7 +300,13 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         finally
         {
-            IsBusy = false;
+            // Only the newest generation owns the busy flag — a superseded
+            // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
             OnPropertyChanged(nameof(CanExportDocx));
         }
     }
@@ -267,8 +314,9 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     /// <summary>Builds the cross-sector executive overview; DOCX export then matches it.</summary>
     public async Task<string?> BuildExecSummaryPreviewAsync(CancellationToken ct)
     {
+        var generation = ++_generationSeq;
         IsBusy = true;
-        StatusMessage = "Generating executive overview…";
+        StatusMessage ="Generating executive overview…";
         try
         {
             var headline = await _reportService.GetExecHeadlineAsync(ct).ConfigureAwait(true);
@@ -276,8 +324,14 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             var pool = await _reportService.GetCallSheetPoolAsync(ct).ConfigureAwait(true);
 
             var document = ExecSummaryReportGenerator.Build(headline, summaries, pool, DateTimeOffset.UtcNow);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
             _currentDocument = document;
-            _currentDocumentKey = "exec-overview";
+            _currentDocumentKey ="exec-overview";
             _currentRecordCount = headline.HonedCount;
             SelectedSector = null;
             PreviewHtml = HtmlPreviewBuilder.Render(document);
@@ -288,7 +342,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Generation cancelled.";
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
             return null;
         }
         catch (Exception ex)
@@ -299,7 +357,13 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         finally
         {
-            IsBusy = false;
+            // Only the newest generation owns the busy flag — a superseded
+            // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
             OnPropertyChanged(nameof(CanExportDocx));
         }
     }
@@ -307,15 +371,22 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     /// <summary>Builds the architect warm-intro priority report; DOCX export then matches it.</summary>
     public async Task<string?> BuildArchitectFrequencyPreviewAsync(CancellationToken ct)
     {
+        var generation = ++_generationSeq;
         IsBusy = true;
-        StatusMessage = "Generating architect frequency report…";
+        StatusMessage ="Generating architect frequency report…";
         try
         {
             var architects = await _reportService.GetArchitectLeverageAsync(60, ct).ConfigureAwait(true);
 
             var document = ArchitectFrequencyReportGenerator.Build(architects, DateTimeOffset.UtcNow);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
             _currentDocument = document;
-            _currentDocumentKey = "architect-frequency";
+            _currentDocumentKey ="architect-frequency";
             _currentRecordCount = architects.Count;
             SelectedSector = null;
             PreviewHtml = HtmlPreviewBuilder.Render(document);
@@ -326,7 +397,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Generation cancelled.";
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
             return null;
         }
         catch (Exception ex)
@@ -337,7 +412,13 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         finally
         {
-            IsBusy = false;
+            // Only the newest generation owns the busy flag — a superseded
+            // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
             OnPropertyChanged(nameof(CanExportDocx));
         }
     }
@@ -345,15 +426,22 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     /// <summary>Builds the competitor footprint report; DOCX export then matches it.</summary>
     public async Task<string?> BuildCompetitorIntelPreviewAsync(CancellationToken ct)
     {
+        var generation = ++_generationSeq;
         IsBusy = true;
-        StatusMessage = "Generating competitor intelligence report…";
+        StatusMessage ="Generating competitor intelligence report…";
         try
         {
             var competitors = await _reportService.GetCompetitorFootprintAsync(25, ct).ConfigureAwait(true);
 
             var document = CompetitorIntelReportGenerator.Build(competitors, DateTimeOffset.UtcNow);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
             _currentDocument = document;
-            _currentDocumentKey = "competitor-intel";
+            _currentDocumentKey ="competitor-intel";
             _currentRecordCount = competitors.Count;
             SelectedSector = null;
             PreviewHtml = HtmlPreviewBuilder.Render(document);
@@ -364,7 +452,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Generation cancelled.";
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
             return null;
         }
         catch (Exception ex)
@@ -375,7 +467,13 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         finally
         {
-            IsBusy = false;
+            // Only the newest generation owns the busy flag — a superseded
+            // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
             OnPropertyChanged(nameof(CanExportDocx));
         }
     }
@@ -383,8 +481,9 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     /// <summary>Builds the ten-target strategic relationships deep-dive; DOCX export then matches it.</summary>
     public async Task<string?> BuildStrategicRelationshipsPreviewAsync(CancellationToken ct)
     {
+        var generation = ++_generationSeq;
         IsBusy = true;
-        StatusMessage = "Generating strategic relationships deep-dive…";
+        StatusMessage ="Generating strategic relationships deep-dive…";
         try
         {
             var targets = new List<(StrategicTargetDefinition, IReadOnlyList<string>)>();
@@ -395,8 +494,14 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             }
 
             var document = StrategicRelationshipsReportGenerator.Build(targets, DateTimeOffset.UtcNow);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
             _currentDocument = document;
-            _currentDocumentKey = "strategic-relationships";
+            _currentDocumentKey ="strategic-relationships";
             _currentRecordCount = targets.Count;
             SelectedSector = null;
             PreviewHtml = HtmlPreviewBuilder.Render(document);
@@ -407,7 +512,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Generation cancelled.";
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
             return null;
         }
         catch (Exception ex)
@@ -418,7 +527,13 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         finally
         {
-            IsBusy = false;
+            // Only the newest generation owns the busy flag — a superseded
+            // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
             OnPropertyChanged(nameof(CanExportDocx));
         }
     }
@@ -426,15 +541,22 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     /// <summary>Builds the prime consultant identification report; DOCX export then matches it.</summary>
     public async Task<string?> BuildPrimeConsultantPreviewAsync(CancellationToken ct)
     {
+        var generation = ++_generationSeq;
         IsBusy = true;
-        StatusMessage = "Generating prime consultant report…";
+        StatusMessage ="Generating prime consultant report…";
         try
         {
             var projects = await _reportService.GetPrimeConsultantsAsync(ct).ConfigureAwait(true);
 
             var document = PrimeConsultantReportGenerator.Build(projects, DateTimeOffset.UtcNow);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
             _currentDocument = document;
-            _currentDocumentKey = "prime-consultant";
+            _currentDocumentKey ="prime-consultant";
             _currentRecordCount = projects.Count;
             SelectedSector = null;
             PreviewHtml = HtmlPreviewBuilder.Render(document);
@@ -445,7 +567,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Generation cancelled.";
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
             return null;
         }
         catch (Exception ex)
@@ -456,7 +582,13 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
         finally
         {
-            IsBusy = false;
+            // Only the newest generation owns the busy flag — a superseded
+            // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
             OnPropertyChanged(nameof(CanExportDocx));
         }
     }
