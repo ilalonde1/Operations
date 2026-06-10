@@ -19,8 +19,10 @@ Use only `web_search`, `web_fetch`, `Read`, `Write`.
 
 ## Inputs
 
-Auto-discover: `inputs/batch-*.json`. Find lowest-numbered batch with
-no matching `outputs/SUMMARY-batch-NNN.txt`.
+Auto-discover: `inputs/batch-*.json`. Ignore `_quarantined/` folders
+and any file containing QUARANTINED, DISABLED, BACKUP, or GARBLED in
+its name or first line. Find lowest-numbered batch with no matching
+`outputs/SUMMARY-batch-NNN.txt`.
 
 Each batch row has the first-pass ProjectBrief JSON embedded.
 
@@ -45,6 +47,10 @@ Each batch row has the first-pass ProjectBrief JSON embedded.
    - Municipal pre-qualified consultant list
    - Province + federal co-funded (BC Growing Communities, AB
      CFEP, federal ICIP / GICB)
+
+   Confirm via **at least 2 independent sources** before recording
+   procurement model as confirmed. If only 1 source found, flag as
+   unconfirmed.
 
 3. **Incumbent structural engineer** — recreational BC + AB:
    - **Long-span specialists**: Fast + Epp (mass timber +
@@ -118,25 +124,132 @@ For every PURSUE / MONITOR:
 - DISCOVER — pre-referendum, KOR relationship-build now
 - DUPLICATE — flag for MPI consolidation
 
+## DEAD verdict evidence bar
+
+A DEAD verdict REQUIRES:
+- Named incumbent structural engineer (not just GC or architect)
+  with at least one source URL
+- Named architect + GC where known
+- Phase scope assessed — is THIS phase DEAD, or is the entire
+  rec master plan locked?
+- 1 sentence rationale for why no future entry exists on THIS phase
+
+Do not mark DEAD on circumstantial evidence alone. If incumbent
+structural is publicly unknown after thorough search, mark MONITOR
+with an "INCUMBENT NOT YET PUBLIC" note.
+
 ## Output schema (canonical envelope, R93c)
 
-Write to `outputs/refresh-project-{id}.json`. End `description`
-with `[providerName: ProjectBriefHoning]`.
+Write to `outputs/refresh-project-{id}.json`:
+
+```json
+{
+  "schemaVersion": "1.0",
+  "kind": "project-brief-refresh",
+  "generatedAtUtc": "...",
+  "items": [{
+    "_providerName": "ProjectBriefHoning",
+    "overallConfidence": 0.0-1.0,
+    "description": "verified description + procurement model (2-source confirmed or flagged) + named incumbent if DEAD + typology match (pool/arena/field-house) + phase scope + KOR pursuit framing. [providerName: ProjectBriefHoning] marker is legacy — root _providerName is authoritative.",
+    "schedule": "verified procurement timing + referendum status if applicable + 12-month KOR engagement timeline",
+    "status": "AWARDED to <firm> | RFP OPEN | RFP PENDING | RFP CLOSED <date> awaiting award | UNAWARDED PRE-PROCUREMENT | PRE-REFERENDUM",
+    "korAngle": "5-7 sentences: PURSUE/MONITOR/DEAD/DISCOVER/DUPLICATE verdict + named incumbent structural if DEAD (REQUIRED) + procurement model + typology (pool/arena/field-house) KOR specialty match + phase scope (current locked vs future open) + KOR competitive angle + warm-intro path + named target + first move",
+    "signals": [
+      { "type": "AwardConfirmed|RfpOpen|ReferendumResult|CapitalBudgetApproved|StructuralIncumbent|PhaseLocked|FuturePhaseOpen|DuplicateFlag|Other",
+        "subject": "...", "detail": "...", "occurredAt": "YYYY-MM",
+        "sourceUrl": "MUST be present" }
+    ],
+    "actions": [
+      { "type": "ContactStrategy|PursuitAngle|TimingWindow|TeamingMove|WarmIntroPath|MonitorPhase|DropPursuit|Other",
+        "recommendation": "SPECIFIC named action. Bad: 'reach out to municipality'. Good: 'Email City of Surrey GM Recreation Jane Doe via prior architect HCMA (Cameron Charlebois) — Surrey has Newton Community Centre (pool + arena) + 2 field houses in 2024-2027 capital plan; KOR's aquatic-long-span depth is the direct differentiator vs Fast + Epp.'",
+        "targetPerson": "...", "targetOrg": "...",
+        "timingNotes": "specific window — note referendum trigger dates where applicable" }
+    ],
+    "risks": [
+      { "type": "...", "description": "...", "mitigation": "..." }
+    ],
+    "keyPeople": [
+      { "name": "...", "title": "...",
+        "side": "Owner|Architect|GC|Structural|Funder|Champion|WarmIntro|Other",
+        "orgName": "...",
+        "email": "..." or null, "phone": "..." or null,
+        "linkedinUrl": "..." or null,
+        "notes": "BD-relevant context — decision authority, KOR prior relationship, municipal pipeline visibility" }
+    ]
+  }]
+}
+```
+
+Per HONING-OUTPUT-CONTRACT.md: `_providerName` is REQUIRED at the
+item root and MUST be `"ProjectBriefHoning"`. The ingest whitelists
+providers and REJECTS files whose `_providerName` is absent, empty,
+or not in the project whitelist (`ProjectBrief`, `ProjectBriefHoning`,
+`PrimeConsultantResearch`). An unmarked output mis-files as
+`ProjectBrief` and overwrites the first-pass brief.
 
 ## Quality bar
 
 For every PURSUE or MONITOR:
 - At least 3 named individuals with role + org
 - At least 1 individual with direct email / phone / LinkedIn
-- Named procurement model + incumbent if applicable
+- Named procurement model confirmed via at least 2 independent
+  sources (or flagged unconfirmed if only 1 source found)
 - Named long-span / pool / arena / field-house typology match
+- Named incumbent if applicable
 - Specific 12-month engagement timeline
 - Named warm-intro path
 
+For DEAD projects:
+- Named incumbent structural engineer + at least 1 source URL
+- Named architect + GC where known
+- Phase scope: this phase DEAD, future phases status assessed
+- 1 sentence rationale
+
 ## Progress heartbeat (REQUIRED)
 
-Write `outputs/_status.json` (starting/working/done).
-Bail-out: 15-22 tool calls per item.
+Write `outputs/_status.json` with this exact schema:
+
+```json
+{
+  "state": "starting|working|done",
+  "batch": "batch-001",
+  "currentIndex": 0,
+  "currentItemId": 1234,
+  "currentDisplayName": "...",
+  "completed": 0,
+  "skipped": 0,
+  "total": 0,
+  "startedAtUtc": "2026-06-09T00:00:00Z",
+  "lastTickAtUtc": "2026-06-09T00:00:00Z"
+}
+```
+
+Write "starting" before the first item, "working" (with updated
+index/id/name) before each item, "done" after the last SUMMARY file
+is written.
+
+**Time bail-out (hard rule):** max ~60 seconds of wall-clock effort
+per item. If an item exceeds this limit, write
+`outputs/skipped-{id}.txt` with a one-line reason and move to the
+next item immediately. Never stall the batch on one item.
+
+Tool-call budget: 15-22 per item.
+
+## Final step — SUMMARY file (REQUIRED)
+
+After the last item in the batch, write
+`outputs/SUMMARY-batch-NNN.txt` (NNN = batch number, zero-padded):
+
+```
+batch-NNN: X completed, Y skipped, Z total
+PURSUE: <count> | MONITOR: <count> | DEAD: <count> | DISCOVER: <count> | DUPLICATE: <count> | SKIPPED: <count>
+```
+
+Auto-discovery treats a batch as unfinished until this file exists.
+
+## Output ONLY the per-project JSON files + heartbeat
+
+Do not emit prose to stdout. Do not ask for confirmation.
 
 ## Operator runbook
 

@@ -28,8 +28,10 @@ tools.** Use only `web_search`, `web_fetch`, `Read`, `Write`.
 
 ## Inputs
 
-Auto-discover: `inputs/batch-*.json`. Find lowest-numbered batch
-with no matching `outputs/SUMMARY-batch-NNN.txt`.
+Auto-discover: `inputs/batch-*.json`. Ignore `_quarantined/` folders
+and any file containing QUARANTINED, DISABLED, BACKUP, or GARBLED in
+its name or first line. Find lowest-numbered batch with no matching
+`outputs/SUMMARY-batch-NNN.txt`.
 
 Each row contains: project name, province, city, proponent, cost,
 brief excerpt with current intelligence (what's known so far).
@@ -123,7 +125,8 @@ Write to `outputs/refresh-project-{id}.json`:
   "generatedAtUtc": "...",
   "items": [{
     "overallConfidence": 0.0-1.0,
-    "description": "Prime consultant for {ProjectName}: {ArchitectFirmName}. {1-2 paragraphs explaining who, why this matters, KOR relationship status}. [providerName: PrimeConsultantResearch]",
+    "_providerName": "PrimeConsultantResearch",
+    "description": "Prime consultant for {ProjectName}: {ArchitectFirmName}. {1-2 paragraphs explaining who, why this matters, KOR relationship status}. [providerName: PrimeConsultantResearch] marker is legacy — root _providerName is authoritative.",
     "primeConsultant": {
       "firmName": "...",
       "principalInCharge": "...",
@@ -167,9 +170,41 @@ If genuinely cannot identify prime after 8-10 web searches:
 
 ## Progress heartbeat (REQUIRED)
 
-Write `outputs/_status.json` (starting/working/done).
-Bail-out: 8-12 tool calls per item — focused identification, not
+Write `outputs/_status.json` with this exact schema:
+
+```json
+{
+  "state": "starting|working|done",
+  "batch": "batch-001",
+  "currentIndex": 0,
+  "currentItemId": 1234,
+  "currentDisplayName": "...",
+  "completed": 0,
+  "skipped": 0,
+  "total": 0,
+  "startedAtUtc": "2026-06-09T00:00:00Z",
+  "lastTickAtUtc": "2026-06-09T00:00:00Z"
+}
+```
+
+Write "starting" before the first item, "working" (with updated index/id/name) before each item, "done" after the last SUMMARY file is written.
+
+**Time bail-out (hard rule):** max ~60 seconds of wall-clock effort per item. If an item exceeds this limit, write `outputs/skipped-{id}.txt` with a one-line reason and move to the next item immediately. Never stall the batch on one item.
+
+Tool-call budget: 8-12 per item — focused identification, not
 exhaustive verification.
+
+## Final step — SUMMARY file (REQUIRED)
+
+After the last item in the batch, write
+`outputs/SUMMARY-batch-NNN.txt` (NNN = batch number, zero-padded):
+
+```
+batch-NNN: X completed, Y skipped, Z total
+HIGH-LEVERAGE: <count> | WARM-INTRO: <count> | COLD: <count> | LOCKED: <count> | SKIPPED: <count>
+```
+
+Auto-discovery treats a batch as unfinished until this file exists.
 
 ## Operator runbook
 

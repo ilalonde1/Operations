@@ -27,8 +27,10 @@ Use only `web_search`, `web_fetch`, `Read`, `Write`.
 
 ## Inputs
 
-Auto-discover: `inputs/batch-*.json`. Find lowest-numbered batch with
-no matching `outputs/SUMMARY-batch-NNN.txt`.
+Auto-discover: `inputs/batch-*.json`. Ignore `_quarantined/` folders
+and any file containing QUARANTINED, DISABLED, BACKUP, or GARBLED in
+its name or first line. Find lowest-numbered batch with no matching
+`outputs/SUMMARY-batch-NNN.txt`.
 
 Each batch row has the first-pass ProjectBrief JSON embedded:
 
@@ -221,8 +223,9 @@ Write to `outputs/refresh-project-{id}.json`:
   "kind": "project-brief-refresh",
   "generatedAtUtc": "...",
   "items": [{
+    "_providerName": "ProjectBriefHoning",
     "overallConfidence": 0.0-1.0,
-    "description": "verified description + procurement model + named incumbent (if any) + phase scope + KOR pursuit framing. End with [providerName: ProjectBriefHoning]",
+    "description": "verified description + procurement model + named incumbent (if any) + phase scope + KOR pursuit framing. [providerName: ProjectBriefHoning] marker is legacy — root _providerName is authoritative.",
     "schedule": "verified procurement timing with named sources + 12-month KOR engagement timeline",
     "status": "AWARDED ALLIANCE to <firms> | AWARDED P3 to <consortium> | AWARDED PROGRESSIVE DB to <firm + captive structural> | AWARDED PROGRESSIVE DB to <firm + external structural slot status> | RFP OPEN STRUCTURAL <date> | RFP PENDING | UNAWARDED PRE-PROCUREMENT",
     "korAngle": "5-7 sentences: PURSUE/MONITOR/DEAD/DISCOVER verdict + procurement model identification + named incumbent if DEAD + phase scope (current locked vs future open) + KOR competitive angle + warm-intro path + named target + first move",
@@ -252,8 +255,7 @@ Write to `outputs/refresh-project-{id}.json`:
 }
 ```
 
-Set `_providerName: "ProjectBriefHoning"` inside `description`
-(end with `[providerName: ProjectBriefHoning]`).
+Set `_providerName: "ProjectBriefHoning"` at the item root (see schema above). The `[providerName: ProjectBriefHoning]` description marker is legacy — still recognized as a fallback but no longer sufficient. Per HONING-OUTPUT-CONTRACT.md: the ingest whitelists providers and REJECTS files whose `_providerName` is absent, empty, or not in the project whitelist. An unmarked output mis-files as `ProjectBrief` and overwrites the first-pass brief.
 
 ## Quality bar — HIGHEST STANDARD
 
@@ -285,14 +287,41 @@ For DEAD projects, the brief MUST contain:
 
 ## Progress heartbeat (REQUIRED)
 
-Write `outputs/_status.json`:
-- "starting" at batch start
-- "working" BEFORE each item
-- "done" at end
+Write `outputs/_status.json` with this exact schema:
 
-Bail-out: tool-call budget 20-30 per item — this is the highest-
-rigor pass. The Yurkovich error cost real BD credibility. Don't
-under-research.
+```json
+{
+  "state": "starting|working|done",
+  "batch": "batch-001",
+  "currentIndex": 0,
+  "currentItemId": 1234,
+  "currentDisplayName": "...",
+  "completed": 0,
+  "skipped": 0,
+  "total": 0,
+  "startedAtUtc": "2026-06-09T00:00:00Z",
+  "lastTickAtUtc": "2026-06-09T00:00:00Z"
+}
+```
+
+Write "starting" before the first item, "working" (with updated index/id/name) before each item, "done" after the last SUMMARY file is written.
+
+**Time bail-out (hard rule):** max ~60 seconds of wall-clock effort per item. If an item exceeds this limit, write `outputs/skipped-{id}.txt` with a one-line reason and move to the next item immediately. Never stall the batch on one item.
+
+Tool-call budget: 20-30 per item — this is the highest-rigor pass.
+The Yurkovich error cost real BD credibility. Don't under-research.
+
+## Final step — SUMMARY file (REQUIRED)
+
+After the last item in the batch, write
+`outputs/SUMMARY-batch-NNN.txt` (NNN = batch number, zero-padded):
+
+```
+batch-NNN: X completed, Y skipped, Z total
+PURSUE: <count> | MONITOR: <count> | DEAD: <count> | DISCOVER: <count> | SKIPPED: <count>
+```
+
+Auto-discovery treats a batch as unfinished until this file exists.
 
 ## Output ONLY the per-project JSON files + heartbeat
 

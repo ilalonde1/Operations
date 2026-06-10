@@ -114,8 +114,9 @@ Write to `outputs/refresh-project-{id}.json`:
   "kind": "project-brief-refresh",
   "generatedAtUtc": "...",
   "items": [{
+    "_providerName": "ProjectBrief",
     "overallConfidence": 0.0-1.0,
-    "description": "rich description ending with [providerName: RecreationalDeepResearch]",
+    "description": "rich description. [providerName: RecreationalDeepResearch] marker is legacy — root _providerName is authoritative. Per HONING-OUTPUT-CONTRACT.md, the ingest whitelists providers; first-pass project queues use \"ProjectBrief\".",
     "schedule": "milestones + RFP windows + referendum dates if applicable",
     "status": "current stage + procurement model + award status + funding stream",
     "korAngle": "3-5 sentences. PURSUE/MONITOR/DEAD/DISCOVER verdict + named architect + long-span / pool / arena / field-house specialty match + competitive angle vs incumbent if applicable.",
@@ -140,12 +141,40 @@ Write to `outputs/refresh-project-{id}.json`:
 
 ## Progress heartbeat (REQUIRED)
 
-Write `outputs/_status.json`:
-- "starting" at batch start
-- "working" BEFORE each item
-- "done" at end
+Write `outputs/_status.json` with this exact schema:
 
-Bail-out: tool-call budget 12-18 per item — deep research, not skim.
+```json
+{
+  "state": "starting|working|done",
+  "batch": "batch-001",
+  "currentIndex": 0,
+  "currentItemId": 1234,
+  "currentDisplayName": "...",
+  "completed": 0,
+  "skipped": 0,
+  "total": 0,
+  "startedAtUtc": "2026-06-09T00:00:00Z",
+  "lastTickAtUtc": "2026-06-09T00:00:00Z"
+}
+```
+
+Write "starting" before the first item, "working" (with updated index/id/name) before each item, "done" after the last SUMMARY file is written.
+
+**Time bail-out (hard rule):** max ~60 seconds of wall-clock effort per item. If an item exceeds this limit, write `outputs/skipped-{id}.txt` with a one-line reason and move to the next item immediately. Never stall the batch on one item.
+
+Tool-call budget: 12-18 per item — deep research, not skim.
+
+## Final step — SUMMARY file (REQUIRED)
+
+After the last item in the batch, write
+`outputs/SUMMARY-batch-NNN.txt` (NNN = batch number, zero-padded):
+
+```
+batch-NNN: X completed, Y skipped, Z total
+PURSUE: <count> | MONITOR: <count> | DEAD: <count> | DISCOVER: <count> | SKIPPED: <count>
+```
+
+Auto-discovery treats a batch as unfinished until this file exists.
 
 ## Output ONLY the per-project JSON files + heartbeat
 

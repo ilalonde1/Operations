@@ -12,8 +12,10 @@ Use only `web_search`, `web_fetch`, `Read`, `Write`.
 
 ## Inputs
 
-Auto-discover: `inputs/batch-*.json`. Find lowest-numbered batch with
-no matching `outputs/SUMMARY-batch-NNN.txt`.
+Auto-discover: `inputs/batch-*.json`. Ignore `_quarantined/` folders
+and any file containing QUARANTINED, DISABLED, BACKUP, or GARBLED in
+its name or first line. Find lowest-numbered batch with no matching
+`outputs/SUMMARY-batch-NNN.txt`.
 
 ## Workflow per item
 
@@ -81,8 +83,9 @@ Write to `outputs/refresh-project-{id}.json`:
   "kind": "project-brief-refresh",
   "generatedAtUtc": "...",
   "items": [{
+    "_providerName": "ProjectBrief",
     "overallConfidence": 0.0-1.0,
-    "description": "rich description. End with [providerName: CommercialDeepResearch]",
+    "description": "rich description. [providerName: CommercialDeepResearch] marker is legacy — root _providerName is authoritative. Per HONING-OUTPUT-CONTRACT.md, the ingest whitelists providers; first-pass project queues use \"ProjectBrief\".",
     "schedule": "...", "status": "...",
     "korAngle": "PURSUE/MONITOR/DEAD/DISCOVER + named developer + tenant + structural typology + KOR's competitive angle",
     "signals": [...], "actions": [...], "risks": [...], "keyPeople": [...]
@@ -92,7 +95,40 @@ Write to `outputs/refresh-project-{id}.json`:
 
 ## Progress heartbeat (REQUIRED)
 
-Write `outputs/_status.json`. Bail-out: 10-15 tool calls per item.
+Write `outputs/_status.json` with this exact schema:
+
+```json
+{
+  "state": "starting|working|done",
+  "batch": "batch-001",
+  "currentIndex": 0,
+  "currentItemId": 1234,
+  "currentDisplayName": "...",
+  "completed": 0,
+  "skipped": 0,
+  "total": 0,
+  "startedAtUtc": "2026-06-09T00:00:00Z",
+  "lastTickAtUtc": "2026-06-09T00:00:00Z"
+}
+```
+
+Write "starting" before the first item, "working" (with updated index/id/name) before each item, "done" after the last SUMMARY file is written.
+
+**Time bail-out (hard rule):** max ~60 seconds of wall-clock effort per item. If an item exceeds this limit, write `outputs/skipped-{id}.txt` with a one-line reason and move to the next item immediately. Never stall the batch on one item.
+
+Tool-call budget: 10-15 per item.
+
+## Final step — SUMMARY file (REQUIRED)
+
+After the last item in the batch, write
+`outputs/SUMMARY-batch-NNN.txt` (NNN = batch number, zero-padded):
+
+```
+batch-NNN: X completed, Y skipped, Z total
+PURSUE: <count> | MONITOR: <count> | DEAD: <count> | DISCOVER: <count> | SKIPPED: <count>
+```
+
+Auto-discovery treats a batch as unfinished until this file exists.
 
 ## Operator runbook
 

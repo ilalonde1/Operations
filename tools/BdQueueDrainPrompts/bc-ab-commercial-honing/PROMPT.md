@@ -20,8 +20,10 @@ Use only `web_search`, `web_fetch`, `Read`, `Write`.
 
 ## Inputs
 
-Auto-discover: `inputs/batch-*.json`. Find lowest-numbered batch with
-no matching `outputs/SUMMARY-batch-NNN.txt`.
+Auto-discover: `inputs/batch-*.json`. Ignore `_quarantined/` folders
+and any file containing QUARANTINED, DISABLED, BACKUP, or GARBLED in
+its name or first line. Find lowest-numbered batch with no matching
+`outputs/SUMMARY-batch-NNN.txt`.
 
 Each batch row has the first-pass ProjectBrief JSON embedded.
 
@@ -40,6 +42,10 @@ Each batch row has the first-pass ProjectBrief JSON embedded.
    - Developer-led with selected GC + pre-qualified subs
    - Design-Build for build-to-suit corporate campuses
    - P3 / DBFOM (rare)
+
+   Confirm via **at least 2 independent sources** before recording
+   procurement model as confirmed. If only 1 source found, flag as
+   unconfirmed.
 
 3. **Incumbent structural engineer** — major BC + AB office market:
    - **BC majors**: Glotman Simpson (Vancouver office dominant),
@@ -95,24 +101,131 @@ For every PURSUE / MONITOR:
 - DEAD — fully awarded
 - DISCOVER — pre-anchor-tenant, KOR relationship-build now
 
+## DEAD verdict evidence bar
+
+A DEAD verdict REQUIRES:
+- Named incumbent structural engineer (not just GC or architect)
+  with at least one source URL
+- Named architect + GC (or consortium partners)
+- Phase scope assessed — is this phase only DEAD, or are future
+  phases also locked?
+- 1 sentence rationale for why no future entry exists on THIS phase
+
+Do not mark DEAD on circumstantial evidence alone. If incumbent
+structural is publicly unknown, mark MONITOR with a note that the
+gate cannot be confirmed yet.
+
 ## Output schema (canonical envelope, R93c)
 
-Write to `outputs/refresh-project-{id}.json`. End `description`
-with `[providerName: ProjectBriefHoning]`.
+Write to `outputs/refresh-project-{id}.json`:
+
+```json
+{
+  "schemaVersion": "1.0",
+  "kind": "project-brief-refresh",
+  "generatedAtUtc": "...",
+  "items": [{
+    "_providerName": "ProjectBriefHoning",
+    "overallConfidence": 0.0-1.0,
+    "description": "verified description + procurement model (2-source confirmed or flagged unconfirmed) + named incumbent if DEAD + phase scope + KOR pursuit framing. [providerName: ProjectBriefHoning] marker is legacy — root _providerName is authoritative.",
+    "schedule": "verified procurement timing + anchor-tenant status + 12-month KOR engagement timeline",
+    "status": "AWARDED to <firm> | RFP OPEN | RFP PENDING | RFP CLOSED <date> awaiting award | UNAWARDED PRE-PROCUREMENT | PRE-ANCHOR-TENANT",
+    "korAngle": "5-7 sentences: PURSUE/MONITOR/DEAD/DISCOVER verdict + procurement model + named incumbent if DEAD + phase scope (current locked vs future open) + KOR competitive angle + warm-intro path + named target + first move",
+    "signals": [
+      { "type": "AwardConfirmed|RfpOpen|AnchorTenantLease|DesignBuildAward|PhaseLocked|FuturePhaseOpen|StructuralIncumbent|Other",
+        "subject": "...", "detail": "...", "occurredAt": "YYYY-MM",
+        "sourceUrl": "MUST be present" }
+    ],
+    "actions": [
+      { "type": "ContactStrategy|PursuitAngle|TimingWindow|TeamingMove|WarmIntroPath|MonitorPhase|DropPursuit|Other",
+        "recommendation": "SPECIFIC named action. Bad: 'reach out to developer'. Good: 'Email Westbank VP Development Ian Gillespie via prior architect Henriquez Partners (Mark Shieh) — Westbank has 3 towers in Surrey + Burnaby pipeline; KOR's mass-timber hybrid angle is the differentiator vs Glotman Simpson.'",
+        "targetPerson": "...", "targetOrg": "...",
+        "timingNotes": "specific window" }
+    ],
+    "risks": [
+      { "type": "...", "description": "...", "mitigation": "..." }
+    ],
+    "keyPeople": [
+      { "name": "...", "title": "...",
+        "side": "Owner|Developer|Architect|GC|Structural|Tenant|Funder|WarmIntro|Other",
+        "orgName": "...",
+        "email": "..." or null, "phone": "..." or null,
+        "linkedinUrl": "..." or null,
+        "notes": "BD-relevant context — decision authority, prior KOR relationship" }
+    ]
+  }]
+}
+```
+
+Per HONING-OUTPUT-CONTRACT.md: `_providerName` is REQUIRED at the
+item root and MUST be `"ProjectBriefHoning"`. The ingest whitelists
+providers and REJECTS files whose `_providerName` is absent, empty,
+or not in the project whitelist (`ProjectBrief`, `ProjectBriefHoning`,
+`PrimeConsultantResearch`). An unmarked output mis-files as
+`ProjectBrief` and overwrites the first-pass brief.
 
 ## Quality bar
 
 For every PURSUE or MONITOR:
 - At least 3 named individuals with role + org
 - At least 1 individual with direct email / phone / LinkedIn
-- Named procurement model + incumbent if applicable
+- Named procurement model confirmed via at least 2 independent
+  sources (or flagged unconfirmed if only 1 source found)
+- Named incumbent if applicable
 - Specific 12-month engagement timeline
 - Named warm-intro path
 
+For DEAD projects:
+- Named incumbent structural engineer + at least 1 source URL
+- Named architect + GC (or named consortium partners)
+- Phase scope: this phase DEAD, future phases status assessed
+- 1 sentence rationale
+
 ## Progress heartbeat (REQUIRED)
 
-Write `outputs/_status.json` (starting/working/done).
-Bail-out: 15-22 tool calls per item.
+Write `outputs/_status.json` with this exact schema:
+
+```json
+{
+  "state": "starting|working|done",
+  "batch": "batch-001",
+  "currentIndex": 0,
+  "currentItemId": 1234,
+  "currentDisplayName": "...",
+  "completed": 0,
+  "skipped": 0,
+  "total": 0,
+  "startedAtUtc": "2026-06-09T00:00:00Z",
+  "lastTickAtUtc": "2026-06-09T00:00:00Z"
+}
+```
+
+Write "starting" before the first item, "working" (with updated
+index/id/name) before each item, "done" after the last SUMMARY file
+is written.
+
+**Time bail-out (hard rule):** max ~60 seconds of wall-clock effort
+per item. If an item exceeds this limit, write
+`outputs/skipped-{id}.txt` with a one-line reason and move to the
+next item immediately. Never stall the batch on one item.
+
+Tool-call budget: 15-22 per item.
+
+## Final step — SUMMARY file (REQUIRED)
+
+After the last item in the batch, write
+`outputs/SUMMARY-batch-NNN.txt` (NNN = batch number, zero-padded):
+
+```
+batch-NNN: X completed, Y skipped, Z total
+PURSUE: <count> | MONITOR: <count> | DEAD: <count> | DISCOVER: <count> | SKIPPED: <count>
+```
+
+Auto-discovery treats a batch as unfinished until this file exists.
+
+## Output ONLY the per-project JSON files + heartbeat
+
+Do not emit prose to stdout. Do not ask for confirmation.
 
 ## Operator runbook
 

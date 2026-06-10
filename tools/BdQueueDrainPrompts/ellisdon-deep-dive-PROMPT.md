@@ -34,8 +34,10 @@ the input array.
 
 ## Inputs
 
-Auto-discover: list `inputs/batch-*.json`. Find lowest-numbered batch
-with no matching `outputs/SUMMARY-batch-NNN.txt`.
+Auto-discover: list `inputs/batch-*.json`. Ignore `_quarantined/`
+folders and any file containing QUARANTINED, DISABLED, BACKUP, or
+GARBLED in its name or first line. Find lowest-numbered batch with no
+matching `outputs/SUMMARY-batch-NNN.txt`.
 
 Each batch row:
 ```json
@@ -134,14 +136,42 @@ For EVERY surfaced named individual, include:
 
 ## Progress heartbeat (REQUIRED)
 
-Write `outputs/_status.json`:
-- "starting" at batch start
-- "working" BEFORE each item
-- "done" at end
+Write `outputs/_status.json` with this exact schema:
 
-Bail-out: tool-call budget 25-35 — focused depth research. Default
-to MORE searches when in doubt. This is the production-quality
-strategic-target dossier.
+```json
+{
+  "state": "starting|working|done",
+  "batch": "batch-001",
+  "currentIndex": 0,
+  "currentItemId": 22257,
+  "currentDisplayName": "EllisDon Corporation",
+  "completed": 0,
+  "skipped": 0,
+  "total": 0,
+  "startedAtUtc": "2026-06-09T00:00:00Z",
+  "lastTickAtUtc": "2026-06-09T00:00:00Z"
+}
+```
+
+Write "starting" before the first item, "working" (with updated index/id/name) before each item, "done" after the last SUMMARY file is written.
+
+**Time bail-out (hard rule):** max ~60 seconds of wall-clock effort per item. If an item exceeds this limit, write `outputs/skipped-{id}.txt` with a one-line reason and move to the next item immediately. Never stall the batch on one item.
+
+Tool-call budget: 25-35 — focused depth research. Default to MORE
+searches when in doubt. This is the production-quality strategic-
+target dossier.
+
+## Final step — SUMMARY file (REQUIRED)
+
+After the last item in the batch, write
+`outputs/SUMMARY-batch-NNN.txt` (NNN = batch number, zero-padded):
+
+```
+batch-NNN: X completed, Y skipped, Z total
+Gaps closed: <list>, Gaps remaining open: <list>
+```
+
+Auto-discovery treats a batch as unfinished until this file exists.
 
 ## Output ONLY the per-org JSON files + heartbeat
 
