@@ -888,6 +888,45 @@ FROM opportunities.Opportunities;
 WonLostOutcome = 3 (NoBid, which includes every auto-expired row) and
 WonLostOutcome = 4 (Withdrawn) are not competitive outcomes  never count
 them in a win-rate denominator.
+
+## opportunities.MajorProjectsInventory  the BD forward pipeline (MPI)
+Key columns: Id, ProjectName, Province ('BC'/'AB'/US states), MunicipalityName,
+Sector, EstimatedCostCad, EstimatedCostText, Stage, ProjectStage,
+ProjectCategoryName, ProponentName + ProponentCanonicalOrgId,
+ArchitectName + ArchitectCanonicalOrgId, GeneralContractorName + ...OrgId,
+StructuralEngineerName + ...OrgId, SeatStatus, KorSeatOpening,
+KorPipelineTag, RetiredAtUtc + RetiredReason (soft retire  ALWAYS filter
+RetiredAtUtc IS NULL for the active pipeline).
+
+HONING VERDICTS are NOT a column on MPI. Sonnet research verdicts live in
+opportunities.MajorProjectEnrichment.ResultJson (one row per
+MajorProjectsInventoryId + ProviderName; providers: 'ProjectBrief' =
+first-pass research, 'ProjectBriefHoning' = verification pass carrying the
+verdict, 'PrimeConsultantResearch' = prime-consultant identification).
+Two JSON shapes coexist  always read the verdict with:
+
+COALESCE(JSON_VALUE(e.ResultJson, '$.honingPass.verdict'),
+         JSON_VALUE(e.ResultJson, '$.verdict'))
+
+Verdict vocabulary: PURSUE (open opportunity  act), MONITOR (locked but
+relationship-worthy), DEAD (fully awarded/unviable  these MPIs get
+retired), DISCOVER (pre-procurement), DUPLICATE (flagged dup of another
+MPI). Canonical pursuit-list pattern:
+
+SELECT m.Id, m.ProjectName, m.Province, m.EstimatedCostCad
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.MajorProjectEnrichment e
+  ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+WHERE m.RetiredAtUtc IS NULL
+  AND COALESCE(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),
+               JSON_VALUE(e.ResultJson,'$.verdict')) = N'PURSUE'
+ORDER BY m.EstimatedCostCad DESC;
+
+Decomposed intel (keyPeople/actions/signals/risks from the same research)
+is queryable relationally in IntelProjectAction / IntelProjectSignal /
+IntelProjectRisk / IntelProjectKeyPerson (filter their own RetiredAtUtc
+IS NULL; SourceProviderName tells you which research pass produced each
+row).
 ================================================================
 
 KOR KPI METHODOLOGY (canonical formulas — Batch 69)

@@ -282,19 +282,24 @@ ORDER BY StartedAtUtc DESC;";
 
     public async Task<IReadOnlyList<BareBdTargetRow>> GetBareTopTargetsAsync(int top, int minMpiRefs, CancellationToken ct)
     {
+        // BD-Audit-2026-06-09 Minor 16: MpiRefs ranks enrichment-target
+        // priority by ACTIVE pipeline presence — retired MPIs were inflating
+        // the count and steering the Worker at orgs with no live work.
         const string sql = @"
 SELECT TOP (@top) co.Kind, co.Id, co.DisplayName,
   (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
-     WHERE ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id
-        OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id) AS MpiRefs
+     WHERE (ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id
+        OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id)
+       AND RetiredAtUtc IS NULL) AS MpiRefs
 FROM opportunities.CanonicalOrg co
 WHERE co.Kind IN ('Architect','Buyer','Developer','GC','Competitor')
   AND co.RetiredAtUtc IS NULL
   AND co.Website IS NULL
   AND (co.Notes IS NULL OR co.Notes NOT LIKE 'WebSearchNotFound:%')
   AND (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
-         WHERE ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id
-            OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id) >= @minRefs
+         WHERE (ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id
+            OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id)
+           AND RetiredAtUtc IS NULL) >= @minRefs
 ORDER BY MpiRefs DESC;";
 
         await using var con = new SqlConnection(_connectionString);

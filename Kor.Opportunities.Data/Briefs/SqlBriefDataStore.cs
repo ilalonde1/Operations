@@ -124,6 +124,13 @@ WHERE ProponentCanonicalOrgId = @id AND RetiredAtUtc IS NULL;";
                 ownerPipeline = v is null or DBNull ? 0 : Convert.ToInt32(v);
             }
             {
+                // BD-Audit-2026-06-09 M18 (documented rule): "likely architect"
+                // and the KOR-joint counts below are ALL-TIME credential/history
+                // signals — built and retired projects are deliberately included
+                // (the strongest who-designs-for-this-owner signal IS their built
+                // work). Pipeline-scoped counts elsewhere (sector brief, owner
+                // pipeline above) filter RetiredAtUtc — that difference is
+                // intentional, not drift.
                 const string sql = @"
 SELECT TOP 1 ArchitectName, ArchitectCanonicalOrgId, COUNT(*) AS C
 FROM opportunities.MajorProjectsInventory
@@ -144,6 +151,8 @@ ORDER BY COUNT(*) DESC;";
 
         if (likelyArchId.HasValue && korId.HasValue)
         {
+            // All-time KOR-joint history (see M18 rule note above) — includes
+            // built/retired projects by design.
             const string sql = @"
 SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
 WHERE ArchitectCanonicalOrgId = @arch AND StructuralEngineerCanonicalOrgId = @kor;";

@@ -108,7 +108,10 @@ LEFT JOIN opportunities.CanonicalOrg ownerOrg
 LEFT JOIN opportunities.CanonicalOrg architectOrg
     ON architectOrg.Id = mpi.ArchitectCanonicalOrgId
    AND architectOrg.RetiredAtUtc IS NULL
-WHERE mpi.Id = @id;";
+-- BD-Audit-2026-06-09 Minor 16: a pursuit brief must not be generated for
+-- a retired (merged/built/DEAD-verdict) MPI — consistent with the by-Id
+-- read in SqlBriefDataStore.GetProjectBriefAsync.
+WHERE mpi.Id = @id AND mpi.RetiredAtUtc IS NULL;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
