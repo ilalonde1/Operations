@@ -24,13 +24,23 @@ public sealed record SectorCardVm(
     int Dead,
     int Duplicate,
     int NotHoned,
-    int Total)
+    int Total,
+    int FreshCount,
+    int AgingCount,
+    int StaleCount)
 {
     public string PursueDisplay => Pursue.ToString(CultureInfo.InvariantCulture);
     public string MonitorDisplay => Monitor.ToString(CultureInfo.InvariantCulture);
     public string DiscoverDisplay => Discover.ToString(CultureInfo.InvariantCulture);
     public string NotHonedDisplay => NotHoned.ToString(CultureInfo.InvariantCulture);
     public string TotalDisplay => Total.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>BD-UI-Plan decision 6: green &lt;30d, yellow 30-90d, red 90+d.</summary>
+    public string FreshnessDisplay =>
+        $"{FreshCount} fresh · {AgingCount} aging · {StaleCount} stale";
+
+    public bool HasStale => StaleCount > 0;
+    public bool HasAging => AgingCount > 0 && StaleCount == 0;
 }
 
 public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
@@ -108,7 +118,8 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             {
                 Sectors.Add(new SectorCardVm(
                     s.SectorKey, s.SectorTitle, s.PursueUrgent, s.Pursue, s.Monitor,
-                    s.Discover, s.Dead, s.Duplicate, s.NoVerdict, s.Total));
+                    s.Discover, s.Dead, s.Duplicate, s.NoVerdict, s.Total,
+                    s.FreshCount, s.AgingCount, s.StaleCount));
             }
 
             OnPropertyChanged(nameof(HasData));

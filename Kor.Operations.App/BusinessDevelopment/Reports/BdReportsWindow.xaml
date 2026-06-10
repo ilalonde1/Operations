@@ -111,6 +111,27 @@
                                             </TextBlock>
                                         </Border>
                                     </WrapPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <Ellipse Width="9" Height="9" VerticalAlignment="Center" Margin="0,0,6,0">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Fill" Value="#1E8449"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasAging}" Value="True">
+                                                            <Setter Property="Fill" Value="#B7950B"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding HasStale}" Value="True">
+                                                            <Setter Property="Fill" Value="#C0392B"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <TextBlock Text="{Binding FreshnessDisplay}"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>

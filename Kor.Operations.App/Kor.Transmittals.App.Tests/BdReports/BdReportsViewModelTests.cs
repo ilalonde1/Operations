@@ -16,8 +16,8 @@ public sealed class BdReportsViewModelTests
         public Task<IReadOnlyList<SectorVerdictSummary>> GetSectorSummariesAsync(CancellationToken ct)
             => Task.FromResult<IReadOnlyList<SectorVerdictSummary>>(new[]
             {
-                new SectorVerdictSummary("hospitals", "Hospitals & Healthcare", 1, 18, 68, 27, 0, 0, 41, 155),
-                new SectorVerdictSummary("schools", "K-12 Schools", 0, 109, 258, 144, 0, 0, 101, 612),
+                new SectorVerdictSummary("hospitals", "Hospitals & Healthcare", 1, 18, 68, 27, 0, 0, 41, 155, 100, 10, 4),
+                new SectorVerdictSummary("schools", "K-12 Schools", 0, 109, 258, 144, 0, 0, 101, 612, 500, 11, 0),
             });
 
         public Task<IReadOnlyList<PursuitBriefRow>> GetSectorPursuitsAsync(string sectorKey, CancellationToken ct)

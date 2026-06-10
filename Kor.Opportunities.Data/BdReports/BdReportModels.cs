@@ -72,7 +72,11 @@ public sealed record PursuitBriefRow(
     DateTimeOffset? LastRefreshAtUtc,
     bool IsUrgent);
 
-/// <summary>Per-sector verdict counts for the pursuit dashboard cards.</summary>
+/// <summary>
+/// Per-sector verdict counts for the pursuit dashboard cards, plus honing
+/// freshness buckets over the honed rows (BD-UI-Plan decision 6: green
+/// &lt;30 days, yellow 30-90, red 90+ on LastRefreshAtUtc).
+/// </summary>
 public sealed record SectorVerdictSummary(
     string SectorKey,
     string SectorTitle,
@@ -83,4 +87,7 @@ public sealed record SectorVerdictSummary(
     int Dead,
     int Duplicate,
     int NoVerdict,
-    int Total);
+    int Total,
+    int FreshCount,
+    int AgingCount,
+    int StaleCount);

@@ -75,9 +75,36 @@ GROUP BY {VerdictExpr};";
                 }
             }
 
+            // Freshness buckets (decision 6: 30/90-day boundaries) over rows
+            // that HAVE honing data — never-honed rows are NoVerdict, not stale.
+            var freshnessSql = $@"
+SELECT SUM(CASE WHEN e.LastRefreshAtUtc >= DATEADD(day, -30, sysdatetimeoffset()) THEN 1 ELSE 0 END),
+       SUM(CASE WHEN e.LastRefreshAtUtc <  DATEADD(day, -30, sysdatetimeoffset())
+                 AND e.LastRefreshAtUtc >= DATEADD(day, -90, sysdatetimeoffset()) THEN 1 ELSE 0 END),
+       SUM(CASE WHEN e.LastRefreshAtUtc <  DATEADD(day, -90, sysdatetimeoffset())
+                 OR e.LastRefreshAtUtc IS NULL THEN 1 ELSE 0 END)
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.MajorProjectEnrichment e
+  ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+WHERE m.RetiredAtUtc IS NULL
+  AND {def.MpiWhere};";
+
+            int fresh = 0, aging = 0, stale = 0;
+            await using (var freshnessCmd = new SqlCommand(freshnessSql, con) { CommandTimeout = CommandTimeoutSeconds })
+            await using (var fr = await freshnessCmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                if (await fr.ReadAsync(ct).ConfigureAwait(false) && !fr.IsDBNull(0))
+                {
+                    fresh = fr.GetInt32(0);
+                    aging = fr.GetInt32(1);
+                    stale = fr.GetInt32(2);
+                }
+            }
+
             var total = pursueUrgent + pursue + monitor + discover + dead + duplicate + noVerdict;
             summaries.Add(new SectorVerdictSummary(
-                def.Key, def.Title, pursueUrgent, pursue, monitor, discover, dead, duplicate, noVerdict, total));
+                def.Key, def.Title, pursueUrgent, pursue, monitor, discover, dead, duplicate, noVerdict, total,
+                fresh, aging, stale));
         }
 
         return summaries;
