@@ -32,6 +32,18 @@ public sealed class BdReportsViewModelTests
 
         public Task<IReadOnlyList<PursuitBriefRow>> GetCallSheetPoolAsync(CancellationToken ct)
             => GetSectorPursuitsAsync("hospitals", ct);
+
+        public List<(string Category, string Format)> Logged { get; } = new();
+
+        public Task LogReportGeneratedAsync(string category, string format, string generatedByUser, int? recordCount, string? notes, CancellationToken ct)
+        {
+            lock (Logged)
+            {
+                Logged.Add((category, format));
+            }
+
+            return Task.CompletedTask;
+        }
     }
 
     [Fact]

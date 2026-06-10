@@ -150,6 +150,29 @@ WHERE m.RetiredAtUtc IS NULL
             .ToList();
     }
 
+    public async Task LogReportGeneratedAsync(
+        string category,
+        string format,
+        string generatedByUser,
+        int? recordCount,
+        string? notes,
+        CancellationToken ct)
+    {
+        const string sql = @"
+INSERT INTO opportunities.BdReportAuditLog (Category, Format, GeneratedByUser, RecordCount, Notes)
+VALUES (@category, @format, @user, @recordCount, @notes);";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@category", System.Data.SqlDbType.NVarChar, 64).Value = category;
+        cmd.Parameters.Add("@format", System.Data.SqlDbType.NVarChar, 16).Value = format;
+        cmd.Parameters.Add("@user", System.Data.SqlDbType.NVarChar, 256).Value = generatedByUser;
+        cmd.Parameters.Add("@recordCount", System.Data.SqlDbType.Int).Value = (object?)recordCount ?? DBNull.Value;
+        cmd.Parameters.Add("@notes", System.Data.SqlDbType.NVarChar, 500).Value = (object?)notes ?? DBNull.Value;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Both pursuit queries SELECT the same 13 columns in the same order;
     /// honing prose fields come from the C# parser, not JSON_VALUE (4000-char

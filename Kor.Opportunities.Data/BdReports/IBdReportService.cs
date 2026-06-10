@@ -29,4 +29,17 @@ public interface IBdReportService
     /// cost descending.
     /// </summary>
     Task<IReadOnlyList<PursuitBriefRow>> GetCallSheetPoolAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Compliance audit log (opportunities.BdReportAuditLog, migration 121):
+    /// one row per generate. Format is "html" (preview) or "docx" (export).
+    /// Best-effort from the UI — a logging failure must not block the report.
+    /// </summary>
+    Task LogReportGeneratedAsync(
+        string category,
+        string format,
+        string generatedByUser,
+        int? recordCount,
+        string? notes,
+        CancellationToken ct);
 }

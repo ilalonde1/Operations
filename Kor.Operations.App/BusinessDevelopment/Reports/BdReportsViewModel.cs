@@ -44,6 +44,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     private string? _previewHtml;
     private BdReportDocument? _currentDocument;
     private string? _currentDocumentKey;
+    private int _currentRecordCount;
 
     public BdReportsViewModel(IBdReportService reportService, ILogger<BdReportsViewModel>? logger = null)
     {
@@ -152,10 +153,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             var document = SectorReportGenerator.Build(definition, prose, rows, DateTimeOffset.UtcNow);
             _currentDocument = document;
             _currentDocumentKey = sector.Key;
+            _currentRecordCount = rows.Count(r => r.Verdict is not null);
             PreviewHtml = HtmlPreviewBuilder.Render(document);
 
-            var honed = rows.Count(r => r.Verdict is not null);
-            StatusMessage = $"{sector.Title}: {honed} honed of {rows.Count} projects. Preview matches the DOCX export.";
+            LogGenerateBestEffort("html");
+            StatusMessage = $"{sector.Title}: {_currentRecordCount} honed of {rows.Count} projects. Preview matches the DOCX export.";
             return PreviewHtml;
         }
         catch (OperationCanceledException)
@@ -192,9 +194,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             var document = CallSheetReportGenerator.Build(pool, summaries, DateTimeOffset.UtcNow);
             _currentDocument = document;
             _currentDocumentKey = "call-sheet";
+            _currentRecordCount = pool.Count;
             SelectedSector = null;
             PreviewHtml = HtmlPreviewBuilder.Render(document);
 
+            LogGenerateBestEffort("html");
             StatusMessage = $"Call sheet: {pool.Count(r => r.IsUrgent)} URGENT + {pool.Count(r => !r.IsUrgent)} PURSUE across all sectors.";
             return PreviewHtml;
         }
@@ -226,6 +230,34 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
 
     public string SuggestedDocxFileName =>
         $"KOR-{_currentDocumentKey ?? "report"}-BD-Report-{DateTime.Now:yyyy-MM-dd}.docx";
+
+    /// <summary>Audit-log a DOCX export of the current document (call after a successful save).</summary>
+    public void LogDocxExportBestEffort(string? notes = null) => LogGenerateBestEffort("docx", notes);
+
+    // Fire-and-forget by design: BdReportAuditLog is compliance telemetry and
+    // must never block or fail report generation.
+    private void LogGenerateBestEffort(string format, string? notes = null)
+    {
+        var category = _currentDocumentKey;
+        if (category is null)
+        {
+            return;
+        }
+
+        var count = _currentRecordCount;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _reportService.LogReportGeneratedAsync(
+                    category, format, Environment.UserName, count, notes, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "BD Reports: audit log write failed for {Category}/{Format}.", category, format);
+            }
+        });
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

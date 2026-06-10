@@ -132,6 +132,7 @@ public partial class BdReportsWindow : Window
         try
         {
             File.WriteAllBytes(dlg.FileName, _vm.RenderCurrentDocx());
+            _vm.LogDocxExportBestEffort($"Saved as {Path.GetFileName(dlg.FileName)}");
             _vm.StatusMessage = $"Saved {Path.GetFileName(dlg.FileName)}.";
         }
         catch (Exception ex)
