@@ -15,6 +15,10 @@
          endpoint and audit log let operators confirm a redeploy
          actually picked up the new binary. -->
     <Version>0.4.0</Version>
+    <!-- Skip copying Playwright's node driver (66 MB node.exe) — official
+         switch in Microsoft.Playwright.targets. The MCP never scrapes; see
+         the PackageReference exclusions below for the matching constraint. -->
+    <PlaywrightPlatform>none</PlaywrightPlatform>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
@@ -40,6 +44,16 @@
     <!-- Arc 7 / BD-UI-Plan Phase C: BD tools surface the SAME IBdReportService
          queries the WPF BD Reports dashboard uses (no drift by construction). -->
     <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
+    <!-- Kor.Opportunities.Data transitively drags Playwright (77 MB incl.
+         node.exe) + Microsoft.Graph (41 MB) into the publish output. The MCP
+         only calls the BdReports namespace (SqlClient + System.Text.Json) —
+         scraper/Graph code paths never execute here, so their runtime assets
+         are excluded. CONSTRAINT: if the MCP ever starts calling a
+         Kor.Opportunities.Data service that scrapes (Playwright/AngleSharp)
+         or emails (Graph), delete the matching exclusion or it fails at
+         runtime with FileNotFoundException on the assembly. -->
+    <PackageReference Include="Microsoft.Playwright" Version="1.45.1" ExcludeAssets="runtime;native;contentFiles;buildTransitive" />
+    <PackageReference Include="Microsoft.Graph" Version="5.105.0" ExcludeAssets="runtime;native;contentFiles;buildTransitive" />
   </ItemGroup>
   <ItemGroup>
     <None Update="appsettings.json">

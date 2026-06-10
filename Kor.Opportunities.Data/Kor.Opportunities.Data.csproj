@@ -7,6 +7,14 @@
     <AssemblyName>Kor.Opportunities.Data</AssemblyName>
     <NoWarn>$(NoWarn);SA0001</NoWarn>
     <StyleCopEnabled>false</StyleCopEnabled>
+    <!-- Don't emit Playwright's 66 MB node driver from THIS library's output —
+         it was flowing via ProjectReference into every consumer's publish
+         (e.g. the MCP, which never scrapes). Executables that DO scrape (the
+         Worker) still get the driver from their own evaluation of
+         Microsoft.Playwright.targets, which runs transitively in every
+         referencing project with its own default platform. Verified against
+         the Worker publish output when introduced (m-cleanup 2026-06-10). -->
+    <PlaywrightPlatform>none</PlaywrightPlatform>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="AngleSharp" Version="0.17.1" />
