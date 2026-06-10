@@ -259,7 +259,7 @@ internal static class Program
     }
 
     private static readonly object _rejectedLock = new();
-    private static bool _rejectedHeaderWritten;
+    private static bool _rejectedRunMarkerWritten;
 
     private static void AppendRejectedPair(ImportOptions options, long loserId, long survivorId, string loserName, string survivorName, string loserFuzzy, string survivorFuzzy)
     {
@@ -267,10 +267,17 @@ internal static class Program
         Directory.CreateDirectory(options.OutputDirectory);
         lock (_rejectedLock)
         {
-            if (!_rejectedHeaderWritten)
+            // Append-only log: earlier runs' rejects are evidence and must not be
+            // clobbered. Header is written once when the file is first created;
+            // each run that rejects at least one pair adds a "# run <ISO>" marker.
+            if (!_rejectedRunMarkerWritten)
             {
-                File.WriteAllText(path, "LoserId,SurvivorId,LoserName,SurvivorName,LoserFuzzy,SurvivorFuzzy,RejectedAtUtc\r\n");
-                _rejectedHeaderWritten = true;
+                if (!File.Exists(path))
+                {
+                    File.WriteAllText(path, "LoserId,SurvivorId,LoserName,SurvivorName,LoserFuzzy,SurvivorFuzzy,RejectedAtUtc\r\n");
+                }
+                File.AppendAllText(path, $"# run {DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)}\r\n");
+                _rejectedRunMarkerWritten = true;
             }
             var ts = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
             File.AppendAllText(path, $"{loserId},{survivorId},\"{loserName.Replace("\"", "\"\"")}\",\"{survivorName.Replace("\"", "\"\"")}\",{loserFuzzy},{survivorFuzzy},{ts}\r\n");

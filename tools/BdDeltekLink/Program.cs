@@ -19,16 +19,25 @@ internal static class Program
             var config = ImportConfig.FromEnvironment();
             await using var db = new CanonicalOrgLinkStore(config.OpportunitiesDb);
 
-            if (!string.IsNullOrWhiteSpace(options.PairsPath))
-            {
-                var updated = await ApplyReviewedPairsAsync(db, options.PairsPath, CancellationToken.None).ConfigureAwait(false);
-                Console.WriteLine($"BdDeltekLink pairs applied. Rows updated: {updated:N0}");
-                return 0;
-            }
-
             var deltek = new DeltekLookupCache(config);
             var clients = deltek.LoadClients();
             Console.WriteLine($"Loaded {clients.Count:N0} active Deltek client candidate(s).");
+
+            if (!string.IsNullOrWhiteSpace(options.PairsPath))
+            {
+                var result = await ApplyReviewedPairsAsync(db, clients, options, CancellationToken.None).ConfigureAwait(false);
+                Console.WriteLine("BdDeltekLink pairs complete.");
+                Console.WriteLine($"  Applied:                  {result.Applied:N0}");
+                Console.WriteLine($"  Rejected (similarity):    {result.RejectedSimilarity:N0}");
+                Console.WriteLine($"  Rejected (duplicate):     {result.RejectedDuplicate:N0}");
+                Console.WriteLine($"  Skipped (already linked): {result.AlreadyLinked:N0}");
+                if (result.RejectedSimilarity + result.RejectedDuplicate > 0)
+                {
+                    Console.WriteLine($"  Rejected pairs written to {Path.Combine(options.OutputDir, "pairs-rejected.csv")}");
+                }
+
+                return 0;
+            }
 
             var linked = await db.LoadLinkedAsync(CancellationToken.None).ConfigureAwait(false);
             var targets = await db.LoadTargetsAsync(options.Kinds, CancellationToken.None).ConfigureAwait(false);
@@ -117,9 +126,12 @@ internal static class Program
                 linkRows.Add(row);
                 plannedByClientId[top.ClientId] = row;
             }
-            else if (match.TopScore >= 0.85d ||
-                     (match.TopScore >= 1.0d && !twoTokenSafe))
+            else if (match.TopScore >= 0.85d)
             {
+                // Review bucket. Because the auto-link branch above requires BOTH
+                // a perfect score AND twoTokenSafe, this intentionally also catches
+                // exact (score 1.0) single-token matches — a one-token name is too
+                // generic to auto-link, so it goes to human review instead.
                 reviewRows.Add(new ReviewRow(target.Id, target.DisplayName, target.Kind, top.ClientId, top.Name, top.SimilarityScore));
             }
             else
@@ -142,18 +154,31 @@ internal static class Program
         return updated;
     }
 
-    private static async Task<int> ApplyReviewedPairsAsync(CanonicalOrgLinkStore db, string pairsPath, CancellationToken ct)
+    // Guarded reviewed-pairs apply (BD-Audit-2026-06-09 M21): a bad reviewed CSV
+    // (digit-different numbered companies, M+/M3 -> M2) nearly applied wrong
+    // ClendorClientIds on 2026-06-04 because this path trusted the CSV blindly.
+    // Every pair must now clear (a) a name-similarity gate (same normalized
+    // fuzzy similarity the auto path uses; bypassable with --force-dissimilar)
+    // and (b) a duplicate-ClientId guard (one ClientId can only ever link one
+    // canonical org, matching the auto path's plannedByClientId/linked checks).
+    private const double PairsSimilarityThreshold = 0.70d;
+
+    private static async Task<PairsApplyResult> ApplyReviewedPairsAsync(
+        CanonicalOrgLinkStore db,
+        IReadOnlyList<DeltekClientCandidate> clients,
+        LinkOptions options,
+        CancellationToken ct)
     {
+        var pairsPath = options.PairsPath!;
         if (!File.Exists(pairsPath))
         {
             throw new FileNotFoundException("Reviewed pairs CSV not found.", pairsPath);
         }
 
-        var updated = 0;
         var lines = await File.ReadAllLinesAsync(pairsPath, ct).ConfigureAwait(false);
         if (lines.Length == 0)
         {
-            return 0;
+            return new PairsApplyResult(0, 0, 0, 0);
         }
 
         var header = ParseCsvLine(lines[0]);
@@ -164,6 +189,8 @@ internal static class Program
             throw new InvalidOperationException("--pairs CSV must include OrgId and ClendorClientId columns.");
         }
 
+        var pairs = new List<(long OrgId, string ClientId)>();
+        var seenRows = new HashSet<(long, string)>();
         foreach (var line in lines.Skip(1))
         {
             if (string.IsNullOrWhiteSpace(line))
@@ -188,11 +215,105 @@ internal static class Program
                 continue;
             }
 
-            updated += await db.TrySetClendorClientIdAsync(orgId, clientId, ct).ConfigureAwait(false);
+            // Exact duplicate rows (same OrgId + same ClientId) collapse to one.
+            if (seenRows.Add((orgId, clientId.ToUpperInvariant())))
+            {
+                pairs.Add((orgId, clientId));
+            }
         }
 
-        return updated;
+        // Within-file duplicate guard: a ClientId mapped to two DIFFERENT orgs in
+        // the same input file is always an error — reject every such row.
+        var fileDuplicateClientIds = pairs
+            .GroupBy(p => p.ClientId, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Select(p => p.OrgId).Distinct().Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var linked = await db.LoadLinkedAsync(ct).ConfigureAwait(false);
+        var orgNames = await db.LoadDisplayNamesAsync(pairs.Select(p => p.OrgId).Distinct().ToList(), ct).ConfigureAwait(false);
+
+        var deltekNamesById = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var client in clients)
+        {
+            deltekNamesById.TryAdd(client.ClientId, client.Name);
+        }
+
+        var rejectedRows = new List<string>();
+        var applied = 0;
+        var rejectedSimilarity = 0;
+        var rejectedDuplicate = 0;
+        var alreadyLinked = 0;
+
+        foreach (var (orgId, clientId) in pairs)
+        {
+            var orgFound = orgNames.TryGetValue(orgId, out var orgName);
+            var clientFound = deltekNamesById.TryGetValue(clientId, out var deltekName);
+            orgName ??= "(org not found)";
+            deltekName ??= "(client not found among active Deltek candidates)";
+
+            var score = orgFound && clientFound
+                ? DeltekFuzzyMatch.Similarity(
+                    DeltekFuzzyMatch.NormalizeCompany(orgName),
+                    DeltekFuzzyMatch.NormalizeCompany(deltekName))
+                : 0d;
+
+            if (fileDuplicateClientIds.Contains(clientId))
+            {
+                rejectedDuplicate++;
+                rejectedRows.Add(RejectedPairCsvRow(orgId, orgName, clientId, deltekName, score,
+                    "ClientId mapped to more than one OrgId in the input file"));
+                Console.Error.WriteLine($"[REJECT duplicate] OrgId {orgId} '{orgName}' -> {clientId}: ClientId appears multiple times in input mapped to different orgs.");
+                continue;
+            }
+
+            if (linked.TryGetValue(clientId, out var existingOrgIds) && existingOrgIds.Count > 0)
+            {
+                var otherOrgId = existingOrgIds.FirstOrDefault(id => id != orgId, -1L);
+                if (otherOrgId >= 0)
+                {
+                    rejectedDuplicate++;
+                    rejectedRows.Add(RejectedPairCsvRow(orgId, orgName, clientId, deltekName, score,
+                        $"ClientId already linked to a different canonical org (OrgId {otherOrgId}) in the DB"));
+                    Console.Error.WriteLine($"[REJECT duplicate] OrgId {orgId} '{orgName}' -> {clientId}: already linked to OrgId {otherOrgId} in the DB.");
+                    continue;
+                }
+
+                alreadyLinked++;
+                Console.WriteLine($"[SKIP] OrgId {orgId} '{orgName}' -> {clientId}: already linked to this org (no-op).");
+                continue;
+            }
+
+            if (!options.ForceDissimilar && score < PairsSimilarityThreshold)
+            {
+                rejectedSimilarity++;
+                rejectedRows.Add(RejectedPairCsvRow(orgId, orgName, clientId, deltekName, score,
+                    $"Name similarity {score.ToString("0.###", CultureInfo.InvariantCulture)} below {PairsSimilarityThreshold.ToString("0.##", CultureInfo.InvariantCulture)} (pass --force-dissimilar to override)"));
+                Console.Error.WriteLine($"[REJECT similarity] OrgId {orgId} '{orgName}' -> {clientId} '{deltekName}': score {score:0.###} < {PairsSimilarityThreshold:0.##}.");
+                continue;
+            }
+
+            Console.WriteLine($"[PLAN] OrgId {orgId} '{orgName}' -> ClendorClientId {clientId} '{deltekName}' (score {score:0.###})");
+            applied += await db.TrySetClendorClientIdAsync(orgId, clientId, ct).ConfigureAwait(false);
+        }
+
+        Directory.CreateDirectory(options.OutputDir);
+        File.WriteAllLines(
+            Path.Combine(options.OutputDir, "pairs-rejected.csv"),
+            new[] { "OrgId,OrgName,ClendorClientId,DeltekName,Score,Reason" }.Concat(rejectedRows),
+            Encoding.UTF8);
+
+        return new PairsApplyResult(applied, rejectedSimilarity, rejectedDuplicate, alreadyLinked);
     }
+
+    private static string RejectedPairCsvRow(long orgId, string orgName, string clientId, string deltekName, double score, string reason)
+        => CsvRow(
+            orgId.ToString(CultureInfo.InvariantCulture),
+            orgName,
+            clientId,
+            deltekName,
+            score.ToString("0.###", CultureInfo.InvariantCulture),
+            reason);
 
     private static int IndexOfHeader(IReadOnlyList<string> header, string name)
     {
@@ -304,7 +425,9 @@ internal static class Program
     }
 }
 
-internal sealed record LinkOptions(IReadOnlyList<string> Kinds, string OutputDir, bool Commit, string? PairsPath)
+internal sealed record PairsApplyResult(int Applied, int RejectedSimilarity, int RejectedDuplicate, int AlreadyLinked);
+
+internal sealed record LinkOptions(IReadOnlyList<string> Kinds, string OutputDir, bool Commit, string? PairsPath, bool ForceDissimilar)
 {
     public static LinkOptions Parse(string[] args)
     {
@@ -312,6 +435,7 @@ internal sealed record LinkOptions(IReadOnlyList<string> Kinds, string OutputDir
         var outputDir = "output";
         var commit = false;
         string? pairsPath = null;
+        var forceDissimilar = false;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -331,6 +455,11 @@ internal sealed record LinkOptions(IReadOnlyList<string> Kinds, string OutputDir
                     pairsPath = RequireValue(args, ref i, "--pairs");
                     commit = true;
                     break;
+                case "--force-dissimilar":
+                    // Bypasses ONLY the --pairs name-similarity gate; the
+                    // duplicate-ClientId guard can never be bypassed.
+                    forceDissimilar = true;
+                    break;
                 default:
                     throw new ArgumentException($"Unknown argument '{args[i]}'.");
             }
@@ -341,7 +470,7 @@ internal sealed record LinkOptions(IReadOnlyList<string> Kinds, string OutputDir
             throw new ArgumentException("--kinds must contain at least one kind.");
         }
 
-        return new LinkOptions(kinds, outputDir, commit, pairsPath);
+        return new LinkOptions(kinds, outputDir, commit, pairsPath, forceDissimilar);
     }
 
     private static string RequireValue(string[] args, ref int i, string name)
@@ -515,6 +644,39 @@ ORDER BY DisplayName;";
         }
 
         return rows;
+    }
+
+    public async Task<IReadOnlyDictionary<long, string>> LoadDisplayNamesAsync(IReadOnlyCollection<long> ids, CancellationToken ct)
+    {
+        var result = new Dictionary<long, string>();
+        if (ids.Count == 0)
+        {
+            return result;
+        }
+
+        await EnsureOpenAsync(ct).ConfigureAwait(false);
+        foreach (var chunk in ids.Distinct().Chunk(500))
+        {
+            var paramNames = chunk.Select((_, i) => $"@id{i}").ToArray();
+            var sql = $@"
+SELECT Id, DisplayName
+FROM opportunities.CanonicalOrg
+WHERE Id IN ({string.Join(", ", paramNames)});";
+
+            await using var cmd = new SqlCommand(sql, _connection) { CommandTimeout = CommandTimeoutSeconds };
+            for (var i = 0; i < chunk.Length; i++)
+            {
+                cmd.Parameters.Add($"@id{i}", SqlDbType.BigInt).Value = chunk[i];
+            }
+
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                result[r.GetInt64(0)] = r.GetString(1);
+            }
+        }
+
+        return result;
     }
 
     public async Task<int> TrySetClendorClientIdAsync(long orgId, string clendorClientId, CancellationToken ct)
