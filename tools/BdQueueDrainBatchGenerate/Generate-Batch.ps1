@@ -429,6 +429,40 @@ if ($rows.Count -eq 0) {
     exit 1
 }
 
+# Exclude items already queued in OTHER input batches of this queue. The SQL
+# NOT-EXISTS checks only exclude items whose results have LANDED — an item
+# sitting un-drained in an earlier batch file would otherwise be re-selected
+# into every subsequent batch (2026-06-10: needed to top up us-projects-honing
+# without duplicating the still-queued batches 001-003).
+$alreadyQueued = [System.Collections.Generic.HashSet[string]]::new()
+Get-ChildItem (Split-Path $outFile) -Filter 'batch-*.json' -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -ne $outFile } |
+    ForEach-Object {
+        try {
+            $existing = Get-Content $_.FullName -Raw | ConvertFrom-Json
+            foreach ($it in @($existing)) {
+                foreach ($key in 'id', 'personId') {
+                    if ($null -ne $it.$key) { [void]$alreadyQueued.Add([string]$it.$key) }
+                }
+            }
+        } catch { Write-Warning "Could not read existing batch $($_.Name) for dedup: $_" }
+    }
+
+if ($alreadyQueued.Count -gt 0) {
+    $before = $rows.Count
+    $rows = @($rows | Where-Object {
+        $k = if ($null -ne $_['id']) { [string]$_['id'] } elseif ($null -ne $_['personId']) { [string]$_['personId'] } else { $null }
+        $null -eq $k -or -not $alreadyQueued.Contains($k)
+    })
+    if ($rows.Count -lt $before) {
+        Write-Host "  Excluded $($before - $rows.Count) item(s) already queued in sibling batches." -ForegroundColor Yellow
+    }
+    if ($rows.Count -eq 0) {
+        Write-Warning "All candidates are already queued in sibling batches. Nothing to write."
+        exit 1
+    }
+}
+
 $rows | ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 $outFile
 Write-Host ""
 Write-Host "Batch written: $outFile" -ForegroundColor Green
