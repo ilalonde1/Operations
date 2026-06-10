@@ -41,8 +41,10 @@ internal static partial class FinancialMetricDefinitions
                 "WHY IT MATTERS:\n" +
                 "Headline measure of BD productivity. Compared across buyer types it tells you where KOR's pitch lands and where it doesn't.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Won / (Won + Lost). Drafting and Submitted engagements are excluded from both numerator and denominator — they aren't yet a win/loss outcome.",
-            Formula = "WinRate = Won / (Won + Lost)"
+                "Won / (Won + Lost). Drafting and Submitted engagements are excluded from both numerator and denominator — they aren't yet a win/loss outcome.\n\n" +
+                "OPPORTUNITIES-SIDE EXCLUSION (critical):\n" +
+                "When computing win rate from the Opportunities table (Status Won=6 / Lost=7), a loss counts ONLY where WonLostOutcome = Lost (2). The nightly DataRetirementJob auto-expires stale New opportunities to Status=Lost (7) with WonLostOutcome=NoBid (3) and an 'Auto-expired' OutcomeReason — these are no-bids, not competitive losses; Withdrawn (4) is likewise not a competitive loss. Including either in the denominator drastically understates the real win rate.",
+            Formula = "WinRate = Won / (Won + Lost) — Opportunities side: Lost counts only WonLostOutcome=Lost (2); exclude NoBid (3, incl. auto-expired) and Withdrawn (4)"
         };
 
         d["Bd_PursuitDuration"] = new FinancialMetricDefinition
@@ -291,8 +293,8 @@ internal static partial class FinancialMetricDefinitions
                 "Forward Pipeline = PLANNED, not-yet-procured, action-this-year (MajorProjectsInventory — capital-plan and facility-renewal stages).\n" +
                 "A Forward Pipeline project should ideally appear in Latest RFPs once it actually hits procurement.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "TOP 12 MajorProjectsInventory rows WHERE ProjectStage IN ('CapitalPlan', 'FacilityRenewal') AND RetiredAtUtc IS NULL ORDER BY EstimatedCostCad DESC.",
-            Formula = "ForwardPipeline = TOP 12 MPI rows WHERE ProjectStage ∈ {CapitalPlan, FacilityRenewal} ORDER BY EstimatedCostCad DESC"
+                "TOP 12 MajorProjectsInventory rows WHERE (ProjectStage = 'CapitalPlan' OR KorPipelineTag = 'FacilityRenewal') AND RetiredAtUtc IS NULL ORDER BY EstimatedCostCad DESC.",
+            Formula = "ForwardPipeline = TOP 12 MPI rows WHERE ProjectStage = 'CapitalPlan' OR KorPipelineTag = 'FacilityRenewal' ORDER BY EstimatedCostCad DESC"
         };
 
         d["BdDashboard_OpenStructuralSeats"] = new FinancialMetricDefinition

@@ -85,9 +85,9 @@ internal static partial class FinancialMetricDefinitions
                 "Shows delivery progress that has not been converted into invoices yet, and highlights overbilling risk.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
                 "As of the latest closed period, we compute a balance and show three numbers: earned (asset), overbilled (liability), and net = earned - overbilled.\n" +
-                "If PRSummaryMain.Unbilled is populated, Unbilled is used directly. If Unbilled is empty in this environment, we use a proxy balance where Diff = Revenue - Billed (by period), accumulated through the as-of period.\n" +
+                "If PRSummaryMain.Unbilled is populated, Diff = -Unbilled (PRSummaryMain stores Unbilled with Deltek's credit-side sign convention, so the sign is flipped to read positive = earned-not-billed). If Unbilled is empty in this environment (KOR's config — Revenue Generation off), we use a proxy balance where Diff = Billed - Revenue (by period), accumulated through the as-of period. Positive Diff = earned-not-billed; negative Diff = overbilled.\n" +
                 "The Executive Summary card also shows a firmwide proxy breakdown for context.",
-            Formula = "Earned=SUM(max(Diff,0)); Overbilled=SUM(max(-Diff,0)); Net=Earned-Overbilled (Diff=Unbilled or Revenue-Billed)"
+            Formula = "Earned=SUM(max(Diff,0)); Overbilled=SUM(max(-Diff,0)); Net=Earned-Overbilled (Diff = -Unbilled, or Billed-Revenue when Unbilled is empty)"
         };
         d["Exec_WipFirmwide"] = new FinancialMetricDefinition
         {
@@ -99,8 +99,8 @@ internal static partial class FinancialMetricDefinitions
                 "WHY IT MATTERS:\n" +
                 "Provides context so a watchlist that nets to $0 is not misleading.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Across all projects in PRSummaryMain through the latest closed period: Diff = Revenue - Billed. Earned = SUM(max(Diff,0)); Overbilled = SUM(max(-Diff,0)); Net = SUM(Diff).",
-            Formula = "Firmwide cumulative: Earned=SUM(max(Rev-Billed,0)); Overbilled=SUM(max(Billed-Rev,0)); Net=SUM(Rev-Billed)"
+                "Across all projects in PRSummaryMain through the latest closed period: per-project Diff = Billed - Revenue (sign-flipped from Deltek's credit-side storage so positive = earned-not-billed). Earned = SUM(max(Diff,0)); Overbilled = SUM(max(-Diff,0)); Net = SUM(Diff).",
+            Formula = "Firmwide cumulative: Earned=SUM(max(Billed-Rev,0)); Overbilled=SUM(max(Rev-Billed,0)); Net=SUM(Billed-Rev)"
         };
         d["Exec_Backlog"] = new FinancialMetricDefinition
         {

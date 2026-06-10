@@ -748,6 +748,11 @@ Tables (all in opportunities schema):
 When a query reads opportunities.CanonicalOrg directly or joins it as co/c,
 always filter the CanonicalOrg alias with RetiredAtUtc IS NULL. Retired
 canonical orgs are merge/noise rows and should not be surfaced in answers.
+The same soft-retirement lifecycle applies to opportunities.MajorProjectsInventory
+and opportunities.IndustryEvents: a nightly DataRetirementJob stamps RetiredAtUtc
+on built/under-construction/completed/cancelled MPI projects and on past-dated
+events. ANY query reading those tables must also filter RetiredAtUtc IS NULL,
+unless the user explicitly asks about retired/built projects or past events.
 
 opportunities.IntelPerson
   (Id, DisplayName, NormalizedName, Email, Phone, LinkedinUrl, Notes,
@@ -827,6 +832,7 @@ JOIN opportunities.MajorProjectsInventory mpi ON
    mpi.ProponentCanonicalOrgId = co.Id OR mpi.ArchitectCanonicalOrgId = co.Id
 WHERE a.Status = N'Open' AND a.RetiredAtUtc IS NULL
   AND co.RetiredAtUtc IS NULL
+  AND mpi.RetiredAtUtc IS NULL
   AND mpi.Province = N'BC' AND mpi.MunicipalityName LIKE N'%Vancouver%'
 ORDER BY CASE a.SourceConfidence WHEN 'High' THEN 3 WHEN 'Medium' THEN 2 ELSE 1 END DESC,
          a.LastSeenAtUtc DESC;
@@ -849,9 +855,39 @@ ORDER BY r.LastSeenAtUtc DESC;
 
 ### Things to NOT query as intel
 
-- BcRegistry / Registry / KorDeltekHistory / KorCapability provider names 
+- BcRegistry / Registry / KorDeltekHistory / KorCapability provider names
   these are metadata-only, not actionable intel. They appear in
   CanonicalOrgEnrichment but are deliberately NOT decomposed into Intel*.
+
+================================================================
+## opportunities.Opportunities  live RFP/solicitation feed (lifecycle + win rate)
+
+One row per ingested solicitation (CanadaBuys, BCBid, Bonfire/Euna tenants, APC,
+SAM.gov, GraphEmail subscriptions, ...). Lifecycle columns (values verified
+against the OpportunityStatus / WonLostOutcome enums in Kor.Opportunities.Core):
+
+- Status (int): New=1 (triage), Pursuing=4, Submitted=5, Won=6, Lost=7.
+  These five are the ONLY values (2 and 3 are unused gaps from value-preserving
+  renames). NoBid and Withdrawn were folded into Lost  the distinction
+  survives in WonLostOutcome.
+- WonLostOutcome (int, NULL until terminal): Won=1, Lost=2, NoBid=3, Withdrawn=4.
+- Auto-expiry: the nightly DataRetirementJob flips stale Status=1 (New) rows
+  submission deadline passed, OR no deadline and not re-observed within the
+  stale window  to Status=7 (Lost) with WonLostOutcome=3 (NoBid) and an
+  OutcomeReason starting with 'Auto-expired'. As a result, MOST Status=7 rows
+  are auto-expired no-bids, NOT real competitive losses.
+
+HARD RULE  win rate: WinRate = Won / (Won + Lost) MUST exclude auto-expired /
+no-bid rows or it is drastically understated. Count a loss ONLY where
+WonLostOutcome = 2 (Lost). Pattern:
+
+SELECT SUM(CASE WHEN Status = 6 THEN 1 ELSE 0 END) AS Won,
+       SUM(CASE WHEN Status = 7 AND WonLostOutcome = 2 THEN 1 ELSE 0 END) AS Lost
+FROM opportunities.Opportunities;
+
+WonLostOutcome = 3 (NoBid, which includes every auto-expired row) and
+WonLostOutcome = 4 (Withdrawn) are not competitive outcomes  never count
+them in a win-rate denominator.
 ================================================================
 
 KOR KPI METHODOLOGY (canonical formulas — Batch 69)
@@ -865,7 +901,7 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - Net Multiplier (T12mo): USE THE `get_firm_health` TOOL for net-multiplier / firm-health / ZweigGroup-benchmark questions. Wraps KOR's canonical FirmHealthService so numbers match the WPF tiles by construction. Returns netServiceRevenue12Mo, directLaborCost12Mo, netMultiplier, laborMargin12Mo. Benchmarks bundled in the response (ZweigGroup AEC: >= 3.0 healthy, >= 3.5 strong, < 2.5 margin-compressed).
 - Labor Margin (T12mo) [a.k.a. NetProfit12Mo / Exec_NetProfit]: read `get_firm_health` -> laborMargin12Mo. Same NSR and DLC inputs as Net Multiplier, simply subtracted (NSR - DLC) instead of divided. PRE-overhead, NOT bottom-line firm profit. Healthy Net Multiplier of ~3.0 means roughly the first 2x of revenue covers labor + overhead, leaving ~1/3 of NSR as actual profit; so a Labor Margin of $3M typically corresponds to bottom-line ~$1M after overhead.
 - Net Income (T12mo) [GL bottom-line]: aggregates GLSummary by GL group-type via the Income Statement table (income groups 4/8 + expense groups 5/6/7 by default, both signed per GL convention, FlipSign-aware). USA-org rows FX→CAD. This IS bottom-line. Gap between Labor Margin and GL Net Income ≈ the firm's total overhead burden over the trailing 12 months.
-- Utilization (30d): USE THE `get_utilization` TOOL for utilization / billable% / "how utilized are we" / "who is over-or-under-utilized" questions. Wraps KOR's canonical UtilizationService so numbers match the WPF Utilization tile + Staff Util window by construction. Returns firmwide pct + billable hours + total hours + per-project drilldown (50 projects max, sorted by utilizationPct desc). Denominator is ALL hours (PTO + holiday + admin included), so firmwide reading caps well below 100%.
+- Utilization (30d): USE THE `get_utilization` TOOL for utilization / billable% / "how utilized are we" / "who is over-or-under-utilized" questions. Wraps KOR's canonical UtilizationService so numbers match the WPF Utilization tile + Staff Util window by construction. Returns firmwide pct + billable hours + total hours + per-project drilldown (50 projects max, sorted by utilizationPct desc). Denominator is ALL hours (PTO + holiday + admin included), so firmwide reading caps well below 100%. Approved time only — rejected timesheet lines (LineItemApprovalStatus != 'R') are excluded from both numerator and denominator.
 - WIP (Earned): USE THE `get_wip` TOOL for WIP / "earned but not billed" / "overbilled" / "unbilled revenue" questions. Wraps KOR's canonical WipFinancialsService so numbers match the WPF WIP tile by construction. Auto-detects Revenue Generation state: when on, reads PRSummaryMain.Unbilled directly; when off (KOR's config), proxies via (Billed - Revenue) cumulative through asOfPeriod. Returns firmwide Earned/Overbilled/Net + per-project drilldown (50 max, sorted by Overbilled desc then Earned desc). Drilldown rows include resolved projectName + clientName + pm (JOINed via PR + Clendor + EMMain) - surface clientName in narrative, NEVER the raw clientId.
 - Backlog: USE THE `get_backlog` TOOL for backlog / "remaining fee" / "billing runway" / "how much work is unbilled" questions. Wraps KOR's canonical BacklogService so numbers match the WPF Financials window by construction. Firmwide across active projects (PR.Status='A'). TotalFee = PR.Fee + T&M HourlyRevenue extras; FeeBilled = PRSummaryMain posted + LedgerAR unposted overlay (covers Deltek's ~3-month close lag). Backlog = TotalFee - FeeBilled. Returns firmwide totals + per-project drilldown (50 max, sorted by backlog desc) with resolved projectName / clientName / pm. Surface clientName, NEVER raw clientId.
 - Collection Exposure (AR / 90-day Billed): USE THE `get_collection_exposure` TOOL for "collection exposure" / "AR vs recent billing" / "how much AR relative to recent invoicing" questions. Wraps ArFinancialsService + RecentBilledService so AR Outstanding (numerator) and Billed90 (denominator) match the WPF Executive tile by construction. "Billed90" is SUM(PRSummaryMain.Billed) across the latest 3 closed periods - period-anchored, NOT a literal 90-day calendar window (Deltek's ~3-month posting lag would otherwise collapse a strict calendar window to ~$0). Ratio interpretation: 1.0 = AR equals ~3 months of billing; higher = collection lagging.
@@ -882,6 +918,13 @@ These are mirrored from KOR's Financial Metric Dictionary (Kor.Operations.App\Fi
 - YoY Trend: USE THE `get_project_yoy_trend` TOOL for year-over-year portfolio aggregates grouped by project OpenYear. Wraps ProjectAnalyticsService rows + YearTrendService aggregation (same definitions as the WPF YoY Trend tab). Per-year fields: ProjectCount, TotalFee, AvgFee, AvgFeePerHr, AvgNetFeePerHr, WeightedEngPct, WeightedBillablePct, AvgSubPct, WeightedOverheadRatio, TotalArOutstanding. Sorted most-recent year first. Optional maxYears (default 10, max 20). Firmwide billable% by year is not surfaced (MCP layer does not load FirmUtilizationStats today).
 - Firm Utilization by Year: USE THE `get_firm_utilization_by_year` TOOL for multi-year firmwide billable% trend / year-over-year utilization questions. Wraps FirmAnalyticsService — same tkDetail aggregation that drives the WPF YoY Trend tab's FirmBillablePct column. Returns per-year TotalHrs, BillableHrs, BillablePct plus all-time totals. Billable excludes LaborCode 70 (Admin) and 80 (NonBillable) and overhead WBS prefixes ([A-Z]%, 9[A-Z]%, 99%). Approved time only (LineItemApprovalStatus != 'R').
 - Revenue Timeline: USE THE `get_revenue_timeline` TOOL for firmwide revenue trend by period, month-by-month revenue, or posting-lag questions. Aggregates ProjectAnalyticsService.LoadRevenueTimelineSync into a single firmwide series. Per-period fields: revenue (SUM CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue from PRSummaryMain), billed (raw PRSummaryMain.Billed), projectCount. Periods are yyyymm strings; sorted most recent first. Optional maxPeriods (default 24, max 60). Per-project timeline is on get_project_detail.
+
+BD KPIs (mirrored from the same dictionary — Definitions.Bd.cs, Category 'BD'):
+- BD Win Rate (Bd_WinRate): WinRate = Won / (Won + Lost) over RESOLVED pursuits only. CRM side: CrmEngagement.Stage values Won=6 / Lost=7; Drafting (1) and Submitted (3) are excluded from numerator AND denominator. Opportunities side: Status Won=6 / Lost=7, and a loss counts ONLY where WonLostOutcome = 2 (Lost) — exclude WonLostOutcome 3 (NoBid, incl. every nightly auto-expired row) and 4 (Withdrawn) per the HARD RULE in the opportunities.Opportunities schema block above, or the rate is drastically understated.
+- Opportunity Relevance Score (Bd_RelevanceScore): rules-based (RuleBasedOpportunityScoringService) — Score = sum(positive term weights) - sum(negative term weights) + sum(region term weights, pre-signed: in-footprint cities positive, out-of-scope provinces/states negative) + deadline modifier (crunch penalty / feasible bonus) + Deltek-linked bonuses when DeltekClientId is set (RepeatDeveloper always; PriorWork / Recommend / LifetimeFee gated on history). Hard-reject short-circuits (EstimatedValue below MinimumValueThresholdCad, or any HardRejectCountryTerms match) straight to HardRejectScore. Clamped to [MinScore, MaxScore], rounded to 4dp. Every weight/threshold is admin-tunable in ScoringOptions.
+- Opportunity Relevance Tier (Bd_RelevanceTier): HardReject=0, Low=1, Medium=2, High=3 — bucketed from the score by ScoringOptions thresholds (hard-reject paths return HardReject directly).
+- BD Dashboard funnel (opportunities.MajorProjectsInventory; EVERY count filters RetiredAtUtc IS NULL): sector basket = Sector LIKE any of %school% / %hospital% / %health% / %recreation% / %civic% / %cultural% / %universit% / %college% / %library% / %communit% / %education% / %housing% / %institution% / %care% / %fire% / %police%, OR Sector IN ('Civic', 'Tourism / Recreation', 'Government', 'Mixed-use'). Radar = COUNT(basket rows). In Bid Window = basket rows where Stage LIKE '%procure%' / '%RFP%' / '%RFQ%' / '%tender%' / '%design%'. Open Seats = basket rows where SeatStatus = 'likely-open'.
+- BD Dashboard feeds: Latest RFPs = TOP 15 non-closed opportunities.Opportunities ORDER BY CreatedAtUtc DESC. Forward Pipeline = TOP 12 MajorProjectsInventory rows WHERE (ProjectStage = 'CapitalPlan' OR KorPipelineTag = 'FacilityRenewal') AND RetiredAtUtc IS NULL ORDER BY EstimatedCostCad DESC.
 
 If you cite one of these KPIs in a brief / card / answer, name the methodology explicitly ("per KOR's Net Multiplier definition…", "computed via the canonical revenue accounts…") so the result is auditable, not just a number.
 
