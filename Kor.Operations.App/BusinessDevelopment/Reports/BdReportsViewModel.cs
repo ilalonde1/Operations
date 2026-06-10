@@ -86,6 +86,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         new AnalyticalReportVm("exec-overview", "Executive Overview", "Cross-sector headline, heatmap, and strategic synthesis."),
         new AnalyticalReportVm("architect-frequency", "Architect Frequency", "Warm-intro priority list from the structured org graph."),
         new AnalyticalReportVm("competitor-intel", "Competitor Intelligence", "Rival footprint heatmap — where they're entrenched, where to flip."),
+        new AnalyticalReportVm("strategic-relationships", "Strategic Relationships", "Ten compounding targets with contacts and 12-month plans."),
     };
 
     private AnalyticalReportVm? _selectedAnalytical;
@@ -102,6 +103,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         "exec-overview" => BuildExecSummaryPreviewAsync(ct),
         "architect-frequency" => BuildArchitectFrequencyPreviewAsync(ct),
         "competitor-intel" => BuildCompetitorIntelPreviewAsync(ct),
+        "strategic-relationships" => BuildStrategicRelationshipsPreviewAsync(ct),
         _ => Task.FromResult<string?>(null),
     };
 
@@ -366,6 +368,49 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         catch (Exception ex)
         {
             _logger?.LogError(ex, "BD Reports: competitor intelligence generation failed.");
+            StatusMessage = $"Generation failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            IsBusy = false;
+            OnPropertyChanged(nameof(CanExportDocx));
+        }
+    }
+
+    /// <summary>Builds the ten-target strategic relationships deep-dive; DOCX export then matches it.</summary>
+    public async Task<string?> BuildStrategicRelationshipsPreviewAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        StatusMessage = "Generating strategic relationships deep-dive…";
+        try
+        {
+            var targets = new List<(StrategicTargetDefinition, IReadOnlyList<string>)>();
+            foreach (var def in StrategicTargetCatalog.All)
+            {
+                var projects = await _reportService.GetProjectsMentioningAsync(def.LikePattern, 12, ct).ConfigureAwait(true);
+                targets.Add((def, projects));
+            }
+
+            var document = StrategicRelationshipsReportGenerator.Build(targets, DateTimeOffset.UtcNow);
+            _currentDocument = document;
+            _currentDocumentKey = "strategic-relationships";
+            _currentRecordCount = targets.Count;
+            SelectedSector = null;
+            PreviewHtml = HtmlPreviewBuilder.Render(document);
+
+            LogGenerateBestEffort("html");
+            StatusMessage = $"Strategic relationships: {targets.Count} targets, {targets.Sum(t => t.Item2.Count)} live pipeline matches.";
+            return PreviewHtml;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Generation cancelled.";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "BD Reports: strategic relationships generation failed.");
             StatusMessage = $"Generation failed: {ex.Message}";
             return null;
         }

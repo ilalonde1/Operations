@@ -354,6 +354,59 @@ WHERE x.rn <= 6;";
             .ToList();
     }
 
+    public async Task<IReadOnlyList<string>> GetProjectsMentioningAsync(string orgPattern, int take, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(orgPattern))
+        {
+            return Array.Empty<string>();
+        }
+
+        // Catalog patterns can carry OR-alternatives ('Sharon Petty / VCH',
+        // 'Wesgroup|Bosa|...'). The PS builder bound these as one literal LIKE
+        // — which could never match, so those targets silently always rendered
+        // the no-match fallback. Splitting on / and | implements the intent.
+        var terms = orgPattern
+            .Split(new[] { '|', '/' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(t => t.Length >= 3)
+            .Take(8)
+            .ToList();
+        if (terms.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var likeClauses = string.Join(" OR ", terms.Select((_, i) => $"e.ResultJson LIKE @p{i}"));
+        var sql = $@"
+SELECT TOP (@take) m.Id, m.ProjectName, m.Province,
+       COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS NVARCHAR(64)), N'TBD') AS CostDisplay
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.MajorProjectEnrichment e
+  ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+WHERE m.RetiredAtUtc IS NULL
+  AND ({likeClauses})
+ORDER BY CASE WHEN m.EstimatedCostCad IS NULL THEN 1 ELSE 0 END, m.EstimatedCostCad DESC, m.ProjectName;";
+
+        var lines = new List<string>();
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@take", System.Data.SqlDbType.Int).Value = Math.Clamp(take, 1, 50);
+        for (var i = 0; i < terms.Count; i++)
+        {
+            // T-SQL LIKE treats % _ [ as metacharacters — bind each term as a
+            // literal (BD-Audit-2026-06-09 Minor 10 lesson).
+            var escaped = terms[i].Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]");
+            cmd.Parameters.Add($"@p{i}", System.Data.SqlDbType.NVarChar, 256).Value = $"%{escaped}%";
+        }
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            lines.Add($"{r.GetInt64(0)}: {r.GetString(1)} ({r.GetString(2)}) — {r.GetString(3)}");
+        }
+
+        return lines;
+    }
+
     public async Task LogReportGeneratedAsync(
         string category,
         string format,

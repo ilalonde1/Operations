@@ -48,6 +48,14 @@ public interface IBdReportService
     Task<IReadOnlyList<CompetitorFootprintRow>> GetCompetitorFootprintAsync(int take, CancellationToken ct);
 
     /// <summary>
+    /// Active honed MPIs whose honing brief mentions the given org name
+    /// (substring, LIKE-escaped), cost-descending — the strategic-relationships
+    /// builder's project-sample lookup. Returns "Id: Name (Province) — Cost"
+    /// display lines.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetProjectsMentioningAsync(string orgPattern, int take, CancellationToken ct);
+
+    /// <summary>
     /// Compliance audit log (opportunities.BdReportAuditLog, migration 121):
     /// one row per generate. Format is "html" (preview) or "docx" (export).
     /// Best-effort from the UI — a logging failure must not block the report.

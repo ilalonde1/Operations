@@ -51,6 +51,9 @@ public sealed class BdReportsViewModelTests
                     new[] { "10: Sample Tower (BC) — $200M" }),
             });
 
+        public Task<IReadOnlyList<string>> GetProjectsMentioningAsync(string orgPattern, int take, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<string>>(new[] { "6585: Plant and Animal Health Centre (BC) — $400M" });
+
         public List<(string Category, string Format)> Logged { get; } = new();
 
         public Task LogReportGeneratedAsync(string category, string format, string generatedByUser, int? recordCount, string? notes, CancellationToken ct)
