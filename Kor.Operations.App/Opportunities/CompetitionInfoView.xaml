@@ -4,7 +4,8 @@
              xmlns:local="clr-namespace:Kor.Operations.App.Opportunities"
              Background="{StaticResource App.Background}"
              FontFamily="Mulish, Segoe UI"
-             Loaded="View_Loaded">
+             Loaded="View_Loaded"
+             Unloaded="View_Unloaded">
     <UserControl.Resources>
         <local:BoolToCheckConverter x:Key="BoolToCheckConverter"/>
     </UserControl.Resources>

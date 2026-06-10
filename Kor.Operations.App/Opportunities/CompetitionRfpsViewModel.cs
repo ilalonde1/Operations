@@ -12,8 +12,23 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.App.Opportunities;
 
-public sealed class CompetitionRfpsViewModel : INotifyPropertyChanged
+public sealed class CompetitionRfpsViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // BD-Audit-2026-06-09 M16: expose Historical-RFPs filters + result counts to AI.
+    public string ProviderName => "BD Competition RFPs";
+    public bool HasData => true;
+    public string BuildContext()
+        => $"BD Competition Historical RFPs — {Rows.Count:N0} rows shown"
+           + (KorRelevantOnly ? " (KOR-markets filter ON)" : " (all markets)")
+           + (string.IsNullOrWhiteSpace(Keyword) ? "" : $"; keyword: {Keyword}")
+           + (SelectedYear is { } year ? $"; year: {year}" : "")
+           + (string.IsNullOrWhiteSpace(SelectedProvince) ? "" : $"; province: {SelectedProvince}")
+           + (string.IsNullOrWhiteSpace(SelectedStatus) ? "" : $"; status filter: {SelectedStatus}")
+           + (MinEstimatedValue is { } min ? $"; min est. value: {min:C0}" : "")
+           + (HasDocumentsOnly ? "; has-documents only" : "")
+           + $"; status: {StatusText}";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly ICompetitionInfoQueryStore _store;
     private readonly ILogger<CompetitionRfpsViewModel> _logger;
 

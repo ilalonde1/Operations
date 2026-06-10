@@ -10,8 +10,15 @@ using Kor.Opportunities.Data.Ingestion;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
-public sealed class JobRunHistoryViewModel : INotifyPropertyChanged
+public sealed class JobRunHistoryViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // BD-Audit-2026-06-09 M16: expose Job Run History dialog state to AI.
+    public string ProviderName => "BD Job Run History";
+    public bool HasData => true;
+    public string BuildContext()
+        => $"BD Job Run History — job: {JobName}; {Runs.Count:N0} run(s) shown; {StatusMessage}";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly IJobScheduleStore _store;
     private string _statusMessage = "Loading...";
 

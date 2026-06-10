@@ -4,7 +4,8 @@
         Title="{Binding JobName, StringFormat='Job history  {0}'}"
         Width="900"
         Height="500"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        Loaded="Window_Loaded">
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

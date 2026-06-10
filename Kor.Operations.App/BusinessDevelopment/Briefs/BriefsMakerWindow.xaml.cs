@@ -14,8 +14,36 @@ using Kor.Opportunities.Data.Briefs;
 
 namespace Kor.Operations.App.BusinessDevelopment.Briefs;
 
-public partial class BriefsMakerWindow : Window
+public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiContextProvider
 {
+    // BD-Audit-2026-06-09 M16: expose Briefs Maker state to AI. This window is
+    // code-behind only (no VM), so the provider lives on the window itself.
+    // _activeTabIndex mirrors TypeTabs.SelectedIndex so BuildContext never has
+    // to touch a DependencyObject off the UI thread.
+    public string ProviderName => "BD Briefs Maker";
+    public bool HasData => true;
+    public string BuildContext()
+        => _activeTabIndex switch
+        {
+            0 => "BD Briefs Maker — Organization brief tab; selected org: "
+                 + (_selectedOrg is { } org ? $"{org.DisplayName} ({org.Kind}, canonical org id {org.Id})" : "(none)") + ".",
+            1 => "BD Briefs Maker — Region brief tab; region: "
+                 + (_selectedProvince is null ? "(none)" : _selectedProvince + (_selectedCity is null ? "" : $" / {_selectedCity}")) + ".",
+            2 => "BD Briefs Maker — Project brief tab; selected project: "
+                 + (_selectedProject is { } proj ? $"{proj.ProjectName} (id {_selectedProjectId ?? proj.Id})" : "(none)") + ".",
+            3 => "BD Briefs Maker — Person brief tab; selected person: "
+                 + (_selectedPerson is { } person ? $"{person.DisplayName} (id {_selectedPersonId ?? person.IntelPersonId})" : "(none)") + ".",
+            4 => "BD Briefs Maker — Sector brief tab; geography: "
+                 + (_sectorProvince is null ? "(none)" : _sectorProvince + (_sectorCity is null ? "" : $" / {_sectorCity}"))
+                 + (_sectorBuckets.Count > 0 ? $"; sectors: {string.Join(" + ", _sectorBuckets)}" : "")
+                 + (_sectorStructuralTypes.Count > 0 ? $"; structural types: {string.Join(" + ", _sectorStructuralTypes)}" : "") + ".",
+            _ => "BD Briefs Maker — open.",
+        };
+    public string BuildLocalContext() => BuildContext();
+
+    private bool _aiRegistered;
+    private int _activeTabIndex;
+
     private static readonly Dictionary<string, string[]> CityByProvince = new(StringComparer.Ordinal)
     {
         ["BC"] = new[] { "(All cities)", "Vancouver", "GVRD", "Victoria", "Kelowna", "Nanaimo", "Burnaby", "Surrey" },
@@ -66,6 +94,28 @@ public partial class BriefsMakerWindow : Window
         PersonPicker.Search = (q, ct) => _briefStore.SearchPeopleAsync(q, 20, ct);
         PersonPicker.PersonSelected += PersonPicker_PersonSelected;
         TypeTabs.SelectionChanged += TypeTabs_SelectionChanged;
+        _activeTabIndex = TypeTabs.SelectedIndex;
+    }
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        // BD-Audit-2026-06-09 M16: let the AI assistant see the open Briefs Maker.
+        if (!_aiRegistered)
+        {
+            Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Register(this);
+            _aiRegistered = true;
+        }
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        if (_aiRegistered)
+        {
+            Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(this);
+            _aiRegistered = false;
+        }
+
+        base.OnClosed(e);
     }
 
     private async void OrgPicker_OrgSelected(object? sender, long orgId)
@@ -293,6 +343,7 @@ public partial class BriefsMakerWindow : Window
             return;
         }
 
+        _activeTabIndex = TypeTabs.SelectedIndex;
         UpdateGenerateButtonsEnabled();
     }
 

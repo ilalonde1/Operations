@@ -18,6 +18,7 @@ public partial class CompetitionInfoView : UserControl
 {
     private readonly CompetitionInfoViewModel _vm;
     private bool _initialized;
+    private bool _aiRegistered;
 
     public CompetitionInfoView(CompetitionInfoViewModel vm)
     {
@@ -28,6 +29,19 @@ public partial class CompetitionInfoView : UserControl
 
     private async void View_Loaded(object sender, RoutedEventArgs e)
     {
+        // BD-Audit-2026-06-09 M16: let the AI assistant see the inline Competition
+        // Info view while it is hosted in BdWorkspaceWindow. Same Loaded/Unloaded
+        // pattern as OrgDossierView; separate flag from _initialized because the
+        // workspace can unload/reload this view without re-running InitializeAsync.
+        if (!_aiRegistered)
+        {
+            var builder = AppServices.Get<AppAiContextBuilder>();
+            builder.Register(_vm);
+            builder.Register(_vm.Rfps);
+            builder.Register(_vm.Awards);
+            _aiRegistered = true;
+        }
+
         if (_initialized)
         {
             return;
@@ -53,6 +67,18 @@ public partial class CompetitionInfoView : UserControl
                 "Competition Info — Load Failed",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+        }
+    }
+
+    private void View_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (_aiRegistered)
+        {
+            var builder = AppServices.Get<AppAiContextBuilder>();
+            builder.Unregister(_vm);
+            builder.Unregister(_vm.Rfps);
+            builder.Unregister(_vm.Awards);
+            _aiRegistered = false;
         }
     }
 

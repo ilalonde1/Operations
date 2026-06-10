@@ -3,6 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using Kor.Operations.Services;
 
 namespace Kor.Operations.App.Opportunities;
 
@@ -10,6 +11,7 @@ public partial class ScoringProfileWindow : Window
 {
     private readonly ScoringProfileViewModel _vm;
     private CancellationTokenSource? _cts;
+    private bool _aiRegistered;
 
     public ScoringProfileWindow(ScoringProfileViewModel vm)
     {
@@ -25,11 +27,24 @@ public partial class ScoringProfileWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        // BD-Audit-2026-06-09 M16: let the AI assistant see the open scoring profile.
+        if (!_aiRegistered)
+        {
+            AppServices.Get<AppAiContextBuilder>().Register(_vm);
+            _aiRegistered = true;
+        }
+
         _vm.Load();
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        if (_aiRegistered)
+        {
+            AppServices.Get<AppAiContextBuilder>().Unregister(_vm);
+            _aiRegistered = false;
+        }
+
         _cts?.Cancel();
         _cts?.Dispose();
         base.OnClosed(e);

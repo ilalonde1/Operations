@@ -18,8 +18,18 @@ namespace Kor.Operations.App.Opportunities;
 /// <see cref="IScoringOptionsAccessor"/>, and runs the all-rows recalc that
 /// applies the new profile to every existing <see cref="Opportunity"/>.
 /// </summary>
-public sealed class ScoringProfileViewModel : ObservableObject
+public sealed class ScoringProfileViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
 {
+    // BD-Audit-2026-06-09 M16: expose Scoring Profile editor state to AI.
+    public string ProviderName => "BD Scoring Profile";
+    public bool HasData => PositiveTerms.Count > 0 || NegativeTerms.Count > 0 || RegionTerms.Count > 0;
+    public string BuildContext()
+        => $"BD Scoring Profile editor — {PositiveTerms.Count:N0} positive terms, {NegativeTerms.Count:N0} negative terms, {RegionTerms.Count:N0} region terms"
+           + $"; score range {MinScore}–{MaxScore}, hard-reject at {HardRejectScore}"
+           + $"; tier thresholds high/medium/low: {TierHighThreshold}/{TierMediumThreshold}/{TierLowThreshold}"
+           + $"; min value threshold: {MinimumValueThresholdCad:C0}; status: {StatusMessage}";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly IScoringOptionsAccessor _accessor;
     private readonly IOpportunityScoringService _scoringService;
     private readonly IOpportunityStore _store;

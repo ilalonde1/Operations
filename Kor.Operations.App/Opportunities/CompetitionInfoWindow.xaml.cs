@@ -12,6 +12,7 @@ namespace Kor.Operations.App.Opportunities;
 public partial class CompetitionInfoWindow : Window
 {
     private readonly CompetitionInfoViewModel _vm;
+    private bool _aiRegistered;
 
     public CompetitionInfoWindow(CompetitionInfoViewModel vm)
     {
@@ -22,6 +23,18 @@ public partial class CompetitionInfoWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        // BD-Audit-2026-06-09 M16: let the AI assistant see the open Competition
+        // Info screen. The composite VM carries the summary; the Rfps/Awards
+        // children carry per-tab filter state.
+        if (!_aiRegistered)
+        {
+            var builder = AppServices.Get<AppAiContextBuilder>();
+            builder.Register(_vm);
+            builder.Register(_vm.Rfps);
+            builder.Register(_vm.Awards);
+            _aiRegistered = true;
+        }
+
         // T2.002 audit fix (2026-05-30): async void Loaded with no try/catch
         // surfaces any header-load or initialize failure through the WPF
         // dispatcher exception path, crashing the app. Bound the failure to
@@ -43,6 +56,20 @@ public partial class CompetitionInfoWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        if (_aiRegistered)
+        {
+            var builder = AppServices.Get<AppAiContextBuilder>();
+            builder.Unregister(_vm);
+            builder.Unregister(_vm.Rfps);
+            builder.Unregister(_vm.Awards);
+            _aiRegistered = false;
+        }
+
+        base.OnClosed(e);
     }
 
     private void OpenAboutSources_Click(object sender, RoutedEventArgs e)

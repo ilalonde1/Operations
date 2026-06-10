@@ -12,8 +12,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.App.Opportunities;
 
-public sealed class CompetitionAwardsViewModel : INotifyPropertyChanged
+public sealed class CompetitionAwardsViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // BD-Audit-2026-06-09 M16: expose Awards-archive filters + result counts to AI.
+    public string ProviderName => "BD Competition Awards";
+    public bool HasData => true;
+    public string BuildContext()
+        => $"BD Competition Awards archive — {Rows.Count:N0} rows shown"
+           + (CompetesWithKorOnly ? " (competes-with-KOR filter ON)" : " (all vendors)")
+           + (string.IsNullOrWhiteSpace(Keyword) ? "" : $"; keyword: {Keyword}")
+           + (string.IsNullOrWhiteSpace(Vendor) ? "" : $"; vendor: {Vendor}")
+           + (SelectedYear is { } year ? $"; year: {year}" : "")
+           + (string.IsNullOrWhiteSpace(SelectedSource) ? "" : $"; source: {SelectedSource}")
+           + (MinContractValue is { } min ? $"; min value: {min:C0}" : "")
+           + $"; status: {StatusText}";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly IAwardQueryStore _store;
     private readonly ILogger<CompetitionAwardsViewModel> _logger;
 

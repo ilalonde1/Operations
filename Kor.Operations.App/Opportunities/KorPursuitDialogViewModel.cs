@@ -10,8 +10,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.App.Opportunities;
 
-public sealed class KorPursuitDialogViewModel : INotifyPropertyChanged
+public sealed class KorPursuitDialogViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // BD-Audit-2026-06-09 M16: expose Add-to-KOR-Pursuits dialog state to AI.
+    public string ProviderName => "BD Add Pursuit Dialog";
+    public bool HasData => true;
+    public string BuildContext()
+        => $"BD Add-to-KOR-Pursuits dialog open — title: {(string.IsNullOrWhiteSpace(_title) ? "(blank)" : _title)}; buyer: {(string.IsNullOrWhiteSpace(_buyerName) ? "(blank)" : _buyerName)}; stage: {Stage}"
+           + (string.IsNullOrWhiteSpace(OurRole) ? "" : $"; role: {OurRole}")
+           + (BidFee is { } fee ? $"; bid fee: {fee:N0} {BidCurrency}" : "")
+           + (DueDate is { } due ? $"; due: {due:yyyy-MM-dd}" : "")
+           + ".";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly IKorPursuitStore _store;
     private readonly ILogger<KorPursuitDialogViewModel> _logger;
 

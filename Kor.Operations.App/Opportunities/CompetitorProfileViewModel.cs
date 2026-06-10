@@ -11,8 +11,20 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.App.Opportunities;
 
-public sealed class CompetitorProfileViewModel : INotifyPropertyChanged
+public sealed class CompetitorProfileViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // BD-Audit-2026-06-09 M16: expose Competitor Profile state to AI.
+    public string ProviderName => "BD Competitor Profile";
+    public bool HasData => !string.IsNullOrWhiteSpace(_vendorName);
+    public string BuildContext()
+        => $"BD Competitor Profile — vendor: {VendorName}; lifetime: {LifetimeCount:N0} contracts / {LifetimeValue:C0}"
+           + (HasOverlapScore ? $"; KOR overlap: {OverlapScoreText} ({OverlapScoreLabel})" : "")
+           + (AgentCompetesWithKor is { } competes ? $"; competes with KOR: {(competes ? "yes" : "no")}" : "")
+           + (string.IsNullOrWhiteSpace(AgentVendorHqLocation) ? "" : $"; HQ: {AgentVendorHqLocation}")
+           + (string.IsNullOrWhiteSpace(AgentVendorSizeBand) ? "" : $"; size: {AgentVendorSizeBand}")
+           + $"; top buyers shown: {TopBuyers.Count:N0}; recent wins shown: {RecentWins.Count:N0}.";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly IVendorAnalyticsStore _store;
     private readonly ILogger<CompetitorProfileViewModel> _logger;
 

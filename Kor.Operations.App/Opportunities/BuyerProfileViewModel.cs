@@ -11,8 +11,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.App.Opportunities;
 
-public sealed class BuyerProfileViewModel : INotifyPropertyChanged
+public sealed class BuyerProfileViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // BD-Audit-2026-06-09 M16: expose Buyer Profile state to AI.
+    public string ProviderName => "BD Buyer Profile";
+    public bool HasData => !string.IsNullOrWhiteSpace(_buyerName);
+    public string BuildContext()
+        => $"BD Buyer Profile — buyer: {BuyerName}; lifetime: {LifetimeCount:N0} contracts / {LifetimeValue:C0}"
+           + (AvgContractValue is { } avg ? $"; avg contract: {avg:C0}" : "")
+           + (string.IsNullOrWhiteSpace(ActiveWindow) ? "" : $"; active window: {ActiveWindow}")
+           + $"; top winners shown: {TopWinners.Count:N0}; recent awards shown: {RecentAwards.Count:N0}.";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly IVendorAnalyticsStore _store;
     private readonly ILogger<BuyerProfileViewModel> _logger;
 

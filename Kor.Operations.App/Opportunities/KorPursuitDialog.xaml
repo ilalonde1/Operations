@@ -5,7 +5,8 @@
         Width="640" Height="700"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
-        FontFamily="Mulish, Segoe UI">
+        FontFamily="Mulish, Segoe UI"
+        Loaded="Window_Loaded">
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

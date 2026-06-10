@@ -14,8 +14,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.App.Opportunities;
 
-public sealed class HistoricalOpportunityDetailViewModel : INotifyPropertyChanged
+public sealed class HistoricalOpportunityDetailViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
+    // BD-Audit-2026-06-09 M16: expose Historical Opportunity Detail state to AI.
+    public string ProviderName => "BD Historical Opportunity Detail";
+    public bool HasData => _detail is not null;
+    public string BuildContext()
+        => _detail is null
+            ? "BD Historical Opportunity Detail — nothing loaded."
+            : $"BD Historical Opportunity Detail — {_detail.Name} (key {_detail.OpportunityKey}, id {_detail.Id}); buyer: {_detail.BuyerName}"
+              + (string.IsNullOrWhiteSpace(_detail.ProjectProvince) ? "" : $"; province: {_detail.ProjectProvince}")
+              + (string.IsNullOrWhiteSpace(_detail.HistoricalStatus) ? "" : $"; status: {_detail.HistoricalStatus}")
+              + (_detail.EstimatedValue is { } est ? $"; est. value: {est:C0}" : "")
+              + (string.IsNullOrWhiteSpace(_detail.AwardedToOrganization) ? "" : $"; awarded to: {_detail.AwardedToOrganization}")
+              + $"; documents: {DocumentSummary}.";
+    public string BuildLocalContext() => BuildContext();
+
     private readonly ICompetitionInfoQueryStore _opportunityStore;
     private readonly IHistoricalOpportunityDocumentStore _documentStore;
     private readonly ILogger<HistoricalOpportunityDetailViewModel> _logger;
