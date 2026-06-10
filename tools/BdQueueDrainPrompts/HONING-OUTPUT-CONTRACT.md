@@ -13,7 +13,7 @@ Every drain output file is an envelope:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": "1.0",
   "kind": "project-brief-refresh",
   "generatedAtUtc": "2026-06-09T18:30:00Z",
   "items": [ { ...item... } ]

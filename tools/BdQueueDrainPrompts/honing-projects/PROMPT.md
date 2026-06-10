@@ -87,7 +87,7 @@ Each batch row is:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": "1.0",
   "kind": "project-brief-refresh",
   "generatedAtUtc": "...",
   "items": [
