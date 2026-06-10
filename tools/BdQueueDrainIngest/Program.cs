@@ -137,6 +137,7 @@ var nextRefresh = DateTimeOffset.UtcNow.AddDays(90);
 var providerMarker = new Regex(@"\[\s*providerName\s*:\s*([A-Za-z0-9._-]+)\s*\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 var orgProviderWhitelist = new[] { "FirmNarrative", "FirmNarrativeHoning" };
 var projectProviderWhitelist = new[] { "ProjectBrief", "ProjectBriefHoning", "PrimeConsultantResearch" };
+var personProviderWhitelist = new[] { "PersonBrief", "PersonBriefHoning" };
 
 // BD-Audit-2026-06-09 m6c: honing/special providers refresh on the batch
 // generator's 30-day staleness window, not the 90-day first-pass default —
@@ -280,9 +281,25 @@ foreach (var file in files)
         switch (kind)
         {
             case "people":
-                await sp.GetRequiredService<IPersonRefreshChokepoint>()
-                    .RecordAttemptAsync(id, result, nextRefresh, CancellationToken.None)
-                    .ConfigureAwait(false);
+                {
+                    // BD-Audit-2026-06-09 M11: honing-people output used to be
+                    // un-ingestable — the chokepoint hardcoded the PersonBrief
+                    // prefix, so PersonBriefHoning-{id} could never be written;
+                    // the batch generator re-selected the same people forever
+                    // and honing payloads overwrote first-pass briefs. Resolve
+                    // the provider like the other kinds and pass the prefix.
+                    var (personProvider, personReject) = ResolveDrainProvider(briefJson, "PersonBrief", personProviderWhitelist);
+                    if (personProvider is null)
+                    {
+                        log.LogWarning("Skipping {Name}: {Reason}.", name, personReject);
+                        skipped++;
+                        continue;
+                    }
+
+                    await sp.GetRequiredService<IPersonRefreshChokepoint>()
+                        .RecordAttemptAsync(id, result, NextRefreshFor(personProvider), CancellationToken.None, personProvider)
+                        .ConfigureAwait(false);
+                }
                 break;
             case "orgs":
                 {

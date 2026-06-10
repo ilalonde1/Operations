@@ -21,9 +21,18 @@ namespace Kor.Opportunities.Data.People;
 /// </summary>
 public interface IPersonRefreshChokepoint
 {
+    /// <param name="providerPrefix">
+    /// Synthetic-provider prefix for the archive row + intel tagging.
+    /// Default "PersonBrief" (first-pass). The drain honing path passes
+    /// "PersonBriefHoning" — BD-Audit-2026-06-09 M11: with the prefix
+    /// hardcoded, honing output could never write PersonBriefHoning-{id},
+    /// so the batch generator re-selected the same people forever and the
+    /// honing payload overwrote the first-pass brief.
+    /// </param>
     Task RecordAttemptAsync(
         long intelPersonId,
         EnrichmentResult result,
         DateTimeOffset nextRefreshAtUtc,
-        CancellationToken ct);
+        CancellationToken ct,
+        string providerPrefix = "PersonBrief");
 }

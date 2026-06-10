@@ -158,7 +158,22 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
         var costText = Read(row, headers, "Cost", "Estimated Cost ($ Million)", "Estimated Cost");
         var website = Read(row, headers, "Website");
         var details = Read(row, headers, "Details");
+        var sector = Read(row, headers, "Sector");
         var sourceUrl = !string.IsNullOrWhiteSpace(website) ? website : source.BaseUrl;
+
+        // BD-Audit-2026-06-09 Mi13: this provider writes MPI directly (it emits
+        // no candidates, so IngestionService's StructuralRelevanceGate never
+        // sees these rows) and used to admit every AB sector — pipelines,
+        // highways, oil & gas — and mint canonical orgs for their proponents.
+        // Evaluate the same gate here, BEFORE the resolver can create an org.
+        var relevance = StructuralRelevanceGate.Evaluate(
+            projectName,
+            string.Join(" — ", new[] { sector, details }.Where(s => !string.IsNullOrWhiteSpace(s))!),
+            proponent);
+        if (!relevance.Keep)
+        {
+            return null; // surfaces in the run summary as skipped
+        }
         var canonicalId = !string.IsNullOrWhiteSpace(proponent)
             ? await _canonicalResolver.ResolveAsync(
                 proponent,
@@ -176,7 +191,7 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
             Province,
             BuildSourceKey(projectName, municipality, proponent),
             projectName,
-            Read(row, headers, "Sector"),
+            sector,
             Read(row, headers, "Type", "SubSector"),
             ParseCost(costText),
             costText,

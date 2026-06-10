@@ -1,3 +1,16 @@
+-- *** WARNING — DO NOT COPY THIS FILE AS A TEMPLATE (BD-Audit-2026-06-09 C2/Mi4) ***
+-- This applied migration contains two defect patterns, preserved here only as
+-- history of what ran:
+--   1. The IntelProject* DELETE block keyed on @StaleEnrichments uses
+--      CanonicalOrgEnrichment ids against columns whose FK is
+--      MajorProjectEnrichment(Id) — TWO SEPARATE IDENTITY SPACES. Numeric
+--      collisions silently deleted unrelated project intel. The deletes were
+--      also unnecessary for FK integrity. (Recovered 2026-06-09 by re-
+--      extraction; tools/BdHoningIntelBackfill.)
+--   2. The repoint-then-delete sequence destroys loser intel the repoint just
+--      moved. Migration-path merges must REPOINT and keep (see m115-m119).
+-- The ArchitectDisplacementBriefs handling also violates its unique index on
+-- multi-loser clusters. Use the m115/m116/m119 templates for any new merge.
 SET XACT_ABORT ON;
 GO
 

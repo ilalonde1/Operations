@@ -55,10 +55,11 @@ public sealed class SqlPersonRefreshChokepoint : IPersonRefreshChokepoint
         long intelPersonId,
         EnrichmentResult result,
         DateTimeOffset nextRefreshAtUtc,
-        CancellationToken ct)
+        CancellationToken ct,
+        string providerPrefix = "PersonBrief")
     {
         var refreshStartTime = DateTimeOffset.UtcNow;
-        var providerName = BuildProviderName(intelPersonId);
+        var providerName = BuildProviderName(providerPrefix, intelPersonId);
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -163,8 +164,8 @@ public sealed class SqlPersonRefreshChokepoint : IPersonRefreshChokepoint
         }
     }
 
-    private static string BuildProviderName(long intelPersonId) =>
-        "PersonBrief-" + intelPersonId.ToString(CultureInfo.InvariantCulture);
+    private static string BuildProviderName(string providerPrefix, long intelPersonId) =>
+        providerPrefix + "-" + intelPersonId.ToString(CultureInfo.InvariantCulture);
 
     private static async Task<PersonLookup?> LookupPersonAsync(
         SqlConnection con,

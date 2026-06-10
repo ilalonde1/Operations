@@ -61,6 +61,18 @@ param(
 
     [string] $OutDir,
 
+    # BD-Audit-2026-06-09 M11: the honing kinds used to require the first-pass
+    # enrichment to be <= 14 days old — anything first-passed 15+ days ago
+    # silently left the honing pool until its 90-day refresh. 90 days matches
+    # the first-pass refresh cycle, so nothing falls in the gap.
+    [int] $FirstPassMaxAgeDays = 90,
+
+    # BD-Audit-2026-06-09 M11: sector honing queues (bc-ab-hospitals-honing
+    # etc.) need a category-filtered candidate set; without this the only
+    # option was the banned ad-hoc SQL. Matches MPI.ProjectCategoryName
+    # (honing-projects kind only).
+    [string] $Category,
+
     [string] $ConnectionString = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
 )
 
@@ -88,6 +100,8 @@ try {
     $cmd = $conn.CreateCommand()
     $cmd.CommandTimeout = 180
     $cmd.Parameters.AddWithValue("@take", $Take) | Out-Null
+    $cmd.Parameters.AddWithValue("@firstPassMaxAgeDays", $FirstPassMaxAgeDays) | Out-Null
+    $cmd.Parameters.AddWithValue("@category", $(if ([string]::IsNullOrWhiteSpace($Category)) { [DBNull]::Value } else { $Category })) | Out-Null
 
     switch ($Kind) {
         'orgs' {
@@ -287,7 +301,7 @@ WITH TopTargets AS (
         (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m WHERE m.RetiredAtUtc IS NULL AND (m.ArchitectCanonicalOrgId=co.Id OR m.GeneralContractorCanonicalOrgId=co.Id OR m.StructuralEngineerCanonicalOrgId=co.Id OR m.ProponentCanonicalOrgId=co.Id)) AS BdValue
     FROM opportunities.CanonicalOrg co
     INNER JOIN opportunities.CanonicalOrgEnrichment e ON e.CanonicalOrgId = co.Id AND e.ProviderName = N'FirmNarrative'
-        AND e.LastRefreshAtUtc >= DATEADD(DAY, -14, sysdatetimeoffset())
+        AND e.LastRefreshAtUtc >= DATEADD(DAY, -@firstPassMaxAgeDays, sysdatetimeoffset())
         AND e.Status = N'Ok'
     WHERE co.RetiredAtUtc IS NULL
       AND co.Kind IN (N'Architect', N'Competitor', N'KorClient', N'Buyer', N'Developer')
@@ -328,7 +342,7 @@ WITH TopTargets AS (
     INNER JOIN opportunities.CanonicalOrg co ON co.Id = pa.CanonicalOrgId AND co.RetiredAtUtc IS NULL
     INNER JOIN opportunities.CanonicalOrgEnrichment e ON e.CanonicalOrgId = pa.CanonicalOrgId
         AND e.ProviderName = N'PersonBrief-' + CAST(p.Id AS NVARCHAR(20))
-        AND e.LastRefreshAtUtc >= DATEADD(DAY, -14, sysdatetimeoffset())
+        AND e.LastRefreshAtUtc >= DATEADD(DAY, -@firstPassMaxAgeDays, sysdatetimeoffset())
         AND e.Status = N'Ok'
     WHERE p.RetiredAtUtc IS NULL
       AND p.DisplayName IS NOT NULL AND LEN(p.DisplayName) >= 6
@@ -368,9 +382,10 @@ WITH TopTargets AS (
         (SELECT COUNT(*) FROM opportunities.IntelProjectAction a WHERE a.MajorProjectsInventoryId = m.Id) AS ActionCount
     FROM opportunities.MajorProjectsInventory m
     INNER JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBrief'
-        AND e.LastRefreshAtUtc >= DATEADD(DAY, -14, sysdatetimeoffset())
+        AND e.LastRefreshAtUtc >= DATEADD(DAY, -@firstPassMaxAgeDays, sysdatetimeoffset())
     WHERE m.RetiredAtUtc IS NULL
       AND m.ProjectStage IN (N'CapitalPlan',N'Planned',N'Concept',N'Design',N'Permitting',N'Procurement',N'Approved',N'Announced')
+      AND (@category IS NULL OR m.ProjectCategoryName = @category)
       AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
       AND NOT EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment eh WHERE eh.MajorProjectsInventoryId = m.Id AND eh.ProviderName = N'ProjectBriefHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()))
     ORDER BY ActionCount DESC, m.EstimatedCostCad DESC
