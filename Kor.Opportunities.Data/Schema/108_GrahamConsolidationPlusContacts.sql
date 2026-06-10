@@ -7,6 +7,21 @@ GO
 -- a strategic KOR relationship target. Pre-construction Manager
 -- Alex Trifunov (Vancouver office) is the named entry point.
 --
+-- *** RECONCILIATION NOTE (BD-Audit-2026-06-09 C6) ***
+-- The originally-committed version of this file could not execute: its
+-- IntelPerson/Affiliation INSERTs put the string 'Manual-2026-06-08' into
+-- SourceEnrichmentId (BIGINT NOT NULL, FK -> CanonicalOrgEnrichment).
+-- Prod evidence (IntelPerson 7844: SourceEnrichmentId=72036,
+-- SourceConfidence='Manual-2026-06-08'; CanonicalOrgEnrichment 72036 =
+-- 'PersonBrief-AlexTrifunov' on org 8361, created 2026-06-08 16:20) shows
+-- an ad-hoc-fixed variant ran ONLY Steps 5-7: it created an anchor
+-- enrichment row first and bound its real id, and moved the 'Manual-…'
+-- tag to SourceConfidence. Steps 1-4 (FK repoint + retire of dupes
+-- 72237/72457) NEVER took effect — both orgs were still ACTIVE on
+-- 2026-06-09. This file is hereby reconciled to the executed form
+-- (Steps 6-7 rewritten below); migration 119 completes the unfinished
+-- Steps 1-4 consolidation with the full FK template.
+--
 -- Steps:
 -- 1. Pick canonical survivor = Id 8361 "GRAHAM Design Builders LP"
 -- 2. Repoint FKs from dirty-suffixed dupes (72237, 72457) to survivor
@@ -87,16 +102,35 @@ SET Kind = N'GC',
 WHERE Id = @survivor;
 PRINT 'Survivor 8361 updated with BD context';
 
--- Step 6: Mint Alex Trifunov as IntelPerson with affiliation
+-- Step 6: Mint Alex Trifunov as IntelPerson with affiliation.
+-- (Reconciled form: SourceEnrichmentId is BIGINT NOT NULL FK ->
+-- CanonicalOrgEnrichment, so an anchor enrichment row is created first
+-- and its real id bound; the 'Manual-2026-06-08' tag lives in
+-- SourceConfidence. Matches what executed in prod on 2026-06-08.)
 DECLARE @personId BIGINT;
+DECLARE @anchorEnrichmentId BIGINT;
 DECLARE @now DATETIMEOFFSET = sysdatetimeoffset();
+
+SELECT @anchorEnrichmentId = Id FROM opportunities.CanonicalOrgEnrichment
+WHERE CanonicalOrgId = @survivor AND ProviderName = N'PersonBrief-AlexTrifunov';
+IF @anchorEnrichmentId IS NULL
+BEGIN
+    INSERT INTO opportunities.CanonicalOrgEnrichment
+        (CanonicalOrgId, ProviderName, Status, LastRefreshAtUtc, LastAttemptAtUtc, Attempts, ResultJson, Notes, CreatedAtUtc, UpdatedAtUtc)
+    VALUES
+        (@survivor, N'PersonBrief-AlexTrifunov', N'ok', @now, @now, 1, NULL,
+         N'Anchor enrichment for manually-researched contact Alex Trifunov (m108).', @now, @now);
+    SET @anchorEnrichmentId = SCOPE_IDENTITY();
+    PRINT 'Anchor enrichment created with Id: ' + CONVERT(varchar(20), @anchorEnrichmentId);
+END
+
 IF NOT EXISTS (SELECT 1 FROM opportunities.IntelPerson WHERE DisplayName = N'Alex Trifunov' AND RetiredAtUtc IS NULL)
 BEGIN
     INSERT INTO opportunities.IntelPerson (DisplayName, NormalizedName, FirstSeenAtUtc, LastSeenAtUtc, CreatedAtUtc, UpdatedAtUtc, Notes, Corroborations,
         SourceProviderName, SourceEnrichmentId, SourceConfidence, NaturalKey)
     VALUES (N'Alex Trifunov', N'alex trifunov', @now, @now, @now, @now,
         N'Pre-construction Manager, Graham Design Builders LP, Vancouver office. Strategic KOR BD target — pre-construction role is where structural sub-consultant conversations happen on Graham''s $3.4B+ BC healthcare pipeline. Added 2026-06-08 from web research (Glassdoor + Graham web profiles).',
-        1, N'KorBdResearch-Manual-2026-06-08', N'Manual-2026-06-08', 0.80, N'alex-trifunov-graham-vancouver');
+        1, N'KorBdResearch-Manual-2026-06-08', @anchorEnrichmentId, N'Manual-2026-06-08', N'alex-trifunov-graham-vancouver');
     SET @personId = SCOPE_IDENTITY();
     PRINT 'Alex Trifunov IntelPerson minted with Id: ' + CONVERT(varchar(20), @personId);
 END
@@ -113,7 +147,7 @@ BEGIN
     INSERT INTO opportunities.IntelPersonAffiliation (IntelPersonId, CanonicalOrgId, Title, IsCurrent, FirstSeenAtUtc, LastSeenAtUtc, CreatedAtUtc, UpdatedAtUtc,
         SourceProviderName, SourceEnrichmentId, SourceConfidence)
     VALUES (@personId, @survivor, N'Pre-construction Manager (Vancouver office)', 1, @now, @now, @now, @now,
-        N'KorBdResearch-Manual-2026-06-08', N'Manual-2026-06-08', 0.80);
+        N'KorBdResearch-Manual-2026-06-08', @anchorEnrichmentId, N'Manual-2026-06-08');
     PRINT 'Alex Trifunov affiliation to Graham added';
 END
 ELSE
