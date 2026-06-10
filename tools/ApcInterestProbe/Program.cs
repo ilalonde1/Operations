@@ -42,11 +42,13 @@ var bodyText = await page.Locator("body").InnerTextAsync();
 // Find any element whose text mentions interest / supplier / bidder / plan-taker.
 // Return as a JSON-serialized string so we can re-parse and emit cleanly.
 var matchesJson = await page.EvaluateAsync<string>(@"() => {
-    const isRelevant = t => /interest|supplier|bidder|plan.taker|view document|attach/i.test(t);
+    const isRelevant = t => /interest|supplier|bidder|plan.taker|view document|attach|partner|list|view bus/i.test(t);
     const out = [];
-    document.querySelectorAll('button, a, h1, h2, h3, h4, h5, span, label, [role=button]').forEach(el => {
+    document.querySelectorAll('a, button, [role=button]').forEach(el => {
         const t = (el.innerText || el.textContent || '').trim();
-        if (t && isRelevant(t) && t.length < 300) {
+        const href = el.getAttribute('href') || '';
+        // Match either by text OR by URL pattern
+        if ((t && isRelevant(t) && t.length < 300) || /interest|partner|list-of|businesses/i.test(href)) {
             out.push({
                 tag: el.tagName,
                 text: t.substring(0, 200),
@@ -204,6 +206,40 @@ foreach (var selector in new[] {
 var headers = await page.EvaluateAsync<string[]>(@"() =>
     Array.from(document.querySelectorAll('h1, h2, h3')).slice(0, 30).map(h => (h.innerText || '').trim()).filter(t => t)");
 
+// CanadaBuys-specific: hunt for partner-list section text + structure
+var canadaBuysPartnerJson = await page.EvaluateAsync<string>(@"() => {
+    // Find section by heading text 'Partner with another business' or similar
+    const headings = Array.from(document.querySelectorAll('h2, h3, h4'));
+    const partnerHeading = headings.find(h => /partner with|interested in partnering|businesses interested/i.test((h.innerText || '').trim()));
+    if (!partnerHeading) return JSON.stringify({ ok: false, reason: 'no partner heading' });
+
+    // Walk to the section's container
+    let container = partnerHeading.parentElement || partnerHeading;
+    for (let i=0;i<4 && container.parentElement;i++) {
+        if (container.children.length >= 3) break;
+        container = container.parentElement;
+    }
+    const sectionHtml = (container.innerHTML || '').substring(0, 6000);
+    const sectionText = (container.innerText || '').substring(0, 4000);
+
+    // Look for actual firm-name rows
+    const candidates = [];
+    container.querySelectorAll('table tr, ul li, div[class*=business], div[class*=company]').forEach(el => {
+        const t = (el.innerText || '').trim();
+        if (t && t.length > 2 && t.length < 400 && !/partner with|are you interested|add your company|this list does not/i.test(t)) {
+            candidates.push({ tag: el.tagName, cls: el.className || '', text: t.substring(0, 300) });
+        }
+    });
+
+    return JSON.stringify({
+        ok: true,
+        headingText: (partnerHeading.innerText || '').trim(),
+        sectionTextSample: sectionText,
+        sectionHtmlSample: sectionHtml,
+        candidateRows: candidates.slice(0, 40),
+    });
+}");
+
 await page.ScreenshotAsync(new PageScreenshotOptions { Path = screenshotPath, FullPage = true });
 
 var result = new
@@ -215,10 +251,11 @@ var result = new
     interestedSuppliersSectionText = interestedSectionText,
     interestedSuppliersSectionHtmlSample = interestedSectionHtml,
     interestedSuppliersListExtracted = interestedListJson,
+    canadaBuysPartnerSection = canadaBuysPartnerJson,
     clickedSelector,
     panelTextSample = panelText,
     panelHtmlSample = panelHtml,
-    bodyTextSnippet = bodyText.Length > 2000 ? bodyText.Substring(0, 2000) : bodyText,
+    bodyTextSnippet = bodyText.Length > 12000 ? bodyText.Substring(0, 12000) : bodyText,
     screenshotPath,
 };
 

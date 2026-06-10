@@ -1,55 +1,544 @@
 ﻿OrgId,OrgName,Kind,ClendorClientId,DeltekName,Score
+70593,1348773 BC Ltd,Developer,cd6f2b97f41c46628af085cb1e453520,1308773 BC Ltd.,0.9
+63780,2BR Construction Inc,GC,CL00215,JBR Construction Ltd.,0.938
+52393,4C ARCHITECTURE INC.,Architect,1eb46e6182054a008b12246b04607bb6,JC Architecture Inc,0.933
+1502,A&R Construction,GC,CL00215,JBR Construction Ltd.,0.875
+33063,ABT Construction Ltd,GC,A96D2444E42C41DB974C1E9CEB5FDAEF,Alto Construction,0.882
 38959,ACDF Architecture,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.882
+66684,Ace Architecture Inc.,Architect,CL00074,CEI Architecture,0.875
 69626,ACI Architects Inc.,Architect,8AD125221437485BBD9B90F70204D7C2,Amu Architects,0.857
 69653,ADC Management LP,Buyer,CL00347,RDG Management Ltd.,0.857
+54931,Aecon Group Inc.,GC,cb9c6a61623a4f709fcb6e7061cfd9b4,Apcon group,0.909
+70594,AFC Construction,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+41742,AFW CONSTRUCTION LTD,GC,CL00218,JFO Construction Inc.,0.875
+50140,AKIN CONSTRUCTION INC.,GC,474c38bd9cf54d5a8a68c38df6bcb9c9,Align Construction Ltd,0.889
 70644,Alan Lowe Architect Inc.,Architect,CL00517,Alan Brown Architect,0.85
+23795,Aldon Construction Ltd.,GC,474c38bd9cf54d5a8a68c38df6bcb9c9,Align Construction Ltd,0.889
+23936,Aliia Developments Ltd,Developer,CL00013,Appia Developments Ltd.,0.889
+41920,ALLAN CONSTRUCTION,GC,474c38bd9cf54d5a8a68c38df6bcb9c9,Align Construction Ltd,0.889
+44569,ALLTERRA CONSTRUCTION LTD,GC,AF372D07CF4C4735AC7DAB31631F4AA3,Canterra Construction Ltd.,0.857
+2218,Alps Construction Ltd.,GC,A96D2444E42C41DB974C1E9CEB5FDAEF,Alto Construction,0.882
+51887,ALTI CONSTRUCTION LTD.,GC,A96D2444E42C41DB974C1E9CEB5FDAEF,Alto Construction,0.941
+54631,Altos Properties Corporation,Developer,CL00008,Alston Properties Ltd.,0.882
+28048,Ampco Construction Ltd,GC,CL00653,Amacon Construction Ltd.,0.895
+2364,AMRON Construction,GC,CL00653,Amacon Construction Ltd.,0.895
+46200,ANAN CONSTRUCTION,GC,CA0F1EB949014FBC9C89135B12271A45,Juan Construction Ltd.,0.882
+68154,AND ARCHITECTURE INC.,Architect,CL00147,FNDA Architecture Inc.,0.882
+2419,Ant Construction Ltd.,GC,A96D2444E42C41DB974C1E9CEB5FDAEF,Alto Construction,0.882
+24409,APG Construction,GC,CL00068,Capo Construction Inc.,0.882
 68970,AR Architecture,Architect,CL00465,Co.lab Architecture,0.875
 68904,ARC Architects,Architect,8AD125221437485BBD9B90F70204D7C2,Amu Architects,0.857
-2579,Architecture49 Inc.,Architect,CL00450,Architecture 49,0.933
+2647,Artec Construction Ltd,GC,CL00530,Bartek Construction Ltd.,0.895
+2747,Asty Construction Inc.,GC,A96D2444E42C41DB974C1E9CEB5FDAEF,Alto Construction,0.882
+2751,ATB Architecture,Architect,CL00465,Co.lab Architecture,0.875
+31335,Avc Construction LTD.,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+20415,Averra Developments Inc,Developer,CL00679,Canterra Developments Ltd.,0.857
+2881,AVID ARCHITECTURE INC.,Architect,CL00430,VIA Architecture Inc.,0.882
+50505,AVL Construction Group Inc,GC,CL00209,ITC Construction Group,0.864
+22272,AVS Developments Ltd,Developer,6f521d70c8f3438eb36d2514b309ebe2,Dava Developments Ltd.,0.882
+20929,Axium Development Ltd,Developer,F272BF133F0D47459EDD9B04BBC53D23,Aekum Development,0.882
+48434,B & S Construction Ltd,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.882
+48276,B and S Construction,GC,0a90590b8fc64aaca4d97170a82a4ae9,Chandos Construction,0.85
+29586,B2 Architecture,Architect,5AD40D65095A4BFB9FAA98D39DECFDED,M2 Architecture Inc.,0.933
+2978,Balcon Construction,GC,d5b5d6a08c3841bfbe8b943f710a97b2,Goldcon Construction,0.85
+29777,Baoly Construction Ltd.,GC,CL00045,Bold Construction,0.889
+28147,Barmani Construction,GC,2698acb7e9074f63a9ddf332efab35dc,Martini Construction Ltd.,0.85
+54558,Barnett Dembeck Architects,Architect,CL00453,Barnett Dembek Architects,0.962
+41429,BARRA CONSTRUCTION LTD,GC,CL00267,Matra Construction Inc.,0.889
+44803,BARTRAM CONSTRUCTION INC,GC,CL00530,Bartek Construction Ltd.,0.85
+23998,Bata Developments Inc.,Developer,6f521d70c8f3438eb36d2514b309ebe2,Dava Developments Ltd.,0.882
+37748,Bayon Contracting,GC,c8b03e011f1144938c921d6baeced2ba,Baydo Contracting Corporation,0.882
+53379,BCM Developments Ltd.,Developer,CL00032,Beck Developments Inc.,0.882
+65860,BCW ARCHITECTS,Architect,CL00452,B+H Architects,0.857
+49946,BD CONSTRUCTION LTD.,GC,CL00533,Bird Construction,0.882
+51059,BECC CONSTRUCTION GROUP LTD.,GC,CL00209,ITC Construction Group,0.87
+44658,BEL-TECH CONSTRUCTION LTD,GC,B8DB0DB76D374A15A05AD52C4A472C4F,Reotech Construction Ltd.,0.857
+52614,BEMA Construction,GC,C8238101B51E49B7BCDC046AEBC6C42E,Femo Construction Ltd.,0.882
+28448,Benmark Construction,GC,a0d92200fd2745ec97f2216113860425,Westmark Construction,0.857
 70015,Berry Architecture and Associates,Architect,500bbbf39b724d979b50f3eca443e445,Berry Architecture + Associates Ltd.,0.879
+59383,BGHJ ARCHITECTS,Architect,CL00452,B+H Architects,0.867
+69162,BIE Engineering Corp,Competitor,5D74922D8E154C98A15445E125E44728,Liew Engineering Ltd.,0.875
+3324,Binnie & Associates Ltd.,Architect,7F5FC69AA92A4B81AF865A9C41CD9109,RF Binnie & Associates Ltd.,0.85
+29482,Birmingham & Wood Architects and Planners,Architect,CL00456,Birmingham & Wood Architects & Planners,0.897
 70599,BJK Architecture Inc.,Architect,e67d66d431ff4d048f38825f63014e2a,BHA Architecture Inc.,0.875
+3508,Boald Construction,GC,CL00045,Bold Construction,0.944
+49429,Bogdan's Construction Ltd.,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.85
+32155,Bogner Kerrisdale Development Inc.,Developer,CL00672,Bogner Kerrisdale Developments Inc.,0.967
+28392,Bolar Development Group Ltd,Developer,CL00044,Bogner Development Group,0.875
+21425,BONA DEVELOPMENT LTD,Developer,CL00047,Bosa Development Corp.,0.938
+30543,Boniface Oleksiuk Politano Architects (BOP),Architect,8F14D9B8DFA94767AC9D6C361CFCF8EA,Boniface Oleksiuk Politano Architects,0.902
+3550,Boom Construction Ltd.,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.882
+70902,Bosa Construction,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.882
+41477,BOURGON CONSTRUCTION,GC,25527906151E457AA55F513ADB47A6EA,Boston Construction Corp.,0.85
+29066,BOVO Development Ltd.,Developer,CL00047,Bosa Development Corp.,0.875
+3624,Boy Construction,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.882
 68762,BR2 Architecture Inc.,Architect,e67d66d431ff4d048f38825f63014e2a,BHA Architecture Inc.,0.875
-70679,CEI Architecture Associates Inc.,Architect,651F513E2AEF464EA7378F32AAAC4459,"HDR Architecture Associates, Inc.",0.889
+31997,Buland Construction Ltd,GC,ECC73EB173BD40B0BA0764342CE2751A,"Holland Construction, Inc.",0.85
+26419,BÜRO47 architecture inc,Architect,7DAB1A117B424F8AB30D6CD56E3723AC,Buro47 Architecture Inc.,0.947
+50211,Buus Construction Ltd.,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.882
+34512,C & C Construction,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.938
+46828,C&S Construction,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+72021,C.E.S. Engineering,Competitor,3217C09A4C04498BBF81F4B25C6EFBF8,Creus Engineering,0.882
+4021,Caliber Construction,GC,DCC6AEAB0DCD48A1B7ABAD7A8FE6D9C1,Waller Construction Ltd.,0.85
+4097,CANA Construction,GC,CL00068,Capo Construction Inc.,0.882
+29581,Canado Construction,GC,0a90590b8fc64aaca4d97170a82a4ae9,Chandos Construction,0.85
+41030,CANDEV CONSTRUCTION INC.,GC,0a90590b8fc64aaca4d97170a82a4ae9,Chandos Construction,0.85
+48608,Canor construction Inc,GC,CL00068,Capo Construction Inc.,0.889
+54677,Capital Regional Housing Corp.,Developer,b19ef55866c54bbd96123e12c0fcfffd,Capital Region Housing Corporation,0.917
+4320,CAPSA Construction Ltd,GC,CL00068,Capo Construction Inc.,0.889
+4328,Carbon Construction Inc.,GC,f33fdcde10c147d7a8a9301060ba3dbf,Castone Construction,0.85
+71167,Carlson Construction,GC,CL00104,Dawson Construction Inc.,0.85
+51224,CARMONT CONSTRUCTION LTD.,GC,f33fdcde10c147d7a8a9301060ba3dbf,Castone Construction,0.85
+36156,Case Construction ltd,GC,CL00068,Capo Construction Inc.,0.882
+4444,Casman Construction Ltd,GC,f33fdcde10c147d7a8a9301060ba3dbf,Castone Construction,0.85
+28435,Catalyst Community Development Society,Developer,97133B08A60042168EF524301D38196B,Catalyst Community Developments Society,0.974
+52222,CCL PROPERTIES LTD,Developer,CL00031,BCL Properties Ltd.,0.929
+50838,CCR CONSTRUCTION LTD.,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+70867,CDA Architects,Architect,CL00495,NSDA Architects,0.867
+4545,CE Developments Ltd,Developer,CFBF577DDA444BEFB2D0526F6C7077D7,66 Developments Ltd.,0.867
+40872,Centron Construction Group,GC,15ce807eb6264f7994484e31bc52f703,Grantson Construction Group,0.852
+21760,Chaston Construction Corporation,GC,f33fdcde10c147d7a8a9301060ba3dbf,Castone Construction,0.9
+26465,Chernhoff Thompson Architects,Architect,71B4D18C2C5940EB9E906CEFB533928A,Chernoff Thompson Architects,0.966
+54462,CHP Architects,Architect,CL00452,B+H Architects,0.857
+4917,CKB Construction Ltd,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+54950,"Clark Construction Group, LLC",GC,C6882BDE220F4D34AEB1E9DB6D666E0F,Peak Construction Group,0.875
+26643,Clavo Construction Ltd.,GC,CL00068,Capo Construction Inc.,0.889
+49803,CLP Construction,GC,CL00068,Capo Construction Inc.,0.882
+43755,CMF CONSTRUCTION LTD,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+22509,CMGT Construction Group Ltd.,GC,A9229D783F2647CCB4C5EBC6B0165A2D,Scott Construction Group,0.875
 69273,CMTC Architects,Architect,5EA71CBBF09442108C5B1D5E6074FBF1,HMC Architects,0.867
+25420,CMTC Construction Inc.,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.882
+5096,Colliers International,Developer,CL00088,Colliers International,1
+49829,COLLYER CONSTRUCTION LTD,GC,DCC6AEAB0DCD48A1B7ABAD7A8FE6D9C1,Waller Construction Ltd.,0.85
+32288,Conspro Development Inc,Developer,CL00075,Censorio Development Corp.,0.85
+43166,COPCAN CONTRACTING LTD.,GC,CE79ACEBCDEF4EB3BEA97997AF017259,Gocan Contracting Ltd.,0.889
+43959,CORCON CONSTRUCTION LTD,GC,8E77ECC2735F4124808CE5F35EFD170A,Norson Construction Ltd.,0.895
+52986,COSS CONSTRUCTION,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.882
 68840,County of Los Angeles,Buyer,1E9FA981D07E4504B136CBF5C848F86E,City of Los Angeles,0.857
+42820,COX'S CONSTRUCTION,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.882
+35777,cpc construction ltd,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.938
+5501,CPI Construction Ltd,GC,CL00068,Capo Construction Inc.,0.882
+49456,CRAINS' CONSTRUCTION LTD.,GC,94067256f0e947e787cc815503a411cc,Traine Construction Ltd.,0.895
+49020,CREANDO CONSTRUCTION,GC,0a90590b8fc64aaca4d97170a82a4ae9,Chandos Construction,0.85
+31457,Cresca Construction LTD,GC,831F38EEAF274EB88BF32BD134733056,Chriscan Construction,0.857
+20061,Cressey Developments,Developer,7091c33ab06e4eb0815500db9ff7b4a4,Cressey Development Corporation,0.95
+42429,CRT CONSTRUCTION INC,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+25885,CY Developments Ltd.,Developer,CFBF577DDA444BEFB2D0526F6C7077D7,66 Developments Ltd.,0.867
+5753,D.S. Construction,GC,CL00221,KDS Construction Ltd.,0.875
+70022,DA Architects,Architect,CL00512,WA Architects,0.923
+43846,DAD ARCHITECTURE DESIGN INC,Architect,9D935154A8CD458FAE085B74C2636CF2,TKA+D Architecture + Design Inc.,0.917
+49763,Dado Construction Ltd,GC,CL00068,Capo Construction Inc.,0.882
+43853,DALCON CONSTRUCTION LTD.,GC,CL00104,Dawson Construction Inc.,0.895
+37277,Dana Developments Ltd,Developer,6f521d70c8f3438eb36d2514b309ebe2,Dava Developments Ltd.,0.941
 70590,D-Architecture,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.933
+71765,DB Construction Services Ltd,GC,c58ae72a9c0f4bcda854fd6ce3b6d149,BLT Construction Services,0.88
+5897,DBD Construction Ltd.,GC,CL00215,JBR Construction Ltd.,0.875
+23266,DBS Construction Ltd.,GC,CL00215,JBR Construction Ltd.,0.875
+33284,DC Architecture,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.933
+67272,DCA ARCHITECTS INC.,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.857
+19367,DCYT Architecture,Architect,B59A5B5C097D48428143A4C6B2B5725C,DYS Architecture,0.882
+52824,DEAD ON CONSTRUCTION,GC,CL00104,Dawson Construction Inc.,0.85
+35132,Delburn Developments inc.,Developer,CL00181,Holborn Developments Ltd.,0.85
+5989,DelCor Construction Ltd,GC,CL00238,Ledcor Construction Inc.,0.895
+26981,Dema Developments Ltd.,Developer,6f521d70c8f3438eb36d2514b309ebe2,Dava Developments Ltd.,0.882
+44237,DENCO CONSTRUCTION,GC,CL00271,Menko Construction Ltd.,0.889
+54374,DGBK Architects,Architect,CL00154,GBL Architects Inc.,0.867
+70884,DGS Construction,GC,55ca4bf7e626429685e0a0910785aed3,Edge Construction,0.882
 873,District of West Vancouver,Buyer,CL00562,District of North Vancouver,0.852
+34305,DKJ Development,Developer,0f23005de8e94e268524b33451189e7b,BDK Development Corporation,0.867
+20511,DLP Architecture Inc,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.875
+22042,Dod Construction Ltd.,GC,CL00045,Bold Construction,0.882
+6435,DSC Construction Inc,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+49919,Duotech Construction inc.,GC,B8DB0DB76D374A15A05AD52C4A472C4F,Reotech Construction Ltd.,0.9
+32365,Duric Development Ltd.,Developer,867DAC8BF7A54B268E1903B5BA0B76B6,Dura Development,0.882
+70798,Durwest Construction,GC,CL00355,Forewest Construction Ltd.,0.857
+50302,EA DEVELOPMENTS LTD.,Developer,CFBF577DDA444BEFB2D0526F6C7077D7,66 Developments Ltd.,0.867
+49058,EAL CONSTRUCTION LTD,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.882
+47225,Eastway Construction Inc.,GC,9084A4679FF04F9783B56D522B86BF46,Parkway Construction,0.85
+31354,Easydone Construction,GC,f33fdcde10c147d7a8a9301060ba3dbf,Castone Construction,0.857
+22296,Eco construction inc.,GC,CL00137,Etro Construction Limited,0.882
+48312,ECP Construction inc.,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+26694,EDSO Construction Ltd.,GC,55ca4bf7e626429685e0a0910785aed3,Edge Construction,0.882
+35032,EEE Construction LTD.,GC,55ca4bf7e626429685e0a0910785aed3,Edge Construction,0.882
+49507,EGL Construction inc.,GC,55ca4bf7e626429685e0a0910785aed3,Edge Construction,0.882
+51664,EHR CONTRACTING LTD,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
+69927,Elan Construction,GC,CA0F1EB949014FBC9C89135B12271A45,Juan Construction Ltd.,0.882
+23459,Enduring Construction,GC,dba4c983101e4990b63d51dedff18e1c,Enduro Construction,0.857
+7083,ERA Architects Inc,Architect,CL00471,EFG Architects,0.857
+7085,Erb Construction Ltd,GC,CL00137,Etro Construction Limited,0.882
+7098,ERK CONSTRUCTION INC,GC,CL00137,Etro Construction Limited,0.882
+52774,ESP CONSTRUCTION LTD,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.875
+48248,ETKA Construction Inc.,GC,CL00137,Etro Construction Limited,0.882
+7158,Etrec Construction,GC,CL00137,Etro Construction Limited,0.889
+35713,euoi studio architecture + design,Architect,9e660f3c0ab1403fbe70127a672c3672,Leckie Studio Architecture + Design,0.879
+44756,EXO CONSTRUCTION GROUP,GC,C6882BDE220F4D34AEB1E9DB6D666E0F,Peak Construction Group,0.87
+54436,F. Adab Architect Inc.,Architect,11673464c18f4bf996624244ecc4121f,F. Adab Architects Inc.,0.941
 70546,Faction Projects Inc.,Architect,D284E007D7C54FE69E5551250D206B60,Action Projects Inc.,0.938
+69199,Farmer Construction Ltd.,GC,5f509bde526345f992665b1d80f80b75,Forme Construction,0.895
+54656,Faulkner Browns Architects,Architect,8ba9e82560164c52b47ada7d5d56d3c5,FaulknerBrowns Architecture Inc,0.852
+7350,"FBM Architecture, Interior Design, Planning",Architect,CL00486,Kasian Architecture Interior Design & Planning,0.864
 68887,Flad Architects,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.867
 70626,Fold Architecture Inc.,Architect,312C54275B714411AA5F27AB04830856,FORT Architecture,0.882
+31437,Fort Construction,GC,5f509bde526345f992665b1d80f80b75,Forme Construction,0.889
+30027,Fougere Architecture Inc,Architect,77145fdc1eaf468b8ef60e323c5d9a3f,Longpre Architecture,0.85
+33395,Fox Architecture Inc.,Architect,312C54275B714411AA5F27AB04830856,FORT Architecture,0.882
+19882,Frahcl Architecture,Architect,CL00568,Francl Architecture Inc,0.947
+59229,FSA ARCHITECTURE INC,Architect,ef099f2766a9422fb42689f531d2d1ee,Flat Architecture Inc.,0.882
+7843,FWBA Architects,Architect,CL00512,WA Architects,0.867
+7844,G & J CONSTRUCTION GROUP LP,GC,CL00209,ITC Construction Group,0.864
 70655,G3 Architecture Inc.,Architect,2E9A6A188399401D93EB759F14ABE7C0,GEC Architecture,0.875
+38062,G3 Construction Group Ltd.,GC,CL00209,ITC Construction Group,0.864
+31958,Gaia Developments Ltd,Developer,6f521d70c8f3438eb36d2514b309ebe2,Dava Developments Ltd.,0.882
+30091,Gara Construction Ltd.,GC,CL00267,Matra Construction Inc.,0.889
+49823,Gardon Construction Ltd,GC,d5b5d6a08c3841bfbe8b943f710a97b2,Goldcon Construction,0.85
+42897,GARIAN CONSTRUCTION,GC,179A90AA83B74BEE97C34422EF1648B8,Zarin Construction,0.895
+47628,Gateway Construction,GC,9084A4679FF04F9783B56D522B86BF46,Parkway Construction,0.85
+7966,Gator Construction Group Inc.,GC,15ce807eb6264f7994484e31bc52f703,Grantson Construction Group,0.852
 68892,GBD Architects,Architect,CL00154,GBL Architects Inc.,0.929
+7972,GC Construction,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+63839,GCP CONSTRUCTION,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+8131,gh3 architecture,Architect,e67d66d431ff4d048f38825f63014e2a,BHA Architecture Inc.,0.875
+61619,GNS Architects,Architect,CL00154,GBL Architects Inc.,0.857
+8277,Goldwing Construction Inc,GC,d5b5d6a08c3841bfbe8b943f710a97b2,Goldcon Construction,0.857
+23240,Good Construction,GC,CL00045,Bold Construction,0.882
+63774,GR7 Architecture Inc,Architect,2E9A6A188399401D93EB759F14ABE7C0,GEC Architecture,0.875
+40911,GRAEBECK CONSTRUCTION LTD.,GC,e5821f3d16884567a6fdf5b3f6cb4fb0,Greyback Construction Ltd,0.857
+55734,GRC ARCHITECTS INC.,Architect,CL00154,GBL Architects Inc.,0.857
+23866,Greenscape Developments Ltd,Developer,5916b41d5f484390b02f0fa0ff3f1d1c,Greenstone Developments Ltd.,0.87
+33210,Greentown Development Ltd,Developer,CL00164,Green Oak Development,0.857
 8538,Group2 Architecture Interior Design Ltd.,Architect,672F104537E045BAA2AD60ADC0925A3F,Noble Architecture + Interior Design,0.857
+8558,GS Construction,GC,CL00221,KDS Construction Ltd.,0.875
+8568,GSL Construction Ltd,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.875
+54746,GTA Architecture,Architect,CL00158,GGA - Architecture,0.938
+30665,Gustavson Wiley Architects Inc,Architect,CL00166,Gustavson Wylie Architects Inc.,0.885
+66444,Guy Architects Ltd.,Architect,CL00154,GBL Architects Inc.,0.857
 70605,H Development Group,Buyer,B31F0266BCD64C09B0C1BCB9C9015736,CMP Development Group,0.857
 71187,H2 Architecture,Architect,5AD40D65095A4BFB9FAA98D39DECFDED,M2 Architecture Inc.,0.933
-8799,hcma architecture + design,Architect,7d1537293589432ea3191bdb41ecf15f,CTA Architecture & Design Ltd.,0.917
-69110,"HDR | CEI Architecture Associates, Inc.",Architect,651F513E2AEF464EA7378F32AAAC4459,"HDR Architecture Associates, Inc.",0.871
-69656,IBI Group Architects,Architect,CL00058,BTY Group Architects,0.85
+70973,Haebler Construction,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.85
+39527,HALEX CONSTRUCTION,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.889
+71240,Hall Construction,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.941
+50768,HAMEL CONSTRUCTION INC.,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.944
+8671,Hamm Construction Ltd,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.882
+49626,Harbuilt Construction Ltd.,GC,CL00636,Hauerbuilt Construction Ltd.,0.913
+49304,HAUS CONSTRUCTION,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.882
+51554,HB CONSTRUCTION INCORPORATED,GC,CL00215,JBR Construction Ltd.,0.875
+66303,HCI Architecture Inc,Architect,CL00074,CEI Architecture,0.875
+8799,hcma Architecture + Design,Architect,7d1537293589432ea3191bdb41ecf15f,CTA Architecture & Design Ltd.,0.917
+19384,Headland Construction,GC,ECC73EB173BD40B0BA0764342CE2751A,"Holland Construction, Inc.",0.857
+8857,Hellas Construction Inc.,GC,ECC73EB173BD40B0BA0764342CE2751A,"Holland Construction, Inc.",0.85
+44783,HGR CONSTRUCTION INC,GC,CL00215,JBR Construction Ltd.,0.875
+8917,HHS Contracting,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
+43111,HIGHLAND CONSTRUCTION INC,GC,ECC73EB173BD40B0BA0764342CE2751A,"Holland Construction, Inc.",0.857
+37225,HKM Contracting,GC,C11516FC9C704C27B8428FFA2C9B7A6B,TKY Contracting,0.867
+23355,HL Properties,Developer,CL00031,BCL Properties Ltd.,0.857
+54922,HMCA Architecture,Architect,E3ACA05EE37943C6A2E91FEAB9B30EB0,KMA Architecture,0.882
+26573,Home Construction,GC,5f509bde526345f992665b1d80f80b75,Forme Construction,0.889
+40647,HOMESWEST CONSTRUCTION LTD,GC,CL00355,Forewest Construction Ltd.,0.864
+20992,HTL Construction Ltd.,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.882
+54844,Hudson Pacific Properties,Developer,CL00252,Madison Pacific Properties Inc.,0.885
+54314,IBI/ Henriquez Partners Architects,Architect,CL00482,Henriquez Partners Architects,0.879
+51691,ICON CONSTRUCTION LTD.,GC,315604eeda9c44e580745126c0aaf3a2,Vincon Construction LTD.,0.895
+60334,IDMAG - International Development,Developer,CL00195,Image Development Inc.,0.882
+9352,IMC Construction Ltd,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+54906,Inhand Developments,Developer,CL00200,InHaus Developments Ltd.,0.895
+9708,IOTA CONSTRUCTION LTD.,GC,CL00300,NOTA Construction Ltd.,0.941
+33310,IRL Construction Ltd,GC,CL00533,Bird Construction,0.882
+29516,Irvine Construction,GC,94067256f0e947e787cc815503a411cc,Traine Construction Ltd.,0.895
+42882,J & T CONSTRUCTION LTD,GC,CL00215,JBR Construction Ltd.,0.875
+32073,J F Construction,GC,CL00215,JBR Construction Ltd.,0.875
+44518,J&J CONSTRUCTION,GC,CL00215,JBR Construction Ltd.,0.875
+22105,J&R Properties Ltd.,Developer,320CD06FAF67433499A29000D2CEE80E,JMR Properties Inc.,0.929
+52017,J5 CONSTRUCTION LTD,GC,CL00215,JBR Construction Ltd.,0.875
+36226,JALM Architecture Inc.,Architect,cef31ccbb1cb4e3a91cb3a5a9fcb6aac,JIM Architecture,0.882
+52031,Jawl Properties Ltd.,Developer,99b7212a24d2410c85a86370832031a7,Zail Properties,0.867
+47202,Jeds Construction,GC,CL00221,KDS Construction Ltd.,0.882
+51436,JES CONSTRUCTION INC.,GC,CL00215,JBR Construction Ltd.,0.875
+24270,JHR Contracting,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
+26784,Jim Construction Ltd,GC,CL00215,JBR Construction Ltd.,0.875
+42972,JJM CONSTRUCTION LTD.,GC,CL00215,JBR Construction Ltd.,0.875
+35432,JK's Construction Inc.,GC,CL00215,JBR Construction Ltd.,0.875
 70746,JM Architecture Inc.,Architect,cef31ccbb1cb4e3a91cb3a5a9fcb6aac,JIM Architecture,0.938
+70668,JM Engineering,Competitor,EE8DF256FAD94464A4F29D246EB88B97,JRS Engineering,0.867
+9987,JMAA architecture ltd.,Architect,864161bd3d1a4f8487b4955f6a01c114,JHA Architecture,0.882
+9993,JMS Construction,GC,CL00215,JBR Construction Ltd.,0.875
+69157,JMS Engineering,Competitor,EE8DF256FAD94464A4F29D246EB88B97,JRS Engineering,0.933
+26543,Josan Properties Ltd,Developer,CL00048,Bosa Properties Inc.,0.875
+29700,Jutland Construction,GC,ECC73EB173BD40B0BA0764342CE2751A,"Holland Construction, Inc.",0.85
+24591,Juyi Construction Inc.,GC,CA0F1EB949014FBC9C89135B12271A45,Juan Construction Ltd.,0.882
+23748,JY Architecture Inc.,Architect,1fcff47a751b47a19628dae543186ca4,JYW Architecture Inc.,0.938
 55064,Jyom Architecture,Architect,cef31ccbb1cb4e3a91cb3a5a9fcb6aac,JIM Architecture,0.882
-69120,Kasian Architecture,Architect,1D186F8B3F6F41FE9AA7B32FE29E4ED9,Salikan Architecture Inc.,0.85
-70805,Keystone Architecture and Planning,Architect,CL00487,Keystone Architecture & Planning,0.882
-38966,KMBR Architects Planners Inc.,Architect,C5694C7A98E947F8AD60B435C38F1E06,NORR Architects Planners,0.875
+52881,K & B CONTRACTING,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
+10119,K. D. S. CONSTRUCTION LTD.,GC,CL00221,KDS Construction Ltd.,0.889
+10127,K.M. Contracting,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
+42364,KAMO CONSTRUCTION,GC,CL00068,Capo Construction Inc.,0.882
+70552,Katawa Construction,GC,734704fa03cb44a6886832ef48abc5dd,Matacan Construction Corp.,0.85
+47774,KBI Construction Inc.,GC,CL00215,JBR Construction Ltd.,0.875
+25783,KC Development Ltd,Developer,CL00193,Ice Development Ltd.,0.867
+46147,KCC CONSTRUCTION LTD,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.938
+10218,K-Co Contracting LTD.,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
+24650,Keck Architecture,Architect,2E9A6A188399401D93EB759F14ABE7C0,GEC Architecture,0.882
+10242,Keller Construction Ltd,GC,DCC6AEAB0DCD48A1B7ABAD7A8FE6D9C1,Waller Construction Ltd.,0.895
+24647,KENLUX DEVELOPMENT LTD.,Developer,52c99245712f43b8aff9fa9ec28cecf5,Canlux Development Ltd.,0.889
+46523,KETCH CONSTRUCTION INC.,GC,B8DB0DB76D374A15A05AD52C4A472C4F,Reotech Construction Ltd.,0.85
+42857,KEY CONTRACTING LTD,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.933
+72062,Keystone Architecture and Planning,Architect,CL00487,Keystone Architecture & Planning,0.882
+23161,KGW Architecture,Architect,CL00158,GGA - Architecture,0.875
+10318,Kidco Construction Ltd,GC,6885af49e4384896b0ec42579cf7be12,KDC Construction,0.889
+42658,KING CONSTRUCTION LTD,GC,74e02856bf7a4ba08fa1b8b4258b9bf7,Sung Construction,0.882
+63403,Kitchon Construction,GC,315604eeda9c44e580745126c0aaf3a2,Vincon Construction LTD.,0.85
+10376,KJU Contracting Inc.,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
+48977,KLAY CONTRACTING INC.,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.875
+29348,KMB Properties Ltd.,Developer,320CD06FAF67433499A29000D2CEE80E,JMR Properties Inc.,0.857
+48249,KMJ Construction Ltd.,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+54775,Kohn Pederson Fox,Architect,CL00488,Kohn Pedersen Fox,0.941
+25202,koka architecture,Architect,E3ACA05EE37943C6A2E91FEAB9B30EB0,KMA Architecture,0.882
+20024,Koka Architecture + Design Inc.,Architect,1A3ECE47D623464598EC718A637C3337,AKA Architecture + Design,0.917
+10482,KOR Contracting Inc.,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
 69765,KPMB Architects,Architect,CL00581,KMBR Architects,0.867
+72028,KR Engineering Inc.,Competitor,EE8DF256FAD94464A4F29D246EB88B97,JRS Engineering,0.867
+10522,Kran Construction Ltd,GC,CA0F1EB949014FBC9C89135B12271A45,Juan Construction Ltd.,0.882
+26096,KRF construction,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+48521,KRW Construction Ltd,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+10545,KSN Contracting,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
+52797,KTF PROPERTIES LTD.,Developer,c5b23a168ed6450bab88aa9ab5dbb4d3,KIG Properties Incorporated,0.857
+35476,KVA Developments Ltd,Developer,6f521d70c8f3438eb36d2514b309ebe2,Dava Developments Ltd.,0.882
+39482,KWC ARCHITECTS INC,Architect,5EA71CBBF09442108C5B1D5E6074FBF1,HMC Architects,0.857
+60069,L&G CONSTRUCTION LTD.,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.875
+48014,L7 Architecture Inc,Architect,CL00465,Co.lab Architecture,0.875
+52873,LADEL CONSTRUCTION LTD,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.889
+54551,Landmark Premiere Properties,Developer,aba9b4f98d51401c886f6a62ed4b1866,Landmark Premier Properties Ltd.,0.964
+31038,Lauder Construction Ltd.,GC,3575E87C5D8E4E34B878C68F88ECBE27,Lazer Construction Ltd,0.895
+43029,LCL CONSTRUCTION LTD,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
 68891,LEVER Architecture,Architect,CL00454,Revery Architecture,0.895
 70765,Lime Architecture Inc.,Architect,cef31ccbb1cb4e3a91cb3a5a9fcb6aac,JIM Architecture,0.882
+48930,LJR Construction,GC,CL00215,JBR Construction Ltd.,0.875
 68695,LMN Architects,Architect,8AD125221437485BBD9B90F70204D7C2,Amu Architects,0.857
-69915,Mallen Gowing Berzins Architecture (MGBA),Architect,CL00257,Mallen Gowing Berzins Architecture Inc.,0.872
+19296,LS Developments Ltd,Developer,CFBF577DDA444BEFB2D0526F6C7077D7,66 Developments Ltd.,0.867
+52713,LSG CONSTRUCTION LTD,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.938
+38132,Lyto Development Ltd,Developer,91DFCB7EB3304E8C80E484832666DB49,Tyko Development Ltd.,0.875
+19312,m squared Architecture Inc.,Architect,CL00528,b Squared Architecture Inc.,0.955
+19517,m+ Architecture,Architect,5AD40D65095A4BFB9FAA98D39DECFDED,M2 Architecture Inc.,0.933
+35011,M3 Architecture,Architect,5AD40D65095A4BFB9FAA98D39DECFDED,M2 Architecture Inc.,0.933
+71592,MAA construction services LTD,GC,c58ae72a9c0f4bcda854fd6ce3b6d149,BLT Construction Services,0.88
+40834,MACLEAN CONSTRUCTION LTD,GC,734704fa03cb44a6886832ef48abc5dd,Matacan Construction Corp.,0.85
+19906,Maco Construction Ltd.,GC,CL00653,Amacon Construction Ltd.,0.895
+59985,MALONE CONSTRUCTION LTD.,GC,f33fdcde10c147d7a8a9301060ba3dbf,Castone Construction,0.85
+37263,Manda Construction Ltd.,GC,CL00267,Matra Construction Inc.,0.889
+54757,Manse Group Developments Ltd.,Developer,8855a0b7390448ffa013f86cc0918e3f,Enso Group Developments Inc.,0.875
+43158,MARCAN CONSTRUCTION LTD,GC,734704fa03cb44a6886832ef48abc5dd,Matacan Construction Corp.,0.9
+11337,MARDINA CONSTRUCTION LTD.,GC,2698acb7e9074f63a9ddf332efab35dc,Martini Construction Ltd.,0.9
+33265,Markana Developments Corp.,Developer,CL00729,Marcon Developments Ltd.,0.85
+32743,Marman Developments Ltd,Developer,CL00729,Marcon Developments Ltd.,0.895
+47217,MARTIN DEVELOPMENTS LIMITED,Developer,CL00729,Marcon Developments Ltd.,0.895
+52398,MASTERZ CONSTRUCTION INC,GC,CL00267,Matra Construction Inc.,0.85
 71105,Matrix Architecture,Architect,2E239CFA084145B494F03A4C91F12A79,Metric Architecture,0.895
-69738,MCM Architects,Architect,5EA71CBBF09442108C5B1D5E6074FBF1,HMC Architects,0.857
+68623,MATT Construction Corp.,GC,CL00267,Matra Construction Inc.,0.889
+25028,Maxalan Construction Ltd.,GC,734704fa03cb44a6886832ef48abc5dd,Matacan Construction Corp.,0.9
+45687,Maxsons Construction Ltd,GC,CL00104,Dawson Construction Inc.,0.85
+69529,McElhanney,Competitor,10f2e4a889f84cc48b5ea7b111607322,McElhanney,1
+11547,MCL Development Corp.,Developer,CL00193,Ice Development Ltd.,0.867
+71065,MDM Construction,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+54025,Medican Developments,Developer,e3a2c09d6a8b4fe194beb9e2e6ed56e6,Mizan Developments Ltd.,0.85
+11672,Mera Development Corp.,Developer,CL00004,Adera Development Corp.,0.882
+54736,MG Architecture Inc.,Architect,5AD40D65095A4BFB9FAA98D39DECFDED,M2 Architecture Inc.,0.933
 69293,MGBA (Mallen Gowing Berzins Architecture),Architect,CL00257,Mallen Gowing Berzins Architecture Inc.,0.872
+47106,MGI Construction Corp,GC,8c08342e44af494981c230ca1964036a,MFS Construction Inc.,0.875
+51752,MIRA CONSTRUCTION LTD,GC,CL00267,Matra Construction Inc.,0.889
+52699,MJB CONSTRUCTION,GC,CL00215,JBR Construction Ltd.,0.875
 70154,MJMA Architecture & Design,Architect,1A3ECE47D623464598EC718A637C3337,AKA Architecture + Design,0.875
-68913,MQN Architects,Architect,CL00283,MMC International Architects,0.857
+59405,MMP ARCHITECTS,Architect,CL00283,MMC International Architects,0.929
+53714,Mo Yeung International Enterprise Ltd.,Developer,CL00290,Moyeung International Enterprise Ltd.,0.947
+20962,Mondiale Development,Developer,CL00287,Mondiale Developments Ltd.,0.952
+22419,Mondivan Developments Ltd,Developer,CL00287,Mondiale Developments Ltd.,0.857
+29595,Monk Construction Group,GC,C6882BDE220F4D34AEB1E9DB6D666E0F,Peak Construction Group,0.87
+54326,Montane Developments Ltd.,Developer,CL00287,Mondiale Developments Ltd.,0.857
+71355,More Construction,GC,CEDAD73DBED74786B05ED4608DB8BC2F,Morley Construction Company,0.895
+12027,Morsky Construction Ltd.,GC,CEDAD73DBED74786B05ED4608DB8BC2F,Morley Construction Company,0.895
+41130,MORVEN CONSTRUCTION LTD,GC,CEDAD73DBED74786B05ED4608DB8BC2F,Morley Construction Company,0.895
+29564,Mosaic Avenue Development Ltd.,Developer,CL00737,Mosaic Avenue Developments Ltd.,0.962
+49812,Moss Development Corp.,Developer,CL00047,Bosa Development Corp.,0.875
+37710,MPB Construction,GC,8c08342e44af494981c230ca1964036a,MFS Construction Inc.,0.875
+12088,MPJ Construction Ltd,GC,8c08342e44af494981c230ca1964036a,MFS Construction Inc.,0.875
+47645,Ms Construction,GC,8c08342e44af494981c230ca1964036a,MFS Construction Inc.,0.938
+54982,MST Development Corporation,Developer,4EAE654A1E1C44A8A4900B02B8A0A491,Cast Development LLC,0.875
+49488,Mueller Construction Inc.,GC,DCC6AEAB0DCD48A1B7ABAD7A8FE6D9C1,Waller Construction Ltd.,0.85
+54472,Musson Cattell Mackay Partnership,Architect,CL00493,Musson Cattell Mackey Partnership,0.97
+25363,MVA CONSTRUCTION,GC,8c08342e44af494981c230ca1964036a,MFS Construction Inc.,0.875
 68885,NAC Architecture,Architect,CL00465,Co.lab Architecture,0.875
+52098,Ncc Development Limited,Developer,CL00193,Ice Development Ltd.,0.867
+52671,NDC Construction Ltd.,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.938
+50835,NDL CONSTRUCTION LTD.,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+22706,Neoteric Architecture,Architect,2E239CFA084145B494F03A4C91F12A79,Metric Architecture,0.857
+25000,New Look Properties Inc.,Developer,CL00297,New Oak Properties,0.895
+31683,NHT Contracting Ltd.,GC,D25C374D9B6741C5A7C640CED8EE9DFF,KHY Contracting Inc.,0.867
+49800,Ninco Construction Ltd,GC,315604eeda9c44e580745126c0aaf3a2,Vincon Construction LTD.,0.895
+12449,NITRO CONSTRUCTION LTD.,GC,CL00137,Etro Construction Limited,0.889
+22172,Nivas Properties Ltd,Developer,d31efb33dfdb4ad2a03a85c8402ba79c,Novus Properties Inc.,0.875
+41269,NORDMEC CONSTRUCTION INC,GC,5f509bde526345f992665b1d80f80b75,Forme Construction,0.85
+23982,Norsco Construction Ltd,GC,8E77ECC2735F4124808CE5F35EFD170A,Norson Construction Ltd.,0.895
+52755,NORVACO CONSTRUCTION,GC,CL00301,Novacom Construction Ltd.,0.9
+49310,NOVALTA CONSTRUCTION,GC,CL00300,NOTA Construction Ltd.,0.85
+12659,Nu Edge Construction Ltd.,GC,55ca4bf7e626429685e0a0910785aed3,Edge Construction,0.85
+47248,NUR Construction Ltd.,GC,CL00215,JBR Construction Ltd.,0.875
+21960,NWI Contracting Ltd.,GC,CL00307,Onni Contracting Ltd.,0.875
+44082,O4 ARCHITECTURE LTD,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.867
+12705,OAC Construction Ltd,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.882
 70601,OCA Architects,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.857
+71212,Ocean Construction Group,GC,abc0321e4e6a4218b7c327c427ba2750,ProCan Construction Group,0.88
+47659,Ocean Contracting,GC,CE79ACEBCDEF4EB3BEA97997AF017259,Gocan Contracting Ltd.,0.882
+38622,Ohm Construction,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+12799,Olson Construction,GC,8E77ECC2735F4124808CE5F35EFD170A,Norson Construction Ltd.,0.895
 69272,OMB Architects,Architect,CL00581,KMBR Architects,0.867
+21591,Orbis Architecture Inc.,Architect,D5A23642B273421BBAA62BFFB76C6A43,Orbis Archtecture Inc.,0.944
+67871,P3A ARCHITECTURE,Architect,e67d66d431ff4d048f38825f63014e2a,BHA Architecture Inc.,0.875
+42856,PACER CONSTRUCTION INC,GC,3575E87C5D8E4E34B878C68F88ECBE27,Lazer Construction Ltd,0.889
 70734,Pacific West Architecture,Architect,CL00498,Pacific Coast Architecture,0.885
+21572,Parix West Construction Inc.,GC,8010709DCF364356A58465C171EB2D06,Prima West Construction Ltd.,0.87
+43131,PATHWAY CONSTRUCTION LTD,GC,9084A4679FF04F9783B56D522B86BF46,Parkway Construction,0.9
+13243,PCL Construction,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+70811,PCL Construction Management,GC,7CFE145E853D41598D6F3BE0582D3A69,Iris Construction Management,0.857
+46682,PCM Construction Ltd,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.938
+13298,Pemco Construction Ltd,GC,C8238101B51E49B7BCDC046AEBC6C42E,Femo Construction Ltd.,0.889
+24020,Peterson Developments Inc,Developer,1EB6F9D0F5934F53B63420C4B2C65CDF,Peterson Development Inc.,0.952
+52498,PFM CONSTRUCTION INC.,GC,CL00218,JFO Construction Inc.,0.875
+13380,PGA Architects Ltd.,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.857
 71084,ph5 Architecture,Architect,e67d66d431ff4d048f38825f63014e2a,BHA Architecture Inc.,0.875
+52716,PICHE BROS. CONTRACTING INC.,GC,3B4AD0210668460187F435246EF51380,Ponte Bros Contracting Ltd.,0.864
+53665,Pinnacle International,Developer,CL00333,Pinnacle International,1
+32182,PKM Contracting Ltd.,GC,C11516FC9C704C27B8428FFA2C9B7A6B,TKY Contracting,0.867
+38600,Plan Construction Inc.,GC,CA0F1EB949014FBC9C89135B12271A45,Juan Construction Ltd.,0.882
+13544,Porscon Construction,GC,8E77ECC2735F4124808CE5F35EFD170A,Norson Construction Ltd.,0.9
+52803,PREMIUM CONSTRUCTION,GC,CL00338,Prism Construction Ltd.,0.85
+34554,Prosperous Square Developments Ltd.,Developer,5cfa711e37ee414e8313b2a0f59a3ec7,Prosperous Square Development,0.967
+13867,PSA Construction Inc,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.875
+21414,PSC Construction Ltd,GC,4F108F99592245ED845A4CC8EB8CD03B,VPAC Construction,0.882
+23543,Psquare Engineering and Construction Ltd.,GC,c621a71129f04dba999e478697d37a94,PSquare Engineering & Construction Ltd.,0.889
+70105,QDG Architecture,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.875
+38214,R & M CONSTRUCTION,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+70548,R+A Engineering Ltd.,Competitor,CL00346,RD Engineering Ltd.,0.929
+21518,Rai Development Ltd,Developer,a7256f8a8c7e4b3cbf82787054833420,RIAA Development Ltd.,0.875
+30449,Raicon Developments Inc,Developer,CL00729,Marcon Developments Ltd.,0.895
+69694,Ramsay Worden Architects,Architect,CL00501,Ramsay Worden Architects (RWA),0.857
+36022,RAR Development Ltd,Developer,a7256f8a8c7e4b3cbf82787054833420,RIAA Development Ltd.,0.875
+44642,RATIO ARCHITECTURE INTERIOR DESIGN,Architect,672F104537E045BAA2AD60ADC0925A3F,Noble Architecture + Interior Design,0.853
+20545,"RATIO Architecture, Interior Design, Planning Inc.",Architect,CL00486,Kasian Architecture Interior Design & Planning,0.909
+36568,Rayridge Developments Ltd,Developer,B57705F3D99C4DC59157455CEBF3841C,RDG Ridge Developments Ltd.,0.864
+14156,RBD Construction Ltd.,GC,CL00215,JBR Construction Ltd.,0.875
+52990,RBG CONSTRUCTION LTD,GC,CL00215,JBR Construction Ltd.,0.875
+67222,RBM ARCHITECTURE INC.,Architect,cef31ccbb1cb4e3a91cb3a5a9fcb6aac,JIM Architecture,0.875
+14164,RC Construction,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+53067,RCS Construction Incorporated,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+53970,RDG Ridge Development Ltd.,Developer,B57705F3D99C4DC59157455CEBF3841C,RDG Ridge Developments Ltd.,0.955
+61459,RDH Architects Inc.,Architect,CL00452,B+H Architects,0.857
+14178,Read Contracting Ltd,GC,f63da62c7e574879b6c7ef9ad9c6dc30,NEOD Contracting Ltd.,0.875
+14205,Reco Construction Ltd.,GC,C8238101B51E49B7BCDC046AEBC6C42E,Femo Construction Ltd.,0.882
+14246,REDCO CONSTRUCTION LTD,GC,CL00238,Ledcor Construction Inc.,0.895
+53488,Regency Developments,Developer,CL00353,Regent International Developments Ltd.,0.9
+14294,Reid Architecture Ltd.,Architect,CL00074,CEI Architecture,0.882
+39999,REVAL CONSTRUCTION INC.,GC,CL00350,Reddale Construction Ltd.,0.85
+71998,RH Architects,Architect,CL00452,B+H Architects,0.923
+14478,Rightway Construction,GC,39728feeb7f246feb08454a2b0281056,Bigway Construction,0.857
+27814,Riyak Development Ltd.,Developer,a7256f8a8c7e4b3cbf82787054833420,RIAA Development Ltd.,0.882
+42678,RJG CONSTRUCTION LTD,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.875
 69136,RNT Architects,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.857
+23834,Rockridge Developments Inc,Developer,B57705F3D99C4DC59157455CEBF3841C,RDG Ridge Developments Ltd.,0.864
+24638,Rocman contracting ltd,GC,CE79ACEBCDEF4EB3BEA97997AF017259,Gocan Contracting Ltd.,0.889
+68774,Rohit Group of Companies,Developer,23cf0a342240422192e71d4751518dda,RBI Group of Companies,0.875
+51610,ROOT ARCHITECTURE INC.,Architect,312C54275B714411AA5F27AB04830856,FORT Architecture,0.882
+44381,ROPA CONSTRUCTION,GC,CL00300,NOTA Construction Ltd.,0.882
+69158,ROV Engineering Consultants,Competitor,CL00600,SRC Engineering Consultants,0.889
+67934,RPL ARCHITECTS INC.,Architect,CL00154,GBL Architects Inc.,0.857
+14760,RSI Construction Inc.,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.875
+19842,RSP Construction Group Ltd.,GC,CL00209,ITC Construction Group,0.864
+14832,Rydal Construction Ltd.,GC,CL00350,Reddale Construction Ltd.,0.85
+52135,Saho Construction Inc,GC,CL00068,Capo Construction Inc.,0.882
+31069,Salal Architecture,Architect,1D186F8B3F6F41FE9AA7B32FE29E4ED9,Salikan Architecture Inc.,0.85
+14963,SAS Architecture Ltd.,Architect,CL00465,Co.lab Architecture,0.875
+70778,Sawchuck Developments,GC,73DAB9F5B360446EABCC2753B2117DAD,Sawchuk Developments Co. Ltd.,0.952
+28320,SCC Construction,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+15083,Scorpion Construction Ltd.,GC,09ff3e70944440619828d2fe10ed9a83,Orion Construction,0.857
+53120,SDC CONSTRUCTION LTD.,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.938
+15173,Seko Construction Ltd,GC,CL00271,Menko Construction Ltd.,0.889
+15189,Sena Construction Inc.,GC,74e02856bf7a4ba08fa1b8b4258b9bf7,Sung Construction,0.882
+47273,Setanta Construction,GC,CL00429,Ventana Construction Corp.,0.85
+26493,SG Architecture & Design INC.,Architect,1A3ECE47D623464598EC718A637C3337,AKA Architecture + Design,0.87
+23913,SJ Construction,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.875
+22221,SJR Construction Ltd.,GC,CL00215,JBR Construction Ltd.,0.875
 70625,SKALE Properties Inc,Buyer,B74CEF4B40974E24ACBAF61A2AF94BD7,Shape Properties Corp.,0.875
+19004,Skladan Architecture LTD,Architect,1D186F8B3F6F41FE9AA7B32FE29E4ED9,Salikan Architecture Inc.,0.85
+48115,SM Construction Inc.,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+24618,SMK Architect,Architect,799e53c8337744b68e2f9764a008d45c,SK Architect Inc.,0.923
+20227,SMW Development Ltd,Developer,CL00409,TME Development Corp.,0.867
+33141,Sol Construction,GC,CL00045,Bold Construction,0.882
+32289,Solterra Construction Corp.,GC,AF372D07CF4C4735AC7DAB31631F4AA3,Canterra Construction Ltd.,0.857
+53867,Solterra Developments,Developer,95598ECA9189466487367F14F741AB4D,Solterra Development Corp.,0.952
+20364,Sona Development Ltd,Developer,CL00047,Bosa Development Corp.,0.875
+15645,SONGER architecture inc,Architect,77145fdc1eaf468b8ef60e323c5d9a3f,Longpre Architecture,0.85
+55050,SPAL General Contractors,GC,AD43CCECDF84491A8B701825397CA7E9,Path General Contractors,0.875
+21441,SRA Architects,Architect,CL00495,NSDA Architects,0.867
+62133,SRS CONSTRUCTION,GC,CL00221,KDS Construction Ltd.,0.875
 69345,Stand Architecture Inc.,Architect,64eb09fe28d34bcb9ca6ee5e9e9d972d,Stark Architecture,0.889
-69109,Thinkspace Architecture Planning Interior Design Ltd.,Architect,CL00404,Thinkspace Architecture Planning Interior,0.854
+16018,START Architecture Inc,Architect,64eb09fe28d34bcb9ca6ee5e9e9d972d,Stark Architecture,0.944
+51343,STM CONSTRUCTION LTD.,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+16139,Strata Development Corp.,Developer,8A3163E56785407088F1CC8AD321870A,Strand Development Corp.,0.889
+35470,Sung's Construction,GC,357bab83fbd64217b198cf9d5dad6032,Sungs Constructions Ltd.,0.947
+16316,Sureway Construction,GC,9084A4679FF04F9783B56D522B86BF46,Parkway Construction,0.85
+39645,SYLCA CONSTRUCTION INC,GC,CL00395,Syncra Construction Corp.,0.895
+52884,T & C CONSTRUCTION,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+43338,T & M CONSTRUCTION LTD,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+41036,T3P CONSTRUCTION INC.,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.875
+70732,TASU Construction Ltd,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.882
+21064,Tavan Developments,Developer,6f521d70c8f3438eb36d2514b309ebe2,Dava Developments Ltd.,0.889
+37676,Taylor Krutz Architecture + Design Inc.,Architect,CL00400,Taylor Kurtz Architecture + Design Inc.,0.938
+16529,Tayo Construction Ltd.,GC,CL00068,Capo Construction Inc.,0.882
+47301,TBC Construction inc,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.875
+51358,TBG CONSTRUCTION LTD,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.938
+16536,TBG Contracting,GC,C11516FC9C704C27B8428FFA2C9B7A6B,TKY Contracting,0.867
+16538,TBL Construction Ltd,GC,CL00215,JBR Construction Ltd.,0.875
+30450,TCSC Construction Ltd.,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,0.882
+50350,TDC CONTRACTING LTD.,GC,C11516FC9C704C27B8428FFA2C9B7A6B,TKY Contracting,0.867
+50079,TERUS CONSTRUCTION LTD.,GC,e28d61f2f49a49b3b6358bce1fdb0574,Nexus Construction Ltd.,0.889
+17023,Timcon Construction,GC,315604eeda9c44e580745126c0aaf3a2,Vincon Construction LTD.,0.895
 70024,TKA+D Architecture and Design Inc.,Architect,9D935154A8CD458FAE085B74C2636CF2,TKA+D Architecture + Design Inc.,0.857
+70559,TKI Construction,GC,BAB9F58FC0B64EEB816BA5B33F83EAFA,TSG Construction Ltd,0.875
+17059,TKRP Contracting,GC,C11516FC9C704C27B8428FFA2C9B7A6B,TKY Contracting,0.875
+51056,TOFCON CONSTRUCTION INC.,GC,d5b5d6a08c3841bfbe8b943f710a97b2,Goldcon Construction,0.85
+34551,Tomas Construction Ltd,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,0.889
+67946,T-SQUARE ARCHITECTURE LTD.,Architect,CL00528,b Squared Architecture Inc.,0.909
+22253,Turner Architecture,Architect,92460f70e8e24524b33bafb54b570e39,Burgers Architecture Inc.,0.85
+17439,Turn-Key Construction Inc.,GC,CL00417,Turner Construction Company,0.857
 68886,TVA Architects,Architect,38396786DDD346DF9CF95BB2E693BDB4,RLA Architects Inc.,0.857
+26295,TWJ Contracting,GC,C11516FC9C704C27B8428FFA2C9B7A6B,TKY Contracting,0.867
+70663,TWS Engineering,Competitor,49CC7EE264984A7E855AE92A7993116F,TLSE Engineering Inc.,0.875
 70707,Unison Architecture,Architect,700feabcb69e4fc993359c2ea438749b,"Union Architecture, Inc.",0.947
+70562,Unitech Construction Management Ltd.,GC,CL00420,Unison Construction Management Ltd.,0.871
+34526,VanMar Constructors 1058 Inc,GC,8652F2581BDD413AA4B68D2E37C10EE5,VanMar Constructors 1065 Inc.,0.917
+22861,Vantrades Construction Ltd.,GC,baa14b500e3147819e5e9d194a970b9e,Vanleader Construction Ltd.,0.864
+31044,Vast Development Ltd.,Developer,4EAE654A1E1C44A8A4900B02B8A0A491,Cast Development LLC,0.938
+40928,VCM CONSTRUCTION LTD.,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.938
+53895,Vesta Properties,Developer,CL00133,Epta Properties Ltd.,0.875
+27698,Vic Development Ltd,Developer,CL00193,Ice Development Ltd.,0.867
+28400,Vlad Construction Corp,GC,4F108F99592245ED845A4CC8EB8CD03B,VPAC Construction,0.882
+20765,VLM Construction,GC,F26623C612B04617A7B26F2B12BA6894,KCM Construction Inc.,0.875
+17959,VPAC CONSTRUCTION GROUP LTD.,GC,CL00209,ITC Construction Group,0.87
+17998,Wahl Construction Ltd,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.882
+53569,WAM Development Group,Developer,B31F0266BCD64C09B0C1BCB9C9015736,CMP Development Group,0.857
+40070,WANGLER CONSTRUCTION LTD.,GC,DCC6AEAB0DCD48A1B7ABAD7A8FE6D9C1,Waller Construction Ltd.,0.9
+50447,Warman Construction Ltd.,GC,4a0d34043e5d4b28bf5618cd374c56d2,Warren Construction Inc.,0.895
+30552,Wave Developments Ltd.,Developer,6f521d70c8f3438eb36d2514b309ebe2,Dava Developments Ltd.,0.882
+69161,WEM Engineering Ltd.,Competitor,51ED8806403F4308BACAB8BF0BC06BD0,AES Engineering,0.867
+21489,Westbank Corp,Developer,CL00439,Westbank Corp.,1
+18257,WESTCOR CONSTRUCTION LTD,GC,a0d92200fd2745ec97f2216113860425,Westmark Construction,0.857
+49793,Westhoek Construction Ltd,GC,a0d92200fd2745ec97f2216113860425,Westmark Construction,0.857
+48935,Westland Construction Ltd,GC,a0d92200fd2745ec97f2216113860425,Westmark Construction,0.857
+53954,Westmana Development Corp.,Developer,CL00435,Wertman Development Corporation,0.9
+18390,WF Architecture Inc,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.933
+48104,WHAL CONSTRUCTION LTD.,GC,c9ebc675b940426faf9019ca5596c789,Hael Construction Inc.,0.882
+18495,Willow Spring Construction,GC,CL00444,Willow Spring Construction (B.C.) Ltd.,0.867
+18499,Willowridge Construction,GC,03b72b17a94542548a338a627ec7770b,Yellowridge Construction Ltd.,0.917
+18528,Wire Construction Ltd.,GC,CL00533,Bird Construction,0.882
 70616,WPT Architecture,Architect,9d8126b4629d4961bba46714df2a0bf7,W G Architecture Inc,0.875
+71090,WSB Consulting Engineers,Competitor,2ED060585C7E45E79A44A4F5235CA7AA,"RB Consulting Engineers, Inc.",0.917
+27930,X Architecture,Architect,a211659b4fbc4013887802ad9246fb39,DF Architecture,0.867
+46261,ZAIN CONSTRUCTION LTD,GC,179A90AA83B74BEE97C34422EF1648B8,Zarin Construction,0.944
+28876,ZAS Architects,Architect,CL00512,WA Architects,0.857

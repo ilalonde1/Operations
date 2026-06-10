@@ -1,1 +1,5 @@
 ﻿GroupKey,SurvivorId,SurvivorName,SurvivorKind,LoserId,LoserName,LoserKind,FkRefsRepointed
+assistedlivingalberta,72092,Assisted Living Alberta,Buyer,72094,Assisted Living Alberta,Buyer,2
+patkau,69282,Patkau Architects,Architect,72248,Patkau Architects,Architect,2
+perkinswill,69688,Perkins + Will Architects,Architect,71269,Perkins+Will,Architect,2
+tbdarchitectureurbanplanning,16535,TBD Architecture & Urban Planning,Architect,73991,TBD Architecture + Urban Planning,Architect,3

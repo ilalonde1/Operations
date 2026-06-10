@@ -1,3 +1,151 @@
 ﻿OrgId,OrgName,Kind,ClendorClientId,DeltekName,Score
-69692,Bold Properties,Buyer,E75335E4D4404A95A9F4AD9A90F87EED,Bold Properties,1
-69631,Shape Properties,Buyer,B74CEF4B40974E24ACBAF61A2AF94BD7,Shape Properties Corp.,1
+38936,Adera Development Corporation,Developer,CL00004,Adera Development Corp.,1
+71876,AES Engineering Ltd.,Competitor,51ED8806403F4308BACAB8BF0BC06BD0,AES Engineering,1
+23845,Alabaster Homes,Developer,7333C186584843FA936DF113CD431173,Alabaster Homes,1
+23780,Allan Diamond Architect,Architect,CL00519,Allan Diamond Architect,1
+49947,Alto Construction Ltd,GC,A96D2444E42C41DB974C1E9CEB5FDAEF,Alto Construction,1
+53820,Ampri Group,Developer,61E5C12DB1254FECB694E160630B39F9,Ampri Group,1
+54302,Ankenman Marchand Architects,Architect,CL00449,Ankenman Marchand Architects,1
+23957,Arborlea Developments Ltd.,Developer,CL00016,Arborlea Developments Ltd.,1
+2555,Arc Studio,Architect,a2bcea615c5b469fb08ac523663ef033,Arc Studio,1
+22370,Atelier Pacific Architecture Inc.,Architect,CL00525,Atelier Pacific Architecture Inc.,1
+71004,Axiom Builders,GC,CL00527,Axiom Builders Inc.,1
+20663,b Squared Architecture Inc.,Architect,CL00528,b Squared Architecture Inc.,1
+3202,Bentall Kennedy (Canada) LP,Developer,CL00037,Bentall Kennedy (Canada) LP,1
+34472,BHA Architecture Inc.,Architect,e67d66d431ff4d048f38825f63014e2a,BHA Architecture Inc.,1
+54928,Bird Construction Inc.,GC,CL00533,Bird Construction,1
+26285,Boas Construction,GC,f854d6d9404a48fe9a2f42161fb6329e,Boas Construction,1
+25155,Boffo Developments (Smithe) Ltd.,Developer,CL00671,Boffo Developments (Smithe) Ltd.,1
+69692,Bold Properties,Developer,E75335E4D4404A95A9F4AD9A90F87EED,Bold Properties,1
+54759,Boniface Oleksiuk Politano Architects,Architect,8F14D9B8DFA94767AC9D6C361CFCF8EA,Boniface Oleksiuk Politano Architects,1
+38943,Bosa Properties,Developer,CL00048,Bosa Properties Inc.,1
+43596,BOSTON CONSTRUCTION CORPORATION,GC,25527906151E457AA55F513ADB47A6EA,Boston Construction Corp.,1
+53777,British Pacific Properties,Developer,CL00055,British Pacific Properties Ltd.,1
+33171,Broadway Subway Constructors General Partnership,GC,244D953FE23F4AEDB18185EA8376E121,Broadway Subway Constructors General Partnership,1
+22200,Bucci Garden Homes Ltd,Developer,76D8169F7009491FBAA37C3795872F44,Bucci Garden Homes Limited,1
+71032,Cascadian Structural Engineering Inc.,Competitor,e7025344987e407e95c26a7a8770f459,Cascadian Structural Engineering,1
+4506,CDC CONSTRUCTION LTD.,GC,126585F35BC54C97B40DDEEDFD881933,CDC Construction Ltd.,1
+4552,CEI Architecture,Architect,CL00074,CEI Architecture,1
+4708,Chandos Construction Ltd.,GC,0a90590b8fc64aaca4d97170a82a4ae9,Chandos Construction,1
+54553,Ciccozzi Architecture,Architect,CL00464,Ciccozzi Architecture Inc.,1
+53696,Cielo Properties Inc.,Developer,CL00387,Cielo Properties Inc.,1
+4922,Clark Builders,GC,C072B47DA68E439AB431C19D3FB4F9F8,Clark Builders,1
+28005,CMP Development Group Ltd.,Developer,B31F0266BCD64C09B0C1BCB9C9015736,CMP Development Group,1
+29920,co.lab Architecture,Architect,CL00465,Co.lab Architecture,1
+70903,Converge Construction,GC,CL00092,Converge Construction,1
+54570,Corporation of Delta,Developer,CL00559,Corporation of Delta,1
+53661,DAVA Developments,Developer,6f521d70c8f3438eb36d2514b309ebe2,Dava Developments Ltd.,1
+19132,David S Mah Architect,Architect,56E92CF01F95442BBC1F5942E6E210F7,David S Mah Architect,1
+54318,Davidson Yuen Simpson Architects,Architect,CL00467,Davidson Yuen Simpson Architects,1
+49490,Dawson Construction Ltd,GC,CL00104,Dawson Construction Inc.,1
+69218,Dawson Wallace Construction,GC,187358EDB2B9429EACCEBBE87427DC2E,Dawson Wallace Construction Ltd.,1
+38201,Deecorp Properties Ltd,Developer,CL00106,Deecorp Properties Ltd.,1
+54216,Elegant Development Inc.,Developer,CL00130,Elegant Development Inc.,1
+54385,Element Lifestyle Retirement Inc.,Developer,CL00621,Element Lifestyle Retirement Inc.,1
+6947,Enduro Construction Ltd.,GC,dba4c983101e4990b63d51dedff18e1c,Enduro Construction,1
+20891,Entice Developments Ltd.,Developer,706D81F0AD194B2E8B706DA933C534B1,Entice Developments Ltd.,1
+70947,ETRO Construction,GC,CL00137,Etro Construction Limited,1
+54485,Farzin Yadegari Architect,Architect,CL00473,Farzin Yadegari Architect,1
+19925,Feenstra Architecture Inc.,Architect,CL00141,Feenstra Architecture Inc.,1
+19803,Formwerks Architectural Inc.,Architect,CL00149,Formwerks Architectural Inc.,1
+8129,GGA Architecture,Architect,CL00158,GGA - Architecture,1
+71895,Gibraltar Construction,GC,a54d3cef4ebb401f92fb5784e68100ce,Gibraltar Construction,1
+22060,Gocan Contracting Ltd,GC,CE79ACEBCDEF4EB3BEA97997AF017259,Gocan Contracting Ltd.,1
+36239,Goldcon Construction,GC,d5b5d6a08c3841bfbe8b943f710a97b2,Goldcon Construction,1
+20502,Gradual Architecture,Architect,5f5cdf5a23214e19925382ef5dac95af,Gradual Architecture Inc.,1
+69232,Graham Construction,GC,2399d6aef0e14476a33c71e2f70683ad,Graham Construction,1
+21675,Green Oak Development Corp,Developer,CL00164,Green Oak Development,1
+68986,Greyback Construction,GC,e5821f3d16884567a6fdf5b3f6cb4fb0,Greyback Construction Ltd,1
+19491,Gustavson Wylie Architects Inc.,Architect,CL00166,Gustavson Wylie Architects Inc.,1
+53906,H.Y. Engineering Ltd.,Developer,1C4952F972D44A41920444953C536ECA,H.Y. Engineering Ltd.,1
+20756,HANEX DEVELOPMENTS LTD,Developer,999F71DB381D4292945CF20E76D93697,Hanex Developments,1
+68983,Heatherbrae Builders,GC,CL00175,Heatherbrae Builders,1
+68644,Holland Partner Group,Developer,78701EF7E3CD43819589AE6EFB545F3D,Holland Partner Group LLC,1
+51663,ICE DEVELOPMENT LTD.,Developer,CL00193,Ice Development Ltd.,1
+19978,Igel Architecture,Architect,fe2f2386042043ebac03ace82874c715,Igel Architecture,1
+9566,Integral Group,Competitor,CL00575,Integral Group,1
+70926,ITC Construction Group,GC,CL00209,ITC Construction Group,1
+30335,Jericho Redefined General Contractors Ltd,GC,4A96C4375BE94215AE22D38599713100,Jericho Redefined General Contractors Ltd.,1
+37977,JFO Construction Inc.,GC,CL00218,JFO Construction Inc.,1
+19308,Jordan Kutev Architect Inc.,Architect,CL00485,Jordan Kutev Architect,1
+26979,JYW Architecture Inc.,Architect,1fcff47a751b47a19628dae543186ca4,JYW Architecture Inc.,1
+70912,Kanin Construction Management,GC,2609F4FC147B4932B095BFD5503220E3,Kanin Construction Management,1
+26304,Kenneth E. King Architecture & Planning,Architect,CL00224,Kenneth E King Architecture & Planning,1
+53920,Kenstone Properties,Developer,A40BCFB32FA14B2AB58A806BE636B81C,Kenstone Properties Ltd.,1
+70544,Kerkhoff Construction,GC,CL00580,Kerkhoff Construction Ltd.,1
+70978,Kindred Construction,GC,EB00B933A7654E90B0CDEB3DC9E63E34,Kindred Construction Ltd.,1
+53929,King George Developments,Developer,3199DC16BE97412CBBDBCF81A301C6AC,King George Developments Ltd.,1
+22051,Kutak Development Services Ltd.,Developer,CL00231,Kutak Development Services Ltd.,1
+54481,Landa Global Properties,Developer,CL00234,Landa Global Properties Ltd.,1
+54801,Langford Central Developments Inc.,Developer,c3f40ce57d0f40bab43a08a586b63513,Langford Central Developments Inc.,1
+69671,Ledcor Construction,GC,CL00238,Ledcor Construction Inc.,1
+54484,Lexi Development Group,Developer,CL00242,Lexi Development Group Inc.,1
+20518,Lightstone Development Ltd.,Developer,92AFD4B3BF554767BB0E16C83AB0D7B0,Lightstone Development Ltd.,1
+24124,Lions Head Construction Ltd,GC,CL00617,Lions Head Construction Ltd.,1
+22259,LivingSpace Homes Ltd,Developer,1BB7E7462C7E4A089B58646BD5CF1B53,Livingspace Homes,1
+25940,Longpre Architecture Inc.,Architect,77145fdc1eaf468b8ef60e323c5d9a3f,Longpre Architecture,1
+11188,M3 Development Management Ltd.,Developer,848a34fc368142f2ac94efbbb0af3c36,M3 Development Management,1
+54191,Magusta Development Group,Developer,CL00253,Magusta Development Group Ltd.,1
+53864,Martini Construction Ltd.,GC,2698acb7e9074f63a9ddf332efab35dc,Martini Construction Ltd.,1
+54841,Maskeen Development,Developer,CL00265,Maskeen Development,1
+20586,Medcorp Construction Inc,GC,74F75F2B415048E6B3CC7172BA2A14A8,Medcorp Construction Inc.,1
+71980,Metal Building Group,Competitor,87e963a9b9c441cab1d1825267b0e066,Metal Building Group,1
+55069,Millennium Properties Ltd.,Developer,c784cc1dc03f44b89ed46397baaccead,Millennium Properties Ltd.,1
+54734,Molnar Group,Developer,DCBB252AD5874617AE727D3215B3EFEA,Molnar Group,1
+69543,Morrison Hershfield,Competitor,72736A40CF8047CB80F5342E38322CCE,Morrison Hershfield,1
+54985,Musqueam Capital Corporation,Developer,A02536FD37FF4359B0DA6FFB7C1DF6AD,Musqueam Capital Corp,1
+70787,Norson Construction,GC,8E77ECC2735F4124808CE5F35EFD170A,Norson Construction Ltd.,1
+12633,Novacom Construction Ltd.,GC,CL00301,Novacom Construction Ltd.,1
+33440,Oksfeldt Developments Ltd,Developer,CEA58563EDCC4D4991771A18A3CCE463,Oksfeldt Developments,1
+32921,Openspace Architecture,Architect,CL00497,OpenSpace Architecture Inc.,1
+54552,Oviedo Developments,Developer,CL00315,Oviedo Developments,1
+38950,Oxford Properties Group,Developer,CL00316,Oxford Properties Group Inc.,1
+42260,PARKWAY CONSTRUCTION,GC,9084A4679FF04F9783B56D522B86BF46,Parkway Construction,1
+20176,Path General Contractors,GC,AD43CCECDF84491A8B701825397CA7E9,Path General Contractors,1
+28554,Performance Construction Ltd.,GC,CL00326,Performance Construction,1
+54269,Points West Architecture,Architect,CL00594,Points West Architecture,1
+19205,Prism Construction Ltd.,GC,CL00338,Prism Construction Ltd.,1
+23359,Pro-Can Construction Group Corp,GC,5d7503cb09584123adf406137910e149,Pro-Can Construction Group,1
+19893,Proform Construction Group Ltd,GC,5CAEBEE3F3B04319B4CB51BC9FF8DB0D,Proform Construction Group,1
+28093,Purpose Driven Development,Developer,c14869b6d1504dbfacc080e9ebbc6ad5,Purpose Driven Development,1
+54535,Quadra Homes,Developer,CL00342,Quadra Homes,1
+27247,Quadrangle Architects Ltd.,Architect,CL00597,Quadrangle Architects Limited,1
+32319,QuadReal Property Group,Developer,FF5B0ED92C1F47769686499ABACA9949,QuadReal Property Group,1
+36067,Qualitech Construction Group Ltd.,GC,9f7e580eceba4b5b96a70428e244924a,Qualitech Construction Group Ltd.,1
+70789,Quorum Group,GC,D1E6AF9D4E4647FC915390B7B409E06C,Quorum Group,1
+19095,Radiant City Architecture,Architect,d557bc015ae94c2e93551067e6d77075,Radiant City Architecture,1
+32397,Raichu Cambie Development Ltd.,Developer,CL00638,RaiChu Cambie Development Ltd.,1
+22291,RBC Holdings Ltd,Developer,CL00211,RBC Holdings Ltd.,1
+54347,RDG Management Ltd,Developer,CL00347,RDG Management Ltd.,1
+71534,Read Jones Christoffersen Ltd.,Competitor,3232a24bb9af42a09b4e1b0934f65838,Read Jones Christoffersen Ltd.,1
+18992,Reotech Construction Ltd,GC,B8DB0DB76D374A15A05AD52C4A472C4F,Reotech Construction Ltd.,1
+20197,Salikan Architecture Inc,Architect,1D186F8B3F6F41FE9AA7B32FE29E4ED9,Salikan Architecture Inc.,1
+69217,Sawchuk Developments,GC,73DAB9F5B360446EABCC2753B2117DAD,Sawchuk Developments Co. Ltd.,1
+54932,Scott Construction Group,GC,A9229D783F2647CCB4C5EBC6B0165A2D,Scott Construction Group,1
+20607,Seasons Contracting Ltd.,GC,f216509f725b4a57893100839ee52b62,Seasons Contracting Ltd.,1
+53857,Sequel 138 Development Corp.,Developer,B097E825C0794970945656109E5C1E42,Sequel 138 Development Corp.,1
+54707,Shift Architecture,Architect,CL00503,Shift Architecture,1
+22247,SK Architect,Architect,799e53c8337744b68e2f9764a008d45c,SK Architect Inc.,1
+21389,Solaris Properties Inc,Developer,D2C90D0EDDD241C8873992DFA5E22173,Solaris Properties Inc.,1
+54473,South Street Development Group,Developer,CL00383,South Street Development Group,1
+55074,Southgate City Homes Ltd.,Developer,CL00629,Southgate City Homes LP,1
+54516,Spani Developments Ltd.,Developer,79E0F9E310B94B9D8B16D568F1BAEF03,Spani Developments Ltd.,1
+53683,Springbank Properties,Developer,2695D66D30344998B83CBA2B5F860D86,Springbank Properties,1
+54414,Su Casa Design,Architect,CL00506,Su Casa Design Inc.,1
+68628,Suffolk Construction,GC,069B5CE1990341939DACB125E1A101AF,Suffolk Construction,1
+20869,Summit Brooke Construction,GC,6122EDB14CE842F8B9916723B8EC05B6,Summit Brooke Construction,1
+68625,Swinerton Builders,GC,14FACC58FAE4424CA45A6007A36D926D,Swinerton Builders,1
+70943,Syncra Construction,GC,CL00395,Syncra Construction Corp.,1
+19717,Terra Blanka Developments Corp.,Developer,CL00618,Terra Blanka Developments,1
+70728,TLSE Engineering,Competitor,49CC7EE264984A7E855AE92A7993116F,TLSE Engineering Inc.,1
+53843,Tridecca Developments,Developer,CL00604,Tridecca Developments,1
+22624,True Maple Construction Ltd.,GC,861b6e4d8ff742a19eb66b712834c2eb,True Maple Construction,1
+54947,Turner Construction Company,GC,CL00417,Turner Construction Company,1
+37793,Turner Fleischer Architects Inc.,Architect,CL00418,Turner Fleischer Architects Inc.,1
+21798,Tyko Development Ltd.,Developer,91DFCB7EB3304E8C80E484832666DB49,Tyko Development Ltd.,1
+54936,Wales McLelland Construction,GC,4E12D227E92F4FF4821AFDB7125591FF,Wales McLelland Construction,1
+18059,Warren Construction,GC,4a0d34043e5d4b28bf5618cd374c56d2,Warren Construction Inc.,1
+53708,Washington Properties,Developer,CL00434,Washington Properties Inc.,1
+29772,Wertman Development Corporation,Developer,CL00435,Wertman Development Corporation,1
+54590,Woodbridge Homes,Developer,CL00445,Woodbridge Homes Ltd.,1
+70585,Yellowridge Design Build,GC,259083b32a0748578f4124ddec2b7209,Yellowridge Design Build Ltd.,1
