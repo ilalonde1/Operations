@@ -52,6 +52,10 @@ internal static class OpportunitiesModule
         services.AddSingleton<IMajorProjectsInventoryStore>(_ => new SqlMajorProjectsInventoryStore(options.OpportunitiesDb));
         services.AddSingleton<IPrimePipelineStore>(_ => new SqlPrimePipelineStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDashboardStore>(_ => new SqlBdDashboardStore(options.OpportunitiesDb));
+        // BD Reports (BD-UI-Plan-2026-06-08): dashboard cards, report generators
+        // and MCP BD tools all read through this one service.
+        services.AddSingleton<Kor.Opportunities.Data.BdReports.IBdReportService>(
+            _ => new Kor.Opportunities.Data.BdReports.SqlBdReportService(options.OpportunitiesDb));
         services.AddSingleton<IPursuitBriefStore>(_ => new SqlPursuitBriefStore(options.OpportunitiesDb));
         services.AddSingleton<IIndustryEventStore>(_ => new SqlIndustryEventStore(options.OpportunitiesDb));
         services.AddSingleton<IntelReadService>(_ => new IntelReadService(options.OpportunitiesDb));
