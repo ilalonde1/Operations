@@ -1,0 +1,71 @@
+Region,Initiator,Company,BuyerCanonicalOrgId,EngagementId,Activities,ProposalsSubmittedCad,ProposalsAcceptedCad,Status
+Vancouver/LowerMainland,Omar,Areva Living,54846,2,1,200000.00,200000.00,Updated
+Vancouver/LowerMainland,Omar,Concord Pacifid,70830,3,1,,,Updated
+Vancouver/LowerMainland,Omar,RBI group,70831,4,1,530000.00,300000.00,Updated
+Vancouver/LowerMainland,Omar,Grosvenor,55066,5,1,,,Updated
+Vancouver/LowerMainland,Omar,Shape properties,69631,6,1,,,Updated
+Vancouver/LowerMainland,Conor,Enso Group,70832,7,1,65000.00,,Updated
+Vancouver/LowerMainland,Omar,ForteLiving,79,8,1,,,Updated
+Vancouver/LowerMainland,Omar,Cadillac Fairview,70099,9,1,,,Updated
+Vancouver/LowerMainland,Conor,Denciti Development,68996,10,1,,,Updated
+Vancouver/LowerMainland,Jim,Pinnacle Development,70833,11,1,,,Updated
+Vancouver/LowerMainland,Conor,Makola Development Services,52,12,1,,,Updated
+Vancouver/LowerMainland,Conor,Qualico/Streetside BC,70834,13,1,,,Updated
+Vancouver/LowerMainland,Jim,PBRV Consulting,70835,14,1,,,Updated
+Vancouver/LowerMainland,Conor,Purpose Driven,70836,15,1,110000.00,110000.00,Updated
+Vancouver/LowerMainland,Omar,Fastmark,70837,16,1,,,Updated
+Vancouver/LowerMainland,Omar,A&H steel,70838,17,1,,,Updated
+Vancouver/LowerMainland,Omar,PCI Development,70839,18,1,,,Updated
+Vancouver/LowerMainland,Omar,M'akola Development,70840,19,1,,,Updated
+Vancouver/LowerMainland,Omar,CIty Spaces consulting,70841,20,1,,,Updated
+Alberta,Islam,Probus Management,70842,21,1,,,Updated
+Alberta,Islam,University of Alberta,763,22,1,,,Updated
+Alberta,Islam,Metafor Architecture,70843,23,1,,,Updated
+Alberta,Islam,Turn Group,6,24,1,620000.00,,Updated
+Alberta,Omar,A&H Steel,70838,25,2,,,Updated
+Alberta,Islam,GEC Architecture,1,26,2,160000.00,,Updated
+Alberta,Islam,Thurber,70844,27,2,,,Updated
+Alberta,Conor,Cantiro Group,3,28,1,18000.00,,Updated
+Alberta,Omar,PCL,13241,29,1,,,Updated
+Alberta,Omar,Make Projects,70845,30,1,,,Updated
+Alberta,Omar,Ledcor,70846,31,2,,,Updated
+Alberta,Conor,Duke Management,70847,32,1,,,Updated
+Alberta,Jim,A&H Steel,70838,33,1,,,Updated
+Alberta,Islam,JLL real estate,70848,34,1,,,Updated
+Alberta,Islam,Ledcor,70846,35,1,,,Updated
+Alberta,Islam,Duke Management,70847,36,1,,,Updated
+Alberta,Islam,Make Projects,70845,37,1,,,Updated
+Alberta,Jim,Duke Management,70847,38,1,,,Updated
+Alberta,Jim,Make Projects,70845,39,1,,,Updated
+Alberta,Islam,HSEA Architecture,70849,40,1,,,Updated
+Alberta,Islam,L7 Architecture,70850,41,1,,,Updated
+Alberta,Islam,Sahuri + Partners Architecture,70851,42,1,,,Updated
+Alberta,Islam,Anu Developements,70852,43,1,,,Updated
+Alberta,Islam,Dialog Design,70137,44,1,,,Updated
+Alberta,Islam,Deveraux Group,70853,45,1,,,Updated
+Alberta,Islam,PK Developments,70854,46,1,,,Updated
+Alberta,Islam,S2 Architecture,14871,47,1,,,Updated
+Alberta,Omar,RBI group,70831,48,1,,,Updated
+Okanagan-BcInterior,Conor,Saba Construction,70855,49,1,,,Updated
+Okanagan-BcInterior,Conor,Meiklejohn Architects,70856,50,1,110000.00,,Updated
+Okanagan-BcInterior,Conor,Greenstone Developments,70857,51,1,,,Updated
+Okanagan-BcInterior,Conor,Holar Developments,70858,52,1,150000.00,,Updated
+Okanagan-BcInterior,Conor,Novation Architecture,70681,53,1,40000.00,40000.00,Updated
+Okanagan-BcInterior,Conor,NewTown Architecture,70859,54,1,,,Updated
+Okanagan-BcInterior,Conor,Denciti Developments,70860,55,1,,,Updated
+Okanagan-BcInterior,Conor,Traine,70861,56,1,125000.00,15000.00,Updated
+Okanagan-BcInterior,Conor,Ridge North America,198,57,1,,,Updated
+Okanagan-BcInterior,Conor,Lime Architecture,70862,58,1,,,Updated
+Okanagan-BcInterior,Conor,Wilden,70863,59,1,36000.00,36000.00,Updated
+Okanagan-BcInterior,Conor,Michael Green Architecture,69760,60,1,,,Updated
+Okanagan-BcInterior,Omar,Mundi hotels,70864,61,1,,,Updated
+Okanagan-BcInterior,Conor,Westrich Pacific,70865,62,1,,,Updated
+Okanagan-BcInterior,Conor,Duke Management,70847,63,1,,,Updated
+USA,Jim,JWDA Architects,70866,64,2,952000.00,,Updated
+USA,Jim,DBRDS Design Studio,20,65,4,197200.00,,Updated
+USA,John,CDA Architects,70867,66,3,743920.00,,Updated
+USA,Jim,H + W Mechanical,70868,67,1,,,Updated
+USA,Jim,Kennedy Wilson,70869,68,1,,,Updated
+USA,Jim,Kimley Horn,70870,69,1,,,Updated
+USA,Jim,Bosa Development,69677,70,4,129200.00,,Updated
+USA,Jim,City of San Diego,68835,71,1,,,Updated
