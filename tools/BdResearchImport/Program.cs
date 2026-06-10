@@ -3423,7 +3423,10 @@ ORDER BY Id;";
                     SourceUrl: String(project, "sourceUrl"),
                     RawJson: project.GetRawText())
                 {
-                    Province = Province,
+                    // m123 root-cause fix: capital plans span BC AND AB owners
+                    // (Alberta Infrastructure etc.) — the file-level BC constant
+                    // mislabeled 38 Alberta rows. Derive from the market field.
+                    Province = ProvinceFromResearchMarket(String(project, "market")),
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
@@ -7022,6 +7025,10 @@ WHERE Id = @id
         return normalized.Contains("alberta", StringComparison.Ordinal)
             || normalized.Contains("calgary", StringComparison.Ordinal)
             || normalized.Contains("edmonton", StringComparison.Ordinal)
+            // "Other AB" / "Central AB" style markets normalize to *ab; no BC
+            // research market ends in "ab" (m123 root-cause: CapitalPlans rows
+            // with market='Other AB' were stamped BC).
+            || normalized.EndsWith("ab", StringComparison.Ordinal)
                 ? "AB"
                 : "BC";
     }
