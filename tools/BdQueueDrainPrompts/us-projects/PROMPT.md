@@ -17,6 +17,13 @@ large").
 
 - Inputs live in `inputs/batch-NNN.json`. Find the lowest-numbered batch
   with no matching `outputs/SUMMARY-batch-NNN.txt` and process it.
+- **Parallel operation**: if the operator's launch message names a specific
+  batch ("process batch-002"), process THAT batch instead of
+  auto-discovering — other sessions may be running sibling batches
+  concurrently. In that case write your heartbeat to
+  `outputs/_status-batch-NNN.json` (per-batch filename) so parallel
+  sessions don't clobber each other's status. Output files are per-item
+  and never collide across batches.
 - Ignore `_quarantined/` folders and any input marked QUARANTINED /
   DISABLED / BACKUP / GARBLED.
 - Each item: `{ id, projectName, stage, province, city, proponentName,

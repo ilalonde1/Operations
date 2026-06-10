@@ -17,6 +17,10 @@ process items sequentially (fan-out fails with "args too large").
 
 - `inputs/batch-NNN.json`; process the lowest-numbered batch with no
   matching `outputs/SUMMARY-batch-NNN.txt`.
+- **Parallel operation**: if the operator's launch message names a specific
+  batch, process THAT batch instead of auto-discovering, and write the
+  heartbeat to `outputs/_status-batch-NNN.json` so concurrent sessions
+  don't clobber each other. Output files are per-item and never collide.
 - Ignore `_quarantined/` folders and inputs marked QUARANTINED / DISABLED /
   BACKUP / GARBLED.
 
