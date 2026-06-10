@@ -54,6 +54,13 @@ public sealed class BdReportsViewModelTests
         public Task<IReadOnlyList<string>> GetProjectsMentioningAsync(string orgPattern, int take, CancellationToken ct)
             => Task.FromResult<IReadOnlyList<string>>(new[] { "6585: Plant and Animal Health Centre (BC) — $400M" });
 
+        public Task<IReadOnlyList<PrimeConsultantRow>> GetPrimeConsultantsAsync(CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<PrimeConsultantRow>>(new[]
+            {
+                new PrimeConsultantRow(1, "Royal Columbian Phase 3", "BC", "Fraser Health", "$1.2B", 1_200_000_000m,
+                    "EllisDon Design Build", "Daniel Murphy", null, true, "Known via JNCM", "angle", 0.9),
+            });
+
         public List<(string Category, string Format)> Logged { get; } = new();
 
         public Task LogReportGeneratedAsync(string category, string format, string generatedByUser, int? recordCount, string? notes, CancellationToken ct)

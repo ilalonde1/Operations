@@ -56,6 +56,13 @@ public interface IBdReportService
     Task<IReadOnlyList<string>> GetProjectsMentioningAsync(string orgPattern, int take, CancellationToken ct);
 
     /// <summary>
+    /// All active MPIs with a PrimeConsultantResearch enrichment, hydrated
+    /// from the research JSON, cost-descending (numeric, not lexical — the
+    /// audit M12 lesson).
+    /// </summary>
+    Task<IReadOnlyList<PrimeConsultantRow>> GetPrimeConsultantsAsync(CancellationToken ct);
+
+    /// <summary>
     /// Compliance audit log (opportunities.BdReportAuditLog, migration 121):
     /// one row per generate. Format is "html" (preview) or "docx" (export).
     /// Best-effort from the UI — a logging failure must not block the report.

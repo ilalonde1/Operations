@@ -407,6 +407,50 @@ ORDER BY CASE WHEN m.EstimatedCostCad IS NULL THEN 1 ELSE 0 END, m.EstimatedCost
         return lines;
     }
 
+    public async Task<IReadOnlyList<PrimeConsultantRow>> GetPrimeConsultantsAsync(CancellationToken ct)
+    {
+        const string sql = @"
+SELECT m.Id, m.ProjectName, m.Province, m.ProponentName,
+       COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS NVARCHAR(64)), N'TBD') AS CostDisplay,
+       COALESCE(m.EstimatedCostCad, 0) AS CostNumeric,
+       e.ResultJson
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.MajorProjectEnrichment e
+  ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'PrimeConsultantResearch'
+WHERE m.RetiredAtUtc IS NULL
+  AND e.ResultJson IS NOT NULL;";
+
+        var rows = new List<PrimeConsultantRow>();
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            var research = PrimeConsultantParser.Parse(r.GetString(6));
+            rows.Add(new PrimeConsultantRow(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.GetString(4),
+                r.GetDecimal(5),
+                research.FirmName,
+                research.PrincipalInCharge,
+                research.ContactEmail,
+                research.KnownToKor,
+                research.KorRelationshipNotes,
+                research.KorAngle,
+                research.Confidence));
+        }
+
+        return rows
+            .OrderByDescending(x => x.CostNumeric)
+            .ThenBy(x => x.ProjectName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public async Task LogReportGeneratedAsync(
         string category,
         string format,

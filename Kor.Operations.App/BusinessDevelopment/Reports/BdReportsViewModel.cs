@@ -87,6 +87,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         new AnalyticalReportVm("architect-frequency", "Architect Frequency", "Warm-intro priority list from the structured org graph."),
         new AnalyticalReportVm("competitor-intel", "Competitor Intelligence", "Rival footprint heatmap — where they're entrenched, where to flip."),
         new AnalyticalReportVm("strategic-relationships", "Strategic Relationships", "Ten compounding targets with contacts and 12-month plans."),
+        new AnalyticalReportVm("prime-consultant", "Prime Consultants", "Who leads each pursuit team — approach before the RFP issues."),
     };
 
     private AnalyticalReportVm? _selectedAnalytical;
@@ -104,6 +105,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         "architect-frequency" => BuildArchitectFrequencyPreviewAsync(ct),
         "competitor-intel" => BuildCompetitorIntelPreviewAsync(ct),
         "strategic-relationships" => BuildStrategicRelationshipsPreviewAsync(ct),
+        "prime-consultant" => BuildPrimeConsultantPreviewAsync(ct),
         _ => Task.FromResult<string?>(null),
     };
 
@@ -411,6 +413,44 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         catch (Exception ex)
         {
             _logger?.LogError(ex, "BD Reports: strategic relationships generation failed.");
+            StatusMessage = $"Generation failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            IsBusy = false;
+            OnPropertyChanged(nameof(CanExportDocx));
+        }
+    }
+
+    /// <summary>Builds the prime consultant identification report; DOCX export then matches it.</summary>
+    public async Task<string?> BuildPrimeConsultantPreviewAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        StatusMessage = "Generating prime consultant report…";
+        try
+        {
+            var projects = await _reportService.GetPrimeConsultantsAsync(ct).ConfigureAwait(true);
+
+            var document = PrimeConsultantReportGenerator.Build(projects, DateTimeOffset.UtcNow);
+            _currentDocument = document;
+            _currentDocumentKey = "prime-consultant";
+            _currentRecordCount = projects.Count;
+            SelectedSector = null;
+            PreviewHtml = HtmlPreviewBuilder.Render(document);
+
+            LogGenerateBestEffort("html");
+            StatusMessage = $"Prime consultants: {projects.Count} researched, {projects.Count(p => p.HasPrime)} identified, {projects.Count(p => p.KnownToKor)} KOR-aligned.";
+            return PreviewHtml;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Generation cancelled.";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "BD Reports: prime consultant generation failed.");
             StatusMessage = $"Generation failed: {ex.Message}";
             return null;
         }

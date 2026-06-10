@@ -129,6 +129,28 @@ public sealed record CompetitorFootprintRow(
     public int Total => Signals + People + Actions;
 }
 
+/// <summary>
+/// One project's prime-consultant research result (ProviderName =
+/// 'PrimeConsultantResearch' enrichment on an active MPI).
+/// </summary>
+public sealed record PrimeConsultantRow(
+    long MpiId,
+    string ProjectName,
+    string Province,
+    string? ProponentName,
+    string CostDisplay,
+    decimal CostNumeric,
+    string? PrimeFirm,
+    string? PrincipalInCharge,
+    string? ContactEmail,
+    bool KnownToKor,
+    string? KorRelationshipNotes,
+    string? KorAngle,
+    double? Confidence)
+{
+    public bool HasPrime => !string.IsNullOrWhiteSpace(PrimeFirm);
+}
+
 public sealed record ArchitectLeverageRow(
     long CanonicalOrgId,
     string DisplayName,
