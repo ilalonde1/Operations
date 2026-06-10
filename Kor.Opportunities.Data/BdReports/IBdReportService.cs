@@ -63,6 +63,14 @@ public interface IBdReportService
     Task<IReadOnlyList<PrimeConsultantRow>> GetPrimeConsultantsAsync(CancellationToken ct);
 
     /// <summary>
+    /// READ-ONLY action-tracking rollup: IntelAction counts by Status ×
+    /// ActionType plus the most recent open actions (on active orgs). Status
+    /// writes go through IntelPersistenceService.SetActionStatusAsync in the
+    /// WPF UI — AI write tools are deferred.
+    /// </summary>
+    Task<BdActionRollup> GetActionRollupAsync(int topOpen, CancellationToken ct);
+
+    /// <summary>
     /// Compliance audit log (opportunities.BdReportAuditLog, migration 121):
     /// one row per generate. Format is "html" (preview) or "docx" (export).
     /// Best-effort from the UI — a logging failure must not block the report.

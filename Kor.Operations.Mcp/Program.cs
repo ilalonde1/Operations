@@ -101,6 +101,23 @@ public static class Program
 
         builder.Services.AddSingleton<AuditLogger>();
 
+        // Arc 7 / BD-UI-Plan Phase C: BD pursuit tools read KorOpportunitiesDb
+        // through the same IBdReportService the WPF BD Reports dashboard uses.
+        // The MCP connection string targets the KorMcp catalog, so swap the
+        // Initial Catalog (mcp_app has read access per the R95 remediation).
+        builder.Services.AddSingleton<Kor.Opportunities.Data.BdReports.IBdReportService>(sp =>
+        {
+            var mcpOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<McpOptions>>().Value;
+            var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(mcpOptions.SqlConnectionString)
+            {
+                InitialCatalog = "KorOpportunitiesDb",
+            };
+            return new Kor.Opportunities.Data.BdReports.SqlBdReportService(csb.ConnectionString);
+        });
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BdPursuitListTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BdCallSheetTool>();
+        builder.Services.AddSingleton<Kor.Operations.Mcp.Tools.BdActionStatusTool>();
+
         // QueryKorDataTool is registered explicitly because it has constructor
         // dependencies and is also called directly from AskService — DI gets
         // both call paths the same instance.
@@ -131,6 +148,9 @@ public static class Program
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.ProjectYoYTrendTool>(),
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.FirmUtilizationByYearTool>(),
                 sp.GetRequiredService<Kor.Operations.Mcp.Tools.RevenueTimelineTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.BdPursuitListTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.BdCallSheetTool>(),
+                sp.GetRequiredService<Kor.Operations.Mcp.Tools.BdActionStatusTool>(),
             };
             return new McpToolRegistry(toolInstances);
         });

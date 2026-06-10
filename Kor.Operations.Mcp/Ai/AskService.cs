@@ -640,6 +640,11 @@ Structured KPI tools (one per metric, all read-only, all firmwide unless an ID/s
   - get_firm_utilization_by_year  per-year firmwide billable% (from tkDetail)
   - get_revenue_timeline      firmwide revenue by period (yyyymm) from PRSummaryMain
 
+BD pursuit tools (live KorOpportunitiesDb honing verdicts — same IBdReportService queries as the WPF BD Reports dashboard, numbers match by construction):
+  - get_bd_pursuit_list       per-sector pursuit list + verdict counts; sector keys hospitals | schools | indigenous | bc-housing | defense | recreational | residential | commercial | post-secondary
+  - get_bd_call_sheet         cross-sector PURSUE_URGENT + PURSUE pool ranked urgent-first then value — "what should KOR act on this week"
+  - get_bd_action_status      READ-ONLY IntelAction rollup (Open/Done/Dismissed x ActionType) + most recent open actions
+
 Detailed input/output shape + when to use each is in the KOR KPI METHODOLOGY section below.
 
 Fallback tool:
@@ -964,6 +969,8 @@ BD KPIs (mirrored from the same dictionary — Definitions.Bd.cs, Category 'BD')
 - Opportunity Relevance Tier (Bd_RelevanceTier): HardReject=0, Low=1, Medium=2, High=3 — bucketed from the score by ScoringOptions thresholds (hard-reject paths return HardReject directly).
 - BD Dashboard funnel (opportunities.MajorProjectsInventory; EVERY count filters RetiredAtUtc IS NULL): sector basket = Sector LIKE any of %school% / %hospital% / %health% / %recreation% / %civic% / %cultural% / %universit% / %college% / %library% / %communit% / %education% / %housing% / %institution% / %care% / %fire% / %police%, OR Sector IN ('Civic', 'Tourism / Recreation', 'Government', 'Mixed-use'). Radar = COUNT(basket rows). In Bid Window = basket rows where Stage LIKE '%procure%' / '%RFP%' / '%RFQ%' / '%tender%' / '%design%'. Open Seats = basket rows where SeatStatus = 'likely-open'.
 - BD Dashboard feeds: Latest RFPs = TOP 15 non-closed opportunities.Opportunities ORDER BY CreatedAtUtc DESC. Forward Pipeline = TOP 12 MajorProjectsInventory rows WHERE (ProjectStage = 'CapitalPlan' OR KorPipelineTag = 'FacilityRenewal') AND RetiredAtUtc IS NULL ORDER BY EstimatedCostCad DESC.
+- BD pursuit verdicts: USE THE `get_bd_pursuit_list` TOOL for "top N <sector> pursuits" / "what should we chase in <sector>" / sector-pipeline questions, and `get_bd_call_sheet` for "what do we act on this week" / cross-sector URGENT questions. Both wrap the same IBdReportService the WPF BD Reports dashboard uses, so numbers match the dashboard by construction. Verdict recipe: COALESCE(JSON_VALUE(ResultJson,'$.honingPass.verdict'), JSON_VALUE(ResultJson,'$.verdict')) on opportunities.MajorProjectEnrichment rows with ProviderName='ProjectBriefHoning', active (RetiredAtUtc IS NULL) MPIs only. Vocabulary: PURSUE_URGENT, PURSUE, MONITOR, DISCOVER, DEAD, DUPLICATE. Urgency additionally flags PURSUE rows whose KOR angle mentions URGENT (the shipped report builders' rule). Sector filters deliberately OVERLAP (a BC Housing project is also Residential) — per-sector counts do not sum to distinct totals; for distinct cross-sector numbers use get_bd_call_sheet. Do NOT re-derive verdicts with ad-hoc query_kor_data SQL — the JSON shapes are legacy-fractured and the structured tools carry the canonical recipe.
+- BD action tracking: USE THE `get_bd_action_status` TOOL for "open BD actions" / "outstanding follow-ups" questions. READ-ONLY by design — marking actions Done/Dismissed happens in the app's BD Dashboard Priority Actions queue (AI write tools are deferred). If the user asks you to mark an action done, explain where to do it in the app instead.
 
 If you cite one of these KPIs in a brief / card / answer, name the methodology explicitly ("per KOR's Net Multiplier definition…", "computed via the canonical revenue accounts…") so the result is auditable, not just a number.
 

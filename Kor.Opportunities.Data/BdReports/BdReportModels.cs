@@ -129,6 +129,23 @@ public sealed record CompetitorFootprintRow(
     public int Total => Signals + People + Actions;
 }
 
+/// <summary>IntelAction counts by Status × ActionType (BD action tracking read-side).</summary>
+public sealed record BdActionStatusCount(string Status, string ActionType, int Count);
+
+/// <summary>One open IntelAction surfaced for the AI / call-sheet read path.</summary>
+public sealed record BdOpenActionRow(
+    long ActionId,
+    string OrgName,
+    string ActionType,
+    string Recommendation,
+    string? TargetPersonName,
+    string? TimingNotes);
+
+/// <summary>Read-only action-tracking rollup (writes stay in the WPF UI per the AI read-only rule).</summary>
+public sealed record BdActionRollup(
+    IReadOnlyList<BdActionStatusCount> Counts,
+    IReadOnlyList<BdOpenActionRow> TopOpenActions);
+
 /// <summary>
 /// One project's prime-consultant research result (ProviderName =
 /// 'PrimeConsultantResearch' enrichment on an active MPI).

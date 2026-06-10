@@ -451,6 +451,58 @@ WHERE m.RetiredAtUtc IS NULL
             .ToList();
     }
 
+    public async Task<BdActionRollup> GetActionRollupAsync(int topOpen, CancellationToken ct)
+    {
+        const string countsSql = @"
+SELECT a.Status, a.ActionType, COUNT(*)
+FROM opportunities.IntelAction a
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId AND co.RetiredAtUtc IS NULL
+WHERE a.RetiredAtUtc IS NULL
+GROUP BY a.Status, a.ActionType
+ORDER BY a.Status, a.ActionType;";
+
+        const string openSql = @"
+SELECT TOP (@take) a.Id, co.DisplayName, a.ActionType, a.Recommendation, a.TargetPersonName, a.TimingNotes
+FROM opportunities.IntelAction a
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId AND co.RetiredAtUtc IS NULL
+WHERE a.RetiredAtUtc IS NULL AND a.Status = N'Open'
+ORDER BY a.UpdatedAtUtc DESC;";
+
+        var counts = new List<BdActionStatusCount>();
+        var open = new List<BdOpenActionRow>();
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        await using (var cmd = new SqlCommand(countsSql, con) { CommandTimeout = CommandTimeoutSeconds })
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                counts.Add(new BdActionStatusCount(r.GetString(0), r.GetString(1), r.GetInt32(2)));
+            }
+        }
+
+        await using (var cmd = new SqlCommand(openSql, con) { CommandTimeout = CommandTimeoutSeconds })
+        {
+            cmd.Parameters.Add("@take", System.Data.SqlDbType.Int).Value = Math.Clamp(topOpen, 1, 100);
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var recommendation = r.GetString(3);
+                open.Add(new BdOpenActionRow(
+                    r.GetInt64(0),
+                    r.GetString(1),
+                    r.GetString(2),
+                    recommendation.Length <= 300 ? recommendation : recommendation[..300],
+                    r.IsDBNull(4) ? null : r.GetString(4),
+                    r.IsDBNull(5) ? null : r.GetString(5)));
+            }
+        }
+
+        return new BdActionRollup(counts, open);
+    }
+
     public async Task LogReportGeneratedAsync(
         string category,
         string format,

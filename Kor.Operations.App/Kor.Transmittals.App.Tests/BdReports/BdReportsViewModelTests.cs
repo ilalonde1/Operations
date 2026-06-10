@@ -61,6 +61,11 @@ public sealed class BdReportsViewModelTests
                     "EllisDon Design Build", "Daniel Murphy", null, true, "Known via JNCM", "angle", 0.9),
             });
 
+        public Task<BdActionRollup> GetActionRollupAsync(int topOpen, CancellationToken ct)
+            => Task.FromResult(new BdActionRollup(
+                new[] { new BdActionStatusCount("Open", "PursuitAngle", 3) },
+                new[] { new BdOpenActionRow(1, "Graham", "PursuitAngle", "Engage Trifunov", "Alex Trifunov", null) }));
+
         public List<(string Category, string Format)> Logged { get; } = new();
 
         public Task LogReportGeneratedAsync(string category, string format, string generatedByUser, int? recordCount, string? notes, CancellationToken ct)

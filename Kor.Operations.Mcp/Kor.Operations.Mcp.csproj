@@ -14,7 +14,7 @@
     <!-- Bump on every meaningful service-side change so the /health
          endpoint and audit log let operators confirm a redeploy
          actually picked up the new binary. -->
-    <Version>0.3.46</Version>
+    <Version>0.4.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
@@ -37,6 +37,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Business\Kor.Operations.Business.csproj" />
+    <!-- Arc 7 / BD-UI-Plan Phase C: BD tools surface the SAME IBdReportService
+         queries the WPF BD Reports dashboard uses (no drift by construction). -->
+    <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="appsettings.json">
