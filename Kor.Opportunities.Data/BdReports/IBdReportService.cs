@@ -41,6 +41,13 @@ public interface IBdReportService
     Task<IReadOnlyList<ArchitectLeverageRow>> GetArchitectLeverageAsync(int take, CancellationToken ct);
 
     /// <summary>
+    /// Competitor-kind orgs ranked by org-scoped intel references (signals +
+    /// person affiliations + actions), with exact structural-engineer project
+    /// links where the org graph has them. Zero-intel competitors are omitted.
+    /// </summary>
+    Task<IReadOnlyList<CompetitorFootprintRow>> GetCompetitorFootprintAsync(int take, CancellationToken ct);
+
+    /// <summary>
     /// Compliance audit log (opportunities.BdReportAuditLog, migration 121):
     /// one row per generate. Format is "html" (preview) or "docx" (export).
     /// Best-effort from the UI — a logging failure must not block the report.

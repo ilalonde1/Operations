@@ -279,6 +279,81 @@ WHERE x.rn <= 8;";
             .ToList();
     }
 
+    public async Task<IReadOnlyList<CompetitorFootprintRow>> GetCompetitorFootprintAsync(int take, CancellationToken ct)
+    {
+        // The verified recipe behind the shipped competitor report (its
+        // closing note: "IntelSignal + IntelPersonAffiliation + IntelAction
+        // tables on CanonicalOrg.Kind = Competitor"). Counts confirmed against
+        // .bc-rivals.json on 2026-06-09 (Aspect 37/6/18 exact match).
+        const string rankingSql = @"
+SELECT TOP (@take) x.Id, x.DisplayName, x.Signals, x.People, x.Actions,
+       (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
+         WHERE m.StructuralEngineerCanonicalOrgId = x.Id AND m.RetiredAtUtc IS NULL) AS LinkedProjects
+FROM (
+    SELECT co.Id, co.DisplayName,
+           (SELECT COUNT(*) FROM opportunities.IntelSignal s
+             WHERE s.CanonicalOrgId = co.Id AND s.RetiredAtUtc IS NULL) AS Signals,
+           (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation pa
+             WHERE pa.CanonicalOrgId = co.Id AND pa.RetiredAtUtc IS NULL) AS People,
+           (SELECT COUNT(*) FROM opportunities.IntelAction a
+             WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL) AS Actions
+    FROM opportunities.CanonicalOrg co
+    WHERE co.RetiredAtUtc IS NULL AND co.Kind = N'Competitor'
+) x
+WHERE x.Signals + x.People + x.Actions > 0
+ORDER BY x.Signals + x.People + x.Actions DESC, x.DisplayName;";
+
+        const string projectsSql = @"
+SELECT StructuralEngineerCanonicalOrgId, Id, ProjectName, Province, CostDisplay
+FROM (
+    SELECT m.StructuralEngineerCanonicalOrgId, m.Id, m.ProjectName, m.Province,
+           COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS NVARCHAR(64)), N'TBD') AS CostDisplay,
+           ROW_NUMBER() OVER (
+               PARTITION BY m.StructuralEngineerCanonicalOrgId
+               ORDER BY CASE WHEN m.EstimatedCostCad IS NULL THEN 1 ELSE 0 END, m.EstimatedCostCad DESC) AS rn
+    FROM opportunities.MajorProjectsInventory m
+    WHERE m.RetiredAtUtc IS NULL AND m.StructuralEngineerCanonicalOrgId IS NOT NULL
+) x
+WHERE x.rn <= 6;";
+
+        var ranking = new List<(long OrgId, string Name, int Signals, int People, int Actions, int Linked)>();
+        var projectsByOrg = new Dictionary<long, List<string>>();
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        await using (var cmd = new SqlCommand(rankingSql, con) { CommandTimeout = CommandTimeoutSeconds })
+        {
+            cmd.Parameters.Add("@take", System.Data.SqlDbType.Int).Value = Math.Clamp(take, 1, 100);
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                ranking.Add((r.GetInt64(0), r.GetString(1), r.GetInt32(2), r.GetInt32(3), r.GetInt32(4), r.GetInt32(5)));
+            }
+        }
+
+        await using (var cmd = new SqlCommand(projectsSql, con) { CommandTimeout = CommandTimeoutSeconds })
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var orgId = r.GetInt64(0);
+                if (!projectsByOrg.TryGetValue(orgId, out var list))
+                {
+                    projectsByOrg[orgId] = list = new List<string>();
+                }
+
+                list.Add($"{r.GetInt64(1)}: {r.GetString(2)} ({r.GetString(3)}) — {r.GetString(4)}");
+            }
+        }
+
+        return ranking
+            .Select(x => new CompetitorFootprintRow(
+                x.OrgId, x.Name, x.Signals, x.People, x.Actions, x.Linked,
+                projectsByOrg.TryGetValue(x.OrgId, out var projects) ? projects : Array.Empty<string>()))
+            .ToList();
+    }
+
     public async Task LogReportGeneratedAsync(
         string category,
         string format,

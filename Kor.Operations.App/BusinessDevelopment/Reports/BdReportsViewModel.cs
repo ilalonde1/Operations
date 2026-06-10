@@ -85,6 +85,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         new AnalyticalReportVm("call-sheet", "Weekly Call Sheet", "Cross-sector URGENT + PURSUE pool — what to act on this week."),
         new AnalyticalReportVm("exec-overview", "Executive Overview", "Cross-sector headline, heatmap, and strategic synthesis."),
         new AnalyticalReportVm("architect-frequency", "Architect Frequency", "Warm-intro priority list from the structured org graph."),
+        new AnalyticalReportVm("competitor-intel", "Competitor Intelligence", "Rival footprint heatmap — where they're entrenched, where to flip."),
     };
 
     private AnalyticalReportVm? _selectedAnalytical;
@@ -100,6 +101,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         "call-sheet" => BuildCallSheetPreviewAsync(ct),
         "exec-overview" => BuildExecSummaryPreviewAsync(ct),
         "architect-frequency" => BuildArchitectFrequencyPreviewAsync(ct),
+        "competitor-intel" => BuildCompetitorIntelPreviewAsync(ct),
         _ => Task.FromResult<string?>(null),
     };
 
@@ -326,6 +328,44 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         catch (Exception ex)
         {
             _logger?.LogError(ex, "BD Reports: architect frequency generation failed.");
+            StatusMessage = $"Generation failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            IsBusy = false;
+            OnPropertyChanged(nameof(CanExportDocx));
+        }
+    }
+
+    /// <summary>Builds the competitor footprint report; DOCX export then matches it.</summary>
+    public async Task<string?> BuildCompetitorIntelPreviewAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        StatusMessage = "Generating competitor intelligence report…";
+        try
+        {
+            var competitors = await _reportService.GetCompetitorFootprintAsync(25, ct).ConfigureAwait(true);
+
+            var document = CompetitorIntelReportGenerator.Build(competitors, DateTimeOffset.UtcNow);
+            _currentDocument = document;
+            _currentDocumentKey = "competitor-intel";
+            _currentRecordCount = competitors.Count;
+            SelectedSector = null;
+            PreviewHtml = HtmlPreviewBuilder.Render(document);
+
+            LogGenerateBestEffort("html");
+            StatusMessage = $"Competitor intelligence: {competitors.Count} tracked rivals, top footprint {competitors.FirstOrDefault()?.Total ?? 0} refs.";
+            return PreviewHtml;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Generation cancelled.";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "BD Reports: competitor intelligence generation failed.");
             StatusMessage = $"Generation failed: {ex.Message}";
             return null;
         }

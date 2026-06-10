@@ -112,6 +112,23 @@ public sealed record BdExecHeadline(
 /// auditable replacement (same intent: one architect relationship = N
 /// projects).
 /// </summary>
+/// <summary>
+/// One structural-engineering competitor's footprint across KOR's pipeline:
+/// org-scoped Intel counts (the verified recipe behind the shipped
+/// competitor report) plus exact StructuralEngineerCanonicalOrgId links.
+/// </summary>
+public sealed record CompetitorFootprintRow(
+    long CanonicalOrgId,
+    string DisplayName,
+    int Signals,
+    int People,
+    int Actions,
+    int LinkedProjects,
+    IReadOnlyList<string> TopProjects)
+{
+    public int Total => Signals + People + Actions;
+}
+
 public sealed record ArchitectLeverageRow(
     long CanonicalOrgId,
     string DisplayName,

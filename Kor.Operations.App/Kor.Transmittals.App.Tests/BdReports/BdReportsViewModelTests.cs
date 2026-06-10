@@ -44,6 +44,13 @@ public sealed class BdReportsViewModelTests
                 new ArchitectLeverageRow(99, "Unknown Firm", 3, 10_000_000m, 0, 1, 0, Array.Empty<string>()),
             });
 
+        public Task<IReadOnlyList<CompetitorFootprintRow>> GetCompetitorFootprintAsync(int take, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<CompetitorFootprintRow>>(new[]
+            {
+                new CompetitorFootprintRow(1, "Aspect Structural Engineers", 37, 6, 18, 2,
+                    new[] { "10: Sample Tower (BC) — $200M" }),
+            });
+
         public List<(string Category, string Format)> Logged { get; } = new();
 
         public Task LogReportGeneratedAsync(string category, string format, string generatedByUser, int? recordCount, string? notes, CancellationToken ct)
