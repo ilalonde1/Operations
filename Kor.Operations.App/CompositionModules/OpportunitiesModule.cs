@@ -108,6 +108,8 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.PursuitBriefViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.PursuitBriefWindow>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.BdWorkspaceWindow>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Reports.BdReportsViewModel>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Reports.BdReportsWindow>();
         services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.ICompetitionInfoQueryStore>(
             _ => new Kor.Opportunities.Data.HistoricalOpportunities.SqlCompetitionInfoQueryStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IAwardQueryStore>(

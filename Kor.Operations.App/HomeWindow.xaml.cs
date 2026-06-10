@@ -189,6 +189,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenBdReports_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.BusinessDevelopment.Reports.BdReportsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void OpenBusinessDevelopment_Click(object sender, RoutedEventArgs e)
         {
             var win = _services.GetRequiredService<App.BusinessDevelopment.Workspace.BdWorkspaceWindow>();
