@@ -231,6 +231,46 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         }
     }
 
+    /// <summary>Builds the cross-sector executive overview; DOCX export then matches it.</summary>
+    public async Task<string?> BuildExecSummaryPreviewAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        StatusMessage = "Generating executive overview…";
+        try
+        {
+            var headline = await _reportService.GetExecHeadlineAsync(ct).ConfigureAwait(true);
+            var summaries = await _reportService.GetSectorSummariesAsync(ct).ConfigureAwait(true);
+            var pool = await _reportService.GetCallSheetPoolAsync(ct).ConfigureAwait(true);
+
+            var document = ExecSummaryReportGenerator.Build(headline, summaries, pool, DateTimeOffset.UtcNow);
+            _currentDocument = document;
+            _currentDocumentKey = "exec-overview";
+            _currentRecordCount = headline.HonedCount;
+            SelectedSector = null;
+            PreviewHtml = HtmlPreviewBuilder.Render(document);
+
+            LogGenerateBestEffort("html");
+            StatusMessage = $"Executive overview: {headline.HonedCount:N0} honed of {headline.TotalActiveMpis:N0} active MPIs, ~${headline.HonedCostCad / 1_000_000_000m:F1}B pipeline.";
+            return PreviewHtml;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Generation cancelled.";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "BD Reports: executive overview generation failed.");
+            StatusMessage = $"Generation failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            IsBusy = false;
+            OnPropertyChanged(nameof(CanExportDocx));
+        }
+    }
+
     /// <summary>Renders the previewed document to DOCX bytes (same content as the preview).</summary>
     public byte[] RenderCurrentDocx()
     {

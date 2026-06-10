@@ -16,8 +16,8 @@ public sealed class BdReportsViewModelTests
         public Task<IReadOnlyList<SectorVerdictSummary>> GetSectorSummariesAsync(CancellationToken ct)
             => Task.FromResult<IReadOnlyList<SectorVerdictSummary>>(new[]
             {
-                new SectorVerdictSummary("hospitals", "Hospitals & Healthcare", 1, 18, 68, 27, 0, 0, 41, 155, 100, 10, 4),
-                new SectorVerdictSummary("schools", "K-12 Schools", 0, 109, 258, 144, 0, 0, 101, 612, 500, 11, 0),
+                new SectorVerdictSummary("hospitals", "Hospitals & Healthcare", 1, 18, 68, 27, 0, 0, 41, 155, 100, 10, 4, 26_511_000_000m),
+                new SectorVerdictSummary("schools", "K-12 Schools", 0, 109, 258, 144, 0, 0, 101, 612, 500, 11, 0, 19_869_000_000m),
             });
 
         public Task<IReadOnlyList<PursuitBriefRow>> GetSectorPursuitsAsync(string sectorKey, CancellationToken ct)
@@ -32,6 +32,9 @@ public sealed class BdReportsViewModelTests
 
         public Task<IReadOnlyList<PursuitBriefRow>> GetCallSheetPoolAsync(CancellationToken ct)
             => GetSectorPursuitsAsync("hospitals", ct);
+
+        public Task<BdExecHeadline> GetExecHeadlineAsync(CancellationToken ct)
+            => Task.FromResult(new BdExecHeadline(1942, 1425, 93_822_000_000m));
 
         public List<(string Category, string Format)> Logged { get; } = new();
 

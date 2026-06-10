@@ -52,26 +52,30 @@ GROUP BY {VerdictExpr};";
 
             int pursueUrgent = 0, pursue = 0, monitor = 0, discover = 0, dead = 0, duplicate = 0, noVerdict = 0;
 
-            await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            // Explicit scopes: the freshness query below reuses this connection,
+            // so this reader must be disposed first (no MARS).
+            await using (var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds })
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
             {
-                var verdict = r.IsDBNull(0) ? null : r.GetString(0);
-                var n = r.GetInt32(1);
-
-                // Summary buckets are by raw verdict: PURSUE rows whose korAngle
-                // marks them urgent stay in Pursue here (IsUrgent is a row-level
-                // flag on PursuitBriefRow). Out-of-vocabulary verdict strings
-                // count as NoVerdict rather than being dropped.
-                switch (verdict)
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
                 {
-                    case BdVerdicts.PursueUrgent: pursueUrgent += n; break;
-                    case BdVerdicts.Pursue: pursue += n; break;
-                    case BdVerdicts.Monitor: monitor += n; break;
-                    case BdVerdicts.Discover: discover += n; break;
-                    case BdVerdicts.Dead: dead += n; break;
-                    case BdVerdicts.Duplicate: duplicate += n; break;
-                    default: noVerdict += n; break;
+                    var verdict = r.IsDBNull(0) ? null : r.GetString(0);
+                    var n = r.GetInt32(1);
+
+                    // Summary buckets are by raw verdict: PURSUE rows whose korAngle
+                    // marks them urgent stay in Pursue here (IsUrgent is a row-level
+                    // flag on PursuitBriefRow). Out-of-vocabulary verdict strings
+                    // count as NoVerdict rather than being dropped.
+                    switch (verdict)
+                    {
+                        case BdVerdicts.PursueUrgent: pursueUrgent += n; break;
+                        case BdVerdicts.Pursue: pursue += n; break;
+                        case BdVerdicts.Monitor: monitor += n; break;
+                        case BdVerdicts.Discover: discover += n; break;
+                        case BdVerdicts.Dead: dead += n; break;
+                        case BdVerdicts.Duplicate: duplicate += n; break;
+                        default: noVerdict += n; break;
+                    }
                 }
             }
 
@@ -82,7 +86,8 @@ SELECT SUM(CASE WHEN e.LastRefreshAtUtc >= DATEADD(day, -30, sysdatetimeoffset()
        SUM(CASE WHEN e.LastRefreshAtUtc <  DATEADD(day, -30, sysdatetimeoffset())
                  AND e.LastRefreshAtUtc >= DATEADD(day, -90, sysdatetimeoffset()) THEN 1 ELSE 0 END),
        SUM(CASE WHEN e.LastRefreshAtUtc <  DATEADD(day, -90, sysdatetimeoffset())
-                 OR e.LastRefreshAtUtc IS NULL THEN 1 ELSE 0 END)
+                 OR e.LastRefreshAtUtc IS NULL THEN 1 ELSE 0 END),
+       COALESCE(SUM(m.EstimatedCostCad), 0)
 FROM opportunities.MajorProjectsInventory m
 JOIN opportunities.MajorProjectEnrichment e
   ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
@@ -90,6 +95,7 @@ WHERE m.RetiredAtUtc IS NULL
   AND {def.MpiWhere};";
 
             int fresh = 0, aging = 0, stale = 0;
+            decimal honedCost = 0;
             await using (var freshnessCmd = new SqlCommand(freshnessSql, con) { CommandTimeout = CommandTimeoutSeconds })
             await using (var fr = await freshnessCmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
             {
@@ -98,13 +104,14 @@ WHERE m.RetiredAtUtc IS NULL
                     fresh = fr.GetInt32(0);
                     aging = fr.GetInt32(1);
                     stale = fr.GetInt32(2);
+                    honedCost = fr.GetDecimal(3);
                 }
             }
 
             var total = pursueUrgent + pursue + monitor + discover + dead + duplicate + noVerdict;
             summaries.Add(new SectorVerdictSummary(
                 def.Key, def.Title, pursueUrgent, pursue, monitor, discover, dead, duplicate, noVerdict, total,
-                fresh, aging, stale));
+                fresh, aging, stale, honedCost));
         }
 
         return summaries;
@@ -175,6 +182,27 @@ WHERE m.RetiredAtUtc IS NULL
             .ThenByDescending(x => x.EstimatedCostCad ?? decimal.MinValue)
             .ThenBy(x => x.ProjectName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    public async Task<BdExecHeadline> GetExecHeadlineAsync(CancellationToken ct)
+    {
+        // DISTINCT active MPIs — per-sector totals double-count (overlapping
+        // sector filters by design).
+        const string sql = @"
+SELECT COUNT(*),
+       SUM(CASE WHEN e.Id IS NOT NULL THEN 1 ELSE 0 END),
+       COALESCE(SUM(CASE WHEN e.Id IS NOT NULL THEN m.EstimatedCostCad END), 0)
+FROM opportunities.MajorProjectsInventory m
+LEFT JOIN opportunities.MajorProjectEnrichment e
+  ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+WHERE m.RetiredAtUtc IS NULL;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        await r.ReadAsync(ct).ConfigureAwait(false);
+        return new BdExecHeadline(r.GetInt32(0), r.GetInt32(1), r.GetDecimal(2));
     }
 
     public async Task LogReportGeneratedAsync(

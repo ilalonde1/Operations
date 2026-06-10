@@ -19,7 +19,7 @@ public sealed class CallSheetReportGeneratorTests
 
     private static readonly SectorVerdictSummary[] Summaries =
     {
-        new("hospitals", "Hospitals & Healthcare", 1, 18, 68, 27, 0, 0, 41, 155, 100, 10, 4),
+        new("hospitals", "Hospitals & Healthcare", 1, 18, 68, 27, 0, 0, 41, 155, 100, 10, 4, 26_511_000_000m),
     };
 
     [Fact]

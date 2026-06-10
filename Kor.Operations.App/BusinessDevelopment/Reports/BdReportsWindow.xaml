@@ -45,6 +45,11 @@
                 <Grid Grid.Row="0" Margin="0,0,0,8">
                     <TextBlock Text="Sectors" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Exec Overview"
+                                Padding="14,6"
+                                Margin="0,0,8,0"
+                                Click="ExecSummary_Click"
+                                IsEnabled="{Binding IsIdle}"/>
                         <Button Content="Weekly Call Sheet"
                                 Padding="14,6"
                                 Margin="0,0,8,0"

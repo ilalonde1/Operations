@@ -30,6 +30,9 @@ public interface IBdReportService
     /// </summary>
     Task<IReadOnlyList<PursuitBriefRow>> GetCallSheetPoolAsync(CancellationToken ct);
 
+    /// <summary>Cross-sector headline over DISTINCT active MPIs (exec overview).</summary>
+    Task<BdExecHeadline> GetExecHeadlineAsync(CancellationToken ct);
+
     /// <summary>
     /// Compliance audit log (opportunities.BdReportAuditLog, migration 121):
     /// one row per generate. Format is "html" (preview) or "docx" (export).

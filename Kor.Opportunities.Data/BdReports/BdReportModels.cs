@@ -90,4 +90,15 @@ public sealed record SectorVerdictSummary(
     int Total,
     int FreshCount,
     int AgingCount,
-    int StaleCount);
+    int StaleCount,
+    decimal HonedCostCad);
+
+/// <summary>
+/// Cross-sector headline for the executive overview. Computed over DISTINCT
+/// active MPIs — summing per-sector totals would double-count because sector
+/// filters deliberately overlap.
+/// </summary>
+public sealed record BdExecHeadline(
+    int TotalActiveMpis,
+    int HonedCount,
+    decimal HonedCostCad);
