@@ -73,6 +73,11 @@ param(
     # (honing-projects kind only).
     [string] $Category,
 
+    # US-drain support (2026-06-10): geographic scoping for the projects and
+    # honing-projects kinds. Matches MPI.Province ('CA' / 'OR' / 'WA' / 'BC' /
+    # 'AB'). NULL = no filter (existing behavior).
+    [string] $Province,
+
     [string] $ConnectionString = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
 )
 
@@ -102,6 +107,7 @@ try {
     $cmd.Parameters.AddWithValue("@take", $Take) | Out-Null
     $cmd.Parameters.AddWithValue("@firstPassMaxAgeDays", $FirstPassMaxAgeDays) | Out-Null
     $cmd.Parameters.AddWithValue("@category", $(if ([string]::IsNullOrWhiteSpace($Category)) { [DBNull]::Value } else { $Category })) | Out-Null
+    $cmd.Parameters.AddWithValue("@province", $(if ([string]::IsNullOrWhiteSpace($Province)) { [DBNull]::Value } else { $Province })) | Out-Null
 
     switch ($Kind) {
         'orgs' {
@@ -194,6 +200,7 @@ SELECT TOP (@take) mpi.Id, mpi.ProjectName, mpi.ProjectStage, mpi.Province, mpi.
        COALESCE(mpi.EstimatedCostText, CAST(mpi.EstimatedCostCad AS NVARCHAR(64))) AS EstimatedCost
 FROM opportunities.MajorProjectsInventory mpi
 WHERE mpi.RetiredAtUtc IS NULL
+  AND (@province IS NULL OR mpi.Province = @province)
   AND mpi.ProjectStage IN (N'CapitalPlan', N'Planned', N'Concept', N'Design', N'Permitting', N'Procurement', N'Approved', N'Announced')
   AND NOT EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment e
                   WHERE e.MajorProjectsInventoryId = mpi.Id AND e.ProviderName = N'ProjectBrief')
@@ -386,6 +393,7 @@ WITH TopTargets AS (
     WHERE m.RetiredAtUtc IS NULL
       AND m.ProjectStage IN (N'CapitalPlan',N'Planned',N'Concept',N'Design',N'Permitting',N'Procurement',N'Approved',N'Announced')
       AND (@category IS NULL OR m.ProjectCategoryName = @category)
+      AND (@province IS NULL OR m.Province = @province)
       AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
       AND NOT EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment eh WHERE eh.MajorProjectsInventoryId = m.Id AND eh.ProviderName = N'ProjectBriefHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()))
     ORDER BY ActionCount DESC, m.EstimatedCostCad DESC
