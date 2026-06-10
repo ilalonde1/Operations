@@ -71,6 +71,8 @@ public sealed class AwardIngestionService
 
         var inserted = 0;
         var updated = 0;
+        var orgResolved = 0;
+        var rawOnly = 0;
         var sw = Stopwatch.StartNew();
         try
         {
@@ -78,6 +80,14 @@ public sealed class AwardIngestionService
             var candidates = await provider.FetchAsync(source, mappings, ct).ConfigureAwait(false);
             foreach (var candidate in candidates)
             {
+                // BD-Audit-2026-06-09 M7: every award is persisted regardless
+                // (breadth = competitor intel), but canonical-org resolution /
+                // creation runs only for gate-kept awards. Janitorial/snow/IT
+                // awards keep their raw org-name strings with NULL canonical
+                // ids instead of minting placeholder canonical orgs.
+                var relevance = StructuralRelevanceGate.Evaluate(
+                    candidate.Title, candidate.SolicitationType, candidate.AwardingOrganization);
+
                 var award = new OpportunityAward
                 {
                     ExternalReference = candidate.ExternalReference,
@@ -97,7 +107,16 @@ public sealed class AwardIngestionService
                     RawJson = candidate.RawJson,
                     IngestionRunId = runId,
                 };
-                var rowId = await _awardStore.UpsertAsync(award, ct).ConfigureAwait(false);
+                var rowId = await _awardStore.UpsertAsync(award, resolveCanonicalOrgs: relevance.Keep, ct).ConfigureAwait(false);
+                if (relevance.Keep)
+                {
+                    orgResolved++;
+                }
+                else
+                {
+                    rawOnly++;
+                }
+
                 if (rowId > 0)
                 {
                     inserted++;
@@ -113,8 +132,8 @@ public sealed class AwardIngestionService
                 insertedCount: inserted, duplicateCount: updated,
                 skippedCount: 0, failedCount: 0, errorSummary: null, ct).ConfigureAwait(false);
             _logger.LogInformation(
-                "Awards ingestion {Source}: {Inserted} new / {Updated} updated in {Elapsed}ms.",
-                source.Name, inserted, updated, sw.ElapsedMilliseconds);
+                "Awards ingestion {Source}: {Inserted} new / {Updated} updated ({OrgResolved} gate-kept org-resolved, {RawOnly} gate-rejected raw-name-only) in {Elapsed}ms.",
+                source.Name, inserted, updated, orgResolved, rawOnly, sw.ElapsedMilliseconds);
             return (true, inserted, updated, null, runId);
         }
         catch (OperationCanceledException)

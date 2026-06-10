@@ -60,4 +60,13 @@ public sealed record OpportunityCandidate
     /// crossed the durable persistence boundary.
     /// </summary>
     public Func<CancellationToken, Task>? OnPersistedAsync { get; init; }
+
+    /// <summary>
+    /// Optional provider acknowledgement to run when ingestion rejects this
+    /// candidate before persistence (relevance-gate reject or blank title/url
+    /// skip). Stateful providers (e.g. GraphEmail) use this to ack the source
+    /// item so rejected candidates aren't re-fetched and re-rejected forever.
+    /// Null (the default for all other providers) is a no-op.
+    /// </summary>
+    public Func<CancellationToken, Task>? OnRejectedAsync { get; init; }
 }

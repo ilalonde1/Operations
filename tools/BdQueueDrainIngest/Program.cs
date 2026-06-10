@@ -138,6 +138,16 @@ var providerMarker = new Regex(@"\[\s*providerName\s*:\s*([A-Za-z0-9._-]+)\s*\]"
 var orgProviderWhitelist = new[] { "FirmNarrative", "FirmNarrativeHoning" };
 var projectProviderWhitelist = new[] { "ProjectBrief", "ProjectBriefHoning", "PrimeConsultantResearch" };
 
+// BD-Audit-2026-06-09 m6c: honing/special providers refresh on the batch
+// generator's 30-day staleness window, not the 90-day first-pass default —
+// otherwise rows ingested here look "fresh" for 60 days longer than the
+// generator expects and silently leave the honing pool.
+DateTimeOffset NextRefreshFor(string provider) =>
+    provider.EndsWith("Honing", StringComparison.OrdinalIgnoreCase)
+    || string.Equals(provider, "PrimeConsultantResearch", StringComparison.OrdinalIgnoreCase)
+        ? DateTimeOffset.UtcNow.AddDays(30)
+        : nextRefresh;
+
 (string? Provider, string? Reason) ResolveDrainProvider(string briefJson, string defaultProvider, string[] whitelist)
 {
     try
@@ -285,7 +295,7 @@ foreach (var file in files)
                     }
 
                     await sp.GetRequiredService<IEnrichmentTrackingStore>()
-                        .RecordAttemptAsync(id, orgProvider, result, nextRefresh, CancellationToken.None)
+                        .RecordAttemptAsync(id, orgProvider, result, NextRefreshFor(orgProvider), CancellationToken.None)
                         .ConfigureAwait(false);
                 }
                 break;
@@ -327,7 +337,7 @@ foreach (var file in files)
                     }
 
                     await sp.GetRequiredService<IMajorProjectEnrichmentTrackingStore>()
-                        .RecordAttemptAsync(id, projProvider, result, nextRefresh, CancellationToken.None)
+                        .RecordAttemptAsync(id, projProvider, result, NextRefreshFor(projProvider), CancellationToken.None)
                         .ConfigureAwait(false);
                 }
                 break;
@@ -351,51 +361,92 @@ foreach (var file in files)
                     // PRE-FLIGHT: verify MPI Id exists BEFORE creating canonical. This
                     // prevents the audit-found gap where ResolveAsync mints a canonical
                     // (or auto-resurrects one) and then the MPI UPDATE finds 0 rows,
-                    // leaving an orphan canonical with no back-link.
+                    // leaving an orphan canonical with no back-link. The same SELECT
+                    // also reads the existing FK + name (BD-Audit-2026-06-09 m6d) so
+                    // an already-linked MPI never touches the resolver at all.
                     var trimmedName = proponentName.Trim();
+                    var mpiExists = false;
+                    long? existingCanonicalId = null;
+                    string? existingProponentName = null;
                     await using (var verifyCon = new Microsoft.Data.SqlClient.SqlConnection(cs))
                     {
                         await verifyCon.OpenAsync().ConfigureAwait(false);
                         await using var verify = new Microsoft.Data.SqlClient.SqlCommand(
-                            "SELECT COUNT(*) FROM opportunities.MajorProjectsInventory WHERE Id = @id;", verifyCon);
+                            "SELECT ProponentCanonicalOrgId, ProponentName FROM opportunities.MajorProjectsInventory WHERE Id = @id;", verifyCon);
                         verify.Parameters.AddWithValue("@id", id);
-                        var exists = (int)(await verify.ExecuteScalarAsync().ConfigureAwait(false) ?? 0);
-                        if (exists == 0)
+                        await using var verifyReader = await verify.ExecuteReaderAsync().ConfigureAwait(false);
+                        if (await verifyReader.ReadAsync().ConfigureAwait(false))
                         {
-                            log.LogWarning("{Name}: MPI Id={Id} does not exist; skipping (no canonical created).", name, id);
-                            skipped++;
-                            continue;
+                            mpiExists = true;
+                            existingCanonicalId = verifyReader.IsDBNull(0) ? null : verifyReader.GetInt64(0);
+                            existingProponentName = verifyReader.IsDBNull(1) ? null : verifyReader.GetString(1);
                         }
                     }
 
-                    // MPI exists. Now safe to resolve/create canonical (auto-resurrects
-                    // retired matches). Defaults to Kind=Unknown — a later R95d-style
-                    // classifier promotes it.
-                    var resolver = sp.GetRequiredService<CanonicalOrgResolver>();
-                    var canonicalId = await resolver.ResolveAsync(
-                        trimmedName, "Unknown", "proponent-drain", CancellationToken.None,
-                        allowCreate: true, minConfidenceForCreate: 70).ConfigureAwait(false);
-
-                    // Write back to MPI: ProponentName + ProponentCanonicalOrgId.
-                    await using var con = new Microsoft.Data.SqlClient.SqlConnection(cs);
-                    await con.OpenAsync().ConfigureAwait(false);
-                    await using var cmd = new Microsoft.Data.SqlClient.SqlCommand(
-                        @"UPDATE opportunities.MajorProjectsInventory
-                          SET ProponentName = @name,
-                              ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @canonId)
-                          WHERE Id = @id;", con);
-                    cmd.Parameters.AddWithValue("@name", trimmedName);
-                    cmd.Parameters.AddWithValue("@canonId", (object?)canonicalId ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@id", id);
-                    var rows = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-                    if (rows == 0)
+                    if (!mpiExists)
                     {
-                        // Should be impossible after pre-flight check, but handle defensively.
-                        log.LogError("{Name}: MPI Id={Id} UPDATE affected 0 rows after pre-flight succeeded — concurrent delete? CanonicalOrg {Canon} may now be orphaned.", name, id, canonicalId);
-                        failed++;
+                        log.LogWarning("{Name}: MPI Id={Id} does not exist; skipping (no canonical created).", name, id);
+                        skipped++;
                         continue;
                     }
-                    log.LogInformation("Proponent applied: MPI {Id} -> '{Name}' (canonical={Canon})", id, trimmedName, canonicalId);
+
+                    if (existingCanonicalId.HasValue)
+                    {
+                        // FK already linked — skip the resolver entirely; only
+                        // backfill ProponentName when it's blank.
+                        if (string.IsNullOrWhiteSpace(existingProponentName))
+                        {
+                            await using var nameCon = new Microsoft.Data.SqlClient.SqlConnection(cs);
+                            await nameCon.OpenAsync().ConfigureAwait(false);
+                            await using var nameCmd = new Microsoft.Data.SqlClient.SqlCommand(
+                                @"UPDATE opportunities.MajorProjectsInventory
+                                  SET ProponentName = @name
+                                  WHERE Id = @id;", nameCon);
+                            nameCmd.Parameters.AddWithValue("@name", trimmedName);
+                            nameCmd.Parameters.AddWithValue("@id", id);
+                            await nameCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                            log.LogInformation(
+                                "Proponent name backfilled: MPI {Id} -> '{Name}' (existing canonical={Canon} untouched).",
+                                id, trimmedName, existingCanonicalId);
+                        }
+                        else
+                        {
+                            log.LogInformation(
+                                "Proponent already linked: MPI {Id} has canonical={Canon} ('{Existing}'); no resolver call.",
+                                id, existingCanonicalId, existingProponentName);
+                        }
+                    }
+                    else
+                    {
+                        // MPI exists and has no FK. Now safe to resolve/create canonical
+                        // (auto-resurrects retired matches). Defaults to Kind=Unknown — a
+                        // later R95d-style classifier promotes it.
+                        var resolver = sp.GetRequiredService<CanonicalOrgResolver>();
+                        var canonicalId = await resolver.ResolveAsync(
+                            trimmedName, "Unknown", "proponent-drain", CancellationToken.None,
+                            allowCreate: true, minConfidenceForCreate: 70).ConfigureAwait(false);
+
+                        // Write back to MPI: ProponentName + ProponentCanonicalOrgId.
+                        await using var con = new Microsoft.Data.SqlClient.SqlConnection(cs);
+                        await con.OpenAsync().ConfigureAwait(false);
+                        await using var cmd = new Microsoft.Data.SqlClient.SqlCommand(
+                            @"UPDATE opportunities.MajorProjectsInventory
+                              SET ProponentName = @name,
+                                  ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @canonId)
+                              WHERE Id = @id;", con);
+                        cmd.Parameters.AddWithValue("@name", trimmedName);
+                        cmd.Parameters.AddWithValue("@canonId", (object?)canonicalId ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@id", id);
+                        var rows = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                        if (rows == 0)
+                        {
+                            // Should be impossible after pre-flight check, but handle defensively.
+                            log.LogError("{Name}: MPI Id={Id} UPDATE affected 0 rows after pre-flight succeeded — concurrent delete? CanonicalOrg {Canon} may now be orphaned.", name, id, canonicalId);
+                            failed++;
+                            continue;
+                        }
+                        log.LogInformation("Proponent applied: MPI {Id} -> '{Name}' (canonical={Canon})", id, trimmedName, canonicalId);
+                    }
                 }
                 break;
         }
@@ -403,7 +454,9 @@ foreach (var file in files)
         var target = Path.Combine(processedDir, name);
         if (File.Exists(target))
         {
-            File.Delete(target);
+            // Keep the prior audit copy instead of deleting it
+            // (BD-Audit-2026-06-09 m6b) — rename it aside as superseded.
+            File.Move(target, target + $".superseded-{DateTime.UtcNow:yyyyMMddHHmmss}");
         }
 
         File.Move(file, target);
@@ -420,4 +473,16 @@ Console.WriteLine(
     $"Ingest complete. ok={ok} failed={failed} skipped={skipped} " +
     $"(envelope={envelopeWrapped}, legacy={legacyShape}). " +
     $"Expected envelope kind = '{expectedEnvelopeKind}'.");
+
+// BD-Audit-2026-06-09 m6a: an all-skip run means every file was refused
+// (bad markers, wrong envelope kind, retired MPIs, ...) — that is a failure
+// of the batch, not a quiet no-op. Exit 2 so callers/automation notice.
+if (files.Length > 0 && ok == 0 && skipped == files.Length)
+{
+    Console.Error.WriteLine(
+        $"ERROR: all {files.Length} file(s) in {inputDir} were skipped — nothing was ingested. " +
+        "Check provider markers / envelope kinds / MPI ids before re-running.");
+    return 2;
+}
+
 return failed > 0 ? 1 : 0;

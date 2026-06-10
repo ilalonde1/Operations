@@ -47,10 +47,18 @@ public sealed class SqlMajorProjectEnrichmentTrackingStore : IMajorProjectEnrich
             throw new ArgumentException("Provider name is required.", nameof(providerName));
         }
 
+        // UPDATE-then-INSERT upsert under UPDLOCK/HOLDLOCK in one transaction
+        // (same pattern as SqlOpportunityAwardStore.UpsertAsync) so two
+        // concurrent attempts for the same (MPI, Provider) can't both take the
+        // INSERT branch and violate UQ_MajorProjectEnrichment_ProjectProvider.
         const string sql = @"
+SET XACT_ABORT ON;
+
 DECLARE @ids table (Id bigint NOT NULL);
 
-UPDATE opportunities.MajorProjectEnrichment
+BEGIN TRAN;
+
+UPDATE opportunities.MajorProjectEnrichment WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
    SET Status = @status,
        LastAttemptAtUtc = sysdatetimeoffset(),
        LastRefreshAtUtc = CASE WHEN @status = 'ok' THEN sysdatetimeoffset() ELSE LastRefreshAtUtc END,
@@ -75,6 +83,8 @@ BEGIN
          CASE WHEN @status = 'ok' THEN sysdatetimeoffset() ELSE NULL END,
          @next, 1, @err, @json, @notes);
 END
+
+COMMIT TRAN;
 
 SELECT TOP 1 Id FROM @ids;";
 

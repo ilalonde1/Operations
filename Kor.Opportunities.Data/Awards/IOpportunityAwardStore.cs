@@ -10,8 +10,14 @@ namespace Kor.Opportunities.Data.Awards;
 public interface IOpportunityAwardStore
 {
     /// <summary>Insert or refresh by (SourceId, ExternalReference). Returns the
-    /// new row Id for an insert, or 0 when an existing row was updated.</summary>
-    Task<long> UpsertAsync(OpportunityAward award, CancellationToken ct);
+    /// new row Id for an insert, or 0 when an existing row was updated.
+    /// <paramref name="resolveCanonicalOrgs"/> controls whether the awarding /
+    /// awarded-to names are resolved (and possibly created) as canonical orgs.
+    /// Pass false for awards the StructuralRelevanceGate rejects: the award row
+    /// is still persisted (breadth = competitor intel) but keeps raw name
+    /// strings with NULL canonical ids, so janitorial/snow/IT awards stop
+    /// minting placeholder canonical orgs (BD-Audit-2026-06-09 M7).</summary>
+    Task<long> UpsertAsync(OpportunityAward award, bool resolveCanonicalOrgs, CancellationToken ct);
 
     Task<IReadOnlyList<OpportunityAward>> ListRecentAsync(int max, CancellationToken ct);
 

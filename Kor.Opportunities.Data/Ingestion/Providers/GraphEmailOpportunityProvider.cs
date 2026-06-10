@@ -157,6 +157,22 @@ public sealed class GraphEmailOpportunityProvider : IOpportunityProvider
                                 ackCt).ConfigureAwait(false);
                             ProcessedMessageIds[messageId] = DateTimeOffset.UtcNow;
                         },
+                        // Gate-rejected / skipped candidates never reach OnPersistedAsync,
+                        // so without this ack the email stays unread and is re-fetched and
+                        // re-rejected every tick, forever. Mark-read (no folder move — the
+                        // unread filter is what drives re-fetch) + the processed set is
+                        // enough to retire the message.
+                        OnRejectedAsync = async ackCt =>
+                        {
+                            if (!await TryMarkReadAsync(client, options.UserEmail, messageId, ackCt)
+                                    .ConfigureAwait(false))
+                            {
+                                throw new InvalidOperationException(
+                                    $"GraphEmail could not mark rejected message {messageId} as read.");
+                            }
+
+                            ProcessedMessageIds[messageId] = DateTimeOffset.UtcNow;
+                        },
                     };
                 }
 

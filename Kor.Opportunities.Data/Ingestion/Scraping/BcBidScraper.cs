@@ -156,6 +156,14 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         // Gated on bcbid.dumpGrid=true; remove the mapping once captured.
         await MaybeDumpGridAsync(page, sourceConfig, ct).ConfigureAwait(false);
 
+        // BD-Audit-2026-06-09 M19: map grid columns by header text, resolved
+        // once per scrape — a silent Ivalua column insertion must not feed the
+        // wrong cell (e.g. garbage BuyerName) into the canonical resolver.
+        // Throws (aborting the run loudly) when expected headers are missing;
+        // falls back to the verified ordinal layout only when no header row
+        // can be located at all.
+        var columnMap = await ResolveColumnMapAsync(page).ConfigureAwait(false);
+
         var baseUri = new Uri(source.BaseUrl);
 
         // BC Bid (Ivalua) exposes total/current page via hidden fields; loop
@@ -166,7 +174,7 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         var lastPage = Math.Min(maxIndex, maxPages - 1);
         for (var idx = 0; idx <= lastPage; idx++)
         {
-            candidates.AddRange(await ExtractPageAsync(page, baseUri, ct).ConfigureAwait(false));
+            candidates.AddRange(await ExtractPageAsync(page, baseUri, columnMap, ct).ConfigureAwait(false));
             if (idx >= lastPage)
             {
                 break;
@@ -239,30 +247,152 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
             ? keyword.Trim()
             : null;
 
+    /// <summary>
+    /// Resolved cell indexes for the Ivalua opportunities grid. Built from the
+    /// header row once per scrape; <see cref="OrdinalFallback"/> is the layout
+    /// verified against production 2026-05-21 (see BcBidHistoricalScraper's
+    /// column-order comment) and is used only when no header row exists.
+    /// </summary>
+    private sealed record BcBidColumnMap(
+        int Status,
+        int ExternalRef,
+        int Title,
+        int Commodities,
+        int SolicitationType,
+        int IssueDate,
+        int ClosingDate,
+        int Buyer)
+    {
+        public static readonly BcBidColumnMap OrdinalFallback = new(0, 1, 2, 3, 4, 5, 6, 10);
+
+        public int MinimumCellCount =>
+            1 + Math.Max(Status, Math.Max(ExternalRef, Math.Max(Title, Math.Max(Commodities,
+                Math.Max(SolicitationType, Math.Max(IssueDate, Math.Max(ClosingDate, Buyer)))))));
+    }
+
+    /// <summary>
+    /// Reads the header row of the table hosting the rfp rows and maps each
+    /// expected column by header text (case/whitespace tolerant). Missing
+    /// expected headers FAIL the scrape run loudly — silently reading the
+    /// wrong column is never acceptable. Returns the ordinal fallback (with a
+    /// warning) only when no header row can be located at all.
+    /// </summary>
+    private async Task<BcBidColumnMap> ResolveColumnMapAsync(IPage page)
+    {
+        var firstRow = await page.QuerySelectorAsync("tr[data-object-type='rfp']").ConfigureAwait(false);
+        if (firstRow is null)
+        {
+            // Caller already waited for rows; defensive only.
+            _logger.LogWarning("BC Bid column mapping: no rfp rows found; using ordinal fallback.");
+            return BcBidColumnMap.OrdinalFallback;
+        }
+
+        var headerCells = await firstRow.QuerySelectorAllAsync("xpath=ancestor::table[1]/thead//th").ConfigureAwait(false);
+        if (headerCells.Count == 0)
+        {
+            headerCells = await firstRow.QuerySelectorAllAsync("xpath=ancestor::table[1]//tr[th][1]/th").ConfigureAwait(false);
+        }
+
+        if (headerCells.Count == 0)
+        {
+            _logger.LogWarning(
+                "BC Bid column mapping: no header row located in the results grid; " +
+                "falling back to the verified ordinal layout (status=0, id=1, title=2, commodities=3, type=4, issued=5, closing=6, buyer=10).");
+            return BcBidColumnMap.OrdinalFallback;
+        }
+
+        var headers = new List<string>(headerCells.Count);
+        foreach (var cell in headerCells)
+        {
+            headers.Add(NormalizeHeaderText(await cell.InnerTextAsync().ConfigureAwait(false)));
+        }
+
+        int FindExact(string name)
+        {
+            for (var i = 0; i < headers.Count; i++)
+            {
+                if (string.Equals(headers[i], name, StringComparison.Ordinal)) return i;
+            }
+
+            return -1;
+        }
+
+        int FindContains(string fragment)
+        {
+            for (var i = 0; i < headers.Count; i++)
+            {
+                if (headers[i].Contains(fragment, StringComparison.Ordinal)) return i;
+            }
+
+            return -1;
+        }
+
+        // Header labels per the production-verified Ivalua grid (the
+        // historical scraper documents the same column set). Buyer is the
+        // "Organization (Issued by)" column — matched on the "issued by"
+        // fragment so it can't be confused with "Organization (Issued to)".
+        var status = FindExact("status");
+        var externalRef = FindExact("opportunity id");
+        var title = FindExact("opportunity description");
+        var commodities = FindExact("commodities");
+        var solicitationType = FindExact("type");
+        var issueDate = FindExact("issue date");
+        var closingDate = FindExact("closing date");
+        var buyer = FindContains("issued by");
+
+        var missing = new List<string>();
+        if (status < 0) missing.Add("Status");
+        if (externalRef < 0) missing.Add("Opportunity ID");
+        if (title < 0) missing.Add("Opportunity Description");
+        if (commodities < 0) missing.Add("Commodities");
+        if (solicitationType < 0) missing.Add("Type");
+        if (issueDate < 0) missing.Add("Issue Date");
+        if (closingDate < 0) missing.Add("Closing Date");
+        if (buyer < 0) missing.Add("Organization (Issued by)");
+
+        if (missing.Count > 0)
+        {
+            var message =
+                $"BC Bid results-grid header mapping failed: expected column(s) [{string.Join(", ", missing)}] " +
+                $"not found among rendered headers [{string.Join(" | ", headers)}]. " +
+                "The Ivalua grid layout has changed — refusing to scrape by ordinal position.";
+            _logger.LogError("{Message}", message);
+            throw new InvalidOperationException(message);
+        }
+
+        _logger.LogInformation(
+            "BC Bid column mapping resolved from headers: status={Status}, id={Id}, title={Title}, commodities={Commodities}, type={Type}, issued={Issued}, closing={Closing}, buyer={Buyer}.",
+            status, externalRef, title, commodities, solicitationType, issueDate, closingDate, buyer);
+        return new BcBidColumnMap(status, externalRef, title, commodities, solicitationType, issueDate, closingDate, buyer);
+    }
+
+    private static string NormalizeHeaderText(string text)
+        => string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
+
     private static async Task<List<OpportunityCandidate>> ExtractPageAsync(
-        IPage page, Uri baseUri, CancellationToken ct)
+        IPage page, Uri baseUri, BcBidColumnMap columnMap, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
 
-        // Pull all RFP rows; for each, read the cell texts in DOM order.
+        // Pull all RFP rows; for each, read the cell texts by mapped index.
         var rows = await page.QuerySelectorAllAsync("tr[data-object-type='rfp']").ConfigureAwait(false);
         var result = new List<OpportunityCandidate>(rows.Count);
 
         foreach (var row in rows)
         {
-            var candidate = await TryMapRowAsync(row, baseUri).ConfigureAwait(false);
+            var candidate = await TryMapRowAsync(row, baseUri, columnMap).ConfigureAwait(false);
             if (candidate is not null) result.Add(candidate);
         }
 
         return result;
     }
 
-    private static async Task<OpportunityCandidate?> TryMapRowAsync(IElementHandle row, Uri baseUri)
+    private static async Task<OpportunityCandidate?> TryMapRowAsync(IElementHandle row, Uri baseUri, BcBidColumnMap map)
     {
         var cells = await row.QuerySelectorAllAsync(":scope > td").ConfigureAwait(false);
-        if (cells.Count < 12) return null;
+        if (cells.Count < map.MinimumCellCount) return null;
 
-        var status = (await cells[0].InnerTextAsync().ConfigureAwait(false)).Trim();
+        var status = (await cells[map.Status].InnerTextAsync().ConfigureAwait(false)).Trim();
         if (!string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase))
         {
             return null;
@@ -271,14 +401,14 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         var externalRef = (await row.GetAttributeAsync("data-id").ConfigureAwait(false))?.Trim();
         if (string.IsNullOrWhiteSpace(externalRef))
         {
-            var idAnchor = await cells[1].QuerySelectorAsync("a").ConfigureAwait(false);
+            var idAnchor = await cells[map.ExternalRef].QuerySelectorAsync("a").ConfigureAwait(false);
             if (idAnchor is not null)
             {
                 externalRef = (await idAnchor.InnerTextAsync().ConfigureAwait(false))?.Trim();
             }
         }
 
-        var title = (await cells[2].InnerTextAsync().ConfigureAwait(false)).Trim();
+        var title = (await cells[map.Title].InnerTextAsync().ConfigureAwait(false)).Trim();
         if (string.IsNullOrWhiteSpace(title)) return null;
 
         var anchor = await row.QuerySelectorAsync("a[href]").ConfigureAwait(false);
@@ -286,9 +416,9 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         if (string.IsNullOrWhiteSpace(href)) return null;
         var url = new Uri(baseUri, href).AbsoluteUri;
 
-        var commoditiesText = (await cells[3].InnerTextAsync().ConfigureAwait(false))
+        var commoditiesText = (await cells[map.Commodities].InnerTextAsync().ConfigureAwait(false))
             .Replace("\r", " ").Replace("\n", " / ").Trim();
-        var solicitationType = (await cells[4].InnerTextAsync().ConfigureAwait(false)).Trim();
+        var solicitationType = (await cells[map.SolicitationType].InnerTextAsync().ConfigureAwait(false)).Trim();
 
         var description = string.IsNullOrWhiteSpace(commoditiesText)
             ? solicitationType
@@ -296,10 +426,10 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
                 ? commoditiesText
                 : $"{solicitationType}: {commoditiesText}");
 
-        var posted = ParseBcBidDate((await cells[5].InnerTextAsync().ConfigureAwait(false)).Trim());
-        var deadline = ParseBcBidDate((await cells[6].InnerTextAsync().ConfigureAwait(false)).Trim());
+        var posted = ParseBcBidDate((await cells[map.IssueDate].InnerTextAsync().ConfigureAwait(false)).Trim());
+        var deadline = ParseBcBidDate((await cells[map.ClosingDate].InnerTextAsync().ConfigureAwait(false)).Trim());
 
-        var buyer = (await cells[10].InnerTextAsync().ConfigureAwait(false)).Trim();
+        var buyer = (await cells[map.Buyer].InnerTextAsync().ConfigureAwait(false)).Trim();
         if (string.IsNullOrWhiteSpace(buyer)) buyer = "Unknown";
 
         return new OpportunityCandidate

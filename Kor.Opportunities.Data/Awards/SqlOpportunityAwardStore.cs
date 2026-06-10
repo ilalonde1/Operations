@@ -126,7 +126,12 @@ WHERE Id = @id;";
         _logger = logger ?? NullLogger<SqlOpportunityAwardStore>.Instance;
     }
 
-    public async Task<long> UpsertAsync(OpportunityAward a, CancellationToken ct)
+    /// <summary>Convenience overload that always resolves canonical orgs.
+    /// Used by historical bulk-import tools that pre-filter their input.</summary>
+    public Task<long> UpsertAsync(OpportunityAward a, CancellationToken ct)
+        => UpsertAsync(a, resolveCanonicalOrgs: true, ct);
+
+    public async Task<long> UpsertAsync(OpportunityAward a, bool resolveCanonicalOrgs, CancellationToken ct)
     {
         const string sql = @"
 SET XACT_ABORT ON;
@@ -202,7 +207,9 @@ SELECT COALESCE((SELECT TOP (1) Id FROM @inserted), CONVERT(bigint, 0));";
         // Resolve canonical orgs at insert/update time (best-effort).
         // Round 9c — keeps AwardingCanonicalOrgId / AwardedToCanonicalOrgId fresh
         // so we don't need backfill jobs going forward.
-        if (_canonicalResolver is not null)
+        // BD-Audit-2026-06-09 M7: skipped entirely when the caller's relevance
+        // gate rejected the award — the row keeps raw org-name strings only.
+        if (resolveCanonicalOrgs && _canonicalResolver is not null)
         {
             try
             {

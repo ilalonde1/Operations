@@ -326,7 +326,10 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.NewsMentionClassifie
     var apiKey = !string.IsNullOrWhiteSpace(options.AnthropicApiKey)
         ? options.AnthropicApiKey
         : (Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty);
-    var model = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_AGENTENRICHMENTMODEL");
+    // Bound options value (appsettings or KOR_OPPORTUNITIES_AGENTENRICHMENTMODEL
+    // env var) — uniform with AwardAgentEnrichmentService instead of a raw
+    // env-var read that ignored appsettings.
+    var model = options.AgentEnrichmentModel;
     var logger = sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.NewsMentionClassifier>>();
     return new Kor.Opportunities.Data.Awards.NewsMentionClassifier(
         newsStore,
@@ -381,7 +384,10 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
     var apiKey = !string.IsNullOrWhiteSpace(options.AnthropicApiKey)
         ? options.AnthropicApiKey
         : (Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY") ?? string.Empty);
-    var model = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_AGENTENRICHMENTMODEL");
+    // Bound options value (appsettings or KOR_OPPORTUNITIES_AGENTENRICHMENTMODEL
+    // env var) — uniform with AwardAgentEnrichmentService instead of a raw
+    // env-var read that ignored appsettings.
+    var model = options.AgentEnrichmentModel;
     var logger = sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.VendorSiteExtractionService>>();
     return new Kor.Opportunities.Data.Awards.VendorSiteExtractionService(
         crawlStore,

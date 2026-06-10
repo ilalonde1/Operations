@@ -114,6 +114,7 @@ public sealed class IngestionService : IIngestionService
                 if (string.IsNullOrWhiteSpace(candidate.Title) || string.IsNullOrWhiteSpace(candidate.Url))
                 {
                     skipped++;
+                    await RunRejectedAckAsync(source, candidate, ct).ConfigureAwait(false);
                     continue;
                 }
 
@@ -127,6 +128,7 @@ public sealed class IngestionService : IIngestionService
                         candidate.Title,
                         source.Name,
                         relevance.RejectReason);
+                    await RunRejectedAckAsync(source, candidate, ct).ConfigureAwait(false);
                     continue;
                 }
 
@@ -396,6 +398,40 @@ public sealed class IngestionService : IIngestionService
             _logger.LogWarning(
                 ex,
                 "Post-persist acknowledgement failed for candidate '{Title}' from {Source}.",
+                candidate.Title,
+                source.Name);
+        }
+    }
+
+    /// <summary>
+    /// Runs the provider's rejection acknowledgement (if any) when a candidate
+    /// is dropped before persistence — relevance-gate reject or blank-title/url
+    /// skip. Without this, stateful providers (GraphEmail) re-fetch and
+    /// re-reject the same source items on every tick, forever.
+    /// </summary>
+    private async Task RunRejectedAckAsync(
+        OpportunitySource source,
+        OpportunityCandidate candidate,
+        CancellationToken ct)
+    {
+        if (candidate.OnRejectedAsync is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await candidate.OnRejectedAsync(ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Rejection acknowledgement failed for candidate '{Title}' from {Source}.",
                 candidate.Title,
                 source.Name);
         }
