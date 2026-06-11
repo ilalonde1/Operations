@@ -202,11 +202,27 @@ currently ~0 (60/60 succeeded on 06-09), so this is bookkeeping, not money.
 
 ## Pre-implementation gate
 
-1. **G1 (before C2)**: run ONE instrumented research call with a
-   `cache_control` breakpoint and inspect `Usage.CacheCreationInputTokens` /
-   `CacheReadInputTokens` to confirm the server-side web_search loop honors
-   intra-request caching. If it doesn't, C2's savings drop to multi-run
-   prefix reuse only (~$2–4/day) and the priority order changes.
+1. **G1 (before C2)**: ~~run ONE instrumented research call~~ **DONE
+   2026-06-10 evening — CONFIRMED.** One production-shaped call
+   (claude-sonnet-4-6, real shared/system.md + FirmNarrative/user.md,
+   `web_search_20250305` max_uses=6, one `cache_control: ephemeral`
+   breakpoint on the last system block, system padded above the
+   2048-token Sonnet 4.6 caching minimum) returned, for 5 searches:
+   `input_tokens=840`, `cache_creation_input_tokens=35,290`,
+   `cache_read_input_tokens=61,982`. The server-side web_search loop
+   caches intra-request AND covers the growing search context, not just
+   the static prefix — 48% input-cost reduction at 5 iterations, scaling
+   up with depth (production runs 8-12). Production today bills flat
+   (`InputTokens=196K+` in the executor logs, no cache fields), so the
+   breakpoint is the switch. **Revised C2 estimate: $14–17/day** (55-65%
+   of the executors' ~$27/day input spend). Implementation notes:
+   (a) Anthropic.SDK 5.5.1 must set cache_control on the system block in
+   `AnthropicResearchExecutorService.SearchPhaseAsync`; (b) the current
+   static prefix is only ~1.2K tokens — below the 2048 minimum, it
+   silently won't cache — so the fix must also grow system+tools past
+   2048 tokens with legitimately useful static reference content (field
+   semantics / schema documentation); (c) verify with the same usage
+   fields post-deploy.
 2. **G2 (before C1 matters)**: Ian decides the award-cap policy (M3). No
    point fixing the failure rate of a paused job unless it resumes.
 3. **G3 (first PR)**: C3 telemetry — every later fix needs a before/after
