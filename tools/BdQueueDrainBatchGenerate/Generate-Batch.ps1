@@ -78,6 +78,12 @@ param(
     # 'AB'). NULL = no filter (existing behavior).
     [string] $Province,
 
+    # 2026-06-11: targeted org hones (honing-orgs kind only). The selector's
+    # kind-priority ordering starves low-rank kinds — Competitor sat at 0
+    # honed while architects always outranked it. NULL = priority order.
+    [ValidateSet('Architect', 'Competitor', 'KorClient', 'Buyer', 'Developer', '')]
+    [string] $OrgKind,
+
     [string] $ConnectionString = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
 )
 
@@ -108,6 +114,7 @@ try {
     $cmd.Parameters.AddWithValue("@firstPassMaxAgeDays", $FirstPassMaxAgeDays) | Out-Null
     $cmd.Parameters.AddWithValue("@category", $(if ([string]::IsNullOrWhiteSpace($Category)) { [DBNull]::Value } else { $Category })) | Out-Null
     $cmd.Parameters.AddWithValue("@province", $(if ([string]::IsNullOrWhiteSpace($Province)) { [DBNull]::Value } else { $Province })) | Out-Null
+    $cmd.Parameters.AddWithValue("@orgKind", $(if ([string]::IsNullOrWhiteSpace($OrgKind)) { [DBNull]::Value } else { $OrgKind })) | Out-Null
 
     switch ($Kind) {
         'orgs' {
@@ -314,6 +321,7 @@ WITH TopTargets AS (
     WHERE co.RetiredAtUtc IS NULL
       AND co.EnrichmentSuppressedAtUtc IS NULL -- m126 do-not-enrich flag
       AND co.Kind IN (N'Architect', N'Competitor', N'KorClient', N'Buyer', N'Developer')
+      AND (@orgKind IS NULL OR co.Kind = @orgKind) -- 2026-06-11: targeted hones (e.g. Competitor) — priority order otherwise starves low-rank kinds
       AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
       AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment eh WHERE eh.CanonicalOrgId = co.Id AND eh.ProviderName = N'FirmNarrativeHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()))
     ORDER BY
