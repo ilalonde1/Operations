@@ -1043,9 +1043,24 @@ builder.Services.AddQuartz(q =>
                      .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
                 });
 
+                // 2026-06-11: daily 6am "quick eye on the whole system" email —
+                // new opps, verdict movement, ingest activity, failures,
+                // coverage, latest drain-trigger report.
+                var morningReportJobKey = new JobKey("BdMorningReportJob");
+                q.AddJob<Kor.Opportunities.Worker.Services.Reporting.BdMorningReportJob>(opts => opts.WithIdentity(morningReportJobKey));
+
+                q.AddTrigger(t =>
+                {
+                    var cron = builder.Configuration["MorningReportCronSchedule"] ?? "0 0 6 * * ?";
+                    t.ForJob(morningReportJobKey)
+                     .WithIdentity("BdMorningReportTrigger")
+                     .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+                });
+
                 q.AddTriggerListener<EnabledTriggerListener>(EverythingMatcher<TriggerKey>.AllTriggers());
                 q.AddJobListener<LastReportPathListener>(EverythingMatcher<JobKey>.AllJobs());
             });
+            builder.Services.AddSingleton<Kor.Opportunities.Worker.Services.Reporting.GraphMailSender>();
             builder.Services.AddHostedService<JobScheduleRegistryHostedService>();
             builder.Services.AddHostedService<JobScheduleNextFireUpdaterHostedService>();
             builder.Services.AddHostedService<JobRunLoggingListenerHostedService>();

@@ -155,6 +155,19 @@ $lines
 Set-Content (Join-Path $QueueRoot 'refresh-report.txt') ($lines -join [Environment]::NewLine)
 Add-Content (Join-Path $QueueRoot 'refresh-log.txt') ("{0:yyyy-MM-dd HH:mm}  {1}" -f (Get-Date), (($report -join ' | ') -replace '\s+', ' '))
 
+# DB bridge (m128): the Worker's BdMorningReportJob on KOR-APP01 embeds the
+# latest row in the 6am email — the file above is unreachable from there.
+try {
+    $repCon = New-Object System.Data.SqlClient.SqlConnection $ConnectionString
+    $repCon.Open()
+    $repCmd = $repCon.CreateCommand()
+    $repCmd.CommandText = "INSERT INTO opportunities.QueueRefreshReport (PendingQueues, ReportText) VALUES (@q, @t);"
+    [void]$repCmd.Parameters.AddWithValue('@q', ($runCards -join ','))
+    [void]$repCmd.Parameters.AddWithValue('@t', ($lines -join "`n"))
+    [void]$repCmd.ExecuteNonQuery()
+    $repCon.Close()
+} catch { Write-Warning "QueueRefreshReport insert failed (morning email will show stale trigger data): $_" }
+
 # Generate-Batch's "nothing to drain" warning leaves a non-zero LASTEXITCODE;
 # an empty kind is the freshness signal, not a failure.
 exit 0

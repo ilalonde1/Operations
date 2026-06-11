@@ -231,4 +231,16 @@ public sealed class OpportunitiesWorkerOptions
     // --- Round 16c: Deltek PR pursuit sync ---
     public bool KorPursuitDeltekSyncEnabled { get; set; } = true;
     public string? KorPursuitDeltekSyncCronSchedule { get; set; }
+
+    // --- 2026-06-11: BD morning report email (BdMorningReportJob) ---
+    // Graph creds = the FileSync app registration (Mail.Send application
+    // permission); set via KOR_OPPORTUNITIES_MORNINGREPORT* Machine env
+    // vars on KOR-APP01. Missing creds disable the job with a logged warning.
+    public bool MorningReportEnabled { get; set; } = true;
+    public string MorningReportCronSchedule { get; set; } = "0 0 6 * * ?";
+    public string MorningReportTenantId { get; set; } = "";
+    public string MorningReportClientId { get; set; } = "";
+    public string MorningReportClientSecret { get; set; } = "";
+    public string MorningReportSenderUpn { get; set; } = "ilalonde@korstructural.com";
+    public string MorningReportRecipient { get; set; } = "ilalonde@korstructural.com";
 }
