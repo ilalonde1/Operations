@@ -133,24 +133,26 @@ foreach ($kind in $kinds.Keys) {
     if ($pending -gt 0) { $runCards += $kind }
 }
 
-''
-'=== BD NIGHTLY REFRESH ==='
-$report
-''
+$lines = @('', "=== BD NIGHTLY REFRESH — {0:yyyy-MM-dd HH:mm} ===" -f (Get-Date)) + $report + @('')
 if ($runCards.Count -eq 0) {
-    'All kinds fresh — nothing to run tonight.'
+    $lines += 'All kinds fresh — nothing to run tonight.'
 }
 else {
-    "RUN TONIGHT ($($runCards.Count) queue$(if ($runCards.Count -ne 1) { 's' })) — paste 'Read PROMPT.md in this directory and execute it.' into each:"
+    $lines += "RUN TONIGHT ($($runCards.Count) queue$(if ($runCards.Count -ne 1) { 's' })) — paste 'Read PROMPT.md in this directory and execute it.' into each:"
     foreach ($q in $runCards) {
-        ''
-        "  cd $QueueRoot\$q"
-        '  claude --model claude-sonnet-4-6 --permission-mode bypassPermissions'
+        $lines += ''
+        $lines += "  cd $QueueRoot\$q"
+        $lines += '  claude --model claude-sonnet-4-6 --dangerously-skip-permissions'
     }
-    ''
-    'Next morning: BdQueueDrainIngest per finished queue (people kinds use --kind people, org kinds --kind orgs, project kinds --kind ab-projects; pass --dir for non-default queue dirs).'
+    $lines += ''
+    $lines += 'Next morning: tell Claude which queues finished — it ingests and verifies.'
 }
 
+# Console (visible on manual runs) + REPORT FILE (the scheduled task runs
+# headless — this file IS the report): latest run overwrites refresh-report.txt,
+# the rolling one-liner history appends to refresh-log.txt.
+$lines
+Set-Content (Join-Path $QueueRoot 'refresh-report.txt') ($lines -join [Environment]::NewLine)
 Add-Content (Join-Path $QueueRoot 'refresh-log.txt') ("{0:yyyy-MM-dd HH:mm}  {1}" -f (Get-Date), (($report -join ' | ') -replace '\s+', ' '))
 
 # Generate-Batch's "nothing to drain" warning leaves a non-zero LASTEXITCODE;
