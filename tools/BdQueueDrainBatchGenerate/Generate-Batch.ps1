@@ -124,6 +124,7 @@ FROM opportunities.CanonicalOrg co
 WHERE co.RetiredAtUtc IS NULL
   AND co.EnrichmentSuppressedAtUtc IS NULL -- m126 do-not-enrich flag
   AND co.Kind IN (N'Architect', N'GC', N'Developer', N'Buyer', N'Competitor', N'KorClient')
+  AND (@orgKind IS NULL OR co.Kind = @orgKind) -- 2026-06-11: targeted first-pass campaigns
   AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment e
                   WHERE e.CanonicalOrgId = co.Id AND e.ProviderName = N'FirmNarrative'
                     AND e.LastRefreshAtUtc >= DATEADD(DAY, -60, sysdatetimeoffset()))
