@@ -283,6 +283,13 @@ SELECT TOP (@take) Id, ProjectName, ProjectStage, Province, MunicipalityName, Se
 FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL
   AND (ProponentName IS NULL OR LEN(LTRIM(RTRIM(ProponentName))) = 0)
+  -- m129 (2026-06-11): a recorded ProponentResearch attempt (incl.
+  -- Status='Unresolvable') excludes the row for 90 days — the same 5
+  -- dead-end MPIs were re-batched every single run. Quarterly auto-retry.
+  AND NOT EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment pe
+                  WHERE pe.MajorProjectsInventoryId = Id
+                    AND pe.ProviderName = N'ProponentResearch'
+                    AND pe.LastRefreshAtUtc >= DATEADD(DAY, -90, sysdatetimeoffset()))
   -- Reject generic project names (Sonnet can't research them)
   AND ProjectName NOT IN (
       N'Condominium Development', N'Residential Condominium', N'Highrise Condominiums',
