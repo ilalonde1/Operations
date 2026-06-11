@@ -104,6 +104,9 @@ internal static class Program
                 && !string.IsNullOrWhiteSpace(startupOptions.GraphEmailUserEmail);
             using var probeLoggerFactory = LoggerFactory.Create(lb => lb.AddSerilog(serilogLogger, dispose: false));
             var deltekAvailable = DeltekCapabilityProbe.TryPing(
+                startupOptions.DeltekDsn,
+                startupOptions.DeltekUser,
+                startupOptions.DeltekPassword,
                 probeLoggerFactory.CreateLogger("Startup.DeltekProbe"),
                 out var deltekDetail);
             if (deltekAvailable)
