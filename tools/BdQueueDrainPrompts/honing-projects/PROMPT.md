@@ -144,3 +144,11 @@ batch is done.
 3. Monitor: `Get-Content outputs\_status.json | ConvertFrom-Json | Format-List`
 4. Ingest:
    `dotnet run --project tools/BdQueueDrainIngest -- --kind ab-projects --dir "C:\ProgramData\KorOperations\QueueDrain\honing-projects\outputs"`
+
+## BATCH LOOP (MANDATORY — added 2026-06-11 after four one-batch-and-stop sessions)
+
+One batch is NOT the mission. After writing outputs/SUMMARY-batch-NNN.txt,
+GO BACK to batch discovery: list `inputs/batch-*.json` again and process the
+next lowest-numbered batch with no matching SUMMARY. Only finish the session
+when NO un-summarized batch remains. Reset the heartbeat (_status.json) for
+each new batch as you start it.
