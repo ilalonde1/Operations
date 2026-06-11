@@ -223,6 +223,20 @@ currently ~0 (60/60 succeeded on 06-09), so this is bookkeeping, not money.
    2048 tokens with legitimately useful static reference content (field
    semantics / schema documentation); (c) verify with the same usage
    fields post-deploy.
+
+   **C2 IMPLEMENTED + VERIFIED LIVE same evening (deploy 1.0.9657.1107,
+   18:27 PT):** `PromptCaching = AutomaticToolsAndSystem` + ephemeral
+   cache_control on the system block in
+   `AnthropicResearchExecutorService.SearchPhaseAsync`; all three
+   ResearchPrompts system.md files grew FIELD SEMANTICS / SEARCH
+   STRATEGY / CONFIDENCE CALIBRATION appendices to clear the 2048-token
+   minimum (count_tokens verified: 2,220 / 2,161 / 2,120 system-only);
+   the success log line now carries SearchCacheWriteTok/SearchCacheReadTok,
+   and trigger-row InputTokens reports total context (uncached + write +
+   read). Live proof, org 484/FirmNarrative: 06-09 run billed
+   SearchInTok=196,895 flat; post-deploy run logged SearchInTok=1,252,
+   CacheWrite=49,053, CacheRead=54,495 (6 tool calls, 36s). First full
+   measurement lands with tomorrow's 07:00/07:30/08:00 executor runs.
 2. **G2 (before C1 matters)**: Ian decides the award-cap policy (M3). No
    point fixing the failure rate of a paused job unless it resumes.
 3. **G3 (first PR)**: C3 telemetry — every later fix needs a before/after

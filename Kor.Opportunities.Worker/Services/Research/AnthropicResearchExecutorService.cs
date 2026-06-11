@@ -131,7 +131,7 @@ public sealed class AnthropicResearchExecutorService : IResearchExecutorService
             using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
             using var client = new AnthropicClient(new APIAuthentication(apiKey), httpClient);
 
-            var (researchText, p1In, p1Out, p1Tools) = await SearchPhaseAsync(client, target, ct).ConfigureAwait(false);
+            var (researchText, p1In, p1Out, p1Tools, p1CacheWrite, p1CacheRead) = await SearchPhaseAsync(client, target, ct).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(researchText))
             {
                 _logger.LogWarning(
@@ -153,21 +153,27 @@ public sealed class AnthropicResearchExecutorService : IResearchExecutorService
             }
 
             _logger.LogInformation(
-                "BD research execution succeeded for org {CanonicalOrgId}/{ProviderName}. SearchInTok={SearchInTok}, SearchOutTok={SearchOutTok}, ToolCalls={ToolCalls}, FormatInTok={FormatInTok}, FormatOutTok={FormatOutTok}, Elapsed={Elapsed}.",
+                "BD research execution succeeded for org {CanonicalOrgId}/{ProviderName}. SearchInTok={SearchInTok}, SearchCacheWriteTok={SearchCacheWriteTok}, SearchCacheReadTok={SearchCacheReadTok}, SearchOutTok={SearchOutTok}, ToolCalls={ToolCalls}, FormatInTok={FormatInTok}, FormatOutTok={FormatOutTok}, Elapsed={Elapsed}.",
                 target.CanonicalOrgId,
                 target.ProviderName,
                 p1In,
+                p1CacheWrite,
+                p1CacheRead,
                 p1Out,
                 p1Tools,
                 p2In,
                 p2Out,
                 sw.Elapsed);
 
+            // InputTokens = total context processed (uncached + cache writes +
+            // cache reads) so trigger-row token counts stay comparable with
+            // pre-caching history. The cost breakdown lives in the log line:
+            // uncached @ $3/M, writes @ $3.75/M, reads @ $0.30/M (Sonnet 4.6).
             return new ExecutedResearch(
                 target.CanonicalOrgId,
                 target.ProviderName,
                 json,
-                p1In + p2In,
+                p1In + p1CacheWrite + p1CacheRead + p2In,
                 p1Out + p2Out,
                 p1Tools,
                 sw.Elapsed);
@@ -185,7 +191,7 @@ public sealed class AnthropicResearchExecutorService : IResearchExecutorService
         }
     }
 
-    private async Task<(string Text, long InTok, long OutTok, int ToolCalls)> SearchPhaseAsync(
+    private async Task<(string Text, long InTok, long OutTok, int ToolCalls, long CacheWriteTok, long CacheReadTok)> SearchPhaseAsync(
         AnthropicClient client,
         ResearchTarget target,
         CancellationToken ct)
@@ -200,9 +206,17 @@ public sealed class AnthropicResearchExecutorService : IResearchExecutorService
             Model = _options.Model,
             MaxTokens = 16000,
             Stream = false,
+            // G1-verified 2026-06-10: with a cache breakpoint on the system
+            // block, the server-side web_search loop incrementally caches its
+            // own growing context — measured input_tokens=840 / cache_read=62K
+            // on a 5-search call that bills ~196K flat without it. The system
+            // prompt must total >= 2048 tokens (Sonnet 4.6 minimum cacheable
+            // prefix) or the breakpoint silently does nothing — hence the
+            // FIELD SEMANTICS appendices in the ResearchPrompts system.md files.
+            PromptCaching = PromptCacheType.AutomaticToolsAndSystem,
             System = new List<SystemMessage>
             {
-                new(target.SystemPromptOverride),
+                new(target.SystemPromptOverride, new CacheControl { Type = CacheControlType.ephemeral }),
             },
             Messages = messages,
             Tools = new List<AnthropicTool>
@@ -229,7 +243,9 @@ public sealed class AnthropicResearchExecutorService : IResearchExecutorService
             sb.ToString(),
             response.Usage?.InputTokens ?? 0,
             response.Usage?.OutputTokens ?? 0,
-            CountToolUseBlocks(response));
+            CountToolUseBlocks(response),
+            response.Usage?.CacheCreationInputTokens ?? 0,
+            response.Usage?.CacheReadInputTokens ?? 0);
     }
 
     private async Task<(string Json, long InTok, long OutTok)> FormatPhaseAsync(
