@@ -280,14 +280,16 @@ ORDER BY CASE WHEN EmployerName IS NOT NULL THEN 0 ELSE 1 END,
             $cmd.CommandText = @"
 SELECT TOP (@take) Id, ProjectName, ProjectStage, Province, MunicipalityName, Sector, ProjectCategoryName,
        COALESCE(EstimatedCostText, CAST(EstimatedCostCad AS NVARCHAR(64))) AS EstimatedCost
-FROM opportunities.MajorProjectsInventory
+FROM opportunities.MajorProjectsInventory mpi
 WHERE RetiredAtUtc IS NULL
   AND (ProponentName IS NULL OR LEN(LTRIM(RTRIM(ProponentName))) = 0)
   -- m129 (2026-06-11): a recorded ProponentResearch attempt (incl.
   -- Status='Unresolvable') excludes the row for 90 days — the same 5
   -- dead-end MPIs were re-batched every single run. Quarterly auto-retry.
+  -- NB: mpi alias is load-bearing — unqualified Id inside the subquery
+  -- binds to pe.Id (innermost scope) and silently never excludes.
   AND NOT EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment pe
-                  WHERE pe.MajorProjectsInventoryId = Id
+                  WHERE pe.MajorProjectsInventoryId = mpi.Id
                     AND pe.ProviderName = N'ProponentResearch'
                     AND pe.LastRefreshAtUtc >= DATEADD(DAY, -90, sysdatetimeoffset()))
   -- Reject generic project names (Sonnet can't research them)
