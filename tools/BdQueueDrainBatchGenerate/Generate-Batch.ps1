@@ -115,6 +115,7 @@ try {
 SELECT TOP (@take) co.Id, co.DisplayName, co.Kind
 FROM opportunities.CanonicalOrg co
 WHERE co.RetiredAtUtc IS NULL
+  AND co.EnrichmentSuppressedAtUtc IS NULL -- m126 do-not-enrich flag
   AND co.Kind IN (N'Architect', N'GC', N'Developer', N'Buyer', N'Competitor', N'KorClient')
   AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment e
                   WHERE e.CanonicalOrgId = co.Id AND e.ProviderName = N'FirmNarrative'
@@ -311,6 +312,7 @@ WITH TopTargets AS (
         AND e.LastRefreshAtUtc >= DATEADD(DAY, -@firstPassMaxAgeDays, sysdatetimeoffset())
         AND e.Status = N'Ok'
     WHERE co.RetiredAtUtc IS NULL
+      AND co.EnrichmentSuppressedAtUtc IS NULL -- m126 do-not-enrich flag
       AND co.Kind IN (N'Architect', N'Competitor', N'KorClient', N'Buyer', N'Developer')
       AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
       AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment eh WHERE eh.CanonicalOrgId = co.Id AND eh.ProviderName = N'FirmNarrativeHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()))
