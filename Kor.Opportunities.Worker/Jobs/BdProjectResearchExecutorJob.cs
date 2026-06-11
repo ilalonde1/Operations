@@ -26,6 +26,10 @@ public sealed class BdProjectResearchExecutorJob : IJob
         var sw = Stopwatch.StartNew();
         var result = await _svc.RunBatchAsync(ct).ConfigureAwait(false);
         sw.Stop();
+        // JobRunLoggingListener persists context.Result into JobRuns.Summary —
+        // this is the durable per-run cost record (2026-06-10 audit C3).
+        context.Result =
+            $"considered={result.ProjectsConsidered}; executed={result.ProjectsExecuted}; ok={result.Successes}; failed={result.Failures}; inputTok={result.TotalInputTokens}; outputTok={result.TotalOutputTokens}";
         _logger.LogInformation(
             "{Job}: completed. considered={Considered}; executed={Executed}; ok={Successes}; failed={Failures}; inputTok={InputTok}; outputTok={OutputTok}; elapsedMs={ElapsedMs}.",
             nameof(BdProjectResearchExecutorJob),

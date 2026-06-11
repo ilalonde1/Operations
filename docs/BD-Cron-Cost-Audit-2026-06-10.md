@@ -1,12 +1,29 @@
 # Cron Cost Audit — 2026-06-10
 
-> **Disposition addendum (2026-06-10, same day):** Ian reviewed the
-> value question on award enrichment and retired the job — see
-> "Addendum — AwardAgentEnrichmentJob retired" at the bottom. C1 and M3
-> are closed-by-retirement; Mi2's cron override has been removed. The
-> live punch-list is now: C2 (executor prompt caching, gated on G1),
-> C3 (run-summary telemetry), M2 (permits cron env var), M1 (dead Model
-> options).
+> **Disposition addendum (2026-06-10, end of day — punch-list closed
+> except M1):**
+> - **C1 / M3 / Mi2**: closed-by-retirement — AwardAgentEnrichmentJob
+>   disabled at three layers (see bottom addendum).
+> - **C2**: G1-verified, implemented, deployed (1.0.9657.1107), and
+>   live-verified — org 484 went from 196,895 flat input tokens to
+>   1,252 uncached + 54,495 cache-read. See the G1 section.
+> - **C3**: DONE (1.0.9657.1209) — the three executor jobs now set
+>   `context.Result`, so JobRuns.Summary carries
+>   considered/executed/ok/failed/inputTok/outputTok per run. First
+>   populated rows land with the 2026-06-11 morning runs.
+> - **M2**: DONE — `KOR_OPPORTUNITIES_BUILDINGPERMITSCRONSCHEDULE`
+>   deleted on KOR-APP01; JobSchedules confirms permits back to daily
+>   06:30 (was 288 runs/day).
+> - Dead config `KOR_OPPORTUNITIES_DELTEKACCESSENABLED` (read by
+>   nothing) deleted from KOR-APP01.
+> - **M1** (per-executor Model options are dead config in
+>   `AnthropicResearchExecutorService`): the only remaining open item.
+>   $0 cost today; fix when per-executor model tiers are actually
+>   wanted.
+> - Also fixed same day (found during the audit's restart): the Deltek
+>   capability probe never passed credentials — see the second bottom
+>   addendum. KorPursuitDeltekSync + won-project signal refresh are live
+>   for the first time.
 
 Adversarial cost review of the Anthropic-billed enrichment jobs on
 `Kor.Opportunities.Worker` (KOR-APP01). All numbers verified from source:
