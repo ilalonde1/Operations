@@ -92,7 +92,7 @@ public sealed class BdMorningReportJob : IJob
 SELECT TOP 15 m.ProjectName, COALESCE(m.Province, N'?'),
        COALESCE(m.EstimatedCostText, FORMAT(m.EstimatedCostCad, 'C0'), N'')
 FROM opportunities.MajorProjectsInventory m
-WHERE m.RetiredAtUtc IS NULL AND m.CreatedAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
+WHERE m.RetiredAtUtc IS NULL AND m.FirstSeenAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
 ORDER BY m.EstimatedCostCad DESC;", con))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
@@ -105,7 +105,7 @@ ORDER BY m.EstimatedCostCad DESC;", con))
         int newMpiTotal;
         await using (var cmd = new SqlCommand(@"
 SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
-WHERE RetiredAtUtc IS NULL AND CreatedAtUtc >= DATEADD(hour, -24, sysdatetimeoffset());", con))
+WHERE RetiredAtUtc IS NULL AND FirstSeenAtUtc >= DATEADD(hour, -24, sysdatetimeoffset());", con))
         {
             newMpiTotal = (int)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
         }
