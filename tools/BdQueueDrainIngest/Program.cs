@@ -296,8 +296,68 @@ foreach (var file in files)
                         continue;
                     }
 
+                    // 2026-06-10 misattribution incident: people batches carry
+                    // ORDINAL ids (the kind sources IntelProjectKeyPerson by
+                    // NAME — many subjects have no IntelPerson row yet), and
+                    // trusting the filename id wrote ~200 PersonBrief rows onto
+                    // whichever IntelPerson happened to own ids 1..N. Identity
+                    // is the displayName echoed in the brief, resolved via
+                    // NormalizedName. Files without one are REFUSED — an
+                    // ordinal can never be trusted as an id.
+                    string? subjectName = null;
+                    using (var bdoc = JsonDocument.Parse(briefJson))
+                    {
+                        if (bdoc.RootElement.ValueKind == JsonValueKind.Object
+                            && bdoc.RootElement.TryGetProperty("displayName", out var dn)
+                            && dn.ValueKind == JsonValueKind.String)
+                        {
+                            subjectName = dn.GetString();
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(subjectName))
+                    {
+                        log.LogWarning(
+                            "Skipping {Name}: brief has no displayName — people ids are batch ordinals and cannot be trusted. Re-run with a PROMPT that echoes the input displayName.",
+                            name);
+                        skipped++;
+                        continue;
+                    }
+
+                    var matches = new List<long>();
+                    await using (var pcon = new Microsoft.Data.SqlClient.SqlConnection(cs))
+                    {
+                        await pcon.OpenAsync().ConfigureAwait(false);
+                        await using var pcmd = new Microsoft.Data.SqlClient.SqlCommand(
+                            "SELECT Id FROM opportunities.IntelPerson WHERE NormalizedName = @n AND RetiredAtUtc IS NULL;", pcon);
+                        pcmd.Parameters.AddWithValue("@n", IntelNaturalKey.Normalize(subjectName));
+                        await using var pr = await pcmd.ExecuteReaderAsync().ConfigureAwait(false);
+                        while (await pr.ReadAsync().ConfigureAwait(false))
+                        {
+                            matches.Add(pr.GetInt64(0));
+                        }
+                    }
+
+                    if (matches.Count == 0)
+                    {
+                        log.LogWarning(
+                            "Skipping {Name}: no active IntelPerson matches displayName '{Subject}' — research a known person or create the IntelPerson first.",
+                            name, subjectName);
+                        skipped++;
+                        continue;
+                    }
+
+                    if (matches.Count > 1)
+                    {
+                        log.LogWarning(
+                            "Skipping {Name}: displayName '{Subject}' is AMBIGUOUS ({Count} active IntelPerson rows: {Ids}) — dedup the persons first.",
+                            name, subjectName, matches.Count, string.Join(", ", matches));
+                        skipped++;
+                        continue;
+                    }
+
                     await sp.GetRequiredService<IPersonRefreshChokepoint>()
-                        .RecordAttemptAsync(id, result, NextRefreshFor(personProvider), CancellationToken.None, personProvider)
+                        .RecordAttemptAsync(matches[0], result, NextRefreshFor(personProvider), CancellationToken.None, personProvider)
                         .ConfigureAwait(false);
                 }
                 break;
