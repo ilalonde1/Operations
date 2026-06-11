@@ -338,10 +338,47 @@ foreach (var file in files)
                         }
                     }
 
+                    if (matches.Count == 0 && personProvider == "PersonBrief")
+                    {
+                        // FIRST-PASS people research discovers NEW people (the
+                        // batch kind sources IntelProjectKeyPerson by name) —
+                        // create the IntelPerson so the brief has a home,
+                        // using PersistAsync's conventions (NaturalKey =
+                        // Compute(NormalizedName)). Honing stays strict: it
+                        // refreshes existing people only.
+                        if (!IntelPersonNameGuard.IsValid(subjectName, out var nameReason))
+                        {
+                            log.LogWarning("Skipping {Name}: displayName '{Subject}' fails the person name guard ({Reason}).", name, subjectName, nameReason);
+                            skipped++;
+                            continue;
+                        }
+
+                        var normalized = IntelNaturalKey.Normalize(subjectName);
+                        await using var icon = new Microsoft.Data.SqlClient.SqlConnection(cs);
+                        await icon.OpenAsync().ConfigureAwait(false);
+                        // SourceEnrichmentId is FK'd NOT NULL but the brief's
+                        // enrichment row doesn't exist until the chokepoint
+                        // runs — seed with any valid id; the chokepoint's
+                        // extractor MERGEs this person by NaturalKey and
+                        // overwrites SourceEnrichmentId with the real row.
+                        await using var icmd = new Microsoft.Data.SqlClient.SqlCommand(@"
+INSERT INTO opportunities.IntelPerson
+    (SourceProviderName, SourceEnrichmentId, SourceConfidence, NaturalKey,
+     FirstSeenAtUtc, LastSeenAtUtc, DisplayName, NormalizedName)
+SELECT N'PersonBrief', (SELECT MIN(Id) FROM opportunities.CanonicalOrgEnrichment), N'Medium', @naturalKey,
+       sysdatetimeoffset(), sysdatetimeoffset(), @displayName, @normalizedName;
+SELECT CAST(SCOPE_IDENTITY() AS bigint);", icon);
+                        icmd.Parameters.AddWithValue("@naturalKey", IntelNaturalKey.Compute(normalized));
+                        icmd.Parameters.AddWithValue("@displayName", subjectName.Length <= 200 ? subjectName : subjectName[..200]);
+                        icmd.Parameters.AddWithValue("@normalizedName", normalized.Length <= 200 ? normalized : normalized[..200]);
+                        matches.Add((long)(await icmd.ExecuteScalarAsync().ConfigureAwait(false))!);
+                        log.LogInformation("{Name}: created IntelPerson {Id} for '{Subject}' (first-pass discovery).", name, matches[0], subjectName);
+                    }
+
                     if (matches.Count == 0)
                     {
                         log.LogWarning(
-                            "Skipping {Name}: no active IntelPerson matches displayName '{Subject}' — research a known person or create the IntelPerson first.",
+                            "Skipping {Name}: no active IntelPerson matches displayName '{Subject}' — honing refreshes known people only.",
                             name, subjectName);
                         skipped++;
                         continue;
