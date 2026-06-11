@@ -54,6 +54,31 @@ $generateBatch = Join-Path $PSScriptRoot 'Generate-Batch.ps1'
 $runCards = @()
 $report = @()
 
+# m127 auto-revival: orgs culled for having no BD surface get their research
+# slot back the moment something live links them (new MPI role, affiliation,
+# or intel). m126 junk-name suppressions stay — those need a name fix first.
+Add-Type -AssemblyName System.Data
+$revCon = New-Object System.Data.SqlClient.SqlConnection $ConnectionString
+$revCon.Open()
+$revCmd = $revCon.CreateCommand(); $revCmd.CommandTimeout = 300
+$revCmd.CommandText = @"
+UPDATE co SET EnrichmentSuppressedAtUtc = NULL, EnrichmentSuppressedReason = NULL
+FROM opportunities.CanonicalOrg co
+WHERE co.EnrichmentSuppressedAtUtc IS NOT NULL
+  AND co.EnrichmentSuppressedReason LIKE N'm127:%'
+  AND (
+       EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory m WHERE m.RetiredAtUtc IS NULL
+               AND (m.ArchitectCanonicalOrgId = co.Id OR m.GeneralContractorCanonicalOrgId = co.Id
+                    OR m.StructuralEngineerCanonicalOrgId = co.Id OR m.ProponentCanonicalOrgId = co.Id))
+    OR EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL)
+    OR EXISTS (SELECT 1 FROM opportunities.IntelSignal s WHERE s.CanonicalOrgId = co.Id AND s.RetiredAtUtc IS NULL)
+    OR EXISTS (SELECT 1 FROM opportunities.IntelAction x WHERE x.CanonicalOrgId = co.Id AND x.RetiredAtUtc IS NULL)
+  );
+"@
+$revived = $revCmd.ExecuteNonQuery()
+$revCon.Close()
+if ($revived -gt 0) { $report += "m127 auto-revival: $revived org(s) regained research slots" }
+
 foreach ($kind in $kinds.Keys) {
     $queueDir = Join-Path $QueueRoot $kind
     $inputs = Join-Path $queueDir 'inputs'
