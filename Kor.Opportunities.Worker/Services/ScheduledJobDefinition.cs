@@ -41,5 +41,7 @@ internal static class ScheduledJobDefinitions
         // Default cadence: 30 minutes (matches APC list-scrape pace + leaves
         // breathing room for the source query to find new unenriched opps).
         new(nameof(ApcInterestEnrichmentJob), "ApcInterestEnrichmentCronSchedule", "0 17 0/1 * * ?", o => o.ApcInterestEnrichmentEnabled, "Enrichment"),
+        // 2026-06-11: daily 6am BD system-status email to Ian.
+        new(nameof(Reporting.BdMorningReportJob), "MorningReportCronSchedule", "0 0 6 * * ?", o => o.MorningReportEnabled, "Reporting"),
     ];
 }
