@@ -85,6 +85,22 @@ foreach ($kind in $kinds.Keys) {
     $outputs = Join-Path $queueDir 'outputs'
     if (-not (Test-Path $inputs)) { $report += "{0,-16} queue dir missing — skipped" -f $kind; continue }
 
+    # 0. Race guard (2026-06-11): generating while a session is actively
+    # working this queue produced a 100%-duplicate projects batch (013 ≡ 012)
+    # and 135 redundant researches. If the heartbeat says "working" and is
+    # fresh (<30 min), leave this kind alone tonight.
+    $statusFile = Join-Path $outputs '_status.json'
+    if (Test-Path $statusFile) {
+        $st = Get-Content $statusFile -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
+        $stState = $st.state ?? $st.status
+        $stAgeMin = ((Get-Date) - (Get-Item $statusFile).LastWriteTime).TotalMinutes
+        if ($stState -eq 'working' -and $stAgeMin -lt 30) {
+            $report += "{0,-16} SESSION ACTIVE ({1}/{2}, tick {3:N0}m ago) — generation skipped" -f $kind, $st.completed, $st.total, $stAgeMin
+            $runCards += $kind  # still pending work; just don't add more
+            continue
+        }
+    }
+
     # 1. Housekeep: summarized batches out of the live glob.
     $doneDir = Join-Path $inputs '_done'
     New-Item -ItemType Directory -Path $doneDir -Force | Out-Null
