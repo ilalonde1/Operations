@@ -452,6 +452,89 @@ ORDER BY s.UpdatedAtUtc DESC;
             }
         }
         'honing-people' {
+            # 2026-06-12 angle 4 (-DeepContext): engagement-plan packaging.
+            # Selection-authority people ranked by their org's live pursuit
+            # exposure, each packaged with the org's pursuit list (verdicts,
+            # roles, costs) + their own briefs. The PROMPT turns that into a
+            # per-person engagement plan whose actions decompose into graph
+            # data at ingest.
+            if ($DeepContext) {
+                $cmd.CommandText = @"
+WITH OrgPursuits AS (
+    SELECT co.Id AS OrgId, COUNT(*) AS PursuitCount
+    FROM opportunities.CanonicalOrg co
+    JOIN opportunities.MajorProjectsInventory m ON m.RetiredAtUtc IS NULL
+        AND (m.ArchitectCanonicalOrgId = co.Id OR m.GeneralContractorCanonicalOrgId = co.Id
+             OR m.ProponentCanonicalOrgId = co.Id OR m.StructuralEngineerCanonicalOrgId = co.Id)
+    JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+    WHERE co.RetiredAtUtc IS NULL
+      AND COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),'')) IN (N'PURSUE', N'PURSUE_URGENT')
+    GROUP BY co.Id
+)
+SELECT TOP (@take) p.Id, p.DisplayName, a.Title, co.DisplayName AS OrgName, co.Kind AS OrgKind, op.PursuitCount,
+    pb.ResultJson AS PersonBrief, ph.ResultJson AS PersonHoning
+FROM opportunities.IntelPerson p
+JOIN opportunities.IntelPersonAffiliation a ON a.IntelPersonId = p.Id AND a.IsCurrent = 1 AND a.RetiredAtUtc IS NULL
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId AND co.RetiredAtUtc IS NULL
+JOIN OrgPursuits op ON op.OrgId = co.Id
+LEFT JOIN opportunities.CanonicalOrgEnrichment pb ON pb.CanonicalOrgId = a.CanonicalOrgId
+    AND pb.ProviderName = N'PersonBrief-' + CAST(p.Id AS nvarchar(20)) AND pb.Status = N'Ok'
+LEFT JOIN opportunities.CanonicalOrgEnrichment ph ON ph.CanonicalOrgId = a.CanonicalOrgId
+    AND ph.ProviderName = N'PersonBriefHoning-' + CAST(p.Id AS nvarchar(20)) AND ph.Status = N'Ok'
+WHERE p.RetiredAtUtc IS NULL AND LEN(p.DisplayName) >= 6 AND p.DisplayName LIKE N'% %'
+ORDER BY op.PursuitCount DESC, CASE co.Kind WHEN N'Architect' THEN 0 WHEN N'Buyer' THEN 1 WHEN N'Developer' THEN 2 WHEN N'GC' THEN 3 ELSE 4 END;
+"@
+                $r = $cmd.ExecuteReader()
+                $rows = @()
+                while ($r.Read()) {
+                    try {
+                        $row = [ordered]@{
+                            personId = [int64]$r.GetValue(0)
+                            displayName = $r.GetValue(1)
+                            currentTitle = if ($r.IsDBNull(2)) { $null } else { $r.GetValue(2) }
+                            orgName = $r.GetValue(3)
+                            orgKind = $r.GetValue(4)
+                            orgPursuitCount = [int]$r.GetValue(5)
+                            personBrief = if ($r.IsDBNull(6)) { $null } else { $r.GetValue(6) | ConvertFrom-Json }
+                            personHoning = if ($r.IsDBNull(7)) { $null } else { $r.GetValue(7) | ConvertFrom-Json }
+                        }
+                        $rows += $row
+                    } catch {}
+                }
+                $r.Close()
+
+                # per-person: attach the org's pursuit list
+                foreach ($row in $rows) {
+                    $pc = $conn.CreateCommand()
+                    $pc.Parameters.AddWithValue("@person", [int64]$row.personId) | Out-Null
+                    $pc.CommandText = @"
+SELECT TOP 8 m.Id, m.ProjectName, COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS nvarchar(64))),
+    COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),'')),
+    CASE WHEN m.ArchitectCanonicalOrgId = a.CanonicalOrgId THEN N'Architect' WHEN m.GeneralContractorCanonicalOrgId = a.CanonicalOrgId THEN N'GC'
+         WHEN m.StructuralEngineerCanonicalOrgId = a.CanonicalOrgId THEN N'StructuralEngineer' ELSE N'Owner' END
+FROM opportunities.IntelPersonAffiliation a
+JOIN opportunities.MajorProjectsInventory m ON m.RetiredAtUtc IS NULL
+    AND (m.ArchitectCanonicalOrgId = a.CanonicalOrgId OR m.GeneralContractorCanonicalOrgId = a.CanonicalOrgId
+         OR m.ProponentCanonicalOrgId = a.CanonicalOrgId OR m.StructuralEngineerCanonicalOrgId = a.CanonicalOrgId)
+JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+WHERE a.IntelPersonId = @person AND a.IsCurrent = 1 AND a.RetiredAtUtc IS NULL
+  AND COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),'')) IN (N'PURSUE', N'PURSUE_URGENT')
+ORDER BY CASE COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),'')) WHEN N'PURSUE_URGENT' THEN 0 ELSE 1 END, m.EstimatedCostCad DESC;
+"@
+                    $pr = $pc.ExecuteReader()
+                    $pursuits = @()
+                    while ($pr.Read()) {
+                        $pursuits += [ordered]@{
+                            mpiId = [int64]$pr.GetValue(0); projectName = $pr.GetValue(1)
+                            cost = if ($pr.IsDBNull(2)) { $null } else { $pr.GetValue(2) }
+                            verdict = $pr.GetValue(3); orgRole = $pr.GetValue(4)
+                        }
+                    }
+                    $pr.Close()
+                    $row.orgPursuits = $pursuits
+                }
+                break
+            }
             # Already-enriched people, packaged with first-pass PersonBrief.
             # PersonBrief enrichments live in CanonicalOrgEnrichment with ProviderName='PersonBrief-{personId}'
             # CanonicalOrgId on the enrichment = the person's current-affiliation org.
