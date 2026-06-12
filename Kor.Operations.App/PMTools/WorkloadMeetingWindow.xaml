@@ -900,7 +900,7 @@
                                                       EnableColumnVirtualization="True"
                                                       VirtualizingPanel.IsVirtualizing="True"
                                                       VirtualizingPanel.VirtualizationMode="Recycling"
-                                                      RowHeight="28"
+                                                      MinRowHeight="28"
                                                       ItemsSource="{Binding Projects}"
                                                       MouseDoubleClick="ProjectGrid_MouseDoubleClick"
                                                       RowDetailsVisibilityMode="Collapsed"

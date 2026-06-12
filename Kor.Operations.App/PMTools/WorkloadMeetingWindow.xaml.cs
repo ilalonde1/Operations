@@ -406,8 +406,13 @@ namespace Kor.Operations.PMTools
             _isSyncingMeetingPriorities = true;
             try
             {
-                var lookup = _meetingPanel.CurrentProjects
-                    .ToDictionary(p => p.Wbs1, p => (p.Priority, Notes: p.Notes ?? string.Empty), StringComparer.OrdinalIgnoreCase);
+                // Round 52g (review finding 10): tolerant builds — CurrentProjects
+                // is DB-unique on (MeetingId, Wbs1) but ProjectRows relies on an
+                // unenforced Deltek snapshot invariant; a duplicate Wbs1 must not
+                // crash the window. First occurrence wins.
+                var lookup = new System.Collections.Generic.Dictionary<string, (int Priority, string Notes)>(StringComparer.OrdinalIgnoreCase);
+                foreach (var p in _meetingPanel.CurrentProjects)
+                    lookup.TryAdd(p.Wbs1, (p.Priority, p.Notes ?? string.Empty));
                 foreach (var row in _vm.ProjectRows)
                 {
                     if (lookup.TryGetValue(row.Wbs1, out var m))
@@ -424,8 +429,9 @@ namespace Kor.Operations.PMTools
                     }
                 }
 
-                var projectLookup = _vm.ProjectRows
-                    .ToDictionary(r => r.Wbs1, r => r, StringComparer.OrdinalIgnoreCase);
+                var projectLookup = new System.Collections.Generic.Dictionary<string, PmProjectRow>(StringComparer.OrdinalIgnoreCase);
+                foreach (var r in _vm.ProjectRows)
+                    projectLookup.TryAdd(r.Wbs1, r);
 
                 var enrichedRows = _meetingPanel.CurrentProjects
                     .Select(p =>
@@ -546,6 +552,13 @@ namespace Kor.Operations.PMTools
             if (sender is not ComboBox cb) return;
             if (cb.DataContext is not PmProjectRow row) return;
             if (_isSyncingMeetingPriorities) return;
+            // Round 52g (review finding 6): SelectionChanged also fires for
+            // binding-driven changes — container realization (group expand,
+            // Meeting Mode expand-all) and re-binds after column sorts. Only a
+            // dropdown pick or a keyboard change on a focused combo is a user
+            // edit; everything else fired a phantom upsert + full meeting
+            // reload per realized row.
+            if (!cb.IsDropDownOpen && !cb.IsKeyboardFocusWithin) return;
             if (!_meetingPanel.IsCurrentMeeting || _meetingPanel.SelectedMeeting == null) return;
             var priority = cb.SelectedIndex; // 0=unset,1=P1,...,5=P5
             if (priority < 0 || priority > 5)
