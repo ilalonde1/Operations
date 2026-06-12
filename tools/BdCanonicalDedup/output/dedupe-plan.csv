@@ -1,5 +1,50 @@
 ﻿GroupKey,SurvivorId,SurvivorName,SurvivorKind,LoserId,LoserName,LoserKind,FkRefsRepointed
-assistedlivingalberta,72092,Assisted Living Alberta,Buyer,72094,Assisted Living Alberta,Buyer,2
-patkau,69282,Patkau Architects,Architect,72248,Patkau Architects,Architect,2
-perkinswill,69688,Perkins + Will Architects,Architect,71269,Perkins+Will,Architect,2
-tbdarchitectureurbanplanning,16535,TBD Architecture & Urban Planning,Architect,73991,TBD Architecture + Urban Planning,Architect,3
+albertasocialhousing,510,Alberta Social Housing Corporation,Buyer,74340,Alberta Social Housing Corp.,Unknown,4
+arcstudio,2555,Arc Studio,Architect,75135,ARC STUDIO ARCHITECTURE LTD.,Vendor,3
+atcoelectric,48076,ATCO Electric,Developer,74356,ATCO Electric Ltd.,Unknown,3
+austevilleproperties,74331,Austeville Properties Ltd.,Developer,53880,Austeville Properties,Developer,3
+bcparksprovincialservicesbranchministryofenvironmentandparks,660,BC Parks - Provincial Services Branch Ministry of Environment and Parks,Buyer,75096,"BC Parks - Provincial Services Branch
+Ministry of Environment and Parks",Buyer,3
+brookfieldproperties,68646,Brookfield Properties,Developer,74353,Brookfield Properties Ltd.,Unknown,3
+buccidevelopments,218,Bucci Developments Ltd.,KorClient,74334,Bucci Developments,Unknown,4
+caliberprojects,182,Caliber Projects,KorClient,74204,Caliber Projects Ltd.,Unknown,3
+continuum,29098,Continuum Architecture Inc,Architect,74300,"Continuum Partners, LLC",Unknown,3
+coretracks,74507,CoreTracks Inc.,Vendor,74509,CoreTracks,Vendor,2
+cushmanwakefield,5665,Cushman & Wakefield Ltd.,Developer,74349,Cushman Wakefield,Unknown,3
+dawsonconstruction,49490,Dawson Construction Ltd,GC,75094,Dawson Construction Limited,Vendor,3
+districtofficeswestcoastregionministryofforests,70232,District Offices - West Coast Region Ministry of Forests,Buyer,75148,"District Offices - West Coast Region
+Ministry of Forests",Buyer,3
+dolomitihomes,82,Dolomiti Homes Ltd.,KorClient,74208,Dolomiti Homes Inc.,Developer,4
+dub,68760,Dub Architects Ltd.,Architect,74364,Dub Architects,Unknown,3
+edgardevelopment,119,Edgar Development,KorClient,74359,Edgar Development Corp.,Unknown,3
+engineeringbranchintegratedresourceoperationsdivisionministryofforestssouthernengineering,73853,Engineering Branch Integrated Resource Operations Division Ministry of ForestsSouthern Engineering Group,Buyer,75099,"Engineering Branch
+Integrated Resource Operations Division
+Ministry of Forests
+Southern Engineering Group",Buyer,2
+fox,33395,Fox Architecture Inc.,Architect,74272,Fox Corporation,Unknown,3
+geldergingrasassociates,74478,"Gelder, Gingras & Associates Inc.",Vendor,74617,"GELDER,GINGRAS ASSOCIATES",Vendor,2
+gwlrealtyadvisors,69629,GWL Realty Advisors,Developer,74203,GWL Realty Advisors Inc.,Developer,4
+highstreetventures,71236,Highstreet Ventures,Developer,74361,Highstreet Ventures Inc.,Unknown,4
+hudsonpacificproperties,54844,Hudson Pacific Properties,Developer,74265,"Hudson Pacific Properties, Inc.",Developer,4
+jscottbroughtonconsulting,74612,J SCOTT BROUGHTON CONSULTING INC,Vendor,74620,J SCOTT BROUGHTON CONSULTING,Vendor,2
+korstructural,75128,Kor Structural,KorStructural,38918,KOR Structural Ltd.,KorStructural,126
+landmarkpremiereproperties,54551,Landmark Premiere Properties,Developer,74311,Landmark Premiere Properties Ltd.,Developer,4
+lbarealty,74233,"LBA Realty, LLC",Developer,74295,LBA Realty,Developer,3
+manulifefinancial,11309,Manulife Financial,Developer,74358,Manulife Financial Corp.,Unknown,3
+ministryofenvironmentandparksrecreationsitesandtrailsbranch,252,Ministry of Environment and ParksRecreation Sites and Trails Branch,Buyer,75098,"Ministry of Environment and Parks
+Recreation Sites and Trails Branch",Buyer,2
+ministryofforestssouthernengineering,812,Ministry of Forests — Southern Engineering Group,Buyer,75107,"Ministry of Forests
+Southern Engineering Group",Buyer,3
+nationalaudubonsociety,74244,National Audubon Society,Buyer,58555,NATIONAL AUDUBON SOCIETY INC,Vendor,5
+omengineering,26666,OM Engineering,Competitor,75134,O'M ENGINEERING INC.,Vendor,3
+osmanauction,12972,Osman Auction Inc.,Developer,74365,Osman Auction,Unknown,3
+oxfordproperties,38950,Oxford Properties Group,Developer,74336,Oxford Properties,Unknown,5
+pcl,13241,PCL,Developer,74339,PCL Group,Unknown,3
+ph5,71084,ph5 Architecture,Architect,75137,PH5 ARCHITECTURE INC.,Vendor,3
+pointswestliving,53491,Points West Living Inc.,Developer,74366,Points West Living,Unknown,3
+publicarchitecturedesign,38972,Public Architecture + Design Inc.,Architect,69298,Public Architecture + Design Inc.,Architect,6
+qualexlandmark,69804,Qualex-Landmark,Buyer,74348,Qualex - Landmark Group,Unknown,4
+sawchukdevelopments,69217,Sawchuk Developments,GC,75093,SAWCHUK DEVELOPMENTS CO. LTD.,Vendor,3
+transcanada,69723,TransCanada Corp.,Buyer,74355,TransCanada Corporation,Unknown,3
+vittoridevelopments,22,Vittori Developments Ltd.,KorClient,74207,Vittori Developments,Developer,4
+westrichpacific,71356,Westrich Pacific,Developer,74350,Westrich Pacific Corp.,Unknown,3
