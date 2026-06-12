@@ -36,6 +36,7 @@ namespace Kor.Operations.PMTools
         private PropertyChangedEventHandler? _meetingPanelPropertyChangedHandler;
         private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _currentProjectsChangedHandler;
         private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _pmGroupsChangedHandler;
+        private Action<string, string>? _projectNotesUpdatedHandler;
 
         /// <summary>Round 52d: meeting rows hidden by the current grid
         /// filters/scope — shown in a panel under the PM groups so a carried-
@@ -92,6 +93,21 @@ namespace Kor.Operations.PMTools
             _orphanRecomputeHandler = (_, _) => RecomputeOrphanedPriorityRows();
             _meetingPanel.PriorityProjects.CollectionChanged += _orphanRecomputeHandler;
             ((System.Collections.Specialized.INotifyCollectionChanged)_vm.ProjectView).CollectionChanged += _orphanRecomputeHandler;
+
+            // Round 52f (review finding 4): mirror notes edits from any surface
+            // (board, grid, orphan panel) onto the matching grid row. The
+            // sync guard stops the row's TextChanged from echoing the
+            // programmatic write back as a user edit; same-value sets no-op in
+            // the MeetingNotes setter, so the grid-originated echo is inert.
+            _projectNotesUpdatedHandler = (wbs1, notes) =>
+            {
+                var row = _vm.ProjectRows.FirstOrDefault(r => string.Equals(r.Wbs1, wbs1, StringComparison.OrdinalIgnoreCase));
+                if (row == null) return;
+                _isSyncingMeetingPriorities = true;
+                try { row.MeetingNotes = notes; }
+                finally { _isSyncingMeetingPriorities = false; }
+            };
+            _meetingPanel.ProjectNotesUpdated += _projectNotesUpdatedHandler;
         }
 
         private void RecomputeOrphanedPriorityRows()
@@ -364,6 +380,11 @@ namespace Kor.Operations.PMTools
                 _vm.PmGroups.CollectionChanged -= _pmGroupsChangedHandler;
                 _pmGroupsChangedHandler = null;
             }
+            if (_projectNotesUpdatedHandler != null)
+            {
+                _meetingPanel.ProjectNotesUpdated -= _projectNotesUpdatedHandler;
+                _projectNotesUpdatedHandler = null;
+            }
             _cts?.Cancel();
             try
             {
@@ -393,11 +414,13 @@ namespace Kor.Operations.PMTools
                     {
                         row.MeetingPriority = m.Priority;
                         row.MeetingNotes = m.Notes;
+                        row.HasMeetingRow = true;
                     }
                     else
                     {
                         row.MeetingPriority = 0;
                         row.MeetingNotes = string.Empty;
+                        row.HasMeetingRow = false;
                     }
                 }
 

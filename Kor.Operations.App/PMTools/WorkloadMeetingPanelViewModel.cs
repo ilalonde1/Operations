@@ -71,6 +71,14 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>Round 52f (review finding 4): raised on the UI thread whenever
+    /// a project's meeting notes change through ANY surface (board, grid
+    /// editor, orphan panel) so the window can mirror the text onto the
+    /// matching grid row — without it, board edits never reached
+    /// PmProjectRow.MeetingNotes and a later grid edit overwrote the newer
+    /// board text. Args: (wbs1, notes).</summary>
+    public event Action<string, string>? ProjectNotesUpdated;
+
     public ObservableCollection<WorkloadMeeting> Meetings { get; }
 
     public WorkloadMeeting? SelectedMeeting
@@ -350,8 +358,21 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                 }
                 await _dispatcher.InvokeAsync(() =>
                 {
+                    // Round 52f (review finding 1): a notes edit younger than
+                    // the 600ms debounce exists only in memory — this DB
+                    // re-read would clobber it in the UI, and the close-flush
+                    // would then persist the stale text over the debounced
+                    // save (permanent loss). Every edit path updates
+                    // CurrentProjects.Notes synchronously, so in-memory is
+                    // never older than the DB for this client; overlay it.
+                    var inMemoryNotes = CurrentProjects.ToDictionary(p => p.Wbs1, p => p.Notes, StringComparer.OrdinalIgnoreCase);
                     CurrentProjects.Clear();
-                    foreach (var project in projects) CurrentProjects.Add(project);
+                    foreach (var project in projects)
+                    {
+                        if (inMemoryNotes.TryGetValue(project.Wbs1, out var liveNotes))
+                            project.Notes = liveNotes;
+                        CurrentProjects.Add(project);
+                    }
                     // Round 39b (T2.001): own the projection so the meeting
                     // window shows priorities without help from the capacity
                     // window. Basic enrichment only; the capacity window will
@@ -648,6 +669,8 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         // DB read. Caller is always on the UI thread (TextBox/row setters).
         var current = CurrentProjects.FirstOrDefault(p => string.Equals(p.Wbs1, wbs1, StringComparison.OrdinalIgnoreCase));
         if (current != null) current.Notes = notes;
+
+        ProjectNotesUpdated?.Invoke(wbs1, notes);
 
         var version = _projectNotesVersions.AddOrUpdate(wbs1, 1, (_, v) => v + 1);
 

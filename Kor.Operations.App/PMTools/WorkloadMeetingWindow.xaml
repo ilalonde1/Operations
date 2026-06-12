@@ -936,8 +936,10 @@
                                                                                     Value="{Binding MeetingPanel.IsCurrentMeeting, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                                                             <Style.Triggers>
                                                                                 <!-- Notes attach to the meeting's priority row; without one the
-                                                                                     store UPDATE would silently hit zero rows. -->
-                                                                                <DataTrigger Binding="{Binding MeetingPriority}" Value="0">
+                                                                                     store UPDATE would silently hit zero rows. HasMeetingRow (not
+                                                                                     MeetingPriority) because the ComboBox sets priority optimistically
+                                                                                     before the upsert lands — typing in that window dropped keystrokes. -->
+                                                                                <DataTrigger Binding="{Binding HasMeetingRow}" Value="False">
                                                                                     <Setter Property="IsEnabled" Value="False"/>
                                                                                 </DataTrigger>
                                                                             </Style.Triggers>
@@ -1073,7 +1075,7 @@
                                                                         <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
                                                                             <Setter Property="ToolTip" Value="Show meeting notes for this project"/>
                                                                             <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding MeetingPriority}" Value="0">
+                                                                                <DataTrigger Binding="{Binding HasMeetingRow}" Value="False">
                                                                                     <Setter Property="IsEnabled" Value="False"/>
                                                                                     <Setter Property="ToolTip" Value="Set a priority first — meeting notes attach to prioritized projects"/>
                                                                                 </DataTrigger>

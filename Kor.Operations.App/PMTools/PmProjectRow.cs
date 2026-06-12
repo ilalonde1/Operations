@@ -9,6 +9,7 @@ namespace Kor.Operations.PMTools
     {
         private int _meetingPriority;
         private string _meetingNotes = "";
+        private bool _hasMeetingRow;
 
         public string Wbs1 { get; private set; } = "";
         public string Name { get; private set; } = "";
@@ -134,6 +135,24 @@ namespace Kor.Operations.PMTools
         }
 
         public bool HasMeetingNotes => !string.IsNullOrWhiteSpace(_meetingNotes);
+
+        // Round 52f (review finding 5): true only once the meeting's
+        // WorkloadMeetingProjects row actually exists in CurrentProjects — set
+        // exclusively by SyncMeetingPrioritiesToRows. MeetingPriority is
+        // written optimistically by the ComboBox binding BEFORE the upsert
+        // round-trips, so gating the notes editor on it let users type into a
+        // row whose store UPDATE would hit nothing; those keystrokes were
+        // dropped and then visibly wiped by the post-upsert sync.
+        public bool HasMeetingRow
+        {
+            get => _hasMeetingRow;
+            set
+            {
+                if (_hasMeetingRow == value) return;
+                _hasMeetingRow = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasMeetingRow)));
+            }
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
