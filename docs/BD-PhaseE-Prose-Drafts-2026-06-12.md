@@ -29,12 +29,28 @@ today; names/contacts carried forward from the 06-09 prose are marked
 
 ---
 
+**POST-SCOPING UPDATE (2026-06-12 PM, applied in-file):** these drafts were
+pulled BEFORE the same-day geography scoping (`7c7e5e31`) that constrained
+every sector filter to its stated provinces and moved all US rows (CA/WA/OR,
+222 active) to the new **us-west** report — which shipped with its own prose
+the same day and is NOT part of this review. Corrections applied below:
+sector verdict counts re-pulled post-scoping; US passages in hospitals /
+commercial / post-secondary replaced with us-west pointers. The bc-housing
+draft's "Calgary half" observation prompted a same-day catalog fix —
+bc-housing scopes BC+AB (Calgary Housing's Bridgeland URGENT was briefly
+orphaned by a BC-only guard); the proposed "Public & Affordable Housing"
+rename remains Ian's call in this review. US licensing-gate actions carried
+into the us-west report's future re-synthesis (pending the LA metadata
+backfill).
+
+---
+
 ## 1. Sector prose drafts
 
-### hospitals — verdicts today: 10 URGENT / 17 PURSUE / 84 MONITOR / 29 DISCOVER
+### hospitals — verdicts today (post-scoping): 7 URGENT / 14 PURSUE / 76 MONITOR / 29 DISCOVER
 
 **Intro note** (unchanged framing, refreshed claims):
-> Healthcare construction pipeline in BC, Alberta and the US West Coast, from
+> Healthcare construction pipeline in BC and Alberta, from
 > Sonnet first-pass + honing verification (Yurkovich correction pass —
 > procurement model identified on every project before scoring).
 
@@ -45,9 +61,9 @@ today; names/contacts carried forward from the 06-09 prose are marked
 > Richmond Hospital Phase 2 (MPI 6878, $1.96B) re-opened, Burnaby Hospital
 > Phase 2 + BC Cancer Centre (MPI 6589, $1.73B) and UHNBC Acute Care Tower
 > (MPI 7010, $1.58B) both scored PURSUE_URGENT with the procurement window
-> open. Alberta adds Red Deer Regional ($1B, MPI 6541). The US West Coast
-> first-pass landed mid-pool: Harborview Medical Center (MPI 3943, $2.37B,
-> Seattle) is the single largest URGENT in the entire database.
+> open. Alberta adds Red Deer Regional ($1B, MPI 6541). (US healthcare —
+> Harborview Seattle, Cedars-Sinai, Hillcrest — now lives in the us-west
+> report; Harborview remains the single largest URGENT in the database.)
 
 **Synthesis sections**:
 1. *Richmond Phase 2 re-opened — verify before celebrating*: MPI 6878 flipped
@@ -69,10 +85,10 @@ today; names/contacts carried forward from the 06-09 prose are marked
    PURSUE_URGENT): Indigenous health crossover — pairs with the Indigenous
    sector's Enoch Cree momentum; one Alberta Indigenous-health BD motion can
    serve both.
-5. *US West Coast enters the pool*: Harborview (3943, UW Medicine, $2.37B),
-   Cedars-Sinai Beverly/San Vicente wing (3938), Hillcrest Medical Center
-   replacement (3940, San Diego). These need the licensing-prerequisites
-   gate (see buyers-deep b001 licensing section) before any outreach.
+5. ~~*US West Coast enters the pool*~~ **Moved to the us-west report
+   (post-scoping)**: Harborview (3943), Cedars-Sinai wing (3938), Hillcrest
+   (3940) are no longer in this report. The licensing-prerequisites gate
+   (buyers-deep b001) carries into the us-west prose re-synthesis.
 
 **Recommended actions**:
 - Verify the Richmond 6878 re-opening with VCH before any team outreach.
@@ -82,10 +98,10 @@ today; names/contacts carried forward from the 06-09 prose are marked
 - Engage shortlisted D-B teams on Vernon Jubilee 7031 (PCL/Graham/EllisDon/
   Bird — carried contacts) and Richmond LTC 2753.
 - Fold Tsuut'ina 7124 into the Indigenous-sector outreach plan.
-- US West Coast: hold until the WA/CA licensing gate is answered; then
-  Harborview first (largest URGENT in DB).
+- (US action moved to us-west: hold until the WA/CA licensing gate is
+  answered; then Harborview first — largest URGENT in DB.)
 
-### schools — verdicts today: 4 URGENT / 109 PURSUE / 306 MONITOR / 146 DISCOVER
+### schools — verdicts today (post-scoping): 4 URGENT / 109 PURSUE / 267 MONITOR / 146 DISCOVER
 
 **Summary narrative**:
 > The schools pool is the deepest PURSUE bench in the database (109) and it is
@@ -141,7 +157,7 @@ today; names/contacts carried forward from the 06-09 prose are marked
 - Squamish Nation housing program (4873) + the Nation's dev-arm entities are
   consolidated post-m-merges — alias resolution now lands on one canonical.
 
-### bc-housing — verdicts today: 1 URGENT / 6 PURSUE / 33 MONITOR
+### bc-housing — verdicts today (post-scoping, BC+AB): 1 URGENT / 6 PURSUE / 32 MONITOR / 3 DISCOVER
 
 **Summary narrative**:
 > The sector has quietly become two programs: BC Housing's BC-side
@@ -171,7 +187,7 @@ Evergreen Terrace 4447/4603 duplicate.
 **Actions**: one CFHA motion covering 7166/7163/7162; hangar 7161 via the
 D-B GC route; keep the Esquimalt/Comox DoD PURSUE pair (6442/6443) warm.
 
-### recreational — verdicts today: 19 PURSUE / 25 MONITOR / 25 DISCOVER (3 DUPLICATE flagged)
+### recreational — verdicts today (post-scoping): 16 PURSUE / 18 MONITOR / 25 DISCOVER (3 DUPLICATE flagged; Seattle's Loyal Heights + other US rec rows now in us-west)
 
 **Summary narrative**:
 > Alberta has overtaken BC in this sector's PURSUE pool: Foothills Multisport
@@ -186,7 +202,7 @@ D-B GC route; keep the Esquimalt/Comox DoD PURSUE pair (6442/6443) warm.
 Airdrie — likely same shortlist architects); Crystal Pool via hcma
 relationship; the 3 DUPLICATE-verdict rows go to the next dedup pass.
 
-### residential — verdicts today: 8 URGENT / 80 PURSUE / 312 MONITOR
+### residential — verdicts today (post-scoping): 8 URGENT / 79 PURSUE / 301 MONITOR
 
 **Summary narrative**:
 > The URGENT list is a who's-who of KOR-relationship developers: Concord
@@ -202,7 +218,7 @@ relationship; the 3 DUPLICATE-verdict rows go to the next dedup pass.
 links (named above, counts from today's graph); Concord Pacific NEFC early
 positioning; Broadway TOD = one motion, six station sites.
 
-### commercial — verdicts today: 1 URGENT / 6 PURSUE / 18 MONITOR
+### commercial — verdicts today (post-scoping): 1 URGENT / 3 PURSUE / 14 MONITOR
 
 **Summary narrative**:
 > Thin but high-value: Roberts Bank Terminal 2 (6564, $3B, VFPA) is the
@@ -210,30 +226,30 @@ positioning; Broadway TOD = one motion, six station sites.
 > qualification first. Plant & Animal Health Centre (6585, $400M, IBC) sits
 > here as PURSUE (was the hospitals report's biggest URGENT on 06-09 —
 > procurement advanced). Oxford Properties' 11-15 East 4th life sciences
-> (3387) ties to the strategic-relationships thread. US: Spring District
-> (3809, Wright Runstad, Bellevue) + 2 CA retail/mixed.
+> (3387) ties to the strategic-relationships thread. (Spring District
+> Bellevue + the 2 CA retail/mixed PURSUEs moved to us-west post-scoping.)
 
 **Actions**: RBT2 scope qualification before BD spend; Plant & Animal
 shortlist-team engagement (carried action, now PURSUE-grade urgency);
 Oxford via the relationship-refresh motion.
 
-### post-secondary — verdicts today: 4 URGENT / 20 PURSUE / 41 MONITOR
+### post-secondary — verdicts today (post-scoping): 1 URGENT / 15 PURSUE / 31 MONITOR
 
 **Summary narrative**:
-> Two stories: (1) BC's medical-school buildout — SFU Surrey Medical School
-> permanent facility (6890, $520M, URGENT; sibling record 3071 in the PURSUE
-> pool — duplicate, flag for dedup) and UBC Medicine One (3069, $680M) +
-> Lower Mall Housing Phase 1 (3070, $560M) put UBC at $3.0B of live PURSUE
-> value, the largest single-owner pool in the database. (2) the UC system's
-> student-housing wave — UCSB East Campus (4166, $770M), UCLA Levering
-> (4151, $477M), UCSD Pepper Canyon East (4154) are 3 of the 4 URGENTs,
-> all gated on US licensing. U of C's Science Hub (3838, $450M) keeps
-> Alberta in the sector.
+> The story is BC's medical-school buildout — SFU Surrey Medical School
+> permanent facility (6890, $520M, the sector's URGENT; sibling record 3071
+> in the PURSUE pool — duplicate, flag for dedup) and UBC Medicine One
+> (3069, $680M) + Lower Mall Housing Phase 1 (3070, $560M) put UBC at $3.0B
+> of live PURSUE value, the largest single-owner pool in the database.
+> U of C's Science Hub (3838, $450M) keeps Alberta in the sector. (The UC
+> system's student-housing wave — UCSB East Campus 4166, UCLA Levering 4151,
+> UCSD Pepper Canyon East 4154, all URGENT, all gated on US licensing —
+> moved to us-west post-scoping.)
 
 **Actions**: UBC Properties/IBC relationship as the #1 owner-side motion
 ($3B pool); SFU med-school team tracking; resolve 6890/3071 duplicate;
-UC system held behind the licensing gate; U of C Science Hub via the
-Calgary architect network.
+U of C Science Hub via the Calgary architect network. (UC system action
+moved to us-west, held behind the licensing gate.)
 
 ---
 

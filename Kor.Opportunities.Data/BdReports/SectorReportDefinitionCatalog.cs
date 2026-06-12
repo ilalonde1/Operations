@@ -51,13 +51,19 @@ public static class SectorReportDefinitionCatalog
             " OR m.ProponentName LIKE N'%Musqueam%' OR m.ProponentName LIKE N'%Tsleil%')" +
             " AND m.Province IN (N'BC', N'AB'))"),
 
+        // BC+AB, not BC-only: Calgary Housing Company's portfolio (incl. the
+        // sector's only URGENT, Bridgeland Place 6649) rides the Affordable
+        // Housing sector tag and matches no other report — a BC-only guard
+        // orphans it (caught 2026-06-12 against the Phase E draft). The
+        // "BC Housing" title undersells the AB half; rename is proposed in
+        // the Phase E review, not decided here.
         new SectorReportDefinition(
             "bc-housing",
             "BC Housing & Affordable",
             "KOR Structural — BC Housing BD Report",
             "((m.ProponentName LIKE N'%BC Housing%' OR m.Sector = N'Affordable Housing'" +
             " OR m.SubSector LIKE N'%affordable%' OR m.SubSector LIKE N'%supportive%')" +
-            " AND m.Province = N'BC')"),
+            " AND m.Province IN (N'BC', N'AB'))"),
 
         new SectorReportDefinition(
             "defense",
