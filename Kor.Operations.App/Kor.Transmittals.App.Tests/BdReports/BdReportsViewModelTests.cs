@@ -61,6 +61,16 @@ public sealed class BdReportsViewModelTests
                     "EllisDon Design Build", "Daniel Murphy", null, true, "Known via JNCM", "angle", 0.9),
             });
 
+        public Task<IReadOnlyList<PursuitDossierRow>> GetPursuitDossiersAsync(CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<PursuitDossierRow>>(new[]
+            {
+                new PursuitDossierRow(
+                    6585, "Plant and Animal Health Centre", "BC", "Industrial", "RFP", "Abbotsford",
+                    "Infrastructure BC", 400_000_000m, "$400M", BdVerdicts.PursueUrgent, "teams forming", true,
+                    7, "Chris Dikeakos Architects Inc.", 12, 4, 14,
+                    null, null, false, null, null),
+            });
+
         public Task<BdActionRollup> GetActionRollupAsync(int topOpen, CancellationToken ct)
             => Task.FromResult(new BdActionRollup(
                 new[] { new BdActionStatusCount("Open", "PursuitAngle", 3) },

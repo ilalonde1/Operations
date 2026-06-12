@@ -63,6 +63,14 @@ public interface IBdReportService
     Task<IReadOnlyList<PrimeConsultantRow>> GetPrimeConsultantsAsync(CancellationToken ct);
 
     /// <summary>
+    /// Every active PURSUE/PURSUE_URGENT MPI hydrated with its resolved
+    /// org-graph edges (architect / structural engineer / GC CanonicalOrg
+    /// links) plus org-scoped architect intel depth — the live read behind
+    /// the Pursuit Dossiers report. Urgent rows first, then cost descending.
+    /// </summary>
+    Task<IReadOnlyList<PursuitDossierRow>> GetPursuitDossiersAsync(CancellationToken ct);
+
+    /// <summary>
     /// READ-ONLY action-tracking rollup: IntelAction counts by Status ×
     /// ActionType plus the most recent open actions (on active orgs). Status
     /// writes go through IntelPersistenceService.SetActionStatusAsync in the

@@ -161,6 +161,44 @@ public sealed record PrimeConsultantRow(
 }
 
 /// <summary>
+/// One PURSUE/PURSUE_URGENT pursuit hydrated with its resolved org-graph
+/// edges (the -PursuitGaps campaign payoff: research once, edges forever).
+/// Edge ids/names are null where the graph has no link yet — the dossier
+/// report surfaces those as remaining graph gaps rather than hiding them.
+/// Architect intel counts are org-scoped (same recipe as
+/// <see cref="ArchitectLeverageRow"/>) so the dossier can say whether the
+/// warm path to the pursuit is already built.
+/// </summary>
+public sealed record PursuitDossierRow(
+    long MpiId,
+    string ProjectName,
+    string Province,
+    string? Sector,
+    string? Stage,
+    string? MunicipalityName,
+    string? ProponentName,
+    decimal? EstimatedCostCad,
+    string CostDisplay,
+    string? Verdict,
+    string? KorAngle,
+    bool IsUrgent,
+    long? ArchitectOrgId,
+    string? ArchitectName,
+    int ArchitectSignals,
+    int ArchitectPeople,
+    int ArchitectOpenActions,
+    long? StructuralEngineerOrgId,
+    string? StructuralEngineerName,
+    bool StructuralEngineerIsKor,
+    long? GeneralContractorOrgId,
+    string? GeneralContractorName)
+{
+    public bool HasArchitectEdge => ArchitectOrgId is not null;
+    public bool HasIncumbentSe => StructuralEngineerOrgId is not null && !StructuralEngineerIsKor;
+    public int ArchitectIntelDepth => ArchitectSignals + ArchitectPeople + ArchitectOpenActions;
+}
+
+/// <summary>
 /// One architect ranked by pipeline leverage. Built from the STRUCTURED org
 /// graph (MajorProjectsInventory.ArchitectCanonicalOrgId + org-scoped Intel
 /// rows) — the original .architect-freq.json text-mining pull was never saved

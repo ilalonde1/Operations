@@ -94,6 +94,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         new AnalyticalReportVm("competitor-intel", "Competitor Intelligence", "Rival footprint heatmap — where they're entrenched, where to flip."),
         new AnalyticalReportVm("strategic-relationships", "Strategic Relationships", "Ten compounding targets with contacts and 12-month plans."),
         new AnalyticalReportVm("prime-consultant", "Prime Consultants", "Who leads each pursuit team — approach before the RFP issues."),
+        new AnalyticalReportVm("pursuit-dossier", "Pursuit Dossiers", "Every live pursuit with its resolved team graph — architect route-in, incumbent SE, gaps."),
     };
 
     private AnalyticalReportVm? _selectedAnalytical;
@@ -112,6 +113,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         "competitor-intel" => BuildCompetitorIntelPreviewAsync(ct),
         "strategic-relationships" => BuildStrategicRelationshipsPreviewAsync(ct),
         "prime-consultant" => BuildPrimeConsultantPreviewAsync(ct),
+        "pursuit-dossier" => BuildPursuitDossierPreviewAsync(ct),
         _ => Task.FromResult<string?>(null),
     };
 
@@ -577,6 +579,61 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         catch (Exception ex)
         {
             _logger?.LogError(ex, "BD Reports: prime consultant generation failed.");
+            StatusMessage = $"Generation failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            // Only the newest generation owns the busy flag — a superseded
+            // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
+            OnPropertyChanged(nameof(CanExportDocx));
+        }
+    }
+
+    /// <summary>Builds the pursuit dossiers report (live relationship graph); DOCX export then matches it.</summary>
+    public async Task<string?> BuildPursuitDossierPreviewAsync(CancellationToken ct)
+    {
+        var generation = ++_generationSeq;
+        IsBusy = true;
+        StatusMessage = "Generating pursuit dossiers…";
+        try
+        {
+            var pursuits = await _reportService.GetPursuitDossiersAsync(ct).ConfigureAwait(true);
+
+            var document = PursuitDossierReportGenerator.Build(pursuits, DateTimeOffset.UtcNow);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
+            _currentDocument = document;
+            _currentDocumentKey = "pursuit-dossier";
+            _currentRecordCount = pursuits.Count;
+            SelectedSector = null;
+            PreviewHtml = HtmlPreviewBuilder.Render(document);
+
+            LogGenerateBestEffort("html");
+            StatusMessage = $"Pursuit dossiers: {pursuits.Count} pursuits, {pursuits.Count(p => p.HasArchitectEdge)} with architect edge, {pursuits.Count(p => !p.HasArchitectEdge)} graph gaps.";
+            return PreviewHtml;
+        }
+        catch (OperationCanceledException)
+        {
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "BD Reports: pursuit dossier generation failed.");
             StatusMessage = $"Generation failed: {ex.Message}";
             return null;
         }

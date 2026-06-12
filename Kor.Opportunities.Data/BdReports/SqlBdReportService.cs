@@ -461,6 +461,85 @@ WHERE m.RetiredAtUtc IS NULL
             .ToList();
     }
 
+    public async Task<IReadOnlyList<PursuitDossierRow>> GetPursuitDossiersAsync(CancellationToken ct)
+    {
+        // Verdict filter stays in SQL (VerdictExpr is fine for the short
+        // verdict enum); korAngle/description hydrate client-side via
+        // HoningResultParser per its 4000-char JSON_VALUE caveat. Edge org
+        // joins keep retired orgs out — a merged-away org must read as a
+        // graph gap, not a stale name. SE-is-KOR comes from Kind (canonical
+        // 38918 KOR Structural Ltd.), not a hardcoded id.
+        var sql = $@"
+SELECT m.Id, m.ProjectName, m.Province, m.Sector, m.Stage, m.MunicipalityName, m.ProponentName,
+       m.EstimatedCostCad,
+       COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS NVARCHAR(64)), N'TBD') AS CostDisplay,
+       e.ResultJson,
+       arch.Id AS ArchitectOrgId, arch.DisplayName AS ArchitectName,
+       (SELECT COUNT(*) FROM opportunities.IntelSignal s
+         WHERE s.CanonicalOrgId = arch.Id AND s.RetiredAtUtc IS NULL) AS ArchitectSignals,
+       (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation pa
+         JOIN opportunities.IntelPerson p ON p.Id = pa.IntelPersonId AND p.RetiredAtUtc IS NULL
+         WHERE pa.CanonicalOrgId = arch.Id AND pa.RetiredAtUtc IS NULL) AS ArchitectPeople,
+       (SELECT COUNT(*) FROM opportunities.IntelAction a
+         WHERE a.CanonicalOrgId = arch.Id AND a.RetiredAtUtc IS NULL AND a.Status = N'Open') AS ArchitectOpenActions,
+       se.Id AS SeOrgId, se.DisplayName AS SeName,
+       CASE WHEN se.Kind = N'KorStructural' THEN 1 ELSE 0 END AS SeIsKor,
+       gc.Id AS GcOrgId, gc.DisplayName AS GcName
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.MajorProjectEnrichment e
+  ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+LEFT JOIN opportunities.CanonicalOrg arch
+  ON arch.Id = m.ArchitectCanonicalOrgId AND arch.RetiredAtUtc IS NULL
+LEFT JOIN opportunities.CanonicalOrg se
+  ON se.Id = m.StructuralEngineerCanonicalOrgId AND se.RetiredAtUtc IS NULL
+LEFT JOIN opportunities.CanonicalOrg gc
+  ON gc.Id = m.GeneralContractorCanonicalOrgId AND gc.RetiredAtUtc IS NULL
+WHERE m.RetiredAtUtc IS NULL
+  AND {VerdictExpr} IN (N'{BdVerdicts.PursueUrgent}', N'{BdVerdicts.Pursue}');";
+
+        var rows = new List<PursuitDossierRow>();
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            var honing = HoningResultParser.Parse(r.IsDBNull(9) ? null : r.GetString(9));
+            var hasArchitect = !r.IsDBNull(10);
+
+            rows.Add(new PursuitDossierRow(
+                r.GetInt64(0),
+                r.GetString(1),
+                r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.IsDBNull(5) ? null : r.GetString(5),
+                r.IsDBNull(6) ? null : r.GetString(6),
+                r.IsDBNull(7) ? null : r.GetDecimal(7),
+                r.GetString(8),
+                honing.Verdict,
+                honing.KorAngle,
+                BdVerdicts.IsUrgent(honing.Verdict, honing.KorAngle),
+                hasArchitect ? r.GetInt64(10) : null,
+                hasArchitect ? r.GetString(11) : null,
+                hasArchitect ? r.GetInt32(12) : 0,
+                hasArchitect ? r.GetInt32(13) : 0,
+                hasArchitect ? r.GetInt32(14) : 0,
+                r.IsDBNull(15) ? null : r.GetInt64(15),
+                r.IsDBNull(16) ? null : r.GetString(16),
+                !r.IsDBNull(17) && r.GetInt32(17) == 1,
+                r.IsDBNull(18) ? null : r.GetInt64(18),
+                r.IsDBNull(19) ? null : r.GetString(19)));
+        }
+
+        return rows
+            .OrderByDescending(x => x.IsUrgent)
+            .ThenByDescending(x => x.EstimatedCostCad ?? decimal.MinValue)
+            .ThenBy(x => x.ProjectName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public async Task<BdActionRollup> GetActionRollupAsync(int topOpen, CancellationToken ct)
     {
         const string countsSql = @"
