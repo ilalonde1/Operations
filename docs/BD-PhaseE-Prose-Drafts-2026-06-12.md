@@ -241,15 +241,17 @@ Oxford via the relationship-refresh motion.
 > in the PURSUE pool — duplicate, flag for dedup) and UBC Medicine One
 > (3069, $680M) + Lower Mall Housing Phase 1 (3070, $560M) put UBC at $3.0B
 > of live PURSUE value, the largest single-owner pool in the database.
-> U of C's Science Hub (3838, $450M) keeps Alberta in the sector. (The UC
-> system's student-housing wave — UCSB East Campus 4166, UCLA Levering 4151,
-> UCSD Pepper Canyon East 4154, all URGENT, all gated on US licensing —
-> moved to us-west post-scoping.)
+> University of Calgary's Science Hub (3838, $450M, AB) keeps Alberta in the
+> sector. (The University of California — NOT U of C Calgary — student-housing
+> wave: UCSB East Campus 4166, UCLA Levering 4151, UCSD Pepper Canyon East
+> 4154, all URGENT, all gated on US licensing — moved to us-west
+> post-scoping.)
 
 **Actions**: UBC Properties/IBC relationship as the #1 owner-side motion
 ($3B pool); SFU med-school team tracking; resolve 6890/3071 duplicate;
-U of C Science Hub via the Calgary architect network. (UC system action
-moved to us-west, held behind the licensing gate.)
+University of Calgary Science Hub via the Calgary architect network.
+(University of California action moved to us-west, held behind the
+licensing gate.)
 
 ---
 
