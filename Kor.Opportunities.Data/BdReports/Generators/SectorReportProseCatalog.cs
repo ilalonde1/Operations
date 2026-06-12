@@ -444,5 +444,47 @@ public static class SectorReportProseCatalog
                     "Audit the mapped buyer contacts from the 2026-06-07 people pass (Kelowna, Vernon, Penticton, Peachland, Summerland, West Kelowna) and pick the top three municipal introductions for Q3 2026.",
                 }
             ),
+            ["us-west"] = new(
+                "US West Coast construction pipeline — California, Washington, Oregon. Second region cut of the BD pipeline, and the home of every US row in the inventory: the 2026-06-12 geography scoping moved these out of the BC + AB sector reports (a $1.74B Seattle hospital had been topping the hospitals report). KOR's US practice serves Los Angeles and San Diego today; Washington and Oregon are stated growth markets. US dollar costs are stored CAD-converted with the rate and date stamped in the cost text.",
+                new[]
+                {
+                    "California is the depth market: the largest US state slice with the bulk of the live pursuits, anchored by KOR's existing LA + San Diego presence. Washington is thin but carries the single biggest US opportunity (Harborview, Seattle). Oregon is a pure watch-list — the Portland and Salem research streams landed entirely MONITOR verdicts, early-stage projects worth a quarterly re-scan rather than outreach today.",
+                    "A quarter of the US rows carry no Sector tag — they ingested as bare geography rows and have not been through post-ingest enrichment. The verdict coverage is real (most rows are honed) but the sector mix under-reports until that backfill runs.",
+                },
+                new SynthesisSection[]
+                {
+                    new(
+                        "Harborview Medical Center — the biggest US URGENT",
+                        new[]
+                        {
+                            "Harborview Medical Center New Inpatient Tower + campus rebuild (MPI 3943, Seattle, USD $1.74B) is the largest live pursuit in the US slice and the single most expensive URGENT in the whole inventory. It is KOR's natural Washington beachhead: a healthcare campus rebuild squarely in KOR's hospital depth, in a stated growth market.",
+                        }),
+                    new(
+                        "University of California student-housing wave",
+                        new[]
+                        {
+                            "Three UC system projects sit PURSUE_URGENT: UC Santa Barbara East Campus Student Housing (MPI 4166, USD $566M), UCLA 901 Levering Student Housing (MPI 4151, USD $351M), and UC San Diego Pepper Canyon East District (MPI 4154). The UC capital program is the US equivalent of the BC post-secondary play — one institutional relationship compounds across campuses, and UCLA / UCSD are inside KOR's existing LA + San Diego service area.",
+                        }),
+                    new(
+                        "California hospital wave",
+                        new[]
+                        {
+                            "Beyond the URGENTs (Hillcrest Medical Center Replacement in San Diego, MPI 3940; the new hospital wing at Beverly & San Vicente in Los Angeles, MPI 3938), the PURSUE list is hospital-heavy: Santa Clara Medical Center (USD $2.8B), La Jolla Medical Center Tower 2 (USD $1.0B), Emeryville Medical Center (USD $1.0B). California hospital owners are procuring at scale, and the San Diego / LA entries overlap KOR's existing footprint.",
+                        }),
+                    new(
+                        "San Diego Civic Center — the megaproject",
+                        new[]
+                        {
+                            "San Diego Civic Center Redevelopment (MPI 4278, USD $3.3B, PURSUE) is the largest single project in the US slice — a downtown civic core redevelopment in the city KOR already serves. Multi-phase, multi-tower; structural selection will happen per-phase, so the relationship clock starts now.",
+                        }),
+                },
+                new[]
+                {
+                    "Harborview Seattle (MPI 3943) — identify the design-build teams forming on the inpatient tower and campus rebuild packages; this is the Washington market entry.",
+                    "UC system relationship — UCLA 901 Levering + UCSD Pepper Canyon are inside the existing service area; one UC capital-programs relationship covers the URGENT trio.",
+                    "San Diego pair — Hillcrest Medical Center Replacement (URGENT) + Civic Center Redevelopment ($3.3B): both in KOR's home US market, both early enough to position.",
+                    "Run post-ingest enrichment on the untagged US rows so the sector mix reads true, and keep Oregon (Portland/Salem MONITOR block) on a quarterly re-scan cadence.",
+                }
+            ),
         };
 }

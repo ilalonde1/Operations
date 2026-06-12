@@ -11,15 +11,28 @@ public sealed class SectorReportDefinitionCatalogTests
     [Fact]
     public void Catalog_HasExactlyTheShippedReports()
     {
-        // Nine launch sectors + the okanagan region row (first non-sector cut).
+        // Nine launch sectors + two region rows (okanagan, us-west).
         var expected = new[]
         {
             "hospitals", "schools", "indigenous", "bc-housing", "defense",
             "recreational", "residential", "commercial", "post-secondary",
-            "okanagan",
+            "okanagan", "us-west",
         };
 
         Assert.Equal(expected, SectorReportDefinitionCatalog.All.Select(d => d.Key).ToArray());
+    }
+
+    [Fact]
+    public void EveryFilter_ConstrainsProvince()
+    {
+        // The inventory carries BC, AB, CA, WA, OR. Sector heuristics alone
+        // leaked US rows into "BC + AB" reports (a $1.74B Seattle hospital
+        // topped the hospitals report, caught 2026-06-12) — every fragment
+        // must scope geography explicitly.
+        foreach (var def in SectorReportDefinitionCatalog.All)
+        {
+            Assert.Contains("m.Province", def.MpiWhere, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

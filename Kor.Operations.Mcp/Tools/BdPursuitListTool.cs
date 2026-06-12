@@ -29,16 +29,16 @@ public sealed class BdPursuitListTool
 
     [McpServerTool(Name = "get_bd_pursuit_list")]
     [Description(
-        "Get KOR's BD pursuit list for one sector from live honing verdicts (KorOpportunitiesDb). " +
-        "Sector keys: hospitals, schools, indigenous, bc-housing, defense, recreational, residential, " +
-        "commercial, post-secondary. Returns the sector's verdict counts plus the top pursuits " +
+        "Get KOR's BD pursuit list for one sector or region from live honing verdicts (KorOpportunitiesDb). " +
+        "Keys: hospitals, schools, indigenous, bc-housing, defense, recreational, residential, " +
+        "commercial, post-secondary, okanagan, us-west. Returns the sector's verdict counts plus the top pursuits " +
         "(PURSUE_URGENT first, then PURSUE, then MONITOR/DISCOVER), each with proponent, cost, " +
         "honing status and the KOR angle. Verdicts come from " +
         "COALESCE(JSON_VALUE($.honingPass.verdict), JSON_VALUE($.verdict)) on ProjectBriefHoning " +
         "enrichments — identical to the BD Reports dashboard. ALWAYS use this for 'top N <sector> " +
         "pursuits', 'what should we chase in <sector>', 'hospital/school/residential pipeline' questions.")]
     public async Task<string> GetBdPursuitListAsync(
-        [Description("Required. Sector key: hospitals | schools | indigenous | bc-housing | defense | recreational | residential | commercial | post-secondary.")] string sectorKey,
+        [Description("Required. Sector/region key: hospitals | schools | indigenous | bc-housing | defense | recreational | residential | commercial | post-secondary | okanagan | us-west.")] string sectorKey,
         [Description("Optional. Max pursuit rows returned (default 15, cap 50).")] int? maxRows,
         CancellationToken cancellationToken)
     {

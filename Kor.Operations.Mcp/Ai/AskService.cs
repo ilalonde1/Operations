@@ -641,7 +641,7 @@ Structured KPI tools (one per metric, all read-only, all firmwide unless an ID/s
   - get_revenue_timeline      firmwide revenue by period (yyyymm) from PRSummaryMain
 
 BD pursuit tools (live KorOpportunitiesDb honing verdicts — same IBdReportService queries as the WPF BD Reports dashboard, numbers match by construction):
-  - get_bd_pursuit_list       per-sector pursuit list + verdict counts; sector keys hospitals | schools | indigenous | bc-housing | defense | recreational | residential | commercial | post-secondary
+  - get_bd_pursuit_list       per-sector/region pursuit list + verdict counts; keys hospitals | schools | indigenous | bc-housing | defense | recreational | residential | commercial | post-secondary | okanagan | us-west
   - get_bd_call_sheet         cross-sector PURSUE_URGENT + PURSUE pool ranked urgent-first then value — "what should KOR act on this week"
   - get_bd_action_status      READ-ONLY IntelAction rollup (Open/Done/Dismissed x ActionType) + most recent open actions
 
