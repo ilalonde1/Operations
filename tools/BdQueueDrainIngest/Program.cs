@@ -149,6 +149,87 @@ DateTimeOffset NextRefreshFor(string provider) =>
         ? DateTimeOffset.UtcNow.AddDays(30)
         : nextRefresh;
 
+// 2026-06-11 maintenance: people briefs that fail to echo displayName used
+// to be recovered by hand (5x) — look up the filename ordinal in the queue's
+// inputs\batch-*.json, take that row's displayName, and require the name to
+// actually appear in the brief content before trusting it (the same evidence
+// rule BdPersonBriefRepair used). Ordinals repeat across batches, so content
+// evidence is the disambiguator; zero or multiple evidenced candidates REFUSE
+// — this fallback never guesses, it only automates the proven manual step.
+Dictionary<long, List<string>>? batchNamesByOrdinal = null;
+
+string? ResolvePersonNameFromBatches(long ordinal, string briefContent)
+{
+    if (batchNamesByOrdinal is null)
+    {
+        batchNamesByOrdinal = new Dictionary<long, List<string>>();
+        var inputsDir = Path.Combine(Directory.GetParent(Path.GetFullPath(inputDir))!.FullName, "inputs");
+        if (!Directory.Exists(inputsDir))
+        {
+            log.LogWarning("Batch-name fallback unavailable: inputs dir not found at {Dir}.", inputsDir);
+            return null;
+        }
+
+        foreach (var batchFile in Directory.GetFiles(inputsDir, "batch-*.json"))
+        {
+            try
+            {
+                using var bd = JsonDocument.Parse(File.ReadAllText(batchFile));
+                if (bd.RootElement.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                foreach (var row in bd.RootElement.EnumerateArray())
+                {
+                    if (row.ValueKind != JsonValueKind.Object
+                        || !row.TryGetProperty("id", out var rid) || !rid.TryGetInt64(out var rowId)
+                        || !row.TryGetProperty("displayName", out var rdn) || rdn.ValueKind != JsonValueKind.String)
+                    {
+                        continue;
+                    }
+
+                    var rowName = rdn.GetString();
+                    if (string.IsNullOrWhiteSpace(rowName))
+                    {
+                        continue;
+                    }
+
+                    if (!batchNamesByOrdinal.TryGetValue(rowId, out var list))
+                    {
+                        batchNamesByOrdinal[rowId] = list = new List<string>();
+                    }
+
+                    if (!list.Contains(rowName, StringComparer.OrdinalIgnoreCase))
+                    {
+                        list.Add(rowName);
+                    }
+                }
+            }
+            catch (JsonException ex)
+            {
+                log.LogWarning("Batch-name fallback: {File} is not parseable JSON ({Message}); ignored.", Path.GetFileName(batchFile), ex.Message);
+            }
+        }
+    }
+
+    if (!batchNamesByOrdinal.TryGetValue(ordinal, out var candidates) || candidates.Count == 0)
+    {
+        return null;
+    }
+
+    var evidenced = candidates.Where(c => briefContent.Contains(c, StringComparison.OrdinalIgnoreCase)).ToList();
+    if (evidenced.Count > 1)
+    {
+        log.LogWarning(
+            "Batch-name fallback: ordinal {Ordinal} matches multiple batch names with content evidence [{Names}] — ambiguous, refusing.",
+            ordinal, string.Join(", ", evidenced));
+        return null;
+    }
+
+    return evidenced.Count == 1 ? evidenced[0] : null;
+}
+
 (string? Provider, string? Reason) ResolveDrainProvider(string briefJson, string defaultProvider, string[] whitelist)
 {
     try
@@ -317,8 +398,19 @@ foreach (var file in files)
 
                     if (string.IsNullOrWhiteSpace(subjectName))
                     {
+                        subjectName = ResolvePersonNameFromBatches(id, briefJson);
+                        if (!string.IsNullOrWhiteSpace(subjectName))
+                        {
+                            log.LogInformation(
+                                "{Name}: brief has no displayName; resolved '{Subject}' from batch row id={Id} (name evidenced in brief content).",
+                                name, subjectName, id);
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(subjectName))
+                    {
                         log.LogWarning(
-                            "Skipping {Name}: brief has no displayName — people ids are batch ordinals and cannot be trusted. Re-run with a PROMPT that echoes the input displayName.",
+                            "Skipping {Name}: brief has no displayName and the batch-name fallback found no unambiguous name evidence — people ids are batch ordinals and cannot be trusted. Re-run with a PROMPT that echoes the input displayName.",
                             name);
                         skipped++;
                         continue;
