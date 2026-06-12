@@ -21,6 +21,13 @@ public partial class BdReportsWindow : Window
     private bool _previewReady;
     private CancellationTokenSource? _previewCts;
 
+    // kor:// drill-down state: single-flight (an anchor is a single-click
+    // target — a second click during the silent DB load must not stack a
+    // duplicate window) and window-lifetime cancellation (adversarial review
+    // findings 1/2, 2026-06-12).
+    private bool _openingLink;
+    private readonly CancellationTokenSource _linkCts = new();
+
     public BdReportsWindow(BdReportsViewModel vm)
     {
         InitializeComponent();
@@ -45,20 +52,26 @@ public partial class BdReportsWindow : Window
             // Header identity is cosmetic and should not block the dashboard.
         }
 
-        try
+        // Guarded like _aiRegistered: a Loaded re-fire must not double-hook
+        // the navigation events (each duplicate hook would open one extra
+        // window per link click).
+        if (!_previewReady)
         {
-            await Preview.EnsureCoreWebView2Async().ConfigureAwait(true);
-            // kor:// drill-down links in the preview route to the existing
-            // detail surfaces; both events must be hooked because plain click
-            // raises NavigationStarting while ctrl/middle-click raises
-            // NewWindowRequested instead.
-            Preview.CoreWebView2.NavigationStarting += Preview_NavigationStarting;
-            Preview.CoreWebView2.NewWindowRequested += Preview_NewWindowRequested;
-            _previewReady = true;
-        }
-        catch (Exception ex)
-        {
-            _vm.StatusMessage = $"Preview pane unavailable (WebView2): {ex.Message}. DOCX export still works after selecting a sector.";
+            try
+            {
+                await Preview.EnsureCoreWebView2Async().ConfigureAwait(true);
+                // kor:// drill-down links in the preview route to the existing
+                // detail surfaces; both events must be hooked because plain click
+                // raises NavigationStarting while ctrl/middle-click raises
+                // NewWindowRequested instead.
+                Preview.CoreWebView2.NavigationStarting += Preview_NavigationStarting;
+                Preview.CoreWebView2.NewWindowRequested += Preview_NewWindowRequested;
+                _previewReady = true;
+            }
+            catch (Exception ex)
+            {
+                _vm.StatusMessage = $"Preview pane unavailable (WebView2): {ex.Message}. DOCX export still works after selecting a sector.";
+            }
         }
 
         await _vm.LoadAsync(CancellationToken.None).ConfigureAwait(true);
@@ -70,6 +83,8 @@ public partial class BdReportsWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _linkCts.Cancel();
+        _linkCts.Dispose();
         _previewCts?.Cancel();
         _previewCts?.Dispose();
         if (_aiRegistered)
@@ -115,27 +130,53 @@ public partial class BdReportsWindow : Window
 
     private async Task OpenKorLinkAsync(string kind, long id)
     {
+        if (_openingLink)
+        {
+            return; // single-flight — a duplicate click while loading must not stack windows
+        }
+
+        _openingLink = true;
         try
         {
             switch (kind)
             {
                 case KorReportLinks.MpiKind:
+                    _vm.StatusMessage = $"Opening pursuit brief for project {id}…";
                     var briefVm = AppServices.Get<PursuitBriefViewModel>();
-                    await briefVm.LoadAsync(id, CancellationToken.None).ConfigureAwait(true);
+                    await briefVm.LoadAsync(id, _linkCts.Token).ConfigureAwait(true);
+                    if (!IsLoaded)
+                    {
+                        return; // this window closed while the brief loaded
+                    }
+
                     new PursuitBriefWindow(briefVm) { Owner = this }.Show();
+                    _vm.StatusMessage = $"Opened pursuit brief for project {id}.";
                     break;
 
                 case KorReportLinks.OrgKind:
+                    if (!IsLoaded)
+                    {
+                        return;
+                    }
+
                     var dossierVm = AppServices.Get<OrgDossierViewModel>();
                     new OrgDossierWindow(dossierVm, id) { Owner = this }.Show();
                     break;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // Window closed mid-load — nothing to report.
         }
         catch (Exception ex)
         {
             // Async-void-equivalent context: an unhandled throw here would
             // crash the app. Surface the failure on the status bar instead.
             _vm.StatusMessage = $"Drill-down failed for {kind} {id}: {ex.Message}";
+        }
+        finally
+        {
+            _openingLink = false;
         }
     }
 

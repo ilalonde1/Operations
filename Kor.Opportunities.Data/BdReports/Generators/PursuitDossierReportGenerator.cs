@@ -78,7 +78,8 @@ public static class PursuitDossierReportGenerator
                     KorReportLinks.Mpi(p.MpiId),
                     null,
                     KorReportLinks.Org(p.ArchitectOrgId),
-                    KorReportLinks.Org(p.StructuralEngineerOrgId),
+                    // "KOR (ours)" must not drill into KOR's own dossier.
+                    KorReportLinks.Org(p.StructuralEngineerIsKor ? null : p.StructuralEngineerOrgId),
                     KorReportLinks.Org(p.GeneralContractorOrgId),
                 }).ToList());
         }
@@ -244,22 +245,24 @@ public static class PursuitDossierReportGenerator
     private static string Location(PursuitDossierRow p) =>
         string.IsNullOrWhiteSpace(p.MunicipalityName) ? p.Province : $"{p.MunicipalityName}, {p.Province}";
 
+    // FormattableString.Invariant: the decimal formats must not drift with
+    // the thread culture (a comma-decimal locale would render "$2,3B").
     private static string CadDisplay(decimal cad) => cad switch
     {
-        >= 1_000_000_000m => $"${cad / 1_000_000_000m:F1}B CAD",
-        >= 1_000_000m => $"${cad / 1_000_000m:N0}M CAD",
-        _ => $"${cad:N0} CAD",
+        >= 1_000_000_000m => FormattableString.Invariant($"${cad / 1_000_000_000m:F1}B CAD"),
+        >= 1_000_000m => FormattableString.Invariant($"${cad / 1_000_000m:N0}M CAD"),
+        _ => FormattableString.Invariant($"${cad:N0} CAD"),
     };
 
     private static string CadCompact(decimal cad) => cad switch
     {
-        >= 1_000_000_000m => $"${cad / 1_000_000_000m:F1}B",
-        >= 1_000_000m => $"${cad / 1_000_000m:N0}M",
-        _ => $"${cad:N0}",
+        >= 1_000_000_000m => FormattableString.Invariant($"${cad / 1_000_000_000m:F1}B"),
+        >= 1_000_000m => FormattableString.Invariant($"${cad / 1_000_000m:N0}M"),
+        _ => FormattableString.Invariant($"${cad:N0}"),
     };
 
     private static string PctCompact(int part, int total)
-        => total == 0 ? "—" : $"{(int)Math.Round(100.0 * part / total)}%";
+        => total == 0 ? "—" : FormattableString.Invariant($"{(int)Math.Round(100.0 * part / total)}%");
 
     private static string PctDisplay(int part, int total)
     {

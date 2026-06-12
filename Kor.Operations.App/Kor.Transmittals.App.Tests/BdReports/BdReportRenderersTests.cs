@@ -170,6 +170,35 @@ public sealed class BdReportRenderersTests
     }
 
     [Fact]
+    public void Html_RaggedCellLinks_AndUnparseableLinks_DegradeToPlainText()
+    {
+        var doc = new BdReportDocumentBuilder("T")
+            // Unknown link kind (no person surface yet): renders plain, no anchor.
+            .H3("No Surface Person", "kor://person/9")
+            .B("Empty value: ", string.Empty, "kor://mpi/1") // empty inner -> no invisible anchor
+            .Table(
+                new[] { "A", "B" },
+                new[]
+                {
+                    new[] { "r1a", "r1b" },
+                    new[] { "r2a", "r2b" },
+                },
+                alignments: null,
+                // Ragged matrix: covers only row 0, and only its first cell.
+                cellLinks: new[] { (IReadOnlyList<string?>)new string?[] { "kor://mpi/5" } })
+            .Build();
+
+        var html = HtmlPreviewBuilder.Render(doc);
+
+        Assert.Contains("<h3>No Surface Person</h3>", html);
+        Assert.DoesNotContain("kor://person", html);
+        Assert.Contains("<p><b>Empty value: </b></p>", html);
+        Assert.Contains("<td><a href=\"kor://mpi/5\">r1a</a></td>", html);
+        Assert.Contains("<td>r1b</td>", html); // beyond the short link row
+        Assert.Contains("<td>r2a</td>", html); // beyond the short matrix
+    }
+
+    [Fact]
     public void Html_EncodesInjectionAttemptsFromData()
     {
         var doc = new BdReportDocumentBuilder("T")

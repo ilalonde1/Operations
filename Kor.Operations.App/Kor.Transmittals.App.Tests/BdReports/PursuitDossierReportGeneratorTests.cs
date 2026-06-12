@@ -103,10 +103,14 @@ public sealed class PursuitDossierReportGeneratorTests
         Assert.Contains(labels, x => x.Label == "Structural seat: " && x.Value.Contains("already ours", StringComparison.Ordinal));
         Assert.Contains(labels, x => x.Label == "Incumbent structural engineer: " && x.Value.Contains("Aspect Structural", StringComparison.Ordinal));
 
-        // Urgent table shows "KOR (ours)" not the raw org name for KOR's seat.
+        // Urgent table shows "KOR (ours)" not the raw org name for KOR's seat,
+        // and that cell must NOT drill into KOR's own dossier; the incumbent
+        // competitor's cell does link.
         var urgentTable = doc.Blocks.OfType<TableBlock>().First();
         Assert.Equal("KOR (ours)", urgentTable.Rows[0][4]);
         Assert.Equal("Aspect Structural", urgentTable.Rows[1][4]);
+        Assert.Null(urgentTable.CellLinks![0][4]);
+        Assert.Equal("kor://org/50", urgentTable.CellLinks![1][4]);
     }
 
     [Fact]

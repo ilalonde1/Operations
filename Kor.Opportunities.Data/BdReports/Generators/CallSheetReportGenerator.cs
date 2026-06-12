@@ -168,11 +168,13 @@ public static class CallSheetReportGenerator
             }),
     };
 
+    // FormattableString.Invariant: the decimal formats must not drift with
+    // the thread culture (a comma-decimal locale would render "$2,3B").
     private static string CadCompact(decimal cad) => cad switch
     {
-        >= 1_000_000_000m => $"${cad / 1_000_000_000m:F1}B",
-        >= 1_000_000m => $"${cad / 1_000_000m:N0}M",
-        _ => $"${cad:N0}",
+        >= 1_000_000_000m => FormattableString.Invariant($"${cad / 1_000_000_000m:F1}B"),
+        >= 1_000_000m => FormattableString.Invariant($"${cad / 1_000_000m:N0}M"),
+        _ => FormattableString.Invariant($"${cad:N0}"),
     };
 
     private static string CostOf(PursuitBriefRow p)

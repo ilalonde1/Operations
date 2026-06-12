@@ -285,13 +285,14 @@
                                 BorderThickness="3,0,0,0"
                                 Padding="10,2,0,2"
                                 Margin="0,0,0,10"
-                                Visibility="{Binding HasSynopsisP1, Converter={StaticResource BoolToVis}}">
+                                Visibility="{Binding HasAnySynopsis, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
                                 <TextBlock Text="{Binding SynopsisP1}"
                                            TextWrapping="Wrap"
                                            FontSize="14"
                                            Foreground="{StaticResource Text.Primary}"
-                                           LineHeight="20"/>
+                                           LineHeight="20"
+                                           Visibility="{Binding HasSynopsisP1, Converter={StaticResource BoolToVis}}"/>
                                 <TextBlock Text="{Binding SynopsisP2}"
                                            TextWrapping="Wrap"
                                            FontSize="13"
