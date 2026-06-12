@@ -84,6 +84,19 @@ param(
     [ValidateSet('Architect', 'Competitor', 'KorClient', 'Buyer', 'Developer', '')]
     [string] $OrgKind,
 
+    # 2026-06-11: relationship-aware hone packaging (honing-orgs kind only).
+    # Embeds each org's live graph — linked active projects with verdicts,
+    # known people, recent signals — so the hone session does cross-entity
+    # synthesis ("who runs SE selection on THIS PURSUE project") instead of
+    # generic firm re-research.
+    [switch] $DeepContext,
+
+    # 2026-06-11: allow re-honing orgs honed within the 30-day window.
+    # Power-hone campaigns NEED this: the highest-value orgs are precisely
+    # the ones already honed generically — a deep graph-aware hone
+    # supersedes the generic one (MERGE updates the same provider row).
+    [switch] $IncludeRecentlyHoned,
+
     [string] $ConnectionString = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
 )
 
@@ -115,6 +128,7 @@ try {
     $cmd.Parameters.AddWithValue("@category", $(if ([string]::IsNullOrWhiteSpace($Category)) { [DBNull]::Value } else { $Category })) | Out-Null
     $cmd.Parameters.AddWithValue("@province", $(if ([string]::IsNullOrWhiteSpace($Province)) { [DBNull]::Value } else { $Province })) | Out-Null
     $cmd.Parameters.AddWithValue("@orgKind", $(if ([string]::IsNullOrWhiteSpace($OrgKind)) { [DBNull]::Value } else { $OrgKind })) | Out-Null
+    $cmd.Parameters.AddWithValue("@includeRecentlyHoned", $(if ($IncludeRecentlyHoned) { 1 } else { 0 })) | Out-Null
 
     switch ($Kind) {
         'orgs' {
@@ -333,7 +347,7 @@ WITH TopTargets AS (
       AND co.Kind IN (N'Architect', N'Competitor', N'KorClient', N'Buyer', N'Developer')
       AND (@orgKind IS NULL OR co.Kind = @orgKind) -- 2026-06-11: targeted hones (e.g. Competitor) — priority order otherwise starves low-rank kinds
       AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
-      AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment eh WHERE eh.CanonicalOrgId = co.Id AND eh.ProviderName = N'FirmNarrativeHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()))
+      AND (@includeRecentlyHoned = 1 OR NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment eh WHERE eh.CanonicalOrgId = co.Id AND eh.ProviderName = N'FirmNarrativeHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset())))
     ORDER BY
         CASE co.Kind WHEN N'KorClient' THEN 0 WHEN N'Architect' THEN 1 WHEN N'Competitor' THEN 2 WHEN N'Buyer' THEN 3 WHEN N'Developer' THEN 4 END,
         BdValue DESC
@@ -355,6 +369,76 @@ SELECT * FROM TopTargets;
                 } catch {}
             }
             $r.Close()
+
+            # 2026-06-11 -DeepContext: package each org with its live
+            # relationship graph so the hone is cross-entity synthesis, not
+            # generic re-research — linked active projects WITH verdicts,
+            # known people, recent signals. The prompt then asks pointed
+            # per-project selection questions instead of "research this firm".
+            if ($DeepContext) {
+                foreach ($row in $rows) {
+                    $ctxCmd = $conn.CreateCommand()
+                    $ctxCmd.CommandTimeout = 60
+                    $ctxCmd.Parameters.AddWithValue("@oid", [int64]$row.id) | Out-Null
+
+                    $ctxCmd.CommandText = @"
+SELECT TOP 12 m.Id, m.ProjectName, m.ProjectStage, m.Province, COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS nvarchar(64))) AS Cost,
+    CASE WHEN m.ArchitectCanonicalOrgId = @oid THEN N'Architect' WHEN m.GeneralContractorCanonicalOrgId = @oid THEN N'GC'
+         WHEN m.StructuralEngineerCanonicalOrgId = @oid THEN N'StructuralEngineer' ELSE N'Proponent' END AS Role,
+    (SELECT TOP 1 COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),''))
+     FROM opportunities.MajorProjectEnrichment e WHERE e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning') AS Verdict
+FROM opportunities.MajorProjectsInventory m
+WHERE m.RetiredAtUtc IS NULL
+  AND (m.ArchitectCanonicalOrgId = @oid OR m.GeneralContractorCanonicalOrgId = @oid
+       OR m.StructuralEngineerCanonicalOrgId = @oid OR m.ProponentCanonicalOrgId = @oid)
+ORDER BY CASE (SELECT TOP 1 COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),''))
+              FROM opportunities.MajorProjectEnrichment e WHERE e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning')
+         WHEN N'PURSUE_URGENT' THEN 0 WHEN N'PURSUE' THEN 1 WHEN N'MONITOR' THEN 2 ELSE 3 END,
+         m.EstimatedCostCad DESC;
+"@
+                    $cr = $ctxCmd.ExecuteReader()
+                    $projects = @()
+                    while ($cr.Read()) {
+                        $projects += [ordered]@{
+                            mpiId = [int64]$cr.GetValue(0); projectName = $cr.GetValue(1)
+                            stage = if ($cr.IsDBNull(2)) { $null } else { $cr.GetValue(2) }
+                            province = if ($cr.IsDBNull(3)) { $null } else { $cr.GetValue(3) }
+                            cost = if ($cr.IsDBNull(4)) { $null } else { $cr.GetValue(4) }
+                            role = $cr.GetValue(5)
+                            verdict = if ($cr.IsDBNull(6)) { $null } else { $cr.GetValue(6) }
+                        }
+                    }
+                    $cr.Close()
+                    $row.linkedActiveProjects = $projects
+
+                    $ctxCmd.CommandText = @"
+SELECT TOP 10 p.DisplayName, a.Title
+FROM opportunities.IntelPersonAffiliation a
+JOIN opportunities.IntelPerson p ON p.Id = a.IntelPersonId AND p.RetiredAtUtc IS NULL
+WHERE a.CanonicalOrgId = @oid AND a.RetiredAtUtc IS NULL
+ORDER BY a.UpdatedAtUtc DESC;
+"@
+                    $cr = $ctxCmd.ExecuteReader()
+                    $people = @()
+                    while ($cr.Read()) { $people += [ordered]@{ name = $cr.GetValue(0); title = if ($cr.IsDBNull(1)) { $null } else { $cr.GetValue(1) } } }
+                    $cr.Close()
+                    $row.knownPeople = $people
+
+                    $ctxCmd.CommandText = @"
+SELECT TOP 6 s.SignalType, LEFT(s.Detail, 220)
+FROM opportunities.IntelSignal s
+WHERE s.CanonicalOrgId = @oid AND s.RetiredAtUtc IS NULL
+ORDER BY s.UpdatedAtUtc DESC;
+"@
+                    try {
+                        $cr = $ctxCmd.ExecuteReader()
+                        $signals = @()
+                        while ($cr.Read()) { $signals += [ordered]@{ type = $cr.GetValue(0); detail = $cr.GetValue(1) } }
+                        $cr.Close()
+                        $row.recentSignals = $signals
+                    } catch { $row.recentSignals = @() }
+                }
+            }
         }
         'honing-people' {
             # Already-enriched people, packaged with first-pass PersonBrief.
@@ -483,7 +567,9 @@ if ($alreadyQueued.Count -gt 0) {
     }
 }
 
-$rows | ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 $outFile
+# Depth 24: -DeepContext rows nest project/people/signal arrays and the
+# embedded first-pass JSON; depth 4 silently truncated them (2026-06-11).
+$rows | ConvertTo-Json -Depth 24 | Set-Content -Encoding UTF8 $outFile
 Write-Host ""
 Write-Host "Batch written: $outFile" -ForegroundColor Green
 Write-Host "  Kind: $Kind"
