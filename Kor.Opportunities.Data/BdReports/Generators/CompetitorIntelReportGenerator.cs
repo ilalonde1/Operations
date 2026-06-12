@@ -43,12 +43,17 @@ public static class CompetitorIntelReportGenerator
                 c.Actions.ToString(CultureInfo.InvariantCulture),
                 c.Total.ToString(CultureInfo.InvariantCulture),
                 c.LinkedProjects.ToString(CultureInfo.InvariantCulture),
+            }).ToList(),
+            new[] { ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right },
+            competitors.Select(c => (IReadOnlyList<string?>)new[]
+            {
+                KorReportLinks.Org(c.CanonicalOrgId), null, null, null, null, null,
             }).ToList());
 
         b.H2("Top 5 rivals — drill-down");
         foreach (var c in competitors.Take(5))
         {
-            b.H3(c.DisplayName);
+            b.H3(c.DisplayName, KorReportLinks.Org(c.CanonicalOrgId));
             b.B("Footprint: ", $"{c.Total} Intel refs (Signals: {c.Signals} | People: {c.People} | Actions: {c.Actions})");
             b.P("Projects confirmed as structural engineer:");
             if (c.TopProjects.Count > 0)

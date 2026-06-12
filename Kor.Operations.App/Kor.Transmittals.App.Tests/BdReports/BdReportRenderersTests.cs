@@ -22,7 +22,8 @@ public sealed class BdReportRenderersTests
             .B("PURSUE — open opportunities: ", "18")
             .P("Plain narrative paragraph with special chars: < > & \"quotes\".")
             .P(string.Empty)
-            .H3("1. Plant and Animal Health Centre")
+            .H3("1. Plant and Animal Health Centre", KorReportLinks.Mpi(6585))
+            .B("Architect: ", "Dikeakos", KorReportLinks.Org(42))
             .Table(
                 new[] { "Id", "Project", "Province" },
                 new[]
@@ -30,7 +31,12 @@ public sealed class BdReportRenderersTests
                     new[] { "6585", "Plant and Animal Health Centre", "BC" },
                     new[] { "7036", "NACIC Edmonton" }, // short row — must pad
                 },
-                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left })
+                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left },
+                new[]
+                {
+                    new string?[] { null, "kor://mpi/6585", null },
+                    new string?[] { null, "kor://mpi/7036", null },
+                })
             .Build();
 
     [Fact]
@@ -58,6 +64,12 @@ public sealed class BdReportRenderersTests
 
         var h2 = paragraphs.Single(p => p.InnerText == "Executive Summary");
         Assert.Equal("Heading2", h2.ParagraphProperties?.ParagraphStyleId?.Val?.Value);
+
+        // kor:// links are a preview-only affordance: DOCX renders the same
+        // text with NO hyperlinks, so preview and export content stay equal.
+        Assert.Contains(paragraphs, p => p.InnerText == "1. Plant and Animal Health Centre");
+        Assert.Contains(paragraphs, p => p.InnerText == "Architect: Dikeakos");
+        Assert.Empty(body.Descendants<Hyperlink>());
 
         // Label-value: bold label run followed by regular value run.
         var labelValue = paragraphs.Single(p => p.InnerText == "PURSUE — open opportunities: 18");
@@ -126,8 +138,13 @@ public sealed class BdReportRenderersTests
 
         Assert.Contains("<h1>KOR Structural — Test BD Report</h1>", html);
         Assert.Contains("<h2>Executive Summary</h2>", html);
-        Assert.Contains("<h3>1. Plant and Animal Health Centre</h3>", html);
         Assert.Contains("<p><b>PURSUE — open opportunities: </b>18</p>", html);
+
+        // kor:// drill-down anchors: linked heading, linked label value,
+        // linked table cell; unlinked cells stay plain.
+        Assert.Contains("<h3><a href=\"kor://mpi/6585\">1. Plant and Animal Health Centre</a></h3>", html);
+        Assert.Contains("<p><b>Architect: </b><a href=\"kor://org/42\">Dikeakos</a></p>", html);
+        Assert.Contains("<td><a href=\"kor://mpi/7036\">NACIC Edmonton</a></td>", html);
         Assert.Contains("<p class=\"note\">Compiled from honing verification.</p>", html);
         Assert.Contains("&lt; &gt; &amp; &quot;quotes&quot;", html);
         Assert.DoesNotContain("<quotes", html);
@@ -137,8 +154,9 @@ public sealed class BdReportRenderersTests
         Assert.Contains("<th class=\"r\">Id</th>", html);
         Assert.Contains("<td class=\"r\">6585</td>", html);
 
-        // Short table row padded to header width: NACIC row gets 3 cells.
-        Assert.Contains("<td>NACIC Edmonton</td><td></td>", html);
+        // Short table row padded to header width: NACIC row gets 3 cells
+        // (the padded empty cell follows the linked project cell).
+        Assert.Contains("<td><a href=\"kor://mpi/7036\">NACIC Edmonton</a></td><td></td>", html);
 
         // KPI strip: card with value + uppercase-styled label; toned card
         // picks up the chip palette color.

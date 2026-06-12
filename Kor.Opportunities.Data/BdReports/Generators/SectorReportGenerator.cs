@@ -73,7 +73,7 @@ public static class SectorReportGenerator
         var rank = 1;
         foreach (var p in urgent)
         {
-            b.H3($"{rank}. {p.ProjectName}");
+            b.H3($"{rank}. {p.ProjectName}", KorReportLinks.Mpi(p.MpiId));
             b.B("Id: ", p.MpiId.ToString(CultureInfo.InvariantCulture));
             b.B("Province: ", p.Province);
             b.B("Proponent: ", p.ProponentName ?? string.Empty);
@@ -92,7 +92,7 @@ public static class SectorReportGenerator
 
         foreach (var p in pursue)
         {
-            b.B($"Id {p.MpiId}: ", $"{p.ProjectName} ({p.Province})");
+            b.B($"Id {p.MpiId}: ", $"{p.ProjectName} ({p.Province})", KorReportLinks.Mpi(p.MpiId));
             b.P($"Proponent: {p.ProponentName} | Cost: {CostOf(p)}");
             b.P(Safe(p.KorAngle, PursueAngleCap));
             b.Italic("Status: " + (p.HoningStatus ?? string.Empty));
@@ -194,7 +194,15 @@ public static class SectorReportGenerator
             return;
         }
 
-        b.Table(headers, bucket.Select(rowOf).ToList(), alignments);
+        // Every bucket table has "Project" as its second column — drill-down
+        // links anchor there.
+        b.Table(
+            headers,
+            bucket.Select(rowOf).ToList(),
+            alignments,
+            bucket.Select(p => (IReadOnlyList<string?>)headers
+                .Select((_, i) => i == 1 ? KorReportLinks.Mpi(p.MpiId) : null)
+                .ToArray()).ToList());
     }
 
     private static string CostOf(PursuitBriefRow p)

@@ -74,6 +74,15 @@ public sealed class PursuitDossierReportGeneratorTests
         var unresolved = doc.Blocks.OfType<LabelValueBlock>()
             .Where(x => x.Label == "Architect: ").Select(x => x.Value).ToList();
         Assert.Contains("UNRESOLVED — no graph edge yet", unresolved);
+
+        // kor:// drill-down targets: dossier H3 -> project, cluster H3 -> org,
+        // urgent-table pursuit cell -> project; unresolved edges mint no link.
+        Assert.Equal("kor://mpi/1", doc.Blocks.OfType<HeadingBlock>().First(h => h.Text == "1. Urgent Tower").Link);
+        Assert.Equal("kor://org/7", doc.Blocks.OfType<HeadingBlock>().First(h => h.Text.StartsWith("Dikeakos", StringComparison.Ordinal)).Link);
+        Assert.Equal("kor://mpi/1", tables[0].CellLinks![0][1]);
+        var noEdgeArchitect = doc.Blocks.OfType<LabelValueBlock>()
+            .First(x => x.Label == "Architect: " && x.Value.StartsWith("UNRESOLVED", StringComparison.Ordinal));
+        Assert.Null(noEdgeArchitect.Link);
     }
 
     [Fact]

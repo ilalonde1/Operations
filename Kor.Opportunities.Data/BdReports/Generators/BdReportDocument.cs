@@ -15,13 +15,20 @@ public sealed record BdReportDocument(string Title, IReadOnlyList<BdReportBlock>
 
 public abstract record BdReportBlock;
 
-/// <summary>Heading level 1-3, mapped to native Word Heading styles (nav-pane friendly).</summary>
-public sealed record HeadingBlock(int Level, string Text) : BdReportBlock;
+/// <summary>
+/// Heading level 1-3, mapped to native Word Heading styles (nav-pane
+/// friendly). Link is an optional kor:// drill-down target (KorReportLinks)
+/// rendered as an anchor in the HTML preview only — DOCX ignores it.
+/// </summary>
+public sealed record HeadingBlock(int Level, string Text, string? Link = null) : BdReportBlock;
 
 public sealed record ParagraphBlock(string Text) : BdReportBlock;
 
-/// <summary>Bold label + regular value on one line (the PS builders' B primitive).</summary>
-public sealed record LabelValueBlock(string Label, string Value) : BdReportBlock;
+/// <summary>
+/// Bold label + regular value on one line (the PS builders' B primitive).
+/// Link is an optional kor:// drill-down target on the VALUE (preview only).
+/// </summary>
+public sealed record LabelValueBlock(string Label, string Value, string? Link = null) : BdReportBlock;
 
 /// <summary>Small italic note, 9pt (the PS builders' Italic primitive).</summary>
 public sealed record ItalicNoteBlock(string Text) : BdReportBlock;
@@ -34,10 +41,16 @@ public enum ColumnAlignment
     Center,
 }
 
+/// <summary>
+/// CellLinks, when present, is a row-major matrix parallel to Rows: a non-null
+/// entry is the kor:// drill-down target for that cell (preview only). Rows or
+/// cells the matrix doesn't cover simply have no link.
+/// </summary>
 public sealed record TableBlock(
     IReadOnlyList<string> Headers,
     IReadOnlyList<IReadOnlyList<string>> Rows,
-    IReadOnlyList<ColumnAlignment>? Alignments = null) : BdReportBlock;
+    IReadOnlyList<ColumnAlignment>? Alignments = null,
+    IReadOnlyList<IReadOnlyList<string?>>? CellLinks = null) : BdReportBlock;
 
 /// <summary>
 /// Semantic tone for chips and KPI accents. The color mapping lives in
@@ -97,9 +110,9 @@ public sealed class BdReportDocumentBuilder
         return this;
     }
 
-    public BdReportDocumentBuilder H3(string text)
+    public BdReportDocumentBuilder H3(string text, string? link = null)
     {
-        _blocks.Add(new HeadingBlock(3, text));
+        _blocks.Add(new HeadingBlock(3, text, link));
         return this;
     }
 
@@ -109,9 +122,9 @@ public sealed class BdReportDocumentBuilder
         return this;
     }
 
-    public BdReportDocumentBuilder B(string label, string value)
+    public BdReportDocumentBuilder B(string label, string value, string? link = null)
     {
-        _blocks.Add(new LabelValueBlock(label, value));
+        _blocks.Add(new LabelValueBlock(label, value, link));
         return this;
     }
 
@@ -124,9 +137,10 @@ public sealed class BdReportDocumentBuilder
     public BdReportDocumentBuilder Table(
         IReadOnlyList<string> headers,
         IReadOnlyList<IReadOnlyList<string>> rows,
-        IReadOnlyList<ColumnAlignment>? alignments = null)
+        IReadOnlyList<ColumnAlignment>? alignments = null,
+        IReadOnlyList<IReadOnlyList<string?>>? cellLinks = null)
     {
-        _blocks.Add(new TableBlock(headers, rows, alignments));
+        _blocks.Add(new TableBlock(headers, rows, alignments, cellLinks));
         return this;
     }
 

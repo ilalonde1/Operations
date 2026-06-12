@@ -5,7 +5,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using Kor.Operations.App.BusinessDevelopment.Workspace;
+using Kor.Operations.App.Opportunities;
 using Kor.Operations.Services;
+using Kor.Opportunities.Data.BdReports.Generators;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Win32;
 
 namespace Kor.Operations.App.BusinessDevelopment.Reports;
@@ -44,6 +48,12 @@ public partial class BdReportsWindow : Window
         try
         {
             await Preview.EnsureCoreWebView2Async().ConfigureAwait(true);
+            // kor:// drill-down links in the preview route to the existing
+            // detail surfaces; both events must be hooked because plain click
+            // raises NavigationStarting while ctrl/middle-click raises
+            // NewWindowRequested instead.
+            Preview.CoreWebView2.NavigationStarting += Preview_NavigationStarting;
+            Preview.CoreWebView2.NewWindowRequested += Preview_NewWindowRequested;
             _previewReady = true;
         }
         catch (Exception ex)
@@ -69,6 +79,64 @@ public partial class BdReportsWindow : Window
         }
 
         base.OnClosed(e);
+    }
+
+    // ===== kor:// drill-down routing =====
+    //
+    // Report previews carry kor://mpi/<id> and kor://org/<id> anchors
+    // (KorReportLinks). Cancel the WebView2 navigation — kor:// is not a
+    // registered OS scheme, so letting it through would surface Edge's
+    // "open external app" failure path — and open the same detail surfaces
+    // the BD dashboard drill-downs use (DashboardView.xaml.cs).
+
+    private void Preview_NavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
+    {
+        if (!KorReportLinks.TryParse(e.Uri, out var kind, out var id))
+        {
+            return; // NavigateToString content loads (about:blank / data:) — leave it alone
+        }
+
+        e.Cancel = true;
+        // Fire-and-forget by design: NavigationStarting must return promptly,
+        // and OpenKorLinkAsync owns its own error reporting.
+        _ = OpenKorLinkAsync(kind, id);
+    }
+
+    private void Preview_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+    {
+        if (!KorReportLinks.TryParse(e.Uri, out var kind, out var id))
+        {
+            return;
+        }
+
+        e.Handled = true; // no popup browser window for kor:// targets
+        _ = OpenKorLinkAsync(kind, id);
+    }
+
+    private async Task OpenKorLinkAsync(string kind, long id)
+    {
+        try
+        {
+            switch (kind)
+            {
+                case KorReportLinks.MpiKind:
+                    var briefVm = AppServices.Get<PursuitBriefViewModel>();
+                    await briefVm.LoadAsync(id, CancellationToken.None).ConfigureAwait(true);
+                    new PursuitBriefWindow(briefVm) { Owner = this }.Show();
+                    break;
+
+                case KorReportLinks.OrgKind:
+                    var dossierVm = AppServices.Get<OrgDossierViewModel>();
+                    new OrgDossierWindow(dossierVm, id) { Owner = this }.Show();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Async-void-equivalent context: an unhandled throw here would
+            // crash the app. Surface the failure on the status bar instead.
+            _vm.StatusMessage = $"Drill-down failed for {kind} {id}: {ex.Message}";
+        }
     }
 
     private async void SectorList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

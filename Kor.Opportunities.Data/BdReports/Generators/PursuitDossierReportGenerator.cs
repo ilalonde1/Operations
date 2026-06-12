@@ -71,7 +71,16 @@ public static class PursuitDossierReportGenerator
                     SeDisplay(p, 30),
                     Safe(p.GeneralContractorName, 25),
                 }).ToList(),
-                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left });
+                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left },
+                urgent.Select(p => (IReadOnlyList<string?>)new[]
+                {
+                    null,
+                    KorReportLinks.Mpi(p.MpiId),
+                    null,
+                    KorReportLinks.Org(p.ArchitectOrgId),
+                    KorReportLinks.Org(p.StructuralEngineerOrgId),
+                    KorReportLinks.Org(p.GeneralContractorOrgId),
+                }).ToList());
         }
 
         var clusters = withArchitect
@@ -87,21 +96,28 @@ public static class PursuitDossierReportGenerator
             foreach (var cluster in clusters)
             {
                 var anchor = cluster.First();
-                b.H3($"{anchor.ArchitectName} — {cluster.Count()} pursuits, {CadDisplay(cluster.Sum(p => p.EstimatedCostCad ?? 0))}");
+                var ordered = cluster
+                    .OrderByDescending(p => p.EstimatedCostCad ?? decimal.MinValue)
+                    .ToList();
+                b.H3(
+                    $"{anchor.ArchitectName} — {cluster.Count()} pursuits, {CadDisplay(cluster.Sum(p => p.EstimatedCostCad ?? 0))}",
+                    KorReportLinks.Org(anchor.ArchitectOrgId));
                 b.B("Org intel on file: ", IntelDepthDisplay(anchor));
                 b.Table(
                     new[] { "Id", "Pursuit", "Cost", "Province", "Verdict" },
-                    cluster
-                        .OrderByDescending(p => p.EstimatedCostCad ?? decimal.MinValue)
-                        .Select(p => (IReadOnlyList<string>)new[]
-                        {
-                            p.MpiId.ToString(CultureInfo.InvariantCulture),
-                            Safe(p.ProjectName, 45),
-                            p.CostDisplay,
-                            p.Province,
-                            p.Verdict ?? string.Empty,
-                        }).ToList(),
-                    new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left });
+                    ordered.Select(p => (IReadOnlyList<string>)new[]
+                    {
+                        p.MpiId.ToString(CultureInfo.InvariantCulture),
+                        Safe(p.ProjectName, 45),
+                        p.CostDisplay,
+                        p.Province,
+                        p.Verdict ?? string.Empty,
+                    }).ToList(),
+                    new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left },
+                    ordered.Select(p => (IReadOnlyList<string?>)new[]
+                    {
+                        null, KorReportLinks.Mpi(p.MpiId), null, null, null,
+                    }).ToList());
             }
         }
 
@@ -115,7 +131,7 @@ public static class PursuitDossierReportGenerator
                      .OrderByDescending(x => x.EstimatedCostCad ?? decimal.MinValue)
                      .Take(DrillDownCount))
         {
-            b.H3($"{rank}. {p.ProjectName}");
+            b.H3($"{rank}. {p.ProjectName}", KorReportLinks.Mpi(p.MpiId));
             var dossierChips = new List<ChipItem> { new(p.Verdict ?? "NO VERDICT", ChipTones.ForVerdict(p.Verdict)) };
             if (p.StructuralEngineerIsKor)
             {
@@ -142,20 +158,22 @@ public static class PursuitDossierReportGenerator
             }
 
             b.B("Architect: ", p.HasArchitectEdge
-                ? $"{p.ArchitectName} ({IntelDepthDisplay(p)})"
-                : "UNRESOLVED — no graph edge yet");
+                    ? $"{p.ArchitectName} ({IntelDepthDisplay(p)})"
+                    : "UNRESOLVED — no graph edge yet",
+                KorReportLinks.Org(p.ArchitectOrgId));
             if (p.StructuralEngineerIsKor)
             {
                 b.B("Structural seat: ", "KOR — already ours, defend it");
             }
             else if (p.HasIncumbentSe)
             {
-                b.B("Incumbent structural engineer: ", $"{p.StructuralEngineerName} — displacement pursuit");
+                b.B("Incumbent structural engineer: ", $"{p.StructuralEngineerName} — displacement pursuit",
+                    KorReportLinks.Org(p.StructuralEngineerOrgId));
             }
 
             if (!string.IsNullOrWhiteSpace(p.GeneralContractorName))
             {
-                b.B("General contractor: ", p.GeneralContractorName);
+                b.B("General contractor: ", p.GeneralContractorName, KorReportLinks.Org(p.GeneralContractorOrgId));
             }
 
             if (!string.IsNullOrWhiteSpace(p.KorAngle))
@@ -171,20 +189,25 @@ public static class PursuitDossierReportGenerator
         {
             b.H2("Graph gaps — pursuits with no architect edge");
             b.P("The route into these pursuits is unknown: no architect link in the graph. They are the remaining -PursuitGaps research worklist, cost-descending — every edge resolved here is resolved forever.");
+            var gapRows = gaps
+                .OrderByDescending(p => p.EstimatedCostCad ?? decimal.MinValue)
+                .Take(GapTableCount)
+                .ToList();
             b.Table(
                 new[] { "Id", "Pursuit", "Cost", "Province", "Proponent" },
-                gaps
-                    .OrderByDescending(p => p.EstimatedCostCad ?? decimal.MinValue)
-                    .Take(GapTableCount)
-                    .Select(p => (IReadOnlyList<string>)new[]
-                    {
-                        p.MpiId.ToString(CultureInfo.InvariantCulture),
-                        Safe(p.ProjectName, 45),
-                        p.CostDisplay,
-                        p.Province,
-                        Safe(p.ProponentName, 35),
-                    }).ToList(),
-                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left });
+                gapRows.Select(p => (IReadOnlyList<string>)new[]
+                {
+                    p.MpiId.ToString(CultureInfo.InvariantCulture),
+                    Safe(p.ProjectName, 45),
+                    p.CostDisplay,
+                    p.Province,
+                    Safe(p.ProponentName, 35),
+                }).ToList(),
+                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left },
+                gapRows.Select(p => (IReadOnlyList<string?>)new[]
+                {
+                    null, KorReportLinks.Mpi(p.MpiId), null, null, null,
+                }).ToList());
             if (gaps.Count > GapTableCount)
             {
                 b.P($"...and {gaps.Count - GapTableCount} more below the cost cut-off.");

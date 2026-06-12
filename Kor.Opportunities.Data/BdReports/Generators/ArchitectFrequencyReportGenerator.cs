@@ -33,9 +33,10 @@ public static class ArchitectFrequencyReportGenerator
             $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
 
         b.H2($"Top {Math.Min(20, architects.Count)} highest-leverage architects");
+        var ranked = architects.Take(20).ToList();
         b.Table(
             new[] { "Architect", "Active projects", "$ Pipeline (M)", "Signals", "People", "Open actions", "KOR status" },
-            architects.Take(20).Select(a => (IReadOnlyList<string>)new[]
+            ranked.Select(a => (IReadOnlyList<string>)new[]
             {
                 a.DisplayName,
                 a.ActiveProjects.ToString(CultureInfo.InvariantCulture),
@@ -44,13 +45,18 @@ public static class ArchitectFrequencyReportGenerator
                 a.People.ToString(CultureInfo.InvariantCulture),
                 a.OpenActions.ToString(CultureInfo.InvariantCulture),
                 IsKorAligned(a.DisplayName) ? "KOR-aligned" : "New target",
+            }).ToList(),
+            new[] { ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Left },
+            ranked.Select(a => (IReadOnlyList<string?>)new[]
+            {
+                KorReportLinks.Org(a.CanonicalOrgId), null, null, null, null, null, null,
             }).ToList());
         b.P("More linked active projects = more team slots KOR can ride on one relationship. KOR-aligned status indicates the architect appears in KOR's established relationship list (per memory).");
 
         b.H2("Top 10 architects — drill-down with projects");
         foreach (var a in architects.Take(10))
         {
-            b.H3(a.DisplayName);
+            b.H3(a.DisplayName, KorReportLinks.Org(a.CanonicalOrgId));
             b.B("Linked active projects: ", $"{a.ActiveProjects} (${(a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture)}M pipeline)");
             b.B("Intel depth: ", $"Signals: {a.Signals} | People: {a.People} | Open actions: {a.OpenActions}");
             b.B("KOR relationship: ", IsKorAligned(a.DisplayName)
@@ -84,6 +90,11 @@ public static class ArchitectFrequencyReportGenerator
                     a.DisplayName,
                     a.ActiveProjects.ToString(CultureInfo.InvariantCulture),
                     "BMZ-legacy check + Principal-in-Charge outreach",
+                }).ToList(),
+                new[] { ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left },
+                korAligned.Select(a => (IReadOnlyList<string?>)new[]
+                {
+                    KorReportLinks.Org(a.CanonicalOrgId), null, null,
                 }).ToList());
         }
 
@@ -99,6 +110,11 @@ public static class ArchitectFrequencyReportGenerator
                     a.DisplayName,
                     a.ActiveProjects.ToString(CultureInfo.InvariantCulture),
                     "Cold-outreach via LinkedIn / industry events / referrals",
+                }).ToList(),
+                new[] { ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left },
+                newTargets.Select(a => (IReadOnlyList<string?>)new[]
+                {
+                    KorReportLinks.Org(a.CanonicalOrgId), null, null,
                 }).ToList());
         }
 

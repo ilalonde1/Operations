@@ -51,7 +51,7 @@ public static class CallSheetReportGenerator
         var rank = 1;
         foreach (var p in top)
         {
-            b.H3($"{rank}. {p.ProjectName} ({CostOf(p)})");
+            b.H3($"{rank}. {p.ProjectName} ({CostOf(p)})", KorReportLinks.Mpi(p.MpiId));
             b.Chips(new ChipItem(p.Verdict ?? "NO VERDICT", ChipTones.ForVerdict(p.Verdict)));
             b.B("Id: ", p.MpiId.ToString(CultureInfo.InvariantCulture));
             b.B("Province: ", p.Province);
@@ -72,7 +72,7 @@ public static class CallSheetReportGenerator
             b.H2($"PURSUE_URGENT — additional {remaining.Count} items");
             foreach (var p in remaining)
             {
-                b.H3($"{p.ProjectName} ({CostOf(p)})");
+                b.H3($"{p.ProjectName} ({CostOf(p)})", KorReportLinks.Mpi(p.MpiId));
                 b.P($"MPI {p.MpiId} — {p.Province}{(string.IsNullOrWhiteSpace(p.MunicipalityName) ? string.Empty : ", " + p.MunicipalityName)}. {Safe(p.KorAngle, UrgentAngleCap)}");
             }
         }
@@ -84,9 +84,10 @@ public static class CallSheetReportGenerator
         }
         else
         {
+            var pursueRows = pursue.Take(PursueTableCap).ToList();
             b.Table(
                 new[] { "Id", "Project", "Province", "Proponent", "Cost" },
-                pursue.Take(PursueTableCap).Select(p => (IReadOnlyList<string>)new[]
+                pursueRows.Select(p => (IReadOnlyList<string>)new[]
                 {
                     p.MpiId.ToString(CultureInfo.InvariantCulture),
                     Safe(p.ProjectName, 60),
@@ -94,7 +95,11 @@ public static class CallSheetReportGenerator
                     Safe(p.ProponentName, 30),
                     CostOf(p),
                 }).ToList(),
-                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Right });
+                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Right },
+                pursueRows.Select(p => (IReadOnlyList<string?>)new[]
+                {
+                    null, KorReportLinks.Mpi(p.MpiId), null, null, null,
+                }).ToList());
         }
 
         b.H2("Strategic Relationship Targets (compounding leverage)");

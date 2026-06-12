@@ -41,6 +41,9 @@ public static class HtmlPreviewBuilder
         sb.AppendLine($"  div.kpi .l {{ font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.06em; color: #{KorReportStyles.MutedTextColor}; margin-top: 2px; }}");
         sb.AppendLine("  p.chips { margin: 2pt 0 6pt 0; }");
         sb.AppendLine("  span.chip { display: inline-block; border-radius: 999px; color: #fff; font-size: 8pt; font-weight: 600; padding: 2px 10px; margin: 0 6px 3px 0; }");
+        sb.AppendLine($"  a {{ color: #{KorReportStyles.ChipInfoColor}; text-decoration: none; }}");
+        sb.AppendLine("  a:hover { text-decoration: underline; }");
+        sb.AppendLine("  h3 a { color: inherit; border-bottom: 1px dotted currentColor; }");
         sb.AppendLine("</style></head><body>");
 
         foreach (var block in document.Blocks)
@@ -58,7 +61,7 @@ public static class HtmlPreviewBuilder
         {
             case HeadingBlock h when h.Level is >= 1 and <= 3:
                 sb.Append("<h").Append(h.Level).Append('>')
-                  .Append(WebUtility.HtmlEncode(h.Text))
+                  .Append(Linked(WebUtility.HtmlEncode(h.Text), h.Link))
                   .Append("</h").Append(h.Level).AppendLine(">");
                 break;
 
@@ -72,7 +75,7 @@ public static class HtmlPreviewBuilder
 
             case LabelValueBlock lv:
                 sb.Append("<p><b>").Append(Encode(lv.Label)).Append("</b>")
-                  .Append(Encode(lv.Value)).AppendLine("</p>");
+                  .Append(Linked(Encode(lv.Value), lv.Link)).AppendLine("</p>");
                 break;
 
             case ItalicNoteBlock n:
@@ -122,14 +125,17 @@ public static class HtmlPreviewBuilder
                 }
 
                 sb.AppendLine("</tr></thead><tbody>");
-                foreach (var row in t.Rows)
+                for (var r = 0; r < t.Rows.Count; r++)
                 {
+                    var row = t.Rows[r];
+                    var rowLinks = t.CellLinks is { } links && r < links.Count ? links[r] : null;
                     sb.Append("<tr>");
                     for (var i = 0; i < t.Headers.Count; i++)
                     {
                         var cell = i < row.Count ? row[i] : string.Empty;
+                        var link = rowLinks is not null && i < rowLinks.Count ? rowLinks[i] : null;
                         sb.Append("<td").Append(AlignClass(t.Alignments, i)).Append('>')
-                          .Append(Encode(cell)).Append("</td>");
+                          .Append(Linked(Encode(cell), link)).Append("</td>");
                     }
 
                     sb.AppendLine("</tr>");
@@ -162,4 +168,18 @@ public static class HtmlPreviewBuilder
     // matching the DOCX renderer's Break() handling (one model, two renderers).
     private static string Encode(string text)
         => WebUtility.HtmlEncode(text).Replace("\r\n", "<br/>").Replace("\n", "<br/>");
+
+    // Wraps already-encoded inner HTML in a kor:// drill-down anchor. Only
+    // KorReportLinks-parseable targets become anchors — a malformed link
+    // degrades to plain text instead of emitting a dead/garbage href, and
+    // empty cells never render an invisible anchor.
+    private static string Linked(string encodedInner, string? link)
+    {
+        if (link is null || encodedInner.Length == 0 || !KorReportLinks.TryParse(link, out _, out _))
+        {
+            return encodedInner;
+        }
+
+        return "<a href=\"" + WebUtility.HtmlEncode(link) + "\">" + encodedInner + "</a>";
+    }
 }
