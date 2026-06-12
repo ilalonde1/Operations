@@ -39,6 +39,12 @@ namespace Kor.Operations.PMTools
             InitializeComponent();
             DataContext = _vm;
 
+            // Round 52: hand the meeting VM to the column-visibility proxy.
+            // DataGrid columns live outside the visual tree, so Meeting Mode
+            // bindings reach IsMeetingMode through this Freezable instead of
+            // ElementName/RelativeSource.
+            ((Kor.Operations.Converters.BindingProxy)Resources["MeetingPanelProxy"]).Data = _meetingPanel;
+
             var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
             contextBuilder.Register(_vm);
             AiPanel.Initialize(Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>(), _vm);
@@ -48,8 +54,25 @@ namespace Kor.Operations.PMTools
                 if (e.PropertyName is nameof(WorkloadMeetingPanelViewModel.CurrentProjects)
                                     or nameof(WorkloadMeetingPanelViewModel.SelectedMeeting))
                     SyncMeetingPrioritiesToRows();
+                else if (e.PropertyName is nameof(WorkloadMeetingPanelViewModel.IsMeetingMode))
+                    SetAllPmGroupsExpanded(_meetingPanel.IsMeetingMode);
             };
             _meetingPanel.CurrentProjects.CollectionChanged += (_, _) => SyncMeetingPrioritiesToRows();
+            // BuildPmGroups() recreates the group VMs (default collapsed) on
+            // every filter/sort/refresh — re-expand them while Meeting Mode is on.
+            _vm.PmGroups.CollectionChanged += (_, _) =>
+            {
+                if (_meetingPanel.IsMeetingMode)
+                    SetAllPmGroupsExpanded(true);
+            };
+        }
+
+        // Round 52: Meeting Mode wants every PM's list open so the room can
+        // scan top to bottom; exiting returns to the compact default.
+        private void SetAllPmGroupsExpanded(bool expanded)
+        {
+            foreach (var group in _vm.PmGroups)
+                group.IsExpanded = expanded;
         }
 
         public WorkloadMeetingPanelViewModel MeetingPanel => _meetingPanel;

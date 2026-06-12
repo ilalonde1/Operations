@@ -38,6 +38,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     private string _activityText = string.Empty;
     private string? _meetingError;
     private bool _isMeetingPanelExpanded = false;
+    private bool _isMeetingMode;
     private string _sortColumn = "Priority";
     private bool _sortAscending = true;
     private bool _suppressProjectNotesRelay;
@@ -58,6 +59,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         NewMeetingCommand = new AsyncRelayCommand(_ => NewMeetingAsync());
         SaveMeetingCommand = new AsyncRelayCommand(_ => SaveMeetingAsync());
         ToggleMeetingPanelCommand = new AsyncRelayCommand(_ => { IsMeetingPanelExpanded = !IsMeetingPanelExpanded; return Task.CompletedTask; });
+        ToggleMeetingModeCommand = new AsyncRelayCommand(_ => { IsMeetingMode = !IsMeetingMode; return Task.CompletedTask; });
         SortCommand = new AsyncRelayCommand(p => { ExecuteSort(p); return Task.CompletedTask; });
         PriorityProjects = new ObservableCollection<WorkloadMeetingProjectRow>();
         PriorityProjects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasPriorityProjects));
@@ -268,6 +270,29 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     }
 
     public string MeetingPanelToggleLabel => _isMeetingPanelExpanded ? "\u25bc  Workload Board" : "\u25b6  Workload Board";
+
+    /// <summary>
+    /// Round 52: Meeting Mode reshapes the PM Groups grid for running the
+    /// meeting in the room \u2014 deep-dive financial columns hide, PM groups
+    /// auto-expand. The window owns the visual reactions; this is just the
+    /// switch (lives here so the grid's column bindings, the toolbar button,
+    /// and the window code-behind all observe one source of truth).
+    /// </summary>
+    public bool IsMeetingMode
+    {
+        get => _isMeetingMode;
+        private set
+        {
+            if (_isMeetingMode == value) return;
+            _isMeetingMode = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(MeetingModeToggleLabel));
+        }
+    }
+
+    public string MeetingModeToggleLabel => _isMeetingMode ? "\u2713  Meeting Mode" : "Meeting Mode";
+
+    public ICommand ToggleMeetingModeCommand { get; }
 
     public string PrioritySortHeader => "Priority" + (_sortColumn == "Priority" ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
     public string ProjectSortHeader  => "Project"  + (_sortColumn == "Project"  ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
