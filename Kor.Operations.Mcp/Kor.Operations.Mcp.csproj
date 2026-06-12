@@ -14,7 +14,7 @@
     <!-- Bump on every meaningful service-side change so the /health
          endpoint and audit log let operators confirm a redeploy
          actually picked up the new binary. -->
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
     <!-- Skip copying Playwright's node driver (66 MB node.exe) — official
          switch in Microsoft.Playwright.targets. The MCP never scrapes; see
          the PackageReference exclusions below for the matching constraint. -->
