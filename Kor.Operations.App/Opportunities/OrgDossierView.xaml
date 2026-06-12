@@ -25,6 +25,22 @@
             <Setter Property="Margin" Value="8,0,8,10"/>
         </Style>
 
+        <!-- 2026-06-12 UX pass: section titles carry the same KOR accent rule
+             as the BD report renderers — short underline hugging the text. -->
+        <Style x:Key="SectionHeaderRule" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource Brand.Accent.Brush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="Padding" Value="0,0,0,3"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
+        <Style x:Key="SectionHeaderText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Brand.Primary.Brush}"/>
+            <Setter Property="Typography.Capitals" Value="AllSmallCaps"/>
+        </Style>
+
         <!-- Small-caps technical label, slate, less shouty than the old SemiBold. -->
         <!-- Round 56: bumped from 10→11 so the small-caps label reads at the
              same weight as the value text next to it. -->
@@ -226,12 +242,9 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0"
-                                       Text="AT A GLANCE"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource Brand.Primary.Brush}"
-                                       Typography.Capitals="AllSmallCaps"/>
+                            <Border Grid.Column="0" Style="{StaticResource SectionHeaderRule}" VerticalAlignment="Center">
+                                <TextBlock Text="AT A GLANCE" Style="{StaticResource SectionHeaderText}"/>
+                            </Border>
                             <Button Grid.Column="1"
                                     Content="🔄 Refresh now"
                                     Command="{Binding RefreshIntelCommand}"
@@ -265,69 +278,100 @@
                                    Margin="0,0,0,8"
                                    Visibility="{Binding HasRefreshRequestStatus, Converter={StaticResource BoolToVis}}"/>
 
-                        <TextBlock Text="{Binding SynopsisP1}"
-                                   TextWrapping="Wrap"
-                                   FontSize="14"
-                                   FontStyle="Italic"
-                                   Foreground="{StaticResource Brand.Primary.Brush}"
-                                   Margin="0,0,0,6"
-                                   Visibility="{Binding HasSynopsisP1, Converter={StaticResource BoolToVis}}"/>
-                        <TextBlock Text="{Binding SynopsisP2}"
-                                   TextWrapping="Wrap"
-                                   FontSize="14"
-                                   FontStyle="Italic"
-                                   Foreground="{StaticResource Brand.Primary.Brush}"
-                                   Margin="0,0,0,8"
-                                   Visibility="{Binding HasSynopsisP2, Converter={StaticResource BoolToVis}}"/>
+                        <!-- Synopsis as a quote-style lede: accent bar, regular
+                             (non-italic) type — long italic paragraphs were the
+                             top "hard to read" complaint (2026-06-12). -->
+                        <Border BorderBrush="{StaticResource Brand.Accent.Brush}"
+                                BorderThickness="3,0,0,0"
+                                Padding="10,2,0,2"
+                                Margin="0,0,0,10"
+                                Visibility="{Binding HasSynopsisP1, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding SynopsisP1}"
+                                           TextWrapping="Wrap"
+                                           FontSize="14"
+                                           Foreground="{StaticResource Text.Primary}"
+                                           LineHeight="20"/>
+                                <TextBlock Text="{Binding SynopsisP2}"
+                                           TextWrapping="Wrap"
+                                           FontSize="13"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           LineHeight="19"
+                                           Margin="0,6,0,0"
+                                           Visibility="{Binding HasSynopsisP2, Converter={StaticResource BoolToVis}}"/>
+                            </StackPanel>
+                        </Border>
 
                         <TextBlock Text="Recommended actions" Style="{StaticResource IntelSubhead}"/>
                         <TextBlock Text="No recommended actions on file yet."
                                    Style="{StaticResource FieldValue}"
                                    Foreground="{StaticResource Text.Secondary}"
                                    Visibility="{Binding HasIntelActions, Converter={StaticResource FalseToVis}}"/>
+                        <!-- 2026-06-12 UX pass: each action is a structured row —
+                             type pill + target/timing meta line, then the
+                             recommendation body — instead of one run-on
+                             paragraph (the top dossier readability complaint). -->
                         <ItemsControl ItemsSource="{Binding IntelActions}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="0,1">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Style="{StaticResource IntelItemText}">
-                                            <TextBlock.ToolTip>
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding TargetPersonName, StringFormat=Target: {0}}"/>
-                                                    <TextBlock Text="{Binding TimingNotes, StringFormat=Timing: {0}}"/>
-                                                    <TextBlock>
-                                                        <Run Text="Confidence: "/>
-                                                        <Run Text="{Binding Confidence, Mode=OneWay}"/>
-                                                        <Run Text="  Freshness: "/>
-                                                        <Run Text="{Binding Freshness, Mode=OneWay}"/>
-                                                    </TextBlock>
-                                                    <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
+                                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="0,7,0,7">
+                                        <Border.ToolTip>
+                                            <StackPanel>
+                                                <TextBlock>
+                                                    <Run Text="Confidence: "/>
+                                                    <Run Text="{Binding Confidence, Mode=OneWay}"/>
+                                                    <Run Text="  Freshness: "/>
+                                                    <Run Text="{Binding Freshness, Mode=OneWay}"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
+                                            </StackPanel>
+                                        </Border.ToolTip>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                                    <Border Background="{StaticResource Brand.Primary.Brush}"
+                                                            CornerRadius="999" Padding="8,1" Margin="0,0,8,0"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding ActionType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}"
+                                                                   Foreground="White" FontSize="10" FontWeight="SemiBold"
+                                                                   Typography.Capitals="AllSmallCaps"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding TargetPersonName, StringFormat=target: {0}}"
+                                                               FontSize="11" Foreground="{StaticResource Text.Secondary}"
+                                                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="{Binding TimingNotes, StringFormat=timing: {0}}"
+                                                               FontSize="11" Foreground="{StaticResource Text.Secondary}"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis" MaxWidth="420"/>
                                                 </StackPanel>
-                                            </TextBlock.ToolTip>
-                                            <Run Text="•  " Foreground="{StaticResource Brand.Primary.Brush}" FontWeight="Bold"/>
-                                            <Run Text="{Binding ActionType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}" FontWeight="SemiBold"/>
-                                            <Run Text=": "/>
-                                            <Run Text="{Binding Recommendation, Mode=OneWay}"/>
-                                        </TextBlock>
-                                        <!-- R81: KOR-side Status mutation. Removing an action drops it
-                                             from the IntelActions collection; the next dossier load
-                                             also re-queries (read filter is Status='Open'). -->
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
-                                            <Button Content="✓ Done"
-                                                    Command="{Binding DataContext.MarkActionDoneCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}"
-                                                    Padding="6,1" FontSize="10" Margin="0,0,4,0"
-                                                    ToolTip="Mark this action as done (KOR has completed it)."/>
-                                            <Button Content="✕ Dismiss"
-                                                    Command="{Binding DataContext.MarkActionDismissedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}"
-                                                    Padding="6,1" FontSize="10"
-                                                    ToolTip="Dismiss this recommendation (KOR has decided not to pursue)."/>
-                                        </StackPanel>
-                                    </Grid>
+                                                <TextBlock Text="{Binding Recommendation}"
+                                                           FontSize="12.5"
+                                                           LineHeight="18"
+                                                           Foreground="{StaticResource Text.Primary}"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,0,8,0"/>
+                                            </StackPanel>
+                                            <!-- R81: KOR-side Status mutation. Removing an action drops it
+                                                 from the IntelActions collection; the next dossier load
+                                                 also re-queries (read filter is Status='Open'). -->
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Top">
+                                                <Button Content="✓ Done"
+                                                        Command="{Binding DataContext.MarkActionDoneCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Padding="6,1" FontSize="10" Margin="0,0,4,0"
+                                                        ToolTip="Mark this action as done (KOR has completed it)."/>
+                                                <Button Content="✕ Dismiss"
+                                                        Command="{Binding DataContext.MarkActionDismissedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Padding="6,1" FontSize="10"
+                                                        ToolTip="Dismiss this recommendation (KOR has decided not to pursue)."/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -388,8 +432,10 @@
                         <ItemsControl ItemsSource="{Binding IntelSignals}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Style="{StaticResource IntelItemText}">
-                                        <TextBlock.ToolTip>
+                                    <!-- Subject leads its own line; detail drops to a
+                                         secondary line — no more run-on signal blobs. -->
+                                    <StackPanel Margin="0,3">
+                                        <StackPanel.ToolTip>
                                             <StackPanel>
                                                 <TextBlock Text="{Binding SourceUrl, StringFormat=Source: {0}}"/>
                                                 <TextBlock>
@@ -400,14 +446,20 @@
                                                 </TextBlock>
                                                 <TextBlock Text="{Binding RefreshedAtUtc, StringFormat=Refreshed: {0:yyyy-MM-dd HH:mm} UTC}"/>
                                             </StackPanel>
-                                        </TextBlock.ToolTip>
-                                        <Run Text="•  " Foreground="{StaticResource Brand.Primary.Brush}" FontWeight="Bold"/>
-                                        <Run Text="{Binding SignalType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}" FontWeight="SemiBold"/>
-                                        <Run Text=": "/>
-                                        <Run Text="{Binding Subject, Mode=OneWay}"/>
-                                        <Run Text="  "/>
-                                        <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"/>
-                                    </TextBlock>
+                                        </StackPanel.ToolTip>
+                                        <TextBlock Style="{StaticResource IntelItemText}">
+                                            <Run Text="•  " Foreground="{StaticResource Brand.Primary.Brush}" FontWeight="Bold"/>
+                                            <Run Text="{Binding SignalType, Converter={StaticResource IntelTypeLabel}, Mode=OneWay}" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
+                                            <Run Text="  "/>
+                                            <Run Text="{Binding Subject, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Detail}"
+                                                   FontSize="12"
+                                                   LineHeight="17"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="14,1,0,0"/>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -516,13 +568,9 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0"
-                                       Text="DISPLACEMENT BRIEF"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource Brand.Primary.Brush}"
-                                       Typography.Capitals="AllSmallCaps"
-                                       VerticalAlignment="Center"/>
+                            <Border Grid.Column="0" Style="{StaticResource SectionHeaderRule}" VerticalAlignment="Center">
+                                <TextBlock Text="DISPLACEMENT BRIEF" Style="{StaticResource SectionHeaderText}"/>
+                            </Border>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <Border Background="{Binding DisplacementBrief.KorPriority, Converter={StaticResource PriorityBrush}}"
                                         CornerRadius="999"
@@ -746,12 +794,9 @@
                 <Border Style="{StaticResource SectionCard}"
                         Visibility="{Binding HasAtAGlance, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
-                        <TextBlock Text="AT A GLANCE"
-                                   FontSize="13"
-                                   FontWeight="SemiBold"
-                                   Foreground="{StaticResource Brand.Primary.Brush}"
-                                   Typography.Capitals="AllSmallCaps"
-                                   Margin="0,0,0,10"/>
+                        <Border Style="{StaticResource SectionHeaderRule}" Margin="0,0,0,10">
+                            <TextBlock Text="AT A GLANCE" Style="{StaticResource SectionHeaderText}"/>
+                        </Border>
 
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -827,12 +872,9 @@
                 <Border Style="{StaticResource SectionCard}"
                         Visibility="{Binding HasDeltekSnapshot, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
-                        <TextBlock Text="DELTEK SNAPSHOT"
-                                   FontSize="13"
-                                   FontWeight="SemiBold"
-                                   Foreground="{StaticResource Brand.Primary.Brush}"
-                                   Typography.Capitals="AllSmallCaps"
-                                   Margin="0,0,0,10"/>
+                        <Border Style="{StaticResource SectionHeaderRule}" Margin="0,0,0,10">
+                            <TextBlock Text="DELTEK SNAPSHOT" Style="{StaticResource SectionHeaderText}"/>
+                        </Border>
 
                         <TextBlock Text="{Binding DeltekSnapshot.ErrorMessage}"
                                    Style="{StaticResource FieldValue}"

@@ -131,7 +131,7 @@ public static class PursuitDossierReportGenerator
                      .OrderByDescending(x => x.EstimatedCostCad ?? decimal.MinValue)
                      .Take(DrillDownCount))
         {
-            b.H3($"{rank}. {p.ProjectName}", KorReportLinks.Mpi(p.MpiId));
+            b.H3($"{rank}. {p.ProjectName} — {p.CostDisplay}", KorReportLinks.Mpi(p.MpiId));
             var dossierChips = new List<ChipItem> { new(p.Verdict ?? "NO VERDICT", ChipTones.ForVerdict(p.Verdict)) };
             if (p.StructuralEngineerIsKor)
             {
@@ -144,18 +144,22 @@ public static class PursuitDossierReportGenerator
             }
 
             b.Chips(dossierChips.ToArray());
-            b.B("Project Id: ", p.MpiId.ToString(CultureInfo.InvariantCulture));
-            b.B("Cost: ", p.CostDisplay);
-            b.B("Location: ", Location(p));
+
+            // One subtitle meta-line instead of five label-value rows
+            // (2026-06-12 dossier readability pass) — team edges keep their
+            // own lines below because they carry the drill-down links.
+            var facts = new List<string> { $"Id {p.MpiId}", Location(p) };
             if (!string.IsNullOrWhiteSpace(p.Stage))
             {
-                b.B("Stage: ", p.Stage);
+                facts.Add(p.Stage);
             }
 
             if (!string.IsNullOrWhiteSpace(p.ProponentName))
             {
-                b.B("Proponent: ", p.ProponentName);
+                facts.Add($"Proponent: {p.ProponentName}");
             }
+
+            b.Italic(string.Join("  ·  ", facts));
 
             b.B("Architect: ", p.HasArchitectEdge
                     ? $"{p.ArchitectName} ({IntelDepthDisplay(p)})"

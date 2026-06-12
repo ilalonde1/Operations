@@ -75,9 +75,10 @@ public sealed class PursuitDossierReportGeneratorTests
             .Where(x => x.Label == "Architect: ").Select(x => x.Value).ToList();
         Assert.Contains("UNRESOLVED — no graph edge yet", unresolved);
 
-        // kor:// drill-down targets: dossier H3 -> project, cluster H3 -> org,
-        // urgent-table pursuit cell -> project; unresolved edges mint no link.
-        Assert.Equal("kor://mpi/1", doc.Blocks.OfType<HeadingBlock>().First(h => h.Text == "1. Urgent Tower").Link);
+        // kor:// drill-down targets: dossier H3 -> project (cost-in-heading),
+        // cluster H3 -> org, urgent-table pursuit cell -> project; unresolved
+        // edges mint no link.
+        Assert.Equal("kor://mpi/1", doc.Blocks.OfType<HeadingBlock>().First(h => h.Text.StartsWith("1. Urgent Tower — $", StringComparison.Ordinal)).Link);
         Assert.Equal("kor://org/7", doc.Blocks.OfType<HeadingBlock>().First(h => h.Text.StartsWith("Dikeakos", StringComparison.Ordinal)).Link);
         Assert.Equal("kor://mpi/1", tables[0].CellLinks![0][1]);
         var noEdgeArchitect = doc.Blocks.OfType<LabelValueBlock>()
@@ -146,5 +147,23 @@ public sealed class PursuitDossierReportGeneratorTests
         var noEdge = chipRows[1].Chips;
         Assert.Contains(noEdge, c => c.Text == BdVerdicts.Pursue && c.Tone == ChipTone.Positive);
         Assert.Contains(noEdge, c => c.Text == "NO ARCHITECT EDGE" && c.Tone == ChipTone.Neutral);
+    }
+
+    [Fact]
+    public void Build_DossierMetaLine_CollapsesFactsIntoOneItalicSubtitle()
+    {
+        var pursuits = new[] { Row(7, "Meta Test", 250_000_000m, urgent: true, archId: 3, archName: "Arch") };
+
+        var doc = PursuitDossierReportGenerator.Build(pursuits, GeneratedAt);
+
+        // Heading carries cost; the facts line carries id/location/stage/proponent.
+        Assert.Contains(doc.Blocks.OfType<HeadingBlock>(), h => h.Text == "1. Meta Test — $250M");
+        var meta = doc.Blocks.OfType<ItalicNoteBlock>().Single(n => n.Text.StartsWith("Id 7", StringComparison.Ordinal));
+        Assert.Contains("Vancouver, BC", meta.Text);
+        Assert.Contains("RFP", meta.Text);
+        Assert.Contains("Proponent: Owner Co", meta.Text);
+
+        // The old per-fact label-value rows are gone from the dossier body.
+        Assert.DoesNotContain(doc.Blocks.OfType<LabelValueBlock>(), b => b.Label is "Project Id: " or "Cost: " or "Location: ");
     }
 }
