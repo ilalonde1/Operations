@@ -8,6 +8,38 @@ VERIFY-CLASS — each needs a record lookup before acting. Process gap that
 caused this backlog: summaries were never systematically read; fix is the
 flags-harvester step below.
 
+## STATUS 2026-06-12 (post verify-flags campaign)
+
+The 33-item verify-flags QueueDrain ran 2026-06-12 (evidence per item in
+C:\ProgramData\KorOperations\QueueDrain\verify-flags\outputs\verify-N.json)
+and was ingest-reviewed against the live DB. Applied as migration
+134_VerifyFlagsSweep.sql + 13 dedup pairs
+(output/verify-flags-pairs-2026-06-12.csv). Notable divergences from the
+raw verdicts, found during DB re-verification:
+- James Cheng survivor FLIPPED: 69676 survives (mpi=11) not 54297 (mpi=3).
+- E. Holland was a MERGE into existing 50504, not a rename.
+- 38998/39053/39073 were FUSED rows -> surgical repoints, not merges
+  (38998 stays Standards Council of Canada; 39053 retired as typo shell;
+  39073 stays ABC Life Literacy Canada, Kind=Vendor).
+- Worklist person ids 80/88/124 were a different id space; real records
+  found by name (McPhee/Lee = IntelProjectKeyPerson; Sammi Ha already
+  retired, no action).
+- McIntosh Perry consolidated INTO 74130 'Egis Canada' (renamed from the
+  CCI Group junk name; Kind=Unknown allied-discipline, m132-consistent).
+- Bonus dups merged: Eng-Spire 71169->68740; person 9099 -> 244 (Wolsey).
+
+NOT actioned, with reasons (carry-forward):
+- verify-14 Lemco 10869 / Lemay 10868: different award contracts, no shared
+  contacts, no web trace of 'Lemco Architecture' — same-entity unproven.
+- verify-17 ATB/CTA 2751: CTA Architecture + Design bankruptcy real, but
+  'ATB' in the flag was the CREDITOR (ATB Financial); no evidence 2751
+  'ATB Architecture' (single 2015 Edmonton award) is that firm.
+- Isle Energy Consulting not minted (Part 9 residential — out of BD scope).
+- org-name-repair payload refusals still in outputs/: 74051 (BCIT,
+  contradictory), 74153 (Ledcor, truncated echo). 74130 resolved by m134.
+- Faction org sprawl noted (69429/70557/74016/70546 variants) — planner.
+- AtkinsRealis + Egis vendor-row sprawl left for the awards-tier campaign.
+
 ## Rebrands (rename vs merge-into-successor — decide per record)
 - 15558 SNC-Lavalin -> AtkinsRealis (Sept 2023)
 - 53516 Ivanhoe Cambridge -> La Caisse (merged CDPQ, June 2025)

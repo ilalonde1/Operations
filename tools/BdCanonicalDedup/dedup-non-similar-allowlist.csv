@@ -1035,3 +1035,23 @@ LoserId,SurvivorId,Reason
 74128,68747
 74145,72113
 8278,8277
+# 2026-06-12 m134 verify-flags merge pairs (verify-flags QueueDrain campaign,
+# per-item web evidence in outputs/verify-N.json; every pair re-verified against
+# live CanonicalOrg + FK link counts before this append — see
+# output/verify-flags-pairs-2026-06-12.csv for per-pair notes). Includes the
+# James Cheng survivor FLIP (54297->69676: link counts overruled the drain's
+# lower-id-survives guess) and the McIntosh Perry -> Egis Canada consolidation
+# (74130 renamed by m134 before this run).
+53516,38947
+9217,153
+46917,50504
+4851,4856
+54297,69676
+30665,19491
+11041,66594
+8315,8314
+74133,68749
+11225,11222
+11533,74130
+11534,74130
+71169,68740
