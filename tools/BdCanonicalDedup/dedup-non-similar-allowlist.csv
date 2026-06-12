@@ -1077,3 +1077,12 @@ LoserId,SurvivorId,Reason
 70813,54928
 14565,14564
 54085,18854
+# 2026-06-12 closing planner cycle (reviewed): planner proposed 18 groups; 2
+# rejected in review as false fuzzy collapses (74300 Continuum Partners LLC
+# != Continuum Architecture; 74272 Fox Corporation != Fox Architecture) and
+# the egiscanada group direction FLIPPED (6768 vendor row loses to curated
+# 74130). These three rows are planner-grouped same-entity pairs the stricter
+# pairs-gate rejects on brand-word differences:
+69367,69703
+72113,11697
+72280,38934
