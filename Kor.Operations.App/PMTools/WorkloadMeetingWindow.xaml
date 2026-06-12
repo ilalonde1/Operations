@@ -291,6 +291,32 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
+                        <!-- Round 52: priority summary chips — click jumps the PM lists
+                             below to the first project at that priority. -->
+                        <ItemsControl Grid.Column="4" ItemsSource="{Binding PriorityChips}"
+                                      VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,8,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Click="PriorityChip_Click" Margin="0,0,6,0" Cursor="Hand"
+                                            ToolTip="Jump to the first project at this priority in the lists below">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{Binding ColorHex, Converter={StaticResource StringToBrush}}"
+                                                        CornerRadius="4" Padding="8,3">
+                                                    <TextBlock Text="{Binding Label}" Foreground="White"
+                                                               FontWeight="Bold" FontSize="11"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                         <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="{Binding ActivityText}"
                                        Foreground="{StaticResource Text.Secondary}" FontSize="11"
@@ -769,7 +795,7 @@
                                       IsEnabled="{Binding CanExportPmGroups}"/>
                           </StackPanel>
                       </Grid>
-                    <ItemsControl Grid.Row="1" ItemsSource="{Binding PmGroups}">
+                    <ItemsControl Grid.Row="1" x:Name="PmGroupsList" ItemsSource="{Binding PmGroups}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Margin="0,0,0,10"

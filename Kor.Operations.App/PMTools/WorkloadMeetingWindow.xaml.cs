@@ -497,6 +497,51 @@ namespace Kor.Operations.PMTools
             }
         }
 
+        // Round 52: chip click — jump the PM lists to the first project at the
+        // chip's priority. Group display order = PmGroups order; within a
+        // group, Projects is already the DataGrid's display order.
+        private void PriorityChip_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button { DataContext: Kor.Operations.App.PMTools.WorkloadMeetingPriorityChip chip }) return;
+
+            foreach (var group in _vm.PmGroups)
+            {
+                var target = group.Projects.FirstOrDefault(p => p.MeetingPriority == chip.Priority);
+                if (target == null) continue;
+
+                group.IsExpanded = true;
+                // Let the expanded DataGrid realize its rows before scrolling.
+                Dispatcher.BeginInvoke(new Action(() => BringProjectRowIntoView(group, target)),
+                    System.Windows.Threading.DispatcherPriority.Loaded);
+                return;
+            }
+            // No visible row carries this priority (filters may hide it) — no-op.
+        }
+
+        private void BringProjectRowIntoView(PmGroupViewModel group, PmProjectRow row)
+        {
+            if (PmGroupsList.ItemContainerGenerator.ContainerFromItem(group) is not DependencyObject container) return;
+            var grid = FindVisualChild<DataGrid>(container);
+            if (grid == null) return;
+
+            if (grid.ItemContainerGenerator.ContainerFromItem(row) is FrameworkElement rowContainer)
+                rowContainer.BringIntoView();
+            else
+                grid.ScrollIntoView(row);
+        }
+
+        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T match) return match;
+                var descendant = FindVisualChild<T>(child);
+                if (descendant != null) return descendant;
+            }
+            return null;
+        }
+
         // Round 52: toggles the row-details meeting-notes editor for the
         // clicked row. Walking up to the DataGridRow (instead of binding
         // DetailsVisibility) keeps the toggle local to the physical row.

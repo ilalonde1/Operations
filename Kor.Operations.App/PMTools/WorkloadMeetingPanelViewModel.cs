@@ -63,6 +63,10 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         SortCommand = new AsyncRelayCommand(p => { ExecuteSort(p); return Task.CompletedTask; });
         PriorityProjects = new ObservableCollection<WorkloadMeetingProjectRow>();
         PriorityProjects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasPriorityProjects));
+        // Round 52: chips summarize the selected meeting's priorities (P1 ×3 …).
+        // CurrentProjects is only ever mutated on the dispatcher, so one hook
+        // covers every rebuild path (load, selection change, upsert refresh).
+        CurrentProjects.CollectionChanged += (_, _) => RebuildPriorityChips();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -126,6 +130,24 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     public ObservableCollection<WorkloadMeetingProjectRow> PriorityProjects { get; }
 
     public bool HasPriorityProjects => PriorityProjects.Count > 0;
+
+    /// <summary>Round 52: per-priority counts for the toolbar chips (P1 ×3 …),
+    /// rebuilt whenever CurrentProjects changes. Clicking a chip jumps the
+    /// window's PM grids to the first row at that priority.</summary>
+    public ObservableCollection<WorkloadMeetingPriorityChip> PriorityChips { get; } = new();
+
+    private void RebuildPriorityChips()
+    {
+        PriorityChips.Clear();
+        foreach (var chip in CurrentProjects
+                     .Where(p => p.Priority >= 1 && p.Priority <= 5)
+                     .GroupBy(p => p.Priority)
+                     .OrderBy(g => g.Key)
+                     .Select(g => new WorkloadMeetingPriorityChip { Priority = g.Key, Count = g.Count() }))
+        {
+            PriorityChips.Add(chip);
+        }
+    }
 
     public void SetPriorityProjectRows(System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> rows)
     {
@@ -847,4 +869,23 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         _disposeCts.Cancel();
         _disposeCts.Dispose();
     }
+}
+
+/// <summary>
+/// Round 52: one toolbar chip — "P2 ×4" in the priority colour. Colours match
+/// WorkloadMeetingProjectRow.PriorityBrush / PmToolsExportService.PriorityBg.
+/// </summary>
+public sealed class WorkloadMeetingPriorityChip
+{
+    public int Priority { get; init; }
+    public int Count { get; init; }
+    public string Label => $"P{Priority} ×{Count}";
+    public string ColorHex => Priority switch
+    {
+        1 => "#DC2626",
+        2 => "#EA580C",
+        3 => "#D97706",
+        4 => "#2563EB",
+        _ => "#6B7280",
+    };
 }
