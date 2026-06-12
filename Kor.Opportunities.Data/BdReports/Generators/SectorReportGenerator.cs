@@ -50,11 +50,12 @@ public static class SectorReportGenerator
         b.Italic($"{prose.IntroNote} Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb honing verdicts.");
 
         b.H2("Executive Summary");
-        b.B($"{definition.Title} projects honed: ", honed.Count.ToString(CultureInfo.InvariantCulture));
-        b.B("PURSUE_URGENT — IMMEDIATE action: ", urgent.Count.ToString(CultureInfo.InvariantCulture));
-        b.B("PURSUE — open opportunities: ", pursue.Count.ToString(CultureInfo.InvariantCulture));
-        b.B("MONITOR — locked but future phases open: ", monitor.Count.ToString(CultureInfo.InvariantCulture));
-        b.B("DISCOVER — pre-procurement relationship-build: ", discover.Count.ToString(CultureInfo.InvariantCulture));
+        b.Kpis(
+            new KpiItem(honed.Count.ToString(CultureInfo.InvariantCulture), "Projects honed"),
+            new KpiItem(urgent.Count.ToString(CultureInfo.InvariantCulture), "Urgent", urgent.Count > 0 ? ChipTone.Urgent : ChipTone.Neutral),
+            new KpiItem(pursue.Count.ToString(CultureInfo.InvariantCulture), "Pursue", ChipTone.Positive),
+            new KpiItem(monitor.Count.ToString(CultureInfo.InvariantCulture), "Monitor", ChipTone.Caution),
+            new KpiItem(discover.Count.ToString(CultureInfo.InvariantCulture), "Discover", ChipTone.Info));
         b.B("DEAD — locked or delivered: ", dead.Count.ToString(CultureInfo.InvariantCulture));
         b.B("DUPLICATE — flagged for MPI consolidation: ", duplicate.Count.ToString(CultureInfo.InvariantCulture));
 
@@ -109,7 +110,8 @@ public static class SectorReportGenerator
                 p.Province,
                 CostOf(p),
                 Safe(p.KorAngle, MonitorWhyCap),
-            });
+            },
+            new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left });
 
         b.H2("DISCOVER — Pre-procurement relationship-build");
         AppendBucketTable(b, discover,
@@ -121,7 +123,8 @@ public static class SectorReportGenerator
                 Safe(p.ProponentName, TableProponentCap),
                 p.Province,
                 CostOf(p),
-            });
+            },
+            new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Right });
 
         b.H2("DEAD — Locked (Alliance / P3 / captive / Delivered)");
         AppendBucketTable(b, dead,
@@ -132,7 +135,8 @@ public static class SectorReportGenerator
                 Safe(p.ProjectName, TableNameCap),
                 p.Province,
                 Safe(p.KorAngle, DeadWhyCap),
-            });
+            },
+            new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left });
 
         if (duplicate.Count > 0)
         {
@@ -146,7 +150,8 @@ public static class SectorReportGenerator
                     Safe(p.ProjectName, TableNameCap),
                     Safe(p.ProponentName, TableProponentCap),
                     Safe(p.KorAngle, DuplicateWhyCap),
-                });
+                },
+                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left });
         }
 
         if (prose.Synthesis.Count > 0)
@@ -180,7 +185,8 @@ public static class SectorReportGenerator
         BdReportDocumentBuilder b,
         IReadOnlyList<PursuitBriefRow> bucket,
         string[] headers,
-        Func<PursuitBriefRow, string[]> rowOf)
+        Func<PursuitBriefRow, string[]> rowOf,
+        IReadOnlyList<ColumnAlignment>? alignments = null)
     {
         if (bucket.Count == 0)
         {
@@ -188,7 +194,7 @@ public static class SectorReportGenerator
             return;
         }
 
-        b.Table(headers, bucket.Select(rowOf).ToList());
+        b.Table(headers, bucket.Select(rowOf).ToList(), alignments);
     }
 
     private static string CostOf(PursuitBriefRow p)

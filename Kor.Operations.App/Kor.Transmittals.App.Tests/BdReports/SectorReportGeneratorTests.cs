@@ -78,15 +78,13 @@ public sealed class SectorReportGeneratorTests
 
         var doc = SectorReportGenerator.Build(Definition, Prose, rows, GeneratedAt);
 
-        // First-wins lookup: URGENT/PURSUE entries later in the doc reuse
-        // labels like "Id: ", so a strict ToDictionary would collide.
-        var labels = doc.Blocks.OfType<LabelValueBlock>()
-            .GroupBy(x => x.Label)
-            .ToDictionary(g => g.Key, g => g.First().Value);
-
-        Assert.Equal("3", labels["Hospitals & Healthcare projects honed: "]);
-        Assert.Equal("2", labels["PURSUE_URGENT — IMMEDIATE action: "]);
-        Assert.Equal("1", labels["PURSUE — open opportunities: "]);
+        // Headline counts lead as the KPI summary strip (2026-06-12 UX pass).
+        var kpis = Assert.Single(doc.Blocks.OfType<KpiStripBlock>()).Items
+            .ToDictionary(k => k.Label, k => k);
+        Assert.Equal("3", kpis["Projects honed"].Value);
+        Assert.Equal("2", kpis["Urgent"].Value);
+        Assert.Equal(ChipTone.Urgent, kpis["Urgent"].Tone);
+        Assert.Equal("1", kpis["Pursue"].Value);
     }
 
     [Fact]

@@ -40,11 +40,19 @@ public static class CallSheetReportGenerator
             "Cross-cutting action sheet pulled across all BD sectors. PURSUE_URGENT + PURSUE items ranked by urgency then project value. " +
             $"This is what to act on THIS WEEK. Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb honing verdicts.");
 
+        var pipelineCad = pool.Sum(p => p.EstimatedCostCad ?? 0);
+        b.Kpis(
+            new KpiItem(urgent.Count.ToString(CultureInfo.InvariantCulture), "Urgent this week", urgent.Count > 0 ? ChipTone.Urgent : ChipTone.Neutral),
+            new KpiItem(pursue.Count.ToString(CultureInfo.InvariantCulture), "Open pursue", ChipTone.Positive),
+            new KpiItem(CadCompact(pipelineCad), "Pipeline (CAD)"),
+            new KpiItem(sectorSummaries.Count.ToString(CultureInfo.InvariantCulture), "Sectors reporting"));
+
         b.H2($"THE {top.Count} most time-sensitive — call/email THIS WEEK");
         var rank = 1;
         foreach (var p in top)
         {
             b.H3($"{rank}. {p.ProjectName} ({CostOf(p)})");
+            b.Chips(new ChipItem(p.Verdict ?? "NO VERDICT", ChipTones.ForVerdict(p.Verdict)));
             b.B("Id: ", p.MpiId.ToString(CultureInfo.InvariantCulture));
             b.B("Province: ", p.Province);
             b.B("Proponent: ", p.ProponentName ?? string.Empty);
@@ -85,7 +93,8 @@ public static class CallSheetReportGenerator
                     p.Province,
                     Safe(p.ProponentName, 30),
                     CostOf(p),
-                }).ToList());
+                }).ToList(),
+                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Right });
         }
 
         b.H2("Strategic Relationship Targets (compounding leverage)");
@@ -109,7 +118,8 @@ public static class CallSheetReportGenerator
                 s.Pursue.ToString(CultureInfo.InvariantCulture),
                 s.Monitor.ToString(CultureInfo.InvariantCulture),
                 s.Discover.ToString(CultureInfo.InvariantCulture),
-            }).ToList());
+            }).ToList(),
+            new[] { ColumnAlignment.Left, ColumnAlignment.Center, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right, ColumnAlignment.Right });
 
         b.H2("Where to find more detail");
         b.P("Every sector report generates on demand from the BD Reports tile (this window). Per-project intel: Org Dossier for enriched canonical orgs, Project Brief for any MPI with honing-pass data, Region Brief for BC + AB rolled-up category views.");
@@ -151,6 +161,13 @@ public static class CallSheetReportGenerator
             {
                 "Lisa Salgado at CSULB (Peterson Hall $259M) is the entry. CSU Chancellor's Office Capital Planning + Design + Construction controls seismic replacement across 23 California campuses. Per-campus PM entry → CPDC master gate.",
             }),
+    };
+
+    private static string CadCompact(decimal cad) => cad switch
+    {
+        >= 1_000_000_000m => $"${cad / 1_000_000_000m:F1}B",
+        >= 1_000_000m => $"${cad / 1_000_000m:N0}M",
+        _ => $"${cad:N0}",
     };
 
     private static string CostOf(PursuitBriefRow p)

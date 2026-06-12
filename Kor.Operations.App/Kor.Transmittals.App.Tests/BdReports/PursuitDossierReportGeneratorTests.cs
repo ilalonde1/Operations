@@ -43,13 +43,20 @@ public sealed class PursuitDossierReportGeneratorTests
 
         var doc = PursuitDossierReportGenerator.Build(pursuits, GeneratedAt);
 
+        // Headline numbers lead as the KPI summary strip (2026-06-12 UX pass).
+        var kpis = Assert.Single(doc.Blocks.OfType<KpiStripBlock>()).Items
+            .ToDictionary(k => k.Label, k => k);
+        Assert.Equal("4", kpis["Active pursuits"].Value);
+        Assert.Equal("1", kpis["Urgent"].Value);
+        Assert.Equal(ChipTone.Urgent, kpis["Urgent"].Tone);
+        Assert.Equal("$2.3B", kpis["Pipeline (CAD)"].Value);
+        Assert.Equal("75%", kpis["Architect edge"].Value);
+        Assert.Equal("1", kpis["Graph gaps"].Value);
+        Assert.Equal(ChipTone.Caution, kpis["Graph gaps"].Tone);
+
         var labels = doc.Blocks.OfType<LabelValueBlock>()
             .GroupBy(x => x.Label).ToDictionary(g => g.Key, g => g.First().Value);
-        Assert.Equal("4", labels["Active pursuits (PURSUE + PURSUE_URGENT): "]);
-        Assert.Equal("1", labels["Urgent: "]);
         Assert.Equal("3 of 4 (75%)", labels["Architect edge resolved: "]);
-        Assert.Equal("1", labels["Architect edge still missing (graph gaps): "]);
-        Assert.Equal("$2.3B CAD", labels["Pipeline value (where estimated): "]);
 
         var headings = doc.Blocks.OfType<HeadingBlock>().Select(h => h.Text).ToList();
         // Dikeakos has 2 pursuits -> cluster; Solo Arch has 1 -> no cluster.
@@ -102,5 +109,33 @@ public sealed class PursuitDossierReportGeneratorTests
         Assert.Contains("Methodology", headings);
         Assert.DoesNotContain("URGENT pursuits — team state", headings);
         Assert.Empty(doc.Blocks.OfType<TableBlock>());
+
+        // Empty pool still leads with a (zeroed) KPI strip; pct shows a dash.
+        var kpis = Assert.Single(doc.Blocks.OfType<KpiStripBlock>()).Items;
+        Assert.Equal("0", kpis.Single(k => k.Label == "Active pursuits").Value);
+        Assert.Equal("—", kpis.Single(k => k.Label == "Architect edge").Value);
+    }
+
+    [Fact]
+    public void Build_DossierChips_CarryVerdictAndSeatState()
+    {
+        var pursuits = new[]
+        {
+            Row(1, "Kor Seated", 300_000_000m, urgent: true, archId: 7, archName: "A1", seId: 1, seName: "KOR", seIsKor: true),
+            Row(2, "No Edge", 200_000_000m),
+        };
+
+        var doc = PursuitDossierReportGenerator.Build(pursuits, GeneratedAt);
+
+        var chipRows = doc.Blocks.OfType<ChipRowBlock>().ToList();
+        Assert.Equal(2, chipRows.Count); // one per drill-down dossier
+
+        var korSeated = chipRows[0].Chips;
+        Assert.Contains(korSeated, c => c.Text == BdVerdicts.PursueUrgent && c.Tone == ChipTone.Urgent);
+        Assert.Contains(korSeated, c => c.Text == "KOR SEAT" && c.Tone == ChipTone.Positive);
+
+        var noEdge = chipRows[1].Chips;
+        Assert.Contains(noEdge, c => c.Text == BdVerdicts.Pursue && c.Tone == ChipTone.Positive);
+        Assert.Contains(noEdge, c => c.Text == "NO ARCHITECT EDGE" && c.Tone == ChipTone.Neutral);
     }
 }

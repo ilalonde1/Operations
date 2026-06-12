@@ -41,9 +41,12 @@ public static class PursuitDossierReportGenerator
             $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
 
         b.H2("Executive Summary");
-        b.B("Active pursuits (PURSUE + PURSUE_URGENT): ", pursuits.Count.ToString(CultureInfo.InvariantCulture));
-        b.B("Urgent: ", urgent.Count.ToString(CultureInfo.InvariantCulture));
-        b.B("Pipeline value (where estimated): ", CadDisplay(pipelineCad));
+        b.Kpis(
+            new KpiItem(pursuits.Count.ToString(CultureInfo.InvariantCulture), "Active pursuits"),
+            new KpiItem(urgent.Count.ToString(CultureInfo.InvariantCulture), "Urgent", urgent.Count > 0 ? ChipTone.Urgent : ChipTone.Neutral),
+            new KpiItem(CadCompact(pipelineCad), "Pipeline (CAD)"),
+            new KpiItem(PctCompact(withArchitect.Count, pursuits.Count), "Architect edge"),
+            new KpiItem(gaps.Count.ToString(CultureInfo.InvariantCulture), "Graph gaps", gaps.Count > 0 ? ChipTone.Caution : ChipTone.Positive));
         b.B("Architect edge resolved: ", PctDisplay(withArchitect.Count, pursuits.Count));
         b.B("Incumbent structural engineer known: ", withIncumbentSe.Count.ToString(CultureInfo.InvariantCulture));
         if (korSeated.Count > 0)
@@ -52,7 +55,6 @@ public static class PursuitDossierReportGenerator
         }
 
         b.B("General contractor known: ", pursuits.Count(p => p.GeneralContractorOrgId is not null).ToString(CultureInfo.InvariantCulture));
-        b.B("Architect edge still missing (graph gaps): ", gaps.Count.ToString(CultureInfo.InvariantCulture));
 
         if (urgent.Count > 0)
         {
@@ -68,7 +70,8 @@ public static class PursuitDossierReportGenerator
                     Safe(p.ArchitectName, 35),
                     SeDisplay(p, 30),
                     Safe(p.GeneralContractorName, 25),
-                }).ToList());
+                }).ToList(),
+                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left });
         }
 
         var clusters = withArchitect
@@ -97,7 +100,8 @@ public static class PursuitDossierReportGenerator
                             p.CostDisplay,
                             p.Province,
                             p.Verdict ?? string.Empty,
-                        }).ToList());
+                        }).ToList(),
+                    new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left });
             }
         }
 
@@ -112,8 +116,19 @@ public static class PursuitDossierReportGenerator
                      .Take(DrillDownCount))
         {
             b.H3($"{rank}. {p.ProjectName}");
+            var dossierChips = new List<ChipItem> { new(p.Verdict ?? "NO VERDICT", ChipTones.ForVerdict(p.Verdict)) };
+            if (p.StructuralEngineerIsKor)
+            {
+                dossierChips.Add(new ChipItem("KOR SEAT", ChipTone.Positive));
+            }
+
+            if (!p.HasArchitectEdge)
+            {
+                dossierChips.Add(new ChipItem("NO ARCHITECT EDGE", ChipTone.Neutral));
+            }
+
+            b.Chips(dossierChips.ToArray());
             b.B("Project Id: ", p.MpiId.ToString(CultureInfo.InvariantCulture));
-            b.B("Verdict: ", p.Verdict ?? string.Empty);
             b.B("Cost: ", p.CostDisplay);
             b.B("Location: ", Location(p));
             if (!string.IsNullOrWhiteSpace(p.Stage))
@@ -168,7 +183,8 @@ public static class PursuitDossierReportGenerator
                         p.CostDisplay,
                         p.Province,
                         Safe(p.ProponentName, 35),
-                    }).ToList());
+                    }).ToList(),
+                new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left });
             if (gaps.Count > GapTableCount)
             {
                 b.P($"...and {gaps.Count - GapTableCount} more below the cost cut-off.");
@@ -207,6 +223,16 @@ public static class PursuitDossierReportGenerator
         >= 1_000_000m => $"${cad / 1_000_000m:N0}M CAD",
         _ => $"${cad:N0} CAD",
     };
+
+    private static string CadCompact(decimal cad) => cad switch
+    {
+        >= 1_000_000_000m => $"${cad / 1_000_000_000m:F1}B",
+        >= 1_000_000m => $"${cad / 1_000_000m:N0}M",
+        _ => $"${cad:N0}",
+    };
+
+    private static string PctCompact(int part, int total)
+        => total == 0 ? "—" : $"{(int)Math.Round(100.0 * part / total)}%";
 
     private static string PctDisplay(int part, int total)
     {

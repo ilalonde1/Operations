@@ -13,7 +13,10 @@ namespace Kor.Opportunities.Data.BdReports.Generators;
 /// Renders a BdReportDocument to DOCX bytes via DocumentFormat.OpenXml —
 /// native Word Heading 1/2/3 styles (navigation pane works), no Word COM, so
 /// generation runs on any machine including KOR-APP01 cron. Pure function:
-/// model in, bytes out.
+/// model in, bytes out. Every block type the HTML preview renders is mirrored
+/// here (one model, two renderers): KPI strips become bordered one-row
+/// tables, chips become shaded runs, heading accent rules become paragraph
+/// bottom borders.
 /// </summary>
 public static class DocxBuilder
 {
@@ -75,6 +78,17 @@ public static class DocxBuilder
                 yield return StyledParagraph(null, Run(n.Text, italic: true, sizeHalfPoints: KorReportStyles.NoteSizeHalfPoints));
                 break;
 
+            case KpiStripBlock k:
+                yield return RenderKpiStrip(k);
+                // Word needs an empty paragraph after a table so following
+                // content does not merge into it (same rule as TableBlock).
+                yield return StyledParagraph(null, Run(string.Empty));
+                break;
+
+            case ChipRowBlock cr:
+                yield return RenderChipRow(cr);
+                break;
+
             case TableBlock t:
                 yield return RenderTable(t);
                 // Word needs an empty paragraph after a table so following
@@ -108,8 +122,16 @@ public static class DocxBuilder
         return p;
     }
 
-    private static Run Run(string text, bool bold = false, bool italic = false, int? sizeHalfPoints = null)
+    private static Run Run(
+        string text,
+        bool bold = false,
+        bool italic = false,
+        int? sizeHalfPoints = null,
+        string? colorHex = null,
+        bool caps = false,
+        string? shadeFillHex = null)
     {
+        // rPr child order is schema-fixed: b, i, caps, color, sz, shd.
         var props = new RunProperties();
         if (bold)
         {
@@ -121,9 +143,24 @@ public static class DocxBuilder
             props.Append(new Italic());
         }
 
+        if (caps)
+        {
+            props.Append(new Caps());
+        }
+
+        if (colorHex is not null)
+        {
+            props.Append(new Color { Val = colorHex });
+        }
+
         if (sizeHalfPoints is { } size)
         {
             props.Append(new FontSize { Val = size.ToString() });
+        }
+
+        if (shadeFillHex is not null)
+        {
+            props.Append(new Shading { Val = ShadingPatternValues.Clear, Fill = shadeFillHex });
         }
 
         var run = new Run();
@@ -160,6 +197,83 @@ public static class DocxBuilder
         return new string(value.Where(c => !char.IsControl(c) || c == '\t').ToArray());
     }
 
+    /// <summary>
+    /// KPI callout cards: a one-row auto-width borderless table; each cell is
+    /// a card with a 3pt tone-colored top rule, a 20pt bold value, and a 7.5pt
+    /// uppercase muted label — the DOCX twin of the preview's div.kpis flexbox.
+    /// </summary>
+    private static Table RenderKpiStrip(KpiStripBlock block)
+    {
+        // tblPr child order: tblW, tblCellSpacing, tblLayout.
+        var table = new Table(new TableProperties(
+            new TableWidth { Type = TableWidthUnitValues.Auto, Width = "0" },
+            new TableCellSpacing { Type = TableWidthUnitValues.Dxa, Width = "40" },
+            new TableLayout { Type = TableLayoutValues.Autofit }));
+
+        var grid = new TableGrid();
+        for (var i = 0; i < block.Items.Count; i++)
+        {
+            grid.Append(new GridColumn());
+        }
+
+        table.Append(grid);
+
+        var row = new TableRow();
+        foreach (var item in block.Items)
+        {
+            var accent = item.Tone is { } tone ? KorReportStyles.ChipColor(tone) : KorReportStyles.AccentColor;
+            var valueColor = item.Tone is { } t ? KorReportStyles.ChipColor(t) : KorReportStyles.BrandColor;
+
+            // tcPr child order: tcBorders, tcMar.
+            var cellProps = new TableCellProperties(
+                new TableCellBorders(
+                    new TopBorder { Val = BorderValues.Single, Size = KorReportStyles.KpiAccentRuleSize, Color = accent },
+                    new LeftBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.CardBorderColor },
+                    new BottomBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.CardBorderColor },
+                    new RightBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.CardBorderColor }),
+                new TableCellMargin(
+                    new TopMargin { Type = TableWidthUnitValues.Dxa, Width = "80" },
+                    new LeftMargin { Type = TableWidthUnitValues.Dxa, Width = "160" },
+                    new BottomMargin { Type = TableWidthUnitValues.Dxa, Width = "60" },
+                    new RightMargin { Type = TableWidthUnitValues.Dxa, Width = "160" }));
+
+            var valueParagraph = new Paragraph(
+                new ParagraphProperties(new SpacingBetweenLines { After = "0" }),
+                Run(item.Value, bold: true, sizeHalfPoints: KorReportStyles.KpiValueSizeHalfPoints, colorHex: valueColor));
+            var labelParagraph = new Paragraph(
+                new ParagraphProperties(new SpacingBetweenLines { After = "0" }),
+                Run(item.Label, sizeHalfPoints: KorReportStyles.KpiLabelSizeHalfPoints, colorHex: KorReportStyles.MutedTextColor, caps: true));
+
+            row.Append(new TableCell(cellProps, valueParagraph, labelParagraph));
+        }
+
+        table.Append(row);
+        return table;
+    }
+
+    /// <summary>Chips as shaded bold-white runs — the DOCX twin of span.chip pills.</summary>
+    private static Paragraph RenderChipRow(ChipRowBlock block)
+    {
+        var runs = new List<Run>();
+        foreach (var chip in block.Chips)
+        {
+            if (runs.Count > 0)
+            {
+                runs.Add(Run("  ", sizeHalfPoints: KorReportStyles.ChipSizeHalfPoints));
+            }
+
+            // Word run shading has no padding; NBSP pads the pill text.
+            runs.Add(Run(
+                " " + chip.Text + " ",
+                bold: true,
+                sizeHalfPoints: KorReportStyles.ChipSizeHalfPoints,
+                colorHex: "FFFFFF",
+                shadeFillHex: KorReportStyles.ChipColor(chip.Tone)));
+        }
+
+        return StyledParagraph(null, runs.ToArray());
+    }
+
     private static Table RenderTable(TableBlock block)
     {
         // Child order is schema-fixed: tblPr, tblGrid, then rows; borders are
@@ -167,12 +281,12 @@ public static class DocxBuilder
         var table = new Table(new TableProperties(
             new TableWidth { Type = TableWidthUnitValues.Pct, Width = "5000" }, // 100%
             new TableBorders(
-                new TopBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.TableBorderColor },
-                new LeftBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.TableBorderColor },
-                new BottomBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.TableBorderColor },
-                new RightBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.TableBorderColor },
-                new InsideHorizontalBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.TableBorderColor },
-                new InsideVerticalBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.TableBorderColor })));
+                new TopBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.CardBorderColor },
+                new LeftBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.CardBorderColor },
+                new BottomBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.CardBorderColor },
+                new RightBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.CardBorderColor },
+                new InsideHorizontalBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.CardBorderColor },
+                new InsideVerticalBorder { Val = BorderValues.Single, Size = 4, Color = KorReportStyles.CardBorderColor })));
 
         var grid = new TableGrid();
         for (var i = 0; i < block.Headers.Count; i++)
@@ -181,40 +295,85 @@ public static class DocxBuilder
         }
 
         table.Append(grid);
-        table.Append(TableRowOf(block.Headers, bold: true));
-        foreach (var row in block.Rows)
+        table.Append(TableRowOf(block.Headers, block.Alignments, headerRow: true, zebra: false));
+        for (var r = 0; r < block.Rows.Count; r++)
         {
             // Pad/trim to header width so a short row cannot shift columns.
+            var row = block.Rows[r];
             var cells = Enumerable.Range(0, block.Headers.Count)
                 .Select(i => i < row.Count ? row[i] : string.Empty)
                 .ToList();
-            table.Append(TableRowOf(cells, bold: false));
+            // Zebra on the same rows as the preview's nth-child(even).
+            table.Append(TableRowOf(cells, block.Alignments, headerRow: false, zebra: r % 2 == 1));
         }
 
         return table;
     }
 
-    private static TableRow TableRowOf(IReadOnlyList<string> cells, bool bold)
+    private static TableRow TableRowOf(
+        IReadOnlyList<string> cells,
+        IReadOnlyList<ColumnAlignment>? alignments,
+        bool headerRow,
+        bool zebra)
     {
         var row = new TableRow();
-        foreach (var cell in cells)
+        for (var i = 0; i < cells.Count; i++)
         {
+            // pPr child order: spacing, jc.
+            var paragraphProps = new ParagraphProperties(new SpacingBetweenLines { After = "0" });
+            if (JustificationFor(alignments, i) is { } justification)
+            {
+                paragraphProps.Append(new Justification { Val = justification });
+            }
+
             var paragraph = new Paragraph(
-                new ParagraphProperties(new SpacingBetweenLines { After = "0" }),
-                Run(cell, bold: bold, sizeHalfPoints: KorReportStyles.TableSizeHalfPoints));
-            row.Append(new TableCell(paragraph));
+                paragraphProps,
+                Run(cells[i],
+                    bold: headerRow,
+                    sizeHalfPoints: KorReportStyles.TableSizeHalfPoints,
+                    colorHex: headerRow ? "FFFFFF" : null));
+
+            var cell = new TableCell();
+            if (headerRow)
+            {
+                cell.Append(new TableCellProperties(
+                    new Shading { Val = ShadingPatternValues.Clear, Fill = KorReportStyles.BrandColor }));
+            }
+            else if (zebra)
+            {
+                cell.Append(new TableCellProperties(
+                    new Shading { Val = ShadingPatternValues.Clear, Fill = KorReportStyles.ZebraFillColor }));
+            }
+
+            cell.Append(paragraph);
+            row.Append(cell);
         }
 
         return row;
+    }
+
+    private static JustificationValues? JustificationFor(IReadOnlyList<ColumnAlignment>? alignments, int column)
+    {
+        if (alignments is null || column >= alignments.Count)
+        {
+            return null;
+        }
+
+        return alignments[column] switch
+        {
+            ColumnAlignment.Right => JustificationValues.Right,
+            ColumnAlignment.Center => JustificationValues.Center,
+            _ => null,
+        };
     }
 
     private static Styles BuildStyles()
     {
         return new Styles(
             NormalStyle(),
-            HeadingStyle("Heading1", "heading 1", KorReportStyles.Heading1SizeHalfPoints, KorReportStyles.Heading1SpaceBefore, KorReportStyles.Heading1SpaceAfter, outlineLevel: 0),
-            HeadingStyle("Heading2", "heading 2", KorReportStyles.Heading2SizeHalfPoints, KorReportStyles.Heading2SpaceBefore, KorReportStyles.Heading2SpaceAfter, outlineLevel: 1),
-            HeadingStyle("Heading3", "heading 3", KorReportStyles.Heading3SizeHalfPoints, KorReportStyles.Heading3SpaceBefore, KorReportStyles.Heading3SpaceAfter, outlineLevel: 2));
+            HeadingStyle("Heading1", "heading 1", KorReportStyles.Heading1SizeHalfPoints, KorReportStyles.Heading1SpaceBefore, KorReportStyles.Heading1SpaceAfter, outlineLevel: 0, accentRuleSize: KorReportStyles.Heading1RuleSize),
+            HeadingStyle("Heading2", "heading 2", KorReportStyles.Heading2SizeHalfPoints, KorReportStyles.Heading2SpaceBefore, KorReportStyles.Heading2SpaceAfter, outlineLevel: 1, accentRuleSize: KorReportStyles.Heading2RuleSize),
+            HeadingStyle("Heading3", "heading 3", KorReportStyles.Heading3SizeHalfPoints, KorReportStyles.Heading3SpaceBefore, KorReportStyles.Heading3SpaceAfter, outlineLevel: 2, accentRuleSize: null));
     }
 
     private static Style NormalStyle()
@@ -238,20 +397,36 @@ public static class DocxBuilder
         };
     }
 
-    private static Style HeadingStyle(string id, string name, int sizeHalfPoints, int spaceBefore, int spaceAfter, int outlineLevel)
+    private static Style HeadingStyle(string id, string name, int sizeHalfPoints, int spaceBefore, int spaceAfter, int outlineLevel, int? accentRuleSize)
     {
+        // pPr child order: keepNext, pBdr, spacing, outlineLvl.
+        var paragraphProps = new StyleParagraphProperties();
+        paragraphProps.Append(new KeepNext());
+        if (accentRuleSize is { } ruleSize)
+        {
+            paragraphProps.Append(new ParagraphBorders(
+                new BottomBorder
+                {
+                    Val = BorderValues.Single,
+                    Size = (uint)ruleSize,
+                    Space = 2,
+                    Color = KorReportStyles.AccentColor,
+                }));
+        }
+
+        paragraphProps.Append(new SpacingBetweenLines { Before = spaceBefore.ToString(), After = spaceAfter.ToString() });
+        paragraphProps.Append(new OutlineLevel { Val = outlineLevel });
+
         return new Style(
             new StyleName { Val = name },
             new BasedOn { Val = "Normal" },
             new NextParagraphStyle { Val = "Normal" },
             new PrimaryStyle(),
-            new StyleParagraphProperties(
-                new KeepNext(),
-                new SpacingBetweenLines { Before = spaceBefore.ToString(), After = spaceAfter.ToString() },
-                new OutlineLevel { Val = outlineLevel }),
+            paragraphProps,
             new StyleRunProperties(
                 new RunFonts { Ascii = KorReportStyles.FontFamily, HighAnsi = KorReportStyles.FontFamily },
                 new Bold(),
+                new Color { Val = KorReportStyles.BrandColor },
                 new FontSize { Val = sizeHalfPoints.ToString() }))
         {
             Type = StyleValues.Paragraph,
