@@ -91,5 +91,24 @@ public static class SectorReportDefinitionCatalog
             " OR m.Sector IN (N'Academic', N'University', N'Education - Post-Secondary', N'Education-PostSec', N'StudentHousing')" +
             " OR (m.Sector = N'Education' AND (m.SubSector LIKE N'%Academic%' OR m.SubSector LIKE N'%Science%'" +
             " OR m.SubSector LIKE N'%Student Housing%' OR m.SubSector LIKE N'%Research%')))"),
+
+        // Region row (first non-sector cut, same config-row mechanism).
+        // Validated against live MunicipalityName/RegionName on 2026-06-12:
+        // only 6 of the 12 municipality values occur today (the rest are
+        // future-proofing for ingest); the NULL-municipality arm recovers 12
+        // genuine rows tagged with the precise Okanagan region values (UBCO,
+        // Cottonwoods, Okanagan College), and the Kamloops proponent guard
+        // drops SD73's New Aberdeen Secondary, which is region-mis-tagged
+        // 'Okanagan'. Broader tags (Thompson-Okanagan, Okanagan/Interior)
+        // stay out — they carry Kamloops, Lytton, Fernie.
+        new SectorReportDefinition(
+            "okanagan",
+            "Okanagan Region",
+            "KOR Structural — Okanagan Region BD Report",
+            "(m.MunicipalityName IN (N'Kelowna', N'West Kelowna', N'Vernon', N'Penticton', N'Lake Country'," +
+            " N'Summerland', N'Peachland', N'Coldstream', N'Armstrong', N'Enderby', N'Oliver', N'Osoyoos')" +
+            " OR (m.MunicipalityName IS NULL" +
+            " AND m.RegionName IN (N'Okanagan', N'CentralOkanagan', N'Central Okanagan', N'SouthOkanagan')" +
+            " AND (m.ProponentName IS NULL OR m.ProponentName NOT LIKE N'%Kamloops%')))"),
     };
 }

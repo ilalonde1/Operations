@@ -9,12 +9,14 @@ namespace Kor.Operations.App.Tests.BdReports;
 public sealed class SectorReportDefinitionCatalogTests
 {
     [Fact]
-    public void Catalog_HasExactlyTheNineLaunchSectors()
+    public void Catalog_HasExactlyTheShippedReports()
     {
+        // Nine launch sectors + the okanagan region row (first non-sector cut).
         var expected = new[]
         {
             "hospitals", "schools", "indigenous", "bc-housing", "defense",
             "recreational", "residential", "commercial", "post-secondary",
+            "okanagan",
         };
 
         Assert.Equal(expected, SectorReportDefinitionCatalog.All.Select(d => d.Key).ToArray());

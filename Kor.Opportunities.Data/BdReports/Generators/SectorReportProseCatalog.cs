@@ -402,5 +402,47 @@ public static class SectorReportProseCatalog
                     "UCalgary MDSH 3838 long-game — $450M project, relationship-build 18 months out.",
                 }
             ),
+            ["okanagan"] = new(
+                "Okanagan Region construction pipeline — Kelowna, West Kelowna, Vernon, Penticton, Lake Country, Summerland, Peachland, Coldstream, Armstrong, Enderby, Oliver, Osoyoos. First REGION cut of the BD pipeline (sector reports slice by what is being built; this slices by where). The 2026-06-07 Okanagan research pass populated projects, buyer orgs, and people intel for the region's municipal and institutional owners — buyer-org contacts are mapped for City of Kelowna, City of Vernon, City of Penticton, District of Peachland, District of Summerland, City of West Kelowna, and Interior Health.",
+                new[]
+                {
+                    "The Okanagan is KOR's natural interior growth corridor: close enough to serve from Vancouver, public-owner-driven (municipalities, school districts, Interior Health), and procurement-open — unlike the Lower Mainland's developer-PQ-list market, most Okanagan structural work is won through open municipal and institutional RFPs where KOR's credentials compete directly. The honing pass found a young pipeline: zero DEAD verdicts, with the active list concentrated in PURSUE and MONITOR.",
+                    "Recurring buyers dominate the region: City of Kelowna (civic cluster — Mission Activity Centre, Okanagan Centre for the Performing Arts, Community Theatre upgrades), SD23 Central Okanagan and SD83 North Okanagan-Shuswap (school programs), Interior Health (Vernon Jubilee and Cottonwoods), and the utilities (FortisBC Kelowna LNG capacity, BC Hydro Westbank substation). The compounding play is buyer-level relationships, not project-level chase — the same pattern as BC Housing operators and rec municipalities.",
+                },
+                new SynthesisSection[]
+                {
+                    new(
+                        "Vernon Jubilee Hospital — the region's URGENT",
+                        new[]
+                        {
+                            "New Inpatient Psychiatric Unit (MPI 7031, Interior Health / North Okanagan Regional Hospital District) is the region's PURSUE_URGENT and pairs with the hospitals report's Vernon Jubilee D-B RFP entry (MPI 3133). Interior Health is the single most leveraged relationship in the region — it also owns Cottonwoods Care Centre Redevelopment in Kelowna (MPI 4486). One Interior Health capital-projects relationship covers the regional healthcare pipeline.",
+                        }),
+                    new(
+                        "Burtch Road Middle School $101M — triplet needs consolidation",
+                        new[]
+                        {
+                            "SD23's Burtch Road Middle School appears three times (MPIs 2195, 4537, 5113) — same $101M project from three ingest sources. m114-style consolidation candidate (the Newton Community Centre pattern). Pursuit-wise it is the region's largest single education opportunity, and SD23 is the region's highest-velocity school district.",
+                        }),
+                    new(
+                        "Municipal civic + recreation wave = KOR structural sweet spot",
+                        new[]
+                        {
+                            "Penticton Twin Pad Arena ($70M, City of Penticton) is a long-span recreational structure — direct KOR specialty per the recreation report. Kelowna's civic cluster (performing arts centre, community theatre, Mission Activity Centre) and Peachland Firehall ($16-18M) round out a municipal wave where the June 7 people-intel pass mapped facilities and procurement contacts at every buyer. Small-to-mid municipal owners here procure openly — a credentials-forward introduction lands differently than in the Lower Mainland.",
+                        }),
+                    new(
+                        "Indigenous and institutional threads",
+                        new[]
+                        {
+                            "Penticton Indian Band's Outma Sqilx'w School Addition (MPI 4860) and BC Housing's Skaha Assembly Redevelopment (MPI 4467) connect this region to the Indigenous and BC Housing playbooks. UBCO Student Housing Expansion (MPI 4513) and Okanagan College Aviation Campus (MPI 5668) do the same for post-secondary. Okanagan Indian Band (OKIB) carries mapped people intel from the June 7 pass. Live Edge Okanagan Builders is already a KorClient with signal coverage — the region is not a cold start.",
+                        }),
+                },
+                new[]
+                {
+                    "Interior Health capital projects relationship — covers Vernon Jubilee Psychiatric (URGENT, MPI 7031) + Cottonwoods Kelowna (MPI 4486) in one channel. Cross-reference the hospitals report's Vernon Jubilee D-B entry before outreach.",
+                    "SD23 Central Okanagan — Burtch Road Middle School $101M is the region's biggest education pursuit; consolidate the triplet (2195/4537/5113) before the next drain cycle.",
+                    "City of Penticton — Twin Pad Arena $70M long-span structure; lead with KOR's recreational portfolio (aquatic/arena precedent projects).",
+                    "Audit the mapped buyer contacts from the 2026-06-07 people pass (Kelowna, Vernon, Penticton, Peachland, Summerland, West Kelowna) and pick the top three municipal introductions for Q3 2026.",
+                }
+            ),
         };
 }
