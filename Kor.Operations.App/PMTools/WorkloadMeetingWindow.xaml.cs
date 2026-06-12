@@ -24,11 +24,18 @@ namespace Kor.Operations.PMTools
         private CancellationTokenSource? _cts;
         private bool _isSyncingMeetingPriorities;
 
-        // Round 52d: both VMs are singletons and this window is transient —
-        // handlers subscribed to their events must be stored and unsubscribed
-        // in Window_Closing or every open/close cycle leaks the window (the
-        // same class of bug audit T1.001 fixed in PmCapacityWindow).
+        // Round 52d/52e: both VMs are singletons and this window is transient —
+        // every handler subscribed to their events must be stored and
+        // unsubscribed in Window_Closing or each open/close cycle leaks the
+        // window (audit T1.001 class). Worse than memory: a leaked window's
+        // sync handler keeps mutating the shared PmProjectRows under ITS OWN
+        // _isSyncingMeetingPriorities guard, so a live window's priority
+        // ComboBoxes see those mutations as user edits and fire phantom
+        // UpsertPriorityFromUiAsync calls.
         private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _orphanRecomputeHandler;
+        private PropertyChangedEventHandler? _meetingPanelPropertyChangedHandler;
+        private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _currentProjectsChangedHandler;
+        private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _pmGroupsChangedHandler;
 
         /// <summary>Round 52d: meeting rows hidden by the current grid
         /// filters/scope — shown in a panel under the PM groups so a carried-
@@ -60,7 +67,7 @@ namespace Kor.Operations.PMTools
             contextBuilder.Register(_vm);
             AiPanel.Initialize(Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>(), _vm);
 
-            _meetingPanel.PropertyChanged += (_, e) =>
+            _meetingPanelPropertyChangedHandler = (_, e) =>
             {
                 if (e.PropertyName is nameof(WorkloadMeetingPanelViewModel.CurrentProjects)
                                     or nameof(WorkloadMeetingPanelViewModel.SelectedMeeting))
@@ -68,14 +75,17 @@ namespace Kor.Operations.PMTools
                 else if (e.PropertyName is nameof(WorkloadMeetingPanelViewModel.IsMeetingMode))
                     SetAllPmGroupsExpanded(_meetingPanel.IsMeetingMode);
             };
-            _meetingPanel.CurrentProjects.CollectionChanged += (_, _) => SyncMeetingPrioritiesToRows();
+            _meetingPanel.PropertyChanged += _meetingPanelPropertyChangedHandler;
+            _currentProjectsChangedHandler = (_, _) => SyncMeetingPrioritiesToRows();
+            _meetingPanel.CurrentProjects.CollectionChanged += _currentProjectsChangedHandler;
             // BuildPmGroups() recreates the group VMs (default collapsed) on
             // every filter/sort/refresh — re-expand them while Meeting Mode is on.
-            _vm.PmGroups.CollectionChanged += (_, _) =>
+            _pmGroupsChangedHandler = (_, _) =>
             {
                 if (_meetingPanel.IsMeetingMode)
                     SetAllPmGroupsExpanded(true);
             };
+            _vm.PmGroups.CollectionChanged += _pmGroupsChangedHandler;
 
             // Round 52d: orphans recompute when the meeting rows change OR the
             // grid filter slice changes (ICollectionView.Refresh raises Reset).
@@ -331,13 +341,28 @@ namespace Kor.Operations.PMTools
         private async void Window_Closing(object? sender, CancelEventArgs e)
         {
             Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
-            // Round 52d: detach from the singleton VMs so the closed window
-            // isn't kept alive (and its handlers don't keep firing) after Close.
+            // Round 52d/52e: detach every handler from the singleton VMs so the
+            // closed window isn't kept alive and its handlers stop firing.
             if (_orphanRecomputeHandler != null)
             {
                 _meetingPanel.PriorityProjects.CollectionChanged -= _orphanRecomputeHandler;
                 ((System.Collections.Specialized.INotifyCollectionChanged)_vm.ProjectView).CollectionChanged -= _orphanRecomputeHandler;
                 _orphanRecomputeHandler = null;
+            }
+            if (_meetingPanelPropertyChangedHandler != null)
+            {
+                _meetingPanel.PropertyChanged -= _meetingPanelPropertyChangedHandler;
+                _meetingPanelPropertyChangedHandler = null;
+            }
+            if (_currentProjectsChangedHandler != null)
+            {
+                _meetingPanel.CurrentProjects.CollectionChanged -= _currentProjectsChangedHandler;
+                _currentProjectsChangedHandler = null;
+            }
+            if (_pmGroupsChangedHandler != null)
+            {
+                _vm.PmGroups.CollectionChanged -= _pmGroupsChangedHandler;
+                _pmGroupsChangedHandler = null;
             }
             _cts?.Cancel();
             try
