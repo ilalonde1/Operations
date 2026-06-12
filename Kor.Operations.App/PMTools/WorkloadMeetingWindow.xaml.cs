@@ -24,6 +24,17 @@ namespace Kor.Operations.PMTools
         private CancellationTokenSource? _cts;
         private bool _isSyncingMeetingPriorities;
 
+        // Round 52d: both VMs are singletons and this window is transient —
+        // handlers subscribed to their events must be stored and unsubscribed
+        // in Window_Closing or every open/close cycle leaks the window (the
+        // same class of bug audit T1.001 fixed in PmCapacityWindow).
+        private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _orphanRecomputeHandler;
+
+        /// <summary>Round 52d: meeting rows hidden by the current grid
+        /// filters/scope — shown in a panel under the PM groups so a carried-
+        /// forward P1 that left the watchlist can't silently disappear.</summary>
+        public System.Collections.ObjectModel.ObservableCollection<WorkloadMeetingProjectRow> OrphanedPriorityRows { get; } = new();
+
         // Round 38a: both VMs now arrive from DI as singletons so the upcoming
         // PM Tools window split can share them across two windows. EngRate /
         // DraftRate / TargetBilling are applied in AppModule's VM factory, no
@@ -65,6 +76,32 @@ namespace Kor.Operations.PMTools
                 if (_meetingPanel.IsMeetingMode)
                     SetAllPmGroupsExpanded(true);
             };
+
+            // Round 52d: orphans recompute when the meeting rows change OR the
+            // grid filter slice changes (ICollectionView.Refresh raises Reset).
+            _orphanRecomputeHandler = (_, _) => RecomputeOrphanedPriorityRows();
+            _meetingPanel.PriorityProjects.CollectionChanged += _orphanRecomputeHandler;
+            ((System.Collections.Specialized.INotifyCollectionChanged)_vm.ProjectView).CollectionChanged += _orphanRecomputeHandler;
+        }
+
+        private void RecomputeOrphanedPriorityRows()
+        {
+            var visible = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in _vm.ProjectView)
+            {
+                if (item is PmProjectRow r)
+                    visible.Add(r.Wbs1);
+            }
+
+            OrphanedPriorityRows.Clear();
+            foreach (var row in _meetingPanel.PriorityProjects)
+            {
+                if (!visible.Contains(row.Wbs1))
+                    OrphanedPriorityRows.Add(row);
+            }
+
+            OrphanPanel.Visibility = OrphanedPriorityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            OrphanHeaderText.Text = $"Prioritized in this meeting — hidden by current filters/scope ({OrphanedPriorityRows.Count})";
         }
 
         // Round 52: Meeting Mode wants every PM's list open so the room can
@@ -294,6 +331,14 @@ namespace Kor.Operations.PMTools
         private async void Window_Closing(object? sender, CancelEventArgs e)
         {
             Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
+            // Round 52d: detach from the singleton VMs so the closed window
+            // isn't kept alive (and its handlers don't keep firing) after Close.
+            if (_orphanRecomputeHandler != null)
+            {
+                _meetingPanel.PriorityProjects.CollectionChanged -= _orphanRecomputeHandler;
+                ((System.Collections.Specialized.INotifyCollectionChanged)_vm.ProjectView).CollectionChanged -= _orphanRecomputeHandler;
+                _orphanRecomputeHandler = null;
+            }
             _cts?.Cancel();
             try
             {

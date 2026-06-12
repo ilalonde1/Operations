@@ -510,6 +510,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
             <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
                 <Grid>
@@ -1430,6 +1431,65 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                 </Grid>
+            </Border>
+            <!-- Round 52d: meeting rows the current filters hide. The grid is a
+                 filtered view (Watchlist scope, Phase, Type, Search, My Projects);
+                 the meeting is not — a carried-forward P1 that left the watchlist
+                 must never silently vanish from the room. Rows are the same
+                 WorkloadMeetingProjectRow instances as the board, so notes edits
+                 flow through the existing debounced save. -->
+            <Border Grid.Row="3" x:Name="OrphanPanel" Style="{StaticResource Card}" Padding="10" Margin="0,8,0,0"
+                    Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock x:Name="OrphanHeaderText" FontWeight="SemiBold" Foreground="#B45309" Margin="0,0,0,2"/>
+                    <TextBlock Text="These projects carry a priority in the selected meeting but are not in the lists above — carried forward off the watchlist, or hidden by Phase / Type / Search / My Projects."
+                               Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,0,8"/>
+                    <ItemsControl ItemsSource="{Binding OrphanedPriorityRows, ElementName=RootWindow}"
+                                  HorizontalContentAlignment="Stretch">
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="0,7">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="52"/>
+                                            <ColumnDefinition Width="220"/>
+                                            <ColumnDefinition Width="180"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Background="{Binding PriorityBrush}"
+                                                CornerRadius="4" Padding="8,3"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding PriorityLabel}" Foreground="White"
+                                                       FontWeight="Bold" FontSize="13"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="8,0,8,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Wbs1}" FontWeight="SemiBold" FontSize="12"/>
+                                            <TextBlock Text="{Binding ProjectName}" FontSize="11"
+                                                       Foreground="#374151" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding PmName}" FontSize="12"
+                                                   Foreground="#374151" VerticalAlignment="Center"
+                                                   Margin="0,0,8,0" TextTrimming="CharacterEllipsis"/>
+                                        <TextBox Grid.Column="3"
+                                                 Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="12" MinHeight="56"
+                                                 TextWrapping="Wrap" AcceptsReturn="True"
+                                                 VerticalContentAlignment="Top"
+                                                 VerticalScrollBarVisibility="Auto"
+                                                 HorizontalAlignment="Stretch"
+                                                 IsEnabled="{Binding MeetingPanel.IsCurrentMeeting, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                 ToolTip="Notes for this project — saved automatically"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </Border>
                 </Grid>
             </ScrollViewer>
