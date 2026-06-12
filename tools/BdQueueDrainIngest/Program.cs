@@ -481,6 +481,67 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", icon);
                     await sp.GetRequiredService<IMajorProjectEnrichmentTrackingStore>()
                         .RecordAttemptAsync(id, projProvider, result, NextRefreshFor(projProvider), CancellationToken.None)
                         .ConfigureAwait(false);
+
+                    // 2026-06-11 graph completion: honing output may carry
+                    // dedicated architectName / structuralEngineerName
+                    // findings. Resolve each against active CanonicalOrgs by
+                    // NormalizedName and FILL the MPI link column when it is
+                    // currently NULL — never overwrite an existing edge.
+                    // Ambiguous or unknown names are logged and left for the
+                    // dedup/alias worklists; "confirmed-open" is a finding,
+                    // not a name.
+                    using (var linkDoc = JsonDocument.Parse(briefJson))
+                    {
+                        var root2 = linkDoc.RootElement;
+                        var hp = root2.TryGetProperty("honingPass", out var hpEl) && hpEl.ValueKind == JsonValueKind.Object ? hpEl : root2;
+                        foreach (var (field, column) in new[] { ("architectName", "ArchitectCanonicalOrgId"), ("structuralEngineerName", "StructuralEngineerCanonicalOrgId") })
+                        {
+                            if (!hp.TryGetProperty(field, out var nameEl) || nameEl.ValueKind != JsonValueKind.String)
+                            {
+                                continue;
+                            }
+
+                            var orgName = nameEl.GetString();
+                            if (string.IsNullOrWhiteSpace(orgName)
+                                || string.Equals(orgName, "confirmed-open", StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(orgName, "unknown", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            var linkMatches = new List<long>();
+                            await using (var lcon = new Microsoft.Data.SqlClient.SqlConnection(cs))
+                            {
+                                await lcon.OpenAsync().ConfigureAwait(false);
+                                await using var lcmd = new Microsoft.Data.SqlClient.SqlCommand(
+                                    "SELECT Id FROM opportunities.CanonicalOrg WHERE NormalizedName = @n AND RetiredAtUtc IS NULL;", lcon);
+                                lcmd.Parameters.AddWithValue("@n", Kor.Opportunities.Data.Awards.CanonicalOrgResolver.NormalizeName(orgName));
+                                await using var lr = await lcmd.ExecuteReaderAsync().ConfigureAwait(false);
+                                while (await lr.ReadAsync().ConfigureAwait(false))
+                                {
+                                    linkMatches.Add(lr.GetInt64(0));
+                                }
+                            }
+
+                            if (linkMatches.Count != 1)
+                            {
+                                log.LogInformation("{Name}: {Field} '{Org}' resolved to {Count} active canonicals — link not set.", name, field, orgName, linkMatches.Count);
+                                continue;
+                            }
+
+                            await using var ucon = new Microsoft.Data.SqlClient.SqlConnection(cs);
+                            await ucon.OpenAsync().ConfigureAwait(false);
+                            await using var ucmd = new Microsoft.Data.SqlClient.SqlCommand(
+                                $"UPDATE opportunities.MajorProjectsInventory SET {column} = @org, UpdatedAtUtc = sysdatetimeoffset() WHERE Id = @mpi AND {column} IS NULL;", ucon);
+                            ucmd.Parameters.AddWithValue("@org", linkMatches[0]);
+                            ucmd.Parameters.AddWithValue("@mpi", id);
+                            var setRows = await ucmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                            if (setRows > 0)
+                            {
+                                log.LogInformation("{Name}: graph edge set — MPI {Mpi} {Column} -> {Org} ('{OrgName}').", name, id, column, linkMatches[0], orgName);
+                            }
+                        }
+                    }
                 }
                 break;
             case "proponents":
