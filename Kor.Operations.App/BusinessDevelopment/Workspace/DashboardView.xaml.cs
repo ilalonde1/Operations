@@ -28,8 +28,18 @@ public partial class DashboardView : UserControl
 
     private bool _aiRegistered;
 
+    // 2026-06-12 UX pass: Priority Actions starts collapsed (the list got
+    // long with live data); the user's expand choice survives dashboard
+    // re-navigation for the rest of the app session — static on purpose,
+    // no settings plumbing.
+    private static bool s_priorityActionsExpanded;
+
+    private void PriorityActionsExpander_Toggled(object sender, RoutedEventArgs e)
+        => s_priorityActionsExpanded = PriorityActionsExpander.IsExpanded;
+
     private async void DashboardView_Loaded(object sender, System.Windows.RoutedEventArgs e)
     {
+        PriorityActionsExpander.IsExpanded = s_priorityActionsExpanded;
         if (DataContext is DashboardViewModel vm)
         {
             if (!_aiRegistered)
