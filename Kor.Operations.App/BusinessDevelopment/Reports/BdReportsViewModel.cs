@@ -39,6 +39,13 @@ public sealed record SectorCardVm(
     public string FreshnessDisplay =>
         $"{FreshCount} fresh · {AgingCount} aging · {StaleCount} stale";
 
+    /// <summary>
+    /// Full labeled breakdown for the compact one-row sector item's tooltip
+    /// (2026-06-12 UX pass: the row itself shows number-only mini-pills).
+    /// </summary>
+    public string SummaryTooltip =>
+        $"{Total} projects — {PursueUrgent} URGENT · {Pursue} PURSUE · {Monitor} MONITOR · {Discover} DISCOVER · {NotHoned} not honed\n{FreshnessDisplay}";
+
     public bool HasStale => StaleCount > 0;
     public bool HasAging => AgingCount > 0 && StaleCount == 0;
 }
