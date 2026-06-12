@@ -40,6 +40,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     private bool _isMeetingPanelExpanded = false;
     private string _sortColumn = "Priority";
     private bool _sortAscending = true;
+    private bool _suppressProjectNotesRelay;
     private readonly ConcurrentDictionary<string, int> _projectNotesVersions = new(StringComparer.OrdinalIgnoreCase);
 
     public WorkloadMeetingPanelViewModel(
@@ -556,10 +557,51 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
     private void OnProjectNotesChanged(WorkloadMeetingProjectRow row)
     {
+        if (_suppressProjectNotesRelay) return;
         if (!IsCurrentMeeting) return;
 
-        var meetingId = row.MeetingId;
-        var wbs1 = row.Wbs1;
+        ScheduleProjectNotesSave(row.MeetingId, row.Wbs1, row.Notes);
+    }
+
+    /// <summary>
+    /// Round 52: write path for the PM Groups grid's row-details notes editor.
+    /// Routes through the same per-Wbs1 debounce as the meeting board, and
+    /// mirrors the text into the matching board row so both surfaces show the
+    /// same note while the window is open. Only projects that already have a
+    /// WorkloadMeetingProjects row (i.e. a priority) can carry notes — the
+    /// store's SaveProjectNotesAsync is an UPDATE and would silently hit zero
+    /// rows otherwise; the grid disables the editor for unprioritized rows.
+    /// </summary>
+    public void QueueProjectNotesSaveFromUi(string wbs1, string notes)
+    {
+        var selection = SelectedMeeting;
+        if (selection == null || !IsCurrentMeeting || string.IsNullOrWhiteSpace(wbs1)) return;
+
+        var hasMeetingRow = CurrentProjects.Any(p => string.Equals(p.Wbs1, wbs1, StringComparison.OrdinalIgnoreCase));
+        if (!hasMeetingRow) return;
+
+        var boardRow = PriorityProjects.FirstOrDefault(p => string.Equals(p.Wbs1, wbs1, StringComparison.OrdinalIgnoreCase));
+        if (boardRow != null)
+        {
+            // Suppress the board row's NotesChanged relay — it would schedule a
+            // duplicate save of the same value through OnProjectNotesChanged.
+            _suppressProjectNotesRelay = true;
+            try { boardRow.Notes = notes ?? string.Empty; }
+            finally { _suppressProjectNotesRelay = false; }
+        }
+
+        ScheduleProjectNotesSave(selection.Id, wbs1, notes ?? string.Empty);
+    }
+
+    private void ScheduleProjectNotesSave(Guid meetingId, string wbs1, string notes)
+    {
+        // Keep the canonical in-memory copy fresh so any board-row rebuild
+        // (SyncMeetingPrioritiesToRows / RefreshPriorityProjects re-project
+        // from CurrentProjects) carries the latest text instead of the last
+        // DB read. Caller is always on the UI thread (TextBox/row setters).
+        var current = CurrentProjects.FirstOrDefault(p => string.Equals(p.Wbs1, wbs1, StringComparison.OrdinalIgnoreCase));
+        if (current != null) current.Notes = notes;
+
         var version = _projectNotesVersions.AddOrUpdate(wbs1, 1, (_, v) => v + 1);
 
         _ = Task.Run(async () =>
@@ -567,7 +609,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             try
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(600), _disposeCts.Token).ConfigureAwait(false);
-                if (!_projectNotesVersions.TryGetValue(wbs1, out var current) || current != version) return;
+                if (!_projectNotesVersions.TryGetValue(wbs1, out var currentVersion) || currentVersion != version) return;
                 // Guard against saving to a deleted meeting (debounce timer can fire after deletion).
                 // Meetings is a UI-thread ObservableCollection — read via dispatcher.
                 var meetingExists = await _dispatcher.InvokeAsync(() => Meetings.Any(m => m.Id == meetingId));
@@ -576,7 +618,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                     _logger.LogWarning("Skipping project notes save — meeting {MeetingId} no longer exists.", meetingId);
                     return;
                 }
-                await _store.SaveProjectNotesAsync(meetingId, wbs1, row.Notes, _disposeCts.Token).ConfigureAwait(false);
+                await _store.SaveProjectNotesAsync(meetingId, wbs1, notes, _disposeCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)

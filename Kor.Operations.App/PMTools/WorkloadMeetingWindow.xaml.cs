@@ -150,8 +150,10 @@ namespace Kor.Operations.PMTools
             if (sender is not DataGrid { SelectedItem: PmProjectRow row } || !IsDataGridRowDoubleClick(e))
                 return;
 
-            // Priority column (index 0) is interactive  don't treat its double-click as a row open
-            if (GetClickedCell(e)?.Column.DisplayIndex == 0)
+            // Interactive columns (Hotlist 0, Priority 1, Notes 2) — don't treat
+            // their double-click as a row open. Pre-Round-52 this only excluded
+            // index 0; the comment claimed Priority but Hotlist holds that slot.
+            if (GetClickedCell(e)?.Column.DisplayIndex is 0 or 1 or 2)
                 return;
 
             var counts = BuildPortfolioCounts();
@@ -291,9 +293,20 @@ namespace Kor.Operations.PMTools
             try
             {
                 var lookup = _meetingPanel.CurrentProjects
-                    .ToDictionary(p => p.Wbs1, p => p.Priority, StringComparer.OrdinalIgnoreCase);
+                    .ToDictionary(p => p.Wbs1, p => (p.Priority, Notes: p.Notes ?? string.Empty), StringComparer.OrdinalIgnoreCase);
                 foreach (var row in _vm.ProjectRows)
-                    row.MeetingPriority = lookup.TryGetValue(row.Wbs1, out var p) ? p : 0;
+                {
+                    if (lookup.TryGetValue(row.Wbs1, out var m))
+                    {
+                        row.MeetingPriority = m.Priority;
+                        row.MeetingNotes = m.Notes;
+                    }
+                    else
+                    {
+                        row.MeetingPriority = 0;
+                        row.MeetingNotes = string.Empty;
+                    }
+                }
 
                 var projectLookup = _vm.ProjectRows
                     .ToDictionary(r => r.Wbs1, r => r, StringComparer.OrdinalIgnoreCase);
@@ -459,6 +472,35 @@ namespace Kor.Operations.PMTools
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
+        }
+
+        // Round 52: toggles the row-details meeting-notes editor for the
+        // clicked row. Walking up to the DataGridRow (instead of binding
+        // DetailsVisibility) keeps the toggle local to the physical row.
+        private void MeetingNotesToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn) return;
+            DependencyObject? cur = btn;
+            while (cur != null && cur is not DataGridRow)
+                cur = VisualTreeHelper.GetParent(cur);
+            if (cur is DataGridRow row)
+                row.DetailsVisibility = row.DetailsVisibility == Visibility.Visible
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+        }
+
+        // Round 52: write path for the grid notes editor. The TextBox binding
+        // already pushed the text onto PmProjectRow.MeetingNotes; this routes
+        // it into the meeting VM's per-Wbs1 debounce. _isSyncingMeetingPriorities
+        // guards against programmatic sync writes re-entering as user edits
+        // (binding target updates fire TextChanged synchronously inside the
+        // sync loop, so the flag is still set).
+        private void MeetingNotesTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isSyncingMeetingPriorities) return;
+            if (sender is not TextBox tb || tb.DataContext is not PmProjectRow row) return;
+            if (!_meetingPanel.IsCurrentMeeting || _meetingPanel.SelectedMeeting == null) return;
+            _meetingPanel.QueueProjectNotesSaveFromUi(row.Wbs1, tb.Text);
         }
 
         private Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts BuildPortfolioCounts()

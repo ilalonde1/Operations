@@ -8,6 +8,7 @@ namespace Kor.Operations.PMTools
     public sealed class PmProjectRow : INotifyPropertyChanged
     {
         private int _meetingPriority;
+        private string _meetingNotes = "";
 
         public string Wbs1 { get; private set; } = "";
         public string Name { get; private set; } = "";
@@ -114,6 +115,25 @@ namespace Kor.Operations.PMTools
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MeetingPriority)));
             }
         }
+
+        // Round 52: meeting notes surfaced directly in the PM Groups grid via
+        // a row-details editor. Synced from the meeting VM's CurrentProjects in
+        // SyncMeetingPrioritiesToRows (same channel as MeetingPriority); user
+        // edits write back through WorkloadMeetingPanelViewModel's debounce.
+        public string MeetingNotes
+        {
+            get => _meetingNotes;
+            set
+            {
+                var v = value ?? "";
+                if (_meetingNotes == v) return;
+                _meetingNotes = v;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MeetingNotes)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasMeetingNotes)));
+            }
+        }
+
+        public bool HasMeetingNotes => !string.IsNullOrWhiteSpace(_meetingNotes);
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
