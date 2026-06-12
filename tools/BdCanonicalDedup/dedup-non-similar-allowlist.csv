@@ -1055,3 +1055,25 @@ LoserId,SurvivorId,Reason
 11533,74130
 11534,74130
 71169,68740
+# 2026-06-12 m135 worklist pairs: buyers-deep b001 dup flags (6), honing-gcs
+# b002 CRM-housekeeping merges (4), Stuart Olson -> Bird consolidation (4,
+# all zero-link; Bird acquired Stuart Olson 2020, brand retired), Roads West
+# garble twin, Central Saanich mis-kinded dup. All pairs DB-verified
+# (loser+survivor active, survivors by link count / established-survivor
+# precedent). Per-pair notes in output/worklist-pairs-2026-06-12.csv.
+73943,72042
+70298,72044
+72204,54957
+69439,70308
+72346,71225
+71194,53255
+3693,3690
+2974,2972
+3921,3922
+6890,6887
+16183,54928
+16185,54928
+38955,54928
+70813,54928
+14565,14564
+54085,18854
