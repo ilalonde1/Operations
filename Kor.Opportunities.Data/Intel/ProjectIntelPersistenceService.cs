@@ -58,8 +58,20 @@ public sealed class ProjectIntelPersistenceService
 
             foreach (var draft in extracted.Actions)
             {
+                // Same placeholder gate as the org-side persistence: a
+                // "None" recommendation is the absence of an action.
+                if (IntelPlaceholders.IsPlaceholder(draft.Recommendation))
+                {
+                    continue;
+                }
+
                 touchedMpis.Add(draft.MajorProjectsInventoryId);
-                await MergeActionAsync(con, tx, draft, providerName, sourceEnrichmentId, refreshedAtUtc, ct).ConfigureAwait(false);
+                var cleaned = draft with
+                {
+                    TargetPersonName = IntelPlaceholders.NullIfPlaceholder(draft.TargetPersonName),
+                    TimingNotes = IntelPlaceholders.NullIfPlaceholder(draft.TimingNotes),
+                };
+                await MergeActionAsync(con, tx, cleaned, providerName, sourceEnrichmentId, refreshedAtUtc, ct).ConfigureAwait(false);
             }
 
             foreach (var draft in extracted.Risks)

@@ -110,7 +110,19 @@ UPDATE opportunities.IntelAction
 
             foreach (var draft in drafts.Actions)
             {
-                actions.Add(await MergeActionAsync(con, tx, draft, ctx, ct).ConfigureAwait(false));
+                // Drain models emit "None"/"N/A" when they have nothing — that
+                // is the absence of an action, not an action (IntelPlaceholders).
+                if (IntelPlaceholders.IsPlaceholder(draft.Recommendation))
+                {
+                    continue;
+                }
+
+                var cleaned = draft with
+                {
+                    TargetPersonName = IntelPlaceholders.NullIfPlaceholder(draft.TargetPersonName),
+                    TimingNotes = IntelPlaceholders.NullIfPlaceholder(draft.TimingNotes),
+                };
+                actions.Add(await MergeActionAsync(con, tx, cleaned, ctx, ct).ConfigureAwait(false));
             }
 
             foreach (var draft in drafts.Works)

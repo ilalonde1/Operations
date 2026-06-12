@@ -13,6 +13,7 @@
         <local:IntelTypeLabelConverter x:Key="IntelTypeLabel"/>
         <local:DossierValueKindConverter x:Key="ValueKind"/>
         <local:UrlSplitConverter x:Key="UrlSplit"/>
+        <local:NullOrEmptyStringToVisibilityConverter x:Key="EmptyToCollapsed"/>
         <local:CommaSplitConverter x:Key="CommaSplit"/>
         <local:PriorityToBrushConverter x:Key="PriorityBrush"/>
 
@@ -318,6 +319,10 @@
                                     <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="0,7,0,7">
                                         <Border.ToolTip>
                                             <StackPanel>
+                                                <!-- Full timing here — the visible meta line truncates long prose. -->
+                                                <TextBlock Text="{Binding TimingNotes, StringFormat=Timing: {0}}"
+                                                           MaxWidth="480" TextWrapping="Wrap"
+                                                           Visibility="{Binding TimingNotes, Converter={StaticResource EmptyToCollapsed}}"/>
                                                 <TextBlock>
                                                     <Run Text="Confidence: "/>
                                                     <Run Text="{Binding Confidence, Mode=OneWay}"/>
@@ -341,13 +346,17 @@
                                                                    Foreground="White" FontSize="10" FontWeight="SemiBold"
                                                                    Typography.Capitals="AllSmallCaps"/>
                                                     </Border>
+                                                    <!-- Empty fields collapse entirely — no bare "target:" /
+                                                         "timing:" labels (Ian, 2026-06-12 ss1). -->
                                                     <TextBlock Text="{Binding TargetPersonName, StringFormat=target: {0}}"
                                                                FontSize="11" Foreground="{StaticResource Text.Secondary}"
-                                                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                               VerticalAlignment="Center" Margin="0,0,10,0"
+                                                               Visibility="{Binding TargetPersonName, Converter={StaticResource EmptyToCollapsed}}"/>
                                                     <TextBlock Text="{Binding TimingNotes, StringFormat=timing: {0}}"
                                                                FontSize="11" Foreground="{StaticResource Text.Secondary}"
                                                                VerticalAlignment="Center"
-                                                               TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+                                                               TextTrimming="CharacterEllipsis" MaxWidth="420"
+                                                               Visibility="{Binding TimingNotes, Converter={StaticResource EmptyToCollapsed}}"/>
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding Recommendation}"
                                                            FontSize="12.5"
