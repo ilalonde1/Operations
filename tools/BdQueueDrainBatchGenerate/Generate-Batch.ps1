@@ -102,6 +102,12 @@ param(
     # research for a classification pass, not re-research.
     [switch] $VerdictlessOnly,
 
+    # 2026-06-11 graph completion: PURSUE/PURSUE_URGENT MPIs missing their
+    # architect or structural-engineer link. Packages existing research +
+    # current link state for a link-resolution pass that permanently
+    # upgrades the relationship graph the live dossiers will read.
+    [switch] $PursuitGaps,
+
     [string] $ConnectionString = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
 )
 
@@ -495,6 +501,44 @@ SELECT * FROM TopTargets;
             # row EXISTS but carries no verdict (the contract-violation
             # batch) — classification of existing research, embedding the
             # verdict-less honing JSON alongside the first-pass.
+            if ($PursuitGaps) {
+                $cmd.CommandText = @"
+SELECT TOP (@take) m.Id, m.ProjectName, m.ProjectStage, m.Province, m.MunicipalityName, m.ProponentName,
+    eh.ResultJson AS ExistingResearch,
+    COALESCE(NULLIF(JSON_VALUE(eh.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(eh.ResultJson,'$.verdict'),'')) AS Verdict,
+    arch.DisplayName AS ArchitectLinked, se.DisplayName AS StructuralEngineerLinked
+FROM opportunities.MajorProjectsInventory m
+INNER JOIN opportunities.MajorProjectEnrichment eh ON eh.MajorProjectsInventoryId = m.Id
+    AND eh.ProviderName = N'ProjectBriefHoning' AND eh.ResultJson IS NOT NULL
+LEFT JOIN opportunities.CanonicalOrg arch ON arch.Id = m.ArchitectCanonicalOrgId
+LEFT JOIN opportunities.CanonicalOrg se ON se.Id = m.StructuralEngineerCanonicalOrgId
+WHERE m.RetiredAtUtc IS NULL
+  AND COALESCE(NULLIF(JSON_VALUE(eh.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(eh.ResultJson,'$.verdict'),'')) IN (N'PURSUE', N'PURSUE_URGENT')
+  AND (m.ArchitectCanonicalOrgId IS NULL OR m.StructuralEngineerCanonicalOrgId IS NULL)
+ORDER BY CASE COALESCE(NULLIF(JSON_VALUE(eh.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(eh.ResultJson,'$.verdict'),'')) WHEN N'PURSUE_URGENT' THEN 0 ELSE 1 END,
+         m.EstimatedCostCad DESC;
+"@
+                $r = $cmd.ExecuteReader()
+                $rows = @()
+                while ($r.Read()) {
+                    try {
+                        $rows += [ordered]@{
+                            id = [int64]$r.GetValue(0)
+                            projectName = $r.GetValue(1)
+                            stage = if ($r.IsDBNull(2)) { $null } else { $r.GetValue(2) }
+                            province = if ($r.IsDBNull(3)) { $null } else { $r.GetValue(3) }
+                            city = if ($r.IsDBNull(4)) { $null } else { $r.GetValue(4) }
+                            proponentName = if ($r.IsDBNull(5)) { $null } else { $r.GetValue(5) }
+                            existingResearch = $r.GetValue(6) | ConvertFrom-Json
+                            verdict = $r.GetValue(7)
+                            architectLinked = if ($r.IsDBNull(8)) { $null } else { $r.GetValue(8) }
+                            structuralEngineerLinked = if ($r.IsDBNull(9)) { $null } else { $r.GetValue(9) }
+                        }
+                    } catch {}
+                }
+                $r.Close()
+                break
+            }
             if ($VerdictlessOnly) {
                 $cmd.CommandText = @"
 SELECT TOP (@take) m.Id, m.ProjectName, m.ProjectStage, m.Province, m.MunicipalityName, m.ProponentName,
