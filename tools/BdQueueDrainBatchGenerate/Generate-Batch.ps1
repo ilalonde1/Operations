@@ -52,7 +52,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][ValidateSet('orgs', 'projects', 'people', 'proponents',
-                                        'honing-orgs', 'honing-people', 'honing-projects')]
+                                        'honing-orgs', 'honing-people', 'honing-projects',
+                                        'org-name-repair')]
     [string] $Kind,
 
     [Parameter(Mandatory)][int] $BatchNumber,
@@ -341,6 +342,126 @@ ORDER BY CASE WHEN EstimatedCostCad IS NULL THEN 1 ELSE 0 END, EstimatedCostCad 
                 }
             }
             $r.Close()
+        }
+        'org-name-repair' {
+            # m126 repair campaign (2026-06-12): orgs suppressed for garbled
+            # names that still have BD surface — an active-MPI link or a live
+            # people affiliation. (Awards-only suppressed orgs are a later
+            # tier; drop the surface predicate filters to reach them.) Each
+            # row packages the org's links + raw award strings as identity
+            # evidence so Sonnet verifies the CORRECT name instead of
+            # guessing a cleanup. Ids are REAL CanonicalOrg ids.
+            $cmd.CommandText = @"
+SELECT TOP (@take) co.Id, co.DisplayName, co.Kind, co.Website, co.BcRegistryLegalName,
+       LEFT(co.Notes, 300) AS Notes, co.EnrichmentSuppressedReason,
+       (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
+         WHERE m.RetiredAtUtc IS NULL AND (m.ProponentCanonicalOrgId = co.Id OR m.ArchitectCanonicalOrgId = co.Id
+           OR m.StructuralEngineerCanonicalOrgId = co.Id OR m.GeneralContractorCanonicalOrgId = co.Id)) AS MpiLinks,
+       (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation pa
+         JOIN opportunities.IntelPerson ip ON ip.Id = pa.IntelPersonId AND ip.RetiredAtUtc IS NULL
+         WHERE pa.CanonicalOrgId = co.Id AND pa.RetiredAtUtc IS NULL) AS PeopleAffs,
+       (SELECT COUNT(*) FROM opportunities.OpportunityAwards a
+         WHERE a.AwardedToCanonicalOrgId = co.Id OR a.AwardingCanonicalOrgId = co.Id) AS AwardRefs
+FROM opportunities.CanonicalOrg co
+WHERE co.RetiredAtUtc IS NULL
+  AND co.EnrichmentSuppressedReason LIKE N'm126:%'
+  AND (EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory m
+         WHERE m.RetiredAtUtc IS NULL AND (m.ProponentCanonicalOrgId = co.Id OR m.ArchitectCanonicalOrgId = co.Id
+           OR m.StructuralEngineerCanonicalOrgId = co.Id OR m.GeneralContractorCanonicalOrgId = co.Id))
+    OR EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation pa
+         JOIN opportunities.IntelPerson ip ON ip.Id = pa.IntelPersonId AND ip.RetiredAtUtc IS NULL
+         WHERE pa.CanonicalOrgId = co.Id AND pa.RetiredAtUtc IS NULL))
+ORDER BY
+    (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
+      WHERE m.RetiredAtUtc IS NULL AND (m.ProponentCanonicalOrgId = co.Id OR m.ArchitectCanonicalOrgId = co.Id
+        OR m.StructuralEngineerCanonicalOrgId = co.Id OR m.GeneralContractorCanonicalOrgId = co.Id)) DESC,
+    (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation pa
+      JOIN opportunities.IntelPerson ip ON ip.Id = pa.IntelPersonId AND ip.RetiredAtUtc IS NULL
+      WHERE pa.CanonicalOrgId = co.Id AND pa.RetiredAtUtc IS NULL) DESC,
+    co.Id;
+"@
+            $r = $cmd.ExecuteReader()
+            $rows = @()
+            while ($r.Read()) {
+                $rows += [ordered]@{
+                    id = [int64]$r.GetValue(0)
+                    garbledName = $r.GetValue(1)
+                    orgKind = $r.GetValue(2)
+                    website = if ($r.IsDBNull(3)) { $null } else { $r.GetValue(3) }
+                    bcRegistryLegalName = if ($r.IsDBNull(4)) { $null } else { $r.GetValue(4) }
+                    notes = if ($r.IsDBNull(5)) { $null } else { $r.GetValue(5) }
+                    suppressedReason = $r.GetValue(6)
+                    mpiLinkCount = [int]$r.GetValue(7)
+                    peopleCount = [int]$r.GetValue(8)
+                    awardCount = [int]$r.GetValue(9)
+                }
+            }
+            $r.Close()
+
+            # Identity evidence per org: linked active projects (with role),
+            # affiliated people, and the RAW award strings the org was
+            # resolved from — the strongest clue to what the name should be.
+            foreach ($row in $rows) {
+                $ctxCmd = $conn.CreateCommand()
+                $ctxCmd.CommandTimeout = 60
+                $ctxCmd.Parameters.AddWithValue("@oid", [int64]$row.id) | Out-Null
+
+                $ctxCmd.CommandText = @"
+SELECT TOP 6 m.Id, m.ProjectName, m.Province, m.MunicipalityName,
+    CASE WHEN m.ArchitectCanonicalOrgId = @oid THEN N'Architect' WHEN m.GeneralContractorCanonicalOrgId = @oid THEN N'GC'
+         WHEN m.StructuralEngineerCanonicalOrgId = @oid THEN N'StructuralEngineer' ELSE N'Proponent' END AS Role
+FROM opportunities.MajorProjectsInventory m
+WHERE m.RetiredAtUtc IS NULL
+  AND (m.ProponentCanonicalOrgId = @oid OR m.ArchitectCanonicalOrgId = @oid
+       OR m.StructuralEngineerCanonicalOrgId = @oid OR m.GeneralContractorCanonicalOrgId = @oid)
+ORDER BY m.EstimatedCostCad DESC;
+"@
+                $cr = $ctxCmd.ExecuteReader()
+                $projects = @()
+                while ($cr.Read()) {
+                    $projects += [ordered]@{
+                        mpiId = [int64]$cr.GetValue(0); projectName = $cr.GetValue(1)
+                        province = if ($cr.IsDBNull(2)) { $null } else { $cr.GetValue(2) }
+                        city = if ($cr.IsDBNull(3)) { $null } else { $cr.GetValue(3) }
+                        role = $cr.GetValue(4)
+                    }
+                }
+                $cr.Close()
+                $row.linkedProjects = $projects
+
+                $ctxCmd.CommandText = @"
+SELECT TOP 6 p.DisplayName, a.Title
+FROM opportunities.IntelPersonAffiliation a
+JOIN opportunities.IntelPerson p ON p.Id = a.IntelPersonId AND p.RetiredAtUtc IS NULL
+WHERE a.CanonicalOrgId = @oid AND a.RetiredAtUtc IS NULL
+ORDER BY a.UpdatedAtUtc DESC;
+"@
+                $cr = $ctxCmd.ExecuteReader()
+                $people = @()
+                while ($cr.Read()) { $people += [ordered]@{ name = $cr.GetValue(0); title = if ($cr.IsDBNull(1)) { $null } else { $cr.GetValue(1) } } }
+                $cr.Close()
+                $row.knownPeople = $people
+
+                $ctxCmd.CommandText = @"
+SELECT TOP 4 LEFT(a.Title, 160),
+    CASE WHEN a.AwardedToCanonicalOrgId = @oid THEN a.AwardedToOrganization ELSE a.AwardingOrganization END AS RawName,
+    YEAR(a.AwardedAtUtc) AS AwardYear
+FROM opportunities.OpportunityAwards a
+WHERE a.AwardedToCanonicalOrgId = @oid OR a.AwardingCanonicalOrgId = @oid
+ORDER BY a.AwardedAtUtc DESC;
+"@
+                $cr = $ctxCmd.ExecuteReader()
+                $awards = @()
+                while ($cr.Read()) {
+                    $awards += [ordered]@{
+                        title = if ($cr.IsDBNull(0)) { $null } else { $cr.GetValue(0) }
+                        rawOrgString = if ($cr.IsDBNull(1)) { $null } else { $cr.GetValue(1) }
+                        year = if ($cr.IsDBNull(2)) { $null } else { [int]$cr.GetValue(2) }
+                    }
+                }
+                $cr.Close()
+                $row.awardSamples = $awards
+            }
         }
         'honing-orgs' {
             # Pulls already-enriched orgs and packages each with its first-pass FirmNarrative JSON.

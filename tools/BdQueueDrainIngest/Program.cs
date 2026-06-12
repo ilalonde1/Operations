@@ -26,9 +26,9 @@ static string? ReadArg(string[] args, string name)
 }
 
 var kind = ReadArg(args, "--kind");
-if (kind is not ("people" or "orgs" or "ab-projects" or "proponents"))
+if (kind is not ("people" or "orgs" or "ab-projects" or "proponents" or "org-name-repair"))
 {
-    return Fail("Usage: BdQueueDrainIngest --kind people|orgs|ab-projects|proponents [--dir <path>]");
+    return Fail("Usage: BdQueueDrainIngest --kind people|orgs|ab-projects|proponents|org-name-repair [--dir <path>]");
 }
 
 var inputDir = ReadArg(args, "--dir")
@@ -93,20 +93,22 @@ var log = sp.GetRequiredService<ILogger<Program>>();
 
 var idPattern = kind switch
 {
-    "people"      => new Regex(@"^refresh-person-(\d+)\.json$", RegexOptions.IgnoreCase),
-    "orgs"        => new Regex(@"^refresh-org-(\d+)\.json$", RegexOptions.IgnoreCase),
-    "ab-projects" => new Regex(@"^refresh-project-(\d+)\.json$", RegexOptions.IgnoreCase),
-    "proponents"  => new Regex(@"^refresh-proponent-(\d+)\.json$", RegexOptions.IgnoreCase),
-    _             => throw new InvalidOperationException(),
+    "people"          => new Regex(@"^refresh-person-(\d+)\.json$", RegexOptions.IgnoreCase),
+    "orgs"            => new Regex(@"^refresh-org-(\d+)\.json$", RegexOptions.IgnoreCase),
+    "ab-projects"     => new Regex(@"^refresh-project-(\d+)\.json$", RegexOptions.IgnoreCase),
+    "proponents"      => new Regex(@"^refresh-proponent-(\d+)\.json$", RegexOptions.IgnoreCase),
+    "org-name-repair" => new Regex(@"^refresh-orgname-(\d+)\.json$", RegexOptions.IgnoreCase),
+    _                 => throw new InvalidOperationException(),
 };
 
 var expectedEnvelopeKind = kind switch
 {
-    "people"      => "person-brief-refresh",
-    "orgs"        => "org-brief-refresh",
-    "ab-projects" => "project-brief-refresh",
-    "proponents"  => "proponent-research",
-    _             => throw new InvalidOperationException(),
+    "people"          => "person-brief-refresh",
+    "orgs"            => "org-brief-refresh",
+    "ab-projects"     => "project-brief-refresh",
+    "proponents"      => "proponent-research",
+    "org-name-repair" => "org-name-repair",
+    _                 => throw new InvalidOperationException(),
 };
 
 var files = Directory.GetFiles(inputDir, "refresh-*.json");
@@ -741,6 +743,236 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", icon);
                             continue;
                         }
                         log.LogInformation("Proponent applied: MPI {Id} -> '{Name}' (canonical={Canon})", id, trimmedName, canonicalId);
+                    }
+                }
+                break;
+            case "org-name-repair":
+                {
+                    // m126 repair (2026-06-12): rename a suppressed-for-junk-name
+                    // org to its VERIFIED name and clear the suppression so it
+                    // re-enters normal enrichment (NormalizedName is a computed
+                    // column — it follows DisplayName automatically). Identity is
+                    // double-checked: the payload must echo both the CanonicalOrg
+                    // id AND the current garbled DisplayName, so a mixed-up output
+                    // gets refused instead of renaming the wrong org.
+                    long? echoedId = null;
+                    string? echoedGarbled = null, correctedName = null, sourceUrl = null;
+                    var nameIsCorrect = false;
+                    double confidence = 0;
+                    using (var rdoc = JsonDocument.Parse(briefJson))
+                    {
+                        var rroot = rdoc.RootElement;
+                        if (rroot.ValueKind != JsonValueKind.Object)
+                        {
+                            log.LogWarning("Skipping {Name}: items[0] is not an object.", name);
+                            skipped++;
+                            continue;
+                        }
+
+                        if (rroot.TryGetProperty("canonicalOrgId", out var cid) && cid.ValueKind == JsonValueKind.Number && cid.TryGetInt64(out var cidVal))
+                        {
+                            echoedId = cidVal;
+                        }
+
+                        if (rroot.TryGetProperty("garbledName", out var gn) && gn.ValueKind == JsonValueKind.String)
+                        {
+                            echoedGarbled = gn.GetString();
+                        }
+
+                        if (rroot.TryGetProperty("correctedName", out var cn) && cn.ValueKind == JsonValueKind.String)
+                        {
+                            correctedName = cn.GetString()?.Trim();
+                        }
+
+                        if (rroot.TryGetProperty("sourceUrl", out var su) && su.ValueKind == JsonValueKind.String)
+                        {
+                            sourceUrl = su.GetString();
+                        }
+
+                        if (rroot.TryGetProperty("nameIsCorrect", out var nic) && nic.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                        {
+                            nameIsCorrect = nic.GetBoolean();
+                        }
+
+                        if (rroot.TryGetProperty("confidence", out var cf) && cf.ValueKind == JsonValueKind.Number)
+                        {
+                            confidence = cf.GetDouble();
+                        }
+                    }
+
+                    if (echoedId != id)
+                    {
+                        log.LogWarning("Skipping {Name}: payload canonicalOrgId={Echoed} does not match filename id={Id} — identity mismatch.", name, echoedId, id);
+                        skipped++;
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(echoedGarbled) || string.IsNullOrWhiteSpace(correctedName)
+                        || correctedName.Length > 300 || string.IsNullOrWhiteSpace(sourceUrl) || confidence < 0.7)
+                    {
+                        log.LogWarning(
+                            "Skipping {Name}: payload incomplete or below bar (garbledName/correctedName/sourceUrl required, correctedName <= 300 chars, confidence >= 0.7; got confidence={Confidence:0.##}).",
+                            name, confidence);
+                        skipped++;
+                        continue;
+                    }
+
+                    string? currentDisplayName = null, currentSuppressedReason = null;
+                    var orgRetired = false;
+                    var orgExists = false;
+                    await using (var vcon = new Microsoft.Data.SqlClient.SqlConnection(cs))
+                    {
+                        await vcon.OpenAsync().ConfigureAwait(false);
+                        await using var vcmd = new Microsoft.Data.SqlClient.SqlCommand(
+                            "SELECT DisplayName, RetiredAtUtc, EnrichmentSuppressedReason FROM opportunities.CanonicalOrg WHERE Id = @id;", vcon);
+                        vcmd.Parameters.AddWithValue("@id", id);
+                        await using var vr = await vcmd.ExecuteReaderAsync().ConfigureAwait(false);
+                        if (await vr.ReadAsync().ConfigureAwait(false))
+                        {
+                            orgExists = true;
+                            currentDisplayName = vr.GetString(0);
+                            orgRetired = !vr.IsDBNull(1);
+                            currentSuppressedReason = vr.IsDBNull(2) ? null : vr.GetString(2);
+                        }
+                    }
+
+                    if (!orgExists)
+                    {
+                        log.LogWarning("Skipping {Name}: CanonicalOrg Id={Id} does not exist (merged/purged since batch generation).", name, id);
+                        skipped++;
+                        continue;
+                    }
+
+                    if (orgRetired)
+                    {
+                        log.LogWarning("Skipping {Name}: CanonicalOrg Id={Id} is retired; a retired org stays retired — repair the survivor instead.", name, id);
+                        skipped++;
+                        continue;
+                    }
+
+                    if (currentSuppressedReason is null || !currentSuppressedReason.StartsWith("m126:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Replay safety: a re-run over an already-applied repair is
+                        // a no-op success, not an error. Anything else touched the
+                        // org since batch generation — refuse, never clobber.
+                        if (string.Equals(currentDisplayName, correctedName, StringComparison.Ordinal))
+                        {
+                            log.LogInformation("{Name}: repair already applied (org {Id} = '{Corrected}', unsuppressed); no-op.", name, id, correctedName);
+                            break;
+                        }
+
+                        log.LogWarning("Skipping {Name}: CanonicalOrg Id={Id} is no longer m126-suppressed (reason='{Reason}') — repaired or reclassified since batch generation.", name, id, currentSuppressedReason);
+                        skipped++;
+                        continue;
+                    }
+
+                    if (!string.Equals(echoedGarbled, currentDisplayName, StringComparison.Ordinal))
+                    {
+                        log.LogWarning(
+                            "Skipping {Name}: echoed garbledName '{Echoed}' does not match current DisplayName '{Current}' — identity mismatch or concurrent edit.",
+                            name, echoedGarbled, currentDisplayName);
+                        skipped++;
+                        continue;
+                    }
+
+                    if (nameIsCorrect && !string.Equals(correctedName, currentDisplayName, StringComparison.Ordinal))
+                    {
+                        log.LogWarning("Skipping {Name}: nameIsCorrect=true but correctedName '{Corrected}' differs from the current name — contradictory payload.", name, correctedName);
+                        skipped++;
+                        continue;
+                    }
+
+                    if (!nameIsCorrect)
+                    {
+                        // A corrected name that collides with another active org is
+                        // a MERGE (FK repoint via BdCanonicalDedup --pairs), not a
+                        // rename — renaming here would mint the duplicate the dedup
+                        // sweeps just cleaned. Park the pair on a worklist CSV.
+                        var collisions = new List<long>();
+                        await using (var ccon = new Microsoft.Data.SqlClient.SqlConnection(cs))
+                        {
+                            await ccon.OpenAsync().ConfigureAwait(false);
+                            await using var ccmd = new Microsoft.Data.SqlClient.SqlCommand(
+                                "SELECT Id FROM opportunities.CanonicalOrg WHERE NormalizedName = @n AND RetiredAtUtc IS NULL AND Id <> @id;", ccon);
+                            ccmd.Parameters.AddWithValue("@n", Kor.Opportunities.Data.Awards.CanonicalOrgResolver.NormalizeName(correctedName));
+                            ccmd.Parameters.AddWithValue("@id", id);
+                            await using var crr = await ccmd.ExecuteReaderAsync().ConfigureAwait(false);
+                            while (await crr.ReadAsync().ConfigureAwait(false))
+                            {
+                                collisions.Add(crr.GetInt64(0));
+                            }
+                        }
+
+                        if (collisions.Count > 0)
+                        {
+                            var pairsPath = Path.Combine(inputDir, "name-repair-merge-pairs.csv");
+                            if (!File.Exists(pairsPath))
+                            {
+                                await File.WriteAllTextAsync(pairsPath, "LoserId,SurvivorId,GarbledName,CorrectedName\r\n").ConfigureAwait(false);
+                            }
+
+                            await File.AppendAllTextAsync(
+                                pairsPath,
+                                $"{id},{collisions[0]},\"{currentDisplayName.Replace("\"", "\"\"")}\",\"{correctedName.Replace("\"", "\"\"")}\"\r\n").ConfigureAwait(false);
+                            log.LogWarning(
+                                "Skipping {Name}: corrected name '{Corrected}' collides with active CanonicalOrg(s) [{Ids}] — parked on {Csv} for a BdCanonicalDedup --pairs merge.",
+                                name, correctedName, string.Join(", ", collisions), Path.GetFileName(pairsPath));
+                            skipped++;
+                            continue;
+                        }
+                    }
+
+                    await using (var ucon = new Microsoft.Data.SqlClient.SqlConnection(cs))
+                    {
+                        await ucon.OpenAsync().ConfigureAwait(false);
+                        await using var tx = (Microsoft.Data.SqlClient.SqlTransaction)await ucon.BeginTransactionAsync().ConfigureAwait(false);
+
+                        // Optimistic guard on DisplayName: a concurrent edit between
+                        // the verify read and this UPDATE makes it a 0-row no-op.
+                        await using var ucmd = new Microsoft.Data.SqlClient.SqlCommand(@"
+UPDATE opportunities.CanonicalOrg
+SET DisplayName = @corrected,
+    EnrichmentSuppressedAtUtc = NULL,
+    EnrichmentSuppressedReason = NULL,
+    UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id AND DisplayName = @expected;", ucon, tx);
+                        ucmd.Parameters.AddWithValue("@corrected", correctedName);
+                        ucmd.Parameters.AddWithValue("@id", id);
+                        ucmd.Parameters.AddWithValue("@expected", currentDisplayName);
+                        var updated = await ucmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                        if (updated == 0)
+                        {
+                            await tx.RollbackAsync().ConfigureAwait(false);
+                            log.LogWarning("Skipping {Name}: CanonicalOrg Id={Id} changed between verify and update (concurrent edit); re-run.", name, id);
+                            skipped++;
+                            continue;
+                        }
+
+                        if (!nameIsCorrect)
+                        {
+                            // Preserve the garbled string as an alias so future
+                            // ingests that see the same raw form still resolve to
+                            // this canonical. (RawName, Source) is unique — guard.
+                            await using var acmd = new Microsoft.Data.SqlClient.SqlCommand(@"
+IF NOT EXISTS (SELECT 1 FROM opportunities.OrgAlias WHERE RawName = @raw AND Source = N'OrgNameRepair')
+INSERT INTO opportunities.OrgAlias (CanonicalOrgId, RawName, Source, Confidence, ClassifiedBy, ClassifiedAtUtc, Notes, CreatedAtUtc)
+VALUES (@id, @raw, N'OrgNameRepair', 100, N'BdQueueDrainIngest', sysdatetimeoffset(), @notes, sysdatetimeoffset());", ucon, tx);
+                            acmd.Parameters.AddWithValue("@id", id);
+                            acmd.Parameters.AddWithValue("@raw", currentDisplayName.Length <= 300 ? currentDisplayName : currentDisplayName[..300]);
+                            acmd.Parameters.AddWithValue("@notes", $"m126 name repair; verified via {sourceUrl}");
+                            await acmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                        }
+
+                        await tx.CommitAsync().ConfigureAwait(false);
+                    }
+
+                    if (nameIsCorrect)
+                    {
+                        log.LogInformation("{Name}: org {Id} name confirmed correct ('{Corrected}'); suppression cleared.", name, id, correctedName);
+                    }
+                    else
+                    {
+                        log.LogInformation("{Name}: org {Id} renamed '{Garbled}' -> '{Corrected}'; suppression cleared, alias preserved.", name, id, currentDisplayName, correctedName);
                     }
                 }
                 break;
