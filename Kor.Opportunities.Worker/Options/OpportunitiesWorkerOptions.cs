@@ -215,10 +215,15 @@ public sealed class OpportunitiesWorkerOptions
     public string BdDeltekLinkDryRunOutputDir { get; set; } =
         @"C:\ProgramData\KorOperations\BdDeltekLink\nightly";
 
+    // 2026-06-12: BdResearchQueueBuilderJob now runs the ported dev-box
+    // nightly-refresh trigger (Scripts\Nightly-Refresh.ps1) against the
+    // server-local QueueDrain root. Dev-box sessions reach the same queues
+    // via the \\KOR-APP01\QueueDrain share.
     public bool BdResearchQueueEnabled { get; set; } = true;
-    public int BdResearchQueueBatchSize { get; set; } = 50;
-    public string BdResearchQueueOutputDir { get; set; } =
-        @"C:\ProgramData\KorOperations\BdResearchQueue";
+    public string BdResearchQueueDrainRoot { get; set; } =
+        @"C:\ProgramData\KorOperations\QueueDrain";
+    public string BdResearchQueuePwshPath { get; set; } =
+        @"C:\Program Files\PowerShell\7\pwsh.exe";
 
     /// <summary>Round 83: Anthropic-backed BD research executor settings.</summary>
     public BdResearchExecutorOptions BdResearchExecutor { get; set; } = new();

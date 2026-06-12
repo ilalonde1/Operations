@@ -887,8 +887,10 @@ builder.Services.AddQuartz(q =>
 
   q.AddTrigger(t =>
   {
-      // Default: 06:00 Pacific daily, after the 05:00 KOR-project signal refresh.
-      var cron = builder.Configuration["BdResearchQueueBuilderCronSchedule"] ?? "0 0 6 * * ?";
+      // Default: 21:30 Pacific daily — the ported dev-box nightly-refresh
+      // cadence; batches are ready for the evening's drain sessions and the
+      // QueueRefreshReport row is fresh for the 6am morning email.
+      var cron = builder.Configuration["BdResearchQueueBuilderCronSchedule"] ?? "0 30 21 * * ?";
       t.ForJob(bdResearchQueueBuilderKey)
        .WithIdentity("BdResearchQueueBuilderTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());

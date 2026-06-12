@@ -50,5 +50,15 @@
     <None Update="ResearchPrompts\**\*.md">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <!-- 2026-06-12: nightly-refresh trigger scripts ship with the Worker
+         (BdResearchQueueBuilderJob runs Scripts\Nightly-Refresh.ps1).
+         Linked from tools\BdQueueDrainBatchGenerate — single source, no
+         repo duplication. -->
+    <Content Include="..\tools\BdQueueDrainBatchGenerate\Nightly-Refresh.ps1" Link="Scripts\Nightly-Refresh.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\tools\BdQueueDrainBatchGenerate\Generate-Batch.ps1" Link="Scripts\Generate-Batch.ps1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>

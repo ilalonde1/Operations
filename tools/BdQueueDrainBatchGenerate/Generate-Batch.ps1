@@ -116,7 +116,10 @@ if (-not $ConnectionString) {
     throw "ConnectionString not set. Pass -ConnectionString or set env var KOR_OPPORTUNITIES_OPPORTUNITIESDB."
 }
 if (-not $OutDir) {
-    $OutDir = "C:\ProgramData\KorOperations\QueueDrain\$Kind\inputs"
+    # 2026-06-12: QueueDrain lives on KOR-APP01. Ad-hoc dev-box runs default
+    # to the share; the server-side nightly trigger passes -OutDir explicitly
+    # with the local root.
+    $OutDir = "\\KOR-APP01\QueueDrain\$Kind\inputs"
 }
 if (-not (Test-Path $OutDir)) {
     throw "Output dir not found: $OutDir"

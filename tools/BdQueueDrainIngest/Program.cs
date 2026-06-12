@@ -31,8 +31,10 @@ if (kind is not ("people" or "orgs" or "ab-projects" or "proponents" or "org-nam
     return Fail("Usage: BdQueueDrainIngest --kind people|orgs|ab-projects|proponents|org-name-repair [--dir <path>]");
 }
 
+// 2026-06-12: QueueDrain migrated to KOR-APP01; the ingest runs on the dev
+// box and reaches the queues via the share.
 var inputDir = ReadArg(args, "--dir")
-    ?? Path.Combine(@"C:\ProgramData\KorOperations\QueueDrain", kind, "outputs");
+    ?? Path.Combine(@"\\KOR-APP01\QueueDrain", kind, "outputs");
 if (!Directory.Exists(inputDir))
 {
     return Fail($"Input dir not found: {inputDir}");

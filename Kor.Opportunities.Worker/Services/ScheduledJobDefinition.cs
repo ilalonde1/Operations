@@ -25,7 +25,10 @@ internal static class ScheduledJobDefinitions
         new(nameof(BuildingPermitsImportJob), "BuildingPermitsCronSchedule", "0 30 6 * * ?", o => o.BuildingPermitsImportEnabled, "Ingestion"),
         new(nameof(DataRetirementJob), "DataRetirementCronSchedule", "0 30 4 * * ?", o => o.DataRetirementEnabled, "Cleanup"),
         new(nameof(BdDeltekLinkDryRunJob), "BdDeltekLinkDryRunCronSchedule", "0 0 4 * * ?", o => o.BdDeltekLinkDryRunEnabled, "Sync"),
-        new(nameof(BdResearchQueueBuilderJob), "BdResearchQueueBuilderCronSchedule", "0 0 6 * * ?", o => o.BdResearchQueueEnabled, "Workflow"),
+        // 2026-06-12: runs the ported nightly-refresh trigger at 21:30 (the
+        // cadence of the removed dev-box scheduled task) so batches are ready
+        // for the evening's drain sessions.
+        new(nameof(BdResearchQueueBuilderJob), "BdResearchQueueBuilderCronSchedule", "0 30 21 * * ?", o => o.BdResearchQueueEnabled, "Workflow"),
         new(nameof(DataHealthAuditJob), "DataHealthAuditCronSchedule", "0 0 7 ? * SUN", o => o.DataHealthAuditEnabled, "Audit"),
         new(nameof(CanonicalOrgKorProjectSignalRefreshJob), "CanonicalOrgKorProjectSignalRefreshCronSchedule", "0 0 5 * * ?", o => o.CanonicalOrgKorProjectSignalRefreshEnabled, "Enrichment"),
         new(nameof(KorPursuitDeltekSyncJob), "KorPursuitDeltekSyncCronSchedule", "0 30 5 * * ?", o => o.KorPursuitDeltekSyncEnabled, "Sync"),

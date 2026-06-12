@@ -15,8 +15,9 @@ namespace Kor.Opportunities.Worker.Services.Reporting;
 /// <summary>
 /// Daily 6am "quick eye on the whole system" email (Ian, 2026-06-11):
 /// new opportunities, verdict movement, retirements, per-pipeline ingest
-/// activity, failures, coverage tickers, and the latest dev-box trigger
-/// report (pending drain queues) via opportunities.QueueRefreshReport.
+/// activity, failures, coverage tickers, the latest nightly trigger report
+/// (pending drain queues) via opportunities.QueueRefreshReport, and the
+/// summary-flags harvest over new QueueDrain SUMMARY files.
 /// Read-only against KorOpportunitiesDb; sends via the FileSync Graph app.
 /// </summary>
 [DisallowConcurrentExecution]
@@ -57,7 +58,7 @@ public sealed class BdMorningReportJob : IJob
 
         try
         {
-            var html = await BuildHtmlAsync(opt.OpportunitiesDb, context.CancellationToken).ConfigureAwait(false);
+            var html = await BuildHtmlAsync(opt.OpportunitiesDb, opt.BdResearchQueueDrainRoot, context.CancellationToken).ConfigureAwait(false);
             await _mail.SendHtmlAsync(
                 opt.MorningReportTenantId,
                 opt.MorningReportClientId,
@@ -76,7 +77,7 @@ public sealed class BdMorningReportJob : IJob
         }
     }
 
-    private static async Task<string> BuildHtmlAsync(string cs, System.Threading.CancellationToken ct)
+    private static async Task<string> BuildHtmlAsync(string cs, string queueDrainRoot, System.Threading.CancellationToken ct)
     {
         await using var con = new SqlConnection(cs);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -221,7 +222,7 @@ SELECT
             sb.Append($"People briefed: <b>{r.GetInt32(3)}</b> · Open actions: <b>{r.GetInt32(4)}</b></p>");
         }
 
-        // --- Latest trigger report (dev-box drain queues) ----------------------
+        // --- Latest trigger report (server QueueDrain, 21:30 builder job) ------
         await using (var cmd = new SqlCommand(@"
 SELECT TOP 1 RunAtUtc, PendingQueues, ReportText
 FROM opportunities.QueueRefreshReport ORDER BY RunAtUtc DESC;", con))
@@ -230,10 +231,14 @@ FROM opportunities.QueueRefreshReport ORDER BY RunAtUtc DESC;", con))
             sb.Append("<h3>Drain queues (last trigger run)</h3>");
             if (await r.ReadAsync(ct).ConfigureAwait(false))
             {
+                // 2026-06-12: tightened 20h -> 10h after a dead trigger sat a
+                // full day inside the old window. The trigger fires nightly at
+                // 21:30; by the 6am email it is ~8.5h old, so >10h means last
+                // night's run did not happen.
                 var age = DateTimeOffset.UtcNow - r.GetDateTimeOffset(0).ToUniversalTime();
-                if (age > TimeSpan.FromHours(20))
+                if (age > TimeSpan.FromHours(10))
                 {
-                    sb.Append($"<p style=\"color:#C8102E\"><b>STALE:</b> last trigger run was {age.TotalHours:N0}h ago — check the dev-box scheduled task.</p>");
+                    sb.Append($"<p style=\"color:#C8102E\"><b>STALE:</b> last trigger run was {age.TotalHours:N0}h ago — BdResearchQueueBuilderJob (21:30) did not run; check Worker JobRuns.</p>");
                 }
 
                 var pending = r.IsDBNull(1) ? "" : r.GetString(1);
@@ -248,8 +253,82 @@ FROM opportunities.QueueRefreshReport ORDER BY RunAtUtc DESC;", con))
             }
         }
 
+        // --- Summary flags (new SUMMARY-*.txt correction lines) ----------------
+        // 2026-06-12 process fix: drain sessions file corrections (dups,
+        // rebrands, defunct firms, departures) in their SUMMARY files; until
+        // the m132/m133 harvest nobody read them. Surface every new summary's
+        // flag-pattern lines so nothing files itself silently again.
+        AppendSummaryFlags(sb, queueDrainRoot);
+
         sb.Append("</body></html>");
         return sb.ToString();
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex FlagPattern = new(
+        @"duplicate|merge|rebrand|defunct|bankrupt|receivership|deceased|departed|data error|misclassif|reclassif|dismiss|wrong sector|wrong market|wrong discipline|retire",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static void AppendSummaryFlags(StringBuilder sb, string queueDrainRoot)
+    {
+        const int maxLines = 60;
+        sb.Append("<h3>Summary flags (last 24h)</h3>");
+        try
+        {
+            if (!System.IO.Directory.Exists(queueDrainRoot))
+            {
+                sb.Append($"<p style=\"color:#C8102E\">QueueDrain root not found at {WebUtility.HtmlEncode(queueDrainRoot)}.</p>");
+                return;
+            }
+
+            var cutoff = DateTime.UtcNow.AddHours(-24);
+            var total = 0;
+            var anyFile = false;
+            foreach (var file in System.IO.Directory.EnumerateFiles(queueDrainRoot, "SUMMARY-*.txt", System.IO.SearchOption.AllDirectories))
+            {
+                if (System.IO.File.GetLastWriteTimeUtc(file) < cutoff) { continue; }
+
+                var flagged = new List<string>();
+                foreach (var line in System.IO.File.ReadLines(file))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.Length > 0 && FlagPattern.IsMatch(trimmed))
+                    {
+                        flagged.Add(trimmed.Length > 160 ? trimmed[..160] + "…" : trimmed);
+                    }
+                }
+
+                if (flagged.Count == 0) { continue; }
+
+                anyFile = true;
+                var queue = System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(file)) ?? "");
+                sb.Append($"<p style=\"margin:6px 0 2px\"><b>{WebUtility.HtmlEncode(queue)}</b> / {WebUtility.HtmlEncode(System.IO.Path.GetFileName(file))} — {flagged.Count} flag line(s)</p>");
+                sb.Append("<pre style=\"background:#fff4f4;padding:6px;font-size:11px;overflow:auto;margin:0\">");
+                foreach (var line in flagged)
+                {
+                    if (total >= maxLines)
+                    {
+                        sb.Append("… (capped — read the file)\n");
+                        break;
+                    }
+
+                    sb.Append(WebUtility.HtmlEncode(line)).Append('\n');
+                    total++;
+                }
+
+                sb.Append("</pre>");
+                if (total >= maxLines) { break; }
+            }
+
+            if (!anyFile)
+            {
+                sb.Append("<p style=\"color:#666\">No new summaries with flag lines.</p>");
+            }
+        }
+        catch (Exception ex)
+        {
+            // The flags section must never kill the email.
+            sb.Append($"<p style=\"color:#C8102E\">Flags harvest failed: {WebUtility.HtmlEncode(ex.GetType().Name)}: {WebUtility.HtmlEncode(ex.Message)}</p>");
+        }
     }
 
     private static async Task AppendCountTableAsync(StringBuilder sb, SqlConnection con, string title, string sql, System.Threading.CancellationToken ct)

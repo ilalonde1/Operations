@@ -25,11 +25,18 @@
 
 .EXAMPLE
     .\Nightly-Refresh.ps1
-    # Typically via the scheduled task 'KOR BD Nightly Refresh' at 21:30.
+    # Runs nightly at 21:30 on KOR-APP01 via the Worker's
+    # BdResearchQueueBuilderJob (ships as Scripts\Nightly-Refresh.ps1).
 #>
 [CmdletBinding()]
 param(
     [string]$QueueRoot = 'C:\ProgramData\KorOperations\QueueDrain',
+
+    # 2026-06-12 server port: the script runs ON KOR-APP01 (QueueRoot is the
+    # server-local path) but the run cards are pasted on the dev box, which
+    # reaches the queues via the SMB share. Keep the two roots separate.
+    [string]$RunCardRoot = '\\KOR-APP01\QueueDrain',
+
     [string]$ConnectionString = ($env:KOR_OPPORTUNITIES_OPPORTUNITIESDB ??
         [Environment]::GetEnvironmentVariable('KOR_OPPORTUNITIES_OPPORTUNITIESDB', 'User'))
 )
@@ -120,7 +127,7 @@ foreach ($kind in $kinds.Keys) {
     # Generate-Batch reports via Write-Host (information stream) — capture
     # everything; whether a batch was written is verified on DISK, not by
     # parsing console text.
-    & $generateBatch -Kind $kind -BatchNumber $next -Take $kinds[$kind].Take -ConnectionString $ConnectionString *>&1 | Out-Null
+    & $generateBatch -Kind $kind -BatchNumber $next -Take $kinds[$kind].Take -OutDir $inputs -ConnectionString $ConnectionString *>&1 | Out-Null
     $newBatch = Join-Path $inputs ("batch-{0:D3}.json" -f $next)
     $wrote = if (Test-Path $newBatch) { (Get-Content $newBatch -Raw | ConvertFrom-Json).Count } else { 0 }
 
@@ -141,7 +148,7 @@ else {
     $lines += "RUN TONIGHT ($($runCards.Count) queue$(if ($runCards.Count -ne 1) { 's' })) — paste 'Read PROMPT.md in this directory and execute it.' into each:"
     foreach ($q in $runCards) {
         $lines += ''
-        $lines += "  cd $QueueRoot\$q"
+        $lines += "  cd $RunCardRoot\$q"
         $lines += '  claude --model claude-sonnet-4-6 --dangerously-skip-permissions'
     }
     $lines += ''
