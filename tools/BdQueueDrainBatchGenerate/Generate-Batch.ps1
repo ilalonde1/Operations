@@ -81,7 +81,7 @@ param(
     # 2026-06-11: targeted org hones (honing-orgs kind only). The selector's
     # kind-priority ordering starves low-rank kinds — Competitor sat at 0
     # honed while architects always outranked it. NULL = priority order.
-    [ValidateSet('Architect', 'Competitor', 'KorClient', 'Buyer', 'Developer', '')]
+    [ValidateSet('Architect', 'Competitor', 'KorClient', 'Buyer', 'Developer', 'GC', '')]
     [string] $OrgKind,
 
     # 2026-06-11: relationship-aware hone packaging (honing-orgs kind only).
@@ -96,6 +96,11 @@ param(
     # the ones already honed generically — a deep graph-aware hone
     # supersedes the generic one (MERGE updates the same provider row).
     [switch] $IncludeRecentlyHoned,
+
+    # 2026-06-11: honing-projects kind — target MPIs whose honing row has
+    # NO verdict (the contract-violation batch). Packages the existing
+    # research for a classification pass, not re-research.
+    [switch] $VerdictlessOnly,
 
     [string] $ConnectionString = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
 )
@@ -344,12 +349,12 @@ WITH TopTargets AS (
         AND e.Status = N'Ok'
     WHERE co.RetiredAtUtc IS NULL
       AND co.EnrichmentSuppressedAtUtc IS NULL -- m126 do-not-enrich flag
-      AND co.Kind IN (N'Architect', N'Competitor', N'KorClient', N'Buyer', N'Developer')
+      AND co.Kind IN (N'Architect', N'Competitor', N'KorClient', N'Buyer', N'Developer', N'GC')
       AND (@orgKind IS NULL OR co.Kind = @orgKind) -- 2026-06-11: targeted hones (e.g. Competitor) — priority order otherwise starves low-rank kinds
       AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
       AND (@includeRecentlyHoned = 1 OR NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment eh WHERE eh.CanonicalOrgId = co.Id AND eh.ProviderName = N'FirmNarrativeHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset())))
     ORDER BY
-        CASE co.Kind WHEN N'KorClient' THEN 0 WHEN N'Architect' THEN 1 WHEN N'Competitor' THEN 2 WHEN N'Buyer' THEN 3 WHEN N'Developer' THEN 4 END,
+        CASE co.Kind WHEN N'KorClient' THEN 0 WHEN N'Architect' THEN 1 WHEN N'Competitor' THEN 2 WHEN N'Buyer' THEN 3 WHEN N'Developer' THEN 4 WHEN N'GC' THEN 5 END,
         BdValue DESC
 )
 SELECT * FROM TopTargets;
@@ -486,6 +491,41 @@ SELECT * FROM TopTargets;
         'honing-projects' {
             # Already-enriched MPI rows, packaged with first-pass ProjectBrief.
             # Priority: highest BD value (cost + actions) + recent enrichment.
+            # 2026-06-11 -VerdictlessOnly: instead targets MPIs whose honing
+            # row EXISTS but carries no verdict (the contract-violation
+            # batch) — classification of existing research, embedding the
+            # verdict-less honing JSON alongside the first-pass.
+            if ($VerdictlessOnly) {
+                $cmd.CommandText = @"
+SELECT TOP (@take) m.Id, m.ProjectName, m.ProjectStage, m.Province, m.MunicipalityName, m.ProponentName,
+    e.ResultJson AS FirstPassBrief, eh.ResultJson AS VerdictlessHoning
+FROM opportunities.MajorProjectsInventory m
+INNER JOIN opportunities.MajorProjectEnrichment eh ON eh.MajorProjectsInventoryId = m.Id
+    AND eh.ProviderName = N'ProjectBriefHoning' AND eh.ResultJson IS NOT NULL
+    AND COALESCE(NULLIF(JSON_VALUE(eh.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(eh.ResultJson,'$.verdict'),'')) IS NULL
+LEFT JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBrief'
+WHERE m.RetiredAtUtc IS NULL
+ORDER BY m.EstimatedCostCad DESC;
+"@
+                $r = $cmd.ExecuteReader()
+                $rows = @()
+                while ($r.Read()) {
+                    try {
+                        $rows += [ordered]@{
+                            id = [int64]$r.GetValue(0)
+                            projectName = $r.GetValue(1)
+                            stage = if ($r.IsDBNull(2)) { $null } else { $r.GetValue(2) }
+                            province = if ($r.IsDBNull(3)) { $null } else { $r.GetValue(3) }
+                            city = if ($r.IsDBNull(4)) { $null } else { $r.GetValue(4) }
+                            proponentName = if ($r.IsDBNull(5)) { $null } else { $r.GetValue(5) }
+                            firstPassBrief = if ($r.IsDBNull(6)) { $null } else { $r.GetValue(6) | ConvertFrom-Json }
+                            existingResearch = $r.GetValue(7) | ConvertFrom-Json
+                        }
+                    } catch {}
+                }
+                $r.Close()
+                break
+            }
             $cmd.CommandText = @"
 WITH TopTargets AS (
     SELECT TOP (@take) m.Id, m.ProjectName, m.ProjectStage, m.Province, m.MunicipalityName, m.ProponentName,
