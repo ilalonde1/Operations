@@ -1086,3 +1086,356 @@ LoserId,SurvivorId,Reason
 69367,69703
 72113,11697
 72280,38934
+# Firm-family consolidation 2026-06-12 (Dossier Completeness Engine step 1).
+# High-confidence office-variant pairs from family-plan-2026-06-12.csv,
+# reviewed and approved by Ian (High tier only). Names differ by office /
+# legal-suffix / legacy-brand qualifiers the fuzzy gate cannot reconcile.
+698,53119,family-2026-06-12 city of calgary
+70300,53119,family-2026-06-12 city of calgary
+68821,53255,family-2026-06-12 alberta infrastructure
+68822,53255,family-2026-06-12 alberta infrastructure
+18653,18657,family-2026-06-12 wsp canada
+578,354,family-2026-06-12 city of red deer
+53401,324,family-2026-06-12 university of calgary
+53315,671,family-2026-06-12 city of medicine hat
+72047,575,family-2026-06-12 calgary housing
+70303,575,family-2026-06-12 calgary housing
+68636,69688,family-2026-06-12 perkins will
+73712,69688,family-2026-06-12 perkins will
+73778,69688,family-2026-06-12 perkins will
+50834,2711,family-2026-06-12 associated engineering
+2712,2711,family-2026-06-12 associated engineering
+72295,2711,family-2026-06-12 associated engineering
+71514,6154,family-2026-06-12 dialog
+68790,6154,family-2026-06-12 dialog
+74165,6154,family-2026-06-12 dialog
+72268,153,family-2026-06-12 arcadis ibi
+70039,38939,family-2026-06-12 bc housing
+69293,69932,family-2026-06-12 mgba
+72795,70543,family-2026-06-12 kasian architecture interior design
+72269,70543,family-2026-06-12 kasian architecture interior design
+70697,68974,family-2026-06-12 wa architects
+53400,852,family-2026-06-12 northern alberta institute of technology
+12813,69968,family-2026-06-12 omicron architecture
+23402,22641,family-2026-06-12 peter rose
+71208,340,family-2026-06-12 red deer polytechnic
+72146,399,family-2026-06-12 city of vancouver
+72148,399,family-2026-06-12 city of vancouver
+72271,1,family-2026-06-12 gec architecture
+73930,1,family-2026-06-12 gec architecture
+348,596,family-2026-06-12 bc timber sales branch
+68629,70108,family-2026-06-12 ac martin
+71128,388,family-2026-06-12 civida
+72309,691,family-2026-06-12 city of burnaby
+72283,69724,family-2026-06-12 cornerstone architecture
+74174,14910,family-2026-06-12 sahuri partners
+70574,4708,family-2026-06-12 chandos construction
+70537,68977,family-2026-06-12 studiohub architects
+69328,4856,family-2026-06-12 cima
+46886,46645,family-2026-06-12 don saywell
+10624,69625,family-2026-06-12 lafarge canada
+72267,69589,family-2026-06-12 musson cattell mackey
+70602,158,family-2026-06-12 city of kelowna
+54934,11319,family-2026-06-12 maple reinders
+71082,11319,family-2026-06-12 maple reinders
+11323,11319,family-2026-06-12 maple reinders
+71466,54190,family-2026-06-12 gbl architects
+71261,54753,family-2026-06-12 diamond schmitt
+72098,8129,family-2026-06-12 gga architecture
+68758,8129,family-2026-06-12 gga architecture
+72152,394,family-2026-06-12 city of richmond
+69429,74016,family-2026-06-12 faction architecture
+18913,69680,family-2026-06-12 translink
+22529,69214,family-2026-06-12 johnston davidson
+69986,69756,family-2026-06-12 low hammond rowe
+3223,68976,family-2026-06-12 berry architecture
+72202,38956,family-2026-06-12 ubc properties trust
+68841,23987,family-2026-06-12 metro vancouver
+72321,72158,family-2026-06-12 city of maple ridge
+72336,703,family-2026-06-12 edmonton public library
+72440,4922,family-2026-06-12 clark builders
+72445,4922,family-2026-06-12 clark builders
+72082,18867,family-2026-06-12 government of alberta
+72439,18867,family-2026-06-12 government of alberta
+69997,69164,family-2026-06-12 shape architecture
+70944,771,family-2026-06-12 simon fraser university
+48775,47805,family-2026-06-12 joneljim concrete
+2366,2364,family-2026-06-12 amron construction
+69914,68746,family-2026-06-12 thornton tomasetti
+54058,38952,family-2026-06-12 vancouver fraser port authority
+73931,14871,family-2026-06-12 s2 architecture
+70888,71004,family-2026-06-12 axiom builders
+23927,78,family-2026-06-12 montage development
+71027,20517,family-2026-06-12 pcl constructors westcoast
+72266,38974,family-2026-06-12 revery architecture
+72149,38974,family-2026-06-12 revery architecture
+10525,10528,family-2026-06-12 krawford construction
+10526,10528,family-2026-06-12 krawford construction
+75026,72211,family-2026-06-12 provincial health services authority
+71535,68919,family-2026-06-12 reimagine architects
+23357,71067,family-2026-06-12 jta development
+72244,207,family-2026-06-12 anthem properties
+9490,9379,family-2026-06-12 in line
+73987,18454,family-2026-06-12 wilco contractors south west
+72166,68879,family-2026-06-12 station one
+69892,68879,family-2026-06-12 station one
+70703,69109,family-2026-06-12 thinkspace architecture planning interior design
+44642,20545,family-2026-06-12 ratio architecture interior design
+72327,18838,family-2026-06-12 city of surrey
+73887,69614,family-2026-06-12 gibbs gage
+74159,68781,family-2026-06-12 calgary catholic school district
+71132,16018,family-2026-06-12 start architecture
+18404,18405,family-2026-06-12 whissell contracting
+18408,18405,family-2026-06-12 whissell contracting
+18409,18405,family-2026-06-12 whissell contracting
+69609,53614,family-2026-06-12 calgary municipal land
+71359,71330,family-2026-06-12 ron hart
+31123,19650,family-2026-06-12 on side restoration services
+2194,2196,family-2026-06-12 alpha construction
+71509,2555,family-2026-06-12 arc studio
+74186,68742,family-2026-06-12 magnusson klemencic
+72254,71250,family-2026-06-12 integra architecture
+27056,18771,family-2026-06-12 zeidler architecture
+11124,11123,family-2026-06-12 luxton construction
+69966,54454,family-2026-06-12 wensley architecture
+68921,7843,family-2026-06-12 fwba architects
+73992,68912,family-2026-06-12 miller hull
+48317,53946,family-2026-06-12 osoyoos indian band
+54993,53946,family-2026-06-12 osoyoos indian band
+18495,20819,family-2026-06-12 willow spring
+18496,20819,family-2026-06-12 willow spring
+72320,886,family-2026-06-12 city of delta
+2973,2972,family-2026-06-12 baja construction
+73799,89,family-2026-06-12 darwin properties
+2218,2217,family-2026-06-12 alps construction
+74178,69767,family-2026-06-12 teeple architects
+2772,2773,family-2026-06-12 atkinson construction
+70729,69001,family-2026-06-12 macdonald hagarty
+70036,69001,family-2026-06-12 macdonald hagarty
+70331,69320,family-2026-06-12 mcfarland marceau
+4914,4917,family-2026-06-12 ckb construction
+70784,166,family-2026-06-12 live edge okanagan
+71503,15,family-2026-06-12 urban one
+13300,13298,family-2026-06-12 pemco construction
+10744,10745,family-2026-06-12 lavergne construction
+8249,8248,family-2026-06-12 goldbar contractors
+4454,4456,family-2026-06-12 castle rock
+71205,12863,family-2026-06-12 onpa architects
+12864,12863,family-2026-06-12 onpa architects
+21326,167,family-2026-06-12 onni contracting
+71376,72169,family-2026-06-12 kmbr architects planners
+71930,16346,family-2026-06-12 svemy construction
+4158,56841,family-2026-06-12 canadian development
+6111,6112,family-2026-06-12 devitt forand
+6113,6112,family-2026-06-12 devitt forand
+69047,54541,family-2026-06-12 comox valley regional district
+73929,46132,family-2026-06-12 norr architects
+72097,525,family-2026-06-12 lethbridge college
+53468,53370,family-2026-06-12 carlisle group
+18054,18051,family-2026-06-12 ward bros
+18050,18051,family-2026-06-12 ward bros
+71572,9672,family-2026-06-12 interworks contracting
+54948,68622,family-2026-06-12 hensel phelps
+69974,68829,family-2026-06-12 giannone petricone
+11332,16853,family-2026-06-12 marc boutin architectural
+16852,16853,family-2026-06-12 marc boutin architectural
+10906,10905,family-2026-06-12 lex3 engineering
+67440,69258,family-2026-06-12 adamson associates
+71823,7409,family-2026-06-12 fillmore construction management
+22462,70926,family-2026-06-12 itc construction
+53626,3202,family-2026-06-12 bentall kennedy
+47177,46591,family-2026-06-12 wade general
+69946,69243,family-2026-06-12 bjarke ingels group dialog
+55048,54118,family-2026-06-12 canada lands
+17023,17025,family-2026-06-12 timcon construction
+17024,17025,family-2026-06-12 timcon construction
+15091,54932,family-2026-06-12 scott construction
+54266,54330,family-2026-06-12 hulbert group
+54329,54330,family-2026-06-12 hulbert group
+69458,18819,family-2026-06-12 bc institute of technology
+12029,71883,family-2026-06-12 most engineering
+71527,71176,family-2026-06-12 lemay
+72170,72164,family-2026-06-12 thinkspace architecture planning and interior design
+72128,5472,family-2026-06-12 covenant health
+54998,69186,family-2026-06-12 khowutzun development
+54525,18908,family-2026-06-12 thompson rivers university
+25601,9025,family-2026-06-12 holaco construction
+71620,17626,family-2026-06-12 unsurpassable construction
+15719,15718,family-2026-06-12 southwest design
+71013,69446,family-2026-06-12 rwa group
+23806,172,family-2026-06-12 square nine
+14204,14205,family-2026-06-12 reco construction
+1964,1963,family-2026-06-12 akron engineering consultant s
+71211,72112,family-2026-06-12 hsea architecture
+15192,15191,family-2026-06-12 sena constructors
+54157,18920,family-2026-06-12 vancouver island university
+68296,42674,family-2026-06-12 bennett s construction supplies
+42377,336,family-2026-06-12 three hills
+47607,47047,family-2026-06-12 leighton contracting
+72235,72190,family-2026-06-12 hdr architecture
+72209,72190,family-2026-06-12 hdr architecture
+70746,69993,family-2026-06-12 jm architecture
+51042,44414,family-2026-06-12 construction polaris
+42666,44414,family-2026-06-12 construction polaris
+69890,69862,family-2026-06-12 civitas urban design
+73928,71323,family-2026-06-12 walterfedy architecture
+6598,6596,family-2026-06-12 eba engineering
+6599,6596,family-2026-06-12 eba engineering
+6600,6596,family-2026-06-12 eba engineering
+47172,47900,family-2026-06-12 emmons and mitchell
+69909,55100,family-2026-06-12 tien sher
+69910,69987,family-2026-06-12 stantec
+69581,69987,family-2026-06-12 stantec
+69923,69987,family-2026-06-12 stantec
+74229,73739,family-2026-06-12 trammell crow
+53390,53597,family-2026-06-12 yorkton group
+49411,6911,family-2026-06-12 emil anderson
+3845,3848,family-2026-06-12 bunt associates
+3846,3848,family-2026-06-12 bunt associates
+54860,69804,family-2026-06-12 qualex landmark
+49153,51062,family-2026-06-12 penn co
+74175,11288,family-2026-06-12 manasc isaac
+73783,68834,family-2026-06-12 city of portland
+12563,12562,family-2026-06-12 northern road
+68842,73733,family-2026-06-12 multnomah county
+75165,54949,family-2026-06-12 whiting turner
+36310,25097,family-2026-06-12 pacific preferred
+48268,46649,family-2026-06-12 smart electrical
+71581,3510,family-2026-06-12 boald construction management
+3511,3510,family-2026-06-12 boald construction management
+24875,54824,family-2026-06-12 canada west
+9140,9142,family-2026-06-12 hukalo oberg
+53962,21199,family-2026-06-12 pci group
+18607,18606,family-2026-06-12 works of
+10642,10643,family-2026-06-12 lafrentz road marking a division of canadian road
+10644,10643,family-2026-06-12 lafrentz road marking a division of canadian road
+23279,23277,family-2026-06-12 hi beam
+41065,50960,family-2026-06-12 hipperson construction
+46662,3301,family-2026-06-12 bighorn construction
+32189,26800,family-2026-06-12 pr pomeroy restoration
+13978,13979,family-2026-06-12 questic contracting
+70325,53730,family-2026-06-12 bc ferries
+17284,17283,family-2026-06-12 tribuild contracting
+49132,69740,family-2026-06-12 penticton indian band
+20976,20678,family-2026-06-12 edyu group
+5907,5906,family-2026-06-12 dcl construction services
+13544,13545,family-2026-06-12 porscon construction
+71521,9684,family-2026-06-12 introba canada
+63935,9684,family-2026-06-12 introba canada
+73761,73729,family-2026-06-12 king county housing authority
+64055,49990,family-2026-06-12 fidelity engineering
+7650,7651,family-2026-06-12 formula contractors
+53780,18868,family-2026-06-12 greater vancouver regional district
+40737,40764,family-2026-06-12 brook construction
+9503,9504,family-2026-06-12 innovative civil
+15128,15129,family-2026-06-12 seasonal impact
+71150,2636,family-2026-06-12 arrow engineering
+14715,14717,family-2026-06-12 rossco s tree service
+14716,14717,family-2026-06-12 rossco s tree service
+1908,1909,family-2026-06-12 ags mechanical
+18851,71350,family-2026-06-12 department of national defence
+71417,71316,family-2026-06-12 heiltsuk nation
+51188,46545,family-2026-06-12 magellan engineering
+11247,11246,family-2026-06-12 mainline construction
+68809,70296,family-2026-06-12 nait
+36785,55065,family-2026-06-12 keltic development
+71104,24837,family-2026-06-12 formwerks boutique
+5684,5685,family-2026-06-12 cutting edge
+10829,10828,family-2026-06-12 leeville construction
+14622,71206,family-2026-06-12 rockliff pierzchajlo kroman
+70571,71236,family-2026-06-12 highstreet ventures
+70271,18907,family-2026-06-12 thompson nicola regional district
+51458,46568,family-2026-06-12 ben wiebe
+9056,9055,family-2026-06-12 hopkins construction
+12204,12205,family-2026-06-12 nac constructors
+8562,8560,family-2026-06-12 gs holdings
+55011,55044,family-2026-06-12 williams lake first nation
+71419,71338,family-2026-06-12 nanoose first nation
+34059,28876,family-2026-06-12 zas architects
+11652,11651,family-2026-06-12 mega technical holdings
+31894,24612,family-2026-06-12 ultra west estates
+5394,5393,family-2026-06-12 cormode dickson
+5395,5393,family-2026-06-12 cormode dickson
+5396,5393,family-2026-06-12 cormode dickson
+2922,2921,family-2026-06-12 aztec renovations refit
+6733,6732,family-2026-06-12 edon properties
+74096,73782,family-2026-06-12 vancouver school board
+19538,29110,family-2026-06-12 polis mccm
+11126,51856,family-2026-06-12 lydale construction
+11127,51856,family-2026-06-12 lydale construction
+53292,72382,family-2026-06-12 telus world of science
+51668,44063,family-2026-06-12 maher s
+7368,47033,family-2026-06-12 federation construction services
+10123,10121,family-2026-06-12 k shaw sons
+10124,10121,family-2026-06-12 k shaw sons
+69476,70257,family-2026-06-12 regional district of central kootenay
+10061,10062,family-2026-06-12 jones lang lasalle real estate services
+10063,10062,family-2026-06-12 jones lang lasalle real estate services
+70882,21276,family-2026-06-12 companion construction
+21810,20680,family-2026-06-12 604 deconstruction
+8118,8119,family-2026-06-12 getkate construction
+31131,55049,family-2026-06-12 property development
+33838,54309,family-2026-06-12 water street
+69830,69622,family-2026-06-12 snohetta dialog
+4635,4634,family-2026-06-12 cervus contractors equipment
+16129,16128,family-2026-06-12 stony valley
+71009,69335,family-2026-06-12 fraser region aboriginal friendship centre association
+71742,15272,family-2026-06-12 shanghai construction
+69744,54995,family-2026-06-12 sun rivers
+71273,70321,family-2026-06-12 alberni clayoquot regional district
+74118,68818,family-2026-06-12 saucier perrotte
+58849,60821,family-2026-06-12 insights learning and
+10325,71604,family-2026-06-12 kiewit construction services
+13422,13421,family-2026-06-12 pillar contracting
+7006,7005,family-2026-06-12 enterprise holdings
+70821,69276,family-2026-06-12 pgh consulting services
+32683,70906,family-2026-06-12 sdae development
+15834,15833,family-2026-06-12 sprague rosser
+71794,44325,family-2026-06-12 infracon construction
+4780,4779,family-2026-06-12 chief construction
+8284,8283,family-2026-06-12 good brothers
+55026,54991,family-2026-06-12 kwikwetlem first nation
+18632,18634,family-2026-06-12 wrd borger
+11569,11570,family-2026-06-12 mcnally contracting
+69316,69444,family-2026-06-12 allied reit
+889,18871,family-2026-06-12 legislative assembly
+43838,50747,family-2026-06-12 tech construction
+15195,15194,family-2026-06-12 sena solid waste holdings
+69843,71445,family-2026-06-12 pwl partnership
+7879,7862,family-2026-06-12 g w cox
+7880,7862,family-2026-06-12 g w cox
+67962,67852,family-2026-06-12 mcrobie architects interior
+7205,7204,family-2026-06-12 evi holdings
+68794,69295,family-2026-06-12 sn hetta dialog
+18184,18183,family-2026-06-12 wesbridge construction
+9960,9959,family-2026-06-12 jesco electrical
+70782,54522,family-2026-06-12 vancouver resource society
+18177,18175,family-2026-06-12 wells construction division of lafarge
+51935,6830,family-2026-06-12 elite construction
+22258,54734,family-2026-06-12 molnar group
+71605,10640,family-2026-06-12 laforce construction
+51738,29433,family-2026-06-12 circle square
+72224,17746,family-2026-06-12 various
+72262,17746,family-2026-06-12 various
+18318,18319,family-2026-06-12 western recreation
+54283,53885,family-2026-06-12 western bioenergy
+32206,32204,family-2026-06-12 abaca landscaping
+17532,17531,family-2026-06-12 uniglobe construction management
+54738,70564,family-2026-06-12 stober group
+46260,45837,family-2026-06-12 w a p fernando
+14387,71755,family-2026-06-12 revive construction
+47291,41242,family-2026-06-12 hybrid construction
+63159,49242,family-2026-06-12 dew engineering and
+18250,18249,family-2026-06-12 westcan acs
+9448,9447,family-2026-06-12 information engineering
+51595,71967,family-2026-06-12 true north
+10770,10769,family-2026-06-12 le roux road
+53950,69810,family-2026-06-12 orca west
+71695,17725,family-2026-06-12 van rooyen
+72222,30386,family-2026-06-12 darwin construction
+11303,11301,family-2026-06-12 manshield construction
+10233,10232,family-2026-06-12 keegan holdings
+13627,13626,family-2026-06-12 prairie view holdings
+71905,70562,family-2026-06-12 unitech construction management
+72183,72180,family-2026-06-12 not separately identified
+72423,72180,family-2026-06-12 not separately identified

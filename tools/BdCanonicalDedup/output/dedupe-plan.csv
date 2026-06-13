@@ -1,20 +1,17 @@
 ﻿GroupKey,SurvivorId,SurvivorName,SurvivorKind,LoserId,LoserName,LoserKind,FkRefsRepointed
-chandosconstruction,4708,Chandos Construction Ltd.,GC,72145,Chandos Construction,GC,3
+ankrommoisan,68681,Ankrom Moisan,Architect,75173,Ankrom Moisan Architects,Architect,1
+artcader,75204,"ART CADER, ARCHITECT INC.",Vendor,25645,ART CADER,Unknown,16
+clarkconstruction,54950,"Clark Construction Group, LLC",GC,75156,Clark Construction Group,GC,1
+coffmanengineers,38921,"Coffman Engineers, Inc.",Competitor,75200,Coffman Engineers,Competitor,1
 continuum,29098,Continuum Architecture Inc,Architect,74300,"Continuum Partners, LLC",Unknown,3
-egiscanada,6768,Egis Canada Ltd.,Vendor,74130,Egis Canada,Unknown,14
+faulknerbrowns,54656,Faulkner Browns Architects,Architect,75202,FaulknerBrowns Architecture Inc,Vendor,3
 fox,33395,Fox Architecture Inc.,Architect,74272,Fox Corporation,Unknown,3
-iredale,69703,Iredale Group Architecture,Architect,69367,Iredale Architecture,Architect,6
-klohncrippenberger,72122,Klohn Crippen Berger,Competitor,10395,KLOHN CRIPPEN BERGER LTD,Vendor,38
-metafor,11697,METAFOR Architecture Inc.,Architect,72113,Metafor,Architect,7
-next,71134,Next Architecture,Architect,73994,Next Architecture Inc.,Architect,4
-ntityixdevelopment,54992,Ntityix Development Corporation,Developer,69117,Ntityix Development Corp.,Buyer,5
-protostatixengineeringconsultants,71157,Protostatix Engineering Consultants Inc.,Competitor,71430,Protostatix Engineering Consultants,Competitor,3
-rizeallianceproperties,16,Rize Alliance Properties Ltd.,KorClient,54822,Rize Alliance Properties,Developer,4
-saifulbouquetstructuralengineers,38933,"Saiful Bouquet Structural Engineers, Inc.",Competitor,70145,Saiful Bouquet Structural Engineers,Competitor,7
-stantec,38934,Stantec Inc.,Competitor,69578,Stantec,Competitor,8
-stantec,38934,Stantec Inc.,Competitor,72280,Stantec Architecture,Architect,4
-stephensonengineering,16056,Stephenson Engineering Limited,Competitor,68752,Stephenson Engineering Ltd.,Competitor,19
-timberengineering,71008,Timber Engineering Inc.,Competitor,69432,Timber Engineering,Competitor,4
-timbrocontracting,40109,TIMBRO CONTRACTING LTD.,GC,51423,Timbro Contracting,GC,5
-wesgroupproperties,12,Wesgroup Properties Ltd.,KorClient,54758,Wesgroup Properties,Developer,21
-yamamoto,69660,Yamamoto Architecture,Architect,72277,Yamamoto Architecture Inc.,Architect,4
+fraserhealthauthorityvancouvercoastalhealthauthority,55132,Fraser Health AuthorityVancouver Coastal Health Authority,Buyer,75205,"Fraser Health Authority
+Vancouver Coastal Health Authority",Buyer,3
+glyconstruction,68688,"GLY Construction, Inc.",GC,75168,GLY Construction,GC,1
+hathawaydinwiddieconstruction,54944,Hathaway Dinwiddie Construction Company,GC,75154,Hathaway Dinwiddie Construction,GC,1
+kilroyrealty,74260,Kilroy Realty Corporation,Developer,75181,Kilroy Realty,Developer,1
+lundopsahl,68696,Lund Opsahl LLC,Competitor,75195,Lund Opsahl,Competitor,1
+mccarthybuildingcompanies,54943,"McCarthy Building Companies, Inc.",GC,75157,McCarthy Building Companies,GC,1
+saifulbouquetstructuralengineers,38933,"Saiful Bouquet Structural Engineers, Inc.",Competitor,75201,Saiful Bouquet Structural Engineers,Competitor,1
+sellenconstruction,54939,"Sellen Construction Co., Inc.",GC,75169,Sellen Construction,GC,1
