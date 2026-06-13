@@ -46,7 +46,9 @@ if (-not $ConnectionString) { throw 'KOR_OPPORTUNITIES_OPPORTUNITIESDB not set.'
 
 # kind -> (queue dir name, batch size). Kinds whose selectors self-limit
 # stay listed even when usually empty (proponents) — empty generation is
-# the freshness signal, not an error.
+# the freshness signal, not an error. GenKind/ExtraArgs let a queue reuse
+# another kind's selector with a mode switch (gap-fill-orgs = orgs -GapFill,
+# ranked by m136 vDossierCompleteness — the Dossier Completeness Engine).
 $kinds = [ordered]@{
     'projects'        = @{ Take = 150 }
     'honing-projects' = @{ Take = 150 }
@@ -55,6 +57,7 @@ $kinds = [ordered]@{
     'people'          = @{ Take = 150 }
     'honing-people'   = @{ Take = 120 }
     'proponents'      = @{ Take = 150 }
+    'gap-fill-orgs'   = @{ Take = 25; GenKind = 'orgs'; ExtraArgs = @{ GapFill = $true } }
 }
 
 $generateBatch = Join-Path $PSScriptRoot 'Generate-Batch.ps1'
@@ -128,7 +131,9 @@ foreach ($kind in $kinds.Keys) {
     # everything; whether a batch was written is verified on DISK, not by
     # parsing console text.
     $deepArgs = if ($kind -eq 'honing-orgs') { @{ DeepContext = $true } } else { @{} }  # 2026-06-12: deep is the default hone
-    & $generateBatch -Kind $kind -BatchNumber $next -Take $kinds[$kind].Take -OutDir $inputs -ConnectionString $ConnectionString @deepArgs *>&1 | Out-Null
+    if ($kinds[$kind].ExtraArgs) { foreach ($k in $kinds[$kind].ExtraArgs.Keys) { $deepArgs[$k] = $kinds[$kind].ExtraArgs[$k] } }
+    $genKind = $kinds[$kind].GenKind ?? $kind
+    & $generateBatch -Kind $genKind -BatchNumber $next -Take $kinds[$kind].Take -OutDir $inputs -ConnectionString $ConnectionString @deepArgs *>&1 | Out-Null
     $newBatch = Join-Path $inputs ("batch-{0:D3}.json" -f $next)
     $wrote = if (Test-Path $newBatch) { (Get-Content $newBatch -Raw | ConvertFrom-Json).Count } else { 0 }
 

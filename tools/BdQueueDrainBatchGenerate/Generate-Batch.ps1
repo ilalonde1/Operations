@@ -109,8 +109,19 @@ param(
     # upgrades the relationship graph the live dossiers will read.
     [switch] $PursuitGaps,
 
+    # 2026-06-12 Dossier Completeness Engine (orgs kind only): pick the top-N
+    # orgs by vDossierCompleteness.Score and package each with an explicit
+    # missingManifest (which dossier facets are absent, incl. named people
+    # lacking emails) + the existing briefs. The gap-fill PROMPT researches
+    # ONLY the manifest and re-emits the record augmented, never thinned.
+    [switch] $GapFill,
+
     [string] $ConnectionString = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
 )
+
+if ($GapFill -and $Kind -ne 'orgs') {
+    throw "-GapFill is only valid with -Kind orgs."
+}
 
 if (-not $ConnectionString) {
     throw "ConnectionString not set. Pass -ConnectionString or set env var KOR_OPPORTUNITIES_OPPORTUNITIESDB."
@@ -118,8 +129,9 @@ if (-not $ConnectionString) {
 if (-not $OutDir) {
     # 2026-06-12: QueueDrain lives on KOR-APP01. Ad-hoc dev-box runs default
     # to the share; the server-side nightly trigger passes -OutDir explicitly
-    # with the local root.
-    $OutDir = "\\KOR-APP01\QueueDrain\$Kind\inputs"
+    # with the local root. Gap-fill batches drain in their own queue (own
+    # PROMPT.md), not the first-pass orgs queue.
+    $OutDir = if ($GapFill) { "\\KOR-APP01\QueueDrain\gap-fill-orgs\inputs" } else { "\\KOR-APP01\QueueDrain\$Kind\inputs" }
 }
 if (-not (Test-Path $OutDir)) {
     throw "Output dir not found: $OutDir"
@@ -147,6 +159,149 @@ try {
 
     switch ($Kind) {
         'orgs' {
+            if ($GapFill) {
+            # Dossier Completeness Engine: rank by m136 vDossierCompleteness
+            # Score (importance x missing-fraction) and package the gap
+            # manifest. The 7-day FirmNarrativeHoning guard keeps last
+            # night's targets out of tonight's batch — gap-fill output lands
+            # on that provider row, so a drained org self-excludes.
+            $cmd.CommandText = @"
+-- Materialize the completeness view ONCE: pushing the name filters into the
+-- view query makes the optimizer re-evaluate its aggregations per predicate
+-- (180s+ timeout, 2026-06-12); against #dc the same filters are instant.
+SELECT v.* INTO #dc FROM opportunities.vDossierCompleteness v WHERE v.Score > 0;
+
+SELECT TOP (@take)
+    v.CanonicalOrgId, v.DisplayName, v.Kind,
+    v.Briefed, v.Honed, v.HasPeople3, v.AnyEmail, v.HasPlays, v.PursuitLinked,
+    v.PeopleCount, v.PeopleWithEmail, v.KeyPeopleCount, v.OpenActions, v.PursuitLinks,
+    CAST(v.Score AS decimal(9,2)) AS Score,
+    fn.ResultJson AS FirstPassNarrative,
+    fh.ResultJson AS HoningNarrative
+FROM #dc v
+LEFT JOIN opportunities.CanonicalOrgEnrichment fn ON fn.CanonicalOrgId = v.CanonicalOrgId
+    AND fn.ProviderName = N'FirmNarrative' AND fn.Status = N'ok'
+LEFT JOIN opportunities.CanonicalOrgEnrichment fh ON fh.CanonicalOrgId = v.CanonicalOrgId
+    AND fh.ProviderName = N'FirmNarrativeHoning' AND fh.Status = N'ok'
+WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment eg
+                  WHERE eg.CanonicalOrgId = v.CanonicalOrgId AND eg.ProviderName = N'FirmNarrativeHoning'
+                    AND eg.LastRefreshAtUtc >= DATEADD(DAY, -7, sysdatetimeoffset()))
+  -- multi-entity rows are dedup work, not research work
+  AND v.DisplayName NOT LIKE N'%/%' AND v.DisplayName NOT LIKE N'%;%'
+  -- placeholder names (no must-contain-space rule here: SOM/HGA/Mithun are
+  -- legit single-word gap-fill targets, unlike raw first-pass rows)
+  AND v.DisplayName NOT IN (N'Architect', N'Architects', N'GC', N'General Contractor',
+                            N'Developer', N'Developers', N'Buyer', N'Competitor',
+                            N'Owner', N'Contractor', N'Engineer', N'Engineers',
+                            N'Architectural Firm', N'Construction', N'Builder', N'Consultant',
+                            N'Architect & Engineer', N'Unknown', N'Other', N'Various')
+  AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' '+LOWER(v.DisplayName)+N' ') = 0
+  AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' '+LOWER(v.DisplayName)+N' ') = 0
+  AND LEN(v.DisplayName) >= 3   -- SOM / HGA are legit; 1-2 char names are junk
+ORDER BY v.Score DESC;
+"@
+            $r = $cmd.ExecuteReader()
+            $rows = @()
+            while ($r.Read()) {
+                $flags = [ordered]@{
+                    briefed       = [bool]$r.GetValue(3)
+                    honed         = [bool]$r.GetValue(4)
+                    hasPeople3    = [bool]$r.GetValue(5)
+                    anyEmail      = [bool]$r.GetValue(6)
+                    hasPlays      = [bool]$r.GetValue(7)
+                    pursuitLinked = [bool]$r.GetValue(8)
+                }
+                $rows += [ordered]@{
+                    id = [int64]$r.GetValue(0)
+                    displayName = $r.GetValue(1)
+                    orgKind = $r.GetValue(2)
+                    completenessScore = [decimal]$r.GetValue(14)
+                    flags = $flags
+                    peopleCount = [int]$r.GetValue(9)
+                    peopleWithEmail = [int]$r.GetValue(10)
+                    openActions = [int]$r.GetValue(12)
+                    pursuitLinks = [int]$r.GetValue(13)
+                    existingBriefs = [ordered]@{
+                        firstPassNarrative = if ($r.IsDBNull(15)) { $null } else { try { $r.GetValue(15) | ConvertFrom-Json } catch { $null } }
+                        honingNarrative    = if ($r.IsDBNull(16)) { $null } else { try { $r.GetValue(16) | ConvertFrom-Json } catch { $null } }
+                    }
+                }
+            }
+            $r.Close()
+
+            # Per-org gap context: named people (with contact-presence flags —
+            # the manifest names exactly who lacks an email) + linked active
+            # projects with verdicts (the plays gap needs project context).
+            foreach ($row in $rows) {
+                $ctxCmd = $conn.CreateCommand()
+                $ctxCmd.CommandTimeout = 60
+                $ctxCmd.Parameters.AddWithValue("@oid", [int64]$row.id) | Out-Null
+
+                $ctxCmd.CommandText = @"
+SELECT TOP 15 p.DisplayName, a.Title,
+    CASE WHEN NULLIF(LTRIM(RTRIM(p.Email)), '') IS NOT NULL THEN 1 ELSE 0 END,
+    CASE WHEN NULLIF(LTRIM(RTRIM(p.LinkedinUrl)), '') IS NOT NULL THEN 1 ELSE 0 END
+FROM opportunities.IntelPersonAffiliation a
+JOIN opportunities.IntelPerson p ON p.Id = a.IntelPersonId AND p.RetiredAtUtc IS NULL
+WHERE a.CanonicalOrgId = @oid AND a.RetiredAtUtc IS NULL
+ORDER BY a.UpdatedAtUtc DESC;
+"@
+                $cr = $ctxCmd.ExecuteReader()
+                $people = @()
+                while ($cr.Read()) {
+                    $people += [ordered]@{
+                        name = $cr.GetValue(0)
+                        title = if ($cr.IsDBNull(1)) { $null } else { $cr.GetValue(1) }
+                        hasEmail = ([int]$cr.GetValue(2) -eq 1)
+                        hasLinkedin = ([int]$cr.GetValue(3) -eq 1)
+                    }
+                }
+                $cr.Close()
+                $row.knownPeople = $people
+
+                $ctxCmd.CommandText = @"
+SELECT TOP 12 m.Id, m.ProjectName, m.ProjectStage, m.Province,
+    CASE WHEN m.ArchitectCanonicalOrgId = @oid THEN N'Architect' WHEN m.GeneralContractorCanonicalOrgId = @oid THEN N'GC'
+         WHEN m.StructuralEngineerCanonicalOrgId = @oid THEN N'StructuralEngineer' ELSE N'Proponent' END AS Role,
+    (SELECT TOP 1 COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),''))
+     FROM opportunities.MajorProjectEnrichment e WHERE e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning') AS Verdict
+FROM opportunities.MajorProjectsInventory m
+WHERE m.RetiredAtUtc IS NULL
+  AND (m.ArchitectCanonicalOrgId = @oid OR m.GeneralContractorCanonicalOrgId = @oid
+       OR m.StructuralEngineerCanonicalOrgId = @oid OR m.ProponentCanonicalOrgId = @oid)
+ORDER BY CASE (SELECT TOP 1 COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),''))
+              FROM opportunities.MajorProjectEnrichment e WHERE e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning')
+         WHEN N'PURSUE_URGENT' THEN 0 WHEN N'PURSUE' THEN 1 WHEN N'MONITOR' THEN 2 ELSE 3 END,
+         m.EstimatedCostCad DESC;
+"@
+                $cr = $ctxCmd.ExecuteReader()
+                $projects = @()
+                while ($cr.Read()) {
+                    $projects += [ordered]@{
+                        mpiId = [int64]$cr.GetValue(0); projectName = $cr.GetValue(1)
+                        stage = if ($cr.IsDBNull(2)) { $null } else { $cr.GetValue(2) }
+                        province = if ($cr.IsDBNull(3)) { $null } else { $cr.GetValue(3) }
+                        role = $cr.GetValue(4)
+                        verdict = if ($cr.IsDBNull(5)) { $null } else { $cr.GetValue(5) }
+                    }
+                }
+                $cr.Close()
+                $row.linkedActiveProjects = $projects
+
+                # Explicit manifest: the PROMPT researches ONLY these lines.
+                $manifest = @()
+                if (-not $row.flags.briefed) { $manifest += 'firmBrief: no FirmNarrative exists — produce the full firm brief (practice areas, markets, scale, HQ + offices)' }
+                if (-not $row.flags.honed) { $manifest += 'deepIntel: no honing pass exists — SE allegiances, procurement style, momentum since first pass' }
+                if (-not $row.flags.hasPeople3) { $manifest += ('people: only {0} known (need >=3 named decision-makers with titles — principals, studio leads, selection authorities)' -f $row.peopleCount) }
+                $noEmail = @($people | Where-Object { -not $_.hasEmail } | ForEach-Object name | Select-Object -Unique)
+                if ($noEmail.Count -gt 0) { $manifest += ('emails: {0} of {1} known people lack an email — find professional emails for: {2}' -f $noEmail.Count, $people.Count, ($noEmail -join '; ')) }
+                elseif (-not $row.flags.anyEmail) { $manifest += 'emails: zero contact emails on file — every person you add needs an email or LinkedIn URL where findable' }
+                if (-not $row.flags.hasPlays) { $manifest += 'plays: no open KOR actions — emit 2-4 specific actions (named person + named project + timing + what KOR leads with)' }
+                if (-not $row.flags.pursuitLinked) { $manifest += 'graph: no active project links — capture current/upcoming projects as signals so the graph can link them' }
+                $row.missingManifest = $manifest
+            }
+            }
+            else {
             $cmd.CommandText = @"
 SELECT TOP (@take) co.Id, co.DisplayName, co.Kind
 FROM opportunities.CanonicalOrg co
@@ -230,6 +385,7 @@ ORDER BY
                 }
             }
             $r.Close()
+            }
         }
         'projects' {
             $cmd.CommandText = @"
