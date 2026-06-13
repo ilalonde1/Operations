@@ -127,7 +127,8 @@ foreach ($kind in $kinds.Keys) {
     # Generate-Batch reports via Write-Host (information stream) — capture
     # everything; whether a batch was written is verified on DISK, not by
     # parsing console text.
-    & $generateBatch -Kind $kind -BatchNumber $next -Take $kinds[$kind].Take -OutDir $inputs -ConnectionString $ConnectionString *>&1 | Out-Null
+    $deepArgs = if ($kind -eq 'honing-orgs') { @{ DeepContext = $true } } else { @{} }  # 2026-06-12: deep is the default hone
+    & $generateBatch -Kind $kind -BatchNumber $next -Take $kinds[$kind].Take -OutDir $inputs -ConnectionString $ConnectionString @deepArgs *>&1 | Out-Null
     $newBatch = Join-Path $inputs ("batch-{0:D3}.json" -f $next)
     $wrote = if (Test-Path $newBatch) { (Get-Content $newBatch -Raw | ConvertFrom-Json).Count } else { 0 }
 
