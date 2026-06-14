@@ -203,6 +203,7 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
                 SubmissionDeadlineUtc = await FindDeadlineAsync(link).ConfigureAwait(false),
                 ExternalReference = externalReference,
                 RawJson = $"{linkText}|{href}",
+                ProjectProvince = "AB",
             });
         }
 
