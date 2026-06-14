@@ -209,6 +209,10 @@ public sealed class OpportunitiesWorkerOptions
     public string? ApcInterestEnrichmentCronSchedule { get; set; }
     public int ApcInterestEnrichmentBatchSize { get; set; } = 30;
 
+    public bool BcBidPlanTakerEnrichmentEnabled { get; set; } = true;
+    public string? BcBidPlanTakerEnrichmentCronSchedule { get; set; }
+    public int BcBidPlanTakerEnrichmentBatchSize { get; set; } = 20;
+
     public bool BdDeltekLinkDryRunEnabled { get; set; } = true;
     public int BdDeltekLinkDryRunMaxTargets { get; set; } = 5000;
     public int BdDeltekLinkDryRunAlertThreshold { get; set; } = 25;

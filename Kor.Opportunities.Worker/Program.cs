@@ -602,6 +602,7 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             // extractor + per-canonical store. Both the Worker job and the
             // one-shot ApcInterestBackfill tool resolve to the same extractor.
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ApcInterestExtractor>();
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidPlanTakerExtractor>();
             builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore>(
                 sp =>
                 {
@@ -857,6 +858,16 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["ApcInterestEnrichmentCronSchedule"] ?? "0 17 0/1 * * ?";
       t.ForJob(apcInterestEnrichmentKey)
        .WithIdentity("ApcInterestEnrichmentTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var bcBidPlanTakerEnrichmentKey = new JobKey(nameof(Kor.Opportunities.Worker.Services.BcBidPlanTakerEnrichmentJob));
+  q.AddJob<Kor.Opportunities.Worker.Services.BcBidPlanTakerEnrichmentJob>(opts => opts.WithIdentity(bcBidPlanTakerEnrichmentKey));
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["BcBidPlanTakerEnrichmentCronSchedule"] ?? "0 43 0/2 * * ?";
+      t.ForJob(bcBidPlanTakerEnrichmentKey)
+       .WithIdentity("BcBidPlanTakerEnrichmentTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
