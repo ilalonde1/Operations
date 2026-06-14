@@ -51,6 +51,7 @@ public static class PrimeConsultantClassifier
         "design service",
         "design consultant",
         "design consultants",
+        "consultant services",
         "building design",
     };
 
@@ -172,6 +173,27 @@ public static class PrimeConsultantClassifier
         "website design",
         "web design",
         "photography",
+        "school bus",
+    };
+
+    private static readonly string[] ConstructionManagementSignals =
+    {
+        "construction management",
+        "construction manager",
+    };
+
+    private static readonly string[] BuildingReplacementPhrases =
+    {
+        "replacement school",
+        "school replacement",
+        "k-12 replacement",
+        "replacement arena",
+        "replacement hospital",
+        "replacement facility",
+        "modular addition",
+        "classroom addition",
+        "building replacement",
+        "replacement building",
     };
 
     public static PrimeRfpClassification Classify(Opportunity o)
@@ -191,6 +213,7 @@ public static class PrimeConsultantClassifier
             || ContainsAny(text, HardNoiseSignals)
             || (!hasBuilding && ContainsAny(title, NoiseSignals))
             || hasArchitectExclusion;
+        var hasConstructionManagement = ContainsAny(title, ConstructionManagementSignals);
 
         var hasStrongFacility = ContainsAny(text, StrongFacilitySignals);
         var hasDesign = ContainsAny(text, DesignSignals);
@@ -203,10 +226,12 @@ public static class PrimeConsultantClassifier
         // ... Design", "Clinic Relocation Design"). Restricted to StrongFacility
         // (not generic "building") to keep precision.
         var tier2b = hasStrongFacility && hasDesign && !excluded;
-        var isPrime = tier1 || tier2 || tier2b;
+        var tier2c = ContainsAny(title, BuildingReplacementPhrases) && !excluded;
+        var tier3 = hasConstructionManagement && hasStrongFacility && !excluded;
+        var isPrime = tier1 || tier2 || tier2b || tier2c || tier3;
         var confidence = CalculateConfidence(
             tier1,
-            tier2 || tier2b,
+            tier2 || tier2b || tier2c || tier3,
             hasRfp,
             publicBuyer,
             buildingSignalCount,
