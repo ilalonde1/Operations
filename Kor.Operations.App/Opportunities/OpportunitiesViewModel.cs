@@ -82,7 +82,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private OpportunityStatus? _statusFilter;
     private RelevanceTier? _tierFilter;
     private string? _provinceFilter;
-    private bool _primeConsultantOnly;
+    private bool _primeConsultantOnly = true;
 
     public OpportunitiesViewModel(
         IOpportunityStore store,
@@ -383,7 +383,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         StatusMessage = "Loading…";
         try
         {
-            var rows = await _store.ListAsync(ct, includeClosed: false, includeNonPrime: false).ConfigureAwait(true);
+            var rows = await _store.ListAsync(ct, includeClosed: false, includeNonPrime: true).ConfigureAwait(true);
             ct.ThrowIfCancellationRequested();
 
             var preservedKey = Selected?.OpportunityKey;
