@@ -15,6 +15,7 @@ using Kor.Operations.Services;
 using Kor.Operations.App.Crm;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Core.Scoring;
+using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Heartbeat;
 using Kor.Opportunities.Data.Ingestion;
@@ -53,6 +54,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private readonly ICrmActivityStore _activityStore;
     private readonly ICrmContactStore _contactStore;
     private readonly IOpportunityObservationStore _observationStore;
+    private readonly IOpportunityInterestedFirmStore _interestStore;
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
     // RefreshHeartbeatAsync runs the assignment off the UI thread). Mirrors the
@@ -93,7 +95,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         ICrmEngagementStore engagementStore,
         ICrmActivityStore activityStore,
         ICrmContactStore contactStore,
-        IOpportunityObservationStore observationStore)
+        IOpportunityObservationStore observationStore,
+        IOpportunityInterestedFirmStore interestStore)
     {
         _store = store;
         _heartbeatStore = heartbeatStore;
@@ -106,6 +109,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         _activityStore = activityStore ?? throw new ArgumentNullException(nameof(activityStore));
         _contactStore = contactStore ?? throw new ArgumentNullException(nameof(contactStore));
         _observationStore = observationStore ?? throw new ArgumentNullException(nameof(observationStore));
+        _interestStore = interestStore ?? throw new ArgumentNullException(nameof(interestStore));
 
         FilteredOpportunitiesView = CollectionViewSource.GetDefaultView(Opportunities);
         FilteredOpportunitiesView.Filter = OpportunityFilterPredicate;
@@ -191,6 +195,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     public ObservableCollection<CrmActivity> SelectedActivities { get; } = new();
     public ObservableCollection<CrmContact> SelectedContacts { get; } = new();
+    public ObservableCollection<OpportunityInterestedFirm> SelectedInterestedFirms { get; } = new();
+    public bool HasSelectedInterestedFirms => SelectedInterestedFirms.Count > 0;
 
     public OpportunityRowView? Selected
     {
@@ -485,6 +491,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             OnPropertyChanged(nameof(ScoreFactorsHeader));
             SelectedActivities.Clear();
             SelectedContacts.Clear();
+            SelectedInterestedFirms.Clear();
+            OnPropertyChanged(nameof(HasSelectedInterestedFirms));
             return;
         }
 
@@ -504,6 +512,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             OnPropertyChanged(nameof(ScoreFactorsHeader));
             SelectedActivities.Clear();
             SelectedContacts.Clear();
+            SelectedInterestedFirms.Clear();
+            OnPropertyChanged(nameof(HasSelectedInterestedFirms));
 
             // Source detail: pull observations and pick the freshest usable URL and description.
             try
@@ -583,6 +593,22 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
                     SelectedContacts.Add(c);
                 }
             }
+
+            try
+            {
+                var firms = await _interestStore.ListByOpportunityAsync(current.Model.Id, ct).ConfigureAwait(true);
+                if (_selected?.Model.Id == current.Model.Id)
+                {
+                    SelectedInterestedFirms.Clear();
+                    foreach (var f in firms)
+                        SelectedInterestedFirms.Add(f);
+                    OnPropertyChanged(nameof(HasSelectedInterestedFirms));
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Interested firm load for opportunity {OpportunityId} failed.", current.Model.Id);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -608,6 +634,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
                 OnPropertyChanged(nameof(ScoreFactorsHeader));
                 SelectedActivities.Clear();
                 SelectedContacts.Clear();
+                SelectedInterestedFirms.Clear();
+                OnPropertyChanged(nameof(HasSelectedInterestedFirms));
             }
 
             // best-effort detail load; leave panels empty

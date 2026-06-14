@@ -422,6 +422,26 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+
+                        <!-- Interested Firms -->
+                        <TextBlock Text="Interested Firms" FontWeight="SemiBold" Margin="0,12,0,4"
+                                   Visibility="{Binding HasSelectedInterestedFirms, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                        <ItemsControl ItemsSource="{Binding SelectedInterestedFirms}" Margin="0,0,0,10"
+                                      Visibility="{Binding HasSelectedInterestedFirms, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,0,0,1" Padding="0,4">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding RawFirmName}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding SourcePortal}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding ExpressedAtUtc, StringFormat='{}{0:yyyy-MM-dd}'}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </ScrollViewer>
             </Border>

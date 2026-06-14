@@ -85,6 +85,8 @@ internal static class OpportunitiesModule
             new Kor.Opportunities.Data.Awards.SqlBdResearchTriggerStore(
                 options.OpportunitiesDb,
                 sp.GetService<ILogger<Kor.Opportunities.Data.Awards.SqlBdResearchTriggerStore>>()));
+        services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore>(
+            _ => new Kor.Opportunities.Data.Awards.SqlOpportunityInterestedFirmStore(options.OpportunitiesDb));
 
         // Phase 2B: WPF feature window. Both transient so a Close+reopen cycle
         // gets a fresh VM (no stale data from a previous session). Mirrors the
