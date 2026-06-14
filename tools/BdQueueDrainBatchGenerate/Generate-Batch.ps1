@@ -946,7 +946,7 @@ WITH TopTargets AS (
       AND (@category IS NULL OR m.ProjectCategoryName = @category)
       AND (@province IS NULL OR m.Province = @province)
       AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
-      AND NOT EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment eh WHERE eh.MajorProjectsInventoryId = m.Id AND eh.ProviderName = N'ProjectBriefHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()))
+      AND (@includeRecentlyHoned = 1 OR NOT EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment eh WHERE eh.MajorProjectsInventoryId = m.Id AND eh.ProviderName = N'ProjectBriefHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset())))
     ORDER BY ActionCount DESC, m.EstimatedCostCad DESC
 )
 SELECT * FROM TopTargets;
