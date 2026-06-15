@@ -1478,3 +1478,11 @@ LoserId,SurvivorId,Reason
 55078,30792,family-ml-2026-06-12 pacific reach
 17628,29632,family-ml-2026-06-12 upa construction
 72247,28694,family-ml-2026-06-12 beedie living
+# 2026-06-14 org-name-repair collision pairs. Both orgs verified active (loser+survivor)
+# before this append. Fuzzy gate rejects because the loser carries acronym-prefix noise
+# that the repair campaign exists to remove.
+# 572 "Infrastructure" -> 54978 "Infrastructure BC": truncated name, same entity.
+572,54978
+# 70296 "NAIT (Northern Alberta Institute of Technology)" -> 852 "Northern Alberta
+# Institute of Technology": NAIT prefix throws fuzzy gate; same post-secondary institution.
+70296,852
