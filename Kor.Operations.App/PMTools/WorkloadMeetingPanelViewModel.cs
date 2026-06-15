@@ -317,6 +317,17 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     {
         var selection = SelectedMeeting;
         if (selection == null || string.IsNullOrWhiteSpace(wbs1)) return false;
+
+        // Round 52j (review finding 3): unsetting priority (0) DELETEs the
+        // WorkloadMeetingProjects row, and notes live ON that row. Any note the
+        // user typed in the last 600ms is still in the per-Wbs1 debounce queue;
+        // if it fired it would UPDATE zero rows — a silent no-op that misleads
+        // the user into thinking the note saved. Invalidate that pending save
+        // now (bump the version so the queued closure drops itself), which
+        // matches the store semantics: no priority row ⇒ no note.
+        if (priority == 0)
+            _projectNotesVersions.AddOrUpdate(wbs1, 1, (_, v) => v + 1);
+
         // Snapshot the current meeting selection generation so we can detect if the user switched meetings
         // while our async work was in flight.
         var genAtStart = System.Threading.Interlocked.Read(ref _meetingSelectionGeneration);
