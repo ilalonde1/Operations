@@ -65,12 +65,74 @@ internal static class Program
         CommentHandling = JsonCommentHandling.Skip,
     };
 
+    private static readonly ResearchStreamSpec[] ResearchStreams =
+    [
+        new("contractor", "KOR-Contractor-Research", "import-payload.json", "contractor"),
+        new("public-sector", "KOR-PublicSector-Research", "buyer-profile.json", "public-sector-buyer-profile"),
+        new("public-sector", "KOR-PublicSector-Research", "projects-payload.json", "public-sector-projects"),
+        new("indigenous", "KOR-Indigenous-Development", "dev-corps-payload.json", "indigenous-dev-corps"),
+        new("indigenous", "KOR-Indigenous-Development", "projects-payload.json", "indigenous-dev-projects"),
+        new("indigenous", "KOR-Indigenous-Development", "partner-graph.json", "indigenous-partner-graph"),
+        new("bc-dev", "KOR-BC-Development-Pipeline", "projects-payload.json", "bc-dev"),
+        new("la", "KOR-LA-Market", "firms-payload.json", "us-market-firms"),
+        new("la", "KOR-LA-Market", "projects-payload.json", "us-market-projects"),
+        new("pacnw", "KOR-PacNW-Market", "firms-payload.json", "us-market-firms"),
+        new("pacnw", "KOR-PacNW-Market", "projects-payload.json", "us-market-projects"),
+        new("alberta", "KOR-Alberta-Market", "firms-payload.json", "alberta-firms"),
+        new("alberta", "KOR-Alberta-Market", "projects-payload.json", "alberta-projects"),
+        new("institutional", "KOR-Institutional-Pipeline", "owners-payload.json", "institutional-owners"),
+        new("institutional", "KOR-Institutional-Pipeline", "projects-payload.json", "institutional-projects"),
+        new("prime-targeting", "KOR-Prime-Consultant-Strategy", "primes-payload.json", "prime-targeting"),
+        new("prime-contacts", "KOR-Prime-DecisionMakers", "people-payload.json", "prime-contacts"),
+        new("island-okanagan", "KOR-Island-Okanagan-Ecosystem", "orgs.json", "island-okanagan-orgs"),
+        new("island-okanagan", "KOR-Island-Okanagan-Ecosystem", "projects.json", "island-okanagan-projects"),
+        new("intel-gathering", "KOR-Intel-Gathering", "outputs/team-awards.json", "intel-gathering-team-awards"),
+        new("owner-pipelines", "KOR-Intel-Gathering", "outputs/owner-pipelines.json", "owner-pipelines"),
+        new("competitor-profiles", "KOR-Intel-Gathering", "outputs/competitor-profiles.json", "competitor-profiles"),
+        new("decision-makers", "KOR-Intel-Gathering", "outputs/people.json", "decision-makers"),
+        new("data-honing", "KOR-Data-Honing", "outputs/orgs-enriched.json", "data-honing"),
+        new("projects-honing", "KOR-Data-Honing", "outputs/projects-enriched.json", "projects-honing"),
+        new("registries", "KOR-Registry-Graph", "outputs/firms.json", "registries"),
+        new("owner-procurement", "KOR-Owner-Procurement", "outputs/owner-procurement.json", "owner-procurement"),
+        new("competitor-signals", "KOR-Competitor-Signals", "outputs/competitor-signals.json", "competitor-signals"),
+        new("structural-partner-map", "KOR-Structural-Partner-Map", "outputs/structural-partner-map.json", "structural-partner-map"),
+        new("displacement-briefs", "KOR-Structural-Partner-Map", "outputs/displacement-briefs.json", "displacement-briefs"),
+        new("sub-consultants", "KOR-SubConsultants", "outputs/subconsultant-firms.json", "sub-consultants"),
+        new("facility-renewal", "KOR-Facility-Renewal", "outputs/renewal-pipeline.json", "facility-renewal"),
+        new("capital-plans", "KOR-Capital-Plans", "outputs/capital-pipeline.json", "capital-plans"),
+        new("midmarket", "KOR-MidMarket-Pipeline", "outputs/midmarket-pipeline.json", "midmarket"),
+        new("architect-forecast", "KOR-Architect-Forecast", "outputs/architect-forecast.json", "architect-forecast"),
+        new("pipeline-seats", "KOR-Pipeline-Seats", "outputs/project-seats.json", "pipeline-seats"),
+        new("project-reverify", "KOR-Project-Reverify", "outputs/project-status.json", "project-reverify"),
+        new("industry-events", "KOR-Industry-Events", "outputs/industry-events.json", "industry-events"),
+        new("kor-capability", "KOR-Capability-Corpus", "outputs/kor-capability-corpus.json", "kor-capability-corpus"),
+        new("kor-capability", "KOR-Capability-Corpus", "outputs/kor-roster.json", "kor-roster"),
+        new("project-teams", "KOR-Project-Teams", "outputs/project-teams.json", "project-teams"),
+        new("competitor-projects", "KOR-Competitor-Portfolios", "outputs/competitor-projects.json", "competitor-projects"),
+        new("structural-pipeline", "KOR-Seismic-MassTimber", "outputs/structural-pipeline.json", "structural-pipeline"),
+        new("indigenous-projects", "KOR-Indigenous-Pipeline", "outputs/indigenous-projects.json", "indigenous-projects"),
+        new("indigenous-orgs", "KOR-Indigenous-Pipeline", "outputs/indigenous-orgs.json", "indigenous-orgs"),
+        new("db-contractors", "KOR-DesignBuild-Contractors", "outputs/db-contractors.json", "db-contractors"),
+        new("incumbent-rosters", "KOR-Incumbent-Rosters", "outputs/incumbent-rosters.json", "incumbent-rosters"),
+        new("capital-funding-signals", "KOR-Capital-Funding-Signals", "outputs/capital-funding-signals.json", "capital-funding-signals"),
+        new("seismic-pipeline", "KOR-Seismic-Pipeline", "outputs/seismic-pipeline.json", "seismic-pipeline"),
+        new("island-okanagan-pairing", "KOR-Island-Okanagan-Pairing", "outputs/pairings.json", "pairing"),
+        new("lower-mainland-pairing", "KOR-LowerMainland-Pairing", "outputs/pairings.json", "pairing"),
+        new("edmonton-pairing", "KOR-Edmonton-Pairing", "outputs/pairings.json", "pairing"),
+    ];
+
     private static async Task<int> Main(string[] args)
     {
         try
         {
             var options = ImportOptions.Parse(args);
             var canonicalIngestMode = !string.IsNullOrWhiteSpace(options.IngestCanonicalFolder);
+            if (options.Audit)
+            {
+                RunResearchFileAudit(options);
+                return 0;
+            }
+
             if ((!options.DryRun || canonicalIngestMode) && string.IsNullOrWhiteSpace(options.OpportunitiesDb))
             {
                 Console.Error.WriteLine("Missing connection string. Set KOR_OPPORTUNITIES_OPPORTUNITIESDB or pass --db.");
@@ -608,8 +670,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Contractor-Research", "import-payload.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Contractor-Research", "import-payload.json", "contractor", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -699,7 +761,26 @@ ORDER BY Id;";
             return;
         }
 
-        foreach (var path in Directory.GetFiles(dir, "buyer-profile.json", SearchOption.AllDirectories).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+        var buyerProfilePaths = Array.Empty<string>();
+        var standardBuyerPath = Path.Combine(options.BaseDirectory, "KOR-PublicSector-Research", "outputs", "import.json");
+        var buyerStandardReason = "not found";
+        if (File.Exists(standardBuyerPath) && StandardEnvelopeMatchesKind(standardBuyerPath, "public-sector-buyer-profile", out buyerStandardReason))
+        {
+            Console.WriteLine($"[FILE] KOR-PublicSector-Research: using standard {standardBuyerPath}");
+            buyerProfilePaths = [standardBuyerPath];
+        }
+        else
+        {
+            var reason = File.Exists(standardBuyerPath)
+                ? $"not usable for kind 'public-sector-buyer-profile' ({buyerStandardReason})"
+                : "not found";
+            Console.WriteLine($"[WARN] KOR-PublicSector-Research: outputs/import.json {reason}; using recursive legacy buyer-profile.json files under {dir}");
+            buyerProfilePaths = Directory.GetFiles(dir, "buyer-profile.json", SearchOption.AllDirectories)
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        foreach (var path in buyerProfilePaths)
         {
             ct.ThrowIfCancellationRequested();
             if (!TryLoadJson(path, out var doc))
@@ -763,8 +844,8 @@ ORDER BY Id;";
             }
         }
 
-        var projectsPath = Path.Combine(dir, "projects-payload.json");
-        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-PublicSector-Research", "projects-payload.json", "public-sector-projects", out var projectsPath)
+            || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
             return;
@@ -772,7 +853,12 @@ ORDER BY Id;";
 
         using (projectsDoc)
         {
-            foreach (var project in EnumerateArray(projectsDoc.RootElement, "projects"))
+            if (!TrySelectEnvelopeOrLegacyItems(projectsDoc, "public-sector-projects", "public-sector", "projects", "projects", out var projectItems))
+            {
+                return;
+            }
+
+            foreach (var project in projectItems.EnumerateArray())
             {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
@@ -841,8 +927,8 @@ ORDER BY Id;";
         CancellationToken ct)
     {
         var dir = Path.Combine(options.BaseDirectory, "KOR-Indigenous-Development");
-        var devCorpsPath = Path.Combine(dir, "dev-corps-payload.json");
-        if (TryLoadJson(devCorpsPath, out var devCorpsDoc))
+        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Indigenous-Development", "dev-corps-payload.json", "indigenous-dev-corps", out var devCorpsPath)
+            && TryLoadJson(devCorpsPath, out var devCorpsDoc))
         {
             using (devCorpsDoc)
             {
@@ -888,8 +974,8 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        var projectsPath = Path.Combine(dir, "projects-payload.json");
-        if (TryLoadJson(projectsPath, out var projectsDoc))
+        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Indigenous-Development", "projects-payload.json", "indigenous-dev-projects", out var projectsPath)
+            && TryLoadJson(projectsPath, out var projectsDoc))
         {
             using (projectsDoc)
             {
@@ -965,8 +1051,8 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        var partnerGraphPath = Path.Combine(dir, "partner-graph.json");
-        if (TryLoadJson(partnerGraphPath, out var partnerGraphDoc))
+        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Indigenous-Development", "partner-graph.json", "indigenous-partner-graph", out var partnerGraphPath)
+            && TryLoadJson(partnerGraphPath, out var partnerGraphDoc))
         {
             using (partnerGraphDoc)
             {
@@ -1019,8 +1105,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-BC-Development-Pipeline", "projects-payload.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-BC-Development-Pipeline", "projects-payload.json", "bc-dev", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -1140,8 +1226,8 @@ ORDER BY Id;";
     {
         var dir = Path.Combine(options.BaseDirectory, directoryName);
 
-        var firmsPath = Path.Combine(dir, "firms-payload.json");
-        if (TryLoadJson(firmsPath, out var firmsDoc))
+        if (TryResolveResearchFile(options.BaseDirectory, directoryName, "firms-payload.json", "us-market-firms", out var firmsPath)
+            && TryLoadJson(firmsPath, out var firmsDoc))
         {
             using (firmsDoc)
             {
@@ -1187,8 +1273,8 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        var projectsPath = Path.Combine(dir, "projects-payload.json");
-        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        if (!TryResolveResearchFile(options.BaseDirectory, directoryName, "projects-payload.json", "us-market-projects", out var projectsPath)
+            || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
             return;
@@ -1307,8 +1393,8 @@ ORDER BY Id;";
         var dir = Path.Combine(options.BaseDirectory, "KOR-Alberta-Market");
         const string enrichmentProviderName = "AlbertaMarketResearch";
 
-        var firmsPath = Path.Combine(dir, "firms-payload.json");
-        if (TryLoadJson(firmsPath, out var firmsDoc))
+        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Alberta-Market", "firms-payload.json", "alberta-firms", out var firmsPath)
+            && TryLoadJson(firmsPath, out var firmsDoc))
         {
             using (firmsDoc)
             {
@@ -1354,8 +1440,8 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        var projectsPath = Path.Combine(dir, "projects-payload.json");
-        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Alberta-Market", "projects-payload.json", "alberta-projects", out var projectsPath)
+            || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
             return;
@@ -1457,8 +1543,8 @@ ORDER BY Id;";
     {
         var dir = Path.Combine(options.BaseDirectory, "KOR-Institutional-Pipeline");
 
-        var ownersPath = Path.Combine(dir, "owners-payload.json");
-        if (TryLoadJson(ownersPath, out var ownersDoc))
+        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Institutional-Pipeline", "owners-payload.json", "institutional-owners", out var ownersPath)
+            && TryLoadJson(ownersPath, out var ownersDoc))
         {
             using (ownersDoc)
             {
@@ -1504,8 +1590,8 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        var projectsPath = Path.Combine(dir, "projects-payload.json");
-        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Institutional-Pipeline", "projects-payload.json", "institutional-projects", out var projectsPath)
+            || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
             return;
@@ -1598,8 +1684,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Prime-Consultant-Strategy", "primes-payload.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Prime-Consultant-Strategy", "primes-payload.json", "prime-targeting", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -1670,8 +1756,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Prime-DecisionMakers", "people-payload.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Prime-DecisionMakers", "people-payload.json", "prime-contacts", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -1758,8 +1844,8 @@ ORDER BY Id;";
     {
         var dir = Path.Combine(options.BaseDirectory, "KOR-Island-Okanagan-Ecosystem");
 
-        var orgsPath = Path.Combine(dir, "orgs.json");
-        if (TryLoadJson(orgsPath, out var orgsDoc))
+        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Island-Okanagan-Ecosystem", "orgs.json", "island-okanagan-orgs", out var orgsPath)
+            && TryLoadJson(orgsPath, out var orgsDoc))
         {
             using (orgsDoc)
             {
@@ -1805,8 +1891,8 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        var projectsPath = Path.Combine(dir, "projects.json");
-        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Island-Okanagan-Ecosystem", "projects.json", "island-okanagan-projects", out var projectsPath)
+            || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
             return;
@@ -1998,8 +2084,8 @@ ORDER BY Id;";
         // Track A: team-pairing graph (architect + structural engineer + GC + owner
         // per recent award). The structural-engineer-per-project edge is the
         // highest-value datapoint — stored in the new MPI structural/GC columns.
-        var teamPath = Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "team-awards.json");
-        if (!TryLoadJson(teamPath, out var teamDoc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Intel-Gathering", "outputs/team-awards.json", "intel-gathering-team-awards", out var teamPath)
+            || !TryLoadJson(teamPath, out var teamDoc))
         {
             stats.FilesMissing++;
             return;
@@ -2252,8 +2338,8 @@ ORDER BY Id;";
         // writes the rich enrichment (sectors, key people, notable projects,
         // structural-partner intel, geography corrections, JV/identity dataIssues)
         // keyed by Id. Skips merged-away duplicate-losers. Re-runnable.
-        var path = Path.Combine(options.BaseDirectory, "KOR-Data-Honing", "outputs", "orgs-enriched.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Data-Honing", "outputs/orgs-enriched.json", "data-honing", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -2420,10 +2506,17 @@ ORDER BY Id;";
     {
         // Intel-Gathering Track B: institutional owner capital pipelines (projects
         // 1-3 yrs ahead of the RFP) -> MajorProjectsInventory.
-        var path = !string.IsNullOrWhiteSpace(options.PipelinesFile)
+        var resolvedPipelinesPath = !string.IsNullOrWhiteSpace(options.PipelinesFile)
             ? options.PipelinesFile!
-            : Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "owner-pipelines.json");
-        if (!TryLoadJson(path, out var doc))
+            : null;
+        if (resolvedPipelinesPath is null
+            && !TryResolveResearchFile(options.BaseDirectory, "KOR-Intel-Gathering", "outputs/owner-pipelines.json", "owner-pipelines", out resolvedPipelinesPath))
+        {
+            stats.FilesMissing++;
+            return;
+        }
+
+        if (!TryLoadJson(resolvedPipelinesPath, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -2536,8 +2629,8 @@ ORDER BY Id;";
     {
         // Intel-Gathering Track D: structural-competitor deep-profiles (go-to
         // architect partners, recent wins, strongholds, exploitable gaps).
-        var path = Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "competitor-profiles.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Intel-Gathering", "outputs/competitor-profiles.json", "competitor-profiles", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -2607,8 +2700,8 @@ ORDER BY Id;";
     {
         // Intel-Gathering Track C: decision-maker / people layer, grouped per org
         // into one enrichment row (mirrors PrimeContacts).
-        var path = Path.Combine(options.BaseDirectory, "KOR-Intel-Gathering", "outputs", "people.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Intel-Gathering", "outputs/people.json", "decision-makers", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -2696,8 +2789,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Registry-Graph", "outputs", "firms.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Registry-Graph", "outputs/firms.json", "registries", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -2790,8 +2883,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Owner-Procurement", "outputs", "owner-procurement.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Owner-Procurement", "outputs/owner-procurement.json", "owner-procurement", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -2860,8 +2953,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Competitor-Signals", "outputs", "competitor-signals.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Competitor-Signals", "outputs/competitor-signals.json", "competitor-signals", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -2930,8 +3023,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Structural-Partner-Map", "outputs", "structural-partner-map.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Structural-Partner-Map", "outputs/structural-partner-map.json", "structural-partner-map", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3000,8 +3093,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Structural-Partner-Map", "outputs", "displacement-briefs.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Structural-Partner-Map", "outputs/displacement-briefs.json", "displacement-briefs", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3136,8 +3229,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-SubConsultants", "outputs", "subconsultant-firms.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-SubConsultants", "outputs/subconsultant-firms.json", "sub-consultants", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3215,8 +3308,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Facility-Renewal", "outputs", "renewal-pipeline.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Facility-Renewal", "outputs/renewal-pipeline.json", "facility-renewal", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3322,8 +3415,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Capital-Plans", "outputs", "capital-pipeline.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Capital-Plans", "outputs/capital-pipeline.json", "capital-plans", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3440,8 +3533,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Data-Honing", "outputs", "projects-enriched.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Data-Honing", "outputs/projects-enriched.json", "projects-honing", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3542,8 +3635,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-MidMarket-Pipeline", "outputs", "midmarket-pipeline.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-MidMarket-Pipeline", "outputs/midmarket-pipeline.json", "midmarket", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3657,8 +3750,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Architect-Forecast", "outputs", "architect-forecast.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Architect-Forecast", "outputs/architect-forecast.json", "architect-forecast", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3744,8 +3837,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Pipeline-Seats", "outputs", "project-seats.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Pipeline-Seats", "outputs/project-seats.json", "pipeline-seats", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3856,8 +3949,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Project-Reverify", "outputs", "project-status.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Project-Reverify", "outputs/project-status.json", "project-reverify", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -3973,8 +4066,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Industry-Events", "outputs", "industry-events.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Industry-Events", "outputs/industry-events.json", "industry-events", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -4081,15 +4174,15 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var projectsPath = Path.Combine(options.BaseDirectory, "KOR-Capability-Corpus", "outputs", "kor-capability-corpus.json");
-        var rosterPath = Path.Combine(options.BaseDirectory, "KOR-Capability-Corpus", "outputs", "kor-roster.json");
-        if (!TryLoadJson(projectsPath, out var projectsDoc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Capability-Corpus", "outputs/kor-capability-corpus.json", "kor-capability-corpus", out var projectsPath)
+            || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
             return;
         }
 
-        if (!TryLoadJson(rosterPath, out var rosterDoc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Capability-Corpus", "outputs/kor-roster.json", "kor-roster", out var rosterPath)
+            || !TryLoadJson(rosterPath, out var rosterDoc))
         {
             projectsDoc.Dispose();
             stats.FilesMissing++;
@@ -4203,8 +4296,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Project-Teams", "outputs", "project-teams.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Project-Teams", "outputs/project-teams.json", "project-teams", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -4342,8 +4435,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Competitor-Portfolios", "outputs", "competitor-projects.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Competitor-Portfolios", "outputs/competitor-projects.json", "competitor-projects", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -4456,8 +4549,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Seismic-MassTimber", "outputs", "structural-pipeline.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Seismic-MassTimber", "outputs/structural-pipeline.json", "structural-pipeline", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -4570,8 +4663,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Indigenous-Pipeline", "outputs", "indigenous-projects.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Indigenous-Pipeline", "outputs/indigenous-projects.json", "indigenous-projects", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -4681,8 +4774,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Indigenous-Pipeline", "outputs", "indigenous-orgs.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Indigenous-Pipeline", "outputs/indigenous-orgs.json", "indigenous-orgs", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -4780,8 +4873,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-DesignBuild-Contractors", "outputs", "db-contractors.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-DesignBuild-Contractors", "outputs/db-contractors.json", "db-contractors", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -4868,8 +4961,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Incumbent-Rosters", "outputs", "incumbent-rosters.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Incumbent-Rosters", "outputs/incumbent-rosters.json", "incumbent-rosters", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -4954,8 +5047,8 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        var path = Path.Combine(options.BaseDirectory, "KOR-Capital-Funding-Signals", "outputs", "capital-funding-signals.json");
-        if (!TryLoadJson(path, out var doc))
+        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Capital-Funding-Signals", "outputs/capital-funding-signals.json", "capital-funding-signals", out var path)
+            || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
             return;
@@ -5086,10 +5179,10 @@ ORDER BY Id;";
         CancellationToken ct)
     {
         var jsonlPath = Path.Combine(options.BaseDirectory, "KOR-Seismic-Pipeline", "outputs", "seismic-pipeline.jsonl");
-        var envelopePath = Path.ChangeExtension(jsonlPath, ".json");
         string[]? lines = null;
 
-        if (File.Exists(envelopePath) && TryLoadJson(envelopePath, out var envelopeDoc))
+        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Seismic-Pipeline", "outputs/seismic-pipeline.json", "seismic-pipeline", out var envelopePath)
+            && TryLoadJson(envelopePath, out var envelopeDoc))
         {
             using (envelopeDoc)
             {
@@ -5281,11 +5374,11 @@ ORDER BY Id;";
         CancellationToken ct)
     {
         var jsonlPath = Path.Combine(options.BaseDirectory, directoryName, "outputs", "pairings.jsonl");
-        var envelopePath = Path.ChangeExtension(jsonlPath, ".json");
         var logPrefix = $"pairing:{sourceLabel}";
         string[]? lines = null;
 
-        if (File.Exists(envelopePath) && TryLoadJson(envelopePath, out var envelopeDoc))
+        if (TryResolveResearchFile(options.BaseDirectory, directoryName, "outputs/pairings.json", "pairing", out var envelopePath)
+            && TryLoadJson(envelopePath, out var envelopeDoc))
         {
             using (envelopeDoc)
             {
@@ -6881,6 +6974,127 @@ WHERE Id = @id
         return true;
     }
 
+    private static bool TryResolveResearchFile(string baseDir, string folderName, string legacyFileName, out string resolvedPath)
+    {
+        var standardPath = Path.Combine(baseDir, folderName, "outputs", "import.json");
+        if (File.Exists(standardPath))
+        {
+            resolvedPath = standardPath;
+            Console.WriteLine($"[FILE] {folderName}: using standard {standardPath}");
+            return true;
+        }
+
+        var legacyPath = Path.IsPathFullyQualified(legacyFileName)
+            ? legacyFileName
+            : Path.Combine(baseDir, folderName, legacyFileName);
+        if (File.Exists(legacyPath))
+        {
+            resolvedPath = legacyPath;
+            Console.WriteLine($"[WARN] {folderName}: outputs/import.json not found; using legacy {legacyPath}");
+            return true;
+        }
+
+        Console.WriteLine($"[WARN] {folderName}: missing standard payload {standardPath} and legacy payload {legacyPath}");
+        resolvedPath = string.Empty;
+        return false;
+    }
+
+    private static bool TryResolveResearchFile(string baseDir, string folderName, string legacyFileName, string expectedKind, out string resolvedPath)
+    {
+        var standardPath = Path.Combine(baseDir, folderName, "outputs", "import.json");
+        var legacyPath = Path.IsPathFullyQualified(legacyFileName)
+            ? legacyFileName
+            : Path.Combine(baseDir, folderName, legacyFileName);
+
+        if (File.Exists(standardPath))
+        {
+            if (StandardEnvelopeMatchesKind(standardPath, expectedKind, out var reason))
+            {
+                resolvedPath = standardPath;
+                Console.WriteLine($"[FILE] {folderName}: using standard {standardPath}");
+                return true;
+            }
+
+            if (File.Exists(legacyPath))
+            {
+                resolvedPath = legacyPath;
+                Console.WriteLine($"[WARN] {folderName}: outputs/import.json not usable for kind '{expectedKind}' ({reason}); using legacy {legacyPath}");
+                return true;
+            }
+
+            resolvedPath = standardPath;
+            Console.WriteLine($"[WARN] {folderName}: outputs/import.json not usable for kind '{expectedKind}' ({reason}); no legacy payload found at {legacyPath}");
+            return true;
+        }
+
+        if (File.Exists(legacyPath))
+        {
+            resolvedPath = legacyPath;
+            Console.WriteLine($"[WARN] {folderName}: outputs/import.json not found; using legacy {legacyPath}");
+            return true;
+        }
+
+        Console.WriteLine($"[WARN] {folderName}: missing standard payload {standardPath} and legacy payload {legacyPath}");
+        resolvedPath = string.Empty;
+        return false;
+    }
+
+    private static bool StandardEnvelopeMatchesKind(string path, string expectedKind, out string reason)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
+            var validation = ResearchEnvelopeValidator.Validate(doc, expectedKind);
+            reason = validation.Reason ?? "ok";
+            return validation.IsValid;
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            reason = $"{ex.GetType().Name}: {ex.Message}";
+            return false;
+        }
+    }
+
+    private static void RunResearchFileAudit(ImportOptions options)
+    {
+        Console.WriteLine($"BD Research file audit: base={options.BaseDirectory}");
+        foreach (var group in ResearchStreams.GroupBy(s => s.FolderName).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var standardPath = Path.Combine(options.BaseDirectory, group.Key, "outputs", "import.json");
+            var expectedKinds = string.Join(", ", group.Select(s => s.Kind).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal));
+            if (!File.Exists(standardPath))
+            {
+                Console.WriteLine($"{group.Key}: outputs/import.json=MISSING; expectedKinds=[{expectedKinds}]");
+                continue;
+            }
+
+            var kind = ReadEnvelopeKindForAudit(standardPath);
+            var lastWrite = File.GetLastWriteTimeUtc(standardPath);
+            Console.WriteLine($"{group.Key}: outputs/import.json=OK; kind={kind}; lastWriteUtc={lastWrite:yyyy-MM-ddTHH:mm:ssZ}; expectedKinds=[{expectedKinds}]");
+        }
+    }
+
+    private static string ReadEnvelopeKindForAudit(string path)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
+            if (doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("kind", out var kind)
+                && kind.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(kind.GetString()))
+            {
+                return kind.GetString()!;
+            }
+
+            return "(missing)";
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            return $"(unreadable: {ex.GetType().Name})";
+        }
+    }
+
     private static IEnumerable<JsonElement> EnumerateArray(JsonElement root, string propertyName)
     {
         if (root.TryGetProperty(propertyName, out var array) && array.ValueKind == JsonValueKind.Array)
@@ -7162,7 +7376,8 @@ WHERE Id = @id
         string? PipelinesFile,
         string? IngestCanonicalFolder,
         string? IngestCanonicalProviderOverride,
-        bool StrictCanonicalSchema)
+        bool StrictCanonicalSchema,
+        bool Audit)
     {
         public static ImportOptions Parse(string[] args)
         {
@@ -7176,6 +7391,7 @@ WHERE Id = @id
             string? ingestCanonicalFolder = null;
             string? ingestCanonicalProviderOverride = null;
             var strictCanonicalSchema = false;
+            var audit = false;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -7211,6 +7427,9 @@ WHERE Id = @id
                     case "--strict":
                         strictCanonicalSchema = true;
                         break;
+                    case "--audit":
+                        audit = true;
+                        break;
                     default:
                         throw new ArgumentException($"Unknown argument '{args[i]}'.");
                 }
@@ -7226,7 +7445,8 @@ WHERE Id = @id
                 pipelinesFile,
                 ingestCanonicalFolder,
                 ingestCanonicalProviderOverride,
-                strictCanonicalSchema);
+                strictCanonicalSchema,
+                audit);
         }
 
         private static decimal ParseFxRate(string value)
@@ -7269,6 +7489,8 @@ WHERE Id = @id
         public Dictionary<string, int> EnrichmentRowsByProvider { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> ProjectUpsertsBySource { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
+
+    private sealed record ResearchStreamSpec(string Tag, string FolderName, string LegacyFileName, string Kind);
 
     private sealed class CanonicalIngestStats
     {
