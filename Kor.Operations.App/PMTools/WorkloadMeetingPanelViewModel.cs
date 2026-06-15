@@ -121,7 +121,11 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
             OnPropertyChanged();
 
-            if (_suppressMeetingNotesSave || SelectedMeeting == null)
+            // Round 52k (review): VM-layer read-only guard, matching the
+            // per-project notes paths. Past meetings are read-only; the UI
+            // disables this TextBox, but don't rely on IsEnabled alone — never
+            // schedule a save for a meeting that isn't the current one.
+            if (_suppressMeetingNotesSave || SelectedMeeting == null || !IsCurrentMeeting)
             {
                 return;
             }
@@ -316,7 +320,12 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     public async Task<bool> UpsertPriorityFromUiAsync(string wbs1, int priority)
     {
         var selection = SelectedMeeting;
-        if (selection == null || string.IsNullOrWhiteSpace(wbs1)) return false;
+        // Round 52k (review): VM-layer read-only guard. The caller
+        // (PriorityComboBox_SelectionChanged) already checks IsCurrentMeeting,
+        // but priority writes were the one path gated only in the UI while
+        // notes were gated in the VM — close the asymmetry so no future caller
+        // can persist a priority into a past meeting.
+        if (selection == null || !IsCurrentMeeting || string.IsNullOrWhiteSpace(wbs1)) return false;
 
         // Round 52j (review finding 3): unsetting priority (0) DELETEs the
         // WorkloadMeetingProjects row, and notes live ON that row. Any note the
