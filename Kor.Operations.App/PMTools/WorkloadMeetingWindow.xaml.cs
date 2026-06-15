@@ -151,6 +151,13 @@ namespace Kor.Operations.PMTools
 
             await _meetingPanel.LoadAsync();
             SyncMeetingPrioritiesToRows();
+
+            // Round 52i: open in the simple meeting view with every PM expanded.
+            // The PmGroups.CollectionChanged handler covers the fresh-load path;
+            // this also covers reopening with the singleton VM's cached groups,
+            // where no collection-changed fires.
+            if (_meetingPanel.IsMeetingMode)
+                SetAllPmGroupsExpanded(true);
         }
 
         private async Task ApplyHeaderAsync()

@@ -37,7 +37,9 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     private string? _pendingNotesValue;
     private string _activityText = string.Empty;
     private string? _meetingError;
-    private bool _isMeetingMode;
+    // Round 52i: default ON — Jim opens straight into the simple meeting view
+    // (priority, notes, % billed, risk); "Show $ Detail" reveals the full grid.
+    private bool _isMeetingMode = true;
     private bool _suppressProjectNotesRelay;
     private readonly ConcurrentDictionary<string, int> _projectNotesVersions = new(StringComparer.OrdinalIgnoreCase);
 
