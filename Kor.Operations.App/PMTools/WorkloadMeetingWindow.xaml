@@ -200,6 +200,7 @@
         <Grid Grid.Row="4">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
@@ -379,10 +380,150 @@
                     </Expander>
                 </Grid>
             </Border>
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+
+            <!-- Round 52L: THE meeting view — every prioritized project (P1–P5)
+                 for the selected meeting, in one place, INDEPENDENT of the PM
+                 grid's Watchlist/Phase/Search filters below. Notes are edited
+                 right here (every row is prioritized, so the editor is always
+                 live on the current meeting). This is the consolidated list the
+                 removed board used to provide; the PM grid below is for SETTING
+                 priorities and seeing financials. -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
+                    DataContext="{Binding MeetingPanel, ElementName=RootWindow}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Title + priority-count chips -->
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="This Meeting's Priorities" FontWeight="SemiBold" FontSize="14"
+                                   VerticalAlignment="Center"/>
+                        <ItemsControl Grid.Column="1" ItemsSource="{Binding PriorityChips}"
+                                      VerticalAlignment="Center" HorizontalAlignment="Left" Margin="14,0,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Click="PriorityChip_Click" Margin="0,0,6,0" Cursor="Hand"
+                                            ToolTip="Jump to the first project at this priority in the list below">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{Binding ColorHex, Converter={StaticResource StringToBrush}}"
+                                                        CornerRadius="4" Padding="8,3">
+                                                    <TextBlock Text="{Binding Label}" Foreground="White"
+                                                               FontWeight="Bold" FontSize="11"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+
+                    <!-- Empty state -->
+                    <TextBlock Grid.Row="1"
+                               Text="No priorities set yet. Use the Priority dropdown on any project in the list below to assign P1&#x2013;P5 — it appears here."
+                               Foreground="{StaticResource Text.Secondary}" FontSize="12" FontStyle="Italic"
+                               TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasPriorityProjects}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <!-- Column headers -->
+                    <Grid Grid.Row="1" Margin="0,0,0,4"
+                          Visibility="{Binding HasPriorityProjects, Converter={StaticResource BoolToVisibility}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="52"/>
+                            <ColumnDefinition Width="240"/>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Priority" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                        <TextBlock Grid.Column="1" Text="Project" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                        <TextBlock Grid.Column="2" Text="PM" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                        <TextBlock Grid.Column="3" Text="Notes" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"/>
+                    </Grid>
+
+                    <!-- Prioritized projects, filter-independent -->
+                    <ScrollViewer Grid.Row="2" MaxHeight="300"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Visibility="{Binding HasPriorityProjects, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl x:Name="PriorityListItems" ItemsSource="{Binding PriorityProjects}"
+                                      HorizontalContentAlignment="Stretch">
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="0,7">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="52"/>
+                                                <ColumnDefinition Width="240"/>
+                                                <ColumnDefinition Width="160"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Grid.Column="0" Background="{Binding PriorityBrush}"
+                                                    CornerRadius="4" Padding="8,3"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding PriorityLabel}" Foreground="White"
+                                                           FontWeight="Bold" FontSize="13"/>
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1" Margin="8,0,8,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Wbs1}" FontWeight="SemiBold" FontSize="12"/>
+                                                <TextBlock Text="{Binding ProjectName}" FontSize="11"
+                                                           Foreground="#374151" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Column="2" Text="{Binding PmName}" FontSize="12"
+                                                       Foreground="#374151" VerticalAlignment="Center"
+                                                       Margin="0,0,8,0" TextTrimming="CharacterEllipsis"/>
+
+                                            <TextBox Grid.Column="3"
+                                                     Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
+                                                     FontSize="12" MinHeight="56"
+                                                     TextWrapping="Wrap" AcceptsReturn="True"
+                                                     VerticalContentAlignment="Top"
+                                                     VerticalScrollBarVisibility="Auto"
+                                                     HorizontalAlignment="Stretch"
+                                                     IsEnabled="{Binding DataContext.IsCurrentMeeting, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                     ToolTip="Notes for this project — saved automatically"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <Grid>
+                    <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -944,15 +1085,17 @@
                                                         <DataGridTemplateColumn.CellTemplate>
                                                             <DataTemplate>
                                                                 <Button Height="24" Width="32" Margin="2,0" Padding="0"
-                                                                        Click="MeetingNotesToggle_Click"
-                                                                        ToolTipService.ShowOnDisabled="True">
+                                                                        Click="MeetingNotesToggle_Click">
                                                                     <Button.Style>
                                                                         <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-                                                                            <Setter Property="ToolTip" Value="Show meeting notes for this project"/>
+                                                                            <Setter Property="ToolTip" Value="Show/hide notes for this project (also editable in the priorities list at the top)"/>
                                                                             <Style.Triggers>
+                                                                                <!-- Round 52L: hide (don't disable) on non-prioritized
+                                                                                     rows — a disabled pencil read as 'clicking does
+                                                                                     nothing'. Notes attach to a priority row; set one
+                                                                                     first and the pencil appears. -->
                                                                                 <DataTrigger Binding="{Binding HasMeetingRow}" Value="False">
-                                                                                    <Setter Property="IsEnabled" Value="False"/>
-                                                                                    <Setter Property="ToolTip" Value="Set a priority first — meeting notes attach to prioritized projects"/>
+                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
                                                                                 </DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
@@ -1308,65 +1451,6 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                 </Grid>
-            </Border>
-            <!-- Round 52d: meeting rows the current filters hide. The grid is a
-                 filtered view (Watchlist scope, Phase, Type, Search, My Projects);
-                 the meeting is not — a carried-forward P1 that left the watchlist
-                 must never silently vanish from the room. Rows are the same
-                 WorkloadMeetingProjectRow instances as the board, so notes edits
-                 flow through the existing debounced save. -->
-            <Border Grid.Row="3" x:Name="OrphanPanel" Style="{StaticResource Card}" Padding="10" Margin="0,8,0,0"
-                    Visibility="Collapsed">
-                <StackPanel>
-                    <TextBlock x:Name="OrphanHeaderText" FontWeight="SemiBold" Foreground="#B45309" Margin="0,0,0,2"/>
-                    <TextBlock Text="These projects carry a priority in the selected meeting but are not in the lists above — carried forward off the watchlist, or hidden by Phase / Type / Search / My Projects."
-                               Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,0,8"/>
-                    <ItemsControl ItemsSource="{Binding OrphanedPriorityRows, ElementName=RootWindow}"
-                                  HorizontalContentAlignment="Stretch">
-                        <ItemsControl.ItemContainerStyle>
-                            <Style TargetType="ContentPresenter">
-                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
-                            </Style>
-                        </ItemsControl.ItemContainerStyle>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="0,7">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="52"/>
-                                            <ColumnDefinition Width="220"/>
-                                            <ColumnDefinition Width="180"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="0" Background="{Binding PriorityBrush}"
-                                                CornerRadius="4" Padding="8,3"
-                                                HorizontalAlignment="Left" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding PriorityLabel}" Foreground="White"
-                                                       FontWeight="Bold" FontSize="13"/>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="8,0,8,0" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Wbs1}" FontWeight="SemiBold" FontSize="12"/>
-                                            <TextBlock Text="{Binding ProjectName}" FontSize="11"
-                                                       Foreground="#374151" TextTrimming="CharacterEllipsis"/>
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="2" Text="{Binding PmName}" FontSize="12"
-                                                   Foreground="#374151" VerticalAlignment="Center"
-                                                   Margin="0,0,8,0" TextTrimming="CharacterEllipsis"/>
-                                        <TextBox Grid.Column="3"
-                                                 Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
-                                                 FontSize="12" MinHeight="56"
-                                                 TextWrapping="Wrap" AcceptsReturn="True"
-                                                 VerticalContentAlignment="Top"
-                                                 VerticalScrollBarVisibility="Auto"
-                                                 HorizontalAlignment="Stretch"
-                                                 IsEnabled="{Binding MeetingPanel.IsCurrentMeeting, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                 ToolTip="Notes for this project — saved automatically"/>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
             </Border>
                 </Grid>
             </ScrollViewer>

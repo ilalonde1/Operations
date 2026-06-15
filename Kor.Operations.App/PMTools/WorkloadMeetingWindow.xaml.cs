@@ -32,16 +32,10 @@ namespace Kor.Operations.PMTools
         // _isSyncingMeetingPriorities guard, so a live window's priority
         // ComboBoxes see those mutations as user edits and fire phantom
         // UpsertPriorityFromUiAsync calls.
-        private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _orphanRecomputeHandler;
         private PropertyChangedEventHandler? _meetingPanelPropertyChangedHandler;
         private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _currentProjectsChangedHandler;
         private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _pmGroupsChangedHandler;
         private Action<string, string>? _projectNotesUpdatedHandler;
-
-        /// <summary>Round 52d: meeting rows hidden by the current grid
-        /// filters/scope — shown in a panel under the PM groups so a carried-
-        /// forward P1 that left the watchlist can't silently disappear.</summary>
-        public System.Collections.ObjectModel.ObservableCollection<WorkloadMeetingProjectRow> OrphanedPriorityRows { get; } = new();
 
         // Round 38a: both VMs now arrive from DI as singletons so the upcoming
         // PM Tools window split can share them across two windows. EngRate /
@@ -88,12 +82,6 @@ namespace Kor.Operations.PMTools
             };
             _vm.PmGroups.CollectionChanged += _pmGroupsChangedHandler;
 
-            // Round 52d: orphans recompute when the meeting rows change OR the
-            // grid filter slice changes (ICollectionView.Refresh raises Reset).
-            _orphanRecomputeHandler = (_, _) => RecomputeOrphanedPriorityRows();
-            _meetingPanel.PriorityProjects.CollectionChanged += _orphanRecomputeHandler;
-            ((System.Collections.Specialized.INotifyCollectionChanged)_vm.ProjectView).CollectionChanged += _orphanRecomputeHandler;
-
             // Round 52f (review finding 4): mirror notes edits from any surface
             // (board, grid, orphan panel) onto the matching grid row. The
             // sync guard stops the row's TextChanged from echoing the
@@ -108,26 +96,6 @@ namespace Kor.Operations.PMTools
                 finally { _isSyncingMeetingPriorities = false; }
             };
             _meetingPanel.ProjectNotesUpdated += _projectNotesUpdatedHandler;
-        }
-
-        private void RecomputeOrphanedPriorityRows()
-        {
-            var visible = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var item in _vm.ProjectView)
-            {
-                if (item is PmProjectRow r)
-                    visible.Add(r.Wbs1);
-            }
-
-            OrphanedPriorityRows.Clear();
-            foreach (var row in _meetingPanel.PriorityProjects)
-            {
-                if (!visible.Contains(row.Wbs1))
-                    OrphanedPriorityRows.Add(row);
-            }
-
-            OrphanPanel.Visibility = OrphanedPriorityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            OrphanHeaderText.Text = $"Prioritized in this meeting — hidden by current filters/scope ({OrphanedPriorityRows.Count})";
         }
 
         // Round 52: Meeting Mode wants every PM's list open so the room can
@@ -366,12 +334,6 @@ namespace Kor.Operations.PMTools
             Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
             // Round 52d/52e: detach every handler from the singleton VMs so the
             // closed window isn't kept alive and its handlers stop firing.
-            if (_orphanRecomputeHandler != null)
-            {
-                _meetingPanel.PriorityProjects.CollectionChanged -= _orphanRecomputeHandler;
-                ((System.Collections.Specialized.INotifyCollectionChanged)_vm.ProjectView).CollectionChanged -= _orphanRecomputeHandler;
-                _orphanRecomputeHandler = null;
-            }
             if (_meetingPanelPropertyChangedHandler != null)
             {
                 _meetingPanel.PropertyChanged -= _meetingPanelPropertyChangedHandler;
@@ -610,49 +572,22 @@ namespace Kor.Operations.PMTools
             }
         }
 
-        // Round 52: chip click — jump the PM lists to the first project at the
-        // chip's priority. Group display order = PmGroups order; within a
-        // group, Projects is already the DataGrid's display order.
+        // Round 52L: chip click — scroll the (filter-independent) priority list
+        // to the first project at the clicked priority. The old version searched
+        // the FILTERED PM grid, so a P-level whose projects were hidden by the
+        // Watchlist/Phase filter found nothing and silently no-op'd. The
+        // priority list contains every prioritized project, so this always hits.
         private void PriorityChip_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button { DataContext: Kor.Operations.App.PMTools.WorkloadMeetingPriorityChip chip }) return;
 
-            foreach (var group in _vm.PmGroups)
-            {
-                var target = group.Projects.FirstOrDefault(p => p.MeetingPriority == chip.Priority);
-                if (target == null) continue;
+            var target = _meetingPanel.PriorityProjects.FirstOrDefault(p => p.Priority == chip.Priority);
+            if (target == null) return;
 
-                group.IsExpanded = true;
-                // Let the expanded DataGrid realize its rows before scrolling.
-                Dispatcher.BeginInvoke(new Action(() => BringProjectRowIntoView(group, target)),
-                    System.Windows.Threading.DispatcherPriority.Loaded);
-                return;
-            }
-            // No visible row carries this priority (filters may hide it) — no-op.
-        }
-
-        private void BringProjectRowIntoView(PmGroupViewModel group, PmProjectRow row)
-        {
-            if (PmGroupsList.ItemContainerGenerator.ContainerFromItem(group) is not DependencyObject container) return;
-            var grid = FindVisualChild<DataGrid>(container);
-            if (grid == null) return;
-
-            if (grid.ItemContainerGenerator.ContainerFromItem(row) is FrameworkElement rowContainer)
-                rowContainer.BringIntoView();
-            else
-                grid.ScrollIntoView(row);
-        }
-
-        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
-        {
-            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T match) return match;
-                var descendant = FindVisualChild<T>(child);
-                if (descendant != null) return descendant;
-            }
-            return null;
+            // The priority list ItemsControl is not virtualized, so its
+            // containers are realized — bring the row into view directly.
+            if (PriorityListItems.ItemContainerGenerator.ContainerFromItem(target) is FrameworkElement fe)
+                fe.BringIntoView();
         }
 
         // Round 52: toggles the row-details meeting-notes editor for the
