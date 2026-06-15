@@ -33,11 +33,13 @@ public static class SectorReportGenerator
         SectorReportDefinition definition,
         SectorReportProse prose,
         IReadOnlyList<PursuitBriefRow> rows,
-        DateTimeOffset generatedAtUtc)
+        DateTimeOffset generatedAtUtc,
+        IReadOnlyList<SectorIntelSignalRow>? marketSignals = null)
     {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(prose);
         ArgumentNullException.ThrowIfNull(rows);
+        marketSignals ??= Array.Empty<SectorIntelSignalRow>();
 
         // The PS builders report only honed briefs; never-honed MPIs surface
         // on the dashboard as NotHoned, not in the report body.
@@ -132,6 +134,15 @@ public static class SectorReportGenerator
                 Safe(p.KorAngle, MonitorWhyCap),
             },
             new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left });
+
+        if (marketSignals.Count > 0)
+        {
+            b.H2("MARKET SIGNALS");
+            foreach (var signal in marketSignals)
+            {
+                b.B($"• {signal.SignalType}: ", Safe(MarketSignalBody(signal), 500));
+            }
+        }
 
         b.H2("DISCOVER — Pre-procurement relationship-build");
         AppendBucketTable(b, discover,
@@ -235,6 +246,17 @@ public static class SectorReportGenerator
         return p.EstimatedCostCad is { } cad
             ? "$" + cad.ToString("N0", CultureInfo.InvariantCulture)
             : string.Empty;
+    }
+
+    private static string MarketSignalBody(SectorIntelSignalRow signal)
+    {
+        var parts = new List<string> { signal.DisplayName, signal.Subject };
+        if (!string.IsNullOrWhiteSpace(signal.Detail))
+        {
+            parts.Add(signal.Detail);
+        }
+
+        return string.Join(" — ", parts.Where(p => !string.IsNullOrWhiteSpace(p)));
     }
 
     private static string Safe(string? value, int max)

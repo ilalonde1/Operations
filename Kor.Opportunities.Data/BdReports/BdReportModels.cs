@@ -74,6 +74,18 @@ public sealed record PursuitBriefRow(
     bool IsUrgent);
 
 /// <summary>
+/// One market-level IntelSignal row scoped to a sector report's province
+/// footprint. Rendered as the "MARKET SIGNALS" bridge between project
+/// verdicts and locked/dead work.
+/// </summary>
+public sealed record SectorIntelSignalRow(
+    string DisplayName,
+    string SignalType,
+    string Subject,
+    string? Detail,
+    string? OccurredAtApprox);
+
+/// <summary>
 /// Per-sector verdict counts for the pursuit dashboard cards, plus honing
 /// freshness buckets over the honed rows (BD-UI-Plan decision 6: green
 /// &lt;30 days, yellow 30-90, red 90+ on LastRefreshAtUtc).

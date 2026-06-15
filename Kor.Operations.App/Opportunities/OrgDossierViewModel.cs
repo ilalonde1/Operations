@@ -130,6 +130,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     public ObservableCollection<IntelSignalRow> IntelSignals { get; } = new();
     public ObservableCollection<IntelWorkRow> IntelWorks { get; } = new();
     public ObservableCollection<IntelRiskRow> IntelRisks { get; } = new();
+    public ObservableCollection<IntelNarrativeRow> ExtendedNarratives { get; } = new();
 
     public string DisplayName
     {
@@ -320,7 +321,8 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     public bool HasIntelSignals => IntelSignals.Count > 0;
     public bool HasIntelWorks => IntelWorks.Count > 0;
     public bool HasIntelRisks => IntelRisks.Count > 0;
-    public bool HasAnyIntel => HasAnySynopsis || HasIntelActions || HasIntelPeople || HasIntelSignals || HasIntelWorks || HasIntelRisks;
+    public bool HasExtendedNarratives => ExtendedNarratives.Count > 0;
+    public bool HasAnyIntel => HasAnySynopsis || HasExtendedNarratives || HasIntelActions || HasIntelPeople || HasIntelSignals || HasIntelWorks || HasIntelRisks;
     public bool HasIntelLastRefreshedText => !string.IsNullOrWhiteSpace(IntelLastRefreshedText);
     public bool CanRequestIntelRefresh => _canonicalOrgId.HasValue && !_refreshRequestPending && !_refreshAlreadyQueued;
     public string? RefreshRequestStatus
@@ -572,6 +574,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         IntelSignals.Clear();
         IntelWorks.Clear();
         IntelRisks.Clear();
+        ExtendedNarratives.Clear();
         IntelLastRefreshedText = null;
         HasStaleIntel = false;
         RaiseIntelCollectionProperties();
@@ -630,9 +633,22 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         IntelSignals.Clear();
         IntelWorks.Clear();
         IntelRisks.Clear();
+        ExtendedNarratives.Clear();
 
         SynopsisP1 = bundle.SynopsisParagraph1;
         SynopsisP2 = bundle.SynopsisParagraph2;
+
+        foreach (var row in bundle.Narratives
+            .Where(row => !IsSynopsisNarrative(row.NarrativeType))
+            .Select((row, index) => (Row: row, Index: index))
+            .OrderBy(x => NarrativeSortRank(x.Row.NarrativeType))
+            .ThenBy(x => x.Row.NarrativeType, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Index))
+        {
+            ExtendedNarratives.Add(new IntelNarrativeRow(
+                HumanizeNarrativeType(row.Row.NarrativeType),
+                row.Row.ParagraphText));
+        }
 
         foreach (var row in bundle.Actions)
         {
@@ -687,7 +703,34 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         OnPropertyChanged(nameof(HasIntelSignals));
         OnPropertyChanged(nameof(HasIntelWorks));
         OnPropertyChanged(nameof(HasIntelRisks));
+        OnPropertyChanged(nameof(HasExtendedNarratives));
         OnPropertyChanged(nameof(HasAnyIntel));
+    }
+
+    private static bool IsSynopsisNarrative(string narrativeType)
+        => string.Equals(narrativeType, "Current", StringComparison.OrdinalIgnoreCase)
+           || string.Equals(narrativeType, "Action", StringComparison.OrdinalIgnoreCase);
+
+    private static int NarrativeSortRank(string narrativeType)
+        => narrativeType.Equals("SE_Allegiance", StringComparison.OrdinalIgnoreCase) ? 0
+            : narrativeType.Equals("History", StringComparison.OrdinalIgnoreCase) ? 1
+            : narrativeType.Equals("Summary", StringComparison.OrdinalIgnoreCase) ? 2
+            : 3;
+
+    private static string HumanizeNarrativeType(string narrativeType)
+    {
+        if (string.IsNullOrWhiteSpace(narrativeType))
+        {
+            return "";
+        }
+
+        var spaced = narrativeType.Replace("_", " ", StringComparison.Ordinal).Replace("-", " ", StringComparison.Ordinal);
+        spaced = CamelBoundary.Replace(spaced, " ");
+        var tokens = spaced.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return string.Join(' ', tokens.Select(t =>
+            t.Length <= 3 && t.All(char.IsUpper)
+                ? t
+                : CultureInfo.InvariantCulture.TextInfo.ToTitleCase(t.ToLowerInvariant())));
     }
 
     // Round 56: paginated-search-envelope keys to suppress when rendering a
@@ -1157,6 +1200,8 @@ public sealed record DossierSection(string ProviderName, string? RefreshedAt)
 }
 
 public sealed record DossierField(string Label, string Value);
+
+public sealed record IntelNarrativeRow(string SectionLabel, string Content);
 
 public sealed record DossierAtAGlance(
     string? HqCity,

@@ -304,6 +304,27 @@
                             </StackPanel>
                         </Border>
 
+                        <ItemsControl ItemsSource="{Binding ExtendedNarratives}"
+                                      Margin="0,0,0,10"
+                                      Visibility="{Binding HasExtendedNarratives, Converter={StaticResource BoolToVis}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,6,0,2">
+                                        <TextBlock Text="{Binding SectionLabel}"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   Margin="0,0,0,2"/>
+                                        <TextBlock Text="{Binding Content}"
+                                                   TextWrapping="Wrap"
+                                                   FontSize="13"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   LineHeight="19"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
                         <TextBlock Text="Recommended actions" Style="{StaticResource IntelSubhead}"/>
                         <TextBlock Text="No recommended actions on file yet."
                                    Style="{StaticResource FieldValue}"
@@ -424,8 +445,10 @@
                                                        FontSize="10"
                                                        FontWeight="SemiBold"/>
                                         </Border>
-                                        <TextBlock Style="{StaticResource IntelItemText}">
-                                            <Run Text="{Binding DisplayName, Mode=OneWay}" FontWeight="SemiBold"/>
+                                         <TextBlock Style="{StaticResource IntelItemText}">
+                                            <Hyperlink Click="OnPersonClick">
+                                                <Run Text="{Binding DisplayName, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            </Hyperlink>
                                             <Run Text="  "/>
                                             <Run Text="{Binding Title, Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"/>
                                         </TextBlock>

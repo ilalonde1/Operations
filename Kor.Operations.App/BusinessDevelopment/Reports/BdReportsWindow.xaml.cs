@@ -162,6 +162,19 @@ public partial class BdReportsWindow : Window
                     var dossierVm = AppServices.Get<OrgDossierViewModel>();
                     new OrgDossierWindow(dossierVm, id) { Owner = this }.Show();
                     break;
+
+                case KorReportLinks.PersonKind:
+                    _vm.StatusMessage = $"Opening person dossier for person {id}…";
+                    var personVm = AppServices.Get<PersonDossierViewModel>();
+                    await personVm.LoadAsync(id, _linkCts.Token).ConfigureAwait(true);
+                    if (!IsLoaded)
+                    {
+                        return;
+                    }
+
+                    new PersonDossierWindow(personVm) { Owner = this }.Show();
+                    _vm.StatusMessage = $"Opened person dossier for person {id}.";
+                    break;
             }
         }
         catch (OperationCanceledException)

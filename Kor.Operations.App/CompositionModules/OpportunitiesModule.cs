@@ -172,6 +172,7 @@ internal static class OpportunitiesModule
                 sp.GetRequiredService<ILogger<Kor.Opportunities.Data.People.SqlPersonRefreshChokepoint>>()));
         services.AddSingleton<Kor.Operations.App.Opportunities.CustomProposalImportService>();
         services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierViewModel>();
+        services.AddTransient<Kor.Operations.App.Opportunities.PersonDossierViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.OrgDossierView>();
         services.AddTransient<Kor.Operations.App.Opportunities.CompetitionInfoViewModel>();
         services.AddTransient<Kor.Operations.App.Opportunities.HistoricalOpportunityDetailViewModel>();

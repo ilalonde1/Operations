@@ -11,7 +11,9 @@ public sealed class KorReportLinksTests
     {
         Assert.Equal("kor://mpi/6585", KorReportLinks.Mpi(6585));
         Assert.Equal("kor://org/42", KorReportLinks.Org(42));
+        Assert.Equal("kor://person/9", KorReportLinks.Person(9));
         Assert.Null(KorReportLinks.Org(null)); // unresolved graph edge -> no link
+        Assert.Null(KorReportLinks.Person(null)); // unresolved person edge -> no link
 
         Assert.True(KorReportLinks.TryParse(KorReportLinks.Mpi(6585), out var kind, out var id));
         Assert.Equal("mpi", kind);
@@ -20,13 +22,17 @@ public sealed class KorReportLinksTests
         Assert.True(KorReportLinks.TryParse("KOR://ORG/42", out kind, out id)); // case-insensitive
         Assert.Equal("org", kind);
         Assert.Equal(42, id);
+
+        Assert.True(KorReportLinks.TryParse("kor://person/9", out kind, out id));
+        Assert.Equal("person", kind);
+        Assert.Equal(9, id);
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("https://mpi/123")]          // wrong scheme
-    [InlineData("kor://person/9")]           // unknown kind (no person surface yet)
+    [InlineData("kor://bogus/9")]            // unknown kind
     [InlineData("kor://mpi/")]               // missing id
     [InlineData("kor://mpi/abc")]            // non-numeric
     [InlineData("kor://mpi/-5")]             // negative

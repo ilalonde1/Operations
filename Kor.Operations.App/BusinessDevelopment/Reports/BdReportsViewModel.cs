@@ -215,8 +215,9 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             var definition = SectorReportDefinitionCatalog.All.Single(d => d.Key == sector.Key);
             var prose = SectorReportProseCatalog.For(sector.Key);
             var rows = await _reportService.GetSectorPursuitsAsync(sector.Key, ct).ConfigureAwait(true);
+            var marketSignals = await _reportService.GetSectorIntelSignalsAsync(sector.Key, ct).ConfigureAwait(true);
 
-            var document = SectorReportGenerator.Build(definition, prose, rows, DateTimeOffset.UtcNow);
+            var document = SectorReportGenerator.Build(definition, prose, rows, DateTimeOffset.UtcNow, marketSignals);
             ct.ThrowIfCancellationRequested();
             if (generation != _generationSeq)
             {

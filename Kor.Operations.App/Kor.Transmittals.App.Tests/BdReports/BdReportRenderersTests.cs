@@ -173,8 +173,8 @@ public sealed class BdReportRenderersTests
     public void Html_RaggedCellLinks_AndUnparseableLinks_DegradeToPlainText()
     {
         var doc = new BdReportDocumentBuilder("T")
-            // Unknown link kind (no person surface yet): renders plain, no anchor.
-            .H3("No Surface Person", "kor://person/9")
+            // Unknown link kind: renders plain, no anchor.
+            .H3("No Surface Person", "kor://bogus/9")
             .B("Empty value: ", string.Empty, "kor://mpi/1") // empty inner -> no invisible anchor
             .Table(
                 new[] { "A", "B" },
@@ -191,7 +191,7 @@ public sealed class BdReportRenderersTests
         var html = HtmlPreviewBuilder.Render(doc);
 
         Assert.Contains("<h3>No Surface Person</h3>", html);
-        Assert.DoesNotContain("kor://person", html);
+        Assert.DoesNotContain("kor://bogus", html);
         Assert.Contains("<p><b>Empty value: </b></p>", html);
         Assert.Contains("<td><a href=\"kor://mpi/5\">r1a</a></td>", html);
         Assert.Contains("<td>r1b</td>", html); // beyond the short link row

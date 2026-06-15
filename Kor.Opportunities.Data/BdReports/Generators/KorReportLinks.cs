@@ -16,6 +16,7 @@ public static class KorReportLinks
 {
     public const string MpiKind = "mpi";
     public const string OrgKind = "org";
+    public const string PersonKind = "person";
 
     /// <summary>Pursuit/project drill-down: MajorProjectsInventory id.</summary>
     public static string Mpi(long mpiId) => $"kor://{MpiKind}/{mpiId.ToString(CultureInfo.InvariantCulture)}";
@@ -23,6 +24,10 @@ public static class KorReportLinks
     /// <summary>Org dossier drill-down: CanonicalOrg id. Null id (unresolved edge) yields no link.</summary>
     public static string? Org(long? canonicalOrgId) =>
         canonicalOrgId is { } id ? $"kor://{OrgKind}/{id.ToString(CultureInfo.InvariantCulture)}" : null;
+
+    /// <summary>Person dossier drill-down: IntelPerson id. Null id yields no link.</summary>
+    public static string? Person(long? intelPersonId) =>
+        intelPersonId is { } id ? $"kor://{PersonKind}/{id.ToString(CultureInfo.InvariantCulture)}" : null;
 
     /// <summary>
     /// Parses a kor:// uri into (kind, id). Defensive: anything malformed —
@@ -43,7 +48,7 @@ public static class KorReportLinks
         }
 
         var host = parsed.Host.ToLowerInvariant();
-        if (host is not (MpiKind or OrgKind))
+        if (host is not (MpiKind or OrgKind or PersonKind))
         {
             return false;
         }

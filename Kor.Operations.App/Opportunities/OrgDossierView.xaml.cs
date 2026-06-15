@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Navigation;
 using Kor.Operations.Services;
+using Kor.Opportunities.Data.Intel;
 
 namespace Kor.Operations.App.Opportunities;
 
@@ -82,6 +84,32 @@ public partial class OrgDossierView : UserControl
         catch (Exception ex)
         {
             _vm.StatusMessage = $"Open link failed: {ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    private async void OnPersonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Hyperlink { DataContext: IntelPersonRow row })
+        {
+            return;
+        }
+
+        try
+        {
+            var personVm = AppServices.Get<PersonDossierViewModel>();
+            await personVm.LoadAsync(row.Id, CancellationToken.None).ConfigureAwait(true);
+            var win = new PersonDossierWindow(personVm);
+            if (Window.GetWindow(this) is { } owner)
+            {
+                win.Owner = owner;
+            }
+
+            win.Show();
+            e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            _vm.StatusMessage = $"Open person dossier failed: {ex.GetType().Name}: {ex.Message}";
         }
     }
 

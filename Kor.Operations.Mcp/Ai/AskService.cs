@@ -771,25 +771,6 @@ opportunities.IntelPersonAffiliation
   - Many-to-many: a person can have multiple affiliations across orgs.
   - IsCurrent=0 means departed  look at Notes for "departed Nov 2023" etc.
 
-opportunities.IntelSignal
-  (Id, CanonicalOrgId, SignalType, Subject, Detail, OccurredAtApprox,
-   SourceUrl, Corroborations, ... lifecycle)
-  - SignalType values: 'LeadershipChange', 'HiringSurge', 'OfficeMove',
-    'OwnershipMnA', 'CapacityStrain', 'RecentWin', 'Other'.
-
-opportunities.IntelAction
-  (Id, CanonicalOrgId, ActionType, Recommendation, TargetPersonName,
-   TimingNotes, Status, StatusChangedByUser, StatusChangedAtUtc, ...)
-  - ActionType values: 'ContactStrategy', 'PursuitAngle', 'TimingWindow',
-    'HowToGetOnRoster', 'KorDisplacementRead', 'Other'.
-  - Status is KOR-side mutable: 'Open' (default), 'Done', 'Dismissed'.
-    Mutation goes through IntelPersistenceService.SetActionStatusAsync
-    (called from the Org Dossier ""Done"" / ""Dismiss"" buttons). When you
-    see Status != 'Open' for an action, treat it as historical context not
-    something to recommend again.
-  - For ""what should we do about X"" queries, filter Status='Open'.
-  - StatusChangedByUser + StatusChangedAtUtc track who mutated and when.
-
 opportunities.IntelWork
   (Id, CanonicalOrgId, ProjectName, NormalizedProjectName, Role, YearApprox,
    EstimatedValueCad, EstimatedValueText, Notes, MajorProjectsInventoryId,
@@ -806,6 +787,36 @@ opportunities.IntelNarrative
   (Id, CanonicalOrgId, NarrativeType, ParagraphText, ... lifecycle)
   - NarrativeType: 'Current', 'History', 'Action', 'Summary'.
   - These are pre-written paragraphs from research (e.g., FirmNarrative.paragraphCurrent).
+
+opportunities.IntelSignal
+  Id bigint PK
+  CanonicalOrgId bigint FK  CanonicalOrg.Id
+  SignalType nvarchar  e.g. SE_LOCKED, SE_SOFT, SE_OPEN, KOR_OPPORTUNITY,
+    LeadershipChange, PipelineUpdate, CompetitorWin, CompetitorLoss
+  Subject nvarchar  short label (e.g. 'MacEwan University')
+  Detail nvarchar  full detail text
+  OccurredAtApprox nvarchar  approximate date (YYYY or YYYY-MM)
+  SourceUrl nvarchar nullable
+  Confidence decimal
+  RetiredAtUtc datetimeoffset nullable
+  CreatedAtUtc datetimeoffset
+
+  USE: Join to CanonicalOrg on Id. Filter RetiredAtUtc IS NULL for active signals.
+  SE allegiance queries: WHERE SignalType IN ('SE_LOCKED','SE_SOFT','SE_OPEN',
+  'KOR_OPPORTUNITY'). Example: find all architects locked to a competitor
+  SELECT co.DisplayName, s.Subject, s.Detail FROM opportunities.IntelSignal s
+  JOIN opportunities.CanonicalOrg co ON co.Id = s.CanonicalOrgId
+  WHERE s.SignalType = 'SE_LOCKED' AND s.RetiredAtUtc IS NULL ORDER BY s.Confidence DESC
+
+opportunities.IntelAction
+  Id bigint PK, CanonicalOrgId bigint FK, ActionType nvarchar
+  (ContactStrategy|PursuitAngle|TimingWindow|TeamingMove|KorDisplacementRead|Other),
+  Recommendation nvarchar, TargetPersonName nvarchar nullable,
+  TargetOrgName nvarchar nullable, TimingNotes nvarchar nullable,
+  Status nvarchar (Open|Done|Dismissed), Confidence decimal,
+  RetiredAtUtc datetimeoffset nullable, CreatedAtUtc datetimeoffset
+
+  USE: Filter Status='Open' AND RetiredAtUtc IS NULL for active BD actions.
 
 ### Common query recipes
 

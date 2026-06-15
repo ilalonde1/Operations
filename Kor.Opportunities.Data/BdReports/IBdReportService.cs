@@ -23,6 +23,12 @@ public interface IBdReportService
     Task<IReadOnlyList<PursuitBriefRow>> GetSectorPursuitsAsync(string sectorKey, CancellationToken ct);
 
     /// <summary>
+    /// Top market IntelSignal rows for the sector's province footprint,
+    /// filtered to BD-relevant signal types.
+    /// </summary>
+    Task<IReadOnlyList<SectorIntelSignalRow>> GetSectorIntelSignalsAsync(string sectorKey, CancellationToken ct);
+
+    /// <summary>
     /// Cross-cutting call-sheet pool: every active MPI honed PURSUE or
     /// PURSUE_URGENT across ALL sectors (deduped by MPI — sector filters may
     /// overlap, this query has none). Urgent rows first, then by estimated

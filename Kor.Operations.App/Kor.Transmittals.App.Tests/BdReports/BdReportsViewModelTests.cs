@@ -30,6 +30,12 @@ public sealed class BdReportsViewModelTests
                     DateTimeOffset.Parse("2026-06-08T00:00:00Z"), true),
             });
 
+        public Task<IReadOnlyList<SectorIntelSignalRow>> GetSectorIntelSignalsAsync(string sectorKey, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<SectorIntelSignalRow>>(new[]
+            {
+                new SectorIntelSignalRow("MacEwan University", "SE_LOCKED", "MacEwan University", "Competitor incumbent signal", "2026"),
+            });
+
         public Task<IReadOnlyList<PursuitBriefRow>> GetCallSheetPoolAsync(CancellationToken ct)
             => GetSectorPursuitsAsync("hospitals", ct);
 
