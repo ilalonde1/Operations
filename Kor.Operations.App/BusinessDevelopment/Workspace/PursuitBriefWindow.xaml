@@ -48,7 +48,39 @@
             <StackPanel Margin="16">
                 <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,12">
                     <StackPanel>
-                        <TextBlock Text="{Binding Brief.Project.ProjectName}" FontSize="26" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Brief.Project.ProjectName}"
+                                       FontSize="26"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,16,0"/>
+                            <StackPanel Grid.Column="1"
+                                        VerticalAlignment="Top"
+                                        HorizontalAlignment="Right"
+                                        MaxWidth="260">
+                                <Border Background="{Binding Brief.Architect.SeatStatus, Converter={StaticResource SeatStatusBrush}}"
+                                        CornerRadius="999"
+                                        Padding="12,5"
+                                        HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding SeatStatusDisplay}"
+                                               FontWeight="Bold"
+                                               Typography.Capitals="AllSmallCaps"/>
+                                </Border>
+                                <TextBlock Text="{Binding SeatPriorityDisplay}"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="12"
+                                           TextAlignment="Right"
+                                           TextWrapping="Wrap"
+                                           Margin="0,4,0,0"
+                                           Visibility="{Binding HasSeatPriority, Converter={StaticResource BoolToVis}}"/>
+                            </StackPanel>
+                        </Grid>
                         <UniformGrid Columns="4" Margin="0,12,0,0">
                             <StackPanel Margin="0,0,12,8">
                                 <TextBlock Text="Owner" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>

@@ -76,6 +76,9 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
             OnPropertyChanged(nameof(ThePlayIsPlaceholder));
             OnPropertyChanged(nameof(FitScoreDisplay));
             OnPropertyChanged(nameof(FitScoreIsPlaceholder));
+            OnPropertyChanged(nameof(SeatStatusDisplay));
+            OnPropertyChanged(nameof(HasSeatPriority));
+            OnPropertyChanged(nameof(SeatPriorityDisplay));
         }
     }
 
@@ -126,6 +129,14 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
     public string FitScoreDisplay => Brief?.FitScore is { } score ? score.ToString("0.###") : "coming with the AI Crucible.";
 
     public bool FitScoreIsPlaceholder => Brief?.FitScore.HasValue != true;
+
+    public string SeatStatusDisplay => string.IsNullOrWhiteSpace(Brief?.Architect.SeatStatus)
+        ? "SEAT UNKNOWN"
+        : Brief!.Architect.SeatStatus!;
+
+    public bool HasSeatPriority => !string.IsNullOrWhiteSpace(Brief?.Architect.SeatPriority);
+
+    public string SeatPriorityDisplay => Brief?.Architect.SeatPriority ?? "";
 
     public async Task LoadAsync(long mpiId, CancellationToken ct)
     {
