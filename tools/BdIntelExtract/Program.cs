@@ -61,7 +61,7 @@ internal static class Program
             await con.OpenAsync().ConfigureAwait(false);
             await using var cmd = new SqlCommand(BuildSelectSql(options.ProviderName), con)
             {
-                CommandTimeout = 60,
+                CommandTimeout = 0, // infinite — streaming 20k+ rows; 60s default fires mid-stream under MERGE load
             };
             if (!string.IsNullOrWhiteSpace(options.ProviderName))
             {

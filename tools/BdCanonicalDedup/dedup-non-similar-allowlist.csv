@@ -1478,6 +1478,9 @@ LoserId,SurvivorId,Reason
 55078,30792,family-ml-2026-06-12 pacific reach
 17628,29632,family-ml-2026-06-12 upa construction
 72247,28694,family-ml-2026-06-12 beedie living
+# 2026-06-15: Calgary Roman Catholic Separate School District (id=249) -> Calgary Catholic School District (CCSD, id=68781)
+# Legal entity name vs operating brand; same school district. Fuzzy gate rejects on "roman catholic separate" vs "catholic school district (ccsd)".
+249,68781
 # 2026-06-14 org-name-repair collision pairs. Both orgs verified active (loser+survivor)
 # before this append. Fuzzy gate rejects because the loser carries acronym-prefix noise
 # that the repair campaign exists to remove.
