@@ -529,6 +529,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                       <Grid Grid.Row="0" Margin="0,0,0,8">
                           <Grid.ColumnDefinitions>
@@ -621,7 +622,16 @@
                                       IsEnabled="{Binding CanExportPmGroups}"/>
                           </StackPanel>
                       </Grid>
-                    <ItemsControl Grid.Row="1" x:Name="PmGroupsList" ItemsSource="{Binding PmGroups}">
+                      <!-- Round 52O: Search re-added (it left with the KPI strip in 52N).
+                           Its own line so it always fits regardless of window width;
+                           Padding="10,0" per the bare-TextBox rule. -->
+                      <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                          <TextBlock Text="Search:" Foreground="{StaticResource Text.Secondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                          <TextBox Width="320" MinHeight="30" Padding="10,0" VerticalContentAlignment="Center"
+                                   Text="{Binding ProjectSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                   ToolTip="Filter the project listings by project name, number, or PM"/>
+                      </StackPanel>
+                    <ItemsControl Grid.Row="2" x:Name="PmGroupsList" ItemsSource="{Binding PmGroups}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Margin="0,0,0,10"
