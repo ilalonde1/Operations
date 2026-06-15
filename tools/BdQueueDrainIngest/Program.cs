@@ -465,25 +465,56 @@ foreach (var file in files)
                         }
 
                         var normalized = IntelNaturalKey.Normalize(subjectName);
+                        var naturalKey = IntelNaturalKey.Compute(normalized);
+                        var displayNameTrunc = subjectName.Length <= 200 ? subjectName : subjectName[..200];
+                        var normalizedTrunc = normalized.Length <= 200 ? normalized : normalized[..200];
+
                         await using var icon = new Microsoft.Data.SqlClient.SqlConnection(cs);
                         await icon.OpenAsync().ConfigureAwait(false);
-                        // SourceEnrichmentId is FK'd NOT NULL but the brief's
-                        // enrichment row doesn't exist until the chokepoint
-                        // runs — seed with any valid id; the chokepoint's
-                        // extractor MERGEs this person by NaturalKey and
-                        // overwrites SourceEnrichmentId with the real row.
-                        await using var icmd = new Microsoft.Data.SqlClient.SqlCommand(@"
+
+                        // Check for a retired row with the same NaturalKey — inserting would
+                        // hit UQ_IntelPerson_NaturalKey. Resurrect instead of creating a duplicate.
+                        long? retiredPersonId = null;
+                        await using (var retiredCmd = new Microsoft.Data.SqlClient.SqlCommand(
+                            "SELECT Id FROM opportunities.IntelPerson WHERE NaturalKey = @nk AND RetiredAtUtc IS NOT NULL;", icon))
+                        {
+                            retiredCmd.Parameters.AddWithValue("@nk", naturalKey);
+                            var retiredScalar = await retiredCmd.ExecuteScalarAsync().ConfigureAwait(false);
+                            if (retiredScalar is not null && retiredScalar is not DBNull)
+                                retiredPersonId = (long)retiredScalar;
+                        }
+
+                        if (retiredPersonId.HasValue)
+                        {
+                            await using var resurrectCmd = new Microsoft.Data.SqlClient.SqlCommand(@"
+UPDATE opportunities.IntelPerson
+SET RetiredAtUtc = NULL, DisplayName = @dn, NormalizedName = @nn, LastSeenAtUtc = sysdatetimeoffset()
+WHERE Id = @id;", icon);
+                            resurrectCmd.Parameters.AddWithValue("@dn", displayNameTrunc);
+                            resurrectCmd.Parameters.AddWithValue("@nn", normalizedTrunc);
+                            resurrectCmd.Parameters.AddWithValue("@id", retiredPersonId.Value);
+                            await resurrectCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                            matches.Add(retiredPersonId.Value);
+                            log.LogInformation("{Name}: resurrected retired IntelPerson {Id} for '{Subject}' (re-discovery).", name, retiredPersonId.Value, subjectName);
+                        }
+                        else
+                        {
+                            // SourceEnrichmentId is FK'd NOT NULL but the brief's enrichment row
+                            // doesn't exist until the chokepoint runs — seed with any valid id;
+                            // the chokepoint's extractor MERGEs by NaturalKey and overwrites it.
+                            await using var icmd = new Microsoft.Data.SqlClient.SqlCommand(@"
 INSERT INTO opportunities.IntelPerson
     (SourceProviderName, SourceEnrichmentId, SourceConfidence, NaturalKey,
      FirstSeenAtUtc, LastSeenAtUtc, DisplayName, NormalizedName)
 SELECT N'PersonBrief', (SELECT MIN(Id) FROM opportunities.CanonicalOrgEnrichment), N'Medium', @naturalKey,
        sysdatetimeoffset(), sysdatetimeoffset(), @displayName, @normalizedName;
 SELECT CAST(SCOPE_IDENTITY() AS bigint);", icon);
-                        icmd.Parameters.AddWithValue("@naturalKey", IntelNaturalKey.Compute(normalized));
-                        icmd.Parameters.AddWithValue("@displayName", subjectName.Length <= 200 ? subjectName : subjectName[..200]);
-                        icmd.Parameters.AddWithValue("@normalizedName", normalized.Length <= 200 ? normalized : normalized[..200]);
-                        matches.Add((long)(await icmd.ExecuteScalarAsync().ConfigureAwait(false))!);
-                        log.LogInformation("{Name}: created IntelPerson {Id} for '{Subject}' (first-pass discovery).", name, matches[0], subjectName);
+                            icmd.Parameters.AddWithValue("@naturalKey", naturalKey);
+                            icmd.Parameters.AddWithValue("@displayName", displayNameTrunc);
+                            icmd.Parameters.AddWithValue("@normalizedName", normalizedTrunc);
+                            matches.Add((long)(await icmd.ExecuteScalarAsync().ConfigureAwait(false))!);
+                            log.LogInformation("{Name}: created IntelPerson {Id} for '{Subject}' (first-pass discovery).", name, matches[0], subjectName);
+                        }
                     }
 
                     if (matches.Count == 0)
