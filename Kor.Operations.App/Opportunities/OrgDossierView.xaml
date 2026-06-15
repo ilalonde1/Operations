@@ -244,7 +244,7 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource SectionHeaderRule}" VerticalAlignment="Center">
-                                <TextBlock Text="AT A GLANCE" Style="{StaticResource SectionHeaderText}"/>
+                                <TextBlock Text="WHAT WE KNOW &amp; WHAT TO DO" Style="{StaticResource SectionHeaderText}"/>
                             </Border>
                             <Button Grid.Column="1"
                                     Content="🔄 Refresh now"
