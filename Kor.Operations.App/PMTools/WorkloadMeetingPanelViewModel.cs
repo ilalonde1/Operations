@@ -37,10 +37,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     private string? _pendingNotesValue;
     private string _activityText = string.Empty;
     private string? _meetingError;
-    private bool _isMeetingPanelExpanded = false;
     private bool _isMeetingMode;
-    private string _sortColumn = "Priority";
-    private bool _sortAscending = true;
     private bool _suppressProjectNotesRelay;
     private readonly ConcurrentDictionary<string, int> _projectNotesVersions = new(StringComparer.OrdinalIgnoreCase);
 
@@ -58,9 +55,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         CurrentProjects = new ObservableCollection<WorkloadMeetingProject>();
         NewMeetingCommand = new AsyncRelayCommand(_ => NewMeetingAsync());
         SaveMeetingCommand = new AsyncRelayCommand(_ => SaveMeetingAsync());
-        ToggleMeetingPanelCommand = new AsyncRelayCommand(_ => { IsMeetingPanelExpanded = !IsMeetingPanelExpanded; return Task.CompletedTask; });
         ToggleMeetingModeCommand = new AsyncRelayCommand(_ => { IsMeetingMode = !IsMeetingMode; return Task.CompletedTask; });
-        SortCommand = new AsyncRelayCommand(p => { ExecuteSort(p); return Task.CompletedTask; });
         PriorityProjects = new ObservableCollection<WorkloadMeetingProjectRow>();
         PriorityProjects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasPriorityProjects));
         // Round 52: chips summarize the selected meeting's priorities (P1 ×3 …).
@@ -284,22 +279,6 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     public ICommand NewMeetingCommand { get; }
 
     public ICommand SaveMeetingCommand { get; }
-    public ICommand ToggleMeetingPanelCommand { get; }
-    public ICommand SortCommand { get; }
-
-    public bool IsMeetingPanelExpanded
-    {
-        get => _isMeetingPanelExpanded;
-        private set
-        {
-            if (_isMeetingPanelExpanded == value) return;
-            _isMeetingPanelExpanded = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(MeetingPanelToggleLabel));
-        }
-    }
-
-    public string MeetingPanelToggleLabel => _isMeetingPanelExpanded ? "\u25bc  Workload Board" : "\u25b6  Workload Board";
 
     /// <summary>
     /// Round 52: Meeting Mode reshapes the PM Groups grid for running the
@@ -320,13 +299,11 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         }
     }
 
-    public string MeetingModeToggleLabel => _isMeetingMode ? "\u2713  Meeting Mode" : "Meeting Mode";
+    // In Meeting Mode (the simple default) the button offers the escape to
+    // financials; out of it, the button offers the way back to the simple view.
+    public string MeetingModeToggleLabel => _isMeetingMode ? "Show $ Detail" : "\u2190 Meeting View";
 
     public ICommand ToggleMeetingModeCommand { get; }
-
-    public string PrioritySortHeader => "Priority" + (_sortColumn == "Priority" ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
-    public string ProjectSortHeader  => "Project"  + (_sortColumn == "Project"  ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
-    public string PmSortHeader       => "PM"       + (_sortColumn == "PM"       ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
 
     /// <summary>
     /// Round 39b (T2.002): now returns whether the priority was persisted.
@@ -699,45 +676,12 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         });
     }
 
-    private void ExecuteSort(object? parameter)
-    {
-        var column = parameter as string ?? "Priority";
-        if (_sortColumn == column)
-            _sortAscending = !_sortAscending;
-        else
-        {
-            _sortColumn = column;
-            _sortAscending = true;
-        }
-        OnPropertyChanged(nameof(PrioritySortHeader));
-        OnPropertyChanged(nameof(ProjectSortHeader));
-        OnPropertyChanged(nameof(PmSortHeader));
-
-        var sorted = ApplySortOrder(PriorityProjects.ToList()).ToList();
-        for (int i = 0; i < sorted.Count; i++)
-        {
-            var currentIndex = PriorityProjects.IndexOf(sorted[i]);
-            if (currentIndex != i)
-                PriorityProjects.Move(currentIndex, i);
-        }
-    }
-
-    private System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> ApplySortOrder(
+    // Round 52h: the board's interactive sort headers were removed with the
+    // board. The priority rows (now feeding the orphan panel + export) keep a
+    // stable, sensible order: priority first, then project name.
+    private static System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> ApplySortOrder(
         System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> rows)
-    {
-        return _sortColumn switch
-        {
-            "Project" => _sortAscending
-                ? rows.OrderBy(r => r.ProjectName).ThenBy(r => r.Wbs1)
-                : rows.OrderByDescending(r => r.ProjectName).ThenBy(r => r.Wbs1),
-            "PM" => _sortAscending
-                ? rows.OrderBy(r => r.PmName).ThenBy(r => r.Priority).ThenBy(r => r.ProjectName)
-                : rows.OrderByDescending(r => r.PmName).ThenBy(r => r.Priority).ThenBy(r => r.ProjectName),
-            _ => _sortAscending
-                ? rows.OrderBy(r => r.Priority).ThenBy(r => r.ProjectName)
-                : rows.OrderByDescending(r => r.Priority).ThenBy(r => r.ProjectName),
-        };
-    }
+        => rows.OrderBy(r => r.Priority).ThenBy(r => r.ProjectName);
 
     public async Task ForceSaveAllAsync(CancellationToken ct = default)
     {
