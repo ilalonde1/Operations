@@ -47,7 +47,7 @@ public static class IntelExtractorBootstrap
         new CanonicalSchemaExtractor("PacNWMarketResearch"),
         new CanonicalSchemaExtractor("MassTimberResearch"),
 
-        new PersonListExtractor("FirmNarrativeHoning"),
+        new FirmNarrativeHoningExtractor(),
         new PersonListExtractor("DecisionMakers"),
         new PersonListExtractor("PrimeContacts"),
         new PersonListExtractor("IndigenousDev"),

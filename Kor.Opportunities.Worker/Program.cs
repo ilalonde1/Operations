@@ -243,33 +243,13 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IVendorSiteCrawlStor
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.ICanonicalOrgStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlCanonicalOrgStore(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>();
-builder.Services.AddSingleton<IIntelExtractor, DataHoningExtractor>();
-builder.Services.AddSingleton<IIntelExtractor, PublicSectorResearchExtractor>();
-builder.Services.AddSingleton<IIntelExtractor, CompetitorProfileExtractor>();
-builder.Services.AddSingleton<IIntelExtractor>(_ => new CompetitorProfileExtractor("ContractorResearch"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new CompetitorProfileExtractor("ProcurementProfile"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("FirmNarrative"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("PacNWMarketResearch"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("MassTimberResearch"));
-builder.Services.AddSingleton<IIntelExtractor, ArchitectPipelineResearchExtractor>();
-builder.Services.AddSingleton<IIntelExtractor, DeveloperPipelineResearchExtractor>();
-builder.Services.AddSingleton<IIntelExtractor>(_ => new PersonListExtractor("DecisionMakers"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new PersonListExtractor("PrimeContacts"));
-builder.Services.AddSingleton<IIntelExtractor, CompetitorSignalsExtractor>();
-builder.Services.AddSingleton<IIntelExtractor, StructuralPartnerMapExtractor>();
-builder.Services.AddSingleton<IIntelExtractor, IncumbentRostersExtractor>();
-builder.Services.AddSingleton<IIntelExtractor, InstitutionalOwnerResearchExtractor>();
-builder.Services.AddSingleton<IIntelExtractor, PrimeTargetingExtractor>();
-builder.Services.AddSingleton<IIntelExtractor, SubConsultantExtractor>();
-builder.Services.AddSingleton<IIntelExtractor>(_ => new MarketResearchExtractor("AlbertaMarketResearch"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new MarketResearchExtractor("LAMarketResearch"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new MarketResearchExtractor("IslandOkanaganEcosystem"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new IndigenousResearchExtractor("IndigenousDevResearch"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new IndigenousResearchExtractor("IndigenousPartnerGraph"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new IndigenousResearchExtractor("DesignBuildContractors"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new CompetitorProfileExtractor("CompetitionResearch"));
-builder.Services.AddSingleton<IIntelExtractor>(_ => new PersonListExtractor("IndigenousDev"));
-builder.Services.AddSingleton<IIntelExtractor, MassTimberProjectsCatalogExtractor>();
+// Intel extractors — single source of truth in IntelExtractorBootstrap.
+// Adding a new extractor goes there, not here.
+foreach (var ex in IntelExtractorBootstrap.GetDefaultExtractors())
+{
+    var captured = ex;
+    builder.Services.AddSingleton<IIntelExtractor>(_ => captured);
+}
 builder.Services.AddSingleton<DefaultIntelExtractor>();
 builder.Services.AddSingleton<IntelExtractorRegistry>();
 builder.Services.AddSingleton<IntelPersistenceService>(sp => new IntelPersistenceService(Cs(sp)));

@@ -26,15 +26,17 @@ static string? ReadArg(string[] args, string name)
 }
 
 var kind = ReadArg(args, "--kind");
-if (kind is not ("people" or "orgs" or "ab-projects" or "proponents" or "org-name-repair"))
+if (kind is not ("people" or "orgs" or "ab-projects" or "proponents" or "org-name-repair" or "org-classify"))
 {
-    return Fail("Usage: BdQueueDrainIngest --kind people|orgs|ab-projects|proponents|org-name-repair [--dir <path>]");
+    return Fail("Usage: BdQueueDrainIngest --kind people|orgs|ab-projects|proponents|org-name-repair|org-classify [--dir <path>]");
 }
 
 // 2026-06-12: QueueDrain migrated to KOR-APP01; the ingest runs on the dev
 // box and reaches the queues via the share.
+// org-classify drain lives in classify-unknown-orgs folder, not "org-classify"
+var drainFolder = kind == "org-classify" ? "classify-unknown-orgs" : kind;
 var inputDir = ReadArg(args, "--dir")
-    ?? Path.Combine(@"\\KOR-APP01\QueueDrain", kind, "outputs");
+    ?? Path.Combine(@"\\KOR-APP01\QueueDrain", drainFolder, "outputs");
 if (!Directory.Exists(inputDir))
 {
     return Fail($"Input dir not found: {inputDir}");
@@ -49,9 +51,13 @@ var cs = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB")
 var services = new ServiceCollection();
 services.AddLogging(b => b.AddSimpleConsole(o => o.SingleLine = true).SetMinimumLevel(LogLevel.Information));
 
-// Org-side chokepoint (FirmNarrative provider; auto-decomposes via the
-// existing IntelExtractorRegistry chain — register the schema extractor).
-services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("FirmNarrative"));
+// Intel extractors — single source of truth in IntelExtractorBootstrap.
+// Adding a new extractor goes there, not here.
+foreach (var ex in IntelExtractorBootstrap.GetDefaultExtractors())
+{
+    var captured = ex;
+    services.AddSingleton<IIntelExtractor>(_ => captured);
+}
 services.AddSingleton<DefaultIntelExtractor>();
 services.AddSingleton<IntelExtractorRegistry>();
 services.AddSingleton(_ => new IntelPersistenceService(cs));
@@ -100,6 +106,7 @@ var idPattern = kind switch
     "ab-projects"     => new Regex(@"^refresh-project-(\d+)\.json$", RegexOptions.IgnoreCase),
     "proponents"      => new Regex(@"^refresh-proponent-(\d+)\.json$", RegexOptions.IgnoreCase),
     "org-name-repair" => new Regex(@"^refresh-orgname-(\d+)\.json$", RegexOptions.IgnoreCase),
+    "org-classify"    => new Regex(@"^classify-(\d+)\.json$", RegexOptions.IgnoreCase),
     _                 => throw new InvalidOperationException(),
 };
 
@@ -110,10 +117,12 @@ var expectedEnvelopeKind = kind switch
     "ab-projects"     => "project-brief-refresh",
     "proponents"      => "proponent-research",
     "org-name-repair" => "org-name-repair",
+    "org-classify"    => "org-classify",
     _                 => throw new InvalidOperationException(),
 };
 
-var files = Directory.GetFiles(inputDir, "refresh-*.json");
+var fileGlob = kind == "org-classify" ? "classify-*.json" : "refresh-*.json";
+var files = Directory.GetFiles(inputDir, fileGlob);
 log.LogInformation("Found {Count} {Kind} output files in {Dir}", files.Length, kind, inputDir);
 
 var ok = 0;
@@ -139,7 +148,7 @@ var nextRefresh = DateTimeOffset.UtcNow.AddDays(90);
 //      provider names in one payload REJECT (ambiguous); unknown X REJECTS.
 //   3. No field and no marker -> the kind's default first-pass provider.
 var providerMarker = new Regex(@"\[\s*providerName\s*:\s*([A-Za-z0-9._-]+)\s*\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-var orgProviderWhitelist = new[] { "FirmNarrative", "FirmNarrativeHoning" };
+var orgProviderWhitelist = new[] { "FirmNarrative", "FirmNarrativeHoning", "OrgClassify", "SeAllegiance" };
 var projectProviderWhitelist = new[] { "ProjectBrief", "ProjectBriefHoning", "PrimeConsultantResearch" };
 var personProviderWhitelist = new[] { "PersonBrief", "PersonBriefHoning" };
 
@@ -976,6 +985,69 @@ VALUES (@id, @raw, N'OrgNameRepair', 100, N'BdQueueDrainIngest', sysdatetimeoffs
                     {
                         log.LogInformation("{Name}: org {Id} renamed '{Garbled}' -> '{Corrected}'; suppression cleared, alias preserved.", name, id, currentDisplayName, correctedName);
                     }
+                }
+                break;
+            case "org-classify":
+                {
+                    // classify-unknown-orgs drain: reads classify-{id}.json, updates CanonicalOrg.Kind
+                    // where the org is still Unknown and active. Identity verified via canonicalOrgId echo.
+                    long? classifyEchoedId = null;
+                    string? classifyDisplayName = null, resolvedKind = null;
+                    double classifyConfidence = 0;
+                    using (var cdoc = JsonDocument.Parse(briefJson))
+                    {
+                        var croot = cdoc.RootElement;
+                        if (croot.TryGetProperty("canonicalOrgId", out var cid) && cid.TryGetInt64(out var cidVal))
+                            classifyEchoedId = cidVal;
+                        if (croot.TryGetProperty("displayName", out var cdn) && cdn.ValueKind == JsonValueKind.String)
+                            classifyDisplayName = cdn.GetString();
+                        if (croot.TryGetProperty("resolvedKind", out var rk) && rk.ValueKind == JsonValueKind.String)
+                            resolvedKind = rk.GetString()?.Trim();
+                        if (croot.TryGetProperty("confidence", out var cf) && cf.ValueKind == JsonValueKind.Number)
+                            classifyConfidence = cf.GetDouble();
+                    }
+
+                    if (classifyEchoedId != id)
+                    {
+                        log.LogWarning("Skipping {Name}: payload canonicalOrgId={Echoed} does not match filename id={Id}.", name, classifyEchoedId, id);
+                        skipped++;
+                        continue;
+                    }
+
+                    var validKinds = new[] { "Architect", "Buyer", "GC", "Competitor", "Developer", "KorClient" };
+                    var canonicalKind = validKinds.FirstOrDefault(k => string.Equals(k, resolvedKind, StringComparison.OrdinalIgnoreCase));
+                    if (canonicalKind is null)
+                    {
+                        log.LogWarning("Skipping {Name}: resolvedKind '{Kind}' is not in the allowed list [{Valid}].", name, resolvedKind, string.Join(", ", validKinds));
+                        skipped++;
+                        continue;
+                    }
+
+                    if (classifyConfidence < 0.75)
+                    {
+                        log.LogWarning("Skipping {Name}: confidence {Conf:0.##} below 0.75.", name, classifyConfidence);
+                        skipped++;
+                        continue;
+                    }
+
+                    await using var kcon = new Microsoft.Data.SqlClient.SqlConnection(cs);
+                    await kcon.OpenAsync().ConfigureAwait(false);
+                    await using var kcmd = new Microsoft.Data.SqlClient.SqlCommand(
+                        @"UPDATE opportunities.CanonicalOrg
+                          SET Kind = @kind, UpdatedAtUtc = SYSDATETIMEOFFSET()
+                          WHERE Id = @id AND Kind = N'Unknown' AND RetiredAtUtc IS NULL;
+                          SELECT @@ROWCOUNT;", kcon);
+                    kcmd.Parameters.AddWithValue("@kind", canonicalKind);
+                    kcmd.Parameters.AddWithValue("@id", id);
+                    var classifyRows = (int)(await kcmd.ExecuteScalarAsync().ConfigureAwait(false))!;
+                    if (classifyRows == 0)
+                    {
+                        log.LogWarning("{Name}: CanonicalOrg Id={Id} not updated — already classified, retired, or missing.", name, id);
+                        skipped++;
+                        continue;
+                    }
+                    log.LogInformation("{Name}: CanonicalOrg Id={Id} '{Display}' → Kind={Kind} (confidence={Conf:0.##})", name, id, classifyDisplayName, canonicalKind, classifyConfidence);
+                    ok++;
                 }
                 break;
         }
