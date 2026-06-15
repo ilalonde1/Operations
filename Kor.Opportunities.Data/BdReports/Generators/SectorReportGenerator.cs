@@ -18,7 +18,11 @@ public static class SectorReportGenerator
 {
     // Truncation caps from the PS builders' Safe() calls.
     private const int UrgentAngleCap = 600;
-    private const int PursueWhyCap = 130;
+    // PURSUE is the act-on bucket; its honing rationale is the most decision-
+    // relevant of the table buckets and the kor://mpi drill-down can't recover
+    // truncated text (PursuitBrief carries no honing angle), so this cap is set
+    // well above the lower-stakes MONITOR/DISCOVER caps to keep the "why" intact.
+    private const int PursueWhyCap = 400;
     private const int MonitorWhyCap = 110;
     private const int DeadWhyCap = 140;
     private const int DuplicateWhyCap = 120;

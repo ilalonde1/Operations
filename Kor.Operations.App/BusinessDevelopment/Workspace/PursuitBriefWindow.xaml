@@ -150,9 +150,9 @@
                                     CornerRadius="999"
                                     Padding="10,4"
                                     Margin="0,0,12,8">
-                                <TextBlock Text="{Binding Brief.Architect.SeatStatus}" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding SeatStatusDisplay}" FontWeight="Bold"/>
                             </Border>
-                            <TextBlock Text="{Binding Brief.Architect.SeatPriority}" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,8"/>
+                            <TextBlock Text="{Binding SeatPriorityDisplay}" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,8"/>
                         </WrapPanel>
                         <TextBlock Text="{Binding Brief.Architect.DisplacementRead}" TextWrapping="Wrap" Margin="0,0,0,10"/>
                         <TextBlock Text="Architect warmth" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
