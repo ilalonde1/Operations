@@ -36,6 +36,7 @@ public sealed class FirmNarrativeHoningExtractor : IIntelExtractor
 
             AddPeople(root, ctx.CanonicalOrgId, conf, people, affiliations, actions);
             AddNarrativeString(root, "paragraphCurrent", "Current", ctx.CanonicalOrgId, conf, narratives);
+            AddNarrativeString(root, "narrative", "Current", ctx.CanonicalOrgId, conf, narratives);
             AddNarrativeString(root, "paragraphHistory", "History", ctx.CanonicalOrgId, conf, narratives);
             AddParagraphAction(root, ctx.CanonicalOrgId, conf, narratives, actions);
             AddNarrativesArray(root, ctx.CanonicalOrgId, conf, narratives);
@@ -43,6 +44,8 @@ public sealed class FirmNarrativeHoningExtractor : IIntelExtractor
             AddSeAllegiances(root, ctx.CanonicalOrgId, conf, signals, narratives);
             AddDisplacementStrategy(root, ctx.CanonicalOrgId, conf, actions);
             AddActivePipeline(root, ctx.CanonicalOrgId, conf, works);
+            AddActionsArray(root, ctx.CanonicalOrgId, conf, actions);
+            AddPerProjectPlays(root, ctx.CanonicalOrgId, conf, works, actions);
             AddOpenSeProjects(root, ctx.CanonicalOrgId, conf, narratives);
 
             if (people.Count + affiliations.Count + signals.Count + actions.Count
@@ -89,8 +92,15 @@ public sealed class FirmNarrativeHoningExtractor : IIntelExtractor
             var name = GetStr(item, "name", "fullName", "personName");
             if (string.IsNullOrWhiteSpace(name)) continue;
 
-            var notes = GetStr(item, "notes");
-            var title = GetStr(item, "title", "role", "decisionRole");
+            var rawNotes = GetStr(item, "notes");
+            var roleTag = GetStr(item, "role");
+            var notes = (rawNotes, roleTag) switch {
+                (null, null) => null,
+                (null, _) => roleTag,
+                (_, null) => rawNotes,
+                _ => $"{rawNotes} [{roleTag}]"
+            };
+            var title = GetStr(item, "title", "decisionRole");
             var isDeparted = IsDeparted(notes);
 
             people.Add(new IntelPersonDraft(
@@ -175,13 +185,13 @@ public sealed class FirmNarrativeHoningExtractor : IIntelExtractor
             if (item.ValueKind != JsonValueKind.Object) continue;
             var subject = GetStr(item, "subject");
             if (string.IsNullOrWhiteSpace(subject)) continue;
-            var signalType = GetStr(item, "signalType") ?? "Other";
+            var signalType = GetStr(item, "signalType", "type") ?? "Other";
             signals.Add(new IntelSignalDraft(
                 CanonicalOrgId: orgId,
                 SignalType: Truncate(signalType, 100),
                 Subject: Truncate(subject, 500),
                 Detail: GetStr(item, "detail"),
-                OccurredAtApprox: GetStr(item, "occurredAtApprox"),
+                OccurredAtApprox: GetStr(item, "occurredAtApprox", "occurredAt"),
                 SourceUrl: GetStr(item, "sourceUrl"),
                 Confidence: conf));
         }
@@ -286,6 +296,64 @@ public sealed class FirmNarrativeHoningExtractor : IIntelExtractor
             var text = item.ValueKind == JsonValueKind.String ? item.GetString() : GetStr(item, "name");
             if (string.IsNullOrWhiteSpace(text)) continue;
             narratives.Add(new IntelNarrativeDraft(orgId, "Action", $"Open SE seat: {text}", conf));
+        }
+    }
+
+    private static void AddActionsArray(
+        JsonElement root, long orgId, IntelConfidence conf,
+        List<IntelActionDraft> actions)
+    {
+        if (!TryGetArray(root, out var arr, "actions")) return;
+        foreach (var item in arr.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object) continue;
+            var rec = GetStr(item, "recommendation");
+            if (string.IsNullOrWhiteSpace(rec)) continue;
+            var actionType = GetStr(item, "type") ?? "Other";
+            actions.Add(new IntelActionDraft(
+                CanonicalOrgId: orgId,
+                ActionType: Truncate(actionType, 100),
+                Recommendation: rec,
+                TargetPersonName: GetStr(item, "targetPerson"),
+                TimingNotes: GetStr(item, "timingNotes"),
+                Confidence: conf));
+        }
+    }
+
+    private static void AddPerProjectPlays(
+        JsonElement root, long orgId, IntelConfidence conf,
+        List<IntelWorkDraft> works, List<IntelActionDraft> actions)
+    {
+        if (!TryGetArray(root, out var arr, "perProjectPlays")) return;
+        foreach (var item in arr.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object) continue;
+            var name = GetStr(item, "projectName");
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            var korAngle = GetStr(item, "korAngle");
+            var selOwner = GetStr(item, "selectionOwner");
+            var incumbent = GetStr(item, "incumbentSe");
+            var notes = string.Join(" | ", new[] { selOwner, incumbent, GetStr(item, "timingWindow") }
+                .Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s!));
+            works.Add(new IntelWorkDraft(
+                CanonicalOrgId: orgId,
+                ProjectName: Truncate(name, 300),
+                Role: GetStr(item, "verdict"),
+                YearApprox: null,
+                EstimatedValueCad: null,
+                EstimatedValueText: null,
+                Notes: string.IsNullOrWhiteSpace(notes) ? null : notes,
+                Confidence: conf));
+            if (!string.IsNullOrWhiteSpace(korAngle))
+            {
+                actions.Add(new IntelActionDraft(
+                    CanonicalOrgId: orgId,
+                    ActionType: "PursuitAngle",
+                    Recommendation: korAngle,
+                    TargetPersonName: selOwner,
+                    TimingNotes: GetStr(item, "timingWindow"),
+                    Confidence: conf));
+            }
         }
     }
 

@@ -54,7 +54,11 @@ try
     }));
     services.AddSingleton<IResearchExecutorService, AnthropicResearchExecutorService>();
     services.AddSingleton<IResearchPromptCatalog, FileSystemResearchPromptCatalog>();
-    services.AddSingleton<IIntelExtractor>(_ => new CanonicalSchemaExtractor("FirmNarrative"));
+    foreach (var ex in IntelExtractorBootstrap.GetDefaultExtractors())
+    {
+        var captured = ex;
+        services.AddSingleton<IIntelExtractor>(_ => captured);
+    }
     services.AddSingleton<DefaultIntelExtractor>();
     services.AddSingleton<IntelExtractorRegistry>();
     services.AddSingleton(_ => new IntelPersistenceService(opportunitiesDb));

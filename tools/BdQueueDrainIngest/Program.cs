@@ -26,7 +26,7 @@ static string? ReadArg(string[] args, string name)
 }
 
 var kind = ReadArg(args, "--kind");
-if (kind is not ("people" or "orgs" or "ab-projects" or "proponents" or "org-name-repair" or "org-classify"))
+if (kind is not ("people" or "orgs" or "honing-orgs" or "ab-projects" or "proponents" or "org-name-repair" or "org-classify"))
 {
     return Fail("Usage: BdQueueDrainIngest --kind people|orgs|ab-projects|proponents|org-name-repair|org-classify [--dir <path>]");
 }
@@ -34,7 +34,11 @@ if (kind is not ("people" or "orgs" or "ab-projects" or "proponents" or "org-nam
 // 2026-06-12: QueueDrain migrated to KOR-APP01; the ingest runs on the dev
 // box and reaches the queues via the share.
 // org-classify drain lives in classify-unknown-orgs folder, not "org-classify"
-var drainFolder = kind == "org-classify" ? "classify-unknown-orgs" : kind;
+var drainFolder = kind switch {
+    "org-classify" => "classify-unknown-orgs",
+    "honing-orgs"  => "honing-orgs",
+    _              => kind
+};
 var inputDir = ReadArg(args, "--dir")
     ?? Path.Combine(@"\\KOR-APP01\QueueDrain", drainFolder, "outputs");
 if (!Directory.Exists(inputDir))
@@ -103,6 +107,7 @@ var idPattern = kind switch
 {
     "people"          => new Regex(@"^refresh-person-(\d+)\.json$", RegexOptions.IgnoreCase),
     "orgs"            => new Regex(@"^refresh-org-(\d+)\.json$", RegexOptions.IgnoreCase),
+    "honing-orgs"     => new Regex(@"^refresh-org-(\d+)\.json$", RegexOptions.IgnoreCase),
     "ab-projects"     => new Regex(@"^refresh-project-(\d+)\.json$", RegexOptions.IgnoreCase),
     "proponents"      => new Regex(@"^refresh-proponent-(\d+)\.json$", RegexOptions.IgnoreCase),
     "org-name-repair" => new Regex(@"^refresh-orgname-(\d+)\.json$", RegexOptions.IgnoreCase),
@@ -114,6 +119,7 @@ var expectedEnvelopeKind = kind switch
 {
     "people"          => "person-brief-refresh",
     "orgs"            => "org-brief-refresh",
+    "honing-orgs"     => "org-brief-refresh",
     "ab-projects"     => "project-brief-refresh",
     "proponents"      => "proponent-research",
     "org-name-repair" => "org-name-repair",
@@ -148,7 +154,7 @@ var nextRefresh = DateTimeOffset.UtcNow.AddDays(90);
 //      provider names in one payload REJECT (ambiguous); unknown X REJECTS.
 //   3. No field and no marker -> the kind's default first-pass provider.
 var providerMarker = new Regex(@"\[\s*providerName\s*:\s*([A-Za-z0-9._-]+)\s*\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-var orgProviderWhitelist = new[] { "FirmNarrative", "FirmNarrativeHoning", "OrgClassify", "SeAllegiance" };
+var orgProviderWhitelist = new[] { "FirmNarrative", "FirmNarrativeHoning" };
 var projectProviderWhitelist = new[] { "ProjectBrief", "ProjectBriefHoning", "PrimeConsultantResearch" };
 var personProviderWhitelist = new[] { "PersonBrief", "PersonBriefHoning" };
 
@@ -1047,7 +1053,6 @@ VALUES (@id, @raw, N'OrgNameRepair', 100, N'BdQueueDrainIngest', sysdatetimeoffs
                         continue;
                     }
                     log.LogInformation("{Name}: CanonicalOrg Id={Id} '{Display}' → Kind={Kind} (confidence={Conf:0.##})", name, id, classifyDisplayName, canonicalKind, classifyConfidence);
-                    ok++;
                 }
                 break;
         }
