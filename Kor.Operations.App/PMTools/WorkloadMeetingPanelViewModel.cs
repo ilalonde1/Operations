@@ -698,15 +698,24 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
     public async Task ForceSaveAllAsync(CancellationToken ct = default)
     {
-        var selection = SelectedMeeting;
-        if (selection == null || !IsCurrentMeeting) return;
+        // Round 52k (review): capture the selected meeting AND its priority rows
+        // in ONE UI-thread hop. SelectedMeeting and PriorityProjects are both
+        // mutated only on the dispatcher, so a single Invoke gives a consistent
+        // pair. The previous code read selection first, then rows after an
+        // await — a meeting switch in between (e.g. a window reopened against
+        // this shared singleton VM while a prior close-flush was still running)
+        // could pair one meeting's id with another meeting's rows and write
+        // notes into the wrong meeting.
+        var (selectionId, rows) = await _dispatcher.InvokeAsync<(Guid, List<WorkloadMeetingProjectRow>?)>(() =>
+            SelectedMeeting != null && IsCurrentMeeting
+                ? (SelectedMeeting.Id, PriorityProjects.ToList())
+                : (Guid.Empty, null));
 
-        await FlushPendingNotesSaveAsync(selection.Id).ConfigureAwait(false);
+        if (rows is null) return;
 
-        List<WorkloadMeetingProjectRow> rows = new();
-        await _dispatcher.InvokeAsync(() => rows = PriorityProjects.ToList());
+        await FlushPendingNotesSaveAsync(selectionId).ConfigureAwait(false);
         foreach (var row in rows)
-            await _store.SaveProjectNotesAsync(selection.Id, row.Wbs1, row.Notes, ct).ConfigureAwait(false);
+            await _store.SaveProjectNotesAsync(selectionId, row.Wbs1, row.Notes, ct).ConfigureAwait(false);
     }
 
     public async Task DeleteMeetingAsync()
