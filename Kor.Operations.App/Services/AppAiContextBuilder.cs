@@ -9,15 +9,43 @@ namespace Kor.Operations.Services;
 
 internal sealed class AppAiContextBuilder
 {
-    private readonly List<IAiContextProvider> _providers = new();
+    // Ref-counted by provider instance. The same singleton VM can be registered
+    // by more than one open window (e.g. PmToolsViewModel is shared by
+    // WorkloadMeetingWindow + PmCapacityWindow); it must survive in the prompt
+    // until the LAST holder unregisters. Before ref-counting, Register deduped
+    // by name but Unregister removed by reference, so closing the first window
+    // stripped the provider out from under the still-open second one.
+    private sealed class Registration
+    {
+        public IAiContextProvider Provider;
+        public int Count;
+        public Registration(IAiContextProvider provider) { Provider = provider; Count = 1; }
+    }
+
+    private readonly List<Registration> _providers = new();
     private readonly object _gate = new();
 
     internal void Register(IAiContextProvider provider)
     {
         lock (_gate)
         {
-            _providers.RemoveAll(p => p.ProviderName == provider.ProviderName);
-            _providers.Add(provider);
+            var existing = _providers.FirstOrDefault(r => r.Provider.ProviderName == provider.ProviderName);
+            if (existing is null)
+            {
+                _providers.Add(new Registration(provider));
+            }
+            else if (ReferenceEquals(existing.Provider, provider))
+            {
+                // Same instance held by another window — bump the ref-count.
+                existing.Count++;
+            }
+            else
+            {
+                // Different instance, same name — a reopened window's fresh VM
+                // supersedes the stale one (original by-name dedup contract).
+                existing.Provider = provider;
+                existing.Count = 1;
+            }
         }
     }
 
@@ -25,7 +53,13 @@ internal sealed class AppAiContextBuilder
     {
         lock (_gate)
         {
-            _providers.Remove(provider);
+            // Match by reference: only the instance that registered decrements,
+            // and a stale instance already superseded by a same-named one is a
+            // no-op (won't evict the live provider).
+            var existing = _providers.FirstOrDefault(r => ReferenceEquals(r.Provider, provider));
+            if (existing is null) return;
+            if (--existing.Count <= 0)
+                _providers.Remove(existing);
         }
     }
 
@@ -47,7 +81,7 @@ internal sealed class AppAiContextBuilder
         var sb = new StringBuilder();
 
         IAiContextProvider[] snapshot;
-        lock (_gate) { snapshot = _providers.ToArray(); }
+        lock (_gate) { snapshot = _providers.Select(r => r.Provider).ToArray(); }
 
         foreach (var provider in snapshot)
         {

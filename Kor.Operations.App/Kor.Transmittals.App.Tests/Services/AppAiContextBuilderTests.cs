@@ -125,6 +125,41 @@ public sealed class AppAiContextBuilderTests
         Assert.Contains("second",       ctx, System.StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Register_SameInstanceTwice_SurvivesUntilLastUnregister()
+    {
+        // The Workload + PM-Capacity bug: both windows register the SAME
+        // singleton VM instance. Closing one (one Unregister) must NOT strip
+        // the provider while the other window still holds it; only the second
+        // Unregister removes it. Ref-counted by instance.
+        var builder = new AppSvc.AppAiContextBuilder();
+        var shared = new FakeProvider("PM Tools", "pm body");
+        builder.Register(shared);   // window A
+        builder.Register(shared);   // window B (same instance)
+
+        builder.Unregister(shared); // close A
+        Assert.Contains("pm body", builder.BuildFullContext(), System.StringComparison.Ordinal);
+
+        builder.Unregister(shared); // close B
+        Assert.DoesNotContain("pm body", builder.BuildFullContext(), System.StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Unregister_StaleInstance_DoesNotEvictSupersedingProvider()
+    {
+        // A different instance with the same name superseded the first; a late
+        // Unregister of the stale instance must be a no-op, not evict the live one.
+        var builder = new AppSvc.AppAiContextBuilder();
+        var stale = new FakeProvider("Dash", "stale");
+        var live  = new FakeProvider("Dash", "live");
+        builder.Register(stale);
+        builder.Register(live);   // replaces stale (same name, new instance)
+
+        builder.Unregister(stale); // late close of the old window — must no-op
+
+        Assert.Contains("live", builder.BuildFullContext(), System.StringComparison.Ordinal);
+    }
+
     // ── End-to-end proof: BuildContext bridges to BuildFullContext ──
     //
     // Batch 60 wired AppAiContextBuilder back into AppAiService.AskAsync. This
