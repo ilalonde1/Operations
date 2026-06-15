@@ -53,10 +53,23 @@ public static class CallSheetReportGenerator
         {
             b.H3($"{rank}. {p.ProjectName} ({CostOf(p)})", KorReportLinks.Mpi(p.MpiId));
             b.Chips(new ChipItem(p.Verdict ?? "NO VERDICT", ChipTones.ForVerdict(p.Verdict)));
-            b.B("Id: ", p.MpiId.ToString(CultureInfo.InvariantCulture));
-            b.B("Province: ", p.Province);
-            b.B("Proponent: ", p.ProponentName ?? string.Empty);
-            b.B("Status: ", p.HoningStatus ?? string.Empty);
+            var facts = new List<string> { $"Id {p.MpiId}" };
+            if (!string.IsNullOrWhiteSpace(p.Province))
+            {
+                facts.Add(p.Province);
+            }
+
+            if (!string.IsNullOrWhiteSpace(p.ProponentName))
+            {
+                facts.Add($"Proponent: {p.ProponentName}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(p.HoningStatus))
+            {
+                facts.Add($"Status: {p.HoningStatus}");
+            }
+
+            b.Italic(string.Join("    ", facts));
             b.P(Safe(p.KorAngle, TopAngleCap));
             b.P(string.Empty);
             rank++;

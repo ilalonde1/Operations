@@ -18,7 +18,7 @@ public static class SectorReportGenerator
 {
     // Truncation caps from the PS builders' Safe() calls.
     private const int UrgentAngleCap = 600;
-    private const int PursueAngleCap = 450;
+    private const int PursueWhyCap = 130;
     private const int MonitorWhyCap = 110;
     private const int DeadWhyCap = 140;
     private const int DuplicateWhyCap = 120;
@@ -74,30 +74,46 @@ public static class SectorReportGenerator
         foreach (var p in urgent)
         {
             b.H3($"{rank}. {p.ProjectName}", KorReportLinks.Mpi(p.MpiId));
-            b.B("Id: ", p.MpiId.ToString(CultureInfo.InvariantCulture));
-            b.B("Province: ", p.Province);
-            b.B("Proponent: ", p.ProponentName ?? string.Empty);
-            b.B("Cost: ", CostOf(p));
-            b.B("Status: ", p.HoningStatus ?? string.Empty);
+            var facts = new List<string> { $"Id {p.MpiId}" };
+            if (!string.IsNullOrWhiteSpace(p.Province))
+            {
+                facts.Add(p.Province);
+            }
+
+            if (!string.IsNullOrWhiteSpace(p.ProponentName))
+            {
+                facts.Add($"Proponent: {p.ProponentName}");
+            }
+
+            var cost = CostOf(p);
+            if (!string.IsNullOrWhiteSpace(cost))
+            {
+                facts.Add($"Cost: {cost}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(p.HoningStatus))
+            {
+                facts.Add($"Status: {p.HoningStatus}");
+            }
+
+            b.Italic(string.Join("    ", facts));
             b.P(Safe(p.KorAngle, UrgentAngleCap));
-            b.P(string.Empty);
             rank++;
         }
 
         b.H2("PURSUE — Open opportunities (not yet urgent)");
-        if (pursue.Count == 0)
-        {
-            b.P("None in this honing pass.");
-        }
-
-        foreach (var p in pursue)
-        {
-            b.B($"Id {p.MpiId}: ", $"{p.ProjectName} ({p.Province})", KorReportLinks.Mpi(p.MpiId));
-            b.P($"Proponent: {p.ProponentName} | Cost: {CostOf(p)}");
-            b.P(Safe(p.KorAngle, PursueAngleCap));
-            b.Italic("Status: " + (p.HoningStatus ?? string.Empty));
-            b.P(string.Empty);
-        }
+        AppendBucketTable(b, pursue,
+            new[] { "Id", "Project", "Proponent", "Province", "Cost", "Why PURSUE" },
+            p => new[]
+            {
+                p.MpiId.ToString(CultureInfo.InvariantCulture),
+                Safe(p.ProjectName, 55),
+                Safe(p.ProponentName, TableProponentCap),
+                p.Province,
+                CostOf(p),
+                Safe(p.KorAngle, PursueWhyCap),
+            },
+            new[] { ColumnAlignment.Right, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Left, ColumnAlignment.Right, ColumnAlignment.Left });
 
         b.H2("MONITOR — Current phase locked, future phases open");
         AppendBucketTable(b, monitor,

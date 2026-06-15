@@ -104,15 +104,28 @@ public sealed class SectorReportGeneratorTests
     }
 
     [Fact]
+    public void Build_PursueSectionWhenPresent_AndTablePopulated()
+    {
+        var rows = new[] { Row(7, "Pursue One", BdVerdicts.Pursue, "open structural seat") };
+
+        var doc = SectorReportGenerator.Build(Definition, Prose, rows, GeneratedAt);
+
+        var pursueTable = doc.Blocks.OfType<TableBlock>().Single(t => t.Headers.Contains("Why PURSUE"));
+        Assert.Equal("7", pursueTable.Rows[0][0]);
+        Assert.Equal("open structural seat", pursueTable.Rows[0][5]);
+    }
+
+    [Fact]
     public void Build_EmptyBuckets_RenderNoneParagraphInsteadOfEmptyTable()
     {
         var rows = new[] { Row(1, "Only Pursue", BdVerdicts.Pursue, "open") };
 
         var doc = SectorReportGenerator.Build(Definition, Prose, rows, GeneratedAt);
 
-        // URGENT/MONITOR/DISCOVER/DEAD buckets are all empty: no tables, four
-        // "None" placeholders.
-        Assert.Empty(doc.Blocks.OfType<TableBlock>());
+        // URGENT/MONITOR/DISCOVER/DEAD buckets are all empty: four "None"
+        // placeholders. PURSUE renders as a populated table.
+        var table = Assert.Single(doc.Blocks.OfType<TableBlock>());
+        Assert.Contains("Why PURSUE", table.Headers);
         Assert.Equal(4, doc.Blocks.OfType<ParagraphBlock>().Count(p => p.Text == "None in this honing pass."));
     }
 
