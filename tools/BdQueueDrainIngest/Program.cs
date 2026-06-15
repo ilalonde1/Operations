@@ -441,7 +441,8 @@ foreach (var file in files)
                         await pcon.OpenAsync().ConfigureAwait(false);
                         await using var pcmd = new Microsoft.Data.SqlClient.SqlCommand(
                             "SELECT Id FROM opportunities.IntelPerson WHERE NormalizedName = @n AND RetiredAtUtc IS NULL;", pcon);
-                        pcmd.Parameters.AddWithValue("@n", IntelNaturalKey.Normalize(subjectName));
+                        var normalizedLookup = IntelNaturalKey.Normalize(subjectName);
+                        pcmd.Parameters.AddWithValue("@n", normalizedLookup.Length <= 200 ? normalizedLookup : normalizedLookup[..200]);
                         await using var pr = await pcmd.ExecuteReaderAsync().ConfigureAwait(false);
                         while (await pr.ReadAsync().ConfigureAwait(false))
                         {
@@ -488,8 +489,9 @@ foreach (var file in files)
                         {
                             await using var resurrectCmd = new Microsoft.Data.SqlClient.SqlCommand(@"
 UPDATE opportunities.IntelPerson
-SET RetiredAtUtc = NULL, DisplayName = @dn, NormalizedName = @nn, LastSeenAtUtc = sysdatetimeoffset()
-WHERE Id = @id;", icon);
+SET RetiredAtUtc = NULL, RetiredReason = NULL, DisplayName = @dn, NormalizedName = @nn,
+    LastSeenAtUtc = sysdatetimeoffset(), UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id AND RetiredAtUtc IS NOT NULL;", icon);
                             resurrectCmd.Parameters.AddWithValue("@dn", displayNameTrunc);
                             resurrectCmd.Parameters.AddWithValue("@nn", normalizedTrunc);
                             resurrectCmd.Parameters.AddWithValue("@id", retiredPersonId.Value);
