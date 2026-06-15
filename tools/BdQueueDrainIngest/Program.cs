@@ -510,6 +510,7 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", icon);
                 }
                 break;
             case "orgs":
+            case "honing-orgs":
                 {
                     var (orgProvider, orgReject) = ResolveDrainProvider(briefJson, "FirmNarrative", orgProviderWhitelist);
                     if (orgProvider is null)
