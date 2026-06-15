@@ -96,7 +96,7 @@ public static class SectorReportGenerator
                 facts.Add($"Status: {p.HoningStatus}");
             }
 
-            b.Italic(string.Join("    ", facts));
+            b.Italic(string.Join("  ·  ", facts));
             b.P(Safe(p.KorAngle, UrgentAngleCap));
             rank++;
         }

@@ -69,7 +69,7 @@ public static class CallSheetReportGenerator
                 facts.Add($"Status: {p.HoningStatus}");
             }
 
-            b.Italic(string.Join("    ", facts));
+            b.Italic(string.Join("  ·  ", facts));
             b.P(Safe(p.KorAngle, TopAngleCap));
             b.P(string.Empty);
             rank++;
