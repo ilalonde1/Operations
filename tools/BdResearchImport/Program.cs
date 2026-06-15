@@ -67,25 +67,25 @@ internal static class Program
 
     private static readonly ResearchStreamSpec[] ResearchStreams =
     [
-        new("contractor", "KOR-Contractor-Research", "import-payload.json", "contractor"),
-        new("public-sector", "KOR-PublicSector-Research", "buyer-profile.json", "public-sector-buyer-profile"),
-        new("public-sector", "KOR-PublicSector-Research", "projects-payload.json", "public-sector-projects"),
-        new("indigenous", "KOR-Indigenous-Development", "dev-corps-payload.json", "indigenous-dev-corps"),
-        new("indigenous", "KOR-Indigenous-Development", "projects-payload.json", "indigenous-dev-projects"),
-        new("indigenous", "KOR-Indigenous-Development", "partner-graph.json", "indigenous-partner-graph"),
-        new("bc-dev", "KOR-BC-Development-Pipeline", "projects-payload.json", "bc-dev"),
-        new("la", "KOR-LA-Market", "firms-payload.json", "us-market-firms"),
-        new("la", "KOR-LA-Market", "projects-payload.json", "us-market-projects"),
-        new("pacnw", "KOR-PacNW-Market", "firms-payload.json", "us-market-firms"),
-        new("pacnw", "KOR-PacNW-Market", "projects-payload.json", "us-market-projects"),
-        new("alberta", "KOR-Alberta-Market", "firms-payload.json", "alberta-firms"),
-        new("alberta", "KOR-Alberta-Market", "projects-payload.json", "alberta-projects"),
-        new("institutional", "KOR-Institutional-Pipeline", "owners-payload.json", "institutional-owners"),
-        new("institutional", "KOR-Institutional-Pipeline", "projects-payload.json", "institutional-projects"),
-        new("prime-targeting", "KOR-Prime-Consultant-Strategy", "primes-payload.json", "prime-targeting"),
-        new("prime-contacts", "KOR-Prime-DecisionMakers", "people-payload.json", "prime-contacts"),
-        new("island-okanagan", "KOR-Island-Okanagan-Ecosystem", "orgs.json", "island-okanagan-orgs"),
-        new("island-okanagan", "KOR-Island-Okanagan-Ecosystem", "projects.json", "island-okanagan-projects"),
+        new("contractor", "KOR-Contractor-Research", "outputs/import-payload.json", "contractor"),
+        new("public-sector", "KOR-PublicSector-Research", "outputs/buyer-profiles.json", "public-sector-buyer-profile"),
+        new("public-sector", "KOR-PublicSector-Research", "outputs/projects-payload.json", "public-sector-projects"),
+        new("indigenous", "KOR-Indigenous-Development", "outputs/dev-corps-payload.json", "indigenous-dev-corps"),
+        new("indigenous", "KOR-Indigenous-Development", "outputs/projects-payload.json", "indigenous-dev-projects"),
+        new("indigenous", "KOR-Indigenous-Development", "outputs/partner-graph.json", "indigenous-partner-graph"),
+        new("bc-dev", "KOR-BC-Development-Pipeline", "outputs/projects-payload.json", "bc-dev"),
+        new("la", "KOR-LA-Market", "outputs/firms-payload.json", "us-market-firms"),
+        new("la", "KOR-LA-Market", "outputs/projects-payload.json", "us-market-projects"),
+        new("pacnw", "KOR-PacNW-Market", "outputs/firms-payload.json", "us-market-firms"),
+        new("pacnw", "KOR-PacNW-Market", "outputs/projects-payload.json", "us-market-projects"),
+        new("alberta", "KOR-Alberta-Market", "outputs/firms-payload.json", "alberta-firms"),
+        new("alberta", "KOR-Alberta-Market", "outputs/projects-payload.json", "alberta-projects"),
+        new("institutional", "KOR-Institutional-Pipeline", "outputs/owners-payload.json", "institutional-owners"),
+        new("institutional", "KOR-Institutional-Pipeline", "outputs/projects-payload.json", "institutional-projects"),
+        new("prime-targeting", "KOR-Prime-Consultant-Strategy", "outputs/primes-payload.json", "prime-targeting"),
+        new("prime-contacts", "KOR-Prime-DecisionMakers", "outputs/people-payload.json", "prime-contacts"),
+        new("island-okanagan", "KOR-Island-Okanagan-Ecosystem", "outputs/orgs.json", "island-okanagan-orgs"),
+        new("island-okanagan", "KOR-Island-Okanagan-Ecosystem", "outputs/projects.json", "island-okanagan-projects"),
         new("intel-gathering", "KOR-Intel-Gathering", "outputs/team-awards.json", "intel-gathering-team-awards"),
         new("owner-pipelines", "KOR-Intel-Gathering", "outputs/owner-pipelines.json", "owner-pipelines"),
         new("competitor-profiles", "KOR-Intel-Gathering", "outputs/competitor-profiles.json", "competitor-profiles"),
@@ -670,7 +670,7 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Contractor-Research", "import-payload.json", "contractor", out var path)
+        if (!TryResolveResearchStream(options, "KOR-Contractor-Research", "contractor", out var path)
             || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
@@ -844,7 +844,7 @@ ORDER BY Id;";
             }
         }
 
-        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-PublicSector-Research", "projects-payload.json", "public-sector-projects", out var projectsPath)
+        if (!TryResolveResearchStream(options, "KOR-PublicSector-Research", "public-sector-projects", out var projectsPath)
             || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
@@ -927,7 +927,7 @@ ORDER BY Id;";
         CancellationToken ct)
     {
         var dir = Path.Combine(options.BaseDirectory, "KOR-Indigenous-Development");
-        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Indigenous-Development", "dev-corps-payload.json", "indigenous-dev-corps", out var devCorpsPath)
+        if (TryResolveResearchStream(options, "KOR-Indigenous-Development", "indigenous-dev-corps", out var devCorpsPath)
             && TryLoadJson(devCorpsPath, out var devCorpsDoc))
         {
             using (devCorpsDoc)
@@ -974,7 +974,7 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Indigenous-Development", "projects-payload.json", "indigenous-dev-projects", out var projectsPath)
+        if (TryResolveResearchStream(options, "KOR-Indigenous-Development", "indigenous-dev-projects", out var projectsPath)
             && TryLoadJson(projectsPath, out var projectsDoc))
         {
             using (projectsDoc)
@@ -1051,7 +1051,7 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Indigenous-Development", "partner-graph.json", "indigenous-partner-graph", out var partnerGraphPath)
+        if (TryResolveResearchStream(options, "KOR-Indigenous-Development", "indigenous-partner-graph", out var partnerGraphPath)
             && TryLoadJson(partnerGraphPath, out var partnerGraphDoc))
         {
             using (partnerGraphDoc)
@@ -1105,7 +1105,7 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-BC-Development-Pipeline", "projects-payload.json", "bc-dev", out var path)
+        if (!TryResolveResearchStream(options, "KOR-BC-Development-Pipeline", "bc-dev", out var path)
             || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
@@ -1226,7 +1226,7 @@ ORDER BY Id;";
     {
         var dir = Path.Combine(options.BaseDirectory, directoryName);
 
-        if (TryResolveResearchFile(options.BaseDirectory, directoryName, "firms-payload.json", "us-market-firms", out var firmsPath)
+        if (TryResolveResearchStream(options, directoryName, "us-market-firms", out var firmsPath)
             && TryLoadJson(firmsPath, out var firmsDoc))
         {
             using (firmsDoc)
@@ -1273,7 +1273,7 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        if (!TryResolveResearchFile(options.BaseDirectory, directoryName, "projects-payload.json", "us-market-projects", out var projectsPath)
+        if (!TryResolveResearchStream(options, directoryName, "us-market-projects", out var projectsPath)
             || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
@@ -1393,7 +1393,7 @@ ORDER BY Id;";
         var dir = Path.Combine(options.BaseDirectory, "KOR-Alberta-Market");
         const string enrichmentProviderName = "AlbertaMarketResearch";
 
-        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Alberta-Market", "firms-payload.json", "alberta-firms", out var firmsPath)
+        if (TryResolveResearchStream(options, "KOR-Alberta-Market", "alberta-firms", out var firmsPath)
             && TryLoadJson(firmsPath, out var firmsDoc))
         {
             using (firmsDoc)
@@ -1440,7 +1440,7 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Alberta-Market", "projects-payload.json", "alberta-projects", out var projectsPath)
+        if (!TryResolveResearchStream(options, "KOR-Alberta-Market", "alberta-projects", out var projectsPath)
             || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
@@ -1543,7 +1543,7 @@ ORDER BY Id;";
     {
         var dir = Path.Combine(options.BaseDirectory, "KOR-Institutional-Pipeline");
 
-        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Institutional-Pipeline", "owners-payload.json", "institutional-owners", out var ownersPath)
+        if (TryResolveResearchStream(options, "KOR-Institutional-Pipeline", "institutional-owners", out var ownersPath)
             && TryLoadJson(ownersPath, out var ownersDoc))
         {
             using (ownersDoc)
@@ -1590,7 +1590,7 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Institutional-Pipeline", "projects-payload.json", "institutional-projects", out var projectsPath)
+        if (!TryResolveResearchStream(options, "KOR-Institutional-Pipeline", "institutional-projects", out var projectsPath)
             || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
@@ -1684,7 +1684,7 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Prime-Consultant-Strategy", "primes-payload.json", "prime-targeting", out var path)
+        if (!TryResolveResearchStream(options, "KOR-Prime-Consultant-Strategy", "prime-targeting", out var path)
             || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
@@ -1756,7 +1756,7 @@ ORDER BY Id;";
         ImportStats stats,
         CancellationToken ct)
     {
-        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Prime-DecisionMakers", "people-payload.json", "prime-contacts", out var path)
+        if (!TryResolveResearchStream(options, "KOR-Prime-DecisionMakers", "prime-contacts", out var path)
             || !TryLoadJson(path, out var doc))
         {
             stats.FilesMissing++;
@@ -1844,7 +1844,7 @@ ORDER BY Id;";
     {
         var dir = Path.Combine(options.BaseDirectory, "KOR-Island-Okanagan-Ecosystem");
 
-        if (TryResolveResearchFile(options.BaseDirectory, "KOR-Island-Okanagan-Ecosystem", "orgs.json", "island-okanagan-orgs", out var orgsPath)
+        if (TryResolveResearchStream(options, "KOR-Island-Okanagan-Ecosystem", "island-okanagan-orgs", out var orgsPath)
             && TryLoadJson(orgsPath, out var orgsDoc))
         {
             using (orgsDoc)
@@ -1891,7 +1891,7 @@ ORDER BY Id;";
             stats.FilesMissing++;
         }
 
-        if (!TryResolveResearchFile(options.BaseDirectory, "KOR-Island-Okanagan-Ecosystem", "projects.json", "island-okanagan-projects", out var projectsPath)
+        if (!TryResolveResearchStream(options, "KOR-Island-Okanagan-Ecosystem", "island-okanagan-projects", out var projectsPath)
             || !TryLoadJson(projectsPath, out var projectsDoc))
         {
             stats.FilesMissing++;
@@ -6972,6 +6972,18 @@ WHERE Id = @id
         document = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
         Console.WriteLine($"[FILE] {path}");
         return true;
+    }
+
+    // Looks up the legacy filename from the ResearchStreams catalog by (folderName, kind),
+    // then delegates to TryResolveResearchFile. This is the preferred call site — callers
+    // should not hardcode filenames; the catalog is the single source of truth.
+    private static bool TryResolveResearchStream(ImportOptions options, string folderName, string kind, out string resolvedPath)
+    {
+        var spec = Array.Find(ResearchStreams, s =>
+            string.Equals(s.FolderName, folderName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(s.Kind, kind, StringComparison.OrdinalIgnoreCase));
+        var legacyFileName = spec?.LegacyFileName ?? string.Empty;
+        return TryResolveResearchFile(options.BaseDirectory, folderName, legacyFileName, kind, out resolvedPath);
     }
 
     private static bool TryResolveResearchFile(string baseDir, string folderName, string legacyFileName, out string resolvedPath)
