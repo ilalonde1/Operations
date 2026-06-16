@@ -1489,3 +1489,40 @@ LoserId,SurvivorId,Reason
 # 70296 "NAIT (Northern Alberta Institute of Technology)" -> 852 "Northern Alberta
 # Institute of Technology": NAIT prefix throws fuzzy gate; same post-secondary institution.
 70296,852
+# 2026-06-16 Report-critical cluster dedup (migration-147 companion). Five real
+# entities fragmented across canonical rows, splitting their project counts in
+# every BD report. Survivors chosen by ref-count + canonical name + official
+# website + Deltek (Clendor) linkage (only Glotman 38926 carries a Clendor id,
+# so it MUST survive). All losers DB-verified: active, no frozen-kind, refs
+# repointed by the tool. West Van (SD45) / North Van (SD44) / joint VSB rows
+# (76029, 70883) deliberately EXCLUDED — distinct entities. Fuzzy gate rejects
+# on paren-suffix / "Board" vs "District No." / acronym variants.
+# Glotman Simpson -> 38926 (Clendor CL00573)
+# NOTE: 69901 and 69853 EXCLUDED — they are composites naming a 2nd/3rd firm
+# (69901 "...; RJC Engineers..."; 69853 "...; Stantec...; Fast+Epp...") and are
+# deferred to composite-decomposition per the Fast+Epp/HDR precedent above.
+75857,38926
+75665,38926
+74927,38926
+# WHM Structural Engineers (Wicke Herfst Maver) -> 69332
+76565,69332
+76507,69332
+75978,69332
+75877,69332
+# Vancouver School Board / SD39 -> 76162 (renamed canonical by migration 147)
+75535,76162
+75880,76162
+75657,76162
+76536,76162
+73782,76162
+76434,76162
+76030,76162
+23243,76162
+75970,76162
+31755,76162
+# West Vancouver School District SD45 -> 69571 (sd45.bc.ca)
+76222,69571
+75663,69571
+54971,69571
+# North Vancouver School District SD44 -> 75852
+54970,75852
