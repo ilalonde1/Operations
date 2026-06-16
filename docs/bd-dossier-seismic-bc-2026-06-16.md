@@ -61,8 +61,12 @@ Seismic SE seats currently held in BC (active + historical):
 
 **Read:** RJC is the firm to beat in seismic. But with **~270 schools and 99% of seats still open**, this is a *land-grab* market, not a displacement grind — the priority is getting onto the open H1/H2 pipeline before seats are awarded, not prying RJC loose.
 
-## 5. KOR's position — the honest read + the credential gap
-- **KOR's captured seismic foot-in in the BD system: zero recorded projects.** KOR is a seismic specialist, so this is almost certainly a **data gap** (KOR's real seismic portfolio isn't loaded), not a true absence. **Action #1: load KOR's seismic project history into the system** — it's the evidence base for every SMP pursuit (districts shortlist on demonstrated seismic-replacement experience + P.Eng depth, per the Prime-Consultant scoring model).
+## 5. KOR's position — the verified read (and where the strategy must bend)
+KOR's seismic history is now documented (see **KOR Credential Evidence Base**). The honest picture:
+- **KOR has genuine seismic depth — in heritage/commercial + high-importance, NOT schools.** Named, sourced credits: 564 Beatty St, Koret Lofts, 55 Water St, 626 W Pender, ICBC Lonsdale Quay, 800 Burrard (heritage/commercial upgrades); Simone (San Diego, performance-based seismic design); Canadian Embassy seismic assessments. Bench: Markulin on the **CSA A23.3 Clause 21** national seismic code committee, Beirne on the IStructE Seismic Panel, Atkinson's PBSD practice, fluency in **IEF Category 3/4** post-disaster structures (2024 BCBC advisory).
+- **KOR has ZERO K-12 school seismic-replacement credit** (confirmed five ways). Districts shortlist on demonstrated *school* seismic experience — so on the SMP school pipeline **KOR is a challenger, not an incumbent.** The naive "KOR's specialty = win the SMP schools" read is wrong without addressing this gap.
+- **Material disclosure:** founder John Bryson resigned EGBC (2019, consent order) over a Surrey tower that failed BCBC *seismic* requirements; the firm rebranded away from his name (he's now non-stamping). Any seismic-credibility-led pursuit must understand this and counter with current multi-principal Struct.Eng. depth + the OQM peer-check program. (Detail in the Credential Evidence Base.)
+- **Therefore the play bends:** lead with KOR's *real* fit — **heritage seismic upgrades and high-importance post-disaster structures (fire halls, EOCs, hospital-adjacent)** — and treat **SMP schools as a build-toward** (team on a first school to earn the reference; compile Bryson's full 80+ seismic list for SOQs). Don't pitch KOR as a school-seismic incumbent.
 - **Warm-path KOR already has** (contacts at the seismic districts, no prior project yet):
 
 | District | KOR contacts (emailable) |
@@ -77,17 +81,18 @@ Seismic SE seats currently held in BC (active + historical):
 
 VSB, Richmond, Coquitlam, Nanaimo — top-value districts where KOR has thin/no contacts: **contact-discovery priority** (capped Hunter pass on facilities/capital-projects leads).
 
-## 6. The play
-1. **Load KOR's seismic credentials** into the BD system (project list + P.Eng seismic experience) — the pursuit evidence base. *Highest priority; without it the pitch is unsubstantiated.*
-2. **Target the H1/open SMP pipeline before seats are awarded** — 99% are open; this is land-grab, not displacement. Lead with KOR's seismic specialization (structural-led, KOR can be Prime/lead consultant).
-3. **Build district relationships** at the highest-value owners — deepen the contacts KOR has (West Van, Greater Victoria, Saanich), and discover decision-makers at VSB/Richmond/Coquitlam/Nanaimo (capital-projects + facilities directors).
-4. **Vancouver Island is the volume play** (154 projects across Greater Victoria/Nanaimo/Cowichan/Sooke/Saanich) — and the seismic story is the credibility opener for the Island market specifically.
-5. **Displace RJC selectively** on the marquee seismic *replacements* (Sir Winston Churchill, King George, Sir A. Mackenzie) where KOR's specialization is most differentiating.
+## 6. The play (corrected for the credential reality)
+1. **Lead with KOR's real seismic fit:** heritage/commercial seismic upgrades (the named 564 Beatty / Koret / 55 Water portfolio) and **high-importance post-disaster structures** — fire halls, EOCs, hospital-adjacent, IEF Cat 3/4 — where KOR's PBSD + code-committee depth is genuinely differentiating. This is the winnable seismic entry today.
+2. **Treat the SMP schools as a build-toward, not a land-grab.** The seats are 99% open, but districts shortlist on *school* seismic-replacement experience KOR lacks. Earn the first reference by **teaming** on a school with a firm that has the credit, and by compiling Bryson's full 80+ seismic list for SOQs. Don't pitch KOR as a school-seismic incumbent.
+3. **Build district relationships now** regardless — deepen the contacts KOR has (West Van, Greater Victoria, Saanich) and discover capital-projects/facilities leads at VSB/Richmond/Coquitlam/Nanaimo — so KOR is positioned when it has the credential to compete.
+4. **Vancouver Island volume** (154 open seismic seats) is the long game; near-term, the **heritage seismic + high-importance** angle is the credible opener there too.
+5. **Manage the Bryson disclosure** proactively on any seismic-credibility-led pursuit (counter: current multi-principal Struct.Eng. depth + OQM peer-check).
+6. **RJC is the seismic incumbent** (19 seats) — out-position on heritage/high-importance first; schools later.
 
 ## 7. Enrichment actions (to make this fully indispensable)
-- **Load KOR's seismic portfolio** (the #1 gap).
+- **KOR's seismic portfolio is now documented** (Credential Evidence Base) — next: get Bryson's full named/dated 80+ seismic list + check the EGBC Seismic Retrofit Guidance registry + mine BC Bid award notices/district board minutes for any unrecorded KOR school work.
 - Tag a **seismic / SMP attribute** on MPI for clean sliceability (currently keyword-inferred).
 - Resolve incumbent-SE links on the seismic projects (RJC etc.) for a complete displacement map.
 - Capped Hunter pass for facilities/capital-projects decision-makers at the top seismic districts.
 
-*Bottom line: a ~$9.9B, 99%-open, government-funded, structural-LED program sitting on the school-district owners KOR already tracks, in KOR's exact specialty — the strongest single lane in the BC market. The only thing missing is KOR's own seismic evidence base loaded into the system, and decision-maker contacts at the top districts.*
+*Bottom line: a ~$9.9B, 99%-open, government-funded, structural-LED program in KOR's broad specialty — the largest open lane in BC. But the verified credential picture changes the approach: KOR's real seismic strength is **heritage/commercial + high-importance post-disaster** work (where it should lead now), while **K-12 schools are a build-toward** (credential gap + the Bryson disclosure to manage). The biggest BC opportunity, pursued honestly — which is exactly what makes it credible.*

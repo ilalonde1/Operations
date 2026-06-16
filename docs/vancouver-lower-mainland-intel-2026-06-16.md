@@ -28,7 +28,7 @@ The Lower Mainland carries **177 seismic projects (~$9.3B)** — the value engin
 | 60 | École Dr. Charles Best Secondary — seismic upgrade | Coquitlam (SD43) |
 | 60 | Lynnmour Elementary — seismic replacement + expansion | North Van (SD44) |
 
-**Action:** load KOR's seismic portfolio into the pitch (the evidence base districts shortlist on); pursue the H1/open SMP pipeline at VSB, Richmond, Burnaby, Coquitlam before seats are awarded. *(Full province-wide detail in the BC Seismic Dossier.)*
+**Credential reality (verified):** KOR's seismic strength is real but in **heritage/commercial + high-importance post-disaster** work (564 Beatty, ICBC Lonsdale Quay, Simone PBSD; CSA A23.3 Cl.21 + IEF Cat 3/4 depth) — **not K-12 schools, where KOR has no track record.** So lead the seismic story with heritage/high-importance fit; treat the SMP schools as a **build-toward** (team on a first school to earn the reference). Also manage the founder EGBC-seismic disclosure proactively. *(Full picture in the BC Seismic Dossier + KOR Credential Evidence Base.)*
 
 ## 3. OPEN SE-SEAT PURSUIT MAP — ranked by KOR's warm-path
 Highest-value active LM projects with **no SE committed yet** (early stage). The decisive column is **KOR's warm-path** — the relationship KOR already has into the team:
@@ -88,4 +88,4 @@ KOR's biggest repeat clients have active LM projects where KOR is **not** the st
 
 ---
 
-**Bottom line:** the Lower Mainland is now an *attack plan*, not a market map. KOR's single best lane is **seismic** (§2 — $9.3B, 99% open, KOR-led, KOR's specialty). The single highest-leverage relationships are **Graham and PCL** (§3 — warm path into ~$5.7B of open seats) and a **cross-sell call sheet** to clients like Wesgroup and Anthem (§4). None of it is googleable — it's KOR's data, synthesized.
+**Bottom line:** the Lower Mainland is now an *attack plan*, not a market map. **Seismic** is the biggest open market (§2 — $9.3B, 99% open) and KOR-led, but pursue it honestly — lead with KOR's *real* fit (heritage + high-importance), schools as a build-toward. The single highest-leverage relationships are **Graham and PCL** (§3 — warm path into ~$5.7B of open seats) and a **cross-sell call sheet** to clients like Wesgroup and Anthem (§4). None of it is googleable — it's KOR's data, synthesized.

@@ -25,7 +25,7 @@
 | — | Sidney / Brentwood Elementary Seismic Upgrades | Saanich (SD63) |
 | — | Sooke Elementary Seismic Upgrade; Port Renfrew Elementary Replacement | Sooke (SD62) |
 
-**The Island play:** lead every district conversation with seismic specialization (KOR's credentials are being compiled into the system — *the #1 supporting action*), and target the open SMP pipeline at Greater Victoria, Nanaimo, Sooke, Saanich, and Campbell River before seats are awarded. KOR has emailable contacts already at **Greater Victoria (2), Saanich (2), Sooke, and West Van/Island-adjacent districts** — deepen these.
+**The Island play (credential-honest):** KOR's verified seismic strength is **heritage/commercial + high-importance post-disaster** work (PBSD, CSA A23.3 Cl.21, IEF Cat 3/4) — **not K-12 schools, where KOR has no track record** and competitors (RJC on Cowichan/Quw'utsun, Herold, Iredale) hold the references. So on the Island: lead the seismic story with KOR's real high-importance fit (think Island fire halls, EOCs, Island Health-adjacent), and treat the SMP schools as a **build-toward** — earn a first school reference by teaming, while deepening the district contacts KOR already has (Greater Victoria 2, Saanich 2, Sooke). Manage the founder EGBC-seismic disclosure proactively. *(See KOR Credential Evidence Base + BC Seismic Dossier.)*
 
 ## 3. OPEN SE-SEAT PURSUIT MAP — ranked by KOR's warm-path
 Active Island projects with no SE committed, ranked by how strong KOR's relationship is to the team already on them (computed live via `vOpenSeatPursuit`):
@@ -77,4 +77,4 @@ Decision-maker email enrichment is the active next pass for the Island school di
 
 ---
 
-**Bottom line for the Island:** lead with **seismic** — KOR's specialty, BC's defining risk, 154 open seats on the Island's own school districts, and a lane KOR *leads*. Back it with the warm developer relationships (Townline, Strand, Bosa, Reliance — §3/§4) and out-position the local incumbent (Herold). The one supporting action that makes the seismic pitch land: get KOR's seismic credentials into the system as the evidence base.
+**Bottom line for the Island:** seismic is the defining market (154 open seats) — pursue it credential-honestly: lead with KOR's *real* heritage/high-importance seismic fit, treat the school SMP as a build-toward (KOR has no school credit; Herold/RJC hold the local references). The fastest *near-term* Island wins are the **warm developer relationships** (Townline, Strand, Bosa, Reliance — §3/§4, all prior KOR clients) and the **DIALOG-architected Camosun** student housing (KOR foot-in). Out-position local incumbent Herold on Island-based work.
