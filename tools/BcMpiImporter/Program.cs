@@ -74,13 +74,26 @@ internal static class Program
         foreach (var file in files)
         {
             cts.Token.ThrowIfCancellationRequested();
-            await ProcessWorkbookAsync(file, options.OpportunitiesDb, resolver, stats, cts.Token).ConfigureAwait(false);
+            try
+            {
+                await ProcessWorkbookAsync(file, options.OpportunitiesDb, resolver, stats, cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // honor cancellation — abort the whole sweep
+            }
+            catch (Exception ex)
+            {
+                // One corrupt/locked workbook must not abandon the remaining files.
+                stats.FilesFailed++;
+                Console.Error.WriteLine($"[FILE-FAILED] {Path.GetFileName(file.Path)}: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         sw.Stop();
         Console.WriteLine(
-            $"BC MPI import complete: files={stats.FilesProcessed}/{files.Count}, rows={stats.RowsProcessed}, uniqueProjects={stats.UniqueProjects.Count}, upserted={stats.Upserted}, nameMatched={stats.NameMatched}, skipped={stats.Skipped}, architectsResolved={stats.ArchitectResolved}, indigenousFlagged={stats.IndigenousFlagged}, elapsed={sw.Elapsed}.");
-        return 0;
+            $"BC MPI import complete: files={stats.FilesProcessed}/{files.Count}, filesFailed={stats.FilesFailed}, rows={stats.RowsProcessed}, rowsFailed={stats.RowsFailed}, uniqueProjects={stats.UniqueProjects.Count}, upserted={stats.Upserted}, nameMatched={stats.NameMatched}, skipped={stats.Skipped}, architectsResolved={stats.ArchitectResolved}, indigenousFlagged={stats.IndigenousFlagged}, elapsed={sw.Elapsed}.");
+        return stats.FilesFailed + stats.RowsFailed == 0 ? 0 : 1;
     }
 
     private static async Task ProcessWorkbookAsync(
@@ -107,42 +120,59 @@ internal static class Program
         for (var rowNumber = headerRow + 1; rowNumber <= lastRow; rowNumber++)
         {
             ct.ThrowIfCancellationRequested();
-            var row = sheet.Row(rowNumber);
-            if (IsEmptyRow(row, headers.Values))
+            try
             {
-                continue;
-            }
+                var row = sheet.Row(rowNumber);
+                if (IsEmptyRow(row, headers.Values))
+                {
+                    continue;
+                }
 
-            var record = await MapRowAsync(row, headers, file.Issue, fileName, resolver, ct).ConfigureAwait(false);
-            if (record is null)
+                var record = await MapRowAsync(row, headers, file.Issue, fileName, resolver, ct).ConfigureAwait(false);
+                if (record is null)
+                {
+                    stats.Skipped++;
+                    fileSkipped++;
+                    continue;
+                }
+
+                fileRows++;
+                stats.RowsProcessed++;
+                stats.UniqueProjects.Add(record.SourceKey);
+                if (record.ArchitectCanonicalOrgId.HasValue)
+                {
+                    stats.ArchitectResolved++;
+                }
+
+                if (record.IndigenousInd == true)
+                {
+                    stats.IndigenousFlagged++;
+                }
+
+                var nameMatchedId = await UpsertAsync(connectionString, record, ct).ConfigureAwait(false);
+                if (nameMatchedId.HasValue)
+                {
+                    // C9 name-match: the row was folded into an existing MPI, NOT inserted/updated
+                    // via its own SourceKey — count it as a name-match, not an upsert.
+                    stats.NameMatched++;
+                    Console.WriteLine($"[{fileName}] name-matched existing MPI {nameMatchedId.Value}; project={record.ProjectName} (new SourceKey {record.SourceKey} not inserted)");
+                }
+                else
+                {
+                    stats.Upserted++;
+                    fileUpserted++;
+                }
+            }
+            catch (OperationCanceledException)
             {
-                stats.Skipped++;
-                fileSkipped++;
-                continue;
+                throw; // honor cancellation
             }
-
-            fileRows++;
-            stats.RowsProcessed++;
-            stats.UniqueProjects.Add(record.SourceKey);
-            if (record.ArchitectCanonicalOrgId.HasValue)
+            catch (Exception ex)
             {
-                stats.ArchitectResolved++;
+                // One bad row must not abandon the rest of the workbook.
+                stats.RowsFailed++;
+                Console.Error.WriteLine($"[ROW-FAILED] {fileName}#{rowNumber}: {ex.GetType().Name}: {ex.Message}");
             }
-
-            if (record.IndigenousInd == true)
-            {
-                stats.IndigenousFlagged++;
-            }
-
-            var nameMatchedId = await UpsertAsync(connectionString, record, ct).ConfigureAwait(false);
-            if (nameMatchedId.HasValue)
-            {
-                stats.NameMatched++;
-                Console.WriteLine($"[{fileName}] name-matched existing MPI {nameMatchedId.Value}; project={record.ProjectName} (new SourceKey {record.SourceKey} not inserted)");
-            }
-
-            stats.Upserted++;
-            fileUpserted++;
         }
 
         stats.FilesProcessed++;
@@ -743,7 +773,9 @@ SELECT
     private sealed class ImportStats
     {
         public int FilesProcessed { get; set; }
+        public int FilesFailed { get; set; }
         public int RowsProcessed { get; set; }
+        public int RowsFailed { get; set; }
         public int Upserted { get; set; }
         public int NameMatched { get; set; }
         public int Skipped { get; set; }

@@ -187,7 +187,13 @@ public sealed class OpportunitiesWorkerOptions
     // stay manual via the CLI tool because they require curation. Hard cap on
     // groups merged per run prevents a runaway algorithm regression from
     // collapsing the org graph silently every Sunday.
-    public bool CanonicalOrgDedupEnabled { get; set; } = true;
+    // DISABLED 2026-06-15 pending dedup hardening (audit: stale FK list misses
+    // ~10 inbound CanonicalOrg FKs incl. all Intel*, so merges either roll back
+    // silently — duplicates accumulate — or CASCADE-delete displacement briefs).
+    // Re-enable only after the Worker dedup is collapsed onto the schema-driven
+    // CLI path with retired/frozen guards and validated. See
+    // docs/bd-apparatus-audit-findings-2026-06-15.md.
+    public bool CanonicalOrgDedupEnabled { get; set; } = false;
     public int CanonicalOrgDedupMaxGroupsPerRun { get; set; } = 200;
     public string? CanonicalOrgDedupCronSchedule { get; set; }
 

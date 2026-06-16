@@ -198,6 +198,7 @@ JOIN opportunities.IntelPersonAffiliation a ON a.IntelPersonId = p.Id
 WHERE a.CanonicalOrgId = @id
   AND a.RetiredAtUtc IS NULL
   AND p.RetiredAtUtc IS NULL
+  AND EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = @id AND co.RetiredAtUtc IS NULL)
 ORDER BY a.IsCurrent DESC,
          {IntelConfidenceSql.RankClause("a.SourceConfidence")} DESC,
          p.LastSeenAtUtc DESC;";
@@ -237,6 +238,7 @@ SELECT TOP 20 Id, SignalType, Subject, Detail, OccurredAtApprox, SourceUrl,
 FROM opportunities.IntelSignal
 WHERE CanonicalOrgId = @id
   AND RetiredAtUtc IS NULL
+  AND EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = @id AND co.RetiredAtUtc IS NULL)
 ORDER BY {IntelConfidenceSql.RankClause("SourceConfidence")} DESC,
          LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -253,6 +255,7 @@ FROM opportunities.IntelAction
 WHERE CanonicalOrgId = @id
   AND Status = N'Open'
   AND RetiredAtUtc IS NULL
+  AND EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = @id AND co.RetiredAtUtc IS NULL)
 ORDER BY {IntelConfidenceSql.RankClause("SourceConfidence")} DESC,
          LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -268,6 +271,7 @@ SELECT TOP 20 Id, ProjectName, Role, YearApprox, EstimatedValueCad, EstimatedVal
 FROM opportunities.IntelWork
 WHERE CanonicalOrgId = @id
   AND RetiredAtUtc IS NULL
+  AND EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = @id AND co.RetiredAtUtc IS NULL)
 ORDER BY {IntelConfidenceSql.RankClause("SourceConfidence")} DESC,
          LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -304,6 +308,7 @@ SELECT TOP 20 Id, RiskType, Description, MitigationNotes, SourceProviderName, So
 FROM opportunities.IntelRisk
 WHERE CanonicalOrgId = @id
   AND RetiredAtUtc IS NULL
+  AND EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = @id AND co.RetiredAtUtc IS NULL)
 ORDER BY {IntelConfidenceSql.RankClause("SourceConfidence")} DESC,
          LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -318,6 +323,7 @@ SELECT TOP 20 Id, NarrativeType, ParagraphText, SourceProviderName, SourceConfid
 FROM opportunities.IntelNarrative
 WHERE CanonicalOrgId = @id
   AND RetiredAtUtc IS NULL
+  AND EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = @id AND co.RetiredAtUtc IS NULL)
 ORDER BY CASE NarrativeType WHEN N'Current' THEN 0 WHEN N'Action' THEN 1 WHEN N'Summary' THEN 2 ELSE 3 END,
          LastSeenAtUtc DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };

@@ -25,7 +25,7 @@ internal sealed class DataHealthAuditJob : IJob
         SELECT Kind, COUNT(*) AS N,
           SUM(CASE WHEN Website IS NULL THEN 1 ELSE 0 END) AS NoWebsite,
           CAST(100.0 * SUM(CASE WHEN Website IS NULL THEN 1 ELSE 0 END) / COUNT(*) AS DECIMAL(5,1)) AS PctNoWebsite
-        FROM opportunities.CanonicalOrg GROUP BY Kind ORDER BY N DESC
+        FROM opportunities.CanonicalOrg WHERE RetiredAtUtc IS NULL GROUP BY Kind ORDER BY N DESC
         """;
 
     private const string Q2MessAccumulationSql = """
@@ -33,17 +33,19 @@ internal sealed class DataHealthAuditJob : IJob
           SUM(CASE WHEN Website IS NULL THEN 1 ELSE 0 END) AS NoWeb
         FROM opportunities.CanonicalOrg
         WHERE CreatedAtUtc >= DATEADD(day, -7, sysdatetimeoffset())
+          AND RetiredAtUtc IS NULL
         GROUP BY Kind ORDER BY Created7Days DESC
         """;
 
     private const string Q3BareTargetsSql = """
         SELECT TOP 25 co.Kind, co.Id, co.DisplayName,
-          (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory WHERE ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id) AS MpiRefs
+          (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory WHERE RetiredAtUtc IS NULL AND (ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id)) AS MpiRefs
         FROM opportunities.CanonicalOrg co
         WHERE co.Kind IN ('Architect','Buyer','Developer','GC','Competitor')
+          AND co.RetiredAtUtc IS NULL
           AND co.Website IS NULL
           AND (co.Notes IS NULL OR co.Notes NOT LIKE 'WebSearchNotFound:%')
-          AND (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory WHERE ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id) >= 5
+          AND (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory WHERE RetiredAtUtc IS NULL AND (ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id)) >= 5
         ORDER BY MpiRefs DESC
         """;
 
@@ -58,11 +60,11 @@ internal sealed class DataHealthAuditJob : IJob
 
     private const string Q5KindSuffixMismatchSql = """
         SELECT 'Vendor w/ Arch/Eng/Construction/Builders/Developments suffix' AS Lever, COUNT(*) AS N FROM opportunities.CanonicalOrg
-        WHERE Kind='Vendor' AND (DisplayName LIKE '% Architects' OR DisplayName LIKE '% Architecture' OR DisplayName LIKE '% Engineering Ltd%' OR DisplayName LIKE '% Construction' OR DisplayName LIKE '% Construction Ltd%' OR DisplayName LIKE '% Builders' OR DisplayName LIKE '% Builders Ltd%' OR DisplayName LIKE '% Developments Ltd%')
+        WHERE Kind='Vendor' AND RetiredAtUtc IS NULL AND (DisplayName LIKE '% Architects' OR DisplayName LIKE '% Architecture' OR DisplayName LIKE '% Engineering Ltd%' OR DisplayName LIKE '% Construction' OR DisplayName LIKE '% Construction Ltd%' OR DisplayName LIKE '% Builders' OR DisplayName LIKE '% Builders Ltd%' OR DisplayName LIKE '% Developments Ltd%')
         UNION ALL SELECT 'Unknown w/ strong Buyer/Architect suffix', COUNT(*) FROM opportunities.CanonicalOrg
-        WHERE Kind='Unknown' AND (DisplayName LIKE 'Ministry of %' OR DisplayName LIKE 'City of %' OR DisplayName LIKE 'District of %' OR DisplayName LIKE 'School District %' OR DisplayName LIKE '% Architects' OR DisplayName LIKE '% Architecture')
+        WHERE Kind='Unknown' AND RetiredAtUtc IS NULL AND (DisplayName LIKE 'Ministry of %' OR DisplayName LIKE 'City of %' OR DisplayName LIKE 'District of %' OR DisplayName LIKE 'School District %' OR DisplayName LIKE '% Architects' OR DisplayName LIKE '% Architecture')
         UNION ALL SELECT 'Buyer w/ Construction/Engineering suffix', COUNT(*) FROM opportunities.CanonicalOrg
-        WHERE Kind='Buyer' AND (DisplayName LIKE '% Construction%' OR DisplayName LIKE '% Engineers%' OR DisplayName LIKE '% Architects%')
+        WHERE Kind='Buyer' AND RetiredAtUtc IS NULL AND (DisplayName LIKE '% Construction%' OR DisplayName LIKE '% Engineers%' OR DisplayName LIKE '% Architects%')
         """;
 
     private const string Q6FkOrphanRatesSql = """
@@ -90,6 +92,7 @@ internal sealed class DataHealthAuditJob : IJob
           CAST(100.0 * COUNT(DISTINCT ce.CanonicalOrgId) / NULLIF(COUNT(*),0) AS DECIMAL(5,1)) AS PctEnriched
         FROM opportunities.CanonicalOrg co
         LEFT JOIN opportunities.CanonicalOrgEnrichment ce ON ce.CanonicalOrgId = co.Id
+        WHERE co.RetiredAtUtc IS NULL
         GROUP BY co.Kind ORDER BY Total DESC
         """;
 
