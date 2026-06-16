@@ -87,7 +87,9 @@ BEGIN
             THEN @kind
             ELSE Kind
         END,
-        DisplayName = @name,
+        -- Frozen self-anchors (KorStructural/KorClient) keep their curated DisplayName;
+        -- a research record naming a variant must not rename KOR's own identity row.
+        DisplayName = CASE WHEN Kind IN (N'KorStructural', N'KorClient') THEN DisplayName ELSE @name END,
         Website = COALESCE(@website, Website),
         Notes = CASE
             WHEN RetiredAtUtc IS NOT NULL THEN
@@ -369,11 +371,20 @@ ORDER BY
 MERGE opportunities.OrgAlias AS t
 USING (SELECT @raw AS RawName, @src AS Source) AS s
    ON t.RawName = s.RawName AND t.Source = s.Source
+-- Re-classify only when there is a new canonical AND the existing row is not
+-- human-verified AND the incoming confidence does not DOWNGRADE the existing.
+-- Prevents an automated re-resolution from silently reverting a manual correction
+-- or lowering a high-confidence link (audit: alias-clobber). A single WHEN MATCHED
+-- with per-column CASE guards — SQL Server forbids two WHEN MATCHED UPDATE clauses.
 WHEN MATCHED THEN UPDATE SET
-    CanonicalOrgId = COALESCE(@canon, t.CanonicalOrgId),
-    Confidence = CASE WHEN @canon IS NOT NULL THEN @conf ELSE t.Confidence END,
-    ClassifiedBy = COALESCE(@by, t.ClassifiedBy),
-    ClassifiedAtUtc = CASE WHEN @canon IS NOT NULL THEN sysdatetimeoffset() ELSE t.ClassifiedAtUtc END,
+    CanonicalOrgId = CASE WHEN @canon IS NOT NULL AND ISNULL(t.ClassifiedBy, N'') <> N'manual' AND @conf >= t.Confidence
+                         THEN @canon ELSE t.CanonicalOrgId END,
+    Confidence = CASE WHEN @canon IS NOT NULL AND ISNULL(t.ClassifiedBy, N'') <> N'manual' AND @conf >= t.Confidence
+                     THEN @conf ELSE t.Confidence END,
+    ClassifiedBy = CASE WHEN @canon IS NOT NULL AND ISNULL(t.ClassifiedBy, N'') <> N'manual' AND @conf >= t.Confidence
+                       THEN COALESCE(@by, t.ClassifiedBy) ELSE t.ClassifiedBy END,
+    ClassifiedAtUtc = CASE WHEN @canon IS NOT NULL AND ISNULL(t.ClassifiedBy, N'') <> N'manual' AND @conf >= t.Confidence
+                          THEN sysdatetimeoffset() ELSE t.ClassifiedAtUtc END,
     Notes = COALESCE(@notes, t.Notes)
 WHEN NOT MATCHED THEN INSERT
     (RawName, Source, CanonicalOrgId, Confidence, ClassifiedBy, ClassifiedAtUtc, Notes)

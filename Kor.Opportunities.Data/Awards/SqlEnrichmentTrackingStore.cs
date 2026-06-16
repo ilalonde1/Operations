@@ -232,7 +232,6 @@ WHEN NOT MATCHED THEN INSERT
                 RefreshedAtUtc: DateTimeOffset.UtcNow);
 
             var drafts = extractor.Extract(ctxIntel);
-            System.Threading.Interlocked.Increment(ref _extractedCount);
             if (drafts.People.Count + drafts.Affiliations.Count + drafts.Signals.Count
                 + drafts.Actions.Count + drafts.Works.Count + drafts.Risks.Count
                 + drafts.Narratives.Count == 0)
@@ -241,6 +240,9 @@ WHEN NOT MATCHED THEN INSERT
             }
 
             await _intelPersistence.PersistAsync(drafts, ctxIntel, ct).ConfigureAwait(false);
+            // Count only after a successful persist — a persist failure (caught below)
+            // must not inflate the extracted-rows telemetry.
+            System.Threading.Interlocked.Increment(ref _extractedCount);
             await RetireSupersededIntelAsync(con, canonicalOrgId, providerName, refreshStartTime, ct).ConfigureAwait(false);
         }
         catch (JsonException ex)
