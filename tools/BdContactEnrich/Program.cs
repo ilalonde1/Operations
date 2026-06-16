@@ -19,17 +19,26 @@ using Microsoft.Data.SqlClient;
 var db = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB");
 var key = Environment.GetEnvironmentVariable("KOR_HUNTER_APIKEY");
 if (string.IsNullOrWhiteSpace(db)) { Console.Error.WriteLine("Missing KOR_OPPORTUNITIES_OPPORTUNITIESDB."); return 2; }
-if (string.IsNullOrWhiteSpace(key)) { Console.Error.WriteLine("Missing KOR_HUNTER_APIKEY."); return 2; }
 
 bool commit = args.Contains("--commit");
+bool patternMode = args.Contains("--pattern-propagate");
 int maxFirms = ArgInt(args, "--max-firms", commit ? 250 : 25);
 int minConf = ArgInt(args, "--min-confidence", 80);
 
+await using var con = new SqlConnection(db);
+await con.OpenAsync().ConfigureAwait(false);
+
+if (patternMode)
+{
+    // FREE pass (no Hunter credits): derive each firm's email format from the clean
+    // emails we already hold (asis + Hunter), construct the rest -> EmailSource='PatternInferred'.
+    return await PatternPropagateAsync(con, commit);
+}
+
+if (string.IsNullOrWhiteSpace(key)) { Console.Error.WriteLine("Missing KOR_HUNTER_APIKEY (required for the Hunter mode; --pattern-propagate does not need it)."); return 2; }
 Console.WriteLine($"BdContactEnrich: mode={(commit ? "COMMIT" : "dry-run")}; maxFirms={maxFirms}; minConfidence={minConf}");
 
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-await using var con = new SqlConnection(db);
-await con.OpenAsync().ConfigureAwait(false);
 
 var firms = await LoadTargetFirmsAsync(con, maxFirms).ConfigureAwait(false);
 Console.WriteLine($"Target firms (importance-ordered, with website + contact gaps): {firms.Count}");
@@ -214,6 +223,110 @@ static string? Str(JsonElement el, string name)
     => el.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 static int Int(JsonElement el, string name)
     => el.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
+
+// ---- Pattern propagation (FREE — no Hunter calls) --------------------------
+static async Task<int> PatternPropagateAsync(SqlConnection con, bool commit)
+{
+    Console.WriteLine($"PatternPropagate (FREE): mode={(commit ? "COMMIT" : "dry-run")}");
+    // Firms that have >=1 clean known email AND >=1 person missing one.
+    const string firmsSql = @"
+SELECT a.CanonicalOrgId, co.DisplayName
+FROM opportunities.IntelPersonAffiliation a
+JOIN opportunities.IntelPerson p ON p.Id = a.IntelPersonId AND p.RetiredAtUtc IS NULL
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+WHERE a.RetiredAtUtc IS NULL
+GROUP BY a.CanonicalOrgId, co.DisplayName
+HAVING SUM(CASE WHEN NULLIF(LTRIM(RTRIM(p.Email)),'') IS NOT NULL THEN 1 ELSE 0 END) >= 1
+   AND SUM(CASE WHEN NULLIF(LTRIM(RTRIM(p.Email)),'') IS NULL THEN 1 ELSE 0 END) >= 1;";
+    var firms = new List<(long Id, string Name)>();
+    await using (var cmd = new SqlCommand(firmsSql, con) { CommandTimeout = 120 })
+    await using (var r = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
+        while (await r.ReadAsync().ConfigureAwait(false)) firms.Add((r.GetInt64(0), r.GetString(1)));
+
+    int firmsFilled = 0, proposed = 0, written = 0, noPattern = 0;
+    foreach (var f in firms)
+    {
+        var known = new List<(string Name, string Email)>();
+        var gaps = new List<(long Id, string Name)>();
+        await using (var cmd = new SqlCommand(@"
+SELECT p.Id, p.DisplayName, p.Email FROM opportunities.IntelPersonAffiliation a
+JOIN opportunities.IntelPerson p ON p.Id=a.IntelPersonId AND p.RetiredAtUtc IS NULL
+WHERE a.RetiredAtUtc IS NULL AND a.CanonicalOrgId=@org", con) { CommandTimeout = 60 })
+        {
+            cmd.Parameters.Add("@org", SqlDbType.BigInt).Value = f.Id;
+            await using var r = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+            while (await r.ReadAsync().ConfigureAwait(false))
+            {
+                var name = r.GetString(1); var email = r.IsDBNull(2) ? null : r.GetString(2);
+                if (!string.IsNullOrWhiteSpace(email)) known.Add((name, email!)); else gaps.Add((r.GetInt64(0), name));
+            }
+        }
+        var derived = DerivePattern(known);
+        if (derived is null) { noPattern++; continue; }
+        var (build, domain) = derived.Value;
+        var firmHit = false;
+        foreach (var g in gaps)
+        {
+            var (gf, gl) = SplitName(g.Name);
+            if (gf.Length == 0 || gl.Length == 0) continue;
+            var local = build(Norm(gf), Norm(gl), gf, gl);
+            if (string.IsNullOrWhiteSpace(local)) continue;
+            var email = $"{local}@{domain}";
+            proposed++; firmHit = true;
+            Console.WriteLine($"  {f.Name} | {g.Name} -> {email} (pattern-inferred)");
+            if (commit)
+            {
+                await SetEmailPatternAsync(con, g.Id, email).ConfigureAwait(false);
+                written++;
+            }
+        }
+        if (firmHit) firmsFilled++;
+    }
+    Console.WriteLine($"\nDone. firmsFilled={firmsFilled}; noConfidentPattern={noPattern}; proposed={proposed}; written={written}");
+    Console.WriteLine(commit ? "Written with EmailSource='PatternInferred' (conf 55, unverified)." : "DRY-RUN — no writes.");
+    return 0;
+}
+
+// Returns a local-part builder + domain if the firm's known emails agree on a pattern.
+static (Func<string,string,string,string,string> Build, string Domain)? DerivePattern(List<(string Name, string Email)> known)
+{
+    var pairs = new List<(string F, string L, string Local, string Domain)>();
+    foreach (var (name, email) in known)
+    {
+        var at = email.IndexOf('@'); if (at <= 0) continue;
+        var local = email[..at].ToLowerInvariant(); var dom = email[(at+1)..].ToLowerInvariant();
+        var (f, l) = SplitName(name); if (Norm(f).Length == 0 || Norm(l).Length == 0) continue;
+        pairs.Add((Norm(f), Norm(l), local, dom));
+    }
+    if (pairs.Count == 0) return null;
+    var candidates = new (string Key, Func<string,string,string>)[]
+    {
+        ("first.last", (f,l)=>$"{f}.{l}"), ("flast", (f,l)=>$"{f[..1]}{l}"),
+        ("f.last", (f,l)=>$"{f[..1]}.{l}"), ("firstlast", (f,l)=>$"{f}{l}"),
+        ("first_last", (f,l)=>$"{f}_{l}"), ("first", (f,l)=>f),
+        ("firstl", (f,l)=>$"{f}{l[..1]}"), ("lastf", (f,l)=>$"{l}{f[..1]}"),
+    };
+    var best = candidates
+        .Select(c => (c.Key, c.Item2, Hits: pairs.Count(p => c.Item2(p.F, p.L) == p.Local)))
+        .OrderByDescending(x => x.Hits).First();
+    // require the dominant pattern to explain the majority of known emails (>=1 and >50%).
+    if (best.Hits == 0 || best.Hits * 2 < pairs.Count) return null;
+    var domain = pairs.GroupBy(p => p.Domain).OrderByDescending(g => g.Count()).First().Key;
+    var fn = best.Item2;
+    return ((nf, nl, of, ol) => (nf.Length==0||nl.Length==0) ? "" : fn(nf, nl), domain);
+}
+
+static async Task SetEmailPatternAsync(SqlConnection con, long personId, string email)
+{
+    const string sql = @"
+UPDATE opportunities.IntelPerson
+SET Email=@email, EmailSource=N'PatternInferred', EmailConfidence=55, EmailCheckedAtUtc=sysdatetimeoffset(), UpdatedAtUtc=sysdatetimeoffset()
+WHERE Id=@id AND NULLIF(LTRIM(RTRIM(Email)),'') IS NULL;";
+    await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 60 };
+    cmd.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = email;
+    cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = personId;
+    await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+}
 
 internal sealed record Firm(long Id, string Name, string Website);
 internal sealed record Person(long Id, string Name);
