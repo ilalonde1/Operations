@@ -43,26 +43,33 @@ public sealed class ContactEnrichmentService
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
 
-        var firms = new List<long>();
+        var firms = new List<(long Id, string? Website)>();
         await using (var cmd = new SqlCommand(@"
-SELECT a.CanonicalOrgId
+SELECT a.CanonicalOrgId, MAX(co.Website) AS Website
 FROM opportunities.IntelPersonAffiliation a
 JOIN opportunities.IntelPerson p ON p.Id = a.IntelPersonId AND p.RetiredAtUtc IS NULL
+JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
 WHERE a.RetiredAtUtc IS NULL
 GROUP BY a.CanonicalOrgId
 HAVING SUM(CASE WHEN NULLIF(LTRIM(RTRIM(p.Email)),'') IS NOT NULL THEN 1 ELSE 0 END) >= 1
    AND SUM(CASE WHEN NULLIF(LTRIM(RTRIM(p.Email)),'') IS NULL THEN 1 ELSE 0 END) >= 1;", con) { CommandTimeout = 120 })
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
-            while (await r.ReadAsync(ct).ConfigureAwait(false)) firms.Add(r.GetInt64(0));
+            while (await r.ReadAsync(ct).ConfigureAwait(false)) firms.Add((r.GetInt64(0), r.IsDBNull(1) ? null : r.GetString(1)));
 
         int written = 0;
-        foreach (var firmId in firms)
+        foreach (var firm in firms)
         {
             ct.ThrowIfCancellationRequested();
-            var (known, gaps) = await LoadFirmPeopleAsync(con, firmId, ct).ConfigureAwait(false);
+            var (known, gaps) = await LoadFirmPeopleAsync(con, firm.Id, ct).ConfigureAwait(false);
             var derived = DerivePattern(known);
             if (derived is null) continue;
             var (build, domain) = derived.Value;
+            // Domain guard: only propagate when the firm's known-email domain matches its OWN
+            // website. Prevents inheriting a foreign domain from a mis-affiliated person
+            // (e.g. an architect roster polluted with a builder's people on the builder's domain).
+            var siteDomain = ExtractDomain(firm.Website);
+            if (string.IsNullOrWhiteSpace(siteDomain) || !string.Equals(siteDomain, domain, StringComparison.OrdinalIgnoreCase))
+                continue;
             foreach (var g in gaps)
             {
                 var (gf, gl) = SplitName(g.Name);
