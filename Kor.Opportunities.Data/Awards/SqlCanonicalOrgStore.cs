@@ -151,7 +151,7 @@ SELECT @existingId;";
     {
         const string sql = @"
 SELECT Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
-       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc
+       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc, RetiredAtUtc
 FROM   opportunities.CanonicalOrg
 WHERE  Id = @id;";
         return await ReadSingleOrgAsync(sql, new[] { ("@id", (object)id, SqlDbType.BigInt, 0) }, ct)
@@ -166,7 +166,7 @@ WHERE  Id = @id;";
     {
         const string sql = @"
 SELECT TOP (@take) Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
-       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc
+       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc, RetiredAtUtc
 FROM   opportunities.CanonicalOrg
 WHERE  RetiredAtUtc IS NULL
    AND (@q IS NULL OR DisplayName LIKE '%' + @q + '%' ESCAPE '\')
@@ -189,7 +189,7 @@ ORDER BY DisplayName;";
         // 20_KorPursuits.sql) so the OR doesn't fan out into a table scan.
         const string sql = @"
 SELECT TOP (@take) co.Id, co.Kind, co.DisplayName, co.ClendorClientId, co.Website, co.Notes, co.CreatedAtUtc, co.UpdatedAtUtc,
-       ISNULL(co.KorProjectsCount, 0) AS KorProjectsCount, co.LastKorProjectAtUtc
+       ISNULL(co.KorProjectsCount, 0) AS KorProjectsCount, co.LastKorProjectAtUtc, co.RetiredAtUtc
 FROM   opportunities.CanonicalOrg co
 WHERE  co.RetiredAtUtc IS NULL
    AND (@q IS NULL OR co.DisplayName LIKE '%' + @q + '%' ESCAPE '\')
@@ -242,7 +242,7 @@ ORDER BY co.DisplayName;";
     {
         const string sql = @"
 SELECT TOP 1 Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
-       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc
+       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc, RetiredAtUtc
 FROM   opportunities.CanonicalOrg
 WHERE  ClendorClientId = @cl;";
         return await ReadSingleOrgAsync(sql, new[] { ("@cl", (object)clendorClientId, SqlDbType.VarChar, 32) }, ct)
@@ -501,7 +501,8 @@ FROM opportunities.OrgAlias;";
             r.GetDateTimeOffset(6),
             r.GetDateTimeOffset(7),
             r.GetInt32(8),
-            r.IsDBNull(9) ? null : new DateTimeOffset(r.GetDateTime(9), TimeSpan.Zero));
+            r.IsDBNull(9) ? null : new DateTimeOffset(r.GetDateTime(9), TimeSpan.Zero),
+            r.IsDBNull(10) ? null : r.GetDateTimeOffset(10));
 
     private static string EscapeLikeQuery(string query)
         => query

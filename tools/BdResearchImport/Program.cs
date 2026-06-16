@@ -175,11 +175,36 @@ internal static class Program
             bool Run(string tag) => string.IsNullOrWhiteSpace(options.Only)
                 || string.Equals(options.Only, tag, StringComparison.OrdinalIgnoreCase);
 
-            if (Run("contractor")) await ImportContractorResearchAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
-            if (Run("public-sector")) await ImportPublicSectorAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("indigenous")) await ImportIndigenousDevelopmentAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("bc-dev")) await ImportBcDevelopmentPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("la")) await ImportUsMarketAsync(
+            var tagFailures = new List<(string Tag, string Error)>();
+            int tagsRun = 0, tagsOk = 0;
+
+            async Task RunTagAsync(string tag, Func<Task> body)
+            {
+                if (!Run(tag)) return;
+                tagsRun++;
+                var tsw = Stopwatch.StartNew();
+                try
+                {
+                    await body().ConfigureAwait(false);
+                    tagsOk++;
+                    Console.WriteLine($"[TAG-OK] {tag} ({tsw.ElapsedMilliseconds} ms)");
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    tagFailures.Add((tag, $"{ex.GetType().Name}: {ex.Message}"));
+                    Console.Error.WriteLine($"[TAG-FAILED] {tag}: {ex.GetType().Name}: {ex.Message}");
+                }
+            }
+
+            await RunTagAsync("contractor", () => ImportContractorResearchAsync(options, orgStore, enrichmentStore, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("public-sector", () => ImportPublicSectorAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("indigenous", () => ImportIndigenousDevelopmentAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("bc-dev", () => ImportBcDevelopmentPipelineAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("la", () => ImportUsMarketAsync(
                 options,
                 orgStore,
                 enrichmentStore,
@@ -191,8 +216,8 @@ internal static class Program
                 sourceKeyPrefix: "LAMKT-",
                 defaultProvince: "CA",
                 includeStateInSourceKey: false,
-                ct: cts.Token).ConfigureAwait(false);
-            if (Run("pacnw")) await ImportUsMarketAsync(
+                ct: cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("pacnw", () => ImportUsMarketAsync(
                 options,
                 orgStore,
                 enrichmentStore,
@@ -204,49 +229,57 @@ internal static class Program
                 sourceKeyPrefix: "PACNW-",
                 defaultProvince: "WA",
                 includeStateInSourceKey: true,
-                ct: cts.Token).ConfigureAwait(false);
-            if (Run("alberta")) await ImportAlbertaMarketAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("institutional")) await ImportInstitutionalPipelineAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("prime-targeting")) await ImportPrimeTargetingAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("prime-contacts")) await ImportPrimeContactsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("island-okanagan")) await ImportIslandOkanaganAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("intel-gathering")) await ImportIntelGatheringAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("owner-pipelines")) await ImportOwnerPipelinesAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("competitor-profiles")) await ImportCompetitorProfilesAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("decision-makers")) await ImportDecisionMakersAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("data-honing")) await ImportDataHoningAsync(options, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
-            if (Run("registries")) await ImportRegistriesAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
-            if (Run("capital-plans")) await ImportCapitalPlansAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("project-teams")) await ImportProjectTeamsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("competitor-projects")) await ImportCompetitorProjectsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("structural-pipeline")) await ImportStructuralPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("indigenous-projects")) await ImportIndigenousPipelineProjectsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("indigenous-orgs")) await ImportIndigenousPipelineOrgsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
-            if (Run("owner-procurement")) await ImportOwnerProcurementAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("competitor-signals")) await ImportCompetitorSignalsAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("structural-partner-map")) await ImportStructuralPartnerMapAsync(options, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("displacement-briefs")) await ImportDisplacementBriefsAsync(options, displacementBriefStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("sub-consultants")) await ImportSubConsultantsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
-            if (Run("facility-renewal")) await ImportFacilityRenewalAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("projects-honing")) await ImportProjectsHoningAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("pipeline-seats")) await ImportPipelineSeatsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("project-reverify")) await ImportProjectReverifyAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("midmarket")) await ImportMidMarketAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("architect-forecast")) await ImportArchitectForecastAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("kor-capability")) await ImportKorCapabilityAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("industry-events")) await ImportIndustryEventsAsync(options, industryEventStore, stats, cts.Token).ConfigureAwait(false);
-            if (Run("db-contractors")) await ImportDbContractorsAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
-            if (Run("incumbent-rosters")) await ImportIncumbentRostersAsync(options, orgStore, enrichmentStore, stats, cts.Token).ConfigureAwait(false);
-            if (Run("capital-funding-signals")) await ImportCapitalFundingSignalsAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("seismic-pipeline")) await ImportSeismicPipelineAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("island-okanagan-pairing")) await ImportIslandOkanaganPairingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("lower-mainland-pairing")) await ImportLowerMainlandPairingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("edmonton-pairing")) await ImportEdmontonPairingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("bd-tracking")) await ImportBdTrackingAsync(options, resolver, stats, cts.Token).ConfigureAwait(false);
-            if (Run("bd-tracking-crosslink")) await ImportBdTrackingCrossLinkAsync(options, stats, cts.Token).ConfigureAwait(false);
+                ct: cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("alberta", () => ImportAlbertaMarketAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("institutional", () => ImportInstitutionalPipelineAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("prime-targeting", () => ImportPrimeTargetingAsync(options, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("prime-contacts", () => ImportPrimeContactsAsync(options, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("island-okanagan", () => ImportIslandOkanaganAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("intel-gathering", () => ImportIntelGatheringAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("owner-pipelines", () => ImportOwnerPipelinesAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("competitor-profiles", () => ImportCompetitorProfilesAsync(options, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("decision-makers", () => ImportDecisionMakersAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("data-honing", () => ImportDataHoningAsync(options, enrichmentStore, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("registries", () => ImportRegistriesAsync(options, orgStore, enrichmentStore, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("capital-plans", () => ImportCapitalPlansAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("project-teams", () => ImportProjectTeamsAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("competitor-projects", () => ImportCompetitorProjectsAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("structural-pipeline", () => ImportStructuralPipelineAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("indigenous-projects", () => ImportIndigenousPipelineProjectsAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("indigenous-orgs", () => ImportIndigenousPipelineOrgsAsync(options, orgStore, enrichmentStore, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("owner-procurement", () => ImportOwnerProcurementAsync(options, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("competitor-signals", () => ImportCompetitorSignalsAsync(options, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("structural-partner-map", () => ImportStructuralPartnerMapAsync(options, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("displacement-briefs", () => ImportDisplacementBriefsAsync(options, orgStore, displacementBriefStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("sub-consultants", () => ImportSubConsultantsAsync(options, orgStore, enrichmentStore, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("facility-renewal", () => ImportFacilityRenewalAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("projects-honing", () => ImportProjectsHoningAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("pipeline-seats", () => ImportPipelineSeatsAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("project-reverify", () => ImportProjectReverifyAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("midmarket", () => ImportMidMarketAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("architect-forecast", () => ImportArchitectForecastAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("kor-capability", () => ImportKorCapabilityAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("industry-events", () => ImportIndustryEventsAsync(options, industryEventStore, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("db-contractors", () => ImportDbContractorsAsync(options, orgStore, enrichmentStore, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("incumbent-rosters", () => ImportIncumbentRostersAsync(options, orgStore, enrichmentStore, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("capital-funding-signals", () => ImportCapitalFundingSignalsAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("seismic-pipeline", () => ImportSeismicPipelineAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("island-okanagan-pairing", () => ImportIslandOkanaganPairingAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("lower-mainland-pairing", () => ImportLowerMainlandPairingAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("edmonton-pairing", () => ImportEdmontonPairingAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("bd-tracking", () => ImportBdTrackingAsync(options, resolver, stats, cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("bd-tracking-crosslink", () => ImportBdTrackingCrossLinkAsync(options, stats, cts.Token)).ConfigureAwait(false);
 
             sw.Stop();
             WriteSummary(options, stats, sw.Elapsed);
+            if (tagFailures.Count > 0)
+            {
+                Console.Error.WriteLine($"=== {tagFailures.Count} of {tagsRun} tag(s) FAILED ===");
+                foreach (var (t, e) in tagFailures) Console.Error.WriteLine($"  - {t}: {e}");
+                return 1;
+            }
+
+            Console.WriteLine($"All {tagsOk} tag(s) completed cleanly.");
             return 0;
         }
         catch (OperationCanceledException)
@@ -296,7 +329,21 @@ internal static class Program
 
         var ingestStats = new CanonicalIngestStats();
         var prefix = options.DryRun ? "[DRY-RUN] " : string.Empty;
-        var aggressiveIndex = await BuildAggressiveKeyIndexAsync(options.OpportunitiesDb, ct).ConfigureAwait(false);
+        Dictionary<string, long> aggressiveIndex;
+        try
+        {
+            aggressiveIndex = await BuildAggressiveKeyIndexAsync(options.OpportunitiesDb, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARN] ingest-canonical: failed to build aggressive-key canonical index ({ex.GetType().Name}: {ex.Message}); proceeding with an empty index.");
+            aggressiveIndex = new Dictionary<string, long>(StringComparer.Ordinal);
+        }
+
         if (!options.Quiet)
         {
             Console.WriteLine($"{prefix}  Aggressive-key canonical index loaded: {aggressiveIndex.Count} keys");
@@ -550,6 +597,7 @@ internal static class Program
             Console.WriteLine($"  CanonicalOrg creates:          {ingestStats.CanonicalOrgCreates}");
             Console.WriteLine($"  CanonicalOrg matches:          {ingestStats.CanonicalOrgMatches}");
             Console.WriteLine($"  Matched via aggressive-key fallback: {ingestStats.AggressiveKeyMatches}");
+            Console.WriteLine($"  Records failed:                {ingestStats.RecordsFailed}");
             Console.WriteLine($"  Strict-mode violations: {ingestStats.StrictViolations}");
         }
 
@@ -597,12 +645,38 @@ internal static class Program
                     var index = 0;
                     foreach (var record in doc.RootElement.EnumerateArray())
                     {
-                        await IngestRecordAsync(fileStats, relPath, record, index++).ConfigureAwait(false);
+                        try
+                        {
+                            await IngestRecordAsync(fileStats, relPath, record, index).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            ingestStats.RecordsFailed++;
+                            Console.Error.WriteLine($"[ROW-FAILED] ingest-canonical {relPath}#{index}: {ex.GetType().Name}: {ex.Message}");
+                        }
+
+                        index++;
                     }
                 }
                 else if (doc.RootElement.ValueKind == JsonValueKind.Object)
                 {
-                    await IngestRecordAsync(fileStats, relPath, doc.RootElement, 0).ConfigureAwait(false);
+                    try
+                    {
+                        await IngestRecordAsync(fileStats, relPath, doc.RootElement, 0).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        ingestStats.RecordsFailed++;
+                        Console.Error.WriteLine($"[ROW-FAILED] ingest-canonical {relPath}#0: {ex.GetType().Name}: {ex.Message}");
+                    }
                 }
                 else
                 {
@@ -710,8 +784,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"contractor: ingesting {itemsArray.GetArrayLength()} firm item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var firm in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var firmName = String(firm, "firmName");
                 if (string.IsNullOrWhiteSpace(firmName))
@@ -741,6 +820,10 @@ ORDER BY Id;";
                     null,
                     firmName,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "contractor", __i, ex); }
+            }
             }
         }
     }
@@ -775,13 +858,27 @@ ORDER BY Id;";
                 ? $"not usable for kind 'public-sector-buyer-profile' ({buyerStandardReason})"
                 : "not found";
             Console.WriteLine($"[WARN] KOR-PublicSector-Research: outputs/import.json {reason}; using recursive legacy buyer-profile.json files under {dir}");
-            buyerProfilePaths = Directory.GetFiles(dir, "buyer-profile.json", SearchOption.AllDirectories)
-                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            try
+            {
+                buyerProfilePaths = Directory.GetFiles(dir, "buyer-profile.json", SearchOption.AllDirectories)
+                    .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Console.WriteLine($"[WARN] Could not enumerate buyer-profile payloads under {dir}: {ex.GetType().Name}: {ex.Message}");
+                stats.FilesMissing++;
+                return;
+            }
         }
 
+        {
+        var __i = 0;
         foreach (var path in buyerProfilePaths)
         {
+            __i++;
+            try
+            {
             ct.ThrowIfCancellationRequested();
             if (!TryLoadJson(path, out var doc))
             {
@@ -842,6 +939,10 @@ ORDER BY Id;";
                     buyerName,
                     ct).ConfigureAwait(false);
             }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { RecordRowFailure(stats, "public-sector-buyer-profile", __i, ex); }
+        }
         }
 
         if (!TryResolveResearchStream(options, "KOR-PublicSector-Research", "public-sector-projects", out var projectsPath)
@@ -858,8 +959,13 @@ ORDER BY Id;";
                 return;
             }
 
+            {
+            var __i = 0;
             foreach (var project in projectItems.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -914,6 +1020,10 @@ ORDER BY Id;";
                     RawJson: project.GetRawText());
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "public-sector-projects", __i, ex); }
+            }
             }
         }
     }
@@ -934,8 +1044,13 @@ ORDER BY Id;";
             {
                 if (TrySelectEnvelopeOrLegacyItems(devCorpsDoc, "indigenous-dev-corps", "indigenous-development", "dev-corps", "orgs", out var orgItems))
                 {
+                    {
+                    var __i = 0;
                     foreach (var org in orgItems.EnumerateArray())
                     {
+                        __i++;
+                        try
+                        {
                         ct.ThrowIfCancellationRequested();
                         var orgName = String(org, "org_name") ?? String(org, "name");
                         if (string.IsNullOrWhiteSpace(orgName))
@@ -965,6 +1080,10 @@ ORDER BY Id;";
                             null,
                             orgName,
                             ct).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) { throw; }
+                        catch (Exception ex) { RecordRowFailure(stats, "indigenous-dev-corps", __i, ex); }
+                    }
                     }
                 }
             }
@@ -984,8 +1103,13 @@ ORDER BY Id;";
                     return;
                 }
 
+                {
+                var __i = 0;
                 foreach (var project in projectItems.EnumerateArray())
                 {
+                    __i++;
+                    try
+                    {
                     ct.ThrowIfCancellationRequested();
                     var projectName = String(project, "ProjectName") ?? String(project, "projectName");
                     if (string.IsNullOrWhiteSpace(projectName))
@@ -1043,6 +1167,10 @@ ORDER BY Id;";
                         RawJson: project.GetRawText());
 
                     await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex) { RecordRowFailure(stats, "indigenous-dev-projects", __i, ex); }
+                }
                 }
             }
         }
@@ -1058,8 +1186,13 @@ ORDER BY Id;";
             {
                 if (TrySelectEnvelopeOrLegacyItems(partnerGraphDoc, "indigenous-partner-graph", "indigenous-development", "partner-graph", "firms", out var firmItems))
                 {
+                    {
+                    var __i = 0;
                     foreach (var firm in firmItems.EnumerateArray())
                     {
+                        __i++;
+                        try
+                        {
                         ct.ThrowIfCancellationRequested();
                         var firmName = String(firm, "firm_name") ?? String(firm, "firmName") ?? String(firm, "name");
                         if (string.IsNullOrWhiteSpace(firmName))
@@ -1089,6 +1222,10 @@ ORDER BY Id;";
                             String(firm, "kor_signal"),
                             firmName,
                             ct).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) { throw; }
+                        catch (Exception ex) { RecordRowFailure(stats, "indigenous-partner-graph", __i, ex); }
+                    }
                     }
                 }
             }
@@ -1145,8 +1282,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"bc-dev: ingesting {itemsArray.GetArrayLength()} project item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "ProjectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -1206,6 +1348,10 @@ ORDER BY Id;";
                     RawJson: project.GetRawText());
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "bc-dev", __i, ex); }
+            }
             }
         }
     }
@@ -1233,8 +1379,13 @@ ORDER BY Id;";
             {
                 if (TrySelectEnvelopeOrLegacyItems(firmsDoc, "us-market-firms", "us-market", "firms", "firms", out var firmItems))
                 {
+                    {
+                    var __i = 0;
                     foreach (var firm in firmItems.EnumerateArray())
                     {
+                        __i++;
+                        try
+                        {
                         ct.ThrowIfCancellationRequested();
                         var firmName = String(firm, "firmName");
                         if (string.IsNullOrWhiteSpace(firmName))
@@ -1264,6 +1415,10 @@ ORDER BY Id;";
                             null,
                             firmName,
                             ct).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) { throw; }
+                        catch (Exception ex) { RecordRowFailure(stats, "us-market-firms", __i, ex); }
+                    }
                     }
                 }
             }
@@ -1288,8 +1443,13 @@ ORDER BY Id;";
                 return;
             }
 
+            {
+            var __i = 0;
             foreach (var project in projectItems.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "ProjectName") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -1378,6 +1538,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "us-market-projects", __i, ex); }
+            }
             }
         }
     }
@@ -1400,8 +1564,13 @@ ORDER BY Id;";
             {
                 if (TrySelectEnvelopeOrLegacyItems(firmsDoc, "alberta-firms", "alberta", "firms", "firms", out var firmItems))
                 {
+                    {
+                    var __i = 0;
                     foreach (var firm in firmItems.EnumerateArray())
                     {
+                        __i++;
+                        try
+                        {
                         ct.ThrowIfCancellationRequested();
                         var firmName = String(firm, "firmName");
                         if (string.IsNullOrWhiteSpace(firmName))
@@ -1431,6 +1600,10 @@ ORDER BY Id;";
                             null,
                             firmName,
                             ct).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) { throw; }
+                        catch (Exception ex) { RecordRowFailure(stats, "alberta-firms", __i, ex); }
+                    }
                     }
                 }
             }
@@ -1455,8 +1628,13 @@ ORDER BY Id;";
                 return;
             }
 
+            {
+            var __i = 0;
             foreach (var project in projectItems.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "ProjectName") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -1529,6 +1707,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "alberta-projects", __i, ex); }
+            }
             }
         }
     }
@@ -1550,8 +1732,13 @@ ORDER BY Id;";
             {
                 if (TrySelectEnvelopeOrLegacyItems(ownersDoc, "institutional-owners", "institutional", "owners", "owners", out var ownerItems))
                 {
+                    {
+                    var __i = 0;
                     foreach (var owner in ownerItems.EnumerateArray())
                     {
+                        __i++;
+                        try
+                        {
                         ct.ThrowIfCancellationRequested();
                         var ownerName = String(owner, "ownerName");
                         if (string.IsNullOrWhiteSpace(ownerName))
@@ -1581,6 +1768,10 @@ ORDER BY Id;";
                             null,
                             ownerName,
                             ct).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) { throw; }
+                        catch (Exception ex) { RecordRowFailure(stats, "institutional-owners", __i, ex); }
+                    }
                     }
                 }
             }
@@ -1604,8 +1795,13 @@ ORDER BY Id;";
                 return;
             }
 
+            {
+            var __i = 0;
             foreach (var project in projectItems.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "ProjectName") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -1673,6 +1869,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "institutional-projects", __i, ex); }
+            }
             }
         }
     }
@@ -1724,8 +1924,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"prime-targeting: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var prime in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var firmName = String(prime, "firmName");
                 if (string.IsNullOrWhiteSpace(firmName))
@@ -1745,6 +1950,10 @@ ORDER BY Id;";
                     null,
                     firmName,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "prime-targeting", __i, ex); }
+            }
             }
         }
     }
@@ -1797,8 +2006,13 @@ ORDER BY Id;";
             Console.WriteLine($"prime-contacts: ingesting {itemsArray.GetArrayLength()} person item(s) via {source}.");
 
             var peopleByFirm = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            {
+            var __i = 0;
             foreach (var person in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var firmName = String(person, "firmName");
                 if (string.IsNullOrWhiteSpace(firmName))
@@ -1814,6 +2028,10 @@ ORDER BY Id;";
                 }
 
                 people.Add(person.GetRawText());
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "prime-contacts", __i, ex); }
+            }
             }
 
             foreach (var (firmName, people) in peopleByFirm)
@@ -1851,8 +2069,13 @@ ORDER BY Id;";
             {
                 if (TrySelectEnvelopeOrLegacyItems(orgsDoc, "island-okanagan-orgs", "island-okanagan", "orgs", null, out var orgItems))
                 {
+                    {
+                    var __i = 0;
                     foreach (var org in orgItems.EnumerateArray())
                     {
+                        __i++;
+                        try
+                        {
                         ct.ThrowIfCancellationRequested();
                         var name = String(org, "name");
                         if (string.IsNullOrWhiteSpace(name))
@@ -1882,6 +2105,10 @@ ORDER BY Id;";
                             null,
                             name,
                             ct).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) { throw; }
+                        catch (Exception ex) { RecordRowFailure(stats, "island-okanagan-orgs", __i, ex); }
+                    }
                     }
                 }
             }
@@ -1905,8 +2132,13 @@ ORDER BY Id;";
                 return;
             }
 
+            {
+            var __i = 0;
             foreach (var project in projectItems.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "name");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -1969,6 +2201,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "island-okanagan-projects", __i, ex); }
+            }
             }
         }
     }
@@ -2073,6 +2309,22 @@ ORDER BY Id;";
         return true;
     }
 
+    private static async Task<long?> ValidatedSeedIdOrNullAsync(SqlCanonicalOrgStore? orgStore, long? seedId, CancellationToken ct)
+    {
+        if (seedId is null)
+        {
+            return null;
+        }
+
+        if (orgStore is null)
+        {
+            return seedId;
+        }
+
+        var org = await orgStore.GetCanonicalOrgAsync(seedId.Value, ct).ConfigureAwait(false);
+        return org is null || org.RetiredAtUtc is not null ? null : seedId;
+    }
+
     private static async Task ImportIntelGatheringAsync(
         ImportOptions options,
         SqlCanonicalOrgStore? orgStore,
@@ -2098,8 +2350,13 @@ ORDER BY Id;";
                 return;
             }
 
+            {
+            var __i = 0;
             foreach (var t in teamItems.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(t, "project") ?? String(t, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -2113,8 +2370,10 @@ ORDER BY Id;";
                 var structuralName = String(t, "structuralEngineer");
                 var gcName = String(t, "generalContractor");
 
-                // Prefer the seed Id the research carried through; else resolve by name.
-                var architectId = LongOrNull(t, "architectSeedId")
+                // Prefer the seed Id the research carried through when it still points
+                // at a live canonical; else resolve by name.
+                var architectSeedId = LongOrNull(t, "architectSeedId");
+                var architectId = await ValidatedSeedIdOrNullAsync(orgStore, architectSeedId, ct).ConfigureAwait(false)
                     ?? await ResolveAsync(resolver, options, stats, LeadFirm(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, LeadFirm(structuralName), OrgKinds.Competitor, "IntelTeamStructural", ct).ConfigureAwait(false);
@@ -2172,6 +2431,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "intel-team-awards", __i, ex); }
+            }
             }
         }
     }
@@ -2199,7 +2462,8 @@ ORDER BY Id;";
 
         if (orgStore is null)
         {
-            throw new InvalidOperationException("Canonical org store is not available.");
+            Console.WriteLine("[WARN] KorCapability: Canonical org store is not available; skipping KOR Structural enrichment anchor.");
+            return null;
         }
 
         var byKind = await orgStore.SearchCanonicalOrgsAsync(null, OrgKinds.KorStructural, 10, ct).ConfigureAwait(false);
@@ -2209,7 +2473,8 @@ ORDER BY Id;";
 
         if (row is null)
         {
-            throw new InvalidOperationException("Could not find the KOR Structural canonical org row.");
+            Console.WriteLine("[WARN] KorCapability: could not find the KOR Structural canonical org row; skipping KOR Structural enrichment.");
+            return null;
         }
 
         if (!options.Quiet)
@@ -2376,12 +2641,31 @@ ORDER BY Id;";
 
             Console.WriteLine($"data-honing: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
-            var validIds = options.DryRun
-                ? null
-                : await LoadValidOrgIdsAsync(options.OpportunitiesDb, ct).ConfigureAwait(false);
+            HashSet<long>? validIds = null;
+            if (!options.DryRun)
+            {
+                try
+                {
+                    validIds = await LoadValidOrgIdsAsync(options.OpportunitiesDb, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WARN] DataHoning: failed to load valid CanonicalOrg ids ({ex.GetType().Name}: {ex.Message}); proceeding without stale-id filtering.");
+                    validIds = null;
+                }
+            }
 
+            {
+            var __i = 0;
             foreach (var org in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(org, "id");
                 if (id is null)
@@ -2428,6 +2712,10 @@ ORDER BY Id;";
                         }
                     }
                 }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "data-honing", __i, ex); }
+            }
             }
         }
     }
@@ -2456,7 +2744,7 @@ ORDER BY Id;";
             }
         }
 
-        return String(org, "sourceUrl");
+        return null;
     }
 
     private static async Task<HashSet<long>> LoadValidOrgIdsAsync(string db, CancellationToken ct)
@@ -2480,7 +2768,7 @@ ORDER BY Id;";
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(
             "UPDATE opportunities.CanonicalOrg SET Website = COALESCE(Website, @w), UpdatedAtUtc = sysdatetimeoffset() WHERE Id = @id;",
-            con);
+            con) { CommandTimeout = 60 };
         cmd.Parameters.Add("@w", SqlDbType.NVarChar, 500).Value = website;
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
@@ -2492,7 +2780,7 @@ ORDER BY Id;";
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(
             "UPDATE opportunities.CanonicalOrg SET Kind = @kind, UpdatedAtUtc = sysdatetimeoffset() WHERE Id = @id AND Kind <> @kind;",
-            con);
+            con) { CommandTimeout = 60 };
         cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = kind;
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
@@ -2553,8 +2841,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"owner-pipelines: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var p in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(p, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -2616,6 +2909,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "owner-pipelines", __i, ex); }
+            }
             }
         }
     }
@@ -2671,8 +2968,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"competitor-profiles: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var c in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var name = String(c, "name");
                 if (string.IsNullOrWhiteSpace(name))
@@ -2687,12 +2989,17 @@ ORDER BY Id;";
                     : await ResolveAsync(resolver, options, stats, name, OrgKinds.Competitor, "CompetitorProfile", ct).ConfigureAwait(false);
 
                 await WriteEnrichmentAsync(enrichmentStore, options, stats, orgId, "CompetitorProfile", c.GetRawText(), null, name, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "competitor-profiles", __i, ex); }
+            }
             }
         }
     }
 
     private static async Task ImportDecisionMakersAsync(
         ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
         SqlEnrichmentTrackingStore? enrichmentStore,
         CanonicalOrgResolver? resolver,
         ImportStats stats,
@@ -2740,8 +3047,13 @@ ORDER BY Id;";
             Console.WriteLine($"decision-makers: ingesting {itemsArray.GetArrayLength()} person item(s) via {source}.");
 
             var groups = new Dictionary<string, (long? OrgId, string? Name, string Kind, List<string> People)>(StringComparer.OrdinalIgnoreCase);
+            {
+            var __i = 0;
             foreach (var person in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var orgName = String(person, "orgName");
                 var orgId = LongOrNull(person, "orgId");
@@ -2757,16 +3069,24 @@ ORDER BY Id;";
                     g = (orgId, orgName, MapIslandKind(String(person, "orgKind")), new List<string>());
                     groups[key] = g;
                 }
+                else if (string.IsNullOrWhiteSpace(g.Name) && !string.IsNullOrWhiteSpace(orgName))
+                {
+                    g = (g.OrgId, orgName, g.Kind, g.People);
+                    groups[key] = g;
+                }
 
                 g.People.Add(person.GetRawText());
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "decision-makers", __i, ex); }
+            }
             }
 
             foreach (var g in groups.Values)
             {
                 ct.ThrowIfCancellationRequested();
-                var orgId = g.OrgId is > 0
-                    ? g.OrgId
-                    : await ResolveAsync(resolver, options, stats, g.Name, g.Kind, "DecisionMakers", ct).ConfigureAwait(false);
+                var orgId = await ValidatedSeedIdOrNullAsync(orgStore, g.OrgId, ct).ConfigureAwait(false)
+                    ?? await ResolveAsync(resolver, options, stats, g.Name, g.Kind, "DecisionMakers", ct).ConfigureAwait(false);
 
                 await WriteEnrichmentAsync(
                     enrichmentStore,
@@ -2827,8 +3147,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"registries: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var firm in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var name = String(firm, "name");
                 if (string.IsNullOrWhiteSpace(name))
@@ -2872,6 +3197,10 @@ ORDER BY Id;";
                     null,
                     name,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "registries", __i, ex); }
+            }
             }
         }
     }
@@ -2921,8 +3250,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"owner-procurement: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var element in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var orgName = String(element, "orgName") ?? String(element, "ownerName");
                 if (string.IsNullOrWhiteSpace(orgName))
@@ -2942,6 +3276,10 @@ ORDER BY Id;";
                     null,
                     orgName,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "owner-procurement", __i, ex); }
+            }
             }
         }
     }
@@ -2991,8 +3329,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"competitor-signals: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var element in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var orgName = String(element, "orgName");
                 if (string.IsNullOrWhiteSpace(orgName))
@@ -3012,6 +3355,10 @@ ORDER BY Id;";
                     null,
                     orgName,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "competitor-signals", __i, ex); }
+            }
             }
         }
     }
@@ -3061,8 +3408,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"structural-partner-map: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var element in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var orgName = String(element, "orgName");
                 if (string.IsNullOrWhiteSpace(orgName))
@@ -3082,12 +3434,17 @@ ORDER BY Id;";
                     null,
                     orgName,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "structural-partner-map", __i, ex); }
+            }
             }
         }
     }
 
     private static async Task ImportDisplacementBriefsAsync(
         ImportOptions options,
+        SqlCanonicalOrgStore? orgStore,
         SqlArchitectDisplacementBriefStore? briefStore,
         CanonicalOrgResolver? resolver,
         ImportStats stats,
@@ -3135,8 +3492,13 @@ ORDER BY Id;";
             var skippedNoArchitect = 0;
             var skippedLowConfidence = 0;
 
+            {
+            var __i = 0;
             foreach (var element in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
 
                 // architectId is the primary key. The Sonnet brief writes it
@@ -3144,19 +3506,17 @@ ORDER BY Id;";
                 // verify the canonical row still exists. If it's been merged
                 // into a survivor, fall back to resolving by architectName so
                 // a merge does not silently drop the brief.
-                var architectId = LongOrNull(element, "architectId");
+                var seededArchitectId = LongOrNull(element, "architectId");
                 var architectName = String(element, "architectName");
 
-                if (!architectId.HasValue && string.IsNullOrWhiteSpace(architectName))
+                if (!seededArchitectId.HasValue && string.IsNullOrWhiteSpace(architectName))
                 {
                     skippedNoArchitect++;
                     continue;
                 }
 
-                if (!architectId.HasValue && !string.IsNullOrWhiteSpace(architectName))
-                {
-                    architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, "DisplacementBrief", ct).ConfigureAwait(false);
-                }
+                var architectId = await ValidatedSeedIdOrNullAsync(orgStore, seededArchitectId, ct).ConfigureAwait(false)
+                    ?? await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, "DisplacementBrief", ct).ConfigureAwait(false);
 
                 if (!architectId.HasValue)
                 {
@@ -3216,6 +3576,10 @@ ORDER BY Id;";
                 {
                     Console.WriteLine($"[WRITE ] DisplacementBrief: architectId={architectId} priority={korPriority} confidence={confidence}");
                 }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "displacement-briefs", __i, ex); }
+            }
             }
 
             Console.WriteLine($"Displacement briefs: written={written}; skippedNoArchitect={skippedNoArchitect}; skippedLowConfidence={skippedLowConfidence}");
@@ -3267,8 +3631,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"sub-consultants: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var element in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var name = String(element, "name") ?? String(element, "firmName");
                 if (string.IsNullOrWhiteSpace(name))
@@ -3298,6 +3667,10 @@ ORDER BY Id;";
                     null,
                     name,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "sub-consultants", __i, ex); }
+            }
             }
         }
     }
@@ -3346,8 +3719,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"facility-renewal: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var element in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var facilityName = String(element, "facilityName") ?? String(element, "projectName");
                 if (string.IsNullOrWhiteSpace(facilityName))
@@ -3405,6 +3783,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "facility-renewal", __i, ex); }
+            }
             }
         }
     }
@@ -3454,8 +3836,13 @@ ORDER BY Id;";
             Console.WriteLine($"capital-plans: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
             var sourceKeysSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -3523,6 +3910,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "capital-plans", __i, ex); }
+            }
             }
         }
     }
@@ -3571,8 +3962,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"projects-honing: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(project, "id");
                 if (id is not > 0)
@@ -3625,6 +4021,10 @@ ORDER BY Id;";
                         Console.WriteLine($"[WARN] ProjectsHoning: skipped missing MPI Id={id.Value}; project={projectName ?? "(unnamed)"}");
                     }
                 }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "projects-honing", __i, ex); }
+            }
             }
         }
     }
@@ -3673,8 +4073,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"midmarket: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "name") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -3740,6 +4145,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "midmarket", __i, ex); }
+            }
             }
         }
     }
@@ -3790,8 +4199,13 @@ ORDER BY Id;";
 
             var stamped = 0;
             var skipped = 0;
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(project, "id");
                 var architectName = String(project, "likelyArchitect") ?? String(project, "architectName");
@@ -3825,6 +4239,10 @@ ORDER BY Id;";
                         Console.WriteLine($"[WARN] ArchitectForecast: skipped MPI Id={id.Value}; architect already set or row missing.");
                     }
                 }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "architect-forecast", __i, ex); }
+            }
             }
 
             Console.WriteLine($"[architect-forecast] stamped={stamped}; skipped={skipped}");
@@ -3878,8 +4296,13 @@ ORDER BY Id;";
             var seatStatusCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var orgsResolved = 0;
             var projectsStamped = 0;
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(project, "id");
                 if (id is not > 0)
@@ -3933,6 +4356,10 @@ ORDER BY Id;";
                         Console.WriteLine($"[WARN] PipelineSeats: skipped missing MPI Id={id.Value}; project={projectName ?? "(unnamed)"}");
                     }
                 }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "pipeline-seats", __i, ex); }
+            }
             }
 
             Console.WriteLine($"[pipeline-seats] projects stamped={projectsStamped}; orgs resolved={orgsResolved}");
@@ -3991,8 +4418,13 @@ ORDER BY Id;";
             var updated = 0;
             var retired = 0;
             var kept = 0;
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(project, "id");
                 if (id is not > 0)
@@ -4050,6 +4482,10 @@ ORDER BY Id;";
                         Console.WriteLine($"[WARN] ProjectReverify: skipped missing MPI Id={id.Value}; verdict={verdictKey}");
                     }
                 }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "project-reverify", __i, ex); }
+            }
             }
 
             Console.WriteLine($"[project-reverify] updated={updated}; retired={retired}; kept={kept}");
@@ -4105,8 +4541,13 @@ ORDER BY Id;";
             Console.WriteLine($"industry-events: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
             var upserted = 0;
+            {
+            var __i = 0;
             foreach (var item in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var name = String(item, "name");
                 if (string.IsNullOrWhiteSpace(name))
@@ -4160,6 +4601,10 @@ ORDER BY Id;";
                 {
                     Console.WriteLine($"[EVENT] IndustryEvents: upserted {record.SourceKey}; event={name}");
                 }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "industry-events", __i, ex); }
+            }
             }
 
             Console.WriteLine($"[industry-events] upserted={upserted}");
@@ -4208,8 +4653,13 @@ ORDER BY Id;";
             var sectorSystemMatrix = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
             var orgsResolved = 0;
 
+            {
+            var __i = 0;
             foreach (var project in projectItems.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -4245,11 +4695,20 @@ ORDER BY Id;";
                     String(project, "creditedFirmName"),
                     Decimal(project, "systemConfidence"),
                     StringArray(project, "sourceUrls")));
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "kor-capability-corpus", __i, ex); }
+            }
             }
 
             var pEngCount = 0;
+            {
+            var __i = 0;
             foreach (var person in rosterItems.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var credentials = StringArray(person, "credentials");
                 if (credentials.Any(c => c.Contains("P.Eng", StringComparison.OrdinalIgnoreCase)))
@@ -4265,6 +4724,10 @@ ORDER BY Id;";
                     String(person, "era"),
                     String(person, "creditedFirmName"),
                     String(person, "notes")));
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "kor-roster", __i, ex); }
+            }
             }
 
             var payload = JsonSerializer.Serialize(new
@@ -4275,16 +4738,23 @@ ORDER BY Id;";
                 pEngCount,
             }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-            await WriteEnrichmentAsync(
-                enrichmentStore,
-                options,
-                stats,
-                korOrgId,
-                "KorCapability",
-                payload,
-                null,
-                "KOR Structural",
-                ct).ConfigureAwait(false);
+            if (korOrgId.HasValue)
+            {
+                await WriteEnrichmentAsync(
+                    enrichmentStore,
+                    options,
+                    stats,
+                    korOrgId,
+                    "KorCapability",
+                    payload,
+                    null,
+                    "KOR Structural",
+                    ct).ConfigureAwait(false);
+            }
+            else
+            {
+                Console.WriteLine("[WARN] KorCapability: skipped enrichment write because KOR Structural canonical org was not resolved.");
+            }
 
             Console.WriteLine($"[kor-capability] projects={projects.Count}; roster={roster.Count}; orgs resolved/created={orgsResolved}");
         }
@@ -4334,8 +4804,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"project-teams: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -4425,6 +4900,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "project-teams", __i, ex); }
+            }
             }
         }
     }
@@ -4473,8 +4952,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"competitor-projects: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -4539,6 +5023,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "competitor-projects", __i, ex); }
+            }
             }
         }
     }
@@ -4587,8 +5075,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"structural-pipeline: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -4653,6 +5146,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "structural-pipeline", __i, ex); }
+            }
             }
         }
     }
@@ -4701,8 +5198,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"indigenous-projects: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -4763,6 +5265,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "indigenous-projects", __i, ex); }
+            }
             }
         }
     }
@@ -4812,8 +5318,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"indigenous-orgs: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var org in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var name = String(org, "name");
                 if (string.IsNullOrWhiteSpace(name))
@@ -4857,6 +5368,10 @@ ORDER BY Id;";
                     null,
                     name,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "indigenous-orgs", __i, ex); }
+            }
             }
         }
     }
@@ -4911,8 +5426,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"db-contractors: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var contractor in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var name = String(contractor, "name");
                 if (string.IsNullOrWhiteSpace(name))
@@ -4945,6 +5465,10 @@ ORDER BY Id;";
                     String(contractor, "fitNotes"),
                     name,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "db-contractors", __i, ex); }
+            }
             }
         }
     }
@@ -4999,8 +5523,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"incumbent-rosters: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var roster in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var owner = String(roster, "owner");
                 if (string.IsNullOrWhiteSpace(owner))
@@ -5033,6 +5562,10 @@ ORDER BY Id;";
                     String(roster, "opportunityTiming"),
                     owner,
                     ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "incumbent-rosters", __i, ex); }
+            }
             }
         }
     }
@@ -5085,8 +5618,13 @@ ORDER BY Id;";
 
             Console.WriteLine($"capital-funding-signals: ingesting {itemsArray.GetArrayLength()} item(s) via {source}.");
 
+            {
+            var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
             {
+                __i++;
+                try
+                {
                 ct.ThrowIfCancellationRequested();
                 var projectName = String(project, "name") ?? String(project, "projectName");
                 if (string.IsNullOrWhiteSpace(projectName))
@@ -5161,6 +5699,10 @@ ORDER BY Id;";
                 };
 
                 await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { RecordRowFailure(stats, "capital-funding-signals", __i, ex); }
+            }
             }
         }
     }
@@ -5213,8 +5755,13 @@ ORDER BY Id;";
             Console.WriteLine($"seismic-pipeline: legacy JSONL ingesting {lines.Length} item(s).");
         }
 
+        {
+        var __i = 0;
         foreach (var raw in lines)
         {
+            __i++;
+            try
+            {
             ct.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(raw))
             {
@@ -5307,6 +5854,10 @@ ORDER BY Id;";
             };
 
             await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { RecordRowFailure(stats, "seismic-pipeline", __i, ex); }
+        }
         }
     }
 
@@ -5409,8 +5960,13 @@ ORDER BY Id;";
             Console.WriteLine($"{logPrefix}: legacy JSONL ingesting {lines.Length} item(s).");
         }
 
+        {
+        var __i = 0;
         foreach (var raw in lines)
         {
+            __i++;
+            try
+            {
             ct.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(raw))
             {
@@ -5516,6 +6072,10 @@ ORDER BY Id;";
             };
 
             await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { RecordRowFailure(stats, logPrefix, __i, ex); }
+        }
         }
     }
 
@@ -5575,17 +6135,37 @@ ORDER BY Id;";
             }
 
             Console.WriteLine($"[FILE] {jsonlPath}");
-            lines = File.ReadAllLines(jsonlPath);
+            try
+            {
+                lines = File.ReadAllLines(jsonlPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Console.WriteLine($"[WARN] Could not read payload {jsonlPath}: {ex.GetType().Name}: {ex.Message}");
+                stats.FilesMissing++;
+                return;
+            }
+
             Console.WriteLine($"bd-tracking: legacy JSONL ingesting {lines.Length} item(s).");
         }
 
         // Parse all rows into typed records.
         var rows = new List<BdTrackingRow>();
+        {
+        var __i = 0;
         foreach (var raw in lines)
         {
+            __i++;
+            try
+            {
+            ct.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(raw)) continue;
             using var doc = JsonDocument.Parse(raw, JsonOptions);
             rows.Add(BdTrackingRow.FromJson(doc.RootElement));
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { RecordRowFailure(stats, "bd-tracking", __i, ex); }
+        }
         }
         Console.WriteLine($"[BD] parsed {rows.Count} rows");
 
@@ -5614,8 +6194,13 @@ ORDER BY Id;";
             "Region,Initiator,Company,BuyerCanonicalOrgId,EngagementId,Activities,ProposalsSubmittedCad,ProposalsAcceptedCad,Status",
         };
 
+        {
+        var __i = 0;
         foreach (var g in groups)
         {
+            __i++;
+            try
+            {
             ct.ThrowIfCancellationRequested();
 
             var initiator = g.Key.Initiator;
@@ -5643,12 +6228,12 @@ ORDER BY Id;";
             {
                 if (r.ProposalsSubmittedCad.HasValue)
                 {
-                    var v = r.Currency == "USD" ? r.ProposalsSubmittedCad.Value * 1.36m : r.ProposalsSubmittedCad.Value;
+                    var v = r.Currency == "USD" ? r.ProposalsSubmittedCad.Value * options.FxRate : r.ProposalsSubmittedCad.Value;
                     submitted = (submitted ?? 0) + v;
                 }
                 if (r.ProposalsAcceptedCad.HasValue)
                 {
-                    var v = r.Currency == "USD" ? r.ProposalsAcceptedCad.Value * 1.36m : r.ProposalsAcceptedCad.Value;
+                    var v = r.Currency == "USD" ? r.ProposalsAcceptedCad.Value * options.FxRate : r.ProposalsAcceptedCad.Value;
                     accepted = (accepted ?? 0) + v;
                 }
             }
@@ -5719,6 +6304,10 @@ ORDER BY Id;";
                 accepted?.ToString("F2") ?? "",
                 status,
             }));
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { RecordRowFailure(stats, "bd-tracking-engagements", __i, ex); }
+        }
         }
 
         // Skipped rows summary
@@ -5730,10 +6319,17 @@ ORDER BY Id;";
 
         // Write the reconciliation CSV alongside the input so Ian can review.
         var outDir = Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "outputs");
-        Directory.CreateDirectory(outDir);
         var reconPath = Path.Combine(outDir, options.DryRun ? "reconciliation-dryrun.csv" : "reconciliation.csv");
-        File.WriteAllLines(reconPath, reconciliation);
-        Console.WriteLine($"[BD] reconciliation written to {reconPath}");
+        try
+        {
+            Directory.CreateDirectory(outDir);
+            File.WriteAllLines(reconPath, reconciliation);
+            Console.WriteLine($"[BD] reconciliation written to {reconPath}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.WriteLine($"[WARN] Could not write BD tracking reconciliation {reconPath}: {ex.GetType().Name}: {ex.Message}");
+        }
 
         Console.WriteLine($"[BD] groups={groups.Count}; activities-rows={rows.Count - skipped}; skipped={skipped}");
         Console.WriteLine($"[BD] engagements-created={engagementsCreated}; engagements-updated={engagementsUpdated}; activities-inserted={activitiesInserted}; contacts-inserted={contactsInserted}");
@@ -5782,7 +6378,7 @@ SELECT Id, Region, PotentialProjects
 FROM   opportunities.CrmEngagements
 WHERE  PotentialProjects IS NOT NULL
   AND  Region IS NOT NULL;";
-        await using (var cmd = new SqlCommand(loadEngagementsSql, con))
+        await using (var cmd = new SqlCommand(loadEngagementsSql, con) { CommandTimeout = 120 })
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
             while (await r.ReadAsync(ct).ConfigureAwait(false))
@@ -5802,7 +6398,7 @@ FROM   opportunities.MajorProjectsInventory
 WHERE  Province IS NOT NULL
   AND  RetiredAtUtc IS NULL
   AND  ProjectName IS NOT NULL;";
-        await using (var cmd = new SqlCommand(loadMpiSql, con))
+        await using (var cmd = new SqlCommand(loadMpiSql, con) { CommandTimeout = 120 })
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
             while (await r.ReadAsync(ct).ConfigureAwait(false))
@@ -5912,12 +6508,19 @@ END;";
         }
 
         var outDir = Path.Combine(options.BaseDirectory, "Operations", "tools", "BdTrackingImport", "outputs");
-        Directory.CreateDirectory(outDir);
-        File.WriteAllLines(Path.Combine(outDir, "crosslink-uncertain.csv"), uncertainCandidates);
-        var hcLines = new List<string> { "EngagementId,MpiId,Confidence,MatchedText" };
-        hcLines.AddRange(highConfidenceLinks.Select(l => $"{l.EngagementId},{l.MpiId},{l.Confidence:F0},{CsvEscape(l.MatchedText)}"));
-        File.WriteAllLines(Path.Combine(outDir, "crosslink-matched.csv"), hcLines);
-        Console.WriteLine($"[BD-CROSSLINK] reports written to {outDir}");
+        try
+        {
+            Directory.CreateDirectory(outDir);
+            File.WriteAllLines(Path.Combine(outDir, "crosslink-uncertain.csv"), uncertainCandidates);
+            var hcLines = new List<string> { "EngagementId,MpiId,Confidence,MatchedText" };
+            hcLines.AddRange(highConfidenceLinks.Select(l => $"{l.EngagementId},{l.MpiId},{l.Confidence:F0},{CsvEscape(l.MatchedText)}"));
+            File.WriteAllLines(Path.Combine(outDir, "crosslink-matched.csv"), hcLines);
+            Console.WriteLine($"[BD-CROSSLINK] reports written to {outDir}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.WriteLine($"[WARN] Could not write BD cross-link reports to {outDir}: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     private static readonly HashSet<string> Stopwords = new(StringComparer.OrdinalIgnoreCase)
@@ -6067,7 +6670,13 @@ END;";
         private static DateTimeOffset? TryDate(JsonElement e, string n)
         {
             var s = TryStr(e, n);
-            return DateTimeOffset.TryParse(s, out var d) ? d : null;
+            return DateTimeOffset.TryParse(
+                s,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var d)
+                ? d
+                : null;
         }
     }
 
@@ -6346,8 +6955,6 @@ WHERE  EngagementId = @eid
         string displayName,
         CancellationToken ct)
     {
-        stats.EnrichmentRowsWritten++;
-        AddCount(stats.EnrichmentRowsByProvider, providerName);
         if (options.DryRun)
         {
             if (!options.Quiet)
@@ -6369,6 +6976,8 @@ WHERE  EngagementId = @eid
             new EnrichmentResult(EnrichmentStatuses.Ok, null, resultJson, notes),
             DateTimeOffset.UtcNow.AddDays(365),
             ct).ConfigureAwait(false);
+        stats.EnrichmentRowsWritten++;
+        AddCount(stats.EnrichmentRowsByProvider, providerName);
         if (!options.Quiet)
         {
             Console.WriteLine($"[ENRICH] {providerName}: CanonicalOrgId={canonicalOrgId.Value}");
@@ -6507,8 +7116,6 @@ WHERE Id = @mpiId;";
 
     private static async Task UpsertMajorProjectAsync(ImportOptions options, ImportStats stats, MajorProjectRecord r, CancellationToken ct)
     {
-        IncrementProjectSource(stats, r.Source);
-
         if (options.DryRun)
         {
             if (!options.Quiet)
@@ -6716,7 +7323,12 @@ SELECT
         }
         else if (!options.Quiet)
         {
+            IncrementProjectSource(stats, r.Source);
             Console.WriteLine($"[MPI] {r.Source}: {r.SourceKey}; project={r.ProjectName}");
+        }
+        else
+        {
+            IncrementProjectSource(stats, r.Source);
         }
     }
 
@@ -6969,9 +7581,24 @@ WHERE Id = @id
             return false;
         }
 
-        document = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
-        Console.WriteLine($"[FILE] {path}");
-        return true;
+        try
+        {
+            document = JsonDocument.Parse(File.ReadAllText(path), JsonOptions);
+            Console.WriteLine($"[FILE] {path}");
+            return true;
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            Console.WriteLine($"[WARN] Unparseable payload {path}: {ex.GetType().Name}: {ex.Message}");
+            document = null!;
+            return false;
+        }
+    }
+
+    private static void RecordRowFailure(ImportStats stats, string label, int index, Exception ex)
+    {
+        stats.RowsFailed++;
+        Console.Error.WriteLine($"[ROW-FAILED] {label}#{index}: {ex.GetType().Name}: {ex.Message}");
     }
 
     // Looks up the legacy filename from the ResearchStreams catalog by (folderName, kind),
@@ -7352,6 +7979,7 @@ WHERE Id = @id
         Console.WriteLine($"  Enrichment rows written:   {stats.EnrichmentRowsWritten}");
         Console.WriteLine($"  Project rows skipped:      {stats.ProjectRowsSkipped}");
         Console.WriteLine($"  Org rows skipped:          {stats.OrgRowsSkipped}");
+        Console.WriteLine($"  Rows failed:               {stats.RowsFailed}");
         Console.WriteLine($"  Proponents resolved:       {stats.ProponentsResolved}");
         Console.WriteLine($"  Architects resolved:       {stats.ArchitectsResolved}");
         Console.WriteLine($"  Missing payloads:          {stats.FilesMissing}");
@@ -7490,6 +8118,7 @@ WHERE Id = @id
         public int EnrichmentRowsWritten { get; set; }
         public int ProjectRowsSkipped { get; set; }
         public int OrgRowsSkipped { get; set; }
+        public int RowsFailed;
         public int FilesMissing { get; set; }
         public int ProponentsResolved { get; set; }
         public int ArchitectsResolved { get; set; }
@@ -7512,6 +8141,7 @@ WHERE Id = @id
         public int CanonicalOrgCreates { get; set; }
         public int CanonicalOrgMatches { get; set; }
         public int AggressiveKeyMatches { get; set; }
+        public int RecordsFailed { get; set; }
         public int StrictViolations { get; set; }
         public Dictionary<string, int> IngestedByProvider { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> SkippedByReason { get; } = new(StringComparer.OrdinalIgnoreCase);

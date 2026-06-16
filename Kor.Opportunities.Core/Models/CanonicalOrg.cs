@@ -37,7 +37,8 @@ public sealed record CanonicalOrgRow(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc,
     int KorProjectsCount,
-    DateTimeOffset? LastKorProjectAtUtc);
+    DateTimeOffset? LastKorProjectAtUtc,
+    DateTimeOffset? RetiredAtUtc);
 
 public sealed record OrgAliasRow(
     long Id,
