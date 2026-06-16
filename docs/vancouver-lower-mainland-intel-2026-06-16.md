@@ -9,6 +9,22 @@
 ## ⚡ THE PRIZE
 **$63.7 billion across 733 active Lower Mainland projects have NO structural engineer committed yet — every one an open seat KOR can pursue.** KOR's pursuit record earns the table: **177 won / 79 lost (≈69%)**. This report turns that $63.7B into a ranked, named call sheet.
 
+## 🛰️ THE MARKET AT 10,000 FT (where KOR fits — and can fit)
+**785 active Lower Mainland projects, ~$76B. 93% (733) have no structural engineer committed, competitors hold 23, KOR holds 3 — KOR's current share is ~0%, so the entire market is contestable.** It's an early-stage land-grab, not an entrenched market.
+
+**By segment (the whole landscape):**
+| Segment | ~Projects | ~Value | Who owns it | KOR's fit |
+|---|--:|--:|---|---|
+| **Residential & mixed-use** | ~300 | ~$15B | private developers | **Natural fit — KOR's proven base** (Bosa/Anthem/Wesgroup/Reliance clients) |
+| **Education** (K-12 + post-secondary) | ~290 | ~$15B | school districts, UBC/SFU | Whitespace via **seismic** (heritage/high-importance) + student housing |
+| **Infrastructure & utilities** | ~12 | ~$18B | Metro Van, Port, BC Hydro, FortisBC | **Warm-path fit** via GC relationships (Graham/PCL) — RBT2, Iona, WWTPs, substations |
+| **Healthcare** | ~47 | ~$13B | health authorities, Infrastructure BC | Warm-path fit (Graham/PCL/Parkin) — Richmond + Burnaby hospitals |
+| **Civic & institutional** | ~115 | ~$7B | municipalities | Open mid-market; seismic + recreation |
+
+**By pipeline stage:** $45.5B is in **capital-plan** (pre-position *now*, before the RFP); $18B in **Procurement/Permitting** (near-term biddable); the rest concept/unstaged. **Owner split: ~62% public / ~34% private developer.**
+
+**Where KOR fits today vs. can fit:** KOR's *proven* lane is **private residential/mixed-use high-rise** — the single biggest segment, and where KOR already holds the client relationships. KOR's *expansion* whitespace is **(1) seismic across education/civic** (its specialty, structural-led), **(2) healthcare + infrastructure via warm GC relationships** (Graham/PCL sit on ~$5.7B of it), and **(3) the open mid-market institutional** where incumbents aren't locked. The rest of this report is the route into each.
+
 ## 🎯 TOP PURSUITS THIS QUARTER (chase these, in this order)
 Ranked by KOR's **warm-path** (relationship strength to the team already on the project) × value. "The move" is the actual next action.
 
