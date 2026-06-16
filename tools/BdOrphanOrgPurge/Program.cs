@@ -331,10 +331,12 @@ internal sealed class OrphanOrgPurgeStore : IAsyncDisposable
         await EnsureOpenAsync(ct).ConfigureAwait(false);
 
         var ids = new HashSet<long>();
-        foreach (var reference in ReferenceColumns)
+        // Same schema-driven keep-set as the commit-time guard, so planning and
+        // commit never disagree about which orgs are referenced.
+        foreach (var reference in await GetReferenceColumnsAsync(null, ct).ConfigureAwait(false))
         {
-            // Table and column names are trusted hard-coded constants, never user/config input.
-            var sql = $"SELECT DISTINCT {reference.Column} FROM opportunities.{reference.Table} WHERE {reference.Column} IS NOT NULL;";
+            // Table/column names come from sys.foreign_keys (schema metadata, not user input); bracket-quote.
+            var sql = $"SELECT DISTINCT [{reference.Column}] FROM opportunities.[{reference.Table}] WHERE [{reference.Column}] IS NOT NULL;";
             await using var cmd = new SqlCommand(sql, _connection) { CommandTimeout = CommandTimeoutSeconds };
             await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
             while (await reader.ReadAsync(ct).ConfigureAwait(false))
@@ -455,29 +457,81 @@ ORDER BY Id;";
         }
     }
 
+    // Schema-driven keep-set: every column that FK-references CanonicalOrg, read
+    // live from sys.foreign_keys, plus the MPI Structural/GC soft-links (real
+    // references that carry no FK constraint). Built once and cached per process.
+    // This can never drift behind a new migration's FK — the historical failure
+    // mode where a hand-maintained list let the purge delete orgs that still had
+    // Intel*/brief/bid references (FK-547 rollback, or CASCADE child loss).
+    private IReadOnlyList<ReferenceColumn>? _referenceColumnsCache;
+
+    private async Task<IReadOnlyList<ReferenceColumn>> GetReferenceColumnsAsync(SqlTransaction? tx, CancellationToken ct)
+    {
+        if (_referenceColumnsCache is not null)
+        {
+            return _referenceColumnsCache;
+        }
+
+        const string sql = @"
+SELECT OBJECT_NAME(fk.parent_object_id) AS TableName,
+       COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName
+FROM sys.foreign_keys fk
+JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+WHERE fk.referenced_object_id = OBJECT_ID('opportunities.CanonicalOrg')
+  AND OBJECT_NAME(fk.parent_object_id) <> 'OrgAlias';"; // OrgAlias is deleted by the purge, not a keep-reference
+
+        var cols = new List<ReferenceColumn>();
+        await using (var cmd = new SqlCommand(sql, _connection, tx) { CommandTimeout = CommandTimeoutSeconds })
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                cols.Add(new ReferenceColumn(r.GetString(0), r.GetString(1)));
+            }
+        }
+
+        // Soft-link columns that reference CanonicalOrg without a declared FK.
+        foreach (var soft in new[]
+        {
+            new ReferenceColumn("MajorProjectsInventory", "StructuralEngineerCanonicalOrgId"),
+            new ReferenceColumn("MajorProjectsInventory", "GeneralContractorCanonicalOrgId"),
+        })
+        {
+            if (!cols.Any(c => c.Table == soft.Table && c.Column == soft.Column))
+            {
+                cols.Add(soft);
+            }
+        }
+
+        _referenceColumnsCache = cols;
+        return cols;
+    }
+
     private async Task<bool> IsReferencedAsync(long id, SqlTransaction tx, CancellationToken ct)
     {
-        const string sql = @"
-SELECT TOP (1) 1
-WHERE EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory WHERE ProponentCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory WHERE ArchitectCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory WHERE StructuralEngineerCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory WHERE GeneralContractorCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment WHERE CanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.Opportunities WHERE BuyerCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.OpportunityAwards WHERE AwardedToCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.OpportunityAwards WHERE AwardingCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.KorPursuits WHERE BuyerCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.KorPursuits WHERE LostToCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.NewsArticleOrgMention WHERE CanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.BuildingPermit WHERE OwnerCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.BuildingPermit WHERE ApplicantCanonicalOrgId = @id)
-   OR EXISTS (SELECT 1 FROM opportunities.BuildingPermit WHERE ContractorCanonicalOrgId = @id);";
+        // Fail-closed: if we cannot enumerate the FK graph, treat the org as
+        // referenced (never delete on incomplete information).
+        var refs = await GetReferenceColumnsAsync(tx, ct).ConfigureAwait(false);
+        if (refs.Count == 0)
+        {
+            return true;
+        }
 
-        await using var cmd = new SqlCommand(sql, _connection, tx) { CommandTimeout = CommandTimeoutSeconds };
-        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
-        var value = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        return value is not null && value is not DBNull;
+        // Object/column names come from sys.foreign_keys (schema metadata, not
+        // user input); bracket-quote them defensively.
+        foreach (var (table, column) in refs)
+        {
+            var sql = $"SELECT TOP (1) 1 FROM opportunities.[{table}] WHERE [{column}] = @id;";
+            await using var cmd = new SqlCommand(sql, _connection, tx) { CommandTimeout = CommandTimeoutSeconds };
+            cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
+            var value = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            if (value is not null && value is not DBNull)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task DeleteAliasesAsync(long id, SqlTransaction tx, CancellationToken ct)
@@ -520,23 +574,6 @@ WHERE Id = @id
         }
     }
 
-    private static readonly ReferenceColumn[] ReferenceColumns =
-    [
-        new("MajorProjectsInventory", "ProponentCanonicalOrgId"),
-        new("MajorProjectsInventory", "ArchitectCanonicalOrgId"),
-        new("MajorProjectsInventory", "StructuralEngineerCanonicalOrgId"),
-        new("MajorProjectsInventory", "GeneralContractorCanonicalOrgId"),
-        new("CanonicalOrgEnrichment", "CanonicalOrgId"),
-        new("Opportunities", "BuyerCanonicalOrgId"),
-        new("OpportunityAwards", "AwardedToCanonicalOrgId"),
-        new("OpportunityAwards", "AwardingCanonicalOrgId"),
-        new("KorPursuits", "BuyerCanonicalOrgId"),
-        new("KorPursuits", "LostToCanonicalOrgId"),
-        new("NewsArticleOrgMention", "CanonicalOrgId"),
-        new("BuildingPermit", "OwnerCanonicalOrgId"),
-        new("BuildingPermit", "ApplicantCanonicalOrgId"),
-        new("BuildingPermit", "ContractorCanonicalOrgId"),
-    ];
 }
 
 internal sealed record ReferenceColumn(string Table, string Column);

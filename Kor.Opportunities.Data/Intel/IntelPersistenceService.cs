@@ -73,6 +73,22 @@ UPDATE opportunities.IntelAction
 
         try
         {
+            // FK + retirement guard: never attach intel to a missing or retired
+            // canonical org. A concurrent merge/retire between enrichment-row
+            // selection and here would otherwise throw FK-547 (aborting the whole
+            // batch) or strand active intel on a dead parent. Skip cleanly instead.
+            await using (var guard = new SqlCommand(
+                "SELECT 1 FROM opportunities.CanonicalOrg WHERE Id = @id AND RetiredAtUtc IS NULL", con, tx)
+                { CommandTimeout = CommandTimeoutSeconds })
+            {
+                guard.Parameters.Add("@id", SqlDbType.BigInt).Value = ctx.CanonicalOrgId;
+                if (await guard.ExecuteScalarAsync(ct).ConfigureAwait(false) is null)
+                {
+                    await tx.RollbackAsync(ct).ConfigureAwait(false);
+                    return new IntelPersistResult(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                }
+            }
+
             var persons = new MutableCounts();
             var affiliations = new MutableCounts();
             var signals = new MutableCounts();

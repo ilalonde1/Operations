@@ -118,7 +118,9 @@ SELECT Id,
        ISNULL(LastRefreshAtUtc, CreatedAtUtc) AS RefreshedAtUtc
 FROM opportunities.CanonicalOrgEnrichment
 WHERE Status = N'ok'
-  AND ResultJson IS NOT NULL";
+  AND ResultJson IS NOT NULL
+  AND EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co
+              WHERE co.Id = CanonicalOrgId AND co.RetiredAtUtc IS NULL)";
 
         if (!string.IsNullOrWhiteSpace(providerName))
         {

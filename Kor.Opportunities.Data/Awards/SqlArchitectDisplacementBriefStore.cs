@@ -57,9 +57,16 @@ WHERE  ArchitectCanonicalOrgId = @id;";
     {
         // Round 14c pattern - UPDATE under UPDLOCK,HOLDLOCK; if no row, INSERT.
         // Single statement keeps the lock scope tight without sp_getapplock.
+        // FK guard: only write a brief when the architect canonical org is live.
+        // A dead/merged/retired @architectId yields an empty MERGE source, so the
+        // statement is a clean no-op instead of an FK-547 abort or a brief that
+        // points at a non-existent org. (Callers should pre-resolve, but the store
+        // must not trust the id — same class as the architectSeedId defect.)
         const string sql = @"
 MERGE opportunities.ArchitectDisplacementBriefs WITH (UPDLOCK, HOLDLOCK) AS target
-USING (SELECT @architectId AS ArchitectCanonicalOrgId) AS src
+USING (SELECT @architectId AS ArchitectCanonicalOrgId
+       WHERE EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co
+                     WHERE co.Id = @architectId AND co.RetiredAtUtc IS NULL)) AS src
    ON target.ArchitectCanonicalOrgId = src.ArchitectCanonicalOrgId
 WHEN MATCHED THEN UPDATE SET
     Market           = @market,
