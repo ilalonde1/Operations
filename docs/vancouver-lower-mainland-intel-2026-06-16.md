@@ -1,91 +1,72 @@
-% Lower Mainland — BD Intelligence Report
+% Lower Mainland — BD Opportunity Report
 % KOR Structural — Business Development
 % 2026-06-16
 
-*Built on the KOR BD Brain (KorOpportunitiesDb), de-duplicated and enriched 2026-06-16. The synthesis — seismic lane, open-seat pursuit map ranked by KOR's relationship warm-path, displacement map, and Deltek cross-sell — is proprietary to KOR: it can't be computed without KOR's private project history, client list, and relationship graph. Project-team facts are research-verified; confidence noted where relevant.*
+*KOR's proprietary synthesis (warm-path, open-seat, cross-sell, seismic) over the de-duplicated BD Brain. This is an opportunity + action report: who to pursue, how to get in, and who to call. Team facts research-verified; contacts from KOR's own graph.*
 
 ---
 
-## 1. The one-page read
-- **785 active Lower Mainland projects, ~$76B** estimated capital, across **318 owners** and **120 architect firms** (consolidated — no double-counting).
-- Credibility to pursue: **177 pursuits won / 79 lost ≈ 69% win rate** (Deltek).
-- **Four moves win the Lower Mainland**, in priority order:
-  1. **Seismic (§2)** — KOR's specialty × BC's defining risk; **$9.3B of LM seismic seats, ~99% unawarded**, structural-LED (KOR leads, not subs).
-  2. **Open SE-seats ranked by warm-path (§3)** — billions in unawarded structural seats on early-stage mega-projects, prioritized by how easily KOR can get in.
-  3. **Deltek cross-sell (§4)** — KOR's own clients' active projects KOR isn't on yet.
-  4. **Displace the incumbents (§5)** — Fast+Epp, Glotman, WHM on the architect relationships they hold.
+## ⚡ THE PRIZE
+**$63.7 billion across 733 active Lower Mainland projects have NO structural engineer committed yet — every one an open seat KOR can pursue.** KOR's pursuit record earns the table: **177 won / 79 lost (≈69%)**. This report turns that $63.7B into a ranked, named call sheet.
 
-## 2. SEISMIC — KOR's core lane in the Lower Mainland
-The Lower Mainland carries **177 seismic projects (~$9.3B)** — the value engine of BC's Seismic Mitigation Program. Seismic is **structural-LED** (the SE is the lead consultant), it's KOR's specialization, and **~99% of these seats have no structural engineer committed.** The incumbent to beat is **RJC Engineers** (the BC seismic leader); with ~270 SMP schools still to do, this is a *land-grab*, not a displacement grind.
+## 🎯 TOP PURSUITS THIS QUARTER (chase these, in this order)
+Ranked by KOR's **warm-path** (relationship strength to the team already on the project) × value. "The move" is the actual next action.
 
-| Est $M | Open seismic seat | District |
-|---:|---|---|
-| 775 | SMP Backlog (~22 schools) | Richmond (SD38) |
-| 181 | Sir Winston Churchill Secondary — full seismic replacement | VSB (SD39) |
-| 165 | Sir Alexander Mackenzie Elementary — full seismic replacement | VSB (SD39) |
-| 100 | King George Secondary — full seismic replacement | VSB (SD39) |
-| 68 | Cameron Elementary — seismic replacement + expansion | Burnaby (SD41) |
-| 60 | École Dr. Charles Best Secondary — seismic upgrade | Coquitlam (SD43) |
-| 60 | Lynnmour Elementary — seismic replacement + expansion | North Van (SD44) |
+| # | Gig | $M | Why it's warm | THE MOVE — who to call |
+|--:|---|--:|---|---|
+| 1 | **Richmond Hospital Redevelopment** (later phases) | 1,960 | GC **Graham** is a KOR client; warm-score 11 (highest big gig) | Engage Graham (KOR client) + architect HDR — get on the structural shortlist before award |
+| 2 | **Northeast False Creek / Viaduct Replacement** | 1,700 | Owner **Concord Pacific**; warm-score 8 | Approach Concord Pacific dev team; KOR has prior Concord relationships |
+| 3 | **Annacis Island WWTP Phase 2** | 2,000 | GC **Graham** (KOR client) + KOR is a **Parkin** client + has NORR contacts | One call to Graham covers gigs #1 + #3 (~$3.96B) |
+| 4 | **Burnaby Hospital Ph2 + BC Cancer Centre** | 1,730 | GC **PCL** (KOR has 25 contacts) + KOR is a **Parkin** client | Engage PCL + Parkin |
+| 5 | **International Plaza, Richmond** | 4,000 | Arcadis IBI (KOR client); warm-score 7 — *but watch: foreclosure risk late-2024* | Monitor revival; relationship via Arcadis IBI |
+| 6 | **West End Underground Substation** (BC Hydro) | 1,028 | warm-score 4 | BC Hydro major-projects channel |
+| 7 | **Anthem developer pipeline** (7 active LM projects) | mixed | **KOR client, 70 projects together** | **Call Mark Kopinya (SVP Development) or Rob Blackwell (EVP Development), Anthem** |
+| 8 | **Wesgroup developer pipeline** (9 active LM projects) | mixed | **KOR client, 78 projects together** | Direct principal call — biggest cross-sell gap (§Cross-sell) |
+| 9 | **Reliance Properties pipeline** | mixed | **KOR client, 82 projects** | **Call Jon Stovell (CEO) or Joanna Kwan (Director of Development), Reliance** |
+| 10 | **Chris Dikeakos–architected work** | mixed | **KOR client + foot-in, 8 projects** | **Call Chris Dikeakos or Nadia Said (Principals)** — warmest architect lever |
 
-**Credential reality (verified):** KOR's seismic strength is real but in **heritage/commercial + high-importance post-disaster** work (564 Beatty, ICBC Lonsdale Quay, Simone PBSD; CSA A23.3 Cl.21 + IEF Cat 3/4 depth) — **not K-12 schools, where KOR has no track record.** So lead the seismic story with heritage/high-importance fit; treat the SMP schools as a **build-toward** (team on a first school to earn the reference). Also manage the founder EGBC-seismic disclosure proactively. *(Full picture in the BC Seismic Dossier + KOR Credential Evidence Base.)*
+**The single highest-leverage relationships: Graham + PCL** — between them they sit on ~$5.7B of open structural seats (gigs #1, #3, #4), and KOR already has the in. (Graham/PCL contact *emails* are the one enrichment gap — a capped Hunter pass closes it.)
 
-## 3. OPEN SE-SEAT PURSUIT MAP — ranked by KOR's warm-path
-Highest-value active LM projects with **no SE committed yet** (early stage). The decisive column is **KOR's warm-path** — the relationship KOR already has into the team:
+## 📇 WARM-PATH CALL SHEET (named, emailable today)
+| Firm (KOR relationship) | Who to call | Title | Email |
+|---|---|---|---|
+| **Anthem Properties** (client, 70 prj) | Mark Kopinya | SVP, Development | mkopinya@anthemproperties.com |
+| | Rob Blackwell | EVP, Development | rblackwell@anthemproperties.com |
+| | Eric Carlson | Founder & CEO | ecarlson@anthemproperties.com |
+| **Reliance Properties** (client, 82 prj) | Jon Stovell | President & CEO | jons@relianceproperties.ca |
+| | Joanna Kwan | Director of Development | joannak@relianceproperties.ca |
+| **Chris Dikeakos Architects** (client + foot-in) | Chris Dikeakos | Managing Principal | chris@dikeakos.com |
+| | Nadia Said / Steven Wagner | Principals | nadia.s@dikeakos.com · steven.w@dikeakos.com |
+| **DIALOG** (KOR foot-in) | Brady Dunlop / Martin Nielsen | Partners, Architect | bdunlop@dialogdesign.ca · mnielsen@dialogdesign.ca |
+| **Graham Construction** (client) | 11 contacts on file | — | *emails to enrich (Hunter)* |
+| **PCL Construction** | 25 contacts on file | — | *emails to enrich (Hunter)* |
 
-| Est $M | Project | Stage | Architect / **GC** | KOR warm-path |
-|---:|---|---|---|---|
-| 2,000 | Annacis Island WWTP Phase 2 | Capital plan | NORR/Parkin · **Graham** | ★★★ **KOR is a Graham client + Parkin client + has NORR contacts** |
-| 1,960 | Richmond Hospital Redevelopment (later phases) | Capital plan | HDR · **Graham** | ★★★ **KOR is a Graham client** |
-| 1,730 | Burnaby Hospital Ph2 + BC Cancer Centre | Capital plan | Parkin · **PCL** | ★★★ **KOR is a Parkin client + 25 PCL contacts** |
-| 520 | SFU Surrey Medical School (permanent) | Capital plan | Hariri Pontarini / Adamson | ★★ 6 emailable Hariri Pontarini contacts |
-| 560 | UBC Lower Mall Student Housing | Capital plan | Ryder + 3XN GXN | ★★ 6 Ryder contacts |
-| 4,000 | International Plaza (watch — foreclosure risk) | Permitting | Arcadis IBI | ★★ KOR client (Arcadis), 25 contacts |
-| 5,700 | 2026-27 School Capital Plan (27 schools) | Capital plan | school districts | ★★ KOR tracks SD36/38/41/42… (+ seismic overlap §2) |
-| 3,000 | Roberts Bank Terminal 2 (RBT2) | Capital plan | — (WSP owner's-eng) | ★ no direct path yet — monitor GC shortlist |
-| 3,500 | Tilbury LNG Storage Expansion | Capital plan | FortisBC | ★ no path yet |
+## 💰 CROSS-SELL — your own clients' active projects you're NOT on
+The warmest gigs in the book — you've already proven the relationship:
 
-**The proprietary read:** **Graham sits on Annacis + Richmond Hospital (~$3.96B), and KOR is already a Graham client.** **PCL holds Burnaby Hospital ($1.73B), and KOR has 25 PCL contacts.** Cultivating **Graham and PCL** is the single highest-leverage BD action in the Lower Mainland — it's a warm path into ~$5.7B of unawarded structural seats. *(Iona Island WWTP, $6B, is the exception — SE already AECOM.)*
+| KOR client | Projects together | Active LM projects KOR isn't on | Call |
+|---|--:|--:|---|
+| Wesgroup Properties | 78 | **9** | principal-to-principal |
+| Anthem Properties | 70 | 7 | Mark Kopinya / Rob Blackwell |
+| Reliance Properties | 82 | 7 | Jon Stovell / Joanna Kwan |
+| Cressey Development | 116 | 4 | principal-to-principal |
+| Bosa Development | 78 | 4 | principal-to-principal |
 
-## 4. DELTEK CROSS-SELL — KOR's own clients' active projects KOR isn't on
-KOR's biggest repeat clients have active LM projects where KOR is **not** the structural engineer — the warmest re-pursuit there is (only KOR can see this):
+## 🏚️ SEISMIC — KOR's specialty lane (lead with what KOR wins)
+BC is Canada's seismic frontier and the Lower Mainland holds **$9.3B of seismic projects, ~99% with no SE committed.** KOR's *verified, winnable* seismic fit is **heritage/commercial upgrades + high-importance post-disaster structures** (fire halls, EOCs, hospital-adjacent) — backed by named credits (564 Beatty, ICBC Lonsdale Quay, Simone PBSD), CSA A23.3 Cl.21 code depth, and IEF Cat 3/4 fluency. **Pursue those now.** The K-12 SMP schools are the *build-toward* (KOR has no school credit yet — team for a first reference). Lead the heritage/high-importance pursuits; manage the founder EGBC-seismic disclosure proactively. *(Full picture: BC Seismic Dossier + KOR Credential Evidence Base.)*
 
-| KOR client | Prior projects together | Active projects KOR isn't on |
-|---|---:|---:|
-| Cressey Development Group | 116 | 4 |
-| Wesgroup Properties | 78 | 9 |
-| Anthem Properties | 70 | 7 |
-| Reliance Properties | 82 | 7 |
-| Bosa Development | 78 | 4 |
-| Westland Corp. | 11 | 6 |
-| Peterson Group | 7 | 4 |
-| Strand Development | 15 | 4 |
-
-**Action:** a direct call from KOR's principal to each — "we've done 78 projects together; you have 9 active we'd love to be on" — is the highest-probability win in the book.
-
-## 5. DISPLACEMENT MAP — incumbent SE × architect locks
-| Incumbent SE | Locked to (architects) | Read |
+## ⚔️ DISPLACEMENT MAP — where the seats are filled (and how to pry them)
+| Incumbent SE | Locked to | How KOR pries in |
 |---|---|---|
-| **Fast + Epp** | DIALOG (×2), Perkins+Will, Arcadis/IBI, Morphosis/Francl | leader + mass-timber moat; target non-timber mid-market |
-| **Glotman Simpson** | Henriquez (×2), GBL, Revery, Francl | high-rise cluster; pry via GBL + Francl |
-| **WHM Structural** | PUBLIC Architecture (×2), Spread, LWPAC | beatable on mid-market institutional |
-| **RJC Engineers** | Proscenium, Stantec + **seismic incumbent (§2)** | the seismic firm to beat |
-| **StructureCraft / Bush Bohlman** | MGA / CannonDesign | niche |
+| Fast + Epp | DIALOG, Perkins+Will, Arcadis, Francl | DIALOG is a **KOR foot-in** — wedge via DIALOG's non-timber work |
+| Glotman Simpson | Henriquez, GBL, Revery, Francl | GBL + Francl also work with others — dual-wedge |
+| WHM Structural | PUBLIC Architecture, Spread, LWPAC | beatable on mid-market institutional |
+| RJC Engineers | Proscenium, Stantec + **seismic incumbent** | out-position on heritage/high-importance seismic |
 
-**KOR's own foot-in (now correctly attributed):** SE with **DIALOG and Chris Dikeakos** on active LM work — both warm relationships to deepen, and DIALOG is also a Fast+Epp architect (a credible wedge).
-
-## 6. Owners & architects (consolidated)
-**Top owners:** VSB (86), Richmond SD (40), Fraser Health (20), Surrey SD (18), North Van SD (16), UBC (16), City of Vancouver (15), Vancouver Coastal Health (14), SFU (12), Infrastructure BC (9).
-**Top architects (priority to get on):** Chris Dikeakos (15, KOR foot-in), GBL (8), Revery (7), Arcadis IBI (6, KOR client), DIALOG (6, KOR foot-in), Perkins+Will (6), hcma (5), Henriquez (5). Deepen DIALOG + Chris Dikeakos (warm); pursue GBL + Francl (each tied to both Fast+Epp and Glotman — a wedge to either).
-
-## 7. Named sub-markets (full dossiers separate)
-- **Seismic** — KOR's #1 lane (§2; full BC Seismic Dossier).
-- **Mass timber / CLT** — Fast+Epp dominant; the 2024 code expansion opens first-time-adopter work where no SE is committed. *(BC Mass Timber Dossier.)*
-- **Modular / prefab** — the $475M / 37-addition BC modular-schools program on the SDs KOR tracks; every tracked modular project has no SE. *(BC Modular-Prefab Dossier.)*
-
-## 8. Contacts (the actionable layer)
-~1,378 people carry a verified/known email. Use Hunter-verified + asis directly; treat pattern (conf 55) as verify-first. Active next pass: capped Hunter enrichment for decision-makers at the §6 top owners, the §3 warm-path GCs (Graham, PCL), and the §2 seismic districts (VSB, Richmond, Coquitlam, Nanaimo).
+## 📊 Market context (consolidated, for grounding)
+**785 active LM projects, ~$76B, 318 owners, 120 architects.** Top owners: VSB (86), Richmond SD (40), Fraser Health (20), Surrey SD (18), UBC (16), City of Vancouver (15), VCH (14), SFU (12). Top architects to get on: Chris Dikeakos (15, warm), GBL (8), Revery (7), Arcadis IBI (6, client), DIALOG (6, foot-in), Perkins+Will (6), hcma (5).
+**Sub-markets** (full dossiers): Seismic (above), Mass Timber (Fast+Epp-dominated, code-opened mid-market), Modular/prefab ($475M BC modular-schools, all SE-open).
 
 ---
 
-**Bottom line:** the Lower Mainland is now an *attack plan*, not a market map. **Seismic** is the biggest open market (§2 — $9.3B, 99% open) and KOR-led, but pursue it honestly — lead with KOR's *real* fit (heritage + high-importance), schools as a build-toward. The single highest-leverage relationships are **Graham and PCL** (§3 — warm path into ~$5.7B of open seats) and a **cross-sell call sheet** to clients like Wesgroup and Anthem (§4). None of it is googleable — it's KOR's data, synthesized.
+**Do this Monday:** (1) one call to **Graham** opens ~$3.96B (Richmond Hospital + Annacis). (2) call **Mark Kopinya at Anthem** and **Jon Stovell at Reliance** about their active projects KOR isn't on. (3) deepen **Chris Dikeakos + DIALOG** (warm architects). (4) run a capped Hunter pass to put emails on the **Graham + PCL** contacts. That's $5.7B+ of open structural seats with a warm path, in one week of calls.
