@@ -17,7 +17,11 @@ GO
    — migration 138 does exactly that), because the guard keys off the OLD
    (deleted) kind, not the new one.
 
-   If an anchor must ever be re-pointed deliberately, disable this trigger
+   Also blocks DELETE of a frozen anchor — the strongest backstop, so even a
+   buggy dedup/purge that chose a frozen row as a merge loser cannot destroy the
+   self-anchor (the delete fails and the group rolls back).
+
+   If an anchor must ever be re-pointed/removed deliberately, disable this trigger
    for the duration of that maintenance, then re-enable it.
 
    Idempotent: CREATE OR ALTER.
@@ -25,12 +29,25 @@ GO
 
 CREATE OR ALTER TRIGGER opportunities.TR_CanonicalOrg_ProtectFrozenAnchor
 ON opportunities.CanonicalOrg
-AFTER UPDATE
+AFTER UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Cheap exit: only the Kind / RetiredAtUtc columns can violate the invariant.
+    -- Pure DELETE (no inserted rows): a frozen anchor must never be deleted.
+    IF NOT EXISTS (SELECT 1 FROM inserted)
+    BEGIN
+        IF EXISTS (SELECT 1 FROM deleted WHERE Kind IN (N'KorStructural', N'KorClient'))
+        BEGIN
+            ROLLBACK TRANSACTION;
+            RAISERROR(
+                N'Frozen-anchor protection: a KorStructural/KorClient CanonicalOrg row cannot be deleted. Disable opportunities.TR_CanonicalOrg_ProtectFrozenAnchor deliberately if this is intentional.',
+                16, 1);
+        END
+        RETURN;
+    END
+
+    -- UPDATE: only the Kind / RetiredAtUtc columns can violate the invariant.
     IF NOT (UPDATE(Kind) OR UPDATE(RetiredAtUtc))
         RETURN;
 

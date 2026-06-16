@@ -517,6 +517,7 @@ SELECT co.Id,
        co.Website,
        co.Notes" + BuildRefCountSelectSql("co.Id") + @"
 FROM opportunities.CanonicalOrg co
+WHERE co.RetiredAtUtc IS NULL
 ORDER BY co.Id;";
 
         var orgs = new List<OrgRow>();
@@ -619,6 +620,18 @@ ORDER BY co.Id;";
                 .OrderBy(k => k.Value, StringComparer.Ordinal)
                 .ToList();
 
+            var frozenMembers = members.Where(o => IsFrozenKind(o.Kind)).ToList();
+            if (frozenMembers.Count > 1)
+            {
+                // Two distinct frozen self-anchors sharing a key is a data-integrity
+                // event, not a dedup target — never merge one anchor into another.
+                Console.Error.WriteLine(
+                    $"[SKIP] frozen-anchor collision: {frozenMembers.Count} frozen rows share a key (" +
+                    string.Join(", ", frozenMembers.Select(o => $"{o.Id}/{o.Kind}")) +
+                    "); group left unmerged for manual review.");
+                continue;
+            }
+
             var survivor = ChooseSurvivor(members);
             var bestKind = members
                 .OrderBy(o => RankKind(o.Kind))
@@ -693,10 +706,19 @@ ORDER BY co.Id;";
     private static string NormalizeKey(string value)
         => CanonicalOrgResolver.NormalizeAggressiveKey(value);
 
+    private static bool IsFrozenKind(string kind)
+        => kind == "KorStructural" || kind == "KorClient";
+
     private static OrgRow ChooseSurvivor(IReadOnlyList<OrgRow> members)
         => members
-            .OrderByDescending(o => !string.IsNullOrWhiteSpace(o.ClendorClientId))
+            // A frozen self-anchor (KorStructural/KorClient) always survives — it is
+            // never merged away (the DB trigger also refuses to delete/retire it).
+            .OrderByDescending(o => IsFrozenKind(o.Kind))
+            // Then most-authoritative kind. Clendor-link presence ranks only WITHIN a
+            // kind tier — a Clendor id must not outrank a more-specific kind (that was
+            // the wrong-survivor defect: a low-value Clendor row beating a rich Competitor).
             .ThenBy(o => RankKind(o.Kind))
+            .ThenByDescending(o => !string.IsNullOrWhiteSpace(o.ClendorClientId))
             .ThenByDescending(o => o.FkRefCount)
             .ThenBy(o => o.Id)
             .First();
