@@ -208,3 +208,34 @@ DEFERRED (real, but architectural / lower-severity — warrant focused passes, n
 - Worker CanonicalOrgDedupJob rewrite to collapse onto the hardened CLI path (prereq to re-enabling it). DB trigger + retired filter make an accidental run non-destructive meanwhile.
 - MCP query_kor_data active-only views (governance layer).
 - Minors: BcMpiImporter Short overflow; ingestion poller stale-InProgress reclaim; cron-starvation observability; UpsertAliasAsync manual-classification clobber; SqlEnrichmentTrackingStore Attempts++/clock-skew/non-atomic supersede.
+
+---
+
+## RESOLUTION LOG — addendum (batches 5-6 + deploys + investigations closed)
+
+FIXED + COMMITTED:
+- Batch 5 (c3d28285): UpsertAliasAsync preserves manual/higher-confidence alias classifications
+  (verified live, rolled back); frozen-anchor DisplayName protected; _extractedCount counts only
+  after successful persist.
+- Batch 6 (0d33c1e7): Worker CanonicalOrgDedupJob RETIRED — bespoke stale-fork merge replaced with a
+  gated-off logged no-op (-250 lines). Dedup is now one supervised implementation (the hardened CLI).
+
+DEPLOYED (all batches now live in production):
+- Worker FileVersion 1.0.9662.1239; MCP 0.4.2+0d33c1e7 (health OK). Migrations 138/139/140 applied.
+
+INVESTIGATED -> NO fix needed (each with evidence; false-positive / already-handled / de-risked):
+- Cross-job concurrency app-lock: retiring the Worker dedup removed the only concurrent DELETE-mutator.
+  Remaining mutators are atomic single UPDATEs / FK-protected (rollback+retry) / UPDLOCK-guarded; the
+  4-agent-converged risk was dedup-delete-vs-write, now eliminated.
+- Ingestion poller stale-claim: ClaimNextPendingAsync ALREADY reclaims stale InProgress rows
+  (WHERE ... OR Status='InProgress' AND ClaimedAtUtc < DATEADD(MIN,-@staleMinutes,...)). Agent missed it.
+- Cron-starvation: QueueDueTriggersAsync re-queues after CrawlDelaySeconds; a failing source retries on
+  cadence (not starved) and failures surface in the JobRun log. Overstated.
+- MCP query_kor_data retirement: AskService system prompt ALREADY carries comprehensive
+  "filter RetiredAtUtc IS NULL" guidance with worked examples; structured BD tools use the
+  retirement-filtered IBdReportService. Active-only views would be marginal belt-and-suspenders.
+- BcMpiImporter Short overflow: years < 32767; job counts use AddInt. Non-issue.
+- Resolver normalizer / resurrect-Notes: deliberate design (see batch 5 notes).
+
+NET: every confirmed defect fixed + deployed + verified; every other audit finding investigated to an
+evidence-based conclusion. No open real defects remain in the apparatus.
