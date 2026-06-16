@@ -27,6 +27,23 @@ Ranked by KOR's **warm-path** (relationship strength to the team already on the 
 
 **The single highest-leverage relationships: Graham + PCL** — between them they sit on ~$5.7B of open structural seats (gigs #1, #3, #4), and KOR already has the in. (Graham/PCL contact *emails* are the one enrichment gap — a capped Hunter pass closes it.)
 
+## ⏱️ ADVANCING TO BID NOW (Procurement / Permitting stage — near-term)
+The open seats closest to award — pursue these before the SE is locked:
+
+| $M | Project | Stage | Owner |
+|--:|---|---|---|
+| 4,000 | International Plaza | Permitting | Jingon Intl (foreclosure-watch) |
+| 1,700 | NE False Creek / Viaduct Replacement | Permitting | Concord Pacific |
+| 1,500 | Mission Waterfront | Procurement | District of Mission |
+| 1,000 | TransLink Operations & Maintenance Centre #5 | Procurement | BC Min. of Transportation |
+| 560 | UBC Student Housing Complex | Permitting | UBC |
+| 500 | District Northwest Towers | Procurement | Thind Properties |
+| 427 | Vancouver Jewish Community Centre | Permitting | JCC of Greater Vancouver |
+| 225 | GEC Education Mega Centre | Procurement | WestStone / CIBT |
+| 200 | Whitgift Gardens Condos | Procurement | Concert Properties |
+
+*(The raw public-RFP feed for the Lower Mainland is currently dominated by non-structural municipal services — a data-sourcing gap flagged for the live-RFP ingest; the near-term structural pipeline above is the reliable signal.)*
+
 ## 📇 WARM-PATH CALL SHEET (named, emailable today)
 | Firm (KOR relationship) | Who to call | Title | Email |
 |---|---|---|---|
@@ -38,8 +55,9 @@ Ranked by KOR's **warm-path** (relationship strength to the team already on the 
 | **Chris Dikeakos Architects** (client + foot-in) | Chris Dikeakos | Managing Principal | chris@dikeakos.com |
 | | Nadia Said / Steven Wagner | Principals | nadia.s@dikeakos.com · steven.w@dikeakos.com |
 | **DIALOG** (KOR foot-in) | Brady Dunlop / Martin Nielsen | Partners, Architect | bdunlop@dialogdesign.ca · mnielsen@dialogdesign.ca |
-| **Graham Construction** (client) | 11 contacts on file | — | *emails to enrich (Hunter)* |
-| **PCL Construction** | 25 contacts on file | — | *emails to enrich (Hunter)* |
+| **Graham Construction** (client) | **Lee Holland** | VP, Buildings — BC | **lee.holland@graham.ca** ✓ verified |
+| | **Jordan Hood** | District Mgr, Buildings — BC | **jordan.hood@graham.ca** ✓ verified |
+| **PCL Construction** | Jeff Murphy · Sean Hamelin · Ryan Andrews | SVP / RVP / DM — BC Region | named; reach via PCL Westcoast (Richmond) office (direct emails unconfirmed) |
 
 ## 💰 CROSS-SELL — your own clients' active projects you're NOT on
 The warmest gigs in the book — you've already proven the relationship:
@@ -55,13 +73,19 @@ The warmest gigs in the book — you've already proven the relationship:
 ## 🏚️ SEISMIC — KOR's specialty lane (lead with what KOR wins)
 BC is Canada's seismic frontier and the Lower Mainland holds **$9.3B of seismic projects, ~99% with no SE committed.** KOR's *verified, winnable* seismic fit is **heritage/commercial upgrades + high-importance post-disaster structures** (fire halls, EOCs, hospital-adjacent) — backed by named credits (564 Beatty, ICBC Lonsdale Quay, Simone PBSD), CSA A23.3 Cl.21 code depth, and IEF Cat 3/4 fluency. **Pursue those now.** The K-12 SMP schools are the *build-toward* (KOR has no school credit yet — team for a first reference). Lead the heritage/high-importance pursuits; manage the founder EGBC-seismic disclosure proactively. *(Full picture: BC Seismic Dossier + KOR Credential Evidence Base.)*
 
-## ⚔️ DISPLACEMENT MAP — where the seats are filled (and how to pry them)
-| Incumbent SE | Locked to | How KOR pries in |
-|---|---|---|
-| Fast + Epp | DIALOG, Perkins+Will, Arcadis, Francl | DIALOG is a **KOR foot-in** — wedge via DIALOG's non-timber work |
-| Glotman Simpson | Henriquez, GBL, Revery, Francl | GBL + Francl also work with others — dual-wedge |
-| WHM Structural | PUBLIC Architecture, Spread, LWPAC | beatable on mid-market institutional |
-| RJC Engineers | Proscenium, Stantec + **seismic incumbent** | out-position on heritage/high-importance seismic |
+## ⚔️ COMPETITION'S CURRENT PLAYS — what the rivals are doing *right now*
+Mined live from the held SE seats in the region: each rival's active load, the lane they're actually winning, their biggest live gig, the architect they're locked to, and KOR's way in.
+
+| Competitor | Active seats / $M | Current lane (what they're winning) | Biggest live gig | Locked to | KOR's pry-in |
+|---|---|---|---|---|---|
+| **Fast + Epp** | 6 / $1,700M | broad leader — **Health**, residential, commercial | Burnaby Hospital New Pavilion | Perkins+Will, DIALOG | DIALOG is a **KOR foot-in** — wedge their non-timber work |
+| **Glotman Simpson** | 5 / $1,000M | **residential high-rise** | South Burrard Development | Henriquez | their architects (GBL, Francl) also work with others — dual-wedge |
+| **WHM Structural** | 4 | **multifamily + Passive House**, civic | 1050 Expo Blvd Passive-House Tower | PUBLIC Architecture | beatable on mid-market institutional |
+| **RJC Engineers** | 2 / $291M | **education/institutional + the seismic incumbent** | VCC Centre for Clean Energy | Stantec | out-position on heritage/high-importance seismic |
+| StructureCraft | 1 | timber specialty | RMH Willow House | MGA | niche — leave |
+| Bush Bohlman | 1 | cultural | Science World Renewal | CannonDesign | — |
+
+**The read:** Fast+Epp is the broad threat and the one in *Health*; Glotman owns *residential high-rise*; WHM holds the *Passive-House/multifamily* niche; RJC is the *education + seismic* institutional player. **KOR's clearest openings: (a) the developer-residential seats where KOR already has the client (Anthem/Wesgroup/Reliance) and Glotman/WHM aren't locked, and (b) heritage + high-importance seismic, where RJC is the only real incumbent to out-position.**
 
 ## 📊 Market context (consolidated, for grounding)
 **785 active LM projects, ~$76B, 318 owners, 120 architects.** Top owners: VSB (86), Richmond SD (40), Fraser Health (20), Surrey SD (18), UBC (16), City of Vancouver (15), VCH (14), SFU (12). Top architects to get on: Chris Dikeakos (15, warm), GBL (8), Revery (7), Arcadis IBI (6, client), DIALOG (6, foot-in), Perkins+Will (6), hcma (5).
