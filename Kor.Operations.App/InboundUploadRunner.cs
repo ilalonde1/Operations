@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -263,45 +262,52 @@ namespace Kor.Operations
 
         private static string BuildNotificationHtml(InboundUploadRequest request, string linkUrl)
         {
-            static string E(string s) => WebUtility.HtmlEncode(s ?? string.Empty);
+            static string E(string? s) => KorEmailTemplate.E(s);
 
-            var sb = new StringBuilder();
+            var inner = new StringBuilder();
 
-            sb.Append("<p>You have received files from <b>")
-              .Append(E(request.SenderName ?? request.SenderEmail ?? "external sender"))
-              .Append("</b> (")
-              .Append(E(request.SenderEmail ?? string.Empty))
-              .Append(")</p>");
+            inner.Append("<p style=\"margin:0 0 4px;\">You have received files from <b>")
+                 .Append(E(request.SenderName ?? request.SenderEmail ?? "external sender"))
+                 .Append("</b> (")
+                 .Append(E(request.SenderEmail ?? string.Empty))
+                 .Append(").</p>");
 
+            // Compact fact list (company / project) styled like the brief header facts.
+            var facts = new StringBuilder();
             if (!string.IsNullOrWhiteSpace(request.SenderCompany))
             {
-                sb.Append("<p>Company: ")
-                  .Append(E(request.SenderCompany))
-                  .Append("</p>");
+                facts.Append("<p style=\"margin:2px 0;color:#6B7280;font-size:13px;\">")
+                     .Append("<span style=\"font-weight:600;color:#111827;\">Company:</span> ")
+                     .Append(E(request.SenderCompany)).Append("</p>");
             }
-
             if (!string.IsNullOrWhiteSpace(request.ProjectNumber))
             {
-                sb.Append("<p>Project: ")
-                  .Append(E(request.ProjectNumber))
-                  .Append("</p>");
+                facts.Append("<p style=\"margin:2px 0;color:#6B7280;font-size:13px;\">")
+                     .Append("<span style=\"font-weight:600;color:#111827;\">Project:</span> ")
+                     .Append(E(request.ProjectNumber)).Append("</p>");
+            }
+            if (facts.Length > 0)
+            {
+                inner.Append("<div style=\"margin:12px 0;\">").Append(facts).Append("</div>");
             }
 
             if (!string.IsNullOrWhiteSpace(request.Message))
             {
-                sb.Append("<p>Message:</p><blockquote>")
-                  .Append(E(request.Message))
-                  .Append("</blockquote>");
+                inner.Append("<blockquote style=\"margin:12px 0;padding:10px 16px;border-left:3px solid #FF5B35;")
+                     .Append("background-color:#F8FAFC;color:#111827;font-size:13px;line-height:1.5;\">")
+                     .Append(E(request.Message))
+                     .Append("</blockquote>");
             }
 
             if (!string.IsNullOrWhiteSpace(linkUrl))
             {
-                sb.Append("<p><b>View files:</b> <a href=\"")
-                  .Append(WebUtility.HtmlEncode(linkUrl))
-                  .Append("\">Open in SharePoint</a></p>");
+                inner.Append("<p style=\"margin:16px 0 12px;color:#111827;\">")
+                     .Append("The uploaded files are available in SharePoint.")
+                     .Append("</p>")
+                     .Append(KorEmailTemplate.Button(linkUrl, "View files"));
             }
 
-            return sb.ToString();
+            return KorEmailTemplate.Shell("Files Received", inner.ToString());
         }
 
         private static string BuildInboundFolderPath(string recipientEmail)

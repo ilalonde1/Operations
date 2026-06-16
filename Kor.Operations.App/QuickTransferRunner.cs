@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -245,7 +244,8 @@ namespace Kor.Operations
                         request.RemarksHtml,
                         request.SignatureHtml,
                         clickUrl,
-                        pixelUrl);
+                        pixelUrl,
+                        allRecipients);
 
                     header.Remarks = bodyHtml;
 
@@ -267,7 +267,8 @@ namespace Kor.Operations
                     request.RemarksHtml,
                     request.SignatureHtml,
                     primaryUrl,
-                    pixelUrl: null);
+                    pixelUrl: null,
+                    allRecipients);
 
                 header.Remarks = bodyHtml;
 
@@ -304,48 +305,48 @@ namespace Kor.Operations
             }
         }
 
-        // Builds the HTML body:
-        //   remarks
-        //   <br/><br/>
-        //   <b>View files: <a href="...">Click here to view the files</a></b>
-        //   <br/><br/>
+        // Builds the branded HTML body via the shared KorEmailTemplate shell:
+        //   [header band]
+        //   remarks (user content)
+        //   intro line + styled "View files" button
+        //   "Sent to: a@x; b@y"  (recipient list — restored, see allRecipients)
         //   signature
-        //   (hidden pixel img if provided)
+        //   [footer]
+        //   (hidden open-tracking pixel after the card, if provided)
         private static string BuildEmailBodyHtml(
             string? remarksHtml,
             string? signatureHtml,
             string? linkUrl,
-            string? pixelUrl)
+            string? pixelUrl,
+            IEnumerable<string>? recipients)
         {
-            var sb = new StringBuilder();
+            var inner = new StringBuilder();
 
             if (!string.IsNullOrWhiteSpace(remarksHtml))
             {
-                sb.Append(remarksHtml.Trim());
-                sb.Append("<br/><br/>");
+                inner.Append("<div style=\"margin:0 0 8px;\">")
+                     .Append(remarksHtml.Trim())
+                     .Append("</div>");
             }
 
             if (!string.IsNullOrWhiteSpace(linkUrl))
             {
-                var encoded = WebUtility.HtmlEncode(linkUrl);
-                sb.Append("<b>View files: <a href=\"")
-                  .Append(encoded)
-                  .Append("\">Click here to view the files</a></b><br/><br/>");
+                inner.Append("<p style=\"margin:16px 0 12px;color:#111827;\">")
+                     .Append("The files below have been shared with you through KOR's secure SharePoint.")
+                     .Append("</p>")
+                     .Append(KorEmailTemplate.Button(linkUrl!, "View files"));
             }
+
+            inner.Append(KorEmailTemplate.RecipientLine(recipients));
 
             if (!string.IsNullOrWhiteSpace(signatureHtml))
             {
-                sb.Append(signatureHtml.Trim());
+                inner.Append("<div style=\"margin-top:20px;\">")
+                     .Append(signatureHtml.Trim())
+                     .Append("</div>");
             }
 
-            if (!string.IsNullOrWhiteSpace(pixelUrl))
-            {
-                sb.Append("<img src=\"")
-                  .Append(WebUtility.HtmlEncode(pixelUrl))
-                  .Append("\" alt=\"\" style=\"display:none;width:1px;height:1px;\" />");
-            }
-
-            return sb.ToString();
+            return KorEmailTemplate.Shell("File Transfer", inner.ToString(), pixelUrl);
         }
 
         // ---------------------------------------------------------------------
