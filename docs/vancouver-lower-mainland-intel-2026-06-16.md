@@ -61,19 +61,35 @@ The open seats closest to award — pursue these before the SE is locked:
 *(The raw public-RFP feed for the Lower Mainland is currently dominated by non-structural municipal services — a data-sourcing gap flagged for the live-RFP ingest; the near-term structural pipeline above is the reliable signal.)*
 
 ## 📇 WARM-PATH CALL SHEET (named, emailable today)
-| Firm (KOR relationship) | Who to call | Title | Email |
+✓ = Hunter-verified · ~ = high-probability (firm pattern, catch-all server) · named-only = reach via office
+
+**General contractors (the open-seat way-in):**
+| Firm | Who to call | Title | Email |
 |---|---|---|---|
-| **Anthem Properties** (client, 70 prj) | Mark Kopinya | SVP, Development | mkopinya@anthemproperties.com |
-| | Rob Blackwell | EVP, Development | rblackwell@anthemproperties.com |
-| | Eric Carlson | Founder & CEO | ecarlson@anthemproperties.com |
-| **Reliance Properties** (client, 82 prj) | Jon Stovell | President & CEO | jons@relianceproperties.ca |
-| | Joanna Kwan | Director of Development | joannak@relianceproperties.ca |
-| **Chris Dikeakos Architects** (client + foot-in) | Chris Dikeakos | Managing Principal | chris@dikeakos.com |
-| | Nadia Said / Steven Wagner | Principals | nadia.s@dikeakos.com · steven.w@dikeakos.com |
-| **DIALOG** (KOR foot-in) | Brady Dunlop / Martin Nielsen | Partners, Architect | bdunlop@dialogdesign.ca · mnielsen@dialogdesign.ca |
-| **Graham Construction** (client) | **Lee Holland** | VP, Buildings — BC | **lee.holland@graham.ca** ✓ verified |
-| | **Jordan Hood** | District Mgr, Buildings — BC | **jordan.hood@graham.ca** ✓ verified |
-| **PCL Construction** | Jeff Murphy · Sean Hamelin · Ryan Andrews | SVP / RVP / DM — BC Region | named; reach via PCL Westcoast (Richmond) office (direct emails unconfirmed) |
+| **Graham** (KOR client) | Lee Holland | VP, Buildings — BC | lee.holland@graham.ca ✓ |
+| | Jordan Hood | DM, Buildings — BC | jordan.hood@graham.ca ✓ |
+| | Tyler Johnston-Watson | DM, Infrastructure — BC | tylerj@graham.ca ✓ |
+| **PCL** | **Fausto Segovia** | **Director of Preconstruction** | **fsegovia@pcl.com ✓** *(best bid-entry contact)* |
+| | Jeff Murphy / Sean Hamelin | SVP / RVP — BC Region | named; via PCL Westcoast (Richmond) |
+
+**Architects (get on the Prime team):**
+| Firm | Who to call | Title | Email |
+|---|---|---|---|
+| **Chris Dikeakos** (client + foot-in) | Chris Dikeakos / Nadia Said | Principals | chris@dikeakos.com ✓ · nadia.s@dikeakos.com ✓ |
+| **DIALOG** (foot-in) | Brady Dunlop / Martin Nielsen | Partners | bdunlop@dialogdesign.ca ✓ · mnielsen@dialogdesign.ca ✓ |
+| **NORR** (Annacis) | Brian Gerstmar / Erin Faulkner | CEO / Principal | brian.gerstmar@norr.com ✓ · erin.faulkner@norr.com ✓ |
+| **HDR** (Richmond Hosp.) | Sangeetha Ramanan | Mng Principal, W. Canada | sangeetha.ramanan@hdrinc.com ~ |
+| **Parkin** (Burnaby Hosp.) | Munir Macci / Kyle Basilius | VP / Healthcare Principal | macci@parkin.ca ~ · basilius@parkin.ca ~ |
+
+**Developers (cross-sell + warm pursuits):**
+| Firm (prj together) | Who to call | Title | Email |
+|---|---|---|---|
+| **Concord Pacific** (NE False Creek) | Grant Murray | SVP | grant.murray@concordpacific.com ✓ |
+| **Wesgroup** (78) | Beau Jarvis / Brad Jones | CEO / SVP Development | bjarvis@wesgroup.ca ✓ · bjones@wesgroup.ca ✓ |
+| **Anthem** (70) | Mark Kopinya / Rob Blackwell | SVP / EVP Development | mkopinya@anthemproperties.com ✓ · rblackwell@anthemproperties.com ✓ |
+| **Reliance** (82) | Jon Stovell / Joanna Kwan | CEO / Dir Development | jons@relianceproperties.ca ✓ · joannak@relianceproperties.ca ✓ |
+| **Cressey** (116) | Jason Turcotte | VP Development | jturcotte@cressey.com ~ |
+| **Townline** (36) | Rick Ilich / Kevin Brennan | CEO / VP Construction | rick.ilich@townline.com ✓ · kevin.brennan@townline.com ✓ |
 
 ## 💰 CROSS-SELL — your own clients' active projects you're NOT on
 The warmest gigs in the book — you've already proven the relationship:
