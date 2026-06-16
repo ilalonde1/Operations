@@ -209,9 +209,13 @@ WHEN MATCHED THEN UPDATE SET
     UpdatedAtUtc = sysdatetimeoffset(),
     DisplayName = @displayName,
     NormalizedName = @normalizedName,
-    Email = @email,
-    Phone = @phone,
-    LinkedinUrl = @linkedinUrl,
+    -- Never null out an existing contact value when the incoming enrichment lacks one.
+    -- Enriched emails/phones (Hunter/asis/pattern, added post-extract) are NOT in the
+    -- raw enrichment JSON, so an unconditional overwrite wiped them on every re-extract.
+    -- COALESCE keeps the known value when the draft has none; a provided value still wins.
+    Email = COALESCE(@email, T.Email),
+    Phone = COALESCE(@phone, T.Phone),
+    LinkedinUrl = COALESCE(@linkedinUrl, T.LinkedinUrl),
     Notes = @notes,
     Corroborations = T.Corroborations + 1
 WHEN NOT MATCHED THEN INSERT
