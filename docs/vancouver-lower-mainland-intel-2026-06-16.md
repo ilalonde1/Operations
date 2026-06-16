@@ -110,10 +110,10 @@ After this week's enrichment + the hygiene pass (17 fabricated firm/role "contac
 - **asis (pre-existing clean):** use directly.
 - **PatternInferred (constructed, conf 55):** treat as "likely — verify before cold outreach."
 
-**Known contact-quality caveat (in progress):** ~20 high-confidence contacts are still mis-affiliated to
-the wrong firm (e.g. Concord Pacific staff filed under W.T. Leung; Grosvenor staff under Hariri Pontarini).
-These are queued for a verified re-homing pass and should be spot-checked before using a contact whose
-email domain doesn't match the firm.
+**Contact quality:** the wrong-firm mis-affiliations have been **fixed** — 44 contacts whose email domain
+matched a different firm were re-homed to their true employer (Concord Pacific staff moved off W.T. Leung,
+Grosvenor + City of Vancouver off Hariri Pontarini, Urban One off Acton Ostry, City of Calgary off RJC, etc.).
+Two principals with stray emails were left for manual eyeball (Paul Fast, Tom Clark).
 
 ## 8. Data depth & what to buff up (the enrichment roadmap)
 This report doubled as the system gap-map. The hygiene items are now **fixed**; the enrichment items remain:
@@ -125,11 +125,11 @@ This report doubled as the system gap-map. The hygiene items are now **fixed**; 
 | **Region tagging** | ✅ **Fixed** | 1,938 BC/AB rows back-filled from municipality (migration 150); LM scope now complete. |
 | **Org-name contamination** | ✅ **Fixed** | 39 award-letter-boilerplate names cleaned (migration 148). |
 | **Fabricated contacts** | ✅ **Fixed** | 17 firm/role records' fabricated emails cleared (migration 149). |
+| **Composite team rows** | ✅ **Fixed** | 86 multi-firm composite "org" rows retired; the 5 on active projects decomposed to their lead architect (migration 153). |
+| **Wrong-firm contacts** | ✅ **Fixed** | 44 mis-affiliated contacts re-homed to true employer by email domain (migration 152). 2 principals left for manual review. |
+| **US-tagged rows** | ✅ **Fixed** | US/ON/YT rows resolved: 122 duplicate BC copies retired, 4 re-provinced (migration 151). |
 | **Structural-engineer edge (§5)** | 🔲 **#1 priority** | Only **3.3%** of LM projects have an SE. Research the SE per project (project-teams stream). Unlocks the full displacement map. |
-| **Composite team rows** | 🔲 Open | ~51 multi-firm rows ("design; AOR; SE") hold team intel in one field — decompose into per-firm role edges (also feeds the SE edge). |
-| **Wrong-firm contacts** | 🔲 Open | ~20 high-confidence contacts mis-affiliated; verified re-homing pass. |
 | **Owner project value** | 🔲 Open | School-district $ fields empty; backfill estimated value. |
-| **US-tagged rows** | 🔲 Open | ~100 US-west-coast rows mis-tagged Province=BC; correct after a US-format decision. |
 
 **Bottom line for Friday:** the market map, owner landscape, Prime targets, competitor incumbency, and
 live pursuits now run on **clean, de-duplicated data** — safe to present. The two things that would make
