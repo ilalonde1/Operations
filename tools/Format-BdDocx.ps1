@@ -72,6 +72,8 @@ try {
       $s.ParagraphFormat.SpaceBefore = 12
       $s.ParagraphFormat.SpaceAfter = 4
       $s.ParagraphFormat.KeepWithNext = $true
+      # each major section (## -> Heading 2) starts on a new page
+      $s.ParagraphFormat.PageBreakBefore = ($h[0] -eq "Heading 2")
     } catch {}
   }
 
@@ -90,8 +92,22 @@ try {
     try { $t.AutoFitBehavior(2) } catch {}          # wdAutoFitWindow
     $t.Range.Font.Size = 9.5
     $t.Rows.Item(1).Range.Font.Bold = $true
-    try { $t.Rows.Item(1).HeadingFormat = $true } catch {}  # repeat header across pages
+    # repeat the header row at the top of every continuation page + don't split rows mid-cell
+    try { $t.Rows.AllowBreakAcrossPages = $false } catch {}
+    try { $t.Rows.Item(1).HeadingFormat = $true } catch {}
+    try { $t.Rows.Item(1).AllowBreakAcrossPages = $false } catch {}
     $t.TopPadding = 2; $t.BottomPadding = 2; $t.LeftPadding = 5; $t.RightPadding = 5
+  }
+
+  # page break before each major section (Heading 2) — set per-paragraph (reliable);
+  # skip the very first heading so we don't open with a blank page.
+  $firstH2seen = $false
+  foreach ($para in $doc.Paragraphs) {
+    try {
+      if ($para.Style.NameLocal -eq "Heading 2") {
+        if ($firstH2seen) { $para.Format.PageBreakBefore = $true } else { $firstH2seen = $true }
+      }
+    } catch {}
   }
 
   $tableCount = $doc.Tables.Count
