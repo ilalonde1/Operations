@@ -9,6 +9,8 @@
 ## ⚡ THE PRIZE
 **$63.7 billion across 733 active Lower Mainland projects have NO structural engineer committed yet — every one an open seat KOR can pursue.** KOR's pursuit record earns the table: **177 won / 79 lost (≈69%)**. This report turns that $63.7B into a ranked, named call sheet.
 
+**How the seat is won (the mechanism):** on public buildings the **architect is the Prime Consultant** — they assemble the team (structural engineer included) and submit one proposal. KOR wins by being **on the architect's team before the RFP** → the *Prime Consultant Targets* section is the #1 channel, and KOR is already a client of most of the top Primes.
+
 ## 🛰️ THE MARKET AT 10,000 FT (where KOR fits — and can fit)
 **785 active Lower Mainland projects, ~$76B. 93% (733) have no structural engineer committed, competitors hold 23, KOR holds 3 — KOR's current share is ~0%, so the entire market is contestable.** It's an early-stage land-grab, not an entrenched market.
 
@@ -42,6 +44,25 @@ Ranked by KOR's **warm-path** (relationship strength to the team already on the 
 | 10 | **Chris Dikeakos–architected work** | mixed | **KOR client + foot-in, 8 projects** | **Call Chris Dikeakos or Nadia Said (Principals)** — warmest architect lever |
 
 **The single highest-leverage relationships: Graham + PCL** — between them they sit on ~$5.7B of open structural seats (gigs #1, #3, #4), and KOR already has the in. (Graham/PCL contact *emails* are the one enrichment gap — a capped Hunter pass closes it.)
+
+## 🏛️ PRIME CONSULTANT TARGETS — the architects who actually pick the SE
+On most public buildings work the **architect is the Prime Consultant**: they assemble the team (structural engineer included) and submit one proposal, scored on the team's P.Eng depth + similar-project experience. **KOR wins the structural seat by being on the architect's team — before the RFP drops.** So these architects, ranked by how much active LM work they're assembling, are the **#1 BD channel — and KOR already has a client relationship with most of them.**
+
+| Prime architect | Active LM projects | ~$M | KOR relationship |
+|---|--:|--:|---|
+| **Chris Dikeakos** | 18 | 867 | ★ **CLIENT + 8 KOR projects** — warmest; deepen first |
+| **Ciccozzi Architecture** | 3 | 125 | ★ **CLIENT + 7 KOR projects** — very warm |
+| Arcadis IBI Group | 7 | 4,646 | CLIENT (International Plaza + biggest $ pipeline) |
+| Revery Architecture | 7 | 1,197 | CLIENT |
+| GBL Architects | 9 | 252 | CLIENT (4 emailable) |
+| **DIALOG** | 6 | — | CLIENT + **KOR foot-in** (7 emailable) |
+| Perkins + Will | 6 | 780 | CLIENT |
+| Musson Cattell Mackey | 4 | 470 | CLIENT (4 emailable) |
+| Boniface Oleksiuk Politano | 3 | 195 | CLIENT |
+| Parkin Architects Western | 3 | 1,730 | Burnaby Hospital — warm via GC |
+| hcma architecture + design | 5 | 149 | not yet a client — **16 contacts on file; pursue** |
+
+**The play:** **180 of the 730 open seats already name a Prime architect** — get on *those* teams now. The other 550 have no architect selected yet — even earlier; build standing relationships so KOR is the default structural call when the Prime assembles. **Deepen first: Chris Dikeakos + Ciccozzi (15 prior KOR projects between them), DIALOG (foot-in); pursue the big-$ Primes (Arcadis IBI, Revery, Parkin); convert hcma (16 contacts, no relationship yet).**
 
 ## ⏱️ ADVANCING TO BID NOW (Procurement / Permitting stage — near-term)
 The open seats closest to award — pursue these before the SE is locked:
