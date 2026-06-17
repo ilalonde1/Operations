@@ -61,7 +61,12 @@ public static class StructuralRelevanceGate
         "daycare",
         "childcare",
         "care home",
+        "care centre",
+        "care center",
+        "care facility",
         "long-term care",
+        "seniors housing",
+        "assisted living",
         "pavilion",
         "tower",
         "high-rise",
@@ -199,6 +204,52 @@ public static class StructuralRelevanceGate
         "recruitment",
     };
 
+    private static readonly string[] AlwaysIrrelevantSignals =
+    {
+        "mine",
+        "mines",
+        "mining",
+        "open pit",
+        "ore",
+        "tailings",
+        "smelter",
+        "smelting",
+        "coal",
+        "lng",
+        "natural gas",
+        "gas plant",
+        "gas processing",
+        "gas transmission",
+        "ngl plant",
+        "refinery",
+        "oil sands",
+        "petrochemical",
+        "hydroelectric",
+        "hydro dam",
+        "wind farm",
+        "solar farm",
+        "power plant",
+        "power station",
+        "transmission line",
+        "substation",
+        "wastewater",
+        "sewage",
+        "water treatment plant",
+        "container terminal",
+        "marine terminal",
+        "port expansion",
+        "nickel",
+        "copper",
+        "gold mine",
+        "gold project",
+        "porphyry",
+        "molybdenum",
+        "potash",
+        "pulp mill",
+        "sawmill",
+        "biocoal",
+    };
+
     private static readonly string[] ProfessionalSignals =
     {
         "prime consultant",
@@ -223,11 +274,21 @@ public static class StructuralRelevanceGate
         .Select(signal => new Regex($@"\b{Regex.Escape(signal)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled))
         .ToArray();
 
+    private static readonly Regex[] AlwaysIrrelevantRegexes = AlwaysIrrelevantSignals
+        .Select(signal => new Regex($@"\b{Regex.Escape(signal)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled))
+        .ToArray();
+
     public static RelevanceDecision Evaluate(string? title, string? description, string? buyer)
     {
         _ = buyer;
 
         var text = $"{title ?? string.Empty} {description ?? string.Empty}".ToLowerInvariant();
+        var matchedAlwaysIrrelevant = FirstAlwaysIrrelevantMatch(text);
+        if (matchedAlwaysIrrelevant is not null)
+        {
+            return new RelevanceDecision(false, $"out-of-lane: {matchedAlwaysIrrelevant}");
+        }
+
         var hasBuilding = ContainsAny(text, BuildingSignals);
         var hasKeep = hasBuilding || ContainsAny(text, ProfessionalSignals);
         var matchedIrrelevant = FirstHardIrrelevantMatch(text);
@@ -267,6 +328,19 @@ public static class StructuralRelevanceGate
             if (HardIrrelevantRegexes[i].IsMatch(value))
             {
                 return HardIrrelevantSignals[i];
+            }
+        }
+
+        return null;
+    }
+
+    private static string? FirstAlwaysIrrelevantMatch(string value)
+    {
+        for (var i = 0; i < AlwaysIrrelevantSignals.Length; i++)
+        {
+            if (AlwaysIrrelevantRegexes[i].IsMatch(value))
+            {
+                return AlwaysIrrelevantSignals[i];
             }
         }
 
