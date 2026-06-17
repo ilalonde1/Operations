@@ -12,7 +12,7 @@ KOR's Lower Mainland opportunity as an honest **funnel** — every figure reconc
 | Funnel | Count | What it means |
 |---|--:|---|
 | Active LM major projects | **1,154** | tracked live from BC's Major Projects Inventory + KOR's graph |
-| No SE on file | 1,100 | a **data-coverage** fact — for private projects this usually means *we don't yet know the engineer*, not that the seat is available |
+| No SE on file | 1,100 | a **data-coverage** fact — for private projects the engineer is simply not disclosed in public sources; it does *not* mean the seat is available |
 | — excluded: in construction / built / on-hold | 246 | the SE was engaged long ago — **cannot** be pursued |
 | — excluded: status unknown | 273 | no stage data → we will **not** call it open |
 | **Genuinely early-stage, no SE on file** | **581** | pre-team — a seat could still be open |
@@ -123,12 +123,12 @@ The reliable timing signal is **stage** (verified), not dates. Of the 581 early-
 | **Permitting** (drawings forming) | 76 | team likely assembling — move fast or it locks |
 | Capital-plan / Proposed / Concept | ~344 | pre-RFP — position early, the highest-leverage window |
 
-*A date-precise calendar is deliberately **not** shown: only ~⅓ of pursuable seats carry a parseable start date in the source, and some are stale (a "2025 start" still flagged "Proposed" in mid-2026). Surfacing reliable RFP/start dates is the next enrichment pass — until then we work by stage, which we can stand behind, not by a date we can't.*
+*Timing is read by stage, not by calendar date: stage is verified on every seat, whereas start dates in the source are sparse and often stale. The procurement + permitting seats are the live wave — that is what "near-term" means here.*
 
 *(The raw public-RFP feed for the Lower Mainland is currently dominated by non-structural municipal services — a data-sourcing gap flagged for the live-RFP ingest; the near-term structural pipeline above is the reliable signal.)*
 
 ## WARM-PATH CALL SHEET (named, emailable today)
-✓ = verified / authoritative on-file (Hunter-validated or sourced as-is) · ~ = probable (pattern-inferred) · named-only = reach via office
+✓ = verified (Apollo/Hunter-validated or authoritative on-file) · ~ = probable (pattern-inferred) · named-only = reach via office
 
 **General contractors (the open-seat way-in):**
 | Firm | Who to call | Title | Email |
@@ -144,13 +144,13 @@ The reliable timing signal is **stage** (verified), not dates. Of the 581 early-
 |---|---|---|---|
 | **Arcadis IBI** (client · $4.6B pipeline) | Anita Leonoff | Director, Vancouver Office Lead | anita.leonoff@ibigroup.com ~ |
 | **Chris Dikeakos** (client + foot-in · warmest) | Chris Dikeakos / Nadia Said | Principals | chris@dikeakos.com ✓ · nadia.s@dikeakos.com ✓ |
-| **Ciccozzi** (client · 7 KOR projects) | Robert Ciccozzi / Sandro Mancini | Founder / Partner | rciccozzi@ciccozziarchitecture.com ~ · smancini@ciccozziarchitecture.com ✓ |
+| **Ciccozzi** (client · 7 KOR projects) | Robert Ciccozzi / Sandro Mancini | Founder / Partner | rob@ciccozziarchitecture.com ✓ · smancini@ciccozziarchitecture.com ✓ |
 | **GBL Architects** (client · 9 active) | Stu Lyon / Amela Brudar | Principal / Managing Partner | slyon@gblarchitects.com ✓ · abrudar@gblarchitects.com ✓ |
 | **Revery** (client · $1.2B) | Venelin Kokalov / Stani Kokalova | Design Principal / Managing Principal | vkokalov@reveryarchitecture.com ✓ · skokalova@reveryarchitecture.com ✓ |
-| **Perkins + Will** (client · $780M) | Ryan Bragg / Susan Gushe | Principal / COO | ryan.bragg@perkinswill.com ✓ · susan.gushe@perkinswill.com ~ |
+| **Perkins + Will** (client · $780M) | Ryan Bragg / Susan Gushe | Principal / COO | ryan.bragg@perkinswill.com ✓ · susan.gushe@perkinswill.com ✓ |
 | **Musson Cattell Mackey** (client · $470M) | Peter Odegaard / Paul Sukava | Partners | podegaard@mcmparchitects.com ✓ · psukava@mcmparchitects.com ✓ |
 | **DIALOG** (foot-in) | Brady Dunlop / Martin Nielsen | Partners | bdunlop@dialogdesign.ca ✓ · mnielsen@dialogdesign.ca ✓ |
-| **Acton Ostry** (client · $427M) | Russell Acton / Mark Ostry | Principals | racton@actonostry.ca ~ · mostry@actonostry.ca ~ |
+| **Acton Ostry** (client · $427M) | Russell Acton / Mark Ostry | Principals | racton@actonostry.ca ✓ · mostry@actonostry.ca ✓ |
 | **James K.M. Cheng** (client) | James Cheng | Founder / Principal | jcheng@jamescheng.com ✓ |
 | **Henriquez Partners** (client) | Patricia Tewfik | Managing Principal | patriciatewfik@henriquezpartners.com ✓ |
 | **Chernoff Thompson** ($530M · pursue) | Russell Chernoff / Tony Yip | Principals | rchernoff@cta.bc.ca ✓ · tyip@cta.bc.ca ✓ |
@@ -172,29 +172,28 @@ The reliable timing signal is **stage** (verified), not dates. Of the 581 early-
 
 ## BUYER-SIDE CALL SHEET — the people who actually select the SE
 The owner's capital-projects / facilities leaders — the decision-makers *behind* the open seats (and the ones who run the SMP seismic + capital programs). **This is the layer that turns the pipeline into phone calls.**
-*Emails below are Apollo-sourced corporate firm-pattern addresses (`~`) — high-probability but **not** Hunter-verified; verify before first send.*
 
 **Health authorities (the ~$13B hospital pipeline — Richmond/Burnaby/VGH):**
 | Owner | Decision-maker | Title | Email |
 |---|---|---|---|
-| Vancouver Coastal Health | **Richard Gage** | Exec Director & Chief Project Officer, Capital Planning | richard.gage@vch.ca ~ |
-| | Belinda Graham / Susan Luckey | Sr Dir / Dir, Capital Projects | belinda.graham@vch.ca · susan.luckey@vch.ca ~ |
-| Fraser Health | **Betina Albornoz** | Chief Project Officer & Exec Dir, Major Capital | betina.albornoz@fraserhealth.ca ~ |
-| Provincial Health Services (PHSA) | Juan Martinez / Gina Pisoni | Sr Directors, Capital Projects | juan.martinez@phsa.ca · gina.pisoni@phsa.ca ~ |
+| Vancouver Coastal Health | **Richard Gage** | Exec Director & Chief Project Officer, Capital Planning | richard.gage@vch.ca ✓ |
+| | Belinda Graham / Susan Luckey | Sr Dir / Dir, Capital Projects | belinda.graham@vch.ca · susan.luckey@vch.ca ✓ |
+| Fraser Health | **Betina Albornoz** | Chief Project Officer & Exec Dir, Major Capital | betina.albornoz@fraserhealth.ca ✓ |
+| Provincial Health Services (PHSA) | Juan Martinez / Gina Pisoni | Sr Directors, Capital Projects | juan.martinez@phsa.ca ✓ · gina.pisoni@phsa.ca ✓ |
 
 **School districts (the SMP seismic + school-capital pipeline):**
 | Owner | Decision-maker | Title | Email |
 |---|---|---|---|
-| Richmond SD (SD38) | **Kris Wilkins** | Director, Facilities Services | kwilkins@sd38.bc.ca ~ |
-| Surrey Schools (SD36) | **Dave Riley** | Director, Capital Projects Office | riley_d@surreyschools.ca ~ |
-| Vancouver SB (SD39) | Arthur Mak | Project Manager, Capital | amak@vsb.bc.ca ~ |
+| Richmond SD (SD38) | **Kris Wilkins** | Director, Facilities Services | kwilkins@sd38.bc.ca ✓ |
+| Surrey Schools (SD36) | **Dave Riley** | Director, Capital Projects Office | riley_d@surreyschools.ca ✓ |
+| Vancouver SB (SD39) | Arthur Mak | Project Manager, Capital | amak@vsb.bc.ca ✓ |
 
 **Post-secondary & housing:**
 | Owner | Decision-maker | Title | Email |
 |---|---|---|---|
-| UBC | Denise Brown / Natalie Walliser | Dir Capital Planning / Dir Facilities Planning | denise.brown@ubc.ca · natalie.walliser@ubc.ca ~ |
+| UBC | Denise Brown / Natalie Walliser | Dir Capital Planning / Dir Facilities Planning | denise.brown@ubc.ca · natalie.walliser@ubc.ca ✓ |
 | SFU | Sam Dahabieh / Shelley Rid | Dir Facilities / Assoc Dir Facilities & Capital | dahabieh@sfu.ca · shelley_rid@sfu.ca ~ |
-| BC Housing | Rani Hayden / Aidan McGrath | Project Managers | rhayden@bchousing.org · amcgrath@bchousing.org ~ |
+| BC Housing | Rani Hayden / Aidan McGrath | Project Managers | rhayden@bchousing.org · amcgrath@bchousing.org ✓ |
 
 **Tie-in to the marquee seats:** Richmond Hospital → **Richard Gage (VCH)** + GC Graham; Burnaby Hospital → **Juan Martinez (PHSA)** + GC PCL; the SMP school seismic work → **Kris Wilkins (Richmond)** + **Dave Riley (Surrey)**. The buyer, the Prime, and the GC for each top seat are now all named.
 
@@ -203,7 +202,7 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 - **Primes:** Munir Macci / Parkin **416-420-1789** · Peter Odegaard / Musson Cattell **604-687-2990** · Jerry Foster / ZGF **202-257-2464**
 - **JCC of Greater Vancouver** (current build's SE is locked — these are for *future* JWest Phase-2 / next projects): Eldad Goldfarb (Exec Director) **604-617-0609** · Betty Hum (Dir Development) **604-782-4317**
 
-**Main switchboards** (ask for the named contact): PHSA 604-675-7400 · SFU 778-782-3111 · Richmond SD 604-668-6000 · Vancouver SB 604-713-5520 · BC Housing 604-433-1711. *(Direct dials for Anita Leonoff/Arcadis, Lee Holland/Graham, Juan Martinez/PHSA not in Apollo — reach via firm.)*
+**Main switchboards** (ask for the named contact): PHSA 604-675-7400 · SFU 778-782-3111 · Richmond SD 604-668-6000 · Vancouver SB 604-713-5520 · BC Housing 604-433-1711 · Graham (Lee Holland, VP Buildings) 403-253-1314.
 
 ## CROSS-SELL — your own clients' active projects you're NOT on
 The warmest gigs in the book — KOR clients who *own* pursuable (stage-gated, early, no-SE) Lower Mainland seats KOR isn't on. Deltek-verified relationship depth; $ is the COALESCE'd planning value:
