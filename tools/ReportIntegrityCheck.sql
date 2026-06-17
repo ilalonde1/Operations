@@ -25,7 +25,8 @@ DECLARE @Region   NVARCHAR(40) = N'Lower Mainland';   -- change per report
            OR ISNULL(m.Sector,'') LIKE '%Industrial%' OR ISNULL(m.Sector,'') LIKE '%Transport%' OR ISNULL(m.Sector,'') LIKE '%Energy%'
            OR m.ProjectName LIKE '%LNG%' OR m.ProjectName LIKE '%Wastewater%' OR m.ProjectName LIKE '%Water Treatment%'
            OR m.ProjectName LIKE '%Terminal%' OR m.ProjectName LIKE '%Substation%' OR m.ProjectName LIKE '%Pipeline%'
-           OR m.ProjectName LIKE '%Treatment Plant%' OR m.ProjectName LIKE '%Wastewater%' THEN 1 ELSE 0 END OutOfLane
+           OR m.ProjectName LIKE '%Treatment Plant%' OR m.ProjectName LIKE '%Wastewater%'
+           OR m.ProjectName LIKE '%Composting%' OR m.ProjectName LIKE '%Landfill%' OR m.ProjectName LIKE '%Transit Garage%' THEN 1 ELSE 0 END OutOfLane
   FROM opportunities.MajorProjectsInventory m
   LEFT JOIN opportunities.CanonicalOrg se ON se.Id = m.StructuralEngineerCanonicalOrgId
   WHERE m.Province=@Province AND m.RegionName=@Region AND m.RetiredAtUtc IS NULL
