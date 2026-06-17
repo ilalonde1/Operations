@@ -11,7 +11,7 @@ KOR's Lower Mainland opportunity as an honest **funnel** — "open" means *genui
 
 | Funnel | Count | What it means |
 |---|--:|---|
-| Active LM major projects | **867** | tracked live from BC's Major Projects Inventory + KOR's graph (de-duplicated; built/complete projects auto-retired nightly) |
+| Active LM major projects | **867** | tracked live from BC's Major Projects Inventory + KOR's relationship graph |
 | No SE on file | 814 | a **data-coverage** fact — for private projects the engineer is simply not disclosed in public sources; it does *not* mean the seat is available |
 | — excluded: in construction / on-hold | 13 | the SE was engaged long ago — **cannot** be pursued |
 | — excluded: out-of-lane (civil / industrial / utility) | 37 | not KOR's building-structures lane |
@@ -36,7 +36,7 @@ Structural fee ≈ 1.0% of construction value. Three tiers, least-to-most defens
 **The honest takeaway: ~$261M of structural fee sits behind relationships KOR already holds, of which ~$141M is the win-probability-weighted expected capture.** The ~$611M figure is an upper bound on the whole early pipeline — useful for context, **not** a number to manage to. *(Assumptions: 1.0% fee; values = verified cost where available, else a flagged sector-median model. Every figure reconciles to the integrity-check queries.)*
 
 ## THE MARKET AT 10,000 FT (where KOR fits — and can fit)
-**867 active Lower Mainland major projects (de-duplicated). After excluding those in construction/on-hold, out-of-lane, and unknown-stage, 500 are genuinely early-stage and in-lane with no SE on file — and 222 of those are where KOR has a warm path. The pursuable field is the 222, not the raw 814.**
+**867 active Lower Mainland major projects. After excluding those in construction/on-hold, out-of-lane, and unknown-stage, 500 are genuinely early-stage and in-lane with no SE on file — and 222 of those are where KOR has a warm path. The pursuable field is the 222, not the raw 814.**
 
 **By segment (the whole landscape):**
 
@@ -53,7 +53,7 @@ Structural fee ≈ 1.0% of construction value. Three tiers, least-to-most defens
 **Where KOR fits today vs. can fit:** KOR's *proven* lane is **private residential/mixed-use high-rise** — the biggest segment, where KOR already holds the client relationships. KOR's *expansion* whitespace is **(1) seismic across education/civic**, **(2) healthcare + infrastructure via warm GC relationships** (Graham/PCL sit on ~$5.7B of it), and **(3) the open mid-market institutional** where incumbents aren't locked.
 
 ## PURSUE SHORTLIST — the verified targets to act on now
-**This is a *verified* list, not a raw ranking.** Every row has cleared the gate: **in KOR's building lane, early enough that the SE seat is genuinely open, de-duplicated, and confirmed against a live source.** The full **222-warm** set is the universe to work through; these are the ones to act on now.
+**This is a *verified* list, not a raw ranking.** Every row has cleared the gate: **in KOR's building lane, early enough that the SE seat is genuinely open, and confirmed against a live source.** The full **222-warm** set is the universe to work through; these are the ones to act on now.
 
 **Verified-open, near-term — SE not yet selected:**
 
@@ -251,7 +251,7 @@ The handful of relationships that recur across the pipeline. Work these and you 
 - **NSDA Architects** — *Architect/Prime · client · 28 KOR projects · on 2 open LM seats.* A top-tier relationship hiding in plain sight — 28 shared projects. **Ken Wong** (Principal) · Brian Dust · Peter Fodor (kwong/bdust/pfodor@nsda.bc.ca).
 
 ## Market context (consolidated, for grounding)
-**867 active LM projects across 341 owners and 122 architect firms** (de-duplicated). Top owners by active project count: VSB SD39 (91), Richmond SD38 (40), Langley SD35 (22), Surrey SD36 (22), UBC (20), Burnaby SD41 (19), North Vancouver SD44 (18), Fraser Health (17). *(Top architects to get on are ranked in the Architect Teaming table above — that's the authoritative list, by pursuable early-open seats × KOR depth.)*
+**867 active LM projects across 341 owners and 122 architect firms.** Top owners by active project count: VSB SD39 (91), Richmond SD38 (40), Langley SD35 (22), Surrey SD36 (22), UBC (20), Burnaby SD41 (19), North Vancouver SD44 (18), Fraser Health (17). *(Top architects to get on are ranked in the Architect Teaming table above — that's the authoritative list, by pursuable early-open seats × KOR depth.)*
 **Sub-markets** (full dossiers): Seismic (above), Mass Timber (Fast+Epp-dominated, code-opened mid-market), Modular/prefab ($475M BC modular-schools, all SE-open).
 
 ---

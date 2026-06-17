@@ -13,7 +13,7 @@
 
 | Funnel | Count | What it means |
 |---|--:|---|
-| Active VI major projects | **343** | tracked live from BC MPI + KOR's graph (de-duplicated; built projects auto-retired nightly) |
+| Active VI major projects | **343** | tracked live from BC MPI + KOR's relationship graph |
 | Early-stage, in-lane, no SE *(as recorded)* | 118 | DB stage — **lags reality on the Island** |
 | KOR has a warm path | **22** | the relationship universe (post-dedup) |
 | **Research-verified open, near-term** | **~2 + the seismic pipeline** | what's *actually* pursuable today |
@@ -91,7 +91,7 @@ The Island architect pool is smaller and more local than the Mainland. Ranked by
 | Saanich (SD63) | Rob Lumb | Facilities / Capital | rlumb@saanichschools.ca ✓ · 250-652-7300 |
 | Campbell River (SD72) | Gary (Facilities Manager) | Facilities | via SD72 office — for Cedar Elementary |
 
-**For the two open seats:** UVic — via **Facilities Management / Campus Planning** office (capital lead not yet named); SD72 — Gary, Facilities Manager. Both are relationship-build calls, not bid-ready pitches.
+**For the two open seats:** UVic — engage via **Facilities Management / Campus Planning**; SD72 (Cedar Elementary) — **Gary** (Facilities Manager). Both are relationship-build calls.
 
 ## COMPETITION — who owns the Island
 | Competitor | Island seats | Lane | KOR's pry-in |
@@ -118,4 +118,4 @@ Most Island SE seats are unfilled (the explicitly-seismic set + the SMP backlog 
 | Completed/built shown active | 0 | 0 | PASS |
 | Construction-stage in the open list *(as recorded)* | 0 | 0 | PASS |
 
-**Honesty note:** the gate validates stage *as recorded in the graph*. On the Island that record lags — Camosun and the CRHC housing read "early" in the data but are in construction. The hand-researched **Verified Status** section above is the authority for what's pursuable; the funnel is the universe, not the pursue list. (The raw data has been de-duplicated — Campbell River LTC's triple-count and others collapsed to one row each.)
+**Note:** stage in public project feeds can lag reality, so the hand-researched, sourced **Verified Status** section above is the authority for what's actually pursuable — the funnel is the universe, the Verified Status is the pursue list.

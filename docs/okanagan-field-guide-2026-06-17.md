@@ -13,7 +13,7 @@
 
 | Funnel | Count | What it means |
 |---|--:|---|
-| Active interior major projects | **119** | de-duplicated; Okanagan + Thompson, built projects auto-retired nightly |
+| Active interior major projects | **119** | Okanagan + Thompson interior; tracked live |
 | Early-stage, in-lane, no SE | **52** | pre-team |
 | **KOR has a warm path** | **14** | thin — mostly City of Kelowna civic work |
 | Research-verified open, near-term | **5 institutional seats** | the real position-now list below |

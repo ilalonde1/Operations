@@ -13,7 +13,7 @@
 
 | Funnel | Count | What it means |
 |---|--:|---|
-| Active Calgary major projects | **163** | de-duplicated; phantom "Highstreet" record retired |
+| Active Calgary major projects | **163** | Calgary metro; tracked live |
 | Early-stage, in-lane, no SE | **133** | pre-team |
 | **KOR has a warm path** | **25** | mostly via architect/GC ties, not owners |
 | Research-verified actionable now | **2** | + long-game institutional |
@@ -87,4 +87,4 @@
 | Completed / built shown active | 0 | 0 | PASS |
 | Construction / out-of-lane / on-hold / design in open list | 0 | 0 | PASS |
 
-**Honesty note:** research corrected the raw data — the phantom "Highstreet Calgary" record was retired and composting/landfill/transit-garage facilities are now gated out-of-lane. Alberta cost data is sparse, so dollar figures are understated; trust the verified-status section and the project count over the $.
+**Note:** Alberta project budgets are sparsely published, so the dollar figures are conservative — read the project count and the verified-status section as the truer signal of opportunity.

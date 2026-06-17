@@ -2,7 +2,7 @@
 % KOR Structural — Business Development
 % 2026-06-17
 
-*KOR specializes in seismic, and British Columbia is Canada's highest-seismic-risk region. This dossier sizes the opportunity honestly — separating what's **explicitly seismic in KOR's graph** from the **external SMP program** — and reads the competitive landscape from verified research, not loose inference. Rebuilt 2026-06-17 on the de-duplicated, integrity-gated graph.*
+*KOR specializes in seismic, and British Columbia is Canada's highest-seismic-risk region. This dossier sizes the opportunity honestly — separating what's **explicitly seismic in KOR's graph** from the **external SMP program** — and reads the competitive landscape from verified research, not loose inference. Built on KOR's integrity-gated BD intelligence graph (June 2026).*
 
 ---
 
@@ -15,7 +15,7 @@
 ## 2. The honest size — two distinct numbers (don't conflate them)
 The prior version of this dossier reported "349 seismic projects / $9.9B / 99% open." That **conflated every school-district capital project with seismic-specific work.** Corrected, there are two separate, defensible figures:
 
-**(a) Explicitly seismic in KOR's graph (de-duplicated, verified):**
+**(a) Explicitly seismic in KOR's graph (verified):**
 
 | Region | Seismic projects | ~$M | No SE committed |
 |---|--:|--:|--:|

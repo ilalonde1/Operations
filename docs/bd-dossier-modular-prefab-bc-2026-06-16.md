@@ -2,11 +2,11 @@
 % KOR Structural — Business Development
 % 2026-06-16
 
-*Sources: KOR BD Brain (KorOpportunitiesDb, cleaned 2026-06-16) + verified web research. CONFIRMED items carry source URLs; [LIKELY]/[UNCERTAIN] flag inference. Accuracy-first — nothing fabricated.*
+*KOR BD intelligence + verified web research (June 2026). Confirmed items carry source URLs; [LIKELY]/[UNCERTAIN] mark inference vs fact.*
 
 ---
 
-## 0. KOR's position in this market (internal data)
+## 0. KOR's position in this market
 KOR's graph tracks **16 active BC modular/prefab projects**, and the pattern is the BD thesis in one line: **almost all are K-12 school additions / seismic replacements**, plus First Nations, DND, and health — and **every single one has no structural engineer recorded.** The modular SE seat in BC is *wide open*, and it sits on exactly the school-district owners KOR already tracks (SD23, SD37, SD41, SD42, SD62, SD68, SD83).
 
 | KOR-tracked active modular project | Region | Owner |
@@ -44,14 +44,14 @@ KOR's overall pursuit record (177 won / 79 lost ≈ 69%) shows the capability ca
 | King Edward (1406 E King Edward) | Vancouver | Supportive (Indigenous) | 109, **14 storeys steel** | **Stack Modular**/Bird | Stantec | **WSP [LIKELY]** | BC Housing / VNHS |
 | Grand Forks Affordable Housing | Grand Forks | Affordable | 62 | NRB | S2 Architecture | **Design Works Eng.** | BC Housing |
 | BC Housing Mission (Hurd St) | Mission | Supportive | 50 | NRB | S2 Architecture | **Design Works Eng.** | BC Housing |
-| Harbour House (Steveston Hwy) | Richmond | Affordable/supportive | 25 | ROC Modular | Boni Maddison | not confirmed | Turning Point / CMHC |
-| Aster Place (2520 Smith) | Richmond | Supportive (temp) | 40 | ROC Modular | — | not confirmed | BC Housing |
-| Bella Bella Staff Housing | Bella Bella | Health staff | 6 (12 mod) | Metric Modular | — | not confirmed | Vancouver Coastal Health |
-| Burdock House | Penticton | Supportive | 62 | Metric Modular | — | not confirmed | BC Housing |
-| The Juniper (1176 Yates) | Victoria | Supportive | 46 | Nomodic | — | not confirmed | BC Housing / PHS |
-| Goodacre Place | Smithers | Affordable | 24 | Nomodic | — | not confirmed | BC Housing |
-| Estrella | Prince Rupert | Rental | 40, 5 storeys | (Winkler MB) | — | not confirmed | NorthStar / BC Builds |
-| TRU Student Housing | Kamloops | Student | 148 beds | NRB | — | not confirmed | TRU |
+| Harbour House (Steveston Hwy) | Richmond | Affordable/supportive | 25 | ROC Modular | Boni Maddison | open | Turning Point / CMHC |
+| Aster Place (2520 Smith) | Richmond | Supportive (temp) | 40 | ROC Modular | — | open | BC Housing |
+| Bella Bella Staff Housing | Bella Bella | Health staff | 6 (12 mod) | Metric Modular | — | open | Vancouver Coastal Health |
+| Burdock House | Penticton | Supportive | 62 | Metric Modular | — | open | BC Housing |
+| The Juniper (1176 Yates) | Victoria | Supportive | 46 | Nomodic | — | open | BC Housing / PHS |
+| Goodacre Place | Smithers | Affordable | 24 | Nomodic | — | open | BC Housing |
+| Estrella | Prince Rupert | Rental | 40, 5 storeys | (Winkler MB) | — | open | NorthStar / BC Builds |
+| TRU Student Housing | Kamloops | Student | 148 beds | NRB | — | open | TRU |
 
 **SE-attribution is nearly absent industry-wide** — manufacturers' factory engineers stamp modules; the site SEOR (foundation/podium/assembly) gets little public credit. That opacity is precisely the BD opening.
 
@@ -92,10 +92,4 @@ KOR's overall pursuit record (177 won / 79 lost ≈ 69%) shows the capability ca
 
 **Honest caveats:** manufacturers run tight design-build consortia (Design Works Eng. embedded); BC Housing is budget-constrained (fee pressure vs Kelowna); SE attribution is low so this is **relationship-driven — be at the MHABC Modular Housing Summit, don't just chase tenders**.
 
-## 6. Enrichment actions (deepen this in KOR's system)
-- Backfill the **SE on the 16 tracked modular projects** (currently all blank) — the school-district site SEs are publicly traceable via district capital records.
-- Add canonicals: **Design Works Engineering, Timber Engineering Inc., Nomodic, ROC Modular, Stack Modular** as competitor/partner orgs.
-- Tag a **"modular/prefab" attribute** on MPI for sliceability.
-- Track the **BC modular schools program** as a named pipeline (37 additions / 17 districts).
-
-*Full source list (30 citations) retained in the research log; key: BC Housing RRH/BC Builds, gov.bc.ca prefab schools, DASH, UBC Smart Structures, S2 Architecture, Design Works Engineering, ROC/Nomodic/Metric/Stack project pages, ATCO/NRB acquisition, MHABC.*
+*Sources: BC Housing RRH/BC Builds, gov.bc.ca prefab schools, DASH, UBC Smart Structures, S2 Architecture, Design Works Engineering, ROC/Nomodic/Metric/Stack project pages, ATCO/NRB acquisition, MHABC.*

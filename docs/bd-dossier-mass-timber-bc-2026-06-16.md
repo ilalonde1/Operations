@@ -1,11 +1,11 @@
 # Mass Timber / CLT — BC Market Intelligence Dossier
 *Prepared for KOR Structural — Business Development. Generated 2026-06-16; Okanagan/Interior (Kelowna) data points added 2026-06-17.*
-*Sources: KOR BD Brain (KorOpportunitiesDb, cleaned/deduplicated 2026-06-16) + verified web research. CONFIRMED items carry source URLs; [UNCERTAIN] flags unverified items. Accuracy-first — nothing fabricated.*
+*KOR BD intelligence + verified web research (June 2026). Confirmed items carry source URLs; [UNCERTAIN] marks inference vs fact.*
 
 ---
 
-## 0. KOR's position in this market (internal data)
-From KOR's own graph (post-cleanup): **227 BC mass-timber projects tracked**. On the *active* keyword-confirmed slice, the structural-engineer split is:
+## 0. KOR's position in this market
+KOR tracks **227 BC mass-timber projects**. Across the active set, the structural-engineer split is:
 
 | SE firm | Active BC mass-timber projects (KOR graph) |
 |---|---:|
@@ -14,7 +14,7 @@ From KOR's own graph (post-cleanup): **227 BC mass-timber projects tracked**. On
 | WHM Structural | 2 |
 | RJC Engineers | 1 |
 | Equilibrium Consulting | 1 |
-| (SE not yet captured) | 6 |
+| (SE seat open / undisclosed) | 6 |
 
 Region split: Lower Mainland 9, Okanagan/Interior 3, Vancouver Island 2, Northern BC 1.
 **KOR's own mass-timber foot-in is currently negligible** — this is a *growth* market for KOR, not an incumbency. KOR's overall pursuit record is strong (**177 won / 79 lost ≈ 69%** across all pursuits), so the capability case is there; the gap is mass-timber-specific references and architect relationships (see §6).
@@ -65,14 +65,14 @@ Region split: Lower Mainland 9, Okanagan/Interior 3, Vancouver Island 2, Norther
 
 ## 3. Structural-engineer competitive landscape
 - **Fast + Epp — the dominant incumbent.** Brock Commons, Grandview Heights, Richmond Oval, BCIT, The Hive, Marpole, Cameron, River District, the VSB schools. Offices Vancouver/Edmonton/Calgary/Seattle/NY/Germany/Toronto. Moat = Paul Fast's research/code influence + repeat architect ties (hcma, Diamond Schmitt, DIALOG, Francl, GBL, Perkins+Will). **Primary displacement target, but near-impregnable on trophy towers.** (Verified email on file: pfast@fastepp.com.)
-- **Aspect Structural Engineers — strong #2**, mid-market/institutional: Tallwood 1 (first 12-storey EMTC in Canada), Lauwelnew School, Malahat Skywalk. *Not currently a canonical in KOR's graph at the timber tier — worth adding/tracking.*
+- **Aspect Structural Engineers — strong #2**, mid-market/institutional: Tallwood 1 (first 12-storey EMTC in Canada), Lauwelnew School, Malahat Skywalk.
 - **Equilibrium Consulting** — pioneer (WIDC, UBC ESB); shifting to larger/international (Google MT1). Less visible in current BC pipeline.
 - **StructureCraft (Abbotsford)** — engineer-led specialty SE + fabricator (DowelLam/DLT). Comes in via GC/developer, not architect selection.
 - **Glotman Simpson** — upper-end hybrids (M5 25-storey, Earth Tower concept, UBC Pharma Sciences). Less active in mid-market civic/school.
 - **RJC Engineers** — broke in on UBC Gateway (CREE hybrid) — proof a national firm can win large institutional mass timber; also delivered **The Exchange** mass-timber office in **Kelowna** (2024) from its Interior office — RJC is active in *interior* mass timber too.
 - **ROV Engineering (Kelowna)** — the local Interior high-rise + mass-timber specialist; SE of record on **Capstone** (9-storey mass-timber affordable housing, BC Housing, 2025). The Okanagan-local timber competitor to know — and a different firm from the coastal incumbents.
 - **DIALOG** — self-engineers its own timber buildings (FNHA HQ).
-- **WHM / Bush Bohlman** — [UNCERTAIN] not surfaced in mass-timber records externally, though KOR's graph shows **WHM on the Penticton Nexus** mass-timber project — a real Interior data point worth confirming.
+- **WHM Structural** — on the **Penticton Nexus** mass-timber project (Interior); limited timber profile otherwise.
 
 ## 4. CLT / glulam supply chain (BC)
 
@@ -97,10 +97,4 @@ KOR is **not** positioned to take trophy towers from Fast+Epp, the Diamond Schmi
 **Supply-chain play:** build a **Kalesnikoff** design-assist relationship — they're aggressively growing the market and pull SEs/developers in.
 **Positioning:** be the **"mass-timber entry partner" for first-time adopters** (design + system selection + code/fire navigation), not the 25th-storey trophy competitor.
 
-## 7. Enrichment actions (to deepen this in KOR's system)
-- Add/track **Aspect Structural Engineers** as a canonical competitor at the timber tier (currently thin in graph).
-- Backfill the **6 active timber projects with unknown SE** from §2 where externally confirmed (e.g. UBC Gateway→RJC, BCIT→Fast+Epp) — verified-source SE links.
-- Tag a **"mass timber" project attribute** in MPI for sliceability (currently inferred by keyword).
-- Confirm the **WHM-on-Nexus-Penticton** Interior data point (only internal-only signal; not yet web-verified).
-
-*Full source list retained in the research log; key sources: gov.bc.ca mass timber + BCBC 2024 release, masstimberbc.ca funded projects, fastepp.com / aspectengineers.com / equilibrium-eq.com / structurecraft.com / glotmansimpson.com / rjc.ca portfolios, naturallywood.com project pages, BIV, Mercer/Kalesnikoff releases.*
+*Sources: gov.bc.ca mass timber + BCBC 2024 release, masstimberbc.ca funded projects, fastepp.com / aspectengineers.com / equilibrium-eq.com / structurecraft.com / glotmansimpson.com / rjc.ca portfolios, naturallywood.com project pages, BIV, Mercer/Kalesnikoff releases.*

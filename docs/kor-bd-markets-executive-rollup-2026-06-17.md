@@ -2,7 +2,7 @@
 % KOR Structural — Business Development
 % 2026-06-17
 
-*The firm-wide view across every market KOR tracks, aggregated from the de-duplicated, integrity-gated BD Brain. Each figure reconciles to a live query; each region has its own Field Guide (pursue-and-call detail) behind this summary.*
+*The firm-wide view across every market KOR tracks, from KOR's integrity-gated BD intelligence graph. Each figure reconciles to a live query; each region has its own Field Guide (pursue-and-call detail) behind this summary.*
 
 ---
 
@@ -55,4 +55,4 @@ On buildings work the **architect is the Prime Consultant** and assembles the te
 ---
 
 ## DATA INTEGRITY — firm-wide
-Every figure above is computed live from the de-duplicated graph through the hardened integrity gate (excludes built/in-construction/on-hold/out-of-lane/design-stage; out-of-lane and duplicates removed at source). Each region's report carries its own pass/fail check; all currently **PASS**. No number here is hand-typed.
+Every figure above is computed live through KOR's hardened integrity gate, which excludes built, in-construction, on-hold, out-of-lane and design-stage projects before anything reaches a count. Each region's report carries its own pass/fail check; all currently **PASS**. No number here is hand-typed.

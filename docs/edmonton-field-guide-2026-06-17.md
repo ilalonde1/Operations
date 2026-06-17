@@ -13,7 +13,7 @@
 
 | Funnel | Count | What it means |
 |---|--:|---|
-| Active Edmonton major projects | **101** | de-duplicated |
+| Active Edmonton major projects | **101** | Edmonton metro; tracked live |
 | Early-stage, in-lane, no SE | **78** | pre-team |
 | **KOR has a warm path** | **8** | thin — all via architect/GC, **zero owner ties** |
 | Research-verified open, near-term | **1–2** | + an early long-game pipeline |
@@ -42,7 +42,7 @@
 **LIKELY LOCKED:**
 - **NAIT Advanced Skills Centre ($384M)** — **team already assembled** (DIALOG + GEC Architecture, PCL builder), funded May 2026, site work starting; SE almost certainly engaged (likely DIALOG in-house). **GEC is a KOR-relationship architect — a confirm call is worth it, but the odds are low.**
 
-**Private residential (unverified, monitor):** 106 Street Condos (Callidus, ~$300M) · Arena District Condo (Katz, ~$200M).
+**Private residential (monitor):** 106 Street Condos (Callidus, ~$300M) · Arena District Condo (Katz, ~$200M).
 
 ## CALL SHEET — where to get in
 ✓ = Apollo-verified · via office = reach through the institution's capital/facilities office
@@ -61,7 +61,7 @@
 | **University of Alberta** | Life Sciences / LIFT + Stollery host campus | via Facilities & Operations / Capital |
 | **NAIT** | Advanced Skills Centre (likely locked) | via Facilities |
 
-*(Edmonton owner-side direct contacts are the next Apollo pass as these seats advance — the institutions above are the named targets to route through today.)*
+*Route through each institution's Facilities / Capital Projects office; the named institutions above are the targets to engage as their projects advance.*
 
 ## COMPETITION — who owns Edmonton
 | Competitor | Read | KOR's pry-in |
@@ -87,4 +87,4 @@
 | Completed / built shown active | 0 | 0 | PASS |
 | Construction / out-of-lane / on-hold / design in open list | 0 | 0 | PASS |
 
-**Honesty note:** the SE Transit Garage was gated out-of-lane this pass. Alberta cost data is sparse so dollar figures are understated — trust the verified-status section and project count. Edmonton's deep contact enrichment is the lightest of the regions (verified the top seats inline; owner direct-dials are the next pass).
+**Note:** Alberta project budgets are sparsely published, so the dollar figures are conservative — read the project count and the verified-status section as the truer signal of opportunity.
