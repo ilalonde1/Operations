@@ -6,12 +6,12 @@
 
 ---
 
-## ⚡ THE PRIZE
+## THE PRIZE
 **$63.5 billion across 730 active Lower Mainland projects have NO structural engineer committed yet — every one an open seat KOR can pursue.** KOR's pursuit record earns the table: **177 won / 79 lost (≈69%)**. This report turns that $63.5B into a ranked, named call sheet.
 
 **How the seat is won (the mechanism):** on public buildings the **architect is the Prime Consultant** — they assemble the team (structural engineer included) and submit one proposal. KOR wins by being **on the architect's team before the RFP** → the *Prime Consultant Targets* section is the #1 channel, and KOR is already a client of most of the top Primes.
 
-## 💵 THE NUMBER — KOR's fee prize, not construction value
+## THE NUMBER — KOR's fee prize, not construction value
 The $63.5B is *construction* value. Here's what it's worth to KOR as **structural-engineering fee revenue**:
 
 | | Fee opportunity | What it is |
@@ -23,7 +23,7 @@ The $63.5B is *construction* value. Here's what it's worth to KOR as **structura
 
 **The takeaway: ~$141M of structural fee is realistically winnable in the Lower Mainland alone** — from just the 336 *costed* seats. The other **394 seats are now priced** (sector-median model, ~$33.5B / **~$335M more fee**), lifting total addressable to **~$97B construction / ~$970M fee**. But that modeled tier skews to **191 K-12 school seats** (KOR's *build-toward*, not yet winnable) plus 114 residential (KOR's lane) — so treat it as **upside, not SOM**. *(Assumptions, stated plainly: structural fee = 1.0% of construction — mid of the 0.8–1.2% range for buildings; win-probability tiered off the warm-path strength of the team already on each project, blended with KOR's ~69% close rate; uncosted seats valued at the median costed seat in their sector. Every figure is transparent and scales linearly with the inputs — not a black box.)*
 
-## 🛰️ THE MARKET AT 10,000 FT (where KOR fits — and can fit)
+## THE MARKET AT 10,000 FT (where KOR fits — and can fit)
 **782 active Lower Mainland projects, ~$75.8B. 730 (93%) have no structural engineer committed — $63.5B of open seats; competitors hold just 23, KOR holds 3 (another 26 name an untracked SE). KOR's current share is ~0%, so the entire market is contestable.** It's an early-stage land-grab, not an entrenched market.
 
 **By segment (the whole landscape):**
@@ -39,63 +39,63 @@ The $63.5B is *construction* value. Here's what it's worth to KOR as **structura
 
 **Where KOR fits today vs. can fit:** KOR's *proven* lane is **private residential/mixed-use high-rise** — the single biggest segment, and where KOR already holds the client relationships. KOR's *expansion* whitespace is **(1) seismic across education/civic** (its specialty, structural-led), **(2) healthcare + infrastructure via warm GC relationships** (Graham/PCL sit on ~$5.7B of it), and **(3) the open mid-market institutional** where incumbents aren't locked. The rest of this report is the route into each.
 
-## 🎯 SCORED TARGET LIST — top pursuits by expected value
-The sales pipeline, ranked by **EV = est. structural fee × win-probability** (win-prob driven by KOR's relationship to the team already on the seat). "Who to call" is the named, emailable decision-maker — pulled live from the graph. Duplicate project rows consolidated. **⚠ Read the 🔬 Verified Status section directly below before acting — live procurement research re-ranks this sharply (several top-EV rows are locked, cancelled, or frozen; the real open seats are smaller-dollar).**
+## SCORED TARGET LIST — top pursuits by expected value
+The sales pipeline, ranked by **EV = est. structural fee × win-probability** (win-prob driven by KOR's relationship to the team already on the seat). "Who to call" is the named, emailable decision-maker — pulled live from the graph. Duplicate project rows consolidated. **Read the 🔬 Verified Status section directly below before acting — live procurement research re-ranks this sharply (several top-EV rows are locked, cancelled, or frozen; the real open seats are smaller-dollar).**
 
 | # | Pursuit | Fee $M | Win % | **EV $M** | Stage | Warmest path → who to call |
 |--:|---|--:|--:|--:|---|---|
-| 1 | **International Plaza, Richmond** ⚠ | 40.0 | 40 | **16.0** | Permitting | Arch Arcadis IBI → **Anita Leonoff** *(⚠ owner Jingon foreclosure-watch — monitor revival)* |
+| 1 | **International Plaza, Richmond** | 40.0 | 40 | **16.0** | Permitting | Arch Arcadis IBI → **Anita Leonoff** *(owner Jingon foreclosure-watch — monitor revival)* |
 | 2 | **Surrey SD 2026-27 Capital Pipeline** (27 schools) | 57.0 | 15 | **8.6** | Capital Plan | Owner Surrey SD → **Dave Riley** (Dir Capital Projects) |
 | 3 | **Richmond Hospital Redevelopment** (later phases) | 19.6 | 40 | **7.8** | Capital Plan | Owner VCH → **Richard Gage** + GC Graham → **Lee Holland** |
 | 4 | **NE False Creek / Viaduct Replacement** | 17.0 | 40 | **6.8** | Permitting | Owner Concord Pacific → **Grant Murray** |
 | 5 | **Annacis Island WWTP Ph2** | 20.0 | 32 | **6.4** | Capital Plan | GC Graham → **Lee Holland** *(one call also covers #3 — ~$3.96B)* |
 | 6 | **Burnaby Hospital Ph2 + BC Cancer** | 17.3 | 15 | **2.6** | Capital Plan | Arch Parkin → **Munir Macci** + PHSA → **Juan Martinez** |
-| 7 | **Mission Waterfront** | 15.0 | 15 | **2.3** | Procurement | Owner District of Mission → **Jenny Tough** (GM Eng & Capital) ★new |
+| 7 | **Mission Waterfront** | 15.0 | 15 | **2.3** | Procurement | Owner District of Mission → **Jenny Tough** (GM Eng & Capital) new |
 | 8 | **UBC Medicine precinct** (Medicine One) | 6.8 | 32 | **2.2** | Capital Plan | Owner UBC → **Denise Brown** (Dir Capital Planning) |
 | 9 | **District Northwest Towers** | 5.0 | 40 | **2.0** | Procurement | Arch Arcadis IBI → **Anita Leonoff** (owner Thind) |
 | 10 | **UBC Student Housing** (Lower Mall Precinct) | 5.6 | 32 | **1.8** | Permitting | Owner UBC → **Denise Brown** |
-| 11 | **Vancouver JCC Redevelopment** | 4.3 | — | **🔴 locked** | Construction Jul-2026 | SE engaged long ago — *not* an open seat (see Verified Status). Keep JCC contacts for future JWest work. |
+| 11 | **Vancouver JCC Redevelopment** | 4.3 | — | **locked** | Construction Jul-2026 | SE engaged long ago — *not* an open seat (see Verified Status). Keep JCC contacts for future JWest work. |
 | 12 | **VGH West 12th Two-Tower Expansion** | 4.0 | 32 | **1.3** | Capital Plan | Arch Musson Cattell → **Peter Odegaard** |
-| 13 | **Inglewood Care Centre Redevelopment** | 5.0 | 25 | **1.3** | — | Arch ZGF → **Jerry Foster** (Principal) ★new |
+| 13 | **Inglewood Care Centre Redevelopment** | 5.0 | 25 | **1.3** | — | Arch ZGF → **Jerry Foster** (Principal) new |
 | 14 | **UBC Applied One** (Applied Science) | 3.9 | 32 | **1.2** | Capital Plan | Owner UBC → **Denise Brown** |
 | 15 | **SMP school seismic backlog** (~22 schools) | 7.8 | 15 | **1.2** | Capital Plan | Province / Min of Ed — *seismic build-toward (no K-12 credit yet)* |
 | 16 | **Squamish Long-Term Care Home** | 2.9 | 40 | **1.1** | Permitting | Owner VCH → **Richard Gage** |
 | 17 | **Surrey Memorial New Acute Care** | 13.5 | 8 | **1.1** | Capital Plan | Owner Fraser Health → **Betina Albornoz** |
 | 18 | **Britannia Community Centre** | 3.0 | 32 | **1.0** | Capital Plan | Owner City of Vancouver (6 emailable on file) |
 
-⚠ = distressed/foreclosure-watch · ★new = decision-maker added this cycle (Apollo). **Out-of-lane note:** the biggest *uncosted-EV* seats — Tilbury LNG ($3.5B), RBT2 ($3B), BC Hydro substation ($1B) — are heavy industrial/marine and sit **outside KOR's building-structural lane**; they're deliberately *not* in this list despite their size (they're in SAM's exclusions). This is a list of work KOR can actually win.
+= distressed/foreclosure-watch · new = decision-maker added this cycle (Apollo). **Out-of-lane note:** the biggest *uncosted-EV* seats — Tilbury LNG ($3.5B), RBT2 ($3B), BC Hydro substation ($1B) — are heavy industrial/marine and sit **outside KOR's building-structural lane**; they're deliberately *not* in this list despite their size (they're in SAM's exclusions). This is a list of work KOR can actually win.
 
-## 🔬 VERIFIED STATUS — what's *actually* open right now (researched 2026-06-16, sourced)
+## VERIFIED STATUS — what's *actually* open right now (researched 2026-06-16, sourced)
 The EV ranking above flags a seat "open" whenever **no SE is recorded in our data** — but that is *not* the same as the seat being available. **The structural engineer is chosen early — when the architect assembles the team, well before the RFP** (this is the Prime-Consultant mechanism this whole report is built on). So the **construction stage is the gate:** a project in **design-development, permitting-with-drawings, or construction has its SE locked** — even if we don't know who it is. Only **early-stage** projects (concept / planning / business-plan / pre-procurement) have a genuinely-open seat. Applying that gate to the verified pass:
 
-**🟢 GENUINELY OPEN — early enough the SE is *not* yet selected (KOR's real priority):**
+**GENUINELY OPEN — early enough the SE is *not* yet selected (KOR's real priority):**
 - **Surrey Memorial New Acute Care Tower ($1.35B)** — **business-plan phase, pre-RFP, no team selected.** The one true near-term open seat. → Get to **Fraser Health (Betina Albornoz)** *and* the architect shortlist before procurement opens.
 - **UBC Medicine One ($680M)** — conceptual / status TBD, no team. Genuinely open but **far-future** — build the standing relationship, monitor for the design-team RFQ.
 - **Inglewood Care Centre ($500M)** — pre-rezoning (hearing **June 23 2026**); SE-of-record not locked until post-approval design, *but* the prime team forming for the rezoning may already carry a structural consultant — **get to Baptist Housing (Dayle Krahn) + ZGF now, while the team is still forming.**
 
-**🟡 WATCH — will re-open:**
+**WATCH — will re-open:**
 - **Burnaby Hospital Ph2 + BC Cancer ($1.7B)** — PCL/Parkin Alliance contract **CANCELLED Apr 2026** (cost overruns), "Re-Paced." It will **re-procure from scratch** — the seat genuinely re-opens. Position now, ahead of the re-tender.
 
-**🔴 SE LOCKED — advanced stage, team set (do NOT chase as an open seat):**
+**SE LOCKED — advanced stage, team set (do NOT chase as an open seat):**
 - **Vancouver JCC Redevelopment ($427M)** — **construction starts July 2026** → structural drawings are stamped and the SE was engaged 1–2 yrs ago. *Not open.* (My prior "hot open window" call here was wrong — a project entering construction cannot have an open SE seat.) Urban One / Eldad Goldfarb stay as relationship contacts for *future* JWest work, not this build.
 - **VGH West 12th ($400M)** — in **design development** → the SE is on the design team already. Not open.
 - **UBC Lower Mall Student Housing ($560M)** — **under construction.** Locked.
 - **Richmond Hospital Ph2** — Graham/HDR alliance selected. Pursue only via the Graham relationship.
 
-**⚪ Dormant / no near-term work:** District Northwest Towers (receivership) · NE False Creek (FIFA-staging delay) · Mission Waterfront (40-yr horizon) · Britannia (indefinite hold) · Annacis WWTP Ph2B (civil/industrial, out-of-lane).
+**Dormant / no near-term work:** District Northwest Towers (receivership) · NE False Creek (FIFA-staging delay) · Mission Waterfront (40-yr horizon) · Britannia (indefinite hold) · Annacis WWTP Ph2B (civil/industrial, out-of-lane).
 
 **The corrected hot list:** **Surrey Memorial (pre-RFP — position now) → Inglewood (team still forming) → Burnaby (watch the re-tender) → UBC Medicine One (early, long game).** Everything advanced-stage is locked regardless of whether we know the SE. *(Lesson baked in: the EV "open-seat" count overstates reality for advanced-stage rows — it means "SE unknown," not "available." The new live BC MPI provider carries PROJECT_STAGE, so future open-seat logic will be stage-gated automatically.)*
 
-## 📊 COVERAGE SCORECARD — can we actually reach the buyer?
+## COVERAGE SCORECARD — can we actually reach the buyer?
 **26 of the top 30 EV targets (87%) now have a named, emailable decision-maker on the team** — up from a baseline where the core public buyers (VSB, Richmond SD, VCH, PCL) had **zero** emailable contacts before this cycle. The 4 uncovered are the industrial/marine seats KOR doesn't pursue. This cycle's Apollo pass closed the building-sector gaps (District of Mission, ZGF, Baptist Housing). **Translation for Sales: every pursuit above is a phone call you can make Monday, not a name you still have to go find.**
 
-## 🏛️ PRIME CONSULTANT TARGETS — the architects who actually pick the SE
+## PRIME CONSULTANT TARGETS — the architects who actually pick the SE
 On most public buildings work the **architect is the Prime Consultant**: they assemble the team (structural engineer included) and submit one proposal, scored on the team's P.Eng depth + similar-project experience. **KOR wins the structural seat by being on the architect's team — before the RFP drops.** So these architects, ranked by how much active LM work they're assembling, are the **#1 BD channel — and KOR already has a client relationship with most of them.**
 
 | Prime architect | Active LM projects | ~$M | KOR relationship |
 |---|--:|--:|---|
-| **Chris Dikeakos** | 18 | 867 | ★ **CLIENT + 8 KOR projects** — warmest; deepen first |
-| **Ciccozzi Architecture** | 3 | 125 | ★ **CLIENT + 7 KOR projects** — very warm |
+| **Chris Dikeakos** | 18 | 867 | **CLIENT + 8 KOR projects** — warmest; deepen first |
+| **Ciccozzi Architecture** | 3 | 125 | **CLIENT + 7 KOR projects** — very warm |
 | Arcadis IBI Group | 7 | 4,646 | CLIENT (International Plaza + biggest $ pipeline) |
 | Revery Architecture | 7 | 1,197 | CLIENT |
 | GBL Architects | 9 | 252 | CLIENT (4 emailable) |
@@ -108,7 +108,7 @@ On most public buildings work the **architect is the Prime Consultant**: they as
 
 **The play:** **180 of the 730 open seats already name a Prime architect** — get on *those* teams now. The other 550 have no architect selected yet — even earlier; build standing relationships so KOR is the default structural call when the Prime assembles. **Deepen first: Chris Dikeakos + Ciccozzi (15 prior KOR projects between them), DIALOG (foot-in); pursue the big-$ Primes (Arcadis IBI, Revery, Parkin); convert hcma (16 contacts, no relationship yet).**
 
-## ⏱️ ADVANCING TO BID NOW (Procurement / Permitting stage — near-term)
+## ADVANCING TO BID NOW (Procurement / Permitting stage — near-term)
 The open seats closest to award — pursue these before the SE is locked:
 
 | $M | Project | Stage | Owner |
@@ -125,7 +125,7 @@ The open seats closest to award — pursue these before the SE is locked:
 
 *(The raw public-RFP feed for the Lower Mainland is currently dominated by non-structural municipal services — a data-sourcing gap flagged for the live-RFP ingest; the near-term structural pipeline above is the reliable signal.)*
 
-## 📇 WARM-PATH CALL SHEET (named, emailable today)
+## WARM-PATH CALL SHEET (named, emailable today)
 ✓ = verified / authoritative on-file (Hunter-validated or sourced as-is) · ~ = probable (pattern-inferred) · named-only = reach via office
 
 **General contractors (the open-seat way-in):**
@@ -168,7 +168,7 @@ The open seats closest to award — pursue these before the SE is locked:
 | **Cressey** (116) | Jason Turcotte | VP Development | jturcotte@cressey.com ~ |
 | **Townline** (36) | Rick Ilich / Kevin Brennan | CEO / VP Construction | rick.ilich@townline.com ✓ · kevin.brennan@townline.com ✓ |
 
-## 📞 BUYER-SIDE CALL SHEET — the people who actually select the SE
+## BUYER-SIDE CALL SHEET — the people who actually select the SE
 The owner's capital-projects / facilities leaders — the decision-makers *behind* the open seats (and the ones who run the SMP seismic + capital programs). **This is the layer that turns the pipeline into phone calls.**
 *Emails below are Apollo-sourced corporate firm-pattern addresses (`~`) — high-probability but **not** Hunter-verified; verify before first send.*
 
@@ -196,14 +196,14 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 
 **Tie-in to the marquee seats:** Richmond Hospital → **Richard Gage (VCH)** + GC Graham; Burnaby Hospital → **Juan Martinez (PHSA)** + GC PCL; the SMP school seismic work → **Kris Wilkins (Richmond)** + **Dave Riley (Surrey)**. The buyer, the Prime, and the GC for each top seat are now all named.
 
-**☎ Direct dials** (Apollo-verified mobiles — ready to call today):
+**Direct dials** (Apollo-verified mobiles — ready to call today):
 - **Buyer side:** Richard Gage / VCH **778-872-2087** · Betina Albornoz / Fraser Health **604-364-5730** · Denise Brown / UBC **604-638-3374** · Dave Riley / Surrey SD **778-772-2287** · Jenny Tough / District of Mission **604-378-2948**
 - **Primes:** Munir Macci / Parkin **416-420-1789** · Peter Odegaard / Musson Cattell **604-687-2990** · Jerry Foster / ZGF **202-257-2464**
 - **JCC of Greater Vancouver** (current build's SE is locked — these are for *future* JWest Phase-2 / next projects): Eldad Goldfarb (Exec Director) **604-617-0609** · Betty Hum (Dir Development) **604-782-4317**
 
-**☎ Main switchboards** (ask for the named contact): PHSA 604-675-7400 · SFU 778-782-3111 · Richmond SD 604-668-6000 · Vancouver SB 604-713-5520 · BC Housing 604-433-1711. *(Direct dials for Anita Leonoff/Arcadis, Lee Holland/Graham, Juan Martinez/PHSA not in Apollo — reach via firm.)*
+**Main switchboards** (ask for the named contact): PHSA 604-675-7400 · SFU 778-782-3111 · Richmond SD 604-668-6000 · Vancouver SB 604-713-5520 · BC Housing 604-433-1711. *(Direct dials for Anita Leonoff/Arcadis, Lee Holland/Graham, Juan Martinez/PHSA not in Apollo — reach via firm.)*
 
-## 💰 CROSS-SELL — your own clients' active projects you're NOT on
+## CROSS-SELL — your own clients' active projects you're NOT on
 The warmest gigs in the book — you've already proven the relationship:
 
 | KOR client | Projects together | Active LM projects KOR isn't on | Call |
@@ -214,10 +214,10 @@ The warmest gigs in the book — you've already proven the relationship:
 | Cressey Development | 116 | 4 | principal-to-principal |
 | Bosa Development | 78 | 4 | principal-to-principal |
 
-## 🏚️ SEISMIC — KOR's specialty lane (lead with what KOR wins)
+## SEISMIC — KOR's specialty lane (lead with what KOR wins)
 BC is Canada's seismic frontier and the Lower Mainland holds **$9.3B of seismic projects, ~99% with no SE committed.** KOR's *verified, winnable* seismic fit is **heritage/commercial upgrades + high-importance post-disaster structures** (fire halls, EOCs, hospital-adjacent) — backed by named credits (564 Beatty, ICBC Lonsdale Quay, Simone PBSD), CSA A23.3 Cl.21 code depth, and IEF Cat 3/4 fluency. **Pursue those now.** The K-12 SMP schools are the *build-toward* (KOR has no school credit yet — team for a first reference). Lead the heritage/high-importance pursuits; manage the founder EGBC-seismic disclosure proactively. *(Full picture: BC Seismic Dossier + KOR Credential Evidence Base.)*
 
-## ⚔️ COMPETITION'S CURRENT PLAYS — what the rivals are doing *right now*
+## COMPETITION'S CURRENT PLAYS — what the rivals are doing *right now*
 Mined live from the held SE seats in the region: each rival's active load, the lane they're actually winning, their biggest live gig, the architect they're locked to, and KOR's way in.
 
 | Competitor | Active seats / $M | Current lane (what they're winning) | Biggest live gig | Locked to | KOR's pry-in |
@@ -240,7 +240,7 @@ Mined live from the held SE seats in the region: each rival's active load, the l
 
 **The sharpened read:** the institutional/healthcare megaprojects are **incumbent fortresses** — Bush Bohlman in health, RJC in civic/institutional. KOR's two *realistic* lanes are **(1) developer-residential**, where the seat is won on **relationship** (KOR's client base: Anthem/Wesgroup/Reliance/Bosa) not incumbency, against Glotman/WHM; and **(2) heritage + high-importance seismic**, KOR's verified strength, where only RJC competes. **Don't burn pursuit budget fighting Bush Bohlman for hospitals — that explains why the verified-open hospital seats (Burnaby/Surrey Memorial/VGH) are *watch*, not *chase*.**
 
-## 📁 STRATEGIC ACCOUNT ONE-PAGERS — the relationships that recur across the pipeline
+## STRATEGIC ACCOUNT ONE-PAGERS — the relationships that recur across the pipeline
 The handful of accounts that appear again and again above. Work these and you work most of the list.
 *Validated against KOR's Deltek pursuit record: KOR has **zero pure-loss client relationships** — it loses individual pursuits, never whole clients — and its deep repeat clients convert **~85–95%** (Wesgroup 78 won / 6 lost, Intracorp 45 / 3, Ledingham McAllister 40 / 2). That's the measured basis for weighting the pipeline toward relationship-rich seats.*
 
@@ -265,7 +265,7 @@ Contacts: **Mark Kopinya** (SVP Development) · Rob Blackwell (EVP Development).
 **NSDA Architects** — *Architect/Prime · Deltek client · **28 KOR projects (7 lost)** · on 2 open LM seats*
 A top-tier KOR relationship that was hiding in plain sight — **28 shared projects**, more than most of the named Primes above — surfaced from the Deltek pursuit record. Also KOR's **highest loss count (7)**, so there's real leakage to plug. Contacts: **Ken Wong** (Principal) ✓ · Brian Dust ✓ · Peter Fodor ✓ (kwong/bdust/pfodor@nsda.bc.ca). **Next play:** treat NSDA as a core architect account — deepen with Ken Wong, and diagnose the 7 losses (are they defaulting to another SE on certain building types?).
 
-## 📊 Market context (consolidated, for grounding)
+## Market context (consolidated, for grounding)
 **782 active LM projects, ~$75.8B, 281 owners, 120 architects.** Top owners: VSB (86), Richmond SD (40), Fraser Health (20), Surrey SD (18), UBC (16), City of Vancouver (15), VCH (14), SFU (12). Top architects to get on: Chris Dikeakos (15, warm), GBL (8), Revery (7), Arcadis IBI (6, client), DIALOG (6, foot-in), Perkins+Will (6), hcma (5).
 **Sub-markets** (full dossiers): Seismic (above), Mass Timber (Fast+Epp-dominated, code-opened mid-market), Modular/prefab ($475M BC modular-schools, all SE-open).
 
