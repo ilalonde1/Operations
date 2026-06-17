@@ -54,7 +54,7 @@ The sales pipeline, ranked by **EV = est. structural fee × win-probability** (w
 | 8 | **UBC Medicine precinct** (Medicine One) | 6.8 | 32 | **2.2** | Capital Plan | Owner UBC → **Denise Brown** (Dir Capital Planning) |
 | 9 | **District Northwest Towers** | 5.0 | 40 | **2.0** | Procurement | Arch Arcadis IBI → **Anita Leonoff** (owner Thind) |
 | 10 | **UBC Student Housing** (Lower Mall Precinct) | 5.6 | 32 | **1.8** | Permitting | Owner UBC → **Denise Brown** |
-| 11 | **Vancouver JCC Redevelopment** | 4.3 | 40 | **1.7** | Permitting | GC Urban One Builders (KOR client) |
+| 11 | **Vancouver JCC Redevelopment** | 4.3 | 40 | **1.7** | Permitting | Owner JCC → **Eldad Goldfarb** (Exec Dir) / **Betty Hum** (Dir Dev) ★new + GC Urban One (KOR client) |
 | 12 | **VGH West 12th Two-Tower Expansion** | 4.0 | 32 | **1.3** | Capital Plan | Arch Musson Cattell → **Peter Odegaard** |
 | 13 | **Inglewood Care Centre Redevelopment** | 5.0 | 25 | **1.3** | — | Arch ZGF → **Jerry Foster** (Principal) ★new |
 | 14 | **UBC Applied One** (Applied Science) | 3.9 | 32 | **1.2** | Capital Plan | Owner UBC → **Denise Brown** |
@@ -175,7 +175,12 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 
 **Tie-in to the marquee seats:** Richmond Hospital → **Richard Gage (VCH)** + GC Graham; Burnaby Hospital → **Juan Martinez (PHSA)** + GC PCL; the SMP school seismic work → **Kris Wilkins (Richmond)** + **Dave Riley (Surrey)**. The buyer, the Prime, and the GC for each top seat are now all named.
 
-**☎ Main switchboards** (ask for the named contact above; *direct dials require an Apollo phone-webhook — a small platform task, flagged for the build*): VCH 604-736-2033 · Fraser Health 1-877-935-5669 · PHSA 604-675-7400 · UBC 604-822-2211 · SFU 778-782-3111 · Richmond SD 604-668-6000 · Surrey Schools 604-592-4263 · Vancouver SB 604-713-5520 · BC Housing 604-433-1711 · District of Mission 604-820-3700.
+**☎ Direct dials** (Apollo-verified mobiles — ready to call today):
+- **Buyer side:** Richard Gage / VCH **778-872-2087** · Betina Albornoz / Fraser Health **604-364-5730** · Denise Brown / UBC **604-638-3374** · Dave Riley / Surrey SD **778-772-2287** · Jenny Tough / District of Mission **604-378-2948**
+- **Primes:** Munir Macci / Parkin **416-420-1789** · Peter Odegaard / Musson Cattell **604-687-2990** · Jerry Foster / ZGF **202-257-2464**
+- **JCC redevelopment ($427M):** Eldad Goldfarb (Exec Director) **604-617-0609** · Betty Hum (Dir Development) **604-782-4317**
+
+**☎ Main switchboards** (ask for the named contact): PHSA 604-675-7400 · SFU 778-782-3111 · Richmond SD 604-668-6000 · Vancouver SB 604-713-5520 · BC Housing 604-433-1711. *(Direct dials for Anita Leonoff/Arcadis, Lee Holland/Graham, Juan Martinez/PHSA not in Apollo — reach via firm.)*
 
 ## 💰 CROSS-SELL — your own clients' active projects you're NOT on
 The warmest gigs in the book — you've already proven the relationship:
