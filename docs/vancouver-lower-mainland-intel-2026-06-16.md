@@ -38,6 +38,7 @@ Structural fee ≈ 1.0% of construction value. Three tiers, least-to-most defens
 **1,154 active Lower Mainland major projects (live BC MPI feed + KOR graph). After excluding the 246 already in construction/built/on-hold and 273 with unknown status, 581 are genuinely early-stage with no SE on file — and 247 of those are where KOR has a warm path. The pursuable field is the 247, not the raw 1,100.** It's an early-stage field, but "open" is the warm 247, not a headline count.
 
 **By segment (the whole landscape):**
+
 | Segment | ~Projects | ~Value | Who owns it | KOR's fit |
 |---|--:|--:|---|---|
 | **Residential & mixed-use** | ~300 | ~$15B | private developers | **Natural fit — KOR's proven base** (Bosa/Anthem/Wesgroup/Reliance clients) |
@@ -54,6 +55,7 @@ Structural fee ≈ 1.0% of construction value. Three tiers, least-to-most defens
 **This is a *verified* list, not a raw ranking.** An automated EV ranking off the feed is only a candidate-*generator* — run blind it surfaces duplicates, distressed/cancelled projects, and seats whose stored stage is stale (a project reading "Capital Plan" that's actually alliance-locked). Every row below has cleared the gate: **in KOR's building lane, early enough that the SE seat is genuinely open, de-duplicated, and confirmed against a live source.** The full **247-warm** set is the universe to work through (each verified before it graduates here); these are the ones to act on now.
 
 **Verified-open, near-term — SE not yet selected:**
+
 | Pursuit | $M | Verified stage | Who to call |
 |---|--:|---|---|
 | **Surrey Memorial New Acute Care Tower** | 1,350 | Business-plan, **pre-RFP** (no team yet) | Fraser Health — **Betina Albornoz** |
@@ -61,6 +63,7 @@ Structural fee ≈ 1.0% of construction value. Three tiers, least-to-most defens
 | **UBC Medicine One** | 680 | Concept / TBD — long game | UBC — **Denise Brown** |
 
 **Warm-relationship plays — win on the relationship KOR already holds:**
+
 | Account | KOR history | Who to call |
 |---|---|---|
 | **Wesgroup** | 78 projects together | **Beau Jarvis** (CEO) |
@@ -131,6 +134,7 @@ The reliable timing signal is **stage** (verified), not dates. Of the 581 early-
 ✓ = verified (Apollo/Hunter-validated or authoritative on-file) · ~ = probable (pattern-inferred) · named-only = reach via office
 
 **General contractors (the open-seat way-in):**
+
 | Firm | Who to call | Title | Email |
 |---|---|---|---|
 | **Graham** (KOR client) | Lee Holland | VP, Buildings — BC | lee.holland@graham.ca ✓ |
@@ -140,6 +144,7 @@ The reliable timing signal is **stage** (verified), not dates. Of the 581 early-
 | | Jeff Murphy / Sean Hamelin | SVP / RVP — BC Region | named; via PCL Westcoast (Richmond) |
 
 **Architects — the Prime call sheet (every top LM Prime now has a named decision-maker):**
+
 | Prime (KOR relationship) | Who to call | Title | Email |
 |---|---|---|---|
 | **Arcadis IBI** (client · $4.6B pipeline) | Anita Leonoff | Director, Vancouver Office Lead | anita.leonoff@ibigroup.com ~ |
@@ -161,6 +166,7 @@ The reliable timing signal is **stage** (verified), not dates. Of the 581 early-
 | **Parkin** (Burnaby Hosp. · $1.73B) | Munir Macci | Vice President | macci@parkin.ca ✓ |
 
 **Developers (cross-sell + warm pursuits):**
+
 | Firm (prj together) | Who to call | Title | Email |
 |---|---|---|---|
 | **Concord Pacific** (NE False Creek) | Grant Murray | SVP | grant.murray@concordpacific.com ✓ |
@@ -174,6 +180,7 @@ The reliable timing signal is **stage** (verified), not dates. Of the 581 early-
 The owner's capital-projects / facilities leaders — the decision-makers *behind* the open seats (and the ones who run the SMP seismic + capital programs). **This is the layer that turns the pipeline into phone calls.**
 
 **Health authorities (the ~$13B hospital pipeline — Richmond/Burnaby/VGH):**
+
 | Owner | Decision-maker | Title | Email |
 |---|---|---|---|
 | Vancouver Coastal Health | **Richard Gage** | Exec Director & Chief Project Officer, Capital Planning | richard.gage@vch.ca ✓ |
@@ -182,6 +189,7 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 | Provincial Health Services (PHSA) | Juan Martinez / Gina Pisoni | Sr Directors, Capital Projects | juan.martinez@phsa.ca ✓ · gina.pisoni@phsa.ca ✓ |
 
 **School districts (the SMP seismic + school-capital pipeline):**
+
 | Owner | Decision-maker | Title | Email |
 |---|---|---|---|
 | Richmond SD (SD38) | **Kris Wilkins** | Director, Facilities Services | kwilkins@sd38.bc.ca ✓ |
@@ -189,6 +197,7 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 | Vancouver SB (SD39) | Arthur Mak | Project Manager, Capital | amak@vsb.bc.ca ✓ |
 
 **Post-secondary & housing:**
+
 | Owner | Decision-maker | Title | Email |
 |---|---|---|---|
 | UBC | Denise Brown / Natalie Walliser | Dir Capital Planning / Dir Facilities Planning | denise.brown@ubc.ca · natalie.walliser@ubc.ca ✓ |
