@@ -303,14 +303,18 @@ WHERE  Id = @id;";
         // into Notes alongside the original RetiredReason so the data itself
         // records why a retired org came back.
         const string sql = @"
+DECLARE @unretired table (Id bigint, WasRetired datetimeoffset2(7));
+
 UPDATE opportunities.CanonicalOrg
 SET RetiredAtUtc = NULL,
     RetiredReason = NULL,
     Notes = COALESCE(Notes + NCHAR(13) + NCHAR(10), N'')
             + N'[Unretired ' + CONVERT(nvarchar(33), sysdatetimeoffset(), 127) + N': ' + COALESCE(@reason, N'(unspecified)')
             + N'; was retired: ' + COALESCE(RetiredReason, N'(no reason)') + N']'
-OUTPUT INSERTED.Id, DELETED.RetiredAtUtc
-WHERE Id = @id AND RetiredAtUtc IS NOT NULL;";
+OUTPUT INSERTED.Id, DELETED.RetiredAtUtc INTO @unretired
+WHERE Id = @id AND RetiredAtUtc IS NOT NULL;
+
+SELECT Id, WasRetired FROM @unretired;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
