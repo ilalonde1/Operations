@@ -99,14 +99,14 @@ try {
     $t.TopPadding = 2; $t.BottomPadding = 2; $t.LeftPadding = 5; $t.RightPadding = 5
   }
 
-  # page break before each major section (Heading 2) — set per-paragraph (reliable);
-  # skip the very first heading so we don't open with a blank page.
-  $firstH2seen = $false
+  # page break before EVERY major section (Heading 2) so each starts its own page,
+  # and before the Table of Contents so it gets its own page after the title block.
+  $tocBroken = $false
   foreach ($para in $doc.Paragraphs) {
     try {
-      if ($para.Style.NameLocal -eq "Heading 2") {
-        if ($firstH2seen) { $para.Format.PageBreakBefore = $true } else { $firstH2seen = $true }
-      }
+      $sn = $para.Style.NameLocal
+      if ($sn -eq "Heading 2") { $para.Format.PageBreakBefore = $true }
+      elseif (-not $tocBroken -and $sn -like "TOC*") { $para.Format.PageBreakBefore = $true; $tocBroken = $true }
     } catch {}
   }
 
