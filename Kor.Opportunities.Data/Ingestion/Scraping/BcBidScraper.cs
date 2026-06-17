@@ -26,7 +26,8 @@ namespace Kor.Opportunities.Data.Ingestion.Scraping;
 public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, IOpportunityProvider
 {
     private const int DefaultMaxPages = 10;       // 15 rows/page  10 = 150 max
-    private const int PageWaitTimeoutMs = 30_000;
+    private const int PageWaitTimeoutMs = 60_000;
+    private const int LoginMaxAttempts = 3;
     private const string LoginEntryUrl = "https://bcbid.gov.bc.ca/page.aspx/en/buy/homepage";
     internal const string KeywordConfigKey = "bcbid.keyword";
     internal const string KeywordInputSelector = "input[aria-label='Keyword(s)']";
@@ -273,9 +274,8 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
     /// <summary>
     /// Reads the header row of the table hosting the rfp rows and maps each
     /// expected column by header text (case/whitespace tolerant). Missing
-    /// expected headers FAIL the scrape run loudly — silently reading the
-    /// wrong column is never acceptable. Returns the ordinal fallback (with a
-    /// warning) only when no header row can be located at all.
+    /// expected headers fall back to the verified ordinal layout with a
+    /// warning; abort only when the grid has no usable rows at all.
     /// </summary>
     private async Task<BcBidColumnMap> ResolveColumnMapAsync(IPage page)
     {
@@ -283,8 +283,7 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         if (firstRow is null)
         {
             // Caller already waited for rows; defensive only.
-            _logger.LogWarning("BC Bid column mapping: no rfp rows found; using ordinal fallback.");
-            return BcBidColumnMap.OrdinalFallback;
+            throw new InvalidOperationException("BC Bid results-grid header mapping failed: no usable rfp rows found.");
         }
 
         var headerCells = await firstRow.QuerySelectorAllAsync("xpath=ancestor::table[1]/thead//th").ConfigureAwait(false);
@@ -295,6 +294,12 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
 
         if (headerCells.Count == 0)
         {
+            if (!await HasUsableRowsAsync(page, BcBidColumnMap.OrdinalFallback.MinimumCellCount).ConfigureAwait(false))
+            {
+                throw new InvalidOperationException(
+                    "BC Bid results-grid header mapping failed: no usable rows found for the verified ordinal layout.");
+            }
+
             _logger.LogWarning(
                 "BC Bid column mapping: no header row located in the results grid; " +
                 "falling back to the verified ordinal layout (status=0, id=1, title=2, commodities=3, type=4, issued=5, closing=6, buyer=10).");
@@ -352,18 +357,47 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
 
         if (missing.Count > 0)
         {
-            var message =
-                $"BC Bid results-grid header mapping failed: expected column(s) [{string.Join(", ", missing)}] " +
-                $"not found among rendered headers [{string.Join(" | ", headers)}]. " +
-                "The Ivalua grid layout has changed — refusing to scrape by ordinal position.";
-            _logger.LogError("{Message}", message);
-            throw new InvalidOperationException(message);
+            _logger.LogWarning(
+                "BC Bid results-grid header mapping missing expected column(s) [{Missing}] among rendered headers [{Headers}]; falling back to the verified ordinal layout for missing columns.",
+                string.Join(", ", missing),
+                string.Join(" | ", headers));
+        }
+
+        status = status < 0 ? BcBidColumnMap.OrdinalFallback.Status : status;
+        externalRef = externalRef < 0 ? BcBidColumnMap.OrdinalFallback.ExternalRef : externalRef;
+        title = title < 0 ? BcBidColumnMap.OrdinalFallback.Title : title;
+        commodities = commodities < 0 ? BcBidColumnMap.OrdinalFallback.Commodities : commodities;
+        solicitationType = solicitationType < 0 ? BcBidColumnMap.OrdinalFallback.SolicitationType : solicitationType;
+        issueDate = issueDate < 0 ? BcBidColumnMap.OrdinalFallback.IssueDate : issueDate;
+        closingDate = closingDate < 0 ? BcBidColumnMap.OrdinalFallback.ClosingDate : closingDate;
+        buyer = buyer < 0 ? BcBidColumnMap.OrdinalFallback.Buyer : buyer;
+
+        var columnMap = new BcBidColumnMap(status, externalRef, title, commodities, solicitationType, issueDate, closingDate, buyer);
+        if (!await HasUsableRowsAsync(page, columnMap.MinimumCellCount).ConfigureAwait(false))
+        {
+            throw new InvalidOperationException(
+                "BC Bid results-grid header mapping failed: no usable rows found for the resolved column layout.");
         }
 
         _logger.LogInformation(
             "BC Bid column mapping resolved from headers: status={Status}, id={Id}, title={Title}, commodities={Commodities}, type={Type}, issued={Issued}, closing={Closing}, buyer={Buyer}.",
             status, externalRef, title, commodities, solicitationType, issueDate, closingDate, buyer);
-        return new BcBidColumnMap(status, externalRef, title, commodities, solicitationType, issueDate, closingDate, buyer);
+        return columnMap;
+    }
+
+    private static async Task<bool> HasUsableRowsAsync(IPage page, int minimumCellCount)
+    {
+        var rows = await page.QuerySelectorAllAsync("tr[data-object-type='rfp']").ConfigureAwait(false);
+        foreach (var row in rows)
+        {
+            var cells = await row.QuerySelectorAllAsync(":scope > td").ConfigureAwait(false);
+            if (cells.Count >= minimumCellCount)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string NormalizeHeaderText(string text)
@@ -515,68 +549,25 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
 
         try
         {
-            await page.GotoAsync(LoginEntryUrl, new PageGotoOptions
+            for (var attempt = 1; attempt <= LoginMaxAttempts; attempt++)
             {
-                WaitUntil = WaitUntilState.NetworkIdle,
-                Timeout = PageWaitTimeoutMs,
-            }).ConfigureAwait(false);
-
-            // Click the "Login" link in the top nav. BCeID redirect follows.
-            await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
-            {
-                Name = "Login",
-                Exact = true,
-            }).First.ClickAsync(new LocatorClickOptions
-            {
-                Timeout = PageWaitTimeoutMs,
-            }).ConfigureAwait(false);
-
-            // Step 2: BC Bid shows an intermediate "Login to BC Bid" page with
-            // two options — "Login with a Business or Basic BCeID" (for
-            // suppliers, our path) and "Login with IDIR" (for ministry users).
-            // Click the BCeID one. Regex match on "Business...BCeID" is robust
-            // against minor copy changes.
-            await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
-            {
-                NameRegex = new System.Text.RegularExpressions.Regex(
-                    @"Business\s+or\s+Basic\s+BCeID",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase),
-            }).First.ClickAsync(new LocatorClickOptions
-            {
-                Timeout = PageWaitTimeoutMs,
-            }).ConfigureAwait(false);
-
-            // Step 3: Now wait for BCeID logon gateway redirect.
-            await page.WaitForURLAsync(
-                url => url.Contains("logon.gov.bc.ca", StringComparison.OrdinalIgnoreCase)
-                    || url.Contains("bceid", StringComparison.OrdinalIgnoreCase),
-                new PageWaitForURLOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
-
-            // BCeID's logon page (sfs7.gov.bc.ca) doesn't use <label for> — labels
-            // are bare text divs. Type-based selectors are unambiguous on this
-            // form (one visible text input + one password input). The first
-            // text input is auto-focused on page load.
-            await page.Locator("input[type='text']:visible")
-                .First.FillAsync(_credentials.Username, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
-                .ConfigureAwait(false);
-            await page.Locator("input[type='password']:visible")
-                .First.FillAsync(_credentials.Password, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
-                .ConfigureAwait(false);
-
-            // Submit.
-            await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions
-            {
-                Name = "Continue",
-            }).First.ClickAsync(new LocatorClickOptions
-            {
-                Timeout = PageWaitTimeoutMs,
-            }).ConfigureAwait(false);
-
-            // Wait for redirect back to bcbid.gov.bc.ca (authenticated landing).
-            await page.WaitForURLAsync(
-                url => url.Contains("bcbid.gov.bc.ca", StringComparison.OrdinalIgnoreCase)
-                    && !url.Contains("logon", StringComparison.OrdinalIgnoreCase),
-                new PageWaitForURLOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+                try
+                {
+                    await RunLoginAttemptAsync(page).ConfigureAwait(false);
+                    break;
+                }
+                catch (Exception ex) when (IsRetryableLoginException(ex) && attempt < LoginMaxAttempts)
+                {
+                    var delay = TimeSpan.FromSeconds(attempt * 2);
+                    _logger.LogWarning(
+                        ex,
+                        "BC Bid login attempt {Attempt}/{MaxAttempts} failed with a transient navigation error; retrying in {DelaySeconds} seconds.",
+                        attempt,
+                        LoginMaxAttempts,
+                        delay.TotalSeconds);
+                    await Task.Delay(delay, ct).ConfigureAwait(false);
+                }
+            }
 
             // Brief network-idle wait so any post-login redirects / cookie sets complete.
             try
@@ -627,6 +618,75 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
             throw new InvalidOperationException("BC Bid login failed: " + ex.Message, ex);
         }
     }
+
+    private async Task RunLoginAttemptAsync(IPage page)
+    {
+        await page.GotoAsync(LoginEntryUrl, new PageGotoOptions
+        {
+            WaitUntil = WaitUntilState.NetworkIdle,
+            Timeout = PageWaitTimeoutMs,
+        }).ConfigureAwait(false);
+
+        // Click the "Login" link in the top nav. BCeID redirect follows.
+        await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
+        {
+            Name = "Login",
+            Exact = true,
+        }).First.ClickAsync(new LocatorClickOptions
+        {
+            Timeout = PageWaitTimeoutMs,
+        }).ConfigureAwait(false);
+
+        // Step 2: BC Bid shows an intermediate "Login to BC Bid" page with
+        // two options — "Login with a Business or Basic BCeID" (for
+        // suppliers, our path) and "Login with IDIR" (for ministry users).
+        // Click the BCeID one. Regex match on "Business...BCeID" is robust
+        // against minor copy changes.
+        await page.GetByRole(AriaRole.Link, new PageGetByRoleOptions
+        {
+            NameRegex = new System.Text.RegularExpressions.Regex(
+                @"Business\s+or\s+Basic\s+BCeID",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase),
+        }).First.ClickAsync(new LocatorClickOptions
+        {
+            Timeout = PageWaitTimeoutMs,
+        }).ConfigureAwait(false);
+
+        // Step 3: Now wait for BCeID logon gateway redirect.
+        await page.WaitForURLAsync(
+            url => url.Contains("logon.gov.bc.ca", StringComparison.OrdinalIgnoreCase)
+                || url.Contains("bceid", StringComparison.OrdinalIgnoreCase),
+            new PageWaitForURLOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+
+        // BCeID's logon page (sfs7.gov.bc.ca) doesn't use <label for> — labels
+        // are bare text divs. Type-based selectors are unambiguous on this
+        // form (one visible text input + one password input). The first
+        // text input is auto-focused on page load.
+        await page.Locator("input[type='text']:visible")
+            .First.FillAsync(_credentials.Username, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
+            .ConfigureAwait(false);
+        await page.Locator("input[type='password']:visible")
+            .First.FillAsync(_credentials.Password, new LocatorFillOptions { Timeout = PageWaitTimeoutMs })
+            .ConfigureAwait(false);
+
+        // Submit.
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions
+        {
+            Name = "Continue",
+        }).First.ClickAsync(new LocatorClickOptions
+        {
+            Timeout = PageWaitTimeoutMs,
+        }).ConfigureAwait(false);
+
+        // Wait for redirect back to bcbid.gov.bc.ca (authenticated landing).
+        await page.WaitForURLAsync(
+            url => url.Contains("bcbid.gov.bc.ca", StringComparison.OrdinalIgnoreCase)
+                && !url.Contains("logon", StringComparison.OrdinalIgnoreCase),
+            new PageWaitForURLOptions { Timeout = PageWaitTimeoutMs }).ConfigureAwait(false);
+    }
+
+    private static bool IsRetryableLoginException(Exception ex) =>
+        ex is TimeoutException or PlaywrightException;
 
     private static DateTimeOffset? ParseBcBidDate(string raw)
     {
