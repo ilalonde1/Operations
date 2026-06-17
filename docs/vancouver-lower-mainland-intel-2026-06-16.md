@@ -90,7 +90,7 @@ The open seats closest to award — pursue these before the SE is locked:
 | **Graham** (KOR client) | Lee Holland | VP, Buildings — BC | lee.holland@graham.ca ✓ |
 | | Jordan Hood | DM, Buildings — BC | jordan.hood@graham.ca ✓ |
 | | Tyler Johnston-Watson | DM, Infrastructure — BC | tylerj@graham.ca ✓ |
-| **PCL** | **Fausto Segovia** | **Director of Preconstruction** | **fsegovia@pcl.com ✓** *(best bid-entry contact)* |
+| **PCL** | Fausto Segovia · Jon Keaney · Ray Mollett | Directors of Preconstruction | fsegovia@pcl.com · jkeaney@pcl.com · rmollett@pcl.com ✓ *(bid-entry)* |
 | | Jeff Murphy / Sean Hamelin | SVP / RVP — BC Region | named; via PCL Westcoast (Richmond) |
 
 **Architects (get on the Prime team):**
@@ -111,6 +111,33 @@ The open seats closest to award — pursue these before the SE is locked:
 | **Reliance** (82) | Jon Stovell / Joanna Kwan | CEO / Dir Development | jons@relianceproperties.ca ✓ · joannak@relianceproperties.ca ✓ |
 | **Cressey** (116) | Jason Turcotte | VP Development | jturcotte@cressey.com ~ |
 | **Townline** (36) | Rick Ilich / Kevin Brennan | CEO / VP Construction | rick.ilich@townline.com ✓ · kevin.brennan@townline.com ✓ |
+
+## 📞 BUYER-SIDE CALL SHEET — the people who actually select the SE
+The owner's capital-projects / facilities leaders — the decision-makers *behind* the open seats (and the ones who run the SMP seismic + capital programs). Apollo-sourced, emailable. **This is the layer that turns the pipeline into phone calls.**
+
+**Health authorities (the ~$13B hospital pipeline — Richmond/Burnaby/VGH):**
+| Owner | Decision-maker | Title | Email |
+|---|---|---|---|
+| Vancouver Coastal Health | **Richard Gage** | Exec Director & Chief Project Officer, Capital Planning | richard.gage@vch.ca |
+| | Belinda Graham / Susan Luckey | Sr Dir / Dir, Capital Projects | belinda.graham@vch.ca · susan.luckey@vch.ca |
+| Fraser Health | **Betina Albornoz** | Chief Project Officer & Exec Dir, Major Capital | betina.albornoz@fraserhealth.ca |
+| Provincial Health Services (PHSA) | Juan Martinez / Gina Pisoni | Sr Directors, Capital Projects | juan.martinez@phsa.ca · gina.pisoni@phsa.ca |
+
+**School districts (the SMP seismic + school-capital pipeline):**
+| Owner | Decision-maker | Title | Email |
+|---|---|---|---|
+| Richmond SD (SD38) | **Kris Wilkins** | Director, Facilities Services | kwilkins@sd38.bc.ca |
+| Surrey Schools (SD36) | **Dave Riley** | Director, Capital Projects Office | riley_d@surreyschools.ca |
+| Vancouver SB (SD39) | Arthur Mak | Project Manager, Capital | amak@vsb.bc.ca |
+
+**Post-secondary & housing:**
+| Owner | Decision-maker | Title | Email |
+|---|---|---|---|
+| UBC | Denise Brown / Natalie Walliser | Dir Capital Planning / Dir Facilities Planning | denise.brown@ubc.ca · natalie.walliser@ubc.ca |
+| SFU | Sam Dahabieh / Shelley Rid | Dir Facilities / Assoc Dir Facilities & Capital | dahabieh@sfu.ca · shelley_rid@sfu.ca |
+| BC Housing | Rani Hayden / Aidan McGrath | Project Managers | rhayden@bchousing.org · amcgrath@bchousing.org |
+
+**Tie-in to the marquee seats:** Richmond Hospital → **Richard Gage (VCH)** + GC Graham; Burnaby Hospital → **Juan Martinez (PHSA)** + GC PCL; the SMP school seismic work → **Kris Wilkins (Richmond)** + **Dave Riley (Surrey)**. The buyer, the Prime, and the GC for each top seat are now all named.
 
 ## 💰 CROSS-SELL — your own clients' active projects you're NOT on
 The warmest gigs in the book — you've already proven the relationship:
