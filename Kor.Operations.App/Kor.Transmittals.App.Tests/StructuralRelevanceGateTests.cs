@@ -39,6 +39,35 @@ public sealed class StructuralRelevanceGateTests
         Assert.Null(decision.RejectReason);
     }
 
+    [Theory]
+    [InlineData("Red Chris Mine Expansion")]
+    [InlineData("Cedar LNG")]
+    [InlineData("Kitimat Clean Oil Refinery")]
+    [InlineData("Prince Rupert Gas Transmission Project")]
+    [InlineData("Baptiste Nickel Project")]
+    [InlineData("Iona Island Wastewater Treatment Plant Upgrades")]
+    [InlineData("Tilbury Phase 2 LNG expansion project")]
+    public void Evaluate_WhenResourceEnergyOrHeavyIndustrial_ReturnsReject(string title)
+    {
+        var decision = StructuralRelevanceGate.Evaluate(title, null, null);
+
+        Assert.False(decision.Keep);
+        Assert.StartsWith("out-of-lane: ", decision.RejectReason);
+    }
+
+    [Theory]
+    [InlineData("Langley Memorial Hospital New South Patient Tower")]
+    [InlineData("Inglewood Care Centre")]
+    [InlineData("Surrey Memorial New Acute Care Tower")]
+    [InlineData("Anglemont Fire Hall Rebuild")]
+    public void Evaluate_WhenBuildingTitleContainsAlwaysIrrelevantSubstring_ReturnsKeep(string title)
+    {
+        var decision = StructuralRelevanceGate.Evaluate(title, null, null);
+
+        Assert.True(decision.Keep);
+        Assert.Null(decision.RejectReason);
+    }
+
     [Fact]
     public void Evaluate_WhenAuditServices_ReturnsRejectForAuditToken()
     {

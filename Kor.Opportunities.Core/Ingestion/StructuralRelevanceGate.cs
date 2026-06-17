@@ -248,6 +248,20 @@ public static class StructuralRelevanceGate
         "pulp mill",
         "sawmill",
         "biocoal",
+        "biofuel",
+        "biocarbon",
+        "biomass",
+        "aggregate",
+        "quarry",
+        "gravel pit",
+        "lpg",
+        "liquefied petroleum",
+        "petroleum",
+        "energy export",
+        "export terminal",
+        "export facility",
+        "grinding facility",
+        "lime project",
     };
 
     private static readonly string[] ProfessionalSignals =
