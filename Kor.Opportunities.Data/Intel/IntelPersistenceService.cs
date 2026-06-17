@@ -240,7 +240,7 @@ FROM @actions;";
             AddCommonParameters(cmd, ctx, draft.Confidence, naturalKey);
             cmd.Parameters.Add("@displayName", SqlDbType.NVarChar, 200).Value = FirstN(draft.DisplayName, 200);
             cmd.Parameters.Add("@normalizedName", SqlDbType.NVarChar, 200).Value = FirstN(normalizedName, 200);
-            AddNullableString(cmd, "@email", SqlDbType.NVarChar, 200, draft.Email);
+            AddNullableString(cmd, "@email", SqlDbType.NVarChar, 200, IntelEmail.Sanitize(draft.Email));
             AddNullableString(cmd, "@phone", SqlDbType.NVarChar, 50, draft.Phone);
             AddNullableString(cmd, "@linkedinUrl", SqlDbType.NVarChar, 500, draft.LinkedinUrl);
             AddNullableString(cmd, "@notes", SqlDbType.NVarChar, -1, draft.Notes);
