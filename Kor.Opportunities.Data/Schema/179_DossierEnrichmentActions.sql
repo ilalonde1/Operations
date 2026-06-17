@@ -19,8 +19,8 @@ DECLARE @now DATETIMEOFFSET = SYSDATETIMEOFFSET();
 
 /* 1. Nomodic */
 IF NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg WHERE NormalizedName = N'nomodic' OR DisplayName = N'Nomodic')
-  INSERT opportunities.CanonicalOrg (Kind, DisplayName, NormalizedName, Website, Notes, CreatedAtUtc, UpdatedAtUtc)
-  VALUES (N'Modular', N'Nomodic', N'nomodic', N'https://nomodic.com',
+  INSERT opportunities.CanonicalOrg (Kind, DisplayName, Website, Notes, CreatedAtUtc, UpdatedAtUtc)
+  VALUES (N'Modular', N'Nomodic', N'https://nomodic.com',
           N'Modular manufacturer / construction-manager (Calgary; ~500 BC units: Goodacre, Juniper, Atira, North Saanich) — modular dossier', @now, @now);
 
 /* 2. ROC Modular -> Modular kind */
