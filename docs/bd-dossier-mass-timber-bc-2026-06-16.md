@@ -1,5 +1,5 @@
 # Mass Timber / CLT — BC Market Intelligence Dossier
-*Prepared for KOR Structural — Business Development. Generated 2026-06-16.*
+*Prepared for KOR Structural — Business Development. Generated 2026-06-16; Okanagan/Interior (Kelowna) data points added 2026-06-17.*
 *Sources: KOR BD Brain (KorOpportunitiesDb, cleaned/deduplicated 2026-06-16) + verified web research. CONFIRMED items carry source URLs; [UNCERTAIN] flags unverified items. Accuracy-first — nothing fabricated.*
 
 ---
@@ -44,6 +44,8 @@ Region split: Lower Mainland 9, Okanagan/Interior 3, Vancouver Island 2, Norther
 | Bayview Elementary | Vancouver | School | 2 | 2023 | **Fast + Epp** | Francl | Vancouver School Board (SD39) |
 | Chief Leonard George Building | North Van | Housing | 9 | 2025 | **Fast + Epp** | GBL | BC Indigenous Housing Soc. |
 | FNHA Metro Vancouver HQ | North Van | Office | 6 | 2025 | **DIALOG** (integ.) | DIALOG | First Nations Health Authority |
+| The Exchange (760 Vaughan Ave) | **Kelowna** | Office | — | 2024 | **RJC Engineers** | — | Interior BC mass-timber office |
+| Capstone | **Kelowna** | Affordable housing | 9 | 2025 | **ROV Engineering** | — | BC Housing (122 units, ~$24M) |
 
 ### Under construction / in design
 
@@ -67,7 +69,8 @@ Region split: Lower Mainland 9, Okanagan/Interior 3, Vancouver Island 2, Norther
 - **Equilibrium Consulting** — pioneer (WIDC, UBC ESB); shifting to larger/international (Google MT1). Less visible in current BC pipeline.
 - **StructureCraft (Abbotsford)** — engineer-led specialty SE + fabricator (DowelLam/DLT). Comes in via GC/developer, not architect selection.
 - **Glotman Simpson** — upper-end hybrids (M5 25-storey, Earth Tower concept, UBC Pharma Sciences). Less active in mid-market civic/school.
-- **RJC Engineers** — broke in on UBC Gateway (CREE hybrid) — proof a national firm can win large institutional mass timber.
+- **RJC Engineers** — broke in on UBC Gateway (CREE hybrid) — proof a national firm can win large institutional mass timber; also delivered **The Exchange** mass-timber office in **Kelowna** (2024) from its Interior office — RJC is active in *interior* mass timber too.
+- **ROV Engineering (Kelowna)** — the local Interior high-rise + mass-timber specialist; SE of record on **Capstone** (9-storey mass-timber affordable housing, BC Housing, 2025). The Okanagan-local timber competitor to know — and a different firm from the coastal incumbents.
 - **DIALOG** — self-engineers its own timber buildings (FNHA HQ).
 - **WHM / Bush Bohlman** — [UNCERTAIN] not surfaced in mass-timber records externally, though KOR's graph shows **WHM on the Penticton Nexus** mass-timber project — a real Interior data point worth confirming.
 
