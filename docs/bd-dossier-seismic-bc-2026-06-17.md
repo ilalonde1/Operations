@@ -68,7 +68,7 @@ The graph's SE-links on seismic projects are sparse (most seats are unfilled), s
 
 ## 6. The play (credential-honest)
 1. **Lead with KOR's real seismic fit:** heritage/commercial upgrades (564 Beatty / Koret / 55 Water portfolio) + **high-importance post-disaster structures** (fire halls, EOCs, hospital-adjacent, IEF Cat 3/4) — where KOR's PBSD + code-committee depth genuinely differentiates and only RJC competes. This is the winnable seismic entry today.
-2. **Treat SMP schools as a build-toward**, not a land-grab. Earn the first reference by **teaming** on a school with a firm that has the credit; compile Bryson's full 80+ seismic list for SOQs. Don't pitch KOR as a school-seismic incumbent.
+2. **Treat SMP schools as a build-toward**, not a land-grab. Earn the first reference by **teaming** on a school with a firm that has the credit, and lead with KOR's named heritage-seismic flagship (**564 Beatty St**). Don't pitch KOR as a school-seismic incumbent.
 3. **Vancouver Island** — lead with the two verified-open anchors (**UVic McPherson Library, Cedar Elementary**) and the heritage/high-importance angle; out-position **Herold/Englobe** locally.
 4. **Manage the Bryson disclosure** proactively on any seismic-credibility-led pursuit.
 
