@@ -11,7 +11,7 @@ The Field Guide presents a *verified* shortlist, not a raw ranking — because t
 
 - **Fee model:** structural fee ≈ 1.0% of construction value; verified cost where available, else a flagged sector-median model (don't present the modeled values as bankable — they're order-of-magnitude).
 - **Win-probability weighting:** each warm-path fee × (relationship strength × ~69% base close rate). Relationship strength is tiered off warm-path depth — owner/architect/GC shared-project count from Deltek.
-- **SOM (~$142M)** is the win-prob-weighted expected capture across the 225 warm set. **$264M** is the un-weighted warm-serviceable. **$614M** is the whole-pipeline upper bound — context only, never a number to manage to. When anyone quotes "$614M," correct it to the warm $264M / expected $142M. *(All figures are post-dedup and post-gate-hardening — migrations 177 + the out-of-lane/hyphen/design gate fix.)*
+- **SOM (~$141M)** is the win-prob-weighted expected capture across the 222 warm set. **$261M** is the un-weighted warm-serviceable. **$611M** is the whole-pipeline upper bound — context only, never a number to manage to. When anyone quotes "$611M," correct it to the warm $261M / expected $141M. *(Figures are the 2026-06-17 snapshot; the nightly retirement job drifts the active count daily — regenerate from the integrity gate when the report is next needed.)* *(All figures are post-dedup and post-gate-hardening — migrations 177 + the out-of-lane/hyphen/design gate fix.)*
 - **The gate** (`tools/ReportIntegrityCheck.sql`) is what makes the shortlist trustworthy: in-lane + early-stage + de-duplicated + live-source-confirmed. Every region report must pass it before it ships.
 
 ## 2. COVERAGE SCORECARD — can we actually reach the buyer? (internal QA)

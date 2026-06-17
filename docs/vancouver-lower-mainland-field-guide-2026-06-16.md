@@ -1,6 +1,6 @@
 % Lower Mainland — BD Field Guide
 % KOR Structural — Business Development
-% 2026-06-16
+% 2026-06-17
 
 *The pursue-and-call guide for everyone doing BD: where the work is, who to team with, and who to phone Monday. Every figure reconciles to a live query (see the Data Integrity Check at the end); contacts are from KOR's own graph, verified where marked ✓.*
 
@@ -11,32 +11,32 @@ KOR's Lower Mainland opportunity as an honest **funnel** — "open" means *genui
 
 | Funnel | Count | What it means |
 |---|--:|---|
-| Active LM major projects | **1,105** | tracked live from BC's Major Projects Inventory + KOR's graph (de-duplicated) |
-| No SE on file | 1,052 | a **data-coverage** fact — for private projects the engineer is simply not disclosed in public sources; it does *not* mean the seat is available |
-| — excluded: in construction / built / on-hold | 247 | the SE was engaged long ago — **cannot** be pursued |
+| Active LM major projects | **867** | tracked live from BC's Major Projects Inventory + KOR's graph (de-duplicated; built/complete projects auto-retired nightly) |
+| No SE on file | 814 | a **data-coverage** fact — for private projects the engineer is simply not disclosed in public sources; it does *not* mean the seat is available |
+| — excluded: in construction / on-hold | 13 | the SE was engaged long ago — **cannot** be pursued |
 | — excluded: out-of-lane (civil / industrial / utility) | 37 | not KOR's building-structures lane |
 | — excluded: status unknown or design-stage | 264 | no usable stage, or the SE is already engaged |
-| **Genuinely early-stage, in-lane, no SE** | **504** | pre-team — a seat could still be open |
-| **+ KOR has a warm path** (owner, architect, or GC relationship) | **225** | **the realistic pursuit universe** |
+| **Genuinely early-stage, in-lane, no SE** | **500** | pre-team — a seat could still be open |
+| **+ KOR has a warm path** (owner, architect, or GC relationship) | **222** | **the realistic pursuit universe** |
 | Near-term, act this quarter | **~20** | the Pursue Shortlist below |
 
 KOR's record on what it actually chases: **177 won / 79 lost (~69%)**.
 
-**How the seat is won:** the architect is the Prime Consultant — they assemble the team (SE included) *before* the RFP. KOR wins by being on that team early. That is why the **225 warm-path projects — not the raw 1,052 — are the number that matters.**
+**How the seat is won:** the architect is the Prime Consultant — they assemble the team (SE included) *before* the RFP. KOR wins by being on that team early. That is why the **222 warm-path projects — not the raw 814 — are the number that matters.**
 
 ## THE NUMBER — KOR's fee opportunity, honestly bounded
 Structural fee ≈ 1.0% of construction value. Three tiers, least-to-most defensible:
 
 | Tier | Construction | ~Structural fee | What it is |
 |---|--:|--:|---|
-| Total addressable (upper bound) | ~$61B | ~$614M | *every* early-stage in-lane no-SE LM project — most KOR has no path to; **context only, not a target** |
-| **Warm-path serviceable** | **~$26B** | **~$264M** | the **225** projects where KOR holds a relationship on the team — the realistic field |
-| **Realistic expected (SOM)** | — | **~$142M** | expected value across the warm set: each fee × KOR's win-probability (relationship strength × ~69% close rate) |
+| Total addressable (upper bound) | ~$61B | ~$611M | *every* early-stage in-lane no-SE LM project — most KOR has no path to; **context only, not a target** |
+| **Warm-path serviceable** | **~$26B** | **~$261M** | the **222** projects where KOR holds a relationship on the team — the realistic field |
+| **Realistic expected (SOM)** | — | **~$141M** | expected value across the warm set: each fee × KOR's win-probability (relationship strength × ~69% close rate) |
 
-**The honest takeaway: ~$264M of structural fee sits behind relationships KOR already holds, of which ~$142M is the win-probability-weighted expected capture.** The ~$614M figure is an upper bound on the whole early pipeline — useful for context, **not** a number to manage to. *(Assumptions: 1.0% fee; values = verified cost where available, else a flagged sector-median model. Every figure reconciles to the integrity-check queries.)*
+**The honest takeaway: ~$261M of structural fee sits behind relationships KOR already holds, of which ~$141M is the win-probability-weighted expected capture.** The ~$611M figure is an upper bound on the whole early pipeline — useful for context, **not** a number to manage to. *(Assumptions: 1.0% fee; values = verified cost where available, else a flagged sector-median model. Every figure reconciles to the integrity-check queries.)*
 
 ## THE MARKET AT 10,000 FT (where KOR fits — and can fit)
-**1,105 active Lower Mainland major projects (de-duplicated). After excluding those in construction/built/on-hold, out-of-lane, and unknown-stage, 504 are genuinely early-stage and in-lane with no SE on file — and 225 of those are where KOR has a warm path. The pursuable field is the 225, not the raw 1,052.**
+**867 active Lower Mainland major projects (de-duplicated). After excluding those in construction/on-hold, out-of-lane, and unknown-stage, 500 are genuinely early-stage and in-lane with no SE on file — and 222 of those are where KOR has a warm path. The pursuable field is the 222, not the raw 814.**
 
 **By segment (the whole landscape):**
 
@@ -48,12 +48,12 @@ Structural fee ≈ 1.0% of construction value. Three tiers, least-to-most defens
 | **Healthcare** | ~47 | ~$13B | health authorities, Infrastructure BC | Warm-path fit (Graham/PCL/Parkin) — Richmond + Burnaby hospitals |
 | **Civic & institutional** | ~115 | ~$7B | municipalities | Open mid-market; seismic + recreation |
 
-**By stage (the 504 early-open):** ~155 procurement, ~144 capital-plan, ~95 proposed, ~73 permitting, ~24 concept. *(Segment $ splits are order-of-magnitude context; the bankable figures are the funnel + THE NUMBER, both query-reconciled.)*
+**By stage (the 500 early-open):** ~155 procurement, ~143 capital-plan, ~94 proposed, ~73 permitting, ~24 concept. *(Segment $ splits are order-of-magnitude context; the bankable figures are the funnel + THE NUMBER, both query-reconciled.)*
 
 **Where KOR fits today vs. can fit:** KOR's *proven* lane is **private residential/mixed-use high-rise** — the biggest segment, where KOR already holds the client relationships. KOR's *expansion* whitespace is **(1) seismic across education/civic**, **(2) healthcare + infrastructure via warm GC relationships** (Graham/PCL sit on ~$5.7B of it), and **(3) the open mid-market institutional** where incumbents aren't locked.
 
 ## PURSUE SHORTLIST — the verified targets to act on now
-**This is a *verified* list, not a raw ranking.** Every row has cleared the gate: **in KOR's building lane, early enough that the SE seat is genuinely open, de-duplicated, and confirmed against a live source.** The full **225-warm** set is the universe to work through; these are the ones to act on now.
+**This is a *verified* list, not a raw ranking.** Every row has cleared the gate: **in KOR's building lane, early enough that the SE seat is genuinely open, de-duplicated, and confirmed against a live source.** The full **222-warm** set is the universe to work through; these are the ones to act on now.
 
 **Verified-open, near-term — SE not yet selected:**
 
@@ -114,7 +114,7 @@ On most public buildings work the **architect is the Prime Consultant**: they as
 **The play:** deepen the warm-and-active first — **Chris Dikeakos (19 seats, 8 projects)** and **Studio One (13 shared projects, under-worked)**; chase the big-$ Prime **Arcadis IBI**; and convert **hcma** (5 pursuable seats, no KOR relationship yet, 18 contacts already on file).
 
 ## NEAR-TERM TIMING — what's closest to award
-The reliable timing signal is **stage** (verified), not dates. Of the 504 early-open seats:
+The reliable timing signal is **stage** (verified), not dates. Of the 500 early-open seats:
 
 | Stage | Seats | Read |
 |---|--:|---|
@@ -212,15 +212,16 @@ The warmest gigs in the book — KOR clients who *own* pursuable (stage-gated, e
 
 | KOR client | Shared projects | Pursuable seats they own KOR isn't on | ~$M | Call |
 |---|--:|--:|--:|---|
-| **Reliance Properties** | 82 | **5** | 227 | Jon Stovell / Joanna Kwan |
-| **Wesgroup Properties** | 78 | **4** | 236 | Beau Jarvis / Brad Jones |
+| **Reliance Properties** | 82 | **4** | 187 | Jon Stovell / Joanna Kwan |
 | **Anthem Properties** | 70 | **4** | 124 | Mark Kopinya / Rob Blackwell |
-| Bosa Properties | 44 | 2 | 100 | principal-to-principal |
+| **Wesgroup Properties** | 78 | **3** | 176 | Beau Jarvis / Brad Jones |
 | Bosa Development | 78 | 2 | 76 | principal-to-principal |
 | Cressey Development | 116 | 2 | 63 | principal-to-principal |
+| Bosa Properties | 44 | 1 | 60 | principal-to-principal |
 | Polygon / Solterra | 114 / 52 | 1 each | 38 / 38 | principal-to-principal |
+| Ledingham McAllister | 40 | 1 | 35 | principal-to-principal |
 
-**~$900M of pursuable work owned by developers KOR has already done 70–116 projects with.** These are the highest-probability calls on the board — relationship proven, seat genuinely open.
+**~$800M of pursuable work owned by developers KOR has already done 40–116 projects with.** These are the highest-probability calls on the board — relationship proven, seat genuinely open.
 
 ## SEISMIC — KOR's specialty lane (lead with what KOR wins)
 BC is Canada's seismic frontier and the Lower Mainland holds **~$4.6B of explicitly-seismic projects (~65 in the graph, ~95% with no SE committed)** — against the broader BC Seismic Mitigation Program backdrop (~270 schools still to do province-wide). KOR's *verified, winnable* seismic fit is **heritage/commercial upgrades + high-importance post-disaster structures** (fire halls, EOCs, hospital-adjacent) — backed by named credits (564 Beatty, ICBC Lonsdale Quay, Simone PBSD), CSA A23.3 Cl.21 code depth, and IEF Cat 3/4 fluency. **Pursue those now.** The K-12 SMP schools are the *build-toward* (KOR has no school credit yet — team for a first reference). *(Full picture: BC Seismic Dossier + KOR Credential Evidence Base.)*
@@ -250,7 +251,7 @@ The handful of relationships that recur across the pipeline. Work these and you 
 - **NSDA Architects** — *Architect/Prime · client · 28 KOR projects · on 2 open LM seats.* A top-tier relationship hiding in plain sight — 28 shared projects. **Ken Wong** (Principal) · Brian Dust · Peter Fodor (kwong/bdust/pfodor@nsda.bc.ca).
 
 ## Market context (consolidated, for grounding)
-**782 active LM projects, ~$75.8B, 281 owners, 120 architects.** Top owners: VSB (86), Richmond SD (40), Fraser Health (20), Surrey SD (18), UBC (16), City of Vancouver (15), VCH (14), SFU (12). Top architects to get on: Chris Dikeakos (15, warm), GBL (8), Revery (7), Arcadis IBI (6, client), DIALOG (6, foot-in), Perkins+Will (6), hcma (5).
+**867 active LM projects across 341 owners and 122 architect firms** (de-duplicated). Top owners by active project count: VSB SD39 (91), Richmond SD38 (40), Langley SD35 (22), Surrey SD36 (22), UBC (20), Burnaby SD41 (19), North Vancouver SD44 (18), Fraser Health (17). *(Top architects to get on are ranked in the Architect Teaming table above — that's the authoritative list, by pursuable early-open seats × KOR depth.)*
 **Sub-markets** (full dossiers): Seismic (above), Mass Timber (Fast+Epp-dominated, code-opened mid-market), Modular/prefab ($475M BC modular-schools, all SE-open).
 
 ---
@@ -259,14 +260,14 @@ The handful of relationships that recur across the pipeline. Work these and you 
 
 ---
 
-## DATA INTEGRITY CHECK (run 2026-06-16)
+## DATA INTEGRITY CHECK (run 2026-06-17)
 This guide ships only if these assertions pass against the live graph. No figure is hand-typed, and no built, locked, or out-of-lane project can reach an action list:
 
 | Check | Expected | Actual | Result |
 |---|--:|--:|:--:|
-| Active LM major projects | 1,105 | 1,105 | PASS |
-| Early-open (no SE, in-lane) | 504 | 504 | PASS |
-| Warm pursuit universe | 225 | 225 | PASS |
+| Active LM major projects | 867 | 867 | PASS |
+| Early-open (no SE, in-lane) | 500 | 500 | PASS |
+| Warm pursuit universe | 222 | 222 | PASS |
 | Completed / built shown active | 0 | 0 | PASS |
 | Construction-stage in the open list | 0 | 0 | PASS |
 | Out-of-lane in the open list | 0 | 0 | PASS |
