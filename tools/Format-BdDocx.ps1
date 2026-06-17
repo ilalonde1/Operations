@@ -11,6 +11,7 @@ param(
   [Parameter(Mandatory)][string]$Md,
   [Parameter(Mandatory)][string]$Docx,
   [switch]$Toc,
+  [switch]$NoPageBreaks,   # one-pagers (agenda): don't force each section onto its own page
   [string]$TableStyle = "Grid Table 4 Accent 1"
 )
 $ErrorActionPreference = "Stop"
@@ -99,15 +100,28 @@ try {
     $t.TopPadding = 2; $t.BottomPadding = 2; $t.LeftPadding = 5; $t.RightPadding = 5
   }
 
+  # one-pager mode: tighten type, spacing and margins to fit a single page
+  if ($NoPageBreaks) {
+    $normal.Font.Size = 9; $normal.ParagraphFormat.SpaceAfter = 2; $normal.ParagraphFormat.SpaceBefore = 0
+    foreach ($hn in @(@("Title",13),@("Heading 1",12),@("Heading 2",10.5),@("Heading 3",9.5))) {
+      try { $s = $doc.Styles.Item($hn[0]); $s.Font.Size = $hn[1]; $s.ParagraphFormat.SpaceBefore = 5; $s.ParagraphFormat.SpaceAfter = 1 } catch {}
+    }
+    try { $doc.PageSetup.TopMargin = 43; $doc.PageSetup.BottomMargin = 43; $doc.PageSetup.LeftMargin = 50; $doc.PageSetup.RightMargin = 50 } catch {}
+    for ($i = 1; $i -le $doc.Tables.Count; $i++) { try { $doc.Tables.Item($i).Range.Font.Size = 8.5 } catch {} }
+  }
+
   # page break before EVERY major section (Heading 2) so each starts its own page,
   # and before the Table of Contents so it gets its own page after the title block.
-  $tocBroken = $false
-  foreach ($para in $doc.Paragraphs) {
-    try {
-      $sn = $para.Style.NameLocal
-      if ($sn -eq "Heading 2") { $para.Format.PageBreakBefore = $true }
-      elseif (-not $tocBroken -and $sn -like "TOC*") { $para.Format.PageBreakBefore = $true; $tocBroken = $true }
-    } catch {}
+  # Skipped for one-pagers (-NoPageBreaks), e.g. the meeting agenda run-sheet.
+  if (-not $NoPageBreaks) {
+    $tocBroken = $false
+    foreach ($para in $doc.Paragraphs) {
+      try {
+        $sn = $para.Style.NameLocal
+        if ($sn -eq "Heading 2") { $para.Format.PageBreakBefore = $true }
+        elseif (-not $tocBroken -and $sn -like "TOC*") { $para.Format.PageBreakBefore = $true; $tocBroken = $true }
+      } catch {}
+    }
   }
 
   $tableCount = $doc.Tables.Count
