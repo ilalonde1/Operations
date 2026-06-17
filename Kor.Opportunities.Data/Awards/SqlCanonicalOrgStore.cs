@@ -303,7 +303,7 @@ WHERE  Id = @id;";
         // into Notes alongside the original RetiredReason so the data itself
         // records why a retired org came back.
         const string sql = @"
-DECLARE @unretired table (Id bigint, WasRetired datetimeoffset2(7));
+DECLARE @unretired table (Id bigint, WasRetired datetimeoffset(7));
 
 UPDATE opportunities.CanonicalOrg
 SET RetiredAtUtc = NULL,
