@@ -25,9 +25,12 @@ $ErrorActionPreference = "Stop"
 $src = [System.IO.File]::ReadAllLines($Md)
 $pp = New-Object System.Collections.Generic.List[string]
 foreach ($cur in $src) {
-  if ($cur.TrimStart().StartsWith("|")) {
+  $isTable = $cur.TrimStart().StartsWith("|")
+  $isList  = $cur -match '^\s*([-*+]\s|\d+\.\s)'
+  if ($isTable -or $isList) {
     $prev = if ($pp.Count -gt 0) { $pp[$pp.Count-1] } else { "" }
-    if ($prev.Trim() -ne "" -and -not $prev.TrimStart().StartsWith("|")) { $pp.Add("") }
+    $prevIsBlock = $prev.TrimStart().StartsWith("|") -or ($prev -match '^\s*([-*+]\s|\d+\.\s)')
+    if ($prev.Trim() -ne "" -and -not $prevIsBlock) { $pp.Add("") }
   }
   $pp.Add($cur)
 }
