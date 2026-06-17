@@ -518,6 +518,25 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<AbMajorProjectsInventoryProvider>());
+            builder.Services.AddHttpClient(nameof(BcMajorProjectsInventoryProvider), c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(5);
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "BcMajorProjectsInventory"));
+            builder.Services.AddSingleton<BcMajorProjectsInventoryProvider>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(BcMajorProjectsInventoryProvider));
+                var logger = sp.GetRequiredService<ILogger<BcMajorProjectsInventoryProvider>>();
+                return new BcMajorProjectsInventoryProvider(
+                    http,
+                    Cs(sp),
+                    sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
+                    logger,
+                    options.IngestionMaxBytesPerResponse);
+            });
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<BcMajorProjectsInventoryProvider>());
             builder.Services.AddHttpClient<RssOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(120);
@@ -958,6 +977,18 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["AbMajorProjectsInventoryCronSchedule"] ?? "0 30 3 ? * SUN";
       t.ForJob(abMajorProjectsInventoryKey)
        .WithIdentity("AbMajorProjectsInventoryTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var bcMajorProjectsInventoryKey = new JobKey("BcMajorProjectsInventoryJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.BcMajorProjectsInventoryJob>(opts => opts.WithIdentity(bcMajorProjectsInventoryKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: Sundays at 04:00 Pacific, offset from AB. DataBC updates quarterly; weekly catch-up is idempotent.
+      var cron = builder.Configuration["BcMajorProjectsInventoryCronSchedule"] ?? "0 0 4 ? * SUN";
+      t.ForJob(bcMajorProjectsInventoryKey)
+       .WithIdentity("BcMajorProjectsInventoryTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 

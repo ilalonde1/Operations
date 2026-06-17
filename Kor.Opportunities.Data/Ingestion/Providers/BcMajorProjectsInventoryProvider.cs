@@ -22,30 +22,31 @@ using Microsoft.Extensions.Logging;
 namespace Kor.Opportunities.Data.Ingestion.Providers;
 
 /// <summary>
-/// Ingests Alberta's Major Projects Inventory into its dedicated table. This
-/// provider is wired through IOpportunityProvider only so existing source
-/// dispatch and IngestionTriggers can invoke it; it does not emit opportunity
-/// candidates.
+/// Ingests British Columbia's Major Projects Inventory from DataBC into the
+/// dedicated MPI table. Like the AB MPI provider, this is wired through
+/// IOpportunityProvider for source dispatch but emits no opportunity candidates.
 /// </summary>
-public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
+public sealed class BcMajorProjectsInventoryProvider : IOpportunityProvider
 {
-    private const string Province = "AB";
-    private const string AliasSource = "MajorProjectsInventory.Proponent";
+    private const string Province = "BC";
+    private const string ProponentAliasSource = "MajorProjectsInventory.Proponent";
+    private const string ArchitectAliasSource = "MajorProjectsInventory.Architect";
     private const string BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
-    private static readonly Regex YearRegex = new(@"\b(19|20)\d{2}\b", RegexOptions.Compiled);
+    private static readonly Regex LeadingRegionOrdinal = new(@"^\s*\d+\.\s*", RegexOptions.Compiled);
+    private static readonly Regex QuarterYear = new(@"^\s*((?:19|20)\d{2})-Q[1-4]\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly HttpClient _httpClient;
     private readonly string _connectionString;
     private readonly CanonicalOrgResolver _canonicalResolver;
-    private readonly ILogger<AbMajorProjectsInventoryProvider> _logger;
+    private readonly ILogger<BcMajorProjectsInventoryProvider> _logger;
     private readonly int _maxBytesPerResponse;
     private readonly int _maxRowsPerRun;
 
-    public AbMajorProjectsInventoryProvider(
+    public BcMajorProjectsInventoryProvider(
         HttpClient httpClient,
         string connectionString,
         CanonicalOrgResolver canonicalResolver,
-        ILogger<AbMajorProjectsInventoryProvider> logger,
+        ILogger<BcMajorProjectsInventoryProvider> logger,
         int maxBytesPerResponse = 50 * 1024 * 1024,
         int maxRowsPerRun = 20_000)
     {
@@ -64,7 +65,8 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
         IReadOnlyDictionary<string, string> sourceConfig,
         CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, source.BaseUrl);
+        var csvUrl = await ResolveCsvUrlAsync(source.BaseUrl, ct).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, csvUrl);
         request.Headers.UserAgent.ParseAdd(BrowserUserAgent);
         request.Headers.TryAddWithoutValidation("Accept", "text/csv,*/*;q=0.8");
 
@@ -95,17 +97,17 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
             ct.ThrowIfCancellationRequested();
             if (processed >= _maxRowsPerRun)
             {
-                _logger.LogWarning("AB Major Projects Inventory row cap {MaxRows} reached; remaining rows skipped.", _maxRowsPerRun);
+                _logger.LogWarning("BC Major Projects Inventory row cap {MaxRows} reached; remaining rows skipped.", _maxRowsPerRun);
                 break;
             }
 
-            processed++;
             if (headers is null || rawHeaders is null)
             {
                 skipped++;
                 continue;
             }
 
+            processed++;
             var record = await MapRowAsync(source, row, headers, rawHeaders, ct).ConfigureAwait(false);
             if (record is null)
             {
@@ -129,7 +131,7 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
         }
 
         _logger.LogInformation(
-            "AB Major Projects Inventory ingestion: inserted={Inserted} updated={Updated} nameMatched={NameMatched} skipped={Skipped} processed={Processed}.",
+            "BC Major Projects Inventory ingestion: inserted={Inserted} updated={Updated} nameMatched={NameMatched} skipped={Skipped} processed={Processed}.",
             inserted,
             updated,
             nameMatched,
@@ -138,10 +140,63 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
 
         if (headers is null)
         {
-            _logger.LogWarning("AB Major Projects Inventory returned no header row; nothing ingested.");
+            _logger.LogWarning("BC Major Projects Inventory returned no header row; nothing ingested.");
         }
 
         return Array.Empty<OpportunityCandidate>();
+    }
+
+    private async Task<Uri> ResolveCsvUrlAsync(string baseUrl, CancellationToken ct)
+    {
+        if (Uri.TryCreate(baseUrl, UriKind.Absolute, out var direct)
+            && direct.AbsolutePath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            return direct;
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, baseUrl);
+        request.Headers.UserAgent.ParseAdd(BrowserUserAgent);
+        request.Headers.TryAddWithoutValidation("Accept", "application/json,*/*;q=0.8");
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
+        if (!doc.RootElement.TryGetProperty("result", out var result)
+            || !result.TryGetProperty("resources", out var resources)
+            || resources.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException("BC Major Projects Inventory CKAN response did not contain result.resources.");
+        }
+
+        Uri? selected = null;
+        DateTimeOffset selectedModified = DateTimeOffset.MinValue;
+        foreach (var resource in resources.EnumerateArray())
+        {
+            if (!TryGetString(resource, "url", out var url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                continue;
+            }
+
+            var formatIsCsv = TryGetString(resource, "format", out var format)
+                && string.Equals(format.Trim(), "CSV", StringComparison.OrdinalIgnoreCase);
+            var urlIsCsv = uri.AbsolutePath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase);
+            if (!formatIsCsv && !urlIsCsv)
+            {
+                continue;
+            }
+
+            var modified = MaxDate(
+                TryGetDate(resource, "last_modified"),
+                TryGetDate(resource, "created"));
+            if (selected is null || modified > selectedModified)
+            {
+                selected = uri;
+                selectedModified = modified;
+            }
+        }
+
+        return selected ?? throw new InvalidOperationException("BC Major Projects Inventory CKAN response did not contain a CSV resource.");
     }
 
     private async Task<MajorProjectRecord?> MapRowAsync(
@@ -151,66 +206,77 @@ public sealed class AbMajorProjectsInventoryProvider : IOpportunityProvider
         IReadOnlyList<string> rawHeaders,
         CancellationToken ct)
     {
-        var projectName = Read(row, headers, "Name", "Project Name", "ProjectName");
-        if (string.IsNullOrWhiteSpace(projectName))
+        var projectName = Read(row, headers, "PROJECT_NAME");
+        var projectId = Read(row, headers, "PROJECT_ID");
+        if (string.IsNullOrWhiteSpace(projectName) || string.IsNullOrWhiteSpace(projectId))
         {
             return null;
         }
 
-        var municipality = Read(row, headers, "From Municipality", "Municipality", "Location");
-        var region = Read(row, headers, "Location", "To Municipality", "Region");
-        var proponent = Read(row, headers, "Developer", "Proponent", "Owner");
-        var schedule = Read(row, headers, "Schedule");
-        var costText = Read(row, headers, "Cost", "Estimated Cost ($ Million)", "Estimated Cost");
-        var website = Read(row, headers, "Website");
-        var details = Read(row, headers, "Details");
-        var sector = Read(row, headers, "Sector");
-        var sourceUrl = !string.IsNullOrWhiteSpace(website) ? website : source.BaseUrl;
+        var description = Read(row, headers, "PROJECT_DESCRIPTION");
+        var proponent = Read(row, headers, "DEVELOPER");
+        var architect = Read(row, headers, "ARCHITECT");
+        var sector = Read(row, headers, "CONSTRUCTION_TYPE");
+        var subSector = FirstNonBlank(
+            Read(row, headers, "CONSTRUCTION_SUBTYPE"),
+            Read(row, headers, "PROJECT_TYPE"));
+        var stage = FirstNonBlank(
+            Read(row, headers, "PROJECT_STAGE"),
+            Read(row, headers, "PROJECT_STATUS"));
+        var municipality = Read(row, headers, "MUNICIPALITY");
+        var region = MapRegion(Read(row, headers, "REGION"));
+        var costText = Read(row, headers, "ESTIMATED_COST");
+        var sourceUrl = FirstNonBlank(Read(row, headers, "PROJECT_WEBSITE"), source.BaseUrl);
 
-        // BD-Audit-2026-06-09 Mi13: this provider writes MPI directly (it emits
-        // no candidates, so IngestionService's StructuralRelevanceGate never
-        // sees these rows) and used to admit every AB sector — pipelines,
-        // highways, oil & gas — and mint canonical orgs for their proponents.
-        // Evaluate the same gate here, BEFORE the resolver can create an org.
         var relevance = StructuralRelevanceGate.Evaluate(
             projectName,
-            string.Join(" — ", new[] { sector, details }.Where(s => !string.IsNullOrWhiteSpace(s))!),
+            string.Join(" — ", new[] { sector, subSector, description }.Where(s => !string.IsNullOrWhiteSpace(s))!),
             proponent);
         if (!relevance.Keep)
         {
-            return null; // surfaces in the run summary as skipped
+            return null;
         }
-        var canonicalId = !string.IsNullOrWhiteSpace(proponent)
+
+        var proponentCanonicalId = !string.IsNullOrWhiteSpace(proponent)
             ? await _canonicalResolver.ResolveAsync(
                 proponent,
                 OrgKinds.Unknown,
-                AliasSource,
+                ProponentAliasSource,
                 ct,
                 allowCreate: true,
                 minConfidenceForCreate: 70).ConfigureAwait(false)
             : null;
 
-        var (startYear, completionYear) = ParseScheduleYears(schedule);
+        var architectCanonicalId = !string.IsNullOrWhiteSpace(architect)
+            ? await _canonicalResolver.ResolveAsync(
+                architect,
+                OrgKinds.Architect,
+                ArchitectAliasSource,
+                ct,
+                allowCreate: true,
+                minConfidenceForCreate: 70).ConfigureAwait(false)
+            : null;
+
         var rawJson = BuildRowJson(row, rawHeaders);
 
         return new MajorProjectRecord(
             Province,
-            BuildSourceKey(projectName, municipality, proponent),
+            BuildSourceKey(projectId),
             projectName,
             sector,
-            Read(row, headers, "Type", "SubSector"),
-            ParseCost(costText),
+            subSector,
+            ParseCostMillions(costText),
             costText,
-            Read(row, headers, "Stage"),
+            stage,
             proponent,
-            canonicalId,
-            null,
-            null,
+            proponentCanonicalId,
+            architect,
+            architectCanonicalId,
             municipality,
             region,
-            startYear,
-            completionYear,
-            FirstNonBlank(schedule, details),
+            ParseQuarterYear(Read(row, headers, "STANDARDIZED_START_DATE")),
+            ParseQuarterYear(Read(row, headers, "STANDARDIZED_COMPLETION_DATE")),
+            description,
             sourceUrl,
             rawJson);
     }
@@ -337,7 +403,7 @@ SELECT
         if (outcome == 2)
         {
             _logger.LogInformation(
-                "AB Major Projects Inventory name-matched existing MPI {MatchedId}: project '{ProjectName}' arrived with new SourceKey {SourceKey}; merged into existing row instead of inserting.",
+                "BC Major Projects Inventory name-matched existing MPI {MatchedId}: project '{ProjectName}' arrived with new SourceKey {SourceKey}; merged into existing row instead of inserting.",
                 reader.GetInt64(1),
                 record.ProjectName,
                 record.SourceKey);
@@ -399,60 +465,53 @@ SELECT
     private static string? Read(IReadOnlyList<string> row, IReadOnlyList<string> headers, params string[] names) =>
         CsvParser.FirstValue(row, headers, names);
 
-    private static decimal? ParseCost(string? value)
+    private static decimal? ParseCostMillions(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        var raw = value.Trim();
-        var lower = raw.ToLowerInvariant();
-        var multiplier = 1m;
-        if (lower.Contains("billion") || Regex.IsMatch(lower, @"\bb\b"))
-        {
-            multiplier = 1_000_000_000m;
-        }
-        else if (lower.Contains("million") || Regex.IsMatch(lower, @"\bm\b"))
-        {
-            multiplier = 1_000_000m;
-        }
-
-        var numeric = Regex.Replace(lower, @"[$,\s]", "");
-        numeric = Regex.Replace(numeric, "(billion|million|[mb])", "", RegexOptions.IgnoreCase);
+        var numeric = Regex.Replace(value.Trim(), @"[$,\s]", "");
         return decimal.TryParse(numeric, NumberStyles.Number | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var parsed)
-            ? decimal.Round(parsed * multiplier, 0)
+            ? decimal.Round(parsed * 1_000_000m, 0)
             : null;
     }
 
-    private static (short? StartYear, short? CompletionYear) ParseScheduleYears(string? schedule)
+    private static short? ParseQuarterYear(string? value)
     {
-        if (string.IsNullOrWhiteSpace(schedule))
+        if (string.IsNullOrWhiteSpace(value))
         {
-            return (null, null);
+            return null;
         }
 
-        var years = new List<short>();
-        foreach (Match match in YearRegex.Matches(schedule))
+        var match = QuarterYear.Match(value);
+        return match.Success
+            && short.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year)
+            ? year
+            : null;
+    }
+
+    private static string? MapRegion(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
         {
-            if (short.TryParse(match.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year))
-            {
-                years.Add(year);
-            }
+            return null;
         }
 
-        return years.Count switch
+        var cleaned = LeadingRegionOrdinal.Replace(value.Trim(), "");
+        return cleaned switch
         {
-            0 => (null, null),
-            1 => (years[0], years[0]),
-            _ => (years[0], years[^1]),
+            _ when cleaned.Equals("Mainland/Southwest", StringComparison.OrdinalIgnoreCase) => "Lower Mainland",
+            _ when cleaned.Equals("Vancouver Island/Coast", StringComparison.OrdinalIgnoreCase) => "Vancouver Island",
+            _ when cleaned.Equals("Thompson-Okanagan", StringComparison.OrdinalIgnoreCase) => "Okanagan",
+            _ => cleaned,
         };
     }
 
-    private static string BuildSourceKey(string projectName, string? municipality, string? proponent)
+    private static string BuildSourceKey(string projectId)
     {
-        var keyInput = $"{projectName.Trim()}|{municipality?.Trim()}|{proponent?.Trim()}";
-        var hash = SHA1.HashData(Encoding.UTF8.GetBytes(keyInput.ToUpperInvariant()));
+        var hash = SHA1.HashData(Encoding.UTF8.GetBytes(projectId.Trim().ToUpperInvariant()));
         return Province + "-" + Convert.ToHexString(hash);
     }
 
@@ -487,6 +546,29 @@ SELECT
     private static string Truncate(string value, int max) =>
         value.Length <= max ? value : value.Substring(0, max);
 
+    private static bool TryGetString(JsonElement element, string propertyName, out string value)
+    {
+        value = "";
+        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        value = property.GetString() ?? "";
+        return !string.IsNullOrWhiteSpace(value);
+    }
+
+    private static DateTimeOffset TryGetDate(JsonElement element, string propertyName)
+    {
+        return TryGetString(element, propertyName, out var raw)
+            && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
+            ? parsed
+            : DateTimeOffset.MinValue;
+    }
+
+    private static DateTimeOffset MaxDate(DateTimeOffset first, DateTimeOffset second) =>
+        first >= second ? first : second;
+
     private static async IAsyncEnumerable<IReadOnlyList<string>> ReadCsvRowsAsync(
         StreamReader reader,
         int maxBytes,
@@ -511,7 +593,7 @@ SELECT
             if (totalBytes > maxBytes)
             {
                 throw new InvalidOperationException(
-                    $"AB Major Projects Inventory response for {sourceName} exceeded configured cap of {maxBytes} bytes.");
+                    $"BC Major Projects Inventory response for {sourceName} exceeded configured cap of {maxBytes} bytes.");
             }
 
             for (var i = 0; i < read; i++)

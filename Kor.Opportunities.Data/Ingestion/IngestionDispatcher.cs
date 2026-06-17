@@ -15,7 +15,7 @@ public sealed class IngestionDispatcher : IIngestionDispatcher
 {
     private readonly IOpportunitySourceStore _sourceStore;
     private readonly IIngestionService _ingestionService;
-    private readonly IReadOnlyDictionary<OpportunitySourceType, IOpportunityProvider> _providersByType;
+    private readonly IReadOnlyDictionary<OpportunitySourceType, IReadOnlyList<IOpportunityProvider>> _providersByType;
     private readonly ILogger<IngestionDispatcher> _logger;
 
     public IngestionDispatcher(
@@ -28,23 +28,26 @@ public sealed class IngestionDispatcher : IIngestionDispatcher
         _ingestionService = ingestionService;
         _logger = logger;
 
-        // Last-registration-wins is fine — the host wires one provider per source type.
-        // If a duplicate slips in we log it and keep the most recently registered one,
-        // which matches typical DI conventions and avoids a startup crash.
-        var dict = new Dictionary<OpportunitySourceType, IOpportunityProvider>();
+        var dict = new Dictionary<OpportunitySourceType, List<IOpportunityProvider>>();
         foreach (var p in providers)
         {
-            if (dict.ContainsKey(p.SourceType))
+            if (!dict.TryGetValue(p.SourceType, out var typedProviders))
             {
-                _logger.LogWarning(
-                    "Multiple providers registered for {Type}; using {NewProvider} and replacing {OldProvider}.",
-                    p.SourceType, p.GetType().Name, dict[p.SourceType].GetType().Name);
+                typedProviders = [];
+                dict[p.SourceType] = typedProviders;
             }
 
-            dict[p.SourceType] = p;
+            if (typedProviders.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Multiple providers registered for {Type}; source-name prefix matching will choose among {ExistingProvider} and {NewProvider}.",
+                    p.SourceType, typedProviders[^1].GetType().Name, p.GetType().Name);
+            }
+
+            typedProviders.Add(p);
         }
 
-        _providersByType = dict;
+        _providersByType = dict.ToDictionary(kvp => kvp.Key, kvp => (IReadOnlyList<IOpportunityProvider>)kvp.Value);
     }
 
     public async Task<DispatchResult> RunByNameAsync(string sourceName, string? correlationId, CancellationToken ct)
@@ -84,12 +87,14 @@ public sealed class IngestionDispatcher : IIngestionDispatcher
             return new DispatchResult(source, new IngestionResult { Success = true });
         }
 
-        if (!_providersByType.TryGetValue(source.SourceType, out var provider))
+        if (!_providersByType.TryGetValue(source.SourceType, out var providers) || providers.Count == 0)
         {
             throw new InvalidOperationException(
                 $"No provider registered for source type {source.SourceType} (source '{source.Name}'). " +
                 "Register an IOpportunityProvider implementation in DI.");
         }
+
+        var provider = SelectProvider(source, providers);
 
         _logger.LogInformation(
             "Dispatching ingestion for {Source} ({Type}) via {Provider}.",
@@ -97,5 +102,28 @@ public sealed class IngestionDispatcher : IIngestionDispatcher
 
         var result = await _ingestionService.IngestAsync(provider, source, correlationId, ct).ConfigureAwait(false);
         return new DispatchResult(source, result);
+    }
+
+    private static IOpportunityProvider SelectProvider(OpportunitySource source, IReadOnlyList<IOpportunityProvider> providers)
+    {
+        if (providers.Count == 1)
+        {
+            return providers[0];
+        }
+
+        var separator = source.Name.IndexOf('_', StringComparison.Ordinal);
+        if (separator > 0)
+        {
+            var prefix = source.Name[..separator];
+            foreach (var provider in providers)
+            {
+                if (provider.GetType().Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return provider;
+                }
+            }
+        }
+
+        return providers[^1];
     }
 }
