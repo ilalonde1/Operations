@@ -54,7 +54,7 @@ The sales pipeline, ranked by **EV = est. structural fee × win-probability** (w
 | 8 | **UBC Medicine precinct** (Medicine One) | 6.8 | 32 | **2.2** | Capital Plan | Owner UBC → **Denise Brown** (Dir Capital Planning) |
 | 9 | **District Northwest Towers** | 5.0 | 40 | **2.0** | Procurement | Arch Arcadis IBI → **Anita Leonoff** (owner Thind) |
 | 10 | **UBC Student Housing** (Lower Mall Precinct) | 5.6 | 32 | **1.8** | Permitting | Owner UBC → **Denise Brown** |
-| 11 | **Vancouver JCC Redevelopment** | 4.3 | 40 | **1.7** | Permitting | Owner JCC → **Eldad Goldfarb** (Exec Dir) / **Betty Hum** (Dir Dev) ★new + GC Urban One (KOR client) |
+| 11 | **Vancouver JCC Redevelopment** | 4.3 | — | **🔴 locked** | Construction Jul-2026 | SE engaged long ago — *not* an open seat (see Verified Status). Keep JCC contacts for future JWest work. |
 | 12 | **VGH West 12th Two-Tower Expansion** | 4.0 | 32 | **1.3** | Capital Plan | Arch Musson Cattell → **Peter Odegaard** |
 | 13 | **Inglewood Care Centre Redevelopment** | 5.0 | 25 | **1.3** | — | Arch ZGF → **Jerry Foster** (Principal) ★new |
 | 14 | **UBC Applied One** (Applied Science) | 3.9 | 32 | **1.2** | Capital Plan | Owner UBC → **Denise Brown** |
@@ -66,26 +66,25 @@ The sales pipeline, ranked by **EV = est. structural fee × win-probability** (w
 ⚠ = distressed/foreclosure-watch · ★new = decision-maker added this cycle (Apollo). **Out-of-lane note:** the biggest *uncosted-EV* seats — Tilbury LNG ($3.5B), RBT2 ($3B), BC Hydro substation ($1B) — are heavy industrial/marine and sit **outside KOR's building-structural lane**; they're deliberately *not* in this list despite their size (they're in SAM's exclusions). This is a list of work KOR can actually win.
 
 ## 🔬 VERIFIED STATUS — what's *actually* open right now (researched 2026-06-16, sourced)
-The EV ranking above is modeled off relationship × value. A live procurement-status pass (verified against health-authority pages, council agendas, BC gov releases, construction news) re-prioritizes it sharply — **chase the open seats, not the biggest numbers:**
+The EV ranking above flags a seat "open" whenever **no SE is recorded in our data** — but that is *not* the same as the seat being available. **The structural engineer is chosen early — when the architect assembles the team, well before the RFP** (this is the Prime-Consultant mechanism this whole report is built on). So the **construction stage is the gate:** a project in **design-development, permitting-with-drawings, or construction has its SE locked** — even if we don't know who it is. Only **early-stage** projects (concept / planning / business-plan / pre-procurement) have a genuinely-open seat. Applying that gate to the verified pass:
 
-**🟢 GENUINELY OPEN + near-term — KOR's real priority (no SE locked):**
-- **Vancouver JCC Redevelopment ($427M)** — CM **Urban One selected**, construction **July 2026**, SE sub-award **imminent now**. → Call Urban One / Acton Ostry / Eldad Goldfarb **this week** — the narrowest, hottest window on the board.
-- **VGH West 12th two-tower ($400M)** — rezoning approved Jan 2026, in design development, **no SE named**. → Architect **Musson Cattell (Peter Odegaard)** is the way in.
-- **Inglewood Care Centre ($500M)** — public hearing **June 23 2026**, **no SE**. → Developer **Baptist Housing (Dayle Krahn)** + architect ZGF.
-- **Surrey Memorial New Acute Care Tower ($1.35B)** — business-plan phase, **RFP ~2025–26**, no team yet. → **Fraser Health (Betina Albornoz)** before procurement opens.
-- **UBC Medicine One ($680M)** — open but **far-future/conceptual**; monitor for the design-team RFQ.
+**🟢 GENUINELY OPEN — early enough the SE is *not* yet selected (KOR's real priority):**
+- **Surrey Memorial New Acute Care Tower ($1.35B)** — **business-plan phase, pre-RFP, no team selected.** The one true near-term open seat. → Get to **Fraser Health (Betina Albornoz)** *and* the architect shortlist before procurement opens.
+- **UBC Medicine One ($680M)** — conceptual / status TBD, no team. Genuinely open but **far-future** — build the standing relationship, monitor for the design-team RFQ.
+- **Inglewood Care Centre ($500M)** — pre-rezoning (hearing **June 23 2026**); SE-of-record not locked until post-approval design, *but* the prime team forming for the rezoning may already carry a structural consultant — **get to Baptist Housing (Dayle Krahn) + ZGF now, while the team is still forming.**
 
-**🟡 WATCH — re-procuring or RFP imminent (get positioned *before* it opens):**
-- **Burnaby Hospital Ph2 + BC Cancer ($1.7B)** — the PCL/Parkin Alliance contract was **CANCELLED Apr 2026** (cost overruns); Infrastructure BC lists it **"Re-Paced."** Premier Eby: it proceeds but needs a reset. **The seat will re-open** — position now, ahead of the re-tender.
-- **Surrey Memorial New Acute Care Tower ($1.35B)** — business-plan + environmental-consultant RFPs **live now** ("Bidding Soon"); the structural procurement follows. → **Fraser Health (Betina Albornoz)** before it opens.
+**🟡 WATCH — will re-open:**
+- **Burnaby Hospital Ph2 + BC Cancer ($1.7B)** — PCL/Parkin Alliance contract **CANCELLED Apr 2026** (cost overruns), "Re-Paced." It will **re-procure from scratch** — the seat genuinely re-opens. Position now, ahead of the re-tender.
 
-**🔴 CLOSED / team already locked — don't chase the SE seat:**
-- **Richmond Hospital Ph2** — **Graham/HDR alliance selected** (development phase); pursue *only* via the Graham relationship, not as an open bid.
-- **UBC Lower Mall Student Housing** — **under construction** (Ryder/3XN), Fall 2026 start.
+**🔴 SE LOCKED — advanced stage, team set (do NOT chase as an open seat):**
+- **Vancouver JCC Redevelopment ($427M)** — **construction starts July 2026** → structural drawings are stamped and the SE was engaged 1–2 yrs ago. *Not open.* (My prior "hot open window" call here was wrong — a project entering construction cannot have an open SE seat.) Urban One / Eldad Goldfarb stay as relationship contacts for *future* JWest work, not this build.
+- **VGH West 12th ($400M)** — in **design development** → the SE is on the design team already. Not open.
+- **UBC Lower Mall Student Housing ($560M)** — **under construction.** Locked.
+- **Richmond Hospital Ph2** — Graham/HDR alliance selected. Pursue only via the Graham relationship.
 
-**⚪ Dormant / no near-term work:** District Northwest Towers (in **receivership**, frozen) · NE False Creek (planning, FIFA-staging delay) · Mission Waterfront (40-yr master-plan horizon) · Britannia (on indefinite hold) · Annacis WWTP Ph2B (CM RFP ran mid-2025; civil/industrial, out-of-lane).
+**⚪ Dormant / no near-term work:** District Northwest Towers (receivership) · NE False Creek (FIFA-staging delay) · Mission Waterfront (40-yr horizon) · Britannia (indefinite hold) · Annacis WWTP Ph2B (civil/industrial, out-of-lane).
 
-**The re-rank in one line:** the verified hot list is **JCC (award imminent now) → Surrey Memorial (RFPs live) → VGH West 12th + Inglewood (open, no SE) → Burnaby (watch the re-tender)** — *not* the bigger-dollar seats that topped the modeled EV table, which are locked, frozen, or cancelled. This is the gap between a model and the ground truth. *(Single-pass research, sourced; feed to `project-reverify` to update the graph + nightly retirement job.)*
+**The corrected hot list:** **Surrey Memorial (pre-RFP — position now) → Inglewood (team still forming) → Burnaby (watch the re-tender) → UBC Medicine One (early, long game).** Everything advanced-stage is locked regardless of whether we know the SE. *(Lesson baked in: the EV "open-seat" count overstates reality for advanced-stage rows — it means "SE unknown," not "available." The new live BC MPI provider carries PROJECT_STAGE, so future open-seat logic will be stage-gated automatically.)*
 
 ## 📊 COVERAGE SCORECARD — can we actually reach the buyer?
 **26 of the top 30 EV targets (87%) now have a named, emailable decision-maker on the team** — up from a baseline where the core public buyers (VSB, Richmond SD, VCH, PCL) had **zero** emailable contacts before this cycle. The 4 uncovered are the industrial/marine seats KOR doesn't pursue. This cycle's Apollo pass closed the building-sector gaps (District of Mission, ZGF, Baptist Housing). **Translation for Sales: every pursuit above is a phone call you can make Monday, not a name you still have to go find.**
@@ -200,7 +199,7 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 **☎ Direct dials** (Apollo-verified mobiles — ready to call today):
 - **Buyer side:** Richard Gage / VCH **778-872-2087** · Betina Albornoz / Fraser Health **604-364-5730** · Denise Brown / UBC **604-638-3374** · Dave Riley / Surrey SD **778-772-2287** · Jenny Tough / District of Mission **604-378-2948**
 - **Primes:** Munir Macci / Parkin **416-420-1789** · Peter Odegaard / Musson Cattell **604-687-2990** · Jerry Foster / ZGF **202-257-2464**
-- **JCC redevelopment ($427M):** Eldad Goldfarb (Exec Director) **604-617-0609** · Betty Hum (Dir Development) **604-782-4317**
+- **JCC of Greater Vancouver** (current build's SE is locked — these are for *future* JWest Phase-2 / next projects): Eldad Goldfarb (Exec Director) **604-617-0609** · Betty Hum (Dir Development) **604-782-4317**
 
 **☎ Main switchboards** (ask for the named contact): PHSA 604-675-7400 · SFU 778-782-3111 · Richmond SD 604-668-6000 · Vancouver SB 604-713-5520 · BC Housing 604-433-1711. *(Direct dials for Anita Leonoff/Arcadis, Lee Holland/Graham, Juan Martinez/PHSA not in Apollo — reach via firm.)*
 
