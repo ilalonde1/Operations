@@ -243,6 +243,7 @@ Mined live from the held SE seats in the region: each rival's active load, the l
 
 ## 📁 STRATEGIC ACCOUNT ONE-PAGERS — the relationships that recur across the pipeline
 The handful of accounts that appear again and again above. Work these and you work most of the list.
+*Validated against KOR's Deltek pursuit record: KOR has **zero pure-loss client relationships** — it loses individual pursuits, never whole clients — and its deep repeat clients convert **~85–95%** (Wesgroup 78 won / 6 lost, Intracorp 45 / 3, Ledingham McAllister 40 / 2). That's the measured basis for weighting the pipeline toward relationship-rich seats.*
 
 **Graham Construction** — *GC · Deltek client · on 3 open seats (~$3.96B)*
 Sits on Richmond Hospital + Annacis WWTP. Contacts: **Lee Holland** (VP Buildings, BC) · Jordan Hood (DM Buildings). **Next play:** one call covers two of the top-5 EV pursuits — get KOR on the structural team before award. KOR's single highest-leverage GC relationship.
@@ -261,6 +262,9 @@ The warmest developer relationship in the book. Contacts: **Beau Jarvis** (CEO) 
 
 **Anthem Properties** — *KOR client · 70 projects together · on 4 open SE seats*
 Contacts: **Mark Kopinya** (SVP Development) · Rob Blackwell (EVP Development). **Next play:** 70 projects of history — direct call on the active LM work KOR isn't yet on.
+
+**NSDA Architects** — *Architect/Prime · Deltek client · **28 KOR projects (7 lost)** · on 2 open LM seats*
+A top-tier KOR relationship that was hiding in plain sight — **28 shared projects**, more than most of the named Primes above — surfaced from the Deltek pursuit record. Also KOR's **highest loss count (7)**, so there's real leakage to plug. Contacts: **Ken Wong** (Principal) ✓ · Brian Dust ✓ · Peter Fodor ✓ (kwong/bdust/pfodor@nsda.bc.ca). **Next play:** treat NSDA as a core architect account — deepen with Ken Wong, and diagnose the 7 losses (are they defaulting to another SE on certain building types?).
 
 ## 📊 Market context (consolidated, for grounding)
 **782 active LM projects, ~$75.8B, 281 owners, 120 architects.** Top owners: VSB (86), Richmond SD (40), Fraser Health (20), Surrey SD (18), UBC (16), City of Vancouver (15), VCH (14), SFU (12). Top architects to get on: Chris Dikeakos (15, warm), GBL (8), Revery (7), Arcadis IBI (6, client), DIALOG (6, foot-in), Perkins+Will (6), hcma (5).
