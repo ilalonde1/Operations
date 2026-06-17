@@ -31,6 +31,7 @@ Region split: Lower Mainland 9, Okanagan/Interior 3, Vancouver Island 2, Norther
 
 ## 2. Landmark & pipeline projects (with teams)
 ### Completed
+
 | Project | City | Type | Storeys | Year | Structural Eng. | Architect | Owner |
 |---|---|---|---:|---|---|---|---|
 | Brock Commons Tallwood House | Vancouver | Student res. | 18 | 2017 | **Fast + Epp** | Acton Ostry | UBC Properties Trust |
@@ -45,6 +46,7 @@ Region split: Lower Mainland 9, Okanagan/Interior 3, Vancouver Island 2, Norther
 | FNHA Metro Vancouver HQ | North Van | Office | 6 | 2025 | **DIALOG** (integ.) | DIALOG | First Nations Health Authority |
 
 ### Under construction / in design
+
 | Project | City | Storeys | Status | Structural Eng. | Architect | Owner/Dev. |
 |---|---|---:|---|---|---|---|
 | BCIT Tall Timber Student Housing | Burnaby | 12 | 2025 | **Fast + Epp** | Perkins+Will | BCIT |
@@ -70,6 +72,7 @@ Region split: Lower Mainland 9, Okanagan/Interior 3, Vancouver Island 2, Norther
 - **WHM / Bush Bohlman** — [UNCERTAIN] not surfaced in mass-timber records externally, though KOR's graph shows **WHM on the Penticton Nexus** mass-timber project — a real Interior data point worth confirming.
 
 ## 4. CLT / glulam supply chain (BC)
+
 | Fabricator | HQ | Products | Notable BC supply |
 |---|---|---|---|
 | **Mercer Mass Timber** (ex-Structurlam) | Okanagan Falls, BC | CLT, glulam | Brock Commons, Tallwood 1 (acquired by Mercer Jun 2023) |

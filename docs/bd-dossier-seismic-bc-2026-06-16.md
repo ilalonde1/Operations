@@ -14,6 +14,7 @@
 5. **The seats are open.** Of **349 BC seismic projects (~$9.9B)** in KOR's graph, **346 (99%) have no structural engineer committed.**
 
 ## 2. The program (BC Seismic Mitigation Program — SMP)
+
 | Fact | Detail | Source |
 |---|---|---|
 | Spent to date | **$1.9B+** on high-risk seismic projects (~$1B approved since Sept 2017) | [gov.bc.ca SMP](https://www2.gov.bc.ca/gov/content/education-training/k-12/administration/capital/seismic-mitigation) |
@@ -36,6 +37,7 @@ The program has shifted over time from *retrofits* toward full **seismic replace
 **By owner — entirely school districts KOR already tracks:** VSB (SD39) 82, Greater Victoria (SD61) 38, Richmond (SD38) 36, Nanaimo-Ladysmith (SD68) 33, Cowichan Valley (SD79) 14, Sooke (SD62) 13, Saanich (SD63) 12, Burnaby (SD41) 12, Langley (SD35) 9, Coquitlam (SD43) 9, plus UVic and UBC.
 
 **Top open seismic seats:**
+
 | Est $M | Project | District |
 |---:|---|---|
 | 775 | SMP Backlog (~22 schools) | Richmond (SD38) |
@@ -88,6 +90,31 @@ VSB, Richmond, Coquitlam, Nanaimo — top-value districts where KOR has thin/no 
 4. **Vancouver Island volume** (154 open seismic seats) is the long game; near-term, the **heritage seismic + high-importance** angle is the credible opener there too.
 5. **Manage the Bryson disclosure** proactively on any seismic-credibility-led pursuit (counter: current multi-principal Struct.Eng. depth + OQM peer-check).
 6. **RJC is the seismic incumbent** (19 seats) — out-position on heritage/high-importance first; schools later.
+
+## 6b. 📞 BUYER-SIDE CALL SHEET — who runs the SMP / capital seismic programs
+The decision-makers behind the SMP school seats + health-facility seismic work. Apollo-sourced, emailable. These are **relationship-build calls** (KOR has no K-12 SMP credit yet) — open the door now so KOR is positioned when it earns the first school reference.
+
+**School-district capital/facilities leads (the SMP school seats):**
+
+| District | Decision-maker | Title | Email |
+|---|---|---|---|
+| Richmond SD (SD38) | **Kris Wilkins** | Director, Facilities Services | kwilkins@sd38.bc.ca |
+| Surrey Schools (SD36) | **Dave Riley** | Director, Capital Projects Office | riley_d@surreyschools.ca |
+| Vancouver SB (SD39) | Arthur Mak | Project Manager, Capital | amak@vsb.bc.ca |
+| Greater Victoria (SD61) | **Stephen Monahan** | Manager, Major Capital Projects | smonahan@sd61.bc.ca |
+| Sooke (SD62) | Mhairi Bennett | Capital Projects | mbennett@sd62.bc.ca |
+| Saanich (SD63) | Rob Lumb | Facilities / Capital | rlumb@saanichschools.ca |
+
+**Health-authority capital leads (hospital + post-disaster seismic — KOR's *winnable-now* lane):**
+
+| Authority | Decision-maker | Title | Email |
+|---|---|---|---|
+| Vancouver Coastal Health | **Richard Gage** | Exec Director & Chief Project Officer, Capital Planning | richard.gage@vch.ca |
+| Fraser Health | **Betina Albornoz** | Chief Project Officer & Exec Dir, Major Capital | betina.albornoz@fraserhealth.ca |
+| PHSA | Juan Martinez | Sr Director, Major Capital | juan.martinez@phsa.ca |
+| Island Health | **Dean Anderson** | Exec Director, Facilities Planning & Capital | dean.anderson@islandhealth.ca |
+
+**The honest sequencing:** lead the *health-authority* calls now — high-importance post-disaster seismic is KOR's genuine strength (Gage/Albornoz/Martinez/Anderson). Treat the *school-district* calls (Wilkins/Riley/Monahan) as build-toward relationship calls. Don't pitch school-seismic incumbency you can't back.
 
 ## 7. Enrichment actions (to make this fully indispensable)
 - **KOR's seismic portfolio is now documented** (Credential Evidence Base) — next: get Bryson's full named/dated 80+ seismic list + check the EGBC Seismic Retrofit Guidance registry + mine BC Bid award notices/district board minutes for any unrecorded KOR school work.

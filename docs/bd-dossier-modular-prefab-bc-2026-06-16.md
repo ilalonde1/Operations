@@ -38,6 +38,7 @@ KOR's overall pursuit record (177 won / 79 lost ≈ 69%) shows the capability ca
 - **Build Canada Homes (federal, Sept 2025):** $25B debt financing aimed at prefab builders (BC sites not yet named).
 
 ## 2. Key BC modular projects (with teams)
+
 | Project | City | Type | Units | Manufacturer | Architect | Structural Eng. | Owner |
 |---|---|---|---|---|---|---|---|
 | King Edward (1406 E King Edward) | Vancouver | Supportive (Indigenous) | 109, **14 storeys steel** | **Stack Modular**/Bird | Stantec | **WSP [LIKELY]** | BC Housing / VNHS |
@@ -55,6 +56,7 @@ KOR's overall pursuit record (177 won / 79 lost ≈ 69%) shows the capability ca
 **SE-attribution is nearly absent industry-wide** — manufacturers' factory engineers stamp modules; the site SEOR (foundation/podium/assembly) gets little public credit. That opacity is precisely the BD opening.
 
 ## 3. Modular manufacturers active in BC
+
 | Manufacturer | Base | Segment | Notable BC work |
 |---|---|---|---|
 | **Metric Modular** | Agassiz + Penticton, BC | wood-frame volumetric 3–5 storey | Burdock, Bella Bella; closest to KOR geographically |
