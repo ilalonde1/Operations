@@ -7,15 +7,15 @@
 ---
 
 ## THE READ — what the Island actually is
-**Vancouver Island is a position-now, win-later market — a seismic land-grab plus warm-developer relationships, NOT a near-term fee pipeline.** Of 404 active projects, hand-research on the top warm seats shows **most are already in construction (SE locked) or dormant.** The genuinely-open near-term seats come down to **two unfunded seismic plays** (UVic McPherson Library, Cedar Elementary) plus the broader seismic wave. Play the Island as relationship-building toward that wave — not as quarterly bids.
+**Vancouver Island is a position-now, win-later market — a seismic land-grab plus warm-developer relationships, NOT a near-term fee pipeline.** Of 400 active projects, hand-research on the top warm seats shows **most are already in construction (SE locked) or dormant.** The genuinely-open near-term seats come down to **two unfunded seismic plays** (UVic McPherson Library, Cedar Elementary) plus the broader seismic wave. Play the Island as relationship-building toward that wave — not as quarterly bids.
 
 ## THE FUNNEL (honest — with the stale-stage caveat)
 
 | Funnel | Count | What it means |
 |---|--:|---|
-| Active VI major projects | **404** | tracked live from BC MPI + KOR's graph |
-| Early-stage, no SE on file *(as recorded)* | 141 | DB stage — **lags reality on the Island** |
-| KOR has a warm path | **26** | the relationship universe (~24 after a known duplicate) |
+| Active VI major projects | **400** | tracked live from BC MPI + KOR's graph (de-duplicated) |
+| Early-stage, in-lane, no SE *(as recorded)* | 119 | DB stage — **lags reality on the Island** |
+| KOR has a warm path | **22** | the relationship universe (post-dedup) |
 | **Research-verified open, near-term** | **~2 + the seismic pipeline** | what's *actually* pursuable today |
 
 **The caveat that matters:** the integrity gate validates stage *as recorded*, and Island records lag — several "early" warm seats are in fact in construction. So on the Island the **hand-researched Verified Status below overrides the raw funnel** for what's pursuable. KOR's record on what it chases: **177 won / 79 lost (~69%)**.
@@ -25,8 +25,8 @@ Structural fee ≈ 1.0% of construction value.
 
 | Tier | Construction | ~Structural fee | What it is |
 |---|--:|--:|---|
-| Addressable (early-stage, no-SE) | ~$14.4B | ~$144M | upper bound — most KOR has no path to; context only |
-| **Warm-path serviceable** | **~$1.0B** | **~$10M** | the warm set — but most is locked/dormant (see Verified Status) |
+| Addressable (early-stage, in-lane, no-SE) | ~$10.2B | ~$102M | upper bound — most KOR has no path to; context only |
+| **Warm-path serviceable** | **~$0.9B** | **~$9M** | the warm set — but most is locked/dormant (see Verified Status) |
 | **Realistic near-term** | — | **small** | a handful of seismic-positioning plays; the value is 2–4-yr, not this quarter |
 
 **The honest takeaway: the Island is not a fee-volume market for KOR today.** Its value is *strategic position* on the **$458M seismic pipeline (154 open seats, ~99% no SE committed)** that will procure over the next few years. Bank the relationships now.
@@ -112,10 +112,10 @@ Most Island SE seats are unfilled (the 154 seismic + others) — this is a **lan
 
 | Check | Expected | Actual | Result |
 |---|--:|--:|:--:|
-| Active VI major projects | 404 | 404 | PASS |
-| Early-open (no SE on file, as recorded) | 141 | 141 | PASS |
-| Warm pursuit universe | 26 | 26 | PASS |
+| Active VI major projects | 400 | 400 | PASS |
+| Early-open (no SE, in-lane, as recorded) | 119 | 119 | PASS |
+| Warm pursuit universe | 22 | 22 | PASS |
 | Completed/built shown active | 0 | 0 | PASS |
 | Construction-stage in the open list *(as recorded)* | 0 | 0 | PASS |
 
-**Honesty note:** the gate validates stage *as recorded in the graph*. On the Island that record lags — Camosun and the CRHC housing read "early" in the data but are in construction. The hand-researched **Verified Status** section above is the authority for what's pursuable; the funnel is the universe, not the pursue list. (Also flagged: Campbell River LTC is triple-counted in the raw data — queued for canonical dedup.)
+**Honesty note:** the gate validates stage *as recorded in the graph*. On the Island that record lags — Camosun and the CRHC housing read "early" in the data but are in construction. The hand-researched **Verified Status** section above is the authority for what's pursuable; the funnel is the universe, not the pursue list. (The raw data has been de-duplicated — Campbell River LTC's triple-count and others collapsed to one row each.)

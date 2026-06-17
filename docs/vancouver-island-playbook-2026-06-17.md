@@ -7,7 +7,7 @@
 ---
 
 ## 1. THE STRATEGY — position now, win later (don't burn pursuit budget)
-The Island is **not** a near-term fee market for KOR. Warm-serviceable fee is ~$10M and most of it is already locked or dormant. **Do not spend pursuit budget chasing Island bids this quarter.** The Island is a **2–4-year seismic positioning play**: bank the owner + architect relationships now (UVic, the SD capital leads, a local Island architect), so KOR is on the team when the $458M seismic pipeline procures. Measure Island BD on *relationships seeded*, not bids submitted.
+The Island is **not** a near-term fee market for KOR. Warm-serviceable fee is ~$9M (post-dedup) and most of it is already locked or dormant. **Do not spend pursuit budget chasing Island bids this quarter.** The Island is a **2–4-year seismic positioning play**: bank the owner + architect relationships now (UVic, the SD capital leads, a local Island architect), so KOR is on the team when the $458M seismic pipeline procures. Measure Island BD on *relationships seeded*, not bids submitted.
 
 ## 2. DISPLACEMENT & CONCESSION
 - **Herold → Englobe (Nanaimo)** — the entrenched local Island firm was acquired by Englobe in May 2025; the brand is mid-transition. That's the **opening** — pitch continuity/local-commitment against a firm whose identity is in flux.
