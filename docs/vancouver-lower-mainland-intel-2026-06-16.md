@@ -97,36 +97,33 @@ The EV ranking above flags a seat "open" whenever **no SE is recorded in our dat
 ## PRIME CONSULTANT TARGETS — the architects who actually pick the SE
 On most public buildings work the **architect is the Prime Consultant**: they assemble the team (structural engineer included) and submit one proposal, scored on the team's P.Eng depth + similar-project experience. **KOR wins the structural seat by being on the architect's team — before the RFP drops.** So these architects, ranked by how much active LM work they're assembling, are the **#1 BD channel — and KOR already has a client relationship with most of them.**
 
-| Prime architect | Active LM projects | ~$M | KOR relationship |
-|---|--:|--:|---|
-| **Chris Dikeakos** | 18 | 867 | **CLIENT + 8 KOR projects** — warmest; deepen first |
-| **Ciccozzi Architecture** | 3 | 125 | **CLIENT + 7 KOR projects** — very warm |
-| Arcadis IBI Group | 7 | 4,646 | CLIENT (International Plaza + biggest $ pipeline) |
-| Revery Architecture | 7 | 1,197 | CLIENT |
-| GBL Architects | 9 | 252 | CLIENT (4 emailable) |
-| **DIALOG** | 6 | — | CLIENT + **KOR foot-in** (7 emailable) |
-| Perkins + Will | 6 | 780 | CLIENT |
-| Musson Cattell Mackey | 4 | 470 | CLIENT (4 emailable) |
-| Boniface Oleksiuk Politano | 3 | 195 | CLIENT |
-| Parkin Architects Western | 3 | 1,730 | Burnaby Hospital — warm via GC |
-| hcma architecture + design | 5 | 149 | not yet a client — **16 contacts on file; pursue** |
+Ranked by **pursuable early-open seats they're assembling** (stage-gated, not locked) × KOR's *Deltek-verified* depth with each. "KOR projects" is the real shared-project count from Deltek — this is the relationship-investment plan:
 
-**The play:** **180 of the 730 open seats already name a Prime architect** — get on *those* teams now. The other 550 have no architect selected yet — even earlier; build standing relationships so KOR is the default structural call when the Prime assembles. **Deepen first: Chris Dikeakos + Ciccozzi (15 prior KOR projects between them), DIALOG (foot-in); pursue the big-$ Primes (Arcadis IBI, Revery, Parkin); convert hcma (16 contacts, no relationship yet).**
+| Prime architect | Pursuable seats | ~$M | KOR depth (Deltek) | The move |
+|---|--:|--:|---|---|
+| **Chris Dikeakos** | 19 | 1,175 | client · **8 projects** | warmest + highest seat count — **deepen first** |
+| **Studio One Architecture** | 6 | 220 | client · **13 projects** | **deepest relationship in the book, under-leveraged** — re-engage |
+| Arcadis IBI Group | 5 | 4,866 | client · 2 projects | biggest-$ Prime (Anita Leonoff) |
+| GBL Architects | 8 | 324 | client · 2 projects | warm, 4 emailable |
+| **Ciccozzi** | 4 | 161 | client · **7 projects** | very warm |
+| Revery Architecture | 5 | 403 | client · 0 projects | warm relationship, no shared work yet — convert |
+| Musson Cattell Mackey | 4 | 508 | client | warm (VGH) |
+| **hcma** | 5 | 458 | **not a client · 0 projects** · 18 contacts | **DISPLACEMENT — defaults to Fast+Epp; the highest-value conversion target** |
+| DIALOG | 3 | 98 | client + foot-in | warm |
+| Francl Architecture | 3 | 103 | client | warm |
 
-## ADVANCING TO BID NOW (Procurement / Permitting stage — near-term)
-The open seats closest to award — pursue these before the SE is locked:
+**The play:** deepen the warm-and-active first — **Chris Dikeakos (19 seats, 8 projects)** and **Studio One (13 shared projects, under-worked)**; chase the big-$ Prime **Arcadis IBI**; and treat **hcma as the #1 displacement target** (5 pursuable seats, no KOR relationship, currently defaults to Fast+Epp — 18 contacts already on file to start). This is the relationship-investment priority list, ranked by where the pursuable seats actually are.
 
-| $M | Project | Stage | Owner |
-|--:|---|---|---|
-| 4,000 | International Plaza | Permitting | Jingon Intl (foreclosure-watch) |
-| 1,700 | NE False Creek / Viaduct Replacement | Permitting | Concord Pacific |
-| 1,500 | Mission Waterfront | Procurement | District of Mission |
-| 1,000 | TransLink Operations & Maintenance Centre #5 | Procurement | BC Min. of Transportation |
-| 560 | UBC Student Housing Complex | Permitting | UBC |
-| 500 | District Northwest Towers | Procurement | Thind Properties |
-| 427 | Vancouver Jewish Community Centre | Permitting | JCC of Greater Vancouver |
-| 225 | GEC Education Mega Centre | Procurement | WestStone / CIBT |
-| 200 | Whitgift Gardens Condos | Procurement | Concert Properties |
+## NEAR-TERM TIMING — what's closest to award
+The reliable timing signal is **stage** (verified), not dates. Of the 581 early-open seats:
+
+| Stage | Seats | Read |
+|---|--:|---|
+| **Procurement** (RFP active) | 161 | nearest to award — engage *now* |
+| **Permitting** (drawings forming) | 76 | team likely assembling — move fast or it locks |
+| Capital-plan / Proposed / Concept | ~344 | pre-RFP — position early, the highest-leverage window |
+
+*A date-precise calendar is deliberately **not** shown: only ~⅓ of pursuable seats carry a parseable start date in the source, and some are stale (a "2025 start" still flagged "Proposed" in mid-2026). Surfacing reliable RFP/start dates is the next enrichment pass — until then we work by stage, which we can stand behind, not by a date we can't.*
 
 *(The raw public-RFP feed for the Lower Mainland is currently dominated by non-structural municipal services — a data-sourcing gap flagged for the live-RFP ingest; the near-term structural pipeline above is the reliable signal.)*
 
@@ -209,15 +206,19 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 **Main switchboards** (ask for the named contact): PHSA 604-675-7400 · SFU 778-782-3111 · Richmond SD 604-668-6000 · Vancouver SB 604-713-5520 · BC Housing 604-433-1711. *(Direct dials for Anita Leonoff/Arcadis, Lee Holland/Graham, Juan Martinez/PHSA not in Apollo — reach via firm.)*
 
 ## CROSS-SELL — your own clients' active projects you're NOT on
-The warmest gigs in the book — you've already proven the relationship:
+The warmest gigs in the book — KOR clients who *own* pursuable (stage-gated, early, no-SE) Lower Mainland seats KOR isn't on. Deltek-verified relationship depth; $ is the COALESCE'd planning value:
 
-| KOR client | Projects together | Active LM projects KOR isn't on | Call |
-|---|--:|--:|---|
-| Wesgroup Properties | 78 | **9** | principal-to-principal |
-| Anthem Properties | 70 | 7 | Mark Kopinya / Rob Blackwell |
-| Reliance Properties | 82 | 7 | Jon Stovell / Joanna Kwan |
-| Cressey Development | 116 | 4 | principal-to-principal |
-| Bosa Development | 78 | 4 | principal-to-principal |
+| KOR client | Shared projects | Pursuable seats they own KOR isn't on | ~$M | Call |
+|---|--:|--:|--:|---|
+| **Reliance Properties** | 82 | **5** | 227 | Jon Stovell / Joanna Kwan |
+| **Wesgroup Properties** | 78 | **4** | 236 | Beau Jarvis / Brad Jones |
+| **Anthem Properties** | 70 | **4** | 124 | Mark Kopinya / Rob Blackwell |
+| Bosa Properties | 44 | 2 | 100 | principal-to-principal |
+| Bosa Development | 78 | 2 | 76 | principal-to-principal |
+| Cressey Development | 116 | 2 | 63 | principal-to-principal |
+| Polygon / Solterra | 114 / 52 | 1 each | 38 / 38 | principal-to-principal |
+
+**~$900M of pursuable work owned by developers KOR has already done 70–116 projects with.** These are the highest-probability calls on the board — relationship proven, seat genuinely open.
 
 ## SEISMIC — KOR's specialty lane (lead with what KOR wins)
 BC is Canada's seismic frontier and the Lower Mainland holds **$9.3B of seismic projects, ~99% with no SE committed.** KOR's *verified, winnable* seismic fit is **heritage/commercial upgrades + high-importance post-disaster structures** (fire halls, EOCs, hospital-adjacent) — backed by named credits (564 Beatty, ICBC Lonsdale Quay, Simone PBSD), CSA A23.3 Cl.21 code depth, and IEF Cat 3/4 fluency. **Pursue those now.** The K-12 SMP schools are the *build-toward* (KOR has no school credit yet — team for a first reference). Lead the heritage/high-importance pursuits; manage the founder EGBC-seismic disclosure proactively. *(Full picture: BC Seismic Dossier + KOR Credential Evidence Base.)*
