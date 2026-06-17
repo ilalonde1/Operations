@@ -19,8 +19,9 @@ The $63.5B is *construction* value. Here's what it's worth to KOR as **structura
 | **TAM** — total open-seat fee pool | **~$635M** | 1.0% structural fee on the $63.5B of costed open seats |
 | **SAM** — KOR-serviceable | **~$513M** | the building lanes KOR services (excludes heavy industrial / marine / utilities — Tilbury LNG, RBT2, substations) |
 | **SOM** — realistically winnable | **~$141M** | expected value: each seat's fee × KOR's win-probability given current relationship strength |
+| **+ modeled upside** — the 394 uncosted seats | **~$335M** | sector-median estimate (~$33.5B construction), stored separately + flagged modeled |
 
-**The takeaway: ~$141M of structural fee is realistically winnable in the Lower Mainland alone** — and that's computed from only the **336 costed open seats; another 394 aren't priced yet**, so the true prize is larger. *(Assumptions, stated plainly: structural fee = 1.0% of construction — mid of the 0.8–1.2% range for buildings; win-probability tiered off the warm-path strength of the team already on each project, blended with KOR's ~69% close rate. Change the fee % or win tiers and the SOM scales linearly — the model is transparent, not a black box.)*
+**The takeaway: ~$141M of structural fee is realistically winnable in the Lower Mainland alone** — from just the 336 *costed* seats. The other **394 seats are now priced** (sector-median model, ~$33.5B / **~$335M more fee**), lifting total addressable to **~$97B construction / ~$970M fee**. But that modeled tier skews to **191 K-12 school seats** (KOR's *build-toward*, not yet winnable) plus 114 residential (KOR's lane) — so treat it as **upside, not SOM**. *(Assumptions, stated plainly: structural fee = 1.0% of construction — mid of the 0.8–1.2% range for buildings; win-probability tiered off the warm-path strength of the team already on each project, blended with KOR's ~69% close rate; uncosted seats valued at the median costed seat in their sector. Every figure is transparent and scales linearly with the inputs — not a black box.)*
 
 ## 🛰️ THE MARKET AT 10,000 FT (where KOR fits — and can fit)
 **782 active Lower Mainland projects, ~$75.8B. 730 (93%) have no structural engineer committed — $63.5B of open seats; competitors hold just 23, KOR holds 3 (another 26 name an untracked SE). KOR's current share is ~0%, so the entire market is contestable.** It's an early-stage land-grab, not an entrenched market.
@@ -34,7 +35,7 @@ The $63.5B is *construction* value. Here's what it's worth to KOR as **structura
 | **Healthcare** | ~47 | ~$13B | health authorities, Infrastructure BC | Warm-path fit (Graham/PCL/Parkin) — Richmond + Burnaby hospitals |
 | **Civic & institutional** | ~115 | ~$7B | municipalities | Open mid-market; seismic + recreation |
 
-**By pipeline stage:** $45.5B is in **capital-plan** (pre-position *now*, before the RFP); $18B in **Procurement/Permitting** (near-term biddable); the rest concept/unstaged. **Owner split: ~62% public / ~34% private developer.** *(The $63.5B is from the 336 open seats that carry a cost estimate; a further **394 open seats are not yet costed** — the true open pipeline is larger, not smaller.)*
+**By pipeline stage:** $45.5B is in **capital-plan** (pre-position *now*, before the RFP); $18B in **Procurement/Permitting** (near-term biddable); the rest concept/unstaged. **Owner split: ~62% public / ~34% private developer.** *(The $63.5B verified figure is the 336 costed open seats; the other **394 are now priced via a sector-median model at ~$33.5B** (§The Number), so the true open pipeline is **~$97B**.)*
 
 **Where KOR fits today vs. can fit:** KOR's *proven* lane is **private residential/mixed-use high-rise** — the single biggest segment, and where KOR already holds the client relationships. KOR's *expansion* whitespace is **(1) seismic across education/civic** (its specialty, structural-led), **(2) healthcare + infrastructure via warm GC relationships** (Graham/PCL sit on ~$5.7B of it), and **(3) the open mid-market institutional** where incumbents aren't locked. The rest of this report is the route into each.
 
@@ -173,6 +174,8 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 | BC Housing | Rani Hayden / Aidan McGrath | Project Managers | rhayden@bchousing.org · amcgrath@bchousing.org ~ |
 
 **Tie-in to the marquee seats:** Richmond Hospital → **Richard Gage (VCH)** + GC Graham; Burnaby Hospital → **Juan Martinez (PHSA)** + GC PCL; the SMP school seismic work → **Kris Wilkins (Richmond)** + **Dave Riley (Surrey)**. The buyer, the Prime, and the GC for each top seat are now all named.
+
+**☎ Main switchboards** (ask for the named contact above; *direct dials require an Apollo phone-webhook — a small platform task, flagged for the build*): VCH 604-736-2033 · Fraser Health 1-877-935-5669 · PHSA 604-675-7400 · UBC 604-822-2211 · SFU 778-782-3111 · Richmond SD 604-668-6000 · Surrey Schools 604-592-4263 · Vancouver SB 604-713-5520 · BC Housing 604-433-1711 · District of Mission 604-820-3700.
 
 ## 💰 CROSS-SELL — your own clients' active projects you're NOT on
 The warmest gigs in the book — you've already proven the relationship:
