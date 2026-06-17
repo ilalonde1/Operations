@@ -230,7 +230,16 @@ Mined live from the held SE seats in the region: each rival's active load, the l
 | StructureCraft | 1 | timber specialty | RMH Willow House | MGA | niche — leave |
 | Bush Bohlman | 1 | cultural | Science World Renewal | CannonDesign | — |
 
-**The read:** Fast+Epp is the broad threat and the one in *Health*; Glotman owns *residential high-rise*; WHM holds the *Passive-House/multifamily* niche; RJC is the *education + seismic* institutional player. **KOR's clearest openings: (a) the developer-residential seats where KOR already has the client (Anthem/Wesgroup/Reliance) and Glotman/WHM aren't locked, and (b) heritage + high-importance seismic, where RJC is the only real incumbent to out-position.**
+*(The table above is mined from SE seats **in our graph** — it undercounts firms whose recent work isn't ingested yet. The verified picture below corrects it.)*
+
+**🔬 Verified rival dominance — who actually owns what (2024–26 awards/portfolios, sourced):**
+- **Bush, Bohlman & Partners — owns BC healthcare.** Structural EOR on Cowichan Hospital ($1.45B), Royal Columbian redevelopment, and New Surrey Hospital ($2.88B) — **$4B+ of health infrastructure.** *(Our graph showed them at "1 seat / cultural" — badly understated.)*
+- **Glotman Simpson — owns Vancouver high-rise residential/mixed-use.** Senákw (6,000 units), Fifteen Fifteen, Canada's Earth Tower, M5, City of Lougheed; recurring developers Westbank/Bosa/Shape/Delta Land.
+- **RJC Engineers — owns public civic/institutional + is a K-12 seismic incumbent.** UBC Gateway ($180M), BCIT Tall Timber, Capstan Station, Burnaby Fire Halls, Quw'utsun school; partner HCMA.
+- **Fast + Epp — owns mass timber + award-winning civic/cultural** (PNE Amphitheatre, Rosemary Brown, Eric Hamber) and is the **other K-12 seismic incumbent** (Begbie, Bayview, Brighouse). Partners HCMA/GBL/Perkins&Will/DIALOG/Revery.
+- StructureCraft (design-build timber niche) · WHM (high-rise residential, publishes little) · Entuitive/Aspect (emerging) · WSP/Stantec (supporting roles in LM, not headline structural).
+
+**The sharpened read:** the institutional/healthcare megaprojects are **incumbent fortresses** — Bush Bohlman in health, RJC in civic/institutional. KOR's two *realistic* lanes are **(1) developer-residential**, where the seat is won on **relationship** (KOR's client base: Anthem/Wesgroup/Reliance/Bosa) not incumbency, against Glotman/WHM; and **(2) heritage + high-importance seismic**, KOR's verified strength, where only RJC competes. **Don't burn pursuit budget fighting Bush Bohlman for hospitals — that explains why the verified-open hospital seats (Burnaby/Surrey Memorial/VGH) are *watch*, not *chase*.**
 
 ## 📁 STRATEGIC ACCOUNT ONE-PAGERS — the relationships that recur across the pipeline
 The handful of accounts that appear again and again above. Work these and you work most of the list.
