@@ -33,6 +33,7 @@ internal static class ScheduledJobDefinitions
         new(nameof(CanonicalOrgKorProjectSignalRefreshJob), "CanonicalOrgKorProjectSignalRefreshCronSchedule", "0 0 5 * * ?", o => o.CanonicalOrgKorProjectSignalRefreshEnabled, "Enrichment"),
         new(nameof(KorPursuitDeltekSyncJob), "KorPursuitDeltekSyncCronSchedule", "0 30 5 * * ?", o => o.KorPursuitDeltekSyncEnabled, "Sync"),
         new(nameof(AbMajorProjectsInventoryJob), "AbMajorProjectsInventoryCronSchedule", "0 30 3 ? * SUN", _ => true, "Ingestion"),
+        new(nameof(BcMajorProjectsInventoryJob), "BcMajorProjectsInventoryCronSchedule", "0 0 4 ? * SUN", _ => true, "Ingestion"),
         new(nameof(BcBidHistoricalDocumentDownloadJob), "BcBidHistoricalDocumentCronSchedule", "0 2/10 * * * ?", _ => true, "Ingestion"),
         new(nameof(CanadaBuysIngestionJob), "CanadaBuysCronSchedule", "0 0 0/2 * * ?", _ => true, "Ingestion"),
         new(nameof(CanadaBuysNewIngestionJob), "CanadaBuysNewCronSchedule", "0 15 0/2 * * ?", _ => true, "Ingestion"),
