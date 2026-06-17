@@ -98,11 +98,11 @@ Structural fee ≈ 1.0% of construction value. Three tiers, least-to-most defens
 ## ARCHITECT TEAMING — the architects who pick the SE
 On most public buildings work the **architect is the Prime Consultant**: they assemble the team (structural engineer included) and submit one proposal, scored on the team's P.Eng depth + similar-project experience. **KOR wins the structural seat by being on the architect's team — before the RFP drops.** These architects, ranked by how much active LM work they're assembling × KOR's *Deltek-verified* depth with each, are the **#1 BD channel:**
 
-| Prime architect | Pursuable seats | ~$M | KOR depth (Deltek) | The move |
+| Prime architect | Pursuable seats | ~\$M | KOR depth (Deltek) | The move |
 |---|--:|--:|---|---|
 | **Chris Dikeakos** | 19 | 1,175 | client · **8 projects** | warmest + highest seat count — **deepen first** |
 | **Studio One Architecture** | 6 | 220 | client · **13 projects** | **deepest relationship in the book, under-leveraged** — re-engage |
-| Arcadis IBI Group | 5 | 4,866 | client · 2 projects | biggest-$ Prime (Anita Leonoff) |
+| Arcadis IBI Group | 5 | 4,866 | client · 2 projects | biggest-dollar Prime (Anita Leonoff) |
 | GBL Architects | 8 | 324 | client · 2 projects | warm, 4 emailable |
 | **Ciccozzi** | 4 | 161 | client · **7 projects** | very warm |
 | Revery Architecture | 5 | 403 | client · 0 projects | warm relationship, no shared work yet — convert |

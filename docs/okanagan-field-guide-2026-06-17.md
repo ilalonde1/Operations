@@ -13,9 +13,9 @@
 
 | Funnel | Count | What it means |
 |---|--:|---|
-| Active interior major projects | **176** | de-duplicated; Okanagan + Thompson, post-taxonomy-cleanup |
-| Early-stage, in-lane, no SE | **54** | pre-team |
-| **KOR has a warm path** | **15** | thin — mostly City of Kelowna civic work |
+| Active interior major projects | **119** | de-duplicated; Okanagan + Thompson, built projects auto-retired nightly |
+| Early-stage, in-lane, no SE | **52** | pre-team |
+| **KOR has a warm path** | **14** | thin — mostly City of Kelowna civic work |
 | Research-verified open, near-term | **5 institutional seats** | the real position-now list below |
 
 KOR's record on what it chases: **177 won / 79 lost (~69%)**.
@@ -25,8 +25,8 @@ Structural fee ≈ 1.0% of construction value.
 
 | Tier | Construction | ~Structural fee | What it is |
 |---|--:|--:|---|
-| Addressable (early-stage, in-lane) | ~$4.2B | ~$42M | upper bound — context only |
-| **Warm-path serviceable** | **~$1.5B** | **~$15M** | the warm set — thin and mostly civic |
+| Addressable (early-stage, in-lane) | ~$4.1B | ~$41M | upper bound — context only |
+| **Warm-path serviceable** | **~$1.4B** | **~$14M** | the warm set — thin and mostly civic |
 | **Realistic near-term** | — | **small** | a few institutional positioning plays; the value is 2–3-yr |
 
 **The Okanagan is not a near-term fee market** — it's a 2–3-year positioning play on a real, opening institutional pipeline. Bank the UBCO and City of Kelowna relationships now.
@@ -93,9 +93,9 @@ Thin and local — there's no dominant warm architect. The play is to get on a t
 
 | Check | Expected | Actual | Result |
 |---|--:|--:|:--:|
-| Active interior major projects | 176 | 176 | PASS |
-| Early-open (no SE, in-lane) | 54 | 54 | PASS |
-| Warm pursuit universe | 15 | 15 | PASS |
+| Active interior major projects | 119 | 119 | PASS |
+| Early-open (no SE, in-lane) | 52 | 52 | PASS |
+| Warm pursuit universe | 14 | 14 | PASS |
 | Completed / built shown active | 0 | 0 | PASS |
 | Construction / out-of-lane / on-hold in open list | 0 | 0 | PASS |
 

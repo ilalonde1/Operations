@@ -36,6 +36,7 @@ The prior version of this dossier reported "349 seismic projects / $9.9B / 99% o
 *The ~270 remaining SMP schools are a real seismic pipeline, but most are **not** individually tracked as "seismic" projects in our graph — they surface over time as districts advance them. Treat (a) as the verified near-term set and (b) as the program-scale backdrop. Don't add them into one inflated headline.*
 
 ## 3. Top verified-open seismic seats (graph + research)
+
 | ~$M | Project | Owner | Status |
 |--:|---|---|---|
 | 200 | UVic Mearns Centre / McPherson Library modernization | UVic | **genuinely open** — in capital plan, unfunded; position now (VI) |
@@ -75,6 +76,7 @@ The graph's SE-links on seismic projects are sparse (most seats are unfilled), s
 ✓ = Apollo-verified. These are **relationship-build calls** (KOR has no K-12 SMP credit yet) — open the door now.
 
 **Health-authority capital leads (high-importance post-disaster — KOR's *winnable-now* lane — lead here):**
+
 | Authority | Decision-maker | Title | Contact |
 |---|---|---|---|
 | Vancouver Coastal Health | **Richard Gage** | Exec Dir & Chief Project Officer, Capital | richard.gage@vch.ca ✓ |
@@ -83,6 +85,7 @@ The graph's SE-links on seismic projects are sparse (most seats are unfilled), s
 | Island Health | **Dean Anderson** | Exec Dir, Facilities Planning & Capital | dean.anderson@islandhealth.ca ✓ |
 
 **School-district capital leads (the SMP school seats — build-toward):**
+
 | District | Decision-maker | Title | Contact |
 |---|---|---|---|
 | Richmond (SD38) | **Kris Wilkins** | Director, Facilities Services | kwilkins@sd38.bc.ca ✓ |

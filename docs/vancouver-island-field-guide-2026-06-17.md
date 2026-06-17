@@ -7,14 +7,14 @@
 ---
 
 ## THE READ — what the Island actually is
-**Vancouver Island is a position-now, win-later market — a seismic land-grab plus warm-developer relationships, NOT a near-term fee pipeline.** Of 400 active projects, hand-research on the top warm seats shows **most are already in construction (SE locked) or dormant.** The genuinely-open near-term seats come down to **two unfunded seismic plays** (UVic McPherson Library, Cedar Elementary) plus the broader seismic wave. Play the Island as relationship-building toward that wave — not as quarterly bids.
+**Vancouver Island is a position-now, win-later market — a seismic land-grab plus warm-developer relationships, NOT a near-term fee pipeline.** Of 343 active projects, hand-research on the top warm seats shows **most are already in construction (SE locked) or dormant.** The genuinely-open near-term seats come down to **two unfunded seismic plays** (UVic McPherson Library, Cedar Elementary) plus the broader seismic wave. Play the Island as relationship-building toward that wave — not as quarterly bids.
 
 ## THE FUNNEL (honest — with the stale-stage caveat)
 
 | Funnel | Count | What it means |
 |---|--:|---|
-| Active VI major projects | **400** | tracked live from BC MPI + KOR's graph (de-duplicated) |
-| Early-stage, in-lane, no SE *(as recorded)* | 119 | DB stage — **lags reality on the Island** |
+| Active VI major projects | **343** | tracked live from BC MPI + KOR's graph (de-duplicated; built projects auto-retired nightly) |
+| Early-stage, in-lane, no SE *(as recorded)* | 118 | DB stage — **lags reality on the Island** |
 | KOR has a warm path | **22** | the relationship universe (post-dedup) |
 | **Research-verified open, near-term** | **~2 + the seismic pipeline** | what's *actually* pursuable today |
 
@@ -112,8 +112,8 @@ Most Island SE seats are unfilled (the explicitly-seismic set + the SMP backlog 
 
 | Check | Expected | Actual | Result |
 |---|--:|--:|:--:|
-| Active VI major projects | 400 | 400 | PASS |
-| Early-open (no SE, in-lane, as recorded) | 119 | 119 | PASS |
+| Active VI major projects | 343 | 343 | PASS |
+| Early-open (no SE, in-lane, as recorded) | 118 | 118 | PASS |
 | Warm pursuit universe | 22 | 22 | PASS |
 | Completed/built shown active | 0 | 0 | PASS |
 | Construction-stage in the open list *(as recorded)* | 0 | 0 | PASS |

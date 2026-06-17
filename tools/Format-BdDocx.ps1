@@ -16,9 +16,27 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ---- 1. pandoc: markdown -> docx structure ----
-$pandocArgs = @($Md, "-o", $Docx)
+# Preprocess into a temp copy so tables ALWAYS render, regardless of source hygiene:
+#  (1) insert a blank line before any pipe-table header that follows a non-blank line
+#      (pandoc silently drops a table that isn't preceded by a blank line);
+#  (2) -f markdown-tex_math_dollars treats every '$' as literal currency, never LaTeX
+#      math (a '$' in a table HEADER otherwise opens a math span that swallows the
+#      delimiter row and turns the whole table into a paragraph).
+$src = [System.IO.File]::ReadAllLines($Md)
+$pp = New-Object System.Collections.Generic.List[string]
+foreach ($cur in $src) {
+  if ($cur.TrimStart().StartsWith("|")) {
+    $prev = if ($pp.Count -gt 0) { $pp[$pp.Count-1] } else { "" }
+    if ($prev.Trim() -ne "" -and -not $prev.TrimStart().StartsWith("|")) { $pp.Add("") }
+  }
+  $pp.Add($cur)
+}
+$tmpMd = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "bd-fmt-" + [System.IO.Path]::GetRandomFileName() + ".md")
+[System.IO.File]::WriteAllLines($tmpMd, $pp, (New-Object System.Text.UTF8Encoding $false))
+$pandocArgs = @($tmpMd, "-f", "markdown-tex_math_dollars", "-o", $Docx)
 if ($Toc) { $pandocArgs += @("--toc", "--toc-depth=2") }
 & pandoc @pandocArgs
+[System.IO.File]::Delete($tmpMd)
 if (-not (Test-Path $Docx)) { throw "pandoc did not produce $Docx" }
 
 # ---- 2. Word COM: apply professional styling ----
