@@ -29,10 +29,10 @@ Structural fee ≈ 1.0% of construction value.
 | **Warm-path serviceable** | **~$0.9B** | **~$9M** | the warm set — but most is locked/dormant (see Verified Status) |
 | **Realistic near-term** | — | **small** | a handful of seismic-positioning plays; the value is 2–4-yr, not this quarter |
 
-**The honest takeaway: the Island is not a fee-volume market for KOR today.** Its value is *strategic position* on the **$458M seismic pipeline (154 open seats, ~99% no SE committed)** that will procure over the next few years. Bank the relationships now.
+**The honest takeaway: the Island is not a fee-volume market for KOR today.** Its value is *strategic position* on the seismic pipeline — **~$200M of explicitly-seismic Island projects (~22, nearly all open), plus the broader SMP school backlog across the Island districts** — that procures over the next few years. Bank the relationships now.
 
 ## SEISMIC — the Island headline (KOR's core lane)
-**154 Island seismic projects, every one an open SE seat**, concentrated in the school districts that own most of the pipeline (Greater Victoria, Nanaimo-Ladysmith, Sooke, Saanich, Campbell River, Cowichan) plus UVic.
+**~22 explicitly-seismic Island projects (nearly all open SE seats), plus the broader SMP school backlog** across the districts that own most of the pipeline (Greater Victoria, Nanaimo-Ladysmith, Sooke, Saanich, Campbell River, Cowichan) plus UVic.
 
 **The credential-honest play:** KOR's *verified* seismic strength is **heritage/commercial upgrades + high-importance post-disaster** structures (PBSD, CSA A23.3 Cl.21, IEF Cat 3/4) — **not K-12 schools, where KOR has no track record.** So on the Island: lead with the real high-importance fit (fire halls, EOCs, Island Health-adjacent), and treat the SMP schools as a **build-toward** — earn a first school reference by teaming with a local Island architect. The incumbents to out-position are **RJC** (Victoria/Nanaimo — the BC seismic leader) and **Herold/Englobe** (Nanaimo — the local firm). *(Full picture: BC Seismic Dossier + KOR Credential Evidence Base.)*
 
@@ -100,7 +100,7 @@ The Island architect pool is smaller and more local than the Mainland. Ranked by
 | **Herold → Englobe** (Nanaimo) | 4 | the entrenched local firm (did Victoria High seismic) | **acquired by Englobe May 2025 — brand in transition; the opening to displace locally** |
 | Equilibrium · Fast+Epp · Skyline | 2 each | timber / specialty / local | niche |
 
-Most Island SE seats are unfilled (the 154 seismic + others) — this is a **land-grab, not a displacement grind** — but Herold/Englobe is the local name to out-position on Island-based work.
+Most Island SE seats are unfilled (the explicitly-seismic set + the SMP backlog + others) — this is a **land-grab, not a displacement grind** — but Herold/Englobe is the local name to out-position on Island-based work.
 
 ---
 
