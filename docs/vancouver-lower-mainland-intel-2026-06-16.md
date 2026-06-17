@@ -96,7 +96,7 @@ The open seats closest to award — pursue these before the SE is locked:
 **Architects — the Prime call sheet (every top LM Prime now has a named decision-maker):**
 | Prime (KOR relationship) | Who to call | Title | Email |
 |---|---|---|---|
-| **Arcadis IBI** (client · $4.6B pipeline) | Anita Leonoff | Director, Vancouver Office Lead | anita.leonoff@ibigroup.com ✓ |
+| **Arcadis IBI** (client · $4.6B pipeline) | Anita Leonoff | Director, Vancouver Office Lead | anita.leonoff@ibigroup.com ~ |
 | **Chris Dikeakos** (client + foot-in · warmest) | Chris Dikeakos / Nadia Said | Principals | chris@dikeakos.com ✓ · nadia.s@dikeakos.com ✓ |
 | **Ciccozzi** (client · 7 KOR projects) | Robert Ciccozzi / Sandro Mancini | Founder / Partner | rciccozzi@ciccozziarchitecture.com ~ · smancini@ciccozziarchitecture.com ✓ |
 | **GBL Architects** (client · 9 active) | Stu Lyon / Amela Brudar | Principal / Managing Partner | slyon@gblarchitects.com ✓ · abrudar@gblarchitects.com ✓ |
@@ -104,7 +104,7 @@ The open seats closest to award — pursue these before the SE is locked:
 | **Perkins + Will** (client · $780M) | Ryan Bragg / Susan Gushe | Principal / COO | ryan.bragg@perkinswill.com ✓ · susan.gushe@perkinswill.com ~ |
 | **Musson Cattell Mackey** (client · $470M) | Peter Odegaard / Paul Sukava | Partners | podegaard@mcmparchitects.com ✓ · psukava@mcmparchitects.com ✓ |
 | **DIALOG** (foot-in) | Brady Dunlop / Martin Nielsen | Partners | bdunlop@dialogdesign.ca ✓ · mnielsen@dialogdesign.ca ✓ |
-| **Acton Ostry** (client · $427M) | Russell Acton / Mark Ostry | Principals | racton@actonostry.ca ✓ · mostry@actonostry.ca ✓ |
+| **Acton Ostry** (client · $427M) | Russell Acton / Mark Ostry | Principals | racton@actonostry.ca ~ · mostry@actonostry.ca ~ |
 | **James K.M. Cheng** (client) | James Cheng | Founder / Principal | jcheng@jamescheng.com ✓ |
 | **Henriquez Partners** (client) | Patricia Tewfik | Managing Principal | patriciatewfik@henriquezpartners.com ✓ |
 | **Chernoff Thompson** ($530M · pursue) | Russell Chernoff / Tony Yip | Principals | rchernoff@cta.bc.ca ✓ · tyip@cta.bc.ca ✓ |
