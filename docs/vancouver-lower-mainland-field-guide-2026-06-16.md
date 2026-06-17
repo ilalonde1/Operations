@@ -125,7 +125,7 @@ The reliable timing signal is **stage** (verified), not dates. Of the 500 early-
 *The procurement + permitting seats are the live wave — that is what "near-term" means here.*
 
 ## WARM-PATH CALL SHEET (named, emailable today)
-✓ = verified (Apollo/Hunter-validated or authoritative on-file) · ~ = probable (pattern-inferred) · named-only = reach via office
+✓ = verified (Apollo/Hunter-validated) · named-only = reach via office
 
 **General contractors (the open-seat way-in):**
 
@@ -141,7 +141,7 @@ The reliable timing signal is **stage** (verified), not dates. Of the 500 early-
 
 | Prime (KOR relationship) | Who to call | Title | Email |
 |---|---|---|---|
-| **Arcadis IBI** (client · $4.6B pipeline) | Anita Leonoff | Director, Vancouver Office Lead | anita.leonoff@ibigroup.com ~ |
+| **Arcadis IBI** (client · $4.6B pipeline) | Anita Leonoff | Director, Vancouver Office Lead | anita.leonoff@arcadis.com ✓ |
 | **Chris Dikeakos** (client + foot-in · warmest) | Chris Dikeakos / Nadia Said | Principals | chris@dikeakos.com ✓ · nadia.s@dikeakos.com ✓ |
 | **Ciccozzi** (client · 7 KOR projects) | Robert Ciccozzi / Sandro Mancini | Founder / Partner | rob@ciccozziarchitecture.com ✓ · smancini@ciccozziarchitecture.com ✓ |
 | **GBL Architects** (client · 9 active) | Stu Lyon / Amela Brudar | Principal / Managing Partner | slyon@gblarchitects.com ✓ · abrudar@gblarchitects.com ✓ |
@@ -156,7 +156,7 @@ The reliable timing signal is **stage** (verified), not dates. Of the 500 early-
 | **hcma** (16 contacts · pursue, not yet a client) | Darryl Condon / Stuart Rothnie | Managing Principal / Principal | d.condon@hcma.ca ✓ · s.rothnie@hcma.ca ✓ |
 | **NSDA Architects** (client) | Ken Wong | Principal | kwong@nsda.bc.ca ✓ |
 | **NORR** (Annacis) | Brian Gerstmar / Erin Faulkner | CEO / Principal | brian.gerstmar@norr.com ✓ · erin.faulkner@norr.com ✓ |
-| **HDR** (Richmond Hosp.) | Sangeetha Ramanan | Mng Principal, W. Canada | sangeetha.ramanan@hdrinc.com ~ |
+| **HDR** (Richmond Hosp.) | Sangeetha Ramanan | Mng Principal, W. Canada | sangeetha.ramanan@hdrinc.com ✓ |
 | **Parkin** (Burnaby Hosp. · $1.73B) | Munir Macci | Vice President | macci@parkin.ca ✓ |
 
 **Developers (cross-sell + warm pursuits):**
@@ -167,7 +167,7 @@ The reliable timing signal is **stage** (verified), not dates. Of the 500 early-
 | **Wesgroup** (78) | Beau Jarvis / Brad Jones | CEO / SVP Development | bjarvis@wesgroup.ca ✓ · bjones@wesgroup.ca ✓ |
 | **Anthem** (70) | Mark Kopinya / Rob Blackwell | SVP / EVP Development | mkopinya@anthemproperties.com ✓ · rblackwell@anthemproperties.com ✓ |
 | **Reliance** (82) | Jon Stovell / Joanna Kwan | CEO / Dir Development | jons@relianceproperties.ca ✓ · joannak@relianceproperties.ca ✓ |
-| **Cressey** (116) | Jason Turcotte | VP Development | jturcotte@cressey.com ~ |
+| **Cressey** (116) | Jason Turcotte | VP Development | jturcotte@cressey.com ✓ |
 | **Townline** (36) | Rick Ilich / Kevin Brennan | CEO / VP Construction | rick.ilich@townline.com ✓ · kevin.brennan@townline.com ✓ |
 
 ## BUYER-SIDE CALL SHEET — the people who actually select the SE
@@ -178,7 +178,7 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 | Owner | Decision-maker | Title | Email |
 |---|---|---|---|
 | Vancouver Coastal Health | **Richard Gage** | Exec Director & Chief Project Officer, Capital Planning | richard.gage@vch.ca ✓ |
-| | Belinda Graham / Susan Luckey | Sr Dir / Dir, Capital Projects | belinda.graham@vch.ca · susan.luckey@vch.ca ✓ |
+| | Belinda Graham / Susan Luckey | Sr Dir / Dir, Capital Projects | belinda.graham@vch.ca ✓ · susan.luckey@vch.ca ✓ |
 | Fraser Health | **Betina Albornoz** | Chief Project Officer & Exec Dir, Major Capital | betina.albornoz@fraserhealth.ca ✓ |
 | Provincial Health Services (PHSA) | Juan Martinez / Gina Pisoni | Sr Directors, Capital Projects | juan.martinez@phsa.ca ✓ · gina.pisoni@phsa.ca ✓ |
 
@@ -194,9 +194,9 @@ The owner's capital-projects / facilities leaders — the decision-makers *behin
 
 | Owner | Decision-maker | Title | Email |
 |---|---|---|---|
-| UBC | Denise Brown / Natalie Walliser | Dir Capital Planning / Dir Facilities Planning | denise.brown@ubc.ca · natalie.walliser@ubc.ca ✓ |
-| SFU | Sam Dahabieh / Shelley Rid | Dir Facilities / Assoc Dir Facilities & Capital | dahabieh@sfu.ca · shelley_rid@sfu.ca ~ |
-| BC Housing | Rani Hayden / Aidan McGrath | Project Managers | rhayden@bchousing.org · amcgrath@bchousing.org ✓ |
+| UBC | Denise Brown / Natalie Walliser | Dir Capital Planning / Dir Facilities Planning | denise.brown@ubc.ca ✓ · natalie.walliser@ubc.ca ✓ |
+| SFU | Sam Dahabieh | Director, Facilities & Capital | dahabieh@sfu.ca ✓ |
+| BC Housing | Rani Hayden / Aidan McGrath | Project Managers | rhayden@bchousing.org ✓ · amcgrath@bchousing.org ✓ |
 
 **Tie-in to the marquee seats:** Richmond Hospital → **Richard Gage (VCH)** + GC Graham; Burnaby Hospital → **Juan Martinez (PHSA)** + GC PCL; the SMP school seismic work → **Kris Wilkins (Richmond)** + **Dave Riley (Surrey)**. The buyer, the Prime, and the GC for each top seat are all named.
 

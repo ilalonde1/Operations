@@ -17,7 +17,7 @@ The Field Guide presents a *verified* shortlist, not a raw ranking — because t
 ## 2. COVERAGE SCORECARD — can we actually reach the buyer? (internal QA)
 **26 of the top 30 EV targets (87%) now have a named, emailable decision-maker** — up from a baseline where the core public buyers (VSB, Richmond SD, VCH, PCL) had **zero** emailable contacts before this cycle. The 4 uncovered are the industrial/marine seats KOR doesn't pursue. This cycle's Apollo pass closed the building-sector gaps (District of Mission, ZGF, Baptist Housing). This is the internal readiness metric — track it per region; the field guide just gets the finished call sheet.
 
-**Still unverified (the data ceiling):** Anita Leonoff (Arcadis — not in Apollo; IBI→Arcadis rebrand likely moved her email), Sangeetha Ramanan (HDR — no Apollo record), Jason Turcotte (Cressey — email withheld), Shelley Rid (SFU — extrapolated only). Hunter is the next lever for these four.
+**Contact coverage:** the full Prime + buyer call sheet is now machine-verified (Apollo + Hunter). Note Anita Leonoff is at **anita.leonoff@arcadis.com** (the IBI→Arcadis rebrand moved her off @ibigroup.com); Sangeetha Ramanan (HDR) and Jason Turcotte (Cressey) verified via Hunter. The only name not machine-verifiable was the SFU associate director — use **Sam Dahabieh** (Director, Facilities & Capital) as the SFU contact.
 
 ## 3. ARCHITECT DISPLACEMENT — the competitor-wedge plays
 The Field Guide ranks architects to *deepen*; this is who they're locked to and how to pry the seat:
