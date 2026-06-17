@@ -40,7 +40,7 @@ The $63.5B is *construction* value. Here's what it's worth to KOR as **structura
 **Where KOR fits today vs. can fit:** KOR's *proven* lane is **private residential/mixed-use high-rise** — the single biggest segment, and where KOR already holds the client relationships. KOR's *expansion* whitespace is **(1) seismic across education/civic** (its specialty, structural-led), **(2) healthcare + infrastructure via warm GC relationships** (Graham/PCL sit on ~$5.7B of it), and **(3) the open mid-market institutional** where incumbents aren't locked. The rest of this report is the route into each.
 
 ## 🎯 SCORED TARGET LIST — top pursuits by expected value
-The sales pipeline, ranked by **EV = est. structural fee × win-probability** (win-prob driven by KOR's relationship to the team already on the seat). "Who to call" is the named, emailable decision-maker — pulled live from the graph. Duplicate project rows consolidated.
+The sales pipeline, ranked by **EV = est. structural fee × win-probability** (win-prob driven by KOR's relationship to the team already on the seat). "Who to call" is the named, emailable decision-maker — pulled live from the graph. Duplicate project rows consolidated. **⚠ Read the 🔬 Verified Status section directly below before acting — live procurement research re-ranks this sharply (several top-EV rows are locked, cancelled, or frozen; the real open seats are smaller-dollar).**
 
 | # | Pursuit | Fee $M | Win % | **EV $M** | Stage | Warmest path → who to call |
 |--:|---|--:|--:|--:|---|---|
@@ -64,6 +64,28 @@ The sales pipeline, ranked by **EV = est. structural fee × win-probability** (w
 | 18 | **Britannia Community Centre** | 3.0 | 32 | **1.0** | Capital Plan | Owner City of Vancouver (6 emailable on file) |
 
 ⚠ = distressed/foreclosure-watch · ★new = decision-maker added this cycle (Apollo). **Out-of-lane note:** the biggest *uncosted-EV* seats — Tilbury LNG ($3.5B), RBT2 ($3B), BC Hydro substation ($1B) — are heavy industrial/marine and sit **outside KOR's building-structural lane**; they're deliberately *not* in this list despite their size (they're in SAM's exclusions). This is a list of work KOR can actually win.
+
+## 🔬 VERIFIED STATUS — what's *actually* open right now (researched 2026-06-16, sourced)
+The EV ranking above is modeled off relationship × value. A live procurement-status pass (verified against health-authority pages, council agendas, BC gov releases, construction news) re-prioritizes it sharply — **chase the open seats, not the biggest numbers:**
+
+**🟢 GENUINELY OPEN + near-term — KOR's real priority (no SE locked):**
+- **Vancouver JCC Redevelopment ($427M)** — CM **Urban One selected**, construction **July 2026**, SE sub-award **imminent now**. → Call Urban One / Acton Ostry / Eldad Goldfarb **this week** — the narrowest, hottest window on the board.
+- **VGH West 12th two-tower ($400M)** — rezoning approved Jan 2026, in design development, **no SE named**. → Architect **Musson Cattell (Peter Odegaard)** is the way in.
+- **Inglewood Care Centre ($500M)** — public hearing **June 23 2026**, **no SE**. → Developer **Baptist Housing (Dayle Krahn)** + architect ZGF.
+- **Surrey Memorial New Acute Care Tower ($1.35B)** — business-plan phase, **RFP ~2025–26**, no team yet. → **Fraser Health (Betina Albornoz)** before procurement opens.
+- **UBC Medicine One ($680M)** — open but **far-future/conceptual**; monitor for the design-team RFQ.
+
+**🟡 WATCH — re-procuring or RFP imminent (get positioned *before* it opens):**
+- **Burnaby Hospital Ph2 + BC Cancer ($1.7B)** — the PCL/Parkin Alliance contract was **CANCELLED Apr 2026** (cost overruns); Infrastructure BC lists it **"Re-Paced."** Premier Eby: it proceeds but needs a reset. **The seat will re-open** — position now, ahead of the re-tender.
+- **Surrey Memorial New Acute Care Tower ($1.35B)** — business-plan + environmental-consultant RFPs **live now** ("Bidding Soon"); the structural procurement follows. → **Fraser Health (Betina Albornoz)** before it opens.
+
+**🔴 CLOSED / team already locked — don't chase the SE seat:**
+- **Richmond Hospital Ph2** — **Graham/HDR alliance selected** (development phase); pursue *only* via the Graham relationship, not as an open bid.
+- **UBC Lower Mall Student Housing** — **under construction** (Ryder/3XN), Fall 2026 start.
+
+**⚪ Dormant / no near-term work:** District Northwest Towers (in **receivership**, frozen) · NE False Creek (planning, FIFA-staging delay) · Mission Waterfront (40-yr master-plan horizon) · Britannia (on indefinite hold) · Annacis WWTP Ph2B (CM RFP ran mid-2025; civil/industrial, out-of-lane).
+
+**The re-rank in one line:** the verified hot list is **JCC (award imminent now) → Surrey Memorial (RFPs live) → VGH West 12th + Inglewood (open, no SE) → Burnaby (watch the re-tender)** — *not* the bigger-dollar seats that topped the modeled EV table, which are locked, frozen, or cancelled. This is the gap between a model and the ground truth. *(Single-pass research, sourced; feed to `project-reverify` to update the graph + nightly retirement job.)*
 
 ## 📊 COVERAGE SCORECARD — can we actually reach the buyer?
 **26 of the top 30 EV targets (87%) now have a named, emailable decision-maker on the team** — up from a baseline where the core public buyers (VSB, Richmond SD, VCH, PCL) had **zero** emailable contacts before this cycle. The 4 uncovered are the industrial/marine seats KOR doesn't pursue. This cycle's Apollo pass closed the building-sector gaps (District of Mission, ZGF, Baptist Housing). **Translation for Sales: every pursuit above is a phone call you can make Monday, not a name you still have to go find.**
