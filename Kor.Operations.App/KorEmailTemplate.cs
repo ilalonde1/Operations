@@ -35,6 +35,13 @@ namespace Kor.Operations
 
         internal static string E(string? s) => WebUtility.HtmlEncode(s ?? string.Empty);
 
+        // Outlook (Word engine) honours the literal-hex <font color="#hex">
+        // ATTRIBUTE but NOT a css `color` — the Ganss sanitizer rewrites every
+        // css hex to rgba(), which Word can't parse and silently drops (text
+        // falls back to black). So colored text gets BOTH: a css color (Gmail/
+        // Apple Mail) and a <font color> wrapper (Outlook). `inner` is raw HTML.
+        private static string Font(string hex, string inner) => $"<font color=\"{hex}\">{inner}</font>";
+
         /// <summary>
         /// Wraps caller-supplied inner body HTML in the branded KOR shell
         /// (header band + white card + footer). <paramref name="eyebrow"/> is the
@@ -58,9 +65,11 @@ namespace Kor.Operations
               .Append(";padding:16px 22px;\">")
               .Append("<div style=\"color:").Append(SlateTint)
               .Append(";font-size:11px;letter-spacing:1.5px;font-weight:600;text-transform:uppercase;\">")
-              .Append(E(eyebrow)).Append("</div>")
+              .Append(Font(SlateTint, E(eyebrow))).Append("</div>")
               .Append("<div style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.5px;padding-top:3px;\">")
-              .Append("KOR <span style=\"font-weight:400;color:").Append(SlateTint).Append(";\">Structural</span></div>")
+              .Append(Font("#ffffff", "KOR "))
+              .Append(Font(SlateTint, "<span style=\"font-weight:400;\">Structural</span>"))
+              .Append("</div>")
               .Append("</td></tr>");
 
             // Thin accent rule under the band.
@@ -106,7 +115,7 @@ namespace Kor.Operations
                 .Append("<a href=\"").Append(E(url))
                 .Append("\" style=\"display:inline-block;padding:11px 26px;font-size:14px;font-weight:600;")
                 .Append("text-decoration:none;color:#ffffff;font-family:").Append(FontStack).Append(";\">")
-                .Append("<span style=\"color:#ffffff;text-decoration:none;\">").Append(E(text)).Append(" &rarr;</span>")
+                .Append(Font("#ffffff", "<span style=\"color:#ffffff;text-decoration:none;\">" + E(text) + " &rarr;</span>"))
                 .Append("</a></td></tr></table>")
                 .ToString();
         }
