@@ -46,40 +46,41 @@ namespace Kor.Operations
         {
             var sb = new StringBuilder();
 
-            sb.Append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" ")
-              .Append("style=\"background-color:").Append(Pale).Append(";margin:0;padding:0;width:100%;\">")
-              .Append("<tr><td align=\"center\" style=\"padding:24px 12px;\">");
-
-            // Centred 600px card.
-            sb.Append("<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" align=\"center\" ")
-              .Append("style=\"width:600px;max-width:600px;background-color:#ffffff;border:1px solid ").Append(Border)
-              .Append(";border-radius:8px;font-family:").Append(FontStack).Append(";\">");
+            // Left-aligned 600px block (no centring wrapper, no card border) so it
+            // flows naturally above the user's left-aligned signature.
+            // IMPORTANT for Outlook: cell fills use the bgcolor ATTRIBUTE, not just
+            // CSS background-color — the Word rendering engine ignores the CSS.
+            sb.Append("<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" ")
+              .Append("style=\"width:600px;max-width:600px;border-collapse:collapse;font-family:").Append(FontStack).Append(";\">");
 
             // Header band — text wordmark (no image: avoids Gmail blocking data:/hosted logos).
-            sb.Append("<tr><td style=\"background-color:").Append(Slate)
-              .Append(";border-radius:8px 8px 0 0;padding:20px 28px;\">")
+            sb.Append("<tr><td bgcolor=\"").Append(Slate).Append("\" style=\"background-color:").Append(Slate)
+              .Append(";padding:16px 22px;\">")
               .Append("<div style=\"color:").Append(SlateTint)
               .Append(";font-size:11px;letter-spacing:1.5px;font-weight:600;text-transform:uppercase;\">")
               .Append(E(eyebrow)).Append("</div>")
-              .Append("<div style=\"color:#ffffff;font-size:22px;font-weight:700;letter-spacing:1px;padding-top:2px;\">")
+              .Append("<div style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.5px;padding-top:3px;\">")
               .Append("KOR <span style=\"font-weight:400;color:").Append(SlateTint).Append(";\">Structural</span></div>")
               .Append("</td></tr>");
 
-            // Body.
-            sb.Append("<tr><td style=\"padding:28px;color:").Append(Text)
-              .Append(";font-size:14px;line-height:1.6;font-family:").Append(FontStack).Append(";\">")
+            // Thin accent rule under the band.
+            sb.Append("<tr><td bgcolor=\"").Append(Accent).Append("\" style=\"background-color:").Append(Accent)
+              .Append(";height:3px;line-height:3px;font-size:0;\">&nbsp;</td></tr>");
+
+            // Body (left-aligned).
+            sb.Append("<tr><td align=\"left\" style=\"padding:20px 22px;color:").Append(Text)
+              .Append(";font-size:14px;line-height:1.6;text-align:left;font-family:").Append(FontStack).Append(";\">")
               .Append(innerBodyHtml)
               .Append("</td></tr>");
 
-            // Footer.
+            // Footer — single subtle line; the user's signature carries contact detail.
             sb.Append("<tr><td style=\"border-top:1px solid ").Append(Border)
-              .Append(";padding:16px 28px;color:").Append(Muted)
-              .Append(";font-size:12px;line-height:1.5;font-family:").Append(FontStack).Append(";\">")
-              .Append("KOR Structural Engineering &nbsp;&middot;&nbsp; Vancouver &middot; Los Angeles &middot; San Diego<br/>")
+              .Append(";padding:12px 22px;color:").Append(Muted)
+              .Append(";font-size:11px;line-height:1.5;font-family:").Append(FontStack).Append(";\">")
               .Append("This message was sent automatically via KOR Operations.")
               .Append("</td></tr>");
 
-            sb.Append("</table></td></tr></table>");
+            sb.Append("</table>");
 
             if (!string.IsNullOrWhiteSpace(pixelUrl))
             {
@@ -91,21 +92,22 @@ namespace Kor.Operations
         }
 
         /// <summary>
-        /// Bulletproof accent call-to-action button (table cell + inline-block
-        /// anchor) — renders as a real button across Outlook/Gmail/Apple Mail,
-        /// replacing the old bare "Click here" link that read as spam.
+        /// Accent call-to-action button (table cell + inline-block anchor),
+        /// replacing the old bare "Click here" link that read as spam. The fill
+        /// uses the bgcolor attribute and the label color is set on a nested span
+        /// so Outlook renders white text instead of its default link blue.
         /// </summary>
         internal static string Button(string url, string text)
         {
             return new StringBuilder()
-                .Append("<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:4px 0;\"><tr>")
-                .Append("<td align=\"center\" bgcolor=\"").Append(Accent)
-                .Append("\" style=\"background-color:").Append(Accent).Append(";border-radius:6px;\">")
+                .Append("<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:6px 0;border-collapse:separate;\"><tr>")
+                .Append("<td bgcolor=\"").Append(Accent)
+                .Append("\" style=\"background-color:").Append(Accent).Append(";border-radius:4px;\">")
                 .Append("<a href=\"").Append(E(url))
-                .Append("\" style=\"display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:600;")
-                .Append("text-decoration:none;font-family:").Append(FontStack).Append(";\">")
-                .Append(E(text)).Append(" &rarr;</a>")
-                .Append("</td></tr></table>")
+                .Append("\" style=\"display:inline-block;padding:11px 26px;font-size:14px;font-weight:600;")
+                .Append("text-decoration:none;color:#ffffff;font-family:").Append(FontStack).Append(";\">")
+                .Append("<span style=\"color:#ffffff;text-decoration:none;\">").Append(E(text)).Append(" &rarr;</span>")
+                .Append("</a></td></tr></table>")
                 .ToString();
         }
 
