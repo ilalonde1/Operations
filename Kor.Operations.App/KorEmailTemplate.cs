@@ -110,6 +110,39 @@ namespace Kor.Operations
         }
 
         /// <summary>
+        /// To/Cc recipient block so each per-recipient send still shows the full
+        /// distribution (restores the dropped recipient list for the transmittal
+        /// flow, which tracks To and Cc separately).
+        /// </summary>
+        internal static string RecipientBlock(IEnumerable<string>? to, IEnumerable<string>? cc)
+        {
+            static string Join(IEnumerable<string>? xs) => string.Join("; ",
+                (xs ?? Enumerable.Empty<string>())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x.Trim()));
+
+            var toStr = Join(to);
+            var ccStr = Join(cc);
+            if (toStr.Length == 0 && ccStr.Length == 0) return string.Empty;
+
+            var sb = new StringBuilder();
+            sb.Append("<div style=\"margin:18px 0 0;padding-top:14px;border-top:1px solid ").Append(Border)
+              .Append(";color:").Append(Muted).Append(";font-size:12px;line-height:1.6;\">");
+            if (toStr.Length > 0)
+            {
+                sb.Append("<div><span style=\"font-weight:600;color:").Append(Text)
+                  .Append(";\">To:</span> ").Append(E(toStr)).Append("</div>");
+            }
+            if (ccStr.Length > 0)
+            {
+                sb.Append("<div><span style=\"font-weight:600;color:").Append(Text)
+                  .Append(";\">Cc:</span> ").Append(E(ccStr)).Append("</div>");
+            }
+            sb.Append("</div>");
+            return sb.ToString();
+        }
+
+        /// <summary>
         /// "Sent to:" recipient block so each per-recipient send still shows the
         /// full distribution (restores the dropped recipient list).
         /// </summary>

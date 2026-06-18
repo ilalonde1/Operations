@@ -9,7 +9,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -135,6 +134,13 @@ namespace Kor.Operations.Services
 
             var sendFailures = new List<(string Email, Exception Error)>();
 
+            // Purpose is folded into the branded card body (BuildEmailBodyHtml);
+            // blank it on the header so GraphFacade does not also prepend an
+            // unstyled "Purpose:" line above the card. The cover sheet PDF was
+            // already rendered above, so this does not affect it.
+            var purpose = header.Purpose;
+            header.Purpose = string.Empty;
+
             try
             {
                 foreach (var recipient in recipientRecords)
@@ -172,8 +178,9 @@ namespace Kor.Operations.Services
                         request.SignatureHtml,
                         clickUrl,
                         pixelUrl,
-                        string.Join("; ", request.ToRecipients),
-                        string.Join("; ", request.CcRecipients));
+                        purpose,
+                        request.ToRecipients,
+                        request.CcRecipients);
 
                     if (!string.IsNullOrWhiteSpace(clickUrl))
                     {
@@ -288,44 +295,58 @@ namespace Kor.Operations.Services
             return new TransmittalSendResult(request.Folder, upload.CoverLocalPath, allRecipients);
         }
 
+        // Branded transmittal body via the shared KorEmailTemplate shell. The
+        // Purpose is rendered INSIDE the card here (and header.Purpose is blanked
+        // by the caller before send) so GraphFacade does not prepend an unstyled
+        // "Purpose:" line above the card. To/Cc recipient block restores the
+        // distribution list that the old body dropped on the floor.
         private static string BuildEmailBodyHtml(
             string? remarksHtml,
             string? signatureHtml,
             string? linkUrl,
             string? pixelUrl,
-            string? toRecipients,
-            string? ccRecipients)
+            string? purpose,
+            IReadOnlyList<string> toRecipients,
+            IReadOnlyList<string> ccRecipients)
         {
-            var sb = new StringBuilder();
             var sanitizedRemarksHtml = string.IsNullOrWhiteSpace(remarksHtml) ? string.Empty : Sanitizer.Sanitize(remarksHtml);
             var sanitizedSignatureHtml = string.IsNullOrWhiteSpace(signatureHtml) ? string.Empty : Sanitizer.Sanitize(signatureHtml);
 
+            var inner = new StringBuilder();
+
+            if (!string.IsNullOrWhiteSpace(purpose))
+            {
+                inner.Append("<p style=\"margin:0 0 12px;color:#111827;\">")
+                     .Append("<span style=\"font-weight:600;\">Purpose:</span> ")
+                     .Append(KorEmailTemplate.E(purpose))
+                     .Append("</p>");
+            }
+
             if (!string.IsNullOrWhiteSpace(sanitizedRemarksHtml))
             {
-                sb.Append(sanitizedRemarksHtml.Trim());
-                sb.Append("<br/><br/>");
+                inner.Append("<div style=\"margin:0 0 8px;\">")
+                     .Append(sanitizedRemarksHtml.Trim())
+                     .Append("</div>");
             }
 
             if (!string.IsNullOrWhiteSpace(linkUrl))
             {
-                sb.Append("<b>View files: <a href=\"")
-                  .Append(WebUtility.HtmlEncode(linkUrl))
-                  .Append("\">Click here to view the files</a></b><br/><br/>");
+                inner.Append("<p style=\"margin:16px 0 12px;color:#111827;\">")
+                     .Append("The files below have been shared with you through KOR's secure SharePoint.")
+                     .Append("</p>")
+                     .Append(KorEmailTemplate.Button(linkUrl!, "View files"));
             }
+
+            inner.Append(KorEmailTemplate.RecipientBlock(toRecipients, ccRecipients));
 
             if (!string.IsNullOrWhiteSpace(sanitizedSignatureHtml))
             {
-                sb.Append(sanitizedSignatureHtml.Trim());
+                inner.Append("<div style=\"margin-top:20px;\">")
+                     .Append(sanitizedSignatureHtml.Trim())
+                     .Append("</div>");
             }
 
-            if (!string.IsNullOrWhiteSpace(pixelUrl))
-            {
-                sb.Append("<img src=\"")
-                  .Append(WebUtility.HtmlEncode(pixelUrl))
-                  .Append("\" alt=\"\" style=\"display:none;width:1px;height:1px;\" />");
-            }
-
-            return sb.ToString();
+            return KorEmailTemplate.Shell("Transmittal", inner.ToString(), pixelUrl);
         }
 
         private static async Task InsertRedirectTargetsAsync(
