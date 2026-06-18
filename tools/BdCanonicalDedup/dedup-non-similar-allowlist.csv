@@ -1928,3 +1928,19 @@ LoserId,SurvivorId,Reason
 69987,38934
 72455,38934
 76340,38934
+# 2026-06-17 CA warm-client dedup (ca-warm-dedup-2026-06-17.csv). The California metro
+# research ingest created duplicate canonicals of KOR's existing Deltek-linked warm
+# clients. Survivors carry the ClendorClientId + KorProjectsCount (verified via DB);
+# losers are KPC=0 research dupes. Fuzzy gate rejects on acronym/paren/legal-suffix
+# differences (JWDA=Joseph Wong Design Associates; DBRDS=De Bartolo+Rimanic; LLC suffix;
+# Corp vs Group; "+ SDSU" project-context noise). Each verified same-entity 2026-06-17.
+76793,48,ca-warm jwda (joseph wong design associates = jwda)
+76659,48,ca-warm jwda architects = jwda
+76813,77,ca-warm mirka investments = mirka investments llc
+76099,220,ca-warm intergulf development corp = group
+53492,220,ca-warm intergulf/cidex = intergulf development group
+76789,20,ca-warm de bartolo+rimanic = dbrds
+76831,20,ca-warm dbrds variant
+76863,20,ca-warm dbrds variant (aor note)
+76941,20,ca-warm dbrds (wrong "design by reference" expansion)
+76819,64,ca-warm avalonbay+sdsu = avalonbay communities
