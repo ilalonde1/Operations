@@ -1944,3 +1944,12 @@ LoserId,SurvivorId,Reason
 76863,20,ca-warm dbrds variant (aor note)
 76941,20,ca-warm dbrds (wrong "design by reference" expansion)
 76819,64,ca-warm avalonbay+sdsu = avalonbay communities
+# CA org-graph clean (2026-06-18): research-dup fragments -> Deltek/most-linked survivors. Verified same-firm name variants.
+76944,70108,AC Martin (A.C. Martin Partners) -> AC Martin
+76784,68610,Degenkolb Engineers - San Diego -> Degenkolb Engineers
+75704,38924,Englekirk (now part of WSP) -> Englekirk Structural Engineers
+76794,68631,Gensler - San Diego -> Gensler
+76737,68631,Gensler Architects -> Gensler
+75705,68613,John A. Martin & Associates Inc (JAMA) -> JAMA survivor
+75199,68613,John A. Martin and Associates -> JAMA survivor
+76888,75180,Solomon Cordwell Buenz (SCB) -> SCB
