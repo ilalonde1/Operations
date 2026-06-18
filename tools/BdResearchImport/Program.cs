@@ -78,6 +78,12 @@ internal static class Program
         new("la", "KOR-LA-Market", "outputs/projects-payload.json", "us-market-projects"),
         new("pacnw", "KOR-PacNW-Market", "outputs/firms-payload.json", "us-market-firms"),
         new("pacnw", "KOR-PacNW-Market", "outputs/projects-payload.json", "us-market-projects"),
+        new("sandiego", "KOR-SanDiego-Market", "outputs/firms-payload.json", "us-market-firms"),
+        new("sandiego", "KOR-SanDiego-Market", "outputs/projects-payload.json", "us-market-projects"),
+        new("sacramento", "KOR-Sacramento-Market", "outputs/firms-payload.json", "us-market-firms"),
+        new("sacramento", "KOR-Sacramento-Market", "outputs/projects-payload.json", "us-market-projects"),
+        new("bayarea", "KOR-BayArea-Market", "outputs/firms-payload.json", "us-market-firms"),
+        new("bayarea", "KOR-BayArea-Market", "outputs/projects-payload.json", "us-market-projects"),
         new("alberta", "KOR-Alberta-Market", "outputs/firms-payload.json", "alberta-firms"),
         new("alberta", "KOR-Alberta-Market", "outputs/projects-payload.json", "alberta-projects"),
         new("institutional", "KOR-Institutional-Pipeline", "outputs/owners-payload.json", "institutional-owners"),
@@ -229,6 +235,45 @@ internal static class Program
                 sourceKeyPrefix: "PACNW-",
                 defaultProvince: "WA",
                 includeStateInSourceKey: true,
+                ct: cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("sandiego", () => ImportUsMarketAsync(
+                options,
+                orgStore,
+                enrichmentStore,
+                resolver,
+                stats,
+                directoryName: "KOR-SanDiego-Market",
+                enrichmentProviderName: "SanDiegoMarketResearch",
+                projectSource: "SanDiegoMarketProjects",
+                sourceKeyPrefix: "SDMKT-",
+                defaultProvince: "CA",
+                includeStateInSourceKey: false,
+                ct: cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("sacramento", () => ImportUsMarketAsync(
+                options,
+                orgStore,
+                enrichmentStore,
+                resolver,
+                stats,
+                directoryName: "KOR-Sacramento-Market",
+                enrichmentProviderName: "SacramentoMarketResearch",
+                projectSource: "SacramentoMarketProjects",
+                sourceKeyPrefix: "SACMKT-",
+                defaultProvince: "CA",
+                includeStateInSourceKey: false,
+                ct: cts.Token)).ConfigureAwait(false);
+            await RunTagAsync("bayarea", () => ImportUsMarketAsync(
+                options,
+                orgStore,
+                enrichmentStore,
+                resolver,
+                stats,
+                directoryName: "KOR-BayArea-Market",
+                enrichmentProviderName: "BayAreaMarketResearch",
+                projectSource: "BayAreaMarketProjects",
+                sourceKeyPrefix: "BAYMKT-",
+                defaultProvince: "CA",
+                includeStateInSourceKey: false,
                 ct: cts.Token)).ConfigureAwait(false);
             await RunTagAsync("alberta", () => ImportAlbertaMarketAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
             await RunTagAsync("institutional", () => ImportInstitutionalPipelineAsync(options, orgStore, enrichmentStore, resolver, stats, cts.Token)).ConfigureAwait(false);
