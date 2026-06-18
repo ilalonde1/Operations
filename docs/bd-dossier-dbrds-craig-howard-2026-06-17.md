@@ -5,7 +5,7 @@
 > Prepared for **Jim DesRoches' California trip, June 29 – July 1, 2026.** Sourced from a live client/architect email thread (ground truth) + adversarially-verified web research. Every claim carries a source; unverified items are marked **[UNVERIFIED]**.
 
 ## The one-line read
-**DBRDS (De Bartolo + Rimanic Design Studio)** is a warm, growing San Diego + Sacramento architect that has KOR *"on its structural bid list"* via **1650 Hotel Circle**. But their **default structural engineer is KPFF** (Margot Hotel, Joywell Hotel, Sixth & Robinson) — so **KOR is the challenger, not the incumbent.** The play: convert the Hotel Circle beachhead + Craig Howard's brand-new Sacramento (NorCal) office into **preferred-SE** status before they scale up.
+**DBRDS (De Bartolo + Rimanic Design Studio)** is a warm, growing San Diego + Sacramento architect — and per KOR's Deltek record, **KOR is already dbrds's active structural engineer on 2 live projects** (DBRDS Mixed-Use Sacramento + 0 Riley St, San Diego), on top of **1650 Hotel Circle**. So KOR is *not* a challenger here — it's an **active dbrds SE**. **KPFF is dbrds's default on their larger hotel/multifamily flagships** (Margot Hotel, Joywell, Sixth & Robinson). The play: **expand from active-SE-on-the-live-work to *preferred* SE on dbrds's bigger projects**, leveraging the relationship + Craig Howard's brand-new Sacramento (NorCal) office before they scale up.
 
 ---
 
