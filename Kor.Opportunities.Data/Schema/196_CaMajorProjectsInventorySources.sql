@@ -15,14 +15,14 @@ BEGIN
         (NEWID(),
          N'CA_SocrataSF',
          18,
-         N'https://data.sfgov.org/resource/k2ra-p3nq.json',
+         N'https://data.sfgov.org/resource/i98e-djp9.json',
          1,
          86400,
          300,
          sysdatetimeoffset(),
          sysdatetimeoffset(),
          0,
-         N'{"kind":"socrata","sourceKeyPrefix":"sf","municipality":"San Francisco","county":"San Francisco County","limit":"500","minUnits":"20","minValuation":"2000000","where":"(estimated_cost >= 2000000 OR proposed_units >= 20) AND (lower(description) like ''%apartment%'' OR lower(description) like ''%residential%'' OR lower(description) like ''%dwelling%'' OR lower(description) like ''%condo%'' OR lower(description) like ''%mixed%'' OR lower(description) like ''%hotel%'' OR lower(description) like ''%commercial%'' OR lower(description) like ''%office%'' OR lower(description) like ''%retail%'')","permitColumn":"permit_number","projectNameColumn":"description","descriptionColumn":"description","addressColumn":"address","typeColumn":"permit_type","valuationColumn":"estimated_cost","unitsColumn":"proposed_units","filedDateColumn":"filed_date","stageColumn":"status"}');
+         N'{"kind":"socrata","sourceKeyPrefix":"sf","municipality":"San Francisco","county":"San Francisco County","limit":"500","minUnits":"20","minValuation":"2000000","where":"proposed_units::number >= 20 OR estimated_cost::number >= 2000000","permitColumn":"permit_number","projectNameColumn":"description","descriptionColumn":"description","addressColumn":"street_name","typeColumn":"permit_type_definition","valuationColumn":"estimated_cost","unitsColumn":"proposed_units","filedDateColumn":"filed_date","stageColumn":"status"}');
 END;
 GO
 
@@ -34,14 +34,14 @@ BEGIN
         (NEWID(),
          N'CA_SocrataSanDiego',
          18,
-         N'https://data.sandiegocounty.gov/resource/dyzh-7eat.json',
-         1,
+         N'https://seshat.datasd.org/development_permits/approvals_active_datasd.csv',
+         0,   -- DISABLED: City of San Diego is CSV-only (no Socrata API); needs a CSV provider (fast-follow). County dyzh-7eat was wrong jurisdiction.
          86400,
          300,
          sysdatetimeoffset(),
          sysdatetimeoffset(),
          0,
-         N'{"kind":"socrata","sourceKeyPrefix":"sdcounty","county":"San Diego County","limit":"500","minUnits":"20","minValuation":"2000000","where":"(valuation >= 2000000 OR project_value >= 2000000 OR units >= 20) AND (lower(description) like ''%apartment%'' OR lower(description) like ''%residential%'' OR lower(description) like ''%dwelling%'' OR lower(description) like ''%condo%'' OR lower(description) like ''%mixed%'' OR lower(description) like ''%hotel%'' OR lower(description) like ''%commercial%'' OR lower(description) like ''%office%'' OR lower(description) like ''%retail%'')","permitColumn":"permit_number","projectNameColumn":"project_name","descriptionColumn":"description","addressColumn":"address","typeColumn":"permit_type","valuationColumn":"valuation","unitsColumn":"units","filedDateColumn":"applied_date","stageColumn":"status"}');
+         N'{"kind":"csv","status":"disabled-pending-csv-provider","sourceKeyPrefix":"sdcity","municipality":"San Diego","county":"San Diego County","minUnits":"20","minValuation":"2000000","permitColumn":"APPROVAL_ID","projectNameColumn":"PROJECT_TITLE","descriptionColumn":"PROJECT_SCOPE","valuationColumn":"APPROVAL_VALUATION","unitsColumn":"APPROVAL_DU_NET_CHANGE","addressColumn":"GIS_ADDRESS","stageColumn":"APPROVAL_STATUS","filedDateColumn":"APPROVAL_CREATE_DATE"}');
 END;
 GO
 
@@ -60,7 +60,7 @@ BEGIN
          sysdatetimeoffset(),
          sysdatetimeoffset(),
          0,
-         N'{"kind":"ckan","sourceKeyPrefix":"sanjose","municipality":"San Jose","county":"Santa Clara County","limit":"500","minUnits":"20","minValuation":"2000000","ckanPackageSearchUrl":"https://data.sanjoseca.gov/api/3/action/package_search","ckanPackageQuery":"building permits","ckanQuery":"apartment residential dwelling condo mixed-use hotel commercial office retail","permitColumn":"permit_number","projectNameColumn":"project_name","descriptionColumn":"description","addressColumn":"address","typeColumn":"permit_type","valuationColumn":"valuation","unitsColumn":"units","filedDateColumn":"application_date","stageColumn":"status"}');
+         N'{"kind":"ckan","sourceKeyPrefix":"sanjose","municipality":"San Jose","county":"Santa Clara County","limit":"500","minUnits":"20","minValuation":"2000000","resourceId":"761b7ae8-3be1-4ad6-923d-c7af6404a904","ckanQuery":"new construction","permitColumn":"FOLDERNUMBER","projectNameColumn":"FOLDERNAME","descriptionColumn":"WORKDESCRIPTION","typeColumn":"FOLDERDESC","valuationColumn":"PERMITVALUATION","unitsColumn":"DWELLINGUNITS","stageColumn":"Status"}');
 END;
 GO
 

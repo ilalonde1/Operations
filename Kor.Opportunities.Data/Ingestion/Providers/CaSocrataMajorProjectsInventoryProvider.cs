@@ -762,9 +762,10 @@ Found:
             return fallback;
         }
 
-        var digits = Regex.Replace(value, @"[^\d-]", "");
-        return int.TryParse(digits, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
-            ? parsed
+        // Handle float-text counts (e.g. SF Socrata returns "48.0") + thousands separators.
+        var match = Regex.Match(value.Replace(",", string.Empty), @"-?\d+(?:\.\d+)?");
+        return match.Success && double.TryParse(match.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            ? (int)parsed
             : fallback;
     }
 
