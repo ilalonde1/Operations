@@ -134,6 +134,16 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
             yield break;
         }
 
+        if (string.Equals(kind, "csv", StringComparison.OrdinalIgnoreCase))
+        {
+            await foreach (var row in FetchCsvRowsAsync(source, sourceConfig, ct).ConfigureAwait(false))
+            {
+                yield return row;
+            }
+
+            yield break;
+        }
+
         await foreach (var row in FetchSocrataRowsAsync(source, sourceConfig, ct).ConfigureAwait(false))
         {
             yield return row;
@@ -222,6 +232,76 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
         }
 
         return rows;
+    }
+
+    private async IAsyncEnumerable<JsonElement> FetchCsvRowsAsync(
+        OpportunitySource source,
+        IReadOnlyDictionary<string, string> sourceConfig,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, source.BaseUrl);
+        AddCommonHeaders(request, sourceConfig);
+        request.Headers.TryAddWithoutValidation("Accept", "text/csv,*/*;q=0.8");
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        await using var capped = new MemoryStream();
+        var buffer = new byte[81920];
+        var total = 0;
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), ct).ConfigureAwait(false);
+            if (read == 0)
+            {
+                break;
+            }
+
+            total += read;
+            if (total > _maxBytesPerResponse)
+            {
+                throw new InvalidOperationException(
+                    $"CA CSV Major Projects Inventory response for {source.Name} exceeded configured cap of {_maxBytesPerResponse} bytes.");
+            }
+
+            await capped.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
+        }
+
+        var csv = Encoding.UTF8.GetString(capped.ToArray());
+        var rows = CsvParser.Parse(csv);
+        if (rows.Count < 2)
+        {
+            yield break;
+        }
+
+        var headers = new List<string>(rows[0].Count);
+        for (var i = 0; i < rows[0].Count; i++)
+        {
+            var header = rows[0][i].Trim();
+            if (i == 0)
+            {
+                header = header.TrimStart('\uFEFF');
+            }
+
+            headers.Add(header);
+        }
+
+        for (var r = 1; r < rows.Count; r++)
+        {
+            var row = rows[r];
+            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < headers.Count; i++)
+            {
+                if (headers[i].Length == 0)
+                {
+                    continue;
+                }
+
+                dict[headers[i]] = i < row.Count ? row[i] : "";
+            }
+
+            yield return JsonSerializer.SerializeToElement(dict);
+        }
     }
 
     private async IAsyncEnumerable<JsonElement> FetchCkanRowsAsync(

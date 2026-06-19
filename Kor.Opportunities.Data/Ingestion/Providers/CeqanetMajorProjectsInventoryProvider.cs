@@ -31,6 +31,8 @@ public sealed class CeqanetMajorProjectsInventoryProvider : IOpportunityProvider
     private static readonly Regex SchRegex = new(@"\b((?:19|20)\d{8,10})\b", RegexOptions.Compiled);
     private static readonly Regex YearRegex = new(@"\b(19|20)\d{2}\b", RegexOptions.Compiled);
     private static readonly Regex AnchorRegex = new(@"<a\b[^>]*href\s*=\s*[""'](?<href>[^""']+)[""'][^>]*>(?<text>.*?)</a>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex TableRowRegex = new(@"<tr\b[^>]*>(?<row>.*?)</tr>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex TableCellRegex = new(@"<td[^>]*>(.*?)</td>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
     private readonly HttpClient _httpClient;
     private readonly string _connectionString;
@@ -169,6 +171,44 @@ public sealed class CeqanetMajorProjectsInventoryProvider : IOpportunityProvider
     {
         var filings = new List<CeqaFiling>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (Match rowMatch in TableRowRegex.Matches(html))
+        {
+            var rowHtml = rowMatch.Groups["row"].Value;
+            var cells = TableCellRegex.Matches(rowHtml)
+                .Cast<Match>()
+                .Select(m => CleanText(m.Groups[1].Value))
+                .ToList();
+            if (cells.Count < 5)
+            {
+                continue;
+            }
+
+            var sch = SchRegex.Match(cells[0]);
+            if (!sch.Success || !seen.Add(sch.Value))
+            {
+                continue;
+            }
+
+            var hrefMatch = AnchorRegex.Match(rowHtml);
+            var href = hrefMatch.Success
+                ? WebUtility.HtmlDecode(hrefMatch.Groups["href"].Value)
+                : null;
+            filings.Add(new CeqaFiling(
+                sch.Value,
+                cells[1],
+                cells[2],
+                cells[3],
+                cells[4],
+                null,
+                null,
+                !string.IsNullOrWhiteSpace(href) ? AbsoluteUrl(baseUrl, href) : baseUrl));
+        }
+
+        if (filings.Count > 0)
+        {
+            return filings;
+        }
 
         foreach (Match anchor in AnchorRegex.Matches(html))
         {
