@@ -111,6 +111,25 @@ public sealed class IngestionDispatcher : IIngestionDispatcher
             return providers[0];
         }
 
+        if (source.Name.StartsWith("CA_CEQAnet", StringComparison.OrdinalIgnoreCase))
+        {
+            var ceqanet = providers.FirstOrDefault(p => p.GetType().Name.StartsWith("Ceqanet", StringComparison.OrdinalIgnoreCase));
+            if (ceqanet is not null)
+            {
+                return ceqanet;
+            }
+        }
+
+        if (source.Name.StartsWith("CA_Socrata", StringComparison.OrdinalIgnoreCase)
+            || source.Name.StartsWith("CA_SanJoseCkan", StringComparison.OrdinalIgnoreCase))
+        {
+            var caSocrata = providers.FirstOrDefault(p => p.GetType().Name.StartsWith("CaSocrata", StringComparison.OrdinalIgnoreCase));
+            if (caSocrata is not null)
+            {
+                return caSocrata;
+            }
+        }
+
         var separator = source.Name.IndexOf('_', StringComparison.Ordinal);
         if (separator > 0)
         {

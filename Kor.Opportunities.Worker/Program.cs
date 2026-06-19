@@ -537,6 +537,45 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             });
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<BcMajorProjectsInventoryProvider>());
+            builder.Services.AddHttpClient(nameof(CaSocrataMajorProjectsInventoryProvider), c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(5);
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "CaSocrataMajorProjectsInventory"));
+            builder.Services.AddSingleton<CaSocrataMajorProjectsInventoryProvider>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(CaSocrataMajorProjectsInventoryProvider));
+                var logger = sp.GetRequiredService<ILogger<CaSocrataMajorProjectsInventoryProvider>>();
+                return new CaSocrataMajorProjectsInventoryProvider(
+                    http,
+                    Cs(sp),
+                    sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
+                    logger,
+                    options.IngestionMaxBytesPerResponse,
+                    defaultAppToken: options.CaSocrataAppToken);
+            });
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<CaSocrataMajorProjectsInventoryProvider>());
+            builder.Services.AddHttpClient(nameof(CeqanetMajorProjectsInventoryProvider), c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(5);
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "CeqanetMajorProjectsInventory"));
+            builder.Services.AddSingleton<CeqanetMajorProjectsInventoryProvider>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(CeqanetMajorProjectsInventoryProvider));
+                var logger = sp.GetRequiredService<ILogger<CeqanetMajorProjectsInventoryProvider>>();
+                return new CeqanetMajorProjectsInventoryProvider(
+                    http,
+                    Cs(sp),
+                    sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
+                    logger,
+                    options.IngestionMaxBytesPerResponse);
+            });
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<CeqanetMajorProjectsInventoryProvider>());
             builder.Services.AddHttpClient<RssOpportunityProvider>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(120);
@@ -989,6 +1028,18 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["BcMajorProjectsInventoryCronSchedule"] ?? "0 0 4 ? * SUN";
       t.ForJob(bcMajorProjectsInventoryKey)
        .WithIdentity("BcMajorProjectsInventoryTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var caMajorProjectsInventoryKey = new JobKey("CaMajorProjectsInventoryJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.CaMajorProjectsInventoryJob>(opts => opts.WithIdentity(caMajorProjectsInventoryKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: Sundays at 04:30 Pacific, offset from AB/BC. Endpoint runs are idempotent.
+      var cron = builder.Configuration["CaMajorProjectsInventoryCronSchedule"] ?? "0 30 4 ? * SUN";
+      t.ForJob(caMajorProjectsInventoryKey)
+       .WithIdentity("CaMajorProjectsInventoryTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 

@@ -154,6 +154,8 @@ public sealed class OpportunitiesWorkerOptions
     public int GenericCsvMaxRowsPerRun { get; set; } = 5000;
     public int VancouverPermitsMaxRowsPerRun { get; set; } = 20000;
     public int NewsFeedMaxItemsPerFeed { get; set; } = 200;
+    public string? CaMajorProjectsInventoryCronSchedule { get; set; }
+    public string CaSocrataAppToken { get; set; } = "";
 
     // --- Round 12: news feed aggregator ---
     public bool NewsFeedPollEnabled { get; set; } = true;
