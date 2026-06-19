@@ -1976,3 +1976,10 @@ LoserId,SurvivorId,Reason
 76818,68637,Steinberg Hart / Studio Gang team -> Steinberg Hart (lead AOR)
 76820,75736,Port of SD / Trammell Crow JV -> Trammell Crow Company (TCC)
 76866,76871,UC Davis / Wexford / GMH -> Wexford Science + Technology (dup of renamed 76871)
+# Round (2026-06-19): ITC Construction Group legal-entity variants -> canonical (CL00209). ITC Systems (9796) excluded = different company.
+48001,70926,ITC == ITC Construction Group (bare variant)
+27601,70926,ITC BC Builders Inc == ITC Construction Group
+25923,70926,ITC BC Residential Projects Inc == ITC Construction Group
+29776,70926,ITC Commercial BC Inc == ITC Construction Group
+24570,70926,ITC Projects Inc == ITC Construction Group
+31489,70926,ITC Special Projects Ltd == ITC Construction Group
