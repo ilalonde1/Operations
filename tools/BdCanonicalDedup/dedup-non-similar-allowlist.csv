@@ -1983,3 +1983,32 @@ LoserId,SurvivorId,Reason
 29776,70926,ITC Commercial BC Inc == ITC Construction Group
 24570,70926,ITC Projects Inc == ITC Construction Group
 31489,70926,ITC Special Projects Ltd == ITC Construction Group
+# Round (2026-06-19): A-G fuzzy-family bare variants -> Deltek canonical (verified same entity).
+76095,38936,Adera Developments == Adera Development Corporation
+28361,169,Amacon Development (Robson) SPE == Amacon
+76686,169,Amacon Development Corp == Amacon
+75581,207,Anthem Properties == Anthem Properties Group Ltd
+53898,69802,Appia Developments == Appia Development
+74179,2579,Architecture49 (stations sub) == Architecture49 Inc
+36813,176,Axomm Construction == Axomm Construction & Project Management
+76133,159,Bastion Developments == Bastion Development Corporation
+74732,54928,Bird Construction GP == Bird Construction Inc
+76184,54928,Bird Construction Group == Bird Construction Inc
+76623,54928,Bird Construction Company == Bird Construction Inc
+75909,76575,Birmingham & Wood == Birmingham & Wood Architects & Planners
+75312,4708,Chandos Construction LP == Chandos Construction Ltd
+74363,54464,Concord Pacific == Concord Pacific Development Corp
+75863,54464,Concord Pacific Group == Concord Pacific Development Corp
+76057,49,Cressey Development Corp == Cressey Development Group
+75867,54375,D'Ambrosio Architecture == D'Ambrosio Architecture + Urbanism
+70847,51,Duke Management == Duke Management c/o Holar
+75866,119,Edgar Developments == Edgar Development
+75993,69646,Francl Architecture (repeated) == Francl Architecture
+76717,69646,Francl Architecture (newline junk) == Francl Architecture
+74975,69232,Graham Construction & Engineering GP == Graham Construction
+75019,69232,Graham Construction And == Graham Construction
+75500,69232,Graham Construction & Engineering Inc == Graham Construction
+76539,69232,Graham Construction & Engineering CM@Risk == Graham Construction
+76409,202,Greystar Development == Greystar Development West LLC
+76804,55110,Greystar Real Estate Partners SD == Greystar Real Estate Partners
+72326,521,District of North Vancouver Engineering == District of North Vancouver
