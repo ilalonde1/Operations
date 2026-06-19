@@ -118,6 +118,10 @@ internal static class Program
         "IntelWork.CanonicalOrgId",
         "IntelAction.CanonicalOrgId",
         "IntelSignal.CanonicalOrgId",
+    };
+
+    private static readonly HashSet<string> IntelAffiliationRepointTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
         "IntelPersonAffiliation.CanonicalOrgId",
     };
 
@@ -458,6 +462,7 @@ WHERE fk.referenced_object_id = OBJECT_ID('opportunities.CanonicalOrg');";
             FkTargets.Select(t => $"{t.Table}.{t.Column}"),
             StringComparer.OrdinalIgnoreCase);
         handled.UnionWith(IntelDeleteTargets);
+        handled.UnionWith(IntelAffiliationRepointTargets);
 
         var unhandled = new List<string>();
         await using (var fkCmd = new SqlCommand(fkSql, con))
@@ -476,7 +481,7 @@ WHERE fk.referenced_object_id = OBJECT_ID('opportunities.CanonicalOrg');";
         if (unhandled.Count > 0)
         {
             throw new InvalidOperationException(
-                "FK(s) referencing opportunities.CanonicalOrg are not covered by FkTargets or IntelDeleteTargets — "
+                "FK(s) referencing opportunities.CanonicalOrg are not covered by FkTargets, IntelDeleteTargets, or IntelAffiliationRepointTargets — "
                 + "merging would strand or violate them. Add handling for: "
                 + string.Join(", ", unhandled.OrderBy(x => x, StringComparer.OrdinalIgnoreCase)));
         }
@@ -736,7 +741,9 @@ ORDER BY co.Id;";
             await UpdateSurvivorAsync(con, tx, group.Survivor.Id, group.BestKind).ConfigureAwait(false);
 
             var result = new GroupCommitResult();
-            result.IntelRowsDropped = await DeleteIntelDependentsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
+            var intelResult = await DeleteIntelDependentsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
+            result.IntelRowsDropped = intelResult.RowsDropped;
+            AddTableCount(result.FkRepointsByTable, "IntelPersonAffiliation", intelResult.AffiliationsRepointed);
             result.EnrichmentCollisionsResolved = await DeleteEnrichmentCollisionsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
             result.NewsMentionCollisionsResolved = await DeleteNewsMentionCollisionsAsync(con, tx, group.Survivor.Id, newsMentionTypeKeyExists).ConfigureAwait(false);
             result.DisplacementBriefCollisionsResolved = await DeleteDisplacementBriefCollisionsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
@@ -825,10 +832,11 @@ WHERE s.Id = @survivor;";
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
-    private static async Task<int> DeleteIntelDependentsAsync(SqlConnection con, SqlTransaction tx, long survivorId)
+    private static async Task<IntelDependentsResult> DeleteIntelDependentsAsync(SqlConnection con, SqlTransaction tx, long survivorId)
     {
         const string sql = @"
 DECLARE @rows int = 0;
+DECLARE @affiliationRepoints int = 0;
 
 IF OBJECT_ID('tempdb..#DyingIntelEnrichments') IS NOT NULL DROP TABLE #DyingIntelEnrichments;
 CREATE TABLE #DyingIntelEnrichments (Id bigint NOT NULL PRIMARY KEY);
@@ -883,8 +891,82 @@ DELETE i FROM opportunities.IntelAction i JOIN #Losers l ON l.Id = i.CanonicalOr
 SET @rows += @@ROWCOUNT;
 DELETE i FROM opportunities.IntelSignal i JOIN #Losers l ON l.Id = i.CanonicalOrgId;
 SET @rows += @@ROWCOUNT;
-DELETE a FROM opportunities.IntelPersonAffiliation a JOIN #Losers l ON l.Id = a.CanonicalOrgId;
+
+-- Preserve hand-curated/Apollo-enriched contacts by repointing affiliations to
+-- the survivor. AI-generated intel above is still deleted because it
+-- regenerates via BdIntelExtract after the canonical-org merge.
+DELETE a
+FROM opportunities.IntelPersonAffiliation a
+JOIN #Losers l ON l.Id = a.CanonicalOrgId
+WHERE EXISTS (
+    SELECT 1
+    FROM opportunities.IntelPersonAffiliation s
+    WHERE s.IntelPersonId = a.IntelPersonId
+      AND s.CanonicalOrgId = @survivor
+);
 SET @rows += @@ROWCOUNT;
+
+WITH RankedLoserAffiliations AS (
+    SELECT a.Id,
+           ROW_NUMBER() OVER (PARTITION BY a.IntelPersonId ORDER BY a.Id) AS Rn
+    FROM opportunities.IntelPersonAffiliation a
+    JOIN #Losers l ON l.Id = a.CanonicalOrgId
+)
+DELETE a
+FROM opportunities.IntelPersonAffiliation a
+JOIN RankedLoserAffiliations r ON r.Id = a.Id
+WHERE r.Rn > 1;
+SET @rows += @@ROWCOUNT;
+
+DECLARE @anchorEnrichmentId bigint = (
+    SELECT MIN(e.Id)
+    FROM opportunities.CanonicalOrgEnrichment e
+    WHERE e.CanonicalOrgId = @survivor
+      AND e.Id NOT IN (SELECT Id FROM #DyingIntelEnrichments)
+);
+
+IF @anchorEnrichmentId IS NULL
+BEGIN
+    SELECT @anchorEnrichmentId = e.Id
+    FROM opportunities.CanonicalOrgEnrichment e
+    WHERE e.CanonicalOrgId = @survivor
+      AND e.ProviderName = N'DedupMergeRepoint';
+
+    IF @anchorEnrichmentId IS NOT NULL
+    BEGIN
+        DELETE FROM #DyingIntelEnrichments WHERE Id = @anchorEnrichmentId;
+    END;
+END;
+
+IF @anchorEnrichmentId IS NULL
+BEGIN
+    INSERT INTO opportunities.CanonicalOrgEnrichment
+        (CanonicalOrgId, ProviderName, Status, Attempts, CreatedAtUtc, UpdatedAtUtc)
+    VALUES
+        (@survivor, N'DedupMergeRepoint', N'Manual', 0, sysdatetimeoffset(), sysdatetimeoffset());
+    SET @anchorEnrichmentId = CONVERT(bigint, SCOPE_IDENTITY());
+END;
+
+UPDATE a
+SET
+    CanonicalOrgId = @survivor,
+    SourceEnrichmentId = @anchorEnrichmentId,
+    NaturalKey = CONVERT(CHAR(40), HASHBYTES('SHA1', CAST(
+        CONCAT(
+            CAST(a.IntelPersonId AS varchar(20)),
+            '|',
+            CAST(@survivor AS varchar(20)),
+            '|',
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                LOWER(LTRIM(RTRIM(COALESCE(a.Title,N'')))),
+                ' ',''),'.',''),',',''),'''',''),'-',''),'&',''),'/',''),'(',''),')',''),'+',''))
+        AS VARCHAR(8000))), 2),
+    IsCurrent = 1,
+    LastSeenAtUtc = sysdatetimeoffset(),
+    UpdatedAtUtc = sysdatetimeoffset()
+FROM opportunities.IntelPersonAffiliation a
+JOIN #Losers l ON l.Id = a.CanonicalOrgId;
+SET @affiliationRepoints += @@ROWCOUNT;
 
 -- Drop Intel rows whose enrichment parent is about to disappear. Affiliation
 -- rows must go first because they FK-reference IntelPerson.
@@ -921,12 +1003,15 @@ WHERE NOT EXISTS (
 SET @rows += @@ROWCOUNT;
 
 DROP TABLE #DyingIntelEnrichments;
-SELECT @rows;";
+SELECT @rows AS RowsDropped, @affiliationRepoints AS AffiliationsRepointed;";
 
         await using var cmd = new SqlCommand(sql, con, tx);
         cmd.Parameters.Add("@survivor", SqlDbType.BigInt).Value = survivorId;
-        var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
-        return Convert.ToInt32(result, CultureInfo.InvariantCulture);
+        await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+        await reader.ReadAsync().ConfigureAwait(false);
+        return new IntelDependentsResult(
+            reader.GetInt32(0),
+            reader.GetInt32(1));
     }
 
     private static async Task<int> DeleteEnrichmentCollisionsAsync(SqlConnection con, SqlTransaction tx, long survivorId)
@@ -1165,7 +1250,10 @@ JOIN #Losers l ON l.Id = co.Id;";
         }
 
         Console.WriteLine("  FK repoints by table:");
-        foreach (var target in FkTargets.Select(t => t.Table).Distinct().OrderBy(t => t, StringComparer.OrdinalIgnoreCase))
+        foreach (var target in FkTargets.Select(t => t.Table)
+                     .Append("IntelPersonAffiliation")
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(t => t, StringComparer.OrdinalIgnoreCase))
         {
             summary.FkRepointsByTable.TryGetValue(target, out var count);
             Console.WriteLine($"    {target}: {count}");
@@ -1249,6 +1337,8 @@ JOIN #Losers l ON l.Id = co.Id;";
         public int LosersDeleted { get; set; }
         public Dictionary<string, long> FkRepointsByTable { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
+
+    private sealed record IntelDependentsResult(int RowsDropped, int AffiliationsRepointed);
 
     private sealed class DisjointSet
     {
