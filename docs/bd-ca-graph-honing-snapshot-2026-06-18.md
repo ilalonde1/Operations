@@ -18,8 +18,18 @@ Developer 97 · Architect 61 · Buyer 42 · GC 20 · KorClient 4 · Competitor 4
 
 - **Name hygiene fixed:** the ecosystem ingest had concatenated contacts and JV teams into org names ("Holland Partner Group  Kevin Willis", "Steinberg Hart / Studio Gang / …"). 46 contaminated names found; 27 contact-bearing ones cleaned + their people extracted; 11 duplicate variants merged (orphan-audited clean).
 
-## Contact layer — 591 CA contacts (242 email, 183 LinkedIn)
-This is the layer that brings CA toward Lower-Mainland parity. This pass added 27 contacts buried in org names; **10 now carry Apollo-verified emails + titles + LinkedIn**:
+## Contact layer — 619 CA contacts (252 email, 183+ LinkedIn)
+This is the layer that brings CA toward Lower-Mainland parity. This pass (a) extracted 27 contacts buried in org names and (b) ingested 23 named SE-decision-makers at the most-active developers from targeted research — **20 now carry Apollo-verified emails**.
+
+### Decision-makers at the top developers (Apollo-verified emails)
+Holland Partner Group: Tom Warren (Pres) twarren@hollandpartnergroup.com · Greg Thomas (Pres, Holland Construction) gthomas@hollandpartnergroup.com · John Wayland (Exec MD NorCal) jwayland@hollandpartnergroup.com.
+Related California: Ann Silverberg (Pres & CEO, CA + NW Affordable — **PNW mandate**) asilverberg@related.com · Phoebe Yee (EVP Design) pyee@related.com.
+Brookfield: Adrian Foley (Pres & CEO) adrian.foley@brookfieldrp.com · Josh Roden (Pres NorCal Land & Housing) josh.roden@brookfieldpropertiesdevelopment.com · Nicole Burdette (Reg Pres US Land CA/AZ) nicole.burdette@brookfieldrp.com.
+Carmel Partners: Adam Mayer (VP Dev) amayer@carmelpartners.com · Will Cipes (SVP Dev SoCal) wcipes@carmelpartners.com.
+Sutter Health: Warner Thomas (Pres & CEO) warner.thomas@sutterhealth.org. Crescent Heights: Bruce Menin (Principal) bam@crescentheights.com.
+Onni Group (De Cotiis family — Rossano/Morris/Giulio + Beau Jarvis VP Dev LA): on file without email (not in Apollo; LinkedIn/direct outreach). Full detail: `docs/ca-research-raw/ca-developer-se-selection-2026-06-18.md`.
+
+### From the org-name cleanup — 10 Apollo-verified contacts
 
 | Contact | Title | Firm | Email |
 |---|---|---|---|
@@ -42,10 +52,13 @@ UC system (10 / $1.34B) · CSU (9 / $1.14B) · **Onni Group (9 / $163M)** · Hol
 ## Largest pipeline
 SD Civic Center Redevelopment $4.49B · Sutter Santa Clara Medical Center $3.81B · Brookfield Gas Company Tower / 777 Tower $1.50B · Sutter Emeryville $1.36B · UC San Diego La Jolla Medical Center Tower 2 $1.36B.
 
-## Strategic finding — CA is greenfield for KOR
-Deltek-link pass over 9,139 Developer/Architect/GC/Competitor orgs produced **zero reliable CA client links** (the one fuzzy hit, "Holland Construction", is an unverified name coincidence and was not committed). The CA funnel firms are not existing KOR clients — confirming KOR enters CA as a challenger and must win via the architect's-structural-sub / warm-team path, not incumbency.
+## Strategic finding — mostly challenger, but two warm incumbents
+The Deltek-link pass over 9,139 Developer/Architect/GC/Competitor orgs produced zero reliable *new* links among the unlinked funnel firms — so KOR is broadly a challenger in CA. **But that scan missed already-linked entities of other kinds, and verification found two existing relationships with top-active developers:**
 
-- **Warmest bridge: Onni Group** — Vancouver-HQ developer with 9 active CA projects. KOR's BC relationship is the most direct cross-market intro path. (Under research.)
+- **Onni Group (9 CA projects) is an existing KOR client** — `Onni Contracting (California), Inc.` (KorClient, Deltek-linked) and `Nonni Property Group` (KorClient, linked; likely an "Onni" typo to verify). Onni is Vancouver-HQ and its own GC, so it controls SE selection directly. This is the **strongest warm bridge** — an actual CA client relationship, not just a BC connection. (Org graph splits Onni across 5 rows — Developer 38949, KorClient 167/151, Buyer 76124, Vendor 75008 — a dedup/relationship-mapping task, but do NOT blind-merge KorClient rows.)
+- **Holland Partner Group (68644) is also Deltek-linked** — existing relationship; KOR already has contact John Wayland (Exec MD NorCal Dev). Live target: 540-unit Stevens Creek San Jose (pre-construction, SE slot open).
+
+So the accurate picture: challenger overall, **warm incumbent with Onni and HPG**. Win the rest via the architect's-structural-sub / warm-team path. Incumbent to beat at the high-rise tier: **MKA (Seattle)**.
 
 ## Open / next
 - Decompose the ~20 JV credit-line orgs (Hines/Affinius, Strada/Trammell Crow, UC Davis/Wexford, …); retire junk placeholders.
