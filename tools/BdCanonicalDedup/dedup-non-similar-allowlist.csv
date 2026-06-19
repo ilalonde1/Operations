@@ -1957,3 +1957,10 @@ LoserId,SurvivorId,Reason
 70737,55110,Greystar == Greystar Real Estate Partners (same firm; brand short form)
 75793,69688,Perkins&Will == Perkins + Will Architects (same firm; brand vs legal)
 76946,75736,Trammell Crow Company == Trammell Crow Company (TCC) (acronym)
+# Round (2026-06-18b): CA fragment families — verified same firm (branch/acronym/plural variants).
+75707,38931,Nabih Youssef Associates (NYA) == Nabih Youssef Associates (acronym)
+76785,38933,Saiful Bouquet — San Diego == HQ (branch office)
+76787,38923,DCI Engineers — San Diego == DCI Engineers (branch office)
+76079,7,Chris Dikeakos Architect == Chris Dikeakos Architects Inc. (singular/legal)
+76802,69677,Bosa Development — San Diego == Bosa Development (branch)
+76134,69677,Bosa Developments == Bosa Development (plural variant)
