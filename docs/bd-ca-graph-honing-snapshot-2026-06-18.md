@@ -13,10 +13,13 @@ State of the CA intelligence graph after the funnel deploy + honing pass. Compan
 
 Note: SF and SD permit feeds carry no developer/applicant field at source, so those rows are projects-without-proponent by design — the "who" comes from the curated developer graph + research, not the permit feed.
 
-## Org graph — 251 CA funnel orgs, classified
-Developer 97 · Architect 61 · Buyer 42 · GC 20 · KorClient 4 · Competitor 4 · Vendor 3 · Unknown 20 (JV credit-line strings + junk placeholders, held for triage).
+## Org graph — 237 CA funnel orgs, classified & structurally clean
+Developer · Architect · Buyer · GC · KorClient · Competitor · Vendor — **0 JV-strings, 0 contaminated contact-names, 0 junk placeholders remain.**
 
-- **Name hygiene fixed:** the ecosystem ingest had concatenated contacts and JV teams into org names ("Holland Partner Group  Kevin Willis", "Steinberg Hart / Studio Gang / …"). 46 contaminated names found; 27 contact-bearing ones cleaned + their people extracted; 11 duplicate variants merged (orphan-audited clean).
+- **Name hygiene fixed:** the ecosystem ingest had concatenated contacts and JV teams into org names ("Holland Partner Group  Kevin Willis", "Steinberg Hart / Studio Gang / …"). 46 contaminated names found; 27 contact-bearing ones cleaned + their people extracted.
+- **Fragments deduped:** Nabih Youssef ×3, Saiful Bouquet, DCI, Chris Dikeakos, Bosa Development → single canonicals.
+- **JV-strings decomposed (all 20):** merged into the operating lead where one existed (Hines, Tishman Speyer, BRIDGE Housing, Strada, SKK, DGS, SJSU, Steinberg Hart, Trammell Crow, Wexford) or renamed in-place (Abode Services, Wexford, LBNL, Jamison Properties, SF Mayor's Office of Housing); 5 junk placeholders retired. Held only Platt/Whitelaw (real firm) and Bosa Properties (distinct Deltek client from Bosa Development).
+- **~18 org merges total, every one repoint-clean** (affiliation-repoint tool fix): 0 new orphans, 0 hand-curated contacts lost.
 
 ## Contact layer — 619 CA contacts (252 email, 183+ LinkedIn)
 This is the layer that brings CA toward Lower-Mainland parity. This pass (a) extracted 27 contacts buried in org names and (b) ingested 23 named SE-decision-makers at the most-active developers from targeted research — **20 now carry Apollo-verified emails**.
