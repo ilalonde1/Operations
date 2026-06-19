@@ -32,3 +32,8 @@
 - Hard gate for ALL CA work: CA-licensed SE (CLSE) in responsible charge — no P.Eng reciprocity. Resolve the licensing/partner question first.
 - 4 contacts without email (Alex Gutierrez, Andy Ball, Jeremy Harris, John Wright); Westbank org fragmentation (~13 rows) to dedup; the Onni architect conflict to resolve.
 - Natural next step: turn this into the pursuit-brief deliverable (one-pager per top target) — the graph is now rich enough to generate them.
+
+## UPDATE (overnight, post-briefing): SF project-name cleanup
+You flagged the 612+ SF "opportunities" named by raw permit text ("to erect 60 stories..."). Root cause: the SF Socrata source was configured projectNameColumn=description.
+- **Fixed the existing 1,084 SF rows** (migration 218): renamed from composite street address ("50 01st St", "546 Howard St", "10 South Van Ness Av"); permit description preserved in ScheduleNotes. 0 still description-named.
+- **Regression prevention teed up (do before Sunday 04:30, when the CA funnel next runs):** run the Codex prompt `docs/codex-sf-address-naming.md` (adds composite-address naming to CaSocrataMajorProjectsInventoryProvider) -> I build + deploy -> apply migration 219 (removes SF projectNameColumn, adds addressColumns). Until then the cleaned names hold; the Sunday ingest is the only thing that would regress them, and the fix lands before that.
