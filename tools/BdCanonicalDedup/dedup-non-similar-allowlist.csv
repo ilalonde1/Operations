@@ -1953,3 +1953,7 @@ LoserId,SurvivorId,Reason
 75705,68613,John A. Martin & Associates Inc (JAMA) -> JAMA survivor
 75199,68613,John A. Martin and Associates -> JAMA survivor
 76888,75180,Solomon Cordwell Buenz (SCB) -> SCB
+# Round (2026-06-18): CA funnel verified-same-firm brand variants.
+70737,55110,Greystar == Greystar Real Estate Partners (same firm; brand short form)
+75793,69688,Perkins&Will == Perkins + Will Architects (same firm; brand vs legal)
+76946,75736,Trammell Crow Company == Trammell Crow Company (TCC) (acronym)
