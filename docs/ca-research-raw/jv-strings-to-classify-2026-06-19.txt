@@ -1,0 +1,356 @@
+53252 | Japan Canada Oil Sands Limited (JACOS) / Nexen Inc. | AB
+53253 | North West Redwater Partnership (Canadian Natural Resources Ltd. (CNRL) / North West Upgrading Inc.) | AB
+53254 | Fort Hills Energy Corp. (Suncor Energy Inc. / Total SA / Teck Cominco) | AB
+53263 | ENMAX Energy Corp. / Capital Power Corp. | AB
+53266 | Hillwood Investment Properties / Highfield Investment Group | AB
+53267 | Groupe Germain Hospitalite / Homes by Avi | AB
+53270 | WAM Development Group / AIMCo | AB
+53301 | Calgary Urban Equities / Assured Developments | AB
+53311 | Bosa Development / Embassy Development | AB
+53318 | FRAM Building Group / Slokker Canada Corp. / Tricon Capital Group | AB
+53342 | Alberta Environment / Alberta Sustainable Resource Development | AB
+53349 | Alberta Infrastructure / Alberta Sustainable Resource Development | AB
+53361 | Devon NEC Corp. (Devon Canada / BP Canada) | AB
+53369 | Embassy BOSA / First Capital Realty | AB
+53373 | Northern Biodiesel Limited Partnership (Archer Daniels Midland Canada / Canadian Bioenergy Corp.) | AB
+53380 | Alberta Seniors / Smoky Lake Foundation | AB
+53393 | Imperial Oil / City of Calgary | AB
+53411 | Metropia / Knightsbridge Homes / RioCan | AB
+53415 | Marriott International / New Urban | AB
+53421 | Town of Barrhead / County of Barrhead | AB
+53422 | Katz Group / WAM Development Group | AB
+53428 | First Capital Realty / Sun Life Assurance | AB
+53431 | Century Casinos / United Horsemen of Alberta | AB
+53434 | WamDevelopment Group / Walton Development and Management | AB
+53442 | Artists Urban Village / Arts Habitat Edmonton | AB
+53445 | Government of Alberta / Alberta Cancer Foundation | AB
+53446 | Morguard Investments Ltd. / Verus Partners Canada | AB
+53448 | Silverbirch Hotels and Resorts / Marriott | AB
+53456 | Tennis Alberta / Tennis Canada | AB
+53475 | CNRL / NRC / Pond Biofuels | AB
+53476 | TransAlta / MidAmerican Energy Holdings | AB
+53484 | Calgary Exhibition and Stampede / ENMAX Corp. | AB
+53490 | Christenson Communities / Laebon Homes | AB
+53495 | Alberta Wind Energy Corp. / Mainstream Renewable Power | AB
+53499 | Telus / Westbank / Allied Properties | AB
+53511 | The Torgan Group / MPI Property Group | AB
+53519 | Batistella Developments / Dobbin Group | AB
+53533 | Decidedly Jazz Danceworks / Kahanoff Centre for Charitable Activities | AB
+53538 | Parkland Foundation / The Bethany Group | AB
+53561 | Grosvenor / Cressey Development Group | AB
+53588 | ATCO Energy Solutions / Petrogas Energy Corp. | AB
+53623 | Keyera Corp. / Kinder Morgan Inc. | AB
+53637 | Strathcone County / Salvi Group | AB
+53643 | Calgary Stampede / Calgary Opera | AB
+53649 | Primco Holdings / Stack Modular | AB
+54601 | Dunbar Ryerson United Church / Wall Financial Group | BC
+54915 | Concert Properties / Peterson Group | BC
+55033 | AgeCare + Tk̓emlúps te Secwépemc / Interior Health | BC
+55092 | Cadillac Fairview / Shape Properties | BC
+55098 | SCDC / City of Surrey | BC
+55107 | JTA Development Consultants / Cypress Apartments | BC
+55113 | Five Mile Holdings / JTA Development Consultants | BC
+55114 | W5 Arbutus Holdings / Mondivan Properties Corporation | BC
+55118 | The Bloom Group / Nicholson Housing Society | BC
+55119 | Alexander Manor Holdings / JTA Development Consultants | BC
+55120 | JTA Development Consultants / TKT Holdings | BC
+68714 | Seattle Center / Oak View Group | WA
+68718 | PAE / ZGF / Edlen ownership group (confirm) | OR
+68727 | OMA / LMN Architects | WA
+68729 | OHSU / OUS / PSU | OR
+68731 | Wright Runstad & Company / Shorenstein | WA
+68735 | King County / UW Medicine | WA
+68737 | Pickard Chilton / SkB Architects | WA
+68785 | Calgary Sports & Entertainment Corp / City of Calgary / CMLC | AB
+68789 | Katz Group / Edmonton Arena District | AB
+68798 | Cenovus / H&R REIT (orig. EnCana) | AB
+68800 | Westbank / AIMCo / Allied | AB
+68803 | ICE District / Stantec | AB
+68806 | Alberta Transportation / City of Calgary | AB
+68807 | NAIT / Government of Alberta | AB
+68823 | Beacon / private | AB
+69025 | District of New Hazelton / Regional District of Bulkley-Nechako | BC
+69032 | Fraser Health / Infrastructure BC | BC
+69230 | Royal BC Museum / Province of British Columbia | BC
+69234 | Perkins&Will / Schmidt Hammer Lassen Architects | BC
+69251 | James KM Cheng Architects / Adamson Associates Architects | BC
+69259 | Great Gulf / Dream Unlimited | ON
+69260 | Perkins&Will / KPMB Architects | ON
+69267 | Partnerships BC / Ministry of Technology, Innovation and Citizens' Services | BC
+69355 | Songhees Nation / Aryze Developments | BC
+69365 | OKIB Group of Companies / Okanagan Indian Band | BC
+69366 | Penticton Indian Band / PIBDC | BC
+69368 | Splatsin Development Corporation / Splatsin First Nation | BC
+69372 | Kanaka Bar Indian Band / Lytton First Nation (joint) | BC
+69383 | Líl̓wat Business Group / Líl̓wat Nation | BC
+69384 | Líl̓wat Nation / Líl̓wat Business Group | BC
+69385 | Skidegate Band Council / Haida Nation | BC
+69389 | Haisla Nation / Haisla Guxv Housing Society | BC
+69390 | Gitxaała Nation / Prince Rupert Indigenous Housing Society | BC
+69583 | TKA+D Architecture & Design / MJMA Architecture + Design | BC
+69896 | Pheidias Project Management / Oberto Oberti (architect-developer) | BC
+69971 | Paul Merrick / Merrick Architecture | BC
+69990 | City of Duncan / Parkside Academy Child Care Society | BC
+69991 | School District 71 (Comox Valley) / BGC Central Vancouver Island | BC
+70026 | Eyameth' Health Society / Sts'ailes Nation | BC
+70067 | Summit Community Services Society / Rocky Mountain School District (SD6) | BC
+70069 | BC Children's Hospital / BC Children's Hospital Foundation | BC
+70072 | Community Land Trust / Co-operative Housing Federation of BC | BC
+70333 | Peninsula Recreation Commission / Municipality of Central Saanich | BC
+70486 | Taholah School District / Quinault Indian Nation | WA
+70589 | Plavetic / MJP Homes Ltd | BC
+70615 | SmartCentres REIT / SmartStop Self-Storage | BC
+70617 | Boss Developments / Cube Project Management Ltd | BC
+70619 | Ho Goon Holdings Inc / Metropolitan Capital Partners | BC
+70633 | Government of British Columbia / Royal BC Museum | BC
+70649 | Frame Properties / Shelbourne Dev Corp | BC
+70651 | McLash Development Ltd / 861-865 Esquimalt Road Holdings | BC
+70672 | EIDOS Architecture / Faction Architecture Inc. | BC
+70674 | Townline / TL Housing Solutions | BC
+70676 | TL Housing Solutions / Townline Housing | BC
+70687 | Weytk Communities Inc / Kerkhoff | BC
+70688 | Luxuira Developments / Cook St Properties Ltd | BC
+70768 | Greater Victoria Coalition to End Homelessness / Aryze Developments | BC
+70807 | Jawl Properties / Concert Properties JV | BC
+70883 | Vancouver School Board / City of Vancouver | BC
+70886 | UBC / Sauder School of Business | BC
+70896 | James K.M. Cheng Architects Inc. / Adamson Associates Architects | BC
+70911 | Mount Pixel Projects / Westbank Corp. | BC
+70915 | Nch'kay Development Corporation / Westbank | BC
+70923 | James Cheng Architects / Musson Cattell Mackey Partnership / Stantec Architecture | BC
+70935 | Reliance Properties / Jim Pattison Developments | BC
+70946 | Bensen Manufacturing / Danet Interiors | BC
+70957 | Morphosis Architects / Francl Architecture | BC
+70974 | Moriyama Teshima Architects / Carscadden Stokes McDonald Architects | BC
+70977 | Community Land Trust Foundation of BC / VAHA | BC
+70979 | Community Land Trust / Vancouver Affordable Housing Agency | BC
+71003 | MCC Legacy Trust / Pacific Centre for Discipleship (PCDA) | BC
+71006 | Beedie Group (owner) / MEC Mountain Equipment Company (tenant) | BC
+71010 | Tomo Spaces / Golden Properties Ltd. | BC
+71031 | TKA+D Architecture + Design / RDHA Architects | BC
+71042 | Strand Development / Locarno | BC
+71056 | Shared Services BC / Provincial Court of BC | BC
+71116 | Perkins+Will (Brentwood, Gilmore) / Baker McGarva Hart Architects (Renfrew, Rupert) | BC
+71140 | Pangman Development Corporation / Maclab Development Group / John Day Developments | AB
+71181 | ONE Properties / REVOne Westmount LP | AB
+71192 | K-Days / Northlands Edmonton | AB
+71196 | Francis Winspear Centre for Music / Edmonton Symphony Orchestra | AB
+71463 | Chernoff Thompson Architects / B+H Architects | BC
+71476 | Parkin Architects Ltd. / Kasian Architecture | BC
+71480 | IBI Group / Arcadis | BC
+71483 | HCMA Architecture + Design / Olson Kundig | BC
+71485 | Diamond Schmitt / David Nairne + Associates | BC
+71500 | Teeple Architects / Stantec | AB
+71501 | Gibbs Gage Architects / Diamond Schmitt Architects | AB
+71502 | KPMB Architects / Stantec Architecture | AB
+72186 | ZGF Architects / Parkin Architects (joint venture) | BC
+72253 | Catalyst Community Developments / City of North Vancouver / BC Housing | BC
+72410 | Interior Health Authority / Kootenay East Regional Hospital District | BC
+72437 | Alberta Infrastructure / Covenant Health | AB
+74102 | S2 Architecture / gh3* | AB
+74103 | Stantec Architecture / Two Row Architecture | BC
+74104 | hcma architecture + design / Dub Architects / FaulknerBrowns | AB
+74115 | Architecture49 / Patkau Architects | BC
+74161 | Calgary Municipal Land Corporation (CMLC) / Calgary Stampede | AB
+74164 | Katz Group / City of Edmonton | AB
+74166 | Alberta Health Services / Alberta Infrastructure | AB
+74168 | Calgary Public Library / CMLC | AB
+74169 | City of Calgary / Calgary Municipal Land Corporation | AB
+74177 | City of Edmonton / Edmonton Public Library | AB
+74333 | Cenovus Energy Inc. / ConocoPhillips | AB
+74337 | City of Calgary / Nose Creek Sports and Recreation Asoociation | AB
+74338 | City of Edmonton / The Katz Group of Companies / WAM Development Group | AB
+74341 | City of Calgary / Calgary Arts Development | AB
+74342 | Regional Municipality of Wood Buffalo / Macdonald Island Park Corp. | AB
+74343 | City of Edmonton / Whitemud Equine Learning Centre | AB
+74344 | City of Edmonton / River Valley Alliance | AB
+74345 | Lamb Development Corp. / Fortress Real Capital | AB
+74346 | City of Medicine Hat / MHPM Project Managers | AB
+74347 | Alberta Health and Wellness / Covenant Health | AB
+74351 | City of Medicine Hat / Medicine Hat SPCA | AB
+74354 | Grosvenor Canada / Cressy Development Group | AB
+74357 | City of Spruce Grove / Aerials Gymnastics Club | AB
+74360 | City of Spruce Grove / Town of Stony Plain | AB
+74362 | MD of Greenview / Town of Valleyview | AB
+75508 | Island Health / Provincial Health Services Authority (PHSA) | BC
+75509 | Island Health / Nanaimo Regional Hospital District | BC
+75510 | Interior Health / BC Cancer / Thompson Regional Hospital District | BC
+75513 | UVic / Royal Roads University / Camosun College / JIBC | BC
+75514 | District of Saanich / Greater Victoria Public Library | BC
+75515 | BC Housing / City of Nanaimo | BC
+75516 | City of Nanaimo / Snuneymuxw First Nation | BC
+75517 | Troika Developments / City of Kelowna | BC
+75518 | City of Kelowna (lead) / Regional partners | BC
+75567 | Hariri Pontarini Architects / Adamson Architects | BC
+75592 | Hariri Pontarini Architects / Adamson Associates | BC
+75594 | JTA Development Consultants / Five Mile Holdings / Prospero International Realty | BC
+75740 | Conseil scolaire francophone (SD 93) / Greater Victoria SD 61 | BC
+75749 | BC Housing / Chard Development Ltd. | BC
+75760 | Stantec / DSRA Architecture Inc. | BC
+75761 | Stantec / Patrick R. Stewart Architect | BC
+75810 | Pacific National Exhibition (PNE) / City of Vancouver | BC
+75845 | BC Housing / Capital Region Housing Corporation | BC
+75846 | BC Housing / Aboriginal Coalition to End Homelessness | BC
+75847 | BC Housing / District of Saanich | BC
+75848 | BC Housing / Snuneymuxw First Nation | BC
+75849 | BC Housing / Island Health | BC
+75850 | BC Housing / City of Kelowna / Interior Health | BC
+75851 | Housing Okanagan Foundation / City of Kelowna | BC
+75862 | Merrick Architecture / GBL Architects / Walter Francl Architecture | BC
+75865 | Kerkhoff Construction / North American Development Group | BC
+75870 | Brenhill Developments Ltd. / City of Vancouver | BC
+75872 | IBI Group / HDR | BC
+75879 | Calgary Municipal Land Corporation / City of Calgary | AB
+75889 | Fraser Health / BC Cancer (PHSA) | BC
+75890 | Parkin Architects / ZGF Architects | BC
+75894 | Proscenium Architecture + Interiors / Teeple Architects | BC
+75900 | Happy Harvest Inc. / Tomo Spaces / Golden Properties | BC
+75904 | More Than a Roof Housing Society / BC Housing | BC
+75905 | Stryke Group / Tien Sher Group | BC
+75923 | Khowutzun Development LLP (KDLLP) / Cowichan Tribes | BC
+75924 | Petroglyph Development Group / Snuneymuxw First Nation | BC
+75925 | Tsuma-as Housing Society / Tseshaht First Nation | BC
+75926 | Tseshaht First Nation / Huu-ay-aht First Nations / Hupacasath First Nation | BC
+75927 | Tseshaht First Nation / Hupacasath First Nation / City of Port Alberni | BC
+75929 | Ntityix Development Corporation / Westbank First Nation | BC
+75931 | Mount Paul Apartments Kamloops 2024 Ltd. / Tk'emlúps te Secwépemc | BC
+75932 | Scwén̓wen Economic Development Corporation / Tk'emlúps te Secwépemc | BC
+75933 | Nlaka'pamux Nation Tribal Council (NNTC) / BluEarth Renewables | BC
+75934 | Nch'ḵay̓ Development Corporation / Sḵwx̱wú7mesh Úxwumixw (Squamish Nation) | BC
+75935 | Revery Architecture / Kasian Architecture | BC
+75936 | Nch'ḵay̓ Development Corporation / Squamish Nation | BC
+75937 | Squamish Nation / Hiy̓ám̓ ta Sḵwx̱wú7mesh Housing Society / Nch'ḵay̓ | BC
+75938 | Squamish Nation / Hiy̓ám̓ ta Sḵwx̱wú7mesh Housing Society | BC
+75939 | Musqueam Capital Corporation / Musqueam Indian Band | BC
+75940 | GBL Architects / RH Architects | BC
+75941 | Takaya Developments Ltd. / Tsleil-Waututh Nation | BC
+75942 | Nak'azdli Development Corp / Deadwood Innovations | BC
+76015 | Providence Health Care / Vancouver Coastal Health | BC
+76022 | City of Vancouver / Vancouver Park Board | BC
+76037 | Saanich Public Library / District of Saanich | BC
+76038 | Interior Health / BC Cancer | BC
+76167 | Okanagan Métis & Aboriginal Housing Society (OMAHS) / BC Housing | BC
+76168 | Patkau Architects (design architect) / Architecture49 (prime consultant and architect of record) | BC
+76170 | District Group / Tony Harris Developments Inc. | BC
+76172 | CMHA Kelowna / BC Housing | BC
+76173 | BC Housing / CMHA Central Okanagan | BC
+76178 | City of Vancouver / TransLink | BC
+76179 | Dialog / Thinkspace | BC
+76185 | Interior Health / Central Okanagan Regional Hospital District | BC
+76187 | Parkin Architects / ZGF Architects (Nuts'a'maat Alliance) | BC
+76188 | Island Health / BC Ministry of Health | BC
+76190 | Eagle Valley Senior Citizens Housing Society / BC Housing / District of Sicamous | BC
+76192 | Local Practice Architecture + Design / Principle Architecture | BC
+76201 | Olson Kundig / Arcadis IBI Group | BC
+76203 | MA+HG Architects (Architect of Record) / EskewDumezRipple (Consulting Architect) | BC
+76204 | City of Vancouver / Vancouver Board of Parks and Recreation | BC
+76208 | City of Burnaby / RCMP | BC
+76209 | HDR Architecture Associates (lead) / Stantec Architecture (collaborating architect) | BC
+76212 | Fraser Health Authority / PHSA / BC Cancer | BC
+76213 | Westbank Corp / QuadReal Property Group | BC
+76214 | Okanagan College / KF Aerospace / BPL Legacy Association | BC
+76217 | City of Penticton / YMCA of Southern Interior | BC
+76218 | EDGAR Development / BC Housing | BC
+76220 | Parkin Architects Western Ltd. / HDR / Arcadis IBI Group | BC
+76224 | Municipality of North Cowichan / BC Housing | BC
+76226 | BC Ministry of Transportation & Infrastructure / TransLink | BC
+76227 | GBL Architects / IBI Group Architects | BC
+76229 | Proscenium Architecture + Interiors / Teeple Architects (JV) | BC
+76230 | Ryder Architecture / 3XN GXN | BC
+76231 | BC Housing / VAHA | BC
+76237 | Francl Architecture / Perkins & Will / AECOM (station architects) | BC
+76248 | Parkin Architects / ZGF Architects (joint venture) | BC
+76339 | Thinkspace / Patkau Architects / Urban Arts Architecture / Colborne Architectural Group | BC
+76343 | Island Health / Province of BC | BC
+76344 | M'akola Housing Society / City of Langford / BC Housing | BC
+76349 | Thompson-Nicola Regional District (TNRD) / City of Kamloops | BC
+76351 | Interior Health / Kootenay East Regional Hospital District | BC
+76352 | Interior Health / West Kootenay Boundary Regional Hospital District | BC
+76353 | Province of BC / Interior Health / Kaigo Senior Living | BC
+76354 | Tsilhqot'in National Government / Red Road Recovery | BC
+76355 | City of Cranbrook / Saltair Childcare Society | BC
+76356 | Canadian Mental Health Association – Kamloops / BC Housing | BC
+76360 | Michael Green Architecture / Lubor Trubka Associates Architects | BC
+76364 | Alberni-Clayoquot Regional District / City of Port Alberni | BC
+76366 | City of Courtenay / Town of Comox / Village of Cumberland / K'ómoks First Nation (joint) | BC
+76369 | BC Housing / Snuneymuxw First Nation Youth and Family Society | BC
+76370 | Tseshaht First Nation / City of Port Alberni | BC
+76371 | BC Housing / Lookout Housing and Health Society | BC
+76372 | Patrick R. Stewart Architect / Stantec | BC
+76376 | City of Vancouver / Vancouver Public Library | BC
+76377 | Vancouver Public Library / City of Vancouver | BC
+76378 | DA Architects + Planners / Safdie Architects | BC
+76380 | Kwantlen Polytechnic University / Métis Nation British Columbia | BC
+76382 | BC Housing / City of Abbotsford | BC
+76383 | Ron Hart Architecture / Raven Architecture | BC
+76384 | BC Housing / Ann Davis Transition Society | BC
+76385 | New Vista Society / BC Housing | BC
+76386 | HDR / Arcadis IBI Group (architect of record) | BC
+76388 | Port Moody Public Library / City of Port Moody | BC
+76389 | City of Langford / City of Colwood / Town of View Royal (CRD financing) | BC
+76390 | SFU ChildCare Society / Simon Fraser University | BC
+76391 | Providence Living / Northern Health | BC
+76475 | Turning Points Collaborative Society / BC Housing | BC
+76476 | Lu'ma Native Housing Society / BC Housing | BC
+76477 | Parkdale Place Housing Society / BC Housing | BC
+76478 | Lower Similkameen Community Services Society / BC Housing | BC
+76479 | South Skaha Housing Society / BC Housing | BC
+76480 | Canadian Mental Health Association – Shuswap/Revelstoke / BC Housing | BC
+76481 | M'akola Housing Society / BC Housing | BC
+76482 | Gorge View Society / BC Housing | BC
+76483 | Luther Court Society / BC Housing | BC
+76484 | Woodgrove Senior Citizens Housing Society / BC Housing | BC
+76487 | Teeple Architects / Sahuri + Partners Architecture | BC
+76488 | BC Housing / M'akola Housing Society | BC
+76491 | CMHA Vernon / BC Housing | BC
+76492 | BC Housing / A Way Home Kamloops | BC
+76493 | Municipality of North Cowichan / City of Duncan / BC RCMP | BC
+76495 | Parkin Architects / Kasian Architecture Interior Design and Planning (JV) | BC
+76497 | Royal Roads University / UVic / Camosun College / JIBC | BC
+76505 | Anthem Properties / Westbank First Nation | BC
+76509 | National Society of Hope / BC Housing | BC
+76525 | Merrick Architecture / DIALOG / David Yrun Simpson Architects (joint venture) | BC
+76527 | HDR Architecture Associates Inc. / Endall Elliot Associates | BC
+76528 | Diamond Schmitt Architects / David Nairne + Associates Ltd. | BC
+76531 | Diamond Schmitt Architects / Stantec | BC
+76532 | Diamond Schmitt Architects / David Nairne + Associates | BC
+76544 | Carscadden Stokes McDonald Architects Inc. / Wensley Architects | BC
+76545 | Oxford Properties Group / CPP Investments | BC
+76548 | Westbank Corp / BC Housing | BC
+76549 | Henriquez Partners Architects / OSO Architecture | BC
+76550 | DYS Architecture / Rafii Architects Inc. | BC
+76551 | B+H Architects / KRA (Kirsten Reite Architecture) / Diamond Schmitt Architects | BC
+76552 | Transca Development / Grosvenor Americas / Citimark Group | BC
+76553 | Westbank Corp. / First Baptist Church | BC
+76559 | Simon Fraser University / SFU Community Trust | BC
+76562 | Stantec Architecture / DSRA Architecture Inc. | BC
+76563 | Principle Architecture / Local Practice Architecture | BC
+76568 | Intracorp / Inform | BC
+76570 | Patkau Architects (design architect) / Architecture49 (architect of record) | BC
+76572 | Grosvenor Americas / City of Vancouver | BC
+76573 | ACDF Architecture (design architect) / IBI Group (architect of record) | BC
+76574 | BC Housing / Housing Society | BC
+76580 | RainCity Housing and Support Society / BC Housing | BC
+76584 | Hines / PC Urban | BC
+76585 | DLR Group / Proscenium Architecture + Interiors Inc. (Associate Architect) | BC
+76586 | IBI Group Architects / Yamamoto Architecture | BC
+76589 | Henriquez Partners Architects / IBI Group Architects | BC
+76590 | KPMB Architects / Hughes Condon Marler Architects | BC
+76591 | BC Housing / City of Mission | BC
+76592 | City of Burnaby / School District 41 | BC
+76594 | Teeple Architects / IBI HB Architects | BC
+76597 | Cotter Architects / ZGF Architects | BC
+76599 | Acton Ostry Architects / Hermann Kaufmann Architekten | BC
+76603 | Benchmark / MDM Construction | BC
+76606 | Grant Connell Tennis / North Vancouver | BC
+76608 | hcma architecture + design / KPMB Architects | BC
+76609 | Teeple Architects / Proscenium Architecture + Interiors (JV) | BC
+76610 | Hariri Pontarini Architects (design architect) / Iredale Architecture (architect of record) | BC
+76611 | Blue Sky Properties / Bosa Properties | BC
+76615 | HCMA Architecture + Design / Musson Cattell Mackey Partnership | BC
+76617 | BC Ministry of Transportation / TransLink | BC
+76618 | TransLink / InTransitBC | BC
+76619 | Francl Architecture (Templeton, Sea Island) / Perkins+Will (Lansdowne, Richmond-Brighouse, Aberdeen) | BC
+76621 | City of Edmonton / Fort Edmonton Management Company | AB
+76624 | Alberta Infrastructure / CapitalCare (Alberta Health Services) | AB
+76644 | K&H Developments / Eagle Builders LP | AB
