@@ -22,7 +22,7 @@ BEGIN
          sysdatetimeoffset(),
          sysdatetimeoffset(),
          0,
-         N'{"kind":"socrata","sourceKeyPrefix":"sf","municipality":"San Francisco","county":"San Francisco County","limit":"500","minUnits":"20","minValuation":"2000000","where":"proposed_units::number >= 20 OR estimated_cost::number >= 2000000","permitColumn":"permit_number","projectNameColumn":"description","descriptionColumn":"description","addressColumn":"street_name","typeColumn":"permit_type_definition","valuationColumn":"estimated_cost","unitsColumn":"proposed_units","filedDateColumn":"filed_date","stageColumn":"status"}');
+         N'{"kind":"socrata","sourceKeyPrefix":"sf","municipality":"San Francisco","county":"San Francisco County","limit":"500","minUnits":"20","minValuation":"2000000","where":"(proposed_units::number >= 20 OR estimated_cost::number >= 2000000) AND permit_type_definition like ''%new construction%''","permitColumn":"permit_number","projectNameColumn":"description","descriptionColumn":"description","addressColumn":"street_name","typeColumn":"permit_type_definition","valuationColumn":"estimated_cost","unitsColumn":"proposed_units","filedDateColumn":"filed_date","stageColumn":"status"}');
 END;
 GO
 
