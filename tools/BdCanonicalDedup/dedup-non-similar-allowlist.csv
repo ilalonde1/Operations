@@ -1964,3 +1964,15 @@ LoserId,SurvivorId,Reason
 76079,7,Chris Dikeakos Architect == Chris Dikeakos Architects Inc. (singular/legal)
 76802,69677,Bosa Development — San Diego == Bosa Development (branch)
 76134,69677,Bosa Developments == Bosa Development (plural variant)
+# Round (2026-06-18c): CA JV-string decomposition -> lead entity (verified).
+76822,68778,Hines / Affinius Capital JV -> Hines (lead developer)
+76933,76903,Tishman Speyer / SF Giants -> Tishman Speyer (lead developer)
+76928,68654,BRIDGE Housing / The Unity Council -> BRIDGE Housing Corporation (lead)
+76906,68654,Bridge Housing == BRIDGE Housing Corporation (dup)
+76932,76905,Strada / Trammell Crow JV -> Strada Investment Group (lead)
+76874,76872,SMUD / SKK Developments -> SKK Developments (developer)
+76873,76858,DGS / State Excess Sites Program -> DGS
+76936,76935,San Jose State University / CSU -> San Jose State University
+76818,68637,Steinberg Hart / Studio Gang team -> Steinberg Hart (lead AOR)
+76820,75736,Port of SD / Trammell Crow JV -> Trammell Crow Company (TCC)
+76866,76871,UC Davis / Wexford / GMH -> Wexford Science + Technology (dup of renamed 76871)
