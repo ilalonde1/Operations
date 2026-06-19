@@ -122,6 +122,13 @@ public sealed class CeqanetMajorProjectsInventoryProvider : IOpportunityProvider
 
     private async Task<MajorProjectRecord?> MapFilingAsync(CeqaFiling filing, CancellationToken ct)
     {
+        // A numeric-only title means the parse fell back to the SCH# (no real
+        // project title) — skip rather than persist an SCH-number as ProjectName.
+        if (string.IsNullOrWhiteSpace(filing.Title) || !filing.Title.Any(char.IsLetter))
+        {
+            return null;
+        }
+
         var projectText = string.Join(" - ", new[] { filing.Title, filing.Description, filing.DocumentType, filing.County }.Where(s => !string.IsNullOrWhiteSpace(s)));
         if (!IsLaneProject(projectText))
         {
