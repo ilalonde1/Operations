@@ -2,6 +2,7 @@
 using System.Data;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -64,6 +65,43 @@ internal static class Program
         AllowTrailingCommas = true,
         CommentHandling = JsonCommentHandling.Skip,
     };
+
+    // Splits a combined "A / B (& C)" entity string into its lead operator,
+    // dropping funders and procurement agents so the graph attributes the project
+    // to who actually builds/owns it. Health authorities are intentionally NOT
+    // treated as funders - they are owners and remain eligible as the lead.
+    private static string LeadOperator(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return name ?? string.Empty;
+        var parts = Regex
+            .Split(name, @"\s+/\s+|\s+\+\s+|\s+&\s+")
+            .Select(p => p.Trim())
+            .Where(p => p.Length > 0)
+            .ToArray();
+        if (parts.Length <= 1) return name.Trim();
+
+        static bool IsFunderOrAgent(string p)
+        {
+            var l = p.ToLowerInvariant();
+            string[] kw = {
+                "bc housing", "bc builds", "build canada homes", "cmhc", "canada mortgage",
+                "province of", "government of", "ministry of", "alberta infrastructure",
+                "alberta seniors", "infrastructure bc", "partnerships bc", "mhpm",
+                "project managers", "city of", "district of", "township of",
+                "municipality of", "regional district", "metro vancouver", "translink"
+            };
+            return kw.Any(k => l.Contains(k));
+        }
+        static bool IsJunk(string p)
+        {
+            var l = p.ToLowerInvariant();
+            return l.Contains("multiple") || l.Contains("unnamed") || l == "tbd"
+                || l.Contains("various") || l.Contains("et al") || l.Contains("mandate");
+        }
+
+        var lead = parts.FirstOrDefault(p => !IsFunderOrAgent(p) && !IsJunk(p));
+        return (lead ?? parts[0]).Trim();
+    }
 
     private static readonly ResearchStreamSpec[] ResearchStreams =
     [
@@ -1020,7 +1058,7 @@ ORDER BY Id;";
                 }
 
                 var buyerOrg = String(project, "buyerOrg");
-                var proponentId = await ResolveAsync(resolver, options, stats, buyerOrg, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(buyerOrg), OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
                 var record = new MajorProjectRecord(
                     Source: "PublicSectorResearch",
                     SourceKey: "PUBSEC-" + Sha1($"{buyerOrg}|{projectName}"),
@@ -1166,8 +1204,8 @@ ORDER BY Id;";
                     var proponentName = String(project, "ProponentName") ?? String(project, "owner");
                     var architectName = String(project, "ArchitectName") ?? String(project, "architect");
                     var structuralEngineer = String(project, "StructuralEngineer") ?? String(project, "structuralEngineer");
-                    var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
-                    var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                    var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(proponentName), OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
+                    var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                     var record = new MajorProjectRecord(
                         Source: "IndigenousDevProjects",
                         SourceKey: "INDIG-" + Sha1($"{String(project, "IndigenousNames")}|{projectName}"),
@@ -1344,8 +1382,8 @@ ORDER BY Id;";
 
                 var proponentName = String(project, "ProponentName");
                 var architectName = String(project, "ArchitectName");
-                var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(proponentName), OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var record = new MajorProjectRecord(
                     Source: "BcDevelopmentPipeline",
                     SourceKey: "DEVPIPE-" + Sha1($"{String(project, "Municipality")}|{projectName}|{String(project, "Address")}"),
@@ -1515,8 +1553,8 @@ ORDER BY Id;";
                 var province = NormalizeProvince(includeStateInSourceKey ? rawState : defaultProvince, defaultProvince);
                 var proponentName = String(project, "ProponentName") ?? String(project, "owner");
                 var architectName = String(project, "ArchitectName") ?? String(project, "architect");
-                var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(proponentName), OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var usd = Decimal(project, "EstimatedCostUsd");
                 var sourceKeyInput = includeStateInSourceKey
                     ? $"{projectName}|{municipality}|{province}"
@@ -1698,8 +1736,8 @@ ORDER BY Id;";
 
                 var proponentName = String(project, "ProponentName") ?? String(project, "owner");
                 var architectName = String(project, "ArchitectName") ?? String(project, "architect");
-                var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(proponentName), OrgKinds.Unknown, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
 
                 var record = new MajorProjectRecord(
                     Source: "AlbertaMarketProjects",
@@ -1857,8 +1895,8 @@ ORDER BY Id;";
 
                 var ownerName = String(project, "OwnerName") ?? String(project, "owner");
                 var architectName = String(project, "ArchitectName") ?? String(project, "architect");
-                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var sourceCost = Decimal(project, "EstimatedCostCad");
                 var currency = String(project, "Currency");
                 var costCad = IsUsd(currency)
@@ -1984,7 +2022,7 @@ ORDER BY Id;";
                     continue;
                 }
 
-                var orgId = await ResolveAsync(resolver, options, stats, firmName, OrgKinds.Architect, "PrimeTargeting", ct).ConfigureAwait(false);
+                var orgId = await ResolveAsync(resolver, options, stats, LeadOperator(firmName), OrgKinds.Architect, "PrimeTargeting", ct).ConfigureAwait(false);
                 await WriteEnrichmentAsync(
                     enrichmentStore,
                     options,
@@ -2082,7 +2120,7 @@ ORDER BY Id;";
             foreach (var (firmName, people) in peopleByFirm)
             {
                 ct.ThrowIfCancellationRequested();
-                var orgId = await ResolveAsync(resolver, options, stats, firmName, OrgKinds.Architect, "PrimeContacts", ct).ConfigureAwait(false);
+                var orgId = await ResolveAsync(resolver, options, stats, LeadOperator(firmName), OrgKinds.Architect, "PrimeContacts", ct).ConfigureAwait(false);
                 await WriteEnrichmentAsync(
                     enrichmentStore,
                     options,
@@ -2194,8 +2232,8 @@ ORDER BY Id;";
 
                 var ownerName = String(project, "owner");
                 var architectName = String(project, "architect");
-                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, LeadFirm(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(LeadFirm(architectName)), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var cost = Money(project, "estimatedValue");
                 var gc = String(project, "generalContractor");
 
@@ -2419,8 +2457,8 @@ ORDER BY Id;";
                 // at a live canonical; else resolve by name.
                 var architectSeedId = LongOrNull(t, "architectSeedId");
                 var architectId = await ValidatedSeedIdOrNullAsync(orgStore, architectSeedId, ct).ConfigureAwait(false)
-                    ?? await ResolveAsync(resolver, options, stats, LeadFirm(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
-                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                    ?? await ResolveAsync(resolver, options, stats, LeadOperator(LeadFirm(architectName)), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, LeadFirm(structuralName), OrgKinds.Competitor, "IntelTeamStructural", ct).ConfigureAwait(false);
                 var gcId = await ResolveAsync(resolver, options, stats, LeadFirm(gcName), OrgKinds.GeneralContractor, "IntelTeamGC", ct).ConfigureAwait(false);
                 var cost = Money(t, "estimatedValue");
@@ -2903,8 +2941,8 @@ ORDER BY Id;";
 
                 var ownerName = String(p, "owner");
                 var architectName = String(p, "plannedArchitect");
-                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, LeadFirm(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(LeadFirm(architectName)), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var cost = Money(p, "estimatedValue");
 
                 var record = new MajorProjectRecord(
@@ -3310,7 +3348,7 @@ ORDER BY Id;";
                     continue;
                 }
 
-                var orgId = await ResolveAsync(resolver, options, stats, orgName, "Buyer", "OwnerProcurement", ct).ConfigureAwait(false);
+                var orgId = await ResolveAsync(resolver, options, stats, LeadOperator(orgName), "Buyer", "OwnerProcurement", ct).ConfigureAwait(false);
                 await WriteEnrichmentAsync(
                     enrichmentStore,
                     options,
@@ -3468,7 +3506,7 @@ ORDER BY Id;";
                     continue;
                 }
 
-                var orgId = await ResolveAsync(resolver, options, stats, orgName, "Architect", "StructuralPartnerMap", ct).ConfigureAwait(false);
+                var orgId = await ResolveAsync(resolver, options, stats, LeadOperator(orgName), "Architect", "StructuralPartnerMap", ct).ConfigureAwait(false);
                 await WriteEnrichmentAsync(
                     enrichmentStore,
                     options,
@@ -3561,7 +3599,7 @@ ORDER BY Id;";
                 }
 
                 var architectId = await ValidatedSeedIdOrNullAsync(orgStore, seededArchitectId, ct).ConfigureAwait(false)
-                    ?? await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, "DisplacementBrief", ct).ConfigureAwait(false);
+                    ?? await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, "DisplacementBrief", ct).ConfigureAwait(false);
 
                 if (!architectId.HasValue)
                 {
@@ -3780,7 +3818,7 @@ ORDER BY Id;";
                 }
 
                 var ownerName = String(element, "owner");
-                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
                 var record = new MajorProjectRecord(
                     Source: "FacilityRenewal",
                     SourceKey: "RENEWAL-" + Sha1($"{ownerName}|{facilityName}"),
@@ -3904,7 +3942,7 @@ ORDER BY Id;";
                     Console.WriteLine($"[WARN] CapitalPlans: duplicate SourceKey in this run ({sourceKey}); later row may overwrite earlier row. project={projectName}");
                 }
 
-                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
                 var record = new MajorProjectRecord(
                     Source: "CapitalPlans",
                     SourceKey: sourceKey,
@@ -4028,10 +4066,10 @@ ORDER BY Id;";
                 var gcName = String(project, "generalContractorName") ?? String(project, "GeneralContractorName");
                 var proponentName = String(project, "proponentName") ?? String(project, "ProponentName");
 
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, "ProjectsHoning", ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, "ProjectsHoning", ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectsHoning", ct).ConfigureAwait(false);
                 var gcId = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "ProjectsHoning", ct).ConfigureAwait(false);
-                var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Buyer, "ProjectsHoning", ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(proponentName), OrgKinds.Buyer, "ProjectsHoning", ct).ConfigureAwait(false);
 
                 var updated = await UpdateMajorProjectFromHoningAsync(
                     options,
@@ -4137,8 +4175,8 @@ ORDER BY Id;";
                 var architectName = String(project, "architect");
                 var structuralName = String(project, "structuralEngineer");
                 var municipality = String(project, "municipality") ?? String(project, "city");
-                var ownerId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var ownerId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "MidMarketStructural", ct).ConfigureAwait(false);
 
                 var record = new MajorProjectRecord(
@@ -4262,7 +4300,7 @@ ORDER BY Id;";
                     continue;
                 }
 
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var updated = await UpdateMajorProjectArchitectForecastAsync(options, id.Value, architectName, architectId, ct).ConfigureAwait(false);
                 if (updated)
                 {
@@ -4364,7 +4402,7 @@ ORDER BY Id;";
                 AddCount(seatStatusCounts, string.IsNullOrWhiteSpace(seatStatus) ? "(blank)" : seatStatus.Trim());
 
                 orgsResolved += CountName(architectName) + CountName(structuralName) + CountName(gcName);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "PipelineSeatsStructural", ct).ConfigureAwait(false);
                 var gcId = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "PipelineSeatsGC", ct).ConfigureAwait(false);
 
@@ -4484,7 +4522,7 @@ ORDER BY Id;";
 
                 var architectName = CleanTeamName(String(project, "architectUpdate"));
                 var structuralName = CleanTeamName(String(project, "structuralUpdate"));
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, "ProjectReverifyArchitect", ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, "ProjectReverifyArchitect", ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectReverifyStructural", ct).ConfigureAwait(false);
                 var retire = IsRetiringProjectVerdict(verdict);
 
@@ -4717,9 +4755,9 @@ ORDER BY Id;";
                 var architect = String(project, "architect");
                 var generalContractor = String(project, "generalContractor");
                 orgsResolved += CountName(owner) + CountName(architect) + CountName(generalContractor);
-                await ResolveAsync(resolver, options, stats, architect, OrgKinds.Architect, "KorCapabilityArchitect", ct).ConfigureAwait(false);
+                await ResolveAsync(resolver, options, stats, LeadOperator(architect), OrgKinds.Architect, "KorCapabilityArchitect", ct).ConfigureAwait(false);
                 await ResolveAsync(resolver, options, stats, generalContractor, OrgKinds.GeneralContractor, "KorCapabilityGC", ct).ConfigureAwait(false);
-                await ResolveAsync(resolver, options, stats, owner, OrgKinds.Buyer, "KorCapabilityOwner", ct).ConfigureAwait(false);
+                await ResolveAsync(resolver, options, stats, LeadOperator(owner), OrgKinds.Buyer, "KorCapabilityOwner", ct).ConfigureAwait(false);
 
                 var systems = StringArray(project, "structuralSystems");
                 AddSectorSystems(sectorSystemMatrix, String(project, "sector"), systems);
@@ -4882,15 +4920,15 @@ ORDER BY Id;";
                 var mpiId = LongOrNull(project, "mpiId");
                 if (mpiId.HasValue && mpiId.Value > 0)
                 {
-                    var architectIdForBackfill = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                    var architectIdForBackfill = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                     var structuralIdForBackfill = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectTeamsStructural", ct).ConfigureAwait(false);
                     var gcIdForBackfill = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "ProjectTeamsGC", ct).ConfigureAwait(false);
                     await BackfillMpiTeamAsync(options, stats, mpiId.Value, architectIdForBackfill, structuralIdForBackfill, gcIdForBackfill, architectName, structuralName, gcName, ct).ConfigureAwait(false);
                     continue;
                 }
 
-                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "ProjectTeamsStructural", ct).ConfigureAwait(false);
                 var gcId = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "ProjectTeamsGC", ct).ConfigureAwait(false);
 
@@ -5016,8 +5054,8 @@ ORDER BY Id;";
                 var architectName = String(project, "architect");
                 var ownerName = String(project, "owner");
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "CompetitorProjectsStructural", ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
-                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
 
                 var record = new MajorProjectRecord(
                     Source: "competitor-projects",
@@ -5138,8 +5176,8 @@ ORDER BY Id;";
                 var ownerName = String(project, "owner");
                 var architectName = String(project, "architect");
                 var structuralName = String(project, "structuralEngineer");
-                var proponentId = await ResolveAsync(resolver, options, stats, ownerName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
                 var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "StructuralPipelineStructural", ct).ConfigureAwait(false);
 
                 var record = new MajorProjectRecord(
@@ -5260,8 +5298,8 @@ ORDER BY Id;";
 
                 var proponentName = String(project, "proponent");
                 var architectName = String(project, "architect");
-                var proponentId = await ResolveAsync(resolver, options, stats, proponentName, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architectName, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(proponentName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
 
                 var record = new MajorProjectRecord(
                     Source: "indigenous-projects",
@@ -5689,8 +5727,8 @@ ORDER BY Id;";
                 var announcedDate = String(project, "announcedDate") ?? String(project, "occurredAt");
                 var expectedProcurementWindow = String(project, "expectedProcurementWindow");
 
-                var ownerId = await ResolveAsync(resolver, options, stats, owner, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-                var architectId = await ResolveAsync(resolver, options, stats, architect, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                var ownerId = await ResolveAsync(resolver, options, stats, LeadOperator(owner), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architect), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
 
                 var scheduleParts = new List<string>();
                 if (!string.IsNullOrWhiteSpace(fundingSource)) scheduleParts.Add("Funding: " + fundingSource);
@@ -5837,8 +5875,8 @@ ORDER BY Id;";
             var expectedRfp = String(project, "expectedRfpWindow");
             var fundingYear = Short(project, "fundingYear");
 
-            var ownerId = await ResolveAsync(resolver, options, stats, ownerOrg, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-            var architectId = await ResolveAsync(resolver, options, stats, architectOrg, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+            var ownerId = await ResolveAsync(resolver, options, stats, LeadOperator(ownerOrg), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+            var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectOrg), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
             var structuralId = await ResolveAsync(resolver, options, stats, structuralOrg, OrgKinds.Competitor, "SeismicPipeline.Structural", ct).ConfigureAwait(false);
 
             var scheduleParts = new List<string>();
@@ -6039,8 +6077,8 @@ ORDER BY Id;";
             var mep = String(project, "mepConsultants");
             var year = Short(project, "year");
 
-            var ownerId = await ResolveAsync(resolver, options, stats, owner, OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
-            var architectId = await ResolveAsync(resolver, options, stats, architectOrg, OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+            var ownerId = await ResolveAsync(resolver, options, stats, LeadOperator(owner), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+            var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectOrg), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
             var structuralId = await ResolveAsync(resolver, options, stats, structuralOrg, OrgKinds.Competitor, $"{sourceLabel}.Structural", ct).ConfigureAwait(false);
             var gcId = await ResolveAsync(resolver, options, stats, gcOrg, OrgKinds.GeneralContractor, $"{sourceLabel}.Gc", ct).ConfigureAwait(false);
 
