@@ -428,10 +428,30 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
         }
 
         var address = Read(row, sourceConfig, "addressColumn", "address", "site_address", "street_address", "location", "full_address");
+        // Composite address: some sources (e.g. SF) split the address across several
+        // columns with no combined field. Join the listed columns to form a clean name.
+        var addressColsCfg = Get(sourceConfig, "addressColumns");
+        if (!string.IsNullOrWhiteSpace(addressColsCfg))
+        {
+            var parts = new List<string>();
+            foreach (var col in addressColsCfg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (TryGetString(row, col, out var v) && !string.IsNullOrWhiteSpace(v))
+                {
+                    parts.Add(v.Trim());
+                }
+            }
+            var composite = System.Text.RegularExpressions.Regex.Replace(string.Join(" ", parts), @"\s+", " ").Trim();
+            if (composite.Length > 0)
+            {
+                address = composite;
+            }
+        }
         var description = Read(row, sourceConfig, "descriptionColumn", "description", "work_description", "scope", "project_description", "permit_description");
         var type = Read(row, sourceConfig, "typeColumn", "permit_type", "permittypemapped", "type", "record_type", "proposed_use", "use");
         var projectName = FirstNonBlank(
             Read(row, sourceConfig, "projectNameColumn", "project_name", "project", "name"),
+            address,                         // clean street address (composite when addressColumns set)
             DescriptionLead(description),
             address is null ? null : $"{type} - {address}",
             permitNumber);
