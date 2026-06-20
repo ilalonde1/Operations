@@ -2304,3 +2304,24 @@ LoserId,SurvivorId,Reason
 76553,70911,JV-string -> lead operator (classified)
 76651,53665,Empty stray 'Pinnacle Development' -> Pinnacle International (id 53665, Deltek CL00333)
 70836,28093,Empty stray 'Purpose Driven' -> Purpose Driven Development (id 28093, Deltek client)
+76165,18657,WSP naming-variant -> WSP Canada Inc.
+75979,18657,WSP (Structural Group) -> WSP Canada Inc.
+76496,18657,WSP Canada -> WSP Canada Inc.
+76347,18657,WSP Engineering -> WSP Canada Inc.
+75860,18657,WSP Group -> WSP Canada Inc.
+75671,18657,WSP in Canada -> WSP Canada Inc.
+4097,74150,CANA Construction -> CANA Group of Companies
+69928,74150,CANA Group -> CANA Group of Companies
+4113,74150,CANA Utilities (junk name) -> CANA Group of Companies
+70174,69199,Farmer Construction Projects -> Farmer Construction Ltd
+70803,69199,JV-string Farmer/Campbell -> Farmer Construction Ltd (lead)
+76649,76635,Concert-Bird Partners dup -> survivor
+76311,76635,Bird/Wright (same Alberta P3 schools JV) -> Concert-Bird Partners
+5232,76635,Concert Bird Partners Consortium -> Concert-Bird Partners
+69855,69014,JV-string RJC/MKA -> RJC Engineers (lead)
+69947,38926,JV-string BuroHappold/Glotman(EOR) -> Glotman Simpson (EOR lead)
+71040,64926,JV-string Ausenco/Associated -> Ausenco (lead)
+71262,7345,JV-string Fast+Epp/WSP -> Fast + Epp (lead)
+76337,18657,JV-string WSP/McElhanney -> WSP Canada Inc (lead)
+69881,74150,JV-string CANA/Mortenson -> CANA Group of Companies (lead)
+69884,74195,JV-string VanMaren/Styline/DJimmerson -> Van Maren Group (lead)
