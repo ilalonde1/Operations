@@ -431,6 +431,7 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
         // Composite address: some sources (e.g. SF) split the address across several
         // columns with no combined field. Join the listed columns to form a clean name.
         var addressColsCfg = Get(sourceConfig, "addressColumns");
+        var addressIsComposite = false;
         if (!string.IsNullOrWhiteSpace(addressColsCfg))
         {
             var parts = new List<string>();
@@ -445,6 +446,7 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
             if (composite.Length > 0)
             {
                 address = composite;
+                addressIsComposite = true;
             }
         }
         var description = Read(row, sourceConfig, "descriptionColumn", "description", "work_description", "scope", "project_description", "permit_description");
@@ -458,6 +460,8 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
         var proponent = Read(row, sourceConfig, "proponentColumn", "applicant", "owner", "contractor", "developer", "name_of_applicant");
         var architect = Read(row, sourceConfig, "architectColumn", "architect", "design_professional");
         var municipality = FirstNonBlank(Get(sourceConfig, "municipality"), Read(row, sourceConfig, "municipalityColumn", "city", "municipality"));
+        // Enrich an address-composite name with ", <municipality> - <descriptor>" when configured.
+        projectName = ComposeRichName(projectName, address, addressIsComposite, row, sourceConfig, municipality);
         var county = FirstNonBlank(Get(sourceConfig, "county"), Read(row, sourceConfig, "countyColumn", "county"));
         var valuationText = Read(row, sourceConfig, "valuationColumn", "valuation", "estimated_cost", "construction_cost", "valuation_amount", "project_value");
         var unitsText = Read(row, sourceConfig, "unitsColumn", "units", "proposed_units", "dwelling_units", "number_of_units", "residential_units");
@@ -873,6 +877,65 @@ Found:
         decimal.TryParse(value, NumberStyles.Number | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : fallback;
+
+    // When a row is named by the composite address, optionally append ", <municipality>"
+    // and a descriptor built from configured "descriptorParts" ("col={}-storey;col2=({} units)").
+    // Only fires when the name IS the composite address (never overrides a real projectNameColumn).
+    private static string ComposeRichName(string? name, string? address, bool addressIsComposite,
+        JsonElement row, IReadOnlyDictionary<string, string> config, string? municipality)
+    {
+        if (string.IsNullOrWhiteSpace(name) || !addressIsComposite || !string.Equals(name, address, StringComparison.Ordinal))
+        {
+            return name ?? string.Empty;
+        }
+
+        var result = name;
+        if (string.Equals(Get(config, "nameAppendMunicipality"), "true", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(municipality)
+            && result.IndexOf(municipality!, StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            result += ", " + municipality;
+        }
+
+        var dp = Get(config, "descriptorParts");
+        if (!string.IsNullOrWhiteSpace(dp))
+        {
+            var segs = new List<string>();
+            foreach (var entry in dp.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var eq = entry.IndexOf('=');
+                if (eq <= 0)
+                {
+                    continue;
+                }
+
+                var col = entry.Substring(0, eq).Trim();
+                var fmt = entry.Substring(eq + 1);
+                if (TryGetString(row, col, out var val) && !string.IsNullOrWhiteSpace(val))
+                {
+                    val = CleanNumeric(val.Trim());
+                    if (val == "0")
+                    {
+                        continue;
+                    }
+
+                    segs.Add(fmt.Replace("{}", val));
+                }
+            }
+
+            if (segs.Count > 0)
+            {
+                result += " - " + string.Join(" ", segs);
+            }
+        }
+
+        return result;
+    }
+
+    private static string CleanNumeric(string v) =>
+        double.TryParse(v, NumberStyles.Number, CultureInfo.InvariantCulture, out var d) && d == Math.Floor(d)
+            ? ((long)d).ToString(CultureInfo.InvariantCulture)
+            : v;
 
     private static short? ParseYear(string? value)
     {
