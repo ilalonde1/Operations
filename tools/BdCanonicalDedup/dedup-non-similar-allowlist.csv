@@ -2709,3 +2709,9 @@ LoserId,SurvivorId,Reason
 75556,38975,ZGF fragment -> ZGF Architects
 75803,7345,Fast fragment -> Fast + Epp
 54300,6154,Hotson Bakker (defunct ~2009) -> DIALOG (per overnight research; Joost Bakker now DIALOG)
+# 2026-06-20 CRD canonical dup. Same entity: #74001 "Capital Regional District
+# (CRD)" (0 opps, parenthetical) folds into #323 "Capital Regional District"
+# (8 BcBid opps, 4 MPIs, clean legal name). Gate rejects on the "(CRD)" tail.
+74001,323,capital regional district (crd) -> capital regional district
+76910,55110,Greystar (empty stray) -> Greystar Real Estate Partners
+202,55110,Greystar Development West LLC -> Greystar Real Estate Partners (same company, brand consolidation)
