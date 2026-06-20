@@ -2715,3 +2715,4 @@ LoserId,SurvivorId,Reason
 74001,323,capital regional district (crd) -> capital regional district
 76910,55110,Greystar (empty stray) -> Greystar Real Estate Partners
 202,55110,Greystar Development West LLC -> Greystar Real Estate Partners (same company, brand consolidation)
+76505,207,Anthem Properties (thin dup) -> Anthem Properties Group Ltd (rich KorClient)
