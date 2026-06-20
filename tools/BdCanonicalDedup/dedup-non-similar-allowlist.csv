@@ -2691,3 +2691,21 @@ LoserId,SurvivorId,Reason
 76264,75664,competitor family-dedup (wave7)
 8361,69232,competitor family-dedup (wave7)
 75602,69232,competitor family-dedup (wave7)
+# 2026-06-19 BD meeting cross-reference cleanup. Three same-entity dups the
+# fuzzy gate rejects on "The"-prefix / paren-suffix / diacritic differences.
+# Verified before append: each loser+survivor active, 0 pursuits/Deltek lost,
+# survivor is the richer/correctly-kinded row (Nch'kay 54983 has 9 enrich + 6
+# affiliations vs loser's 2/0). Lark dev-arm (53694) and GC-arm (72260) kept
+# SEPARATE; only the stray Unknown rows fold in.
+55097,53694,lark group -> the lark group (developer arm)
+27243,72260,lark projects ltd -> lark projects ltd bc-housing (gc arm)
+70915,54983,nchkay -> nch'kay development corporation (diacritic variant)
+# 2026-06-19 BD-audit C1 prep: tracking-import bare org dups -> rich canonical.
+# Verified same entity: #70831 "RBI group" (kp=0, Unknown, 1 alias) is the
+# BdTrackingImport bare variant of #14 "RBI Group of Companies" (KorClient,
+# Deltek, kp=6, 12 affiliations). Fuzzy gate rejects on the "of companies" tail.
+70831,14,rbi group -> rbi group of companies (tracking bare-variant)
+75897,8799,hcma fragment -> hcma architecture + design
+75556,38975,ZGF fragment -> ZGF Architects
+75803,7345,Fast fragment -> Fast + Epp
+54300,6154,Hotson Bakker (defunct ~2009) -> DIALOG (per overnight research; Joost Bakker now DIALOG)
