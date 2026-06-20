@@ -1,0 +1,253 @@
+{
+  "category": "bc-housing-seats",
+  "asOf": "2026-06-20",
+  "projects": [
+    {
+      "mpiId": 7434,
+      "name": "West Moberly Lake RHI",
+      "proponent": "West Moberly First Nations",
+      "city": "West Moberly Lake",
+      "stage": "unknown - MPI listed; no public announcement found for a new multi-unit project beyond the completed May-2025 triplex",
+      "unitsValue": "unknown",
+      "architect": "unknown",
+      "gc": "unknown",
+      "structuralEngineer": "open",
+      "seatPicker": "owner",
+      "timeline": "unknown",
+      "contact": {
+        "name": "Gil Davis",
+        "title": "Housing Manager, West Moberly First Nations",
+        "email": "info@westmo.org"
+      },
+      "note": "Kalmar Construction delivered a triplex for WMFN completed May 2025. MPI 7434 appears to be a separate new RHI project; no public procurement or team announcement found. WMFN remote community (Moberly Lake, BC) - modular/prefab likely. SE seat almost certainly open and would be selected by owner or GC depending on delivery model."
+    },
+    {
+      "mpiId": 7406,
+      "name": "Fernie 692 3rd Ave (BC Builds)",
+      "proponent": "BC Housing / Elk Valley Family Society",
+      "city": "Fernie",
+      "stage": "under construction - foundation and underground parkade complete as of late 2025; framing underway 2026",
+      "unitsValue": "44 units; ~$15-20M est",
+      "architect": "Zeidler Architects",
+      "gc": "North Mountain Construction",
+      "structuralEngineer": "open",
+      "seatPicker": "architect",
+      "timeline": "construction began late 2025; completion targeted fall/winter 2027",
+      "contact": {
+        "name": "",
+        "title": "Elk Valley Family Society (operator); New Commons Development (dev mgr)",
+        "email": "info@evfs.ca"
+      },
+      "note": "Developer is New Commons Development (non-profit dev mgr); GC is North Mountain Construction. Architect confirmed as Zeidler Architects. Structural engineer not publicly named - likely open or recently awarded. Design-bid-build model; SE selected by architect. Project is in early structural framing phase - SE selection window may still be live. KOR opportunity if SE not yet locked."
+    },
+    {
+      "mpiId": 7405,
+      "name": "Nelson 91 Baker St (BC Builds)",
+      "proponent": "BC Housing / Railtown Housing Society",
+      "city": "Nelson",
+      "stage": "under construction as of April 2025",
+      "unitsValue": "55 units; est $18-25M",
+      "architect": "Stanley Office of Architecture (SOA)",
+      "gc": "Pac Western Builders",
+      "structuralEngineer": "9 Dot Engineering",
+      "seatPicker": "architect",
+      "timeline": "broke ground autumn 2025; modular/prefab delivery via Roc Modular",
+      "contact": {
+        "name": "",
+        "title": "Railtown Housing Society / Nelson Chamber of Commerce",
+        "email": ""
+      },
+      "note": "SE seat is FILLED: 9 Dot Engineering (Nelson BC) confirmed as structural engineer per Stanley Office of Architecture project page. GC is Pac Western Builders. Modular supplier is Roc Modular. Other consultants: Mountain Ridge Eng (mechanical), Kerr Wood Lidell (electrical), WELS Eng (civil). No opportunity for KOR."
+    },
+    {
+      "mpiId": 7404,
+      "name": "Quesnel 319 North Fraser Dr",
+      "proponent": "BC Housing / Quesnel Tillicum Society",
+      "city": "Quesnel",
+      "stage": "under construction - shovels in ground as of September 2025",
+      "unitsValue": "35 units; ~$23M provincial contribution",
+      "architect": "Formline Architecture + Urbanism",
+      "gc": "unknown",
+      "structuralEngineer": "Equilibrium Consultants Inc.",
+      "seatPicker": "architect",
+      "timeline": "announced September 2025; opening 2027",
+      "contact": {
+        "name": "Tony Goulet",
+        "title": "Executive Director, Quesnel Tillicum Society",
+        "email": ""
+      },
+      "note": "SE seat is FILLED: Equilibrium Consultants Inc. confirmed as structural engineer per Formline Architecture project page. Architect is Formline Architecture + Urbanism (North Vancouver). No opportunity for KOR."
+    },
+    {
+      "mpiId": 7401,
+      "name": "Peachland Residences on 5th",
+      "proponent": "BC Housing / Peachland Seniors Support Society",
+      "city": "Peachland",
+      "stage": "COMPLETE - opened early 2026 (residents moving in March 2026; official opening June 3 2026)",
+      "unitsValue": "73 units; ~$11.6M BC Housing + CMHC",
+      "architect": "Phil MacDonald Architecture Inc. (Phase 1 architect; Phase 2 unknown)",
+      "gc": "unknown",
+      "structuralEngineer": "unknown - project complete",
+      "seatPicker": "N/A - complete",
+      "timeline": "completed early 2026",
+      "contact": {
+        "name": "",
+        "title": "Peachland Seniors Support Society",
+        "email": ""
+      },
+      "note": "Project is COMPLETE. SE seat was filled during design (2023-2025). No opportunity. Phase 1 GC was VanMar Constructors (2019). Phase 2 team not publicly confirmed but project is done."
+    },
+    {
+      "mpiId": 7398,
+      "name": "Kamloops 377 Tranquille Rd (BC Builds)",
+      "proponent": "BC Housing / City of Kamloops / ARPA Investments",
+      "city": "Kamloops",
+      "stage": "under construction - earthworks began March 2026; project 3 weeks ahead of schedule as of June 2026",
+      "unitsValue": "85 units + 7,600 sq ft commercial; ~$29.2M",
+      "architect": "Richard Hunter Architect Inc. (Kamloops)",
+      "gc": "ARPA Investments (acting as design-build developer/GC)",
+      "structuralEngineer": "open",
+      "seatPicker": "architect",
+      "timeline": "earthworks March 2026; occupancy November 2027",
+      "contact": {
+        "name": "",
+        "title": "ARPA Investments",
+        "email": ""
+      },
+      "note": "Architect is Richard Hunter Architect Inc. (confirmed from news coverage of BC Builds Info Session and project details). Structural engineer not publicly named. ARPA is developer-led but project is not strictly design-build - architect-led design team. SE seat may still be open or recently awarded. Active construction underway so SE is likely engaged but not announced. Kamloops project - KOR has capacity to serve Interior BC."
+    },
+    {
+      "mpiId": 7408,
+      "name": "New Westminster 1923-1927 Marine Way",
+      "proponent": "BC Housing / Aunt Leah's Properties",
+      "city": "New Westminster",
+      "stage": "under construction as of September 2025",
+      "unitsValue": "89 units; $14M+ BC Housing Community Housing Fund",
+      "architect": "GBL Architects",
+      "gc": "VanMar Constructors",
+      "structuralEngineer": "open",
+      "seatPicker": "architect",
+      "timeline": "construction started September 2025; completion summer 2027",
+      "contact": {
+        "name": "Jacqueline Dupuis",
+        "title": "Executive Director, Aunt Leah's Properties",
+        "email": ""
+      },
+      "note": "Architect confirmed as GBL Architects; GC confirmed as VanMar Constructors; development consultant is Empacta. Structural engineer not publicly named - likely open or recently awarded. Six-storey wood-frame build in Metro Vancouver. KOR operates in Lower Mainland. SE likely selected alongside GBL - worth a direct inquiry to GBL."
+    },
+    {
+      "mpiId": 7407,
+      "name": "Vancouver Ho-kee-melh Kloshe Lum",
+      "proponent": "BC Housing / Vancouver Aboriginal Friendship Centre Society (VAFCS)",
+      "city": "Vancouver",
+      "stage": "COMPLETE - opened May 2026",
+      "unitsValue": "163 rental units + 80-bed shelter; $145M total",
+      "architect": "Low Hammond Rowe Architects",
+      "gc": "WCPG Construction",
+      "structuralEngineer": "unknown - project complete",
+      "seatPicker": "N/A - complete",
+      "timeline": "construction started October 2022; opened May 2026",
+      "contact": {
+        "name": "",
+        "title": "Vancouver Aboriginal Friendship Centre Society",
+        "email": ""
+      },
+      "note": "Project is COMPLETE. 14-storey concrete tower at 1015 East Hastings, DTES Vancouver. No opportunity for KOR."
+    },
+    {
+      "mpiId": 7410,
+      "name": "Bella Bella Staff Housing",
+      "proponent": "Vancouver Coastal Health",
+      "city": "Bella Bella",
+      "stage": "unknown - the well-known completed VCH staff housing (2015, Mobius Architecture / CanStruct) is complete; MPI 7410 may represent a new phase or expansion not yet publicly announced",
+      "unitsValue": "unknown for new project; original was 6 two-storey townhouse units",
+      "architect": "unknown for new project (original: Mobius Architecture)",
+      "gc": "unknown for new project (original: Metric Modular / Spani Developments)",
+      "structuralEngineer": "open",
+      "seatPicker": "owner",
+      "timeline": "unknown",
+      "contact": {
+        "name": "",
+        "title": "Vancouver Coastal Health Capital Projects",
+        "email": ""
+      },
+      "note": "The original Bella Bella staff housing (passive house modular, 2015) was designed by Mobius Architecture with CanStruct Engineering as structural engineer. MPI 7410 suggests a new or expanded project. No public announcement or procurement found. Remote community accessible only by ferry/air. Modular delivery likely. If new, SE seat is open and VCH would select via RFP. KOR opportunity if VCH issues a design RFQ - worth monitoring BC Bid."
+    },
+    {
+      "mpiId": 7416,
+      "name": "Lantzville RHI Rd3 (Nanoose First Nation)",
+      "proponent": "Nanoose First Nation",
+      "city": "Lantzville",
+      "stage": "COMPLETE - prior RHI project (5 single-family homes) confirmed completed per CMHC 2023 announcement; MPI entry may reflect a new Round 3 project",
+      "unitsValue": "unknown for new Rd3 project; prior RHI was 5 homes / $1.9M",
+      "architect": "unknown",
+      "gc": "unknown",
+      "structuralEngineer": "open",
+      "seatPicker": "owner",
+      "timeline": "unknown",
+      "contact": {
+        "name": "",
+        "title": "Nanoose First Nation (Snaw-naw-as Nation)",
+        "email": "contact@snawnawas.org"
+      },
+      "note": "The earlier RHI (Rounds 1-2) Nanoose project (5 single-family homes near Lantzville) is complete. MPI 7416 labelled RHI Rd3 suggests a new project. No public announcement or procurement found. Small First Nation - likely low-rise residential, possibly modular. SE seat open if new project. KOR serves Vancouver Island. Worth a direct inquiry to Nanoose First Nation housing office."
+    },
+    {
+      "mpiId": 7415,
+      "name": "North Saanich RHI Rd3 (Pauquachin First Nation)",
+      "proponent": "Pauquachin First Nation",
+      "city": "North Saanich",
+      "stage": "COMPLETE for prior RHI - Nomodic modular 12-suite complex opened ~2022; MPI Rd3 label suggests a new project",
+      "unitsValue": "unknown for new Rd3 project; prior was 12 suites / $5M",
+      "architect": "unknown for new project (prior: Designworks Engineering / Nomodic)",
+      "gc": "unknown for new project (prior: Nomodic modular)",
+      "structuralEngineer": "open",
+      "seatPicker": "owner",
+      "timeline": "unknown",
+      "contact": {
+        "name": "",
+        "title": "Pauquachin First Nation",
+        "email": ""
+      },
+      "note": "Prior Pauquachin RHI project (12 units, Nomodic modular) is complete with structural engineering by Designworks Engineering. MPI 7415 as Rd3 suggests a new follow-on project. No public procurement found. Pauquachin is a small First Nation on Saanich Peninsula (Vancouver Island). If new Rd3 project, SE seat open. KOR serves Island market."
+    },
+    {
+      "mpiId": 7417,
+      "name": "Port Renfrew RHI Rd3 (Pacheedaht First Nation)",
+      "proponent": "Pacheedaht First Nation",
+      "city": "Port Renfrew",
+      "stage": "COMPLETE for prior RHI - 12-unit duplex/triplex cluster confirmed complete per CMHC 2023; MPI Rd3 label suggests a new project",
+      "unitsValue": "unknown for new Rd3 project; prior was 12 units / $1.58M",
+      "architect": "unknown",
+      "gc": "unknown",
+      "structuralEngineer": "open",
+      "seatPicker": "owner",
+      "timeline": "unknown",
+      "contact": {
+        "name": "",
+        "title": "Pacheedaht First Nation",
+        "email": ""
+      },
+      "note": "Prior Pacheedaht RHI project (12 units, 3 duplexes + 2 triplexes) is complete. MPI 7417 as Rd3 suggests a follow-on project. No public procurement found. Remote community on west coast of Vancouver Island. If new, SE seat open. Small project scale likely."
+    },
+    {
+      "mpiId": 7420,
+      "name": "Alert Bay RHI Rd3 (Namgis First Nation)",
+      "proponent": "Namgis First Nation",
+      "city": "Alert Bay",
+      "stage": "planning/approval - Nation voted on $46M housing + infrastructure borrowing in 2025; vote postponed, no new date set",
+      "unitsValue": "unknown for Rd3 project specifically; $46M borrowing for multi-year housing + infrastructure program",
+      "architect": "unknown",
+      "gc": "unknown",
+      "structuralEngineer": "open",
+      "seatPicker": "owner",
+      "timeline": "unknown - membership vote postponed; no construction date confirmed",
+      "contact": {
+        "name": "",
+        "title": "Namgis First Nation Housing Manager",
+        "email": ""
+      },
+      "note": "Namgis is pursuing a significant $46M housing + infrastructure borrowing to support projects over 3 years; membership vote was postponed in 2025. MPI 7420 RHI Rd3 may be one component. Prior RHI project (8 modular accessible homes) is complete. New project in Alert Bay (remote, North Vancouver Island, barge access). SE seat open but project timeline uncertain. Monitoring recommended."
+    }
+  ]
+}

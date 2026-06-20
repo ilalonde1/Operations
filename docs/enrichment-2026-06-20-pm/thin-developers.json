@@ -1,0 +1,365 @@
+{
+  "category": "thin-developers",
+  "orgs": [
+    {
+      "orgId": 53694,
+      "orgName": "The Lark Group",
+      "domain": "larkgroup.com",
+      "people": [
+        {
+          "name": "Kirk Fisher",
+          "title": "Chief Executive Officer",
+          "email": "kfisher@larkgroup.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://ca.linkedin.com/in/kirk-fisher-73a19b14",
+          "note": "CEO since Aug 2023, son of founder Larry Fisher. P.Eng. UBC, MBA SFU. Also co-founder of HealthTech Connex."
+        },
+        {
+          "name": "Jay Whisnand",
+          "title": "Vice President of Construction",
+          "email": "jwhisnand@larkgroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 83,
+          "linkedin": "https://www.linkedin.com/in/jaywhisnand",
+          "note": "VP of Construction. Hunter verified valid 2026-05-30. Primary construction contact."
+        },
+        {
+          "name": "Graydon Halley",
+          "title": "Project Director",
+          "email": "ghalley@larkgroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 93,
+          "linkedin": "https://www.linkedin.com/in/graydon-halley-96140552",
+          "note": "Project Director, management/executive seniority."
+        },
+        {
+          "name": "William Shatford",
+          "title": "Project Director",
+          "email": "wshatford@larkgroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 81,
+          "linkedin": "https://www.linkedin.com/in/williamshatford",
+          "note": "Project Director. Hunter verified valid 2026-06-19."
+        },
+        {
+          "name": "Kennedy Bray",
+          "title": "Development Project Manager",
+          "email": "kbray@larkgroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 93,
+          "linkedin": "https://www.linkedin.com/in/kennedy-bray-771a02171",
+          "note": "Development Project Manager."
+        }
+      ],
+      "firmNotes": "BC-based integrated development and construction firm. Headquarters: Suite 1500, 13737 96 Ave, Surrey BC. Core sectors: healthcare, student housing, mixed-use, recreation. Landmark Health and Technology District in Surrey City Centre (11-phase master plan with ICT Group). Active projects: City Centre 5 (23-storey student housing, 810 beds, completion 2028); City Centre 4 (25-storey, Hilton Homewood Suites, opened Spring 2026); addictions treatment hospital planned near Surrey City Centre. Email pattern: {f}{last}@larkgroup.com (e.g. jwhisnand@larkgroup.com). Highly relevant for structural SE: large mixed-use and healthcare construction, repeat builder. Founded 1970, 100-500 employees."
+    },
+    {
+      "orgId": 54043,
+      "orgName": "Berezan Management Ltd.",
+      "domain": "berezan.ca",
+      "people": [
+        {
+          "name": "Ralph Berezan",
+          "title": "Chief Executive Officer",
+          "email": "rberezan@berezan.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "CEO and owner. Email pattern {f}{last}@berezan.ca inferred from Hunter pattern and ZoomInfo source (r***@berezan.ca partial match). Family-owned firm established 1971."
+        },
+        {
+          "name": "Alison Wallace",
+          "title": "Regional Manager",
+          "email": "awallace@berezan.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 94,
+          "linkedin": "",
+          "note": "Regional Manager, BC Interior (Sahali Centre Mall, Kamloops). Phone: +1 403 508 5016."
+        },
+        {
+          "name": "Len Robinson",
+          "title": "Regional Manager",
+          "email": "lrobinson@berezan.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 93,
+          "linkedin": "",
+          "note": "Regional Manager, Interior BC. Phone: +1 250 374 3033."
+        }
+      ],
+      "firmNotes": "Commercial property management and leasing company, established 1971. Portfolio: 50+ commercial buildings (retail, office, warehouse, recreational) across Western Canada. Offices: Calgary (HQ 815 8 Ave SW), Edmonton, Langley BC. NOT a residential developer. Primarily a landlord/property manager rather than active builder. Berezan Hospitality Group is a subsidiary (Troy Bilodeau, President). Limited relevance for SE structural work unless tenant improvement or new commercial construction. Domain berezan.ca confirmed active; no Hunter email pattern detected (accept_all). Annual revenue ~$27M."
+    },
+    {
+      "orgId": 54484,
+      "orgName": "Lexi Development Group",
+      "domain": "lexigroup.com",
+      "people": [
+        {
+          "name": "Babak Nikbakhtan",
+          "title": "Managing Director",
+          "email": "babak@lexigroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "https://www.linkedin.com/in/babaknikbakhtan",
+          "note": "Managing Director. Hunter shows email as invalid as of 2026-06-16 -- treat with caution. Key principal."
+        },
+        {
+          "name": "Baha Naemi",
+          "title": "Principal / Co-Leader",
+          "email": "baha@lexigroup.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Co-leader per company website. Email pattern is {first}@lexigroup.com (Hunter accept_all domain). farid@lexigroup.com verified valid -- pattern consistent."
+        },
+        {
+          "name": "Behzad Beheshti",
+          "title": "Principal / Co-Leader",
+          "email": "behzad@lexigroup.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Co-leader per company website. Also referenced as Behzad Foroutan in some sources. Pattern {first}@lexigroup.com."
+        },
+        {
+          "name": "Farid Ghasemi",
+          "title": "Senior Project Manager / BIM Lead",
+          "email": "farid@lexigroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 98,
+          "linkedin": "https://www.linkedin.com/in/farid-ghasemi-m-arch-185707100",
+          "note": "Senior Project Manager / BIM Lead (Design-Build). Hunter verified valid 2026-06-16."
+        }
+      ],
+      "firmNotes": "West Vancouver-based design-driven luxury residential developer, established 2004. Services: land acquisition, development, construction, design (in-house). Projects: custom/spec luxury homes, mid-rise condos, mixed-use. Active projects include Pacific House (66-unit concrete mid-rise, Esquimalt/Victoria BC), Cleveland Gardens (Squamish, 1-3BR condos). Also operates in Alberta. Domain lexigroup.com is accept_all (all emails pass verification). Email pattern: {first}@lexigroup.com. Contact: 604.779.5394, info@lexigroup.com, 200-2240 Chippendale Rd, West Vancouver. Relevant for luxury residential SE."
+    },
+    {
+      "orgId": 54002,
+      "orgName": "Bayview Properties",
+      "domain": "focusequities.com",
+      "people": [
+        {
+          "name": "Kenneth Mariash",
+          "title": "Founder / Principal",
+          "email": null,
+          "emailSource": "Hunter",
+          "emailConfidence": 0,
+          "linkedin": "",
+          "note": "Founder of Focus Equities / Bayview Properties. No email found in Hunter (focusequities.com returns 0 emails). Contact via focusequities.com website form."
+        },
+        {
+          "name": "Patricia Mariash",
+          "title": "Partner / Principal",
+          "email": null,
+          "emailSource": "Hunter",
+          "emailConfidence": 0,
+          "linkedin": "",
+          "note": "Partner, 18+ year involvement. No email found in Hunter."
+        }
+      ],
+      "firmNotes": "Bayview Properties Ltd Partnership is the development entity under Focus Equities Inc (Kenneth & Patricia Mariash), a Victoria BC-based developer. Flagship project: Bayview Place / Roundhouse master-planned community on Victoria Inner Harbour (20 acres, 1.5M sq ft residential + 70K commercial, ~1,900 homes in pipeline). Also active in Calgary, Edmonton, and US markets. Focus Equities has 35+ years in real estate, 10,000+ condos delivered. Hunter returned zero emails for focusequities.com -- no discoverable email pattern. Website: focusequities.com / bayviewplace.com. Highly relevant for large-scale residential/mixed-use SE work in Victoria."
+    },
+    {
+      "orgId": 76905,
+      "orgName": "Strada Investment Group",
+      "domain": "stradasf.com",
+      "people": [
+        {
+          "name": "Jesse Blout",
+          "title": "Founding Partner",
+          "email": "jblout@stradasf.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Founding Partner. Email pattern {f}{last}@stradasf.com per Hunter. No direct entry for Blout in Hunter results."
+        },
+        {
+          "name": "Michael Cohen",
+          "title": "Founding Partner",
+          "email": "mcohen@stradasf.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Founding Partner. Pattern inferred."
+        },
+        {
+          "name": "Steven Danforth",
+          "title": "Senior Vice President",
+          "email": "sdanforth@stradasf.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 98,
+          "linkedin": "https://www.linkedin.com/in/steven-danforth-368b071a",
+          "note": "Senior VP. Hunter verified valid 2026-06-01."
+        },
+        {
+          "name": "Nabil Nazir",
+          "title": "Construction Manager",
+          "email": "nnazir@stradasf.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 96,
+          "linkedin": "https://www.linkedin.com/in/nabil-nazir-30b398134",
+          "note": "Construction Manager. Hunter verified valid 2026-06-13."
+        },
+        {
+          "name": "Jake Kalmanovitz",
+          "title": "Senior Construction Manager",
+          "email": "jkalmanovitz@stradasf.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/jake-kalmanovitz-920307138",
+          "note": "Senior Construction Manager. Hunter verified valid 2026-06-13."
+        },
+        {
+          "name": "William Goodman",
+          "title": "Principal",
+          "email": "wgoodman@stradasf.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 98,
+          "linkedin": "https://www.linkedin.com/in/william-goodman-58b80213",
+          "note": "Principal. Hunter verified valid 2026-05-25. Phone: +1 314 276 0707."
+        }
+      ],
+      "firmNotes": "San Francisco Bay Area commercial and mixed-use developer. Founded 2010 by Jesse Blout, Michael Cohen, Scott Stafford. HQ: 201 Spear St, Suite 1650, San Francisco CA 94105. Notable projects: Uber HQ, Chase Center advisory, Lake Merritt BART TOD (Oakland), Brady Block. Focus: urban mixed-use, office, residential TOD, West Coast US markets. In-house design and construction management. Email pattern {f}{last}@stradasf.com confirmed by Hunter. NOTE: This is a US-based firm (California). Relevant for KOR US West Coast BD expansion if pursuing California market. Not BC-based."
+    },
+    {
+      "orgId": 70564,
+      "orgName": "Stober Group",
+      "domain": "stobergroup.com",
+      "people": [
+        {
+          "name": "Lisa Lock",
+          "title": "Chief Executive Officer",
+          "email": "llock@stobergroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 96,
+          "linkedin": "https://www.linkedin.com/in/lisa-lock-5b392914",
+          "note": "CEO since Nov 2023. Previously COO. Background at Concert Properties and Mission Group Enterprises. Hunter verified valid 2026-06-14."
+        },
+        {
+          "name": "JoAnne Adamson",
+          "title": "Director of Development",
+          "email": "jadamson@stobergroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "https://www.linkedin.com/in/joanne-adamson-51506020",
+          "note": "Director of Development. Hunter verified valid 2026-05-27. Key development decision-maker."
+        },
+        {
+          "name": "Carolyn Stober",
+          "title": "Co-Owner / Director",
+          "email": "cstober@stobergroup.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Co-owner (second generation, with Ken Stober). Pattern {f}{last}@stobergroup.com inferred from Hunter."
+        },
+        {
+          "name": "Ken Stober",
+          "title": "Co-Owner / Director",
+          "email": "kstober@stobergroup.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Co-owner (second generation family, with Carolyn Stober). Pattern inferred."
+        },
+        {
+          "name": "Josiah Siemens",
+          "title": "Chief Financial Officer",
+          "email": "jsiemens@stobergroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 98,
+          "linkedin": "https://www.linkedin.com/in/josiahsiemens",
+          "note": "CFO."
+        },
+        {
+          "name": "Joe Shaw",
+          "title": "Project Manager",
+          "email": "jshaw@stobergroup.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 95,
+          "linkedin": "https://www.linkedin.com/in/joe-shaw-7b750024a",
+          "note": "Project Manager. Hunter verified valid 2026-05-25."
+        }
+      ],
+      "firmNotes": "Kelowna-based vertically integrated developer and property manager. Founded 1957, rooted in Kelowna since 1962. Sectors: residential condos, commercial, retail (Landmark District). Portfolio: 1.1M sq ft commercial, 1,400+ residential rental units. Flagship active project: Movala (322 luxury condos/townhomes in Lower Mission, 2 towers 10+14 storeys; Phase 1 completed Jun 2025, Phase 2 Apr 2026; 2026 Georgie Award winner). Also manages Landmark District (15-acre mixed-use retail/office). Email pattern: {f}{last}@stobergroup.com. Relevant for Okanagan/Kelowna SE market."
+    },
+    {
+      "orgId": 53693,
+      "orgName": "Sunmark Developments",
+      "domain": "sunmarkdevelopments.com",
+      "people": [
+        {
+          "name": "Satnam Shoker",
+          "title": "President",
+          "email": null,
+          "emailSource": "Hunter",
+          "emailConfidence": 0,
+          "linkedin": "",
+          "note": "President of Sunmark Developments. No personal email found in Hunter (only generic info@). Try info@sunmarkdevelopments.com for initial outreach."
+        }
+      ],
+      "firmNotes": "Surrey BC-based residential developer. Established 25+ years. Specializes in affordable/quality townhomes and low-rise residential in Surrey and Langley. Active project: Vantage by Sunmark (townhomes, Sullivan neighbourhood, Surrey). Office: 109-12827 76 Ave, Surrey BC V3W 2V3. Phone: 604-597-7896. Hunter returned only generic info@sunmarkdevelopments.com (confidence 95); no personal emails indexed. No email pattern determinable. Website: sunmarkdevelopments.com (returns 404 on direct fetch). Relevant for Fraser Valley residential SE."
+    },
+    {
+      "orgId": 76907,
+      "orgName": "MidPen Housing",
+      "domain": "midpen-housing.org",
+      "people": [
+        {
+          "name": "Polo Munoz",
+          "title": "Director of Housing Development",
+          "email": "pmunoz@midpen-housing.org",
+          "emailSource": "Hunter",
+          "emailConfidence": 94,
+          "linkedin": "https://www.linkedin.com/in/polo-munoz-4a598510",
+          "note": "Director of Housing Development. Hunter accept_all domain. Primary development decision-maker."
+        },
+        {
+          "name": "Nesreen Kawar",
+          "title": "Director of Housing Development",
+          "email": "nkawar@midpen-housing.org",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Director of Housing Development per midpen-housing.org leadership page. Pattern {f}{last}@midpen-housing.org from Hunter."
+        },
+        {
+          "name": "Mollie Naber",
+          "title": "Vice President, Housing Development Strategy",
+          "email": "mnaber@midpen-housing.org",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "VP Housing Development Strategy per midpen-housing.org. Pattern inferred."
+        },
+        {
+          "name": "Lisa Howlett",
+          "title": "Associate Director of Development",
+          "email": "lhowlett@midpen-housing.org",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Associate Director of Development per midpen-housing.org. Pattern inferred."
+        }
+      ],
+      "firmNotes": "California nonprofit affordable housing developer. HQ: 303 Vintage Park Dr, Suite 250, Foster City CA 94404. Active projects: Casa Roseland (75 homes, Santa Rosa, construction started Jan 2025, complete Summer 2026); VTA Capitol Station TOD (203 homes, San Jose, $49.3M grant); Watsonville Metro (79 homes above transit center); Midway Village II (113 units, Daly City, under construction); San Carlos project (75+ homes, community engagement 2026). Email pattern: {f}{last}@midpen-housing.org confirmed by Hunter. Domain is accept_all. NOTE: US-based nonprofit. Not BC. Relevant if KOR targeting California affordable housing sector."
+    },
+    {
+      "orgId": 54551,
+      "orgName": "Landmark Premiere Properties",
+      "domain": "landmarkliving.ca",
+      "people": [
+        {
+          "name": "Helen Chan Sun",
+          "title": "CEO / Sole Shareholder",
+          "email": null,
+          "emailSource": "Hunter",
+          "emailConfidence": 0,
+          "linkedin": "",
+          "note": "CEO and sole shareholder. CRITICAL: As of mid-2026, declared bankrupt, jailed for contempt of court. Firm in receivership on multiple projects. Do NOT pursue for active BD."
+        }
+      ],
+      "firmNotes": "CRITICAL FLAG - FIRM IN INSOLVENCY / RECEIVERSHIP. Vancouver BC residential developer (Cambie corridor focus). CEO Helen Chan Sun declared bankrupt June 2026 after contempt-of-court jailing. Creditors hold $115M+ in judgments. Shawn Oaks project in receivership (Feb 2025). Second insolvency on Oakridge/Heather St parcels (May 2025). Projects: Foster Martin (White Rock), Shawn Oaks (Vancouver, receivership). Hunter email pattern: {last}{f}@landmarkliving.ca. Hunter returned only admin/finance staff (Murphy Huang, accountant; Maise Barros, financial admin asst); no construction leadership found -- company appears operationally inactive. Do NOT pursue for BD at this time. Monitor for asset sales/project takeovers by other developers."
+    }
+  ]
+}
