@@ -1,0 +1,409 @@
+{
+  "category": "architects",
+  "orgs": [
+    {
+      "orgId": 54571,
+      "orgName": "KMBR Architects",
+      "domain": "kmbr.com",
+      "people": [
+        {
+          "name": "Bassem Tawfik",
+          "title": "Principal",
+          "email": "btawfik@kmbr.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Current active Principal (AIBC MRAIC LEED AP REFP). Pattern {f}{last} confirmed by Hunter; Bassem not in Hunter index but pattern is solid."
+        },
+        {
+          "name": "Kate Lemon",
+          "title": "Principal",
+          "email": "klemon@kmbr.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 67,
+          "linkedin": "https://www.linkedin.com/in/kate-lemon-5a6013b6",
+          "note": "4th-generation partner as of 2023. Active Principal. Key SE-selection decision maker."
+        },
+        {
+          "name": "Witmar Abele",
+          "title": "Principal Emeritus",
+          "email": "wabele@kmbr.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 94,
+          "linkedin": "https://www.linkedin.com/in/witmar-abele-75a44048",
+          "note": "Principal since 1991; now Principal Emeritus. Still active in projects per Hunter sources (SD83 PVSS Gym). Historically key SE selector."
+        },
+        {
+          "name": "Simon Lim",
+          "title": "Associate",
+          "email": "slim@kmbr.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 91,
+          "linkedin": "https://www.linkedin.com/in/simon-lim-881450231",
+          "note": "Associate Architect AIBC MRAIC. Rising project lead; involved in SE selection on school projects."
+        }
+      ],
+      "firmNotes": "KMBR (est. 1958) is a 30+ person firm doing K-12 education, healthcare, community, and multi-family residential. Primary SE partners historically include RJC and Bush Bohlman on school projects. KOR is a challenger. Kate Lemon and Bassem Tawfik are the current principals making SE selection calls. Strong BC school district relationships (SD83, SD57 Prince George, SD52 Prince Rupert area)."
+    },
+    {
+      "orgId": 68972,
+      "orgName": "Parkin Architects",
+      "domain": "parkin.ca",
+      "people": [
+        {
+          "name": "Kim Kennedy",
+          "title": "Principal",
+          "email": "kennedy@parkin.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 92,
+          "linkedin": "https://www.linkedin.com/in/kim-kennedy-781ba6149",
+          "note": "Principal (VP-level per Hunter). Senior decision maker at Parkin. Healthcare and institutional focus."
+        },
+        {
+          "name": "Robert Boraks",
+          "title": "Director",
+          "email": "boraks@parkin.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 87,
+          "linkedin": "https://www.linkedin.com/in/robert-boraks-3230b074",
+          "note": "Director. Part of original management team alongside Shantz, Nyman, MacSween. Healthcare specialist."
+        },
+        {
+          "name": "Munir Macci",
+          "title": "Vice President",
+          "email": "macci@parkin.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 84,
+          "linkedin": "https://www.linkedin.com/in/munir-macci-541946135",
+          "note": "VP level; senior firm-wide leadership. Oversees project delivery nationally."
+        },
+        {
+          "name": "Lynne Wilson Orr",
+          "title": "Principal",
+          "email": "wilsonorr@parkin.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Principal mentioned in 2026 healthcare design conference. Pattern {last} per Hunter. Could be wilson-orr or wilsonorr; treat as uncertain."
+        }
+      ],
+      "firmNotes": "Parkin (est. 1940s, Canadian employee-owned) is a 130+ person firm specializing in healthcare, institutional, justice, and recreational architecture across Toronto, Ottawa and Vancouver. Cameron Shantz (Vancouver director) retired Oct 2025. Vancouver office is a challenger presence vs. their Toronto/Ottawa heartland. SE partners typically match their healthcare-specialist network (Stantec, SNC-Lavalin on large P3 hospitals). KOR opportunity: smaller BC institutional/community work where Parkin leads as prime."
+    },
+    {
+      "orgId": 38960,
+      "orgName": "Acton Ostry Architects",
+      "domain": "actonostry.ca",
+      "people": [
+        {
+          "name": "Russell Acton",
+          "title": "Founding Principal",
+          "email": "racton@actonostry.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "https://www.linkedin.com/in/russell-acton-1420898b",
+          "note": "Co-founder (1992). Leads firm strategy and key institutional pursuits. Ultimate SE selection authority on major projects."
+        },
+        {
+          "name": "Mark Ostry",
+          "title": "Founding Principal",
+          "email": "mostry@actonostry.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/mark-ostry-3298758a",
+          "note": "Co-founder. Key decision maker on residential high-rise and community projects. Timber and mass-timber specialist."
+        },
+        {
+          "name": "Derek Fleming",
+          "title": "Principal",
+          "email": "dfleming@actonostry.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 96,
+          "linkedin": "https://www.linkedin.com/in/derek-fleming-9a206311",
+          "note": "Principal Architect AIBC MRAIC. Project management and construction expertise. Involved in SE selection on community/education projects."
+        },
+        {
+          "name": "Michael Fugeta",
+          "title": "Principal",
+          "email": "mfugeta@actonostry.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 96,
+          "linkedin": "https://www.linkedin.com/in/michael-fugeta-12844630",
+          "note": "Principal since ~2018. Led Duke rental residential. Multi-family and mixed-use focus."
+        },
+        {
+          "name": "Mark Simpson",
+          "title": "Principal",
+          "email": "msimpson@actonostry.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "",
+          "note": "Principal and P.Eng (EGBC member). The in-house structural/technical lead. Key person for SE selection - he bridges architecture and engineering. Education and community projects."
+        },
+        {
+          "name": "Matt Wood",
+          "title": "Principal",
+          "email": "mwood@actonostry.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 42,
+          "linkedin": "https://www.linkedin.com/in/matthew-wood-architect-aibc-arb-uk-mraic-cphd-a818367b",
+          "note": "Principal AIBC MRAIC Passive House. Sustainability focus. Low confidence email from Hunter - pattern {f}{last} gives mwood but verification unclear."
+        },
+        {
+          "name": "Ruth Chau",
+          "title": "Director of Operations",
+          "email": "rchau@actonostry.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/ruth-chau-b6b65343",
+          "note": "Director of Operations. Controls firm-wide vendor/sub relationships including SE partners. Key BD contact."
+        }
+      ],
+      "firmNotes": "Acton Ostry (est. 1992, ~36 staff) is known for Brock Commons Tallwood House (world's tallest mass timber at the time), multi-family residential, education, and community projects. SE partners include Fast+Epp (timber), Equilibrium (mass timber), and on larger projects RJC. KOR opportunity: mid-scale community/educational and multi-family residential where KOR's seismic heritage adds value. Mark Simpson's P.Eng status makes him an unusual architect-engineer bridge - target him directly."
+    },
+    {
+      "orgId": 26929,
+      "orgName": "Rositch Hemphill Architects",
+      "domain": "rharchitects.ca",
+      "people": [
+        {
+          "name": "Bryce Rositch",
+          "title": "Principal",
+          "email": "bryce@rharchitects.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 95,
+          "linkedin": "",
+          "note": "Founding principal (UBC 1980, practice opened 1984). Named partner and firm founder. Primary SE selection authority. Residential condo + mixed-use focus."
+        },
+        {
+          "name": "Keith Hemphill",
+          "title": "Principal",
+          "email": "keith@rharchitects.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/keith-hemphill-3a121b62/",
+          "note": "Named partner. Co-leads firm with Rositch. Involved in SE selection on all projects. LinkedIn confirmed."
+        }
+      ],
+      "firmNotes": "RHA (est. 1984, ~20 staff, 5 associates) is a boutique residential and mixed-use firm doing Vancouver multi-family condo, townhomes, and small commercial. Works primarily in City of Vancouver and North Shore. Historical SE partners unknown from public data. KOR fits well on their seismic-critical residential projects. Small firm = principals make all SE calls personally."
+    },
+    {
+      "orgId": 54300,
+      "orgName": "Hotson Bakker Architects",
+      "domain": "dialogdesign.ca",
+      "people": [
+        {
+          "name": "Joost Bakker",
+          "title": "Principal",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": "https://ca.linkedin.com/in/joost-bakker-580a832b",
+          "note": "Original Hotson Bakker co-founder (1974). Now Principal at DIALOG Vancouver studio. The direct institutional-memory link to the Hotson Bakker entity. DIALOG pattern is {first}.{last}@dialogdesign.ca but Joost Bakker email not found in Hunter."
+        }
+      ],
+      "firmNotes": "IMPORTANT: Hotson Bakker Architects merged into DIALOG (formerly Cohos Evamy + Hotson Bakker Boniface Haden) around 2009-2010. The firm no longer operates as an independent entity. In the DB as orgId 54300 under its historical name. Active entity is DIALOG (dialogdesign.ca), a 500+ person multidisciplinary firm with a Vancouver studio at 710-1201 W Pender. Joost Bakker is the Vancouver principal with Hotson Bakker lineage. DIALOG does large civic, institutional, mixed-use and transit projects. Their SE partners on large projects include Glotman Simpson, Bush Bohlman, and RJC. KOR is a small-firm challenger for their mid-scale institutional work. Recommend updating the org record to flag this merger."
+    },
+    {
+      "orgId": 69756,
+      "orgName": "Low Hammond Rowe Architects",
+      "domain": "lhra.ca",
+      "people": [
+        {
+          "name": "Jackson Low",
+          "title": "Partner",
+          "email": "jacksonlow@lhra.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 80,
+          "linkedin": "",
+          "note": "Founding partner (joined 1996). Leads urban design and large site planning, university buildings. Key SE selection authority. Hunter email pattern is {first}{last}."
+        },
+        {
+          "name": "Paul Hammond",
+          "title": "Partner",
+          "email": "paulhammond@lhra.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Partner (joined 2006). Not in Hunter index; inferred from {first}{last} pattern. Multi-family, community, and recreational focus."
+        },
+        {
+          "name": "Christopher Rowe",
+          "title": "Partner",
+          "email": "christopherrowe@lhra.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 85,
+          "linkedin": "",
+          "note": "Partner. Former Cannon Design sustainability leader. University buildings, recreation, seniors housing. Hunter verified valid on shapeyourcity.ca project submission."
+        }
+      ],
+      "firmNotes": "LHR (est. 1985, Victoria BC, 3 partners + 4 associates) does university, library, multi-family, seniors housing, sports/recreation, and community facilities across BC. Victoria-based but does work throughout the province. SE partners include Reid Jones Christoffersen and other Victoria/Island firms. KOR opportunity: any LHR project on Mainland BC where KOR's seismic expertise differentiates. Partners make all SE decisions."
+    },
+    {
+      "orgId": 76490,
+      "orgName": "Bluegreen Architecture",
+      "domain": "bluegreenarchitecture.com",
+      "people": [
+        {
+          "name": "Wendy Rempel",
+          "title": "Partner",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": "",
+          "note": "Partner at Bluegreen Architecture (Kelowna). Hunter returned zero emails for bluegreenarchitecture.com and only a generic info@ for bluegreenarch.com. ZoomInfo confirms w***@bluegreenarch.com but masked. Cannot infer without confirmed pattern."
+        },
+        {
+          "name": "Kevin Ryan",
+          "title": "Principal",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": "",
+          "note": "Principal per ZoomInfo (k***@bluegreenarch.com). Pattern unknown - Hunter returned no personal emails. Cannot safely infer."
+        }
+      ],
+      "firmNotes": "Bluegreen Architecture (est. 1983, Kelowna + Kamloops, ~23 staff) specializes in green building, resort/lifestyle community, and commercial projects in the Okanagan and BC interior. Not a Lower Mainland firm. KOR footprint is primarily Metro Vancouver/Lower Mainland; this firm's projects are mostly in interior BC. SE selection relevance is lower unless KOR is pursuing Okanagan/Kamloops institutional work. Hunter had zero data on this domain - outreach should go through info@bluegreenarch.com initially."
+    },
+    {
+      "orgId": 12496,
+      "orgName": "NORR Architects Engineers Planners",
+      "domain": "norr.com",
+      "people": [
+        {
+          "name": "Frank Panici",
+          "title": "Vice President, Health Sciences",
+          "email": "frank.panici@norr.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "https://www.linkedin.com/in/frank-panici-8b3b811a",
+          "note": "VP Health Sciences North America. Most senior NORR person linked to BC healthcare projects. Pattern {first}.{last} confirmed. NORR's healthcare design lead - coordinates with architects and owner groups on SE selection."
+        },
+        {
+          "name": "Kiran Sharma-Boon",
+          "title": "Director",
+          "email": "kiran.sharma-boon@norr.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "https://www.linkedin.com/in/kiran-sharma-boon-32567247",
+          "note": "Director at NORR. Hunter verified valid. Institutional focus. May be involved in Vancouver/BC projects."
+        },
+        {
+          "name": "George Sorich",
+          "title": "Vice President",
+          "email": "george.sorich@norr.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "https://www.linkedin.com/in/george-sorich-aia-leed-ap-b42b418",
+          "note": "VP at NORR. AIA LEED AP. Based in US but may have North America oversight including Vancouver office."
+        }
+      ],
+      "firmNotes": "NORR (est. 1938, 800+ staff, employee-owned) is a global multidisciplinary AE firm with a Vancouver office at 710-1201 W Pender St. Their Vancouver office is NOT listed on their main contact page (offices listed: Toronto, Ottawa, Calgary, Edmonton, US, UK) suggesting it may be a satellite or project office. Primary market sectors: healthcare, commercial, residential, retail, institutional. SE partners on large healthcare P3 projects include major firms (Stantec Structures, SNC-Lavalin). KOR opportunity: mid-scale BC projects where NORR is prime architect but their own engineering team is not handling structural. CAUTION: No Vancouver-specific principal identified from public data - the 6 projects in KOR DB may be handled by Toronto or Calgary teams remotely."
+    },
+    {
+      "orgId": 16944,
+      "orgName": "ThinkSpace",
+      "domain": "thinkspace.ca",
+      "people": [
+        {
+          "name": "Allan Francis",
+          "title": "Principal",
+          "email": "allan.francis@thinkspace.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 94,
+          "linkedin": "https://www.linkedin.com/in/allan-francis-18212b26",
+          "note": "Principal. 38+ years exclusively in educational architecture. Primary decision maker on school projects. SE selection authority."
+        },
+        {
+          "name": "David Lee Blanchard",
+          "title": "Partner",
+          "email": "lee.blanchard@thinkspace.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 91,
+          "linkedin": "https://www.linkedin.com/in/lee-blanchard-23742a26",
+          "note": "Partner. Hunter confirmed {first}.{last} pattern. Educational architecture specialist."
+        },
+        {
+          "name": "Henk Kampman",
+          "title": "Principal",
+          "email": "henk.kampman@thinkspace.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 93,
+          "linkedin": "https://www.linkedin.com/in/henkkampman",
+          "note": "Principal. Hunter confirmed. Educational architecture. Key project lead on school district work."
+        },
+        {
+          "name": "Ray Wolfe",
+          "title": "Principal",
+          "email": "ray.wolfe@thinkspace.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 90,
+          "linkedin": "https://www.linkedin.com/in/ray-wolfe-92208a10",
+          "note": "Principal. A4LE member (educational architecture association). BC school district relationships. Hunter confirmed."
+        },
+        {
+          "name": "Leonard Rodrigues",
+          "title": "Principal",
+          "email": "leonard.rodrigues@thinkspace.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 94,
+          "linkedin": "https://www.linkedin.com/in/leonard-rodrigues-35a76715",
+          "note": "Principal. 38+ years in educational architecture. Founding-generation expertise."
+        },
+        {
+          "name": "Stuart Kernaghan",
+          "title": "Director, Marketing and Business Development",
+          "email": "stuart.kernaghan@thinkspace.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 93,
+          "linkedin": "https://www.linkedin.com/in/stuart-kernaghan-b0b39428",
+          "note": "BD Director. Gate to the principals for SE sub-consultant relationships. Good first-outreach target."
+        }
+      ],
+      "firmNotes": "ThinkSpace (est. 1963, Surrey BC, 51-200 staff) is one of BC's leading K-12 education and planning firms, with projects across BC, Alberta, and Yukon. Works with nearly every BC school district. SE partners include structural specialists on seismic upgrade programs. KOR opportunity: seismic upgrade/new school work where KOR's SRG training and school seismic program experience is directly relevant. ThinkSpace's principals are key gatekeepers for the BC seismic program (SPIR) procurement stream."
+    },
+    {
+      "orgId": 75916,
+      "orgName": "Taylor Kurtz Architecture + Design",
+      "domain": "tkad.ca",
+      "people": [
+        {
+          "name": "Craig Taylor",
+          "title": "President / Founding Principal",
+          "email": "craig@tkad.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "https://www.linkedin.com/in/craig-taylor-b5192347",
+          "note": "Founding principal (est. 2008). President per Hunter. MAIBC. Ultimate SE selection authority. Pattern {first} confirmed."
+        },
+        {
+          "name": "Kelly Riopelle",
+          "title": "Principal",
+          "email": "kelly@tkad.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/kelly-riopelle-459a7810",
+          "note": "Principal Architect AIBC. Hunter confirmed. Key SE selector on her project portfolio."
+        },
+        {
+          "name": "Stefan Walsh",
+          "title": "Principal",
+          "email": "stefan@tkad.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 96,
+          "linkedin": "https://www.linkedin.com/in/stefan-walsh-b7b49296",
+          "note": "Principal. Hunter confirmed via tkad.ca/people. Involved in SE selection."
+        },
+        {
+          "name": "Matt Marotto",
+          "title": "Associate Principal",
+          "email": "matt@tkad.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 90,
+          "linkedin": "https://www.linkedin.com/in/matt-marotto-12684367",
+          "note": "Associate Principal. Senior project delivery role. May influence SE selection on specific projects."
+        }
+      ],
+      "firmNotes": "TKA+D (est. 2008, Vancouver, 40+ staff, 5 principals + 7 associates) does mixed-use residential, commercial, and hospitality in Metro Vancouver. Craig Taylor (architect) and Donna Kurtz (interior designer) co-founded. Projects include multi-family residential, office, and retail in Vancouver and surrounding municipalities. SE partners not identified from public data. KOR fits on their residential-heavy portfolio - developer-driven multi-family where seismic design is required. Donna Kurtz (interior design partner) is less relevant for SE selection."
+    }
+  ]
+}
