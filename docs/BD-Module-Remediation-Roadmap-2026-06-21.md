@@ -25,7 +25,7 @@ Segmentation proved only ~10.5% of 49,776 active orgs are connected to any KOR s
 - **1d. Repair the 16 MPI orphans** — 7 SE + 9 GC references point to absent org ids → null or re-resolve. *Verified: 7 + 9 = 16.*
 
 ## Block 2 — Pipeline integrity
-- **2a. Add FKs on MPI `StructuralEngineerCanonicalOrgId` + `GeneralContractorCanonicalOrgId`** (only Proponent+Architect have them today — *verified*). Must follow 1d (can't add FK with orphans present).
+- **2a. Add FKs on MPI `StructuralEngineerCanonicalOrgId` + `GeneralContractorCanonicalOrgId`** — ✅ **DONE + VERIFIED (2026-06-21).** Migration `259_MpiSeGcForeignKeys.sql` adds `FK_MPI_StructuralEngineerCanonicalOrg` + `FK_MPI_GeneralContractorCanonicalOrg` (NO_ACTION, mirrors Proponent/Architect). Applied to live DB; all 4 MPI org-role FKs now present, **trusted**, not disabled. 0 orphans at apply → validated clean. Orphan class now structurally impossible; dedup repoints SE/GC (FkTargets) before delete so merges are unaffected.
 - **2b. Close the resolver dup-creation cycle** — add a reviewed match-key/alias candidate check **before** create (the strict-vs-fuzzy gap that created Graham/IDL/NIC dups). Keep the `BdCanonicalDedup` FK-coverage guard.
 
 ## Block 3 — Source health + missing sources
