@@ -709,11 +709,22 @@ WHERE CanonicalOrgId = @id
         {
             if (!alreadyResolved)
             {
-                var richerId = await FindRicherSameBrandCanonicalAsync(con, canonicalOrgId, ct).ConfigureAwait(false);
-                if (richerId.HasValue)
+                var richer = await FindRicherSameBrandCanonicalAsync(con, canonicalOrgId, ct).ConfigureAwait(false);
+                if (richer is { } rc)
                 {
-                    var note = $"Resolved to the primary record for this company (requested org #{canonicalOrgId} had minimal data).";
-                    return await GetOrgBriefAsync(richerId.Value, ct, alreadyResolved: true, resolvedFromNote: note).ConfigureAwait(false);
+                    // Only a genuine prefix match - one normalized name is a leading substring
+                    // of the other (e.g. "bosa" -> "bosaproperties") - auto-redirects, and only
+                    // when the shared name is >= 6 chars so a short generic word cannot hijack.
+                    // Brand-stem matches (e.g. "<brand>development" vs "<brand>properties") are
+                    // surfaced as a merge suggestion ONLY - never silently rendered as this
+                    // company's data, since two different firms can share a stem.
+                    if (rc.IsPrefix && rc.MinLen >= 6)
+                    {
+                        var note = $"Resolved to the primary record for this company (requested org #{canonicalOrgId} had minimal data).";
+                        return await GetOrgBriefAsync(rc.Id, ct, alreadyResolved: true, resolvedFromNote: note).ConfigureAwait(false);
+                    }
+
+                    resolvedFromNote ??= $"This record is sparse. A likely primary record for this company may be #{rc.Id} \"{rc.DisplayName}\" - review for merge.";
                 }
             }
 
@@ -732,8 +743,14 @@ WHERE CanonicalOrgId = @id
 
     // === Helpers ===
 
-    private static async Task<long?> FindRicherSameBrandCanonicalAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
+    private readonly record struct RicherCandidate(long Id, string DisplayName, bool IsPrefix, int MinLen);
+
+    private static async Task<RicherCandidate?> FindRicherSameBrandCanonicalAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
     {
+        // A candidate is a PREFIX match when one normalized name is a leading substring
+        // of the other; otherwise it may still be a (weaker) brand-stem match. The caller
+        // auto-redirects only on prefix matches with a >= 6 char shared name; brand-stem
+        // matches are returned for a "review for merge" suggestion, never a silent redirect.
         const string sql = @"
 SELECT TOP 1
     r.Id,
@@ -745,7 +762,13 @@ SELECT TOP 1
          OR m.StructuralEngineerCanonicalOrgId = r.Id))
   + (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a
      WHERE a.CanonicalOrgId = r.Id
-       AND a.RetiredAtUtc IS NULL) AS Richness
+       AND a.RetiredAtUtc IS NULL) AS Richness,
+    r.DisplayName,
+    CASE WHEN (r.NormalizedName LIKE t.NormalizedName + N'%' OR t.NormalizedName LIKE r.NormalizedName + N'%')
+         THEN 1 ELSE 0 END AS IsPrefix,
+    CASE WHEN (r.NormalizedName LIKE t.NormalizedName + N'%' OR t.NormalizedName LIKE r.NormalizedName + N'%')
+         THEN (CASE WHEN LEN(t.NormalizedName) <= LEN(r.NormalizedName) THEN LEN(t.NormalizedName) ELSE LEN(r.NormalizedName) END)
+         ELSE 0 END AS MinLen
 FROM opportunities.CanonicalOrg t
 JOIN opportunities.CanonicalOrg r
   ON r.RetiredAtUtc IS NULL
@@ -777,9 +800,9 @@ WHERE t.Id = @id
   AND (
       r.NormalizedName LIKE t.NormalizedName + N'%'
       OR t.NormalizedName LIKE r.NormalizedName + N'%'
-      OR (LEN(brand.TBrand) >= 5 AND brand.TBrand = brand.RBrand)
+      OR (LEN(brand.TBrand) >= 6 AND brand.TBrand = brand.RBrand)
   )
-ORDER BY Richness DESC, r.Id;";
+ORDER BY IsPrefix DESC, Richness DESC, r.Id;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
@@ -790,7 +813,16 @@ ORDER BY Richness DESC, r.Id;";
         }
 
         var richness = Convert.ToInt32(r.GetValue(1));
-        return richness > 0 ? r.GetInt64(0) : null;
+        if (richness <= 0)
+        {
+            return null;
+        }
+
+        var id = r.GetInt64(0);
+        var name = r.IsDBNull(2) ? string.Empty : r.GetString(2);
+        var isPrefix = Convert.ToInt32(r.GetValue(3)) == 1;
+        var minLen = Convert.ToInt32(r.GetValue(4));
+        return new RicherCandidate(id, name, isPrefix, minLen);
     }
 
     private static async Task<long?> GetKorIdAsync(SqlConnection con, CancellationToken ct)
