@@ -12,7 +12,7 @@ param(
   [Parameter(Mandatory)][string]$Docx,
   [switch]$Toc,
   [switch]$NoPageBreaks,   # one-pagers (agenda): don't force each section onto its own page
-  [string]$TableStyle = "Grid Table 4 Accent 1"
+  [string]$TableStyle = "Grid Table 5 Dark - Accent 1"
 )
 $ErrorActionPreference = "Stop"
 
@@ -81,9 +81,14 @@ try {
   # every table -> styled, header shaded, rows banded, full width
   for ($i = 1; $i -le $doc.Tables.Count; $i++) {
     $t = $doc.Tables.Item($i)
-    foreach ($cand in @($TableStyle, "Grid Table 4 Accent 5", "List Table 3 Accent 1", "Light List Accent 1")) {
-      try { $t.Style = $cand; break } catch {}
+    # NOTE: Word style names use " - Accent N" (hyphen with spaces). Names without
+    # the spaced hyphen silently fail to match, leaving tables unstyled. All
+    # candidates below are verified built-in names.
+    $applied = $false
+    foreach ($cand in @($TableStyle, "Grid Table 4 - Accent 1", "List Table 6 Colorful - Accent 1", "Grid Table 4 - Accent 5")) {
+      try { $t.Style = $cand; $applied = $true; break } catch {}
     }
+    if (-not $applied) { Write-Warning "No table style matched for table $i (tried '$TableStyle' + fallbacks)." }
     $t.ApplyStyleHeadingRows = $true
     $t.ApplyStyleLastRow      = $false
     $t.ApplyStyleFirstColumn  = $false
@@ -98,6 +103,24 @@ try {
     try { $t.Rows.Item(1).HeadingFormat = $true } catch {}
     try { $t.Rows.Item(1).AllowBreakAcrossPages = $false } catch {}
     $t.TopPadding = 2; $t.BottomPadding = 2; $t.LeftPadding = 5; $t.RightPadding = 5
+  }
+
+  # blockquotes (pandoc style "Block Text") -> branded shaded callout box:
+  # light navy tint + thin navy border all around + inset. Makes ">" lines pop
+  # as a summary/callout instead of an understated left-bar quote.
+  $calloutTint = RGB 226 235 246
+  foreach ($p in $doc.Paragraphs) {
+    try {
+      if ($p.Style.NameLocal -eq "Block Text") {
+        $r = $p.Range
+        $r.Shading.BackgroundPatternColor = $calloutTint
+        foreach ($side in @(-1,-2,-3,-4)) {   # top, left, bottom, right
+          $e = $r.Borders.Item($side); $e.LineStyle = 1; $e.Color = $brandNavy; $e.LineWidth = 8
+        }
+        $p.Format.LeftIndent = 10; $p.Format.RightIndent = 10
+        $p.Format.SpaceBefore = 6; $p.Format.SpaceAfter = 6
+      }
+    } catch {}
   }
 
   # one-pager mode: tighten type, spacing and margins to fit a single page
