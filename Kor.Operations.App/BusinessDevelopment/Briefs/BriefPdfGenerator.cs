@@ -1108,6 +1108,11 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             column.Item().Text(d.DisplayName).FontSize(16).Bold().FontColor(Colors.White);
             column.Item().Text($"({d.Kind})")
                 .FontSize(9).Italic().FontColor(BrandSubtle);
+            if (!string.IsNullOrWhiteSpace(d.ResolvedFromNote))
+            {
+                column.Item().Text(d.ResolvedFromNote!)
+                    .FontSize(9).Italic().FontColor(BrandSubtle);
+            }
 
             column.Item().PaddingTop(3).Table(table =>
             {

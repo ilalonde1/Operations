@@ -764,6 +764,10 @@ public sealed class BriefGenerator : IBriefGenerator
 
         AppendTitle(body, "Organization Brief");
         AppendSubtitle(body, $"{data.DisplayName}  ({data.Kind})");
+        if (!string.IsNullOrWhiteSpace(data.ResolvedFromNote))
+        {
+            AppendItalicBody(body, data.ResolvedFromNote!);
+        }
 
         var enrichment = ParseEnrichment(data.DataHoningEnrichmentJson);
         var websiteText = string.IsNullOrWhiteSpace(data.Website) ? "(not on file)" : data.Website!;

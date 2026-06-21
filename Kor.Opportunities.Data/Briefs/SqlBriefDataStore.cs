@@ -601,6 +601,13 @@ WHERE {mpiWhere};",
     }
 
     public async Task<OrgBriefData?> GetOrgBriefAsync(long canonicalOrgId, CancellationToken ct)
+        => await GetOrgBriefAsync(canonicalOrgId, ct, alreadyResolved: false, resolvedFromNote: null).ConfigureAwait(false);
+
+    private async Task<OrgBriefData?> GetOrgBriefAsync(
+        long canonicalOrgId,
+        CancellationToken ct,
+        bool alreadyResolved,
+        string? resolvedFromNote)
     {
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -689,16 +696,102 @@ ORDER BY UpdatedAtUtc DESC;";
         }
 
         var intelBundle = await _intelReadService.GetOrgIntelAsync(canonicalOrgId, ct).ConfigureAwait(false);
+        var contactCount = await ScalarIntAsync(con, @"
+SELECT COUNT(*)
+FROM opportunities.IntelPersonAffiliation
+WHERE CanonicalOrgId = @id
+  AND RetiredAtUtc IS NULL;",
+            cmd => cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId,
+            ct).ConfigureAwait(false);
+
+        var isThin = korProjects == 0 && recentProjects.Count == 0 && contactCount == 0;
+        if (isThin)
+        {
+            if (!alreadyResolved)
+            {
+                var richerId = await FindRicherSameBrandCanonicalAsync(con, canonicalOrgId, ct).ConfigureAwait(false);
+                if (richerId.HasValue)
+                {
+                    var note = $"Resolved to the primary record for this company (requested org #{canonicalOrgId} had minimal data).";
+                    return await GetOrgBriefAsync(richerId.Value, ct, alreadyResolved: true, resolvedFromNote: note).ConfigureAwait(false);
+                }
+            }
+
+            resolvedFromNote ??= "This organization has minimal data in the graph - the brief reflects what we have.";
+        }
+
         return new OrgBriefData(
             id, kind, displayName, website, korProjects, lastKor,
             recentProjects, korJointCount, korJointProjects, enrichmentJson,
             deltekClientId, Deltek: null)
         {
+            ResolvedFromNote = resolvedFromNote,
             Intel = intelBundle,
         };
     }
 
     // === Helpers ===
+
+    private static async Task<long?> FindRicherSameBrandCanonicalAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP 1
+    r.Id,
+    (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
+     WHERE m.RetiredAtUtc IS NULL
+       AND (m.ProponentCanonicalOrgId = r.Id
+         OR m.ArchitectCanonicalOrgId = r.Id
+         OR m.GeneralContractorCanonicalOrgId = r.Id
+         OR m.StructuralEngineerCanonicalOrgId = r.Id))
+  + (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a
+     WHERE a.CanonicalOrgId = r.Id
+       AND a.RetiredAtUtc IS NULL) AS Richness
+FROM opportunities.CanonicalOrg t
+JOIN opportunities.CanonicalOrg r
+  ON r.RetiredAtUtc IS NULL
+ AND r.Id <> t.Id
+CROSS APPLY (SELECT
+    TBase = CASE WHEN t.NormalizedName LIKE N'%llc' THEN LEFT(t.NormalizedName, LEN(t.NormalizedName) - 3) ELSE t.NormalizedName END,
+    RBase = CASE WHEN r.NormalizedName LIKE N'%llc' THEN LEFT(r.NormalizedName, LEN(r.NormalizedName) - 3) ELSE r.NormalizedName END) base
+CROSS APPLY (SELECT
+    TBrand = CASE
+        WHEN base.TBase LIKE N'%realestatepartners' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'realestatepartners'))
+        WHEN base.TBase LIKE N'%developmentwest' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'developmentwest'))
+        WHEN base.TBase LIKE N'%development' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'development'))
+        WHEN base.TBase LIKE N'%developments' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'developments'))
+        WHEN base.TBase LIKE N'%properties' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'properties'))
+        WHEN base.TBase LIKE N'%partners' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'partners'))
+        ELSE base.TBase
+    END,
+    RBrand = CASE
+        WHEN base.RBase LIKE N'%realestatepartners' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'realestatepartners'))
+        WHEN base.RBase LIKE N'%developmentwest' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'developmentwest'))
+        WHEN base.RBase LIKE N'%development' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'development'))
+        WHEN base.RBase LIKE N'%developments' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'developments'))
+        WHEN base.RBase LIKE N'%properties' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'properties'))
+        WHEN base.RBase LIKE N'%partners' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'partners'))
+        ELSE base.RBase
+    END) brand
+WHERE t.Id = @id
+  AND t.NormalizedName <> N''
+  AND (
+      r.NormalizedName LIKE t.NormalizedName + N'%'
+      OR t.NormalizedName LIKE r.NormalizedName + N'%'
+      OR (LEN(brand.TBrand) >= 5 AND brand.TBrand = brand.RBrand)
+  )
+ORDER BY Richness DESC, r.Id;";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        var richness = Convert.ToInt32(r.GetValue(1));
+        return richness > 0 ? r.GetInt64(0) : null;
+    }
 
     private static async Task<long?> GetKorIdAsync(SqlConnection con, CancellationToken ct)
     {

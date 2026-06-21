@@ -301,6 +301,8 @@ public sealed record OrgBriefData(
     string? DeltekClientId,
     OrgBriefDeltekSection? Deltek)
 {
+    public string? ResolvedFromNote { get; init; }
+
     /// <summary>
     /// User-friendly note explaining why the Deltek engagement-history section
     /// is absent (no link / no matching Deltek client / lookup error). Rendered
