@@ -87,6 +87,15 @@ public sealed class IngestionDispatcher : IIngestionDispatcher
             return new DispatchResult(source, new IngestionResult { Success = true });
         }
 
+        if (source.SourceType is OpportunitySourceType.BdOutreach or OpportunitySourceType.Manual)
+        {
+            _logger.LogInformation(
+                "Skipping manual source {Source} ({Type})  hand-entered, no automated provider.",
+                source.Name,
+                source.SourceType);
+            return new DispatchResult(source, new IngestionResult { Success = true });
+        }
+
         if (!_providersByType.TryGetValue(source.SourceType, out var providers) || providers.Count == 0)
         {
             throw new InvalidOperationException(

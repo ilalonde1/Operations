@@ -113,6 +113,8 @@ WHERE s.IsEnabled = 1
   AND s.CrawlDelaySeconds > 0
   -- Quartz-managed sources have their own schedules; don't double-trigger.
   AND s.Name NOT IN ('CanadaBuys', 'CanadaBuysNew', 'SamGov', 'BdAlerts', 'AB_MajorProjectsInventory')
+  -- Unknown / BdOutreach / Manual: no provider by design.
+  AND s.SourceType NOT IN (0, 7, 99)
   -- No pending or in-flight trigger already queued.
   AND NOT EXISTS (
       SELECT 1 FROM opportunities.IngestionTriggers t
