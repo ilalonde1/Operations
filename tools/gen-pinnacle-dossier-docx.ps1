@@ -73,6 +73,16 @@ GoEnd; $sel.TypeParagraph()
 Para "Who they are" 13 $true $navy 6
 Para "Vancouver-based luxury condo / mixed-use developer led by founder Michael (Mike) De Cotiis (President & CEO). High-rise residential across BC (Vancouver, Burnaby, Richmond, North Vancouver), Toronto, and now Southern California. One of KOR's core BC developer relationships - alongside Bosa, Onni, Concord, Wesgroup, Holland and Greystar." 11 $false 0 10
 
+# ===== DE COTIIS FAMILY =====
+Para "The De Cotiis family - three Vancouver developers, one family" 13 $true $navy 6
+Bullets @(
+  "The De Cotiis brothers built together as Viam Holdings (1965), then split in the 1990s into three separate firms - each a different brother's branch: PINNACLE INTERNATIONAL (Michael De Cotiis); ONNI GROUP (founded by Innocenzo 'Inno' De Cotiis, d. 2020 - now run by his four younger sons: Rossano [Pres/CEO], Giulio, Morris, Paolo); and AMACON (founded by Amalio De Cotiis, d. ~2005 - now run by his children: Italo [Chair], Marcello [CEO], Marc [Pres], Donato, Lilliana).",
+  "Michael De Cotiis is the last surviving founding brother and is ACTIVE as Pinnacle's President & CEO. He is the UNCLE of the Onni and Amacon next-generation leaders - not their sibling.",
+  "No recent De Cotiis death. A mid-2026 rumor that 'a De Cotiis just died' does not check out - it traces to Inno's 2020 passing, Addolorata's 2023 passing, or the Nov-2024 BC Gazette estate notices. Do NOT open with condolences.",
+  "BD angle: a strong Pinnacle relationship sits one family-link from Onni and Amacon decision-makers. The same surname runs three of Vancouver's larger developers - a family-wide relationship play, not just one client."
+)
+GoEnd; $sel.TypeParagraph()
+
 # ===== TRACK RECORD =====
 Para "1.  KOR <-> Pinnacle track record (Deltek ground truth - CL00333)" 13 $true $navy 6
 $t1=@(
@@ -94,7 +104,7 @@ $t2=@(
   @("Project","Where","Scope","Status"),
   @("Pinnacle Pacific Heights","San Diego, CA","492 units, 31 storeys (60 affordable)","Permits under review - SE seat likely open"),
   @("11th & E (hotel)","San Diego, CA","Future hotel","Jim-tracked, 2026-06"),
-  @("Pinnacle Lougheed","Burnaby, BC","Four towers; 80-storey highrise (JYOM)","Planned"),
+  @("Pinnacle Lougheed","Burnaby, BC","Twin 77 & 87-storey towers, 1,828 units +171 hotel (JYOM)","Rezoning approved 2024; 2026 reading pending"),
   @("601 Beach Crescent Condominium","Vancouver, BC","~`$60M (JYOM)","Planned")
 )
 $tbl2=Build-Table $t2 @(160,90,180,130)
@@ -153,7 +163,8 @@ Bullets @(
   "Merged empty stray org 'Pinnacle Development' (76651) into Pinnacle International (53665) - 0 FK repoints, alias preserved, audited clean.",
   "Corrected Michael De Cotiis email - was Anson Kwok's mis-inferred address; now md@pinnacleinternational.ca (Hunter conf 95).",
   "Nulled two wrong-domain inferred emails (a JYOM JV-string person + a placeholder).",
-  "Backfilled verified emails on Anson Kwok + John Moy; added 7 construction/PM contacts with Hunter-verified emails."
+  "Backfilled verified emails on Anson Kwok + John Moy; added 7 construction/PM contacts with Hunter-verified emails.",
+  "2026-06-20: De Cotiis family fully decomposed into the brain - corrected 11 person records across Pinnacle/Onni/Amacon, fixed the 'Italo = patriarch' error, debunked the recent-death rumor, added Pinnacle pipeline + Onni estate-litigation signals, and merged duplicate Onni/Amacon org rows."
 )
 
 $doc.SaveAs([ref]$out, [ref]16)

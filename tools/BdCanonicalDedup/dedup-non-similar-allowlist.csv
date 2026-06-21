@@ -2744,3 +2744,15 @@ LoserId,SurvivorId,Reason
 # are distinct and deliberately excluded.
 70830,54464,concord pacifid typo -> concord pacific
 42241,42085,concord excavating LT truncation -> LTD
+# 2026-06-20 De Cotiis decompose: Amacon Construction-arm typo dup. #32439
+# "Amacon Constuction Ltd." (misspelled, Vendor, 0 affil) -> #71060 "Amacon
+# Construction" (GC, 7 affil). Gate rejects on the constuction/construction typo.
+32439,71060,amacon constuction(typo) -> amacon construction
+# 2026-06-20 De Cotiis decompose: Onni org tidy.
+# #76124 "ONNI Developments" (no Deltek, 0 affil) -> #38949 "Onni Group"
+#   (onni.com, 13 affil) - same firm, brand variant.
+76124,38949,onni developments -> onni group (brand variant)
+# JV-string decompose: #53779 "Mosaic Homes Ltd/Onni Developments/Conwest Group"
+#   (3-firm composite, 1 MPI) -> lead operator #69746 "Mosaic Homes" (first-named).
+#   Repoints the 1 MPI proponent; retires the composite. Per lead-operator convention.
+53779,69746,jv-string mosaic/onni/conwest -> mosaic homes (lead operator)
