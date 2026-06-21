@@ -712,13 +712,11 @@ WHERE CanonicalOrgId = @id
                 var richer = await FindRicherSameBrandCanonicalAsync(con, canonicalOrgId, ct).ConfigureAwait(false);
                 if (richer is { } rc)
                 {
-                    // Only a genuine prefix match - one normalized name is a leading substring
-                    // of the other (e.g. "bosa" -> "bosaproperties") - auto-redirects, and only
-                    // when the shared name is >= 6 chars so a short generic word cannot hijack.
+                    // Only a safe corporate-continuation prefix redirects automatically.
                     // Brand-stem matches (e.g. "<brand>development" vs "<brand>properties") are
                     // surfaced as a merge suggestion ONLY - never silently rendered as this
                     // company's data, since two different firms can share a stem.
-                    if (rc.IsPrefix && rc.MinLen >= 6)
+                    if (rc.RedirectSafe)
                     {
                         var note = $"Resolved to the primary record for this company (requested org #{canonicalOrgId} had minimal data).";
                         return await GetOrgBriefAsync(rc.Id, ct, alreadyResolved: true, resolvedFromNote: note).ConfigureAwait(false);
@@ -743,15 +741,27 @@ WHERE CanonicalOrgId = @id
 
     // === Helpers ===
 
-    private readonly record struct RicherCandidate(long Id, string DisplayName, bool IsPrefix, int MinLen);
+    private readonly record struct RicherCandidate(long Id, string DisplayName, bool IsPrefix, int MinLen, bool RedirectSafe);
 
     private static async Task<RicherCandidate?> FindRicherSameBrandCanonicalAsync(SqlConnection con, long canonicalOrgId, CancellationToken ct)
     {
         // A candidate is a PREFIX match when one normalized name is a leading substring
         // of the other; otherwise it may still be a (weaker) brand-stem match. The caller
-        // auto-redirects only on prefix matches with a >= 6 char shared name; brand-stem
-        // matches are returned for a "review for merge" suggestion, never a silent redirect.
+        // auto-redirects only on safe corporate-continuation prefixes; unsafe prefixes
+        // and brand-stem matches are returned for a "review for merge" suggestion.
         const string sql = @"
+WITH CorporateToken(Token) AS (
+    SELECT v.Token
+    FROM (VALUES
+        (N'properties'), (N'property'), (N'developments'), (N'development'),
+        (N'devcorp'), (N'devgroup'), (N'group'), (N'holdings'), (N'capital'),
+        (N'homes'), (N'residences'), (N'construction'), (N'contracting'),
+        (N'builders'), (N'building'), (N'realestate'), (N'realestatepartners'),
+        (N'partners'), (N'ventures'), (N'investments'), (N'equities'),
+        (N'communities'), (N'land'), (N'ltd'), (N'inc'), (N'incorporated'),
+        (N'corp'), (N'corporation'), (N'llc'), (N'llp'), (N'lp')
+    ) AS v(Token)
+)
 SELECT TOP 1
     r.Id,
     (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
@@ -761,40 +771,48 @@ SELECT TOP 1
          OR m.GeneralContractorCanonicalOrgId = r.Id
          OR m.StructuralEngineerCanonicalOrgId = r.Id))
   + (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a
-     WHERE a.CanonicalOrgId = r.Id
+    WHERE a.CanonicalOrgId = r.Id
        AND a.RetiredAtUtc IS NULL) AS Richness,
     r.DisplayName,
-    CASE WHEN (r.NormalizedName LIKE t.NormalizedName + N'%' OR t.NormalizedName LIKE r.NormalizedName + N'%')
-         THEN 1 ELSE 0 END AS IsPrefix,
-    CASE WHEN (r.NormalizedName LIKE t.NormalizedName + N'%' OR t.NormalizedName LIKE r.NormalizedName + N'%')
-         THEN (CASE WHEN LEN(t.NormalizedName) <= LEN(r.NormalizedName) THEN LEN(t.NormalizedName) ELSE LEN(r.NormalizedName) END)
-         ELSE 0 END AS MinLen
+    prefix.IsPrefix,
+    prefix.MinLen,
+    CASE
+        WHEN prefix.IsPrefix = 1
+         AND prefix.MinLen >= 6
+         AND EXISTS (SELECT 1 FROM CorporateToken ct WHERE prefix.Remainder LIKE ct.Token + N'%')
+        THEN 1 ELSE 0
+    END AS RedirectSafe
 FROM opportunities.CanonicalOrg t
 JOIN opportunities.CanonicalOrg r
   ON r.RetiredAtUtc IS NULL
  AND r.Id <> t.Id
 CROSS APPLY (SELECT
-    TBase = CASE WHEN t.NormalizedName LIKE N'%llc' THEN LEFT(t.NormalizedName, LEN(t.NormalizedName) - 3) ELSE t.NormalizedName END,
-    RBase = CASE WHEN r.NormalizedName LIKE N'%llc' THEN LEFT(r.NormalizedName, LEN(r.NormalizedName) - 3) ELSE r.NormalizedName END) base
+    IsPrefix = CASE WHEN (r.NormalizedName LIKE t.NormalizedName + N'%' OR t.NormalizedName LIKE r.NormalizedName + N'%') THEN 1 ELSE 0 END,
+    MinLen = CASE WHEN (r.NormalizedName LIKE t.NormalizedName + N'%' OR t.NormalizedName LIKE r.NormalizedName + N'%')
+        THEN (CASE WHEN LEN(t.NormalizedName) <= LEN(r.NormalizedName) THEN LEN(t.NormalizedName) ELSE LEN(r.NormalizedName) END)
+        ELSE 0 END,
+    Remainder = CASE
+        WHEN r.NormalizedName LIKE t.NormalizedName + N'%' THEN SUBSTRING(r.NormalizedName, LEN(t.NormalizedName) + 1, 4000)
+        WHEN t.NormalizedName LIKE r.NormalizedName + N'%' THEN SUBSTRING(t.NormalizedName, LEN(r.NormalizedName) + 1, 4000)
+        ELSE N''
+    END) prefix
+OUTER APPLY (
+    SELECT TOP 1 Token
+    FROM CorporateToken ct
+    WHERE t.NormalizedName LIKE N'%' + ct.Token
+      AND LEN(t.NormalizedName) > LEN(ct.Token)
+    ORDER BY LEN(ct.Token) DESC
+) tSuffix
+OUTER APPLY (
+    SELECT TOP 1 Token
+    FROM CorporateToken ct
+    WHERE r.NormalizedName LIKE N'%' + ct.Token
+      AND LEN(r.NormalizedName) > LEN(ct.Token)
+    ORDER BY LEN(ct.Token) DESC
+) rSuffix
 CROSS APPLY (SELECT
-    TBrand = CASE
-        WHEN base.TBase LIKE N'%realestatepartners' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'realestatepartners'))
-        WHEN base.TBase LIKE N'%developmentwest' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'developmentwest'))
-        WHEN base.TBase LIKE N'%development' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'development'))
-        WHEN base.TBase LIKE N'%developments' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'developments'))
-        WHEN base.TBase LIKE N'%properties' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'properties'))
-        WHEN base.TBase LIKE N'%partners' THEN LEFT(base.TBase, LEN(base.TBase) - LEN(N'partners'))
-        ELSE base.TBase
-    END,
-    RBrand = CASE
-        WHEN base.RBase LIKE N'%realestatepartners' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'realestatepartners'))
-        WHEN base.RBase LIKE N'%developmentwest' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'developmentwest'))
-        WHEN base.RBase LIKE N'%development' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'development'))
-        WHEN base.RBase LIKE N'%developments' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'developments'))
-        WHEN base.RBase LIKE N'%properties' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'properties'))
-        WHEN base.RBase LIKE N'%partners' THEN LEFT(base.RBase, LEN(base.RBase) - LEN(N'partners'))
-        ELSE base.RBase
-    END) brand
+    TBrand = CASE WHEN tSuffix.Token IS NULL THEN t.NormalizedName ELSE LEFT(t.NormalizedName, LEN(t.NormalizedName) - LEN(tSuffix.Token)) END,
+    RBrand = CASE WHEN rSuffix.Token IS NULL THEN r.NormalizedName ELSE LEFT(r.NormalizedName, LEN(r.NormalizedName) - LEN(rSuffix.Token)) END) brand
 WHERE t.Id = @id
   AND t.NormalizedName <> N''
   AND (
@@ -802,7 +820,7 @@ WHERE t.Id = @id
       OR t.NormalizedName LIKE r.NormalizedName + N'%'
       OR (LEN(brand.TBrand) >= 6 AND brand.TBrand = brand.RBrand)
   )
-ORDER BY IsPrefix DESC, Richness DESC, r.Id;";
+ORDER BY RedirectSafe DESC, Richness DESC, r.Id;";
 
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
@@ -822,7 +840,8 @@ ORDER BY IsPrefix DESC, Richness DESC, r.Id;";
         var name = r.IsDBNull(2) ? string.Empty : r.GetString(2);
         var isPrefix = Convert.ToInt32(r.GetValue(3)) == 1;
         var minLen = Convert.ToInt32(r.GetValue(4));
-        return new RicherCandidate(id, name, isPrefix, minLen);
+        var redirectSafe = Convert.ToInt32(r.GetValue(5)) == 1;
+        return new RicherCandidate(id, name, isPrefix, minLen, redirectSafe);
     }
 
     private static async Task<long?> GetKorIdAsync(SqlConnection con, CancellationToken ct)
