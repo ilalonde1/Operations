@@ -2,6 +2,7 @@
 
 **Source:** "Business Development – Vancouver Lower Mainland" meeting recording, 19 Jun 2026 (2h 35m).
 **Prepared by:** Ian — names cross-referenced against the BD brain (canonical orgs + Deltek client IDs + KOR project counts) and web-verified where internal data was thin.
+**Verified & updated 2026-06-20** — all canonical org IDs, KOR project counts, CRM engagement numbers and the De Cotiis family structure re-confirmed against the live DB (post the De Cotiis enrichment + dedup merges + CRM remap). Changes flagged inline.
 
 **How to read this:**
 - **kp=N** — number of KOR projects on record with that org (warmth signal). ✅Deltek = linked Deltek client.
@@ -9,7 +10,7 @@
 - Names in **bold** are the corrected/confirmed spellings; the transcript's garbled version is shown in *(quotes)* where useful.
 - ⚠️ = an intel flag to read before acting.
 
-> **Already actioned this session (2026-06-19):** the meeting's pursuits are **live in the CRM now** — 4 new engagements (RBI #90, Graham/Richmond Hospital #91, OpenForm #92, Squamish/Nch'ḵay̓ #93) plus meeting notes on 3 existing (Mundi #61, Purpose Driven #15, Bosa #70). Names were also cleaned in the Biz Brain (3 dedup merges, 1 reclassify, 4 aliases, 2 new contacts). Full detail in **§10 (Brain)** and **§11 (CRM)**.
+> **Already actioned & verified (live CRM engagement IDs as of 2026-06-20):** the meeting's pursuits are **live in the CRM** — RBI **#4**, Pinnacle International **#11**, M'Akola **#12/#19**, Purpose Driven **#15**, Mundi **#61**, Bosa Development **#70**, Graham/Richmond Hospital **#91**, Open Form **#92**, Squamish/Nch'ḵay̓ **#93**, plus Rory's modular pair **Emerge Modular (Greg Zemrau) #95** and **Evantra Developments #97**. *(RBI moved from #90 → #4 when the session's dedup remapped the org to canonical #14.)* Names were also cleaned in the Biz Brain (dedup merges, reclassify, aliases, contacts). Full detail in **§10 (Brain)** and **§11 (CRM)**.
 
 ---
 
@@ -68,7 +69,7 @@
 - **M'akola Development Services** *("Makola/Mákola")* [High] — KorClient, ✅Deltek (Indigenous housing, Victoria, office here). Target the dev lead (no "VP Development" title; closest is **Kaela Schramm**, Dir. Projects & Planning — the *"McCullough girl"* Omar met at ULI). Also a **City Spaces** contact (didn't return call).
 - **GIS consultant** (met at ULI) — does property/"open quake" studies for City of Vancouver + City of Victoria; can tip where cities plan to build (residential/industrial/schools/hospital/fire/police). → Omar to give Ian the contact; plug into brain.
 - **PCI Developments** [High] — Cambie & Broadway tower. Omar has contact via **Brad Howard** + a PM + site super + VP-Dev phone (via **Jacob** of **Urban One**); door not shut, not answering → phone Brad again.
-- **Onni Group** [High] — **Jason** setting up a meeting; reconnect with **Mr. Morris / the Morrises**. ⚠️ *Distinct from "Bonnis Properties" (kp=30) — don't conflate.* (Onni was the De Cotiis-family sibling firm to Pinnacle — see §7.)
+- **Onni Group** [High] — #38949. **Jason** setting up a meeting; reconnect with **Mr. Morris / the Morrises** = **Morris De Cotiis** (Onni principal, construction & property mgmt; #9303). Onni is run by the late founder Inno's sons — **Rossano** (President, #1406), **Morris**, **Giulio**, **Paolo**. ⚠️ *Distinct from "Bonnis Properties" (#70958, kp=30) — don't conflate.* (Onni is the De Cotiis-family sibling firm to Pinnacle — see §7.)
 - **Shape Properties** [High] — ✅Deltek. "Nothing moving, don't want to meet"; Omar will phone anyway. (JB issue surfaced here.)
 - **RBI Group of Companies** [High] — kp=6, ✅Deltek. New-ish client, cash-rich, buying property, heavy **WSP** user. KOR building **Richmond Hotel**; got **137th St**; likely **Cobalt Hotel**; **Edmonton hotel** drawings coming; lots in interior. → pitch re-engineering his WSP projects for profitability.
 - **VGM Group / BMZ / Gary / Suki** *(spellings unverified)* — cash-rich developer network bidding low on receivership deals; **Bonnie** bought Hudson's Bay + Atmosphere. Relationship intel.
@@ -85,7 +86,8 @@
 - **Farmer Construction Ltd.** (Victoria, since 1951) [High] — biggest Southern-Island GC; approach. (**Campbell Construction Ltd.** also big.)
 - **Dino** *(co. = "Moniz"? — JB has long Moniz relationship; John designed Dino's brother **Gab Carrie**'s house)* — flagship tower (architect **Perkins + Will**) being sold; selling Granville + Kingsway sites; reducing portfolio; seeking partners. Keep warm. *[Dino's surname/company unresolved — verify with Rory/JB]*
 - **Modular push (Rory's headline):**
-  - **Gregg** (modular fabricator/client) — KOR ≈ his prime consultant. Live: White Rock Marine Dr (2 fourplexes), Vancouver fourplex (in shop), **Duncan ~4-storey by the university (proposal owed)**, retrofit Gregg's warehouse, plant on mainland/island, upgrade Alberta plant. **Simon** learning **Autodesk Advanced Steel** → charge for shop drawings. Gregg wants developer partners with sites+funding; he supplies modules. CMHC change: **5% down** on modular (even >$1M, transfers to homeowner) — lean in.
+  - **Greg Zemrau — Emerge Modular** [High] *("Gregg")* — **existing KOR client (#111)**; KOR ≈ his prime consultant. **(Rory's update — now in CRM as engagement #95.)** Live: White Rock Marine Dr (2 fourplexes), Vancouver fourplex (in shop), **Duncan ~4-storey by the university (proposal owed)**, retrofit Greg's warehouse, plant on mainland/island, upgrade Alberta plant. **Simon** learning **Autodesk Advanced Steel** → charge for shop drawings. Greg wants developer partners with sites+funding; he supplies modules. CMHC change: **5% down** on modular (even >$1M, transfers to homeowner) — lean in.
+    - **Evantra Developments** [High] — #203, **existing KOR client** (eng #97). The Langford/Victoria developer that several of Greg's KOR jobs come in through — the developer-partner side of the modular pipeline. Rory's lead; keep Emerge ↔ Evantra linked.
   - **Yellowridge Construction Ltd.** *("Yellow Ridge")* [High] — **existing KOR client (#115)** + Yellowridge Design Build (#70585); Port Moody design-builder, leading the **Defence Canada** design-build bid (off-site/modular/panelized). (We have a relationship here already — not a cold approach.) Rory met twice; rubric rewards 2 projects where the whole team worked together; Defence Canada prioritizes off-site methods.
   - **WHB Group** *("WWBH")* [Med] — New Westminster formwork/rebar; principal **John Wu** (Chinese-group modular connections; ≠ the BC Housing "John Wu" in our DB).
   - **Wilson Chang** *(vs. "Wilson Shen")* [Low] — Island modular operator. ⚠️ Our DB has a **Wilson Chang (architect)** — may be a *different* person; don't merge. The **Thind** developers project could be a large modular tower in Burnaby (steel modules from China, Canada Builds funding) — see ⚠️ Thind note in §7.
@@ -122,7 +124,11 @@
 
 ## 7. Intel flags (read before acting)
 
-1. **Pinnacle vs Onni — the boardroom confusion explained.** The De Cotiis family split decades ago: **Michael De Cotiis → Pinnacle International**; brother **Innocenzo "Inno" De Cotiis → Onni** (Inno spelled backwards). **Inno died Sept 2020.** That's why the room said *"his dad died… that's his brother… it's not Pinnacle."* Your Pinnacle contact (Michael) is alive/active. Treat Pinnacle and Onni as sibling firms in the brain.
+1. **Pinnacle vs Onni vs Amacon — the boardroom confusion explained (verified, now fully in the brain).** Three De Cotiis brothers split from the family holding company (**Viam Holdings**) in the 1990s into **three sibling firms**:
+   - **Pinnacle International** (#53665) — **Michael De Cotiis** (President & CEO, #1399), the last surviving founding brother, **alive/active**. *(Also the BC-licence "Person Responsible" at Mondiale Development #20962.)*
+   - **Onni Group** (#38949) — founded by **Innocenzo "Inno" De Cotiis (1937–2020)** (#3757); now run by **his sons**: **Rossano** (President, #1406), **Morris** (#9303 = the meeting's *"Mr. Morris"*), **Giulio** (#9304), **Paolo** (#9305).
+   - **Amacon** (Developments #169 / Construction #71060) — the third brother (**Amalio**) branch: **Marcello** (CEO/President, #901), **Marc** (President, #1941), **Donato** (Owner/VP, #902), **Italo** (Chairman, #1940), **Lilliana** (Hospitality, #903).
+   Michael is **uncle** to the Onni/Amacon next-gen. That's why the room said *"his dad died… that's his brother… it's not Pinnacle"* — they were half-remembering Inno's 2020 death and the cousin firms. **No recent (2024–26) De Cotiis death.** Treat all three as adjacent — a strong Pinnacle (Michael) relationship sits next to Onni + Amacon decision-makers.
 2. **Thind Properties is distressed.** kp=17 historically, but **Eclipse Brentwood is under creditor protection (~$189M owed to KingSett), 2024-25.** The "biggest modular tower in Vancouver" floated with the *"old Thind developers"* is real but **high-risk** — pursue with eyes open; the steel-modules-from-China / Canada Builds angle is unverified.
 3. **"Amy at AMA / Aromatis / Larno / Mattis" is one person** — **Arno Matis**. Don't create four contacts.
 4. **Lark Group is already in the brain — and duplicated** (Developer #53694 + GC #72260 + two "Unknown" rows). This is a **merge/reclassify** job, not an add. (Earlier draft wrongly called it net-new.)
@@ -147,6 +153,10 @@
 | **Apriano Meola** | Co-founder, **Orchard Park Properties** | web-confirmed |
 | **John Wu** | **WHB Group** / Lower Mainland Forming (formwork/rebar) | web (Med) |
 | **Kaela Schramm** | Dir. Projects & Planning, **M'akola Development Services** | web (Med) |
+| **Greg Zemrau** | **Emerge Modular** (modular fabricator, KOR client #111) — *the meeting's "Gregg"* | in DB (eng #95) |
+| **Morris De Cotiis** | Principal, **Onni Group** (#9303) — *the meeting's "Mr. Morris"* | in DB |
+| **Rossano De Cotiis** | President, **Onni Group** (#1406) | in DB |
+| **Marcello De Cotiis** | CEO/President, **Amacon** (#901) | in DB |
 
 ## 9. Verify directly (don't guess further)
 
@@ -154,6 +164,7 @@
 - **Rory Allen** (Mundi Hotel Enterprises) — no public trace; confirm with Omar.
 - **Neil Jacobsen / Neil Banik / Barry Way** (Wensley Victoria) — not in DB; confirm with Rory.
 - **"BD" developer**, **Beto**, **Charmaine**, **Dino**'s surname/company, the **GIS consultant**'s firm, **VGM/BMZ/Gary/Suki** — confirm spellings/identities with Omar/Rory before brain ingest.
+- ~~**Gregg** (modular)~~ — **RESOLVED 2026-06-20: Greg Zemrau, Emerge Modular (#111)**; developer side = Evantra Developments (#203). Both live in CRM (eng #95/#97).
 - **Wilson Chang** — confirm whether the Island modular operator is the same as our DB architect (likely not).
 
 ---
@@ -165,8 +176,8 @@ The brain already held ~all of these orgs (often duplicated), so the meeting yie
 - ✅ **1 reclassify** — Mundi #70864 `Unknown → Developer`.
 - ✅ **4 aliases** — "Mundai Group", "Yellow Ridge", "Open Forum", "Open RD" → their canonicals (all resolve).
 - ✅ **2 contacts** — Annelise van der Veen (#13816 → Purpose Driven), Jacob Lewis III (#13817 → Nch'ḵay̓), affiliations wired.
-- ⚠️ **Michael De Cotiis** — already in brain (#1399) and already tied to Pinnacle; nothing new needed.
-- ⏭️ **WHB Group / John Wu — skipped** (IntelPerson key is name-only → would fuse with the existing BC-Housing "John Wu").
+- ✅ **De Cotiis family fully enriched (2026-06-20)** — Michael (#1399, Pinnacle) plus the Onni branch (Inno 1937–2020 #3757; sons Rossano #1406, Morris #9303, Giulio #9304, Paolo #9305) and the Amacon branch (Marcello #901, Marc #1941, Donato #902, Italo #1940, Lilliana #903) are all in the brain with affiliations wired; duplicate person rows (Don/Mike/Donato dups) retired. See §7 #1.
+- ⏭️ **WHB Group / John Wu — skipped** (IntelPerson key is name-only → would fuse with the existing BC-Housing "John Wu"). *(Note: the M1 identity-anchor re-key shipped 2026-06-20 now keys people by email→LinkedIn→name+org, so this is safer to revisit.)*
 
 ---
 
@@ -178,10 +189,13 @@ The meeting's active pursuits were loaded into the CRM, **deduped against the ex
 
 | Eng # | Org | Owner | Region | What / next step |
 |---|---|---|---|---|
-| **#90** | RBI Group of Companies | Omar | Van/LM | Hot active client. Richmond Hotel (u/c), 137th St (awarded), Cobalt Hotel (likely), Edmonton hotel (drawings incoming). Pitch re-engineering their WSP work. |
+| **#4** | RBI Group of Companies (org #14) | Omar | Van/LM | *(was #90; org remapped to canonical #14 in the dedup.)* Hot active client, kp=6 (last 2026-03-03). Richmond Hotel (u/c), 137th St (awarded), Cobalt Hotel (likely), Edmonton hotel (drawings incoming). Pitch re-engineering their WSP work. |
+| **#11** | Pinnacle International (org #53665) | Jim | Van/LM | kp=8 (last 2026-01-27), CL00333. John + Omar to meet **Michael De Cotiis** (President & CEO). De Cotiis family fully mapped — see §7 #1. |
 | **#91** | Graham Construction | Omar | Van/LM | Intro via AJ (rebar). Pursue **Richmond Hospital Ph2 & Ph3**; meet Graham + Bert; Ellison → Bird intro. |
-| **#92** | Open Form Properties | Jim | Van/LM | 3 existing projects. Jim → lunch **Jason Turcotte** (next month), Kevin to join; chase the Open RD (auto/commercial) division. *Contact: Jason Turcotte, jturcotte@cressey.com.* |
+| **#92** | Open Form Properties | Jim | Van/LM | 3 existing projects (kp=3, last 2026-04-13). Jim → lunch **Jason Turcotte** (next month), Kevin to join; chase the Open RD (auto/commercial) division. *Contact: Jason Turcotte, jturcotte@cressey.com.* |
 | **#93** | Nch'ḵay̓ Development Corp (Squamish) | Omar | Van/LM | Coffee with **Jacob Lewis III** on **2026-07-08** (relationship-build), then meet dev team. *Contact: Jacob Lewis III, Dir. Community Development.* |
+| **#95** | Emerge Modular (org #111) | Rory | Island | **Rory's update — "Gregg" = Greg Zemrau, Emerge Modular** (KOR client). Modular pipeline: White Rock, Vancouver fourplex, Duncan 4-storey (proposal owed), warehouse retrofit, plant upgrades. Simon on Advanced Steel shop drawings. |
+| **#97** | Evantra Developments (org #203) | Rory | Island | Langford/Victoria developer; the developer partner several of Greg Zemrau's KOR jobs come in through. Keep Emerge ↔ Evantra linked. |
 
 **Activities logged on existing engagements (no duplicates created):**
 
