@@ -102,15 +102,18 @@ public sealed class CanonicalOrgResolver
         var alias = await _store.LookupAliasAsync(trimmed, source, ct).ConfigureAwait(false);
         if (alias is not null && alias.CanonicalOrgId.HasValue)
         {
-            var resurrected = await _store.UnretireAsync(
-                alias.CanonicalOrgId.Value,
-                $"Resurrected by alias match from source '{source}'",
-                ct).ConfigureAwait(false);
-            if (resurrected)
+            if (!createArchived)
             {
-                _logger.LogInformation(
-                    "CanonicalOrg {Id} ({Name}) unretired; alias match from source '{Source}' indicates renewed activity.",
-                    alias.CanonicalOrgId.Value, cleaned, source);
+                var resurrected = await _store.UnretireAsync(
+                    alias.CanonicalOrgId.Value,
+                    $"Resurrected by alias match from source '{source}'",
+                    ct).ConfigureAwait(false);
+                if (resurrected)
+                {
+                    _logger.LogInformation(
+                        "CanonicalOrg {Id} ({Name}) unretired; alias match from source '{Source}' indicates renewed activity.",
+                        alias.CanonicalOrgId.Value, cleaned, source);
+                }
             }
 
             return alias.CanonicalOrgId.Value;
@@ -159,15 +162,18 @@ public sealed class CanonicalOrgResolver
         }
         else
         {
-            var resurrected = await _store.UnretireAsync(
-                canonicalId.Value,
-                $"Resurrected by normalized-name match from source '{source}'",
-                ct).ConfigureAwait(false);
-            if (resurrected)
+            if (!createArchived)
             {
-                _logger.LogInformation(
-                    "CanonicalOrg {Id} ({Name}) unretired; normalized-name match from source '{Source}' indicates renewed activity.",
-                    canonicalId.Value, cleaned, source);
+                var resurrected = await _store.UnretireAsync(
+                    canonicalId.Value,
+                    $"Resurrected by normalized-name match from source '{source}'",
+                    ct).ConfigureAwait(false);
+                if (resurrected)
+                {
+                    _logger.LogInformation(
+                        "CanonicalOrg {Id} ({Name}) unretired; normalized-name match from source '{Source}' indicates renewed activity.",
+                        canonicalId.Value, cleaned, source);
+                }
             }
 
             await _store.UpsertAliasAsync(
