@@ -10,7 +10,7 @@ $dir = $Dir
 if(-not $Files){ $Files = @("$dir\agent-A.json","$dir\agent-B.json","$dir\agent-C.json") }
 $files = $Files
 $outSql = $OutSql
-$validSrc = @('Hunter','asis','PatternInferred','website','news')
+$validSrc = @('Hunter','asis','PatternInferred','website','news','Deltek')
 function Sql([string]$s){ if($null -eq $s){return ''}; return ($s -replace "'","''") }
 function Clip([string]$s,[int]$n){ if($null -eq $s){return ''}; $s=$s.Trim(); if($s.Length -gt $n){return $s.Substring(0,$n)}; return $s }
 
