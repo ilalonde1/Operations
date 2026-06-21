@@ -1,0 +1,339 @@
+{
+  "orgs": [
+    {
+      "orgId": 38201,
+      "displayName": "Deecorp Properties Ltd",
+      "identityConfirmed": true,
+      "website": "https://deecorp.ca/",
+      "profileNote": "Vancouver commercial real estate developer founded 1994 by Stanley Dee; $600M+ portfolio of retail, mixed-use, and hotel assets across BC. Currently advancing three 33-storey hotel towers totalling ~1,000 rooms in downtown Vancouver.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "Granville-Davie Hotel (1167-1193 Granville St) - Vancouver - approved by City Council, ~464 rooms, 33 storeys",
+        "Pender-Granville Hotel (717 W Pender St) - Vancouver - proposed, ~33 storeys, luxury hotel + strata condos",
+        "West 8th Hotel (348-380 W 8th Ave) - Vancouver - rezoning enquiry submitted, ~33 storeys long-stay hotel",
+        "Robson Landmark (1100 Robson St) - Vancouver - existing retail"
+      ],
+      "people": [
+        {
+          "name": "Stanley Dee",
+          "title": "President / Founder",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Founded Deecorp in 1994; confirmed as President via LinkedIn. General company contact: info@deecorp.ca, 604-683-0002, Suite 201 - 388 West 8th Ave, Vancouver BC V5Y 3X2."
+        },
+        {
+          "name": "Karim Jiwa",
+          "title": "General Counsel",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as General Counsel at Deecorp Properties Ltd on LinkedIn (ca.linkedin.com/in/karim-jiwa-062a9b8)."
+        }
+      ]
+    },
+    {
+      "orgId": 20891,
+      "displayName": "Entice Developments Ltd.",
+      "identityConfirmed": true,
+      "website": "http://www.enticecreations.com",
+      "profileNote": "Burnaby, BC custom home builder and residential developer; HAVAN member since 2018. Office at 4556 Dawson Street, Burnaby BC V5C 4C1. Related entity Entice Building Materials Ltd (kitchen/bath supply) operates at the same address.",
+      "bcRegistryLegalName": "ENTICE DEVELOPMENTS LTD.",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "K.C. Cheng",
+          "title": "Principal",
+          "email": "info@enticecreations.com",
+          "emailSource": "news",
+          "emailConfidence": 70,
+          "note": "Named as company contact in HAVAN (Homebuilders Association Vancouver) member listing (joined May 2018). Houzz profile handle 'entice-kc' corroborates initials. Full given name not publicly confirmed. Email is company general inbox from HAVAN directory."
+        }
+      ]
+    },
+    {
+      "orgId": 21675,
+      "displayName": "Green Oak Development Corp",
+      "identityConfirmed": true,
+      "website": "https://greenoakdevelopment.com",
+      "profileNote": "Vancouver BC luxury residential developer founded 2016; specializes in luxury estates, mixed-use, and multi-family projects on Vancouver's West Side. Known for European/Italian design aesthetic with imported Italian finishes. Office at 4445 West 10th Ave, Vancouver BC V6R 2H8.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "Grand - Vancouver (Mount Pleasant) - presale/active",
+        "The Independent - Vancouver (Main Street) - completed",
+        "Miracle - White Rock (1515 Johnston Rd) - completed"
+      ],
+      "people": [
+        {
+          "name": "Anna Asi",
+          "title": "Executive Director",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Confirmed via ZoomInfo, RocketReach, and LinkedIn profile as Executive Director at Green Oak Development Corp, Vancouver BC."
+        },
+        {
+          "name": "Michael Habibi",
+          "title": "Vice President of Development",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as VP of Development on BBB filing (2016). LinkedIn now shows current role at Jadu Beauty; may have departed."
+        }
+      ]
+    },
+    {
+      "orgId": 20756,
+      "displayName": "HANEX DEVELOPMENTS LTD",
+      "identityConfirmed": true,
+      "website": null,
+      "profileNote": "BC-registered developer and contractor incorporated 2013-05-04 in Delta, BC (BC Corp No. 0969245); formerly LHL Enterprises Ltd, renamed April 2016. Held City of Vancouver contractor licences 2016-2019; consistent with small infill or custom residential work in Greater Vancouver.",
+      "bcRegistryLegalName": "HANEX DEVELOPMENTS LTD.",
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 51663,
+      "displayName": "ICE DEVELOPMENT LTD.",
+      "identityConfirmed": true,
+      "website": "https://icegoc.com",
+      "profileNote": "ICE Group of Companies (legal: ICE Development Ltd), a Langley BC integrated design-build and development firm founded 2004. Operates across BC on multi-family residential, commercial, industrial, and municipal projects; ~10-50 employees. General contact: info@icegoc.com, 604-381-2202.",
+      "bcRegistryLegalName": "ICE DEVELOPMENT LTD.",
+      "notableProjects": [
+        "Proper by Gatehouse - Surrey BC - multi-family base build",
+        "72 Crossroads - Surrey BC - mixed-use development",
+        "Sigmund Condos - Langley BC - multi-family residential",
+        "The Arncote - Langford BC - six-storey rental complex",
+        "Park Royal BC Liquor Store - West Vancouver BC - commercial renovation"
+      ],
+      "people": [
+        {
+          "name": "Sonny Sangha",
+          "title": "President",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "President of ICE Group of Companies; confirmed via LinkedIn profile and Business Examiner article. No personal email found on public sources."
+        }
+      ]
+    },
+    {
+      "orgId": 22051,
+      "displayName": "Kutak Development Services Ltd.",
+      "identityConfirmed": true,
+      "website": "https://kutakdevelopment.com/",
+      "profileNote": "Vancouver BC real estate developer founded ~2015; provides full-scope services from acquisition through permitting, construction, and sales. Active in Metro Vancouver and Tri-Cities with multi-unit residential condo and rental projects.",
+      "bcRegistryLegalName": "Kutak Development Services Ltd.",
+      "notableProjects": [
+        "One Shaughnessy - Port Coquitlam - completed",
+        "Two Shaughnessy - Port Coquitlam - converted to rental, est. completion early 2026",
+        "2228 Kelly Avenue Condos - Port Coquitlam - preconstruction"
+      ],
+      "people": [
+        {
+          "name": "Patrik Kutak",
+          "title": "Director",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as Principal Contact on BBB business profile. Company phone: (604) 417-4182."
+        }
+      ]
+    },
+    {
+      "orgId": 20518,
+      "displayName": "Lightstone Development Ltd",
+      "identityConfirmed": true,
+      "website": null,
+      "profileNote": "Vancouver residential developer; formerly Matchpoint Development Ltd (name changed Feb 2019). Completed Chloe at 2096 W 47th Ave, Kerrisdale (46 strata + 11 retail units, 2024). Placed under receivership Feb 2025 (FTI Consulting appointed) due to liquidity crisis; company appears dormant.",
+      "bcRegistryLegalName": "Lightstone Development Ltd",
+      "notableProjects": [
+        "Chloe - 2096 W 47th Ave, Vancouver (Kerrisdale) - completed 2024; receivership Feb 2025"
+      ],
+      "people": [
+        {
+          "name": "Xiao Song Zheng",
+          "title": "Founder / Principal (also known as Vicky Zheng)",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Named in BC Supreme Court receivership documents (Case No. H-250150) as founder and personal guarantor on project financing. No email found in any public source."
+        }
+      ]
+    },
+    {
+      "orgId": 22259,
+      "displayName": "LivingSpace Homes Ltd",
+      "identityConfirmed": true,
+      "website": "https://livingspacehomes.com",
+      "profileNote": "Vancouver BC full-service residential developer and interior design firm founded 2013. Provides turn-key home building from site selection and permitting through construction management and European interior fit-out. Office: 120-1706 West 1st Ave, Vancouver BC V6J 0E4. General contact: info@livingspacehomes.com.",
+      "bcRegistryLegalName": "Livingspace Homes Ltd",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Patti Lynch Yang",
+          "title": "Interior Design / Project Management",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as employee on company LinkedIn profile in an interior design and project management role. No founder or principal name identified for the development entity."
+        }
+      ]
+    },
+    {
+      "orgId": 24020,
+      "displayName": "Peterson Developments Inc",
+      "identityConfirmed": true,
+      "website": "https://petersonbc.com",
+      "profileNote": "Development-arm entity of The Peterson Group, a major Vancouver family-owned developer founded 1959 by Peter Young. Headquartered at 1166 Alberni St, Vancouver. Portfolio of 23M+ sq ft spanning mixed-use residential, commercial, and hospitality across BC and North America.",
+      "bcRegistryLegalName": "Peterson Developments Inc",
+      "notableProjects": [
+        "Blake Village (formerly Burnaby Lake Village) - Burnaby - active, 6,000+ units, 19-acre transit-oriented masterplan",
+        "Alberni Tower (1568 Alberni St, Kengo Kuma design) - Vancouver - completed",
+        "Frame (2725 Kingsway, Norquay Village) - Vancouver - completed ~2025",
+        "Langara Gardens - Vancouver - active redevelopment",
+        "Woodward's Redevelopment - Vancouver - completed",
+        "Shangri-La Vancouver - Vancouver - completed"
+      ],
+      "people": [
+        {
+          "name": "Ben Yeung",
+          "title": "Executive Chairman & CEO",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Son of founder Peter Young; led Peterson since ~2000; DMD from UBC. NAIOP VCR Icon 2022 honoree."
+        },
+        {
+          "name": "Raymond Choy",
+          "title": "President & CEO",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "CPA (Canada and Illinois); BBA from Simon Fraser University; 20+ years real estate experience."
+        },
+        {
+          "name": "Barrett Sprowson",
+          "title": "Senior Vice President, Residential",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Confirmed via The Org org chart for The Peterson Group."
+        },
+        {
+          "name": "Jane Young",
+          "title": "Vice President, Corporate Relations",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Confirmed via The Org org chart; likely family member of founder Peter Young."
+        }
+      ]
+    },
+    {
+      "orgId": 32397,
+      "displayName": "Raichu Cambie Development Ltd.",
+      "identityConfirmed": true,
+      "website": null,
+      "profileNote": "BC developer incorporated as 1011180 B.C. Ltd., renamed Raichu Cambie Development Ltd. on 2018-07-09. Single-project vehicle for Winona on Cambie (7638 Cambie St, Vancouver), a 38-unit 6-storey condo completed ~2021 in the Cambie Corridor. Affiliated with Raichu Development Group, Surrey BC.",
+      "bcRegistryLegalName": "RAICHU CAMBIE DEVELOPMENT LTD.",
+      "notableProjects": [
+        "Winona on Cambie - Vancouver BC - completed ~2021, 38 units, 7638 Cambie St"
+      ],
+      "people": [
+        {
+          "name": "Amandeep Rai",
+          "title": "Principal",
+          "email": "7600cambie@gmail.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 25,
+          "note": "Listed as principal contact for Raichu Development Group Ltd. on BBB (Surrey BC). Gmail address attributed via D&B data aggregation only -- not confirmed on any official company source. Company phone: (604) 780-6132."
+        }
+      ]
+    },
+    {
+      "orgId": 22291,
+      "displayName": "RBC Holdings Ltd",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "Could not confirm a distinct private BC real estate developer named RBC Holdings Ltd. All search results return Royal Bank of Canada entities; no independent BC developer by this name was found in web searches or BC OrgBook registry.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 21389,
+      "displayName": "Solaris Properties Inc",
+      "identityConfirmed": true,
+      "website": "https://solarisproperties.ca/",
+      "profileNote": "Vancouver BC custom home builder and renovator operating since 1999; specializes in custom homes, full renovations, and house lifting in Metro Vancouver's west side. Not a large-scale condo/strata developer. General contact: info@solarisproperties.ca.",
+      "bcRegistryLegalName": "Solaris Properties Inc.",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Richard Mullen",
+          "title": "Founder / Owner",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Founded company ~1999/2003; listed as owner on BBB and company About page. No personal email found."
+        },
+        {
+          "name": "Trevor Milne",
+          "title": "Principal / Builder",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Joined Solaris in 2010; listed as co-principal on company About page. No personal email found."
+        }
+      ]
+    },
+    {
+      "orgId": 19717,
+      "displayName": "Terra Blanka Developments Corp.",
+      "identityConfirmed": true,
+      "website": "https://www.terrablanka.com",
+      "profileNote": "Vancouver BC boutique developer founded 2013; specializes in luxury residential townhomes and multi-family projects on Vancouver's West Side. Three completed/active projects in South Cambie and Oakridge. Office: 1281 W Georgia St, Vancouver BC. General contact: info@terrablanka.com.",
+      "bcRegistryLegalName": "Terra Blanka Development Corp.",
+      "notableProjects": [
+        "ASH | 28 - Vancouver (South Cambie/Oakridge) - active presale, 12 townhomes",
+        "The Willow - Vancouver West (Willow & W 27th) - sold out, 11 luxury townhomes",
+        "Heather & Seventeenth - Vancouver West (Heather & W 17th) - sold out, 16 units + 2 commercial"
+      ],
+      "people": [
+        {
+          "name": "Ben Nour",
+          "title": "Partner / Project Manager",
+          "email": "b@terrablanka.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 35,
+          "note": "Listed on LinkedIn as Partner/Project Manager at Terra Blanka. ZoomInfo confirms b***@terrablanka.com pattern. Single-initial format not verified on company website."
+        },
+        {
+          "name": "Kaveh Djahanshahi",
+          "title": "Partner",
+          "email": "k@terrablanka.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 30,
+          "note": "Listed on LinkedIn as Partner at Terra Blanka; also Partner at Arkhaus Construction. ZoomInfo confirms k***@terrablanka.com pattern. Single-initial format not verified on company website."
+        },
+        {
+          "name": "Kian Zamani",
+          "title": "Partner / Project Manager",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on Apollo.io as Project Manager/Partner at Terra Blanka. No email found."
+        },
+        {
+          "name": "Aidin Zadeh",
+          "title": null,
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as company contact in HAVAN (Homebuilders Association Vancouver) new member announcement. Title not confirmed from public sources."
+        }
+      ]
+    }
+  ]
+}

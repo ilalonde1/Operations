@@ -1,7 +1,15 @@
+param(
+  [string]$Dir = "C:\VIsual Studio Projects\Operations\docs\enrichment-2026-06-20-thin-clients",
+  [string[]]$Files,
+  [string]$OutSql = "C:\VIsual Studio Projects\Operations\Kor.Opportunities.Data\Schema\246_ThinClientEnrichment.sql",
+  [int]$Migration = 246,
+  [string]$Provider = 'ThinClientEnrich2026-06-20'
+)
 $ErrorActionPreference='Stop'
-$dir = "C:\VIsual Studio Projects\Operations\docs\enrichment-2026-06-20-thin-clients"
-$files = @("$dir\agent-A.json","$dir\agent-B.json","$dir\agent-C.json")
-$outSql = "C:\VIsual Studio Projects\Operations\Kor.Opportunities.Data\Schema\246_ThinClientEnrichment.sql"
+$dir = $Dir
+if(-not $Files){ $Files = @("$dir\agent-A.json","$dir\agent-B.json","$dir\agent-C.json") }
+$files = $Files
+$outSql = $OutSql
 $validSrc = @('Hunter','asis','PatternInferred','website','news')
 function Sql([string]$s){ if($null -eq $s){return ''}; return ($s -replace "'","''") }
 function Clip([string]$s,[int]$n){ if($null -eq $s){return ''}; $s=$s.Trim(); if($s.Length -gt $n){return $s.Substring(0,$n)}; return $s }
@@ -28,10 +36,10 @@ foreach($f in $files){
 $orgIds = (($rows | Select-Object -ExpandProperty OrgId) + ($orgsMeta | Select-Object -ExpandProperty OrgId)) | Select-Object -Unique | Sort-Object
 $sb=New-Object System.Text.StringBuilder
 [void]$sb.AppendLine("USE [KorOpportunitiesDb];`r`nGO`r`nSET QUOTED_IDENTIFIER ON;`r`nGO`r`nSET XACT_ABORT ON;`r`nGO")
-[void]$sb.AppendLine("/* Migration 246: thin-client deep enrichment. Generated from")
+[void]$sb.AppendLine("/* Migration $($Migration): thin-client deep enrichment. Generated from")
 [void]$sb.AppendLine("   docs/enrichment-2026-06-20-thin-clients agent-A/B/C JSON.")
 [void]$sb.AppendLine("   $($rows.Count) contacts / $($orgsMeta.Count) org-meta updates / $($orgIds.Count) orgs. */")
-[void]$sb.AppendLine("DECLARE @Provider nvarchar(60) = N'ThinClientEnrich2026-06-20';")
+[void]$sb.AppendLine("DECLARE @Provider nvarchar(60) = N'$Provider';")
 [void]$sb.AppendLine("BEGIN TRAN;")
 # --- org-level Website + Notes backfill (COALESCE: never clobber existing) ---
 if($orgsMeta.Count -gt 0){
@@ -61,7 +69,7 @@ if($rows.Count -gt 0){
   [void]$sb.AppendLine("MERGE opportunities.IntelPersonAffiliation AS T USING aff AS S ON T.IntelPersonId=S.PersonId AND T.CanonicalOrgId=S.OrgId WHEN MATCHED THEN UPDATE SET Title=COALESCE(T.Title,S.Title),IsCurrent=1,LastSeenAtUtc=sysdatetimeoffset(),UpdatedAtUtc=sysdatetimeoffset()")
   [void]$sb.AppendLine("WHEN NOT MATCHED THEN INSERT (SourceProviderName,SourceEnrichmentId,SourceConfidence,NaturalKey,FirstSeenAtUtc,LastSeenAtUtc,CreatedAtUtc,UpdatedAtUtc,IntelPersonId,CanonicalOrgId,Title,IsCurrent) VALUES (@Provider,S.EnrId,N'Medium',S.NK,sysdatetimeoffset(),sysdatetimeoffset(),sysdatetimeoffset(),sysdatetimeoffset(),S.PersonId,S.OrgId,S.Title,1);")
 }
-[void]$sb.AppendLine("PRINT 'Migration 246: thin-client enrichment ($($rows.Count) contacts / $($orgsMeta.Count) org-meta).';")
+[void]$sb.AppendLine("PRINT 'Migration $($Migration): thin-client enrichment ($($rows.Count) contacts / $($orgsMeta.Count) org-meta).';")
 [void]$sb.AppendLine("COMMIT TRAN;`r`nGO")
 Set-Content -Path $outSql -Value $sb.ToString() -Encoding ASCII
 "WROTE $outSql ; contacts=$($rows.Count) orgMeta=$($orgsMeta.Count) orgs=$($orgIds.Count)"

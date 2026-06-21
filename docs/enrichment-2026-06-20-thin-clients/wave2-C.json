@@ -1,0 +1,452 @@
+{
+  "orgs": [
+    {
+      "orgId": 21798,
+      "displayName": "Tyko Development Ltd.",
+      "identityConfirmed": true,
+      "website": "https://tyko.ca",
+      "profileNote": "Vancouver-based fully integrated real estate developer and general contractor founded 2011, specializing in custom homes, laneway/coach homes, ADUs, and mixed-use commercial/residential development across the Lower Mainland.",
+      "bcRegistryLegalName": "Tyko Development Ltd.",
+      "notableProjects": [
+        "Block 36 Mixed-Use Commercial/Residential - Victoria Drive, Vancouver - completed",
+        "Knight St Laneway House - Vancouver - completed",
+        "Kingsway Mixed-Use - Vancouver - completed",
+        "Hastings Sunrise Residential - Vancouver - completed",
+        "Renfrew Heights Residential - Vancouver - completed"
+      ],
+      "people": [
+        {
+          "name": "Jack Nguyen",
+          "title": "Co-Founder / Manager",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Co-founder with 15+ years in construction; home renovator background. Listed as Manager on BBB profile. Brother-in-law of co-founder Ken. No personal email found publicly."
+        }
+      ]
+    },
+    {
+      "orgId": 43596,
+      "displayName": "BOSTON CONSTRUCTION CORPORATION",
+      "identityConfirmed": true,
+      "website": "https://www.bostonconstructioncorp.com",
+      "profileNote": "Surrey, BC general contractor founded 2005 (DBA Boston Builders Group), providing restoration, construction management, design-build, and new construction services across the Lower Mainland for residential, commercial, and municipal clients. Not related to any Massachusetts entity.",
+      "bcRegistryLegalName": "Boston Builders Group",
+      "notableProjects": [
+        "Strata building restoration - Lower Mainland - completed",
+        "Tenant improvements - Lower Mainland - ongoing",
+        "Passive House / green building residential - BC - completed"
+      ],
+      "people": [
+        {
+          "name": "David (Devindej) Sidhu",
+          "title": "President / Director",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Principal owner and director per BBB profile; also director of related entity Boston Sheet Metal Ltd. ZoomInfo lists email domain as bostonconstructioncorp.com but full address not publicly confirmed."
+        },
+        {
+          "name": "Debbie Einarson",
+          "title": "Project Administrator",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed by ConstructConnect and SignalHire as Project Administrator at Boston Construction Corp, Surrey BC."
+        },
+        {
+          "name": "Shashi Anand",
+          "title": "Construction Estimator",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed by SignalHire as Construction Estimator at Boston Construction Corp, Surrey BC."
+        },
+        {
+          "name": "Rob Haggman",
+          "title": "Site Superintendent",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed by RocketReach and SignalHire as Site Superintendent; located in Ladysmith, BC."
+        }
+      ]
+    },
+    {
+      "orgId": 49490,
+      "displayName": "Dawson Construction Ltd",
+      "identityConfirmed": true,
+      "website": "https://www.dawsonconstruction.ca/",
+      "profileNote": "Kamloops-based BC heavy civil contractor founded 1922; specializes in highway construction, paving, and aggregate supply across BC and Alberta. Part of the family-owned Dawson Group; one of four founding members of the BC Road Builders and Heavy Construction Association (1964).",
+      "bcRegistryLegalName": "Dawson Construction Limited",
+      "notableProjects": [
+        "Coquihalla Highway - BC Interior - completed",
+        "Granville Street Bridge - Vancouver - completed",
+        "Sea-to-Sky Highway - BC - completed",
+        "Zenzaco Creek Bridge - near Williams Lake, BC - completed 2023",
+        "Highway 97 resurfacing, Lac La Hache (104 lane-km) - South Cariboo, BC - in progress 2026",
+        "Salmon Arm Road Improvements (10 locations) - Salmon Arm, BC - completed 2026"
+      ],
+      "people": [
+        {
+          "name": "Ian Dawson",
+          "title": "Executive Chair, Dawson Group",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Grandson of founder Fred Dawson (est. 1922). Director of Dawson Construction since 1986; Executive Chair across Dawson Group family of companies."
+        },
+        {
+          "name": "Lena Secord",
+          "title": "President & CEO (interim), Dawson Group",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Joined Dawson Group as Chief Human Resources Officer in October 2017; elevated to interim President & CEO. Oversees all Dawson Group entities including Dawson Construction Ltd."
+        },
+        {
+          "name": "Len Kazakoff",
+          "title": "Vice President, Operations",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Nearly 30 years at Dawson; based in Kamloops. Operational lead for both Dawson Construction Ltd and Dawson Civil throughout BC and Alberta."
+        }
+      ]
+    },
+    {
+      "orgId": 22060,
+      "displayName": "Gocan Contracting Ltd",
+      "identityConfirmed": true,
+      "website": "https://gocancontracting.com",
+      "profileNote": "Richmond, BC-based general contractor providing commercial tenant improvements and residential construction across Greater Vancouver for 10+ years; specializes in retail TI, custom millwork, and design-build for shopping-centre and office clients.",
+      "bcRegistryLegalName": "Gocan Contracting Ltd",
+      "notableProjects": [
+        "The Face Shop TI - Greater Vancouver - completed",
+        "Zucca retail fitout - Greater Vancouver - completed",
+        "Planet Eyewear TI - Greater Vancouver - completed",
+        "935 Marine Drive TI - North Vancouver - permitted 2021"
+      ],
+      "people": [
+        {
+          "name": "Sunny Kwan",
+          "title": "CEO",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Named as CEO in the generalcontractors.org Vancouver retail contractor directory. Not confirmed on Gocan website directly; treat as single-source. General contact: info@gocangroup.com."
+        }
+      ]
+    },
+    {
+      "orgId": 30335,
+      "displayName": "Jericho Redefined General Contractors Ltd",
+      "identityConfirmed": true,
+      "website": "https://jerichogeneralcontractors.com",
+      "profileNote": "Vancouver-based commercial general contractor (est. 2017) specializing in tenant improvements, building restoration, and design-build for offices, medical/dental clinics, churches, restaurants, and multifamily/strata buildings across Metro Vancouver.",
+      "bcRegistryLegalName": "Jericho Redefined General Contractors Ltd.",
+      "notableProjects": [
+        "Burnaby Pacific Grace Church Renovation - Burnaby - under construction 2025",
+        "Warehouse + Office Renovation - Richmond - completed",
+        "Health Centre Tenant Improvement - Burnaby - completed",
+        "Roman Court Strata Restoration - Fairview, Vancouver - completed",
+        "Hampton Court Strata Restoration - Strathcona, Vancouver - completed",
+        "Wilshire House Multifamily Renovation - Fairview, Vancouver - completed",
+        "Sport Facility - Riley Park-Little Mountain, Vancouver - completed",
+        "Community Kitchen - Vancouver - completed"
+      ],
+      "people": []
+    },
+    {
+      "orgId": 24124,
+      "displayName": "Lions Head Construction Ltd",
+      "identityConfirmed": true,
+      "website": "https://www.lionsheadconstruction.com",
+      "profileNote": "Vancouver-based full-service commercial and residential general contractor founded 1996, specializing in dental and medical office construction and renovation across BC; 60+ professionals and sub-contractors with a niche in custom millwork and tenant improvement.",
+      "bcRegistryLegalName": "Lions Head Construction LTD",
+      "notableProjects": [
+        "Olympic Village Dental - Vancouver, BC - completed",
+        "Orthodontic Office - Pitt Meadows, BC - completed (new ground-up build)",
+        "Dental Office Renovation - Richmond, BC - completed (full renovation of 35+ year old office)"
+      ],
+      "people": [
+        {
+          "name": "San Ashgar",
+          "title": "General Contractor / Manager",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Named on LinkedIn as affiliated with Lions Head Construction LTD; described on company About page as having 20+ years in construction management. No individual email found publicly."
+        }
+      ]
+    },
+    {
+      "orgId": 12633,
+      "displayName": "Novacom Construction Ltd.",
+      "identityConfirmed": true,
+      "website": "https://novacom.ca/",
+      "profileNote": "Surrey, BC-based construction manager and general contractor (DBA Novacom Building Partners) founded 1991. Specializes in tenant improvements, design-build, and construction management for commercial, institutional, and mixed-use projects across BC and Alberta.",
+      "bcRegistryLegalName": "Novacom Construction Ltd.",
+      "notableProjects": [
+        "KPU Civic Plaza - Surrey - completed",
+        "Lions Gate Community Centre - North Vancouver - completed",
+        "Rivian Vancouver Service Centre - Richmond - completed",
+        "Equinox West Georgia - Vancouver - completed",
+        "Zymeworks Office and Laboratory - Vancouver - completed",
+        "Coast Mountain College Waap Samn - BC - completed",
+        "Cloverdale Fieldhouse - Surrey - completed",
+        "Otter Trail Winery - Langley - completed"
+      ],
+      "people": [
+        {
+          "name": "Wes Drewlo",
+          "title": "Founder",
+          "email": "wes@novacom.com",
+          "emailSource": "website",
+          "emailConfidence": 90,
+          "note": "Founded Novacom in 1991; remains in mentorship/advisory role. Email listed directly on novacom.ca/story/ page. Note: email domain is novacom.com, not novacom.ca."
+        },
+        {
+          "name": "Brandon Drewlo",
+          "title": "Principal & CEO",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Son of founder Wes Drewlo. Joined as Project Manager in 2004; became President in 2015. Current title: Principal & CEO. Listed on company website."
+        },
+        {
+          "name": "Sharelle Dayco",
+          "title": "Principal & Director of People and Culture",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as Principal on novacom.ca/story/ page."
+        },
+        {
+          "name": "Dan Poulsen",
+          "title": "Director of Sales and Preconstruction",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on novacom.ca/story/ page. Key BD contact for preconstruction and sales."
+        },
+        {
+          "name": "Kevin Stuerle",
+          "title": "Director of Finance",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on novacom.ca/story/ page."
+        },
+        {
+          "name": "Matthew Groot",
+          "title": "Project Director",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on novacom.ca/story/ page."
+        },
+        {
+          "name": "Caleb Bender",
+          "title": "Project Director",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on novacom.ca/story/ page."
+        }
+      ]
+    },
+    {
+      "orgId": 28554,
+      "displayName": "Performance Construction Ltd.",
+      "identityConfirmed": true,
+      "website": "https://weareperformance.ca",
+      "profileNote": "Richmond, BC general contractor (est. 2007, operating as Performance Builders Ltd.) specializing in multi-family market housing, social housing, and mixed-use design-build across Metro Vancouver; 65+ completed housing projects.",
+      "bcRegistryLegalName": "Performance Construction Ltd.",
+      "notableProjects": [
+        "The Hawthorne - Cambie Corridor, Vancouver - completed (7-storey luxury residential)",
+        "The Henry - Vancouver near Queen Elizabeth Park - completed (6-storey concrete residential)",
+        "The Basalt - Cambie Corridor, Vancouver - completed",
+        "The Crest - Hillcrest Community, Vancouver - completed (18-unit LEED Gold residential)"
+      ],
+      "people": [
+        {
+          "name": "Bernie Godler",
+          "title": "President / Manager",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on LinkedIn and BBB as Manager/Principal Contact for Performance Construction Ltd., Richmond BC. Confirmed president per BCBusiness."
+        },
+        {
+          "name": "Daniel Kravcak",
+          "title": "President, Construction Management",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "President listed on weareperformance.ca with 17+ years experience; certified project manager. Key operational contact."
+        },
+        {
+          "name": "Allan Deans",
+          "title": "Business Development and Estimating",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on weareperformance.ca About page; 40+ years experience. Primary BD contact."
+        },
+        {
+          "name": "Olga Ilich",
+          "title": "Principal",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Former Executive VP at Progressive Construction (Richmond); confirmed partner/principal in Performance Construction Ltd per BCBusiness profile. Also Founder/President of Suncor Developments Ltd."
+        },
+        {
+          "name": "Milo Ilich",
+          "title": "Principal",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Confirmed co-principal of Performance Construction Ltd alongside Olga Ilich per BCBusiness and news sources."
+        }
+      ]
+    },
+    {
+      "orgId": 19205,
+      "displayName": "Prism Construction Ltd.",
+      "identityConfirmed": true,
+      "website": "https://prismconstruction.ca",
+      "profileNote": "Delta, BC commercial and industrial general contractor founded 1998 by Amin Rawji. Specializes in design-build for self-storage, auto showrooms, warehouses, food processing, and film studio facilities; 600+ projects, 20M sq ft, $2B+ in construction value.",
+      "bcRegistryLegalName": "Prism Construction Ltd.",
+      "notableProjects": [
+        "Bridge Studios - Burnaby, BC - completed (45,000 sq ft soundstage; Phase 2 expansion in New Westminster)",
+        "Richmond Conference Centre - Richmond, BC - completed",
+        "East Newton Business Park - Surrey, BC - completed",
+        "Open Road Hyundai Boundary - BC - completed",
+        "Great Little Box Company - BC - completed",
+        "Lulu Island Winery - Richmond, BC - completed",
+        "Heli-One Facility - BC - completed"
+      ],
+      "people": [
+        {
+          "name": "Omar A. Rawji",
+          "title": "President & Chief Executive Officer",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Joined Prism in 2004; assumed CEO role 2022. Son of founder Amin Rawji. Led company to its $2B milestone (Jan 2025). LinkedIn: ca.linkedin.com/in/omar-a-rawji."
+        },
+        {
+          "name": "Amin Rawji",
+          "title": "Founder",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Quantity Surveyor (FRICS, PQS) trained in England; founded Prism 1998 after earlier career at Nova Construction. BBB lists him as President (legacy listing)."
+        },
+        {
+          "name": "Reza Norozy",
+          "title": "Chief Operating Officer",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "COO at Prism Construction Ltd. per business directory sources."
+        },
+        {
+          "name": "David Lee",
+          "title": "Estimating Manager",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on BBB profile and business directories as Estimator/Estimating Manager."
+        },
+        {
+          "name": "Raj Marwaha",
+          "title": "Operations Manager",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Identified via business directory sources."
+        }
+      ]
+    },
+    {
+      "orgId": 19893,
+      "displayName": "Proform Construction Group Ltd",
+      "identityConfirmed": true,
+      "website": "https://proformconstruction.ca",
+      "profileNote": "Small Burnaby, BC-incorporated general contractor (3 FTE) based at 3912 Spruce St, Burnaby; serves the Lower Mainland on residential and commercial design-build including condos, restaurants, and custom homes.",
+      "bcRegistryLegalName": "PROFORM CONSTRUCTION GROUP LTD",
+      "notableProjects": [
+        "Parliament Crescent Residential - Vancouver area - completed",
+        "E Georgia Condo - East Georgia St, Vancouver - completed",
+        "Freshii at E. Broadway x Main St - Vancouver - commercial restaurant fit-out"
+      ],
+      "people": [
+        {
+          "name": "Sandeep Patel",
+          "title": "President",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as President of Proform Construction Group Ltd on LinkedIn (ca.linkedin.com/in/sandeep-patel-874066148). No public email found on website, news, or registry."
+        }
+      ]
+    },
+    {
+      "orgId": 20869,
+      "displayName": "Summit Brooke Construction",
+      "identityConfirmed": true,
+      "website": "https://www.summitbrooke.com",
+      "profileNote": "Abbotsford, BC privately owned commercial general contractor founded 1998 (incorporated as Summit Brooke Development Corp). Specializes in multi-family townhomes, industrial tilt-up, corporate roll-outs, and tenant improvements throughout BC; COR certified with ~45-69 employees.",
+      "bcRegistryLegalName": "Summit Brooke Development Corp",
+      "notableProjects": [
+        "Multi-family townhomes (1000+ units) - various BC locations - completed/ongoing",
+        "Earls Restaurant (Brentwood) - Brentwood, BC - tenant improvement",
+        "King Taps - Kelowna, BC - restaurant build-out",
+        "Cactus Club - BC - restaurant tenant improvement",
+        "FreshCo - BC - retail tenant improvement",
+        "Abbotsford Airport - Abbotsford, BC - commercial",
+        "Shoppers Drug Mart - BC - retail tenant improvement"
+      ],
+      "people": [
+        {
+          "name": "Jonathon Brandt",
+          "title": "Owner and President",
+          "email": "jon.Brandt@summitbrooke.com",
+          "emailSource": "website",
+          "emailConfidence": 95,
+          "note": "Principal and founder. Email confirmed on Abbotsford Executives public business directory (abbotsfordexec.com/displayBusiness.asp?ID=14) and web search results. Phone: 604-850-1111."
+        },
+        {
+          "name": "Tamara Watt",
+          "title": "Manager, Human Resources and Finance Supervisor",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as alternate company representative on BBB profile. Title sourced from ZoomInfo/Datanyze aggregators."
+        }
+      ]
+    },
+    {
+      "orgId": 22624,
+      "displayName": "True Maple Construction Ltd.",
+      "identityConfirmed": true,
+      "website": "https://www.truemaple.com",
+      "profileNote": "Vancouver-based licensed general contractor and custom home builder incorporated December 2016, specializing in architect-designed custom homes, laneway homes, and residential renovations across 21 Lower Mainland municipalities. HAVAN member.",
+      "bcRegistryLegalName": "True Maple Construction Ltd.",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Jagdeep Phandal",
+          "title": "President",
+          "email": "jphandal@gmail.com",
+          "emailSource": "website",
+          "emailConfidence": 95,
+          "note": "President and primary contact. Email confirmed on truemaple.com contact page (personal Gmail; no corporate email domain). Phone: 604-603-1227. Address: Suite 451, 5525 West Blvd, Vancouver BC V6M 3W6. Also listed in federal registry as Jagdeep Singh Phandal."
+        }
+      ]
+    }
+  ]
+}

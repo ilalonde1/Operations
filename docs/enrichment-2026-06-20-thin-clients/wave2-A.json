@@ -1,0 +1,393 @@
+{
+  "orgs": [
+    {
+      "orgId": 29920,
+      "displayName": "co.lab Architecture",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "No BC Canada architect firm named co.lab Architecture could be located through web search, AIBC directory, LinkedIn, or Houzz. Multiple colab/co-lab variants exist globally but none in BC. Identity unconfirmed.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 19147,
+      "displayName": "Danesh Architect Inc.",
+      "identityConfirmed": true,
+      "website": "https://danesharchs.com",
+      "profileNote": "AIBC-registered architectural firm based in Vancouver, BC. Sole principal Alireza Danesh holds AIBC, AIA, NCARB, and MRAIC credentials with background in residential architecture and urban design. Website is under active reconstruction with no portfolio publicly accessible.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Alireza Danesh",
+          "title": "Principal Architect",
+          "email": "info@danesharch.com",
+          "emailSource": "website",
+          "emailConfidence": 70,
+          "note": "Architect AIBC, AIA, NCARB, MRAIC based in Vancouver BC. Holds a Master of Architecture from UBC. Received 2nd place LafargeHolcim Sustainability Award (Next Generation category) for MArch thesis."
+        }
+      ]
+    },
+    {
+      "orgId": 26979,
+      "displayName": "JYW Architecture Inc.",
+      "identityConfirmed": true,
+      "website": "https://jywarchitecture.com",
+      "profileNote": "Vancouver BC architecture firm founded by Joe Y. Wai (1978), reincorporated 2016 under Principal Wan Qi. Specializes in social/affordable housing, residential care facilities, heritage restoration, and community/cultural projects exclusively in BC, with deep roots in Vancouver Chinatown and the Downtown Eastside.",
+      "bcRegistryLegalName": "JYW Architecture Inc.",
+      "notableProjects": [
+        "Villa Cathay Care Home - Vancouver - completed 2018/2021",
+        "Dr. Sun Yat-Sen Classical Chinese Garden - Vancouver - completed 1986, expanded 2004",
+        "Chinatown Millennium Gate - Vancouver - completed",
+        "Skwachays Healing Lodge - Vancouver - completed 2012",
+        "Nadleh Whut'enne Yah Administration Building - Fort Fraser - completed 2016",
+        "Gospel Rock Village mixed-use rezoning - Gibsons - ongoing"
+      ],
+      "people": [
+        {
+          "name": "Wan Qi",
+          "title": "Principal, Architect AIBC",
+          "email": "wqi@jywarchitecture.com",
+          "emailSource": "website",
+          "emailConfidence": 95,
+          "note": "Acquired the firm in 2016 after 31 years with predecessor practice. B.Arch Southeast University (China), Architecte DPLG (Paris), registered AIBC. Leads heritage, care facility, and cultural/community work."
+        },
+        {
+          "name": "Peter Tang",
+          "title": "Senior Technologist",
+          "email": "ptang@jywarchitecture.com",
+          "emailSource": "website",
+          "emailConfidence": 95,
+          "note": "Senior technical staff at JYW Architecture Inc."
+        },
+        {
+          "name": "Guoqing Wang",
+          "title": "Project Manager, Architect AIBC",
+          "email": "gwang@jywarchitecture.com",
+          "emailSource": "website",
+          "emailConfidence": 95,
+          "note": "Project manager; AIBC-registered per ZoomInfo listing."
+        },
+        {
+          "name": "Marilyn Mortimer-Lamb",
+          "title": "Administrator",
+          "email": "mlamb@jywarchitecture.com",
+          "emailSource": "website",
+          "emailConfidence": 95,
+          "note": "Firm administrator."
+        }
+      ]
+    },
+    {
+      "orgId": 27247,
+      "displayName": "Quadrangle Architects Ltd.",
+      "identityConfirmed": false,
+      "website": "https://www.bdpquadrangle.com",
+      "profileNote": "Toronto, Ontario firm founded 1986; rebranded BDP Quadrangle in 2020 as North American studio of UK firm BDP. All offices and projects are Ontario-based. BC OrgBook shows only extraprovincial (A-prefix) registrations for the Ontario entity; no separate BC-incorporated or Vancouver-headquartered Quadrangle entity exists.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 19095,
+      "displayName": "Radiant City Architecture",
+      "identityConfirmed": true,
+      "website": "https://radiant-city.com/",
+      "profileNote": "Vancouver BC small studio (est. 1994 as Division Zero Architecture) at #222-1118 Homer St. Focus on residential, mixed-use, and tenant improvement projects across Greater Vancouver and the Lower Mainland.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "Cambie Day Care - Vancouver BC - proposed 6-storey mixed-use",
+        "National Climbing Centre - Squamish BC - proposed recreation/retail",
+        "Theatre Under The Stars - Vancouver BC - masterplan/revitalization",
+        "Killarney 5 - Vancouver BC - 5-unit residential redevelopment",
+        "Flora Warehouse Expansion - Burnaby BC - industrial"
+      ],
+      "people": [
+        {
+          "name": "Ron Bijok",
+          "title": "Principal, Architect AIBC CP",
+          "email": "office@radiant-city.com",
+          "emailSource": "website",
+          "emailConfidence": 85,
+          "note": "B.Sc (Arch.) and B.Arch. from McGill University. 10 years at Bobrow Fieldman Architects before founding firm in Vancouver in 1994. Formerly chaired AIBC Regulatory Coordination Working Group. 33+ years experience."
+        },
+        {
+          "name": "Ricardo Roffiel",
+          "title": "Senior Associate, Architect AIBC",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Handles complex projects and building envelope detailing. Listed on firm About Us page."
+        },
+        {
+          "name": "Jose Chan",
+          "title": "Senior Associate, Architect AIBC CP CPHD",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Handles Building Code services; Certified Passive House Designer. Listed on firm About Us page."
+        },
+        {
+          "name": "Samantha Rubio",
+          "title": "Architectural Designer, B.Arch.",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Leads residential and medium-sized projects including design and rendering. Listed on firm About Us page."
+        }
+      ]
+    },
+    {
+      "orgId": 20197,
+      "displayName": "Salikan Architecture Inc",
+      "identityConfirmed": true,
+      "website": "https://www.salikanarchitecture.ca/",
+      "profileNote": "Vancouver BC full-service studio founded 1988 at #923-409 Granville St. Specializes in commercial, institutional, recreational, and residential buildings; operates in BC and Alberta with past projects in the USA and Japan.",
+      "bcRegistryLegalName": "Salikan Architecture Inc.",
+      "notableProjects": [
+        "Arbutus Master Plan - BC - masterplan",
+        "Arts and Crafts Hotel - BC - hotel",
+        "Garry Point - BC - completed",
+        "Sutton Place Wine Store - BC - retail completed",
+        "50th and Main - Vancouver BC - completed"
+      ],
+      "people": [
+        {
+          "name": "Robert Salikan",
+          "title": "Principal Architect, MAIBC AAA MRAIC",
+          "email": "info@salikanarchitecture.ca",
+          "emailSource": "website",
+          "emailConfidence": 60,
+          "note": "Founder of Salikan Architecture Inc. (est. 1988). Holds MAIBC, AAA, and MRAIC designations. Firm has operated in BC and Alberta with international project experience. General firm email; no personal email publicly listed."
+        }
+      ]
+    },
+    {
+      "orgId": 23375,
+      "displayName": "Taylor Kurtz Architecture + Design Inc.",
+      "identityConfirmed": true,
+      "website": "https://www.tkad.ca/",
+      "profileNote": "TKA+D is a Vancouver BC architecture and interior design practice (est. 2008) with 5 principals and approximately 40 staff. Works across commercial, industrial, institutional, and residential sectors in Greater Vancouver and Australia. Operating name TKA+D.",
+      "bcRegistryLegalName": "Taylor Kurtz Architecture + Design Inc.",
+      "notableProjects": [
+        "Tesla Service Centre (120,000 sf) - Vancouver (Strathcona) - completed",
+        "Killarney Seniors Centre - Vancouver - completed",
+        "South Surrey Recreation Centre - Surrey - completed",
+        "BMW Warehouse and Training Facility - BC - completed",
+        "Saputo Production Facility - BC - completed",
+        "Lonsdale Square Phase 1 - North Vancouver - completed",
+        "Riverworks stacked industrial - Vancouver - completed"
+      ],
+      "people": [
+        {
+          "name": "Craig Taylor",
+          "title": "President / Co-founder",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "MAIBC-designated architect; co-founded the firm in 2008. Listed as President on LinkedIn. General firm email is mail@tkad.ca (604 569-3499); no personal email publicly listed."
+        },
+        {
+          "name": "Donna Kurtz",
+          "title": "Co-founder / Principal Interior Designer",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "BID designation; co-founded the firm in 2008 alongside Craig Taylor. No personal email publicly listed."
+        }
+      ]
+    },
+    {
+      "orgId": 23845,
+      "displayName": "Alabaster Homes",
+      "identityConfirmed": true,
+      "website": "https://alabasterhomes.ca/",
+      "profileNote": "Boutique Vancouver BC residential developer (est. 2014) building single-family, multiplex, and rental projects across Vancouver neighbourhoods (Oakridge, Marpole, etc.). Emphasises design-driven construction and integrated post-occupancy homeowner services.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "Thesis - Vancouver - active",
+        "Oak + Park - Vancouver - active",
+        "Yukon Residences - Vancouver - active",
+        "Eila on W49 - Vancouver - active",
+        "Rowen W47 - Vancouver - active",
+        "E 33rd Ave - Vancouver - active",
+        "Silver Ave - Vancouver - active"
+      ],
+      "people": [
+        {
+          "name": "Herman Kwee",
+          "title": "Partner",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as Partner on Alabaster Homes About page; identified as President in an Instagram reel. General contact is info@alabasterhomes.ca."
+        },
+        {
+          "name": "Nick Poon",
+          "title": "Partner",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as Partner on Alabaster Homes About page. Also referenced as Executive Director in third-party sources."
+        },
+        {
+          "name": "Winston Chan",
+          "title": "Director of Sales",
+          "email": "winston@alabasterhomes.ca",
+          "emailSource": "news",
+          "emailConfidence": 80,
+          "note": "Director of Sales; email and direct line (604 767-3221) surfaced via LinkedIn public profile in search results. Primary sales contact for the firm."
+        }
+      ]
+    },
+    {
+      "orgId": 23957,
+      "displayName": "Arborlea Developments Ltd.",
+      "identityConfirmed": true,
+      "website": "https://arborlea.ca",
+      "profileNote": "Surrey/Langley BC general contractor (est. 1986) specializing in tenant improvements for dental, medical, professional, and retail interiors across Greater Vancouver. Operates as a contractor/project manager, not a residential or commercial real estate developer.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "Dentio Dental - Greater Vancouver - completed",
+        "FYidoctors Richmond - Richmond BC - completed",
+        "FYidoctors Ophthalmic Lab - Greater Vancouver - completed",
+        "Sullivan Heights Dental - Surrey BC - completed",
+        "Boardwalk Optometry Guildford - Surrey BC - completed",
+        "Krokodile Pear - Kitsilano Vancouver - completed"
+      ],
+      "people": [
+        {
+          "name": "Douglas Preston",
+          "title": "President / Director",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as President and Director on BBB business profile. One of three Preston family principals (Douglas, Robert, Steve) running the firm."
+        },
+        {
+          "name": "Robert Preston",
+          "title": "Vice President",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as VP on BBB business profile."
+        },
+        {
+          "name": "Steve Preston",
+          "title": "Principal",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed alongside Douglas and Robert Preston on BBB business profile. Specific title not stated."
+        }
+      ]
+    },
+    {
+      "orgId": 32155,
+      "displayName": "Bogner Kerrisdale Development Inc.",
+      "identityConfirmed": true,
+      "website": "https://www.bogner.ca",
+      "profileNote": "Bogner Kerrisdale Development Inc. is a project-specific subsidiary of Bogner Development Group Ltd. (Richmond BC, est. 1970s), a boutique residential developer building luxury low-to-mid-rise condos and townhomes across Vancouver west side and Surrey. The Kerrisdale entity corresponds to The Kirkland at 6168 East Blvd.",
+      "bcRegistryLegalName": "Bogner Development Group Ltd.",
+      "notableProjects": [
+        "The Kirkland - 6168 East Blvd, Kerrisdale Vancouver - completed c.2018 (20 units, 5-storey concrete, preserved 1920s Kirkland Metal Shop facade)",
+        "The Bromley - Oakridge Vancouver - active (1/2/3BR apartments and townhomes)",
+        "Main+35 - near Queen Elizabeth Park Vancouver - active (boutique 1/2/3BR apartments)",
+        "208 West 41st Ave - Oakridge Vancouver - active (1/2/3BR apartments)"
+      ],
+      "people": [
+        {
+          "name": "Leon Bogner",
+          "title": "President / Secretary",
+          "email": "info@bogner.ca",
+          "emailSource": "website",
+          "emailConfidence": 50,
+          "note": "Founder and president of Bogner Development Group Ltd. Address: 302-4940 No. 3 Rd, Richmond BC V6X 3A5. General firm email only; no personal email publicly found."
+        }
+      ]
+    },
+    {
+      "orgId": 22200,
+      "displayName": "Bucci Garden Homes Ltd",
+      "identityConfirmed": true,
+      "website": "https://www.bucci.com",
+      "profileNote": "Bucci Garden Homes Ltd is a BC-registered project entity of Bucci Developments Ltd (Suite 202, 1669 West 3rd Ave, Vancouver BC), a third-generation family developer building mid-density residential condos and rentals across Western Canada. The entity is named for the 2550 Garden Drive project in East Vancouver.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "2550 Garden Drive - Vancouver (Grandview-Woodland) - 69-unit condo, completed 2023",
+        "Entroterra - Vancouver - upcoming residential",
+        "Poplin - Vancouver - under construction",
+        "Dominion YYC - Calgary AB - rental"
+      ],
+      "people": [
+        {
+          "name": "Fred Bucci Jr.",
+          "title": "Principal",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Third-generation principal; quoted on company website as the public face of Bucci Developments Ltd. No direct email publicly listed."
+        }
+      ]
+    },
+    {
+      "orgId": 28435,
+      "displayName": "Catalyst Community Development Society",
+      "identityConfirmed": true,
+      "website": "https://catalystcommdev.org",
+      "profileNote": "Vancouver-based BC non-profit developer (309-877 East Hastings St, Vancouver BC V6A 3Y1) building purpose-built below-market rental housing across the Lower Mainland and Victoria. Partners with community organizations to unlock land value for affordable housing at 89-203 unit scale.",
+      "bcRegistryLegalName": "Catalyst Community Developments Society",
+      "notableProjects": [
+        "Timberline I - North Vancouver - 89 below-market rental units, open",
+        "6889 Royal Oak Avenue - Burnaby - 134 units, in operation",
+        "7392 16th Avenue - Burnaby - 203 units",
+        "Aspen - Vancouver (Mount Pleasant) - 9-storey mixed-use, 145 below-market rental units + commercial",
+        "North Shore Neighbourhood House Hub - North Vancouver - 179 homes, completion 2028",
+        "Madrona - Victoria - purpose-built rental"
+      ],
+      "people": [
+        {
+          "name": "Scott Dutchak",
+          "title": "President",
+          "email": "scott@catalystcommdev.org",
+          "emailSource": "news",
+          "emailConfidence": 72,
+          "note": "28+ years real estate experience; background includes TELUS real estate division and BCI. Holds MBA and professional urban planner credentials (CIP). Board member of Songhees Development Corporation."
+        },
+        {
+          "name": "Megan Pohanka",
+          "title": "VP, Project Generation",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on Catalyst team page."
+        },
+        {
+          "name": "Robin Petri",
+          "title": "VP, Development",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on Catalyst team page."
+        },
+        {
+          "name": "Sid Ahuja",
+          "title": "VP, Finance",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed on Catalyst team page."
+        },
+        {
+          "name": "Julie Taylorson",
+          "title": "Board Chair",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Board Chair per Catalyst team page."
+        }
+      ]
+    }
+  ]
+}
