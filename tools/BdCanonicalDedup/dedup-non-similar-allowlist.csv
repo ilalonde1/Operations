@@ -2735,3 +2735,12 @@ LoserId,SurvivorId,Reason
 66354,12107,prefix-match same-company fragment (wave8)
 75984,54330,prefix-match same-company fragment (wave8)
 76501,69154,prefix-match same-company fragment (wave8)
+# 2026-06-20: Concord typo/truncation dups surfaced during senior review.
+# 70830 "Concord Pacifid" is an empty-phantom misspelling of "Concord Pacific"
+# (survivor 54464 "Concord Pacific Development Corp.", Deltek-linked, 5 KOR proj /
+# 34 MPI roles). 42241 "...LT" is a truncation dup of 42085 "...LTD" (Concord
+# Excavating & Contracting; both thin GC). Fuzzy gate rejects on pacific/pacifid
+# and lt/ltd spelling. Concordia University / Concord Green / Concord Security
+# are distinct and deliberately excluded.
+70830,54464,concord pacifid typo -> concord pacific
+42241,42085,concord excavating LT truncation -> LTD
