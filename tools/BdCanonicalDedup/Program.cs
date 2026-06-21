@@ -146,6 +146,11 @@ internal static class Program
             await using var con = new SqlConnection(options.OpportunitiesDb);
             await con.OpenAsync().ConfigureAwait(false);
 
+            if (options.Commit)
+            {
+                await AcquireSessionAppLockAsync(con).ConfigureAwait(false);
+            }
+
             var schema = await VerifySchemaAsync(con).ConfigureAwait(false);
             var beforeCount = await CountCanonicalOrgsAsync(con).ConfigureAwait(false);
 
@@ -155,6 +160,7 @@ internal static class Program
             }
 
             var orgs = await LoadOrgsAsync(con).ConfigureAwait(false);
+            WriteAllowlistValidationReport(options, orgs);
             var groups = BuildGroups(orgs, options.MergeDba);
             var plans = BuildPlans(groups).ToList();
 
@@ -239,27 +245,61 @@ internal static class Program
     // tool committed unchallenged; now every --pairs row must clear a
     // fuzzy-name match (or be allowlisted) before commit.
 
-    private static readonly HashSet<(long Loser, long Survivor)> _allowlistCache = LoadDedupAllowlist();
+    private static readonly IReadOnlyList<AllowlistEntry> _allowlistEntries = LoadDedupAllowlistEntries();
+    private static readonly HashSet<(long Loser, long Survivor)> _allowlistCache =
+        _allowlistEntries.Select(e => (e.LoserId, e.SurvivorId)).ToHashSet();
 
     private static bool IsAllowlistedNonSimilar(long loserId, long survivorId)
         => _allowlistCache.Contains((loserId, survivorId));
 
-    private static HashSet<(long, long)> LoadDedupAllowlist()
+    private static IReadOnlyList<AllowlistEntry> LoadDedupAllowlistEntries()
     {
-        var path = Path.Combine(Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? ".", "dedup-non-similar-allowlist.csv");
-        var set = new HashSet<(long, long)>();
-        if (!File.Exists(path)) return set;
-        foreach (var line in File.ReadAllLines(path))
+        var toolDir = Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? ".";
+        var entries = new List<AllowlistEntry>();
+        LoadDedupAllowlistFile(
+            Path.Combine(toolDir, "dedup-non-similar-allowlist.csv"),
+            "legacy",
+            entries);
+
+        var campaignDir = Path.Combine(toolDir, "dedup-non-similar-allowlist.d");
+        if (Directory.Exists(campaignDir))
         {
-            var parts = line.Split(',');
-            if (parts.Length < 2) continue;
-            if (long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var l)
-                && long.TryParse(parts[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s))
+            foreach (var path in Directory.EnumerateFiles(campaignDir, "*.csv").OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
             {
-                set.Add((l, s));
+                LoadDedupAllowlistFile(path, Path.GetFileNameWithoutExtension(path), entries);
             }
         }
-        return set;
+
+        return entries;
+    }
+
+    private static void LoadDedupAllowlistFile(string path, string campaign, List<AllowlistEntry> entries)
+    {
+        if (!File.Exists(path)) return;
+        foreach (var line in File.ReadAllLines(path))
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var parts = line.Split(',');
+            if (parts.Length < 2
+                || !long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var loserId)
+                || !long.TryParse(parts[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var survivorId))
+            {
+                continue;
+            }
+
+            entries.Add(new AllowlistEntry(
+                LoserId: loserId,
+                SurvivorId: survivorId,
+                Campaign: campaign,
+                Reason: parts.Length > 2 ? parts[2].Trim() : "",
+                Reviewer: parts.Length > 3 ? parts[3].Trim() : "",
+                ReviewedAt: parts.Length > 4 ? parts[4].Trim() : "",
+                SourceFile: path));
+        }
     }
 
     private static readonly object _rejectedLock = new();
@@ -295,6 +335,7 @@ internal static class Program
     {
         var lines = await File.ReadAllLinesAsync(options.PairsFile!).ConfigureAwait(false);
         var orgs = await LoadOrgsAsync(con).ConfigureAwait(false);
+        WriteAllowlistValidationReport(options, orgs);
         var byId = orgs.ToDictionary(o => o.Id);
         var summary = new MergeSummary { RowsBefore = beforeCount };
 
@@ -737,6 +778,7 @@ ORDER BY co.Id;";
         try
         {
             await ExecuteNonQueryAsync(con, tx, "SET XACT_ABORT ON;").ConfigureAwait(false);
+            await AcquireTransactionAppLockAsync(con, tx).ConfigureAwait(false);
             await CreateLosersTempTableAsync(con, tx, group.Losers).ConfigureAwait(false);
             await UpdateSurvivorAsync(con, tx, group.Survivor.Id, group.BestKind).ConfigureAwait(false);
 
@@ -771,6 +813,31 @@ ORDER BY co.Id;";
         {
             await tx.RollbackAsync().ConfigureAwait(false);
             throw;
+        }
+    }
+
+    private static async Task AcquireSessionAppLockAsync(SqlConnection con)
+    {
+        await using var cmd = new SqlCommand(
+            "DECLARE @r int; EXEC @r = sys.sp_getapplock @Resource=N'BdCanonicalDedup.MergePlanning', @LockMode=N'Exclusive', @LockOwner=N'Session', @LockTimeout=0; SELECT @r;",
+            con);
+        var result = Convert.ToInt32(await cmd.ExecuteScalarAsync().ConfigureAwait(false), CultureInfo.InvariantCulture);
+        if (result < 0)
+        {
+            throw new InvalidOperationException("Another BdCanonicalDedup commit run already holds the merge-planning lock.");
+        }
+    }
+
+    private static async Task AcquireTransactionAppLockAsync(SqlConnection con, SqlTransaction tx)
+    {
+        await using var cmd = new SqlCommand(
+            "DECLARE @r int; EXEC @r = sys.sp_getapplock @Resource=N'BdCanonicalDedup.MergeCommit', @LockMode=N'Exclusive', @LockOwner=N'Transaction', @LockTimeout=0; SELECT @r;",
+            con,
+            tx);
+        var result = Convert.ToInt32(await cmd.ExecuteScalarAsync().ConfigureAwait(false), CultureInfo.InvariantCulture);
+        if (result < 0)
+        {
+            throw new InvalidOperationException("Another BdCanonicalDedup merge transaction already holds the commit lock.");
         }
     }
 
@@ -1214,6 +1281,59 @@ JOIN #Losers l ON l.Id = co.Id;";
         File.WriteAllLines(path, lines, Encoding.UTF8);
     }
 
+    private static void WriteAllowlistValidationReport(ImportOptions options, IReadOnlyList<OrgRow> orgs)
+    {
+        if (_allowlistEntries.Count == 0)
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(options.OutputDirectory);
+        var path = Path.Combine(options.OutputDirectory, "allowlist-validation-report.csv");
+        var byId = orgs.ToDictionary(o => o.Id);
+        var validatedAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+        var lines = new List<string>(_allowlistEntries.Count + 1)
+        {
+            "Campaign,LoserId,LoserName,LoserDeltekId,LoserLiveChildCount,SurvivorId,SurvivorName,SurvivorDeltekId,SurvivorLiveChildCount,Reason,Reviewer,ReviewedAt,SourceFile,ValidatedAtUtc,Status",
+        };
+
+        foreach (var entry in _allowlistEntries
+                     .OrderBy(e => e.Campaign, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(e => e.LoserId)
+                     .ThenBy(e => e.SurvivorId))
+        {
+            byId.TryGetValue(entry.LoserId, out var loser);
+            byId.TryGetValue(entry.SurvivorId, out var survivor);
+            var status = loser is null && survivor is null
+                ? "LoserAndSurvivorMissingOrRetired"
+                : loser is null
+                    ? "LoserMissingOrRetired"
+                    : survivor is null
+                        ? "SurvivorMissingOrRetired"
+                        : "Live";
+
+            lines.Add(string.Join(',',
+                Csv(entry.Campaign),
+                entry.LoserId.ToString(CultureInfo.InvariantCulture),
+                Csv(loser?.DisplayName ?? ""),
+                Csv(loser?.ClendorClientId ?? ""),
+                (loser?.FkRefCount ?? 0).ToString(CultureInfo.InvariantCulture),
+                entry.SurvivorId.ToString(CultureInfo.InvariantCulture),
+                Csv(survivor?.DisplayName ?? ""),
+                Csv(survivor?.ClendorClientId ?? ""),
+                (survivor?.FkRefCount ?? 0).ToString(CultureInfo.InvariantCulture),
+                Csv(entry.Reason),
+                Csv(entry.Reviewer),
+                Csv(entry.ReviewedAt),
+                Csv(entry.SourceFile),
+                validatedAt,
+                status));
+        }
+
+        File.WriteAllLines(path, lines, Encoding.UTF8);
+        Console.WriteLine($"Allowlist validation report written: {path}");
+    }
+
     private static string Csv(string value)
     {
         if (!value.Contains(',') && !value.Contains('"') && !value.Contains('\n') && !value.Contains('\r'))
@@ -1388,6 +1508,14 @@ JOIN #Losers l ON l.Id = co.Id;";
 
     private sealed record SchemaInfo(bool NewsMentionTypeKeyExists);
     private sealed record FkTarget(string Table, string Column);
+    private sealed record AllowlistEntry(
+        long LoserId,
+        long SurvivorId,
+        string Campaign,
+        string Reason,
+        string Reviewer,
+        string ReviewedAt,
+        string SourceFile);
     private sealed record GroupKey(string Value, bool IsDba);
     private sealed record OrgRow(
         long Id,

@@ -89,6 +89,24 @@ WHERE OpportunityId = @oppId;";
 
     public async Task<CrmEngagement> InsertAsync(CrmEngagement engagement, string actorDisplay, CancellationToken ct)
     {
+        var hasBdTrackingNaturalKey = engagement.OpportunityId is null
+            && engagement.BuyerCanonicalOrgId is not null
+            && !string.IsNullOrWhiteSpace(engagement.OwnerStaffId)
+            && !string.IsNullOrWhiteSpace(engagement.Region);
+
+        if (hasBdTrackingNaturalKey)
+        {
+            var existing = await GetByBdTrackingNaturalKeyAsync(
+                engagement.BuyerCanonicalOrgId.Value,
+                engagement.OwnerStaffId,
+                engagement.Region,
+                ct).ConfigureAwait(false);
+            if (existing is not null)
+            {
+                return existing;
+            }
+        }
+
         var sql = $@"
 INSERT INTO opportunities.CrmEngagements
     (OpportunityId, Stage, OwnerStaffId, AssignedStaffIds,
@@ -115,13 +133,59 @@ VALUES
         BindEngagementParams(cmd, engagement);
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
 
-        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+        SqlDataReader reader;
+        try
         {
-            throw new InvalidOperationException("INSERT did not return a row.");
+            reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        }
+        catch (SqlException ex) when (hasBdTrackingNaturalKey && ex.Number is 2601 or 2627)
+        {
+            var existing = await GetByBdTrackingNaturalKeyAsync(
+                engagement.BuyerCanonicalOrgId!.Value,
+                engagement.OwnerStaffId!,
+                engagement.Region!,
+                ct).ConfigureAwait(false);
+            if (existing is not null)
+            {
+                return existing;
+            }
+
+            throw;
         }
 
-        return MapReader(reader);
+        await using (reader)
+        {
+            if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                throw new InvalidOperationException("INSERT did not return a row.");
+            }
+
+            return MapReader(reader);
+        }
+    }
+
+    private async Task<CrmEngagement?> GetByBdTrackingNaturalKeyAsync(
+        long buyerCanonicalOrgId,
+        string ownerStaffId,
+        string region,
+        CancellationToken ct)
+    {
+        var sql = $@"
+SELECT {AllColumns}
+FROM opportunities.CrmEngagements WITH (UPDLOCK, HOLDLOCK)
+WHERE OpportunityId IS NULL
+  AND BuyerCanonicalOrgId = @buyerCanonicalOrgId
+  AND OwnerStaffId = @ownerStaffId
+  AND Region = @region;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@buyerCanonicalOrgId", SqlDbType.BigInt).Value = buyerCanonicalOrgId;
+        cmd.Parameters.Add("@ownerStaffId", SqlDbType.NVarChar, 20).Value = ownerStaffId;
+        cmd.Parameters.Add("@region", SqlDbType.NVarChar, 40).Value = region;
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        return await reader.ReadAsync(ct).ConfigureAwait(false) ? MapReader(reader) : null;
     }
 
     public async Task<CrmEngagement> UpdateAsync(CrmEngagement engagement, string actorDisplay, CancellationToken ct)

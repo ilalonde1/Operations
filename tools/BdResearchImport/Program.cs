@@ -6298,7 +6298,7 @@ ORDER BY Id;";
             // (preserving their existing Kind), so this default only affects
             // truly new firms — the next data-honing pass reclassifies them
             // based on actual research.
-            var buyerId = await ResolveAsync(resolver, options, stats, company, OrgKinds.Unknown, "BdTracking.Company", ct).ConfigureAwait(false);
+            var buyerId = await ResolveAsync(resolver, options, stats, LeadOperator(company), OrgKinds.Unknown, "BdTracking.Company", ct).ConfigureAwait(false);
             if (buyerId is null && !options.DryRun)
             {
                 unresolvedCompanies.Add(company);

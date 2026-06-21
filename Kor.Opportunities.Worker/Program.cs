@@ -847,9 +847,9 @@ builder.Services.AddQuartz(q =>
            cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
   });
 
-  // Round 46: weekly canonical-org dedup. Catches the ~25-30 dup groups the
-  // live ingest sources produce per week. Only the safe canonical-name pass
-  // runs here — honing-pass / --pairs / DBA merges stay manual (need curation).
+  // CanonicalOrgDedupJob is retired/no-op. Keep the registration only so any
+  // legacy trigger fires a visible skip message; real merges run through the
+  // supervised tools/BdCanonicalDedup CLI.
   var canonicalDedupKey = new JobKey("CanonicalOrgDedupJob");
   q.AddJob<Kor.Opportunities.Worker.Services.CanonicalOrgDedupJob>(opts => opts.WithIdentity(canonicalDedupKey));
 

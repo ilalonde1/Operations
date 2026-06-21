@@ -467,6 +467,11 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
         var unitsText = Read(row, sourceConfig, "unitsColumn", "units", "proposed_units", "dwelling_units", "number_of_units", "residential_units");
         var storiesText = Read(row, sourceConfig, "storiesColumn", "stories", "proposed_stories", "number_of_stories");
         var stage = FirstNonBlank(Read(row, sourceConfig, "stageColumn", "status", "permit_status", "application_status"), "Permit filing");
+        if (IsTerminalPermitStage(stage))
+        {
+            return null;
+        }
+
         var sourceUrl = FirstNonBlank(Read(row, sourceConfig, "sourceUrlColumn", "url", "link", "record_url"), source.BaseUrl);
         var valuation = ParseMoney(valuationText);
         var units = ParseInt(unitsText, 0);
@@ -831,6 +836,33 @@ Found:
         var lower = value.ToLowerInvariant();
         return Regex.IsMatch(lower, @"\b(apartment|apartments|multifamily|multi-family|condo|condominium|residential|dwelling|mixed[- ]use|hotel|commercial|office|retail|school|hospital|medical)\b")
             && !Regex.IsMatch(lower, @"\b(road|bridge|highway|utility|utilities|trail|pipeline|sewer|water main|transmission|substation)\b");
+    }
+
+    private static bool IsTerminalPermitStage(string? stage)
+    {
+        var normalized = NormalizePermitStage(stage);
+        return normalized is "complete"
+            or "withdrawn"
+            or "expired"
+            or "cancelled"
+            or "canceled"
+            or "disapproved"
+            or "suspend"
+            or "suspended"
+            or "closed"
+            or "void";
+    }
+
+    private static string NormalizePermitStage(string? stage)
+    {
+        if (string.IsNullOrWhiteSpace(stage))
+        {
+            return string.Empty;
+        }
+
+        var normalized = Regex.Replace(stage.Trim().ToLowerInvariant(), @"[\s_\-]+", " ");
+        normalized = Regex.Replace(normalized, @"[^a-z ]", string.Empty).Trim();
+        return normalized;
     }
 
     private static decimal? ParseMoney(string? value)
