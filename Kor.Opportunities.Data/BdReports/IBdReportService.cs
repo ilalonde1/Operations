@@ -77,6 +77,12 @@ public interface IBdReportService
     Task<IReadOnlyList<PursuitDossierRow>> GetPursuitDossiersAsync(CancellationToken ct);
 
     /// <summary>
+    /// Upcoming industry award programs KOR could enter for recognition,
+    /// separate from contract-award/bid-result intelligence.
+    /// </summary>
+    Task<IReadOnlyList<AwardProgramReportRow>> GetUpcomingAwardProgramsAsync(int take, CancellationToken ct);
+
+    /// <summary>
     /// READ-ONLY action-tracking rollup: IntelAction counts by Status ×
     /// ActionType plus the most recent open actions (on active orgs). Status
     /// writes go through IntelPersistenceService.SetActionStatusAsync in the

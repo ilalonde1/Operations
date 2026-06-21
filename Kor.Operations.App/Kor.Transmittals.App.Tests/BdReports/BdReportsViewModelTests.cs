@@ -77,6 +77,16 @@ public sealed class BdReportsViewModelTests
                     null, null, false, null, null),
             });
 
+        public Task<IReadOnlyList<AwardProgramReportRow>> GetUpcomingAwardProgramsAsync(int take, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<AwardProgramReportRow>>(new[]
+            {
+                new AwardProgramReportRow(
+                    1, "ACEC-BC", "Awards for Engineering Excellence", 2026,
+                    "Buildings", "Engineering", "BC", "BC consulting engineering projects.",
+                    new DateOnly(2026, 9, 30), "$500", "https://example.test/awards", 6585,
+                    "Plant and Animal Health Centre"),
+            });
+
         public Task<BdActionRollup> GetActionRollupAsync(int topOpen, CancellationToken ct)
             => Task.FromResult(new BdActionRollup(
                 new[] { new BdActionStatusCount("Open", "PursuitAngle", 3) },

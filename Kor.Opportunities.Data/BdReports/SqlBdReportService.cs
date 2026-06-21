@@ -610,6 +610,77 @@ WHERE m.RetiredAtUtc IS NULL
             .ToList();
     }
 
+    public async Task<IReadOnlyList<AwardProgramReportRow>> GetUpcomingAwardProgramsAsync(int take, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (@take)
+    ap.Id,
+    ap.AwardingBody,
+    ap.ProgramName,
+    ap.CycleYear,
+    ap.Category,
+    ap.Discipline,
+    ap.Region,
+    ap.EligibilitySummary,
+    ap.SubmissionDeadline,
+    ap.EntryFee,
+    ap.Url,
+    projectMatch.MpiId,
+    projectMatch.ProjectName
+FROM opportunities.AwardProgram ap
+OUTER APPLY (
+    SELECT TOP 1 m.Id AS MpiId, m.ProjectName
+    FROM opportunities.MajorProjectsInventory m
+    WHERE m.RetiredAtUtc IS NULL
+      AND (
+          ap.Region IS NULL
+          OR ap.Region IN (N'Canada', N'International', N'NorthAmerica', N'US')
+          OR (ap.Region = N'BC' AND m.Province = N'BC')
+          OR (ap.Region = N'CA' AND m.Province = N'CA')
+      )
+      AND (
+          ap.Discipline IS NULL
+          OR ap.Discipline IN (N'Mixed', N'Engineering', N'Structural')
+          OR (ap.Discipline = N'Architecture' AND (m.ArchitectCanonicalOrgId IS NOT NULL OR m.Sector LIKE N'%Residential%' OR m.Sector LIKE N'%Institutional%'))
+          OR (ap.Discipline = N'UrbanDesign' AND (m.Sector LIKE N'%Residential%' OR m.Sector LIKE N'%Mixed%'))
+          OR (ap.Discipline = N'Sustainability' AND (m.ProjectDescription LIKE N'%sustain%' OR m.ProjectDescription LIKE N'%mass timber%' OR m.GreenBuildingInd = 1))
+      )
+    ORDER BY m.UpdatedAtUtc DESC, m.Id DESC
+) projectMatch
+WHERE ap.RetiredAtUtc IS NULL
+  AND (ap.SubmissionDeadline IS NULL OR ap.SubmissionDeadline >= CONVERT(date, sysdatetimeoffset()))
+ORDER BY CASE WHEN ap.SubmissionDeadline IS NULL THEN 1 ELSE 0 END,
+         ap.SubmissionDeadline,
+         ap.AwardingBody,
+         ap.ProgramName;";
+
+        var rows = new List<AwardProgramReportRow>();
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@take", System.Data.SqlDbType.Int).Value = Math.Max(1, take);
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            rows.Add(new AwardProgramReportRow(
+                reader.GetInt64(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.IsDBNull(3) ? null : reader.GetInt32(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4),
+                reader.IsDBNull(5) ? null : reader.GetString(5),
+                reader.IsDBNull(6) ? null : reader.GetString(6),
+                reader.IsDBNull(7) ? null : reader.GetString(7),
+                reader.IsDBNull(8) ? null : DateOnly.FromDateTime(reader.GetDateTime(8)),
+                reader.IsDBNull(9) ? null : reader.GetString(9),
+                reader.IsDBNull(10) ? null : reader.GetString(10),
+                reader.IsDBNull(11) ? null : reader.GetInt64(11),
+                reader.IsDBNull(12) ? null : reader.GetString(12)));
+        }
+
+        return rows;
+    }
+
     public async Task<BdActionRollup> GetActionRollupAsync(int topOpen, CancellationToken ct)
     {
         const string countsSql = @"

@@ -168,6 +168,9 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.BcB
 builder.Services.AddSingleton<BdResearchExecutorService>();
 builder.Services.AddSingleton<IResearchExecutorService, AnthropicResearchExecutorService>();
 builder.Services.AddSingleton<IResearchPromptCatalog, FileSystemResearchPromptCatalog>();
+builder.Services.AddSingleton<IAwardProgramResearchPromptCatalog, FileSystemAwardProgramResearchPromptCatalog>();
+builder.Services.AddSingleton<Kor.Opportunities.Data.AwardPrograms.IAwardProgramStore>(sp =>
+    new Kor.Opportunities.Data.AwardPrograms.SqlAwardProgramStore(Cs(sp)));
 builder.Services.AddSingleton<IProjectIntelExtractor, ProjectBriefExtractor>();
 builder.Services.AddSingleton<IProjectIntelExtractor, ProjectBriefHoningExtractor>();
 builder.Services.AddSingleton<DefaultProjectIntelExtractor>();
@@ -1005,6 +1008,22 @@ builder.Services.AddQuartz(q =>
       t.ForJob(korPursuitDeltekSyncKey)
        .WithIdentity("KorPursuitDeltekSyncTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  var awardProgramFinderKey = new JobKey("AwardProgramFinderJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.AwardProgramFinderJob>(opts => opts.WithIdentity(awardProgramFinderKey));
+
+  q.AddTrigger(t =>
+  {
+      // Weekly recognition-awards catalog refresh. Self-throttles by freshness
+      // so manual re-fires do not spend tokens unnecessarily.
+      var cron = builder.Configuration["AwardProgramFinderCronSchedule"] ?? "0 0 5 ? * MON";
+      t.ForJob(awardProgramFinderKey)
+       .WithIdentity("AwardProgramFinderTrigger")
+       .WithCronSchedule(
+           cron,
+           cb => cb.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"))
+                   .WithMisfireHandlingInstructionFireAndProceed());
   });
 
   var abMajorProjectsInventoryKey = new JobKey("AbMajorProjectsInventoryJob");

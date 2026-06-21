@@ -102,6 +102,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         new AnalyticalReportVm("strategic-relationships", "Strategic Relationships", "Ten compounding targets with contacts and 12-month plans."),
         new AnalyticalReportVm("prime-consultant", "Prime Consultants", "Who leads each pursuit team — approach before the RFP issues."),
         new AnalyticalReportVm("pursuit-dossier", "Pursuit Dossiers", "Every live pursuit with its resolved team graph — architect route-in, incumbent SE, gaps."),
+        new AnalyticalReportVm("awards", "Awards", "Upcoming AEC industry award programs KOR could enter for recognition."),
     };
 
     private AnalyticalReportVm? _selectedAnalytical;
@@ -121,6 +122,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         "strategic-relationships" => BuildStrategicRelationshipsPreviewAsync(ct),
         "prime-consultant" => BuildPrimeConsultantPreviewAsync(ct),
         "pursuit-dossier" => BuildPursuitDossierPreviewAsync(ct),
+        "awards" => BuildAwardsPreviewAsync(ct),
         _ => Task.FromResult<string?>(null),
     };
 
@@ -649,6 +651,58 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         {
             // Only the newest generation owns the busy flag — a superseded
             // build finishing late must not flip it off mid-generation.
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
+            OnPropertyChanged(nameof(CanExportDocx));
+        }
+    }
+
+    public async Task<string?> BuildAwardsPreviewAsync(CancellationToken ct)
+    {
+        var generation = ++_generationSeq;
+        IsBusy = true;
+        StatusMessage = "Generating awards finder report...";
+        try
+        {
+            var awards = await _reportService.GetUpcomingAwardProgramsAsync(80, ct).ConfigureAwait(true);
+
+            var document = AwardProgramsReportGenerator.Build(awards, DateTimeOffset.UtcNow);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
+            _currentDocument = document;
+            _currentDocumentKey = "awards";
+            _currentRecordCount = awards.Count;
+            SelectedSector = null;
+            PreviewHtml = HtmlPreviewBuilder.Render(document);
+
+            LogGenerateBestEffort("html");
+            StatusMessage = $"Awards finder: {awards.Count} upcoming programs, {awards.Count(a => a.SubmissionDeadline is not null)} with posted deadlines.";
+            return PreviewHtml;
+        }
+        catch (OperationCanceledException)
+        {
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "BD Reports: awards finder generation failed.");
+            StatusMessage = $"Generation failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
             if (generation == _generationSeq)
             {
                 IsBusy = false;

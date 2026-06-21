@@ -172,6 +172,22 @@ public sealed record PrimeConsultantRow(
     public bool HasPrime => !string.IsNullOrWhiteSpace(PrimeFirm);
 }
 
+/// <summary>One active industry award program KOR could consider entering.</summary>
+public sealed record AwardProgramReportRow(
+    long Id,
+    string AwardingBody,
+    string ProgramName,
+    int? CycleYear,
+    string? Category,
+    string? Discipline,
+    string? Region,
+    string? EligibilitySummary,
+    DateOnly? SubmissionDeadline,
+    string? EntryFee,
+    string? Url,
+    long? MatchMpiId,
+    string? MatchProjectName);
+
 /// <summary>
 /// One PURSUE/PURSUE_URGENT pursuit hydrated with its resolved org-graph
 /// edges (the -PursuitGaps campaign payoff: research once, edges forever).

@@ -107,6 +107,13 @@ public sealed class OpportunitiesWorkerOptions
     /// </summary>
     public int AwardAgentEnrichmentTotalCap { get; set; } = 5000;
 
+    // Industry award-program discovery (recognition competitions KOR can enter;
+    // separate from the retired contract-award agent enrichment path).
+    public bool AwardProgramFinderEnabled { get; set; } = true;
+    public string? AwardProgramFinderCronSchedule { get; set; }
+    public int AwardProgramFinderFreshnessDays { get; set; } = 6;
+    public int AwardProgramFinderMaxRowsPerRun { get; set; } = 40;
+
     /// <summary>Azure AD tenant for GraphEmail polling. Empty disables the provider.</summary>
     public string GraphEmailTenantId { get; init; } = "";
 

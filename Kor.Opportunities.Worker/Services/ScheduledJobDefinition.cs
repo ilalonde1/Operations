@@ -32,6 +32,7 @@ internal static class ScheduledJobDefinitions
         new(nameof(DataHealthAuditJob), "DataHealthAuditCronSchedule", "0 0 7 ? * SUN", o => o.DataHealthAuditEnabled, "Audit"),
         new(nameof(CanonicalOrgKorProjectSignalRefreshJob), "CanonicalOrgKorProjectSignalRefreshCronSchedule", "0 0 5 * * ?", o => o.CanonicalOrgKorProjectSignalRefreshEnabled, "Enrichment"),
         new(nameof(KorPursuitDeltekSyncJob), "KorPursuitDeltekSyncCronSchedule", "0 30 5 * * ?", o => o.KorPursuitDeltekSyncEnabled, "Sync"),
+        new(nameof(AwardProgramFinderJob), "AwardProgramFinderCronSchedule", "0 0 5 ? * MON", o => o.AwardProgramFinderEnabled, "Ingestion"),
         new(nameof(AbMajorProjectsInventoryJob), "AbMajorProjectsInventoryCronSchedule", "0 30 3 ? * SUN", _ => true, "Ingestion"),
         new(nameof(BcMajorProjectsInventoryJob), "BcMajorProjectsInventoryCronSchedule", "0 0 4 ? * SUN", _ => true, "Ingestion"),
         new(nameof(CaMajorProjectsInventoryJob), "CaMajorProjectsInventoryCronSchedule", "0 30 4 ? * SUN", _ => true, "Ingestion"),
