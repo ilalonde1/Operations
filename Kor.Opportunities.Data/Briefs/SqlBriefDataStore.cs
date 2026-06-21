@@ -779,7 +779,10 @@ SELECT TOP 1
     CASE
         WHEN prefix.IsPrefix = 1
          AND prefix.MinLen >= 6
-         AND EXISTS (SELECT 1 FROM CorporateToken ct WHERE prefix.Remainder LIKE ct.Token + N'%')
+         AND (
+             displayPrefix.WholeWordPrefix = 1
+             OR EXISTS (SELECT 1 FROM CorporateToken ct WHERE prefix.Remainder LIKE ct.Token + N'%')
+         )
         THEN 1 ELSE 0
     END AS RedirectSafe
 FROM opportunities.CanonicalOrg t
@@ -796,6 +799,18 @@ CROSS APPLY (SELECT
         WHEN t.NormalizedName LIKE r.NormalizedName + N'%' THEN SUBSTRING(t.NormalizedName, LEN(r.NormalizedName) + 1, 4000)
         ELSE N''
     END) prefix
+CROSS APPLY (SELECT
+    TDisplay = LOWER(LTRIM(RTRIM(t.DisplayName))),
+    RDisplay = LOWER(LTRIM(RTRIM(r.DisplayName)))) displayBase
+CROSS APPLY (SELECT
+    ShortDisplay = CASE WHEN LEN(displayBase.TDisplay) <= LEN(displayBase.RDisplay) THEN displayBase.TDisplay ELSE displayBase.RDisplay END,
+    LongDisplay = CASE WHEN LEN(displayBase.TDisplay) <= LEN(displayBase.RDisplay) THEN displayBase.RDisplay ELSE displayBase.TDisplay END) displayNames
+CROSS APPLY (SELECT
+    WholeWordPrefix = CASE
+        WHEN LEN(displayNames.ShortDisplay) < LEN(displayNames.LongDisplay)
+         AND LEFT(displayNames.LongDisplay, LEN(displayNames.ShortDisplay) + 1) = displayNames.ShortDisplay + N' '
+        THEN 1 ELSE 0
+    END) displayPrefix
 OUTER APPLY (
     SELECT TOP 1 Token
     FROM CorporateToken ct
