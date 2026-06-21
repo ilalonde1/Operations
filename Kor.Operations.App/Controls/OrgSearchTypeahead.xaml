@@ -33,6 +33,7 @@
                 <ListBox x:Name="ResultsList"
                          BorderThickness="0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         PreviewMouseLeftButtonUp="ResultsList_PreviewMouseLeftButtonUp"
                          MouseDoubleClick="ResultsList_MouseDoubleClick"
                          KeyDown="ResultsList_KeyDown">
                     <ListBox.ItemTemplate>

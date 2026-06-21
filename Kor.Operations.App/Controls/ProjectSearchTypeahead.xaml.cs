@@ -3,8 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Kor.Opportunities.Data.Briefs;
 
@@ -129,6 +131,21 @@ public partial class ProjectSearchTypeahead : UserControl
     {
         SelectCurrent();
         e.Handled = true;
+    }
+
+    private void ResultsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var current = e.OriginalSource as DependencyObject;
+        while (current is not null)
+        {
+            if (current is ListBoxItem)
+            {
+                SelectCurrent();
+                return;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
     }
 
     private void SelectCurrent()
