@@ -214,7 +214,12 @@ SELECT COALESCE((SELECT TOP (1) Id FROM @inserted), CONVERT(bigint, 0));";
             try
             {
                 var awardingId = await _canonicalResolver.ResolveBuyerAsync(a.AwardingOrganization, ct).ConfigureAwait(false);
-                var awardedToId = await _canonicalResolver.ResolveVendorAsync(a.AwardedToOrganization, ct).ConfigureAwait(false);
+                var awardedToId = await _canonicalResolver.ResolveAsync(
+                    a.AwardedToOrganization,
+                    OrgKinds.Vendor,
+                    OrgAliasSources.OpportunityAwardsAwardedTo,
+                    ct,
+                    createArchived: true).ConfigureAwait(false);
                 if (awardingId.HasValue || awardedToId.HasValue)
                 {
                     await using var con2 = new SqlConnection(_connectionString);

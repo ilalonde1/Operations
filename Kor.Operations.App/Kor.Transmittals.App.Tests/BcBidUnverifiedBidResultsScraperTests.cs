@@ -167,6 +167,9 @@ public sealed class BcBidUnverifiedBidResultsScraperTests
         public Task<bool> UnretireAsync(long canonicalOrgId, string reason, CancellationToken ct)
             => Task.FromResult(false);
 
+        public Task MarkRetiredOnIntakeAsync(long canonicalOrgId, string reason, CancellationToken ct)
+            => Task.CompletedTask;
+
         public Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)
             => Task.FromResult<long?>(null);
 

@@ -518,7 +518,8 @@ public sealed class BcBidUnverifiedBidResultsScraper
                     "BcBidUnverified.Bidder",
                     ct,
                     allowCreate: true,
-                    minConfidenceForCreate: 70)
+                    minConfidenceForCreate: 70,
+                    createArchived: true)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)

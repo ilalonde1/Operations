@@ -106,6 +106,68 @@ WHERE RetiredAtUtc IS NULL
   AND EndDate IS NOT NULL
   AND EndDate < CAST(SYSDATETIMEOFFSET() AS date);", ct).ConfigureAwait(false);
 
+        var orgsArchived = 0;
+        var orgsResurrected = 0;
+        if (opt.LowValueOrgArchiveEnabled)
+        {
+            orgsArchived = await ExecuteNonQueryAsync(cn, @"
+UPDATE o
+SET RetiredAtUtc = SYSDATETIMEOFFSET(),
+    RetiredReason = N'Low-value auto-archive: isolated commodity vendor; resurrects on any future reference',
+    UpdatedAtUtc = SYSDATETIMEOFFSET()
+FROM opportunities.CanonicalOrg o
+WHERE o.RetiredAtUtc IS NULL
+  AND o.Kind IN (N'Vendor', N'Subcontractor')
+  AND o.ClendorClientId IS NULL
+  AND NOT EXISTS (
+      SELECT 1
+      FROM opportunities.MajorProjectsInventory m
+      WHERE m.RetiredAtUtc IS NULL
+        AND (m.ProponentCanonicalOrgId = o.Id
+          OR m.ArchitectCanonicalOrgId = o.Id
+          OR m.StructuralEngineerCanonicalOrgId = o.Id
+          OR m.GeneralContractorCanonicalOrgId = o.Id))
+  AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.BuyerCanonicalOrgId = o.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.IntelSignal s WHERE s.CanonicalOrgId = o.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId = o.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.IntelNarrative n WHERE n.CanonicalOrgId = o.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.IntelWork w WHERE w.CanonicalOrgId = o.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.IntelAction a WHERE a.CanonicalOrgId = o.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.OpportunityInterestedFirms f WHERE f.ResolvedCanonicalOrgId = o.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.Opportunities op WHERE op.BuyerCanonicalOrgId = o.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.NewsArticleOrgMention nm WHERE nm.CanonicalOrgId = o.Id);",
+                ct,
+                commandTimeoutSeconds: 300).ConfigureAwait(false);
+
+            orgsResurrected = await ExecuteNonQueryAsync(cn, @"
+UPDATE o
+SET RetiredAtUtc = NULL,
+    RetiredReason = NULL,
+    UpdatedAtUtc = SYSDATETIMEOFFSET()
+FROM opportunities.CanonicalOrg o
+WHERE o.RetiredReason LIKE N'Low-value auto-archive%'
+  AND (
+       EXISTS (
+           SELECT 1
+           FROM opportunities.MajorProjectsInventory m
+           WHERE m.RetiredAtUtc IS NULL
+             AND (m.ProponentCanonicalOrgId = o.Id
+               OR m.ArchitectCanonicalOrgId = o.Id
+               OR m.StructuralEngineerCanonicalOrgId = o.Id
+               OR m.GeneralContractorCanonicalOrgId = o.Id))
+    OR EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.BuyerCanonicalOrgId = o.Id)
+    OR EXISTS (SELECT 1 FROM opportunities.IntelSignal s WHERE s.CanonicalOrgId = o.Id)
+    OR EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId = o.Id)
+    OR EXISTS (SELECT 1 FROM opportunities.IntelNarrative n WHERE n.CanonicalOrgId = o.Id)
+    OR EXISTS (SELECT 1 FROM opportunities.IntelWork w WHERE w.CanonicalOrgId = o.Id)
+    OR EXISTS (SELECT 1 FROM opportunities.IntelAction a WHERE a.CanonicalOrgId = o.Id)
+    OR EXISTS (SELECT 1 FROM opportunities.OpportunityInterestedFirms f WHERE f.ResolvedCanonicalOrgId = o.Id)
+    OR EXISTS (SELECT 1 FROM opportunities.Opportunities op WHERE op.BuyerCanonicalOrgId = o.Id)
+    OR EXISTS (SELECT 1 FROM opportunities.NewsArticleOrgMention nm WHERE nm.CanonicalOrgId = o.Id));",
+                ct,
+                commandTimeoutSeconds: 300).ConfigureAwait(false);
+        }
+
         var projectsStale = await ExecuteScalarIntAsync(cn, @"
 SELECT COUNT_BIG(1)
 FROM opportunities.MajorProjectsInventory
@@ -116,12 +178,14 @@ WHERE RetiredAtUtc IS NULL
         }).ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects retired by completion year={ProjectsRetiredByCompletionYear}; events retired={EventsRetired}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
+            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects retired by completion year={ProjectsRetiredByCompletionYear}; events retired={EventsRetired}; orgs archived={OrgsArchived}; orgs resurrected={OrgsResurrected}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
             oppsExpired,
             oppsAgedOut,
             projectsRetired,
             projectsRetiredByCompletionYear,
             eventsRetired,
+            orgsArchived,
+            orgsResurrected,
             projectsStale,
             sw.ElapsedMilliseconds);
     }
@@ -130,10 +194,11 @@ WHERE RetiredAtUtc IS NULL
         SqlConnection cn,
         string sql,
         CancellationToken ct,
-        Action<SqlCommand>? bind = null)
+        Action<SqlCommand>? bind = null,
+        int commandTimeoutSeconds = 120)
     {
         await using var cmd = cn.CreateCommand();
-        cmd.CommandTimeout = 120;
+        cmd.CommandTimeout = commandTimeoutSeconds;
         cmd.CommandText = sql;
         bind?.Invoke(cmd);
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);

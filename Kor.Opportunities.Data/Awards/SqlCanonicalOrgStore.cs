@@ -326,6 +326,23 @@ SELECT Id, WasRetired FROM @unretired;";
         return await r.ReadAsync(ct).ConfigureAwait(false);
     }
 
+    public async Task MarkRetiredOnIntakeAsync(long canonicalOrgId, string reason, CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE opportunities.CanonicalOrg
+SET RetiredAtUtc = sysdatetimeoffset(),
+    RetiredReason = @reason,
+    UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        cmd.Parameters.Add("@reason", SqlDbType.NVarChar, 500).Value = reason;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
     private static bool IsDuplicateKey(SqlException ex)
         => ex.Errors.Cast<SqlError>().Any(e => e.Number is 2601 or 2627);
 

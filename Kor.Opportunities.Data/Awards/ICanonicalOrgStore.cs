@@ -48,6 +48,8 @@ public interface ICanonicalOrgStore
 
     Task<bool> UnretireAsync(long canonicalOrgId, string reason, CancellationToken ct);
 
+    Task MarkRetiredOnIntakeAsync(long canonicalOrgId, string reason, CancellationToken ct);
+
     /// <summary>
     /// Find the first CanonicalOrg whose NormalizedName matches the given
     /// already-normalized value. Returns null if no match.

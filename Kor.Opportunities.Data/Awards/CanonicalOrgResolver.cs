@@ -77,7 +77,8 @@ public sealed class CanonicalOrgResolver
         string source,
         CancellationToken ct,
         bool allowCreate = true,
-        int minConfidenceForCreate = 50)
+        int minConfidenceForCreate = 50,
+        bool createArchived = false)
     {
         if (string.IsNullOrWhiteSpace(rawName)) return null;
         var trimmed = rawName.Trim();
@@ -138,6 +139,14 @@ public sealed class CanonicalOrgResolver
                 website: null,
                 notes: null,
                 ct: ct).ConfigureAwait(false);
+
+            if (createArchived)
+            {
+                await _store.MarkRetiredOnIntakeAsync(
+                    canonicalId.Value,
+                    "Born-archived on intake: orphan procurement vendor; resurrects on any future reference",
+                    ct).ConfigureAwait(false);
+            }
 
             await _store.UpsertAliasAsync(
                 rawName: trimmed,
