@@ -842,6 +842,8 @@ Found:
     {
         var normalized = NormalizePermitStage(stage);
         return normalized is "complete"
+            or "issued"
+            or "inspection followup"
             or "withdrawn"
             or "expired"
             or "cancelled"

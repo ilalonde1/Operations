@@ -96,15 +96,22 @@ UPDATE opportunities.IntelAction
             var works = new MutableCounts();
             var risks = new MutableCounts();
             var narratives = new MutableCounts();
+            var primaryCurrentAffiliationOrgIds = BuildPrimaryCurrentAffiliationOrgIds(drafts.Affiliations);
+            var uniquePersonDraftsByNormalizedName = BuildUniquePersonDraftsByNormalizedName(drafts.People);
 
             foreach (var draft in drafts.People)
             {
-                persons.Add(await MergePersonAsync(con, tx, draft, ctx, ct).ConfigureAwait(false));
+                var normalizedName = IntelNaturalKey.Normalize(draft.DisplayName);
+                primaryCurrentAffiliationOrgIds.TryGetValue(normalizedName, out var primaryCurrentAffiliationOrgId);
+                persons.Add(await MergePersonAsync(con, tx, draft, primaryCurrentAffiliationOrgId, ctx, ct).ConfigureAwait(false));
             }
 
             foreach (var draft in drafts.Affiliations)
             {
-                var personNaturalKey = IntelNaturalKey.Compute(IntelNaturalKey.Normalize(draft.PersonDisplayName));
+                var personNaturalKey = ComputePersonNaturalKeyForAffiliation(
+                    draft,
+                    uniquePersonDraftsByNormalizedName,
+                    primaryCurrentAffiliationOrgIds);
                 var personId = await SelectPersonIdAsync(con, tx, personNaturalKey, ct).ConfigureAwait(false);
                 if (!personId.HasValue)
                 {
@@ -186,6 +193,7 @@ UPDATE opportunities.IntelAction
         SqlConnection con,
         SqlTransaction tx,
         IntelPersonDraft draft,
+        long? primaryCurrentAffiliationOrgId,
         IntelExtractionContext ctx,
         CancellationToken ct)
     {
@@ -234,7 +242,11 @@ SELECT
 FROM @actions;";
 
         var normalizedName = IntelNaturalKey.Normalize(draft.DisplayName);
-        var naturalKey = IntelNaturalKey.Compute(normalizedName);
+        var naturalKey = IntelNaturalKey.ComputePerson(
+            draft.DisplayName,
+            IntelEmail.Sanitize(draft.Email),
+            draft.LinkedinUrl,
+            primaryCurrentAffiliationOrgId);
         return ExecuteMergeAsync(con, tx, sql, cmd =>
         {
             AddCommonParameters(cmd, ctx, draft.Confidence, naturalKey);
@@ -245,6 +257,73 @@ FROM @actions;";
             AddNullableString(cmd, "@linkedinUrl", SqlDbType.NVarChar, 500, draft.LinkedinUrl);
             AddNullableString(cmd, "@notes", SqlDbType.NVarChar, -1, draft.Notes);
         }, ct);
+    }
+
+    private static Dictionary<string, long> BuildPrimaryCurrentAffiliationOrgIds(IReadOnlyList<IntelPersonAffiliationDraft> affiliations)
+    {
+        var result = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var draft in affiliations)
+        {
+            if (!draft.IsCurrent || !IntelPersonNameGuard.IsValid(draft.PersonDisplayName, out _))
+            {
+                continue;
+            }
+
+            var normalizedName = IntelNaturalKey.Normalize(draft.PersonDisplayName);
+            if (normalizedName.Length == 0)
+            {
+                continue;
+            }
+
+            if (!result.TryGetValue(normalizedName, out var existing) || draft.CanonicalOrgId < existing)
+            {
+                result[normalizedName] = draft.CanonicalOrgId;
+            }
+        }
+
+        return result;
+    }
+
+    private static Dictionary<string, IntelPersonDraft?> BuildUniquePersonDraftsByNormalizedName(IReadOnlyList<IntelPersonDraft> people)
+    {
+        var result = new Dictionary<string, IntelPersonDraft?>(StringComparer.Ordinal);
+        foreach (var draft in people)
+        {
+            if (!IntelPersonNameGuard.IsValid(draft.DisplayName, out _))
+            {
+                continue;
+            }
+
+            var normalizedName = IntelNaturalKey.Normalize(draft.DisplayName);
+            if (normalizedName.Length == 0)
+            {
+                continue;
+            }
+
+            result[normalizedName] = result.ContainsKey(normalizedName) ? null : draft;
+        }
+
+        return result;
+    }
+
+    private static string ComputePersonNaturalKeyForAffiliation(
+        IntelPersonAffiliationDraft draft,
+        IReadOnlyDictionary<string, IntelPersonDraft?> uniquePersonDraftsByNormalizedName,
+        IReadOnlyDictionary<string, long> primaryCurrentAffiliationOrgIds)
+    {
+        var normalizedName = IntelNaturalKey.Normalize(draft.PersonDisplayName);
+        var primaryCurrentAffiliationOrgId = primaryCurrentAffiliationOrgIds.TryGetValue(normalizedName, out var orgId)
+            ? orgId
+            : draft.IsCurrent ? draft.CanonicalOrgId : (long?)null;
+
+        uniquePersonDraftsByNormalizedName.TryGetValue(normalizedName, out var personDraft);
+        return personDraft is null
+            ? IntelNaturalKey.ComputePerson(draft.PersonDisplayName, null, null, primaryCurrentAffiliationOrgId)
+            : IntelNaturalKey.ComputePerson(
+                personDraft.DisplayName,
+                IntelEmail.Sanitize(personDraft.Email),
+                personDraft.LinkedinUrl,
+                primaryCurrentAffiliationOrgId);
     }
 
     private static Task<MergeCounts> MergeAffiliationAsync(
