@@ -39,6 +39,7 @@ public sealed class DataRetirementJob : IJob
 
         var staleOppDays = Math.Max(1, opt.StaleOppDays);
         var staleProjectMonths = Math.Max(1, opt.StaleProjectMonths);
+        var telemetryRetentionDays = Math.Max(7, opt.TelemetryRetentionDays);
         var sw = Stopwatch.StartNew();
         var ct = context.CancellationToken;
 
@@ -168,6 +169,28 @@ WHERE o.RetiredReason LIKE N'Low-value auto-archive%'
                 commandTimeoutSeconds: 300).ConfigureAwait(false);
         }
 
+        var ingestionTriggersDeleted = await ExecuteNonQueryAsync(cn, @"
+DELETE FROM opportunities.IngestionTriggers
+WHERE Status IN ('Completed', 'Failed')
+  AND RequestedAtUtc < DATEADD(day, -@days, SYSDATETIMEOFFSET());",
+            ct,
+            cmd => cmd.Parameters.Add("@days", System.Data.SqlDbType.Int).Value = telemetryRetentionDays,
+            commandTimeoutSeconds: 300).ConfigureAwait(false);
+
+        var ingestionRunsDeleted = await ExecuteNonQueryAsync(cn, @"
+DELETE FROM opportunities.IngestionRuns
+WHERE StartedAtUtc < DATEADD(day, -@days, SYSDATETIMEOFFSET());",
+            ct,
+            cmd => cmd.Parameters.Add("@days", System.Data.SqlDbType.Int).Value = telemetryRetentionDays,
+            commandTimeoutSeconds: 300).ConfigureAwait(false);
+
+        var jobRunsDeleted = await ExecuteNonQueryAsync(cn, @"
+DELETE FROM opportunities.JobRuns
+WHERE StartedAtUtc < DATEADD(day, -@days, SYSDATETIMEOFFSET());",
+            ct,
+            cmd => cmd.Parameters.Add("@days", System.Data.SqlDbType.Int).Value = telemetryRetentionDays,
+            commandTimeoutSeconds: 300).ConfigureAwait(false);
+
         var projectsStale = await ExecuteScalarIntAsync(cn, @"
 SELECT COUNT_BIG(1)
 FROM opportunities.MajorProjectsInventory
@@ -178,7 +201,7 @@ WHERE RetiredAtUtc IS NULL
         }).ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects retired by completion year={ProjectsRetiredByCompletionYear}; events retired={EventsRetired}; orgs archived={OrgsArchived}; orgs resurrected={OrgsResurrected}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
+            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects retired by completion year={ProjectsRetiredByCompletionYear}; events retired={EventsRetired}; orgs archived={OrgsArchived}; orgs resurrected={OrgsResurrected}; ingestion triggers deleted={IngestionTriggersDeleted}; ingestion runs deleted={IngestionRunsDeleted}; job runs deleted={JobRunsDeleted}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
             oppsExpired,
             oppsAgedOut,
             projectsRetired,
@@ -186,6 +209,9 @@ WHERE RetiredAtUtc IS NULL
             eventsRetired,
             orgsArchived,
             orgsResurrected,
+            ingestionTriggersDeleted,
+            ingestionRunsDeleted,
+            jobRunsDeleted,
             projectsStale,
             sw.ElapsedMilliseconds);
     }

@@ -190,6 +190,7 @@ public sealed class OpportunitiesWorkerOptions
     public int StaleProjectMonths { get; set; } = 6;
     public string? DataRetirementCronSchedule { get; set; }
     public bool LowValueOrgArchiveEnabled { get; set; } = false;
+    public int TelemetryRetentionDays { get; set; } = 30;
 
     // --- Round 46: weekly canonical-org dedup (auto-merge name-equivalent
     // canonicals introduced by background ingestion). Only the canonical-name
