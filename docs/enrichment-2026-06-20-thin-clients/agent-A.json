@@ -1,0 +1,373 @@
+{
+  "orgs": [
+    {
+      "orgId": 20962,
+      "displayName": "Mondiale Development",
+      "identityConfirmed": true,
+      "website": null,
+      "profileNote": "BC-based real estate developer and general contractor with offices in Vancouver (300-911 Homer St) and North Vancouver (25 Wallace Mews). Holds active BC Developer licence #45520 and GC licence #45122. No public-facing company website located.",
+      "bcRegistryLegalName": "Mondiale Development Ltd",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Donald Cliburn",
+          "title": "Person Responsible (BC Licence)",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as Person Responsible on BC developer and general contractor licences per BuildZoom licence records. No further public profile found."
+        },
+        {
+          "name": "Michael De Cotiis",
+          "title": "Person Responsible (BC Licence)",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as Person Responsible on BC licences per BuildZoom. Note: a different Michael De Cotiis is President of Pinnacle International; BC corporate registry should be checked to confirm same vs distinct individual."
+        }
+      ]
+    },
+    {
+      "orgId": 18992,
+      "displayName": "Reotech Construction Ltd",
+      "identityConfirmed": true,
+      "website": "https://reotech.ca",
+      "profileNote": "Coquitlam BC commercial interior construction specialist founded 1989; 51-200 employees. Delivers tenant improvements, construction management, and general contracting for office, healthcare, education, and hospitality clients across Metro Vancouver.",
+      "bcRegistryLegalName": "Reotech Construction Ltd.",
+      "notableProjects": [
+        "Boumi - 53,000 sf office TI - Vancouver - complete 2025",
+        "Westland Insurance - 59,000 sf TI - Surrey - complete",
+        "EY Oceanic Plaza - 27,500 sf two-floor renovation - Vancouver - complete",
+        "Harrison Healthcare - 14,400 sf health clinic - Downtown Vancouver - complete",
+        "ILSC Language School - 20,100 sf flagship campus - Downtown Vancouver - complete"
+      ],
+      "people": [
+        {
+          "name": "Al Dietrich",
+          "title": "Principal (Founder)",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Co-founder of Reotech Construction (est. 1989). Named on company About page as founding principal."
+        },
+        {
+          "name": "AJ Pratt",
+          "title": "Principal",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Named as principal on reotech.ca About page and LinkedIn company profile."
+        },
+        {
+          "name": "Ryan Turner",
+          "title": "Principal",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Named as principal on reotech.ca About page."
+        },
+        {
+          "name": "Ryan Thorpe",
+          "title": "Principal",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Named as principal on reotech.ca About page."
+        },
+        {
+          "name": "Reotech Reception (general inbox)",
+          "title": "General Enquiries",
+          "email": "reception@reotech.ca",
+          "emailSource": "website",
+          "emailConfidence": 95,
+          "note": "General reception inbox published on reotech.ca contact page (not a personal address). No direct principal emails publicly listed."
+        }
+      ]
+    },
+    {
+      "orgId": 20586,
+      "displayName": "Medcorp Construction Inc",
+      "identityConfirmed": true,
+      "website": "https://medcorp.ca",
+      "profileNote": "Surrey BC general contractor founded 2016 specializing in customized workspace buildouts for medical and dental professionals throughout the Lower Mainland. BBB A+ rating; six completed dental/medical clinic projects across Abbotsford, Coquitlam, Surrey, Maple Ridge, and Chilliwack.",
+      "bcRegistryLegalName": "Medcorp Construction Inc",
+      "notableProjects": [
+        "Townline Dental - Abbotsford - complete",
+        "Da Vinci Dentistry - Coquitlam - complete",
+        "Lifextend Medical - Surrey - complete",
+        "Dentistry 32 - Maple Ridge - complete",
+        "Healthy Smiles Dental - Surrey - complete",
+        "Summitview Dental - Chilliwack - complete"
+      ],
+      "people": [
+        {
+          "name": "Gary Chohan",
+          "title": "Project Coordinator",
+          "email": "gary@medcorp.ca",
+          "emailSource": "website",
+          "emailConfidence": 92,
+          "note": "Listed on medcorp.ca home page as primary contact with mobile 604-385-2253 and office 604-897-9630. Only named individual on the site."
+        }
+      ]
+    },
+    {
+      "orgId": 33440,
+      "displayName": "Oksfeldt Developments Ltd",
+      "identityConfirmed": true,
+      "website": "https://www.oksfeldtdevelopments.com",
+      "profileNote": "North Vancouver boutique custom home builder and GC; family business tracing to 1953 Danish-immigrant founder Oksfeldt Molby. Holds BC General Contractor licence #53080. Focuses on select custom homes, renovations, and construction management in the Lower Mainland.",
+      "bcRegistryLegalName": "OKSFELDT DEVELOPMENTS LTD",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Ian Molby",
+          "title": "Principal / Contractor",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as principal at Oksfeldt Developments per directory sources including opengovca.com. Second generation of the founding Molby family."
+        },
+        {
+          "name": "Jordan Molby",
+          "title": "Contractor",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "LinkedIn profile confirms Jordan Molby as contractor at Oksfeldt Developments. Likely third generation of founding family. No email publicly available."
+        }
+      ]
+    },
+    {
+      "orgId": 10119,
+      "displayName": "K. D. S. CONSTRUCTION LTD.",
+      "identityConfirmed": true,
+      "website": "https://www.kdsconstruction.ca",
+      "profileNote": "Surrey BC general contractor and construction manager established 1984. Serves healthcare, institutional, commercial, food manufacturing, and light industrial sectors across Metro Vancouver and the Fraser Valley. 51-200 employees.",
+      "bcRegistryLegalName": "K.D.S. CONSTRUCTION LTD.",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Kelly Shannon",
+          "title": "President",
+          "email": "info@kdsconstruction.ca",
+          "emailSource": "website",
+          "emailConfidence": 30,
+          "note": "Confirmed President and Secretary/Director per LinkedIn and directory sources. Email is the general company inbox only (not a personal address); no direct email found. Surrey-based."
+        },
+        {
+          "name": "Marvin Kale",
+          "title": "Vice President",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Confirmed VP at KDS Construction per LinkedIn. Credentials listed as PQS and GSC(F). Surrey-based."
+        }
+      ]
+    },
+    {
+      "orgId": 55,
+      "displayName": "Vintop Development Corporation",
+      "identityConfirmed": true,
+      "website": "https://www.vintop.ca",
+      "profileNote": "New Westminster BC developer and construction/marketing firm operating 30+ years; one-stop platform covering development management, construction, and sales. Notable for a BC Housing public-private partnership (66-unit PAL New West affordable rental, 2024) and the Ovation mid-rise in New Westminster.",
+      "bcRegistryLegalName": "VINTOP DEVELOPMENT CORP.",
+      "notableProjects": [
+        "Ovation - New Westminster - mid-rise (GBL Architects), status unknown",
+        "PAL New West (831 Carnarvon St) - New Westminster - 66-unit affordable rental, completed 2024",
+        "Royal Tower (140 Sixth St) - New Westminster - 2.5-acre site, coming soon"
+      ],
+      "people": [
+        {
+          "name": "Luning Yu",
+          "title": "President",
+          "email": "info@vintop.ca",
+          "emailSource": "website",
+          "emailConfidence": 30,
+          "note": "Confirmed President via BC Gov news release (2024HOUS0056-000544) quoting Luning Yu on the PAL New West affordable housing delivery. Email is the general company inbox only (not a personal address)."
+        }
+      ]
+    },
+    {
+      "orgId": 212,
+      "displayName": "Yushi Investments Inc.",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "No public web presence, BC Registry listing, news coverage, or permit records found for a company by this name in BC. Cannot distinguish from same-name entities in other jurisdictions (name returns only UK/HK results).",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 28005,
+      "displayName": "CMP Development Group Ltd.",
+      "identityConfirmed": true,
+      "website": "https://www.cmpgroups.com",
+      "profileNote": "Vancouver-based vertically integrated general contractor and developer founded 2005; specializes in multi-family wood-frame apartments, townhomes, and commercial tenant improvement. Head office 408-2052 West 41st Ave, Vancouver. Combines construction management, development, and real estate finance.",
+      "bcRegistryLegalName": "CMP Development Group Ltd.",
+      "notableProjects": [
+        "Multi-family wood-frame apartments with underground parkades - Vancouver - completed",
+        "Commercial tenant improvement and design-build projects - Greater Vancouver - ongoing"
+      ],
+      "people": [
+        {
+          "name": "Anita Dong",
+          "title": "Co-Founder",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Founding principal with background in urban planning, architecture, civil engineering, and construction management. Sourced from cmpgroups.com team page."
+        },
+        {
+          "name": "Darwin Lu",
+          "title": "Co-Founder",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Founding principal, structural engineer by training; former structural engineering professor in China and professional consulting engineer in Canada. Sourced from cmpgroups.com team page."
+        }
+      ]
+    },
+    {
+      "orgId": 71980,
+      "displayName": "Metal Building Group",
+      "identityConfirmed": true,
+      "website": "https://www.metalbuildinggroup.ca",
+      "profileNote": "Surrey BC steel and metal building contractor (head office 303-15240 56th Ave, Surrey V3S 5K7) with 30+ years operating in Western Canada. Specializes in design-build pre-engineered metal buildings for industrial, commercial, agricultural, and recreational clients across BC and Alberta.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "Seaspan Victoria Shipyards - Victoria BC - completed",
+        "Seaspan VDC Operations Building - BC - completed",
+        "Kitimat Water Treatment Plant - Kitimat BC - completed",
+        "Pritchard Water Treatment Plant - BC - completed",
+        "Fort St. James Green Energy - Fort St. James BC - completed",
+        "SLS Precast Concrete Facility - Surrey/Langley BC - completed",
+        "Dashwood Firehall - BC - completed",
+        "BC Hydro Minette Substation Control Building - BC - completed"
+      ],
+      "people": [
+        {
+          "name": "Jonathan Triance",
+          "title": "President",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "President since 2019; joined the company in 2006. Oversees finance, sales, marketing, and project management. Sourced from metalbuildinggroup.ca/about-mbg/."
+        },
+        {
+          "name": "Trent Warkentin",
+          "title": "Vice-President",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "30+ years with MBG in design, estimating, and project management. Leads the project management division. Sourced from metalbuildinggroup.ca/about-mbg/."
+        },
+        {
+          "name": "Lester Lam",
+          "title": "Director of Business Development",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Joined MBG in 2007. Leads BD; primary client-facing contact for new business. Sourced from metalbuildinggroup.ca/about-mbg/."
+        },
+        {
+          "name": "Jason Petty",
+          "title": "Director of Finance",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Background in accounting and construction finance; oversees corporate accounting and financial reporting. Sourced from metalbuildinggroup.ca/about-mbg/."
+        }
+      ]
+    },
+    {
+      "orgId": 36067,
+      "displayName": "Qualitech Construction Group Ltd.",
+      "identityConfirmed": true,
+      "website": "https://www.qualitech604.com",
+      "profileNote": "Family-owned Lower Mainland general contractor founded 2003; specializes in residential construction management, custom homes, and commercial tenant improvements. HPO-licensed; 2016 Georgie Awards finalist; 1,700+ units completed across Greater Vancouver.",
+      "bcRegistryLegalName": "Qualitech Construction Group Ltd.",
+      "notableProjects": [
+        "Panorama House - Belcarra/Vancouver - completed (custom home, Georgie Awards finalist)"
+      ],
+      "people": [
+        {
+          "name": "Serguei",
+          "title": "Owner",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as owner/principal contact on BBB profile (surname garbled as 'Unkown' in BBB registry, likely a data-entry error). No full last name or email confirmed from public sources."
+        }
+      ]
+    },
+    {
+      "orgId": 104,
+      "displayName": "Sakura Developments",
+      "identityConfirmed": true,
+      "website": "https://sakuradevelopments.com",
+      "profileNote": "Victoria BC real estate developer active since 1996; delivers multi-family condominiums, mixed-use, commercial, and custom single-family projects, managing land acquisition through sales. Distinct from the Vancouver-based Sakura Project Management entity.",
+      "bcRegistryLegalName": "Sakura Developments Ltd.",
+      "notableProjects": [
+        "Morgan Heights townhouses - Surrey - completed (75-unit, 18-building townhouse development)"
+      ],
+      "people": []
+    },
+    {
+      "orgId": 26285,
+      "displayName": "Boas Construction",
+      "identityConfirmed": true,
+      "website": "https://www.boasconstruction.com",
+      "profileNote": "Port Coquitlam BC design-build contractor founded 2011; specializes in residential renovations, custom homes, commercial tenant improvements, and millwork. Small Korean-owned firm operating across Metro Vancouver. Distinct from Bosa Construction.",
+      "bcRegistryLegalName": "Boas Construction Ltd.",
+      "notableProjects": [
+        "C Market Coffee - Vancouver - completed (commercial fit-out)",
+        "Downtown Hornby Nail Bar - Vancouver - completed (commercial fit-out)"
+      ],
+      "people": [
+        {
+          "name": "Stuart Oh",
+          "title": "Owner",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as owner on BBB registry and business licence records. No email confirmed from public sources."
+        }
+      ]
+    },
+    {
+      "orgId": 20061,
+      "displayName": "Cressey Developments",
+      "identityConfirmed": true,
+      "website": "https://cressey.com",
+      "profileNote": "Established 1969 Vancouver real estate developer with a 57-year track record; delivers condominium, rental, and mixed-use projects across Metro Vancouver, Whistler, Alberta, and Washington State. Approximately 162 employees.",
+      "bcRegistryLegalName": "Cressey Development Corp.",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "N E Cressey",
+          "title": "President",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as President on BBB registry. Norm Cressey is the founder; 'N E Cressey' likely refers to Norm Cressey or a family member in the President role."
+        },
+        {
+          "name": "Scott Cressey",
+          "title": "Manager",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Listed as Manager on BBB registry; quoted on company website discussing building philosophy."
+        },
+        {
+          "name": "Hani Lammam",
+          "title": "Executive Vice President",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "note": "Confirmed EVP via LinkedIn, The Org, and multiple industry sources. Public-facing spokesperson on Vancouver real estate. Email domain is @cressey.com but full personal address not publicly confirmed."
+        }
+      ]
+    }
+  ]
+}

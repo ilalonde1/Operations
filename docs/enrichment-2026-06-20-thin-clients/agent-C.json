@@ -1,0 +1,317 @@
+{
+  "orgs": [
+    {
+      "orgId": 6947,
+      "displayName": "Enduro Construction Ltd.",
+      "identityConfirmed": true,
+      "website": "https://enduroconstruction.ca",
+      "profileNote": "Vancouver-based full-service general contractor and construction management firm (office at #170-422 Richards St, Vancouver BC) operating across the Lower Mainland and Sea-to-Sky corridor. Specializes in commercial renovations, tenant improvements, institutional fit-outs and residential builds; clients include UBC and BC government. General inbox info@enduroconstruction.ca, ph 604.968.6578.",
+      "bcRegistryLegalName": "Enduro Construction Ltd.",
+      "notableProjects": [
+        "SPPH Research Lab - UBC Vancouver - Completed",
+        "Henry Angus Classrooms & Washrooms - UBC Vancouver - Completed",
+        "BC Cannabis Store (Norgate Centre) - North Vancouver - Completed",
+        "Abdera Therapeutics Office - Vancouver - Completed",
+        "CFIA Office Renovation - Burnaby - Completed"
+      ],
+      "people": [
+        {
+          "name": "Fred Roberge",
+          "title": "Co-Founder / Principal",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Co-founder and Principal at Enduro Construction Ltd. Confirmed via LinkedIn. ConstructConnect lists email domain @enduroconstruction.ca but full address is paywalled. No personal email found."
+        },
+        {
+          "name": "Joel Dumont",
+          "title": "Co-Founder / Principal",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Co-founder and Principal with 15+ years of construction management experience across residential and commercial projects. Confirmed via LinkedIn. Email domain @enduroconstruction.ca per ConstructConnect but full address paywalled."
+        },
+        {
+          "name": "Miguel Chango",
+          "title": "Unknown",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Listed as a third named contact on ConstructConnect alongside the two co-founders. Title and role not confirmed from any public source."
+        }
+      ]
+    },
+    {
+      "orgId": 213,
+      "displayName": "Gibbins Road Holdings",
+      "identityConfirmed": true,
+      "website": null,
+      "profileNote": "BC private real estate development company registered as Gibbins Road Holdings Inc., active in the Cowichan Valley (Duncan / North Cowichan, Vancouver Island). Received unanimous council approval May 2024 for a 100-unit, 4-storey mixed-use rental building at 3096 Gibbins Rd, near Cowichan District Hospital.",
+      "bcRegistryLegalName": "Gibbins Road Holdings Inc.",
+      "notableProjects": [
+        "3096 Gibbins Rd Mixed-Use Rental Building (100 units, 4-storey) - North Cowichan / Duncan - Development permit approved May 2024, projected Q4 2026"
+      ],
+      "people": []
+    },
+    {
+      "orgId": 71895,
+      "displayName": "Gibraltar Construction",
+      "identityConfirmed": true,
+      "website": "https://gibraltar.ca",
+      "profileNote": "Gibraltar Holdings Ltd. (dba Gibraltar Construction) is a BC commercial general contractor founded 1993, HQ at 520 Sharpe St, New Westminster BC. Specializes in tenant improvements, dental/medical offices, financial institutions and commercial renovations across BC with 9,000+ completed projects. Ph (604) 874-9292.",
+      "bcRegistryLegalName": "Gibraltar Holdings Ltd.",
+      "notableProjects": [
+        "Oxygen Yoga & Fitness The Quay - New Westminster - Completed",
+        "Initio Medical Imaging Clinic - Lower Mainland - Completed",
+        "Fraserview Veterinary Clinic - Lower Mainland - Completed"
+      ],
+      "people": [
+        {
+          "name": "Paul Smeltzer",
+          "title": "President / Director",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "President and Director of Gibraltar Holdings Ltd.; founding principal with 30+ years in BC commercial construction. Confirmed via LinkedIn and BBB profile."
+        },
+        {
+          "name": "David Smeltzer",
+          "title": "Director",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Director of Gibraltar Holdings Ltd., co-principal alongside Paul Smeltzer. Named in BBB profile as a principal."
+        },
+        {
+          "name": "Paul Massa",
+          "title": "Director of Operations",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Director of Operations at Gibraltar. Named in BBB profile as a principal; LinkedIn confirmed."
+        },
+        {
+          "name": "Jas Seble",
+          "title": "General Manager",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "General Manager at Gibraltar Construction (Port Coquitlam BC). BCIT Construction Operations graduate. Confirmed via RocketReach and LinkedIn."
+        }
+      ]
+    },
+    {
+      "orgId": 132,
+      "displayName": "Guildford Surrey Developments Ltd.",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "No public web presence found for this exact entity. Searches across BC Registry, news, development databases, City of Surrey permit records and listing sites returned no match for 'Guildford Surrey Developments Ltd.' Identity and BC connection cannot be confirmed from open sources; needs manual BC Registry lookup or client verification.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 126,
+      "displayName": "Kyodai Properties",
+      "identityConfirmed": true,
+      "website": "https://www.kyodaiproperties.com",
+      "profileNote": "Vancouver-based property management and real estate investment company; registered office Kyodai Holdings Ltd at 51 E Pender St, Vancouver BC. Manages a commercial and residential tenant portfolio; site references the Rennie organization. General inbox info@kyodaiproperties.com; no named staff published.",
+      "bcRegistryLegalName": "Kyodai Holdings Ltd",
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 118,
+      "displayName": "Moody Park Homes, Edmonds J.V.",
+      "identityConfirmed": true,
+      "website": "https://www.moodyparkhomes.ca",
+      "profileNote": "Moody Park Homes Ltd is a Surrey-based BC home builder (est. 2013) focused on Lower Mainland residential development. The 'Edmonds J.V.' suffix is a joint-venture designation; no separate public registration or JV partner surfaced. Phone 604-649-9793.",
+      "bcRegistryLegalName": "Moody Park Homes Ltd",
+      "notableProjects": [
+        "Moody Park Homes Townhouses - 423 Eighth St, New Westminster - Built (2012)"
+      ],
+      "people": [
+        {
+          "name": "Gurmeet Gill",
+          "title": "President / Director",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Listed as President and Director of Moody Park Homes Ltd per BBB profile. Also appears as a licensed BC real estate agent (REW). Phone on file 604-649-9793."
+        },
+        {
+          "name": "Gursewak Gill",
+          "title": "Director",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Listed as Director of Moody Park Homes Ltd per BBB profile. No additional public profile found."
+        },
+        {
+          "name": "Sadagar Gill",
+          "title": "Director",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Listed as Director of Moody Park Homes Ltd per BBB profile. No additional public profile found."
+        }
+      ]
+    },
+    {
+      "orgId": 206,
+      "displayName": "Plant Based Builders Ltd.",
+      "identityConfirmed": true,
+      "website": "https://www.plant-builders.com",
+      "profileNote": "BC-based general contractor / builder with a portfolio including a residential mixed-use development in Langford, BC. The 'plant-based' branding likely refers to wood/sustainable construction. Website is live but most subpages return 404 as of June 2026; general inbox info@plant-builders.com. No named personnel found publicly.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "Residential Mixed-Use Development - Langford, BC - status unknown"
+      ],
+      "people": []
+    },
+    {
+      "orgId": 34554,
+      "displayName": "Prosperous Square Developments Ltd.",
+      "identityConfirmed": true,
+      "website": "https://www.prosperoussquare.com",
+      "profileNote": "Richmond, BC-based custom home builder and general contractor (est. 2014, Chinese-Canadian ownership). Serves residential and commercial renovation markets in greater Vancouver. Small firm (2-10 employees); BC contractor licences #53443 and #40455 now cancelled/inactive. General email prosperoussquare@gmail.com.",
+      "bcRegistryLegalName": "Prosperous Square Development Ltd",
+      "notableProjects": [
+        "Emily Health Center - Richmond/Vancouver - commercial renovation, completed",
+        "Bosa Development Renovation - Metro Vancouver - commercial renovation, completed",
+        "Custom laneway homes - Richmond, BC - ongoing"
+      ],
+      "people": [
+        {
+          "name": "Lucas Li",
+          "title": "Owner",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Named as owner on BBB profile and confirmed by BuildZoom. Company general email is prosperoussquare@gmail.com (not a personal address). No direct email found."
+        },
+        {
+          "name": "Zhi Chao Li",
+          "title": "Person Responsible (BC Housing Licensing)",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Listed as the 'Person Responsible' on BuildZoom BC contractor licence records for Prosperous Square Development Ltd. May be the same individual as Lucas Li or a separate officer."
+        },
+        {
+          "name": "Rose Zhang",
+          "title": "Employee (title not confirmed)",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Identified on LinkedIn company page as an employee. No title or further detail available publicly."
+        }
+      ]
+    },
+    {
+      "orgId": 6,
+      "displayName": "Turn Group",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "Searches identify 'Turn Group' as an Ottawa/Calgary-based developer (299 Carling Ave, Westboro Tower, Aurora Apartments), with no BC presence, projects, incorporation, or news found. The CRM record as a BC Developer/Client cannot be verified and should be flagged for internal review (possible data-entry error or different entity).",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "299 Carling Avenue mixed-use (4 towers, 750 units) - Ottawa, ON - proposed",
+        "Westboro Tower - Ottawa, ON - under construction",
+        "Aurora Apartments - Ottawa, ON - under construction"
+      ],
+      "people": [
+        {
+          "name": "Ash Mahmoud",
+          "title": "CEO, Turn Group (Ottawa/Calgary)",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Confirmed CEO via LinkedIn and Ottawa Business Journal. Company offices in Ottawa and Calgary. No BC nexus found - recorded only to document the same-name entity, not confirmed as the KOR client."
+        }
+      ]
+    },
+    {
+      "orgId": 120,
+      "displayName": "Unicorn Properties Ltd.",
+      "identityConfirmed": true,
+      "website": null,
+      "profileNote": "BC-incorporated land developer; registered office Suite 509-1755 West Broadway, Vancouver. Beneficial owners are Karen Wai Har Woo, Edwin Ying Yuen Lee and Joanne Fay Kit Gunn. Active rezoning for a 26-storey, 208-unit purpose-built rental tower at 1668 West Broadway, Fairview (W.T. Leung Architects).",
+      "bcRegistryLegalName": "Unicorn Properties Ltd.",
+      "notableProjects": [
+        "1668 West Broadway - Vancouver (Fairview) - Rezoning in progress (26-storey, 208 rental units, CD-1 before Council Jun 2026)"
+      ],
+      "people": [
+        {
+          "name": "Karen Wai Har Woo",
+          "title": "Beneficial Owner",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Named beneficial owner per Vancouver Council rezoning report (1668 West Broadway CD-1). No contact details publicly available."
+        },
+        {
+          "name": "Edwin Ying Yuen Lee",
+          "title": "Beneficial Owner",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Named beneficial owner per Vancouver Council rezoning report. Multiple 'Edwin Lee' realtors exist in Vancouver; do not conflate without confirmation."
+        },
+        {
+          "name": "Joanne Fay Kit Gunn",
+          "title": "Beneficial Owner",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "Named beneficial owner per Vancouver Council rezoning report. No contact details publicly available."
+        }
+      ]
+    },
+    {
+      "orgId": 18059,
+      "displayName": "Warren Construction",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "Only BC entities matching 'Warren Construction' are small residential/renovation firms on the Sunshine Coast (Madeira Park, Sechelt). No Warren Construction operating as a commercial/ICI general contractor in BC was found in any trade publication, permit record or directory. BC identity as a GC of structural interest could not be confirmed; verify CRM source internally.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 5,
+      "displayName": "Willow Tree Homes",
+      "identityConfirmed": true,
+      "website": "https://willowtreehomes.ca",
+      "profileNote": "Surrey, BC-based land developer and homebuilder founded 2004 (Willow Tree Homes Ltd; office Unit 211-15292 Croydon Dr, Surrey BC). Builds eco-conscious residential communities (townhomes, condos, single-family) across Metro Vancouver, Fraser Valley and Chilliwack. General inbox info@willowtreehomes.ca.",
+      "bcRegistryLegalName": "Willow Tree Homes Ltd",
+      "notableProjects": [
+        "Elston - Clayton Heights, Surrey - Completed (townhome)",
+        "The Station - Chilliwack - Completed (condo)",
+        "Elgin Park Estates - Elgin, Surrey - Completed (single-family)",
+        "Montrose Square - Abbotsford - Coming Soon (condo)",
+        "Lyncean - Fraser Heights, Surrey - Coming Soon (townhome)"
+      ],
+      "people": [
+        {
+          "name": "Sunny Sangha",
+          "title": "Principal / Developer",
+          "email": null,
+          "emailSource": "asis",
+          "emailConfidence": 0,
+          "note": "LinkedIn lists Willow Tree Homes as employer. Licensed BC realtor since 2005 (Century 21 Coastal Realty), Fraser Valley Medallion Club. His real estate firm shares the Willow Tree Homes phone number (604-356-5555), supporting principal-developer role. No email found."
+        }
+      ]
+    },
+    {
+      "orgId": 75123,
+      "displayName": "Nexus, A Nexus of Relationships Ltd.",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "No public source matches the exact legal name 'Nexus, A Nexus of Relationships Ltd.' Several BC 'Nexus' real-estate entities exist (Nexus Development Group, Nexus Construction Ltd., Nexus Property Developments) but none match this name. Identity cannot be confirmed; requires manual BC Registry (Corporate Online) lookup or direct client verification.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    }
+  ]
+}

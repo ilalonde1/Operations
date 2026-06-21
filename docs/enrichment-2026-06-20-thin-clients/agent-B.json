@@ -1,0 +1,264 @@
+{
+  "orgs": [
+    {
+      "orgId": 37977,
+      "displayName": "JFO Construction Inc.",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "Exhaustive web research found no JFO Construction Inc. with a BC presence. Known JFO Construction entities are: Levis QC (Jonathan Forcier, renovation/construction) and Yukon OK (US). No BC registry hit, no BC permit or project record found.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 11188,
+      "displayName": "M3 Development Management Ltd.",
+      "identityConfirmed": true,
+      "website": "https://www.m3dm.ca/",
+      "profileNote": "Calgary-headquartered development management firm (est. 2016) with active BC offices in Vancouver (#330-34 W 7th Ave) and Victoria. Provides owner-rep, project management, cost management, and development management services for complex projects across Canada; BC work includes Senakw (1M sq ft, Vancouver, owner-rep for OPTrust).",
+      "bcRegistryLegalName": "M3 Development Management Ltd.",
+      "notableProjects": [
+        "Senakw - Vancouver BC - Owner's Representative (1,000,000 sq ft)",
+        "BMO Centre Expansion - Calgary AB - 565,000 sq ft (completed)",
+        "YWCA Hub Facility - Calgary AB - 279,994 sq ft (completed)"
+      ],
+      "people": [
+        {
+          "name": "Iain McCorkindale",
+          "title": "Founder",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": null,
+          "note": "Founder of M3DM; Calgary-based. Confirmed on company About page."
+        },
+        {
+          "name": "Nichola Sinclair-Foreman",
+          "title": "Managing Director",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": null,
+          "note": "Listed as Managing Director on M3DM About and LinkedIn pages."
+        },
+        {
+          "name": "Brandon Farrell",
+          "title": "Director, BC Management & Operations",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": null,
+          "note": "BC-specific director; confirmed on M3DM About page."
+        },
+        {
+          "name": "Ellie Sloper",
+          "title": "Project Manager, Vancouver Office",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": null,
+          "note": "Vancouver-office PM; confirmed on company LinkedIn profile."
+        }
+      ]
+    },
+    {
+      "orgId": 192,
+      "displayName": "OctoberNine Capital Inc.",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "No public web presence found under 'OctoberNine Capital Inc.' or 'October Nine Capital Inc.' in any BC or Canadian business context. No registry hits, no project mentions, no news coverage. Identity cannot be confirmed.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 20176,
+      "displayName": "Path General Contractors",
+      "identityConfirmed": true,
+      "website": "https://www.pathgc.com/",
+      "profileNote": "Commercial general contractor based in Langley BC (8840 210th St, Langley BC V1M 2Y2), incorporated 2015. Specializes in commercial renovations including office, retail, restaurant, and base-building work across Metro Vancouver. A+ BBB rating. Provides design-build, design-assist, fixed-price, and construction management services.",
+      "bcRegistryLegalName": "Path Construction Ltd.",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Dennis Donovan",
+          "title": "President / Director",
+          "email": "dennis@pathgc.com",
+          "emailSource": "website",
+          "emailConfidence": 90,
+          "note": "Owner and operator of Path General Contractors; confirmed via BBB profile and LinkedIn (ca.linkedin.com/in/dennisdonovanpathgc). Phone: 604-595-1300."
+        }
+      ]
+    },
+    {
+      "orgId": 20607,
+      "displayName": "Seasons Contracting Ltd.",
+      "identityConfirmed": true,
+      "website": "https://www.seasonscontractingltd.com/",
+      "profileNote": "Commercial contractor based in Abbotsford BC (302A-33771 George Ferguson Way, V2S 2M5) specializing in dental and medical clinic construction and renovation across Metro Vancouver and Fraser Valley. 15+ years in business, 200+ completed projects. Turnkey service including interior design.",
+      "bcRegistryLegalName": "Seasons Contracting Ltd.",
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Ameer Abu-Ulba",
+          "title": "Owner / Red Seal Electrician",
+          "email": "info@seasonscontractingltd.com",
+          "emailSource": "website",
+          "emailConfidence": 70,
+          "note": "Co-owner with background in electrical engineering from BCIT. Confirmed on company About page and federal corp directory (5285 Willet Rd, Abbotsford BC V3G 2E8). Shared general inbox email."
+        },
+        {
+          "name": "Vince Torrance",
+          "title": "Owner / Red Seal Carpenter",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": null,
+          "note": "Co-owner confirmed on company About page and ZoomInfo profile. ZoomInfo shows email exists but address is masked."
+        }
+      ]
+    },
+    {
+      "orgId": 148,
+      "displayName": "A.L. Sott (Delta Shoppers) Inc.",
+      "identityConfirmed": true,
+      "website": null,
+      "profileNote": "BC-incorporated property holding company (incorporated 2007-09-25, LEI 549300R7S6DSL98VUR26) registered at 400-1245 West Broadway, Vancouver BC V6H 1G7. Owns the Delta Shoppers Mall site at 8037-8087 120 Street, North Delta (6-acre strip mall built 2004). Site approved Feb 2024 for 876-home mixed-use redevelopment by Value Property Group.",
+      "bcRegistryLegalName": "A.L. SOTT (DELTA SHOPPERS) INC.",
+      "notableProjects": [
+        "Delta Shoppers Mall - North Delta BC - 6-acre site, 876-home mixed-use redevelopment approved Feb 2024 (developer: Value Property Group)"
+      ],
+      "people": []
+    },
+    {
+      "orgId": 210,
+      "displayName": "Alvair Group",
+      "identityConfirmed": true,
+      "website": "https://www.alvairgroup.com/",
+      "profileNote": "Surrey BC residential developer (168-12830 96 Ave, Surrey BC V3V 0C2) with 25+ years building residential communities across BC. Develops single-family homes and multi-family residential projects in the Lower Mainland. Also operates as Alvair Development Ltd.",
+      "bcRegistryLegalName": "Alvair Development Ltd.",
+      "notableProjects": [
+        "Panorama Park - Surrey BC - 35 three-bedroom homes (completed)"
+      ],
+      "people": [
+        {
+          "name": "Kunwar Bir Singh",
+          "title": "Vice President",
+          "email": "properties@alvairgroup.com",
+          "emailSource": "website",
+          "emailConfidence": 60,
+          "note": "VP confirmed on LinkedIn (ca.linkedin.com/in/kunwar-bir-singh), Greater Vancouver area. Email is the general company inbox, not personal. Phone: 778-320-0061."
+        },
+        {
+          "name": "Justin Mandair",
+          "title": "Vice President",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": null,
+          "note": "VP confirmed on LinkedIn search results; also listed as founder of Mandair Consulting Inc. (concurrent role)."
+        }
+      ]
+    },
+    {
+      "orgId": 37,
+      "displayName": "Armani Homes Ltd.",
+      "identityConfirmed": true,
+      "website": "http://armanihomes.ca/",
+      "profileNote": "Custom home builder and developer based in Port Moody BC (2 Greystone Place, Port Moody BC), serving the Tri-Cities area of Metro Vancouver. CHBA and HAVAN member. Builds custom single-family homes with personalized design via Choice Plans; partners with local sub-trades and land developers to create communities.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": [
+        {
+          "name": "Frank Ghorbani",
+          "title": "Director",
+          "email": "info@armanihomes.ca",
+          "emailSource": "website",
+          "emailConfidence": 75,
+          "note": "Director confirmed on company About page. Email is general inbox. Phone: (604) 551-7279."
+        }
+      ]
+    },
+    {
+      "orgId": 176,
+      "displayName": "Axomm Construction & Project Management",
+      "identityConfirmed": true,
+      "website": "https://axommconstruction.ca/",
+      "profileNote": "Vancouver-based general contractor and construction project manager with 20+ years of experience and 35+ delivered projects. Specializes in 5-storey mixed-use residential/commercial buildings, residential row houses, luxury residential, and tenant improvements across BC. Works with qualified trades and sub-contractors to reduce project costs.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": [
+        {
+          "name": null,
+          "title": null,
+          "email": "axommgroup@gmail.com",
+          "emailSource": "website",
+          "emailConfidence": 80,
+          "note": "General company email confirmed from multiple web sources (website, ZoomInfo). Phone: +1 778-859-6249. No individual leadership names found publicly."
+        }
+      ]
+    },
+    {
+      "orgId": 230,
+      "displayName": "BDK Development Corporation",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "No BC-based BDK Development Corporation found after extensive research. Only known entity is a Delaware (US) startup incorporation with no described operations. No BC registry hit, no project record, no news coverage in BC real estate context.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 75124,
+      "displayName": "Bridgemark Development Ltd.",
+      "identityConfirmed": true,
+      "website": "https://bridgemarkdevelopment.com/",
+      "profileNote": "Vancouver-based real estate developer and consulting firm (#309-63 West 6th Ave, Vancouver BC V5Y 1K2; also cited at 998 Harbourside Dr, North Vancouver) with 35+ years of combined team experience and $3B+ in managed real estate. Active development pipeline in Surrey and Langley including high-rise towers; completed portfolio in Surrey, Coquitlam, Burnaby, and Vancouver. Also pursues JV partnerships with landowners and contractors.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [
+        "Sequoia - Surrey BC - 36-storey, 386 condominiums + daycare - Under construction",
+        "Azure Grove - Langley BC - Two 6-storey buildings, 286 condominiums - Under construction",
+        "Manhattan - Surrey BC - 43-storey, 418 residential + 94 rental suites - BP-ready",
+        "Bus Loop Tower - Surrey BC - 44-storey mixed-use - DP Stage",
+        "Melrose - Surrey BC - 26-storey, 223 condominiums - Completed",
+        "Viktor - Surrey BC - Two 6-storey buildings, 254 condominiums - Completed",
+        "Oak & Onyx - Surrey BC - Two 6-storey buildings, 173 condominiums - Completed",
+        "Loma - Coquitlam BC - Mixed-use tower - Completed",
+        "Westbury - Vancouver BC - Luxury townhomes and duplexes - Completed"
+      ],
+      "people": [
+        {
+          "name": null,
+          "title": null,
+          "email": "info@bridgemarkdevelopment.com",
+          "emailSource": "website",
+          "emailConfidence": 80,
+          "note": "General company email and phone (604-773-1868) confirmed on website. No individual leadership names publicly listed on website or found via search."
+        }
+      ]
+    },
+    {
+      "orgId": 127,
+      "displayName": "Coast Development",
+      "identityConfirmed": false,
+      "website": null,
+      "profileNote": "The domain coastdevelop.com resolves to an Ontario-headquartered developer (Kitchener/Waterloo focus) with one BC project in Squamish; this is likely NOT the KOR client. A BC-specific 'Coast Development' entity matching this orgId could not be identified from public sources. Identity unconfirmed.",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": []
+    },
+    {
+      "orgId": 35,
+      "displayName": "Corsa Development",
+      "identityConfirmed": true,
+      "website": "https://corsadevelopments.com/",
+      "profileNote": "BC residential developer (604-537-7778) focused on building single-family homes, townhomes, and condos in the Lower Mainland. Tagline: 'Redefining the Urban Community.' Online presence is limited and no leadership names are publicly listed. Distinct from Corsa Development Group (Post Falls, Idaho, USA).",
+      "bcRegistryLegalName": null,
+      "notableProjects": [],
+      "people": [
+        {
+          "name": null,
+          "title": null,
+          "email": "info@corsadevelopments.com",
+          "emailSource": "website",
+          "emailConfidence": 80,
+          "note": "General company email confirmed on website. Phone: 604-537-7778. No individual leadership names found publicly."
+        }
+      ]
+    }
+  ]
+}
