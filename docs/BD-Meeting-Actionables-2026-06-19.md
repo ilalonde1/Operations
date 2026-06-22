@@ -4,6 +4,12 @@
 **Prepared by:** Ian — names cross-referenced against the BD brain (canonical orgs + Deltek client IDs + KOR project counts) and web-verified where internal data was thin.
 **Verified & updated 2026-06-20** — all canonical org IDs, KOR project counts, CRM engagement numbers and the De Cotiis family structure re-confirmed against the live DB (post the De Cotiis enrichment + dedup merges + CRM remap). Changes flagged inline.
 
+**Brain hardened + re-verified 2026-06-21** — a full module clean-up ran since the meeting; the graph these targets live in is now production-grade:
+- **Culled 50k → 17.8k warm orgs** (32k orphan commodity-vendor rows cold-archived; fully reversible — any resurfaces on a real pursuit). The pursuit targets below were untouched (all have KOR projects/relationships).
+- **100+ duplicate clusters merged** (incl. the BC health-authority cluster 32→9 clean entities), **81 mis-classified Kinds corrected** (e.g. AECOM/RJC/SMP now correctly tagged **Competitor**), MPI structural-engineer/GC foreign keys completed, and the **duplicate-creation cycle closed** at the resolver (safe fuzzy-match before create) so the brain stays clean going forward.
+- **Every org + person ID in this doc re-verified against the cleaned graph 2026-06-21 — all resolve correctly** (Pinnacle #53665, Onni #38949, Amacon #169/#71060, Emerge #111, Evantra #203, RBI #14, Lark #53694/#72260, Kerkhoff, Yellowridge, + the full De Cotiis person directory #1399/#1406/#3757/#9303-9305/#901/#902/#903/#1940/#1941). The Lark "Unknown" stray rows (#55097/#27243) are confirmed already-merged.
+- **Full deep re-enrichment now running** across all 6,401 + 4,211 BD-relevant orgs (Developers/Architects/GCs/Competitors/Buyers/KorClients) — so by the Tuesday intel deliverable, every target in §5 will carry fresh, web-verified narrative + people + signals on the clean graph, not the pre-cull state.
+
 **How to read this:**
 - **kp=N** — number of KOR projects on record with that org (warmth signal). ✅Deltek = linked Deltek client.
 - **[conf: High/Med/Low]** — confidence in the *name resolution* (the meeting audio garbled many names).
@@ -178,6 +184,8 @@ The brain already held ~all of these orgs (often duplicated), so the meeting yie
 - ✅ **2 contacts** — Annelise van der Veen (#13816 → Purpose Driven), Jacob Lewis III (#13817 → Nch'ḵay̓), affiliations wired.
 - ✅ **De Cotiis family fully enriched (2026-06-20)** — Michael (#1399, Pinnacle) plus the Onni branch (Inno 1937–2020 #3757; sons Rossano #1406, Morris #9303, Giulio #9304, Paolo #9305) and the Amacon branch (Marcello #901, Marc #1941, Donato #902, Italo #1940, Lilliana #903) are all in the brain with affiliations wired; duplicate person rows (Don/Mike/Donato dups) retired. See §7 #1.
 - ⏭️ **WHB Group / John Wu — skipped** (IntelPerson key is name-only → would fuse with the existing BC-Housing "John Wu"). *(Note: the M1 identity-anchor re-key shipped 2026-06-20 now keys people by email→LinkedIn→name+org, so this is safer to revisit.)*
+
+**Brain-wide hardening since the meeting (2026-06-21):** beyond these meeting-specific writes, the whole module was cleaned — 50k→17.8k warm orgs (commodity-vendor cull, reversible), 100+ dup clusters merged incl. the BC health-authority cluster (32→9), 81 Kind corrections, MPI FK completion, and the resolver dup-creation cycle closed (fuzzy pre-create match). Full deep re-enrichment of all BD-relevant orgs is now running. Net effect for these pursuits: the targets sit in a deduped, correctly-typed, FK-sound graph and will carry fresh verified intel by the Tuesday deliverable. All IDs in this doc re-verified 2026-06-21.
 
 ---
 
