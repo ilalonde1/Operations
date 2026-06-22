@@ -10,7 +10,11 @@ public sealed record IntelPersonRow(
     long Id, string DisplayName, string? Email, string? Phone, string? LinkedinUrl,
     string? Title, bool IsCurrent, string? AffiliationNotes,
     int Corroborations, string SourceProviderName, IntelConfidence Confidence,
-    DateTimeOffset RefreshedAtUtc, IntelFreshness Freshness);
+    DateTimeOffset RefreshedAtUtc, IntelFreshness Freshness,
+    string? RefreshStatus = null)
+{
+    public long IntelPersonId => Id;
+}
 
 public sealed record IntelSignalRow(
     long Id, string SignalType, string Subject, string? Detail, string? OccurredAtApprox, string? SourceUrl,

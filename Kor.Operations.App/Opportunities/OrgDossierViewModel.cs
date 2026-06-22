@@ -33,6 +33,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private readonly IntelReadService _intelReadService;
     private readonly IntelPersistenceService _intelPersistence;
     private readonly IBdResearchTriggerStore _researchTriggerStore;
+    private readonly IBdPersonResearchTriggerStore _personResearchTriggerStore;
     private readonly ILogger<OrgDossierViewModel> _logger;
 
     private long? _canonicalOrgId;
@@ -50,6 +51,8 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
     private bool _hasStaleIntel;
     private bool _refreshRequestPending;
     private bool _refreshAlreadyQueued;
+    private readonly HashSet<long> _personRefreshRequestsPending = new();
+    private readonly HashSet<long> _personRefreshAlreadyQueued = new();
     private string? _refreshRequestStatus;
     private string _statusMessage = "Ready.";
     private decimal _lifetimeValue;
@@ -68,6 +71,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         IntelReadService intelReadService,
         IntelPersistenceService intelPersistence,
         IBdResearchTriggerStore researchTriggerStore,
+        IBdPersonResearchTriggerStore personResearchTriggerStore,
         ILogger<OrgDossierViewModel> logger)
     {
         _canonicalStore = canonicalStore ?? throw new ArgumentNullException(nameof(canonicalStore));
@@ -79,6 +83,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         _intelReadService = intelReadService ?? throw new ArgumentNullException(nameof(intelReadService));
         _intelPersistence = intelPersistence ?? throw new ArgumentNullException(nameof(intelPersistence));
         _researchTriggerStore = researchTriggerStore ?? throw new ArgumentNullException(nameof(researchTriggerStore));
+        _personResearchTriggerStore = personResearchTriggerStore ?? throw new ArgumentNullException(nameof(personResearchTriggerStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // R81: KOR-side Status mutation for IntelAction rows. Done/Dismissed
@@ -89,11 +94,15 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         RefreshIntelCommand = new RelayCommand(
             _ => _ = RequestIntelRefreshAsync(),
             _ => CanRequestIntelRefresh);
+        RefreshPersonIntelCommand = new RelayCommand(
+            row => _ = RequestPersonIntelRefreshAsync(row as IntelPersonRow),
+            row => row is IntelPersonRow person && CanRequestPersonIntelRefresh(person));
     }
 
     public RelayCommand MarkActionDoneCommand { get; }
     public RelayCommand MarkActionDismissedCommand { get; }
     public RelayCommand RefreshIntelCommand { get; }
+    public RelayCommand RefreshPersonIntelCommand { get; }
 
     private async Task SetActionStatusAsync(IntelActionRow? row, string status)
     {
@@ -577,7 +586,75 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         ExtendedNarratives.Clear();
         IntelLastRefreshedText = null;
         HasStaleIntel = false;
+        _personRefreshRequestsPending.Clear();
+        _personRefreshAlreadyQueued.Clear();
         RaiseIntelCollectionProperties();
+    }
+
+    private bool CanRequestPersonIntelRefresh(IntelPersonRow row) =>
+        !_personRefreshRequestsPending.Contains(row.IntelPersonId)
+        && !_personRefreshAlreadyQueued.Contains(row.IntelPersonId);
+
+    private async Task RequestPersonIntelRefreshAsync(IntelPersonRow? row)
+    {
+        if (row is null || !CanRequestPersonIntelRefresh(row)) return;
+
+        var personId = row.IntelPersonId;
+        _personRefreshRequestsPending.Add(personId);
+        SetPersonRefreshStatus(personId, "Queueing...");
+        System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+
+        try
+        {
+            var alreadyPending = await _personResearchTriggerStore
+                .HasPendingForPersonAsync(
+                    personId,
+                    BdPersonResearchProviders.BatchProviderName,
+                    CancellationToken.None)
+                .ConfigureAwait(true);
+            if (alreadyPending)
+            {
+                _personRefreshAlreadyQueued.Add(personId);
+                SetPersonRefreshStatus(personId, "Queued");
+                return;
+            }
+
+            var triggerId = await _personResearchTriggerStore
+                .EnqueueAsync(
+                    personId,
+                    BdPersonResearchProviders.BatchProviderName,
+                    "app",
+                    CancellationToken.None)
+                .ConfigureAwait(true);
+            _personRefreshAlreadyQueued.Add(personId);
+            SetPersonRefreshStatus(personId, "Queued");
+            _logger.LogInformation(
+                "Manual person intel refresh queued. IntelPersonId={PersonId} TriggerId={Trigger}.",
+                personId,
+                triggerId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to queue person intel refresh for IntelPersonId {PersonId}.", personId);
+            SetPersonRefreshStatus(personId, "Queue failed");
+        }
+        finally
+        {
+            _personRefreshRequestsPending.Remove(personId);
+            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    private void SetPersonRefreshStatus(long personId, string status)
+    {
+        for (var i = 0; i < IntelPeople.Count; i++)
+        {
+            if (IntelPeople[i].IntelPersonId == personId)
+            {
+                IntelPeople[i] = IntelPeople[i] with { RefreshStatus = status };
+                return;
+            }
+        }
     }
 
     private async Task RequestIntelRefreshAsync()

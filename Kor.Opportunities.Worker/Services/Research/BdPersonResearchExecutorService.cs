@@ -2,6 +2,7 @@
 using System.Data;
 using System.Globalization;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Awards;
 using Kor.Opportunities.Data.People;
 using Kor.Opportunities.Worker.Options;
 using Microsoft.Data.SqlClient;
@@ -20,7 +21,7 @@ namespace Kor.Opportunities.Worker.Services.Research;
 /// </summary>
 public sealed class BdPersonResearchExecutorService
 {
-    private const string BatchProviderName = "PersonBrief";
+    public const string BatchProviderName = BdPersonResearchProviders.BatchProviderName;
     private const int CommandTimeoutSeconds = 120;
 
     /// <summary>

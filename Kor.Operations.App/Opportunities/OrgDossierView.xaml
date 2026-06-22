@@ -452,6 +452,19 @@
                                             <Run Text="  "/>
                                             <Run Text="{Binding Title, Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"/>
                                         </TextBlock>
+                                        <Button Content="Refresh"
+                                                Command="{Binding DataContext.RefreshPersonIntelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Padding="6,1"
+                                                FontSize="10"
+                                                Margin="8,0,4,0"
+                                                VerticalAlignment="Top"
+                                                ToolTip="Queue a fresh person-intelligence research pass."/>
+                                        <TextBlock Text="{Binding RefreshStatus}"
+                                                   Visibility="{Binding RefreshStatus, Converter={StaticResource EmptyToCollapsed}}"
+                                                   Foreground="{StaticResource Text.Secondary}"
+                                                   FontSize="10"
+                                                   VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

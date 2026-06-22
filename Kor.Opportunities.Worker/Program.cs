@@ -236,6 +236,10 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichment
                 new SqlBdResearchTriggerStore(
                     sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value.OpportunitiesDb,
                     sp.GetService<ILogger<SqlBdResearchTriggerStore>>()));
+            builder.Services.AddSingleton<IBdPersonResearchTriggerStore>(sp =>
+                new SqlBdPersonResearchTriggerStore(
+                    sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value.OpportunitiesDb,
+                    sp.GetService<ILogger<SqlBdPersonResearchTriggerStore>>()));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityAwardStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlOpportunityAwardStore(
         Cs(sp),
@@ -1167,6 +1171,7 @@ builder.Services.AddQuartz(q =>
             builder.Services.AddHostedService<SourceBootstrapHostedService>();
             builder.Services.AddHostedService<IngestionTriggerPollerBackgroundService>();
             builder.Services.AddHostedService<BdResearchTriggerPollerBackgroundService>();
+            builder.Services.AddHostedService<BdPersonResearchTriggerPollerBackgroundService>();
             builder.Services.AddHostedService<OpportunitySourceCronScheduler>();
 
             using var host = builder.Build();

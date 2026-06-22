@@ -85,6 +85,10 @@ internal static class OpportunitiesModule
             new Kor.Opportunities.Data.Awards.SqlBdResearchTriggerStore(
                 options.OpportunitiesDb,
                 sp.GetService<ILogger<Kor.Opportunities.Data.Awards.SqlBdResearchTriggerStore>>()));
+        services.AddSingleton<Kor.Opportunities.Data.Awards.IBdPersonResearchTriggerStore>(sp =>
+            new Kor.Opportunities.Data.Awards.SqlBdPersonResearchTriggerStore(
+                options.OpportunitiesDb,
+                sp.GetService<ILogger<Kor.Opportunities.Data.Awards.SqlBdPersonResearchTriggerStore>>()));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore>(
             _ => new Kor.Opportunities.Data.Awards.SqlOpportunityInterestedFirmStore(options.OpportunitiesDb));
 
