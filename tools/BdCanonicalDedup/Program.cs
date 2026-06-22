@@ -146,9 +146,14 @@ internal static class Program
             await using var con = new SqlConnection(options.OpportunitiesDb);
             await con.OpenAsync().ConfigureAwait(false);
 
-            if (options.Commit)
+            if (options.Commit || options.BackfillFuzzyKey)
             {
                 await AcquireSessionAppLockAsync(con).ConfigureAwait(false);
+            }
+
+            if (options.BackfillFuzzyKey)
+            {
+                return await BackfillFuzzyKeysAsync(con).ConfigureAwait(false);
             }
 
             var schema = await VerifySchemaAsync(con).ConfigureAwait(false);
@@ -238,6 +243,54 @@ internal static class Program
             Console.Error.WriteLine($"BdCanonicalDedup failed: {ex.GetType().Name}: {ex.Message}");
             return 1;
         }
+    }
+
+    private static async Task<int> BackfillFuzzyKeysAsync(SqlConnection con)
+    {
+        const int batchSize = 500;
+        var rows = new List<(long Id, string DisplayName)>();
+
+        await using (var load = new SqlCommand(
+            "SELECT Id, DisplayName FROM opportunities.CanonicalOrg ORDER BY Id;",
+            con)
+        {
+            CommandTimeout = 120,
+        })
+        await using (var reader = await load.ExecuteReaderAsync().ConfigureAwait(false))
+        {
+            while (await reader.ReadAsync().ConfigureAwait(false))
+            {
+                rows.Add((reader.GetInt64(0), reader.GetString(1)));
+            }
+        }
+
+        var updated = 0;
+        for (var offset = 0; offset < rows.Count; offset += batchSize)
+        {
+            await using var tx = (SqlTransaction)await con.BeginTransactionAsync().ConfigureAwait(false);
+            await using var update = new SqlCommand(@"
+UPDATE opportunities.CanonicalOrg
+SET FuzzyNormalizedName = @fuzzy
+WHERE Id = @id;", con, tx)
+            {
+                CommandTimeout = 120,
+            };
+            var idParameter = update.Parameters.Add("@id", SqlDbType.BigInt);
+            var fuzzyParameter = update.Parameters.Add("@fuzzy", SqlDbType.NVarChar, 300);
+
+            foreach (var row in rows.Skip(offset).Take(batchSize))
+            {
+                var fuzzyKey = CanonicalOrgResolver.NormalizeForFuzzyMatch(row.DisplayName);
+                idParameter.Value = row.Id;
+                fuzzyParameter.Value = string.IsNullOrEmpty(fuzzyKey) ? (object)DBNull.Value : fuzzyKey;
+                updated += await update.ExecuteNonQueryAsync().ConfigureAwait(false);
+            }
+
+            await tx.CommitAsync().ConfigureAwait(false);
+        }
+
+        Console.WriteLine($"Fuzzy normalized keys backfilled: {updated}.");
+        return 0;
     }
 
     // T1.001 similarity-gate helpers (post 2026-05-30 Abbotsford incident).
@@ -1380,13 +1433,20 @@ JOIN #Losers l ON l.Id = co.Id;";
         }
     }
 
-    private sealed record ImportOptions(string OpportunitiesDb, bool Commit, bool MergeDba, string OutputDirectory, string? PairsFile)
+    private sealed record ImportOptions(
+        string OpportunitiesDb,
+        bool Commit,
+        bool MergeDba,
+        string OutputDirectory,
+        string? PairsFile,
+        bool BackfillFuzzyKey)
     {
         public static ImportOptions Parse(string[] args)
         {
             var db = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB") ?? string.Empty;
             var commit = false;
             var mergeDba = false;
+            var backfillFuzzyKey = false;
             var output = DefaultOutputDirectory;
             string? pairs = null;
 
@@ -1403,6 +1463,9 @@ JOIN #Losers l ON l.Id = co.Id;";
                     case "--merge-dba":
                         mergeDba = true;
                         break;
+                    case "--backfill-fuzzy-key":
+                        backfillFuzzyKey = true;
+                        break;
                     case "--out":
                         output = RequireValue(args, ref i, "--out");
                         break;
@@ -1414,7 +1477,7 @@ JOIN #Losers l ON l.Id = co.Id;";
                 }
             }
 
-            return new ImportOptions(db, commit, mergeDba, output, pairs);
+            return new ImportOptions(db, commit, mergeDba, output, pairs, backfillFuzzyKey);
         }
 
         private static string RequireValue(string[] args, ref int i, string name)

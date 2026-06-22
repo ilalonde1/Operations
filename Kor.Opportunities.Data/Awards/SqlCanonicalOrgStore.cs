@@ -29,6 +29,8 @@ public sealed class SqlCanonicalOrgStore : ICanonicalOrgStore
         string? notes,
         CancellationToken ct)
     {
+        var fuzzyNormalizedName = CanonicalOrgResolver.NormalizeForFuzzyMatch(displayName);
+
         const string sql = @"
 SET XACT_ABORT ON;
 
@@ -49,9 +51,9 @@ ORDER BY CASE WHEN ClendorClientId IS NOT NULL THEN 0 ELSE 1 END, Id;
 IF @existingId IS NULL
 BEGIN
     INSERT INTO opportunities.CanonicalOrg
-        (Kind, DisplayName, ClendorClientId, Website, Notes)
+        (Kind, DisplayName, FuzzyNormalizedName, ClendorClientId, Website, Notes)
     VALUES
-        (@kind, @name, @clendor, @website, @notes);
+        (@kind, @name, @fuzzy, @clendor, @website, @notes);
 
     SET @existingId = CONVERT(bigint, SCOPE_IDENTITY());
 END
@@ -90,6 +92,7 @@ BEGIN
         -- Frozen self-anchors (KorStructural/KorClient) keep their curated DisplayName;
         -- a research record naming a variant must not rename KOR's own identity row.
         DisplayName = CASE WHEN Kind IN (N'KorStructural', N'KorClient') THEN DisplayName ELSE @name END,
+        FuzzyNormalizedName = @fuzzy,
         Website = COALESCE(@website, Website),
         Notes = CASE
             WHEN RetiredAtUtc IS NOT NULL THEN
@@ -117,6 +120,9 @@ SELECT @existingId;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = (object?)kind ?? DBNull.Value;
         cmd.Parameters.Add("@name", SqlDbType.NVarChar, 300).Value = displayName;
+        cmd.Parameters.Add("@fuzzy", SqlDbType.NVarChar, 300).Value = string.IsNullOrEmpty(fuzzyNormalizedName)
+            ? (object)DBNull.Value
+            : fuzzyNormalizedName;
         cmd.Parameters.Add("@clendor", SqlDbType.VarChar, 32).Value = (object?)clendorClientId ?? DBNull.Value;
         cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = (object?)website ?? DBNull.Value;
         cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)notes ?? DBNull.Value;
@@ -377,6 +383,24 @@ ORDER BY
         var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
         if (v is null || v is DBNull) return null;
         return Convert.ToInt64(v);
+    }
+
+    public async Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(fuzzyKey)) return null;
+
+        const string sql = @"
+SELECT CASE WHEN COUNT_BIG(*) = 1 THEN MAX(Id) END
+FROM opportunities.CanonicalOrg
+WHERE FuzzyNormalizedName = @key
+  AND RetiredAtUtc IS NULL;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@key", SqlDbType.NVarChar, 300).Value = fuzzyKey;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
     }
 
     public async Task<long> UpsertAliasAsync(

@@ -120,9 +120,20 @@ public sealed class CanonicalOrgResolver
         }
 
         long? canonicalId = null;
+        var matchedByFuzzy = false;
         if (!string.IsNullOrEmpty(normalized))
         {
             canonicalId = await _store.FindByNormalizedNameAsync(normalized, ct).ConfigureAwait(false);
+        }
+
+        if (canonicalId is null)
+        {
+            var fuzzyKey = NormalizeForFuzzyMatch(cleaned);
+            if (fuzzyKey.Length >= 3)
+            {
+                canonicalId = await _store.FindByFuzzyNormalizedNameAsync(fuzzyKey, ct).ConfigureAwait(false);
+                matchedByFuzzy = canonicalId.HasValue;
+            }
         }
 
         if (canonicalId is null)
@@ -164,15 +175,16 @@ public sealed class CanonicalOrgResolver
         {
             if (!createArchived)
             {
+                var matchType = matchedByFuzzy ? "fuzzy-name" : "normalized-name";
                 var resurrected = await _store.UnretireAsync(
                     canonicalId.Value,
-                    $"Resurrected by normalized-name match from source '{source}'",
+                    $"Resurrected by {matchType} match from source '{source}'",
                     ct).ConfigureAwait(false);
                 if (resurrected)
                 {
                     _logger.LogInformation(
-                        "CanonicalOrg {Id} ({Name}) unretired; normalized-name match from source '{Source}' indicates renewed activity.",
-                        canonicalId.Value, cleaned, source);
+                        "CanonicalOrg {Id} ({Name}) unretired; {MatchType} match from source '{Source}' indicates renewed activity.",
+                        canonicalId.Value, cleaned, matchType, source);
                 }
             }
 
@@ -181,8 +193,8 @@ public sealed class CanonicalOrgResolver
                 source: source,
                 canonicalOrgId: canonicalId,
                 confidence: 80,
-                classifiedBy: "auto-normalized",
-                notes: "Matched by normalized name",
+                classifiedBy: matchedByFuzzy ? "auto-fuzzy" : "auto-normalized",
+                notes: matchedByFuzzy ? "Matched by safe fuzzy-normalized name" : "Matched by normalized name",
                 ct: ct).ConfigureAwait(false);
         }
 

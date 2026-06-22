@@ -56,6 +56,12 @@ public interface ICanonicalOrgStore
     /// </summary>
     Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct);
 
+    /// <summary>
+    /// Find an active CanonicalOrg only when exactly one row has the supplied
+    /// safe fuzzy-normalized name. Returns null for no match or ambiguity.
+    /// </summary>
+    Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct);
+
     /// <summary>Insert an alias if not already present. Returns the alias Id.</summary>
     Task<long> UpsertAliasAsync(
         string rawName,

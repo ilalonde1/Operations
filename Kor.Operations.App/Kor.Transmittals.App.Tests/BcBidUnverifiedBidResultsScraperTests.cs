@@ -173,6 +173,9 @@ public sealed class BcBidUnverifiedBidResultsScraperTests
         public Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)
             => Task.FromResult<long?>(null);
 
+        public Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct)
+            => Task.FromResult<long?>(null);
+
         public Task<long> UpsertAliasAsync(
             string rawName,
             string source,
