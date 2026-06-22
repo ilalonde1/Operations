@@ -40,8 +40,13 @@ Diagnosis: the importer **write** path persists SE/GC (name+FK) + KorPipelineTag
 - **4a. Fix the lossy importer tags** so SE/GC/seat actually persist (the 3.2% SE-coverage root cause) — incl. `indigenous` writing SE into schedule-notes instead of the SE column; harden `pipeline-seats` against null-overwrite of classifications.
 - **4b. Widen `OpportunityCandidate`** to carry architect/GC/SE/contacts (typed observations + provenance, not raw-JSON overload).
 
-## Block 5 — Ingest the northern research onto the clean graph
-Re-do the project + org ingest (the rolled-back batch) with the pre-flight resolution gate + MPI-match (backfill existing, create only true net-new). Uses exact canonical names → zero dups.
+## Block 5 — Ingest the northern research onto the clean graph — 🔄 **IN PROGRESS (2026-06-21)**
+The research is in prose docs (BD-Overnight-Briefing-2026-06-21), so this is the staged execution order, not one importer run.
+- ✅ **Reclassify (step 1):** 5 mislabeled northern orgs resurrected + reclassified (Graham Design Builder #8360 + IDL #44647 → GC; GNWT #52210 + Tlicho #42547 → Government; Yukon U #58668 → Buyer). They'd been caught by the Block 0.5 archive as isolated Vendors.
+- ✅ **Institutional rescue (Block 0.5 overreach fix):** discovered **252 archived orgs with institutional names** (mis-kinded reals from Deltek-AP Vendor seeding). Scoped rescue = **56 resurrected + reclassified** (53 Indigenous nations/Métis/Inuit → Buyer; 3 territorial/provincial govs → Government), excluding hospitality/supply false-positives, out-of-geography schools, and band-owned vendor arms. Universities/health/cities (geo-mixed) left for a reviewed geo pass; all protected by resurrect-on-reference meanwhile. Warm set 17,839→17,831 net (rescues + the 47 &/and merges).
+- ⏳ **Seed (step 2):** ~14 net-new northern orgs (Broadstreet, yáqʷa, Housing NWT, NTHSSA, Taylor Architecture, Gwich'in, Yukon Housing/Hospital, Chu Níikwán, Kwanlin Dün, Ta'an Kwäch'än…) — pre-flight resolution gate first (some may now exist post-rescue).
+- ⏳ **Dup clusters:** Northern Health #794 ✅ (HA cluster); M'akola / Lax Kw'alaams / DCC / Athabasca Chipewyan remain.
+- ⏳ **Events** (TOP 12) + **open SE seats** (✅ pursuit list delivered).
 
 ## Block 6 — Enrich barren entities
 Queue the barren/newly-seeded orgs through the org-brief enrichment pass (post-ingest enrichment is standard — `feedback_postingest_enrichment`).
