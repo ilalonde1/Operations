@@ -112,6 +112,10 @@
                     <DataGridTextColumn Header="Municipality" Binding="{Binding MunicipalityName}" Width="130"/>
                     <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="190"/>
                     <DataGridTextColumn Header="Architect" Binding="{Binding ArchitectName}" Width="170"/>
+                    <DataGridTextColumn Header="Structural" Binding="{Binding StructuralEngineerName}" Width="170"/>
+                    <DataGridTextColumn Header="GC" Binding="{Binding GeneralContractorName}" Width="170"/>
+                    <DataGridTextColumn Header="Pipeline" Binding="{Binding KorPipelineTag}" Width="120"/>
+                    <DataGridTextColumn Header="Schedule" Binding="{Binding ScheduleNotes}" Width="220"/>
                     <DataGridTextColumn Header="Complete" Binding="{Binding CompletionYear}" Width="80"/>
                     <DataGridTemplateColumn Header="Indigenous" Width="84" SortMemberPath="IsIndigenous">
                         <DataGridTemplateColumn.CellTemplate>
@@ -154,6 +158,8 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
                                 <RowDefinition/>
                                 <RowDefinition/>
                                 <RowDefinition/>
@@ -224,11 +230,17 @@
                                            Visibility="{Binding NoSelectedArchitectOrg, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
                             </StackPanel>
 
-                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Timeline" Style="{StaticResource DetailLabel}"/>
-                            <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Selected.TimelineDisplay}" Style="{StaticResource DetailValue}"/>
+                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Structural" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Selected.StructuralEngineerName}" Style="{StaticResource DetailValue}"/>
 
-                            <TextBlock Grid.Row="9" Grid.Column="0" Text="Issue" Style="{StaticResource DetailLabel}"/>
-                            <TextBlock Grid.Row="9" Grid.Column="1" Style="{StaticResource DetailValue}">
+                            <TextBlock Grid.Row="9" Grid.Column="0" Text="General contractor" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding Selected.GeneralContractorName}" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="10" Grid.Column="0" Text="Timeline" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding Selected.TimelineDisplay}" Style="{StaticResource DetailValue}"/>
+
+                            <TextBlock Grid.Row="11" Grid.Column="0" Text="Issue" Style="{StaticResource DetailLabel}"/>
+                            <TextBlock Grid.Row="11" Grid.Column="1" Style="{StaticResource DetailValue}">
                                 <Run Text="{Binding Selected.IssueYear, Mode=OneWay, TargetNullValue=''}"/>
                                 <Run Text=" Q"/>
                                 <Run Text="{Binding Selected.IssueQuarter, Mode=OneWay, TargetNullValue=''}"/>

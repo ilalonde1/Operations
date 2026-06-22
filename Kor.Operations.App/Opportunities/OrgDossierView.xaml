@@ -1078,6 +1078,12 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="140"/>
+                                <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="140"/>
+                                <DataGridTextColumn Header="Architect" Binding="{Binding ArchitectName}" Width="140"/>
+                                <DataGridTextColumn Header="Structural" Binding="{Binding StructuralEngineerName}" Width="140"/>
+                                <DataGridTextColumn Header="GC" Binding="{Binding GeneralContractorName}" Width="140"/>
+                                <DataGridTextColumn Header="Pipeline" Binding="{Binding KorPipelineTag}" Width="110"/>
+                                <DataGridTextColumn Header="Schedule" Binding="{Binding ScheduleNotes}" Width="180"/>
                                 <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="70"/>
                                 <DataGridTextColumn Header="Stage" Binding="{Binding StageDisplay}" Width="120"/>
                                 <DataGridTextColumn Header="Cost" Binding="{Binding CostDisplay}" Width="110"/>

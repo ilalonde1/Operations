@@ -361,6 +361,10 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         return Contains(row.ProjectName, needle)
             || Contains(row.ProponentName, needle)
             || Contains(row.ArchitectName, needle)
+            || Contains(row.StructuralEngineerName, needle)
+            || Contains(row.GeneralContractorName, needle)
+            || Contains(row.KorPipelineTag, needle)
+            || Contains(row.ScheduleNotes, needle)
             || Contains(row.MunicipalityName, needle);
     }
 
@@ -481,7 +485,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
             sb.AppendLine("Top 25 by estimated cost:");
             foreach (var p in top)
             {
-                sb.AppendLine($"  {p.CostDisplay} - {p.ProjectName} ({p.Province}, {p.StageDisplay}); proponent {Blank(p.ProponentName)}; architect {Blank(p.ArchitectName)}");
+                sb.AppendLine($"  {p.CostDisplay} - {p.ProjectName} ({p.Province}, {p.StageDisplay}); proponent {Blank(p.ProponentName)}; architect {Blank(p.ArchitectName)}; structural {Blank(p.StructuralEngineerName)}; GC {Blank(p.GeneralContractorName)}");
             }
         }
 
@@ -505,6 +509,10 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         sb.AppendLine($"Sector: {Blank(p.Sector)}; sub-sector: {Blank(p.SubSector)}; category: {Blank(p.ProjectCategoryName)}");
         sb.AppendLine($"Proponent/developer: {Blank(p.ProponentName)} (CanonicalOrgId {p.ProponentCanonicalOrgId?.ToString(CultureInfo.InvariantCulture) ?? "none"})");
         sb.AppendLine($"Architect: {Blank(p.ArchitectName)} (CanonicalOrgId {p.ArchitectCanonicalOrgId?.ToString(CultureInfo.InvariantCulture) ?? "none"})");
+        sb.AppendLine($"Structural engineer: {Blank(p.StructuralEngineerName)} (CanonicalOrgId {p.StructuralEngineerCanonicalOrgId?.ToString(CultureInfo.InvariantCulture) ?? "none"})");
+        sb.AppendLine($"General contractor: {Blank(p.GeneralContractorName)} (CanonicalOrgId {p.GeneralContractorCanonicalOrgId?.ToString(CultureInfo.InvariantCulture) ?? "none"})");
+        sb.AppendLine($"KOR pipeline tag: {Blank(p.KorPipelineTag)}");
+        sb.AppendLine($"Schedule notes: {Blank(p.ScheduleNotes)}");
         sb.AppendLine($"Timeline: {Blank(p.TimelineDisplay)}");
         sb.AppendLine($"Funding: {Blank(p.FundingDisplay)}");
         if (p.IsIndigenous)

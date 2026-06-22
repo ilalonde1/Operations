@@ -1135,7 +1135,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             sb.AppendLine("Major project footprint:");
             foreach (var p in projects)
             {
-                sb.AppendLine($"  [{p.Role}] {p.ProjectName} ({p.Province}, {p.StageDisplay}, {p.CostDisplay}); {p.MunicipalityName}; completion {p.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "-"}");
+                sb.AppendLine($"  [{p.Role}] {p.ProjectName} ({p.Province}, {p.StageDisplay}, {p.CostDisplay}); {p.MunicipalityName}; completion {p.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "-"}; proponent {p.ProponentName ?? "-"}; architect {p.ArchitectName ?? "-"}; structural {p.StructuralEngineerName ?? "-"}; GC {p.GeneralContractorName ?? "-"}; pipeline {p.KorPipelineTag ?? "-"}; schedule {p.ScheduleNotes ?? "-"}");
             }
         }
 
@@ -1337,15 +1337,12 @@ public sealed class DossierProjectRow
     public DossierProjectRow(MajorProjectRow project, long canonicalOrgId)
     {
         Project = project;
-        var isDeveloper = project.ProponentCanonicalOrgId == canonicalOrgId;
-        var isArchitect = project.ArchitectCanonicalOrgId == canonicalOrgId;
-        Role = (isDeveloper, isArchitect) switch
-        {
-            (true, true) => "Developer + Architect",
-            (true, false) => "Developer",
-            (false, true) => "Architect",
-            _ => "Linked",
-        };
+        var roles = new List<string>();
+        if (project.ProponentCanonicalOrgId == canonicalOrgId) roles.Add("Developer");
+        if (project.ArchitectCanonicalOrgId == canonicalOrgId) roles.Add("Architect");
+        if (project.StructuralEngineerCanonicalOrgId == canonicalOrgId) roles.Add("Structural Engineer");
+        if (project.GeneralContractorCanonicalOrgId == canonicalOrgId) roles.Add("General Contractor");
+        Role = roles.Count == 0 ? "Linked" : string.Join(" + ", roles);
     }
 
     public MajorProjectRow Project { get; }
@@ -1356,6 +1353,12 @@ public sealed class DossierProjectRow
     public string CostDisplay => Project.CostDisplay;
     public decimal? EstimatedCostCad => Project.EstimatedCostCad;
     public string? MunicipalityName => Project.MunicipalityName;
+    public string? ProponentName => Project.ProponentName;
+    public string? ArchitectName => Project.ArchitectName;
+    public string? StructuralEngineerName => Project.StructuralEngineerName;
+    public string? GeneralContractorName => Project.GeneralContractorName;
+    public string? KorPipelineTag => Project.KorPipelineTag;
+    public string? ScheduleNotes => Project.ScheduleNotes;
     public short? CompletionYear => Project.CompletionYear;
     public string? SourceUrl => Project.SourceUrl;
     public bool HasAbsoluteSourceUrl => Uri.TryCreate(SourceUrl, UriKind.Absolute, out _);

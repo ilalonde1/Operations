@@ -19,7 +19,9 @@ ProponentName, ProponentCanonicalOrgId, ArchitectName, ArchitectCanonicalOrgId,
 MunicipalityName, RegionName, StartYear, CompletionYear, StandardizedStartDate, StandardizedCompletionDate,
 IndigenousInd, IndigenousNames, PublicFundingInd, ProvincialFunding, FederalFunding, MunicipalFunding, GreenBuildingInd,
 ConstructionJobs, OperatingJobs, Latitude, Longitude, ProjectDescription, ProjectWebsite, SourceUrl,
-IssueYear, IssueQuarter, LastSeenAtUtc";
+IssueYear, IssueQuarter, LastSeenAtUtc,
+StructuralEngineerName, StructuralEngineerCanonicalOrgId,
+GeneralContractorName, GeneralContractorCanonicalOrgId, KorPipelineTag, ScheduleNotes";
 
     private readonly string _connectionString;
 
@@ -50,7 +52,10 @@ ORDER BY EstimatedCostCad DESC, ProjectName;";
 SELECT {AllColumns}
 FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL
-  AND (ProponentCanonicalOrgId = @id OR ArchitectCanonicalOrgId = @id)
+  AND (ProponentCanonicalOrgId = @id
+    OR ArchitectCanonicalOrgId = @id
+    OR StructuralEngineerCanonicalOrgId = @id
+    OR GeneralContractorCanonicalOrgId = @id)
 ORDER BY EstimatedCostCad DESC, ProjectName;";
 
         return await ReadRowsAsync(sql, canonicalOrgId, ct).ConfigureAwait(false);
@@ -182,5 +187,11 @@ ORDER BY RegionName;";
         SourceUrl: r.IsDBNull(37) ? null : r.GetString(37),
         IssueYear: r.IsDBNull(38) ? null : r.GetInt16(38),
         IssueQuarter: r.IsDBNull(39) ? null : r.GetByte(39),
-        LastSeenAtUtc: r.GetDateTimeOffset(40));
+        LastSeenAtUtc: r.GetDateTimeOffset(40),
+        StructuralEngineerName: r.IsDBNull(41) ? null : r.GetString(41),
+        StructuralEngineerCanonicalOrgId: r.IsDBNull(42) ? null : r.GetInt64(42),
+        GeneralContractorName: r.IsDBNull(43) ? null : r.GetString(43),
+        GeneralContractorCanonicalOrgId: r.IsDBNull(44) ? null : r.GetInt64(44),
+        KorPipelineTag: r.IsDBNull(45) ? null : r.GetString(45),
+        ScheduleNotes: r.IsDBNull(46) ? null : r.GetString(46));
 }

@@ -45,7 +45,13 @@ public sealed record MajorProjectRow(
     string? SourceUrl,
     short? IssueYear,
     byte? IssueQuarter,
-    DateTimeOffset LastSeenAtUtc)
+    DateTimeOffset LastSeenAtUtc,
+    string? StructuralEngineerName,
+    long? StructuralEngineerCanonicalOrgId,
+    string? GeneralContractorName,
+    long? GeneralContractorCanonicalOrgId,
+    string? KorPipelineTag,
+    string? ScheduleNotes)
 {
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
 
