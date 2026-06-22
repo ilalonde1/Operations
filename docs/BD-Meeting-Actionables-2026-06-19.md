@@ -20,6 +20,26 @@
 
 ---
 
+## 0. Ian's tasks — status tracker (added 2026-06-21)
+
+*Your action items pulled out of §1/§2/§4/§5 with current status.*
+
+| # | Your task (source §) | Status | Note |
+|---|---|---|---|
+| A | **Awards** — brain finds AEC awards to apply for (§4) | ✅ **DONE** | Industry Awards Finder built + deployed; auto-discovers KOR-enterable award programs; surfaces in the app. Auto-*apply* still human-review by design. |
+| B | **Scout John's 5 California developer cos** (§5 USA) | ✅ **DONE (Greystar)** | KOR-Greystar-Scout + California dossier/field-guide/call-sheet delivered. Other 4 await John naming them. |
+| C | **Design-build / "big-fee" qualification research** (§1#5, §5) | ✅ **DONE** | Prime-Consultant channel mapped: KOR wins public/design-build work as the **architect's structural sub** on the prime team — target architects *before* the RFP. + CA field guide. |
+| D | **Biz Brain build-out** — clean data, dedup, CRM (§2) | ✅ **DONE + ongoing** | 50k→17.8k cull, 100+ dup merges (incl. HA cluster), 81 Kind fixes, MPI FKs, dup-creation cycle closed; CRM pursuits loaded (§11). **Full deep re-enrichment now running.** |
+| E | **Social-media automation** — LinkedIn auto-post + Instagram (§4) | 🔄 **In progress** | LinkedIn app-setup checklist done 2026-06-20; Instagram + the every-2-days auto-post still to wire. |
+| F | **Meeting synopsis + action sheet** (3–4 packages, 2–3 people each) (§2) | 🔄 **Pending** | The "intel by Tuesday" deliverable. |
+| G | **Ad-hoc enrichment in the app** | ✅ **EXISTS (orgs)** | Org Dossier has a "Refresh Intel" button (→ queues a FirmNarrative research trigger the Worker drains). **People don't have it yet** — gap to close. |
+| H | **Name the tool** (§2) | ⬜ Open | Biz Brain / KIA / KSA / ICE / Frank. |
+| I | **Plug GIS contact + Broadway/SkyTrain rezoning list into brain** (§2) | ⬜ Blocked | Awaiting Omar's contact + list. |
+| J | **Confirm EGBC SRG course details** (JM takes the course) (§1#1) | ⬜ Open | |
+| K | **Stage the broader §5 reach-out list as CRM engagements** (§11) | ⬜ Your call | Say the word. |
+
+---
+
 ## 1. Firm-level actionables (lists, qualifications, proposals)
 
 | # | Action | Owner | Notes |
