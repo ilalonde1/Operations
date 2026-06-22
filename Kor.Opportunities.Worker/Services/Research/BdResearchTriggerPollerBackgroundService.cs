@@ -40,22 +40,24 @@ internal sealed class BdResearchTriggerPollerBackgroundService : BackgroundServi
             ? DefaultPeriodSeconds
             : _options.IngestionTriggerPollSeconds);
         var period = TimeSpan.FromSeconds(periodSeconds);
+        var concurrency = Math.Clamp(_options.BdResearchPollerConcurrency, 1, 8);
 
         var claimer = $"{Environment.MachineName}/{Environment.ProcessId}";
 
         _logger.LogInformation(
-            "BdResearchTriggerPoller started. Period={Seconds}s ClaimedBy={Claimer}.",
+            "BdResearchTriggerPoller started. Period={Seconds}s Concurrency={Concurrency} ClaimedBy={Claimer}.",
             periodSeconds,
+            concurrency,
             claimer);
 
-        await DrainAsync(claimer, stoppingToken).ConfigureAwait(false);
+        await DrainAsync(claimer, concurrency, stoppingToken).ConfigureAwait(false);
 
         using var timer = new PeriodicTimer(period);
         try
         {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
-                await DrainAsync(claimer, stoppingToken).ConfigureAwait(false);
+                await DrainAsync(claimer, concurrency, stoppingToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -66,51 +68,73 @@ internal sealed class BdResearchTriggerPollerBackgroundService : BackgroundServi
         _logger.LogInformation("BdResearchTriggerPoller stopping.");
     }
 
-    private async Task DrainAsync(string claimer, CancellationToken ct)
+    private async Task DrainAsync(string claimer, int concurrency, CancellationToken ct)
     {
-        var maxPerWake = _options.IngestionTriggerMaxPerWake <= 0 ? 25 : _options.IngestionTriggerMaxPerWake;
-        var processedThisWake = 0;
-        while (!ct.IsCancellationRequested)
-        {
-            if (processedThisWake >= maxPerWake)
-            {
-                _logger.LogInformation(
-                    "BdResearchTriggerPoller reached max-per-wake cap of {MaxPerWake}; remaining triggers will run on the next tick.",
-                    maxPerWake);
-                return;
-            }
+        var fired = 0;
+        var failed = 0;
+        using var gate = new SemaphoreSlim(concurrency);
 
-            BdResearchTrigger? trigger;
+        var workers = Enumerable.Range(0, concurrency)
+            .Select(_ => DrainWorkerAsync())
+            .ToArray();
+        await Task.WhenAll(workers).ConfigureAwait(false);
+
+        _logger.LogInformation(
+            "BdResearchTriggerPoller cycle completed: fired={Fired}; failed={Failed}.",
+            fired,
+            failed);
+
+        async Task DrainWorkerAsync()
+        {
+            await gate.WaitAsync(ct).ConfigureAwait(false);
             try
             {
-                trigger = await _triggerStore.ClaimNextPendingAsync(claimer, ct).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to claim next pending BdResearchTrigger.");
-                return;
-            }
+                while (!ct.IsCancellationRequested)
+                {
+                    BdResearchTrigger? trigger;
+                    try
+                    {
+                        trigger = await _triggerStore.ClaimNextPendingAsync(claimer, ct).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        Interlocked.Increment(ref failed);
+                        _logger.LogError(ex, "Failed to claim next pending BdResearchTrigger.");
+                        return;
+                    }
 
-            if (trigger is null)
-            {
-                return;
-            }
+                    if (trigger is null)
+                    {
+                        return;
+                    }
 
-            await ProcessAsync(trigger, ct).ConfigureAwait(false);
-            processedThisWake++;
+                    if (await ProcessAsync(trigger, ct).ConfigureAwait(false))
+                    {
+                        Interlocked.Increment(ref fired);
+                    }
+                    else
+                    {
+                        Interlocked.Increment(ref failed);
+                    }
+                }
+            }
+            finally
+            {
+                gate.Release();
+            }
         }
     }
 
-    private async Task ProcessAsync(BdResearchTrigger trigger, CancellationToken ct)
+    private async Task<bool> ProcessAsync(BdResearchTrigger trigger, CancellationToken ct)
     {
         if (trigger.ClaimToken is not { } claimToken)
         {
             _logger.LogError("BdResearchTrigger {Trigger} was claimed without a claim token.", trigger.Id);
-            return;
+            return false;
         }
 
         try
@@ -135,6 +159,7 @@ internal sealed class BdResearchTriggerPollerBackgroundService : BackgroundServi
                 trigger.CanonicalOrgId,
                 trigger.ProviderName,
                 result is not null);
+            return result is not null;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -160,6 +185,8 @@ internal sealed class BdResearchTriggerPollerBackgroundService : BackgroundServi
             {
                 _logger.LogError(completeEx, "Failed to mark BdResearchTrigger {Trigger} as Failed.", trigger.Id);
             }
+
+            return false;
         }
     }
 

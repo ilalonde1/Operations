@@ -151,6 +151,9 @@ public sealed class OpportunitiesWorkerOptions
     /// <summary>Maximum Run-Now triggers the poller drains in one wake.</summary>
     public int IngestionTriggerMaxPerWake { get; init; } = 25;
 
+    /// <summary>Concurrent org/person research trigger workers. Clamped to 1-8 by each poller.</summary>
+    public int BdResearchPollerConcurrency { get; set; } = 4;
+
     /// <summary>How often OpportunitySourceCronScheduler checks each enabled
     /// source's CrawlDelaySeconds and queues a trigger if the window has
     /// elapsed (default 300s = 5 min). Lower bound enforced at 30s.</summary>

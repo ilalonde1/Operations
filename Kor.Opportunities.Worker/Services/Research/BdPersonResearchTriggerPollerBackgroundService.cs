@@ -45,21 +45,23 @@ internal sealed class BdPersonResearchTriggerPollerBackgroundService : Backgroun
             ? DefaultPeriodSeconds
             : _workerOptions.IngestionTriggerPollSeconds);
         var period = TimeSpan.FromSeconds(periodSeconds);
+        var concurrency = Math.Clamp(_workerOptions.BdResearchPollerConcurrency, 1, 8);
         var claimer = $"{Environment.MachineName}/{Environment.ProcessId}";
 
         _logger.LogInformation(
-            "BdPersonResearchTriggerPoller started. Period={Seconds}s ClaimedBy={Claimer}.",
+            "BdPersonResearchTriggerPoller started. Period={Seconds}s Concurrency={Concurrency} ClaimedBy={Claimer}.",
             periodSeconds,
+            concurrency,
             claimer);
 
-        await DrainAsync(claimer, stoppingToken).ConfigureAwait(false);
+        await DrainAsync(claimer, concurrency, stoppingToken).ConfigureAwait(false);
 
         using var timer = new PeriodicTimer(period);
         try
         {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
-                await DrainAsync(claimer, stoppingToken).ConfigureAwait(false);
+                await DrainAsync(claimer, concurrency, stoppingToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -70,54 +72,73 @@ internal sealed class BdPersonResearchTriggerPollerBackgroundService : Backgroun
         _logger.LogInformation("BdPersonResearchTriggerPoller stopping.");
     }
 
-    private async Task DrainAsync(string claimer, CancellationToken ct)
+    private async Task DrainAsync(string claimer, int concurrency, CancellationToken ct)
     {
-        var maxPerWake = _workerOptions.IngestionTriggerMaxPerWake <= 0
-            ? 25
-            : _workerOptions.IngestionTriggerMaxPerWake;
-        var processedThisWake = 0;
+        var fired = 0;
+        var failed = 0;
+        using var gate = new SemaphoreSlim(concurrency);
 
-        while (!ct.IsCancellationRequested)
+        var workers = Enumerable.Range(0, concurrency)
+            .Select(_ => DrainWorkerAsync())
+            .ToArray();
+        await Task.WhenAll(workers).ConfigureAwait(false);
+
+        _logger.LogInformation(
+            "BdPersonResearchTriggerPoller cycle completed: fired={Fired}; failed={Failed}.",
+            fired,
+            failed);
+
+        async Task DrainWorkerAsync()
         {
-            if (processedThisWake >= maxPerWake)
-            {
-                _logger.LogInformation(
-                    "BdPersonResearchTriggerPoller reached max-per-wake cap of {MaxPerWake}.",
-                    maxPerWake);
-                return;
-            }
-
-            BdPersonResearchTrigger? trigger;
+            await gate.WaitAsync(ct).ConfigureAwait(false);
             try
             {
-                trigger = await _triggerStore.ClaimNextPendingAsync(claimer, ct).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to claim next pending BdPersonResearchTrigger.");
-                return;
-            }
+                while (!ct.IsCancellationRequested)
+                {
+                    BdPersonResearchTrigger? trigger;
+                    try
+                    {
+                        trigger = await _triggerStore.ClaimNextPendingAsync(claimer, ct).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        Interlocked.Increment(ref failed);
+                        _logger.LogError(ex, "Failed to claim next pending BdPersonResearchTrigger.");
+                        return;
+                    }
 
-            if (trigger is null)
-            {
-                return;
-            }
+                    if (trigger is null)
+                    {
+                        return;
+                    }
 
-            await ProcessAsync(trigger, ct).ConfigureAwait(false);
-            processedThisWake++;
+                    if (await ProcessAsync(trigger, ct).ConfigureAwait(false))
+                    {
+                        Interlocked.Increment(ref fired);
+                    }
+                    else
+                    {
+                        Interlocked.Increment(ref failed);
+                    }
+                }
+            }
+            finally
+            {
+                gate.Release();
+            }
         }
     }
 
-    private async Task ProcessAsync(BdPersonResearchTrigger trigger, CancellationToken ct)
+    private async Task<bool> ProcessAsync(BdPersonResearchTrigger trigger, CancellationToken ct)
     {
         if (trigger.ClaimToken is not { } claimToken)
         {
             _logger.LogError("BdPersonResearchTrigger {Trigger} was claimed without a claim token.", trigger.Id);
-            return;
+            return false;
         }
 
         try
@@ -142,6 +163,7 @@ internal sealed class BdPersonResearchTriggerPollerBackgroundService : Backgroun
                 trigger.IntelPersonId,
                 trigger.ProviderName,
                 result is not null);
+            return result is not null;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -168,6 +190,8 @@ internal sealed class BdPersonResearchTriggerPollerBackgroundService : Backgroun
                     "Failed to mark BdPersonResearchTrigger {Trigger} as Failed.",
                     trigger.Id);
             }
+
+            return false;
         }
     }
 
