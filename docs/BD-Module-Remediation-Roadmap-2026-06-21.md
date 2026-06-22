@@ -46,7 +46,9 @@ The research is in prose docs (BD-Overnight-Briefing-2026-06-21), so this is the
 - ✅ **Institutional rescue (Block 0.5 overreach fix):** discovered **252 archived orgs with institutional names** (mis-kinded reals from Deltek-AP Vendor seeding). Scoped rescue = **56 resurrected + reclassified** (53 Indigenous nations/Métis/Inuit → Buyer; 3 territorial/provincial govs → Government), excluding hospitality/supply false-positives, out-of-geography schools, and band-owned vendor arms. Universities/health/cities (geo-mixed) left for a reviewed geo pass; all protected by resurrect-on-reference meanwhile. Warm set 17,839→17,831 net (rescues + the 47 &/and merges).
 - ⏳ **Seed (step 2):** ~14 net-new northern orgs (Broadstreet, yáqʷa, Housing NWT, NTHSSA, Taylor Architecture, Gwich'in, Yukon Housing/Hospital, Chu Níikwán, Kwanlin Dün, Ta'an Kwäch'än…) — pre-flight resolution gate first (some may now exist post-rescue).
 - ✅ **Dup clusters DONE (2026-06-21):** Northern Health #794 (HA cluster) + 4 northern merges via `--pairs` (M'akola Housing Society/CRD→#69999, Lax Kw'alaams+BC Housing→#55005, DCC/DND→#47044, Athabasca Dene Lands→#42171). Audited: 0 losers active, 4 survivors, 0 MPI orphans. **M'akola Dev Services #52 (KorClient) kept SEPARATE** from M'akola Housing Society #69999 (distinct entities). *(Note: the full --backfill-fuzzy-key run holds the merge app-lock — stop it or wait before a --pairs commit; seed fuzzy keys finished via targeted UPDATE.)*
-- ⏳ **Events** (TOP 12) + **open SE seats** (✅ pursuit list delivered).
+- ✅ **Events DONE (2026-06-21):** 9 of the top-12 already present; added the 3 missing (HAVAN Awards, NAIOP CRE Awards, FNMPC Annual Conference — the Indigenous-infra anchor). Active events 40→43. **open SE seats** ✅ pursuit list delivered.
+
+**BLOCK 5 COMPLETE.** Org work (reclassify + 56-institution rescue + 11 seeds + 4 dup merges) + events done; seeds feeding enrichment.
 
 ## Block 6 — Enrich barren entities
 Queue the barren/newly-seeded orgs through the org-brief enrichment pass (post-ingest enrichment is standard — `feedback_postingest_enrichment`).
