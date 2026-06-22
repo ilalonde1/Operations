@@ -33,7 +33,10 @@ Segmentation proved only ~10.5% of 49,776 active orgs are connected to any KOR s
 - **3b. Fix the stalled Vancouver permit poll** (`Content-Length 81MB exceeds 52MB limit` → page/stream).
 - **3c. Add missing sources** (human-gated onboarding): Surrey/Calgary/Edmonton/Victoria permit APIs, OpenNWT/GNWT, Yukon Bids & Tenders, Infrastructure BC, Northern Health, First Nations.
 
-## Block 4 — Extraction completeness
+## Block 4 — Extraction completeness — ✅ **read-path DONE + DEPLOYED (2026-06-21)**
+Diagnosis: the importer **write** path persists SE/GC (name+FK) + KorPipelineTag + ScheduleNotes correctly (~40 fields, line ~7300 of BdResearchImport) — the gap was the **read store** dropping them. Fixed `SqlMajorProjectsInventoryStore` (AllColumns + MapReader ordinals 41-46) + `ListByCanonicalOrg` now matches SE/GC FKs (engineer/contractor dossiers show their projects) + surfaced in dossier/inventory/AI/search. Deployed Worker `1.0.9668.1148`; App UI ships next app deploy. **Backfill** linked SE 75→84 (Glotman #38926, RJC, Saiful Bouquet, Nabih Youssef, Englekirk, Forell/Elsesser, KOR-as-SE). **OPEN byproducts:** (a) 9 real CA structural firms not yet canonicals → create on next ingest (Burkett&Wong, Labib Funk, MKA, Pac Western, WCPG…); (b) **44 MPI rows have SE/GC name = `"Not yet awarded"` placeholder = OPEN STRUCTURAL SEAT** — a high-value pursuit list; importer should route these to SeatStatus, not the name column. SE 3.2%→ still low because *sources rarely publish the SE* (enrichment fills over time), not a persistence bug.
+
+## Block 4 (orig) — Extraction completeness
 - **4a. Fix the lossy importer tags** so SE/GC/seat actually persist (the 3.2% SE-coverage root cause) — incl. `indigenous` writing SE into schedule-notes instead of the SE column; harden `pipeline-seats` against null-overwrite of classifications.
 - **4b. Widen `OpportunityCandidate`** to carry architect/GC/SE/contacts (typed observations + provenance, not raw-JSON overload).
 
