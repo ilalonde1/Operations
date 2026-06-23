@@ -155,7 +155,7 @@ public static class SectorReportProseCatalog
                 },
                 new[]
                 {
-                    "Squamish Nation relationship play — Build 600 Affordable Homes Action Plan (Id 4873) + Sen̓áḵw Phases 3-4 (Id 6910 MONITOR). One named warm-intro target via Senakw Development Corp or via past architect.",
+                    "Squamish Nation relationship play — Build 600 Affordable Homes Action Plan (Id 4873) + Sen̓áḵw Phases 3-4 (Id 6910). One named warm-intro target via Senakw Development Corp or via past architect.",
                     "Musqueam-Tsleil-Waututh development corp — Jericho Lands Phase 1 (Id 6911) + Maplewood Innovation District (Id 4882) + statləw̓ District (Id 6913). MST Development Corp is the gate. KOR should target this single development corp relationship for compounding returns across Phase 1-N.",
                     "VI housing wave — APD Lands Port Alberni (Id 4846), te'tuxwtun Camp Nanaimo (Id 4843), Redford Uchucklesaht (Id 5821). Smaller pursuits each but cumulative. Identify a Nation-relationship consultant or past-architect channel.",
                     "AB Alexander First Nation Mamawatoskewin (Id 6999) — single PURSUE in AB. Direct opportunity if warm-intro path identified.",
@@ -290,7 +290,7 @@ public static class SectorReportProseCatalog
                 new[]
                 {
                     "Residential is RELATIONSHIP-driven — most BC residential is developer-led with in-house GC (Wesgroup, Bosa, Polygon, Onni) or developer + selected GC + pre-qualified subs. Architect drives structural-engineer selection. Memory-confirmed KOR client developers checked against every project for prior-relationship advantage.",
-                    "NOTE: This report covers batch-001 (250 of 483 residential MPIs). Pt2 (233 items) honing not yet launched. Final residential coverage at ~100% pending pt2 completion.",
+                    "NOTE: residential is honed in batches — the verdict counts above are live for whatever has been honed to date and grow as more of the pipeline is honed.",
                 },
                 new SynthesisSection[]
                 {
@@ -322,7 +322,7 @@ public static class SectorReportProseCatalog
                 new[]
                 {
                     "Audit MONITOR list for repeat developers — developers appearing 3+ times = strategic-relationship targets. Memory-confirmed KOR clients appearing in MONITOR are warm-leads.",
-                    "Launch residential-honing pt2 (233 items remaining) for complete coverage. After ingest, this report regenerates with full pipeline.",
+                    "Continue residential honing for complete coverage. After each pass this report regenerates from the full live pipeline.",
                     "BMZ legacy audit — surface pre-2021 KOR portfolio references per developer to establish warm-intro lead-ins.",
                     "Wesgroup / Bosa / Onni in-house construction relationships — single VP Development relationship at each unlocks entire pipeline.",
                 }
@@ -336,13 +336,13 @@ public static class SectorReportProseCatalog
                 new SynthesisSection[]
                 {
                     new(
-                        "Commercial office market reality — 88% DEAD",
+                        "Commercial office market reality — procurement-mature, mostly locked",
                         new[]
                         {
-                            "Of 126 commercial office projects honed, 111 (88%) are DEAD — structural engineer already assigned, project delivered, or owner pre-locked. The commercial office market in BC + AB is procurement-mature; pursuits are concentrated in a small set of active RFPs.",
+                            "Most honed commercial office projects come back DEAD — structural engineer already assigned, project delivered, or owner pre-locked (the live verdict counts above are the current figure). The commercial office market in BC + AB is procurement-mature; pursuits concentrate in a small set of active RFPs.",
                         }),
                     new(
-                        "The 3 PURSUE — small but high-leverage",
+                        "The PURSUE set — small but high-leverage",
                         new[]
                         {
                             "Waterfront Square Office Tower (BC), 11-15 East 4th Avenue Life Sciences (BC), Centre Block SFU/Provincial Office Tower Surrey. All require immediate engagement — DPB hearings complete or Development Permit in process. Structural selection window OPEN now.",
@@ -351,13 +351,13 @@ public static class SectorReportProseCatalog
                         "TELUS Ocean was the model — find the next mass-timber office anchor",
                         new[]
                         {
-                            "TELUS Ocean Vancouver (EllisDon GC, mass timber + concrete hybrid) set the model for the next wave of BC commercial office. The 2 DISCOVER projects are likely future mass-timber office candidates. Track anchor-tenant pre-lease announcements at Microsoft / Shopify / Amazon Canada to identify the next opportunity.",
+                            "TELUS Ocean Vancouver (EllisDon GC, mass timber + concrete hybrid) set the model for the next wave of BC commercial office. The DISCOVER projects are likely future mass-timber office candidates. Track anchor-tenant pre-lease announcements at Microsoft / Shopify / Amazon Canada to identify the next opportunity.",
                         }),
                     new(
                         "Strategic relationships > project pursuits",
                         new[]
                         {
-                            "Given 88% DEAD, the commercial pursuit play is RELATIONSHIPS not projects. Build sustained relationships with the BC commercial office majors: Concert Properties, Westbank, Beedie Development, Anthem, Aquilini, Reliance. Most of these are already KorClients (per memory). The relationship investment compounds across multi-decade commercial pipelines.",
+                            "Because the market is largely locked, the commercial pursuit play is RELATIONSHIPS not projects. Build sustained relationships with the BC commercial office majors: Concert Properties, Westbank, Beedie Development, Anthem, Aquilini, Reliance. Most of these are already KorClients (per memory). The relationship investment compounds across multi-decade commercial pipelines.",
                         }),
                 },
                 new[]

@@ -163,7 +163,7 @@ public static class ExecSummaryReportGenerator
             {
                 new("Procurement-mature markets vs open RFP markets", new[]
                 {
-                    "Commercial Office: 88% DEAD (procurement-mature, structural already locked). Hospitals: 60% DEAD (Alliance / P3 / Stantec-captive). Indigenous: 100% relationship-driven (no DEAD in traditional sense). Schools: 23% DEAD (large pipeline of seismic upgrades still active).",
+                    "Commercial Office: largely DEAD (procurement-mature, structural already locked). Hospitals: heavily Alliance / P3 / Stantec-captive. Indigenous: relationship-driven (not open-bid). Schools: large active pipeline of seismic upgrades. (Each sector report carries the live verdict counts for current figures.)",
                     "Implication: pursuit strategy by sector is FUNDAMENTALLY different. Commercial = relationships not RFPs. Schools = relationship + active RFP both work. Hospitals = procurement model identification is the make/break gate (Yurkovich correction).",
                 }),
                 new("Mass timber as KOR's emerging differentiator", new[]
@@ -172,7 +172,7 @@ public static class ExecSummaryReportGenerator
                 }),
                 new("Long-span specialty (aquatics + arenas + field house) = KOR direct fit", new[]
                 {
-                    "Recreational sector is KOR's structural sweet spot. Long-span roof + complex MEP + corrosive environment detailing (aquatic centres) + low-temp condensation (ice arenas) + clear-span (field houses) = direct KOR specialty. 16 PURSUE + 35 DISCOVER in recreational = compounding pipeline.",
+                    "Recreational sector is KOR's structural sweet spot. Long-span roof + complex MEP + corrosive environment detailing (aquatic centres) + low-temp condensation (ice arenas) + clear-span (field houses) = direct KOR specialty. A deep PURSUE + DISCOVER pipeline (see the recreational report's live counts) = compounding opportunity.",
                 }),
                 new("BMZ legacy as warm-intro lever", new[]
                 {
