@@ -137,7 +137,8 @@ public sealed class VancouverOpenDataPermitAdapter
                             upsert.OwnerName,
                             OrgKinds.Unknown,
                             "BuildingPermit.Owner",
-                            ct).ConfigureAwait(false);
+                            ct,
+                            createArchived: true).ConfigureAwait(false);
                     await _store.SetOwnerCanonicalAsync(permitId, canon, ct).ConfigureAwait(false);
                     if (canon.HasValue)
                     {
@@ -153,7 +154,8 @@ public sealed class VancouverOpenDataPermitAdapter
                             upsert.ApplicantName,
                             OrgKinds.Unknown,
                             "BuildingPermit.Applicant",
-                            ct).ConfigureAwait(false);
+                            ct,
+                            createArchived: true).ConfigureAwait(false);
                     await _store.SetApplicantCanonicalAsync(permitId, canon, ct).ConfigureAwait(false);
                     if (canon.HasValue)
                     {
@@ -169,7 +171,8 @@ public sealed class VancouverOpenDataPermitAdapter
                             upsert.ContractorName,
                             OrgKinds.Unknown,
                             "BuildingPermit.Contractor",
-                            ct).ConfigureAwait(false);
+                            ct,
+                            createArchived: true).ConfigureAwait(false);
                     await _store.SetContractorCanonicalAsync(permitId, canon, ct).ConfigureAwait(false);
                     if (canon.HasValue)
                     {
