@@ -28,7 +28,10 @@ public static class SectorReportDefinitionCatalog
             " OR m.SubSector LIKE N'%hospital%' OR m.SubSector LIKE N'%health%'" +
             " OR m.ProjectName LIKE N'%hospital%' OR m.ProjectName LIKE N'%health centre%'" +
             " OR m.SourceKey LIKE N'HCARE%')" +
-            " AND m.Province IN (N'BC', N'AB'))"),
+            " AND m.Province IN (N'BC', N'AB'))",
+            "(s.Subject LIKE N'%hospital%' OR s.Detail LIKE N'%hospital%' OR s.Detail LIKE N'%health centre%'" +
+            " OR s.Detail LIKE N'%health authority%' OR s.Detail LIKE N'%acute care%' OR s.Detail LIKE N'%patient tower%'" +
+            " OR s.Detail LIKE N'%cancer centre%' OR s.Detail LIKE N'%long-term care%' OR s.Detail LIKE N'%ambulatory%')"),
 
         new SectorReportDefinition(
             "schools",
@@ -38,7 +41,10 @@ public static class SectorReportDefinitionCatalog
             " OR (m.Sector = N'Education' AND (m.SubSector LIKE N'%K-12%' OR m.SubSector LIKE N'%Seismic%'))" +
             " OR m.ProjectName LIKE N'%elementary%' OR m.ProjectName LIKE N'%middle school%'" +
             " OR m.ProjectName LIKE N'%secondary school%' OR m.ProjectName LIKE N'%high school%')" +
-            " AND m.Province IN (N'BC', N'AB'))"),
+            " AND m.Province IN (N'BC', N'AB'))",
+            "(s.Subject LIKE N'%school district%' OR s.Detail LIKE N'%school district%' OR s.Detail LIKE N'%K-12%'" +
+            " OR s.Detail LIKE N'%elementary school%' OR s.Detail LIKE N'%secondary school%'" +
+            " OR s.Detail LIKE N'%seismic upgrade%' OR s.Detail LIKE N'%seismic mitigation%')"),
 
         new SectorReportDefinition(
             "indigenous",
@@ -68,7 +74,10 @@ public static class SectorReportDefinitionCatalog
             "KOR Structural — BC Housing BD Report",
             "((m.ProponentName LIKE N'%BC Housing%' OR m.Sector = N'Affordable Housing'" +
             " OR m.SubSector LIKE N'%affordable%' OR m.SubSector LIKE N'%supportive%')" +
-            " AND m.Province IN (N'BC', N'AB'))"),
+            " AND m.Province IN (N'BC', N'AB'))",
+            "(s.Subject LIKE N'%BC Housing%' OR s.Detail LIKE N'%BC Housing%' OR s.Detail LIKE N'%BC Builds%'" +
+            " OR s.Detail LIKE N'%affordable housing%' OR s.Detail LIKE N'%supportive housing%'" +
+            " OR s.Detail LIKE N'%complex care%' OR s.Detail LIKE N'%transitional housing%')"),
 
         new SectorReportDefinition(
             "defense",
@@ -95,7 +104,10 @@ public static class SectorReportDefinitionCatalog
             " OR m.SubSector LIKE N'%recreation%'" +
             " OR m.ProjectName LIKE N'%aquatic%' OR m.ProjectName LIKE N'%arena%'" +
             " OR m.ProjectName LIKE N'%recreation centre%')" +
-            " AND m.Province IN (N'BC', N'AB'))"),
+            " AND m.Province IN (N'BC', N'AB'))",
+            "(s.Subject LIKE N'%recreation%' OR s.Detail LIKE N'%recreation centre%' OR s.Detail LIKE N'%aquatic centre%'" +
+            " OR s.Detail LIKE N'%ice arena%' OR s.Detail LIKE N'%field house%' OR s.Detail LIKE N'%community centre%'" +
+            " OR s.Detail LIKE N'%curling%' OR s.Detail LIKE N'%aquatic%')"),
 
         new SectorReportDefinition(
             "residential",
@@ -104,7 +116,10 @@ public static class SectorReportDefinitionCatalog
             "((m.Sector LIKE N'Residential%' OR m.Sector LIKE N'Housing%'" +
             " OR m.Sector LIKE N'Mixed-Use%' OR m.Sector LIKE N'Mixed-use%'" +
             " OR m.Sector IN (N'Multifamily', N'MixedUse'))" +
-            " AND m.Province IN (N'BC', N'AB'))"),
+            " AND m.Province IN (N'BC', N'AB'))",
+            "(s.Detail LIKE N'%condominium%' OR s.Detail LIKE N'%condo tower%' OR s.Detail LIKE N'%multi-family%'" +
+            " OR s.Detail LIKE N'%multifamily%' OR s.Detail LIKE N'%purpose-built rental%' OR s.Detail LIKE N'%missing middle%'" +
+            " OR s.Detail LIKE N'%mixed-use%' OR s.Detail LIKE N'%mid-rise%')"),
 
         new SectorReportDefinition(
             "commercial",
@@ -112,7 +127,9 @@ public static class SectorReportDefinitionCatalog
             "KOR Structural — BC + AB Commercial BD Report",
             "((m.Sector LIKE N'Commercial%'" +
             " OR m.Sector IN (N'Industrial', N'Hospitality', N'Entertainment/Studio', N'Mixed-Use / Tech Campus'))" +
-            " AND m.Province IN (N'BC', N'AB'))"),
+            " AND m.Province IN (N'BC', N'AB'))",
+            "(s.Detail LIKE N'%office tower%' OR s.Detail LIKE N'%commercial office%' OR s.Detail LIKE N'%mass timber office%'" +
+            " OR s.Detail LIKE N'%anchor tenant%' OR s.Detail LIKE N'%industrial park%' OR s.Detail LIKE N'%data centre%')"),
 
         new SectorReportDefinition(
             "post-secondary",
@@ -122,7 +139,10 @@ public static class SectorReportDefinitionCatalog
             " OR m.Sector IN (N'Academic', N'University', N'Education - Post-Secondary', N'Education-PostSec', N'StudentHousing')" +
             " OR (m.Sector = N'Education' AND (m.SubSector LIKE N'%Academic%' OR m.SubSector LIKE N'%Science%'" +
             " OR m.SubSector LIKE N'%Student Housing%' OR m.SubSector LIKE N'%Research%')))" +
-            " AND m.Province IN (N'BC', N'AB'))"),
+            " AND m.Province IN (N'BC', N'AB'))",
+            "(s.Subject LIKE N'%university%' OR s.Detail LIKE N'%university%' OR s.Detail LIKE N'%college campus%'" +
+            " OR s.Detail LIKE N'%student housing%' OR s.Detail LIKE N'%polytechnic%' OR s.Detail LIKE N'%post-secondary%'" +
+            " OR s.Detail LIKE N'%UBC %' OR s.Detail LIKE N'%SFU %' OR s.Detail LIKE N'%UVic%')"),
 
         // Region row (first non-sector cut, same config-row mechanism).
         // Validated against live MunicipalityName/RegionName on 2026-06-12:
@@ -142,7 +162,9 @@ public static class SectorReportDefinitionCatalog
             " OR (m.MunicipalityName IS NULL" +
             " AND m.RegionName IN (N'Okanagan', N'CentralOkanagan', N'Central Okanagan', N'SouthOkanagan')" +
             " AND (m.ProponentName IS NULL OR m.ProponentName NOT LIKE N'%Kamloops%')))" +
-            " AND m.Province = N'BC')"),
+            " AND m.Province = N'BC')",
+            "(s.Subject LIKE N'%Okanagan%' OR s.Detail LIKE N'%Okanagan%' OR s.Detail LIKE N'%Kelowna%'" +
+            " OR s.Detail LIKE N'%Penticton%' OR s.Detail LIKE N'%West Kelowna%' OR s.Detail LIKE N'%Lake Country%')"),
 
         // The US slice the BC + AB scoping removed from the sector rows.
         // Province is the only US geography signal today (CA 147 / OR 58 /
@@ -151,6 +173,9 @@ public static class SectorReportDefinitionCatalog
             "us-west",
             "US West Coast",
             "KOR Structural — US West Coast BD Report",
-            "(m.Province IN (N'CA', N'WA', N'OR'))"),
+            "(m.Province IN (N'CA', N'WA', N'OR'))",
+            "(s.Detail LIKE N'%California%' OR s.Detail LIKE N'%Seattle%' OR s.Detail LIKE N'%Portland%'" +
+            " OR s.Detail LIKE N'%Los Angeles%' OR s.Detail LIKE N'%San Diego%' OR s.Detail LIKE N'%Sacramento%'" +
+            " OR s.Detail LIKE N'%Oregon%' OR s.Detail LIKE N'%Washington State%')"),
     };
 }
