@@ -142,7 +142,15 @@ public static class SectorReportProseCatalog
                         "Indigenous-owned structural firm requirement caution",
                         new[]
                         {
-                            "A growing number of Indigenous procurements require Indigenous-owned firms on the prime team. KOR is NOT Indigenous-owned. The play is: (1) sub-consultant to an Indigenous-led prime architect (Two Row Architect, Smoke Architecture, Brook McIlroy), (2) sub-consultant to a non-Indigenous prime with strong Indigenous track record (Stantec, DIALOG, IBI/Arcadis), or (3) joint-venture partnership with an Indigenous engineering firm for specific pursuits. Identify which projects allow which strategy.",
+                            "A growing number of Indigenous procurements require Indigenous-owned firms on the prime team. KOR is NOT Indigenous-owned. The play is: (1) sub-consultant to an Indigenous-led prime architect (Two Row Architect, Smoke Architecture, Brook McIlroy), (2) sub-consultant to a non-Indigenous prime with strong Indigenous track record (Stantec, DIALOG, IBI/Arcadis), or (3) joint-venture / teaming with an Indigenous-owned engineering firm for specific pursuits — KOR now has a named partner for option (3): see Gwaii Engineering below.",
+                        }),
+                    new(
+                        "Named Indigenous-owned engineering partner — Gwaii Engineering (Victoria)",
+                        new[]
+                        {
+                            "Gwaii Engineering (gwaiieng.com) is an Indigenous-owned (Haida) CCAB-certified civil & environmental engineering firm, Victoria BC, founded 2017 by Corey Brown (Sta'staas Eagle Clan, Old Masset). ~20+ staff. It is the incumbent civil engineer for 25+ coastal-BC / Vancouver Island First Nations (Malahat, Cowichan, Tsawout, Tsawwassen, Songhees, Ditidaht, Ucluelet, Tla'amin, K'ómoks, Haida Nation) plus BC Housing — the same owners this pipeline tracks.",
+                            "WHY IT SOLVES THE CAUTION: civil (Gwaii) and structural (KOR) are complementary, non-competing disciplines. A KOR-structural + Gwaii-civil team satisfies the Indigenous-owned-firm / participation requirement (CCAB) AND brings Gwaii's standing with the Nation/owner — turning the 'KOR is not Indigenous-owned' blocker into a strength. No prior KOR–Gwaii contractual history (net-new white space).",
+                            "Sibling firm: Islander Engineering (Victoria, civil/land-dev) shares founder Corey Brown + staff — covers the conventional-market Island lane. Single relationship (Corey Brown, cbrown@gwaiieng.com; Brandon Ducharme, Capital Advisory, bducharme@gwaiieng.com) opens both. Full dossiers: docs/KOR-Gwaii-Engineering-Dossier + KOR-Islander-Gwaii-Exec-Teaming-Brief (2026-06-23).",
                         }),
                 },
                 new[]
