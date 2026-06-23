@@ -230,13 +230,31 @@ public static class SectorReportProseCatalog
                             "Several defense packages require Reliability or SECRET-level facility clearance for the structural sub. KOR should evaluate clearance capability once a concrete pursuit firms up — it is the recurring competitive gate across this sector.",
                         }),
                     new(
+                        "Live edge — Vancouver Island CFHA housing cluster",
+                        new[]
+                        {
+                            "The current PURSUE_URGENT set is concentrated on Vancouver Island CFHA (Canadian Forces Housing Agency) residential plus a hangar, all DCC-procured: 19 Wing Comox CFHA Housing Phase 2, 19 Wing Comox CMMA Hangar, and CFB Esquimalt CFHA 120 Units (CFB Edmonton CFHA Phase 2 and an Esquimalt DoD project follow as PURSUE). Housing-led, repeatable work in KOR's coastal-BC backyard. NOTE on past performance: KOR's Esquimalt-area structural history is Esquimalt-MUNICIPALITY work, not the naval base — KOR has no confirmed direct DND/CFB project record, so entry is via teaming, not incumbency.",
+                        }),
+                    new(
+                        "Team partners KOR can leverage — Yellowridge, DHK, and an Indigenous civil partner",
+                        new[]
+                        {
+                            "KOR has active project relationships with two viable defense-team partners: Yellowridge Construction (design-build GC, 60+ years, builds DND plus Indigenous / First Nations housing & health facilities) and DHK Architects — both real KOR working relationships (e.g. Yellowridge — 611 Brunswick St, Prince George; DHK — All Clan House, Stellako BC). For DND packages with Indigenous-participation requirements or on/near Nation land, pair with Gwaii Engineering (Indigenous-owned, CCAB-certified civil) and its sibling Islander Engineering: KOR structural + Gwaii civil earns Indigenous-participation scoring. NOTE: KOR has no prior jobs with Islander/Gwaii — forward-looking teaming, not past performance.",
+                        }),
+                    new(
                         "Defense MPI ingestion hygiene",
                         new[]
                         {
                             "The honing pass functioned partly as a data-hygiene audit: geographic proximity to a CFB caused schools, arenas, RCMP detachments, and First Nations commercial projects to auto-classify as defense. Tighter ingestion filters needed; re-categorization candidates are flagged per-brief in the MONITOR and DEAD sections above.",
                         }),
                 },
-                Array.Empty<string>()
+                new[]
+                {
+                    "Pre-position on the 3 Vancouver Island CFHA urgents (19 Wing Comox housing + CMMA hangar, CFB Esquimalt 120 units) via the likely design-build primes BEFORE the teams close — subscribe to DCC / MERX Pacific-region notices.",
+                    "Build the Yellowridge Construction + DHK Architects relationships deliberately — both are existing KOR working relationships and credible defense-team routes.",
+                    "For Indigenous-participation defense packages, line up Gwaii Engineering (Indigenous-owned civil) as the participation + civil partner.",
+                    "Confirm KOR's facility-security-clearance capability (Reliability / SECRET) — the recurring gate on structural-sub slots.",
+                }
             ),
             ["recreational"] = new(
                 "Recreational facility construction pipeline (aquatic centres, ice arenas, field houses, community centres, multipurpose recreation) across BC and Alberta. Long-span specialty (aquatic + arena + field house) is direct KOR structural sweet spot. HCMA Architecture + Design is the dominant BC rec architect — warm-intro channel.",

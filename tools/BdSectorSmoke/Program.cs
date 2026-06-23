@@ -1,6 +1,7 @@
 // Renders the Indigenous sector report through the SAME path the app uses
 // (SqlBdReportService -> SectorReportProseCatalog -> SectorReportGenerator.Build)
 // and confirms the re-honed Gwaii section actually surfaces in the document.
+using System.IO;
 using System.Text.Json;
 using Kor.Opportunities.Data.BdReports;
 using Kor.Opportunities.Data.BdReports.Generators;
@@ -9,6 +10,26 @@ var cs = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB")
     ?? throw new InvalidOperationException("KOR_OPPORTUNITIES_OPPORTUNITIESDB not set");
 
 var store = new SqlBdReportService(cs);
+
+// "docx <key> [outpath]": render a sector report to .docx via the app's own
+// DocxBuilder — byte-for-byte what the app's Export-DOCX produces (same live
+// data + prose). Proves the deliverable is not a separate data source.
+if (args.Length >= 2 && args[0] == "docx")
+{
+    var k = args[1];
+    var def0 = SectorReportDefinitionCatalog.All.Single(d => d.Key == k);
+    var prose0 = SectorReportProseCatalog.For(k);
+    var rows0 = await store.GetSectorPursuitsAsync(k, CancellationToken.None);
+    var sig0 = await store.GetSectorIntelSignalsAsync(k, CancellationToken.None);
+    var doc0 = SectorReportGenerator.Build(def0, prose0, rows0, DateTimeOffset.UtcNow, sig0);
+    var bytes = DocxBuilder.Render(doc0);
+    var outPath = args.Length >= 3 ? args[2]
+        : $@"C:\VIsual Studio Projects\Operations\docs\KOR-{k}-Sector-Report-2026-06-23.docx";
+    File.WriteAllBytes(outPath, bytes);
+    Console.WriteLine($"Wrote {outPath}");
+    Console.WriteLine($"  {bytes.Length:N0} bytes | {doc0.Blocks.Count} blocks | {rows0.Count(x => x.Verdict is not null)} honed of {rows0.Count} | title: {doc0.Title}");
+    return 0;
+}
 
 // "all" mode: sweep every sector, one summary line each, flag thin/broken.
 if (args.Length > 0 && args[0] == "all")
