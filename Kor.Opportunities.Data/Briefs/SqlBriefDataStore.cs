@@ -115,9 +115,27 @@ WHERE Id = @id;";
                 ownerKor = v is null or DBNull ? 0 : Convert.ToInt32(v);
             }
             {
+                // Owner project count = MPI proponent rows PLUS the owner's
+                // IntelWork owner/buyer/developer-role projects not already in
+                // that MPI set (deduped by normalized name). ~493 owner orgs
+                // with no MPI proponent row gain a real tracked-project count.
                 const string sql = @"
-SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
-WHERE ProponentCanonicalOrgId = @id AND RetiredAtUtc IS NULL;";
+SELECT
+    (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
+      WHERE ProponentCanonicalOrgId = @id AND RetiredAtUtc IS NULL)
+  + (SELECT COUNT(DISTINCT COALESCE(NULLIF(LTRIM(RTRIM(iw.NormalizedProjectName)),N''),
+        LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(iw.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N''))))
+     FROM opportunities.IntelWork iw
+     WHERE iw.CanonicalOrgId = @id AND iw.RetiredAtUtc IS NULL
+       AND LOWER(ISNULL(iw.Role,N'')) IN (N'owner',N'buyer',N'developer',N'client')
+       AND iw.ProjectName IS NOT NULL AND LTRIM(RTRIM(iw.ProjectName)) <> N''
+       AND NOT EXISTS (
+           SELECT 1 FROM opportunities.MajorProjectsInventory m2
+           WHERE m2.ProponentCanonicalOrgId = @id AND m2.RetiredAtUtc IS NULL
+             AND LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(m2.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N''))
+                 = COALESCE(NULLIF(LTRIM(RTRIM(iw.NormalizedProjectName)),N''),
+                     LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(iw.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')))
+       )) AS C;";
                 await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
                 cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = buyerOrgId.Value;
                 var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
@@ -645,13 +663,36 @@ WHERE Id = @id
         var korId = await GetKorIdAsync(con, ct).ConfigureAwait(false);
         var korIdVal = korId ?? -1L;
 
+        // Recent work = the org's MPI FK projects UNION its IntelWork portfolio
+        // edges (negative Id marks IntelWork-only; the brief consumes only the
+        // name/year/sector/province, never the Id), deduped by normalized name
+        // (MPI preferred). Mirrors the dossier-footprint unification (9776a15d):
+        // ~2,694 orgs with no MPI rows now show their real portfolio instead of
+        // reading as thin.
         var recentProjects = await ReadRecentProjectsAsync(con, @"
-SELECT TOP 5 m.Id, m.ProjectName, m.CompletionYear, m.Sector, m.Province
-FROM opportunities.MajorProjectsInventory m
-WHERE m.RetiredAtUtc IS NULL
-  AND (m.ArchitectCanonicalOrgId = @id OR m.ProponentCanonicalOrgId = @id
-    OR m.GeneralContractorCanonicalOrgId = @id OR m.StructuralEngineerCanonicalOrgId = @id)
-ORDER BY ISNULL(m.CompletionYear, 0) DESC, m.Id DESC;",
+WITH Mpi AS (
+    SELECT m.Id AS ProjId, m.ProjectName, m.CompletionYear, m.Sector, m.Province, 0 AS SrcRank,
+           LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(m.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')) AS dk
+    FROM opportunities.MajorProjectsInventory m
+    WHERE m.RetiredAtUtc IS NULL
+      AND (m.ArchitectCanonicalOrgId = @id OR m.ProponentCanonicalOrgId = @id
+        OR m.GeneralContractorCanonicalOrgId = @id OR m.StructuralEngineerCanonicalOrgId = @id)
+),
+Iw AS (
+    SELECT -iw.Id AS ProjId, iw.ProjectName,
+           TRY_CONVERT(int, NULLIF(LTRIM(RTRIM(iw.YearApprox)), N'')) AS CompletionYear,
+           CAST(NULL AS nvarchar(200)) AS Sector, CAST(NULL AS nvarchar(20)) AS Province, 1 AS SrcRank,
+           COALESCE(NULLIF(LTRIM(RTRIM(iw.NormalizedProjectName)),N''),
+               LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(iw.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N''))) AS dk
+    FROM opportunities.IntelWork iw
+    WHERE iw.CanonicalOrgId = @id AND iw.RetiredAtUtc IS NULL
+      AND iw.ProjectName IS NOT NULL AND LTRIM(RTRIM(iw.ProjectName)) <> N''
+),
+U AS (SELECT * FROM Mpi UNION ALL SELECT * FROM Iw),
+Ded AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY dk ORDER BY SrcRank) AS rdup FROM U WHERE dk <> N'')
+SELECT TOP 5 ProjId, ProjectName, CompletionYear, Sector, Province
+FROM Ded WHERE rdup = 1
+ORDER BY ISNULL(CompletionYear, 0) DESC, SrcRank, ProjId DESC;",
             cmd => cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId, ct).ConfigureAwait(false);
 
         var korJointCount = 0;
