@@ -736,6 +736,21 @@ ORDER BY UpdatedAtUtc DESC;";
             enrichmentJson = v is null or DBNull ? null : (string)v;
         }
 
+        DateTimeOffset? lastEnrichedAtUtc;
+        {
+            const string sql = @"
+SELECT MAX(UpdatedAtUtc) FROM opportunities.CanonicalOrgEnrichment WHERE CanonicalOrgId = @id;";
+            await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+            cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+            var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            lastEnrichedAtUtc = v switch
+            {
+                DateTimeOffset dto => dto,
+                DateTime dt => new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc), TimeSpan.Zero),
+                _ => null
+            };
+        }
+
         var intelBundle = await _intelReadService.GetOrgIntelAsync(canonicalOrgId, ct).ConfigureAwait(false);
         var contactCount = await ScalarIntAsync(con, @"
 SELECT COUNT(*)
@@ -777,6 +792,7 @@ WHERE CanonicalOrgId = @id
         {
             ResolvedFromNote = resolvedFromNote,
             Intel = intelBundle,
+            LastEnrichedAtUtc = lastEnrichedAtUtc,
         };
     }
 

@@ -780,6 +780,7 @@ public sealed class BriefGenerator : IBriefGenerator
         {
             AppendBody(body, $"Sectors they work in: {string.Join(", ", enrichment.Sectors)}");
         }
+        AppendBody(body, $"Intelligence: {data.IntelProvenanceLine}");
 
         if (!string.IsNullOrWhiteSpace(data.Intel?.SynopsisParagraph1))
         {

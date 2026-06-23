@@ -312,6 +312,46 @@ public sealed record OrgBriefData(
     public string? DeltekNote { get; init; }
 
     public Kor.Opportunities.Data.Intel.OrgIntelBundle? Intel { get; init; }
+
+    /// <summary>
+    /// MAX(UpdatedAtUtc) across this org's CanonicalOrgEnrichment rows — when the
+    /// dossier intelligence was last refreshed. Null = never enriched.
+    /// </summary>
+    public DateTimeOffset? LastEnrichedAtUtc { get; init; }
+
+    /// <summary>
+    /// One-line trust/provenance summary for the brief header: how fresh the
+    /// intelligence is (last refresh + days ago) and the evidence base behind it
+    /// (signal / people / portfolio counts). Lets the reader judge currency at a
+    /// glance instead of trusting an undated brief.
+    /// </summary>
+    public string IntelProvenanceLine
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (LastEnrichedAtUtc is { } ts)
+            {
+                var days = (int)Math.Max(0, (DateTimeOffset.UtcNow - ts).TotalDays);
+                parts.Add($"refreshed {ts:yyyy-MM-dd} ({days}d ago)");
+            }
+            else
+            {
+                parts.Add("not yet researched");
+            }
+
+            if (Intel is { } b)
+            {
+                var ev = new List<string>();
+                if (b.Signals.Count > 0) ev.Add($"{b.Signals.Count} signals");
+                if (b.People.Count > 0) ev.Add($"{b.People.Count} people");
+                if (b.Works.Count > 0) ev.Add($"{b.Works.Count} portfolio");
+                if (ev.Count > 0) parts.Add(string.Join(", ", ev));
+            }
+
+            return string.Join("  ·  ", parts);
+        }
+    }
 }
 
 // === Sector Brief ===

@@ -1126,6 +1126,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                 HeaderFact(table, "KOR projects", d.KorProjectsCount.ToString(CultureInfo.InvariantCulture));
                 HeaderFact(table, "Last KOR engagement",
                     d.LastKorProjectAtUtc?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "(none)");
+                HeaderFact(table, "Intelligence", d.IntelProvenanceLine);
                 if (!string.IsNullOrWhiteSpace(enrichment.HqCity))
                 {
                     HeaderFact(table, "HQ", enrichment.HqCity!);
