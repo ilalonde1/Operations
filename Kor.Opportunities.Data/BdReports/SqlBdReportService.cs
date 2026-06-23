@@ -406,10 +406,23 @@ SELECT OrgId, ProjId, ProjectName, Province, CostDisplay FROM Ranked WHERE rn <=
         // closing note: "IntelSignal + IntelPersonAffiliation + IntelAction
         // tables on CanonicalOrg.Kind = Competitor"). Counts confirmed against
         // .bc-rivals.json on 2026-06-09 (Aspect 37/6/18 exact match).
+        // LinkedProjects = a competitor's SE footprint. MPI StructuralEngineer
+        // FK rows UNION the org's IntelWork structural/engineer-role portfolio
+        // edges, deduped by normalized project name (UNION collapses ties).
+        // Signals/People/Actions are unchanged (verified Aspect 37/6/18).
         const string rankingSql = @"
 SELECT TOP (@take) x.Id, x.DisplayName, x.Signals, x.People, x.Actions,
-       (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
-         WHERE m.StructuralEngineerCanonicalOrgId = x.Id AND m.RetiredAtUtc IS NULL) AS LinkedProjects
+       (SELECT COUNT(*) FROM (
+            SELECT LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(m.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')) AS dk
+            FROM opportunities.MajorProjectsInventory m
+            WHERE m.StructuralEngineerCanonicalOrgId = x.Id AND m.RetiredAtUtc IS NULL
+            UNION
+            SELECT COALESCE(NULLIF(LTRIM(RTRIM(iw.NormalizedProjectName)),N''),
+                LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(iw.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')))
+            FROM opportunities.IntelWork iw
+            WHERE iw.CanonicalOrgId = x.Id AND iw.RetiredAtUtc IS NULL
+              AND (LOWER(ISNULL(iw.Role,N'')) LIKE N'%structural%' OR LOWER(ISNULL(iw.Role,N'')) LIKE N'%engineer%')
+        ) lp WHERE lp.dk IS NOT NULL AND lp.dk <> N'') AS LinkedProjects
 FROM (
     SELECT co.Id, co.DisplayName,
            (SELECT COUNT(*) FROM opportunities.IntelSignal s
@@ -424,18 +437,38 @@ FROM (
 WHERE x.Signals + x.People + x.Actions > 0
 ORDER BY x.Signals + x.People + x.Actions DESC, x.DisplayName;";
 
+        // Top-6 SE projects per competitor: MPI FK rows UNION IntelWork
+        // structural-role rows (negative Id marks IntelWork-only), deduped by
+        // normalized name (MPI preferred), then top-6 per org.
         const string projectsSql = @"
-SELECT StructuralEngineerCanonicalOrgId, Id, ProjectName, Province, CostDisplay
-FROM (
-    SELECT m.StructuralEngineerCanonicalOrgId, m.Id, m.ProjectName, m.Province,
+WITH SrcProjects AS (
+    SELECT m.StructuralEngineerCanonicalOrgId AS OrgId, m.Id AS ProjId, m.ProjectName, m.Province,
            COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS NVARCHAR(64)), N'TBD') AS CostDisplay,
-           ROW_NUMBER() OVER (
-               PARTITION BY m.StructuralEngineerCanonicalOrgId
-               ORDER BY CASE WHEN m.EstimatedCostCad IS NULL THEN 1 ELSE 0 END, m.EstimatedCostCad DESC) AS rn
+           CASE WHEN m.EstimatedCostCad IS NULL THEN 1 ELSE 0 END AS NoCost, 0 AS SrcRank,
+           LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(m.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')) AS DedupKey
     FROM opportunities.MajorProjectsInventory m
     WHERE m.RetiredAtUtc IS NULL AND m.StructuralEngineerCanonicalOrgId IS NOT NULL
-) x
-WHERE x.rn <= 6;";
+    UNION ALL
+    SELECT iw.CanonicalOrgId, -iw.Id, iw.ProjectName, N'',
+           COALESCE(iw.EstimatedValueText, CAST(iw.EstimatedValueCad AS NVARCHAR(64)), N'TBD'),
+           CASE WHEN iw.EstimatedValueCad IS NULL THEN 1 ELSE 0 END, 1,
+           COALESCE(NULLIF(LTRIM(RTRIM(iw.NormalizedProjectName)),N''),
+               LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(iw.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')))
+    FROM opportunities.IntelWork iw
+    JOIN opportunities.CanonicalOrg ico ON ico.Id = iw.CanonicalOrgId AND ico.RetiredAtUtc IS NULL
+    WHERE iw.RetiredAtUtc IS NULL
+      AND (LOWER(ISNULL(iw.Role,N'')) LIKE N'%structural%' OR LOWER(ISNULL(iw.Role,N'')) LIKE N'%engineer%')
+      AND iw.ProjectName IS NOT NULL AND LTRIM(RTRIM(iw.ProjectName)) <> N''
+),
+Ded AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY OrgId, DedupKey ORDER BY SrcRank) AS rdup FROM SrcProjects
+),
+Ranked AS (
+    SELECT OrgId, ProjId, ProjectName, Province, CostDisplay,
+           ROW_NUMBER() OVER (PARTITION BY OrgId ORDER BY NoCost, SrcRank, ProjId DESC) AS rn
+    FROM Ded WHERE rdup = 1
+)
+SELECT OrgId, ProjId, ProjectName, Province, CostDisplay FROM Ranked WHERE rn <= 6;";
 
         var ranking = new List<(long OrgId, string Name, int Signals, int People, int Actions, int Linked)>();
         var projectsByOrg = new Dictionary<long, List<string>>();
