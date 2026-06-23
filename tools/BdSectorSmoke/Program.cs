@@ -8,8 +8,31 @@ using Kor.Opportunities.Data.BdReports.Generators;
 var cs = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB")
     ?? throw new InvalidOperationException("KOR_OPPORTUNITIES_OPPORTUNITIESDB not set");
 
-var key = args.Length > 0 ? args[0] : "indigenous";
 var store = new SqlBdReportService(cs);
+
+// "all" mode: sweep every sector, one summary line each, flag thin/broken.
+if (args.Length > 0 && args[0] == "all")
+{
+    Console.WriteLine($"{"sector",-15} {"pursuits",8} {"honed",6} {"blocks",7} {"synth",6} {"prose?",7}  status");
+    foreach (var def in SectorReportDefinitionCatalog.All)
+    {
+        try
+        {
+            var pr = SectorReportProseCatalog.For(def.Key);
+            var rw = await store.GetSectorPursuitsAsync(def.Key, CancellationToken.None);
+            var sg = await store.GetSectorIntelSignalsAsync(def.Key, CancellationToken.None);
+            var d = SectorReportGenerator.Build(def, pr, rw, DateTimeOffset.UtcNow, sg);
+            var honed = rw.Count(x => x.Verdict is not null);
+            var proseOk = !string.IsNullOrWhiteSpace(pr.IntroNote) || pr.Synthesis.Count > 0;
+            var thin = honed == 0 || !proseOk ? "  <-- THIN" : "";
+            Console.WriteLine($"{def.Key,-15} {rw.Count,8} {honed,6} {d.Blocks.Count,7} {pr.Synthesis.Count,6} {(proseOk ? "yes" : "NO"),7}{thin}");
+        }
+        catch (Exception ex) { Console.WriteLine($"{def.Key,-15}  ERROR: {ex.Message}"); }
+    }
+    return 0;
+}
+
+var key = args.Length > 0 ? args[0] : "indigenous";
 var definition = SectorReportDefinitionCatalog.All.Single(d => d.Key == key);
 var prose = SectorReportProseCatalog.For(key);
 var rows = await store.GetSectorPursuitsAsync(key, CancellationToken.None);
