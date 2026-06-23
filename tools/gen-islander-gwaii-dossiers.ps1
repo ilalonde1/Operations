@@ -63,9 +63,10 @@ Para $sel "Indigenous-owned civil & environmental engineering  -  Victoria, BC  
 Body $sel "Founded March 2017 by Corey Brown (Sta'staas Eagle Clan, Old Masset, Haida Gwaii). Indigenous-owned and -operated; CCAB / CCIB-certified (Gold). Grown from 5 to 20+ technologists, engineers and environmental scientists. Mission centres on building capacity within First Nation communities across Vancouver Island and BC."
 H2 $sel "What they do"
 Bullets $sel @(
- "Civil & environmental engineering; water / wastewater; project & construction management.",
- "Planning, funding & finance advisory, and Indigenous procurement strategy.",
- "Sustainable energy (biofuel, solar, green energy), community energy retrofits, hazmat / mould surveys.")
+ "Civil & environmental engineering; water / wastewater systems; stormwater & drainage; site servicing.",
+ "Project & construction management; community planning; funding & finance advisory; Indigenous procurement strategy.",
+ "Sustainable / community energy (biofuel, solar, green energy) and community energy retrofits.",
+ "Environmental: hazmat & mould surveys, site remediation, and climate-adaptation infrastructure.")
 H2 $sel "Leadership & verified contacts"
 ContactTable $doc $sel @(
  @("Name","Title","Email (verified)"),
@@ -74,6 +75,9 @@ ContactTable $doc $sel @(
  @("Brandon Ducharme","Director, Project Delivery & Capital Advisory","bducharme@gwaiieng.com"),
  @("Greg Gillespie","Senior Development Manager","ggillespie@gwaiieng.com"),
  @("Jared Smylie","Engineering staff (also at Islander)","jsmylie@gwaiieng.com"))
+Body $sel "Founder Corey Brown holds a civil-engineering technology diploma (Camosun College), a civil engineering degree (Lakehead University), and a UBC M.Eng. specializing in environmental fluid mechanics; P.Eng. Born in Old Masset, Haida Gwaii; member of the Sta'staas Eagle Clan."
+H2 $sel "Funding & grants advantage (a differentiator)"
+Body $sel "Beyond design, Gwaii helps Nations SECURE the capital - advising on and structuring applications to the First Nation Infrastructure Fund (FNIF), Northern Development Economic Infrastructure grants, and federal/provincial climate-adaptation funds. For KOR this means Gwaii can bring FUNDED, shovel-ready Nation projects to a team, not just engineer them - a meaningful edge when partnering on Indigenous pursuits."
 H2 $sel "First Nations & public clients (incumbent civil engineer)"
 Body $sel "Gwaii is the incumbent civil engineer for 25+ First Nations across coastal BC & Vancouver Island, plus BC Housing and local governments. Named on their site / in KOR's graph:"
 Bullets $sel @(
@@ -92,6 +96,12 @@ Bullets $sel @(
  "No prior KOR contractual history - confirmed absent from Deltek (not a client or vendor; no Gwaii contact on file). This is NET-NEW white space, not a renewal.",
  "Sibling firm to Islander Engineering: founder Corey Brown co-founded Islander (2016) then Gwaii (2017); the firms share senior staff - Mike Achtem (Principal) and Jared Smylie appear at both.",
  "Heavy overlap with KOR's own pursuit list: KOR already tracks nearly all of Gwaii's clients as open Buyer/Developer targets - " + $sharedClients)
+H2 $sel "Defence Canada proposal - team & KOR past-performance check (for Rory)"
+Body $sel "A Defence Canada / DCC proposal is forming with Yellowridge Construction (GC) and DHK Architects - likely Vancouver Island (DCC's active CFB Esquimalt program is the A/B Jetty Recapitalization). Past-performance check from KOR's Deltek:"
+Bullets $sel @(
+ "KOR has NO completed or active jobs with Gwaii Engineering - confirmed absent from Deltek (no client, vendor, project or contact record). Gwaii CANNOT be cited as KOR past-performance.",
+ "KOR HAS active jobs with the OTHER team members: Yellowridge Construction (611 Brunswick St, Prince George) and dHKarchitects (All Clan House, Stellako BC - an Indigenous Clan House project). Those are the citable KOR-team references.",
+ "Gwaii's value to this proposal is forward-looking: an Indigenous-owned (CCAB) civil partner with coastal-BC Nation relationships - strong for a DND / Indigenous-adjacent pursuit, but as a NEW teaming arrangement, not prior performance.")
 H2 $sel "Live teaming triggers (KOR pursuits on Gwaii-client land)"
 Body $sel "KOR is ALREADY pursuing projects whose owners are Gwaii's incumbent clients - these are the immediate, named teaming triggers:"
 Bullets $sel @(
@@ -118,11 +128,14 @@ Eyebrow $sel "COMPANY DOSSIER  -  TEAMING TARGET (CIVIL)"
 H1 $sel "Islander Engineering Ltd."
 Para $sel "Civil engineering, clean energy & land development  -  Victoria, BC  -  islanderengineering.com" 10 $true $gray 8
 Body $sel "Founded 2016; approximately 11-50 staff at 2031 Store St, Victoria. CEO & co-founder Josh Bartley, P.Eng.; co-founder Corey Brown, P.Eng. (now Managing Director of sibling firm Gwaii Engineering). Turnkey civil practice from feasibility and zoning through detailed design and construction, with a sustainability focus."
-H2 $sel "What they do"
+H2 $sel "What they do (full civil scope)"
 Bullets $sel @(
- "Municipal infrastructure, land development, missing-middle housing.",
- "Clean energy & carbon solutions, blue / waste-to-energy initiatives.",
- "Engineering surveys; feasibility through construction project management.")
+ "Land development & subdivisions: zoning reviews + summary reports, land-use feasibility, conceptual site planning, site-impact analysis, quantity take-offs.",
+ "Missing-middle / SSMUH: houseplex + small-scale multi-unit evaluations aligned to BC's SSMUH legislation - a current high-demand Vancouver Island niche.",
+ "Municipal & public works: road & sidewalk design, stormwater / drainage modelling & design, sanitary sewer design & modelling, water-service analysis & sizing, vehicle swept-path studies, Fire Underwriters Survey (FUS) analysis.",
+ "Clean energy & carbon solutions; blue / waste-to-energy; engineering surveys; feasibility-through-construction project management.")
+H2 $sel "Sectors & service area"
+Body $sel "Land development, municipal infrastructure, commercial, residential communities & subdivisions, mixed-use, and public works - serving Victoria, Greater Victoria and Vancouver Island (2031 Store St, Victoria; 250-590-1200; info@islanderengineering.com)."
 H2 $sel "Leadership & verified contacts"
 ContactTable $doc $sel @(
  @("Name","Title","Email (verified)"),
@@ -136,6 +149,11 @@ Bullets $sel @(
  "No prior KOR contractual history (not in Deltek; no contact on file) - net-new teaming relationship.",
  "Sibling firm to Gwaii Engineering - shared founder Corey Brown plus shared staff (Achtem, Smylie). Treat Islander + Gwaii as one relationship cluster centred on Corey Brown.",
  "DATA NOTE: Islander was mis-classified as a 'Competitor' in KOR's graph. It is a CIVIL firm and a teaming partner, not a structural rival - re-kind to Vendor/partner recommended (it was distorting the competitor-footprint report).")
+H2 $sel "Defence Canada proposal - team & KOR past-performance check (for Rory)"
+Body $sel "A Defence Canada / DCC proposal is forming with Yellowridge Construction (GC) and DHK Architects - likely Vancouver Island (CFB Esquimalt). Past-performance check from KOR's Deltek:"
+Bullets $sel @(
+ "KOR has NO completed or active jobs with Islander Engineering - confirmed absent from Deltek. Islander CANNOT be cited as KOR past-performance.",
+ "KOR HAS active jobs with the OTHER team members: Yellowridge Construction (611 Brunswick St, Prince George) and dHKarchitects (All Clan House, Stellako BC). Those are the citable KOR-team references for the proposal.")
 H2 $sel "Talking points for Rory"
 Bullets $sel @(
  "Complementary disciplines: KOR structural + Islander civil on Vancouver Island land development, missing-middle and municipal work where Islander leads the civil scope.",
@@ -170,6 +188,13 @@ Bullets $sel @(
  "PLAY 2 - Vancouver Island land-dev: KOR structural capacity for Islander's land-development & missing-middle pipeline.",
  "PLAY 3 - One entry, two firms: build the relationship through Corey Brown; let it branch to Gwaii (Nation/BC-Housing) and Islander (land-dev).",
  "PLAY 4 - Strike on the live triggers: KOR is ALREADY pursuing projects on Gwaii-client land - Duncan 'River's Edge' (Cowichan Tribes + BC Housing), Saanichton Tsawout First Nation, Vancouver Island BC Housing (Nanaimo/Saanich/Campbell River), Penticton Skaha (PURSUE_URGENT). Bring Gwaii into these specific pursuits now.")
+H2 $sel "Defence Canada proposal - past-performance reality (for Rory)"
+Body $sel "Team forming with Yellowridge Construction (GC) + DHK Architects (+ KOR structural, + Islander/Gwaii civil), likely CFB Esquimalt (DCC A/B Jetty Recapitalization). KOR Deltek past-performance check:"
+Bullets $sel @(
+ "Islander + Gwaii: NO KOR job history - cannot be cited as past performance (net-new teaming only).",
+ "Yellowridge Construction: KOR active job - 611 Brunswick St, Prince George.",
+ "dHKarchitects: KOR active job - All Clan House, Stellako BC (Indigenous Clan House).",
+ "=> Anchor the proposal's KOR-team past-performance on Yellowridge + DHK; position Islander/Gwaii as the Vancouver Island civil + Indigenous-participation partner going forward.")
 H2 $sel "Priority contacts"
 ContactTable $doc $sel @(
  @("Who","Why","Email"),
