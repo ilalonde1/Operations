@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -12,12 +11,6 @@ namespace Kor.Opportunities.Data.BdReports;
 public sealed class SqlBdReportService : IBdReportService
 {
     private const int CommandTimeoutSeconds = 120;
-    private static readonly Regex ProvinceClauseRegex = new(
-        @"m\.Province\s*(?:IN\s*\((?<list>[^)]*)\)|=\s*(?<one>N?'[^']+'))",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex SqlStringLiteralRegex = new(
-        @"N?'(?<value>[^']+)'",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     // The repo-wide verdict recipe (tools/BdVerdictBackfill, MCP system prompt):
     // contract shape nests the verdict under honingPass; legacy shape (b) has it
@@ -176,13 +169,11 @@ WHERE m.RetiredAtUtc IS NULL
                 string.Join(", ", SectorReportDefinitionCatalog.All.Select(d => d.Key)) + ".",
                 nameof(sectorKey));
 
-        var provinces = ExtractProvinceScope(def);
-        if (provinces.Count == 0)
-        {
-            return Array.Empty<SectorIntelSignalRow>();
-        }
-
-        var provinceParams = string.Join(", ", provinces.Select((_, i) => $"@province{i}"));
+        // Scope signals to orgs that appear on THIS SECTOR's projects (def.MpiWhere),
+        // not merely any project in the sector's provinces — otherwise cross-sector
+        // firms (major architects, etc.) flood every sector's signal list. MpiWhere is
+        // a catalog constant (never user input), ANDed with m.RetiredAtUtc IS NULL per
+        // its contract — same injection the pursuit/summary queries use.
         var sql = $@"
 SELECT TOP 30 co.DisplayName, s.SignalType, s.Subject, s.Detail, s.OccurredAtApprox
 FROM opportunities.IntelSignal s
@@ -201,7 +192,7 @@ WHERE s.RetiredAtUtc IS NULL
           (m.GeneralContractorCanonicalOrgId)
       ) v(CanonicalOrgId)
       WHERE m.RetiredAtUtc IS NULL
-        AND m.Province IN ({provinceParams})
+        AND {def.MpiWhere}
         AND v.CanonicalOrgId = s.CanonicalOrgId)
 ORDER BY CASE s.SourceConfidence WHEN N'High' THEN 3 WHEN N'Medium' THEN 2 ELSE 1 END DESC,
          s.CreatedAtUtc DESC;";
@@ -211,11 +202,6 @@ ORDER BY CASE s.SourceConfidence WHEN N'High' THEN 3 WHEN N'Medium' THEN 2 ELSE 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        for (var i = 0; i < provinces.Count; i++)
-        {
-            cmd.Parameters.Add($"@province{i}", System.Data.SqlDbType.NVarChar, 8).Value = provinces[i];
-        }
-
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         while (await r.ReadAsync(ct).ConfigureAwait(false))
         {
@@ -860,27 +846,4 @@ VALUES (@category, @format, @user, @recordCount, @notes);";
             BdVerdicts.IsUrgent(honing.Verdict, honing.KorAngle));
     }
 
-    private static IReadOnlyList<string> ExtractProvinceScope(SectorReportDefinition definition)
-    {
-        var provinces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (Match clause in ProvinceClauseRegex.Matches(definition.MpiWhere))
-        {
-            var source = clause.Groups["list"].Success
-                ? clause.Groups["list"].Value
-                : clause.Groups["one"].Value;
-
-            foreach (Match literal in SqlStringLiteralRegex.Matches(source))
-            {
-                var value = literal.Groups["value"].Value;
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    provinces.Add(value);
-                }
-            }
-        }
-
-        return provinces
-            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-    }
 }
