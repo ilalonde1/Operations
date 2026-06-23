@@ -1342,11 +1342,14 @@ public sealed class DossierProjectRow
         if (project.ArchitectCanonicalOrgId == canonicalOrgId) roles.Add("Architect");
         if (project.StructuralEngineerCanonicalOrgId == canonicalOrgId) roles.Add("Structural Engineer");
         if (project.GeneralContractorCanonicalOrgId == canonicalOrgId) roles.Add("General Contractor");
-        Role = roles.Count == 0 ? "Linked" : string.Join(" + ", roles);
+        Role = !string.IsNullOrWhiteSpace(project.FootprintRole)
+            ? project.FootprintRole.Trim()
+            : roles.Count == 0 ? "Linked" : string.Join(" + ", roles);
     }
 
     public MajorProjectRow Project { get; }
     public string Role { get; }
+    public string Source => string.IsNullOrWhiteSpace(Project.FootprintSource) ? "Active pipeline" : Project.FootprintSource.Trim();
     public string ProjectName => Project.ProjectName;
     public string Province => Project.Province;
     public string StageDisplay => Project.StageDisplay;

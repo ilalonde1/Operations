@@ -38,7 +38,9 @@ GeneralContractorName, GeneralContractorCanonicalOrgId, KorPipelineTag, Schedule
     public async Task<IReadOnlyList<MajorProjectRow>> ListAllAsync(CancellationToken ct)
     {
         var sql = $@"
-SELECT {AllColumns}
+SELECT {AllColumns},
+       CAST(N'Active pipeline' AS nvarchar(30)) AS FootprintSource,
+       CAST(NULL AS nvarchar(100)) AS FootprintRole
 FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc IS NULL
 ORDER BY EstimatedCostCad DESC, ProjectName;";
@@ -49,13 +51,112 @@ ORDER BY EstimatedCostCad DESC, ProjectName;";
     public async Task<IReadOnlyList<MajorProjectRow>> ListByCanonicalOrgAsync(long canonicalOrgId, CancellationToken ct)
     {
         var sql = $@"
-SELECT {AllColumns}
-FROM opportunities.MajorProjectsInventory
-WHERE RetiredAtUtc IS NULL
-  AND (ProponentCanonicalOrgId = @id
-    OR ArchitectCanonicalOrgId = @id
-    OR StructuralEngineerCanonicalOrgId = @id
-    OR GeneralContractorCanonicalOrgId = @id)
+WITH ExistingPipeline AS (
+    SELECT {AllColumns},
+           CAST(N'Active pipeline' AS nvarchar(30)) AS FootprintSource,
+           CAST(NULL AS nvarchar(100)) AS FootprintRole,
+           LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(ProjectName)), N' ', N''), N'-', N''), N'.', N''), N',', N''), N'''', N'')) AS DedupKey,
+           0 AS SourceRank
+    FROM opportunities.MajorProjectsInventory
+    WHERE RetiredAtUtc IS NULL
+      AND (ProponentCanonicalOrgId = @id
+        OR ArchitectCanonicalOrgId = @id
+        OR StructuralEngineerCanonicalOrgId = @id
+        OR GeneralContractorCanonicalOrgId = @id)
+),
+PortfolioWork AS (
+    SELECT
+        -iw.Id AS Id,
+        CAST(N'' AS nvarchar(20)) AS Province,
+        iw.ProjectName,
+        CAST(NULL AS nvarchar(200)) AS Sector,
+        CAST(NULL AS nvarchar(200)) AS SubSector,
+        CAST(NULL AS nvarchar(200)) AS ConstructionType,
+        CAST(NULL AS nvarchar(200)) AS ProjectType,
+        CAST(NULL AS nvarchar(200)) AS ProjectCategoryName,
+        CAST(NULL AS nvarchar(100)) AS Stage,
+        CAST(NULL AS nvarchar(100)) AS ProjectStage,
+        CAST(NULL AS nvarchar(100)) AS ProjectStatus,
+        CAST(NULL AS nvarchar(50)) AS SeatStatus,
+        iw.EstimatedValueCad AS EstimatedCostCad,
+        iw.EstimatedValueText AS EstimatedCostText,
+        CASE WHEN LOWER(ISNULL(iw.Role, N'')) LIKE N'%owner%'
+               OR LOWER(ISNULL(iw.Role, N'')) LIKE N'%developer%'
+               OR LOWER(ISNULL(iw.Role, N'')) LIKE N'%buyer%'
+             THEN co.DisplayName END AS ProponentName,
+        CASE WHEN LOWER(ISNULL(iw.Role, N'')) LIKE N'%owner%'
+               OR LOWER(ISNULL(iw.Role, N'')) LIKE N'%developer%'
+               OR LOWER(ISNULL(iw.Role, N'')) LIKE N'%buyer%'
+             THEN iw.CanonicalOrgId END AS ProponentCanonicalOrgId,
+        CASE WHEN LOWER(ISNULL(iw.Role, N'')) LIKE N'%architect%'
+             THEN co.DisplayName END AS ArchitectName,
+        CASE WHEN LOWER(ISNULL(iw.Role, N'')) LIKE N'%architect%'
+             THEN iw.CanonicalOrgId END AS ArchitectCanonicalOrgId,
+        CAST(NULL AS nvarchar(200)) AS MunicipalityName,
+        CAST(NULL AS nvarchar(200)) AS RegionName,
+        TRY_CONVERT(smallint, NULLIF(LTRIM(RTRIM(iw.YearApprox)), N'')) AS StartYear,
+        CAST(NULL AS smallint) AS CompletionYear,
+        CAST(NULL AS nvarchar(50)) AS StandardizedStartDate,
+        CAST(NULL AS nvarchar(50)) AS StandardizedCompletionDate,
+        CAST(NULL AS bit) AS IndigenousInd,
+        CAST(NULL AS nvarchar(max)) AS IndigenousNames,
+        CAST(NULL AS bit) AS PublicFundingInd,
+        CAST(NULL AS bit) AS ProvincialFunding,
+        CAST(NULL AS bit) AS FederalFunding,
+        CAST(NULL AS bit) AS MunicipalFunding,
+        CAST(NULL AS bit) AS GreenBuildingInd,
+        CAST(NULL AS int) AS ConstructionJobs,
+        CAST(NULL AS int) AS OperatingJobs,
+        CAST(NULL AS decimal(9,6)) AS Latitude,
+        CAST(NULL AS decimal(9,6)) AS Longitude,
+        iw.Notes AS ProjectDescription,
+        CAST(NULL AS nvarchar(1000)) AS ProjectWebsite,
+        CAST(NULL AS nvarchar(1000)) AS SourceUrl,
+        CAST(NULL AS smallint) AS IssueYear,
+        CAST(NULL AS tinyint) AS IssueQuarter,
+        iw.LastSeenAtUtc,
+        CASE WHEN LOWER(ISNULL(iw.Role, N'')) LIKE N'%structural%'
+               OR LOWER(ISNULL(iw.Role, N'')) LIKE N'%engineer%'
+             THEN co.DisplayName END AS StructuralEngineerName,
+        CASE WHEN LOWER(ISNULL(iw.Role, N'')) LIKE N'%structural%'
+               OR LOWER(ISNULL(iw.Role, N'')) LIKE N'%engineer%'
+             THEN iw.CanonicalOrgId END AS StructuralEngineerCanonicalOrgId,
+        CASE WHEN LOWER(ISNULL(iw.Role, N'')) LIKE N'%contractor%'
+               OR UPPER(LTRIM(RTRIM(ISNULL(iw.Role, N'')))) = N'GC'
+             THEN co.DisplayName END AS GeneralContractorName,
+        CASE WHEN LOWER(ISNULL(iw.Role, N'')) LIKE N'%contractor%'
+               OR UPPER(LTRIM(RTRIM(ISNULL(iw.Role, N'')))) = N'GC'
+             THEN iw.CanonicalOrgId END AS GeneralContractorCanonicalOrgId,
+        CAST(NULL AS nvarchar(100)) AS KorPipelineTag,
+        CAST(NULL AS nvarchar(max)) AS ScheduleNotes,
+        CAST(N'Portfolio' AS nvarchar(30)) AS FootprintSource,
+        NULLIF(LTRIM(RTRIM(iw.Role)), N'') AS FootprintRole,
+        COALESCE(NULLIF(LTRIM(RTRIM(iw.NormalizedProjectName)), N''),
+                 LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(iw.ProjectName)), N' ', N''), N'-', N''), N'.', N''), N',', N''), N'''', N''))) AS DedupKey,
+        1 AS SourceRank
+    FROM opportunities.IntelWork iw
+    JOIN opportunities.CanonicalOrg co
+        ON co.Id = iw.CanonicalOrgId
+       AND co.RetiredAtUtc IS NULL
+    WHERE iw.CanonicalOrgId = @id
+      AND iw.RetiredAtUtc IS NULL
+),
+Combined AS (
+    SELECT * FROM ExistingPipeline
+    UNION ALL
+    SELECT * FROM PortfolioWork
+),
+Ranked AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY DedupKey
+               ORDER BY SourceRank, EstimatedCostCad DESC, LastSeenAtUtc DESC, ProjectName
+           ) AS RowNumber
+    FROM Combined
+)
+SELECT {AllColumns}, FootprintSource, FootprintRole
+FROM Ranked
+WHERE RowNumber = 1
 ORDER BY EstimatedCostCad DESC, ProjectName;";
 
         return await ReadRowsAsync(sql, canonicalOrgId, ct).ConfigureAwait(false);
@@ -193,5 +294,7 @@ ORDER BY RegionName;";
         GeneralContractorName: r.IsDBNull(43) ? null : r.GetString(43),
         GeneralContractorCanonicalOrgId: r.IsDBNull(44) ? null : r.GetInt64(44),
         KorPipelineTag: r.IsDBNull(45) ? null : r.GetString(45),
-        ScheduleNotes: r.IsDBNull(46) ? null : r.GetString(46));
+        ScheduleNotes: r.IsDBNull(46) ? null : r.GetString(46),
+        FootprintSource: r.IsDBNull(47) ? null : r.GetString(47),
+        FootprintRole: r.IsDBNull(48) ? null : r.GetString(48));
 }

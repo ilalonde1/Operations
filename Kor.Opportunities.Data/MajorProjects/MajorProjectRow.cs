@@ -51,7 +51,9 @@ public sealed record MajorProjectRow(
     string? GeneralContractorName,
     long? GeneralContractorCanonicalOrgId,
     string? KorPipelineTag,
-    string? ScheduleNotes)
+    string? ScheduleNotes,
+    string? FootprintSource = null,
+    string? FootprintRole = null)
 {
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
 

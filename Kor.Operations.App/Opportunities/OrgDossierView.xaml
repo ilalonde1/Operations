@@ -1077,6 +1077,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="110"/>
                                 <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="140"/>
                                 <DataGridTextColumn Header="Proponent" Binding="{Binding ProponentName}" Width="140"/>
                                 <DataGridTextColumn Header="Architect" Binding="{Binding ArchitectName}" Width="140"/>
