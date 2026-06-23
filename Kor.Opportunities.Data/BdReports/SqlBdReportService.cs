@@ -287,10 +287,37 @@ WHERE m.RetiredAtUtc IS NULL;";
 
     public async Task<IReadOnlyList<ArchitectLeverageRow>> GetArchitectLeverageAsync(int take, CancellationToken ct)
     {
+        // Architect project membership = MPI ArchitectCanonicalOrgId FK rows
+        // UNION the org's IntelWork architect-role portfolio edges (Role LIKE
+        // '%architect%'), deduped by normalized project name (MPI wins on a
+        // tie). Mirrors the dossier-footprint unification (commit 9776a15d) so
+        // architects whose teaming lives only in IntelWork enter the ranking.
         const string rankingSql = @"
+WITH ArchMpi AS (
+    SELECT m.ArchitectCanonicalOrgId AS OrgId, m.EstimatedCostCad AS Cost, 0 AS SrcRank,
+           LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(m.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')) AS DedupKey
+    FROM opportunities.MajorProjectsInventory m
+    WHERE m.RetiredAtUtc IS NULL AND m.ArchitectCanonicalOrgId IS NOT NULL
+),
+ArchIntel AS (
+    SELECT iw.CanonicalOrgId AS OrgId, iw.EstimatedValueCad AS Cost, 1 AS SrcRank,
+           COALESCE(NULLIF(LTRIM(RTRIM(iw.NormalizedProjectName)),N''),
+               LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(iw.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N''))) AS DedupKey
+    FROM opportunities.IntelWork iw
+    WHERE iw.RetiredAtUtc IS NULL AND LOWER(ISNULL(iw.Role,N'')) LIKE N'%architect%'
+),
+Combined AS (
+    SELECT OrgId, Cost, DedupKey,
+           ROW_NUMBER() OVER (PARTITION BY OrgId, DedupKey ORDER BY SrcRank) AS rn
+    FROM (SELECT OrgId, Cost, SrcRank, DedupKey FROM ArchMpi
+          UNION ALL
+          SELECT OrgId, Cost, SrcRank, DedupKey FROM ArchIntel) u
+    WHERE DedupKey IS NOT NULL AND DedupKey <> N''
+),
+Deduped AS (SELECT OrgId, Cost FROM Combined WHERE rn = 1)
 SELECT TOP (@take) co.Id, co.DisplayName,
-       COUNT(DISTINCT m.Id) AS ActiveProjects,
-       COALESCE(SUM(m.EstimatedCostCad), 0) AS PipelineCostCad,
+       COUNT(*) AS ActiveProjects,
+       COALESCE(SUM(d.Cost), 0) AS PipelineCostCad,
        (SELECT COUNT(*) FROM opportunities.IntelSignal s
          WHERE s.CanonicalOrgId = co.Id AND s.RetiredAtUtc IS NULL) AS Signals,
        (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation pa
@@ -298,28 +325,42 @@ SELECT TOP (@take) co.Id, co.DisplayName,
          WHERE pa.CanonicalOrgId = co.Id AND pa.RetiredAtUtc IS NULL) AS People,
        (SELECT COUNT(*) FROM opportunities.IntelAction a
          WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL AND a.Status = N'Open') AS OpenActions
-FROM opportunities.MajorProjectsInventory m
-JOIN opportunities.CanonicalOrg co
-  ON co.Id = m.ArchitectCanonicalOrgId AND co.RetiredAtUtc IS NULL
-WHERE m.RetiredAtUtc IS NULL
+FROM Deduped d
+JOIN opportunities.CanonicalOrg co ON co.Id = d.OrgId AND co.RetiredAtUtc IS NULL
 GROUP BY co.Id, co.DisplayName
-ORDER BY COUNT(DISTINCT m.Id) DESC, COALESCE(SUM(m.EstimatedCostCad), 0) DESC, co.DisplayName;";
+ORDER BY COUNT(*) DESC, COALESCE(SUM(d.Cost), 0) DESC, co.DisplayName;";
 
-        // Top-8 projects per ranked architect, by estimated cost. The PS
-        // builder approximated this with a first-word LIKE over ResultJson;
-        // the structured ArchitectCanonicalOrgId link is exact.
+        // Top-8 projects per ranked architect: MPI FK rows UNION IntelWork
+        // portfolio rows (negative Id distinguishes IntelWork-only), deduped by
+        // normalized name (MPI preferred), then top-8 per org.
         const string projectsSql = @"
-SELECT ArchitectCanonicalOrgId, Id, ProjectName, Province, CostDisplay
-FROM (
-    SELECT m.ArchitectCanonicalOrgId, m.Id, m.ProjectName, m.Province,
+WITH SrcProjects AS (
+    SELECT m.ArchitectCanonicalOrgId AS OrgId, m.Id AS ProjId, m.ProjectName, m.Province,
            COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS NVARCHAR(64)), N'TBD') AS CostDisplay,
-           ROW_NUMBER() OVER (
-               PARTITION BY m.ArchitectCanonicalOrgId
-               ORDER BY CASE WHEN m.EstimatedCostCad IS NULL THEN 1 ELSE 0 END, m.EstimatedCostCad DESC) AS rn
+           CASE WHEN m.EstimatedCostCad IS NULL THEN 1 ELSE 0 END AS NoCost, 0 AS SrcRank,
+           LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(m.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')) AS DedupKey
     FROM opportunities.MajorProjectsInventory m
     WHERE m.RetiredAtUtc IS NULL AND m.ArchitectCanonicalOrgId IS NOT NULL
-) x
-WHERE x.rn <= 8;";
+    UNION ALL
+    SELECT iw.CanonicalOrgId, -iw.Id, iw.ProjectName, N'',
+           COALESCE(iw.EstimatedValueText, CAST(iw.EstimatedValueCad AS NVARCHAR(64)), N'TBD'),
+           CASE WHEN iw.EstimatedValueCad IS NULL THEN 1 ELSE 0 END, 1,
+           COALESCE(NULLIF(LTRIM(RTRIM(iw.NormalizedProjectName)),N''),
+               LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(iw.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')))
+    FROM opportunities.IntelWork iw
+    JOIN opportunities.CanonicalOrg ico ON ico.Id = iw.CanonicalOrgId AND ico.RetiredAtUtc IS NULL
+    WHERE iw.RetiredAtUtc IS NULL AND LOWER(ISNULL(iw.Role,N'')) LIKE N'%architect%'
+      AND iw.ProjectName IS NOT NULL AND LTRIM(RTRIM(iw.ProjectName)) <> N''
+),
+Ded AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY OrgId, DedupKey ORDER BY SrcRank) AS rdup FROM SrcProjects
+),
+Ranked AS (
+    SELECT OrgId, ProjId, ProjectName, Province, CostDisplay,
+           ROW_NUMBER() OVER (PARTITION BY OrgId ORDER BY NoCost, SrcRank, ProjId DESC) AS rn
+    FROM Ded WHERE rdup = 1
+)
+SELECT OrgId, ProjId, ProjectName, Province, CostDisplay FROM Ranked WHERE rn <= 8;";
 
         var ranking = new List<(long OrgId, string Name, int Projects, decimal Cost, int Signals, int People, int Actions)>();
         var projectsByOrg = new Dictionary<long, List<string>>();
