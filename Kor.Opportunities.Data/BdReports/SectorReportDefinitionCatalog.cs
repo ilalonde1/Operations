@@ -49,7 +49,12 @@ public static class SectorReportDefinitionCatalog
             " OR m.ProponentName LIKE N'% Band' OR m.ProponentName LIKE N'%Tribal%'" +
             " OR m.ProponentName LIKE N'%MST Develop%' OR m.ProponentName LIKE N'%Squamish%'" +
             " OR m.ProponentName LIKE N'%Musqueam%' OR m.ProponentName LIKE N'%Tsleil%')" +
-            " AND m.Province IN (N'BC', N'AB'))"),
+            " AND m.Province IN (N'BC', N'AB'))",
+            // Topic bridge: Indigenous-relevant signals surface even when attached to
+            // an org not FK-linked to an Indigenous MPI (e.g. an Indigenous civil partner).
+            "(s.Subject LIKE N'%Indigenous%' OR s.Subject LIKE N'%First Nation%'" +
+            " OR s.Detail LIKE N'%Indigenous%' OR s.Detail LIKE N'%First Nation%'" +
+            " OR s.Detail LIKE N'%CCAB%' OR s.Detail LIKE N'%Haida%' OR s.Detail LIKE N'%Métis%')"),
 
         // BC+AB, not BC-only: Calgary Housing Company's portfolio (incl. the
         // sector's only URGENT, Bridgeland Place 6649) rides the Affordable
@@ -72,7 +77,15 @@ public static class SectorReportDefinitionCatalog
             "((m.Sector IN (N'Defense', N'Institutional / Military')" +
             " OR m.SourceKey LIKE N'DEFENSE%'" +
             " OR m.ProponentName LIKE N'%National Defence%')" +
-            " AND m.Province IN (N'BC', N'AB'))"),
+            " AND m.Province IN (N'BC', N'AB'))",
+            // Topic bridge: defense-relevant signals surface even when attached to
+            // an org not FK-linked to a defense MPI (e.g. a civil teaming partner).
+            "(s.Subject LIKE N'%defence%' OR s.Subject LIKE N'%defense%' OR s.Subject LIKE N'%military%'" +
+            " OR s.Detail LIKE N'%Defence Canada%' OR s.Detail LIKE N'%Defence Construction Canada%'" +
+            " OR s.Detail LIKE N'% DND%' OR s.Detail LIKE N'%CFB %' OR s.Detail LIKE N'%CFHA%'" +
+            " OR s.Detail LIKE N'% DCC %' OR s.Detail LIKE N'%CFB Esquimalt%' OR s.Detail LIKE N'%A/B Jetty%'" +
+            " OR s.Detail LIKE N'%19 Wing%' OR s.Detail LIKE N'%Canadian Forces Base%'" +
+            " OR s.Detail LIKE N'%Defence Construction%')"),
 
         new SectorReportDefinition(
             "recreational",

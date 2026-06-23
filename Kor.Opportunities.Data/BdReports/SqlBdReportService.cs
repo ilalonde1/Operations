@@ -169,11 +169,14 @@ WHERE m.RetiredAtUtc IS NULL
                 string.Join(", ", SectorReportDefinitionCatalog.All.Select(d => d.Key)) + ".",
                 nameof(sectorKey));
 
-        // Scope signals to orgs that appear on THIS SECTOR's projects (def.MpiWhere),
-        // not merely any project in the sector's provinces — otherwise cross-sector
-        // firms (major architects, etc.) flood every sector's signal list. MpiWhere is
-        // a catalog constant (never user input), ANDed with m.RetiredAtUtc IS NULL per
-        // its contract — same injection the pursuit/summary queries use.
+        // A signal surfaces in this sector if EITHER its org is on one of the
+        // sector's projects (def.MpiWhere) OR — when the sector defines a topic
+        // bridge — the signal TEXT is about the sector (def.SignalTopicWhere). The
+        // org path keeps cross-sector firms from flooding the list; the topic path
+        // catches sector-relevant signals attached to a firm NOT FK-linked to the
+        // sector's MPIs (e.g. a civil teaming partner on a defense pursuit). Both
+        // fragments are catalog constants (never user input).
+        var topicMatch = string.IsNullOrWhiteSpace(def.SignalTopicWhere) ? "1 = 0" : def.SignalTopicWhere;
         var sql = $@"
 SELECT TOP 30 co.DisplayName, s.SignalType, s.Subject, s.Detail, s.OccurredAtApprox
 FROM opportunities.IntelSignal s
@@ -182,7 +185,7 @@ WHERE s.RetiredAtUtc IS NULL
   AND co.RetiredAtUtc IS NULL
   AND s.SignalType IN (N'SE_LOCKED', N'SE_SOFT', N'SE_OPEN', N'KOR_OPPORTUNITY',
       N'LeadershipChange', N'PipelineUpdate')
-  AND EXISTS (
+  AND (EXISTS (
       SELECT 1
       FROM opportunities.MajorProjectsInventory m
       CROSS APPLY (VALUES
@@ -194,6 +197,7 @@ WHERE s.RetiredAtUtc IS NULL
       WHERE m.RetiredAtUtc IS NULL
         AND {def.MpiWhere}
         AND v.CanonicalOrgId = s.CanonicalOrgId)
+      OR ({topicMatch}))
 ORDER BY CASE s.SourceConfidence WHEN N'High' THEN 3 WHEN N'Medium' THEN 2 ELSE 1 END DESC,
          s.CreatedAtUtc DESC;";
 

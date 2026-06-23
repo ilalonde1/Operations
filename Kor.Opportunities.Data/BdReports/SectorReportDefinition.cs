@@ -15,8 +15,18 @@ namespace Kor.Opportunities.Data.BdReports;
 /// SqlBriefDataStore.BuildSectorBucketWhere. Sectors may overlap by design
 /// (e.g. a BC Housing project is also Residential).
 /// </param>
+/// <param name="SignalTopicWhere">
+/// Optional SQL filter fragment over the IntelSignal alias <c>s</c> (Subject /
+/// Detail). Catalog constants only — never user input. When set, a signal also
+/// surfaces in this sector if its TEXT is about the sector — not only when its
+/// org sits on one of the sector's MPIs. This is the topic bridge: a teaming /
+/// opportunity signal attached to a firm that isn't FK-linked to the sector's
+/// projects (e.g. a civil teaming partner on a defense pursuit) still surfaces.
+/// Null = org-membership scoping only.
+/// </param>
 public sealed record SectorReportDefinition(
     string Key,
     string Title,
     string ReportTitle,
-    string MpiWhere);
+    string MpiWhere,
+    string? SignalTopicWhere = null);
