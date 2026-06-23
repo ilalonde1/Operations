@@ -86,7 +86,7 @@ Bullets $sel @(
  "Lead with complement, not competition: KOR is structural, Gwaii is civil/environmental - the disciplines pair on the same teams and never bid against each other.",
  "Indigenous-participation angle: a KOR structural + Gwaii civil team earns CCAB / Indigenous-participation scoring on public RFQs, where Gwaii is already the incumbent civil engineer and KOR supplies structural depth Gwaii does not hold in-house.",
  "Concrete opener to Corey Brown (cbrown@gwaiieng.com) or Brandon Ducharme (Capital Advisory): 'KOR has a coastal-BC / Vancouver Island structural portfolio and wants to support Indigenous-led infrastructure - which of your upcoming Nation or BC Housing projects need a structural partner?'",
- "Warm-target the shared clients KOR is already chasing (Cowichan, Malahat, BC Housing) where Gwaii holds the relationship.")
+ "LIVE TRIGGERS - lead with a named project KOR is already pursuing on Gwaii-client land: Duncan 'River's Edge' (Cowichan Tribes + BC Housing), Saanichton (Tsawout First Nation, 7593 Tetayut Rd), the Vancouver Island BC Housing pursuits (Nanaimo, Saanich, Campbell River), or Penticton Skaha Assembly Redevelopment (PURSUE_URGENT). Ask whether Gwaii is already engaged and wants a structural partner.")
 Footer $doc
 $gwaiiPath="C:\VIsual Studio Projects\Operations\docs\KOR-Gwaii-Engineering-Dossier-2026-06-23.docx"
 if(Test-Path $gwaiiPath){Remove-Item $gwaiiPath -Force}
@@ -145,7 +145,7 @@ Bullets $sel @(
  "PLAY 1 - Indigenous teaming: propose KOR structural + Gwaii civil on First Nations / BC Housing pursuits where Gwaii is incumbent. KOR supplies structural depth; team gains CCAB scoring + Gwaii's warm client access.",
  "PLAY 2 - Vancouver Island land-dev: KOR structural capacity for Islander's land-development & missing-middle pipeline.",
  "PLAY 3 - One entry, two firms: build the relationship through Corey Brown; let it branch to Gwaii (Nation/BC-Housing) and Islander (land-dev).",
- "PLAY 4 - Target shared pursuits: prioritise the owners KOR already tracks where Gwaii holds the civil relationship (Cowichan, Malahat, BC Housing).")
+ "PLAY 4 - Strike on the live triggers: KOR is ALREADY pursuing projects on Gwaii-client land - Duncan 'River's Edge' (Cowichan Tribes + BC Housing), Saanichton Tsawout First Nation, Vancouver Island BC Housing (Nanaimo/Saanich/Campbell River), Penticton Skaha (PURSUE_URGENT). Bring Gwaii into these specific pursuits now.")
 H2 $sel "Priority contacts"
 ContactTable $doc $sel @(
  @("Who","Why","Email"),
