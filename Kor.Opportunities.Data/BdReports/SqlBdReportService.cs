@@ -667,7 +667,47 @@ WHERE m.RetiredAtUtc IS NULL
                 r.IsDBNull(19) ? null : r.GetString(19)));
         }
 
+        // Read-time attach of project-named live signals (no schema, no backfill).
+        // Most signals are org-level (surfaced via the org dossier); the few that
+        // name a specific pursuit by project are the "live intel on THIS deal" the
+        // dossier wants. Name >= 14 chars guards against trivial substring hits.
+        var signalsByMpi = new Dictionary<long, List<string>>();
+        if (rows.Count > 0)
+        {
+            var sigSql = $@"
+SELECT m.Id, s.SignalType, s.Subject
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.MajorProjectEnrichment e
+  ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+JOIN opportunities.IntelSignal s
+  ON s.RetiredAtUtc IS NULL
+ AND (s.Subject LIKE N'%' + m.ProjectName + N'%' OR s.Detail LIKE N'%' + m.ProjectName + N'%')
+WHERE m.RetiredAtUtc IS NULL
+  AND LEN(LTRIM(RTRIM(m.ProjectName))) >= 14
+  AND {VerdictExpr} IN (N'{BdVerdicts.PursueUrgent}', N'{BdVerdicts.Pursue}')
+ORDER BY m.Id;";
+            // Separate connection: the pursuit reader above is still open on `con`.
+            await using var sigCon = new SqlConnection(_connectionString);
+            await sigCon.OpenAsync(ct).ConfigureAwait(false);
+            await using var sigCmd = new SqlCommand(sigSql, sigCon) { CommandTimeout = CommandTimeoutSeconds };
+            await using var sr = await sigCmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await sr.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var mpiId = sr.GetInt64(0);
+                if (!signalsByMpi.TryGetValue(mpiId, out var list))
+                {
+                    signalsByMpi[mpiId] = list = new List<string>();
+                }
+
+                if (list.Count < 4)
+                {
+                    list.Add($"{sr.GetString(1)}: {sr.GetString(2)}");
+                }
+            }
+        }
+
         return rows
+            .Select(x => signalsByMpi.TryGetValue(x.MpiId, out var sl) ? x with { LiveSignals = sl } : x)
             .OrderByDescending(x => x.IsUrgent)
             .ThenByDescending(x => x.EstimatedCostCad ?? decimal.MinValue)
             .ThenBy(x => x.ProjectName, StringComparer.OrdinalIgnoreCase)

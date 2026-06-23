@@ -84,6 +84,23 @@ public static class PursuitDossierReportGenerator
                 }).ToList());
         }
 
+        var withSignals = pursuits.Where(p => p.LiveSignals.Count > 0).ToList();
+        if (withSignals.Count > 0)
+        {
+            b.H2("Live signals on active pursuits");
+            b.P("Signals that name a specific pursuit by project — live intel on the deal itself, distinct from the org-level intel on each team firm (which lives in that firm's dossier).");
+            foreach (var p in withSignals
+                .OrderByDescending(p => p.IsUrgent)
+                .ThenByDescending(p => p.EstimatedCostCad ?? decimal.MinValue))
+            {
+                b.H3(p.ProjectName, KorReportLinks.Mpi(p.MpiId));
+                foreach (var sig in p.LiveSignals)
+                {
+                    b.P(Safe(sig, 280));
+                }
+            }
+        }
+
         var clusters = withArchitect
             .GroupBy(p => p.ArchitectOrgId!.Value)
             .Where(g => g.Count() >= 2)

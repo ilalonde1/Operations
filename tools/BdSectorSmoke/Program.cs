@@ -53,6 +53,24 @@ if (args.Length > 0 && args[0] == "all")
     return 0;
 }
 
+// "pursuit": build the pursuit-dossier report and report how many pursuits got
+// project-named live signals attached (read-time), + confirm the section renders.
+if (args.Length > 0 && args[0] == "pursuit")
+{
+    var pursuits = await store.GetPursuitDossiersAsync(CancellationToken.None);
+    var withSig = pursuits.Where(p => p.LiveSignals.Count > 0).ToList();
+    Console.WriteLine($"Pursuits: {pursuits.Count}; with project-named live signals: {withSig.Count}");
+    foreach (var p in withSig.Take(20))
+    {
+        Console.WriteLine($"  {p.ProjectName}");
+        foreach (var s in p.LiveSignals) Console.WriteLine($"      - {(s.Length > 90 ? s[..90] : s)}");
+    }
+    var pdoc = PursuitDossierReportGenerator.Build(pursuits, DateTimeOffset.UtcNow);
+    var hasSection = pdoc.Blocks.Any(b => b is HeadingBlock h && h.Text.Contains("Live signals", StringComparison.OrdinalIgnoreCase));
+    Console.WriteLine($"\ndoc blocks: {pdoc.Blocks.Count}; 'Live signals on active pursuits' section rendered: {hasSection}");
+    return 0;
+}
+
 var key = args.Length > 0 ? args[0] : "indigenous";
 var definition = SectorReportDefinitionCatalog.All.Single(d => d.Key == key);
 var prose = SectorReportProseCatalog.For(key);

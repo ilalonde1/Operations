@@ -224,6 +224,13 @@ public sealed record PursuitDossierRow(
     public bool HasArchitectEdge => ArchitectOrgId is not null;
     public bool HasIncumbentSe => StructuralEngineerOrgId is not null && !StructuralEngineerIsKor;
     public int ArchitectIntelDepth => ArchitectSignals + ArchitectPeople + ArchitectOpenActions;
+
+    /// <summary>
+    /// Signals whose text names THIS pursuit by project name — live intel on the
+    /// deal itself, distinct from the org-level intel on each team firm. Attached
+    /// read-time (no schema / no backfill). Empty for most pursuits.
+    /// </summary>
+    public IReadOnlyList<string> LiveSignals { get; init; } = System.Array.Empty<string>();
 }
 
 /// <summary>
