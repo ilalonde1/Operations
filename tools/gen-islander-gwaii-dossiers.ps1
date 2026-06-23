@@ -74,19 +74,39 @@ ContactTable $doc $sel @(
  @("Brandon Ducharme","Director, Project Delivery & Capital Advisory","bducharme@gwaiieng.com"),
  @("Greg Gillespie","Senior Development Manager","ggillespie@gwaiieng.com"),
  @("Jared Smylie","Engineering staff (also at Islander)","jsmylie@gwaiieng.com"))
-H2 $sel "Portfolio & client base"
-Body $sel "Incumbent civil engineer to 25+ First Nations across coastal BC and Vancouver Island - Tla'amin, Ucluelet, Malahat, Cowichan Tribes, Ditidaht, Haida Nation, Kitasoo, K'omoks, Tsawout, Tsawwassen, Songhees, Esquimalt - plus BC Housing. Representative projects: Yuu-thlu-ilth-aht (Ucluelet) Government Lift Station, Tsawout First Nation Big House, Malahat Nation Marina & Boat Launch, Reay Creek Remediation, and 'Our House of Clans' (BC Housing & Tsain-Ko)."
+H2 $sel "First Nations & public clients (incumbent civil engineer)"
+Body $sel "Gwaii is the incumbent civil engineer for 25+ First Nations across coastal BC & Vancouver Island, plus BC Housing and local governments. Named on their site / in KOR's graph:"
+Bullets $sel @(
+ "First Nations: Tla'amin, Ucluelet, Malahat Nation, Cowichan Tribes, Ditidaht, Haida Nation, Kitasoo, K'omoks, Tsawout, Tsawwassen, Songhees, Esquimalt, plus Old Masset Village Council (founder's home community).",
+ "Public / housing: BC Housing (KOR tracks 50 projects with BC Housing as owner), Tsain-Ko Group of Companies, and Vancouver Island regional districts / school districts (SD50 Haida Gwaii, SD71 Comox, SD79 Cowichan).")
+H2 $sel "Representative projects"
+Bullets $sel @(
+ "Yuu-thlu-ilth-aht (Ucluelet) Government - lift station upgrades.",
+ "Tsawout First Nation - Big House.",
+ "Malahat Nation - Marina & Boat Launch.",
+ "Reay Creek Remediation Project.",
+ "'Our House of Clans' - BC Housing & Tsain-Ko.",
+ "Water / wastewater systems, community energy retrofits, and grant-funded infrastructure for multiple Nations.")
 H2 $sel "KOR relationship & relationships in common"
 Bullets $sel @(
- "No prior KOR contractual history - not in Deltek as a client or vendor; no Gwaii contact on file. This is a NET-NEW teaming relationship, not a renewal.",
- "Sibling firm to Islander Engineering: founder Corey Brown co-founded Islander (2016) then Gwaii (2017); the firms share senior staff (Mike Achtem, Jared Smylie appear at both).",
+ "No prior KOR contractual history - confirmed absent from Deltek (not a client or vendor; no Gwaii contact on file). This is NET-NEW white space, not a renewal.",
+ "Sibling firm to Islander Engineering: founder Corey Brown co-founded Islander (2016) then Gwaii (2017); the firms share senior staff - Mike Achtem (Principal) and Jared Smylie appear at both.",
  "Heavy overlap with KOR's own pursuit list: KOR already tracks nearly all of Gwaii's clients as open Buyer/Developer targets - " + $sharedClients)
+H2 $sel "Live teaming triggers (KOR pursuits on Gwaii-client land)"
+Body $sel "KOR is ALREADY pursuing projects whose owners are Gwaii's incumbent clients - these are the immediate, named teaming triggers:"
+Bullets $sel @(
+ "Duncan 'River's Edge' - Cowichan Tribes + BC Housing (Cowichan is a Gwaii client).",
+ "Saanichton - Tsawout First Nation, 7593 Tetayut Rd (Tsawout is a Gwaii client).",
+ "Penticton - Skaha Assembly Redevelopment (PURSUE_URGENT; Indigenous / BC Housing lane).",
+ "Vancouver Island BC Housing wave - Nanaimo (250 Terminal Ave, Fifth Street, 1030 Old Victoria Rd), Saanich (3690 Richmond Rd), Campbell River (Robron Village) - Gwaii's home geography.")
 H2 $sel "Talking points for Rory"
 Bullets $sel @(
  "Lead with complement, not competition: KOR is structural, Gwaii is civil/environmental - the disciplines pair on the same teams and never bid against each other.",
  "Indigenous-participation angle: a KOR structural + Gwaii civil team earns CCAB / Indigenous-participation scoring on public RFQs, where Gwaii is already the incumbent civil engineer and KOR supplies structural depth Gwaii does not hold in-house.",
- "Concrete opener to Corey Brown (cbrown@gwaiieng.com) or Brandon Ducharme (Capital Advisory): 'KOR has a coastal-BC / Vancouver Island structural portfolio and wants to support Indigenous-led infrastructure - which of your upcoming Nation or BC Housing projects need a structural partner?'",
- "LIVE TRIGGERS - lead with a named project KOR is already pursuing on Gwaii-client land: Duncan 'River's Edge' (Cowichan Tribes + BC Housing), Saanichton (Tsawout First Nation, 7593 Tetayut Rd), the Vancouver Island BC Housing pursuits (Nanaimo, Saanich, Campbell River), or Penticton Skaha Assembly Redevelopment (PURSUE_URGENT). Ask whether Gwaii is already engaged and wants a structural partner.")
+ "Open to Corey Brown (cbrown@gwaiieng.com) or Brandon Ducharme (Capital Advisory, bducharme@gwaiieng.com) by NAMING a live trigger above (Duncan River's Edge or the Tsawout project): 'KOR has a coastal-BC / Vancouver Island structural portfolio and wants to support Indigenous-led infrastructure - is Gwaii engaged on this, and do you want a structural partner?'",
+ "Relationship is 1-3 year cadence (Indigenous procurement is relationship-driven, not open-bid) - start now, compound across phases.")
+H2 $sel "How this intelligence was gathered (2026-06-23)"
+Body $sel "Web research (gwaiieng.com, islanderengineering.com, CCIB/CCAB listing, LinkedIn); Hunter.io domain-search (email pattern {f}{last}); Apollo.io people/match (verified emails; one wrong-company match auto-rejected by domain guard); Deltek linked-server check (no KOR client/vendor/contact history); and cross-reference against KOR's live MajorProjectsInventory pipeline for the shared owners. Ingested + deduped into the BD graph (CanonicalOrg 77585)."
 Footer $doc
 $gwaiiPath="C:\VIsual Studio Projects\Operations\docs\KOR-Gwaii-Engineering-Dossier-2026-06-23.docx"
 if(Test-Path $gwaiiPath){Remove-Item $gwaiiPath -Force}
@@ -121,6 +141,10 @@ Bullets $sel @(
  "Complementary disciplines: KOR structural + Islander civil on Vancouver Island land development, missing-middle and municipal work where Islander leads the civil scope.",
  "Opener to Josh Bartley (jbartley@islanderengineering.com): complementary structural capacity for Islander's land-development pipeline.",
  "One conversation covers two firms - reference the Gwaii relationship via Corey Brown.")
+H2 $sel "Strategic note - the two-firm cluster"
+Body $sel "Treat Islander + Gwaii as ONE relationship centred on Corey Brown. Islander is the conventional / open-market Vancouver Island civil practice; Gwaii is the Indigenous-focused (Haida-owned, CCAB-certified) sibling. Together they cover both the open-market land-development lane (Islander) and the First Nations / BC Housing / Indigenous-participation lane (Gwaii) - so a single KOR teaming relationship reaches across KOR's entire Vancouver Island pursuit base. See the Gwaii dossier for the named live teaming triggers."
+H2 $sel "How this intelligence was gathered (2026-06-23)"
+Body $sel "Web research (islanderengineering.com, LinkedIn, Business Examiner); Hunter.io domain-search (email pattern {f}{last}); Apollo.io people/match; Deltek linked-server check (no KOR client/vendor/contact history); cross-reference of KOR's pipeline. Ingested + deduped into the BD graph (CanonicalOrg 69527). DATA NOTE repeated: re-kind from Competitor to Vendor recommended."
 Footer $doc
 $islPath="C:\VIsual Studio Projects\Operations\docs\KOR-Islander-Engineering-Dossier-2026-06-23.docx"
 if(Test-Path $islPath){Remove-Item $islPath -Force}
