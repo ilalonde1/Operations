@@ -197,35 +197,51 @@ static async Task<(int PersonsMerged, int AffiliationsMerged, int OrgsTouched)> 
     {
         await using (var create = new SqlCommand(@"
 CREATE TABLE #c (OrgId BIGINT, Person NVARCHAR(200), Title NVARCHAR(200), Email NVARCHAR(200),
-  Linkedin NVARCHAR(500), Conf TINYINT, NormName NVARCHAR(200), NormTitle NVARCHAR(200),
-  PKey CHAR(40), AffKey CHAR(40), PersonId BIGINT);", con, tx))
+  Linkedin NVARCHAR(500), Conf TINYINT, NormTitle NVARCHAR(200),
+  AffKey CHAR(40), PersonId BIGINT);", con, tx))
             await create.ExecuteNonQueryAsync();
 
         foreach (var c in contacts)
         {
+            long personId;
+            await using (var rp = new SqlCommand("opportunities.usp_ResolveOrCreateIntelPerson", con, tx)
+                { CommandType = CommandType.StoredProcedure })
+            {
+                rp.Parameters.Add("@displayName", SqlDbType.NVarChar, 400).Value = c.DisplayName;
+                rp.Parameters.Add("@email", SqlDbType.NVarChar, 400).Value = (object?)c.Email ?? DBNull.Value;
+                rp.Parameters.Add("@linkedinUrl", SqlDbType.NVarChar, 800).Value = (object?)c.Linkedin ?? DBNull.Value;
+                rp.Parameters.Add("@orgId", SqlDbType.BigInt).Value = c.OrgId;
+                rp.Parameters.Add("@sourceProviderName", SqlDbType.NVarChar, 200).Value = provider;
+                rp.Parameters.Add("@emailSource", SqlDbType.NVarChar, 50).Value =
+                    string.IsNullOrWhiteSpace(c.Email) ? (object)DBNull.Value : "Apollo";
+                rp.Parameters.Add("@emailConfidence", SqlDbType.Int).Value = c.EmailConfidence;
+                var pidOut = rp.Parameters.Add("@personId", SqlDbType.BigInt);
+                pidOut.Direction = ParameterDirection.Output;
+                await rp.ExecuteNonQueryAsync();
+                personId = Convert.ToInt64(pidOut.Value);
+            }
+
             await using var ins = new SqlCommand(
-                "INSERT INTO #c (OrgId, Person, Title, Email, Linkedin, Conf) VALUES (@o,@p,@t,@e,@l,@cf)", con, tx);
+                "INSERT INTO #c (OrgId, Person, Title, Email, Linkedin, Conf, PersonId) VALUES (@o,@p,@t,@e,@l,@cf,@pid)", con, tx);
             ins.Parameters.AddWithValue("@o", c.OrgId);
             ins.Parameters.AddWithValue("@p", c.DisplayName);
             ins.Parameters.AddWithValue("@t", (object?)c.Title ?? DBNull.Value);
             ins.Parameters.AddWithValue("@e", (object?)c.Email ?? DBNull.Value);
             ins.Parameters.AddWithValue("@l", (object?)c.Linkedin ?? DBNull.Value);
             ins.Parameters.AddWithValue("@cf", c.EmailConfidence);
+            ins.Parameters.AddWithValue("@pid", personId);
             await ins.ExecuteNonQueryAsync();
         }
 
-        // Mirrors Schema/162: normalize, SHA1 NaturalKeys, enrichment parent per org,
-        // MERGE person (COALESCE email never clobbers), MERGE affiliation.
+        // Mirrors Schema/162 for affiliation identity. Person identity is resolved by
+        // opportunities.usp_ResolveOrCreateIntelPerson before rows enter #c.
         const string merge = @"
 DECLARE @provider NVARCHAR(120) = @prov;
 DECLARE @now DATETIMEOFFSET = SYSDATETIMEOFFSET();
 
 UPDATE #c SET
-  NormName = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-             LOWER(LTRIM(RTRIM(Person))),' ',''),'.',''),',',''),'''',''),'-',''),'&',''),'/',''),'(',''),')',''),'+',''),
   NormTitle = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
              LOWER(LTRIM(RTRIM(ISNULL(Title,N'')))),' ',''),'.',''),',',''),'''',''),'-',''),'&',''),'/',''),'(',''),')',''),'+','');
-UPDATE #c SET PKey = CONVERT(CHAR(40), HASHBYTES('SHA1', CAST(NormName AS VARCHAR(8000))), 2);
 
 DECLARE @enr TABLE (EnrId BIGINT, OrgId BIGINT);
 MERGE opportunities.CanonicalOrgEnrichment AS T
@@ -236,26 +252,6 @@ WHEN NOT MATCHED THEN INSERT (CanonicalOrgId, ProviderName, Status, Attempts, La
   VALUES (S.OrgId, @provider, N'ok', 1, @now, @now, @now)
 OUTPUT inserted.Id, inserted.CanonicalOrgId INTO @enr (EnrId, OrgId);
 
-MERGE opportunities.IntelPerson WITH (HOLDLOCK) AS T
-USING (SELECT c.PKey, MIN(c.Person) AS Person, MIN(c.NormName) AS NormName,
-              MIN(c.Email) AS Email, MIN(c.Linkedin) AS Linkedin, MAX(c.Conf) AS Conf, MIN(e.EnrId) AS EnrId
-       FROM #c c JOIN @enr e ON e.OrgId = c.OrgId
-       GROUP BY c.PKey) AS S
-   ON T.NaturalKey = S.PKey
-WHEN MATCHED THEN UPDATE SET
-   Email = COALESCE(T.Email, S.Email),
-   EmailSource = COALESCE(T.EmailSource, CASE WHEN T.Email IS NULL AND S.Email IS NOT NULL THEN N'Apollo' ELSE T.EmailSource END),
-   EmailConfidence = CASE WHEN T.Email IS NULL AND S.Email IS NOT NULL THEN S.Conf ELSE T.EmailConfidence END,
-   LinkedinUrl = COALESCE(T.LinkedinUrl, S.Linkedin),
-   LastSeenAtUtc = @now, UpdatedAtUtc = @now
-WHEN NOT MATCHED THEN INSERT
-   (SourceProviderName, SourceEnrichmentId, SourceConfidence, NaturalKey,
-    FirstSeenAtUtc, LastSeenAtUtc, DisplayName, NormalizedName, Email, EmailSource, EmailConfidence, LinkedinUrl)
-   VALUES
-   (@provider, S.EnrId, N'High', S.PKey,
-    @now, @now, S.Person, S.NormName, S.Email, CASE WHEN S.Email IS NULL THEN NULL ELSE N'Apollo' END, S.Conf, S.Linkedin);
-
-UPDATE c SET c.PersonId = p.Id FROM #c c JOIN opportunities.IntelPerson p ON p.NaturalKey = c.PKey;
 UPDATE #c SET AffKey = CONVERT(CHAR(40), HASHBYTES('SHA1',
    CAST(CAST(PersonId AS VARCHAR(20)) + '|' + CAST(OrgId AS VARCHAR(20)) + '|' + NormTitle AS VARCHAR(8000))), 2);
 
@@ -271,7 +267,7 @@ WHEN NOT MATCHED THEN INSERT
    VALUES
    (@provider, S.EnrId, N'High', S.AffKey, @now, @now, S.PersonId, S.OrgId, S.Title, 1);
 
-SELECT (SELECT COUNT(DISTINCT PKey) FROM #c), (SELECT COUNT(DISTINCT AffKey) FROM #c), (SELECT COUNT(*) FROM @enr);";
+SELECT (SELECT COUNT(DISTINCT PersonId) FROM #c), (SELECT COUNT(DISTINCT AffKey) FROM #c), (SELECT COUNT(*) FROM @enr);";
         int persons = 0, affs = 0, orgs = 0;
         await using (var m = new SqlCommand(merge, con, tx) { CommandTimeout = 120 })
         {
