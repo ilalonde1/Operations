@@ -23,6 +23,8 @@
 
 ## 1. The list exists and is current (not the dead 2021 doc)
 
+> **This LMFM roster *is* the VCH list — there is no separate "Vancouver Coastal Health" engineering prequalification.** The four Lower Mainland health authorities (Fraser Health, PHSA, Providence and **VCH**) consolidated facilities procurement into one shared service, Lower Mainland Facilities Management (LMFM). The live `professional_Engineers_List.pdf` carries **three logos on its masthead — Fraser Health, PHSA, and Vancouver Coastal Health** — so VCH is on the roster's own header. The list and the `FMP@fraserhealth.ca` mailbox live on the `fraserhealth.ca` domain only because Fraser Health is the administrative *host* of the shared desk (`FMP` = Facilities Management Procurement, the LMFM desk), not because it is Fraser-Health-only. Being on this list makes KOR eligible for VCH's non-acute / small-mid engineering work. (The only adjacent roster is a separate PHSA Supply Chain *generic consulting* list — also shared across all four, not a VCH-specific structural list.)
+
 - **Owner of the mechanism:** Lower Mainland Facilities Management (LMFM) / the Facilities Management Procurement (FMP) division — shared procurement acting on behalf of Fraser Health, PHSA, Providence Health Care and Vancouver Coastal Health. Contact FMP@fraserhealth.ca.
 - **What it produces:** 16 category-specific pre-qualified rosters, one of which is "Engineers," which carries an explicit Structural discipline alongside Civil, Mechanical, Electrical, Geotechnical, Acoustical, Commissioning, Communication, Energy, Environmental, Technology and Transportation.
 - **Proof it is current, not lapsed:** the live engineers list is RFPQ26-PE, **effective 29 May 2026**; the companion mechanical list is dated effective 1 Apr 2026. This supersedes the corrupted "Prequal_Engineers_Aug2021" artifact our prior research could not open. Fraser Health's business-opportunities page (last updated 22 Jun 2026) states the lists are "refreshed on an annual basis."
@@ -36,6 +38,7 @@ We already *see* every public VCH tender via BC Bid — that is passive visibili
 - Being prequalified gates invitations to formal/larger solicitations and raises the direct-award threshold (~$50k vs ~$25k for non-listed firms).
 - It is not one-and-done: at each annual refresh, currently-listed firms must re-apply or be removed from the list.
 - **Scope nuance (verified):** non-prequalified firms can still receive small direct awards (under ~$25k); and Bonfire is not the sole portal — it is BC Bid + Bonfire together, with the BC Bid NOI giving the application/submission details.
+- **Don't be thrown by the Fraser Health branding.** The `fraserhealth.bonfirehub.ca` portal and the `FMP@fraserhealth.ca` contact are the *shared* LMFM desk hosted by Fraser Health on behalf of all four authorities — applying here is applying for VCH work (see §1 callout). There is no VCH-only portal to find.
 
 ## 3. The two tracks — keep them separate
 
