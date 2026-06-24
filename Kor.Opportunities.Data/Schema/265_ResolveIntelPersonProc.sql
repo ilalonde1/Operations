@@ -108,6 +108,25 @@ BEGIN
         ORDER BY p.Id;
     END;
 
+    -- Adopt a single org-less discovery stub: a person created name-only by
+    -- first-pass discovery (BdQueueDrainIngest) that has no active affiliations
+    -- yet. Only when EXACTLY ONE active stub matches the normalized name -
+    -- ambiguous or already-affiliated names fall through to create, never
+    -- auto-merge. This converges enrichment onto the stub instead of
+    -- duplicating it.
+    IF @foundId IS NULL AND @normalizedName <> N''
+    BEGIN
+        DECLARE @stubCount INT;
+        SELECT @stubCount = COUNT(*), @foundId = MIN(p.Id)
+        FROM opportunities.IntelPerson AS p WITH (UPDLOCK, HOLDLOCK)
+        WHERE p.RetiredAtUtc IS NULL
+          AND p.NormalizedName = @normalizedName
+          AND NOT EXISTS (
+                SELECT 1 FROM opportunities.IntelPersonAffiliation AS a
+                WHERE a.IntelPersonId = p.Id AND a.RetiredAtUtc IS NULL);
+        IF @stubCount <> 1 SET @foundId = NULL;
+    END;
+
     IF @foundId IS NOT NULL
     BEGIN
         UPDATE opportunities.IntelPerson
