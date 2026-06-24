@@ -1,6 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
@@ -96,6 +97,21 @@ public sealed class CanonicalOrgResolver
         {
             await RecordUnclassifiedAliasAsync(cleaned, source, 5, "too-short", "Normalized organization name shorter than 3 characters", ct)
                 .ConfigureAwait(false);
+            return null;
+        }
+
+        // Several real organizations concatenated into one name (e.g. "Fraser Health
+        // AuthorityVancouver Coastal Health Authority..." — the #794 class). This
+        // happens when a source lists multiple parties in one proponent/owner string.
+        // Do NOT create a canonical from it (that's an un-mergeable junk entity that
+        // surfaces in dossiers); record it as an unclassified alias for review so the
+        // raw text is kept and nothing is lost.
+        if (IsConcatenatedMultiEntity(cleaned))
+        {
+            await RecordUnclassifiedAliasAsync(cleaned, source, 5, "concatenated-multi-entity",
+                "Name looks like multiple organizations concatenated; not auto-created", ct)
+                .ConfigureAwait(false);
+            _logger.LogWarning("Skipped concatenated multi-entity org name '{RawName}' from source '{Source}'.", cleaned, source);
             return null;
         }
 
@@ -217,6 +233,35 @@ public sealed class CanonicalOrgResolver
             classifiedBy: classifiedBy,
             notes: notes,
             ct: ct);
+
+    private static readonly Regex ConcatGlue = new(@"(Authority|Corporation)[A-Z][a-z]", RegexOptions.Compiled);
+    private static readonly Regex AuthorityToken = new(@"\bAuthority\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex CorporationToken = new(@"\bCorporation\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex FirstNationToken = new(@"\bFirst Nation\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>
+    /// Detects a name that is several real organizations concatenated into one — the
+    /// #794 class (e.g. "Fraser Health AuthorityVancouver Coastal Health Authority").
+    /// Two signals: an entity word glued straight into the next Capitalized word with
+    /// no space ("AuthorityVancouver"), or two-plus full entity-suffix tokens (a single
+    /// real org carries at most one "Authority"/"Corporation"/"First Nation"). Public
+    /// so a one-shot audit can reuse the exact same rule.
+    ///
+    /// Conservative: when in doubt it does NOT match, and even a false match is cheap —
+    /// the caller only DEFERS that one name to the unclassified-alias review queue
+    /// (the raw text is preserved; nothing is created and nothing is lost).
+    /// </summary>
+    public static bool IsConcatenatedMultiEntity(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return false;
+        var n = name.Trim();
+        if (ConcatGlue.IsMatch(n)) return true;
+        if (AuthorityToken.Matches(n).Count >= 2) return true;
+        if (CorporationToken.Matches(n).Count >= 2) return true;
+        if (FirstNationToken.Matches(n).Count >= 2) return true;
+        return n.IndexOf("Health Care", System.StringComparison.OrdinalIgnoreCase) >= 0
+            && n.IndexOf("Health Services", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
 
     /// <summary>
     /// Public so one-shot backfill scripts can use the same normalization
