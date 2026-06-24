@@ -2756,3 +2756,12 @@ LoserId,SurvivorId,Reason
 #   (3-firm composite, 1 MPI) -> lead operator #69746 "Mosaic Homes" (first-named).
 #   Repoints the 1 MPI proponent; retires the composite. Per lead-operator convention.
 53779,69746,jv-string mosaic/onni/conwest -> mosaic homes (lead operator)
+# 2026-06-24 overnight-enrichment CRM cleanup. Survivors verified by link-count + established prior survivors already in this allowlist (153 Arcadis-IBI, 38974 Revery, 2579 Arch49, 71487 standalone 3XN per Round60 Phase-3). Names differ by paren/JV-suffix the fuzzy gate rejects.
+76055,38974,2026-06-24 bing thom -> revery
+24822,153,2026-06-24 ibi -> arcadis ibi group
+77333,153,2026-06-24 ibi -> arcadis ibi group
+75557,71487,2026-06-24 3xn composite -> standalone 3xn
+76285,71487,2026-06-24 3xn composite -> standalone 3xn
+76397,71487,2026-06-24 3xn composite -> standalone 3xn
+75989,2579,2026-06-24 arch49 composite -> architecture49 inc
+77380,2579,2026-06-24 arch49 composite -> architecture49 inc
