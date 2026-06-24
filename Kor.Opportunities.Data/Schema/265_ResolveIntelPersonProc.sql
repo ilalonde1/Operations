@@ -23,6 +23,8 @@ CREATE OR ALTER PROCEDURE opportunities.usp_ResolveOrCreateIntelPerson
     @displayName        NVARCHAR(400),
     @email              NVARCHAR(400) = NULL,
     @linkedinUrl        NVARCHAR(800) = NULL,
+    @phone              NVARCHAR(50) = NULL,
+    @notes              NVARCHAR(MAX) = NULL,
     @orgId              BIGINT = NULL,
     @sourceProviderName NVARCHAR(200) = NULL,
     @emailSource        NVARCHAR(50) = NULL,
@@ -40,6 +42,8 @@ BEGIN
     DECLARE @cleanDisplayName NVARCHAR(400) = NULLIF(LTRIM(RTRIM(@displayName)), N'');
     DECLARE @cleanEmail NVARCHAR(200) = LEFT(NULLIF(LTRIM(RTRIM(@email)), N''), 200);
     DECLARE @cleanLinkedinUrl NVARCHAR(500) = LEFT(NULLIF(LTRIM(RTRIM(@linkedinUrl)), N''), 500);
+    DECLARE @cleanPhone NVARCHAR(50) = LEFT(NULLIF(LTRIM(RTRIM(@phone)), N''), 50);
+    DECLARE @cleanNotes NVARCHAR(MAX) = NULLIF(LTRIM(RTRIM(@notes)), N'');
     DECLARE @emailKey NVARCHAR(200) = LOWER(COALESCE(@cleanEmail, N''));
     DECLARE @linkedinKey NVARCHAR(500) = LOWER(COALESCE(@cleanLinkedinUrl, N''));
     DECLARE @normalizedName NVARCHAR(200) =
@@ -109,7 +113,9 @@ BEGIN
         UPDATE opportunities.IntelPerson
         SET Email = COALESCE(Email, @cleanEmail),
             LinkedinUrl = COALESCE(LinkedinUrl, @cleanLinkedinUrl),
-            Phone = Phone,
+            Phone = COALESCE(Phone, @cleanPhone),
+            Notes = COALESCE(Notes, @cleanNotes),
+            Corroborations = Corroborations + 1,
             EmailSource =
                 CASE
                     WHEN Email IS NULL AND @cleanEmail IS NOT NULL THEN COALESCE(EmailSource, @emailSourceForWrite)
@@ -157,7 +163,9 @@ BEGIN
         UPDATE opportunities.IntelPerson
         SET Email = COALESCE(Email, @cleanEmail),
             LinkedinUrl = COALESCE(LinkedinUrl, @cleanLinkedinUrl),
-            Phone = Phone,
+            Phone = COALESCE(Phone, @cleanPhone),
+            Notes = COALESCE(Notes, @cleanNotes),
+            Corroborations = Corroborations + 1,
             EmailSource =
                 CASE
                     WHEN Email IS NULL AND @cleanEmail IS NOT NULL THEN COALESCE(EmailSource, @emailSourceForWrite)
@@ -202,11 +210,11 @@ BEGIN
     INSERT INTO opportunities.IntelPerson
         (SourceProviderName, SourceEnrichmentId, SourceConfidence, NaturalKey,
          FirstSeenAtUtc, LastSeenAtUtc, CreatedAtUtc, UpdatedAtUtc,
-         DisplayName, NormalizedName, Email, LinkedinUrl, EmailSource, EmailConfidence)
+         DisplayName, NormalizedName, Email, Phone, LinkedinUrl, Notes, EmailSource, EmailConfidence)
     VALUES
         (@provider, @sourceEnrichmentId, N'Medium', @naturalKey,
          @now, @now, @now, @now,
-         LEFT(@cleanDisplayName, 200), @normalizedName, @cleanEmail, @cleanLinkedinUrl,
+         LEFT(@cleanDisplayName, 200), @normalizedName, @cleanEmail, @cleanPhone, @cleanLinkedinUrl, @cleanNotes,
          CASE WHEN @cleanEmail IS NOT NULL THEN @emailSourceForWrite ELSE NULL END,
          CASE WHEN @cleanEmail IS NOT NULL THEN @emailConfidenceForWrite ELSE NULL END);
 
