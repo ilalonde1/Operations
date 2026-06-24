@@ -80,7 +80,10 @@ VCH is a Lower-Mainland health authority running **one of BC's largest active ho
 
 ## 5. The play (next 2 quarters)
 
-1. **Build the first healthcare credit** — pursue a VCH LTC or a smaller LMFM-prequalified job (via **Elizabeth Dier** / **Mauricio Acosta**), and verify/secure KOR on the LMFM engineering prequalification list (Fraser Health Bonfire + BC Bid — note: KOR already *sees* these tenders; this is about being on the invited-engineer roster).
+1. **Get on the LMFM "Pre-Qualified Professional Engineers" list — Structural.** This is now confirmed and concrete (full detail: `KOR-VCH-Prequalification-Briefing-2026-06-24`). LMFM runs the shared engineering prequal roster for VCH + Fraser Health + PHSA + Providence; the live list is **RFPQ26-PE, effective 29 May 2026**, and **KOR is not on it** while every named competitor is (Bush Bohlman, Glotman, RJC, Fast+Epp, Entuitive, DIALOG, Stantec, WSP). Passive BC Bid watching ≠ being on the roster.
+   - **Mechanism:** annual refresh. The 2025 cycle closed **31 Oct 2025** → list effective 29 May 2026; the **2026 refresh should post ~Sept–Oct 2026** on BC Bid + Bonfire. The refresh is also when listed firms must re-apply, so it's the universal entry point — *watch for it now.*
+   - **How to apply:** monitor BC Bid + the Fraser Health Bonfire portal (`fraserhealth.bonfirehub.ca`); contact **`FMP@fraserhealth.ca`**.
+   - **Tiers:** firms qualify cell-by-cell by **Acute vs Non-Acute** × fee band (`<$150K / $150K–1M / $1M–5M / >$5M`). EGBC licensure is the hard gate (KOR clears it). **KOR's realistic entry = Non-Acute + lower fee bands** (small firms like Equilibrium, Sense, Wicke Herfst Maver sit in just 1–2 cells) — exactly the first-healthcare-credit play, e.g. via **Elizabeth Dier** / **Mauricio Acosta**.
 2. **VGH Campus pre-design via Kasian** — engage Kasian's engineering team now, before the program procures and locks like Richmond did. This is the highest-value pre-lock window.
 3. **Activate the contact set** — open relationships with **Susan Luckey** and **Behnaz Sanei** (Tier 1) and the new CPO once named, so KOR is known when a seat opens.
 4. **Do NOT** chase Richmond Yurkovich as an open SE seat (Entuitive holds it). HDR/Graham are worth a relationship for *future* work — not a Richmond-SE pursuit.
