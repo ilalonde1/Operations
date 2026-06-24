@@ -6,6 +6,9 @@ using System.Linq;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using A = DocumentFormat.OpenXml.Drawing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
 namespace Kor.Opportunities.Data.BdReports.Generators;
 
@@ -56,6 +59,103 @@ public static class DocxBuilder
         }
 
         return ms.ToArray();
+    }
+
+    /// <summary>
+    /// Renders a single full-page PNG (a WebView2 screenshot of one of the live
+    /// BD visuals — heat-graph / treemap / attack cards) into a landscape DOCX
+    /// with a title heading. The visuals have no block model; this is their Word
+    /// export path, paired with WebView2's PrintToPdfAsync for PDF.
+    /// </summary>
+    public static byte[] RenderImage(byte[] pngBytes, string title, int pixelWidth, int pixelHeight)
+    {
+        ArgumentNullException.ThrowIfNull(pngBytes);
+        if (pixelWidth <= 0 || pixelHeight <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pixelWidth), "Image dimensions must be positive.");
+        }
+
+        using var ms = new MemoryStream();
+        using (var word = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document))
+        {
+            var main = word.AddMainDocumentPart();
+            main.Document = new Document();
+
+            var stylesPart = main.AddNewPart<StyleDefinitionsPart>();
+            stylesPart.Styles = BuildStyles();
+            stylesPart.Styles.Save();
+
+            var imagePart = main.AddImagePart(ImagePartType.Png);
+            using (var pngStream = new MemoryStream(pngBytes))
+            {
+                imagePart.FeedData(pngStream);
+            }
+
+            var body = new Body();
+            body.Append(StyledParagraph(HeadingStyleId(1), Run(title)));
+
+            // Landscape Letter content box (11in × 8.5in less 0.5in margins):
+            // 10in wide, ~7in tall. Fit the screenshot inside, preserving aspect.
+            const long emuPerInch = 914400L;
+            const long maxWidthEmu = 10L * emuPerInch;
+            const long maxHeightEmu = 7L * emuPerInch;
+            long widthEmu = maxWidthEmu;
+            long heightEmu = (long)(widthEmu * ((double)pixelHeight / pixelWidth));
+            if (heightEmu > maxHeightEmu)
+            {
+                heightEmu = maxHeightEmu;
+                widthEmu = (long)(heightEmu * ((double)pixelWidth / pixelHeight));
+            }
+
+            body.Append(new Paragraph(new Run(BuildInlineImage(
+                main.GetIdOfPart(imagePart), widthEmu, heightEmu))));
+
+            body.Append(new SectionProperties(
+                new PageSize { Width = 15840, Height = 12240, Orient = PageOrientationValues.Landscape },
+                new PageMargin
+                {
+                    Top = 720, Bottom = 720, Left = 720, Right = 720,
+                }));
+
+            main.Document.Append(body);
+            main.Document.Save();
+        }
+
+        return ms.ToArray();
+    }
+
+    private static Drawing BuildInlineImage(string relationshipId, long widthEmu, long heightEmu)
+    {
+        var picture = new PIC.Picture(
+            new PIC.NonVisualPictureProperties(
+                new PIC.NonVisualDrawingProperties { Id = 0U, Name = "BD Visual.png" },
+                new PIC.NonVisualPictureDrawingProperties()),
+            new PIC.BlipFill(
+                new A.Blip { Embed = relationshipId },
+                new A.Stretch(new A.FillRectangle())),
+            new PIC.ShapeProperties(
+                new A.Transform2D(
+                    new A.Offset { X = 0L, Y = 0L },
+                    new A.Extents { Cx = widthEmu, Cy = heightEmu }),
+                new A.PresetGeometry(new A.AdjustValueList()) { Preset = A.ShapeTypeValues.Rectangle }));
+
+        var graphic = new A.Graphic(
+            new A.GraphicData(picture) { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" });
+
+        var inline = new DW.Inline(
+            new DW.Extent { Cx = widthEmu, Cy = heightEmu },
+            new DW.EffectExtent { LeftEdge = 0L, TopEdge = 0L, RightEdge = 0L, BottomEdge = 0L },
+            new DW.DocProperties { Id = 1U, Name = "BD Visual" },
+            new DW.NonVisualGraphicFrameDrawingProperties(new A.GraphicFrameLocks { NoChangeAspect = true }),
+            graphic)
+        {
+            DistanceFromTop = 0U,
+            DistanceFromBottom = 0U,
+            DistanceFromLeft = 0U,
+            DistanceFromRight = 0U,
+        };
+
+        return new Drawing(inline);
     }
 
     private static IEnumerable<OpenXmlElement> RenderBlock(BdReportBlock block)

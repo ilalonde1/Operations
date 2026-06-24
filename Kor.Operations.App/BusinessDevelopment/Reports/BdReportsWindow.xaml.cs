@@ -279,7 +279,7 @@ public partial class BdReportsWindow : Window
         }
     }
 
-    private void SaveDocx_Click(object sender, RoutedEventArgs e)
+    private async void SaveDocx_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new SaveFileDialog
         {
@@ -297,7 +297,17 @@ public partial class BdReportsWindow : Window
 
         try
         {
-            File.WriteAllBytes(dlg.FileName, _vm.RenderCurrentDocx());
+            // Visual reports (heat-graph / treemap / cards) have no block-model
+            // document — export a screenshot of the rendered WebView2 instead.
+            var bytes = _vm.CurrentIsVisual
+                ? DocxBuilder.RenderImage(
+                    await CapturePreviewPngAsync().ConfigureAwait(true),
+                    _vm.SelectedAnalytical?.Title ?? "BD Visual",
+                    Math.Max(1, (int)Preview.ActualWidth),
+                    Math.Max(1, (int)Preview.ActualHeight))
+                : _vm.RenderCurrentDocx();
+
+            File.WriteAllBytes(dlg.FileName, bytes);
             _vm.LogDocxExportBestEffort($"Saved as {Path.GetFileName(dlg.FileName)}");
             _vm.StatusMessage = $"Saved {Path.GetFileName(dlg.FileName)}.";
         }
@@ -305,5 +315,64 @@ public partial class BdReportsWindow : Window
         {
             MessageBox.Show(this, $"DOCX export failed:\n{ex.Message}", "BD Reports", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private async void SavePdf_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_previewReady || Preview.CoreWebView2 is null)
+        {
+            MessageBox.Show(this, "Preview pane is not ready yet.", "BD Reports", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new SaveFileDialog
+        {
+            Title = "Save BD Report as PDF",
+            Filter = "PDF Document|*.pdf",
+            FileName = Path.ChangeExtension(_vm.SuggestedDocxFileName, ".pdf"),
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            // PrintToPdf renders exactly what the WebView2 shows — the same HTML
+            // the preview displays — so PDF and on-screen never drift. Visuals are
+            // full-bleed: landscape + print backgrounds keeps the dark canvas.
+            var settings = Preview.CoreWebView2.Environment.CreatePrintSettings();
+            settings.ShouldPrintBackgrounds = true;
+            if (_vm.CurrentIsVisual)
+            {
+                settings.Orientation = CoreWebView2PrintOrientation.Landscape;
+            }
+
+            var ok = await Preview.CoreWebView2.PrintToPdfAsync(dlg.FileName, settings).ConfigureAwait(true);
+            if (ok)
+            {
+                _vm.LogDocxExportBestEffort($"Saved PDF {Path.GetFileName(dlg.FileName)}");
+                _vm.StatusMessage = $"Saved {Path.GetFileName(dlg.FileName)}.";
+            }
+            else
+            {
+                _vm.StatusMessage = "PDF export returned no file.";
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"PDF export failed:\n{ex.Message}", "BD Reports", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task<byte[]> CapturePreviewPngAsync()
+    {
+        using var ms = new MemoryStream();
+        await Preview.CoreWebView2.CapturePreviewAsync(
+            CoreWebView2CapturePreviewImageFormat.Png, ms).ConfigureAwait(true);
+        return ms.ToArray();
     }
 }

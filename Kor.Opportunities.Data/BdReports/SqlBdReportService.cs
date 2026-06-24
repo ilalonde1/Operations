@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Data.BdReports.Generators;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.BdReports;
@@ -888,6 +890,160 @@ VALUES (@category, @format, @user, @recordCount, @notes);";
             honing.OverallConfidence,
             r.IsDBNull(12) ? null : r.GetDateTimeOffset(12),
             BdVerdicts.IsUrgent(honing.Verdict, honing.KorAngle));
+    }
+
+    // ===================== Live BD visuals (teaming graph / treemap / cards) =====================
+    // These re-query the live BD graph on every call, so each enrichment pass +
+    // pursuit/verdict change is reflected the next time the report is opened.
+    // The HTML is shared with the BdHeatGraph CLI via BdVisualHtml; here we just
+    // run the same queries and serialize the data in. Rendered in the WebView2
+    // preview (Chromium), exported via screenshot like the other visual reports.
+
+    // The live "attack spine": every org sitting on a PURSUE/PURSUE_URGENT pursuit,
+    // carrying that pursuit's $ and urgency so heat = OPPORTUNITY VALUE (pursuit cost
+    // x urgency), not dossier completeness. Cheap — no vDossierCompleteness join
+    // (that 6-CTE rubric view costs ~120s; this is sub-second). Warmth (do we know
+    // people there) is a separate channel via IntelPersonAffiliation.
+    private string AttackSpineCte =>
+        $@"WITH HotMpi AS (
+    SELECT m.Id, m.EstimatedCostCad,
+           CASE WHEN {VerdictExpr} = N'PURSUE_URGENT' THEN 2.0 ELSE 1.0 END AS Urg
+    FROM opportunities.MajorProjectsInventory m
+    JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+    WHERE m.RetiredAtUtc IS NULL AND {VerdictExpr} IN (N'PURSUE', N'PURSUE_URGENT')),
+HotOrg AS (
+    SELECT DISTINCT x.OrgId, h.Id AS MpiId, h.EstimatedCostCad, h.Urg
+    FROM opportunities.MajorProjectsInventory m
+    JOIN HotMpi h ON h.Id = m.Id
+    CROSS APPLY (VALUES (m.ArchitectCanonicalOrgId),(m.GeneralContractorCanonicalOrgId),(m.StructuralEngineerCanonicalOrgId),(m.ProponentCanonicalOrgId)) x(OrgId)
+    WHERE x.OrgId IS NOT NULL)";
+
+    public async Task<string> GetTeamingGraphHtmlAsync(CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        var nodes = new List<object>();
+        double maxAttack = 1; // millions of CAD x urgency
+        await using (var cmd = new SqlCommand(AttackSpineCte + @"
+SELECT co.Id, co.DisplayName, co.Kind,
+       COUNT(DISTINCT ho.MpiId) AS Pursuits,
+       CAST(SUM(ISNULL(ho.EstimatedCostCad,0)*ho.Urg) AS DECIMAL(18,2)) AS Attack,
+       MAX(CASE WHEN aff.C>0 THEN 1 ELSE 0 END) AS Warm
+FROM HotOrg ho
+JOIN opportunities.CanonicalOrg co ON co.Id=ho.OrgId AND co.RetiredAtUtc IS NULL
+OUTER APPLY (SELECT COUNT(*) C FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId=co.Id AND a.RetiredAtUtc IS NULL) aff
+GROUP BY co.Id, co.DisplayName, co.Kind;", con) { CommandTimeout = CommandTimeoutSeconds })
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var attackM = (double)r.GetDecimal(4) / 1_000_000d;
+                if (attackM > maxAttack) maxAttack = attackM;
+                nodes.Add(new
+                {
+                    id = r.GetInt64(0),
+                    name = r.GetString(1),
+                    kind = r.GetString(2),
+                    pursuits = r.GetInt32(3),
+                    attack = Math.Round(attackM, 1),
+                    warm = r.GetInt32(5) == 1,
+                });
+            }
+        }
+
+        var links = new List<object>();
+        await using (var cmd = new SqlCommand(AttackSpineCte + @"
+SELECT a.OrgId AS Src, b.OrgId AS Dst, COUNT(DISTINCT a.MpiId) AS W FROM HotOrg a
+JOIN HotOrg b ON a.MpiId=b.MpiId AND a.OrgId<b.OrgId GROUP BY a.OrgId,b.OrgId;", con) { CommandTimeout = CommandTimeoutSeconds })
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+                links.Add(new { source = r.GetInt64(0), target = r.GetInt64(1), w = r.GetInt32(2) });
+        }
+
+        var json = JsonSerializer.Serialize(new { nodes, links });
+        return BdVisualHtml.Graph(json, maxAttack, nodes.Count, links.Count);
+    }
+
+    public async Task<string> GetPriorityTreemapHtmlAsync(CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        var rows = new List<object>();
+        await using (var cmd = new SqlCommand(AttackSpineCte + @"
+SELECT TOP 160 co.DisplayName, co.Kind,
+       COUNT(DISTINCT ho.MpiId) AS Pursuits,
+       CAST(SUM(ISNULL(ho.EstimatedCostCad,0)*ho.Urg) AS DECIMAL(18,2)) AS Attack,
+       MAX(CASE WHEN aff.C>0 THEN 1 ELSE 0 END) AS Warm
+FROM HotOrg ho
+JOIN opportunities.CanonicalOrg co ON co.Id=ho.OrgId AND co.RetiredAtUtc IS NULL
+OUTER APPLY (SELECT COUNT(*) C FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId=co.Id AND a.RetiredAtUtc IS NULL) aff
+GROUP BY co.Id, co.DisplayName, co.Kind
+ORDER BY SUM(ISNULL(ho.EstimatedCostCad,0)*ho.Urg) DESC;", con) { CommandTimeout = CommandTimeoutSeconds })
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                rows.Add(new
+                {
+                    name = r.GetString(0),
+                    kind = r.GetString(1),
+                    pursuits = r.GetInt32(2),
+                    attack = Math.Round((double)r.GetDecimal(3) / 1_000_000d, 1),
+                    warm = r.GetInt32(4) == 1,
+                });
+            }
+        }
+
+        return BdVisualHtml.Treemap(JsonSerializer.Serialize(rows), rows.Count);
+    }
+
+    public async Task<string> GetAttackCardsHtmlAsync(CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        var cards = new List<object>();
+        var sql = $@"
+SELECT m.Id, m.ProjectName, m.Province, {VerdictExpr} AS Verdict, m.EstimatedCostCad,
+  arch.DisplayName AS Arch,
+  (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId=arch.Id AND a.RetiredAtUtc IS NULL) AS ArchPeople,
+  se.DisplayName AS Se, CASE WHEN se.Kind=N'KorStructural' THEN 1 ELSE 0 END AS SeIsKor,
+  gc.DisplayName AS Gc, COALESCE(prop.DisplayName, m.ProponentName) AS Owner
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId=m.Id AND e.ProviderName=N'ProjectBriefHoning'
+LEFT JOIN opportunities.CanonicalOrg arch ON arch.Id=m.ArchitectCanonicalOrgId AND arch.RetiredAtUtc IS NULL
+LEFT JOIN opportunities.CanonicalOrg se ON se.Id=m.StructuralEngineerCanonicalOrgId AND se.RetiredAtUtc IS NULL
+LEFT JOIN opportunities.CanonicalOrg gc ON gc.Id=m.GeneralContractorCanonicalOrgId AND gc.RetiredAtUtc IS NULL
+LEFT JOIN opportunities.CanonicalOrg prop ON prop.Id=m.ProponentCanonicalOrgId AND prop.RetiredAtUtc IS NULL
+WHERE m.RetiredAtUtc IS NULL AND {VerdictExpr} IN (N'PURSUE', N'PURSUE_URGENT')
+ORDER BY CASE WHEN {VerdictExpr}=N'PURSUE_URGENT' THEN 0 ELSE 1 END, m.EstimatedCostCad DESC;";
+
+        await using (var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds })
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                cards.Add(new
+                {
+                    id = r.GetInt64(0),
+                    project = r.GetString(1),
+                    province = r.IsDBNull(2) ? "" : r.GetString(2),
+                    verdict = r.IsDBNull(3) ? "" : r.GetString(3),
+                    cost = r.IsDBNull(4) ? (decimal?)null : r.GetDecimal(4),
+                    arch = r.IsDBNull(5) ? null : r.GetString(5),
+                    archPeople = r.GetInt32(6),
+                    se = r.IsDBNull(7) ? null : r.GetString(7),
+                    seIsKor = r.GetInt32(8) == 1,
+                    gc = r.IsDBNull(9) ? null : r.GetString(9),
+                    owner = r.IsDBNull(10) ? null : r.GetString(10),
+                });
+            }
+        }
+
+        return BdVisualHtml.Cards(JsonSerializer.Serialize(cards), cards.Count);
     }
 
 }

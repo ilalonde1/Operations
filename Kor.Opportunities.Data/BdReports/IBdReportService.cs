@@ -82,6 +82,15 @@ public interface IBdReportService
     /// </summary>
     Task<IReadOnlyList<AwardProgramReportRow>> GetUpcomingAwardProgramsAsync(int take, CancellationToken ct);
 
+    /// <summary>Self-contained HTML for the live BD teaming heat-graph (rendered in the WebView2 preview / a browser). Re-queried each call = dynamic.</summary>
+    Task<string> GetTeamingGraphHtmlAsync(CancellationToken ct);
+
+    /// <summary>Self-contained HTML for the live BD priority treemap (where the leverage is).</summary>
+    Task<string> GetPriorityTreemapHtmlAsync(CancellationToken ct);
+
+    /// <summary>Self-contained HTML for the live BD opportunity attack cards (each pursuit's team + KOR path-in).</summary>
+    Task<string> GetAttackCardsHtmlAsync(CancellationToken ct);
+
     /// <summary>
     /// READ-ONLY action-tracking rollup: IntelAction counts by Status ×
     /// ActionType plus the most recent open actions (on active orgs). Status

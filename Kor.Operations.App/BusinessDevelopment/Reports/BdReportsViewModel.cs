@@ -103,6 +103,9 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         new AnalyticalReportVm("prime-consultant", "Prime Consultants", "Who leads each pursuit team — approach before the RFP issues."),
         new AnalyticalReportVm("pursuit-dossier", "Pursuit Dossiers", "Every live pursuit with its resolved team graph — architect route-in, incumbent SE, gaps."),
         new AnalyticalReportVm("awards", "Awards", "Upcoming AEC industry award programs KOR could enter for recognition."),
+        new AnalyticalReportVm("visual-teaming-graph", "Teaming Heat-Graph", "Interactive map of orgs on live pursuits — heat = priority, edges = who teams with whom."),
+        new AnalyticalReportVm("visual-priority-treemap", "Priority Treemap", "Every priority org tiled by importance, colored by heat — where the leverage is."),
+        new AnalyticalReportVm("visual-attack-cards", "Opportunity Attack Cards", "One card per live pursuit — the team + KOR's path-in (warm / displace / open seat)."),
     };
 
     private AnalyticalReportVm? _selectedAnalytical;
@@ -123,6 +126,9 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         "prime-consultant" => BuildPrimeConsultantPreviewAsync(ct),
         "pursuit-dossier" => BuildPursuitDossierPreviewAsync(ct),
         "awards" => BuildAwardsPreviewAsync(ct),
+        "visual-teaming-graph" => BuildVisualPreviewAsync("visual-teaming-graph", "Teaming Heat-Graph", _reportService.GetTeamingGraphHtmlAsync, ct),
+        "visual-priority-treemap" => BuildVisualPreviewAsync("visual-priority-treemap", "Priority Treemap", _reportService.GetPriorityTreemapHtmlAsync, ct),
+        "visual-attack-cards" => BuildVisualPreviewAsync("visual-attack-cards", "Opportunity Attack Cards", _reportService.GetAttackCardsHtmlAsync, ct),
         _ => Task.FromResult<string?>(null),
     };
 
@@ -153,7 +159,15 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         private set { if (_previewHtml != value) { _previewHtml = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanExportDocx)); } }
     }
 
-    public bool CanExportDocx => _currentDocument is not null && !IsBusy;
+    // A "visual" report (heat-graph / treemap / cards) renders straight from the
+    // service HTML — there is no BdReportDocument behind it, so it has no DOCX
+    // document model. Every block-model report sets _currentDocument non-null;
+    // the visuals null it out. So: PreviewHtml present + no document == visual.
+    // The window exports visuals by screenshotting the WebView2 instead of
+    // rendering a document.
+    public bool CurrentIsVisual => _currentDocument is null && PreviewHtml is not null;
+
+    public bool CanExportDocx => (_currentDocument is not null || CurrentIsVisual) && !IsBusy;
 
     public async Task LoadAsync(CancellationToken ct)
     {
@@ -698,6 +712,63 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         catch (Exception ex)
         {
             _logger?.LogError(ex, "BD Reports: awards finder generation failed.");
+            StatusMessage = $"Generation failed: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            if (generation == _generationSeq)
+            {
+                IsBusy = false;
+            }
+
+            OnPropertyChanged(nameof(CanExportDocx));
+        }
+    }
+
+    /// <summary>
+    /// Builds one of the live BD visuals (teaming heat-graph / priority treemap /
+    /// attack cards). The HTML is produced by the report service from live queries
+    /// and shown straight in the WebView2 preview; there is no block-model document,
+    /// so export goes through the window's screenshot path (see CurrentIsVisual).
+    /// </summary>
+    private async Task<string?> BuildVisualPreviewAsync(
+        string key, string title, Func<CancellationToken, Task<string>> htmlFactory, CancellationToken ct)
+    {
+        var generation = ++_generationSeq;
+        IsBusy = true;
+        StatusMessage = $"Generating {title} from the live BD graph…";
+        try
+        {
+            var html = await htmlFactory(ct).ConfigureAwait(true);
+            ct.ThrowIfCancellationRequested();
+            if (generation != _generationSeq)
+            {
+                return null; // superseded by a newer selection
+            }
+
+            _currentDocument = null;   // visual: no block-model document behind it
+            _currentDocumentKey = key;
+            _currentRecordCount = 0;
+            SelectedSector = null;
+            PreviewHtml = html;
+
+            LogGenerateBestEffort("html");
+            StatusMessage = $"{title}: live from the BD graph. Export captures the rendered visual.";
+            return PreviewHtml;
+        }
+        catch (OperationCanceledException)
+        {
+            if (generation == _generationSeq)
+            {
+                StatusMessage = "Generation cancelled.";
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "BD Reports: visual generation failed for {Key}.", key);
             StatusMessage = $"Generation failed: {ex.Message}";
             return null;
         }
