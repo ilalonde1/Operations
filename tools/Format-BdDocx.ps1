@@ -12,7 +12,7 @@ param(
   [Parameter(Mandatory)][string]$Docx,
   [switch]$Toc,
   [switch]$NoPageBreaks,   # one-pagers (agenda): don't force each section onto its own page
-  [string]$TableStyle = "Grid Table 5 Dark - Accent 1"
+  [string]$TableStyle = "Grid Table 4"
 )
 $ErrorActionPreference = "Stop"
 
