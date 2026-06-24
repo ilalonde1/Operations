@@ -195,9 +195,9 @@ WHERE StartedAtUtc < DATEADD(day, -@days, SYSDATETIMEOFFSET());",
         // (here, the dedup merge tool, manual cleanup) does not always cascade to
         // child intel, which leaves live actions/signals/people/narratives attached
         // to dead records — they surface in dossiers and Priority Actions. This
-        // generic sweep retires any opportunities.Intel* row whose CanonicalOrg or
-        // MajorProjectsInventory parent is retired, across EVERY such table (present
-        // and future, by sys.columns), so the class self-heals nightly instead of
+        // generic sweep retires any opportunities.Intel* row whose CanonicalOrg,
+        // MajorProjectsInventory, or IntelPerson parent is retired, across EVERY such
+        // table (present and future, by sys.columns), so the class self-heals instead of
         // re-accumulating. Idempotent; only touches rows whose parent is already
         // retired. (One-time backfill ran 2026-06-23; this keeps it from coming back.)
         var orphanIntelRetired = await ExecuteScalarIntAsync(cn, @"
@@ -213,6 +213,12 @@ SELECT @s = @s + N'UPDATE x SET RetiredAtUtc = SYSDATETIMEOFFSET() FROM opportun
 FROM sys.tables t
 WHERE SCHEMA_NAME(t.schema_id) = N'opportunities'
   AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'MajorProjectsInventoryId')
+  AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'RetiredAtUtc');
+SELECT @s = @s + N'UPDATE x SET RetiredAtUtc = SYSDATETIMEOFFSET() FROM opportunities.' + QUOTENAME(t.name)
+  + N' x JOIN opportunities.IntelPerson p ON p.Id = x.IntelPersonId WHERE x.RetiredAtUtc IS NULL AND p.RetiredAtUtc IS NOT NULL; SET @n += @@ROWCOUNT;' + CHAR(10)
+FROM sys.tables t
+WHERE SCHEMA_NAME(t.schema_id) = N'opportunities'
+  AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'IntelPersonId')
   AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'RetiredAtUtc');
 SET @s = @s + N'SELECT @n;';
 EXEC sys.sp_executesql @s;", ct).ConfigureAwait(false);
