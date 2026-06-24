@@ -191,6 +191,32 @@ WHERE StartedAtUtc < DATEADD(day, -@days, SYSDATETIMEOFFSET());",
             cmd => cmd.Parameters.Add("@days", System.Data.SqlDbType.Int).Value = telemetryRetentionDays,
             commandTimeoutSeconds: 300).ConfigureAwait(false);
 
+        // Cascade-retire intel orphaned on a retired parent. Org/project retirement
+        // (here, the dedup merge tool, manual cleanup) does not always cascade to
+        // child intel, which leaves live actions/signals/people/narratives attached
+        // to dead records — they surface in dossiers and Priority Actions. This
+        // generic sweep retires any opportunities.Intel* row whose CanonicalOrg or
+        // MajorProjectsInventory parent is retired, across EVERY such table (present
+        // and future, by sys.columns), so the class self-heals nightly instead of
+        // re-accumulating. Idempotent; only touches rows whose parent is already
+        // retired. (One-time backfill ran 2026-06-23; this keeps it from coming back.)
+        var orphanIntelRetired = await ExecuteScalarIntAsync(cn, @"
+DECLARE @s NVARCHAR(MAX) = N'DECLARE @n INT = 0;';
+SELECT @s = @s + N'UPDATE x SET RetiredAtUtc = SYSDATETIMEOFFSET() FROM opportunities.' + QUOTENAME(t.name)
+  + N' x JOIN opportunities.CanonicalOrg c ON c.Id = x.CanonicalOrgId WHERE x.RetiredAtUtc IS NULL AND c.RetiredAtUtc IS NOT NULL; SET @n += @@ROWCOUNT;' + CHAR(10)
+FROM sys.tables t
+WHERE SCHEMA_NAME(t.schema_id) = N'opportunities' AND t.name LIKE N'Intel%'
+  AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'CanonicalOrgId')
+  AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'RetiredAtUtc');
+SELECT @s = @s + N'UPDATE x SET RetiredAtUtc = SYSDATETIMEOFFSET() FROM opportunities.' + QUOTENAME(t.name)
+  + N' x JOIN opportunities.MajorProjectsInventory m ON m.Id = x.MajorProjectsInventoryId WHERE x.RetiredAtUtc IS NULL AND m.RetiredAtUtc IS NOT NULL; SET @n += @@ROWCOUNT;' + CHAR(10)
+FROM sys.tables t
+WHERE SCHEMA_NAME(t.schema_id) = N'opportunities'
+  AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'MajorProjectsInventoryId')
+  AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'RetiredAtUtc');
+SET @s = @s + N'SELECT @n;';
+EXEC sys.sp_executesql @s;", ct).ConfigureAwait(false);
+
         var projectsStale = await ExecuteScalarIntAsync(cn, @"
 SELECT COUNT_BIG(1)
 FROM opportunities.MajorProjectsInventory
@@ -201,7 +227,7 @@ WHERE RetiredAtUtc IS NULL
         }).ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects retired by completion year={ProjectsRetiredByCompletionYear}; events retired={EventsRetired}; orgs archived={OrgsArchived}; orgs resurrected={OrgsResurrected}; ingestion triggers deleted={IngestionTriggersDeleted}; ingestion runs deleted={IngestionRunsDeleted}; job runs deleted={JobRunsDeleted}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
+            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects retired by completion year={ProjectsRetiredByCompletionYear}; events retired={EventsRetired}; orgs archived={OrgsArchived}; orgs resurrected={OrgsResurrected}; ingestion triggers deleted={IngestionTriggersDeleted}; ingestion runs deleted={IngestionRunsDeleted}; job runs deleted={JobRunsDeleted}; orphan intel retired={OrphanIntelRetired}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
             oppsExpired,
             oppsAgedOut,
             projectsRetired,
@@ -212,6 +238,7 @@ WHERE RetiredAtUtc IS NULL
             ingestionTriggersDeleted,
             ingestionRunsDeleted,
             jobRunsDeleted,
+            orphanIntelRetired,
             projectsStale,
             sw.ElapsedMilliseconds);
     }
