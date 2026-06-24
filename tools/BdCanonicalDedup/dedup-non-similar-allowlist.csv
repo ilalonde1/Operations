@@ -2765,3 +2765,12 @@ LoserId,SurvivorId,Reason
 76397,71487,2026-06-24 3xn composite -> standalone 3xn
 75989,2579,2026-06-24 arch49 composite -> architecture49 inc
 77380,2579,2026-06-24 arch49 composite -> architecture49 inc
+# 2026-06-24 constituent-firm dedup (surfaced during composite decomposition). Survivors = established/richest canonical. Fuzzy gate rejects on suffix/paren/brand differences.
+74037,69589,2026-06-24 MCM Architects -> Musson Cattell Mackey Partnership
+71367,69589,2026-06-24 MCM side-firm -> Musson Cattell Mackey Partnership
+77323,6154,2026-06-24 DIALOG Design -> DIALOG
+69987,38934,2026-06-24 Stantec -> Stantec Inc
+# 2026-06-24 MCM family consolidation (acronym variants, fuzzy gate misses MCM/MCMP vs Musson Cattell Mackey)
+26926,69589,2026-06-24 MCM Partnership -> Musson Cattell Mackey Partnership
+70621,69589,2026-06-24 MCMP Architects -> Musson Cattell Mackey Partnership
+76002,69589,2026-06-24 MCMP Architecture -> Musson Cattell Mackey Partnership
