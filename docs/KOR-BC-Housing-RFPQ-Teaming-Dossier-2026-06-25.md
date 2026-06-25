@@ -20,16 +20,23 @@
 | Streams | **General** (traditional construction) + **DASH** (prefab/panelized + BIM expertise) | Confirmed |
 | Inquiry deadline | **29 Jun 2026** (formal written Q&A, answered publicly to all) | Confirmed |
 | Close | **22 Jul 2026** | Confirmed |
-| Apply / portal | BC Bid process **230763** (bcbid.gov.bc.ca) | Confirmed |
-| Eligibility detail, regions, evaluation weightings, whether structural subs are named/scored | **In the RFPQ document — behind BC Bid login** | **Needs the doc (§6)** |
+| Apply / portal | BC Bid process **230763** (RFPQ# 1070-2526-229A) | Confirmed |
+| **Eligibility** | **AIBC membership + Certificate of Practice (architects only)**; 7 yrs architectural housing experience + 3 housing projects/10 yrs | **Confirmed — RFPQ §3.2** |
+| **Structural sub named/scored at prequal?** | **NO** — rated criteria are Company Experience + Project Mgmt Plan only; no sub-consultant naming field anywhere | **Confirmed — RFPQ Part 2, §3.3, App. D** |
+| Regions + roster caps | Lower Mainland 12 · Vancouver Island 8 · Interior 8 · Northern 6 (same for DASH) | Confirmed §3.5 |
+| Forecast volume (3 yrs) | ~10–15 multi-unit (primarily DASH) + ~15–20 group home Stage Two solicitations | Confirmed §1.11.1 |
+| Deadlines | Questions 29 Jun · Addenda 7 Jul · **Submission 22 Jul 2026 @ 2 PM PST** | Confirmed §1.8 |
+| BC Housing contacts | Sherry Azimi sazimi@bchousing.org · Lucia Campos Pacheco lpacheco@bchousing.org | Confirmed §1.9 |
 
-## 3. How KOR participates (teaming mechanics)
+## 3. How KOR participates (teaming mechanics) — now CONFIRMED from the RFPQ
 
-On BC Housing buildings the **architect is the prime consultant**: they assemble the full team — structural included — and submit one application, scored on the team's P.Eng depth and similar-project experience. **KOR wins the structural seat by being on the architect's team before they submit.** So:
+The RFPQ documents resolve the open question cold:
 
-- KOR cannot apply as an "architectural firm," and a structural firm acting as solo "prime consultant" for housing design is atypical → **no direct KOR application.**
-- The **DASH / prefab + BIM stream** is KOR's strongest technical angle — KOR's **mass-timber + concrete hybrid** and modular positioning is exactly what that stream rewards. Lead the pitch there.
-- The **29 Jun inquiry window** is for formal RFPQ-clarification questions answered publicly via addendum — **not** competitor intel. Use it only if there's a genuine eligibility question (e.g., "Are named structural sub-consultants and their experience evaluated in the team submission?").
+- **KOR cannot be on this roster — it is architects-only.** Mandatory Requirement (§3.2, pass/fail) requires AIBC membership + Certificate of Practice; the experience gate is architectural (Principal-in-Charge / Project Architect). A structural firm fails Phase 1. There was never a KOR application to make.
+- **The structural engineer is NOT named or scored at the prequal stage.** Rated criteria (§3.3) are only *Company Information & Experience* and *Project Management Plan* (60% threshold). The Experience Form (Appendix D) has **no field to name a structural engineer or any sub-consultant.** So being on an architect's team buys KOR nothing *in this RFPQ's scoring*.
+- **The play is purely downstream and relationship-based, over a 3-year runway.** The contract is RAIC Doc 6 (BC Housing ↔ architect). Rostered architects get invited to **Stage Two project solicitations** across the 3-year term; when they win a project they assemble the consultant team and bring their structural engineer. KOR's goal: **be the structural partner rostered architects pull onto their BC Housing projects, project by project.**
+- **DASH is built for KOR's edge — lead with it.** DASH is mid-rise wood-frame up to 6 storeys with **optional CLT shear walls/floors, configurable for seismic zones** (§1.7) — KOR's mass-timber + seismic wheelhouse. It's also where the volume is (~10–15 multi-unit solicitations vs ~15–20 small group homes). Pitch KOR as the CLT/panelized + seismic structural partner for architects' DASH work.
+- **No value in the 29 Jun inquiry window for KOR** — it's public RFPQ clarification for *proponents* (architects), not a channel for KOR. Skip it.
 
 ## 4. WHO TO CALL — ranked, data-backed
 
@@ -72,10 +79,9 @@ Rani Hayden rhayden@bchousing.org ✓ · Aidan McGrath amcgrath@bchousing.org �
 4. **Lead the DASH/prefab pitch with Acton Ostry** (+ KOR mass-timber+concrete hybrid story).
 5. **Reply to Kevin** with the "teaming not solo" framing so the firm isn't scrambling a non-existent application.
 
-## 6. What to pull from BC Bid (you offered — this upgrades the dossier from inference to fact)
+## 6. Document review — COMPLETE (RFPQ 1070-2526-229A, read 25 Jun 2026)
 
-1. **RFPQ 230763 documents** (log into BC Bid → opportunity 230763 → download): confirms **eligibility** (can structural subs be named/scored?), **regions**, **3-year term details**, and **evaluation criteria/weightings**. Paste these and I'll fold them in + tailor the architect pitch to what's actually scored.
-2. **Plan-takers / plan-holders list for 230763** (visible on many BC Bid opportunity pages): the firms that have downloaded the docs = the realistic **who's-applying** signal. KOR's platform has a **BC Bid plan-taker extractor** that can scrape this with KOR's BCeID login; or you can read it off the page. Cross-referenced against §4, that tells us exactly which warm architects to lock down.
+Both priority documents (main RFPQ PDF + Fillable Forms DOCX) were pulled and read. Confirmed findings are folded into §2 and §3 above. Net: **KOR cannot apply (AIBC-only); structural is not scored at prequal; the play is downstream Stage-Two teaming with rostered architects over the 3-year term, led by DASH.** No plan-takers/interested-supplier list is published for this opportunity, so applicant identification falls back to KOR's relationship graph (§4) — GBL and NSDA first.
 
 ## 7. Backing data + sources
 
