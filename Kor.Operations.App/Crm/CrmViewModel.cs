@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
@@ -57,6 +58,13 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     public ObservableCollection<CrmActivityRowView> Activities { get; } = new();
 
     public ObservableCollection<CrmContactRowView> Contacts { get; } = new();
+
+    /// <summary>Per-stage pipeline counts shown as coloured pills above the list
+    /// (e.g. "Won 177"), so the backfilled win history is immediately visible.</summary>
+    public ObservableCollection<StageChip> StageSummary { get; } = new();
+    public bool HasStageSummary => StageSummary.Count > 0;
+
+    public sealed record StageChip(string Label, int Count, Brush Brush);
 
     public IReadOnlyList<CrmEngagementStage> StageOptions { get; } = Enum.GetValues<CrmEngagementStage>();
 
@@ -214,6 +222,23 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             Selected = preservedId.HasValue
                 ? Engagements.FirstOrDefault(r => r.Id == preservedId.Value) ?? Engagements.FirstOrDefault()
                 : Engagements.FirstOrDefault();
+
+            // Per-stage pipeline summary (pills above the list). Fixed order so
+            // the layout is stable; only stages with rows are shown.
+            StageSummary.Clear();
+            foreach (var stage in new[]
+                     {
+                         CrmEngagementStage.Won, CrmEngagementStage.Submitted,
+                         CrmEngagementStage.Drafting, CrmEngagementStage.Lost,
+                     })
+            {
+                var count = engagements.Count(e => e.Stage == stage);
+                if (count > 0)
+                {
+                    StageSummary.Add(new StageChip(stage.ToString(), count, CrmEngagementRowView.BrushFor(stage)));
+                }
+            }
+            OnPropertyChanged(nameof(HasStageSummary));
 
             // Refresh the analytics snapshot off the same data we just loaded.
             // Pure projection — no extra DB round-trip.

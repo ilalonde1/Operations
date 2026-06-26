@@ -44,7 +44,10 @@ public sealed class CrmEngagementRowView
 
     public string UpdatedDisplay => Engagement.UpdatedAtUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
 
-    public Brush StageBrush => Engagement.Stage switch
+    public Brush StageBrush => BrushFor(Engagement.Stage);
+
+    /// <summary>Stage→colour, shared so the stage-summary chips in CrmView match the row badges.</summary>
+    public static Brush BrushFor(CrmEngagementStage stage) => stage switch
     {
         CrmEngagementStage.Won => StageBrushWon,
         CrmEngagementStage.Lost => StageBrushClosedNeg,

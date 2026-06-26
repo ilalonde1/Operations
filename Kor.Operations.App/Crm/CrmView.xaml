@@ -42,17 +42,38 @@
             </Button>
         </StackPanel>
 
-        <Border Grid.Row="1" Margin="0,0,0,8" Padding="10,6"
-                Background="#F4F8FB" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
-                CornerRadius="3"
-                Visibility="{Binding HasAnalytics, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-            <StackPanel Orientation="Vertical">
-                <TextBlock Text="{Binding AnalyticsHeadline}" FontWeight="SemiBold"/>
-                <TextBlock Text="{Binding AnalyticsBuyerTypeSummary}"
-                           Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"
-                           TextTrimming="CharacterEllipsis"/>
-            </StackPanel>
-        </Border>
+        <StackPanel Grid.Row="1" Orientation="Vertical">
+            <!-- Pipeline-by-stage pills. Colours match the row stage badges; makes
+                 the win history (Won 177) land at a glance. -->
+            <ItemsControl ItemsSource="{Binding StageSummary}" Margin="0,0,0,8"
+                          Visibility="{Binding HasStageSummary, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{Binding Brush}" CornerRadius="999" Padding="12,4" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Label}" Foreground="White" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBlock Text="{Binding Count}" Foreground="White" FontWeight="Bold" FontSize="12" Margin="7,0,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Margin="0,0,0,8" Padding="10,6"
+                    Background="#F4F8FB" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                    CornerRadius="3"
+                    Visibility="{Binding HasAnalytics, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                <StackPanel Orientation="Vertical">
+                    <TextBlock Text="{Binding AnalyticsHeadline}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding AnalyticsBuyerTypeSummary}"
+                               Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
 
         <Grid Grid.Row="2" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
