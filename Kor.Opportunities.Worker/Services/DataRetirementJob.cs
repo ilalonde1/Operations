@@ -87,7 +87,8 @@ WHERE RetiredAtUtc IS NULL
      OR Stage LIKE '%operating%' OR Stage LIKE '%occupancy%' OR Stage LIKE '%built%'
      OR Stage LIKE '%in progress%' OR Stage LIKE '%underway%' OR Stage LIKE '%demolition%'
      OR Stage LIKE '%cancel%'
-      );", ct).ConfigureAwait(false);
+      )
+  AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagementProjectLink l WHERE l.MajorProjectsInventoryId = opportunities.MajorProjectsInventory.Id);", ct).ConfigureAwait(false);
 
         var projectsRetiredByCompletionYear = await ExecuteNonQueryAsync(cn, @"
 UPDATE opportunities.MajorProjectsInventory
@@ -96,7 +97,8 @@ SET RetiredAtUtc = SYSDATETIMEOFFSET(),
     UpdatedAtUtc = SYSDATETIMEOFFSET()
 WHERE RetiredAtUtc IS NULL
   AND CompletionYear IS NOT NULL
-  AND CompletionYear < YEAR(SYSDATETIMEOFFSET());", ct).ConfigureAwait(false);
+  AND CompletionYear < YEAR(SYSDATETIMEOFFSET())
+  AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagementProjectLink l WHERE l.MajorProjectsInventoryId = opportunities.MajorProjectsInventory.Id);", ct).ConfigureAwait(false);
 
         var eventsRetired = await ExecuteNonQueryAsync(cn, @"
 UPDATE opportunities.IndustryEvents
@@ -209,7 +211,7 @@ WHERE SCHEMA_NAME(t.schema_id) = N'opportunities' AND t.name LIKE N'Intel%'
   AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'CanonicalOrgId')
   AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'RetiredAtUtc');
 SELECT @s = @s + N'UPDATE x SET RetiredAtUtc = SYSDATETIMEOFFSET() FROM opportunities.' + QUOTENAME(t.name)
-  + N' x JOIN opportunities.MajorProjectsInventory m ON m.Id = x.MajorProjectsInventoryId WHERE x.RetiredAtUtc IS NULL AND m.RetiredAtUtc IS NOT NULL; SET @n += @@ROWCOUNT;' + CHAR(10)
+  + N' x JOIN opportunities.MajorProjectsInventory m ON m.Id = x.MajorProjectsInventoryId WHERE x.RetiredAtUtc IS NULL AND m.RetiredAtUtc IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagementProjectLink l WHERE l.MajorProjectsInventoryId = m.Id); SET @n += @@ROWCOUNT;' + CHAR(10)
 FROM sys.tables t
 WHERE SCHEMA_NAME(t.schema_id) = N'opportunities'
   AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'MajorProjectsInventoryId')
@@ -277,3 +279,4 @@ WHERE RetiredAtUtc IS NULL
         return value is null or DBNull ? 0 : Convert.ToInt64(value);
     }
 }
+

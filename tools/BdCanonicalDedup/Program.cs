@@ -79,6 +79,11 @@ internal static class Program
         // next merge would fail FK validation or leave BD-tracking engagements
         // attached to the loser canonical id.
         new("CrmEngagements", "BuyerCanonicalOrgId"),
+        // Migration 267 (2026-06-25): pursuit-lifecycle foundation added
+        // CrmEngagements.LostToCanonicalOrgId (FK -> CanonicalOrg, the competitor
+        // we lost to). Mirrors KorPursuits.LostToCanonicalOrgId above; without it
+        // the FK-completeness guard (BD-Audit-2026-06-09 C5) blocks every merge.
+        new("CrmEngagements", "LostToCanonicalOrgId"),
         // Round 60e (2026-06-02): migration 59 added ArchitectDisplacementBriefs
         // with FK ON DELETE CASCADE. Without this entry, every merge of an
         // architect canonical silently destroyed its displacement brief.
