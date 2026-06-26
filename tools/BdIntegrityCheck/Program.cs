@@ -10,7 +10,7 @@
 //
 // Usage: BdIntegrityCheck [--db <connstr>] [--out <dir>]
 //   --db   override connection (default: env KOR_OPPORTUNITIES_OPPORTUNITIESDB)
-//   --out  report directory   (default: ./integrity-reports)
+//   --out  report directory   (default: <app dir>/integrity-reports)
 
 using System.Text;
 using Microsoft.Data.SqlClient;
@@ -30,134 +30,141 @@ if (string.IsNullOrWhiteSpace(cs))
     return 2;
 }
 
-var outDir = ReadArg(args, "--out") ?? Path.Combine(Directory.GetCurrentDirectory(), "integrity-reports");
+// Default under the app (bin) dir, which is git-ignored — running from the repo
+// root must not drop untracked report files there.
+var outDir = ReadArg(args, "--out") ?? Path.Combine(AppContext.BaseDirectory, "integrity-reports");
 Directory.CreateDirectory(outDir);
 
-// Severity: Error counts toward the non-zero exit (structural breakage that
-// strands data); Warn is hygiene/staleness drift worth seeing but not fatal.
-//
-// CALIBRATION (2026-06-26): structural Error checks test for references to a
-// *missing* (hard-deleted) parent — that is the true dangling-reference bug and
-// should always be 0. References to a *retired* (soft, row present) parent are a
-// separate, high-volume, mostly-expected staleness signal (read paths filter
-// RetiredAtUtc), so they are reported as Warn, not Error, to avoid crying wolf.
-var invariants = new (string Key, string Desc, bool Error, string CountSql, string SampleSql)[]
+var invariants = new List<(string Key, string Desc, bool Error, string CountSql, string SampleSql)>();
+
+// ── Table-driven org-reference checks ────────────────────────────────────────
+// Every table carrying a CanonicalOrgId FK. An ACTIVE row (RetiredAtUtc IS NULL
+// where the table has that column) referencing a MISSING (hard-deleted) org is a
+// true dangling reference = Error and must be 0. Referencing a RETIRED (present)
+// org is a stale link = Warn (high-volume, mostly-expected; read paths filter
+// RetiredAtUtc). Driven off the live FK set so new tables are easy to add.
+var orgLinkTables = new (string Table, bool HasRetired)[]
 {
-    ("org_enrichment_on_missing_org",
-     "CanonicalOrgEnrichment rows whose org id has NO row at all (hard-deleted parent — a true dangling reference)",
-     true,
-     @"SELECT COUNT(*) FROM opportunities.CanonicalOrgEnrichment e
-       WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = e.CanonicalOrgId);",
-     @"SELECT TOP 5 e.Id, e.CanonicalOrgId, e.ProviderName FROM opportunities.CanonicalOrgEnrichment e
-       WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = e.CanonicalOrgId);"),
-
-    ("affiliation_on_missing_org",
-     "Active IntelPersonAffiliation rows whose org id has NO row at all (hard-deleted parent)",
-     true,
-     @"SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a
-       WHERE a.RetiredAtUtc IS NULL
-         AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = a.CanonicalOrgId);",
-     @"SELECT TOP 5 a.Id, a.IntelPersonId, a.CanonicalOrgId FROM opportunities.IntelPersonAffiliation a
-       WHERE a.RetiredAtUtc IS NULL
-         AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = a.CanonicalOrgId);"),
-
-    ("mpi_org_fk_on_missing_org",
-     "Active MajorProjectsInventory rows with an Architect/GC/StructuralEngineer/Proponent FK whose org id has NO row",
-     true,
-     @"SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
-       WHERE m.RetiredAtUtc IS NULL AND (
-         (m.ArchitectCanonicalOrgId          IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ArchitectCanonicalOrgId))
-      OR (m.GeneralContractorCanonicalOrgId  IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.GeneralContractorCanonicalOrgId))
-      OR (m.StructuralEngineerCanonicalOrgId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.StructuralEngineerCanonicalOrgId))
-      OR (m.ProponentCanonicalOrgId          IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ProponentCanonicalOrgId)));",
-     @"SELECT TOP 5 m.Id, m.ProjectStatus FROM opportunities.MajorProjectsInventory m
-       WHERE m.RetiredAtUtc IS NULL AND (
-         (m.ArchitectCanonicalOrgId          IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ArchitectCanonicalOrgId))
-      OR (m.GeneralContractorCanonicalOrgId  IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.GeneralContractorCanonicalOrgId))
-      OR (m.StructuralEngineerCanonicalOrgId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.StructuralEngineerCanonicalOrgId))
-      OR (m.ProponentCanonicalOrgId          IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ProponentCanonicalOrgId)));"),
-
-    ("active_mpi_fk_on_retired_org",
-     "Active MPI rows whose org FK points to a RETIRED (present) org — stale link, should re-resolve to a survivor",
-     false,
-     @"SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
-       WHERE m.RetiredAtUtc IS NULL AND (
-         EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ArchitectCanonicalOrgId          AND co.RetiredAtUtc IS NOT NULL)
-      OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.GeneralContractorCanonicalOrgId  AND co.RetiredAtUtc IS NOT NULL)
-      OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.StructuralEngineerCanonicalOrgId AND co.RetiredAtUtc IS NOT NULL)
-      OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ProponentCanonicalOrgId          AND co.RetiredAtUtc IS NOT NULL));",
-     @"SELECT TOP 5 m.Id, m.ProjectStatus FROM opportunities.MajorProjectsInventory m
-       WHERE m.RetiredAtUtc IS NULL AND (
-         EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ArchitectCanonicalOrgId          AND co.RetiredAtUtc IS NOT NULL)
-      OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.GeneralContractorCanonicalOrgId  AND co.RetiredAtUtc IS NOT NULL)
-      OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.StructuralEngineerCanonicalOrgId AND co.RetiredAtUtc IS NOT NULL)
-      OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ProponentCanonicalOrgId          AND co.RetiredAtUtc IS NOT NULL));"),
-
-    ("active_affiliation_on_retired_org",
-     "Active IntelPersonAffiliation rows pointing to a RETIRED (present) org — stale, should re-point to the survivor",
-     false,
-     @"SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a
-       WHERE a.RetiredAtUtc IS NULL
-         AND EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = a.CanonicalOrgId AND co.RetiredAtUtc IS NOT NULL);",
-     @"SELECT TOP 5 a.Id, a.IntelPersonId, a.CanonicalOrgId FROM opportunities.IntelPersonAffiliation a
-       WHERE a.RetiredAtUtc IS NULL
-         AND EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = a.CanonicalOrgId AND co.RetiredAtUtc IS NOT NULL);"),
-
-    ("org_merge_from_still_active",
-     "CanonicalOrgMerge ledger rows whose MergedFrom id is still a LIVE org (a live id marked merged-away = inconsistent)",
-     true,
-     @"SELECT COUNT(*) FROM opportunities.CanonicalOrgMerge m
-       WHERE EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedFromCanonicalOrgId AND co.RetiredAtUtc IS NULL);",
-     @"SELECT TOP 5 m.MergedFromCanonicalOrgId, m.MergedIntoCanonicalOrgId, m.Reason FROM opportunities.CanonicalOrgMerge m
-       WHERE EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedFromCanonicalOrgId AND co.RetiredAtUtc IS NULL);"),
-
-    ("org_merge_dead_survivor",
-     "CanonicalOrgMerge ledger rows whose MergedInto survivor is missing or retired (chain not collapsed to a live org)",
-     true,
-     @"SELECT COUNT(*) FROM opportunities.CanonicalOrgMerge m
-       WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedIntoCanonicalOrgId AND co.RetiredAtUtc IS NULL);",
-     @"SELECT TOP 5 m.MergedFromCanonicalOrgId, m.MergedIntoCanonicalOrgId, m.Reason FROM opportunities.CanonicalOrgMerge m
-       WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedIntoCanonicalOrgId AND co.RetiredAtUtc IS NULL);"),
-
-    ("person_zero_markers",
-     "Active IntelPerson rows with no email, no LinkedIn, no phone, and no active affiliation (prune/regen candidates)",
-     false,
-     @"SELECT COUNT(*) FROM opportunities.IntelPerson p
-       WHERE p.RetiredAtUtc IS NULL
-         AND (p.Email IS NULL OR LTRIM(RTRIM(p.Email)) = N'')
-         AND (p.LinkedinUrl IS NULL OR LTRIM(RTRIM(p.LinkedinUrl)) = N'')
-         AND (p.Phone IS NULL OR LTRIM(RTRIM(p.Phone)) = N'')
-         AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.IntelPersonId = p.Id AND a.RetiredAtUtc IS NULL);",
-     @"SELECT TOP 5 p.Id, p.DisplayName FROM opportunities.IntelPerson p
-       WHERE p.RetiredAtUtc IS NULL
-         AND (p.Email IS NULL OR LTRIM(RTRIM(p.Email)) = N'')
-         AND (p.LinkedinUrl IS NULL OR LTRIM(RTRIM(p.LinkedinUrl)) = N'')
-         AND (p.Phone IS NULL OR LTRIM(RTRIM(p.Phone)) = N'')
-         AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.IntelPersonId = p.Id AND a.RetiredAtUtc IS NULL);"),
-
-    ("person_ambiguous_name_clusters",
-     "Normalized names with >1 ACTIVE IntelPerson. NOTE: name-only, so includes legitimately distinct same-name people — NOT a blind-merge list; needs name+org+signal dedup",
-     false,
-     @"SELECT COUNT(*) FROM (
-         SELECT NormalizedName FROM opportunities.IntelPerson
-         WHERE RetiredAtUtc IS NULL AND NormalizedName IS NOT NULL AND NormalizedName <> N''
-         GROUP BY NormalizedName HAVING COUNT(*) > 1) x;",
-     @"SELECT TOP 5 NormalizedName, COUNT(*) AS ActiveRows FROM opportunities.IntelPerson
-       WHERE RetiredAtUtc IS NULL AND NormalizedName IS NOT NULL AND NormalizedName <> N''
-       GROUP BY NormalizedName HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC;"),
-
-    ("org_multi_entity_active_name",
-     "Active target-kind orgs with slash/semicolon/plus in DisplayName. NOTE: heuristic — legit firm names ('X, Planning + Interiors') match too; review before acting, never auto-reject",
-     false,
-     @"SELECT COUNT(*) FROM opportunities.CanonicalOrg co
-       WHERE co.RetiredAtUtc IS NULL
-         AND co.Kind IN (N'Architect', N'GC', N'Developer', N'Buyer', N'Competitor', N'KorClient')
-         AND (co.DisplayName LIKE N'%/%' OR co.DisplayName LIKE N'%;%' OR co.DisplayName LIKE N'% + %');",
-     @"SELECT TOP 5 co.Id, co.DisplayName, co.Kind FROM opportunities.CanonicalOrg co
-       WHERE co.RetiredAtUtc IS NULL
-         AND co.Kind IN (N'Architect', N'GC', N'Developer', N'Buyer', N'Competitor', N'KorClient')
-         AND (co.DisplayName LIKE N'%/%' OR co.DisplayName LIKE N'%;%' OR co.DisplayName LIKE N'% + %');"),
+    ("IntelPersonAffiliation", true),
+    ("IntelSignal", true),
+    ("IntelAction", true),
+    ("IntelNarrative", true),
+    ("IntelRisk", true),
+    ("IntelWork", true),
+    ("IntelProjectKeyPerson", true),
+    ("CanonicalOrgEnrichment", false),
+    ("NewsArticleOrgMention", false),
+    ("OrgAlias", false),
+    ("BdResearchTriggers", false),
 };
+foreach (var (tbl, hasRet) in orgLinkTables)
+{
+    var active = hasRet ? "x.RetiredAtUtc IS NULL AND " : "";
+    invariants.Add(($"{tbl}_on_missing_org",
+        $"Active {tbl} rows whose CanonicalOrgId has NO row (hard-deleted parent — dangling reference)",
+        true,
+        $@"SELECT COUNT(*) FROM opportunities.{tbl} x
+           WHERE {active}x.CanonicalOrgId IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = x.CanonicalOrgId);",
+        $@"SELECT TOP 5 x.CanonicalOrgId, COUNT(*) AS Rows FROM opportunities.{tbl} x
+           WHERE {active}x.CanonicalOrgId IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = x.CanonicalOrgId)
+           GROUP BY x.CanonicalOrgId;"));
+    invariants.Add(($"{tbl}_on_retired_org",
+        $"Active {tbl} rows whose CanonicalOrgId is RETIRED (present) — stale link, should re-point to a survivor",
+        false,
+        $@"SELECT COUNT(*) FROM opportunities.{tbl} x
+           WHERE {active}EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = x.CanonicalOrgId AND co.RetiredAtUtc IS NOT NULL);",
+        $@"SELECT TOP 5 x.CanonicalOrgId, COUNT(*) AS Rows FROM opportunities.{tbl} x
+           WHERE {active}EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = x.CanonicalOrgId AND co.RetiredAtUtc IS NOT NULL)
+           GROUP BY x.CanonicalOrgId;"));
+}
+
+// ── MPI org FKs (four columns on one row — kept hand-written) ─────────────────
+invariants.Add(("mpi_org_fk_on_missing_org",
+    "Active MajorProjectsInventory rows with an Architect/GC/StructuralEngineer/Proponent FK whose org has NO row",
+    true,
+    @"SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
+      WHERE m.RetiredAtUtc IS NULL AND (
+        (m.ArchitectCanonicalOrgId          IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ArchitectCanonicalOrgId))
+     OR (m.GeneralContractorCanonicalOrgId  IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.GeneralContractorCanonicalOrgId))
+     OR (m.StructuralEngineerCanonicalOrgId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.StructuralEngineerCanonicalOrgId))
+     OR (m.ProponentCanonicalOrgId          IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ProponentCanonicalOrgId)));",
+    @"SELECT TOP 5 m.Id, m.ProjectStatus FROM opportunities.MajorProjectsInventory m
+      WHERE m.RetiredAtUtc IS NULL AND (
+        (m.ArchitectCanonicalOrgId          IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ArchitectCanonicalOrgId))
+     OR (m.GeneralContractorCanonicalOrgId  IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.GeneralContractorCanonicalOrgId))
+     OR (m.StructuralEngineerCanonicalOrgId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.StructuralEngineerCanonicalOrgId))
+     OR (m.ProponentCanonicalOrgId          IS NOT NULL AND NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ProponentCanonicalOrgId)));"));
+invariants.Add(("active_mpi_fk_on_retired_org",
+    "Active MPI rows whose org FK points to a RETIRED (present) org — stale link",
+    false,
+    @"SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m
+      WHERE m.RetiredAtUtc IS NULL AND (
+        EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ArchitectCanonicalOrgId          AND co.RetiredAtUtc IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.GeneralContractorCanonicalOrgId  AND co.RetiredAtUtc IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.StructuralEngineerCanonicalOrgId AND co.RetiredAtUtc IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ProponentCanonicalOrgId          AND co.RetiredAtUtc IS NOT NULL));",
+    @"SELECT TOP 5 m.Id, m.ProjectStatus FROM opportunities.MajorProjectsInventory m
+      WHERE m.RetiredAtUtc IS NULL AND (
+        EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ArchitectCanonicalOrgId          AND co.RetiredAtUtc IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.GeneralContractorCanonicalOrgId  AND co.RetiredAtUtc IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.StructuralEngineerCanonicalOrgId AND co.RetiredAtUtc IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.ProponentCanonicalOrgId          AND co.RetiredAtUtc IS NOT NULL));"));
+
+// ── Merge-ledger consistency ─────────────────────────────────────────────────
+invariants.Add(("org_merge_from_still_active",
+    "CanonicalOrgMerge rows whose MergedFrom id is still a LIVE org (a live id marked merged-away = inconsistent)",
+    true,
+    @"SELECT COUNT(*) FROM opportunities.CanonicalOrgMerge m
+      WHERE EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedFromCanonicalOrgId AND co.RetiredAtUtc IS NULL);",
+    @"SELECT TOP 5 m.MergedFromCanonicalOrgId, m.MergedIntoCanonicalOrgId, m.Reason FROM opportunities.CanonicalOrgMerge m
+      WHERE EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedFromCanonicalOrgId AND co.RetiredAtUtc IS NULL);"));
+invariants.Add(("org_merge_dead_survivor",
+    "CanonicalOrgMerge rows whose MergedInto survivor is missing or retired (chain not collapsed to a live org)",
+    true,
+    @"SELECT COUNT(*) FROM opportunities.CanonicalOrgMerge m
+      WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedIntoCanonicalOrgId AND co.RetiredAtUtc IS NULL);",
+    @"SELECT TOP 5 m.MergedFromCanonicalOrgId, m.MergedIntoCanonicalOrgId, m.Reason FROM opportunities.CanonicalOrgMerge m
+      WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedIntoCanonicalOrgId AND co.RetiredAtUtc IS NULL);"));
+
+// ── Hygiene (Warn) ───────────────────────────────────────────────────────────
+invariants.Add(("person_zero_markers",
+    "Active IntelPerson rows with no email, no LinkedIn, no phone, and no active affiliation (prune/regen candidates)",
+    false,
+    @"SELECT COUNT(*) FROM opportunities.IntelPerson p
+      WHERE p.RetiredAtUtc IS NULL
+        AND (p.Email IS NULL OR LTRIM(RTRIM(p.Email)) = N'')
+        AND (p.LinkedinUrl IS NULL OR LTRIM(RTRIM(p.LinkedinUrl)) = N'')
+        AND (p.Phone IS NULL OR LTRIM(RTRIM(p.Phone)) = N'')
+        AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.IntelPersonId = p.Id AND a.RetiredAtUtc IS NULL);",
+    @"SELECT TOP 5 p.Id, p.DisplayName FROM opportunities.IntelPerson p
+      WHERE p.RetiredAtUtc IS NULL
+        AND (p.Email IS NULL OR LTRIM(RTRIM(p.Email)) = N'')
+        AND (p.LinkedinUrl IS NULL OR LTRIM(RTRIM(p.LinkedinUrl)) = N'')
+        AND (p.Phone IS NULL OR LTRIM(RTRIM(p.Phone)) = N'')
+        AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.IntelPersonId = p.Id AND a.RetiredAtUtc IS NULL);"));
+invariants.Add(("person_ambiguous_name_clusters",
+    "Normalized names with >1 ACTIVE IntelPerson. NOTE: name-only, so includes legitimately distinct same-name people — NOT a blind-merge list; needs name+org+signal dedup",
+    false,
+    @"SELECT COUNT(*) FROM (
+        SELECT NormalizedName FROM opportunities.IntelPerson
+        WHERE RetiredAtUtc IS NULL AND NormalizedName IS NOT NULL AND NormalizedName <> N''
+        GROUP BY NormalizedName HAVING COUNT(*) > 1) x;",
+    @"SELECT TOP 5 NormalizedName, COUNT(*) AS ActiveRows FROM opportunities.IntelPerson
+      WHERE RetiredAtUtc IS NULL AND NormalizedName IS NOT NULL AND NormalizedName <> N''
+      GROUP BY NormalizedName HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC;"));
+invariants.Add(("org_multi_entity_active_name",
+    "Active target-kind orgs with slash/semicolon/plus in DisplayName. NOTE: heuristic — legit firm names ('X, Planning + Interiors') match too; review before acting, never auto-reject",
+    false,
+    @"SELECT COUNT(*) FROM opportunities.CanonicalOrg co
+      WHERE co.RetiredAtUtc IS NULL
+        AND co.Kind IN (N'Architect', N'GC', N'Developer', N'Buyer', N'Competitor', N'KorClient')
+        AND (co.DisplayName LIKE N'%/%' OR co.DisplayName LIKE N'%;%' OR co.DisplayName LIKE N'% + %');",
+    @"SELECT TOP 5 co.Id, co.DisplayName, co.Kind FROM opportunities.CanonicalOrg co
+      WHERE co.RetiredAtUtc IS NULL
+        AND co.Kind IN (N'Architect', N'GC', N'Developer', N'Buyer', N'Competitor', N'KorClient')
+        AND (co.DisplayName LIKE N'%/%' OR co.DisplayName LIKE N'%;%' OR co.DisplayName LIKE N'% + %');"));
 
 var sb = new StringBuilder();
 void Emit(string line) { Console.WriteLine(line); sb.AppendLine(line); }
