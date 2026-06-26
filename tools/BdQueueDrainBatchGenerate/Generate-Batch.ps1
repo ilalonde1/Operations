@@ -441,6 +441,50 @@ WITH cte AS (
       AND LTRIM(RTRIM(kp.DisplayName)) LIKE N'% %'
       AND LTRIM(RTRIM(kp.DisplayName)) NOT LIKE N'%<%'
       AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'unknown%'
+      -- 2026-06-26: reject non-person junk that stranded honing-people ingests.
+      -- IntelProjectKeyPerson.DisplayName mixes in org names ('PAE Engineers'),
+      -- role/title strings ('Principal-in-Charge, Arts District project'), and
+      -- multi-person/family entries ('Kandola family (...)'). The blocklist uses
+      -- substrings that do not occur in real personal names; short ambiguous
+      -- tokens are space-bounded. Bias: admit a borderline name rather than
+      -- research an org/role as a person.
+      AND LTRIM(RTRIM(kp.DisplayName)) NOT LIKE N'%/%'
+      AND LTRIM(RTRIM(kp.DisplayName)) NOT LIKE N'%(s)%'
+      AND LTRIM(RTRIM(kp.DisplayName)) NOT LIKE N'% — %'
+      AND LTRIM(RTRIM(kp.DisplayName)) NOT LIKE N'% & %'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% and %'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%family%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%engineer%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%architect%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%consult%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%construction%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%principal%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%director%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%manager%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%coordinator%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%minister%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%president%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%in-charge%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%in charge%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% inc%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% ltd%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% llp%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% group%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% studio%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% associates%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% partners%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% department%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% division%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%authority%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%landfill%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%municipal%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%disclosed%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%not publicly%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%names not%'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'unnamed %'
+      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%various%'
+      AND PATINDEX(N'%[^a-z]tbd[^a-z]%', N' '+LOWER(LTRIM(RTRIM(kp.DisplayName)))+N' ') = 0
+      AND PATINDEX(N'%[^a-z]tba[^a-z]%', N' '+LOWER(LTRIM(RTRIM(kp.DisplayName)))+N' ') = 0
       AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPerson p
                       WHERE p.DisplayName = LTRIM(RTRIM(kp.DisplayName))
                         AND p.LastSeenAtUtc >= DATEADD(DAY, -60, sysdatetimeoffset()))
