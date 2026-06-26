@@ -505,6 +505,8 @@ WHERE Id = @id;", con, tx)
             ("OrgAlias", "ClassifiedBy"),
             ("OrgAlias", "ClassifiedAtUtc"),
             ("OrgAlias", "Notes"),
+            ("CanonicalOrgMerge", "MergedFromCanonicalOrgId"),
+            ("CanonicalOrgMerge", "MergedIntoCanonicalOrgId"),
             ("CanonicalOrgEnrichment", "ProviderName"),
             ("NewsArticleOrgMention", "NewsArticleId"),
         };
@@ -857,6 +859,7 @@ ORDER BY co.Id;";
             }
 
             result.AliasesPreserved = await PreserveLoserAliasesAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
+            await RecordCanonicalOrgMergeAsync(con, tx, group.Survivor.Id, group.GroupKey).ConfigureAwait(false);
             result.LosersDeleted = await DeleteLosersAsync(con, tx).ConfigureAwait(false);
             await tx.CommitAsync().ConfigureAwait(false);
             Console.WriteLine($"[COMMIT] {group.GroupKey}: survivor={group.Survivor.Id}; losers={result.LosersDeleted}; enrichmentCollisions={result.EnrichmentCollisionsResolved}; intelRowsDropped={result.IntelRowsDropped}");
@@ -1289,6 +1292,36 @@ WHERE NOT EXISTS (
         cmd.Parameters.Add("@source", SqlDbType.NVarChar, 80).Value = AliasSource;
         cmd.Parameters.Add("@classifiedBy", SqlDbType.NVarChar, 50).Value = "BdCanonicalDedup";
         return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
+    private static async Task RecordCanonicalOrgMergeAsync(SqlConnection con, SqlTransaction tx, long survivorId, string groupKey)
+    {
+        const string sql = @"
+INSERT INTO opportunities.CanonicalOrgMerge
+    (MergedFromCanonicalOrgId, MergedIntoCanonicalOrgId, MergedAtUtc, Reason)
+SELECT l.Id,
+       @survivor,
+       sysdatetimeoffset(),
+       @reason
+FROM #Losers l
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM opportunities.CanonicalOrgMerge m
+    WHERE m.MergedFromCanonicalOrgId = l.Id
+);
+
+-- Chain-collapse: any prior merge that pointed at one of THIS merge's losers
+-- as its survivor must now follow through to the new survivor, so the ledger
+-- always resolves in one hop to the live identity.
+UPDATE m
+SET m.MergedIntoCanonicalOrgId = @survivor,
+    m.MergedAtUtc = sysdatetimeoffset()
+FROM opportunities.CanonicalOrgMerge m
+JOIN #Losers l ON l.Id = m.MergedIntoCanonicalOrgId;";
+        await using var cmd = new SqlCommand(sql, con, tx);
+        cmd.Parameters.Add("@survivor", SqlDbType.BigInt).Value = survivorId;
+        cmd.Parameters.Add("@reason", SqlDbType.NVarChar, 200).Value = groupKey;
+        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
     private static async Task<int> DeleteLosersAsync(SqlConnection con, SqlTransaction tx)

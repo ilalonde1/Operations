@@ -25,6 +25,26 @@ static string? ReadArg(string[] args, string name)
     return null;
 }
 
+static async Task<long?> ResolveCanonicalOrgMergeAsync(Microsoft.Data.SqlClient.SqlConnection verifyCon, long id)
+{
+    await using var cmd = new Microsoft.Data.SqlClient.SqlCommand(
+        @"
+WITH chain AS (
+    SELECT @id AS Cur, 0 AS Depth
+    UNION ALL
+    SELECT m.MergedIntoCanonicalOrgId, c.Depth + 1
+    FROM chain c JOIN opportunities.CanonicalOrgMerge m ON m.MergedFromCanonicalOrgId = c.Cur
+    WHERE c.Depth < 16
+)
+SELECT TOP 1 co.Id
+FROM chain c JOIN opportunities.CanonicalOrg co ON co.Id = c.Cur AND co.RetiredAtUtc IS NULL
+ORDER BY c.Depth DESC;",
+        verifyCon);
+    cmd.Parameters.AddWithValue("@id", id);
+    var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
+    return result is null || result is DBNull ? null : Convert.ToInt64(result);
+}
+
 var kind = ReadArg(args, "--kind");
 if (kind is not ("people" or "orgs" or "honing-orgs" or "ab-projects" or "proponents" or "org-name-repair" or "org-classify"))
 {
@@ -566,18 +586,27 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", icon);
                             "SELECT CASE WHEN RetiredAtUtc IS NULL THEN 0 ELSE 1 END FROM opportunities.CanonicalOrg WHERE Id = @id;", verifyCon);
                         verify.Parameters.AddWithValue("@id", id);
                         var orgState = await verify.ExecuteScalarAsync().ConfigureAwait(false);
-                        if (orgState is null)
+                        if (orgState is null || (int)orgState == 1)
                         {
-                            log.LogWarning("{Name}: CanonicalOrg Id={Id} does not exist (merged/purged since batch generation); skipping.", name, id);
-                            skipped++;
-                            continue;
-                        }
-
-                        if ((int)orgState == 1)
-                        {
-                            log.LogWarning("{Name}: CanonicalOrg Id={Id} is retired; refusing to attach enrichment. Re-point to the survivor and re-run.", name, id);
-                            skipped++;
-                            continue;
+                            var oldId = id;
+                            var mergedIntoId = await ResolveCanonicalOrgMergeAsync(verifyCon, id).ConfigureAwait(false);
+                            if (mergedIntoId is not null)
+                            {
+                                id = mergedIntoId.Value;
+                                log.LogInformation("{Name}: resolved merged org {Old} -> surviving canonical {Id}", name, oldId, id);
+                            }
+                            else if (orgState is null)
+                            {
+                                log.LogWarning("{Name}: CanonicalOrg Id={Id} does not exist (merged/purged since batch generation); skipping.", name, id);
+                                skipped++;
+                                continue;
+                            }
+                            else
+                            {
+                                log.LogWarning("{Name}: CanonicalOrg Id={Id} is retired; refusing to attach enrichment. Re-point to the survivor and re-run.", name, id);
+                                skipped++;
+                                continue;
+                            }
                         }
                     }
 
