@@ -1,0 +1,150 @@
+#nullable enable
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+
+namespace Kor.Operations.EngineeringTools.RebarChange
+{
+    /// <summary>
+    /// Pure logic: turns the per-page text of a structural drawing set into per-sheet
+    /// reinforcing call-outs. No PDF dependency here so it is fast to unit-test - feed it
+    /// page-text strings (PdfPageTextReader produces them from a real PDF).
+    ///
+    /// A rebar call-out is an intensity, e.g. "15M @ 200" (bar size + spacing). The page's
+    /// OWN sheet number is the rarest sheet token on the page (cross-references like S5.01,
+    /// S7.01 recur across many pages; a sheet's own number appears on essentially one page).
+    /// </summary>
+    public static class RebarCalloutExtractor
+    {
+        private static readonly Regex SheetRe =
+            new(@"\bS\d{1,2}(?:\.\d{1,2}){1,3}[A-Z]?\b", RegexOptions.Compiled);
+
+        private static readonly Regex CalloutRe =
+            new(@"\b(\d{2})M\s*@\s*(\d{2,4})\b", RegexOptions.Compiled);
+
+        private static readonly Regex TitleRe =
+            new(@"(S\d{1,2}(?:\.\d{1,2}){1,3}[A-Z]?)\s*-\s*([A-Z0-9][A-Z0-9 ,.\-()/&']{4,60})",
+                RegexOptions.Compiled);
+
+        // Plausible rebar spacing (mm). Filters detail/reference numbers like "@ 16".
+        private const int SpacingMin = 75;
+        private const int SpacingMax = 750;
+
+        public static IReadOnlyList<SheetCallouts> Extract(IReadOnlyList<string> pages)
+        {
+            var tokens = pages
+                .Select(p => SheetRe.Matches(p).Select(m => m.Value).ToList())
+                .ToList();
+
+            // Index/cover pages list every sheet -> many distinct tokens; exclude from frequency.
+            var indexPages = new HashSet<int>();
+            for (int i = 0; i < tokens.Count; i++)
+                if (tokens[i].Distinct().Count() > 30) indexPages.Add(i);
+
+            var freq = new Dictionary<string, int>();
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                if (indexPages.Contains(i)) continue;
+                foreach (var s in tokens[i].Distinct())
+                    freq[s] = freq.GetValueOrDefault(s) + 1;
+            }
+
+            var titles = BuildTitles(pages);
+
+            var byOwn = new Dictionary<string, Dictionary<string, int>>();
+            for (int i = 0; i < pages.Count; i++)
+            {
+                if (indexPages.Contains(i) || tokens[i].Count == 0) continue;
+
+                var uniq = tokens[i].Distinct().ToList(); // preserves first-appearance order
+                string own = uniq
+                    .OrderBy(s => freq.GetValueOrDefault(s, 0))
+                    .ThenBy(s => uniq.IndexOf(s))
+                    .First();
+
+                if (!byOwn.TryGetValue(own, out var counter))
+                    byOwn[own] = counter = new Dictionary<string, int>();
+
+                foreach (Match m in CalloutRe.Matches(pages[i]))
+                {
+                    int spacing = int.Parse(m.Groups[2].Value);
+                    if (spacing < SpacingMin || spacing > SpacingMax) continue;
+                    string key = $"{int.Parse(m.Groups[1].Value)}M@{spacing}";
+                    counter[key] = counter.GetValueOrDefault(key) + 1;
+                }
+            }
+
+            return byOwn
+                .Select(kv => new SheetCallouts(kv.Key, titles.GetValueOrDefault(kv.Key, ""), kv.Value))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Groups the raw page text by each page's OWN sheet number (same ownership rule as
+        /// Extract). Lets downstream logic - e.g. base-grid pricing - read a whole sheet's text.
+        /// </summary>
+        public static IReadOnlyList<(string Sheet, string Title, string Text)> GroupTextBySheet(
+            IReadOnlyList<string> pages)
+        {
+            var tokens = pages
+                .Select(p => SheetRe.Matches(p).Select(m => m.Value).ToList())
+                .ToList();
+
+            var indexPages = new HashSet<int>();
+            for (int i = 0; i < tokens.Count; i++)
+                if (tokens[i].Distinct().Count() > 30) indexPages.Add(i);
+
+            var freq = new Dictionary<string, int>();
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                if (indexPages.Contains(i)) continue;
+                foreach (var s in tokens[i].Distinct())
+                    freq[s] = freq.GetValueOrDefault(s) + 1;
+            }
+
+            var titles = BuildTitles(pages);
+            var byOwn = new Dictionary<string, List<string>>();
+            for (int i = 0; i < pages.Count; i++)
+            {
+                if (indexPages.Contains(i) || tokens[i].Count == 0) continue;
+                var uniq = tokens[i].Distinct().ToList();
+                string own = uniq
+                    .OrderBy(s => freq.GetValueOrDefault(s, 0))
+                    .ThenBy(s => uniq.IndexOf(s))
+                    .First();
+                if (!byOwn.TryGetValue(own, out var list)) byOwn[own] = list = new List<string>();
+                list.Add(pages[i]);
+            }
+
+            return byOwn
+                .Select(kv => (kv.Key, titles.GetValueOrDefault(kv.Key, ""), string.Join("\n", kv.Value)))
+                .ToList();
+        }
+
+        private static Dictionary<string, string> BuildTitles(IReadOnlyList<string> pages)
+        {
+            var titles = new Dictionary<string, string>();
+
+            // The drawing-index page has the most distinct sheet tokens.
+            int best = -1, bestN = 0;
+            for (int i = 0; i < pages.Count; i++)
+            {
+                int n = SheetRe.Matches(pages[i]).Select(m => m.Value).Distinct().Count();
+                if (n > bestN) { bestN = n; best = i; }
+            }
+            if (best < 0) return titles;
+
+            foreach (Match m in TitleRe.Matches(pages[best]))
+            {
+                string num = m.Groups[1].Value;
+                string title = m.Groups[2].Value.Trim();
+                title = Regex.Split(title, @"\s{2,}")[0].Trim(' ', '-');
+                // Drop any trailing cross-reference (e.g. "... - NORTH  S3.04 - SHEA") that bled in.
+                title = Regex.Replace(title, @"\s+S\d{1,2}(?:\.\d{1,2}){1,3}.*$", "").Trim(' ', '-');
+                if (!titles.ContainsKey(num) && title.Length >= 4)
+                    titles[num] = title;
+            }
+            return titles;
+        }
+    }
+}
