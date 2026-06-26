@@ -8,7 +8,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </UserControl.Resources>
-    <Grid>
+    <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -82,13 +82,13 @@
                 <ColumnDefinition Width="3*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="White" Padding="0">
+            <Border Grid.Column="0" Style="{StaticResource Card}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Engagements" Margin="8,6" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="0" Text="Engagements" Margin="0,0,0,8" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
                     <DataGrid Grid.Row="1"
                               x:Name="EngagementsGrid"
                               AutoGenerateColumns="False"
@@ -123,13 +123,13 @@
             <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
                           Background="{StaticResource Panel.Border}" ResizeBehavior="PreviousAndNext"/>
 
-            <Grid Grid.Column="2">
+            <Grid Grid.Column="2" Margin="8,0,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="2*"/>
                     <RowDefinition Height="3*"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Background="White" Margin="0,0,0,4">
+                <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,8">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -137,9 +137,9 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Contacts" Margin="8,6" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="0" Text="Contacts" Margin="0,0,0,8" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
 
-                        <Border Grid.Row="1" Margin="8,0,8,4" Padding="8,5"
+                        <Border Grid.Row="1" Margin="0,0,0,8" Padding="8,5"
                                 Background="#FFF7E6" BorderBrush="#E0C078" BorderThickness="1"
                                 CornerRadius="2"
                                 Visibility="{Binding HasDeltekContext,
@@ -194,7 +194,7 @@
                             </Grid>
                         </Border>
 
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="8,0,8,8">
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBox x:Name="ContactNameBox" Width="170" Margin="0,0,4,0"
                                      ToolTip="Display name (required)"/>
                             <TextBox x:Name="ContactRoleBox" Width="130" Margin="0,0,4,0"
@@ -226,16 +226,16 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="1" Background="White">
+                <Border Grid.Row="1" Style="{StaticResource Card}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Activity log" Margin="8,6" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="0" Text="Activity log" Margin="0,0,0,8" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
 
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="8,0,8,8">
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
                             <ComboBox x:Name="ActivityTypeBox" Width="110" Margin="0,0,4,0"
                                       ItemsSource="{Binding ActivityTypeOptions}" SelectedIndex="0"/>
                             <TextBox x:Name="ActivitySubjectBox" Width="240" Margin="0,0,4,0"
