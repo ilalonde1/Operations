@@ -466,9 +466,12 @@ WITH cte AS (
       AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%president%'
       AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%in-charge%'
       AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'%in charge%'
-      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% inc%'
-      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% ltd%'
-      AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% llp%'
+      -- short corporate suffixes need a two-sided word boundary: '% inc%' alone
+      -- would wrongly drop real surnames like 'Ince'/'Incledon'. Match a whole
+      -- ' inc ' / ' inc.' token only (same trick as the tbd/tba predicates).
+      AND PATINDEX(N'%[^a-z]inc[^a-z]%', N' '+LOWER(LTRIM(RTRIM(kp.DisplayName)))+N' ') = 0
+      AND PATINDEX(N'%[^a-z]ltd[^a-z]%', N' '+LOWER(LTRIM(RTRIM(kp.DisplayName)))+N' ') = 0
+      AND PATINDEX(N'%[^a-z]llp[^a-z]%', N' '+LOWER(LTRIM(RTRIM(kp.DisplayName)))+N' ') = 0
       AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% group%'
       AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% studio%'
       AND LOWER(LTRIM(RTRIM(kp.DisplayName))) NOT LIKE N'% associates%'
