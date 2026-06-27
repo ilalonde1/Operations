@@ -55,7 +55,7 @@ namespace Kor.Operations.EngineeringTools.RebarChange
         {
             public int Num;
             public double W, H;
-            public List<string> Tokens = new();
+            public List<(string Token, double Height, double Cx, double Cy)> SheetHits = new();
             public List<Hit> Callouts = new();
         }
 
@@ -155,44 +155,49 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             foreach (var page in doc.GetPages())
             {
                 var words = page.GetWords().ToList();
-                string text = string.Join(" ", words.Select(w => w.Text));
+                var hits = new List<(string, double, double, double)>();
+                foreach (var w in words)
+                    foreach (Match m in SheetRe.Matches(w.Text))
+                    {
+                        var bb = w.BoundingBox;
+                        hits.Add((m.Value, bb.Height, (bb.Left + bb.Right) / 2.0, (bb.Bottom + bb.Top) / 2.0));
+                    }
                 pages.Add(new PageModel
                 {
                     Num = page.Number,
                     W = page.Width,
                     H = page.Height,
-                    Tokens = SheetRe.Matches(text).Select(m => m.Value).ToList(),
+                    SheetHits = hits,
                     Callouts = AssembleCallouts(words, unit),
                 });
             }
             return pages;
         }
 
-        // sheet -> owning pages (a page's own sheet = its rarest sheet token; index pages excluded).
+        // sheet -> owning pages. Own sheet = the title-block number (largest sheet token in the
+        // bottom-right title block, else the largest on the page). Robust on details sheets, where
+        // the own number recurs in every detail bubble so a frequency rule wrongly picks a
+        // cross-reference. Index/cover pages (many distinct tokens) are excluded.
         private static Dictionary<string, List<PageModel>> OwnSheet(List<PageModel> pages)
         {
-            var index = new HashSet<int>();
-            for (int i = 0; i < pages.Count; i++)
-                if (pages[i].Tokens.Distinct().Count() > 30) index.Add(i);
-
-            var freq = new Dictionary<string, int>();
-            for (int i = 0; i < pages.Count; i++)
-            {
-                if (index.Contains(i)) continue;
-                foreach (var s in pages[i].Tokens.Distinct())
-                    freq[s] = freq.GetValueOrDefault(s) + 1;
-            }
-
             var map = new Dictionary<string, List<PageModel>>();
-            for (int i = 0; i < pages.Count; i++)
+            foreach (var pg in pages)
             {
-                if (index.Contains(i) || pages[i].Tokens.Count == 0) continue;
-                var uniq = pages[i].Tokens.Distinct().ToList();
-                string own = uniq.OrderBy(s => freq.GetValueOrDefault(s)).ThenBy(s => uniq.IndexOf(s)).First();
+                if (pg.SheetHits.Count == 0) continue;
+                if (pg.SheetHits.Select(h => h.Token).Distinct().Count() > 30) continue; // index/cover
+                var own = OwnFor(pg);
+                if (own is null) continue;
                 if (!map.TryGetValue(own, out var list)) map[own] = list = new List<PageModel>();
-                list.Add(pages[i]);
+                list.Add(pg);
             }
             return map;
+        }
+
+        private static string? OwnFor(PageModel pg)
+        {
+            var inBlock = pg.SheetHits.Where(h => h.Cx > 0.72 * pg.W && h.Cy < 0.28 * pg.H).ToList();
+            var pool = inBlock.Count > 0 ? inBlock : pg.SheetHits;
+            return pool.OrderByDescending(h => h.Height).ThenByDescending(h => h.Cx).First().Token;
         }
 
         private static Dictionary<string, int> Counts(Dictionary<string, List<PageModel>> map, string sheet)
