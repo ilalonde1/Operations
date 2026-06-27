@@ -1,0 +1,168 @@
+<Window x:Class="Kor.Operations.EngineeringTools.StructuralTakeoff.StructuralQuantityTakeoffWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KOR — Structural Quantity Takeoff"
+        Width="1040" Height="800"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Structural Quantity Takeoff" FontSize="18" FontWeight="Bold" Foreground="#1F3864"/>
+        <TextBlock Grid.Row="1" Margin="0,2,0,12" Foreground="#595959" TextWrapping="Wrap"
+                   Text="One tool for structural quantities. Single-Issue Takeoff: an absolute per-floor concrete + reinforcing + formwork estimate from a schedule. Compare Two Issues: every reinforcing change between two drawing sets, with an on-drawing visual markup. Works in metric and imperial."/>
+
+        <!-- Project + units (shared by both tabs) -->
+        <Border Grid.Row="2" BorderBrush="#D9D9D9" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Project #:" VerticalAlignment="Center"/>
+                <TextBox x:Name="Wbs1Box" Width="110" Margin="6,0,16,0" Text="31065-01"/>
+                <TextBlock Text="Name:" VerticalAlignment="Center"/>
+                <TextBox x:Name="ProjectNameBox" Width="280" Margin="6,0,24,0" Text="5350-5430 Heather Street"/>
+                <TextBlock Text="Units:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <RadioButton x:Name="MetricRadio" Content="Metric (kg/m³)" GroupName="Units" IsChecked="True" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                <RadioButton x:Name="ImperialRadio" Content="Imperial (lb/cu.yd)" GroupName="Units" Margin="14,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <TabControl Grid.Row="3">
+            <!-- ============ SINGLE-ISSUE ABSOLUTE TAKEOFF ============ -->
+            <TabItem Header="Single-Issue Takeoff">
+                <Grid Margin="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Margin="0,0,0,10" Foreground="#595959" TextWrapping="Wrap"
+                               Text="Import a concrete schedule (CSV). Columns: Level, Element (Slab/Wall/Column/Foundation/Beam), Variant (e.g. parking, residential, roof, shear, 84in), ConcreteVolume, FormworkArea, Grade. Reinforcing = concrete volume × the standard density per element/variant — the firm's ratio method, calibratable on the Basis sheet."/>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="Import concrete schedule (CSV)…" Padding="12,5" Click="ImportTakeoffCsv_Click"/>
+                        <TextBox x:Name="TakeoffIssueBox" Width="200" Margin="12,0,0,0" Text="IFC (2026-03-06)"/>
+                        <TextBlock x:Name="TakeoffCsvStatus" Text="(no schedule loaded)" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#777"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button x:Name="TakeoffGenerateBtn" Content="Generate Takeoff (.xlsx)" Padding="16,6" FontWeight="SemiBold" Click="GenerateTakeoff_Click"/>
+                        <TextBlock x:Name="TakeoffResultStatus" VerticalAlignment="Center" Margin="14,0,0,0" FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="TakeoffGrid" Grid.Row="3" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Level" Binding="{Binding Level}" Width="80"/>
+                            <DataGridTextColumn Header="Element" Binding="{Binding Element}" Width="90"/>
+                            <DataGridTextColumn Header="Variant" Binding="{Binding Variant}" Width="100"/>
+                            <DataGridTextColumn Header="Concrete" Binding="{Binding ConcreteVolume, StringFormat=N1}" Width="90"/>
+                            <DataGridTextColumn Header="Reinforcing" Binding="{Binding RebarWeight, StringFormat=N0}" Width="100"/>
+                            <DataGridTextColumn Header="Density" Binding="{Binding DensityUsed, StringFormat=N0}" Width="90"/>
+                            <DataGridTextColumn Header="Formwork" Binding="{Binding FormworkArea, StringFormat=N0}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- ============ COMPARE TWO ISSUES ============ -->
+            <TabItem Header="Compare Two Issues">
+                <Grid Margin="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Margin="0,0,0,10" Foreground="#595959" TextWrapping="Wrap"
+                               Text="Pick the structural PDF for two issues (e.g. IFT → IFC) to get every reinforcing change by sheet — the manual call-up compare, automated — plus an on-drawing visual markup (removed = red, added = green). Optionally enter concrete volumes for a high-level weight delta."/>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="BEFORE issue PDF…" Width="150" Padding="8,4" Click="PickBefore_Click"/>
+                        <TextBox x:Name="BeforeLabelBox" Width="190" Margin="8,0,0,0" Text="IFT Addendum (2025-10-07)"/>
+                        <TextBlock x:Name="BeforeStatus" Text="(no PDF)" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#777"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Content="AFTER issue PDF…" Width="150" Padding="8,4" Click="PickAfter_Click"/>
+                        <TextBox x:Name="AfterLabelBox" Width="190" Margin="8,0,0,0" Text="IFC (2026-03-06)"/>
+                        <TextBlock x:Name="AfterStatus" Text="(no PDF)" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#777"/>
+                    </StackPanel>
+
+                    <Border Grid.Row="3" BorderBrush="#D9D9D9" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,6"
+                                       Text="Concrete volumes for weight delta — optional" FontWeight="SemiBold" Foreground="#1F3864"/>
+                            <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Fill BEFORE from CSV…" Padding="6,2" Margin="0,0,6,0" Click="FillBeforeFromCsv_Click"/>
+                                <Button Content="Fill AFTER from CSV…" Padding="6,2" Click="FillAfterFromCsv_Click"/>
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="Before" Margin="8,0" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="After" Margin="8,0" FontWeight="SemiBold"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Slab / floors" VerticalAlignment="Center"/>
+                            <TextBox   Grid.Row="2" Grid.Column="1" x:Name="SlabBefore" Width="100" Margin="8,2"/>
+                            <TextBox   Grid.Row="2" Grid.Column="2" x:Name="SlabAfter"  Width="100" Margin="8,2"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Wall" VerticalAlignment="Center"/>
+                            <TextBox   Grid.Row="3" Grid.Column="1" x:Name="WallBefore" Width="100" Margin="8,2"/>
+                            <TextBox   Grid.Row="3" Grid.Column="2" x:Name="WallAfter"  Width="100" Margin="8,2"/>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Column" VerticalAlignment="Center"/>
+                            <TextBox   Grid.Row="4" Grid.Column="1" x:Name="ColBefore" Width="100" Margin="8,2"/>
+                            <TextBox   Grid.Row="4" Grid.Column="2" x:Name="ColAfter"  Width="100" Margin="8,2"/>
+
+                            <StackPanel Grid.Row="4" Grid.Column="3" Orientation="Vertical" Margin="14,0,0,0" VerticalAlignment="Bottom">
+                                <TextBlock Text="Foundation"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox x:Name="FdnBefore" Width="100" Margin="0,2,8,2"/>
+                                    <TextBox x:Name="FdnAfter"  Width="100" Margin="0,2"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button x:Name="ChangeReportBtn" Content="Change Report (.xlsx)" Padding="16,6" FontWeight="SemiBold" Click="GenerateChangeReport_Click"/>
+                        <Button x:Name="OverlayBtn" Content="Visual Markup (PDF)" Padding="16,6" Margin="10,0,0,0" Click="GenerateOverlay_Click"/>
+                        <TextBlock x:Name="CompareResultStatus" VerticalAlignment="Center" Margin="14,0,0,0" FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="ComparePreviewGrid" Grid.Row="5" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Sheet" Binding="{Binding Sheet}" Width="90"/>
+                            <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="260"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="140"/>
+                            <DataGridTextColumn Header="Before" Binding="{Binding BeforeCount}" Width="60"/>
+                            <DataGridTextColumn Header="After" Binding="{Binding AfterCount}" Width="60"/>
+                            <DataGridTextColumn Header="Net Δ" Binding="{Binding NetDelta}" Width="60"/>
+                            <DataGridTextColumn Header="Key changes" Binding="{Binding ChangeText}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

@@ -22,5 +22,12 @@ namespace Kor.Operations.EngineeringTools
             win.Owner = this;
             win.Show();
         }
+
+        private void OpenStructuralTakeoff_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<StructuralTakeoff.StructuralQuantityTakeoffWindow>();
+            win.Owner = this;
+            win.Show();
+        }
     }
 }

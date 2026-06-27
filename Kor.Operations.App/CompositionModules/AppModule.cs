@@ -194,6 +194,10 @@ internal static class AppModule
         services.AddTransient<EngineeringTools.EngineeringToolsWindow>(sp =>
             new EngineeringTools.EngineeringToolsWindow(sp));
         services.AddTransient<EngineeringTools.PdfToSafe.PdfToSafeWindow>();
+        services.AddTransient<EngineeringTools.StructuralTakeoff.StructuralQuantityTakeoffWindow>();
+        // Superseded by StructuralQuantityTakeoffWindow; kept registered until the consolidated tool is field-verified.
+        services.AddTransient<EngineeringTools.QuantityTakeoff.QuantityTakeoffWindow>();
+        services.AddTransient<EngineeringTools.RebarChange.RebarChangeWindow>();
         services.AddTransient<FeeProposalBuilderWindow>();
         services.AddTransient<Func<GeneralToolsWindow>>(sp => () => sp.GetRequiredService<GeneralToolsWindow>());
         services.AddTransient<Func<BrochureBuilderWindow>>(sp => () => sp.GetRequiredService<BrochureBuilderWindow>());
