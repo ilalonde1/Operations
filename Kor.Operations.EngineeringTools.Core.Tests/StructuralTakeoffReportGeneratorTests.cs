@@ -29,28 +29,40 @@ public sealed class StructuralTakeoffReportGeneratorTests
     }
 
     [Fact]
-    public void ProducesTwoSheetWorkbook()
+    public void ProducesThreeSheetLiveWorkbook()
     {
         var bytes = StructuralTakeoffReportGenerator.BuildXlsx(SampleModel(UnitSystem.Imperial));
         Assert.True(bytes.Length > 1000);
 
         using var wb = new XLWorkbook(new MemoryStream(bytes));
-        Assert.Equal(2, wb.Worksheets.Count);
+        Assert.Equal(3, wb.Worksheets.Count);
         Assert.Contains(wb.Worksheets, w => w.Name == "Takeoff");
         Assert.Contains(wb.Worksheets, w => w.Name == "Basis & Density");
+        Assert.Contains(wb.Worksheets, w => w.Name == "Detail (calc)");
     }
 
     [Fact]
-    public void ReportTotalReinforcingTiesToEngine()
+    public void DetailReinforcingIsLiveFormulaOfEditableDensity()
     {
+        // The workbook must be calibratable: each line's reinforcing is a formula = concrete × a
+        // density looked up from the Basis sheet, where the density cells are editable. We verify the
+        // wiring (formulas + the seed densities match the engine) — Excel does the arithmetic.
         var model = SampleModel(UnitSystem.Imperial);
-        var bytes = StructuralTakeoffReportGenerator.BuildXlsx(model);
+        using var wb = new XLWorkbook(new MemoryStream(StructuralTakeoffReportGenerator.BuildXlsx(model)));
 
-        using var wb = new XLWorkbook(new MemoryStream(bytes));
-        var ws = wb.Worksheet("Takeoff");
-        var label = ws.CellsUsed(c => c.GetString() == "Total reinforcing").Single();
-        double reported = ws.Cell(label.Address.RowNumber, 2).GetDouble();
-        Assert.Equal(Math.Round(model.Result.TotalRebarWeight), reported, 0);
+        var detail = wb.Worksheet("Detail (calc)");
+        var dataRows = detail.RowsUsed().Skip(2).ToList(); // title + header
+        Assert.Equal(model.Result.Lines.Count, dataRows.Count);
+        foreach (var dr in dataRows)
+        {
+            Assert.Contains("VLOOKUP(", dr.Cell(7).FormulaA1, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("*", dr.Cell(8).FormulaA1); // reinforcing = concrete × density
+        }
+
+        // The seed density for a known (element, variant) equals the engine's, so the live calc ties.
+        var basis = wb.Worksheet("Basis & Density");
+        var shearRow = basis.CellsUsed(c => c.GetString() == "Shear").Single().Address.RowNumber;
+        Assert.Equal(500, basis.Cell(shearRow, 4).GetDouble(), 0); // shear wall imperial density
     }
 
     [Fact]
