@@ -100,11 +100,12 @@ Five firms from the standard SD competitive set are **not live SD building-SE co
 - **vs. KOR:** Complements rather than competes; minimal direct conflict — potential collaborator, not target.
 
 #### Smaller/regional SE firms holding specific lanes
-- **Fuscoe Engineering** — `[HIGH]` SE of record on Chelsea Investment Corp affordable projects (Taormina, Modica). The verified affordable-housing incumbent.
+- **Fuscoe Engineering** — **CORRECTION (deep-hone):** Fuscoe is a **civil** engineering firm (grading/stormwater) on Chelsea's SD affordable projects, **not the structural engineer**. The actual SE on Chelsea Investment Corp's SD affordable pipeline is **still unidentified** — a dedicated follow-up search is flagged. Do not treat Fuscoe as the SE incumbent.
 - **Coffman / DCI / A.B. Court / WSP(Englekirk)** rotate on Miller Hull projects by type.
-- **Burkett & Wong, Fard Engineers** rotate on BNIM projects.
+- **DCI Engineers** (id 38923) is **BNIM's SE on Keeler Court** (71-unit affordable, 2023). **CORRECTION:** the earlier "Fard Engineers" attribution was wrong — **Fard is an MEP firm, not an SE**; it was the mechanical/electrical engineer on Keeler Court. Burkett & Wong (BWE) also rotates on BNIM work. To displace on the BNIM channel, target DCI (Ryan Slaybaugh, SD office at 101 W. Broadway).
 - **Envision Engineering CA, Facet NW, Steven Crook** — the small firms currently holding the **mass-timber** projects (Niima, Harvey Mini, 9625 Towne Centre).
-- **Josephson Werdowatz** — domusstudio's civic/sacred SE.
+- **Josephson-Werdowatz** (id 77669) — domusstudio's civic/sacred SE. Two-principal SD firm (Rancho Bernardo), **aging leadership + heavy expert-witness practice** (Carl Josephson retained on 1,500+ cases) → limited new-design throughput. Displace on larger mixed-use/institutional work with domusstudio.
+- **VCA Structural** (id 77668) — Trammell Crow Residential's SE (Modera SD, Alexan Monrovia). **NO San Diego office** (HQ Orange CA; also Denver/Honolulu) — serves SD remotely from 60+ mi away. Clean local-responsiveness displacement angle, same shape as the Glotman wedge.
 
 #### Watch item — Vancouver rival already in California
 - **Glotman Simpson** (Vancouver, a direct KOR peer) appears on the **Seaport San Diego** project team listing and is SE-of-record on a **843 N Spring St LA mass-timber** project. `[MED]` KOR is not the only BC SE pursuing SoCal — **speed matters.**
@@ -160,8 +161,8 @@ These are the firms that win SD building work and choose the structural sub. The
 | Developer | Tier | Active pipeline (named, verified) | Known SE | KOR read |
 |---|---|---|---|---|
 | **Wakeland Housing** | Affordable | The Becker/Riverwalk (190u, $140M); Cuatro (115u); The Teralta (72u); Union Tower; The Joule (208u) | **None identified — UNVERIFIED** | **OPEN LANE — top target**, $70–140M projects, no incumbent SE |
-| **Chelsea Investment Corp** | Affordable | Harrington Heights (270u, $150M); Taormina (136u); Modica (94u); Addison@SDSU (126u) | **Fuscoe** (verified, Taormina + Modica) | Incumbent locked; hard to displace |
-| **Affirmed Housing** | Affordable | SkyLINE (99u, $91M); The Helm (78u); Zephyr (85u); SDUSD workforce-housing shortlist | KPFF + Fuscoe on partners page (no project credit) `[MED]` | Warm-listed only; pursue |
+| **Chelsea Investment Corp** | Affordable | Harrington Heights (270u, $150M); Taormina (136u); Modica (94u); Addison@SDSU (126u) | **SE UNIDENTIFIED** — Fuscoe is the *civil* engineer here, **not** the SE (corrected) | **OPEN LANE — SE not locked**; find the real SE then displace |
+| **Affirmed Housing** | Affordable | SkyLINE (99u, $91M); The Helm (78u); Zephyr (85u); SDUSD workforce-housing shortlist | KPFF on partners page (Fuscoe = civil, not SE) `[MED]` | Warm-listed only; pursue |
 | **Sudberry Properties** | Market-rate/MU | The Brynn@Civita (200u); Civita master plan (4,780u entitled); Rio Vista West (1,600u) | **None — UNVERIFIED** (RICK = civil only) | **OPEN LANE — large entitled pipeline** |
 | **Hines** | Mega/MU | Riverwalk SD ($3B, ~4,300 homes + 1M sf office, Phase 1 ~2029, Gensler) | **UNVERIFIED** | High-value, long horizon |
 | **JMI Realty** (not "JMB Realty" — CRM correction) | Master-plan | Ballpark Village / Park 12 (713u, 37-story, with Greystar) | **UNVERIFIED** (DCI on Park 12 tower) | Remaining phases available |
@@ -234,18 +235,15 @@ These are the firms that win SD building work and choose the structural sub. The
 
 **Major data gaps:**
 - **SE-of-record is unpublished for ~90% of named projects.** The single highest-value next BD/research action is mapping who actually stamps SD structures — best obtained via SEAOSD/EGBC network, permit records, or direct outreach, not web search.
-- **1650 Hotel Circle South** could not be verified (records show "North"); confirm with the referral source.
+- **1650 Hotel Circle "South" does not exist** — the real project is 1650 Hotel Circle *North* (PRJ-1130310); the DBRDS-as-architect link is unverified. Do not assert it; confirm with the referral source.
 - SD vs Vancouver construction-volume head-to-head not available (incompatible data formats).
+- **Chelsea Investment Corp's affordable-housing SE is still unidentified** (Fuscoe = civil only) — dedicated follow-up search flagged.
 
-**Orgs that look MISSING from a typical SD competitive set (candidate ingests):**
-- **Fuscoe Engineering** (verified affordable-housing SE incumbent — Chelsea)
-- **Envision Engineering California, Facet NW, Steven Crook** (the mass-timber SE holders)
-- **Fard Engineers, A.B. Court & Associates, Josephson Werdowatz, Patterson Engineering, MDEP** (mid-market/local SE field)
-- **Glotman Simpson** (Vancouver rival now in CA — track as competitor)
-- **JMI Realty** (correct entity vs. mis-tagged "JMB Realty")
-- **IQHQ, Alexandria RE, Longfellow, Stockdale Capital** (life-science developers)
-- **StructureCraft** (mass-timber specialist; 2026 AIA SD Corporate Partner — architect interest signal)
-- **Coffman Engineers, BNIM** (if not already canonical) as primary competitor/architect entities
+**Competitive-set ingest status (resolved this pass — all now canonicals with enrichment):**
+- ✅ **VCA Structural** (77668, Trammell Crow's remote SE — no SD office), **Josephson-Werdowatz** (77669, domusstudio's SE) — newly ingested.
+- ✅ Honed: Thornton Tomasetti (68746, Carrier Johnson blocker, SD office), SGH (76786), Risha (68619 — **LA-only, not a SD SE**), Labib Funk (77097, SD multifamily — top displacement target), Glotman Simpson (38926), KPFF (38927), DCI (38923), Coffman (38921), Holmes (77661).
+- **Corrected:** Fuscoe (77639) = civil, not SE; "Fard Engineers" = MEP, not SE (BNIM's Keeler Court SE is DCI 38923).
+- **Still open:** Envision Engineering California, Facet NW, Steven Crook, StructureCraft (mass-timber SE holders); A.B. Court & Associates, Patterson Engineering, MDEP (mid-market field); the unidentified Chelsea SE.
 
 ---
 

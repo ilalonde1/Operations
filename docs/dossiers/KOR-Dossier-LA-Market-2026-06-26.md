@@ -150,7 +150,7 @@ An unplanned but immediately large SE demand event. **Every rebuild requires ful
 
 ## 2. Competitive Landscape — Structural Engineers in LA
 
-**Ownership note:** Multiple LA SE firms have undergone acquisition. Englekirk is now WSP (Oct 2021). Brandow & Johnston is now B&J HBK, Inc. (acquired by HBK Engineering, Jan 2018). Nabih Youssef Associates: founder died July 2024; succession in place but market impact unclear.
+**Ownership note (hardened by the 2026-06-26 deep-hone):** Multiple LA SE firms have undergone acquisition. **Englekirk → WSP (Oct 2021): the boutique is measurably hollowing out — ~90 employees at acquisition, confirmed ~43 by March 2026 (a 52% headcount decline).** Robert Englekirk is Chairman Emeritus; Tony Ghodsi is now an SVP inside a 65,000-person global firm. No single 2026 trigger event, but the cumulative client-drift is at its most acute *now* — the displacement window is real, not theoretical. Brandow & Johnston is now B&J HBK, Inc. (HBK Engineering, Jan 2018). **Nabih Youssef Associates: founder Nabih died July 2024; CEO is now son John Paul Youssef — a legal/business professional, NOT a structural engineer.** The four remaining Principals cover the landmark tier (unassailable 3–5 yrs), but the *personal-relationship* layer that won boutique mid-market PBSD commissions is gone — a real $5–50M-tier opening.
 
 ### 2.1 Tier 1: Trophy / Supertall (NOT KOR's lane)
 
