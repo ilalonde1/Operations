@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 {
@@ -54,8 +55,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return new StructuralDensityTable(unit, converted);
         }
 
+        // Strip to alphanumerics (and lower-case) so "96 in", "96in" and "96 IN" all match key
+        // "96in" — the same normalization the CSV importer applies to its headers/variants.
         private static string? Normalize(string? variant)
-            => string.IsNullOrWhiteSpace(variant) ? null : variant.Trim().ToLowerInvariant();
+        {
+            if (string.IsNullOrWhiteSpace(variant)) return null;
+            var s = new string(variant.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+            return s.Length == 0 ? null : s;
+        }
 
         /// <summary>
         /// KOR standard reinforcing ratios, IMPERIAL (lb/yd³), seeded from the verified Lindley
@@ -75,6 +82,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 [(TakeoffElementType.Slab, "podium")] = 200,
                 [(TakeoffElementType.Slab, "ground")] = 250,
                 [(TakeoffElementType.Slab, null)] = 170,
+                // Floor framing — beams and drop panels are taken at the floor/slab ratio (the
+                // Lindley method folds framing into the floor quantity, and the report buckets them
+                // into Slab). Explicit so they never resolve to 0; calibratable per project.
+                [(TakeoffElementType.Beam, null)] = 170,
+                [(TakeoffElementType.DropPanel, null)] = 170,
                 [(TakeoffElementType.Foundation, "132in")] = 1100,
                 [(TakeoffElementType.Foundation, "96in")] = 1100,
                 [(TakeoffElementType.Foundation, "84in")] = 480,

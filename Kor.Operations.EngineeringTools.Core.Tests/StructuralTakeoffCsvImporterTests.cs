@@ -36,6 +36,27 @@ public sealed class StructuralTakeoffCsvImporterTests
     }
 
     [Fact]
+    public void BeamAndDropPanelGetNonZeroDensity()
+    {
+        // Regression: the floor-framing element types must not silently resolve to 0 reinforcing.
+        foreach (var t in new[] { TakeoffElementType.Beam, TakeoffElementType.DropPanel })
+        {
+            Assert.True(StructuralDensityTable.KorImperialDefault.For(t) > 0, $"{t} imperial density is 0");
+            Assert.True(StructuralDensityTable.KorMetricDefault.For(t) > 0, $"{t} metric density is 0");
+        }
+    }
+
+    [Fact]
+    public void VariantNormalizationIgnoresInternalSpaces()
+    {
+        // "96 in" must resolve to the 96in foundation key (1100), not fall back to the default (480).
+        var table = StructuralDensityTable.KorImperialDefault;
+        Assert.Equal(table.For(TakeoffElementType.Foundation, "96in"),
+                     table.For(TakeoffElementType.Foundation, "96 in"));
+        Assert.Equal(1100, table.For(TakeoffElementType.Foundation, "96 IN"));
+    }
+
+    [Fact]
     public void SkipsBlankVolumeRowsAndIsHeaderOrderIndependent()
     {
         const string csv =
