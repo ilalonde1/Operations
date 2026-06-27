@@ -445,8 +445,8 @@ public sealed class CanonicalOrgResolver
 
     private static readonly string[] CorporateSuffixes =
     {
-        " incorporated", " corporation", " limited",
-        " inc", " inc.", " ltd", " ltd.", " llp", " llp.",
+        " incorporated", " corporation", " limited", " company",
+        " inc", " inc.", " ltd", " ltd.", " llp", " llp.", " llc", " llc.",
         " corp", " corp.", " co", " co.",
     };
 

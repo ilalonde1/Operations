@@ -48,6 +48,23 @@ WHERE (@clendor IS NOT NULL AND ClendorClientId = @clendor)
    OR (@clendor IS NULL AND ClendorClientId IS NULL AND NormalizedName = @normalizedName)
 ORDER BY CASE WHEN ClendorClientId IS NOT NULL THEN 0 ELSE 1 END, Id;
 
+-- Fuzzy fallback (closes the dup-minting front door): when the strict
+-- NormalizedName / Clendor match found nothing, match on FuzzyNormalizedName
+-- so name variants ('JWDA Inc.' vs 'JWDA (Joseph Wong Design Associates)')
+-- resolve to the existing canonical instead of minting a new row that
+-- BdCanonicalDedup must later merge away. Mirrors the resolver's trusted
+-- FindByFuzzyNormalizedNameAsync: only auto-matches when EXACTLY ONE active
+-- canonical carries the key (COUNT_BIG = 1) — an ambiguous key stays null and
+-- a new canonical is created, never an arbitrary merge. Held under the same
+-- UPDLOCK/HOLDLOCK transaction so concurrent upserts can't race a dup in.
+IF @existingId IS NULL AND @fuzzy IS NOT NULL AND LEN(@fuzzy) >= 3
+BEGIN
+    SELECT @existingId = CASE WHEN COUNT_BIG(*) = 1 THEN MAX(Id) END
+    FROM opportunities.CanonicalOrg WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+    WHERE FuzzyNormalizedName = @fuzzy
+      AND RetiredAtUtc IS NULL;
+END
+
 IF @existingId IS NULL
 BEGIN
     INSERT INTO opportunities.CanonicalOrg

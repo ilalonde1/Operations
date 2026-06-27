@@ -1,0 +1,13 @@
+# Architect-prime dup merges 2026-06-26 (verified survivors by Deltek anchor + KOR project count + enrichment rows)
+# JWDA: 77163 (research stub, 0 prj) -> 48 (JWDA Inc., Deltek CL00620, 17 prj)
+77163,48,JWDA research stub into Deltek-anchored canonical (48)
+# DBRDS: 77206 (De Bartolo, 0 prj) -> 20 (DBRDS Design Studio, Deltek anchor, 2 prj)
+77206,20,De Bartolo research stub into DBRDS Design Studio (20)
+# JWDA re-mint from SD re-ingest (acronym vs full-name; payload source now corrected to 'JWDA Inc.')
+77664,48,JWDA re-mint into Deltek-anchored canonical (48)
+# CAST re-mint -> existing KorClient 83 (verified same: website cast-dev.com + identical Golden Hill notes)
+77665,83,CAST Development research re-mint into KorClient Cast Development LLC (83)
+# Turner Construction (national) -> established national GC canonical 54947 (regional offices kept separate)
+77666,54947,Turner Construction re-mint into Turner Construction Company (54947)
+# Perkins&Will parent re-mint -> established canonical with KOR project link (69688); regional offices kept separate
+77667,69688,Perkins&Will re-mint into Perkins + Will Architects (69688)
