@@ -39,6 +39,16 @@ public sealed class RebarImperialTests
     }
 
     [Fact]
+    public void ImperialSpacingHasRightBoundary_NoTruncation()
+    {
+        // "#5 @ 120" must NOT truncate to a false "#5@12"; 120 is out of bar-spacing range.
+        var s = RebarCalloutExtractor.Extract(Issue("#5 @ 120  #6 @ 18"), UnitSystem.Imperial)
+            .Single(x => x.Sheet == "S2.01.1");
+        Assert.False(s.Callouts.ContainsKey("#5@12"));
+        Assert.Equal(1, s.Callouts["#6@18"]);
+    }
+
+    [Fact]
     public void MetricPathIgnoresImperialNotation_AndViceVersa()
     {
         // Metric (default) extractor sees no `#`-bars.

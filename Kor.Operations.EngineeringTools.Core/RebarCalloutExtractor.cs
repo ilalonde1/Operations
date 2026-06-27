@@ -35,7 +35,7 @@ namespace Kor.Operations.EngineeringTools.RebarChange
         // used only when UnitSystem.Imperial; it never runs on a metric set, and the metric
         // CalloutRe / 75–750 constants above are never touched (Rory's 31065 path stays identical).
         private static readonly Regex ImperialCalloutRe =
-            new(@"#(\d{1,2})\s*@\s*(\d{1,2})", RegexOptions.Compiled);
+            new(@"#(\d{1,2})\s*@\s*(\d{1,2})(?!\d)", RegexOptions.Compiled);
         private const int SpacingMinIn = 3;
         private const int SpacingMaxIn = 48;
 
