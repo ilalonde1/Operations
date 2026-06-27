@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Kor.Operations.EngineeringTools.QuantityTakeoff;
 
 namespace Kor.Operations.EngineeringTools.RebarChange
 {
@@ -16,13 +17,14 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             IReadOnlyList<string> beforePages,
             IReadOnlyList<string> afterPages,
             string beforeLabel = "Before",
-            string afterLabel = "After")
+            string afterLabel = "After",
+            UnitSystem unit = UnitSystem.Metric)
         {
             ArgumentNullException.ThrowIfNull(beforePages);
             ArgumentNullException.ThrowIfNull(afterPages);
 
-            var a = RebarCalloutExtractor.Extract(beforePages).ToDictionary(s => s.Sheet);
-            var b = RebarCalloutExtractor.Extract(afterPages).ToDictionary(s => s.Sheet);
+            var a = RebarCalloutExtractor.Extract(beforePages, unit).ToDictionary(s => s.Sheet);
+            var b = RebarCalloutExtractor.Extract(afterPages, unit).ToDictionary(s => s.Sheet);
 
             var sheets = a.Keys.Union(b.Keys).Distinct().OrderBy(SortKey).ToList();
 

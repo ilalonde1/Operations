@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Kor.Operations.EngineeringTools.QuantityTakeoff;
 
 namespace Kor.Operations.EngineeringTools.RebarChange
 {
@@ -30,7 +31,20 @@ namespace Kor.Operations.EngineeringTools.RebarChange
         private const int SpacingMin = 75;
         private const int SpacingMax = 750;
 
-        public static IReadOnlyList<SheetCallouts> Extract(IReadOnlyList<string> pages)
+        // Imperial (US) call-out: "#5 @ 12" — bar number, spacing in inches. A PARALLEL path,
+        // used only when UnitSystem.Imperial; it never runs on a metric set, and the metric
+        // CalloutRe / 75–750 constants above are never touched (Rory's 31065 path stays identical).
+        private static readonly Regex ImperialCalloutRe =
+            new(@"#(\d{1,2})\s*@\s*(\d{1,2})", RegexOptions.Compiled);
+        private const int SpacingMinIn = 3;
+        private const int SpacingMaxIn = 48;
+
+        private static (Regex Re, int Min, int Max, System.Func<int, int, string> Key) CalloutSpec(UnitSystem unit)
+            => unit == UnitSystem.Imperial
+                ? (ImperialCalloutRe, SpacingMinIn, SpacingMaxIn, (s, sp) => $"#{s}@{sp}")
+                : (CalloutRe, SpacingMin, SpacingMax, (s, sp) => $"{s}M@{sp}");
+
+        public static IReadOnlyList<SheetCallouts> Extract(IReadOnlyList<string> pages, UnitSystem unit = UnitSystem.Metric)
         {
             var tokens = pages
                 .Select(p => SheetRe.Matches(p).Select(m => m.Value).ToList())
@@ -51,6 +65,7 @@ namespace Kor.Operations.EngineeringTools.RebarChange
 
             var titles = BuildTitles(pages);
 
+            var (re, smin, smax, keyFmt) = CalloutSpec(unit);
             var byOwn = new Dictionary<string, Dictionary<string, int>>();
             for (int i = 0; i < pages.Count; i++)
             {
@@ -65,11 +80,11 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 if (!byOwn.TryGetValue(own, out var counter))
                     byOwn[own] = counter = new Dictionary<string, int>();
 
-                foreach (Match m in CalloutRe.Matches(pages[i]))
+                foreach (Match m in re.Matches(pages[i]))
                 {
                     int spacing = int.Parse(m.Groups[2].Value);
-                    if (spacing < SpacingMin || spacing > SpacingMax) continue;
-                    string key = $"{int.Parse(m.Groups[1].Value)}M@{spacing}";
+                    if (spacing < smin || spacing > smax) continue;
+                    string key = keyFmt(int.Parse(m.Groups[1].Value), spacing);
                     counter[key] = counter.GetValueOrDefault(key) + 1;
                 }
             }
