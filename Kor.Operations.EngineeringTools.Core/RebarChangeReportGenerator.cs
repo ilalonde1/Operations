@@ -49,6 +49,30 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             return ms.ToArray();
         }
 
+        // Print layout so a sheet always fits the page width and long text never runs off the page.
+        private static void Finish(IXLWorksheet ws, bool landscape)
+        {
+            ws.PageSetup.PageOrientation = landscape ? XLPageOrientation.Landscape : XLPageOrientation.Portrait;
+            ws.PageSetup.PagesWide = 1;
+            ws.PageSetup.PagesTall = 0;
+            ws.PageSetup.CenterHorizontally = true;
+            ws.PageSetup.Margins.Left = 0.4; ws.PageSetup.Margins.Right = 0.4;
+            ws.PageSetup.Margins.Top = 0.5; ws.PageSetup.Margins.Bottom = 0.5;
+            var used = ws.RangeUsed();
+            if (used != null) ws.PageSetup.PrintAreas.Add(used.RangeAddress.ToString());
+        }
+
+        // A full-width note row: merged across the sheet so long text wraps instead of overflowing.
+        private static void Note(IXLWorksheet ws, int row, int lastCol, string text)
+        {
+            ws.Range(row, 1, row, lastCol).Merge();
+            ws.Cell(row, 1).Value = text;
+            ws.Cell(row, 1).Style.Font.Italic = true;
+            ws.Cell(row, 1).Style.Font.FontColor = Grey;
+            ws.Cell(row, 1).Style.Alignment.WrapText = true;
+            ws.Row(row).Height = 28;
+        }
+
         private static void Header(IXLWorksheet ws, int row, params (string text, int width)[] cells)
         {
             for (int c = 0; c < cells.Length; c++)
@@ -70,10 +94,9 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             var ws = wb.Worksheets.Add("Priced changes");
             ws.Cell(1, 1).Value = "PRICED FIELD-GRID CHANGES — exact ΔAs × area";
             ws.Cell(1, 1).Style.Font.SetBold().Font.SetFontSize(13).Font.FontColor = Navy;
-            ws.Cell(2, 1).Value =
+            Note(ws, 2, 9,
                 "ΔAs (kg/m²) is EXACT from the call-out. Multiply it by the area to get the weight change. A SLAB grid's area " +
-                "is its own floor plate (from Revit); a WALL/typical grid's area is the wall run it governs (your manual length × height).";
-            ws.Cell(2, 1).Style.Font.Italic = true; ws.Cell(2, 1).Style.Font.FontColor = Grey;
+                "is its own floor plate (from Revit); a WALL/typical grid's area is the wall run it governs (your manual length × height).");
 
             // Legend so the editable cells are unmistakable.
             ws.Cell(3, 1).Value = "▮ ORANGE CELLS ARE EDITABLE — type or change the Area and the kg / lb update automatically.";
@@ -161,11 +184,11 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 "Spot call-outs and detail changes are flagged on 'Changes by sheet' — they need a manual extent before they can be priced.",
             })
             {
-                ws.Cell(row, 1).Value = note;
-                ws.Cell(row, 1).Style.Font.Italic = true; ws.Cell(row, 1).Style.Font.FontColor = Grey;
+                Note(ws, row, 9, note);
                 row++;
             }
             ws.SheetView.FreezeRows(4);
+            Finish(ws, landscape: true);
         }
 
         // ---------- Executive summary (full) ----------
@@ -232,7 +255,9 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             ws.Cell(row, 1).Value = "Weight is a high-level / order-of-magnitude takeoff (calibratable). Change detection is exact text comparison.";
             ws.Cell(row, 1).Style.Font.Italic = true; ws.Cell(row, 1).Style.Font.FontColor = Grey;
 
-            ws.Column(1).Width = 95; ws.Column(2).Width = 12; ws.Column(3).Width = 6;
+            ws.Column(1).Width = 78; ws.Column(2).Width = 12; ws.Column(3).Width = 6;
+            ws.Column(1).Style.Alignment.WrapText = true; // long narrative wraps instead of running off the page
+            Finish(ws, landscape: false);
         }
 
         // ---------- Weight ----------
@@ -281,11 +306,10 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 if (c == 4 || c == 7 || c == 8) ws.Cell(row, c).Style.NumberFormat.Format = "#,##0.0";
             }
             row += 2;
-            ws.Cell(row, 1).Value = "Density per issue = standard ratio scaled by the reinforcing intensity read off that issue's own call-outs (see 'Density basis').";
-            ws.Cell(row, 1).Style.Font.Italic = true; ws.Cell(row, 1).Style.Font.FontColor = Grey;
+            Note(ws, row, 8, "Density per issue = standard ratio scaled by the reinforcing intensity read off that issue's own call-outs (see 'Density basis').");
             row++;
-            ws.Cell(row, 1).Value = "▮ ORANGE density cells are editable — calibrate against one hand-checked level and the tonnes recompute.";
-            ws.Cell(row, 1).Style.Font.Italic = true; ws.Cell(row, 1).Style.Font.FontColor = Grey;
+            Note(ws, row, 8, "▮ ORANGE density cells are editable — calibrate against one hand-checked level and the tonnes recompute.");
+            Finish(ws, landscape: true);
         }
 
         // ---------- Density basis ----------
@@ -316,13 +340,10 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             }
             row++;
             string bars = string.Join(" · ", RebarWeightEstimator.BarMassKgM.OrderBy(k => k.Key).Select(k => $"{k.Key}M {k.Value}"));
-            ws.Cell(row, 1).Value = "CSA bar mass (kg/m): " + bars;
-            ws.Cell(row, 1).Style.Font.Italic = true; ws.Cell(row, 1).Style.Font.FontColor = Grey;
+            Note(ws, row, 6, "CSA bar mass (kg/m): " + bars);
             row += 2;
-            ws.Cell(row, 1).Value = "Weight = density × concrete volume (from the Revit model). The standard ratio sets the absolute level;";
-            ws.Cell(row + 1, 1).Value = "the per-issue density is that ratio scaled by the reinforcing intensity read off each issue's own call-outs,";
-            ws.Cell(row + 2, 1).Value = "so the before/after tonnage moves with the detailing — not with concrete volume alone.";
-            for (int i = 0; i < 3; i++) ws.Cell(row + i, 1).Style.Font.Italic = true;
+            Note(ws, row, 6, "Weight = density × concrete volume (from the Revit model). The standard ratio sets the absolute level; the per-issue density is that ratio scaled by the reinforcing intensity read off each issue's own call-outs, so the before/after tonnage moves with the detailing — not with concrete volume alone.");
+            Finish(ws, landscape: true);
         }
 
         // ---------- Change-detection summary (change-only workbook) ----------
@@ -355,7 +376,9 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             ws.Cell(row, 1).Value = "WHAT THIS IS - AND IS NOT";
             ws.Cell(row, 1).Style.Font.SetBold().Font.SetFontSize(12).Font.FontColor = Navy;
             foreach (var c in Caveats) { row++; ws.Cell(row, 1).Value = c; ws.Cell(row, 1).Style.Font.Italic = true; ws.Cell(row, 1).Style.Font.FontColor = Grey; }
-            ws.Column(1).Width = 95; ws.Column(2).Width = 14;
+            ws.Column(1).Width = 78; ws.Column(2).Width = 14;
+            ws.Column(1).Style.Alignment.WrapText = true;
+            Finish(ws, landscape: false);
         }
 
         private static readonly string[] Caveats =
@@ -399,6 +422,7 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 row++;
             }
             ws.SheetView.FreezeRows(1);
+            Finish(ws, landscape: true);
         }
 
         // ---------- Audit ----------
@@ -417,6 +441,7 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                     row++;
                 }
             ws.SheetView.FreezeRows(1);
+            Finish(ws, landscape: false);
         }
 
         private static string StatusText(RebarChangeStatus s) => s switch
