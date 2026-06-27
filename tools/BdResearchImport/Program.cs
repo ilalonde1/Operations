@@ -4391,6 +4391,8 @@ ORDER BY Id;";
             var seatStatusCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var orgsResolved = 0;
             var projectsStamped = 0;
+            var idStamps = 0;
+            var nameBasedStamps = 0;
             {
             var __i = 0;
             foreach (var project in itemsArray.EnumerateArray())
@@ -4400,47 +4402,154 @@ ORDER BY Id;";
                 {
                 ct.ThrowIfCancellationRequested();
                 var id = LongOrNull(project, "id");
-                if (id is not > 0)
-                {
-                    stats.ProjectRowsSkipped++;
-                    continue;
-                }
-
-                var projectName = String(project, "projectName");
-                var architectName = CleanTeamName(String(project, "architect"));
-                var structuralName = CleanTeamName(String(project, "structuralEngineer"));
-                var gcName = CleanTeamName(String(project, "generalContractor"));
+                var projectName = String(project, "projectName") ?? String(project, "ProjectName");
+                var proponentName = CleanTeamName(String(project, "proponent") ?? String(project, "ProponentName") ?? String(project, "owner") ?? String(project, "Owner"));
+                var architectName = CleanTeamName(String(project, "architect") ?? String(project, "ArchitectName"));
+                var structuralName = CleanTeamName(String(project, "structuralEngineer") ?? String(project, "StructuralEngineerName"));
+                var gcName = CleanTeamName(String(project, "generalContractor") ?? String(project, "GeneralContractorName"));
                 var seatStatus = String(project, "seatStatus") ?? String(project, "structuralSeatStatus");
+                var korOpening = String(project, "korOpening");
+                var confidence = String(project, "confidence");
                 AddCount(seatStatusCounts, string.IsNullOrWhiteSpace(seatStatus) ? "(blank)" : seatStatus.Trim());
 
-                orgsResolved += CountName(architectName) + CountName(structuralName) + CountName(gcName);
-                var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
-                var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "PipelineSeatsStructural", ct).ConfigureAwait(false);
-                var gcId = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "PipelineSeatsGC", ct).ConfigureAwait(false);
-
-                var updated = await UpdateMajorProjectSeatAsync(
-                    options,
-                    id.Value,
-                    architectName,
-                    architectId,
-                    structuralName,
-                    structuralId,
-                    gcName,
-                    gcId,
-                    seatStatus,
-                    String(project, "korOpening"),
-                    String(project, "confidence"),
-                    ct).ConfigureAwait(false);
-
-                if (updated)
+                if (id is > 0)
                 {
-                    projectsStamped++;
-                    IncrementProjectSource(stats, "PipelineSeats");
-                    if (!options.Quiet)
+                    orgsResolved += CountName(architectName) + CountName(structuralName) + CountName(gcName);
+                    var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                    var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "PipelineSeatsStructural", ct).ConfigureAwait(false);
+                    var gcId = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "PipelineSeatsGC", ct).ConfigureAwait(false);
+
+                    var updated = await UpdateMajorProjectSeatAsync(
+                        options,
+                        id.Value,
+                        architectName,
+                        architectId,
+                        structuralName,
+                        structuralId,
+                        gcName,
+                        gcId,
+                        seatStatus,
+                        korOpening,
+                        confidence,
+                        ct).ConfigureAwait(false);
+
+                    if (updated)
                     {
-                        Console.WriteLine(options.DryRun
-                            ? $"[DRY-RUN] PipelineSeats: planned MPI seat update Id={id.Value}; project={projectName ?? "(unnamed)"}"
-                            : $"[MPI] PipelineSeats: updated Id={id.Value}; project={projectName ?? "(unnamed)"}");
+                        projectsStamped++;
+                        idStamps++;
+                        IncrementProjectSource(stats, "PipelineSeats");
+                        if (!options.Quiet)
+                        {
+                            Console.WriteLine(options.DryRun
+                                ? $"[DRY-RUN] PipelineSeats: planned MPI seat update Id={id.Value}; project={projectName ?? "(unnamed)"}"
+                                : $"[MPI] PipelineSeats: updated Id={id.Value}; project={projectName ?? "(unnamed)"}");
+                        }
+                    }
+                    else
+                    {
+                        stats.ProjectRowsSkipped++;
+                        if (!options.Quiet)
+                        {
+                            Console.WriteLine($"[WARN] PipelineSeats: skipped missing MPI Id={id.Value}; project={projectName ?? "(unnamed)"}");
+                        }
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(projectName))
+                {
+                    var province = NormalizeProvince(String(project, "province") ?? String(project, "Province"), Province);
+                    var stage = String(project, "Stage") ?? String(project, "stage");
+                    var projectStage = String(project, "ProjectStage") ?? String(project, "projectStage") ?? stage;
+                    var proponentForKey = proponentName ?? string.Empty;
+
+                    orgsResolved += CountName(proponentName) + CountName(architectName) + CountName(structuralName) + CountName(gcName);
+                    var proponentId = await ResolveAsync(resolver, options, stats, LeadOperator(proponentName), OrgKinds.Buyer, ProponentSource, ct).ConfigureAwait(false);
+                    var architectId = await ResolveAsync(resolver, options, stats, LeadOperator(architectName), OrgKinds.Architect, ArchitectSource, ct).ConfigureAwait(false);
+                    var structuralId = await ResolveAsync(resolver, options, stats, structuralName, OrgKinds.Competitor, "PipelineSeatsStructural", ct).ConfigureAwait(false);
+                    var gcId = await ResolveAsync(resolver, options, stats, gcName, OrgKinds.GeneralContractor, "PipelineSeatsGC", ct).ConfigureAwait(false);
+
+                    var record = new MajorProjectRecord(
+                        Source: "PipelineSeatsNamed",
+                        SourceKey: "SEAT-" + Sha1($"{province}|{projectName}|{proponentForKey}"),
+                        ProjectName: projectName,
+                        ProjectDescription: String(project, "projectDescription") ?? String(project, "ProjectDescription"),
+                        EstimatedCostCad: Money(project, "EstimatedCostCad") ?? Money(project, "estimatedCostCad") ?? Money(project, "estCostCad") ?? Money(project, "budgetCad"),
+                        EstimatedCostText: String(project, "estimatedCostText") ?? String(project, "EstimatedCostText"),
+                        Sector: String(project, "Sector") ?? String(project, "sector"),
+                        SubSector: String(project, "SubSector") ?? String(project, "subSector"),
+                        ConstructionType: null,
+                        ConstructionSubtype: null,
+                        ProjectType: String(project, "ProjectType") ?? String(project, "projectType"),
+                        RegionName: String(project, "RegionName") ?? String(project, "region"),
+                        MunicipalityName: String(project, "MunicipalityName") ?? String(project, "municipality") ?? String(project, "city"),
+                        ProponentName: proponentName,
+                        ProponentCanonicalOrgId: proponentId,
+                        ArchitectName: architectName,
+                        ArchitectCanonicalOrgId: architectId,
+                        Stage: stage,
+                        ProjectStatus: stage,
+                        ProjectStage: projectStage,
+                        ProjectCategoryName: null,
+                        PublicFundingInd: null,
+                        ProvincialFunding: null,
+                        FederalFunding: null,
+                        MunicipalFunding: null,
+                        OtherPublicFunding: null,
+                        GreenBuildingInd: null,
+                        IndigenousInd: null,
+                        IndigenousNames: null,
+                        ConstructionJobs: null,
+                        OperatingJobs: null,
+                        StandardizedStartDate: null,
+                        StandardizedCompletionDate: null,
+                        StartYear: null,
+                        CompletionYear: null,
+                        ScheduleNotes: String(project, "notes") ?? String(project, "scheduleNotes"),
+                        Latitude: null,
+                        Longitude: null,
+                        ProjectWebsite: String(project, "projectWebsite") ?? String(project, "website"),
+                        SourceUrl: FirstSourceUrl(project),
+                        RawJson: project.GetRawText())
+                    {
+                        Province = province,
+                        StructuralEngineerName = structuralName,
+                        StructuralEngineerCanonicalOrgId = structuralId,
+                        GeneralContractorName = gcName,
+                        GeneralContractorCanonicalOrgId = gcId,
+                    };
+
+                    var resolvedId = await UpsertMajorProjectAsync(options, stats, record, ct).ConfigureAwait(false);
+                    var updated = await UpdateMajorProjectSeatAsync(
+                        options,
+                        resolvedId,
+                        architectName,
+                        architectId,
+                        structuralName,
+                        structuralId,
+                        gcName,
+                        gcId,
+                        seatStatus,
+                        korOpening,
+                        confidence,
+                        ct).ConfigureAwait(false);
+
+                    if (updated)
+                    {
+                        projectsStamped++;
+                        nameBasedStamps++;
+                        if (!options.Quiet)
+                        {
+                            Console.WriteLine(options.DryRun
+                                ? $"[DRY-RUN] PipelineSeatsNamed: planned MPI create/match + seat update; project={projectName}"
+                                : $"[MPI] PipelineSeatsNamed: resolved Id={resolvedId}; project={projectName}");
+                        }
+                    }
+                    else
+                    {
+                        stats.ProjectRowsSkipped++;
+                        if (!options.Quiet)
+                        {
+                            Console.WriteLine($"[WARN] PipelineSeatsNamed: skipped unresolved MPI row after name-based upsert; project={projectName}");
+                        }
                     }
                 }
                 else
@@ -4448,7 +4557,7 @@ ORDER BY Id;";
                     stats.ProjectRowsSkipped++;
                     if (!options.Quiet)
                     {
-                        Console.WriteLine($"[WARN] PipelineSeats: skipped missing MPI Id={id.Value}; project={projectName ?? "(unnamed)"}");
+                        Console.WriteLine("[WARN] PipelineSeats: skipped row with no positive id and no projectName.");
                     }
                 }
                 }
@@ -4457,7 +4566,7 @@ ORDER BY Id;";
             }
             }
 
-            Console.WriteLine($"[pipeline-seats] projects stamped={projectsStamped}; orgs resolved={orgsResolved}");
+            Console.WriteLine($"[pipeline-seats] projects stamped={projectsStamped}; id-stamps={idStamps}; name-based create/match stamps={nameBasedStamps}; orgs resolved={orgsResolved}");
             foreach (var (status, count) in seatStatusCounts.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
             {
                 Console.WriteLine($"[pipeline-seats] seatStatus {status}: {count}");
@@ -7209,7 +7318,7 @@ WHERE Id = @mpiId;";
         }
     }
 
-    private static async Task UpsertMajorProjectAsync(ImportOptions options, ImportStats stats, MajorProjectRecord r, CancellationToken ct)
+    private static async Task<long> UpsertMajorProjectAsync(ImportOptions options, ImportStats stats, MajorProjectRecord r, CancellationToken ct)
     {
         if (options.DryRun)
         {
@@ -7218,14 +7327,16 @@ WHERE Id = @mpiId;";
                 Console.WriteLine($"[DRY-RUN] {r.Source}: planned MPI upsert {r.SourceKey}; project={r.ProjectName}");
             }
 
-            return;
+            return 0;
         }
 
         const string sql = @"
 SET XACT_ABORT ON;
 
 DECLARE @inserted table (Id bigint NOT NULL);
+DECLARE @existingId bigint;
 DECLARE @nameMatchedId bigint;
+DECLARE @sourceKeyMatched bit = 0;
 
 BEGIN TRAN;
 
@@ -7245,10 +7356,10 @@ SET
     ProjectType = @projectType,
     RegionName = @regionName,
     MunicipalityName = @municipalityName,
-    ProponentName = @proponentName,
-    ProponentCanonicalOrgId = @proponentCanonicalOrgId,
-    ArchitectName = @architectName,
-    ArchitectCanonicalOrgId = @architectCanonicalOrgId,
+    ProponentName = CASE WHEN @coalesceTeamFields = 1 THEN COALESCE(ProponentName, @proponentName) ELSE @proponentName END,
+    ProponentCanonicalOrgId = CASE WHEN @coalesceTeamFields = 1 THEN COALESCE(ProponentCanonicalOrgId, @proponentCanonicalOrgId) ELSE @proponentCanonicalOrgId END,
+    ArchitectName = CASE WHEN @coalesceTeamFields = 1 THEN COALESCE(ArchitectName, @architectName) ELSE @architectName END,
+    ArchitectCanonicalOrgId = CASE WHEN @coalesceTeamFields = 1 THEN COALESCE(ArchitectCanonicalOrgId, @architectCanonicalOrgId) ELSE @architectCanonicalOrgId END,
     Stage = @stage,
     ProjectStatus = @projectStatus,
     ProjectStage = @projectStage,
@@ -7275,15 +7386,23 @@ SET
     SourceUrl = @sourceUrl,
     IssueYear = @issueYear,
     IssueQuarter = @issueQuarter,
-    StructuralEngineerName = @structuralEngineerName,
-    StructuralEngineerCanonicalOrgId = @structuralEngineerCanonicalOrgId,
-    GeneralContractorName = @generalContractorName,
-    GeneralContractorCanonicalOrgId = @generalContractorCanonicalOrgId,
+    StructuralEngineerName = CASE WHEN @coalesceTeamFields = 1 THEN COALESCE(StructuralEngineerName, @structuralEngineerName) ELSE @structuralEngineerName END,
+    StructuralEngineerCanonicalOrgId = CASE WHEN @coalesceTeamFields = 1 THEN COALESCE(StructuralEngineerCanonicalOrgId, @structuralEngineerCanonicalOrgId) ELSE @structuralEngineerCanonicalOrgId END,
+    GeneralContractorName = CASE WHEN @coalesceTeamFields = 1 THEN COALESCE(GeneralContractorName, @generalContractorName) ELSE @generalContractorName END,
+    GeneralContractorCanonicalOrgId = CASE WHEN @coalesceTeamFields = 1 THEN COALESCE(GeneralContractorCanonicalOrgId, @generalContractorCanonicalOrgId) ELSE @generalContractorCanonicalOrgId END,
     RawJson = @rawJson
 WHERE Province = @province
   AND SourceKey = @sourceKey;
 
-IF @@ROWCOUNT = 0
+IF @@ROWCOUNT <> 0
+BEGIN
+    SET @sourceKeyMatched = 1;
+    SELECT TOP (1) @existingId = Id
+    FROM opportunities.MajorProjectsInventory
+    WHERE Province = @province AND SourceKey = @sourceKey;
+END;
+
+IF @sourceKeyMatched = 0
 BEGIN
     -- C9 guard: the same project arriving via a different SourceKey must not fork
     -- a duplicate row. Match active rows on normalized name + compatible
@@ -7359,6 +7478,8 @@ BEGIN
             GeneralContractorCanonicalOrgId = COALESCE(GeneralContractorCanonicalOrgId, @generalContractorCanonicalOrgId),
             RawJson = COALESCE(RawJson, @rawJson)
         WHERE Id = @nameMatchedId;
+
+        SET @existingId = @nameMatchedId;
     END
     ELSE
     BEGIN
@@ -7385,6 +7506,8 @@ BEGIN
              @scheduleNotes, @latitude, @longitude, @projectWebsite, @sourceUrl, @issueYear,
              @issueQuarter, @structuralEngineerName, @structuralEngineerCanonicalOrgId,
              @generalContractorName, @generalContractorCanonicalOrgId, @rawJson);
+
+        SELECT TOP (1) @existingId = Id FROM @inserted;
     END;
 END;
 
@@ -7394,13 +7517,16 @@ SELECT
     CASE WHEN EXISTS (SELECT 1 FROM @inserted) THEN 1
          WHEN @nameMatchedId IS NOT NULL THEN 2
          ELSE 0 END AS Outcome,
-    @nameMatchedId AS NameMatchedId;";
+    @nameMatchedId AS NameMatchedId,
+    @existingId AS ResolvedId;";
 
         await using var con = new SqlConnection(options.OpportunitiesDb);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 60 };
         AddParams(cmd, r);
+        cmd.Parameters.Add("@coalesceTeamFields", SqlDbType.Bit).Value = string.Equals(r.Source, "PipelineSeatsNamed", StringComparison.OrdinalIgnoreCase);
         long? nameMatchedId = null;
+        long resolvedId;
         await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
             await reader.ReadAsync(ct).ConfigureAwait(false);
@@ -7409,6 +7535,8 @@ SELECT
             {
                 nameMatchedId = reader.GetInt64(1);
             }
+
+            resolvedId = reader.GetInt64(2);
         }
 
         if (nameMatchedId.HasValue)
@@ -7425,6 +7553,8 @@ SELECT
         {
             IncrementProjectSource(stats, r.Source);
         }
+
+        return resolvedId;
     }
 
     private static async Task<bool> UpdateMajorProjectFromHoningAsync(
