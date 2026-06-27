@@ -1464,6 +1464,9 @@ ORDER BY Id;";
                 {
                     {
                     var __i = 0;
+                    var firmsInPayload = 0;
+                    var firmsLanded = 0;
+                    var firmsNotLanded = new List<string>();
                     foreach (var firm in firmItems.EnumerateArray())
                     {
                         __i++;
@@ -1477,6 +1480,7 @@ ORDER BY Id;";
                             continue;
                         }
 
+                        firmsInPayload++;
                         var orgId = await UpsertOrgAsync(
                             orgStore,
                             options,
@@ -1487,6 +1491,12 @@ ORDER BY Id;";
                             String(firm, "researchNotes"),
                             enrichmentProviderName,
                             ct).ConfigureAwait(false);
+
+                        // Reconciliation: in commit mode a non-null id means the firm actually
+                        // landed as a canonical org. Anything named-but-not-landed is surfaced
+                        // below instead of being absorbed into a clean-looking success count.
+                        if (!options.DryRun && orgId is null) firmsNotLanded.Add(firmName);
+                        else firmsLanded++;
 
                         await WriteEnrichmentAsync(
                             enrichmentStore,
@@ -1502,6 +1512,8 @@ ORDER BY Id;";
                         catch (OperationCanceledException) { throw; }
                         catch (Exception ex) { RecordRowFailure(stats, "us-market-firms", __i, ex); }
                     }
+
+                    Console.WriteLine($"[RECONCILE] {directoryName} firms: payload={firmsInPayload} landed={firmsLanded} notLanded={firmsNotLanded.Count}{(firmsNotLanded.Count > 0 ? " -> " + string.Join("; ", firmsNotLanded) : "")}");
                     }
                 }
             }
@@ -7734,6 +7746,15 @@ WHERE Id = @id
             {
                 resolvedPath = standardPath;
                 Console.WriteLine($"[FILE] {folderName}: using standard {standardPath}");
+                // Drift guard: outputs/import.json wins, but a legacy payload also exists and is
+                // being IGNORED. Anyone who edited the legacy file (or an agent that wrote to it
+                // per a stale PROMPT.md) will see their changes silently dropped. Make it loud.
+                // (H+W Engineering 2026-06-26: agent wrote firms-payload.json; importer read import.json.)
+                if (File.Exists(legacyPath))
+                {
+                    Console.WriteLine($"[DRIFT-WARN] {folderName}: legacy payload {legacyPath} ALSO exists and is being IGNORED — only outputs/import.json is ingested. Reconcile or delete the legacy file to avoid edits going nowhere.");
+                }
+
                 return true;
             }
 
@@ -7847,9 +7868,22 @@ WHERE Id = @id
         var normalized = NormalizeToken(value);
         if (normalized.Length == 0) return OrgKinds.Unknown;
         if (normalized.Contains("competitor", StringComparison.Ordinal)) return OrgKinds.Competitor;
+        // Sub-consultant / sub-contractor MUST be tested before the generic "contractor"
+        // check below — "subcontractor" contains the substring "contractor", which used to
+        // silently mis-map MEP/civil/geotech teaming partners to GC. (H+W Engineering, 2026-06-26.)
+        if (normalized.Contains("subcontractor", StringComparison.Ordinal)
+            || normalized.Contains("subconsultant", StringComparison.Ordinal)
+            || normalized.Contains("consultant", StringComparison.Ordinal)
+            || normalized is "mep" or "civil" or "geotech" or "geotechnical" or "electrical" or "mechanical" or "plumbing")
+            return OrgKinds.Subcontractor;
         if (normalized is "gc" || normalized.Contains("generalcontractor", StringComparison.Ordinal) || normalized.Contains("contractor", StringComparison.Ordinal)) return OrgKinds.GeneralContractor;
         if (normalized.Contains("architect", StringComparison.Ordinal) || normalized.Contains("architecture", StringComparison.Ordinal)) return OrgKinds.Architect;
         if (normalized.Contains("developer", StringComparison.Ordinal) || normalized.Contains("development", StringComparison.Ordinal)) return OrgKinds.Developer;
+        if (normalized.Contains("buyer", StringComparison.Ordinal) || normalized.Contains("publicowner", StringComparison.Ordinal) || normalized.Contains("owner", StringComparison.Ordinal) || normalized.Contains("government", StringComparison.Ordinal)) return OrgKinds.Buyer;
+        if (normalized.Contains("vendor", StringComparison.Ordinal)) return OrgKinds.Vendor;
+        // Non-empty but unrecognized: fail loud rather than silently coercing. The caller
+        // stores Unknown, but this line makes the drift visible in the run log.
+        Console.WriteLine($"[WARN] MapResearchFirmKind: unrecognized kind '{value}' (normalized '{normalized}') -> stored as Unknown; add an explicit mapping if this is a real category.");
         return OrgKinds.Unknown;
     }
 

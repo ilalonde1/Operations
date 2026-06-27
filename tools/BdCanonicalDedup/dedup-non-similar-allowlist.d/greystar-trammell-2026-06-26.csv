@@ -1,0 +1,5 @@
+LoserId,SurvivorId,Reason
+# Greystar + Trammell Crow consolidation — Ian-approved 2026-06-26 (verified by Deltek anchor + KOR-project counts)
+77180,55110,Greystar bare dup -> Greystar Real Estate Partners (#55110) anchored; Ian-approved 2026-06-26
+73739,77141,Trammell Crow Company Seattle office variant -> Trammell Crow Company (#77141); Ian-approved 2026-06-26
+75736,77141,Trammell Crow Company (TCC) name variant -> Trammell Crow Company (#77141); Ian-approved 2026-06-26
