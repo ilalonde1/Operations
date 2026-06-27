@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -54,14 +55,41 @@ public sealed class CanonicalOrgResolver
         "gp",
     };
 
+    private static readonly Meter ResolverMeter = new("Kor.Opportunities.Data.CanonicalOrgResolver");
+    private static readonly Counter<int> MatchedByFuzzySurvivorCounter = ResolverMeter.CreateCounter<int>("matchedByFuzzySurvivor");
+    private static readonly Counter<int> CreatedNewCounter = ResolverMeter.CreateCounter<int>("createdNew");
+    private static readonly Counter<int> RedirectedFromMergedCounter = ResolverMeter.CreateCounter<int>("redirectedFromMerged");
+    private static readonly Counter<int> SkippedRetiredCounter = ResolverMeter.CreateCounter<int>("skippedRetired");
+
     private readonly ICanonicalOrgStore _store;
     private readonly ILogger<CanonicalOrgResolver> _logger;
+    private readonly bool? _resolverFuzzySurvivorAttachOverride;
 
     public CanonicalOrgResolver(ICanonicalOrgStore store, ILogger<CanonicalOrgResolver> logger)
+        : this(store, logger, resolverFuzzySurvivorAttach: null)
+    {
+    }
+
+    public CanonicalOrgResolver(
+        ICanonicalOrgStore store,
+        ILogger<CanonicalOrgResolver> logger,
+        bool resolverFuzzySurvivorAttach)
+        : this(store, logger, (bool?)resolverFuzzySurvivorAttach)
+    {
+    }
+
+    private CanonicalOrgResolver(
+        ICanonicalOrgStore store,
+        ILogger<CanonicalOrgResolver> logger,
+        bool? resolverFuzzySurvivorAttach)
     {
         _store = store;
         _logger = logger;
+        _resolverFuzzySurvivorAttachOverride = resolverFuzzySurvivorAttach;
     }
+
+    public static bool IsGenericNameDenied(string normalizedName)
+        => GenericNameDenylist.Contains(normalizedName);
 
     public Task<long?> ResolveBuyerAsync(string? rawName, CancellationToken ct)
         => ResolveAsync(rawName, OrgKinds.Buyer, OrgAliasSources.OpportunityAwardsAwarding, ct);
@@ -79,14 +107,16 @@ public sealed class CanonicalOrgResolver
         CancellationToken ct,
         bool allowCreate = true,
         int minConfidenceForCreate = 50,
-        bool createArchived = false)
+        bool createArchived = false,
+        string? website = null,
+        string? notes = null)
     {
         if (string.IsNullOrWhiteSpace(rawName)) return null;
         var trimmed = rawName.Trim();
         var cleaned = StripIntakeNoise(trimmed);
         var normalized = NormalizeName(cleaned);
 
-        if (GenericNameDenylist.Contains(normalized))
+        if (IsGenericNameDenied(normalized))
         {
             await RecordUnclassifiedAliasAsync(cleaned, source, 5, "denylist", "Generic organization name denylist", ct)
                 .ConfigureAwait(false);
@@ -115,40 +145,92 @@ public sealed class CanonicalOrgResolver
             return null;
         }
 
+        var fuzzyKey = NormalizeForFuzzyMatch(cleaned);
+        long? canonicalId = null;
+        var matchedByAlias = false;
+        var matchedByFuzzySurvivor = false;
+        var redirectedFromMerged = false;
+        var createdNew = false;
+        var skippedRetired = 0;
+        var classifiedBy = "auto-normalized";
+        var aliasNotes = "Matched by normalized name";
+
         var alias = await _store.LookupAliasAsync(trimmed, source, ct).ConfigureAwait(false);
         if (alias is not null && alias.CanonicalOrgId.HasValue)
         {
-            if (!createArchived)
-            {
-                var resurrected = await _store.UnretireAsync(
-                    alias.CanonicalOrgId.Value,
-                    $"Resurrected by alias match from source '{source}'",
-                    ct).ConfigureAwait(false);
-                if (resurrected)
-                {
-                    _logger.LogInformation(
-                        "CanonicalOrg {Id} ({Name}) unretired; alias match from source '{Source}' indicates renewed activity.",
-                        alias.CanonicalOrgId.Value, cleaned, source);
-                }
-            }
-
-            return alias.CanonicalOrgId.Value;
-        }
-
-        long? canonicalId = null;
-        var matchedByFuzzy = false;
-        if (!string.IsNullOrEmpty(normalized))
-        {
-            canonicalId = await _store.FindByNormalizedNameAsync(normalized, ct).ConfigureAwait(false);
+            var redirected = await ResolveMergeOrSameAsync(alias.CanonicalOrgId.Value, ct).ConfigureAwait(false);
+            canonicalId = redirected.Id;
+            redirectedFromMerged = redirected.Redirected;
+            matchedByAlias = true;
+            classifiedBy = redirected.Redirected ? "auto-merge-redirect" : "auto-alias";
+            aliasNotes = redirected.Redirected
+                ? "Alias pointed at a merged org; redirected to live survivor"
+                : "Matched by existing alias";
         }
 
         if (canonicalId is null)
         {
-            var fuzzyKey = NormalizeForFuzzyMatch(cleaned);
-            if (fuzzyKey.Length >= 3)
+            var mergedAliasSurvivor = await _store.FindMergedSurvivorByAliasAsync(trimmed, source, ct).ConfigureAwait(false);
+            if (mergedAliasSurvivor.HasValue)
+            {
+                canonicalId = mergedAliasSurvivor.Value;
+                redirectedFromMerged = true;
+                classifiedBy = "auto-merge-redirect";
+                aliasNotes = "Alias pointed at a merged org; redirected to live survivor";
+            }
+        }
+
+        if (canonicalId is null && !string.IsNullOrEmpty(normalized))
+        {
+            canonicalId = await _store.FindByNormalizedNameAsync(normalized, ct).ConfigureAwait(false);
+        }
+
+        if (canonicalId is null && !string.IsNullOrEmpty(normalized))
+        {
+            var mergedNameSurvivor = await _store.FindMergedSurvivorByNormalizedNameAsync(normalized, ct).ConfigureAwait(false);
+            if (mergedNameSurvivor.HasValue)
+            {
+                canonicalId = mergedNameSurvivor.Value;
+                redirectedFromMerged = true;
+                classifiedBy = "auto-merge-redirect";
+                aliasNotes = "Normalized name pointed at a merged org; redirected to live survivor";
+            }
+        }
+
+        if (canonicalId is null)
+        {
+            if (ResolverFuzzySurvivorAttachEnabled && fuzzyKey.Length >= 8 && !IsGenericNameDenied(fuzzyKey))
             {
                 canonicalId = await _store.FindByFuzzyNormalizedNameAsync(fuzzyKey, ct).ConfigureAwait(false);
-                matchedByFuzzy = canonicalId.HasValue;
+                matchedByFuzzySurvivor = canonicalId.HasValue;
+                if (matchedByFuzzySurvivor)
+                {
+                    classifiedBy = "auto-fuzzy-survivor";
+                    aliasNotes = "Matched by deterministic fuzzy-normalized survivor";
+                }
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "Skipped fuzzy survivor attach for org '{RawName}' from source '{Source}': enabled={Enabled}, fuzzyKeyLength={FuzzyKeyLength}, denylisted={Denylisted}.",
+                    cleaned,
+                    source,
+                    ResolverFuzzySurvivorAttachEnabled,
+                    fuzzyKey.Length,
+                    IsGenericNameDenied(fuzzyKey));
+            }
+        }
+
+        if (canonicalId is null)
+        {
+            skippedRetired = await _store.CountRetiredMatchesAsync(trimmed, source, normalized, fuzzyKey, ct).ConfigureAwait(false);
+            if (skippedRetired > 0)
+            {
+                _logger.LogInformation(
+                    "Skipped {SkippedRetired} retired CanonicalOrg candidate(s) for '{RawName}' from source '{Source}'.",
+                    skippedRetired,
+                    cleaned,
+                    source);
             }
         }
 
@@ -159,6 +241,7 @@ public sealed class CanonicalOrgResolver
                 await RecordUnclassifiedAliasAsync(cleaned, source, 10, "auto-unresolved", "Creation disabled for this source", ct)
                     .ConfigureAwait(false);
                 _logger.LogDebug("Org '{RawName}' ({Source}) was not resolved; creation disabled.", cleaned, source);
+                EmitResolverStats(matchedByFuzzySurvivor, createdNew, redirectedFromMerged, skippedRetired);
                 return null;
             }
 
@@ -166,9 +249,12 @@ public sealed class CanonicalOrgResolver
                 kind: kind,
                 displayName: cleaned,
                 clendorClientId: null,
-                website: null,
-                notes: null,
+                website: website,
+                notes: notes,
                 ct: ct).ConfigureAwait(false);
+            createdNew = true;
+            classifiedBy = "auto-new";
+            aliasNotes = "Created by CanonicalOrgResolver (no live normalized/fuzzy-name match)";
 
             if (createArchived)
             {
@@ -183,41 +269,70 @@ public sealed class CanonicalOrgResolver
                 source: source,
                 canonicalOrgId: canonicalId,
                 confidence: minConfidenceForCreate,
-                classifiedBy: "auto-new",
-                notes: "Created by CanonicalOrgResolver (no normalized-name match)",
+                classifiedBy: classifiedBy,
+                notes: aliasNotes,
                 ct: ct).ConfigureAwait(false);
         }
-        else
+        else if (!matchedByAlias || redirectedFromMerged)
         {
-            if (!createArchived)
-            {
-                var matchType = matchedByFuzzy ? "fuzzy-name" : "normalized-name";
-                var resurrected = await _store.UnretireAsync(
-                    canonicalId.Value,
-                    $"Resurrected by {matchType} match from source '{source}'",
-                    ct).ConfigureAwait(false);
-                if (resurrected)
-                {
-                    _logger.LogInformation(
-                        "CanonicalOrg {Id} ({Name}) unretired; {MatchType} match from source '{Source}' indicates renewed activity.",
-                        canonicalId.Value, cleaned, matchType, source);
-                }
-            }
-
             await _store.UpsertAliasAsync(
                 rawName: trimmed,
                 source: source,
                 canonicalOrgId: canonicalId,
-                confidence: 80,
-                classifiedBy: matchedByFuzzy ? "auto-fuzzy" : "auto-normalized",
-                notes: matchedByFuzzy ? "Matched by safe fuzzy-normalized name" : "Matched by normalized name",
+                confidence: redirectedFromMerged ? 90 : 80,
+                classifiedBy: classifiedBy,
+                notes: aliasNotes,
                 ct: ct).ConfigureAwait(false);
         }
 
+        if (canonicalId.HasValue && (!string.IsNullOrWhiteSpace(website) || !string.IsNullOrWhiteSpace(notes)))
+        {
+            await _store.PromoteCanonicalOrgWebsiteNotesAsync(canonicalId.Value, website, notes, ct)
+                .ConfigureAwait(false);
+        }
+
+        EmitResolverStats(matchedByFuzzySurvivor, createdNew, redirectedFromMerged, skippedRetired);
         _logger.LogDebug("Resolved org '{RawName}' ({Source}) to CanonicalOrgId {CanonicalOrgId}.", cleaned, source, canonicalId);
         return canonicalId;
     }
 
+    private async Task<(long Id, bool Redirected)> ResolveMergeOrSameAsync(long canonicalOrgId, CancellationToken ct)
+    {
+        var survivorId = await _store.ResolveCanonicalOrgMergeAsync(canonicalOrgId, ct).ConfigureAwait(false);
+        if (survivorId.HasValue && survivorId.Value != canonicalOrgId)
+        {
+            return (survivorId.Value, true);
+        }
+
+        return (canonicalOrgId, false);
+    }
+
+    private bool ResolverFuzzySurvivorAttachEnabled
+        => _resolverFuzzySurvivorAttachOverride ?? ReadResolverFuzzySurvivorAttachFlag();
+
+    private static bool ReadResolverFuzzySurvivorAttachFlag()
+    {
+        var configured = System.Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_RESOLVERFUZZYSURVIVORATTACH")
+            ?? System.Environment.GetEnvironmentVariable("ResolverFuzzySurvivorAttach");
+        if (string.IsNullOrWhiteSpace(configured)) return true;
+
+        return !(configured.Equals("false", System.StringComparison.OrdinalIgnoreCase)
+            || configured.Equals("0", System.StringComparison.OrdinalIgnoreCase)
+            || configured.Equals("no", System.StringComparison.OrdinalIgnoreCase)
+            || configured.Equals("off", System.StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void EmitResolverStats(
+        bool matchedByFuzzySurvivor,
+        bool createdNew,
+        bool redirectedFromMerged,
+        int skippedRetired)
+    {
+        if (matchedByFuzzySurvivor) MatchedByFuzzySurvivorCounter.Add(1);
+        if (createdNew) CreatedNewCounter.Add(1);
+        if (redirectedFromMerged) RedirectedFromMergedCounter.Add(1);
+        if (skippedRetired > 0) SkippedRetiredCounter.Add(skippedRetired);
+    }
     private Task RecordUnclassifiedAliasAsync(
         string rawName,
         string source,

@@ -57,10 +57,48 @@ public interface ICanonicalOrgStore
     Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct);
 
     /// <summary>
-    /// Find an active CanonicalOrg only when exactly one row has the supplied
-    /// safe fuzzy-normalized name. Returns null for no match or ambiguity.
+    /// Find the deterministic live CanonicalOrg survivor for the supplied
+    /// safe fuzzy-normalized name. Returns null for no match.
     /// </summary>
     Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct);
+
+    /// <summary>
+    /// Follow the CanonicalOrgMerge ledger from a merged-away org id to the
+    /// deepest live survivor. Returns null when the id has no live survivor.
+    /// </summary>
+    Task<long?> ResolveCanonicalOrgMergeAsync(long canonicalOrgId, CancellationToken ct);
+
+    /// <summary>
+    /// Resolve an alias whose CanonicalOrgId now points at a merged-away org.
+    /// Returns the live merge survivor, or null when no such redirect exists.
+    /// </summary>
+    Task<long?> FindMergedSurvivorByAliasAsync(string rawName, string source, CancellationToken ct);
+
+    /// <summary>
+    /// Resolve a normalized name that now points at a merged-away org.
+    /// Returns the live merge survivor, or null when no such redirect exists.
+    /// </summary>
+    Task<long?> FindMergedSurvivorByNormalizedNameAsync(string normalizedName, CancellationToken ct);
+
+    /// <summary>
+    /// Count retired orgs that would otherwise have matched this resolver input.
+    /// Used only for resolver telemetry; callers must not attach to the retired ids.
+    /// </summary>
+    Task<int> CountRetiredMatchesAsync(
+        string rawName,
+        string source,
+        string normalizedName,
+        string fuzzyKey,
+        CancellationToken ct);
+
+    /// <summary>
+    /// Promote incoming website/notes only into empty slots. Never overwrites.
+    /// </summary>
+    Task PromoteCanonicalOrgWebsiteNotesAsync(
+        long canonicalOrgId,
+        string? website,
+        string? notes,
+        CancellationToken ct);
 
     /// <summary>Insert an alias if not already present. Returns the alias Id.</summary>
     Task<long> UpsertAliasAsync(

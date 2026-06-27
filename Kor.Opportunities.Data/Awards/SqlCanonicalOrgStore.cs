@@ -30,6 +30,8 @@ public sealed class SqlCanonicalOrgStore : ICanonicalOrgStore
         CancellationToken ct)
     {
         var fuzzyNormalizedName = CanonicalOrgResolver.NormalizeForFuzzyMatch(displayName);
+        var allowFuzzySurvivorAttach = !CanonicalOrgResolver.IsGenericNameDenied(NormalizeName(displayName))
+            && !CanonicalOrgResolver.IsGenericNameDenied(fuzzyNormalizedName);
 
         const string sql = @"
 SET XACT_ABORT ON;
@@ -44,25 +46,40 @@ BEGIN TRAN;
 
 SELECT TOP (1) @existingId = Id
 FROM opportunities.CanonicalOrg WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
-WHERE (@clendor IS NOT NULL AND ClendorClientId = @clendor)
-   OR (@clendor IS NULL AND ClendorClientId IS NULL AND NormalizedName = @normalizedName)
-ORDER BY CASE WHEN ClendorClientId IS NOT NULL THEN 0 ELSE 1 END, Id;
+WHERE RetiredAtUtc IS NULL
+  AND ((@clendor IS NOT NULL AND ClendorClientId = @clendor)
+   OR (@clendor IS NULL AND ClendorClientId IS NULL AND NormalizedName = @normalizedName))
+ORDER BY
+    CASE WHEN Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
+    CASE WHEN ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+    Id;
 
 -- Fuzzy fallback (closes the dup-minting front door): when the strict
 -- NormalizedName / Clendor match found nothing, match on FuzzyNormalizedName
--- so name variants ('JWDA Inc.' vs 'JWDA (Joseph Wong Design Associates)')
--- resolve to the existing canonical instead of minting a new row that
--- BdCanonicalDedup must later merge away. Mirrors the resolver's trusted
--- FindByFuzzyNormalizedNameAsync: only auto-matches when EXACTLY ONE active
--- canonical carries the key (COUNT_BIG = 1) — an ambiguous key stays null and
--- a new canonical is created, never an arbitrary merge. Held under the same
--- UPDLOCK/HOLDLOCK transaction so concurrent upserts can't race a dup in.
-IF @existingId IS NULL AND @fuzzy IS NOT NULL AND LEN(@fuzzy) >= 3
+-- so legal suffix variants resolve to the deterministic live survivor instead
+-- of minting a new row that BdCanonicalDedup must later merge away. This only
+-- applies to non-short fuzzy keys; short keys keep create-new behavior.
+IF @existingId IS NULL AND @allowFuzzy = 1 AND @fuzzy IS NOT NULL AND LEN(@fuzzy) >= 8
 BEGIN
-    SELECT @existingId = CASE WHEN COUNT_BIG(*) = 1 THEN MAX(Id) END
-    FROM opportunities.CanonicalOrg WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
-    WHERE FuzzyNormalizedName = @fuzzy
-      AND RetiredAtUtc IS NULL;
+    SELECT TOP (1) @existingId = co.Id
+    FROM opportunities.CanonicalOrg co WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+    OUTER APPLY (
+        SELECT COUNT_BIG(*) AS AffiliationCount
+        FROM opportunities.IntelPersonAffiliation ipa
+        WHERE ipa.CanonicalOrgId = co.Id
+    ) ipa
+    OUTER APPLY (
+        SELECT COUNT_BIG(*) AS EnrichmentCount
+        FROM opportunities.CanonicalOrgEnrichment e
+        WHERE e.CanonicalOrgId = co.Id
+    ) enr
+    WHERE co.FuzzyNormalizedName = @fuzzy
+      AND co.RetiredAtUtc IS NULL
+    ORDER BY
+        CASE WHEN co.Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
+        CASE WHEN co.ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+        CONVERT(bigint, ipa.AffiliationCount) + CONVERT(bigint, enr.EnrichmentCount) DESC,
+        co.Id;
 END
 
 IF @existingId IS NULL
@@ -110,20 +127,8 @@ BEGIN
         -- a research record naming a variant must not rename KOR's own identity row.
         DisplayName = CASE WHEN Kind IN (N'KorStructural', N'KorClient') THEN DisplayName ELSE @name END,
         FuzzyNormalizedName = @fuzzy,
-        Website = COALESCE(@website, Website),
-        Notes = CASE
-            WHEN RetiredAtUtc IS NOT NULL THEN
-                COALESCE(COALESCE(@notes, Notes) + NCHAR(13) + NCHAR(10), N'')
-                     + N'[Auto-resurrected by GetOrCreate match on ' + CONVERT(nvarchar(33), sysdatetimeoffset(), 127)
-                     + N'; was retired: ' + COALESCE(RetiredReason, N'(no reason)') + N']'
-            ELSE COALESCE(@notes, Notes)
-        END,
-        -- BD-Audit-2026-06-09 C4/M8: a matched-but-retired org must resurrect,
-        -- not absorb fresh data invisibly. Direct GetOrCreate callers (Deltek
-        -- pursuit sync, --ingest-canonical, custom-proposal import) bypass
-        -- CanonicalOrgResolver's UnretireAsync, so the resurrect lives here too.
-        RetiredAtUtc = NULL,
-        RetiredReason = NULL,
+        Website = COALESCE(Website, @website),
+        Notes = COALESCE(Notes, @notes),
         UpdatedAtUtc = sysdatetimeoffset()
     WHERE Id = @existingId;
 END;
@@ -140,6 +145,7 @@ SELECT @existingId;";
         cmd.Parameters.Add("@fuzzy", SqlDbType.NVarChar, 300).Value = string.IsNullOrEmpty(fuzzyNormalizedName)
             ? (object)DBNull.Value
             : fuzzyNormalizedName;
+        cmd.Parameters.Add("@allowFuzzy", SqlDbType.Bit).Value = allowFuzzySurvivorAttach;
         cmd.Parameters.Add("@clendor", SqlDbType.VarChar, 32).Value = (object?)clendorClientId ?? DBNull.Value;
         cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = (object?)website ?? DBNull.Value;
         cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)notes ?? DBNull.Value;
@@ -389,7 +395,9 @@ WHERE Id = @id;";
         const string sql = @"
 SELECT TOP 1 Id FROM opportunities.CanonicalOrg
 WHERE NormalizedName = @norm
+  AND RetiredAtUtc IS NULL
 ORDER BY
+    CASE WHEN Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
     CASE WHEN ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
     Id;";
 
@@ -404,13 +412,28 @@ ORDER BY
 
     public async Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(fuzzyKey)) return null;
+        if (string.IsNullOrEmpty(fuzzyKey) || fuzzyKey.Length < 8) return null;
 
         const string sql = @"
-SELECT CASE WHEN COUNT_BIG(*) = 1 THEN MAX(Id) END
-FROM opportunities.CanonicalOrg
-WHERE FuzzyNormalizedName = @key
-  AND RetiredAtUtc IS NULL;";
+SELECT TOP 1 co.Id
+FROM opportunities.CanonicalOrg co
+OUTER APPLY (
+    SELECT COUNT_BIG(*) AS AffiliationCount
+    FROM opportunities.IntelPersonAffiliation ipa
+    WHERE ipa.CanonicalOrgId = co.Id
+) ipa
+OUTER APPLY (
+    SELECT COUNT_BIG(*) AS EnrichmentCount
+    FROM opportunities.CanonicalOrgEnrichment e
+    WHERE e.CanonicalOrgId = co.Id
+) enr
+WHERE co.FuzzyNormalizedName = @key
+  AND co.RetiredAtUtc IS NULL
+ORDER BY
+    CASE WHEN co.Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
+    CASE WHEN co.ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+    CONVERT(bigint, ipa.AffiliationCount) + CONVERT(bigint, enr.EnrichmentCount) DESC,
+    co.Id;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -420,6 +443,159 @@ WHERE FuzzyNormalizedName = @key
         return v is null or DBNull ? null : Convert.ToInt64(v);
     }
 
+    public async Task<long?> ResolveCanonicalOrgMergeAsync(long canonicalOrgId, CancellationToken ct)
+    {
+        const string sql = @"
+WITH chain AS (
+    SELECT @id AS Cur, 0 AS Depth
+    UNION ALL
+    SELECT m.MergedIntoCanonicalOrgId, c.Depth + 1
+    FROM chain c
+    JOIN opportunities.CanonicalOrgMerge m ON m.MergedFromCanonicalOrgId = c.Cur
+    WHERE c.Depth < 16
+)
+SELECT TOP 1 co.Id
+FROM chain c
+JOIN opportunities.CanonicalOrg co ON co.Id = c.Cur AND co.RetiredAtUtc IS NULL
+ORDER BY c.Depth DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
+    public async Task<long?> FindMergedSurvivorByAliasAsync(string rawName, string source, CancellationToken ct)
+    {
+        const string sql = @"
+WITH seeds AS (
+    SELECT a.CanonicalOrgId AS SeedId, a.Id AS AliasId
+    FROM opportunities.OrgAlias a
+    JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId AND co.RetiredAtUtc IS NOT NULL
+    WHERE a.RawName = @raw AND a.Source = @src
+), chain AS (
+    SELECT SeedId, AliasId, SeedId AS Cur, 0 AS Depth
+    FROM seeds
+    UNION ALL
+    SELECT c.SeedId, c.AliasId, m.MergedIntoCanonicalOrgId, c.Depth + 1
+    FROM chain c
+    JOIN opportunities.CanonicalOrgMerge m ON m.MergedFromCanonicalOrgId = c.Cur
+    WHERE c.Depth < 16
+)
+SELECT TOP 1 co.Id
+FROM chain c
+JOIN opportunities.CanonicalOrg co ON co.Id = c.Cur AND co.RetiredAtUtc IS NULL
+ORDER BY c.AliasId, c.Depth DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@raw", SqlDbType.NVarChar, 300).Value = rawName;
+        cmd.Parameters.Add("@src", SqlDbType.NVarChar, 80).Value = source;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
+    public async Task<long?> FindMergedSurvivorByNormalizedNameAsync(string normalizedName, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(normalizedName)) return null;
+
+        const string sql = @"
+WITH seeds AS (
+    SELECT co.Id AS SeedId
+    FROM opportunities.CanonicalOrg co
+    WHERE co.NormalizedName = @norm
+      AND co.RetiredAtUtc IS NOT NULL
+), chain AS (
+    SELECT SeedId, SeedId AS Cur, 0 AS Depth
+    FROM seeds
+    UNION ALL
+    SELECT c.SeedId, m.MergedIntoCanonicalOrgId, c.Depth + 1
+    FROM chain c
+    JOIN opportunities.CanonicalOrgMerge m ON m.MergedFromCanonicalOrgId = c.Cur
+    WHERE c.Depth < 16
+)
+SELECT TOP 1 co.Id
+FROM chain c
+JOIN opportunities.CanonicalOrg co ON co.Id = c.Cur AND co.RetiredAtUtc IS NULL
+ORDER BY c.SeedId, c.Depth DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@norm", SqlDbType.NVarChar, 300).Value = normalizedName;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
+    public async Task<int> CountRetiredMatchesAsync(
+        string rawName,
+        string source,
+        string normalizedName,
+        string fuzzyKey,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT COUNT_BIG(*)
+FROM (
+    SELECT co.Id
+    FROM opportunities.CanonicalOrg co
+    WHERE @norm <> N'' AND co.NormalizedName = @norm AND co.RetiredAtUtc IS NOT NULL
+    UNION
+    SELECT co.Id
+    FROM opportunities.CanonicalOrg co
+    WHERE @fuzzy <> N'' AND co.FuzzyNormalizedName = @fuzzy AND co.RetiredAtUtc IS NOT NULL
+    UNION
+    SELECT co.Id
+    FROM opportunities.OrgAlias a
+    JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+    WHERE a.RawName = @raw AND a.Source = @src AND co.RetiredAtUtc IS NOT NULL
+) retired;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@raw", SqlDbType.NVarChar, 300).Value = rawName;
+        cmd.Parameters.Add("@src", SqlDbType.NVarChar, 80).Value = source;
+        cmd.Parameters.Add("@norm", SqlDbType.NVarChar, 300).Value = normalizedName;
+        cmd.Parameters.Add("@fuzzy", SqlDbType.NVarChar, 300).Value = fuzzyKey;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? 0 : Convert.ToInt32(v);
+    }
+
+    public async Task PromoteCanonicalOrgWebsiteNotesAsync(
+        long canonicalOrgId,
+        string? website,
+        string? notes,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(website) && string.IsNullOrWhiteSpace(notes)) return;
+
+        const string sql = @"
+UPDATE opportunities.CanonicalOrg
+SET Website = COALESCE(Website, @website),
+    Notes = COALESCE(Notes, @notes),
+    UpdatedAtUtc = CASE
+        WHEN (Website IS NULL AND @website IS NOT NULL) OR (Notes IS NULL AND @notes IS NOT NULL)
+        THEN sysdatetimeoffset()
+        ELSE UpdatedAtUtc
+    END
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = string.IsNullOrWhiteSpace(website)
+            ? (object)DBNull.Value
+            : website;
+        cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = string.IsNullOrWhiteSpace(notes)
+            ? (object)DBNull.Value
+            : notes;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
     public async Task<long> UpsertAliasAsync(
         string rawName,
         string source,
@@ -474,9 +650,11 @@ OUTPUT INSERTED.Id;";
     public async Task<OrgAliasRow?> LookupAliasAsync(string rawName, string source, CancellationToken ct)
     {
         const string sql = @"
-SELECT TOP 1 Id, CanonicalOrgId, RawName, Source, Confidence, ClassifiedBy, ClassifiedAtUtc, Notes, CreatedAtUtc
-FROM   opportunities.OrgAlias
-WHERE  RawName = @raw AND Source = @src;";
+SELECT TOP 1 a.Id, a.CanonicalOrgId, a.RawName, a.Source, a.Confidence, a.ClassifiedBy, a.ClassifiedAtUtc, a.Notes, a.CreatedAtUtc
+FROM   opportunities.OrgAlias a
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+WHERE  a.RawName = @raw AND a.Source = @src
+  AND (a.CanonicalOrgId IS NULL OR co.RetiredAtUtc IS NULL);";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);

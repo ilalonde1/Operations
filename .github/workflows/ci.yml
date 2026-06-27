@@ -34,6 +34,15 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-
 
+      # Resolver / canonical-org intake invariants (dup-minting + retired-match
+      # guards). Runs first and independently so the front-door standardization
+      # is enforced on every push regardless of other test projects.
+      - name: Build resolver test project
+        run: dotnet build Kor.Opportunities.Data.Tests/Kor.Opportunities.Data.Tests.csproj --configuration Debug --nologo -v:m
+
+      - name: Run resolver tests
+        run: dotnet test Kor.Opportunities.Data.Tests/Kor.Opportunities.Data.Tests.csproj --no-build --configuration Debug --nologo --filter "Category!=Integration" --logger "trx;LogFileName=resolver-results.trx" --logger "console;verbosity=normal"
+
       # Build the test project — its ProjectReference pulls in the main app,
       # so this exercises the full production compile too. Fails fast if
       # production code or test project is broken.

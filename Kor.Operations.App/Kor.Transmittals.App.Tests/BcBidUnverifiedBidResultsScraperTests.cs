@@ -176,6 +176,21 @@ public sealed class BcBidUnverifiedBidResultsScraperTests
         public Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct)
             => Task.FromResult<long?>(null);
 
+        public Task<long?> ResolveCanonicalOrgMergeAsync(long canonicalOrgId, CancellationToken ct)
+            => Task.FromResult<long?>(null);
+
+        public Task<long?> FindMergedSurvivorByAliasAsync(string rawName, string source, CancellationToken ct)
+            => Task.FromResult<long?>(null);
+
+        public Task<long?> FindMergedSurvivorByNormalizedNameAsync(string normalizedName, CancellationToken ct)
+            => Task.FromResult<long?>(null);
+
+        public Task<int> CountRetiredMatchesAsync(string rawName, string source, string normalizedName, string fuzzyKey, CancellationToken ct)
+            => Task.FromResult(0);
+
+        public Task PromoteCanonicalOrgWebsiteNotesAsync(long canonicalOrgId, string? website, string? notes, CancellationToken ct)
+            => Task.CompletedTask;
+
         public Task<long> UpsertAliasAsync(
             string rawName,
             string source,
