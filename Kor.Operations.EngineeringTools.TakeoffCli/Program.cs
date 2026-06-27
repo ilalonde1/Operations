@@ -1,5 +1,463 @@
+using System.Globalization;
+using System.Text.Json;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using Kor.Operations.EngineeringTools.RebarChange;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+
+// Explicit usage for the new modes so a short/typo'd invocation reports help instead of falling
+// through to the default CSV-diff path and failing with a confusing FileNotFound.
+if (args.Length >= 1 && args[0].Equals("estimate", StringComparison.OrdinalIgnoreCase) && args.Length < 3)
+{ Console.Error.WriteLine("Usage: takeoff estimate <config.json> <out.xlsx>"); return 1; }
+if (args.Length >= 1 && args[0].Equals("measure", StringComparison.OrdinalIgnoreCase) && args.Length < 8)
+{ Console.Error.WriteLine("Usage: takeoff measure <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [gray]"); return 1; }
+if (args.Length >= 1 && args[0].Equals("vision-estimate", StringComparison.OrdinalIgnoreCase) && args.Length < 3)
+{ Console.Error.WriteLine("Usage: takeoff vision-estimate <pages.json> <out.xlsx>"); return 1; }
+
+// Vision Layer 2: the app reads the drawing itself. For each page, Claude classifies the sheet and
+// locates the concrete-outline plates (level, count, element, thickness, normalized box); the Core
+// geometry then measures the largest enclosed region in each box; the pipeline prices + reconciles.
+// Usage: takeoff vision-estimate <pages.json> <out.xlsx>
+if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.OrdinalIgnoreCase))
+{
+    VisionPagesConfig? cfg;
+    try
+    {
+        cfg = JsonSerializer.Deserialize<VisionPagesConfig>(
+            File.ReadAllText(args[1]), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    }
+    catch (Exception ex) { Console.Error.WriteLine($"Could not read/parse pages config '{args[1]}': {ex.Message}"); return 2; }
+    if (cfg is null || cfg.Pages is null || cfg.Pages.Count == 0) { Console.Error.WriteLine("Pages config has no pages."); return 2; }
+    if (string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set — vision layer needs an Anthropic key."); return 2; }
+
+    var vProfile = PlanProfile.ByName(cfg.Profile);
+    var vPlates = new List<MeasuredPlate>();
+    // Suspended slabs are collected here and reconciled building-wide AFTER all sheets are read, so
+    // each physical floor is counted once regardless of how the set encodes its level/layout ranges.
+    var pendingSlabs = new List<PendingSlab>();
+    // Building-wide guard: the same floor is often drawn on several sheets (multi-issue reprints,
+    // formwork vs reinforcing copies, enlarged partials). Summing all of them multiply-counts the
+    // structure, so the first sheet to claim a given (kind + set-of-level-labels) wins.
+    var seenSheetSignatures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var pg in cfg.Pages)
+    {
+        string png = Path.IsPathRooted(pg.Png) ? pg.Png : Path.Combine(cfg.PngDir ?? "", pg.Png ?? "");
+        if (!File.Exists(png)) { Console.Error.WriteLine($"  ! image not found '{png}', skipped."); continue; }
+        double dpi = pg.Dpi ?? cfg.Dpi;
+
+        SheetReading reading;
+        try
+        {
+            byte[] small = PlanRaster.LoadDownscaledPng(png, 1500);
+            string visionJson = await PlanVisionClient.ReadSheetJsonAsync(small);
+            reading = PlanVisionParser.Parse(visionJson);
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"  ! {Path.GetFileName(png)}: vision failed: {ex.Message}, skipped."); continue; }
+
+        Console.WriteLine($"  {Path.GetFileName(png)}: {reading.Kind}, scale '{reading.ScaleNote ?? "(none)"}', {reading.Plates.Count} plate(s)");
+        if (reading.Kind != SheetKind.Framing && reading.Kind != SheetKind.Foundation) continue;
+
+        // Skip a sheet that re-draws levels an earlier sheet already supplied (kind + level-label set).
+        string sheetSig = reading.Kind + ":" + string.Join("|", reading.Plates
+            .Select(p => System.Text.RegularExpressions.Regex.Replace((p.Level ?? "").Trim().ToUpperInvariant(), @"\s+", " "))
+            .Where(s => s.Length > 0)
+            .Distinct()
+            .OrderBy(s => s, StringComparer.Ordinal));
+        if (reading.Plates.Count > 0 && !seenSheetSignatures.Add(sheetSig))
+        { Console.Error.WriteLine($"  · {Path.GetFileName(png)}: levels already taken from an earlier sheet — duplicate, skipped."); continue; }
+
+        double? mppSheet = PlanGeometry.MetresPerPixel(reading.ScaleNote, dpi);
+        double? mpp = mppSheet ?? PlanGeometry.MetresPerPixel(cfg.Scale, dpi);
+        if (mpp is null) { Console.Error.WriteLine($"  ! {Path.GetFileName(png)}: no usable scale, skipped."); continue; }
+        // Confirmed only when THIS sheet's own scale note parsed. A non-null but unparseable note that
+        // fell back to the config scale is NOT confirmation — let the pipeline flag SCALE_UNCONFIRMED.
+        bool scaleConfirmed = mppSheet.HasValue;
+
+        int fullW, fullH;
+        try { (fullW, fullH) = PlanRaster.ImageSize(png); }
+        catch (Exception ex) { Console.Error.WriteLine($"  ! {Path.GetFileName(png)}: cannot read image size: {ex.Message}, skipped."); continue; }
+
+        // Vertical-element footprints already claimed on THIS sheet (full-image centroids), so a column
+        // sitting in the overlap of two plate boxes is counted once, not under both plates.
+        var claimedVertical = new List<(int x, int y)>();
+        foreach (var pl in reading.Plates)
+        {
+            // The vision layer returns a degenerate (zero-area) box when it could not locate a plate;
+            // skip it rather than crop a bogus region. The parser never defaults to the whole sheet.
+            if (pl.NormX1 <= pl.NormX0 || pl.NormY1 <= pl.NormY0)
+            { Console.Error.WriteLine($"  ! {pl.Level}: no usable box from vision, skipped."); continue; }
+
+            // Vision-estimate measures slab/foundation plates only. Walls/columns are gray-fill, which
+            // isn't box-confined (it would sum a clipped neighbour's gray) — route those to the
+            // deterministic `estimate` mode with a tight human crop instead of measuring them here.
+            if (pl.Element is TakeoffElementType.Wall or TakeoffElementType.Column)
+            { Console.Error.WriteLine($"  ! {pl.Level} {pl.Element}: vision wall/column not supported (use 'estimate' mode), skipped."); continue; }
+
+            const double pad = 0.025;
+            int x0 = (int)((pl.NormX0 - pad) * fullW), y0 = (int)((pl.NormY0 - pad) * fullH);
+            int x1 = (int)((pl.NormX1 + pad) * fullW), y1 = (int)((pl.NormY1 + pad) * fullH);
+            PlanRaster.Crop crop;
+            try { crop = PlanRaster.LoadCrop(png, x0, y0, x1, y1); }
+            catch (Exception ex) { Console.Error.WriteLine($"  ! {pl.Level}: crop failed: {ex.Message}, skipped."); continue; }
+
+            // Map the UNPADDED vision box into crop-local pixels (LoadCrop clamps the origin to >=0).
+            int cox = Math.Clamp(x0, 0, fullW), coy = Math.Clamp(y0, 0, fullH);
+            int bx0 = Math.Clamp((int)(pl.NormX0 * fullW) - cox, 0, crop.Width);
+            int by0 = Math.Clamp((int)(pl.NormY0 * fullH) - coy, 0, crop.Height);
+            int bx1 = Math.Clamp((int)(pl.NormX1 * fullW) - cox, 0, crop.Width);
+            int by1 = Math.Clamp((int)(pl.NormY1 * fullH) - coy, 0, crop.Height);
+
+            // Cluster the crop into plates. mergeGapPx scales with render DPI (grid lines are a fixed
+            // PAPER width → more pixels at higher DPI); minPixels drops sub-½-sq.ft specks and text
+            // counters so a note string can't chain two plates into one cluster.
+            int mergeGap = Math.Max(4, (int)Math.Round(dpi * 0.05));
+            long minPx = Math.Max(1L, (long)(0.5 / (mpp.Value * mpp.Value * 10.763910416709722)));
+            var clusters = PlanGeometry.MeasureEnclosedClusters(
+                crop.Lum, crop.Width, crop.Height, minPixels: minPx, mergeGapPx: mergeGap);
+
+            // The plate is the LARGEST cluster lying predominantly inside the vision box (bbox ≥60%
+            // overlapped). Honouring the box is what defeats the "bigger neighbour" trap: a neighbour
+            // the padded box merely clipped contributes only a partial fragment, which loses to the
+            // target's full plate; small in-box strays (dimension tables, legends) lose too. We do NOT
+            // silently sum secondary clusters — a clipped neighbour can also look "in-box". Instead we
+            // FLAG when a comparable second region is present, and let a human resolve the box.
+            long px = 0, second = 0;
+            foreach (var c in clusters)
+            {
+                long bboxArea = (long)c.Width * c.Height;
+                long ix = Math.Max(0L, Math.Min(c.MaxX, bx1 - 1) - Math.Max(c.MinX, bx0) + 1);
+                long iy = Math.Max(0L, Math.Min(c.MaxY, by1 - 1) - Math.Max(c.MinY, by0) + 1);
+                double ratio = bboxArea > 0 ? (double)(ix * iy) / bboxArea : 0;
+                if (ratio < 0.6) continue;                    // not predominantly inside this plate's box
+                if (px == 0) px = c.LightPx;                  // largest in-box (clusters are sorted largest-first)
+                else if (second == 0) second = c.LightPx;     // next-largest in-box, for the ambiguity check
+            }
+            bool ambiguous = false;
+            if (px == 0 && clusters.Count > 0) { px = clusters[0].LightPx; ambiguous = true; } // box missed the plate
+            if (px == 0) { Console.Error.WriteLine($"  ! {pl.Level}: no enclosed region found, skipped."); continue; }
+            if (ambiguous)
+                Console.Error.WriteLine($"  ~ {pl.Level}: vision box did not cleanly enclose a plate — used largest region, VERIFY.");
+            else if (second >= px * 0.5)
+                Console.Error.WriteLine($"  ~ {pl.Level}: a comparable second region is inside the box — possible clipped neighbour or multi-part plate, VERIFY box.");
+
+            double areaSqFt = PlanGeometry.SquareFeet(px, mpp.Value);
+            double thickness = pl.ThicknessIn ?? 0;          // 0 => pipeline flags THK_UNRESOLVED
+            // Slab-on-grade thickness is usually a note off the footings sheet; fall back to the config
+            // default so the SOG isn't silently dropped (still flagged if no default is configured).
+            if (thickness <= 0 && cfg.SogThicknessIn > 0 && pl.Element == TakeoffElementType.Foundation
+                && pl.Level.IndexOf("SOG", StringComparison.OrdinalIgnoreCase) >= 0)
+                thickness = cfg.SogThicknessIn;
+
+            // Foundations (footings / SOG / mats) are built ONCE — emit directly with count 1. Suspended
+            // slabs are deferred to the building-wide floor reconciliation that fixes their counts below.
+            if (pl.Element is not TakeoffElementType.Slab)
+            {
+                vPlates.Add(new MeasuredPlate(pl.Level, pl.Element, pl.Variant, areaSqFt, thickness, Math.Max(1, pl.Count), "", scaleConfirmed));
+                Console.WriteLine($"      {pl.Level} {pl.Element} {thickness:0.#}\" x1: {areaSqFt:N0} sq.ft (conf {pl.Confidence:0.00})");
+                continue;
+            }
+
+            // ── derive the vertical concrete (walls + columns) co-located on this slab ────────────
+            // Solid-gray fill inside the SAME plate outline; the slab area above is gross (spans under
+            // them) so this is additional concrete. Only when the box was trusted and a storey height
+            // is known. Footprints captured now, priced at the reconciled floor count below.
+            double wallSqFt = 0, colSqFt = 0;
+            double storeyIn = pg.StoreyHeightIn ?? cfg.StoreyHeightIn;
+            if (ambiguous || second >= px * 0.5)
+                Console.Error.WriteLine($"  ~ {pl.Level}: box not trusted — wall/column NOT measured for this plate.");
+            else if (storeyIn <= 0)
+                Console.Error.WriteLine($"  ~ {pl.Level}: no storey height set — wall/column concrete NOT measured (set storeyHeightIn).");
+            else
+            {
+                try
+                {
+                    double sqftPerPx = mpp.Value * mpp.Value * 10.763910416709722;
+                    long colMinPx = Math.Max(20L, (long)(0.2 / sqftPerPx));   // drop sub-0.2-sq.ft gray speckle
+                    long colMaxPx = (long)(25.0 / sqftPerPx);                 // a column footprint caps ~25 sq.ft; bigger ⇒ wall
+                    int dedupeTolPx = Math.Max(8, (int)(0.4572 / mpp.Value));  // ~18" — same physical column across overlapping boxes
+                    var grayComps = PlanGeometry.MeasureGrayComponents(
+                        crop.R, crop.G, crop.B, crop.Width, crop.Height, minPixels: colMinPx);
+                    long wallPx = 0, colPx = 0; int nWall = 0, nCol = 0;
+                    foreach (var gc in grayComps)
+                    {
+                        int gcx = (gc.MinX + gc.MaxX) / 2, gcy = (gc.MinY + gc.MaxY) / 2;
+                        if (gcx < bx0 || gcx > bx1 || gcy < by0 || gcy > by1) continue;  // outside this plate's box
+                        int fx = cox + gcx, fy = coy + gcy;                              // full-sheet centroid
+                        bool already = false;
+                        foreach (var (cxr, cyr) in claimedVertical)
+                            if (Math.Abs(cxr - fx) <= dedupeTolPx && Math.Abs(cyr - fy) <= dedupeTolPx) { already = true; break; }
+                        if (already) continue;                                           // already counted under an overlapping plate
+                        claimedVertical.Add((fx, fy));
+                        if (PlanGeometry.ClassifyVertical(gc, colMaxPx) == PlanGeometry.VerticalKind.Wall)
+                        { wallPx += gc.AreaPx; nWall++; }
+                        else { colPx += gc.AreaPx; nCol++; }
+                    }
+                    wallSqFt = PlanGeometry.SquareFeet(wallPx, mpp.Value);
+                    colSqFt = PlanGeometry.SquareFeet(colPx, mpp.Value);
+                }
+                catch (Exception ex) { Console.Error.WriteLine($"  ~ {pl.Level}: vertical measurement failed: {ex.Message}, slab kept."); }
+            }
+            pendingSlabs.Add(new PendingSlab(pl.Level, pl.Variant, areaSqFt, thickness, pl.Confidence, scaleConfirmed, wallSqFt, colSqFt, storeyIn));
+            Console.WriteLine($"      {pl.Level} Slab {thickness:0.#}\": {areaSqFt:N0} sq.ft (+ wall {wallSqFt:N0} / col {colSqFt:N0}) (conf {pl.Confidence:0.00})");
+        }
+    }
+
+    // ── building-wide floor reconciliation ──────────────────────────────────────────────────────
+    // Count each physical floor's suspended slab exactly once. Parse every slab's level label into the
+    // floors it represents, assign each floor to one owning plate, and price it at that owned count —
+    // so overlapping "LAYOUT APPLIES TO" sets and outline/reinforcing copies collapse, while clean
+    // bands are untouched. Walls/columns inherit their slab's reconciled count.
+    var slabRefs = new List<BuildingRollup.SlabRef>(pendingSlabs.Count);
+    for (int i = 0; i < pendingSlabs.Count; i++)
+        slabRefs.Add(new BuildingRollup.SlabRef(i, pendingSlabs[i].Level, pendingSlabs[i].AreaSqFt, pendingSlabs[i].Confidence, pendingSlabs[i].ThicknessIn));
+    var ownedFloors = BuildingRollup.AssignSlabFloors(slabRefs);
+    int keptSlabs = 0, droppedSlabs = 0;
+    for (int i = 0; i < pendingSlabs.Count; i++)
+    {
+        var s = pendingSlabs[i];
+        int eff = ownedFloors.TryGetValue(i, out var e) ? e : 1;
+        if (eff <= 0)
+        { droppedSlabs++; Console.Error.WriteLine($"  · {s.Level}: floor(s) already owned by a more specific or re-issued sheet — dropped."); continue; }
+        keptSlabs++;
+        vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Slab, s.Variant, s.AreaSqFt, s.ThicknessIn, eff, "", s.ScaleConfirmed));
+        if (s.WallSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Wall, "shear", s.WallSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
+        if (s.ColSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Column, null, s.ColSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
+    }
+    Console.WriteLine($"Floor reconciliation: {keptSlabs} slab plate(s) kept, {droppedSlabs} dropped as duplicate/superseded.");
+
+    if (vPlates.Count == 0) { Console.Error.WriteLine("No measurable plates from vision."); return 2; }
+
+    var vResult = PlanEstimatePipeline.Run(vPlates, vProfile);
+    var vComputed = StructuralTakeoffService.Compute(vResult.TakeoffInputs, vProfile.ToImperialDensityTable());
+    var vModel = new StructuralTakeoffReportModel(cfg.Project ?? "", cfg.Name ?? "", cfg.Issue ?? "", DateTime.UtcNow, vComputed);
+    File.WriteAllBytes(args[2], StructuralTakeoffReportGenerator.BuildXlsx(vModel));
+
+    Console.WriteLine($"Profile: {vProfile.Name}   Plates: {vResult.Plates.Count}");
+    Console.WriteLine($"Concrete: {vResult.TotalConcreteCuYd:N0} cu.yd   Reinforcing: {vComputed.TotalRebarWeight:N0} lb");
+    Console.WriteLine($"Diligence: {vResult.CriticalCount} critical, {vResult.ReviewCount} to review");
+    foreach (var pe in vResult.Plates)
+        foreach (var f in pe.Check.Flags)
+            Console.WriteLine($"  [{f.Severity}] {pe.Plate.Level} {pe.Plate.Element}: {f.Message}");
+    Console.WriteLine($"Wrote {args[2]}");
+    return 0;
+}
+
+// Full stickfile → takeoff estimate. Reads a building config (the plate map a human or the
+// vision layer produces), measures each plate off its rasterized sheet with the Core geometry
+// engine, prices + reconciles via the pipeline, and writes the same orange-celled takeoff xlsx
+// the app produces — plus a diligence report of everything it could not fully trust.
+// Usage: takeoff estimate <config.json> <out.xlsx>
+if (args.Length >= 3 && args[0].Equals("estimate", StringComparison.OrdinalIgnoreCase))
+{
+    EstimateConfig? json;
+    try
+    {
+        json = JsonSerializer.Deserialize<EstimateConfig>(
+            File.ReadAllText(args[1]),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    }
+    catch (Exception ex) { Console.Error.WriteLine($"Could not read/parse config '{args[1]}': {ex.Message}"); return 2; }
+    if (json is null) { Console.Error.WriteLine("Config parsed to null."); return 2; }
+    if (json.Plates is null || json.Plates.Count == 0) { Console.Error.WriteLine("Config has no plates."); return 2; }
+
+    var profile = PlanProfile.ByName(json.Profile);
+    var plates = new List<MeasuredPlate>();
+    foreach (var pc in json.Plates)
+    {
+        string tag = $"{pc.Level} {pc.Element}";
+        double dpi = pc.Dpi ?? json.Dpi;
+        string note = pc.Scale ?? json.Scale;
+        double? mpp = PlanGeometry.MetresPerPixel(note, dpi);
+        if (mpp is null) { Console.Error.WriteLine($"  ! {tag}: unparseable scale '{note}', skipped."); continue; }
+        if (pc.Crop is not { Length: 4 }) { Console.Error.WriteLine($"  ! {tag}: crop must be [x0,y0,x1,y1], skipped."); continue; }
+        if (!(pc.AreaFraction > 0)) { Console.Error.WriteLine($"  ! {tag}: areaFraction must be > 0, skipped."); continue; }
+
+        string png = Path.IsPathRooted(pc.Png) ? pc.Png : Path.Combine(json.PngDir ?? "", pc.Png ?? "");
+        if (!File.Exists(png)) { Console.Error.WriteLine($"  ! {tag}: image not found '{png}', skipped."); continue; }
+
+        PlanRaster.Crop crop;
+        try { crop = PlanRaster.LoadCrop(png, pc.Crop[0], pc.Crop[1], pc.Crop[2], pc.Crop[3]); }
+        catch (Exception ex) { Console.Error.WriteLine($"  ! {tag}: could not load/crop '{png}': {ex.Message}, skipped."); continue; }
+
+        long px = pc.Gray
+            ? PlanGeometry.MeasureGrayFootprint(crop.R, crop.G, crop.B, crop.Width, crop.Height)
+            : PlanGeometry.MeasureEnclosedArea(crop.Lum, crop.Width, crop.Height).LowerPx;
+        double areaSqFt = PlanGeometry.SquareFeet(px, mpp.Value) * pc.AreaFraction;
+
+        plates.Add(new MeasuredPlate(
+            pc.Level, PlanRaster.ParseElement(pc.Element), pc.Variant,
+            areaSqFt, pc.DimensionIn, pc.Count, pc.Grade ?? "", pc.ScaleConfirmed, pc.RebarLbPerCyOverride));
+    }
+    if (plates.Count == 0) { Console.Error.WriteLine("No measurable plates after validation."); return 2; }
+
+    var result = PlanEstimatePipeline.Run(plates, profile);
+    var computed = StructuralTakeoffService.Compute(result.TakeoffInputs, profile.ToImperialDensityTable());
+    var eModel = new StructuralTakeoffReportModel(json.Project ?? "", json.Name ?? "", json.Issue ?? "", DateTime.UtcNow, computed);
+    File.WriteAllBytes(args[2], StructuralTakeoffReportGenerator.BuildXlsx(eModel));
+
+    Console.WriteLine($"Profile: {profile.Name}   Plates: {result.Plates.Count}");
+    Console.WriteLine($"Concrete: {result.TotalConcreteCuYd:N0} cu.yd   Reinforcing: {computed.TotalRebarWeight:N0} lb   ({computed.TotalRebarWeight / 2000:N0} tons)");
+    Console.WriteLine($"Diligence: {result.CriticalCount} critical, {result.ReviewCount} to review");
+    foreach (var pe in result.Plates)
+        foreach (var f in pe.Check.Flags)
+            Console.WriteLine($"  [{f.Severity}] {pe.Plate.Level} {pe.Plate.Element}: {f.Message}");
+    Console.WriteLine($"Wrote {args[2]}");
+    return 0;
+}
+
+// Layer-1 geometry probe: measure a plate area (flood-fill) or a wall/column footprint
+// (gray-fill) off one rasterized plan crop. Validates the engine and is the pipeline's
+// measurement step. Usage: takeoff measure <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [gray]
+if (args.Length >= 8 && args[0].Equals("measure", StringComparison.OrdinalIgnoreCase))
+{
+    var ic = CultureInfo.InvariantCulture;
+    if (!int.TryParse(args[2], NumberStyles.Integer, ic, out int x0) ||
+        !int.TryParse(args[3], NumberStyles.Integer, ic, out int y0) ||
+        !int.TryParse(args[4], NumberStyles.Integer, ic, out int x1) ||
+        !int.TryParse(args[5], NumberStyles.Integer, ic, out int y1) ||
+        !double.TryParse(args[6], NumberStyles.Float, ic, out double dpi))
+    { Console.Error.WriteLine("measure: crop coords must be integers and dpi a number."); return 2; }
+    string note = args[7];
+    double? mpp = PlanGeometry.MetresPerPixel(note, dpi);
+    if (mpp is null) { Console.Error.WriteLine($"Unparseable scale note '{note}'."); return 2; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Image not found '{args[1]}'."); return 2; }
+
+    PlanRaster.Crop crop;
+    try { crop = PlanRaster.LoadCrop(args[1], x0, y0, x1, y1); }
+    catch (Exception ex) { Console.Error.WriteLine($"Could not load/crop '{args[1]}': {ex.Message}"); return 2; }
+    bool gray = args.Length > 8 && args[8].Equals("gray", StringComparison.OrdinalIgnoreCase);
+    if (gray)
+    {
+        long px = PlanGeometry.MeasureGrayFootprint(crop.R, crop.G, crop.B, crop.Width, crop.Height);
+        Console.WriteLine($"crop {crop.Width}x{crop.Height}  mpp={mpp:0.000000}");
+        Console.WriteLine($"gray footprint : {px:N0} px = {PlanGeometry.SquareFeet(px, mpp.Value):N0} sq.ft");
+    }
+    else
+    {
+        var a = PlanGeometry.MeasureEnclosedArea(crop.Lum, crop.Width, crop.Height);
+        var clusters = PlanGeometry.MeasureEnclosedClusters(crop.Lum, crop.Width, crop.Height);
+        long largest = clusters.Count > 0 ? clusters[0].LightPx : 0;
+        Console.WriteLine($"crop {crop.Width}x{crop.Height}  mpp={mpp:0.000000}  clusters={clusters.Count}");
+        Console.WriteLine($"enclosed lo(light)  : {a.LowerPx,11:N0} px = {PlanGeometry.SquareFeet(a.LowerPx, mpp.Value):N0} sq.ft");
+        Console.WriteLine($"enclosed hi(+dark)  : {a.UpperPx,11:N0} px = {PlanGeometry.SquareFeet(a.UpperPx, mpp.Value):N0} sq.ft");
+        Console.WriteLine($"largest cluster     : {largest,11:N0} px = {PlanGeometry.SquareFeet(largest, mpp.Value):N0} sq.ft");
+    }
+    return 0;
+}
+
+// Gray-fill diagnostic: dump the neutral-tone histogram + the gray connected-components (with shape)
+// of a crop, so wall/column fill thresholds and the shape split are chosen from evidence, not guessed.
+// Usage: takeoff graycomp <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [lo] [hi]
+if (args.Length >= 8 && args[0].Equals("graycomp", StringComparison.OrdinalIgnoreCase))
+{
+    var ic = CultureInfo.InvariantCulture;
+    if (!int.TryParse(args[2], NumberStyles.Integer, ic, out int x0) ||
+        !int.TryParse(args[3], NumberStyles.Integer, ic, out int y0) ||
+        !int.TryParse(args[4], NumberStyles.Integer, ic, out int x1) ||
+        !int.TryParse(args[5], NumberStyles.Integer, ic, out int y1) ||
+        !double.TryParse(args[6], NumberStyles.Float, ic, out double dpi))
+    { Console.Error.WriteLine("graycomp: crop coords must be integers and dpi a number."); return 2; }
+    double? mpp = PlanGeometry.MetresPerPixel(args[7], dpi);
+    if (mpp is null) { Console.Error.WriteLine($"Unparseable scale note '{args[7]}'."); return 2; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Image not found '{args[1]}'."); return 2; }
+    int lo = args.Length > 8 && int.TryParse(args[8], NumberStyles.Integer, ic, out int loV) ? loV : 196;
+    int hi = args.Length > 9 && int.TryParse(args[9], NumberStyles.Integer, ic, out int hiV) ? hiV : 228;
+
+    PlanRaster.Crop crop;
+    try { crop = PlanRaster.LoadCrop(args[1], x0, y0, x1, y1); }
+    catch (Exception ex) { Console.Error.WriteLine($"Could not load/crop '{args[1]}': {ex.Message}"); return 2; }
+
+    double sqftPer(long p) => PlanGeometry.SquareFeet(p, mpp.Value);
+    var histo = PlanGeometry.NeutralLuminanceHistogram(crop.R, crop.G, crop.B, crop.Width, crop.Height);
+    Console.WriteLine($"crop {crop.Width}x{crop.Height}  mpp={mpp:0.000000}  band=[{lo},{hi}]");
+    Console.WriteLine("neutral-tone histogram (lum bin -> px):");
+    for (int bi = 0; bi < histo.Length; bi++)
+        if (histo[bi] > 0) Console.WriteLine($"  {bi * 16,3}-{bi * 16 + 15,3}: {histo[bi],10:N0}");
+
+    var comps = PlanGeometry.MeasureGrayComponents(crop.R, crop.G, crop.B, crop.Width, crop.Height, lo, hi, minPixels: 30);
+    long total = 0; foreach (var c in comps) total += c.AreaPx;
+    Console.WriteLine($"gray band total: {total:N0} px = {sqftPer(total):N1} sq.ft across {comps.Count} comp(s)");
+    Console.WriteLine("top components (area sq.ft, WxH px, solidity, elongation):");
+    for (int k = 0; k < Math.Min(20, comps.Count); k++)
+    {
+        var c = comps[k];
+        Console.WriteLine($"  {sqftPer(c.AreaPx),7:N1}  {c.Width,4}x{c.Height,-4}  sol={c.Solidity:0.00}  elong={c.Elongation:0.0}");
+    }
+    return 0;
+}
+
+// Hatched-footing detector diagnostic: deterministically find the cross-hatched concrete mats /
+// deep footings on a crop and list their measured areas. Used to calibrate density / minSqFt.
+// Usage: takeoff hatch <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [densityPct] [minSqFt] [winR]
+if (args.Length >= 8 && args[0].Equals("hatch", StringComparison.OrdinalIgnoreCase))
+{
+    var ic = CultureInfo.InvariantCulture;
+    if (!int.TryParse(args[2], NumberStyles.Integer, ic, out int x0) ||
+        !int.TryParse(args[3], NumberStyles.Integer, ic, out int y0) ||
+        !int.TryParse(args[4], NumberStyles.Integer, ic, out int x1) ||
+        !int.TryParse(args[5], NumberStyles.Integer, ic, out int y1) ||
+        !double.TryParse(args[6], NumberStyles.Float, ic, out double dpi))
+    { Console.Error.WriteLine("hatch: crop coords must be integers and dpi a number."); return 2; }
+    double? mpp = PlanGeometry.MetresPerPixel(args[7], dpi);
+    if (mpp is null) { Console.Error.WriteLine($"Unparseable scale note '{args[7]}'."); return 2; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Image not found '{args[1]}'."); return 2; }
+    double densityPct = args.Length > 8 && double.TryParse(args[8], NumberStyles.Float, ic, out double dn) ? dn : 18.0;
+    double minSqFt = args.Length > 9 && double.TryParse(args[9], NumberStyles.Float, ic, out double ms) ? ms : 10.0;
+    int winR = args.Length > 10 && int.TryParse(args[10], NumberStyles.Integer, ic, out int wr) ? wr : 10;
+
+    PlanRaster.Crop crop;
+    try { crop = PlanRaster.LoadCrop(args[1], x0, y0, x1, y1); }
+    catch (Exception ex) { Console.Error.WriteLine($"Could not load/crop '{args[1]}': {ex.Message}"); return 2; }
+    long minPx = (long)(minSqFt / (mpp.Value * mpp.Value * 10.763910416709722));
+    var regions = PlanGeometry.MeasureHatchedRegions(crop.Lum, crop.Width, crop.Height, windowRadius: winR, densityPercent: densityPct, minPixels: minPx);
+    long tot = 0; foreach (var r in regions) tot += r.AreaPx;
+    Console.WriteLine($"crop {crop.Width}x{crop.Height}  mpp={mpp:0.000000}  density={densityPct}%  winR={winR}  minSqFt={minSqFt}");
+    Console.WriteLine($"{regions.Count} hatched region(s), total {PlanGeometry.SquareFeet(tot, mpp.Value):N0} sq.ft:");
+    for (int k = 0; k < Math.Min(25, regions.Count); k++)
+    {
+        var r = regions[k];
+        Console.WriteLine($"  {PlanGeometry.SquareFeet(r.AreaPx, mpp.Value),7:N0} sq.ft  {r.Width,4}x{r.Height,-4}  @({r.CentroidX},{r.CentroidY})");
+    }
+    return 0;
+}
+
+// Single-issue absolute takeoff from one concrete schedule CSV (faithful to the app's
+// GenerateTakeoff_Click: Import -> Compute -> BuildXlsx).
+// Usage: takeoff single <schedule.csv> <out.xlsx> [wbs] [name] [issue] [imperial]
+if (args.Length >= 3 && args[0].Equals("single", StringComparison.OrdinalIgnoreCase))
+{
+    var sInputs = StructuralTakeoffCsvImporter.Import(File.ReadAllText(args[1]));
+    bool imp = args.Length > 6 && args[6].Equals("imperial", StringComparison.OrdinalIgnoreCase);
+    var table = imp ? StructuralDensityTable.KorImperialDefault : StructuralDensityTable.KorMetricDefault;
+    var sResult = StructuralTakeoffService.Compute(sInputs, table);
+    var sModel = new StructuralTakeoffReportModel(
+        args.Length > 3 ? args[3] : "", args.Length > 4 ? args[4] : "",
+        args.Length > 5 ? args[5] : "", DateTime.UtcNow, sResult);
+    File.WriteAllBytes(args[2], StructuralTakeoffReportGenerator.BuildXlsx(sModel));
+    string vU = imp ? "cu.yd" : "m3", wU = imp ? "lb" : "kg";
+    Console.WriteLine($"Rows: {sInputs.Count}   Concrete: {sResult.TotalConcreteVolume:N0} {vU}   Reinforcing: {sResult.TotalRebarWeight:N0} {wU}");
+    Console.WriteLine($"Wrote {args[2]}");
+    return 0;
+}
+
+// Visual-markup mode (faithful to the app's GenerateOverlay_Click): on-drawing red/green markup.
+// Usage: takeoff overlay <before.pdf> <after.pdf> <out.pdf> [name] [beforeLabel] [afterLabel] [imperial]
+if (args.Length >= 4 && args[0].Equals("overlay", StringComparison.OrdinalIgnoreCase))
+{
+    string oname = args.Length > 4 ? args[4] : string.Empty;
+    string obl   = args.Length > 5 ? args[5] : "Before";
+    string oal   = args.Length > 6 ? args[6] : "After";
+    var ounit = (args.Length > 7 && args[7].Equals("imperial", StringComparison.OrdinalIgnoreCase))
+        ? UnitSystem.Imperial : UnitSystem.Metric;
+    var obytes = RebarOverlayGenerator.Build(args[1], args[2], oname, obl, oal, ounit);
+    File.WriteAllBytes(args[3], obytes);
+    using (var doc = UglyToad.PdfPig.PdfDocument.Open(obytes))
+        Console.WriteLine($"Markup pages: {doc.NumberOfPages}");
+    Console.WriteLine($"Wrote {args[3]}");
+    return 0;
+}
 
 // Rebar change-detection mode: takeoff rebar <before.pdf> <after.pdf> <out.xlsx> [name] [beforeLabel] [afterLabel]
 if (args.Length >= 4 && args[0].Equals("rebar", StringComparison.OrdinalIgnoreCase))
@@ -103,3 +561,135 @@ if (diff.AddedLevels.Count > 0) Console.WriteLine("Added levels: " + string.Join
 if (diff.RemovedLevels.Count > 0) Console.WriteLine("Removed levels: " + string.Join(", ", diff.RemovedLevels));
 Console.WriteLine($"Wrote {outBase}.xlsx and {outBase}.docx");
 return 0;
+
+// Decodes a rasterized plan page (PNG) and crops a region into the pixel buffers the Core
+// PlanGeometry engine consumes. Crop box is [x0,x1) × [y0,y1), clamped to the image.
+static class PlanRaster
+{
+    public readonly record struct Crop(byte[] Lum, byte[] R, byte[] G, byte[] B, int Width, int Height);
+
+    public static Crop LoadCrop(string path, int x0, int y0, int x1, int y1)
+    {
+        using var img = Image.Load<Rgb24>(path);
+        x0 = Math.Clamp(x0, 0, img.Width);
+        x1 = Math.Clamp(x1, 0, img.Width);
+        y0 = Math.Clamp(y0, 0, img.Height);
+        y1 = Math.Clamp(y1, 0, img.Height);
+        int w = x1 - x0, h = y1 - y0;
+        if (w <= 0 || h <= 0) throw new ArgumentException($"Empty crop after clamping: {w}x{h}.");
+
+        var lum = new byte[w * h];
+        var r = new byte[w * h];
+        var g = new byte[w * h];
+        var b = new byte[w * h];
+        img.ProcessPixelRows(accessor =>
+        {
+            for (int yy = 0; yy < h; yy++)
+            {
+                var srcRow = accessor.GetRowSpan(y0 + yy);
+                for (int xx = 0; xx < w; xx++)
+                {
+                    Rgb24 px = srcRow[x0 + xx];
+                    int i = yy * w + xx;
+                    r[i] = px.R; g[i] = px.G; b[i] = px.B;
+                    lum[i] = (byte)(0.299 * px.R + 0.587 * px.G + 0.114 * px.B);
+                }
+            }
+        });
+        return new Crop(lum, r, g, b, w, h);
+    }
+
+    public static TakeoffElementType ParseElement(string raw) => (raw ?? "").Trim().ToLowerInvariant() switch
+    {
+        "wall" => TakeoffElementType.Wall,
+        "beam" or "framing" => TakeoffElementType.Beam,
+        "column" => TakeoffElementType.Column,
+        "foundation" or "footing" or "mat" => TakeoffElementType.Foundation,
+        "droppanel" or "drop" => TakeoffElementType.DropPanel,
+        _ => TakeoffElementType.Slab,
+    };
+
+    // Full image pixel dimensions (for mapping a vision normalized box back to full-res pixels).
+    public static (int Width, int Height) ImageSize(string path)
+    {
+        var info = Image.Identify(path);
+        return (info.Width, info.Height);
+    }
+
+    // A PNG re-encoded with its long edge capped at maxEdge — sent to the vision API to keep token
+    // cost down. Measurement always runs on the full-res image; normalized boxes are resolution-free.
+    public static byte[] LoadDownscaledPng(string path, int maxEdge)
+    {
+        using var img = Image.Load<Rgb24>(path);
+        int longEdge = Math.Max(img.Width, img.Height);
+        if (longEdge > maxEdge)
+        {
+            double s = (double)maxEdge / longEdge;
+            img.Mutate(c => c.Resize(Math.Max(1, (int)(img.Width * s)), Math.Max(1, (int)(img.Height * s))));
+        }
+        using var ms = new MemoryStream();
+        img.Save(ms, new PngEncoder());
+        return ms.ToArray();
+    }
+}
+
+// Pages config for `vision-estimate`: project metadata + the rasterized sheets to read.
+sealed class VisionPagesConfig
+{
+    public string? Project { get; set; }
+    public string? Name { get; set; }
+    public string? Issue { get; set; }
+    public string Profile { get; set; } = "BC-moderate";
+    public double Dpi { get; set; } = 110;
+    public string Scale { get; set; } = "1/8\"=1'-0\"";   // fallback if the title-block scale is illegible
+    public string? PngDir { get; set; }
+    public double StoreyHeightIn { get; set; }            // floor-to-floor height for wall/column concrete; 0 = unknown
+    public double SogThicknessIn { get; set; }            // slab-on-grade thickness when not legible on the footings sheet; 0 = leave unresolved
+    public List<VisionPage> Pages { get; set; } = new();
+}
+
+sealed class VisionPage
+{
+    public string Png { get; set; } = "";
+    public double? Dpi { get; set; }
+    public double? StoreyHeightIn { get; set; }           // overrides config StoreyHeightIn for this sheet's level band
+}
+
+// A suspended-slab measurement held back until the whole building is read, so its floor count can be
+// reconciled across overlapping/duplicate sheets (BuildingRollup.AssignSlabFloors). Co-located wall and
+// column footprints ride along and inherit the slab's reconciled count.
+sealed record PendingSlab(
+    string Level, string? Variant, double AreaSqFt, double ThicknessIn, double Confidence,
+    bool ScaleConfirmed, double WallSqFt, double ColSqFt, double StoreyIn);
+
+// Building config for the `estimate` mode: project metadata + the per-plate map (which sheet, which
+// crop, how to measure it, the read thickness/height, and how many identical floors it covers).
+sealed class EstimateConfig
+{
+    public string? Project { get; set; }
+    public string? Name { get; set; }
+    public string? Issue { get; set; }
+    public string Profile { get; set; } = "BC-moderate";
+    public double Dpi { get; set; } = 110;
+    public string Scale { get; set; } = "1/8\"=1'-0\"";
+    public string? PngDir { get; set; }
+    public List<PlateConfig> Plates { get; set; } = new();
+}
+
+sealed class PlateConfig
+{
+    public string Level { get; set; } = "";
+    public string Element { get; set; } = "Slab";
+    public string? Variant { get; set; }
+    public string Png { get; set; } = "";
+    public int[] Crop { get; set; } = new int[4];     // x0, y0, x1, y1
+    public string? Scale { get; set; }                // overrides config Scale
+    public double? Dpi { get; set; }                  // overrides config Dpi
+    public bool Gray { get; set; }                    // measure gray footprint (walls/cols) vs enclosed area
+    public double DimensionIn { get; set; }           // slab/mat thickness, or wall/column storey height
+    public int Count { get; set; } = 1;               // identical floors this plate stands in for
+    public double AreaFraction { get; set; } = 1.0;   // split a gray footprint into wall vs column share
+    public string? Grade { get; set; }
+    public bool ScaleConfirmed { get; set; } = true;
+    public double? RebarLbPerCyOverride { get; set; }
+}

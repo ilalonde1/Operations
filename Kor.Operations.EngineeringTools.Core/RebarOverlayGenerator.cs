@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using UglyToad.PdfPig;
@@ -130,25 +131,63 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             string projectName, string beforeLabel, string afterLabel,
             List<(string Sheet, HashSet<string> Added, HashSet<string> Removed)> plan)
         {
+            const double Left = 50, RightX = 572; // 612pt page, ~40pt right margin
             var cv = builder.AddPage(612, 792);
             cv.SetTextAndFillColor(Navy.R, Navy.G, Navy.B);
-            cv.AddText(string.IsNullOrWhiteSpace(projectName) ? "Rebar Call-out Changes" : projectName, 20, new PdfPoint(50, 720), font);
-            cv.AddText($"Rebar call-out changes  -  {beforeLabel} to {afterLabel}", 13, new PdfPoint(50, 695), font);
-            cv.ResetColor();
-            cv.SetTextAndFillColor(Green.R, Green.G, Green.B);
-            cv.AddText($"GREEN box = reinforcing ADDED by {afterLabel} (on the {afterLabel} sheet)", 12, new PdfPoint(50, 660), font);
-            cv.SetTextAndFillColor(Red.R, Red.G, Red.B);
-            cv.AddText($"RED box   = reinforcing REMOVED since {beforeLabel} (on the {beforeLabel} sheet)", 12, new PdfPoint(50, 640), font);
-            cv.ResetColor();
-            cv.AddText($"Each changed sheet is shown with its changes boxed: removed (red) on {beforeLabel}, added (green) on {afterLabel}.", 10, new PdfPoint(50, 615), font);
+            double y = DrawWrapped(cv, font,
+                string.IsNullOrWhiteSpace(projectName) ? "Rebar Call-out Changes" : projectName,
+                Left, 720, 20, RightX, 26);
+            y = DrawWrapped(cv, font, $"Rebar call-out changes  -  {beforeLabel} to {afterLabel}", Left, y - 6, 13, RightX, 18);
 
-            double y = 585;
+            y -= 12;
+            cv.SetTextAndFillColor(Green.R, Green.G, Green.B);
+            y = DrawWrapped(cv, font, $"GREEN box = reinforcing ADDED by {afterLabel} (on the {afterLabel} sheet)", Left, y, 12, RightX, 16);
+            cv.SetTextAndFillColor(Red.R, Red.G, Red.B);
+            y = DrawWrapped(cv, font, $"RED box = reinforcing REMOVED since {beforeLabel} (on the {beforeLabel} sheet)", Left, y - 2, 12, RightX, 16);
+            cv.ResetColor();
+            y = DrawWrapped(cv, font,
+                $"The sheets below are boxed on the actual drawings: removed (red) on {beforeLabel}, added (green) on {afterLabel}. The Change Report (.xlsx) is the complete sheet-by-sheet list.",
+                Left, y - 4, 10, RightX, 14);
+
+            y -= 16;
             foreach (var p in plan)
             {
                 cv.AddText($"{p.Sheet}    +{p.Added.Count} added   -{p.Removed.Count} removed", 10, new PdfPoint(55, y), font);
                 y -= 15;
                 if (y < 40) break;
             }
+        }
+
+        // Word-wraps text to fit within [x, rightX] at the given font size, drawing each line and
+        // returning the y below the last line. PdfPig has no layout engine, so we estimate advance
+        // width from the Helvetica average (~0.5em) and wrap conservatively — nothing runs off the page.
+        private static double DrawWrapped(
+            PdfPageBuilder page, PdfDocumentBuilder.AddedFont font,
+            string text, double x, double y, double size, double rightX, double leading)
+        {
+            int maxChars = Math.Max(8, (int)((rightX - x) / (size * 0.52)));
+            foreach (var line in WrapWords(text, maxChars))
+            {
+                page.AddText(line, size, new PdfPoint(x, y), font);
+                y -= leading;
+            }
+            return y;
+        }
+
+        private static IEnumerable<string> WrapWords(string text, int maxChars)
+        {
+            var sb = new StringBuilder();
+            foreach (var w in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (sb.Length > 0 && sb.Length + 1 + w.Length > maxChars)
+                {
+                    yield return sb.ToString();
+                    sb.Clear();
+                }
+                if (sb.Length > 0) sb.Append(' ');
+                sb.Append(w);
+            }
+            if (sb.Length > 0) yield return sb.ToString();
         }
 
         // ---- extraction (positioned, unit-aware) ----
