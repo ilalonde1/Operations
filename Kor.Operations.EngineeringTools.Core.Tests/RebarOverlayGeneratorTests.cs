@@ -47,6 +47,33 @@ public sealed class RebarOverlayGeneratorTests
     }
 
     [Fact]
+    public void AddedOnlySheetEmitsOnlyTheAfterPageNotABlankBeforePage()
+    {
+        // before has one 15M@200; after has two. Net change is +1 added, 0 removed — so there is
+        // nothing to box in red. The before page must NOT be emitted (it would be a blank
+        // "removed in RED" page). Expect cover + the green after page only.
+        var before = Pdf("15M @ 200");
+        var after = Pdf2x("15M @ 200");
+        var bytes = RebarOverlayGenerator.Build(before, after, "31065", "IFT", "IFC");
+        using var doc = PdfDocument.Open(bytes);
+        Assert.Equal(2, doc.NumberOfPages); // cover + after; no blank before page
+    }
+
+    // Page 1 carries the call-out twice (count 2) so a single-count before page reads as +1 added.
+    private static byte[] Pdf2x(string callouts)
+    {
+        var b = new PdfDocumentBuilder();
+        var f = b.AddStandard14Font(Standard14Font.Helvetica);
+        var p1 = b.AddPage(600, 800);
+        p1.AddText($"S2.01.1 SLAB REINFORCING {callouts} and {callouts} S5.03 typ", 12, new PdfPoint(50, 700), f);
+        p1.AddText("S2.01.1", 20, new PdfPoint(500, 40), f);
+        var p2 = b.AddPage(600, 800);
+        p2.AddText("S5.03 S5.03 S5.03 typical detail referenced everywhere", 12, new PdfPoint(50, 700), f);
+        p2.AddText("S5.03", 20, new PdfPoint(500, 40), f);
+        return b.Build();
+    }
+
+    [Fact]
     public void NoChangesProducesCoverOnly()
     {
         var bytes = RebarOverlayGenerator.Build(Pdf("15M @ 200"), Pdf("15M @ 200"), "31065", "IFT", "IFC");

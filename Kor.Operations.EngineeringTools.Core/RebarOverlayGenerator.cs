@@ -89,15 +89,19 @@ namespace Kor.Operations.EngineeringTools.RebarChange
 
             foreach (var (sheet, added, removed) in plan)
             {
-                if (bMap.TryGetValue(sheet, out var bp))
+                // Only emit a page that actually carries a box. A sheet with additions only must not
+                // produce a blank "removed in RED" before-page (and vice-versa) — that reads as broken.
+                if (removed.Count > 0 && bMap.TryGetValue(sheet, out var bp))
                     foreach (var pg in bp)
-                        DrawSheet(builder, before, font, pg, removed, Red,
-                            $"{sheet}  -  {beforeLabel}   (removed reinforcing in RED)");
+                        if (pg.Callouts.Any(h => removed.Contains(h.Key)))
+                            DrawSheet(builder, before, font, pg, removed, Red,
+                                $"{sheet}  -  {beforeLabel}   (removed reinforcing in RED)");
 
-                if (aMap.TryGetValue(sheet, out var ap))
+                if (added.Count > 0 && aMap.TryGetValue(sheet, out var ap))
                     foreach (var pg in ap)
-                        DrawSheet(builder, after, font, pg, added, Green,
-                            $"{sheet}  -  {afterLabel}   (added reinforcing in GREEN)");
+                        if (pg.Callouts.Any(h => added.Contains(h.Key)))
+                            DrawSheet(builder, after, font, pg, added, Green,
+                                $"{sheet}  -  {afterLabel}   (added reinforcing in GREEN)");
             }
 
             return builder.Build();
@@ -136,7 +140,7 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             cv.SetTextAndFillColor(Red.R, Red.G, Red.B);
             cv.AddText($"RED box   = reinforcing REMOVED since {beforeLabel} (on the {beforeLabel} sheet)", 12, new PdfPoint(50, 640), font);
             cv.ResetColor();
-            cv.AddText($"Each sheet appears twice: {beforeLabel} then {afterLabel} - flip to see the change.", 10, new PdfPoint(50, 615), font);
+            cv.AddText($"Each changed sheet is shown with its changes boxed: removed (red) on {beforeLabel}, added (green) on {afterLabel}.", 10, new PdfPoint(50, 615), font);
 
             double y = 585;
             foreach (var p in plan)
