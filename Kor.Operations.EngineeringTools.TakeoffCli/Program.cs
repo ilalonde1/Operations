@@ -367,10 +367,17 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
     var coveredColLevels = colRes is null ? new HashSet<string>()
         : colRes.PerLevel.Where(p => p.FootprintSqFt > 0).Select(p => ScheduleTakeoff.NormalizeLevel(p.Level)).ToHashSet();
 
-    // A slab band is "schedule-covered" for an element when any of the physical floors it represents was
-    // priced by the schedule — there the gray-fill is suppressed; elsewhere it stands.
-    bool SlabCovered(string level, HashSet<string> covered) =>
-        covered.Count > 0 && BuildingRollup.ParseFloors(level).Any(f => covered.Contains(ScheduleTakeoff.NormalizeLevel(f)));
+    // A slab band is "schedule-covered" for an element when the level it represents was priced by the
+    // schedule — there the gray-fill is suppressed; elsewhere it stands. Match both the slab's RAW label
+    // (so "P1 MEZZ" matches a schedule "P1 MEZZ") and its parsed floors (so a band "L17-28" matches the
+    // schedule's per-level "L17"…"L28") — otherwise a label variant keeps gray-fill ON a covered level
+    // and double-counts it against the schedule.
+    bool SlabCovered(string level, HashSet<string> covered)
+    {
+        if (covered.Count == 0) return false;
+        if (covered.Contains(ScheduleTakeoff.NormalizeLevel(level))) return true;
+        return BuildingRollup.ParseFloors(level).Any(f => covered.Contains(ScheduleTakeoff.NormalizeLevel(f)));
+    }
 
     int grayWallsKept = 0, grayColsKept = 0;
 
