@@ -33,6 +33,11 @@ if (args.Length >= 1 && args[0].Equals("vector-sched", StringComparison.OrdinalI
     Console.WriteLine($"Thickness cells ({cells.Count}):");
     foreach (var c in cells)
         Console.WriteLine($"    {c.ThicknessIn,2:F0}\" WALL  @ {c.Level,-6} (x={c.X:F0})");
+
+    var bands = ScheduleGridReader.ReadWallBands(page);
+    Console.WriteLine($"Wall bands ({bands.Count}) — mark: top..bottom = thickness:");
+    foreach (var b in bands)
+        Console.WriteLine($"    {b.Mark,-4} {b.LevelTop,-4}..{b.LevelBottom,-4} = {b.ThicknessIn:F0}\"");
     return 0;
 }
 
