@@ -107,6 +107,40 @@ public sealed class ScheduleTakeoffTests
     }
 
     [Fact]
+    public void Wall_PartialCoverage_LeavesUncoveredLevelsAtZero()
+    {
+        // A "Part 1 only" band reaches the bottom two levels; the top level must read 0 footprint so the
+        // caller can fall back to gray-fill there instead of silently losing the wall (audit C2).
+        var lengths = new Dictionary<string, double> { ["W1"] = 10 };
+        var bands = new[] { new WB("W1", "L2", "L1", 12) };   // L3 uncovered
+        var r = ScheduleTakeoff.ComputeWall(Levels3, StoreyIn(3, 120), lengths, bands);
+        Assert.Equal(0.0, r.PerLevel[0].FootprintSqFt, 3);    // L3 — uncovered, caller keeps gray-fill
+        Assert.True(r.PerLevel[1].FootprintSqFt > 0);          // L2 — covered
+        Assert.True(r.PerLevel[2].FootprintSqFt > 0);          // L1 — covered
+    }
+
+    [Fact]
+    public void Wall_ZeroStoreyHeight_FootprintReported_ButZeroConcrete()
+    {
+        // Footprint is still reported (so coverage is visible) but concrete is 0 when no storey height.
+        var lengths = new Dictionary<string, double> { ["W1"] = 10 };
+        var bands = new[] { new WB("W1", "L3", "L1", 12) };
+        var r = ScheduleTakeoff.ComputeWall(Levels3, StoreyIn(3, 0), lengths, bands);
+        Assert.True(r.PerLevel.All(p => p.FootprintSqFt > 0));
+        Assert.Equal(0.0, r.TotalCuYd, 3);
+    }
+
+    [Fact]
+    public void Wall_OverlappingBands_LastWriteWins_Documented()
+    {
+        // Two bands for the same mark/level: the later one in iteration order wins (documented behaviour).
+        var lengths = new Dictionary<string, double> { ["W1"] = 10 };
+        var bands = new[] { new WB("W1", "L3", "L1", 12), new WB("W1", "L3", "L1", 24) };
+        var r = ScheduleTakeoff.ComputeWall(Levels3, StoreyIn(3, 120), lengths, bands);
+        Assert.Equal(20.0, r.PerLevel[0].FootprintSqFt, 3);   // 10 ft × 24"/12 = 20 sq ft (the 24" band)
+    }
+
+    [Fact]
     public void Column_PricesWidthTimesDepthPerCoveredLevel()
     {
         // C1 = 24"×16" over L3-L1: footprint 384/144 = 2.6667 sq ft each level.

@@ -74,14 +74,26 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
             try
             {
                 using var kp = JsonDocument.Parse(await PlanVisionClient.ReadWallKeyPlanJsonAsync(PlanRaster.LoadDownscaledPng(png, 1600)));
-                int nMarks = 0;
+                // Two occurrences of one mark = the two faces of the core (sum). But guard against vision
+                // reporting the SAME segment twice: drop an occurrence whose box centroid coincides with one
+                // already seen for that mark (a duplicate would otherwise multiply that wall up the height).
+                var seenCentroids = new Dictionary<string, List<(double x, double y)>>(StringComparer.OrdinalIgnoreCase);
                 foreach (var m in kp.RootElement.GetProperty("marks").EnumerateArray())
                 {
                     string mk = (m.GetProperty("mark").GetString() ?? "").Trim();
                     double len = m.TryGetProperty("lengthFt", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetDouble() : 0;
                     if (mk.Length == 0 || len <= 0) continue;
+                    double cx = 0.5, cy = 0.5;
+                    if (m.TryGetProperty("box", out var bx) && bx.ValueKind == JsonValueKind.Array)
+                    {
+                        var v = bx.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
+                        if (v.Count >= 4) { cx = (v[0] + v[2]) / 2; cy = (v[1] + v[3]) / 2; }
+                    }
+                    if (!seenCentroids.TryGetValue(mk, out var cs)) seenCentroids[mk] = cs = new();
+                    if (cs.Any(c => Math.Abs(c.x - cx) < 0.02 && Math.Abs(c.y - cy) < 0.02))
+                    { Console.Error.WriteLine($"  ~ key plan: duplicate {mk} occurrence at same location — not summed."); continue; }
+                    cs.Add((cx, cy));
                     wallMarkLen[mk] = wallMarkLen.TryGetValue(mk, out var e) ? e + len : len;  // two core faces share a mark
-                    nMarks++;
                 }
                 wallKeyPlanDone = true;
                 Console.WriteLine($"      core wall key plan: {wallMarkLen.Count} marks, {wallMarkLen.Values.Sum():0} ft total");
@@ -322,8 +334,6 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
     // that case the per-floor gray-fill wall/column footprints are SUPPRESSED below to avoid double-
     // counting; without a level list (or schedules), the gray-fill estimate stands.
     var levelList = cfg.Levels is { Count: > 0 } ? cfg.Levels : null;
-    bool useSchedWalls = levelList != null && wallMarkLen.Count > 0 && wallBands.Count > 0;
-    bool useSchedCols = levelList != null && colBands.Count > 0;
     double[]? storeyInArr = null;
     if (levelList != null)
     {
@@ -336,6 +346,33 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
             storeyInArr[i] = heightMap.TryGetValue(ScheduleTakeoff.NormalizeLevel(levelList[i]), out var h) && h > 0
                 ? h : cfg.StoreyHeightIn;
     }
+    // H4 guard: a level list with no usable storey height would price every wall/column to zero — don't
+    // activate the schedule path (and silently delete the gray-fill); keep the gray-fill estimate.
+    bool hasStorey = storeyInArr != null && storeyInArr.Any(h => h > 0);
+    bool useSchedWalls = levelList != null && hasStorey && wallMarkLen.Count > 0 && wallBands.Count > 0;
+    bool useSchedCols = levelList != null && hasStorey && colBands.Count > 0;
+    if (levelList != null && !hasStorey && (wallBands.Count > 0 || colBands.Count > 0))
+        Console.Error.WriteLine("  ! schedules read but no storey height set (storeyHeightIn) — keeping gray-fill verticals.");
+
+    // Compute the schedule verticals up front so the reconciliation loop below can suppress the gray-fill
+    // ONLY on the levels the schedule actually priced — uncovered levels (e.g. an upper tower whose Part-2
+    // schedule isn't in the set, or basement/perimeter walls the core schedule omits) keep the gray-fill
+    // fallback instead of silently vanishing.
+    ScheduleTakeoff.ScheduleResult? wallRes = useSchedWalls && storeyInArr != null
+        ? ScheduleTakeoff.ComputeWall(levelList!, storeyInArr, wallMarkLen, wallBands) : null;
+    ScheduleTakeoff.ScheduleResult? colRes = useSchedCols && storeyInArr != null
+        ? ScheduleTakeoff.ComputeColumn(levelList!, storeyInArr, colBands) : null;
+    var coveredWallLevels = wallRes is null ? new HashSet<string>()
+        : wallRes.PerLevel.Where(p => p.FootprintSqFt > 0).Select(p => ScheduleTakeoff.NormalizeLevel(p.Level)).ToHashSet();
+    var coveredColLevels = colRes is null ? new HashSet<string>()
+        : colRes.PerLevel.Where(p => p.FootprintSqFt > 0).Select(p => ScheduleTakeoff.NormalizeLevel(p.Level)).ToHashSet();
+
+    // A slab band is "schedule-covered" for an element when any of the physical floors it represents was
+    // priced by the schedule — there the gray-fill is suppressed; elsewhere it stands.
+    bool SlabCovered(string level, HashSet<string> covered) =>
+        covered.Count > 0 && BuildingRollup.ParseFloors(level).Any(f => covered.Contains(ScheduleTakeoff.NormalizeLevel(f)));
+
+    int grayWallsKept = 0, grayColsKept = 0;
 
     // ── building-wide floor reconciliation ──────────────────────────────────────────────────────
     // Count each physical floor's suspended slab exactly once. Parse every slab's level label into the
@@ -355,32 +392,35 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
         { droppedSlabs++; Console.Error.WriteLine($"  · {s.Level}: floor(s) already owned by a more specific or re-issued sheet — dropped."); continue; }
         keptSlabs++;
         vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Slab, s.Variant, s.AreaSqFt, s.ThicknessIn, eff, "", s.ScaleConfirmed));
-        // Gray-fill walls/columns are the fallback estimate — suppressed when the schedules drive them.
-        if (!useSchedWalls && s.WallSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Wall, "shear", s.WallSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
-        if (!useSchedCols && s.ColSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Column, null, s.ColSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
+        // Gray-fill walls/columns are the fallback estimate — kept only where the schedule did NOT price
+        // this level, so covered levels use the schedule and uncovered levels don't silently lose concrete.
+        if (s.WallSqFt > 0 && !SlabCovered(s.Level, coveredWallLevels))
+        { vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Wall, "shear", s.WallSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed)); grayWallsKept++; }
+        if (s.ColSqFt > 0 && !SlabCovered(s.Level, coveredColLevels))
+        { vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Column, null, s.ColSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed)); grayColsKept++; }
         foreach (var th in s.Thickenings)   // drop panels / built-up zones: added depth over the slab, same floor count
             vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.DropPanel, "thickening", th.AreaSqFt, th.AddedDepthIn, eff, "", s.ScaleConfirmed));
     }
     Console.WriteLine($"Floor reconciliation: {keptSlabs} slab plate(s) kept, {droppedSlabs} dropped as duplicate/superseded.");
 
-    // Emit the schedule-driven verticals (one plate per level, count 1 — bands already expanded).
-    if (useSchedWalls && storeyInArr != null)
+    // Emit the schedule-driven verticals (one plate per covered level, count 1 — bands already expanded).
+    if (wallRes != null)
     {
-        var wr = ScheduleTakeoff.ComputeWall(levelList!, storeyInArr, wallMarkLen, wallBands);
-        foreach (var lf in wr.PerLevel)
+        foreach (var lf in wallRes.PerLevel)
             if (lf.FootprintSqFt > 0)
                 vPlates.Add(new MeasuredPlate(lf.Level, TakeoffElementType.Wall, "shear", lf.FootprintSqFt, lf.StoreyIn, 1, "", true));
-        Console.WriteLine($"Schedule walls: {wr.TotalCuYd:N0} cu.yd over {wr.PerLevel.Count(p => p.FootprintSqFt > 0)} levels "
-            + $"({wr.MarksPriced} marks, {wr.BandsApplied} bands applied, {wr.BandsSkipped} skipped).");
+        Console.WriteLine($"Schedule walls: {wallRes.TotalCuYd:N0} cu.yd over {coveredWallLevels.Count}/{levelList!.Count} levels "
+            + $"({wallRes.MarksPriced} marks, {wallRes.BandsApplied} bands applied, {wallRes.BandsSkipped} skipped); "
+            + $"{grayWallsKept} slab(s) kept gray-fill walls on uncovered levels.");
     }
-    if (useSchedCols && storeyInArr != null)
+    if (colRes != null)
     {
-        var cr = ScheduleTakeoff.ComputeColumn(levelList!, storeyInArr, colBands);
-        foreach (var lf in cr.PerLevel)
+        foreach (var lf in colRes.PerLevel)
             if (lf.FootprintSqFt > 0)
                 vPlates.Add(new MeasuredPlate(lf.Level, TakeoffElementType.Column, null, lf.FootprintSqFt, lf.StoreyIn, 1, "", true));
-        Console.WriteLine($"Schedule columns: {cr.TotalCuYd:N0} cu.yd over {cr.PerLevel.Count(p => p.FootprintSqFt > 0)} levels "
-            + $"({cr.MarksPriced} marks, {cr.BandsApplied} bands applied, {cr.BandsSkipped} skipped).");
+        Console.WriteLine($"Schedule columns: {colRes.TotalCuYd:N0} cu.yd over {coveredColLevels.Count}/{levelList!.Count} levels "
+            + $"({colRes.MarksPriced} marks, {colRes.BandsApplied} bands applied, {colRes.BandsSkipped} skipped); "
+            + $"{grayColsKept} slab(s) kept gray-fill columns on uncovered levels.");
     }
 
     if (vPlates.Count == 0) { Console.Error.WriteLine("No measurable plates from vision."); return 2; }
