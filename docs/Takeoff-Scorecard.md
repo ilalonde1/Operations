@@ -17,7 +17,7 @@ only (walls/columns/foundations not yet wired), so compare to QTO slab 24,495, n
 | Raw end-to-end | 12,951 | 53% | first full run |
 | + typical-floor multiplier | 18,186 | 74% | but ERROR-CANCELLING (see below) |
 | + title-block-by-position, tiling, deterministic thickness | 18,547 | 75.7% | **trustworthy** — the cancelling errors fixed |
-| + degenerate-box guard | ~20,600 (projected) | ~84% | recovers the L38 band; confirming run in flight |
+| + degenerate-box guard | **20,353** | **83%** | CONFIRMED; guard fired on 2 degenerate boxes (38, 43 — both 789 sqft -> median) |
 
 The jump from 74% to 75.7% is small in number but a QUALITATIVE change: the old 74% was a coincidental
 balance of a ~5x mezzanine over-count, gross area, and missing floor bands. Those are now FIXED, so the
@@ -88,8 +88,8 @@ not by scanning every line. That single change unlocks mezzanine zones, foundati
 general zone-after-separator WITHOUT the false positives. This is the next structural investment.
 
 ## Remaining gaps to close the slab (priority order)
-The mezzanine / tiling / thickness / degenerate-box items above are now DONE. With the box guard the
-slab projects to ~84%; the rest of the gap to 24,495 is, in order:
+The mezzanine / tiling / thickness / degenerate-box items above are now DONE. The slab is at a
+CONFIRMED, trustworthy **83% (20,353 cy)**; the rest of the gap to 24,495 is, in order:
 1. **Slab bands / drop panels / thickenings** — the "24\" SLAB" / thickened strips along column lines
    add real concrete the QTO counts but we don't (we measure field slab area x field thickness only).
    Likely the single biggest remaining chunk (~10-15% of slab volume). Read the thickening callouts +
