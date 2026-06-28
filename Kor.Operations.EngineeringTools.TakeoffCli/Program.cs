@@ -114,12 +114,12 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
             }
             if (okReads > 0)
             {
-                // A mark counts only if seen in a MAJORITY of reads (drops one-off hallucinations); its
-                // length is the median across the reads that saw it.
-                int quorum = (okReads / 2) + 1;
+                // Keep every mark seen in ANY read (union) — a key-plan mark is only ever PRICED if it also
+                // appears in the wall schedule, so a one-off vision hallucination is filtered downstream and
+                // dropping marks here would just under-count real walls. Use the MEDIAN length over the reads
+                // that saw each mark to damp the per-mark length noise.
                 foreach (var (mk, lens) in perMark)
                 {
-                    if (lens.Count < quorum) continue;
                     var sorted = lens.OrderBy(x => x).ToList();
                     wallMarkLen[mk] = sorted[sorted.Count / 2];   // median
                 }
