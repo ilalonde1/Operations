@@ -139,6 +139,11 @@ static class PlanVisionClient
    - box: a normalized [x0,y0,x1,y1] bounding box (0..1, origin top-left) around JUST that plate's drawn concrete outline. Make it generous enough to contain the whole plate outline, but exclude the title block and the OTHER plate.
    - confidence: 0..1.
 
+THICKENED ZONES (drop panels / thickened bands / built-up transfer zones) on a Framing / CONCRETE OUTLINE plate — local areas of the floor that are DEEPER than the nominal slab. For EACH such zone that carries an EXPLICIT total-thickness callout (e.g. 'DROP PANEL', '16"" THICK', '24"" DEEP DROP', a hatched thickened band noted '18"" SLAB' next to a '10"" SLAB' field), add a plate:
+   - element 'DropPanel', count = the SAME count as the floor plate it sits on (a drop panel on a 'LEVEL 17-28' typical plan repeats for all 12 floors).
+   - box tightly around just that thickened region; level = this plate's floor; thicknessIn = the zone's TOTAL thickness in inches (its full depth, NOT the depth above the slab); confidence reflecting how clearly the callout reads.
+   - CRITICAL — do NOT report an elevation STEP as a thickening: a callout like '47""± STEP', '19""± STEP', a step in the slab top/bottom elevation, the dimension of a zone's width/length, or 'BUILT-UP PER ARCH' with no concrete thickness is NOT a slab thickness — ignore it. Only report a zone whose CONCRETE is explicitly deeper than the nominal slab, with a number of inches you can read.
+
 FOUNDATIONS/FOOTINGS plan — the concrete is in footings of varying depth, so report SEVERAL plates, each element 'Foundation', count 1:
    - the SLAB-ON-GRADE as one plate: box around the whole floor outline, thicknessIn = the SOG thickness from the 'N"" SLAB ON GRADE' / 'N"" S.O.G.' note (null if none), level e.g. 'P1 SOG'.
    - EACH large deep/core footing or mat (the hatched regions labelled like '96"" DP. CORE FOOTING', '144"" DP. FOOTING', '36"" THICK FTG'): one plate, box tightly around that hatched footing, thicknessIn = its labelled DEPTH in inches, level e.g. 'P1 core ftg 96in'. Report the major footings (up to ~10 largest); do NOT report the many small spread footings from the F/SF schedule (handled elsewhere).

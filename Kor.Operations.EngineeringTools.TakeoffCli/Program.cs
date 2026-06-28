@@ -82,6 +82,10 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
         // Vertical-element footprints already claimed on THIS sheet (full-image centroids), so a column
         // sitting in the overlap of two plate boxes is counted once, not under both plates.
         var claimedVertical = new List<(int x, int y)>();
+        // Thickened zones read on THIS sheet (full-image centroid, area, total thickness, confidence),
+        // attached after the plate loop to the slab whose box contains them.
+        var sheetThickenings = new List<(int cx, int cy, double areaSqFt, double totalThkIn, double conf)>();
+        int slabStartIdx = pendingSlabs.Count;
         foreach (var pl in reading.Plates)
         {
             // The vision layer returns a degenerate (zero-area) box when it could not locate a plate;
@@ -144,6 +148,21 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
 
             double areaSqFt = PlanGeometry.SquareFeet(px, mpp.Value);
             double thickness = pl.ThicknessIn ?? 0;          // 0 => pipeline flags THK_UNRESOLVED
+
+            // A thickened zone (drop panel / built-up transfer) is measured here but held: it has no
+            // floor count of its own — it rides the slab it sits on, and is priced as its depth ABOVE
+            // that slab's nominal so the field slab underneath is never counted twice. Defer to the
+            // post-loop attach, which subtracts the owning slab's nominal thickness.
+            if (pl.Element is TakeoffElementType.DropPanel)
+            {
+                if (thickness <= 0)
+                { Console.Error.WriteLine($"  ~ {pl.Level} thickening: no readable depth, skipped."); continue; }
+                int tcx = cox + (bx0 + bx1) / 2, tcy = coy + (by0 + by1) / 2;
+                sheetThickenings.Add((tcx, tcy, areaSqFt, thickness, pl.Confidence));
+                Console.WriteLine($"      {pl.Level} thickening {thickness:0.#}\" total: {areaSqFt:N0} sq.ft (conf {pl.Confidence:0.00})");
+                continue;
+            }
+
             // Slab-on-grade thickness is usually a note off the footings sheet; fall back to the config
             // default so the SOG isn't silently dropped (still flagged if no default is configured).
             if (thickness <= 0 && cfg.SogThicknessIn > 0 && pl.Element == TakeoffElementType.Foundation
@@ -199,8 +218,29 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
                 }
                 catch (Exception ex) { Console.Error.WriteLine($"  ~ {pl.Level}: vertical measurement failed: {ex.Message}, slab kept."); }
             }
-            pendingSlabs.Add(new PendingSlab(pl.Level, pl.Variant, areaSqFt, thickness, pl.Confidence, scaleConfirmed, wallSqFt, colSqFt, storeyIn));
+            pendingSlabs.Add(new PendingSlab(pl.Level, pl.Variant, areaSqFt, thickness, pl.Confidence, scaleConfirmed, wallSqFt, colSqFt, storeyIn,
+                cox + bx0, coy + by0, cox + bx1, coy + by1));
             Console.WriteLine($"      {pl.Level} Slab {thickness:0.#}\": {areaSqFt:N0} sq.ft (+ wall {wallSqFt:N0} / col {colSqFt:N0}) (conf {pl.Confidence:0.00})");
+        }
+
+        // Attach this sheet's thickened zones to the slab whose box contains each one (else the first
+        // slab on the sheet). The added depth is the zone's total thickness minus that slab's nominal,
+        // so a thickening over a 10" field slab priced at 16" total adds only its extra 6" of concrete.
+        foreach (var th in sheetThickenings)
+        {
+            PendingSlab? owner = null;
+            for (int si = slabStartIdx; si < pendingSlabs.Count; si++)
+            {
+                var ps = pendingSlabs[si];
+                if (th.cx >= ps.BoxX0 && th.cx <= ps.BoxX1 && th.cy >= ps.BoxY0 && th.cy <= ps.BoxY1) { owner = ps; break; }
+            }
+            owner ??= slabStartIdx < pendingSlabs.Count ? pendingSlabs[slabStartIdx] : null;
+            if (owner is null)
+            { Console.Error.WriteLine($"  ~ thickening on a sheet with no suspended slab — dropped (not a floor plate)."); continue; }
+            double added = th.totalThkIn - owner.ThicknessIn;
+            if (added <= 0)
+            { Console.Error.WriteLine($"  ~ {owner.Level} thickening {th.totalThkIn:0.#}\" ≤ slab {owner.ThicknessIn:0.#}\" — no added concrete, dropped."); continue; }
+            owner.Thickenings.Add(new Thickening(added, th.areaSqFt, th.conf));
         }
     }
 
@@ -224,6 +264,8 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
         vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Slab, s.Variant, s.AreaSqFt, s.ThicknessIn, eff, "", s.ScaleConfirmed));
         if (s.WallSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Wall, "shear", s.WallSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
         if (s.ColSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Column, null, s.ColSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
+        foreach (var th in s.Thickenings)   // drop panels / built-up zones: added depth over the slab, same floor count
+            vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.DropPanel, "thickening", th.AreaSqFt, th.AddedDepthIn, eff, "", s.ScaleConfirmed));
     }
     Console.WriteLine($"Floor reconciliation: {keptSlabs} slab plate(s) kept, {droppedSlabs} dropped as duplicate/superseded.");
 
@@ -657,10 +699,21 @@ sealed class VisionPage
 
 // A suspended-slab measurement held back until the whole building is read, so its floor count can be
 // reconciled across overlapping/duplicate sheets (BuildingRollup.AssignSlabFloors). Co-located wall and
-// column footprints ride along and inherit the slab's reconciled count.
+// column footprints ride along and inherit the slab's reconciled count, as do thickened zones (drop
+// panels / built-up transfer) detected on the same sheet, which are priced as their depth ABOVE the
+// nominal slab so the field slab is never double-counted. BoxX0..BoxY1 are full-sheet pixels of the
+// plate outline, used to attach a sheet's thickenings to the slab whose box contains them.
 sealed record PendingSlab(
     string Level, string? Variant, double AreaSqFt, double ThicknessIn, double Confidence,
-    bool ScaleConfirmed, double WallSqFt, double ColSqFt, double StoreyIn);
+    bool ScaleConfirmed, double WallSqFt, double ColSqFt, double StoreyIn,
+    int BoxX0, int BoxY0, int BoxX1, int BoxY1)
+{
+    public List<Thickening> Thickenings { get; } = new();
+}
+
+// A local slab thickening (drop panel / thickened band / built-up transfer zone): its area and the
+// concrete depth ADDED above the nominal slab. Priced as a DropPanel plate at the owning slab's count.
+sealed record Thickening(double AddedDepthIn, double AreaSqFt, double Confidence);
 
 // Building config for the `estimate` mode: project metadata + the per-plate map (which sheet, which
 // crop, how to measure it, the read thickness/height, and how many identical floors it covers).
