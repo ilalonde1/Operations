@@ -128,6 +128,17 @@ static class PlanVisionClient
         PostForcedToolTextAsync(PageTakeoffTool(), "report_page_takeoff",
             PageTakeoffPrompt + "\n\n=== SHEET DIGEST (exact vector facts) ===\n" + digestJson, 1500);
 
+    // Image-fused synthesis: the rendered page lets Claude judge the floor-plate plan AREA (which is
+    // NOT recoverable from the closed-region geometry); the digest supplies every exact text/number.
+    public static Task<string> SynthesizePageWithImageAsync(string digestJson, byte[] png) =>
+        PostForcedToolAsync(PageTakeoffTool(), "report_page_takeoff",
+            PageTakeoffPrompt +
+            "\n\nYou ALSO have the rendered page image. Use the IMAGE only to judge the floor-plate plan " +
+            "AREA in square feet (slabAreaSqFt) from its visible extents and the drawing scale — read the " +
+            "overall building dimensions / grid extents. Use the exact DIGEST for ALL text and numbers " +
+            "(slab thickness, schedules, level, strengths). If it is not a floor/foundation plan, leave " +
+            "slabAreaSqFt null.\n\n=== SHEET DIGEST (exact vector facts) ===\n" + digestJson, 1800);
+
     private const string PageTakeoffPrompt =
 @"You are a senior structural quantity-takeoff estimator reading ONE sheet of a structural drawing set.
 The content below was extracted EXACTLY from the vector PDF — text lines (no OCR) plus geometry — it is
@@ -148,6 +159,8 @@ conventions from any firm; do not assume one labelling style.";
                 sheetKind = new { type = "string", @enum = new[] { "floor_plan", "foundation_plan", "schedule", "section", "detail", "notes", "cover", "other" } },
                 level = new { type = new[] { "string", "null" }, description = "the building level/floor this sheet represents, as labelled (e.g. LEVEL P4, L12); null if not a single-level plan" },
                 slabThicknessIn = new { type = new[] { "number", "null" }, description = "nominal suspended slab thickness in inches if stated" },
+                slabAreaSqFt = new { type = new[] { "number", "null" }, description = "approximate suspended-slab plan AREA for this level in square feet, reasoned from the geometry regions (areas given in PDF points^2) and the drawing scale; null if not a floor/foundation plan. Note 1 PDF point = 1/72 inch on the page; at 1/8\"=1'-0\" one page-inch = 8 feet." },
+                columnCount = new { type = new[] { "integer", "null" }, description = "number of columns visible on this plan, if countable; else null" },
                 hasColumnSchedule = new { type = "boolean" },
                 hasWallSchedule = new { type = "boolean" },
                 hasFootingSchedule = new { type = "boolean" },

@@ -27,8 +27,18 @@ if (args.Length >= 1 && args[0].Equals("vector-synth", StringComparison.OrdinalI
 
     var pd = DrawingDigestBuilder.Build(args[1], synPage, synPage).Pages[0];
     string digestJson = JsonSerializer.Serialize(pd, new JsonSerializerOptions { WriteIndented = false });
-    Console.WriteLine($"p{synPage}: digest {digestJson.Length:N0} chars -> synthesizing...");
-    string result = await PlanVisionClient.SynthesizePageAsync(digestJson);
+    // Optional 4th arg: a rendered PNG to fuse for the slab-area judgment.
+    string result;
+    if (args.Length >= 4 && File.Exists(args[3]))
+    {
+        Console.WriteLine($"p{synPage}: digest {digestJson.Length:N0} chars + image {Path.GetFileName(args[3])} -> synthesizing...");
+        result = await PlanVisionClient.SynthesizePageWithImageAsync(digestJson, PlanRaster.LoadDownscaledPng(args[3], 1600));
+    }
+    else
+    {
+        Console.WriteLine($"p{synPage}: digest {digestJson.Length:N0} chars -> synthesizing...");
+        result = await PlanVisionClient.SynthesizePageAsync(digestJson);
+    }
     Console.WriteLine(JsonSerializer.Serialize(JsonSerializer.Deserialize<JsonElement>(result), new JsonSerializerOptions { WriteIndented = true }));
     return 0;
 }

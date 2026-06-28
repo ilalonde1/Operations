@@ -21,11 +21,15 @@ accurate, flagged takeoff facts from the exact vector digest (no image, no OCR) 
 full assembly isn't wired. Do not report a % until the end-to-end run exists.
 
 ## Open problems (in priority order)
-1. **Slab footprint AREA from geometry** — the hard one. The largest closed vector region is NOT the
-   floor slab outline (footprint is many wall segments, not one polygon). Options: (a) targeted Claude
-   vision on the rendered page to bound the slab region + exact vector scale; (b) reconstruct the
-   outline by unioning wall lines; (c) reuse the old pixel-poché area (stable ~17-19k sqft/floor) with
-   vector thickness. Decide via the vertical slice — get SOME area, measure, improve.
+1. **Slab footprint AREA — DECIDED 2026-06-27: pixel-poché measurement.** Evidence: the floor plate is
+   NOT a closed vector region (largest is ~143 sqft vs a ~17,000 sqft plate), AND Claude (correctly)
+   refuses to estimate it from a downscaled image without clear overall dimensions. Area genuinely
+   needs MEASUREMENT. Pixel-poché was proven+stable in the old pipeline (~17-19k sqft/floor) and was
+   NOT the source of the old 74% (that was OCR'd schedules/thickness — now EXACT from vector). Plan:
+   synthesis (image+digest) returns the slab plate BOX + level + EXACT thickness/schedules; poché
+   measures area in the box (reuse PlanRaster). This is the legitimate hybrid — vision/poché only for
+   the area that text can't give; everything precise stays exact-vector. Generalize the render step
+   later (today uses the existing full/p-*.png renders).
 2. **Multi-page assembly** — run L2 across all relevant pages, dedupe floors, sum per level (reuse the
    existing BuildingRollup reconciliation ideas).
 3. **Wall key-plan lengths** — from native geometry (polyline lengths) to price the wall bands.
