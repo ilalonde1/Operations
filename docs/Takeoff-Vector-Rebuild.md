@@ -79,9 +79,16 @@ driving each step. Be economical with synthesis calls.
   twice). 5 unit tests in `ScheduleGridReaderTests.cs` (170 Core tests green). Proven on p-61: ladder
   `L20…P7`; 22 thickness cells, exact `6/12/30/32/36/42"`; **22 wall bands** — W1=30"/W2=12"/W3=32"/
   W5=6" throughout, **W4 steps 30"(L15-L10)→36"(L9-P5)→42"(P6-P7)**, matching the drawing.
-- CLI probes (additive, in `TakeoffCli/Program.cs`): `vector-dump <pdf> <page> [textfilter]` and
-  `vector-sched <pdf> <page>` (prints ladder + thickness cells + wall bands). The OLD `vision-estimate`
-  mode still exists and still works — it is the live path until the vector path replaces it.
+- `Core/DrawingDigest.cs` (`8880d61a`): **Layer 1** — per-page GENERAL exact digest (text lines,
+  geometry regions+areas, scale, optional wall bands). No firm-specific schema. CLI `vector-digest`.
+- `TakeoffCli/Vision.cs` `SynthesizePageAsync` (`1a91cc54`): **Layer 2** — text-based forced-tool
+  synthesis over the digest (shared `SendWithRetryAsync` for image+text). General `report_page_takeoff`
+  tool. **VALIDATED on p21 (level P4, slab 10", PC1-4+SWA-C extracted+flagged) and p61 (schedule,
+  W-marks match).** CLI `vector-synth <pdf> <page>`. See `docs/Takeoff-Scorecard.md` for live state.
+- CLI probes (additive, in `TakeoffCli/Program.cs`): `vector-dump`, `vector-sched`, `vector-digest`,
+  `vector-synth`. The OLD `vision-estimate` mode still exists and still works — it is the live path
+  until the vector path replaces it. **Nothing deleted yet** — replace-and-delete happens when the new
+  end-to-end run supersedes the old one.
 
 ## What is NEXT (the schedule → takeoff path)
 DONE: native reader, word grouping, schedule grid, mark binding, fill-down bands → `WallBand` records.
