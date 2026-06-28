@@ -66,8 +66,33 @@ static class PlanVisionClient
                 }
             }
         };
-        string body = JsonSerializer.Serialize(request);
+        return await SendWithRetryAsync(JsonSerializer.Serialize(request));
+    }
 
+    // Text-only forced-tool POST (no image) — Layer-2 synthesis reasons over the EXACT extracted digest.
+    private static async Task<string> PostForcedToolTextAsync(object tool, string toolName, string prompt, int maxTokens)
+    {
+        if (string.IsNullOrWhiteSpace(ApiKey))
+            throw new InvalidOperationException("KOR_ANTHROPIC_KEY is not set — synthesis needs an Anthropic key.");
+
+        var request = new
+        {
+            model = Model,
+            max_tokens = maxTokens,
+            temperature = 0,
+            tools = new object[] { tool },
+            tool_choice = new { type = "tool", name = toolName },
+            messages = new object[]
+            {
+                new { role = "user", content = new object[] { new { type = "text", text = prompt } } }
+            }
+        };
+        return await SendWithRetryAsync(JsonSerializer.Serialize(request));
+    }
+
+    // Shared POST + retry (429/5xx + transport drops) for both the image and text forced-tool calls.
+    private static async Task<string> SendWithRetryAsync(string body)
+    {
         for (int attempt = 0; ; attempt++)
         {
             try
@@ -97,6 +122,42 @@ static class PlanVisionClient
             }
         }
     }
+
+    // ── Layer 2: estimator-synthesis over the exact digest (general, firm-agnostic) ──────────────
+    public static Task<string> SynthesizePageAsync(string digestJson) =>
+        PostForcedToolTextAsync(PageTakeoffTool(), "report_page_takeoff",
+            PageTakeoffPrompt + "\n\n=== SHEET DIGEST (exact vector facts) ===\n" + digestJson, 1500);
+
+    private const string PageTakeoffPrompt =
+@"You are a senior structural quantity-takeoff estimator reading ONE sheet of a structural drawing set.
+The content below was extracted EXACTLY from the vector PDF — text lines (no OCR) plus geometry — it is
+not an image. Dense sheets often have jumbled/interleaved text lines; read through that with judgment.
+Classify the sheet and extract its takeoff-relevant facts. Report ONLY what the sheet actually states;
+never invent a number — if a value is absent, leave it null and add a flag. Generalize across drawing
+conventions from any firm; do not assume one labelling style.";
+
+    private static object PageTakeoffTool() => new
+    {
+        name = "report_page_takeoff",
+        description = "Classify one structural sheet and extract its takeoff-relevant facts.",
+        input_schema = new
+        {
+            type = "object",
+            properties = new
+            {
+                sheetKind = new { type = "string", @enum = new[] { "floor_plan", "foundation_plan", "schedule", "section", "detail", "notes", "cover", "other" } },
+                level = new { type = new[] { "string", "null" }, description = "the building level/floor this sheet represents, as labelled (e.g. LEVEL P4, L12); null if not a single-level plan" },
+                slabThicknessIn = new { type = new[] { "number", "null" }, description = "nominal suspended slab thickness in inches if stated" },
+                hasColumnSchedule = new { type = "boolean" },
+                hasWallSchedule = new { type = "boolean" },
+                hasFootingSchedule = new { type = "boolean" },
+                concreteStrengthMpa = new { type = new[] { "number", "null" } },
+                confidence = new { type = "number", description = "0..1" },
+                flags = new { type = "array", items = new { type = "string" }, description = "uncertainties, missing values, transfer/podium slabs, anything needing a human" }
+            },
+            required = new[] { "sheetKind", "hasColumnSchedule", "hasWallSchedule", "hasFootingSchedule", "confidence", "flags" }
+        }
+    };
 
     private static string ExtractToolInput(string responseJson)
     {

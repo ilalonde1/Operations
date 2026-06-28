@@ -16,6 +16,23 @@ if (args.Length >= 1 && args[0].Equals("measure", StringComparison.OrdinalIgnore
 if (args.Length >= 1 && args[0].Equals("vision-estimate", StringComparison.OrdinalIgnoreCase) && args.Length < 3)
 { Console.Error.WriteLine("Usage: takeoff vision-estimate <pages.json> <out.xlsx>"); return 1; }
 
+// Layer-2 synthesis derisk: build one page's digest, send the EXACT facts to Claude, print the
+// structured page takeoff. Usage: takeoff vector-synth <pdf> <page>
+if (args.Length >= 1 && args[0].Equals("vector-synth", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff vector-synth <pdf> <page>"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
+    if (!int.TryParse(args[2], out int synPage) || synPage < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
+    if (string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set."); return 2; }
+
+    var pd = DrawingDigestBuilder.Build(args[1], synPage, synPage).Pages[0];
+    string digestJson = JsonSerializer.Serialize(pd, new JsonSerializerOptions { WriteIndented = false });
+    Console.WriteLine($"p{synPage}: digest {digestJson.Length:N0} chars -> synthesizing...");
+    string result = await PlanVisionClient.SynthesizePageAsync(digestJson);
+    Console.WriteLine(JsonSerializer.Serialize(JsonSerializer.Deserialize<JsonElement>(result), new JsonSerializerOptions { WriteIndented = true }));
+    return 0;
+}
+
 // Layer-1 digest: emit the per-page structured facts (lines, geometry regions, scale, wall bands) the
 // synthesis reasons over. Usage: takeoff vector-digest <pdf> <out.json> [firstPage] [lastPage]
 if (args.Length >= 1 && args[0].Equals("vector-digest", StringComparison.OrdinalIgnoreCase))
