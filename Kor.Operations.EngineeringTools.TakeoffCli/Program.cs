@@ -132,6 +132,12 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     }
     var tileCounts = FloorMultiplier.TileTowerCounts(towerReps, topBandTop);
 
+    // Degenerate-box guard: the synthesis occasionally returns a tiny plate box, and on a typical plan
+    // that error is multiplied across the whole floor band. A tower plate far below its siblings' median
+    // area is almost certainly a bad locate — substitute the median (FLAGGED), don't ship a 9% plate.
+    var towerAreasSorted = tkRaw.Where(r => r.RepLevel.HasValue).Select(r => r.Area).OrderBy(a => a).ToList();
+    double towerMedianArea = towerAreasSorted.Count > 0 ? towerAreasSorted[towerAreasSorted.Count / 2] : 0;
+
     var tkPlates = new List<MeasuredPlate>();
     foreach (var r in tkRaw)
     {
@@ -149,7 +155,14 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         // Parkade/roof and any non-numeric level are 1:1; tower levels take their tiled floor count.
         int floors = r.RepLevel is int rep && tileCounts.TryGetValue(rep, out var c) ? c : 1;
         if (floors > 1) Console.WriteLine($"  x {r.Label}: typical plan -> {floors} physical floors (FLAG: inferred contiguous stack, levels {r.RepLevel - floors + 1}-{r.RepLevel}).");
-        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", r.Area, thk, floors));
+
+        double area = r.Area;
+        if (r.RepLevel.HasValue && towerMedianArea > 0 && area < 0.4 * towerMedianArea)
+        {
+            Console.WriteLine($"  ! {r.Label}: area {area:N0} sqft implausible vs tower median {towerMedianArea:N0} — substituting median (FLAG: degenerate locate box).");
+            area = towerMedianArea;
+        }
+        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", area, thk, floors));
     }
 
     if (tkPlates.Count == 0) { Console.Error.WriteLine("No priceable slab plates (no thickness anywhere)."); return 2; }
