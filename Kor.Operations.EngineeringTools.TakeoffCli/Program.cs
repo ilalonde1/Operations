@@ -16,6 +16,26 @@ if (args.Length >= 1 && args[0].Equals("measure", StringComparison.OrdinalIgnore
 if (args.Length >= 1 && args[0].Equals("vision-estimate", StringComparison.OrdinalIgnoreCase) && args.Length < 3)
 { Console.Error.WriteLine("Usage: takeoff vision-estimate <pages.json> <out.xlsx>"); return 1; }
 
+// Schedule grid reconstruction probe: from the native vector tokens, recover the level ladder and the
+// thickness cells (each resolved to its level row). Usage: takeoff vector-sched <pdf> <page>
+if (args.Length >= 1 && args[0].Equals("vector-sched", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff vector-sched <pdf> <page>"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
+    if (!int.TryParse(args[2], out int schPage) || schPage < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
+
+    var page = VectorPageReader.ReadPage(args[1], schPage);
+    var ladder = ScheduleGridReader.ReadLevelLadder(page);
+    var cells  = ScheduleGridReader.ReadThicknessCells(page);
+
+    Console.WriteLine($"Level ladder ({ladder.Count} rows, top->bottom):");
+    Console.WriteLine("  " + string.Join("  ", ladder.Select(r => r.Normalized)));
+    Console.WriteLine($"Thickness cells ({cells.Count}):");
+    foreach (var c in cells)
+        Console.WriteLine($"    {c.ThicknessIn,2:F0}\" WALL  @ {c.Level,-6} (x={c.X:F0})");
+    return 0;
+}
+
 // Vector front-end probe: read the NATIVE vector text + geometry of one drawing page straight from the
 // PDF — no raster, no OCR — and print what came out. Proves the exact-data foundation of the takeoff.
 // Usage: takeoff vector-dump <pdf> <page>
