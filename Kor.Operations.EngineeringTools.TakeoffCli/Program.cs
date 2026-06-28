@@ -67,38 +67,65 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
         Console.WriteLine($"  {Path.GetFileName(png)}: {reading.Kind}, scale '{reading.ScaleNote ?? "(none)"}', {reading.Plates.Count} plate(s)");
 
         // ── cross-reference the dimensioned schedules (the estimator's source for verticals) ────────
-        // A core wall key plan gives each mark's length — read ONCE (the core layout is the same up the
-        // height; re-summing it per sheet would multiply the wall concrete).
+        // A core wall key plan gives each mark's length — read ONCE per building (the core layout is the
+        // same up the height; re-summing it per sheet would multiply the wall concrete). The single read
+        // is the noisiest input (vision estimates lengths and varies which marks it catches), so read it
+        // a few times and take the MEDIAN length per mark over the union of marks seen — deterministic
+        // enough to stop the wall total swinging run-to-run.
         if (reading.HasWallKeyPlan && !wallKeyPlanDone)
         {
-            try
+            const int keyPlanReads = 3;
+            var perMark = new Dictionary<string, List<double>>(StringComparer.OrdinalIgnoreCase);
+            int okReads = 0;
+            byte[] kpPng = PlanRaster.LoadDownscaledPng(png, 1600);
+            for (int rd = 0; rd < keyPlanReads; rd++)
             {
-                using var kp = JsonDocument.Parse(await PlanVisionClient.ReadWallKeyPlanJsonAsync(PlanRaster.LoadDownscaledPng(png, 1600)));
-                // Two occurrences of one mark = the two faces of the core (sum). But guard against vision
-                // reporting the SAME segment twice: drop an occurrence whose box centroid coincides with one
-                // already seen for that mark (a duplicate would otherwise multiply that wall up the height).
-                var seenCentroids = new Dictionary<string, List<(double x, double y)>>(StringComparer.OrdinalIgnoreCase);
-                foreach (var m in kp.RootElement.GetProperty("marks").EnumerateArray())
+                try
                 {
-                    string mk = (m.GetProperty("mark").GetString() ?? "").Trim();
-                    double len = m.TryGetProperty("lengthFt", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetDouble() : 0;
-                    if (mk.Length == 0 || len <= 0) continue;
-                    double cx = 0.5, cy = 0.5;
-                    if (m.TryGetProperty("box", out var bx) && bx.ValueKind == JsonValueKind.Array)
+                    using var kp = JsonDocument.Parse(await PlanVisionClient.ReadWallKeyPlanJsonAsync(kpPng));
+                    // Within ONE read, two occurrences of a mark = the two core faces (sum); but drop an
+                    // occurrence whose box centroid coincides with one already seen (a duplicate read).
+                    var seenCentroids = new Dictionary<string, List<(double x, double y)>>(StringComparer.OrdinalIgnoreCase);
+                    var thisRead = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var m in kp.RootElement.GetProperty("marks").EnumerateArray())
                     {
-                        var v = bx.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
-                        if (v.Count >= 4) { cx = (v[0] + v[2]) / 2; cy = (v[1] + v[3]) / 2; }
+                        string mk = (m.GetProperty("mark").GetString() ?? "").Trim();
+                        double len = m.TryGetProperty("lengthFt", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetDouble() : 0;
+                        if (mk.Length == 0 || len <= 0) continue;
+                        double cx = 0.5, cy = 0.5;
+                        if (m.TryGetProperty("box", out var bx) && bx.ValueKind == JsonValueKind.Array)
+                        {
+                            var v = bx.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
+                            if (v.Count >= 4) { cx = (v[0] + v[2]) / 2; cy = (v[1] + v[3]) / 2; }
+                        }
+                        if (!seenCentroids.TryGetValue(mk, out var cs)) seenCentroids[mk] = cs = new();
+                        if (cs.Any(c => Math.Abs(c.x - cx) < 0.02 && Math.Abs(c.y - cy) < 0.02)) continue;
+                        cs.Add((cx, cy));
+                        thisRead[mk] = thisRead.TryGetValue(mk, out var e) ? e + len : len;
                     }
-                    if (!seenCentroids.TryGetValue(mk, out var cs)) seenCentroids[mk] = cs = new();
-                    if (cs.Any(c => Math.Abs(c.x - cx) < 0.02 && Math.Abs(c.y - cy) < 0.02))
-                    { Console.Error.WriteLine($"  ~ key plan: duplicate {mk} occurrence at same location — not summed."); continue; }
-                    cs.Add((cx, cy));
-                    wallMarkLen[mk] = wallMarkLen.TryGetValue(mk, out var e) ? e + len : len;  // two core faces share a mark
+                    foreach (var kv in thisRead)
+                    {
+                        if (!perMark.TryGetValue(kv.Key, out var lst)) perMark[kv.Key] = lst = new();
+                        lst.Add(kv.Value);
+                    }
+                    okReads++;
                 }
-                wallKeyPlanDone = true;
-                Console.WriteLine($"      core wall key plan: {wallMarkLen.Count} marks, {wallMarkLen.Values.Sum():0} ft total");
+                catch (Exception ex) { Console.Error.WriteLine($"  ! {Path.GetFileName(png)}: key plan read {rd + 1} failed: {ex.Message}"); }
             }
-            catch (Exception ex) { Console.Error.WriteLine($"  ! {Path.GetFileName(png)}: key plan read failed: {ex.Message}"); }
+            if (okReads > 0)
+            {
+                // A mark counts only if seen in a MAJORITY of reads (drops one-off hallucinations); its
+                // length is the median across the reads that saw it.
+                int quorum = (okReads / 2) + 1;
+                foreach (var (mk, lens) in perMark)
+                {
+                    if (lens.Count < quorum) continue;
+                    var sorted = lens.OrderBy(x => x).ToList();
+                    wallMarkLen[mk] = sorted[sorted.Count / 2];   // median
+                }
+                wallKeyPlanDone = wallMarkLen.Count > 0;
+                Console.WriteLine($"      core wall key plan: {wallMarkLen.Count} marks (median of {okReads} reads), {wallMarkLen.Values.Sum():0} ft total");
+            }
         }
 
         if (reading.Kind == SheetKind.Schedule)
