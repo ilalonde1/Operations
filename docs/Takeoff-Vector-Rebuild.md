@@ -35,24 +35,30 @@ Foundation ~3,518; rebar 8,910,454 lb.
   word with its bbox + every vector subpath with bbox/closed/filled. No raster, no OCR.
 - Word grouping (`cfa860b2`): uses `NearestNeighbourWordExtractor` so CAD glyphs group into real
   tokens (`WALL`, `LEVEL`, `30"`, `MPa`) instead of single letters.
-- `Core/ScheduleGridReader.cs` (`5397eb66`): reconstructs the shear-wall schedule grid —
+- `Core/ScheduleGridReader.cs` (`5397eb66` + `290caa0b`): reconstructs the shear-wall schedule grid —
   `ReadLevelLadder` (ordered unique levels top→bottom) + `ReadThicknessCells` (thickness on the tight
-  baseline left of each `WALL` token, tagged to its level). Codex-reviewed (GO). Proven on p-61:
-  ladder `L20…P7`, 22 thickness cells, exact `6/12/30/32/36/42"`, column x=1294 reads 30→36→42"
-  top-to-bottom (real per-level thickening).
+  baseline left of each `WALL` token, tagged to its level) + `ReadWallBands` (bind each cell to its
+  nearest mark column W1–W5, fill down into `ScheduleTakeoff.WallBand` records). Codex-reviewed (GO,
+  twice). 5 unit tests in `ScheduleGridReaderTests.cs` (170 Core tests green). Proven on p-61: ladder
+  `L20…P7`; 22 thickness cells, exact `6/12/30/32/36/42"`; **22 wall bands** — W1=30"/W2=12"/W3=32"/
+  W5=6" throughout, **W4 steps 30"(L15-L10)→36"(L9-P5)→42"(P6-P7)**, matching the drawing.
 - CLI probes (additive, in `TakeoffCli/Program.cs`): `vector-dump <pdf> <page> [textfilter]` and
-  `vector-sched <pdf> <page>`. The OLD `vision-estimate` mode still exists and still works — it is the
-  live path until the vector path replaces it.
+  `vector-sched <pdf> <page>` (prints ladder + thickness cells + wall bands). The OLD `vision-estimate`
+  mode still exists and still works — it is the live path until the vector path replaces it.
 
 ## What is NEXT (the schedule → takeoff path)
-1. Bind each thickness column (x) to its mark name (W1–W5) — find the mark header row, nearest-x.
-2. Form level **bands** (each thickness runs from its level down to the next thickness for that mark).
-3. Emit `ScheduleTakeoff.WallBand` records → feed the EXISTING `ScheduleTakeoff` math.
-4. **THEN delete** the vision schedule-reader it replaces (`ReadWallScheduleJsonAsync` etc. in
-   `Vision.cs`) — first dead-code removal.
-5. Then: column schedule (same pattern), slab footprint from native geometry, then the holistic
-   estimator-synthesis pass. Slab transfer-thickness / un-called-out foundations stay FLAGGED, never
-   invented.
+DONE: native reader, word grouping, schedule grid, mark binding, fill-down bands → `WallBand` records.
+1. **Integration (next):** in `vision-estimate`, read the schedule page from the source PDF and call
+   `ScheduleGridReader.ReadWallBands` instead of `PlanVisionClient.ReadWallScheduleJsonAsync`. The
+   config currently feeds PNGs; add the source PDF path so the vector reader can run. Feed the bands
+   into the EXISTING `ScheduleTakeoff.ComputeWall` (which also needs key-plan lengths — see below).
+2. **THEN delete** the vision schedule-reader it replaces (`ReadWallScheduleJsonAsync` in `Vision.cs`)
+   — first dead-code removal (replace-and-delete in the same commit).
+3. Wall key-plan **length** from native geometry (replaces the noisy vision median-of-3) — measure the
+   core-wall polyline lengths from `VectorPageReader` paths.
+4. Then: column schedule (same pattern as walls), slab footprint from native geometry, then the
+   holistic estimator-synthesis pass. Slab transfer-thickness / un-called-out foundations stay
+   FLAGGED, never invented.
 
 ## How to resume after a compaction (do this, in order)
 1. Read this doc.
