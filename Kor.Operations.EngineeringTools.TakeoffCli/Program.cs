@@ -465,6 +465,129 @@ if (args.Length >= 8 && args[0].Equals("hatch", StringComparison.OrdinalIgnoreCa
     return 0;
 }
 
+// Debug: dump a SHEAR WALL SCHEDULE reading (wall thickness per mark per level).
+// Usage: takeoff wallsched <png>
+if (args.Length >= 2 && args[0].Equals("wallsched", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Image not found '{args[1]}'."); return 2; }
+    byte[] small = PlanRaster.LoadDownscaledPng(args[1], 1600);
+    string json = await PlanVisionClient.ReadWallScheduleJsonAsync(small);
+    using var doc = JsonDocument.Parse(json);
+    var entries = doc.RootElement.GetProperty("entries");
+    Console.WriteLine($"{entries.GetArrayLength()} wall-schedule bands:");
+    foreach (var e in entries.EnumerateArray())
+        Console.WriteLine($"  {e.GetProperty("mark").GetString(),-5} {e.GetProperty("levelTop").GetString(),-8}→{e.GetProperty("levelBottom").GetString(),-8} : {e.GetProperty("thicknessIn").GetDouble():0.#}\"");
+    return 0;
+}
+
+// Debug: dump a CORE WALL KEY PLAN reading (each wall mark's centreline length).
+// Usage: takeoff wallplan <png>
+if (args.Length >= 2 && args[0].Equals("wallplan", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Image not found '{args[1]}'."); return 2; }
+    byte[] small = PlanRaster.LoadDownscaledPng(args[1], 1600);
+    string json = await PlanVisionClient.ReadWallKeyPlanJsonAsync(small);
+    using var doc = JsonDocument.Parse(json);
+    var marks = doc.RootElement.GetProperty("marks");
+    double tot = 0;
+    Console.WriteLine($"{marks.GetArrayLength()} wall marks:");
+    foreach (var m in marks.EnumerateArray())
+    {
+        double len = m.GetProperty("lengthFt").GetDouble();
+        tot += len;
+        Console.WriteLine($"  {m.GetProperty("mark").GetString(),-5} : {len,6:0.#} ft");
+    }
+    Console.WriteLine($"total core wall plan length: {tot:0.#} ft");
+    return 0;
+}
+
+// Core-wall concrete the estimator's way: cross-reference the CORE WALL KEY PLAN (each mark's length)
+// with the SHEAR WALL SCHEDULE (each mark's thickness per level band), priced over a level list.
+// Usage: takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>
+//   levels.json: { "storeyHeightFt": 10.5, "levels": ["LEVEL 20", ... , "P7"] }  (top to bottom)
+if (args.Length >= 4 && args[0].Equals("wallconcrete", StringComparison.OrdinalIgnoreCase))
+{
+    foreach (var p in new[] { args[1], args[2], args[3] })
+        if (!File.Exists(p)) { Console.Error.WriteLine($"Not found '{p}'."); return 2; }
+
+    static string Norm(string s)
+    {
+        string n = System.Text.RegularExpressions.Regex.Replace(s.Trim().ToUpperInvariant(), @"\s+", " ");
+        // Strip zero-padding in numbers so 'LEVEL 08' == 'LEVEL 8', 'L01' == 'L1'.
+        return System.Text.RegularExpressions.Regex.Replace(n, @"0*(\d+)", "$1");
+    }
+
+    var lvlDoc = JsonDocument.Parse(File.ReadAllText(args[3]));
+    double storeyFt = lvlDoc.RootElement.TryGetProperty("storeyHeightFt", out var sh) ? sh.GetDouble() : 10.5;
+    var levels = lvlDoc.RootElement.GetProperty("levels").EnumerateArray().Select(e => Norm(e.GetString() ?? "")).ToList();
+    var levelIdx = new Dictionary<string, int>();
+    for (int i = 0; i < levels.Count; i++) levelIdx[levels[i]] = i;
+    int IndexOfLevel(string label) // FLOOR/BASE => bottom of the list
+    {
+        string n = Norm(label);
+        if (n is "FLOOR" or "BASE" or "FND" or "FOUNDATION") return levels.Count - 1;
+        return levelIdx.TryGetValue(n, out var i) ? i : -1;
+    }
+
+    Console.Error.WriteLine("Reading core wall key plan…");
+    string kpJson = await PlanVisionClient.ReadWallKeyPlanJsonAsync(PlanRaster.LoadDownscaledPng(args[1], 1600));
+    Console.Error.WriteLine("Reading shear wall schedule…");
+    string schJson = await PlanVisionClient.ReadWallScheduleJsonAsync(PlanRaster.LoadDownscaledPng(args[2], 1600));
+
+    // mark -> total plan length per floor (sum each occurrence; the same mark can label both core faces)
+    var lenByMark = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+    foreach (var m in JsonDocument.Parse(kpJson).RootElement.GetProperty("marks").EnumerateArray())
+    {
+        string mk = (m.GetProperty("mark").GetString() ?? "").Trim();
+        double len = m.TryGetProperty("lengthFt", out var l) ? l.GetDouble() : 0;
+        if (mk.Length == 0 || len <= 0) continue;
+        lenByMark[mk] = lenByMark.TryGetValue(mk, out var e) ? e + len : len;
+    }
+
+    // mark -> per-level thickness (inches), expanding each schedule band over the level list
+    var thkByMarkLevel = new Dictionary<string, double[]>(StringComparer.OrdinalIgnoreCase);
+    int bandsApplied = 0, bandsSkipped = 0;
+    foreach (var b in JsonDocument.Parse(schJson).RootElement.GetProperty("entries").EnumerateArray())
+    {
+        string mk = (b.GetProperty("mark").GetString() ?? "").Trim();
+        double thk = b.GetProperty("thicknessIn").GetDouble();
+        int top = IndexOfLevel(b.GetProperty("levelTop").GetString() ?? "");
+        int bot = IndexOfLevel(b.GetProperty("levelBottom").GetString() ?? "");
+        if (mk.Length == 0 || thk <= 0 || top < 0 || bot < 0) { bandsSkipped++; continue; }
+        if (top > bot) (top, bot) = (bot, top);
+        if (!thkByMarkLevel.TryGetValue(mk, out var arr)) thkByMarkLevel[mk] = arr = new double[levels.Count];
+        for (int i = top; i <= bot; i++) arr[i] = thk;
+        bandsApplied++;
+    }
+
+    // Price only marks present in BOTH the key plan and the schedule (the real, dimensioned shear walls).
+    double totalCy = 0; int pricedMarks = 0;
+    var rows = new List<(string mark, double len, double avgThk, int floors, double cy)>();
+    foreach (var (mk, len) in lenByMark.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
+    {
+        if (!thkByMarkLevel.TryGetValue(mk, out var thks)) continue;
+        double cy = 0; int floors = 0; double thkSum = 0;
+        for (int i = 0; i < levels.Count; i++)
+        {
+            if (thks[i] <= 0) continue;
+            cy += len * (thks[i] / 12.0) * storeyFt / 27.0;
+            floors++; thkSum += thks[i];
+        }
+        if (floors == 0) continue;
+        totalCy += cy; pricedMarks++;
+        rows.Add((mk, len, thkSum / floors, floors, cy));
+    }
+
+    Console.WriteLine($"Levels: {levels.Count} (top {levels.FirstOrDefault()} → bottom {levels.LastOrDefault()}), storey {storeyFt} ft");
+    Console.WriteLine($"Schedule bands: {bandsApplied} applied, {bandsSkipped} skipped (level not in list)");
+    Console.WriteLine($"Priced {pricedMarks} marks present in BOTH key plan and schedule:");
+    Console.WriteLine($"  {"mark",-6} {"len ft",7} {"avg thk",8} {"floors",7} {"cy",9}");
+    foreach (var r in rows.OrderByDescending(r => r.cy))
+        Console.WriteLine($"  {r.mark,-6} {r.len,7:0.#} {r.avgThk,7:0.#}\" {r.floors,7} {r.cy,9:N0}");
+    Console.WriteLine($"TOTAL core shear-wall concrete: {totalCy:N0} cu.yd");
+    return 0;
+}
+
 // Single-issue absolute takeoff from one concrete schedule CSV (faithful to the app's
 // GenerateTakeoff_Click: Import -> Compute -> BuildXlsx).
 // Usage: takeoff single <schedule.csv> <out.xlsx> [wbs] [name] [issue] [imperial]

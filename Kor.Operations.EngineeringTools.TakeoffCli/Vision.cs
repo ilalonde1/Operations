@@ -24,7 +24,19 @@ static class PlanVisionClient
         ?? Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
 
     /// <summary>Sends the page PNG, forces the report_sheet tool, returns its raw input JSON.</summary>
-    public static async Task<string> ReadSheetJsonAsync(byte[] pngBytes)
+    public static Task<string> ReadSheetJsonAsync(byte[] pngBytes) =>
+        PostForcedToolAsync(ReportSheetTool(), "report_sheet", Prompt, pngBytes, 2048);
+
+    /// <summary>Reads a SHEAR WALL SCHEDULE sheet — wall thickness per mark per level range.</summary>
+    public static Task<string> ReadWallScheduleJsonAsync(byte[] pngBytes) =>
+        PostForcedToolAsync(WallScheduleTool(), "report_wall_schedule", WallSchedulePrompt, pngBytes, 8000);
+
+    /// <summary>Reads a CORE WALL KEY PLAN — each wall mark's centreline length.</summary>
+    public static Task<string> ReadWallKeyPlanJsonAsync(byte[] pngBytes) =>
+        PostForcedToolAsync(WallKeyPlanTool(), "report_wall_key_plan", WallKeyPlanPrompt, pngBytes, 3072);
+
+    /// <summary>Posts the PNG with a forced tool call and returns that tool's raw input JSON.</summary>
+    private static async Task<string> PostForcedToolAsync(object tool, string toolName, string prompt, byte[] pngBytes, int maxTokens)
     {
         if (string.IsNullOrWhiteSpace(ApiKey))
             throw new InvalidOperationException("KOR_ANTHROPIC_KEY is not set — vision layer needs an Anthropic key.");
@@ -33,10 +45,10 @@ static class PlanVisionClient
         var request = new
         {
             model = Model,
-            max_tokens = 2048,
+            max_tokens = maxTokens,
             temperature = 0,   // pin output: the same sheet must read the same way run-to-run
-            tools = new object[] { ReportSheetTool() },
-            tool_choice = new { type = "tool", name = "report_sheet" },
+            tools = new object[] { tool },
+            tool_choice = new { type = "tool", name = toolName },
             messages = new object[]
             {
                 new
@@ -45,7 +57,7 @@ static class PlanVisionClient
                     content = new object[]
                     {
                         new { type = "image", source = new { type = "base64", media_type = "image/png", data = b64 } },
-                        new { type = "text", text = Prompt }
+                        new { type = "text", text = prompt }
                     }
                 }
             }
@@ -54,22 +66,31 @@ static class PlanVisionClient
 
         for (int attempt = 0; ; attempt++)
         {
-            using var req = new HttpRequestMessage(HttpMethod.Post, Endpoint);
-            req.Headers.Add("x-api-key", ApiKey);
-            req.Headers.Add("anthropic-version", "2023-06-01");
-            req.Content = new StringContent(body, Encoding.UTF8, "application/json");
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Post, Endpoint);
+                req.Headers.Add("x-api-key", ApiKey);
+                req.Headers.Add("anthropic-version", "2023-06-01");
+                req.Content = new StringContent(body, Encoding.UTF8, "application/json");
 
-            using var resp = await Http.SendAsync(req);
-            string respText = await resp.Content.ReadAsStringAsync();
-            int code = (int)resp.StatusCode;
-            if ((code == 429 || code >= 500) && attempt < 4)
+                using var resp = await Http.SendAsync(req);
+                string respText = await resp.Content.ReadAsStringAsync();
+                int code = (int)resp.StatusCode;
+                if ((code == 429 || code >= 500) && attempt < 4)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)));
+                    continue;
+                }
+                if (!resp.IsSuccessStatusCode)
+                    throw new HttpRequestException($"Anthropic {code}: {Truncate(respText, 500)}");
+                return ExtractToolInput(respText);
+            }
+            // A transport-level drop (connection reset, TLS write failure, timeout) is thrown before any
+            // response and so isn't caught by the status-code check above — retry it like a 5xx.
+            catch (Exception ex) when (attempt < 4 && ex is HttpRequestException or IOException or System.Net.Sockets.SocketException or TaskCanceledException)
             {
                 await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)));
-                continue;
             }
-            if (!resp.IsSuccessStatusCode)
-                throw new HttpRequestException($"Anthropic {code}: {Truncate(respText, 500)}");
-            return ExtractToolInput(respText);
         }
     }
 
@@ -126,6 +147,85 @@ static class PlanVisionClient
             required = new[] { "kind", "plates" }
         }
     };
+
+    private static object WallScheduleTool() => new
+    {
+        name = "report_wall_schedule",
+        description = "Report every wall-thickness cell of a shear/core wall schedule: the wall mark, the level, and the thickness in inches.",
+        input_schema = new
+        {
+            type = "object",
+            properties = new
+            {
+                entries = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            mark = new { type = "string", description = "wall mark from the column header, e.g. W1, W4, Z3, Z8A" },
+                            levelTop = new { type = "string", description = "top level of the range this thickness covers, e.g. L18" },
+                            levelBottom = new { type = "string", description = "bottom level of the range, e.g. L15 (same as levelTop for a single level)" },
+                            thicknessIn = new { type = "number", description = "wall thickness in inches read from the cell's 'N\" WALL'" },
+                            confidence = new { type = "number" }
+                        },
+                        required = new[] { "mark", "levelTop", "levelBottom", "thicknessIn" }
+                    }
+                }
+            },
+            required = new[] { "entries" }
+        }
+    };
+
+    private static object WallKeyPlanTool() => new
+    {
+        name = "report_wall_key_plan",
+        description = "Report each labelled shear-wall segment on a core wall key plan: its mark and centreline length in feet.",
+        input_schema = new
+        {
+            type = "object",
+            properties = new
+            {
+                marks = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            mark = new { type = "string", description = "wall mark labelling the segment, e.g. W1, Z3, Z8A" },
+                            lengthFt = new { type = "number", description = "centreline length of that wall segment in feet" },
+                            box = new { type = "array", items = new { type = "number" }, minItems = 4, maxItems = 4, description = "normalized [x0,y0,x1,y1] of the segment" },
+                            confidence = new { type = "number" }
+                        },
+                        required = new[] { "mark", "lengthFt" }
+                    }
+                }
+            },
+            required = new[] { "marks" }
+        }
+    };
+
+    private const string WallSchedulePrompt = @"You are a senior structural estimator reading a SHEAR / CORE WALL SCHEDULE — a table whose ROWS are building levels (e.g. LEVEL 20 … LEVEL 01, P1 MEZZ, P1 … P7) and whose COLUMNS are wall marks (W1, W2, W3, W4, W5, Z1, Z2, Z3, Z3A, Z4, Z5, Z6, Z7, Z8, Z8A, and similar). Each non-empty WALL cell states a thickness like '30"" WALL', '12"" WALL', '6"" WALL', '36"" WALL', '42"" WALL', usually followed by reinforcing (e.g. '20M @ 6"" VERT. EACH FACE').
+
+A given wall mark keeps ONE thickness over a RANGE of levels until it changes (the cells are merged vertically). Report ONE entry per such (mark, thickness) BAND with report_wall_schedule:
+   - mark: the column header (W1, Z3, Z8A …).
+   - levelTop / levelBottom: the top and bottom row labels of the band this thickness covers (e.g. levelTop 'L14', levelBottom 'L08'). For a band that is a single level, set both to that level.
+   - thicknessIn: the wall thickness in inches from the band's leading 'N"" WALL' (30, 12, 6, 36, 42 …).
+Do NOT emit a separate entry per level — collapse each merged thickness cell into one top→bottom band. This keeps the output compact.
+
+IGNORE: the H1–H5 'HEADERS' columns (coupling/deep beams, not walls) UNLESS a cell there explicitly gives a wall thickness; cells that are only reinforcing notes or arrows with no 'N"" WALL'; the title block; any 'SEE DRAWING …' overlay text. If a cell is blank, omit it.";
+
+    private const string WallKeyPlanPrompt = @"You are a senior structural estimator reading a CORE WALL KEY PLAN — a small plan of the building core where each shear-wall segment is drawn as a solid (poché) bar and labelled with a mark (W1, W2, W3, W4, W5, Z1, Z2, Z3, Z3A, Z4, Z5, Z6, Z7, Z8, Z8A) via a leader line.
+
+For EACH labelled wall mark, report with report_wall_key_plan:
+   - mark: the label.
+   - lengthFt: the centreline LENGTH of that wall segment in FEET. Estimate it from the gridlines (the bubbles around the plan) and the plan scale — measure the long dimension of the poché bar, not its thickness.
+   - box: a normalized [x0,y0,x1,y1] around that segment.
+If the SAME mark labels two segments (e.g. a wall on each side of the core), report each occurrence separately. Report only the wall segments that carry a mark; ignore columns, dimensions, notes and the title block.";
 
     private const string Prompt = @"You are a senior structural estimator reading ONE sheet from a concrete building's structural drawing set (a 'stickfile'). Report what you see with the report_sheet tool.
 
