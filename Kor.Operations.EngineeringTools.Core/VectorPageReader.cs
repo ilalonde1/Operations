@@ -6,6 +6,7 @@ using System.Linq;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
 using UglyToad.PdfPig.Graphics;
 
 namespace Kor.Operations.EngineeringTools.QuantityTakeoff
@@ -58,8 +59,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             ArgumentNullException.ThrowIfNull(page);
 
             // ── Text: every word with its bounding box ──────────────────────────
+            // CAD-exported drawings place each glyph individually with no inter-word spaces, so the
+            // default whitespace word-splitter yields single characters. The nearest-neighbour
+            // extractor groups glyphs by proximity + baseline (and handles rotated text), so we get
+            // real tokens like "WALL", "LEVEL", "30", "MPa".
             var words = new List<TextToken>();
-            foreach (var w in page.GetWords())
+            foreach (var w in page.GetWords(NearestNeighbourWordExtractor.Instance))
             {
                 if (string.IsNullOrWhiteSpace(w.Text)) continue;
                 var bb = w.BoundingBox;

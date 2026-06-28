@@ -35,9 +35,21 @@ if (args.Length >= 1 && args[0].Equals("vector-dump", StringComparison.OrdinalIg
     foreach (var g in pc.Paths.Where(p => p.IsClosed).OrderByDescending(p => p.DiagonalLen).Take(6))
         Console.WriteLine($"    {g.Width:F0}x{g.Height:F0}  ({g.Points.Count} pts){(g.IsFilled ? " filled" : "")}");
 
-    Console.WriteLine("  Sample text tokens (text @ x,y):");
-    foreach (var t in pc.Words.Take(12))
-        Console.WriteLine($"    \"{t.Text}\" @ {t.Cx:F0},{t.Cy:F0}");
+    // Optional 4th arg: a substring filter — print every matching token with its position.
+    if (args.Length >= 4)
+    {
+        string needle = args[3];
+        var hits = pc.Words.Where(t => t.Text.Contains(needle, StringComparison.OrdinalIgnoreCase)).ToList();
+        Console.WriteLine($"  Tokens containing \"{needle}\": {hits.Count}");
+        foreach (var t in hits.Take(40))
+            Console.WriteLine($"    \"{t.Text}\" @ {t.Cx:F0},{t.Cy:F0}");
+    }
+    else
+    {
+        Console.WriteLine("  Sample text tokens (text @ x,y):");
+        foreach (var t in pc.Words.Take(12))
+            Console.WriteLine($"    \"{t.Text}\" @ {t.Cx:F0},{t.Cy:F0}");
+    }
     return 0;
 }
 
