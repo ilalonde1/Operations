@@ -11,6 +11,43 @@ thickness/area to hit the QTO total — that is circular and destroys generality
 `31044-01` manual QTO (benchmark only): 38,705 cy total — Slab 24,495 / Wall 8,339 / Column 2,353 /
 Foundation ~3,518; rebar 8,910,454 lb.
 
+## THE GOAL (full product vision — read this)
+Read a structural drawing set **like an estimator** (plans + schedules + sections + general notes,
+cross-referenced) and produce (1) **accurate quantity takeoffs** (concrete by element+level, rebar)
+and (2) **analysis** (the reasoning, assumptions, flags). General across any set (manual QTO is the
+benchmark, never an input). **End state: an AI/MCP "crucible" layered on top** so users ask natural-
+language questions about the estimate ("why is wall concrete higher at P6?", "what did you assume for
+the transfer slab?"). => The output MUST be a **structured, traceable estimate model** (every quantity
+carries provenance: sheet/schedule/assumption + confidence/flag), because that model is what MCP
+queries. Build for explainable+queryable from the start — do NOT build a number-only pipeline.
+
+## THE WINNING ARCHITECTURE — synthesis-led, 3 layers (Ian chose this 2026-06-27; DO NOT revert to per-element deterministic parsers — that long road is why we never finish)
+- **Layer 1 — Deterministic extraction (exact, NO AI):** raw facts from the vector — text lines per
+  sheet (`VectorPageReader.ReadTextLines`), geometry primitives + areas/lengths, structured schedules
+  where regular (`ScheduleGridReader`). Numbers ORIGINATE here, so they're trustworthy.
+- **Layer 2 — AI synthesis (Claude over Layer 1, the estimator's judgment):** classify sheets,
+  associate geometry to elements, cross-reference schedule↔plan↔section↔notes, read sections for
+  transfer-slab/foundation thickness, apply notes defaults, FLAG assumptions. Targeted vision only on
+  ambiguous crops. Reasons over EXACT data — NOT pixels (that was the old failure). Emits the
+  structured estimate model with provenance+confidence. (sonnet, KOR_ANTHROPIC_KEY.)
+- **Layer 3 — Deterministic verification:** recompute totals from the model, internal consistency,
+  compare to QTO scorecard. Catches AI drift.
+Numbers trace to Layer 1; AI assembles+flags; Layer 3 verifies; missing drawing data is FLAGGED never
+faked. The structured model IS the artifact the MCP crucible (next product step) queries.
+
+## DONE v1 (the finite finish line — stop the never-finishing)
+End-to-end: Coronation vector PDF -> Layer1 extraction -> ONE Claude synthesis pass -> structured
+estimate model -> the nicely-formatted ClosedXML **xlsx** (REUSE the existing exporter) -> total within
+honest tolerance of QTO 38,705, gaps flagged not faked, runs clean on Onyx. Proven by
+`docs/Takeoff-Scorecard.md` (updated every iteration: total vs QTO, per-element gap, flags).
+DISCIPLINE: vertical slice FIRST (get a full rough end-to-end run + measure), THEN tighten the biggest
+gap and re-measure. Never perfect one parser in isolation.
+
+## Autonomy mandate (granted by Ian 2026-06-27)
+Build this autonomously: implement -> codex-verify substantive logic -> build/test -> commit each
+increment -> keep this doc + the scorecard current. Ian verifies via `git log` + the scorecard, not by
+driving each step. Be economical with synthesis calls.
+
 ## The architecture decision (DO NOT RELITIGATE)
 1. **All KOR drawings are VECTOR PDFs** (stickfiles from Revit/AutoCAD). The schedule text,
    callouts, dimensions, and the wall/slab/column geometry are all EXACT machine-readable data.

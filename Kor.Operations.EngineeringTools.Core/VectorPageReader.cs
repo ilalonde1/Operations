@@ -47,6 +47,30 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             IReadOnlyList<TextToken> Words,
             IReadOnlyList<GeomPath> Paths);
 
+        /// <summary>One reconstructed line of text: words sharing a baseline, joined left-to-right.</summary>
+        public readonly record struct TextLine(string Text, double Y, double MinX, double MaxX);
+
+        /// <summary>
+        /// Group the page's words into readable lines (same baseline, ordered left→right, top→bottom).
+        /// This is the estimator-readable form — callouts like «10" SLAB», sheet titles, schedule rows —
+        /// far better fuel for synthesis than a bag of tokens. Baseline tolerance is ~6pt.
+        /// </summary>
+        public static IReadOnlyList<TextLine> ReadTextLines(PageContent page)
+        {
+            ArgumentNullException.ThrowIfNull(page);
+            return page.Words
+                .GroupBy(w => Math.Round(w.Cy / 6.0))
+                .Select(g =>
+                {
+                    var ordered = g.OrderBy(w => w.Cx).ToList();
+                    return new TextLine(
+                        string.Join(" ", ordered.Select(w => w.Text)),
+                        ordered[0].Cy, ordered.Min(w => w.MinX), ordered.Max(w => w.MaxX));
+                })
+                .OrderByDescending(l => l.Y)
+                .ToList();
+        }
+
         /// <summary>Open the PDF and read one page (1-based).</summary>
         public static PageContent ReadPage(string pdfPath, int pageNumber)
         {
