@@ -30,9 +30,12 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     var tkProfile = PlanProfile.ByName("BC-moderate");
     // Raw per-plate measurements (area is deterministic poché; thickness may be missing from synthesis
     // and is reconciled across a level's match-line halves below before pricing).
-    var tkRaw = new List<(string Label, string LevelBase, double Area, double Thk)>();
+    var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk)>();
 
     var tkSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // (level, zone) keys already counted
+    // Pooled text per canonical (level, zone) key — across ALL its sheets incl. the deduped reinforcing
+    // ones — so a typical-floor band stated only on a sibling sheet still drives the multiplier.
+    var tkPooled = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
     var tkDigest = DrawingDigestBuilder.Build(args[1], tkFirst, tkLast);
     Console.WriteLine($"vector-takeoff: {tkDigest.Pages.Count} page(s) in range, classifying...");
     foreach (var page in tkDigest.Pages)
@@ -50,6 +53,10 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         // reinforcing in the set); the dropped sheet is a rebar/detail source, not a second slab volume.
         if (page.Title is { } t0)
         {
+            // Pool every sheet's text under its canonical key BEFORE the dup-skip, so the floor-band note
+            // on a reinforcing sheet (which we skip for measurement) still feeds the multiplier.
+            if (!tkPooled.TryGetValue(t0.Key, out var pool)) { pool = new List<string>(); tkPooled[t0.Key] = pool; }
+            pool.AddRange(page.Lines);
             if (!tkSeen.Add(t0.Key)) { Console.WriteLine($"  p{page.Page}: {t0.Display} — dup of an already-counted plan, slab not double-counted (skip)"); continue; }
         }
 
@@ -77,7 +84,9 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             // Keep the plate even if thickness is missing — area is solid; thickness is reconciled below
             // from the sibling match-line half of the same level (slab depth is constant across the line).
             string levelBase = page.Title?.Level ?? lvl;
-            tkRaw.Add((lvl, levelBase, area, thk));
+            string key = page.Title?.Key ?? lvl;
+            int? repLevel = int.TryParse(page.Title?.Level, out var rl) ? rl : (int?)null;
+            tkRaw.Add((lvl, levelBase, key, repLevel, area, thk));
             Console.WriteLine($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)")}");
         }
         catch (Exception ex) { Console.Error.WriteLine($"  ! p{page.Page}: locate/measure failed: {ex.Message}"); }
@@ -100,7 +109,13 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         if (thk <= 0 && tkThkByLevel.TryGetValue(r.LevelBase, out var inferred))
         { thk = inferred; Console.WriteLine($"  ~ {r.Label}: thickness inherited {thk}\" from level {r.LevelBase}."); }
         if (thk <= 0) { Console.Error.WriteLine($"  ! {r.Label}: no thickness for level {r.LevelBase} (no sibling), FLAGGED + excluded from concrete."); continue; }
-        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", r.Area, thk));
+
+        // Typical-floor multiplier: a tower plan stands for a band of identical floors (band read from
+        // the pooled exact text). Parkade/roof and un-banded levels stay 1.
+        int floors = r.RepLevel is int rep && tkPooled.TryGetValue(r.Key, out var pool)
+            ? FloorMultiplier.CountForLevel(pool, rep) : 1;
+        if (floors > 1) Console.WriteLine($"  x {r.Label}: typical plan -> {floors} physical floors (band from drawing text).");
+        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", r.Area, thk, floors));
     }
 
     if (tkPlates.Count == 0) { Console.Error.WriteLine("No priceable slab plates (no thickness anywhere)."); return 2; }
