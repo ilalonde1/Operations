@@ -36,12 +36,17 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         double? ThicknessIn,
         double Confidence);
 
+    /// <summary>Which kind of schedule a Schedule sheet is — drives which schedule reader runs.</summary>
+    public enum SheetScheduleType { None, WallSchedule, ColumnSchedule, FootingSchedule, OtherSchedule }
+
     /// <summary>The vision layer's reading of one sheet.</summary>
     public sealed record SheetReading(
         SheetKind Kind,
         string? ScaleNote,
         IReadOnlyList<PlateReading> Plates,
-        string? Notes);
+        string? Notes,
+        SheetScheduleType ScheduleType = SheetScheduleType.None,
+        bool HasWallKeyPlan = false);
 
     /// <summary>
     /// Parses the structured JSON the vision tool returns into a <see cref="SheetReading"/>. Pure and
@@ -67,6 +72,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var kind = ParseKind(GetString(root, "kind"));
             string? scaleNote = GetString(root, "scaleNote");
             string? notes = GetString(root, "notes");
+            var scheduleType = ParseScheduleType(GetString(root, "scheduleType"));
+            bool hasWallKeyPlan = root.TryGetProperty("hasWallKeyPlan", out var kp)
+                && kp.ValueKind is JsonValueKind.True;
 
             var plates = new List<PlateReading>();
             if (root.TryGetProperty("plates", out var platesEl) && platesEl.ValueKind == JsonValueKind.Array)
@@ -77,8 +85,17 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     plates.Add(ParsePlate(p));
                 }
             }
-            return new SheetReading(kind, NullIfBlank(scaleNote), plates, NullIfBlank(notes));
+            return new SheetReading(kind, NullIfBlank(scaleNote), plates, NullIfBlank(notes), scheduleType, hasWallKeyPlan);
         }
+
+        private static SheetScheduleType ParseScheduleType(string? raw) => (raw ?? "").Trim().ToLowerInvariant() switch
+        {
+            "wallschedule" or "wall" or "shearwall" => SheetScheduleType.WallSchedule,
+            "columnschedule" or "column" => SheetScheduleType.ColumnSchedule,
+            "footingschedule" or "footing" or "foundationschedule" => SheetScheduleType.FootingSchedule,
+            "otherschedule" or "schedule" or "beam" => SheetScheduleType.OtherSchedule,
+            _ => SheetScheduleType.None,
+        };
 
         private static PlateReading ParsePlate(JsonElement p)
         {

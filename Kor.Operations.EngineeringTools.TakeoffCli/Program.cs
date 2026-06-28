@@ -37,6 +37,14 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
     // Suspended slabs are collected here and reconciled building-wide AFTER all sheets are read, so
     // each physical floor is counted once regardless of how the set encodes its level/layout ranges.
     var pendingSlabs = new List<PendingSlab>();
+    // Schedule cross-reference: vertical concrete priced from the SHEAR WALL + COLUMN schedules (the
+    // estimator's source of truth) instead of plan poché pixels, when the config supplies the level
+    // list. Wall bands/column bands accumulate across schedule sheets (Part 1 + Part 2); key-plan mark
+    // lengths are read once (the core layout is constant up the height — summing sheets would double it).
+    var wallBands = new List<ScheduleTakeoff.WallBand>();
+    var colBands = new List<ScheduleTakeoff.ColumnBand>();
+    var wallMarkLen = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+    bool wallKeyPlanDone = false;
     // Building-wide guard: the same floor is often drawn on several sheets (multi-issue reprints,
     // formwork vs reinforcing copies, enlarged partials). Summing all of them multiply-counts the
     // structure, so the first sheet to claim a given (kind + set-of-level-labels) wins.
@@ -57,6 +65,70 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
         catch (Exception ex) { Console.Error.WriteLine($"  ! {Path.GetFileName(png)}: vision failed: {ex.Message}, skipped."); continue; }
 
         Console.WriteLine($"  {Path.GetFileName(png)}: {reading.Kind}, scale '{reading.ScaleNote ?? "(none)"}', {reading.Plates.Count} plate(s)");
+
+        // ── cross-reference the dimensioned schedules (the estimator's source for verticals) ────────
+        // A core wall key plan gives each mark's length — read ONCE (the core layout is the same up the
+        // height; re-summing it per sheet would multiply the wall concrete).
+        if (reading.HasWallKeyPlan && !wallKeyPlanDone)
+        {
+            try
+            {
+                using var kp = JsonDocument.Parse(await PlanVisionClient.ReadWallKeyPlanJsonAsync(PlanRaster.LoadDownscaledPng(png, 1600)));
+                int nMarks = 0;
+                foreach (var m in kp.RootElement.GetProperty("marks").EnumerateArray())
+                {
+                    string mk = (m.GetProperty("mark").GetString() ?? "").Trim();
+                    double len = m.TryGetProperty("lengthFt", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetDouble() : 0;
+                    if (mk.Length == 0 || len <= 0) continue;
+                    wallMarkLen[mk] = wallMarkLen.TryGetValue(mk, out var e) ? e + len : len;  // two core faces share a mark
+                    nMarks++;
+                }
+                wallKeyPlanDone = true;
+                Console.WriteLine($"      core wall key plan: {wallMarkLen.Count} marks, {wallMarkLen.Values.Sum():0} ft total");
+            }
+            catch (Exception ex) { Console.Error.WriteLine($"  ! {Path.GetFileName(png)}: key plan read failed: {ex.Message}"); }
+        }
+
+        if (reading.Kind == SheetKind.Schedule)
+        {
+            try
+            {
+                if (reading.ScheduleType == SheetScheduleType.WallSchedule)
+                {
+                    using var doc = JsonDocument.Parse(await PlanVisionClient.ReadWallScheduleJsonAsync(PlanRaster.LoadDownscaledPng(png, 1600)));
+                    int n = 0;
+                    foreach (var b in doc.RootElement.GetProperty("entries").EnumerateArray())
+                    {
+                        double t = b.TryGetProperty("thicknessIn", out var tv) && tv.ValueKind == JsonValueKind.Number ? tv.GetDouble() : 0;
+                        if (t <= 0) continue;
+                        wallBands.Add(new ScheduleTakeoff.WallBand(
+                            (b.GetProperty("mark").GetString() ?? "").Trim(),
+                            b.GetProperty("levelTop").GetString() ?? "", b.GetProperty("levelBottom").GetString() ?? "", t));
+                        n++;
+                    }
+                    Console.WriteLine($"      wall schedule: {n} thickness bands");
+                }
+                else if (reading.ScheduleType == SheetScheduleType.ColumnSchedule)
+                {
+                    using var doc = JsonDocument.Parse(await PlanVisionClient.ReadColumnScheduleJsonAsync(PlanRaster.LoadDownscaledPng(png, 1600)));
+                    int n = 0;
+                    foreach (var b in doc.RootElement.GetProperty("entries").EnumerateArray())
+                    {
+                        double w = b.TryGetProperty("widthIn", out var wv) && wv.ValueKind == JsonValueKind.Number ? wv.GetDouble() : 0;
+                        double d = b.TryGetProperty("depthIn", out var dv) && dv.ValueKind == JsonValueKind.Number ? dv.GetDouble() : 0;
+                        if (w <= 0) continue;
+                        colBands.Add(new ScheduleTakeoff.ColumnBand(
+                            (b.GetProperty("mark").GetString() ?? "").Trim(),
+                            b.GetProperty("levelTop").GetString() ?? "", b.GetProperty("levelBottom").GetString() ?? "", w, d));
+                        n++;
+                    }
+                    Console.WriteLine($"      column schedule: {n} size bands");
+                }
+            }
+            catch (Exception ex) { Console.Error.WriteLine($"  ! {Path.GetFileName(png)}: schedule read failed: {ex.Message}"); }
+            continue;   // a schedule sheet carries no plates to measure
+        }
+
         if (reading.Kind != SheetKind.Framing && reading.Kind != SheetKind.Foundation) continue;
 
         // Skip a sheet that re-draws levels an earlier sheet already supplied (kind + level-label set).
@@ -244,6 +316,27 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
         }
     }
 
+    // ── schedule-driven verticals: replace the gray-fill estimate when the schedules were read ──────
+    // When the config supplies the building's ordered level list, price shear walls from the wall
+    // schedule + key plan and columns from the column schedule (the dimensioned source of truth). In
+    // that case the per-floor gray-fill wall/column footprints are SUPPRESSED below to avoid double-
+    // counting; without a level list (or schedules), the gray-fill estimate stands.
+    var levelList = cfg.Levels is { Count: > 0 } ? cfg.Levels : null;
+    bool useSchedWalls = levelList != null && wallMarkLen.Count > 0 && wallBands.Count > 0;
+    bool useSchedCols = levelList != null && colBands.Count > 0;
+    double[]? storeyInArr = null;
+    if (levelList != null)
+    {
+        storeyInArr = new double[levelList.Count];
+        var heightMap = new Dictionary<string, double>(StringComparer.Ordinal);
+        if (cfg.StoreyHeightInByLevel != null)
+            foreach (var kv in cfg.StoreyHeightInByLevel)
+                heightMap[ScheduleTakeoff.NormalizeLevel(kv.Key)] = kv.Value;
+        for (int i = 0; i < levelList.Count; i++)
+            storeyInArr[i] = heightMap.TryGetValue(ScheduleTakeoff.NormalizeLevel(levelList[i]), out var h) && h > 0
+                ? h : cfg.StoreyHeightIn;
+    }
+
     // ── building-wide floor reconciliation ──────────────────────────────────────────────────────
     // Count each physical floor's suspended slab exactly once. Parse every slab's level label into the
     // floors it represents, assign each floor to one owning plate, and price it at that owned count —
@@ -262,12 +355,33 @@ if (args.Length >= 3 && args[0].Equals("vision-estimate", StringComparison.Ordin
         { droppedSlabs++; Console.Error.WriteLine($"  · {s.Level}: floor(s) already owned by a more specific or re-issued sheet — dropped."); continue; }
         keptSlabs++;
         vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Slab, s.Variant, s.AreaSqFt, s.ThicknessIn, eff, "", s.ScaleConfirmed));
-        if (s.WallSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Wall, "shear", s.WallSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
-        if (s.ColSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Column, null, s.ColSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
+        // Gray-fill walls/columns are the fallback estimate — suppressed when the schedules drive them.
+        if (!useSchedWalls && s.WallSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Wall, "shear", s.WallSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
+        if (!useSchedCols && s.ColSqFt > 0) vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.Column, null, s.ColSqFt, s.StoreyIn, eff, "", s.ScaleConfirmed));
         foreach (var th in s.Thickenings)   // drop panels / built-up zones: added depth over the slab, same floor count
             vPlates.Add(new MeasuredPlate(s.Level, TakeoffElementType.DropPanel, "thickening", th.AreaSqFt, th.AddedDepthIn, eff, "", s.ScaleConfirmed));
     }
     Console.WriteLine($"Floor reconciliation: {keptSlabs} slab plate(s) kept, {droppedSlabs} dropped as duplicate/superseded.");
+
+    // Emit the schedule-driven verticals (one plate per level, count 1 — bands already expanded).
+    if (useSchedWalls && storeyInArr != null)
+    {
+        var wr = ScheduleTakeoff.ComputeWall(levelList!, storeyInArr, wallMarkLen, wallBands);
+        foreach (var lf in wr.PerLevel)
+            if (lf.FootprintSqFt > 0)
+                vPlates.Add(new MeasuredPlate(lf.Level, TakeoffElementType.Wall, "shear", lf.FootprintSqFt, lf.StoreyIn, 1, "", true));
+        Console.WriteLine($"Schedule walls: {wr.TotalCuYd:N0} cu.yd over {wr.PerLevel.Count(p => p.FootprintSqFt > 0)} levels "
+            + $"({wr.MarksPriced} marks, {wr.BandsApplied} bands applied, {wr.BandsSkipped} skipped).");
+    }
+    if (useSchedCols && storeyInArr != null)
+    {
+        var cr = ScheduleTakeoff.ComputeColumn(levelList!, storeyInArr, colBands);
+        foreach (var lf in cr.PerLevel)
+            if (lf.FootprintSqFt > 0)
+                vPlates.Add(new MeasuredPlate(lf.Level, TakeoffElementType.Column, null, lf.FootprintSqFt, lf.StoreyIn, 1, "", true));
+        Console.WriteLine($"Schedule columns: {cr.TotalCuYd:N0} cu.yd over {cr.PerLevel.Count(p => p.FootprintSqFt > 0)} levels "
+            + $"({cr.MarksPriced} marks, {cr.BandsApplied} bands applied, {cr.BandsSkipped} skipped).");
+    }
 
     if (vPlates.Count == 0) { Console.Error.WriteLine("No measurable plates from vision."); return 2; }
 
@@ -810,6 +924,10 @@ sealed class VisionPagesConfig
     public string? PngDir { get; set; }
     public double StoreyHeightIn { get; set; }            // floor-to-floor height for wall/column concrete; 0 = unknown
     public double SogThicknessIn { get; set; }            // slab-on-grade thickness when not legible on the footings sheet; 0 = leave unresolved
+    // Ordered building levels (top → bottom), e.g. ["LEVEL 46", … , "P7"]. When present, vertical
+    // concrete is priced from the wall/column SCHEDULES over these levels instead of plan poché pixels.
+    public List<string>? Levels { get; set; }
+    public Dictionary<string, double>? StoreyHeightInByLevel { get; set; }  // per-level overrides (inches); else StoreyHeightIn
     public List<VisionPage> Pages { get; set; } = new();
 }
 

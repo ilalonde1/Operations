@@ -35,6 +35,10 @@ static class PlanVisionClient
     public static Task<string> ReadWallKeyPlanJsonAsync(byte[] pngBytes) =>
         PostForcedToolAsync(WallKeyPlanTool(), "report_wall_key_plan", WallKeyPlanPrompt, pngBytes, 3072);
 
+    /// <summary>Reads a COLUMN SCHEDULE — each column mark's W×D size per level band.</summary>
+    public static Task<string> ReadColumnScheduleJsonAsync(byte[] pngBytes) =>
+        PostForcedToolAsync(ColumnScheduleTool(), "report_column_schedule", ColumnSchedulePrompt, pngBytes, 8000);
+
     /// <summary>Posts the PNG with a forced tool call and returns that tool's raw input JSON.</summary>
     private static async Task<string> PostForcedToolAsync(object tool, string toolName, string prompt, byte[] pngBytes, int maxTokens)
     {
@@ -124,6 +128,8 @@ static class PlanVisionClient
             {
                 kind = new { type = "string", @enum = new[] { "Framing", "Foundation", "Schedule", "Detail", "Other" } },
                 scaleNote = new { type = new[] { "string", "null" }, description = "title-block scale exactly as written, e.g. 1/8\"=1'-0\"" },
+                scheduleType = new { type = new[] { "string", "null" }, @enum = new[] { "WallSchedule", "ColumnSchedule", "FootingSchedule", "OtherSchedule", null }, description = "if this sheet contains a schedule table, which kind; else null" },
+                hasWallKeyPlan = new { type = "boolean", description = "true if the sheet shows a CORE WALL KEY PLAN (a small core plan with wall segments labelled W1, Z3, …)" },
                 plates = new
                 {
                     type = "array",
@@ -209,6 +215,46 @@ static class PlanVisionClient
         }
     };
 
+    private static object ColumnScheduleTool() => new
+    {
+        name = "report_column_schedule",
+        description = "Report every column-size cell of a column schedule: the mark, the level range, and the width × depth in inches.",
+        input_schema = new
+        {
+            type = "object",
+            properties = new
+            {
+                entries = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            mark = new { type = "string", description = "column mark from the column header, e.g. C1, C12, PC1" },
+                            levelTop = new { type = "string", description = "top level of the range this size covers" },
+                            levelBottom = new { type = "string", description = "bottom level of the range (same as top for a single level)" },
+                            widthIn = new { type = "number", description = "column width in inches (the first dimension)" },
+                            depthIn = new { type = "number", description = "column depth in inches (the second dimension; equal to width if square)" },
+                            confidence = new { type = "number" }
+                        },
+                        required = new[] { "mark", "levelTop", "levelBottom", "widthIn", "depthIn" }
+                    }
+                }
+            },
+            required = new[] { "entries" }
+        }
+    };
+
+    private const string ColumnSchedulePrompt = @"You are a senior structural estimator reading a COLUMN SCHEDULE — a table whose ROWS are building levels and whose COLUMNS are column marks (C1, C2, … or PC1, PC2, …). Each non-empty cell gives that column's plan size at that level, e.g. '24""x24""', '600 x 600', '24""x16""', often with reinforcing below it.
+
+A given column mark keeps ONE size over a RANGE of levels until it changes (merged cells). Report ONE entry per (mark, size) band with report_column_schedule:
+   - mark: the column header (C1, PC3 …).
+   - levelTop / levelBottom: the top and bottom row labels of the band this size covers (both the same for a single level).
+   - widthIn / depthIn: the column's two plan dimensions in INCHES. Convert millimetres to inches if the schedule is metric (600 mm ≈ 24""). If the cell shows a single number it is square — set width = depth.
+Do NOT emit a separate entry per level — collapse each merged size cell into one top→bottom band. IGNORE reinforcing-only text, ties, the title block, and any blank cell.";
+
     private const string WallSchedulePrompt = @"You are a senior structural estimator reading a SHEAR / CORE WALL SCHEDULE — a table whose ROWS are building levels (e.g. LEVEL 20 … LEVEL 01, P1 MEZZ, P1 … P7) and whose COLUMNS are wall marks (W1, W2, W3, W4, W5, Z1, Z2, Z3, Z3A, Z4, Z5, Z6, Z7, Z8, Z8A, and similar). Each non-empty WALL cell states a thickness like '30"" WALL', '12"" WALL', '6"" WALL', '36"" WALL', '42"" WALL', usually followed by reinforcing (e.g. '20M @ 6"" VERT. EACH FACE').
 
 A given wall mark keeps ONE thickness over a RANGE of levels until it changes (the cells are merged vertically). Report ONE entry per such (mark, thickness) BAND with report_wall_schedule:
@@ -229,8 +275,10 @@ If the SAME mark labels two segments (e.g. a wall on each side of the core), rep
 
     private const string Prompt = @"You are a senior structural estimator reading ONE sheet from a concrete building's structural drawing set (a 'stickfile'). Report what you see with the report_sheet tool.
 
-- kind: 'Framing' for a suspended-floor / 'CONCRETE OUTLINE' plan; 'Foundation' for a mat / footing / parkade slab-on-grade plan; 'Schedule' for column/wall schedules; 'Detail' for sections/details; otherwise 'Other'.
+- kind: 'Framing' for a suspended-floor / 'CONCRETE OUTLINE' plan; 'Foundation' for a mat / footing / parkade slab-on-grade plan; 'Schedule' for column/wall/footing schedule tables; 'Detail' for sections/details; otherwise 'Other'.
 - scaleNote: the title-block drawing scale, exactly as written (e.g. 1/8""=1'-0"").
+- scheduleType: if the sheet contains a SCHEDULE TABLE, classify it: 'WallSchedule' (a SHEAR/CORE WALL SCHEDULE — rows are levels, columns are wall marks W/Z giving 'N"" WALL'), 'ColumnSchedule' (rows levels, columns column marks C/PC giving sizes like 24""x24""), 'FootingSchedule' (footing marks F/SF with plan sizes and depths), else 'OtherSchedule'. If there is no schedule table, null.
+- hasWallKeyPlan: true if the sheet shows a CORE WALL KEY PLAN — a small plan of the building core with each wall segment labelled by a mark (W1, W2, Z3, Z8A, …) on a leader. These often share a sheet with the wall schedule.
 - For EACH concrete-outline plate on the sheet (framing sheets often show two side by side), add one plate:
    - level: the label from the plate's OWN PLAN TITLE, e.g. 'L17-28' from 'LEVEL 17 - 28 PLAN - CONCRETE OUTLINE'. Use the plan title, NOT a level range printed on a schedule header (a 'LEVEL P7 - L1 SHEAR WALL SCHEDULE' is a schedule that happens to serve many levels — it is NOT this sheet's level).
    - count: how many physical floors the PLAN TITLE itself stands for. A 'typical' plan whose title gives a level RANGE ('LEVEL 17 - 28 PLAN' = 12, 'LEVEL 4-12' = 9) repeats for that many floors. A single-level plan = 1. A FOUNDATIONS/FOOTINGS plan is the foundation built ONCE — count = 1 (never take a count from a schedule's level range like 'P7-L1').
