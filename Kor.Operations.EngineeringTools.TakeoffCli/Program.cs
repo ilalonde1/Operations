@@ -101,8 +101,15 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
 
     if (tkRaw.Count == 0) { Console.Error.WriteLine("No slab plates measured."); return 2; }
 
-    // Reconcile thickness per level: a half with no synthesised thickness inherits its level's modal
-    // (most common, else max) thickness — slab depth is consistent across a level's match-line halves.
+    // PRIMARY thickness: the drawing's own slab callout ("10\" SLAB"), read deterministically from the
+    // exact text pooled across a level's sheets — stable run-to-run, unlike the synthesised image read.
+    var tkDetThk = tkRaw.GroupBy(r => r.LevelBase, StringComparer.OrdinalIgnoreCase).ToDictionary(
+        g => g.Key,
+        g => SlabThicknessReader.DominantThicknessIn(
+                g.Select(r => r.Key).Distinct().SelectMany(k => tkPooled.TryGetValue(k, out var p) ? p : Enumerable.Empty<string>())),
+        StringComparer.OrdinalIgnoreCase);
+
+    // FALLBACK thickness: a level's modal synthesised value, for any level whose drawing states no callout.
     var tkThkByLevel = tkRaw.Where(r => r.Thk > 0)
         .GroupBy(r => r.LevelBase)
         .ToDictionary(g => g.Key,
@@ -128,10 +135,16 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     var tkPlates = new List<MeasuredPlate>();
     foreach (var r in tkRaw)
     {
-        double thk = r.Thk;
-        if (thk <= 0 && tkThkByLevel.TryGetValue(r.LevelBase, out var inferred))
-        { thk = inferred; Console.WriteLine($"  ~ {r.Label}: thickness inherited {thk}\" from level {r.LevelBase}."); }
-        if (thk <= 0) { Console.Error.WriteLine($"  ! {r.Label}: no thickness for level {r.LevelBase} (no sibling), FLAGGED + excluded from concrete."); continue; }
+        double thk = r.Thk;   // synthesised read
+        if (tkDetThk.TryGetValue(r.LevelBase, out var det) && det.HasValue)
+        {
+            if (thk > 0 && Math.Abs(thk - det.Value) > 0.5)
+                Console.WriteLine($"  ~ {r.Label}: thickness {det.Value}\" from slab callout (synthesis said {thk}\").");
+            thk = det.Value;
+        }
+        else if (thk <= 0 && tkThkByLevel.TryGetValue(r.LevelBase, out var inferred))
+        { thk = inferred; Console.WriteLine($"  ~ {r.Label}: thickness inherited {thk}\" from level {r.LevelBase} (synthesis fallback, no callout)."); }
+        if (thk <= 0) { Console.Error.WriteLine($"  ! {r.Label}: no thickness for level {r.LevelBase} (no callout, no sibling), FLAGGED + excluded from concrete."); continue; }
 
         // Parkade/roof and any non-numeric level are 1:1; tower levels take their tiled floor count.
         int floors = r.RepLevel is int rep && tileCounts.TryGetValue(rep, out var c) ? c : 1;
