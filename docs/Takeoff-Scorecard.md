@@ -4,7 +4,55 @@
 > manual QTO: **38,705 cy** (Slab 24,495 / Wall 8,339 / Column 2,353 / Foundation ~3,518); rebar
 > 8,910,454 lb. The QTO is the ANSWER KEY, never an input.
 
-## As of 2026-06-28 (SLAB ACCURACY PASS — now trustworthy, not error-cancelling)
+## As of 2026-06-28 PM (BENCHMARK CORRECTED + per-level reconciliation — the real state)
+
+**The "83%" was measuring against the wrong number.** The QTO "Summary" tab is an ETABS per-level slab
+table whose **Total of 24,495 cy INCLUDES the 4,287 cy mat footing** (row "Ftg", 85" thick × 16,344 sqft).
+Our pipeline deliberately EXCLUDES foundations. The apples-to-apples target for **suspended slab** is:
+
+| QTO benchmark (suspended slab, mat excluded) | cy |
+|---|---|
+| Total (incl mat) | 24,495 |
+| − Mat footing (Ftg, 85") | −4,287 |
+| **= Suspended + SOG + podium + mezz** | **20,208** |
+| (− P7 slab-on-grade 4") | (19,808) |
+
+Our pipeline produces **~20,353 cy → ~100.7% of 20,208.** But the total is **ERROR-CANCELLING**, not
+solved — per-level reconciliation (N+S summed, tiling applied) against the QTO exposes large offsetting
+area/locate/tiling errors:
+
+| Group | Ours cy | QTO cy | Δ | Root cause |
+|---|---|---|---|---|
+| **L01 podium** | ~301 | **2,059** | **−1,758** | locate grabbed tower core (6,964 sqft); the big "LEVEL 1 PLAN-NORTH" podium is 41,224 sqft (S2.10.1) |
+| **LM mezzanine** | ~1,295 | **349** | **+946** | poché grabbed the full P1 plate (35,353 sqft) for what is a ~9,723 sqft partial mezz |
+| **Roof L45–47** | ~49 | **442** | **−393** | one small ROOF plate (1,325 sqft); L45 alone is 9,800 sqft |
+| L14–15 | ~369 | 595 | −226 | read 8", QTO is 12" |
+| L44 | ~629 | 423 | +206 | tiling 43–44 **double-counts L43** (already in the 39–43 band) |
+| Parkade P1–P6 | ~6,663 | 6,235 | +428 | areas ~+11% (gross-vs-net: ramp/shaft voids not deducted) |
+| Tower L04–L43 | ~8,820 | ~9,270 | −450 | plate areas ~7% low |
+
+**The dominant errors are AREA / LOCATE, not thickness.** L01 (−1,758) and mezz (+946) are the same class
+of problem — the synthesis locate box not capturing the correct plate extent (the whole podium for L01, the
+partial-mezz region for LM). Fix these and the per-level numbers match for the right reasons.
+
+**Thickness ZONING built + then GATED OFF.** Built `SlabThicknessZoner` + `PlanGeometry.ThicknessZoneFractions`
+(Voronoi split of a plate by its own `N" SLAB` callouts), verified on a probe (`vector-zones`: p48 L13 →
+58%@8"+42%@12"=9.7"; parkade unchanged). But the **QTO models each level at a SINGLE thickness** (L13 = 8"
+flat; the 12" callouts are minor drop panels), so zoning pushes typical floors ~12% OVER the answer key.
+Capability kept (Core + probe + 9 tests) but `tkApplyZoning = false` in the default pipeline. Lesson: match
+the answer-key methodology, not a more "physically detailed" model the answer key doesn't use.
+
+### Next (priority order, all per-level vs the 20,208 target)
+1. **L01 podium locate** (−1,758, biggest) — make the locate capture the big "LEVEL 1 PLAN-NORTH" plate.
+2. **Mezzanine locate** (+946) — isolate the partial-mezz slab region, not the full drawn plate.
+3. **Roof L45–47** (−393) — these are real ~9,800 sqft floors with their own plans, not one small ROOF.
+4. **Tiling overlap L43/L44** (+206) — `TileTowerCounts` lets 44's band re-cover 43; fix the boundary.
+5. **L14–15 thickness** (−226) — should be 12", read 8".
+6. **Parkade gross-vs-net** (+428) — deduct ramp/shaft/stair voids from the poché.
+
+---
+
+## As of 2026-06-28 (SLAB ACCURACY PASS — now trustworthy, not error-cancelling) [SUPERSEDED by the section above]
 
 **Architecture: VALIDATED + WIRED END-TO-END.** `vector-takeoff <pdf> <pngDir> <out.xlsx>` runs the
 whole synthesis-led pipeline on all 77 pages and writes the existing ClosedXML workbook. SLAB element

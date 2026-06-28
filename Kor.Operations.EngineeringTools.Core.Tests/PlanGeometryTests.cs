@@ -272,6 +272,41 @@ public sealed class PlanGeometryTests
         Assert.Equal(9597, sqft, 0); // matches the validated field measurement
     }
 
+    // ── thickness zoning (Voronoi by callout) ───────────────────────────────────────────────
+
+    [Fact]
+    public void ThicknessZoneFractions_SplitsEnclosedAreaByNearestCallout()
+    {
+        const int w = 200, h = 200;
+        var lum = White(w, h);
+        DrawRectOutline(lum, w, 50, 40, 150, 160); // enclosed interior 51..149 × 41..159
+
+        // Two callouts: an 8" on the left third, a 12" on the right third of the plate.
+        var callouts = new[]
+        {
+            new PlanGeometry.CalloutPx(75, 100, 8),
+            new PlanGeometry.CalloutPx(125, 100, 12),
+        };
+        var zones = PlanGeometry.ThicknessZoneFractions(lum, w, h, callouts,
+            minX: 50, minY: 40, maxX: 150, maxY: 160, darkThreshold: 110, sealHairlineGaps: false);
+
+        long total = 0; foreach (var v in zones.Values) total += v;
+        Assert.Equal(99 * 119, total);                 // every interior-light pixel is assigned
+        Assert.True(zones.ContainsKey(8) && zones.ContainsKey(12));
+        // The dividing line sits midway (x≈100), so the split is near 50/50.
+        Assert.InRange((double)zones[8] / total, 0.45, 0.55);
+    }
+
+    [Fact]
+    public void ThicknessZoneFractions_NoCallouts_ReturnsEmpty()
+    {
+        const int w = 60, h = 60;
+        var lum = White(w, h);
+        DrawRectOutline(lum, w, 10, 10, 50, 50);
+        Assert.Empty(PlanGeometry.ThicknessZoneFractions(lum, w, h,
+            Array.Empty<PlanGeometry.CalloutPx>(), 10, 10, 50, 50));
+    }
+
     // ── synthetic-image helpers ─────────────────────────────────────────────────────────────
 
     private static byte[] White(int w, int h)

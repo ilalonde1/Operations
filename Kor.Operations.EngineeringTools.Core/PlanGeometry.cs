@@ -234,6 +234,64 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return clusters;
         }
 
+        /// <summary>A slab-thickness callout placed on the plan, in this crop's pixel coordinates.</summary>
+        public readonly record struct CalloutPx(double X, double Y, int Value);
+
+        /// <summary>
+        /// Splits the enclosed-light slab area by thickness ZONE. A floor is rarely one thickness — a
+        /// tower plate is large "8&quot; SLAB" wings plus "12&quot; SLAB" zones at the core/transfer bays — yet
+        /// pricing it at a single modal thickness under-counts the thicker zones. The drawing tells us
+        /// where each thickness governs: the «N&quot; SLAB» callout sits inside its own zone. So every
+        /// enclosed-light pixel in the plate is assigned to its NEAREST callout (a Voronoi partition of
+        /// the slab by its own annotations), and the per-thickness pixel areas are returned. The caller
+        /// turns these into an area-weighted effective thickness. The numbers come from the exact callout
+        /// TEXT; vision/geometry only says WHERE — the synthesis-led split, applied to thickness.
+        /// Pass ONLY the qualifying field callouts (a genuine multi-zone floor); a lone stray callout
+        /// must be filtered out upstream, or it claims a Voronoi cell it does not own.
+        /// </summary>
+        /// <param name="callouts">Qualifying thickness callouts in crop pixel coords (≥1 required).</param>
+        /// <param name="minX">Restrict the scan to the plate bounds (the located cluster's box).</param>
+        public static IReadOnlyDictionary<int, long> ThicknessZoneFractions(
+            ReadOnlySpan<byte> luminance,
+            int width,
+            int height,
+            IReadOnlyList<CalloutPx> callouts,
+            int minX,
+            int minY,
+            int maxX,
+            int maxY,
+            int darkThreshold = 110,
+            bool sealHairlineGaps = true)
+        {
+            ValidateBuffer(luminance.Length, width, height, nameof(luminance));
+            var result = new Dictionary<int, long>();
+            if (callouts is null || callouts.Count == 0) return result;
+
+            var (dark, exterior) = ComputeDarkAndExterior(luminance, width, height, darkThreshold, sealHairlineGaps);
+            int x0 = Math.Max(0, minX), y0 = Math.Max(0, minY);
+            int x1 = Math.Min(width - 1, maxX), y1 = Math.Min(height - 1, maxY);
+            for (int y = y0; y <= y1; y++)
+            {
+                int row = y * width;
+                for (int x = x0; x <= x1; x++)
+                {
+                    int i = row + x;
+                    if (exterior[i] || dark[i]) continue;   // line-work / outside the plate — not concrete
+                    double best = double.MaxValue;
+                    int bestVal = callouts[0].Value;
+                    for (int c = 0; c < callouts.Count; c++)
+                    {
+                        double dx = x - callouts[c].X, dy = y - callouts[c].Y;
+                        double d = dx * dx + dy * dy;
+                        if (d < best) { best = d; bestVal = callouts[c].Value; }
+                    }
+                    result.TryGetValue(bestVal, out var cur);
+                    result[bestVal] = cur + 1;
+                }
+            }
+            return result;
+        }
+
         /// <summary>
         /// Counts solid gray-filled footprint pixels. Walls and columns are filled with a light,
         /// near-neutral gray on the concrete-outline sheets; this isolates that fill from black

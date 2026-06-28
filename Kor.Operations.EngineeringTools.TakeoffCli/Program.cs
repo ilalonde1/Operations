@@ -30,7 +30,7 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     var tkProfile = PlanProfile.ByName("BC-moderate");
     // Raw per-plate measurements (area is deterministic poché; thickness may be missing from synthesis
     // and is reconciled across a level's match-line halves below before pricing).
-    var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk)>();
+    var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk, double ZonedThk)>();
 
     var tkMeasured = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // keys with a SUCCESSFUL slab plate
     // Pooled text per canonical (level, zone) key — across ALL its sheets incl. the deduped reinforcing
@@ -77,7 +77,8 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             if (bb.Count < 4) { Console.Error.WriteLine($"  ! {lvl}: malformed plate box, skipped."); continue; }
 
             var (iw, ih) = PlanRaster.ImageSize(png);
-            var crop = PlanRaster.LoadCrop(png, (int)(Math.Min(bb[0], bb[2]) * iw), (int)(Math.Min(bb[1], bb[3]) * ih),
+            int cx0 = (int)(Math.Min(bb[0], bb[2]) * iw), cy0 = (int)(Math.Min(bb[1], bb[3]) * ih);
+            var crop = PlanRaster.LoadCrop(png, cx0, cy0,
                                                 (int)(Math.Max(bb[0], bb[2]) * iw), (int)(Math.Max(bb[1], bb[3]) * ih));
             var cl = PlanGeometry.MeasureEnclosedClusters(crop.Lum, crop.Width, crop.Height);
             double area = PlanGeometry.SquareFeet(cl.Count > 0 ? cl[0].LightPx : 0, tkMpp);
@@ -92,7 +93,49 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             string lvlTok = page.Title?.Level ?? "";
             string lvlDigits = lvlTok.StartsWith("L", StringComparison.OrdinalIgnoreCase) && lvlTok.Length > 1 ? lvlTok.Substring(1) : lvlTok;
             int? repLevel = int.TryParse(lvlDigits, out var rl) ? rl : (int?)null;
-            tkRaw.Add((lvl, levelBase, key, repLevel, area, thk));
+
+            // Thickness ZONING (numbers from exact text, geometry only locates): a floor is rarely one
+            // thickness. Where the drawing genuinely calls out multiple field thicknesses (a tower's 8"
+            // wings + 12" core), split the measured area by nearest callout and price an area-weighted
+            // effective thickness. A uniform slab with stray callouts is unaffected (qualifying gate).
+            // TOWER PLATES ONLY (RepLevel): those are clean single-plan sheets where a thickness error is
+            // amplified across the floor band. Parkade/mezzanine/roof are 1:1 with dense, mixed callouts
+            // (an 18" podium transfer slab beside 10"/12" notes) — they read more robustly from the pooled
+            // modal below than from a per-page Voronoi, so they keep the deterministic path.
+            // OFF by default: the Coronation QTO (our answer key) models each level at a SINGLE slab
+            // thickness (e.g. L13 = 8" flat; the 12" callouts are minor drop panels, not 42% of the
+            // floor). Voronoi zoning over-weights those localized callouts and pushes typical floors
+            // ~12% OVER the QTO. The capability is verified (probe `vector-zones`, Core tests) and stays
+            // available for a future drawing whose QTO is itself zone-resolved — but the default matches
+            // the answer key's single-thickness-per-level methodology.
+            const bool tkApplyZoning = false;
+            double zonedThk = 0;
+            if (tkApplyZoning && repLevel.HasValue && cl.Count > 0 && SlabThicknessReader.DominantThicknessIn(page.Lines) is int perPageModal)
+            {
+                var pageWP = VectorPageReader.ReadPage(args[1], page.Page);
+                var callouts = SlabThicknessZoner.ReadCallouts(pageWP);
+                var qual = SlabThicknessZoner.QualifyingValues(callouts, perPageModal);
+                if (qual.Count > 1)
+                {
+                    var calloutPx = callouts.Where(c => qual.Contains(c.ValueIn))
+                        .Select(c => new PlanGeometry.CalloutPx(
+                            c.Cx / pageWP.WidthPts * iw - cx0,
+                            (pageWP.HeightPts - c.Cy) / pageWP.HeightPts * ih - cy0,
+                            c.ValueIn))
+                        .Where(c => c.X >= 0 && c.X < crop.Width && c.Y >= 0 && c.Y < crop.Height)
+                        .ToList();
+                    var zonePx = PlanGeometry.ThicknessZoneFractions(crop.Lum, crop.Width, crop.Height,
+                        calloutPx, cl[0].MinX, cl[0].MinY, cl[0].MaxX, cl[0].MaxY);
+                    zonedThk = SlabThicknessZoner.EffectiveThicknessIn(zonePx, perPageModal);
+                    long zt = zonePx.Values.Sum();
+                    if (zt > 0)
+                        Console.WriteLine($"  z {lvl}: multi-thickness slab " +
+                            string.Join(" + ", zonePx.OrderByDescending(k => k.Value).Select(k => $"{100.0 * k.Value / zt:N0}%@{k.Key}\"")) +
+                            $" -> effective {zonedThk:N1}\" (FLAG: zoned).");
+                }
+            }
+
+            tkRaw.Add((lvl, levelBase, key, repLevel, area, thk, zonedThk));
             if (page.Title is { } tk) tkMeasured.Add(tk.Key);   // this key now has a real measured plate
             Console.WriteLine($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)")}");
         }
@@ -142,7 +185,14 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     foreach (var r in tkRaw)
     {
         double thk = r.Thk;   // synthesised read
-        if (tkDetThk.TryGetValue(r.LevelBase, out var det) && det.HasValue)
+        // A genuinely multi-thickness plate prices at its own area-weighted zoned thickness — it has
+        // explicit callouts for every zone (that is why it qualified), so it needs no sibling reconcile.
+        // Tiling + the degenerate-box guard below still apply (this is a tower plate).
+        if (r.ZonedThk > 0)
+        {
+            thk = r.ZonedThk;
+        }
+        else if (tkDetThk.TryGetValue(r.LevelBase, out var det) && det.HasValue)
         {
             if (thk > 0 && Math.Abs(thk - det.Value) > 0.5)
                 Console.WriteLine($"  ~ {r.Label}: thickness {det.Value}\" from slab callout (synthesis said {thk}\").");
@@ -202,6 +252,61 @@ if (args.Length >= 1 && args[0].Equals("vector-plate", StringComparison.OrdinalI
             Console.WriteLine($"  poché slab area in box: {PlanGeometry.SquareFeet(cl.Count > 0 ? cl[0].LightPx : 0, mpp):N0} sq.ft ({crop.Width}x{crop.Height}px, {cl.Count} clusters)");
         }
     }
+    return 0;
+}
+
+// Thickness-zoning derisk: locate the plate, then split its area by thickness ZONE (Voronoi by the
+// «N" SLAB» callouts) and compare the zoned effective thickness to the single modal value.
+// Usage: takeoff vector-zones <pdf> <png> <page> <modalThk>
+if (args.Length >= 1 && args[0].Equals("vector-zones", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 5) { Console.Error.WriteLine("Usage: takeoff vector-zones <pdf> <png> <page> <modalThk>"); return 1; }
+    if (!File.Exists(args[1]) || !File.Exists(args[2])) { Console.Error.WriteLine("PDF or PNG not found."); return 2; }
+    if (!int.TryParse(args[3], out int zPage) || zPage < 1) { Console.Error.WriteLine("Page must be positive."); return 2; }
+    if (!int.TryParse(args[4], out int zModal) || zModal <= 0) { Console.Error.WriteLine("modalThk must be positive."); return 2; }
+    if (string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set."); return 2; }
+
+    var zPd = DrawingDigestBuilder.Build(args[1], zPage, zPage).Pages[0];
+    string zdj = JsonSerializer.Serialize(zPd, new JsonSerializerOptions { WriteIndented = false });
+    using var zld = JsonDocument.Parse(await PlanVisionClient.LocatePlateAsync(zdj, PlanRaster.LoadDownscaledPng(args[2], 1600)));
+    if (!zld.RootElement.TryGetProperty("slabBox", out var zsb) || zsb.ValueKind != JsonValueKind.Array) { Console.Error.WriteLine("no plate box."); return 2; }
+    var zbb = zsb.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
+    if (zbb.Count < 4) { Console.Error.WriteLine("malformed plate box."); return 2; }
+
+    var (ziw, zih) = PlanRaster.ImageSize(args[2]);
+    int zx0 = (int)(Math.Min(zbb[0], zbb[2]) * ziw), zy0 = (int)(Math.Min(zbb[1], zbb[3]) * zih);
+    int zx1 = (int)(Math.Max(zbb[0], zbb[2]) * ziw), zy1 = (int)(Math.Max(zbb[1], zbb[3]) * zih);
+    var zcrop = PlanRaster.LoadCrop(args[2], zx0, zy0, zx1, zy1);
+    double zmpp = PlanGeometry.MetresPerPixel("1/8\"=1'-0\"", 110) ?? 0;
+    var zcl = PlanGeometry.MeasureEnclosedClusters(zcrop.Lum, zcrop.Width, zcrop.Height);
+    if (zcl.Count == 0) { Console.Error.WriteLine("no clusters in box."); return 2; }
+    double zArea = PlanGeometry.SquareFeet(zcl[0].LightPx, zmpp);
+
+    // Read callouts WITH positions, map PDF pts -> crop px, keep only those inside the located plate box.
+    var zPage2 = VectorPageReader.ReadPage(args[1], zPage);
+    var zCallouts = SlabThicknessZoner.ReadCallouts(zPage2);
+    Console.WriteLine($"p{zPage}: plate {zArea:N0} sqft, modal {zModal}\"; callouts: " +
+        string.Join(", ", zCallouts.GroupBy(c => c.ValueIn).OrderBy(g => g.Key).Select(g => $"{g.Key}\"x{g.Count()}")));
+    var zQual = SlabThicknessZoner.QualifyingValues(zCallouts, zModal);
+    Console.WriteLine($"  qualifying zones: {string.Join(", ", zQual.OrderBy(v => v).Select(v => v + "\""))}");
+
+    var zPx = zCallouts
+        .Where(c => zQual.Contains(c.ValueIn))
+        .Select(c => new PlanGeometry.CalloutPx(
+            c.Cx / zPage2.WidthPts * ziw - zx0,
+            (zPage2.HeightPts - c.Cy) / zPage2.HeightPts * zih - zy0,
+            c.ValueIn))
+        .Where(c => c.X >= 0 && c.X < zcrop.Width && c.Y >= 0 && c.Y < zcrop.Height)
+        .ToList();
+    var zFrac = PlanGeometry.ThicknessZoneFractions(zcrop.Lum, zcrop.Width, zcrop.Height, zPx,
+        zcl[0].MinX, zcl[0].MinY, zcl[0].MaxX, zcl[0].MaxY);
+    long zTot = zFrac.Values.Sum();
+    foreach (var kv in zFrac.OrderBy(k => k.Key))
+        Console.WriteLine($"    {kv.Key}\" zone: {(zTot > 0 ? 100.0 * kv.Value / zTot : 0):N0}% of plate ({PlanGeometry.SquareFeet(kv.Value, zmpp):N0} sqft)");
+    double zEff = SlabThicknessZoner.EffectiveThicknessIn(zFrac, zModal);
+    double zVolModal = zArea * zModal / 12.0 / 27.0;
+    double zVolZoned = zArea * zEff / 12.0 / 27.0;
+    Console.WriteLine($"  effective thickness {zEff:N2}\" vs modal {zModal}\"  ->  {zVolModal:N0} cy -> {zVolZoned:N0} cy/floor ({(zVolModal > 0 ? 100.0 * (zVolZoned - zVolModal) / zVolModal : 0):+0.0;-0.0}%)");
     return 0;
 }
 
