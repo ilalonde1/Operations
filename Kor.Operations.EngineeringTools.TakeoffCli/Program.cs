@@ -16,6 +16,67 @@ if (args.Length >= 1 && args[0].Equals("measure", StringComparison.OrdinalIgnore
 if (args.Length >= 1 && args[0].Equals("vision-estimate", StringComparison.OrdinalIgnoreCase) && args.Length < 3)
 { Console.Error.WriteLine("Usage: takeoff vision-estimate <pages.json> <out.xlsx>"); return 1; }
 
+// END-TO-END synthesis-led takeoff: classify each page, locate+measure slab plates, assemble via the
+// EXISTING pipeline -> xlsx + total vs QTO. Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last]
+if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last]"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
+    if (string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set."); return 2; }
+    int? tkFirst = args.Length >= 5 && int.TryParse(args[4], out var tf) ? tf : null;
+    int? tkLast  = args.Length >= 6 && int.TryParse(args[5], out var tl) ? tl : null;
+    string tkPngDir = args[2];
+    double tkMpp = PlanGeometry.MetresPerPixel("1/8\"=1'-0\"", 110) ?? 0;
+    var tkProfile = PlanProfile.ByName("BC-moderate");
+    var tkPlates = new List<MeasuredPlate>();
+
+    var tkDigest = DrawingDigestBuilder.Build(args[1], tkFirst, tkLast);
+    Console.WriteLine($"vector-takeoff: {tkDigest.Pages.Count} page(s) in range, classifying...");
+    foreach (var page in tkDigest.Pages)
+    {
+        string pj = JsonSerializer.Serialize(page, new JsonSerializerOptions { WriteIndented = false });
+        string kind;
+        try { using var cd = JsonDocument.Parse(await PlanVisionClient.SynthesizePageAsync(pj)); kind = cd.RootElement.TryGetProperty("sheetKind", out var sk) && sk.ValueKind == JsonValueKind.String ? sk.GetString()! : "other"; }
+        catch (Exception ex) { Console.Error.WriteLine($"  ! p{page.Page}: classify failed: {ex.Message}"); continue; }
+
+        if (kind != "floor_plan" && kind != "foundation_plan") { Console.WriteLine($"  p{page.Page}: {kind} (skip)"); continue; }
+
+        string png = Path.Combine(tkPngDir, $"p-{page.Page:D2}.png");
+        if (!File.Exists(png)) { Console.Error.WriteLine($"  ! p{page.Page}: render {png} missing, skipped."); continue; }
+        try
+        {
+            using var ld = JsonDocument.Parse(await PlanVisionClient.LocatePlateAsync(pj, PlanRaster.LoadDownscaledPng(png, 1600)));
+            var root = ld.RootElement;
+            string lvl = root.TryGetProperty("level", out var lv) && lv.ValueKind == JsonValueKind.String ? lv.GetString()! : $"p{page.Page}";
+            double thk = root.TryGetProperty("slabThicknessIn", out var tv) && tv.ValueKind == JsonValueKind.Number ? tv.GetDouble() : 0;
+            if (thk <= 0) { Console.Error.WriteLine($"  ! {lvl}: no slab thickness, flagged + skipped."); continue; }
+            if (!root.TryGetProperty("slabBox", out var sbx) || sbx.ValueKind != JsonValueKind.Array) { Console.Error.WriteLine($"  ! {lvl}: no plate box, skipped."); continue; }
+            var bb = sbx.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
+            if (bb.Count < 4) { Console.Error.WriteLine($"  ! {lvl}: malformed plate box, skipped."); continue; }
+
+            var (iw, ih) = PlanRaster.ImageSize(png);
+            var crop = PlanRaster.LoadCrop(png, (int)(Math.Min(bb[0], bb[2]) * iw), (int)(Math.Min(bb[1], bb[3]) * ih),
+                                                (int)(Math.Max(bb[0], bb[2]) * iw), (int)(Math.Max(bb[1], bb[3]) * ih));
+            var cl = PlanGeometry.MeasureEnclosedClusters(crop.Lum, crop.Width, crop.Height);
+            double area = PlanGeometry.SquareFeet(cl.Count > 0 ? cl[0].LightPx : 0, tkMpp);
+            if (area < 500) { Console.Error.WriteLine($"  ! {lvl}: slab area {area:N0} sqft implausibly small, skipped."); continue; }
+
+            tkPlates.Add(new MeasuredPlate(lvl, TakeoffElementType.Slab, "suspended", area, thk));
+            Console.WriteLine($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {thk}\"");
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"  ! p{page.Page}: locate/measure failed: {ex.Message}"); }
+    }
+
+    if (tkPlates.Count == 0) { Console.Error.WriteLine("No slab plates measured."); return 2; }
+    var tkResult = PlanEstimatePipeline.Run(tkPlates, tkProfile);
+    var tkComputed = StructuralTakeoffService.Compute(tkResult.TakeoffInputs, tkProfile.ToImperialDensityTable());
+    var tkModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(args[1]), "Vector takeoff", "", DateTime.UtcNow, tkComputed);
+    File.WriteAllBytes(args[3], StructuralTakeoffReportGenerator.BuildXlsx(tkModel));
+    Console.WriteLine($"\nPlates: {tkPlates.Count}   Slab concrete: {tkResult.TotalConcreteCuYd:N0} cu.yd   Rebar: {tkComputed.TotalRebarWeight:N0} lb");
+    Console.WriteLine($"(QTO slab benchmark 24,495 cy / full QTO 38,705 cy)  ->  {args[3]}");
+    return 0;
+}
+
 // Focused plate-locator derisk: synthesis returns the slab plate box, poché measures its area.
 // Usage: takeoff vector-plate <pdf> <page> <png>
 if (args.Length >= 1 && args[0].Equals("vector-plate", StringComparison.OrdinalIgnoreCase))
