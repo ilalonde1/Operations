@@ -16,6 +16,31 @@ if (args.Length >= 1 && args[0].Equals("measure", StringComparison.OrdinalIgnore
 if (args.Length >= 1 && args[0].Equals("vision-estimate", StringComparison.OrdinalIgnoreCase) && args.Length < 3)
 { Console.Error.WriteLine("Usage: takeoff vision-estimate <pages.json> <out.xlsx>"); return 1; }
 
+// Vector front-end probe: read the NATIVE vector text + geometry of one drawing page straight from the
+// PDF — no raster, no OCR — and print what came out. Proves the exact-data foundation of the takeoff.
+// Usage: takeoff vector-dump <pdf> <page>
+if (args.Length >= 1 && args[0].Equals("vector-dump", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff vector-dump <pdf> <page>"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
+    if (!int.TryParse(args[2], out int pageNo) || pageNo < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
+
+    var pc = VectorPageReader.ReadPage(args[1], pageNo);
+    int closed = pc.Paths.Count(p => p.IsClosed);
+    Console.WriteLine($"Page {pc.PageNumber}: {pc.WidthPts:F0}x{pc.HeightPts:F0} pts");
+    Console.WriteLine($"  Text:     {pc.Words.Count} words (exact, no OCR)");
+    Console.WriteLine($"  Geometry: {pc.Paths.Count} subpaths ({closed} closed / {pc.Paths.Count - closed} open)");
+
+    Console.WriteLine("  Largest closed regions (candidate slabs/zones), bbox in pts:");
+    foreach (var g in pc.Paths.Where(p => p.IsClosed).OrderByDescending(p => p.DiagonalLen).Take(6))
+        Console.WriteLine($"    {g.Width:F0}x{g.Height:F0}  ({g.Points.Count} pts){(g.IsFilled ? " filled" : "")}");
+
+    Console.WriteLine("  Sample text tokens (text @ x,y):");
+    foreach (var t in pc.Words.Take(12))
+        Console.WriteLine($"    \"{t.Text}\" @ {t.Cx:F0},{t.Cy:F0}");
+    return 0;
+}
+
 // Vision Layer 2: the app reads the drawing itself. For each page, Claude classifies the sheet and
 // locates the concrete-outline plates (level, count, element, thickness, normalized box); the Core
 // geometry then measures the largest enclosed region in each box; the pipeline prices + reconciles.
