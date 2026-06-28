@@ -46,8 +46,40 @@ not faked.
 5. **Walls / Columns / Foundations elements** — not yet wired (schedules exist via `ScheduleGridReader`;
    need key-plan lengths for walls, column counts, mat areas). Needed to compare to full QTO 38,705.
 
+## Adversarial Codex review (done 2026-06-28) — outcome
+Ran `codex exec -s read-only` over `SheetTitleReader` / `DrawingDigest` / the `vector-takeoff` handler.
+ADOPTED (safe, general, no regression — commit c3d6ec91):
+- **Dedup-after-success**: a (level,zone) key is marked counted only after a real measurement, so a
+  failed/empty/penthouse first sheet no longer skips the level's framing sheet as a dup (under-count).
+- **Multiplier on L-prefixed levels** too (`L13`), not just bare numbers.
+- **Per-page digest isolation**: one malformed page emits an empty digest; the run continues.
+
+KEY LEARNING — title parsing is the limiting factor, and MORE REGEX MADE IT WORSE. Broadening
+`SheetTitleReader` (MEZZ modifier, zone-after-separator `PLAN - NORTH`, ordinals) was tried and REVERTED:
+on this drawing's collision-heavy text it (a) mis-keyed the Level-1 framing sheet from a note that
+referenced "P1 MEZZ", and (b) picked up a stray north-arrow `NORTH`, breaking Level-1 dedup. Scanning
+all page text for a title pattern is fundamentally noisy. **The real fix (Codex #4) is to read the title
+from the title-block REGION** (bottom-right by geometry/font/position via `VectorPageReader` bboxes),
+not by scanning every line. That single change unlocks mezzanine zones, foundation identity, and
+general zone-after-separator WITHOUT the false positives. This is the next structural investment.
+
+## Remaining gaps (priority order)
+1. **Title-block-region reader** (replaces line-scan) — unlocks: P1 Mezz dedup (currently ~5x
+   over-count, masking under-counts), foundation identity, general firm title conventions, reliable
+   match-line zones. Highest leverage; do before chasing percentages.
+2. **Floor-band coverage holes** — levels 16 and 29-41 fall between captured bands (named-after-top vs
+   named-after-bottom inconsistency) -> a few floors counted x1. Quantify + close after #1.
+3. **Degenerate locate box** — occasional ~789 sqft plate (synthesis returns a tiny box); add a
+   plausibility check vs sibling-plate median and re-locate/flag. Reduces run-to-run variance.
+4. **Per-page scale from `ScaleNote`** (Codex #2) — Coronation is uniformly 1/8"=1'-0" so no accuracy
+   impact here, but hardcoding breaks other firms/scales. Parse the (glyph-jumbled) ScaleNote, fall back
+   to default. Generality only.
+5. **Foundation element + gross-vs-net** (Codex #3/#7) — type mats as `Foundation` (own rebar density);
+   poché currently measures gross enclosed area (openings/shafts not deducted -> over-measure).
+6. **Walls / Columns** — schedules exist (`ScheduleGridReader`); need key-plan lengths + column counts
+   to reach the full QTO 38,705.
+
 ## Next concrete step
-Implement the typical-floor multiplier (#1): extract floor range/count per tower plan, apply via
-`MeasuredPlate.Count`, re-run full, re-measure here. Then fix `SheetTitleReader` generality (#2/#3),
-re-run. Then adversarial Codex review (prompt staged) -> fix -> iterate. Then wall/column/foundation
-elements toward the full 38,705.
+Build the title-block-region reader (#1): use `VectorPageReader` word bboxes to read the sheet title
+from the title-block zone instead of scanning all lines, then re-enable mezzanine/zone/foundation
+identity on top of it with tests, re-run full, re-measure here.
