@@ -32,7 +32,7 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     // and is reconciled across a level's match-line halves below before pricing).
     var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk)>();
 
-    var tkSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // (level, zone) keys already counted
+    var tkMeasured = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // keys with a SUCCESSFUL slab plate
     // Pooled text per canonical (level, zone) key — across ALL its sheets incl. the deduped reinforcing
     // ones — so a typical-floor band stated only on a sibling sheet still drives the multiplier.
     var tkPooled = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
@@ -57,7 +57,9 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             // on a reinforcing sheet (which we skip for measurement) still feeds the multiplier.
             if (!tkPooled.TryGetValue(t0.Key, out var pool)) { pool = new List<string>(); tkPooled[t0.Key] = pool; }
             pool.AddRange(page.Lines);
-            if (!tkSeen.Add(t0.Key)) { Console.WriteLine($"  p{page.Page}: {t0.Display} — dup of an already-counted plan, slab not double-counted (skip)"); continue; }
+            // Skip ONLY once this key has a SUCCESSFUL measurement — so if the first sheet of a level is a
+            // reinforcing/penthouse sheet that fails to locate, a later framing sheet still gets measured.
+            if (tkMeasured.Contains(t0.Key)) { Console.WriteLine($"  p{page.Page}: {t0.Display} — dup of an already-counted plan, slab not double-counted (skip)"); continue; }
         }
 
         string png = Path.Combine(tkPngDir, $"p-{page.Page:D2}.png");
@@ -85,8 +87,13 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             // from the sibling match-line half of the same level (slab depth is constant across the line).
             string levelBase = page.Title?.Level ?? lvl;
             string key = page.Title?.Key ?? lvl;
-            int? repLevel = int.TryParse(page.Title?.Level, out var rl) ? rl : (int?)null;
+            // Representative storey for the typical-floor band: numeric or L-prefixed levels only
+            // (a tower's "13"/"L13"). P-parkade, basements, roof, mezzanines are 1:1 -> no multiplier.
+            string lvlTok = page.Title?.Level ?? "";
+            string lvlDigits = lvlTok.StartsWith("L", StringComparison.OrdinalIgnoreCase) && lvlTok.Length > 1 ? lvlTok.Substring(1) : lvlTok;
+            int? repLevel = int.TryParse(lvlDigits, out var rl) ? rl : (int?)null;
             tkRaw.Add((lvl, levelBase, key, repLevel, area, thk));
+            if (page.Title is { } tk) tkMeasured.Add(tk.Key);   // this key now has a real measured plate
             Console.WriteLine($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)")}");
         }
         catch (Exception ex) { Console.Error.WriteLine($"  ! p{page.Page}: locate/measure failed: {ex.Message}"); }

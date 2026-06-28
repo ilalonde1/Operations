@@ -43,7 +43,17 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             var pages = new List<PageDigest>();
             for (int p = lo; p <= hi; p++)
-                pages.Add(BuildPage(VectorPageReader.ReadPage(doc.GetPage(p))));
+            {
+                // Isolate per page: a single malformed vector page must not abort the whole set. Emit an
+                // empty digest for it (classification will skip it) and carry on.
+                try { pages.Add(BuildPage(VectorPageReader.ReadPage(doc.GetPage(p)))); }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"  ! page {p}: digest failed ({ex.Message}); emitting empty digest.");
+                    pages.Add(new PageDigest(p, 0, 0, null, null, Array.Empty<string>(),
+                        Array.Empty<GeomRegion>(), Array.Empty<ScheduleTakeoff.WallBand>()));
+                }
+            }
 
             return new DrawingDigest(pdfPath, doc.NumberOfPages, pages);
         }
