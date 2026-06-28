@@ -58,5 +58,28 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var containing = Bands(lines).Where(b => b.Low <= repLevel && repLevel <= b.High).ToList();
             return containing.Count == 0 ? 1 : containing.Max(b => b.High - b.Low + 1);
         }
+
+        /// <summary>
+        /// Tile a tower's typical-floor plans into floor counts with NO orphan floors. Each plan governs
+        /// a contiguous stack from just above the previous typical level up to its own representative
+        /// level — boundaries are the (reliably read) representative levels, so floors that no band
+        /// explicitly names still get counted by the plan below them. The top plan additionally extends
+        /// up to <paramref name="topBandTop"/> (its stated band top, e.g. a "44–45" plan named "44"),
+        /// which is the one place the rep is the bottom rather than the top of its band.
+        /// </summary>
+        /// <param name="repsAscending">Distinct representative storeys, ascending.</param>
+        /// <param name="topBandTop">The highest physical floor the top plan reaches (>= the top rep).</param>
+        public static IReadOnlyDictionary<int, int> TileTowerCounts(IReadOnlyList<int> repsAscending, int topBandTop)
+        {
+            var counts = new Dictionary<int, int>();
+            for (int i = 0; i < repsAscending.Count; i++)
+            {
+                int rep = repsAscending[i];
+                int prev = i == 0 ? rep - 1 : repsAscending[i - 1];
+                int top = (i == repsAscending.Count - 1 && topBandTop > rep) ? topBandTop : rep;
+                counts[rep] = Math.Max(1, top - prev);
+            }
+            return counts;
+        }
     }
 }

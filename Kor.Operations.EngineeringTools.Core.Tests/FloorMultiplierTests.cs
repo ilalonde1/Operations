@@ -54,4 +54,31 @@ public sealed class FloorMultiplierTests
         Assert.Equal(10, FloorMultiplier.CountForLevel(new[] { "LEVEL 4 – 13 SLABS" }, 13)); // en
         Assert.Equal(10, FloorMultiplier.CountForLevel(new[] { "LEVEL 4 — 13 SLABS" }, 13)); // em
     }
+
+    [Fact]
+    public void TileTowerCounts_covers_every_floor_with_no_orphans()
+    {
+        // The real Coronation tower: reps named after the top of each band, top plan "44" reaching 45.
+        var reps = new[] { 1, 3, 13, 15, 28, 38, 43, 44 };
+        var c = FloorMultiplier.TileTowerCounts(reps, topBandTop: 45);
+        Assert.Equal(1, c[1]);    // {1}
+        Assert.Equal(2, c[3]);    // {2,3}
+        Assert.Equal(10, c[13]);  // {4..13}
+        Assert.Equal(2, c[15]);   // {14,15}
+        Assert.Equal(13, c[28]);  // {16..28} — fills the level-16 hole the stated band omitted
+        Assert.Equal(10, c[38]);  // {29..38} — fills the 29-37 hole
+        Assert.Equal(5, c[43]);   // {39..43} — fills the 39-41 hole
+        Assert.Equal(2, c[44]);   // {44,45}  — top plan extended by its band
+        Assert.Equal(45, c.Values.Sum()); // levels 1..45, contiguous, no gaps
+    }
+
+    [Fact]
+    public void TileTowerCounts_handles_a_single_plan_and_a_gapped_start()
+    {
+        Assert.Equal(1, FloorMultiplier.TileTowerCounts(new[] { 5 }, 5)[5]);
+        // First tower plan at level 3 governs only itself downward (1-2 are someone else's / flagged).
+        var c = FloorMultiplier.TileTowerCounts(new[] { 3, 13 }, 13);
+        Assert.Equal(1, c[3]);
+        Assert.Equal(10, c[13]);
+    }
 }

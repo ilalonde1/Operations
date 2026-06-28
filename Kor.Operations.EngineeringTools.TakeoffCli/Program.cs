@@ -109,6 +109,22 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                       g => g.GroupBy(r => r.Thk).OrderByDescending(t => t.Count()).ThenByDescending(t => t.Key).First().Key,
                       StringComparer.OrdinalIgnoreCase);
 
+    // Tower typical plans tile the building: each governs a contiguous stack from above the previous
+    // typical level up to its own. Boundaries are the representative levels we read off the title block,
+    // so floors no band explicitly names still get counted by the plan below them (no orphan floors).
+    var towerReps = tkRaw.Where(r => r.RepLevel.HasValue).Select(r => r.RepLevel!.Value).Distinct().OrderBy(x => x).ToList();
+    int topBandTop = towerReps.Count > 0 ? towerReps[^1] : 0;
+    if (towerReps.Count > 0)
+    {
+        string topKey = tkRaw.First(r => r.RepLevel == towerReps[^1]).Key;
+        if (tkPooled.TryGetValue(topKey, out var topPool))
+        {
+            var bands = FloorMultiplier.Bands(topPool);
+            if (bands.Count > 0) topBandTop = Math.Max(topBandTop, bands.Max(b => b.High));
+        }
+    }
+    var tileCounts = FloorMultiplier.TileTowerCounts(towerReps, topBandTop);
+
     var tkPlates = new List<MeasuredPlate>();
     foreach (var r in tkRaw)
     {
@@ -117,11 +133,9 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         { thk = inferred; Console.WriteLine($"  ~ {r.Label}: thickness inherited {thk}\" from level {r.LevelBase}."); }
         if (thk <= 0) { Console.Error.WriteLine($"  ! {r.Label}: no thickness for level {r.LevelBase} (no sibling), FLAGGED + excluded from concrete."); continue; }
 
-        // Typical-floor multiplier: a tower plan stands for a band of identical floors (band read from
-        // the pooled exact text). Parkade/roof and un-banded levels stay 1.
-        int floors = r.RepLevel is int rep && tkPooled.TryGetValue(r.Key, out var pool)
-            ? FloorMultiplier.CountForLevel(pool, rep) : 1;
-        if (floors > 1) Console.WriteLine($"  x {r.Label}: typical plan -> {floors} physical floors (band from drawing text).");
+        // Parkade/roof and any non-numeric level are 1:1; tower levels take their tiled floor count.
+        int floors = r.RepLevel is int rep && tileCounts.TryGetValue(rep, out var c) ? c : 1;
+        if (floors > 1) Console.WriteLine($"  x {r.Label}: typical plan -> {floors} physical floors (FLAG: inferred contiguous stack, levels {r.RepLevel - floors + 1}-{r.RepLevel}).");
         tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", r.Area, thk, floors));
     }
 
