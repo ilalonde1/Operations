@@ -3,66 +3,114 @@
 using System.Collections.Generic;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using Xunit;
+using TT = Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader.TextToken;
+using PC = Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader.PageContent;
 
 namespace Kor.Operations.EngineeringTools.Core.Tests;
 
 public sealed class SheetTitleReaderTests
 {
-    [Fact]
-    public void Reads_level_and_zone_from_a_match_line_plan_title()
+    private const double W = 3024, H = 2160;
+
+    // A word centred at normalized (fx across, fy up-from-bottom) with font height h (pts).
+    private static TT Word(string text, double fx, double fy, double h)
     {
-        // The title block text collides onto a note baseline on these dense CAD sheets — as seen on the
-        // real Coronation parkade sheets — but the pattern still matches at the end of the line.
-        var lines = new List<string> { "NOTE: ELECTRICAL OPENINGS SLEEVES. SIZE, LOCATION LEVEL P4 PLAN NORTH" };
-        var t = SheetTitleReader.FromLines(lines);
+        double cx = fx * W, cy = fy * H;
+        return new TT(text, cx, cy, cx - 20, cy - h / 2, cx + 20, cy + h / 2);
+    }
+
+    private static PC Page(params TT[] words) => new(1, W, H, words, new List<VectorPageReader.GeomPath>());
+
+    // ── Pure title-line parse ────────────────────────────────────────────────
+    [Theory]
+    [InlineData("LEVEL P7 PLAN NORTH", "P7", "NORTH")]
+    [InlineData("LEVEL P4 PLAN - SOUTH", "P4", "SOUTH")]
+    [InlineData("LEVEL P1 MEZZ. PLAN", "P1 MEZZ", null)]
+    [InlineData("LEVEL P1 MEZZANINE PLAN NORTH", "P1 MEZZ", "NORTH")]
+    [InlineData("LEVEL 1 PLAN", "1", null)]
+    [InlineData("LEVEL 13 PLAN", "13", null)]
+    [InlineData("2ND FLOOR PLAN", "2", null)]
+    [InlineData("ROOF PLAN", "ROOF", null)]
+    public void ParseTitleLine_reads_level_and_zone(string line, string lvl, string? zone)
+    {
+        var p = SheetTitleReader.ParseTitleLine(line);
+        Assert.NotNull(p);
+        Assert.Equal(lvl, p!.Value.Level);
+        Assert.Equal(zone, p.Value.Zone);
+    }
+
+    [Theory]
+    [InlineData("SHEAR WALL SCHEDULE")]
+    [InlineData("PARKADE COLUMN SCHEDULE")]
+    [InlineData("")]
+    public void ParseTitleLine_returns_null_for_non_titles(string line)
+        => Assert.Null(SheetTitleReader.ParseTitleLine(line));
+
+    // ── Read the title from the title-block region of a page ──────────────────
+    [Fact]
+    public void FromPage_reads_parkade_title_and_zone_from_the_title_block()
+    {
+        // Title band bottom-right at h=13.6; sheet number "S2.02-N" in the corner; a note elsewhere.
+        var page = Page(
+            Word("LEVEL", 0.92, 0.10, 13.6), Word("P7", 0.93, 0.10, 13.6),
+            Word("PLAN", 0.94, 0.10, 13.6), Word("NORTH", 0.96, 0.10, 13.6),
+            Word("S2.02-N", 0.94, 0.04, 28.0),
+            Word("SEE", 0.30, 0.50, 9.0), Word("PLAN", 0.34, 0.50, 9.0)); // a note, must be ignored
+        var t = SheetTitleReader.FromPage(page);
         Assert.NotNull(t);
-        Assert.Equal("P4", t!.Level);
+        Assert.Equal("P7", t!.Level);
         Assert.Equal("NORTH", t.Zone);
-        Assert.Equal("P4|NORTH", t.Key);
-        Assert.Equal("P4 NORTH", t.Display);
+        Assert.Equal("P7|NORTH", t.Key);
     }
 
     [Fact]
-    public void Dominant_title_wins_over_a_stray_cross_reference()
+    public void FromPage_takes_the_half_from_the_sheet_number_when_the_title_text_omits_it()
     {
-        // The sheet is LEVEL P4 PLAN SOUTH; a lone cross-reference to another plan must not hijack it.
-        var lines = new List<string>
-        {
-            "SEE LEVEL P7 PLAN FOR RAMP CONTINUATION",
-            "LEVEL P4 PLAN SOUTH",
-            "REFER TO LEVEL P4 PLAN SOUTH SHEAR WALL ZONE SCHEDULE",
-        };
-        var t = SheetTitleReader.FromLines(lines);
-        Assert.Equal("P4", t!.Level);
+        // Mezzanine title carries no NORTH/SOUTH word, but the sheet number "S2.09.1-S" does.
+        var page = Page(
+            Word("LEVEL", 0.91, 0.10, 13.6), Word("P1", 0.92, 0.10, 13.6),
+            Word("MEZZ.", 0.93, 0.10, 13.6), Word("PLAN", 0.95, 0.10, 13.6),
+            Word("S2.09.1-S", 0.94, 0.04, 28.0));
+        var t = SheetTitleReader.FromPage(page);
+        Assert.Equal("P1 MEZZ", t!.Level);
         Assert.Equal("SOUTH", t.Zone);
     }
 
     [Fact]
-    public void Zoneless_floor_plan_has_null_zone_and_no_trailing_space_in_display()
+    public void FromPage_ignores_body_cross_references_to_other_levels()
     {
-        var t = SheetTitleReader.FromLines(new List<string> { "LEVEL 12 FLOOR PLAN" });
-        Assert.Equal("12", t!.Level);
+        // The page's own title is "LEVEL 1 PLAN" (corner); a body note references another level's plan.
+        var page = Page(
+            Word("LEVEL", 0.92, 0.10, 13.6), Word("1", 0.93, 0.10, 13.6), Word("PLAN", 0.94, 0.10, 13.6),
+            Word("SEE", 0.28, 0.55, 9.0), Word("LEVEL", 0.31, 0.55, 9.0),
+            Word("P4", 0.34, 0.55, 9.0), Word("PLAN", 0.36, 0.55, 9.0), Word("NORTH", 0.39, 0.55, 9.0));
+        var t = SheetTitleReader.FromPage(page);
+        Assert.Equal("1", t!.Level);
         Assert.Null(t.Zone);
-        Assert.Equal("12", t.Display);
-        Assert.Equal("12|", t.Key);
     }
 
     [Fact]
-    public void Returns_null_when_no_plan_title_present()
+    public void FromPage_returns_null_when_there_is_no_title_block_plan()
     {
-        Assert.Null(SheetTitleReader.FromLines(new List<string> { "SHEAR WALL SCHEDULE", "PARKADE COLUMN SCHEDULE" }));
-        Assert.Null(SheetTitleReader.FromLines(null));
-        Assert.Null(SheetTitleReader.FromLines(new List<string>()));
+        var page = Page(Word("SHEAR", 0.5, 0.5, 12.0), Word("WALL", 0.55, 0.5, 12.0), Word("SCHEDULE", 0.6, 0.5, 12.0));
+        Assert.Null(SheetTitleReader.FromPage(page));
+        Assert.Null(SheetTitleReader.FromPage(null));
     }
 
     [Fact]
-    public void Distinct_zones_of_the_same_level_have_distinct_keys()
+    public void Distinct_zones_of_the_same_level_have_distinct_keys_but_a_redrawn_half_matches()
     {
-        // The invariant that makes NORTH+SOUTH sum (distinct keys) while a re-drawn half dedupes (same key).
-        var north = SheetTitleReader.FromLines(new List<string> { "LEVEL P5 PLAN NORTH" })!;
-        var south = SheetTitleReader.FromLines(new List<string> { "LEVEL P5 PLAN SOUTH" })!;
-        var northAgain = SheetTitleReader.FromLines(new List<string> { "LEVEL P5 PLAN NORTH" })!;
+        var north = SheetTitleReader.FromPage(Page(
+            Word("LEVEL", 0.92, 0.10, 13.6), Word("P5", 0.93, 0.10, 13.6), Word("PLAN", 0.94, 0.10, 13.6),
+            Word("S2.03-N", 0.94, 0.04, 28.0)))!;
+        var south = SheetTitleReader.FromPage(Page(
+            Word("LEVEL", 0.92, 0.10, 13.6), Word("P5", 0.93, 0.10, 13.6), Word("PLAN", 0.94, 0.10, 13.6),
+            Word("S2.03-S", 0.94, 0.04, 28.0)))!;
+        // A different sub-sheet (reinforcing) of the same half: different sheet number, same (level,zone).
+        var northReinf = SheetTitleReader.FromPage(Page(
+            Word("LEVEL", 0.92, 0.10, 13.6), Word("P5", 0.93, 0.10, 13.6), Word("PLAN", 0.94, 0.10, 13.6),
+            Word("S2.04-N", 0.94, 0.04, 28.0)))!;
         Assert.NotEqual(north.Key, south.Key);
-        Assert.Equal(north.Key, northAgain.Key);
+        Assert.Equal(north.Key, northReinf.Key);
     }
 }

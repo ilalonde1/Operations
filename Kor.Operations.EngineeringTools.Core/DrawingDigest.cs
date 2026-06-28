@@ -79,7 +79,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 .ToList();
 
             var bands = ScheduleGridReader.ReadWallBands(page);   // empty unless this sheet is a wall schedule
-            var title = SheetTitleReader.FromLines(lines);        // canonical (level, zone) off the title block
+            var title = SheetTitleReader.FromPage(page);          // canonical (level, zone) read by position
 
             return new PageDigest(page.PageNumber, page.WidthPts, page.HeightPts, scale, title, lines, regions, bands);
         }
