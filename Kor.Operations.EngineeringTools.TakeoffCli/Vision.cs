@@ -133,11 +133,12 @@ static class PlanVisionClient
     public static Task<string> SynthesizePageWithImageAsync(string digestJson, byte[] png) =>
         PostForcedToolAsync(PageTakeoffTool(), "report_page_takeoff",
             PageTakeoffPrompt +
-            "\n\nYou ALSO have the rendered page image. Use the IMAGE only to judge the floor-plate plan " +
-            "AREA in square feet (slabAreaSqFt) from its visible extents and the drawing scale — read the " +
-            "overall building dimensions / grid extents. Use the exact DIGEST for ALL text and numbers " +
-            "(slab thickness, schedules, level, strengths). If it is not a floor/foundation plan, leave " +
-            "slabAreaSqFt null.\n\n=== SHEET DIGEST (exact vector facts) ===\n" + digestJson, 1800);
+            "\n\nYou ALSO have the rendered page image. Use the IMAGE to return slabBox — a tight, accurate " +
+            "normalized bounding box [x0,y0,x1,y1] around the suspended floor-slab PLATE (the structural " +
+            "floor outline), EXCLUDING the title block, notes, schedules and legends. The slab AREA will be " +
+            "MEASURED from the pixels inside that box, so the box must hug the plate. Use the exact DIGEST " +
+            "for ALL text and numbers (slab thickness, schedules, level, strengths). If this is not a floor/" +
+            "foundation plan, leave slabBox null.\n\n=== SHEET DIGEST (exact vector facts) ===\n" + digestJson, png, 1800);
 
     private const string PageTakeoffPrompt =
 @"You are a senior structural quantity-takeoff estimator reading ONE sheet of a structural drawing set.
@@ -159,7 +160,7 @@ conventions from any firm; do not assume one labelling style.";
                 sheetKind = new { type = "string", @enum = new[] { "floor_plan", "foundation_plan", "schedule", "section", "detail", "notes", "cover", "other" } },
                 level = new { type = new[] { "string", "null" }, description = "the building level/floor this sheet represents, as labelled (e.g. LEVEL P4, L12); null if not a single-level plan" },
                 slabThicknessIn = new { type = new[] { "number", "null" }, description = "nominal suspended slab thickness in inches if stated" },
-                slabAreaSqFt = new { type = new[] { "number", "null" }, description = "approximate suspended-slab plan AREA for this level in square feet, reasoned from the geometry regions (areas given in PDF points^2) and the drawing scale; null if not a floor/foundation plan. Note 1 PDF point = 1/72 inch on the page; at 1/8\"=1'-0\" one page-inch = 8 feet." },
+                slabBox = new { type = new[] { "array", "null" }, items = new { type = "number" }, description = "bounding box of the suspended floor-slab PLATE on this plan as [x0,y0,x1,y1] normalized 0-1 (x0,y0 = top-left, x1,y1 = bottom-right of the rendered IMAGE), tight around the structural floor outline and EXCLUDING the title block, notes, schedules and legends. null if this is not a floor/foundation plan. The area is measured from pixels inside this box — make it accurate." },
                 columnCount = new { type = new[] { "integer", "null" }, description = "number of columns visible on this plan, if countable; else null" },
                 hasColumnSchedule = new { type = "boolean" },
                 hasWallSchedule = new { type = "boolean" },
@@ -169,6 +170,36 @@ conventions from any firm; do not assume one labelling style.";
                 flags = new { type = "array", items = new { type = "string" }, description = "uncertainties, missing values, transfer/podium slabs, anything needing a human" }
             },
             required = new[] { "sheetKind", "hasColumnSchedule", "hasWallSchedule", "hasFootingSchedule", "confidence", "flags" }
+        }
+    };
+
+    // Focused plate locator: ONE job — return the floor-slab plate box (required) for a plan page, so
+    // poché can measure its area. Bundling this into the big synthesis tool made the model drop the box.
+    public static Task<string> LocatePlateAsync(string digestJson, byte[] png) =>
+        PostForcedToolAsync(LocatePlateTool(), "report_plate", LocatePlatePrompt +
+            "\n\n=== SHEET DIGEST (exact vector facts; the level/thickness text is here) ===\n" + digestJson, png, 800);
+
+    private const string LocatePlatePrompt =
+@"You are locating the structural floor-slab PLATE on this plan sheet (image provided). Return a tight,
+accurate bounding box [x0,y0,x1,y1] normalized 0-1 of the IMAGE around the floor outline — EXCLUDE the
+title block, notes, schedules, legends and key plans. The slab area is MEASURED from the pixels in this
+box, so hug the plate. Also report the level label and the nominal slab thickness in inches if stated.
+This is always a floor/foundation plan; always return slabBox.";
+
+    private static object LocatePlateTool() => new
+    {
+        name = "report_plate",
+        description = "Locate the floor-slab plate box on a plan sheet for area measurement.",
+        input_schema = new
+        {
+            type = "object",
+            properties = new
+            {
+                slabBox = new { type = "array", items = new { type = "number" }, description = "[x0,y0,x1,y1] normalized 0-1 of the image, tight around the floor slab plate" },
+                level = new { type = new[] { "string", "null" } },
+                slabThicknessIn = new { type = new[] { "number", "null" } }
+            },
+            required = new[] { "slabBox" }
         }
     };
 
