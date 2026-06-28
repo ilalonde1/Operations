@@ -22,6 +22,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         double WidthPt,
         double HeightPt,
         string? ScaleNote,
+        SheetTitle? Title,
         IReadOnlyList<string> Lines,
         IReadOnlyList<GeomRegion> ClosedRegions,
         IReadOnlyList<ScheduleTakeoff.WallBand> WallBands);
@@ -68,8 +69,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 .ToList();
 
             var bands = ScheduleGridReader.ReadWallBands(page);   // empty unless this sheet is a wall schedule
+            var title = SheetTitleReader.FromLines(lines);        // canonical (level, zone) off the title block
 
-            return new PageDigest(page.PageNumber, page.WidthPts, page.HeightPts, scale, lines, regions, bands);
+            return new PageDigest(page.PageNumber, page.WidthPts, page.HeightPts, scale, title, lines, regions, bands);
         }
 
         private static double PolygonArea(IReadOnlyList<(double X, double Y)> pts)

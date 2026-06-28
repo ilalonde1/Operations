@@ -28,8 +28,11 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     string tkPngDir = args[2];
     double tkMpp = PlanGeometry.MetresPerPixel("1/8\"=1'-0\"", 110) ?? 0;
     var tkProfile = PlanProfile.ByName("BC-moderate");
-    var tkPlates = new List<MeasuredPlate>();
+    // Raw per-plate measurements (area is deterministic poché; thickness may be missing from synthesis
+    // and is reconciled across a level's match-line halves below before pricing).
+    var tkRaw = new List<(string Label, string LevelBase, double Area, double Thk)>();
 
+    var tkSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // (level, zone) keys already counted
     var tkDigest = DrawingDigestBuilder.Build(args[1], tkFirst, tkLast);
     Console.WriteLine($"vector-takeoff: {tkDigest.Pages.Count} page(s) in range, classifying...");
     foreach (var page in tkDigest.Pages)
@@ -41,15 +44,25 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
 
         if (kind != "floor_plan" && kind != "foundation_plan") { Console.WriteLine($"  p{page.Page}: {kind} (skip)"); continue; }
 
+        // Canonical identity off the exact title block. One slab per (level, zone): the same floor-half
+        // drawn twice (framing plan + reinforcing plan) must NOT be measured twice. Dedupe BEFORE the
+        // locate call so duplicate sheets cost nothing. First sheet of an identity wins (framing precedes
+        // reinforcing in the set); the dropped sheet is a rebar/detail source, not a second slab volume.
+        if (page.Title is { } t0)
+        {
+            if (!tkSeen.Add(t0.Key)) { Console.WriteLine($"  p{page.Page}: {t0.Display} — dup of an already-counted plan, slab not double-counted (skip)"); continue; }
+        }
+
         string png = Path.Combine(tkPngDir, $"p-{page.Page:D2}.png");
         if (!File.Exists(png)) { Console.Error.WriteLine($"  ! p{page.Page}: render {png} missing, skipped."); continue; }
         try
         {
             using var ld = JsonDocument.Parse(await PlanVisionClient.LocatePlateAsync(pj, PlanRaster.LoadDownscaledPng(png, 1600)));
             var root = ld.RootElement;
-            string lvl = root.TryGetProperty("level", out var lv) && lv.ValueKind == JsonValueKind.String ? lv.GetString()! : $"p{page.Page}";
+            // Prefer the exact title-block level over the synthesised one; title is deterministic.
+            string lvl = page.Title?.Display
+                ?? (root.TryGetProperty("level", out var lv) && lv.ValueKind == JsonValueKind.String ? lv.GetString()! : $"p{page.Page}");
             double thk = root.TryGetProperty("slabThicknessIn", out var tv) && tv.ValueKind == JsonValueKind.Number ? tv.GetDouble() : 0;
-            if (thk <= 0) { Console.Error.WriteLine($"  ! {lvl}: no slab thickness, flagged + skipped."); continue; }
             if (!root.TryGetProperty("slabBox", out var sbx) || sbx.ValueKind != JsonValueKind.Array) { Console.Error.WriteLine($"  ! {lvl}: no plate box, skipped."); continue; }
             var bb = sbx.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
             if (bb.Count < 4) { Console.Error.WriteLine($"  ! {lvl}: malformed plate box, skipped."); continue; }
@@ -61,13 +74,36 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             double area = PlanGeometry.SquareFeet(cl.Count > 0 ? cl[0].LightPx : 0, tkMpp);
             if (area < 500) { Console.Error.WriteLine($"  ! {lvl}: slab area {area:N0} sqft implausibly small, skipped."); continue; }
 
-            tkPlates.Add(new MeasuredPlate(lvl, TakeoffElementType.Slab, "suspended", area, thk));
-            Console.WriteLine($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {thk}\"");
+            // Keep the plate even if thickness is missing — area is solid; thickness is reconciled below
+            // from the sibling match-line half of the same level (slab depth is constant across the line).
+            string levelBase = page.Title?.Level ?? lvl;
+            tkRaw.Add((lvl, levelBase, area, thk));
+            Console.WriteLine($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)")}");
         }
         catch (Exception ex) { Console.Error.WriteLine($"  ! p{page.Page}: locate/measure failed: {ex.Message}"); }
     }
 
-    if (tkPlates.Count == 0) { Console.Error.WriteLine("No slab plates measured."); return 2; }
+    if (tkRaw.Count == 0) { Console.Error.WriteLine("No slab plates measured."); return 2; }
+
+    // Reconcile thickness per level: a half with no synthesised thickness inherits its level's modal
+    // (most common, else max) thickness — slab depth is consistent across a level's match-line halves.
+    var tkThkByLevel = tkRaw.Where(r => r.Thk > 0)
+        .GroupBy(r => r.LevelBase)
+        .ToDictionary(g => g.Key,
+                      g => g.GroupBy(r => r.Thk).OrderByDescending(t => t.Count()).ThenByDescending(t => t.Key).First().Key,
+                      StringComparer.OrdinalIgnoreCase);
+
+    var tkPlates = new List<MeasuredPlate>();
+    foreach (var r in tkRaw)
+    {
+        double thk = r.Thk;
+        if (thk <= 0 && tkThkByLevel.TryGetValue(r.LevelBase, out var inferred))
+        { thk = inferred; Console.WriteLine($"  ~ {r.Label}: thickness inherited {thk}\" from level {r.LevelBase}."); }
+        if (thk <= 0) { Console.Error.WriteLine($"  ! {r.Label}: no thickness for level {r.LevelBase} (no sibling), FLAGGED + excluded from concrete."); continue; }
+        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", r.Area, thk));
+    }
+
+    if (tkPlates.Count == 0) { Console.Error.WriteLine("No priceable slab plates (no thickness anywhere)."); return 2; }
     var tkResult = PlanEstimatePipeline.Run(tkPlates, tkProfile);
     var tkComputed = StructuralTakeoffService.Compute(tkResult.TakeoffInputs, tkProfile.ToImperialDensityTable());
     var tkModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(args[1]), "Vector takeoff", "", DateTime.UtcNow, tkComputed);
