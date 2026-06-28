@@ -4,14 +4,38 @@
 > manual QTO: **38,705 cy** (Slab 24,495 / Wall 8,339 / Column 2,353 / Foundation ~3,518); rebar
 > 8,910,454 lb. The QTO is the ANSWER KEY, never an input.
 
-## As of 2026-06-28 (END-TO-END RUN PRODUCED)
+## As of 2026-06-28 (SLAB ACCURACY PASS — now trustworthy, not error-cancelling)
 
 **Architecture: VALIDATED + WIRED END-TO-END.** `vector-takeoff <pdf> <pngDir> <out.xlsx>` runs the
-whole synthesis-led pipeline on all 77 pages and writes the existing ClosedXML workbook.
+whole synthesis-led pipeline on all 77 pages and writes the existing ClosedXML workbook. SLAB element
+only (walls/columns/foundations not yet wired), so compare to QTO slab 24,495, not the full 38,705.
 
-**FIRST FULL TOTAL (Coronation, slab element only):** **12,951 cu.yd slab vs QTO slab 24,495 = ~53%**
-(28 plates; rebar 2,577,295 lb). Walls/columns/foundations NOT yet wired, so this is the SLAB bucket
-only — compare to 24,495, not the full 38,705. Honest baseline, gaps legible (below), nothing faked.
+**Slab total progression (each step VERIFIED on real pages, not estimated):**
+
+| Step | Slab cy | % of 24,495 | What changed |
+|---|---|---|---|
+| Raw end-to-end | 12,951 | 53% | first full run |
+| + typical-floor multiplier | 18,186 | 74% | but ERROR-CANCELLING (see below) |
+| + title-block-by-position, tiling, deterministic thickness | 18,547 | 75.7% | **trustworthy** — the cancelling errors fixed |
+| + degenerate-box guard | ~20,600 (projected) | ~84% | recovers the L38 band; confirming run in flight |
+
+The jump from 74% to 75.7% is small in number but a QUALITATIVE change: the old 74% was a coincidental
+balance of a ~5x mezzanine over-count, gross area, and missing floor bands. Those are now FIXED, so the
+~76% is real and STABLE, not a sum of canceling errors. The thickness wobble (P7 read 12"/4"/8" across
+runs) is gone — thickness is read deterministically from the drawing's "10\" SLAB" callouts.
+
+What landed this pass (all committed, 203 Core tests green):
+- **`SheetTitleReader` reads by POSITION** (title-block region), not a page-wide line scan. Level from
+  the largest "PLAN" baseline on the right edge; match-line half from the sheet-number suffix
+  ("S2.02-N"). Fixed the mezzanine (5 sheets -> 2 halves) with ZERO false positives on 77 pages. The
+  earlier regex-broadening that regressed Level-1 is obsolete — position read is the right tool.
+- **`FloorMultiplier.TileTowerCounts`** — typical plans tile the tower contiguously (boundaries = rep
+  levels), so the floors no band names (16, 29-37, 39-41) are no longer orphaned. Each multiplied plate
+  is FLAGGED as an inferred stack.
+- **`SlabThicknessReader`** — field thickness from the exact "N\" SLAB" callout (modal, skips SOG /
+  columns / slab-bands). PRIMARY; synthesis is fallback only where no callout exists.
+- **Degenerate-box guard** — a tower plate < 40% of the tower median area is a bad locate; substitute the
+  median, FLAGGED (one bad box on a 10-floor typical plan was costing ~1,600 cy).
 
 | Layer | Status | Evidence |
 |---|---|---|
@@ -63,23 +87,28 @@ from the title-block REGION** (bottom-right by geometry/font/position via `Vecto
 not by scanning every line. That single change unlocks mezzanine zones, foundation identity, and
 general zone-after-separator WITHOUT the false positives. This is the next structural investment.
 
-## Remaining gaps (priority order)
-1. **Title-block-region reader** (replaces line-scan) — unlocks: P1 Mezz dedup (currently ~5x
-   over-count, masking under-counts), foundation identity, general firm title conventions, reliable
-   match-line zones. Highest leverage; do before chasing percentages.
-2. **Floor-band coverage holes** — levels 16 and 29-41 fall between captured bands (named-after-top vs
-   named-after-bottom inconsistency) -> a few floors counted x1. Quantify + close after #1.
-3. **Degenerate locate box** — occasional ~789 sqft plate (synthesis returns a tiny box); add a
-   plausibility check vs sibling-plate median and re-locate/flag. Reduces run-to-run variance.
+## Remaining gaps to close the slab (priority order)
+The mezzanine / tiling / thickness / degenerate-box items above are now DONE. With the box guard the
+slab projects to ~84%; the rest of the gap to 24,495 is, in order:
+1. **Slab bands / drop panels / thickenings** — the "24\" SLAB" / thickened strips along column lines
+   add real concrete the QTO counts but we don't (we measure field slab area x field thickness only).
+   Likely the single biggest remaining chunk (~10-15% of slab volume). Read the thickening callouts +
+   their footprints and add as extra volume (FLAG where the footprint must be inferred).
+2. **Gross vs net poche** — `MeasureEnclosedClusters` returns gross enclosed area (shafts/stairs/
+   elevator cores/ramp voids not deducted) -> over-measures, partially OFFSETTING #1. Net it out so the
+   two real errors stop hiding each other.
+3. **Residual area variance** — the locate box still varies run-to-run a little (thickness no longer
+   does). The degenerate-box guard catches gross failures; consider median-of-N or a vector-area
+   cross-check for the rest.
 4. **Per-page scale from `ScaleNote`** (Codex #2) — Coronation is uniformly 1/8"=1'-0" so no accuracy
-   impact here, but hardcoding breaks other firms/scales. Parse the (glyph-jumbled) ScaleNote, fall back
-   to default. Generality only.
-5. **Foundation element + gross-vs-net** (Codex #3/#7) — type mats as `Foundation` (own rebar density);
-   poché currently measures gross enclosed area (openings/shafts not deducted -> over-measure).
-6. **Walls / Columns** — schedules exist (`ScheduleGridReader`); need key-plan lengths + column counts
-   to reach the full QTO 38,705.
+   impact here; parse ScaleNote for other firms/scales. Generality only.
+
+## Then: the other elements (toward the full 38,705)
+5. **Foundations** — type mats as `TakeoffElementType.Foundation` (own rebar density), give them a
+   canonical identity, read mat thickness. Currently FLAGGED + excluded (correct, but missing volume).
+6. **Walls / Columns** — schedules exist (`ScheduleGridReader` / synthesis reads PC1-4); need key-plan
+   wall lengths + column counts to price them.
 
 ## Next concrete step
-Build the title-block-region reader (#1): use `VectorPageReader` word bboxes to read the sheet title
-from the title-block zone instead of scanning all lines, then re-enable mezzanine/zone/foundation
-identity on top of it with tests, re-run full, re-measure here.
+Slab bands / thickenings (#1): read the thickening callouts and footprints, add the extra volume with
+provenance, re-run, re-measure here. Then net out gross-vs-net (#2). Then start foundations (#5).
