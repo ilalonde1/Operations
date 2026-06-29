@@ -111,6 +111,23 @@ public sealed class SheetTitleReaderTests
     }
 
     [Fact]
+    public void FromPage_reads_a_tower_zone_when_the_subtitle_wraps_across_lines()
+    {
+        // The real 31065 reinforcing sheet (S2.06.2): the subtitle wraps so "… - NORTH" ends one line and
+        // "TOWER" begins the next — different baselines. The reinforcing sheet MUST still resolve its tower,
+        // else it won't dedup against the matching concrete-outline sheet and the slab is double-counted.
+        var t = SheetTitleReader.FromPage(Page(
+            Word("LEVEL", 0.89, 0.14, 13.6), Word("2", 0.91, 0.14, 13.6),
+            Word("PLAN", 0.93, 0.14, 13.6), Word("SLAB", 0.96, 0.14, 13.6),
+            Word("REINFORCING", 0.90, 0.12, 13.8), Word("NORTH", 0.96, 0.12, 13.8),  // line ends "- NORTH"
+            Word("TOWER", 0.89, 0.11, 13.8),                                          // next line "TOWER"
+            Word("S2.06.2", 0.93, 0.05, 28.0)))!;
+        Assert.Equal("2", t.Level);
+        Assert.Equal("NORTH", t.Zone);
+        Assert.Equal("2|NORTH", t.Key);
+    }
+
+    [Fact]
     public void FromPage_does_not_take_a_tower_zone_from_a_stray_small_north_arrow()
     {
         // A page north-arrow "NORTH" is small and not in the title block — it must not become the zone,

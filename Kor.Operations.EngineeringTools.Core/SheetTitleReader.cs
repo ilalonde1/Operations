@@ -90,10 +90,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             if (parsed is null) return null;
 
             // Zone priority: the sheet-number suffix ("-N"/"-S") is the most reliable match-line half;
-            // then a "TOWER NORTH/SOUTH" label in the title block (two-tower sets like 31065, whose title
-            // line carries no half); then any half embedded in the title text itself.
+            // then a "NORTH/SOUTH TOWER" label in the title-block subtitle (two-tower sets like 31065, whose
+            // title line carries no half); then any half embedded in the title text itself.
             string? zone = SheetNumberZone(page, w, h)
-                        ?? TitleBlockTowerZone(page, w, h)
+                        ?? TitleBlockTowerZone(page, w, anchor.Cy, anchorH)
                         ?? parsed.Value.Zone;
             return new SheetTitle(parsed.Value.Level, zone, titleLine.Trim());
         }
@@ -135,31 +135,41 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             };
         }
 
-        private static readonly Regex CardinalRx = new(@"^(NORTH|SOUTH|EAST|WEST)$",
+        // The match-line tower from the sheet-title subtitle: "<CARDINAL> TOWER" anywhere in it.
+        private static readonly Regex TowerZoneRx = new(@"\b(NORTH|SOUTH|EAST|WEST)\s+TOWER\b",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
-        /// The tower a two-tower set draws, from a "TOWER &lt;CARDINAL&gt;" label in the title block (e.g.
-        /// 31065's "TOWER NORTH"/"TOWER SOUTH"), or null. STRICT to avoid the stray-north-arrow trap that
-        /// regressed Level-1 before: the cardinal AND a "TOWER" word must both sit in the title-block
-        /// region (right edge) at title-size font and share a baseline — a small page north-arrow cannot
-        /// satisfy all three. Distinguishes the two towers so their floors are not deduped together.
+        /// The tower a two-tower set draws, from a "&lt;CARDINAL&gt; TOWER" label in the title-block subtitle
+        /// (31065's "… - NORTH TOWER" / "… - SOUTH TOWER"), or null. The subtitle WRAPS in the title block —
+        /// e.g. "LEVEL 2 PLAN - SLAB / REINFORCING - NORTH / TOWER" — so the cardinal and "TOWER" are on
+        /// different baselines; we therefore read the whole subtitle in reading order (lines top→bottom,
+        /// words left→right) and match the pair, rather than requiring a shared baseline. The window — the
+        /// title region (right edge), title-size font, and only the few lines around the title anchor — keeps
+        /// the key-plan and note "NORTH TOWER"/"SOUTH TOWER" mentions (smaller, further left) out, so it does
+        /// not re-introduce the stray-label trap. Distinguishes the towers so their floors don't dedup together.
         /// </summary>
-        private static string? TitleBlockTowerZone(VectorPageReader.PageContent page, double w, double h)
+        private static string? TitleBlockTowerZone(VectorPageReader.PageContent page, double w, double anchorCy, double anchorH)
         {
-            var titleWords = page.Words
-                .Where(t => t.Cx / w >= TitleRegionMinFx && t.Height >= TitleMinH)
+            // The subtitle wraps up to ~4 lines below the title anchor ("LEVEL 2 PLAN - SLAB /
+            // REINFORCING - NORTH / TOWER" spans ~3.8 line-heights on the real sheet); reach them, but stop
+            // above the bottom-corner sheet number so it is never pulled in.
+            double lo = anchorCy - 5.5 * anchorH, hi = anchorCy + 1.5 * anchorH;
+            var sub = page.Words
+                .Where(t => t.Cx / w >= TitleRegionMinFx && t.Height >= TitleMinH && t.Cy >= lo && t.Cy <= hi)
                 .ToList();
-            var towers = titleWords.Where(t => t.Text.Equals("TOWER", StringComparison.OrdinalIgnoreCase)).ToList();
-            if (towers.Count == 0) return null;
-            foreach (var tw in towers)
-            {
-                double tol = Math.Max(tw.Height * 0.8, 6.0);
-                var card = titleWords.FirstOrDefault(t => CardinalRx.IsMatch(t.Text) && Math.Abs(t.Cy - tw.Cy) <= tol);
-                if (!card.Equals(default(VectorPageReader.TextToken)))
-                    return card.Text.ToUpperInvariant();
-            }
-            return null;
+            if (sub.Count == 0) return null;
+
+            // Concatenate in reading order: lines top→bottom (Cy is up-from-bottom, so descending), then
+            // words left→right within a line (grouped by a fraction of the line height).
+            double lineH = Math.Max(anchorH * 0.6, 4.0);
+            string text = string.Join(" ", sub
+                .GroupBy(t => Math.Round(t.Cy / lineH))
+                .OrderByDescending(g => g.Key)
+                .SelectMany(g => g.OrderBy(t => t.Cx).Select(t => t.Text)));
+
+            var m = TowerZoneRx.Match(text);
+            return m.Success ? m.Groups[1].Value.ToUpperInvariant() : null;
         }
 
         // Canonicalise a level token: upper, single-spaced, ordinal suffix dropped ("2ND" -> "2"),
