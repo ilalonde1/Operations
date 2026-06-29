@@ -27,7 +27,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         int ClusterCount = 0,                                           // enclosed-region fragment count
         ThicknessSource ThicknessSource = ThicknessSource.Callout,      // where the thickness came from
         bool DegenerateBox = false,                                     // area substituted from peer median
-        double PeerAreaRatio = double.NaN);                             // area / peer-group median area
+        double PeerAreaRatio = double.NaN,                              // area / peer-group median area
+        IReadOnlyList<PlanFlag>? ExtraFlags = null);                    // flags from upstream (e.g. area reconcile)
 
     /// <summary>A priced plate: its per-floor and total concrete, plus the diligence verdict.</summary>
     public sealed record PlateEstimate(
@@ -80,7 +81,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     p.Element, p.AreaSqFt, p.DimensionIn, profile, p.ScaleConfirmed, p.RebarLbPerCyOverride, p.Level).Flags;
                 var measurementFlags = PlateReliabilityScorer.MeasurementFlags(
                     p.FillRatio, p.ClusterCount, p.ThicknessSource, p.DegenerateBox, p.PeerAreaRatio, p.Level);
-                var check = PlanCheck.From(pricingFlags.Concat(measurementFlags).ToList());
+                var check = PlanCheck.From(
+                    pricingFlags.Concat(measurementFlags).Concat(p.ExtraFlags ?? Array.Empty<PlanFlag>()).ToList());
 
                 estimates.Add(new PlateEstimate(p, perFloor, total, check));
                 inputs.Add(new StructuralTakeoffInput(p.Level, p.Element, p.Variant, total, FormworkArea: 0, p.Grade));

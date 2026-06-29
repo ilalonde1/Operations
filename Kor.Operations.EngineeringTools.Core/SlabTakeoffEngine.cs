@@ -59,7 +59,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             // Raw per-plate measurements (area is deterministic poché; thickness may be missing from
             // synthesis and is reconciled across a level's match-line halves below before pricing).
-            var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk, double ZonedThk, double FillRatio, int ClusterCount)>();
+            var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk, double ZonedThk, double FillRatio, int ClusterCount, IReadOnlyList<PlanFlag> AreaFlags)>();
+            // The grid envelope and the poché are read in the SAME effective scale (derived from tkMpp), so
+            // the reconciler compares like with like regardless of the absolute scale note.
+            double tkScaleDenom = tkMpp > 0 ? tkMpp * req.Dpi / 0.0254 : 100.0;
 
             var tkMeasured = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // keys with a SUCCESSFUL slab plate
             // Pooled text per canonical (level, zone) key — across ALL its sheets incl. the deduped
@@ -164,9 +167,19 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         }
                     }
 
-                    tkRaw.Add((lvl, levelBase, key, repLevel, area, thk, zonedThk, fillRatio, cl.Count));
+                    // ── the hopper's AREA convergence: the structural-grid envelope (stable anchor) is
+                    //    reconciled with the poché (independent cross-check). The grid is the primary number
+                    //    where it reads; the poché confirms it or, when it has leaked/grabbed wrong, flags it.
+                    var grid = StructuralGridReader.FromPage(VectorPageReader.ReadPage(req.PdfPath, page.Page));
+                    var consensus = SlabAreaReconciler.Reconcile(grid, tkScaleDenom, area);
+                    double plateArea = consensus.AreaSqFt > 0 ? consensus.AreaSqFt : area;
+
+                    tkRaw.Add((lvl, levelBase, key, repLevel, plateArea, thk, zonedThk, fillRatio, cl.Count, consensus.Flags));
                     if (page.Title is { } tk) tkMeasured.Add(tk.Key);   // this key now has a real measured plate
-                    notes.Add($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)"),-14} [fill {(double.IsNaN(fillRatio) ? 0 : fillRatio):0.00} clusters {cl.Count}]");
+                    string gridNote = grid is { IsUsable: true }
+                        ? $"grid[{string.Join("", grid.XLabels.Take(1))}..{string.Join("", grid.XLabels.TakeLast(1))}×{string.Join("", grid.YLabels.Take(1))}..{string.Join("", grid.YLabels.TakeLast(1))}]"
+                        : "grid[—]";
+                    notes.Add($"  p{page.Page}: {lvl,-18} slab {plateArea,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)"),-12} {consensus.Basis,-18} {gridNote} [poché {area,6:N0} fill {(double.IsNaN(fillRatio) ? 0 : fillRatio):0.00}]");
                 }
                 catch (Exception ex) { notes.Add($"  ! p{page.Page}: locate/measure failed: {ex.Message}"); }
             }
@@ -249,7 +262,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 double peerRatio = r.RepLevel.HasValue && towerMedianArea > 0 ? area / towerMedianArea : double.NaN;
                 tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", area, thk, floors,
                     FillRatio: r.FillRatio, ClusterCount: r.ClusterCount, ThicknessSource: thkSource,
-                    DegenerateBox: degenerate, PeerAreaRatio: peerRatio));
+                    DegenerateBox: degenerate, PeerAreaRatio: peerRatio, ExtraFlags: r.AreaFlags));
             }
 
             if (tkPlates.Count == 0) throw new InvalidOperationException("No priceable slab plates (no thickness anywhere).");
