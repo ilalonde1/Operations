@@ -23,17 +23,27 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         string ProfileName = "BC-moderate",
         bool ApplyZoning = false);
 
+    /// <summary>Why a plate could not be priced and is therefore NOT in the total — the honest residual the
+    /// three-phase pipeline owes alongside the answer. <see cref="ResidualKind.AreaUnresolved"/>: no grid and
+    /// AI could not locate the plate; <see cref="ResidualKind.ThicknessUnresolved"/>: the plate measured but no
+    /// thickness callout, sibling or same-class peer gives it a depth. <see cref="AreaSqFt"/> carries whatever
+    /// partial measure exists (the area, for a thickness residual) so the human can finish it by hand.</summary>
+    public enum ResidualKind { AreaUnresolved, ThicknessUnresolved }
+    public sealed record SlabResidual(string Label, ResidualKind Kind, double? AreaSqFt, string Note);
+
     /// <summary>The whole-building suspended-slab takeoff: the priced/reconciled plates, the rendered
-    /// xlsx, the totals, the human-readable measurement trace (what the CLI used to print), and the
-    /// SYNOPSIS — every plate the diligence engine could not fully trust, which the app surfaces as the
-    /// "unsure areas (orange)" panel before export and the AI crucible later converses about.</summary>
+    /// xlsx, the totals, the human-readable measurement trace (what the CLI used to print), the
+    /// SYNOPSIS — every priced plate the diligence engine could not fully trust, which the app surfaces as the
+    /// "unsure areas (orange)" panel — and the RESIDUAL: the plates nobody could resolve at all, excluded from
+    /// the total and listed so the answer is honest about what it does NOT cover (never a silently dropped floor).</summary>
     public sealed record SlabTakeoffResult(
         PlanEstimateResult Estimate,
         byte[] Xlsx,
         double TotalConcreteCuYd,
         double TotalRebarLb,
         IReadOnlyList<string> Notes,
-        IReadOnlyList<PlateEstimate> Synopsis);
+        IReadOnlyList<PlateEstimate> Synopsis,
+        IReadOnlyList<SlabResidual> Residual);
 
     /// <summary>
     /// The takeoff engine, lifted OUT of the CLI so it runs identically from the WPF app. It is a THREE-PHASE
@@ -516,12 +526,18 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             }
 
             var tkPlates = new List<MeasuredPlate>();
+            var residual = new List<SlabResidual>();
             foreach (var r in tkRaw)
             {
                 // A plate whose area nobody could resolve (AI locate failed) is the honest residual — list it,
                 // exclude it from the total, never invent a number for it.
                 if (r.Area <= 0 || r.NeedsLocate)
-                { notes.Add($"  ! {r.Label}: area unresolved (no grid, AI could not locate) — RESIDUAL unknown, excluded from total."); continue; }
+                {
+                    notes.Add($"  ! {r.Label}: area unresolved (no grid, AI could not locate) — RESIDUAL unknown, excluded from total.");
+                    residual.Add(new SlabResidual(r.Label, ResidualKind.AreaUnresolved, null,
+                        "No structural grid and AI could not locate the plate — area unresolved, excluded from the total."));
+                    continue;
+                }
 
                 double thk = r.Thk;   // the page's field-callout read
                 var thkSource = ThicknessSource.None;
@@ -540,7 +556,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 else if (thk <= 0 && tkThkByLevel.TryGetValue(r.LevelBase, out var inferred))
                 { thk = inferred; thkSource = ThicknessSource.SynthesisFallback; notes.Add($"  ~ {r.Label}: thickness inherited {thk}\" from level {r.LevelBase} (sibling fallback, no callout)."); }
                 else if (thk > 0) thkSource = ThicknessSource.SynthesisFallback;
-                if (thk <= 0) { notes.Add($"  ! {r.Label}: no thickness for level {r.LevelBase} (no callout, no sibling) — RESIDUAL unknown, excluded from concrete."); continue; }
+                if (thk <= 0)
+                {
+                    notes.Add($"  ! {r.Label}: no thickness for level {r.LevelBase} (no callout, no sibling) — RESIDUAL unknown, excluded from concrete.");
+                    residual.Add(new SlabResidual(r.Label, ResidualKind.ThicknessUnresolved, r.Area,
+                        $"Area {r.Area:N0} sqft measured, but no thickness callout, sibling or same-class peer gives a depth — excluded from concrete."));
+                    continue;
+                }
 
                 // Parkade/roof and any non-numeric level are 1:1; tower levels take their tiled floor count.
                 int floors = r.RepLevel is int rep && tileCounts.TryGetValue(rep, out var c) ? c : 1;
@@ -580,7 +602,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // areas (orange)" panel and, later, what the AI crucible converses about).
             var synopsis = tkResult.Plates.Where(p => p.Check.Confidence != TakeoffConfidence.High).ToList();
 
-            return new SlabTakeoffResult(tkResult, xlsx, tkResult.TotalConcreteCuYd, tkComputed.TotalRebarWeight, notes, synopsis);
+            return new SlabTakeoffResult(tkResult, xlsx, tkResult.TotalConcreteCuYd, tkComputed.TotalRebarWeight, notes, synopsis, residual);
         }
     }
 }

@@ -46,6 +46,15 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     foreach (var pe in tkOut.Synopsis.OrderByDescending(p => p.Check.HasCritical))
         foreach (var fl in pe.Check.Flags.Where(f => f.Severity != PlanFlagSeverity.Info))
             Console.WriteLine($"   [{fl.Severity}] {pe.Plate.Level,-16} {fl.Code,-20} {fl.Message}");
+
+    // RESIDUAL — the plates nobody could resolve at all (NOT in the total). The honest other half of the
+    // answer: what this takeoff does not cover, listed so it is never a silently dropped floor.
+    if (tkOut.Residual.Count > 0)
+    {
+        Console.WriteLine($"\nResidual: {tkOut.Residual.Count} plate(s) UNRESOLVED — excluded from the total, finish by hand:");
+        foreach (var rz in tkOut.Residual)
+            Console.WriteLine($"   [{rz.Kind}] {rz.Label,-16} {rz.Note}");
+    }
     Console.WriteLine($"\n(suspended-slab benchmark: 31044 Coronation = 20,208 cy net of the 4,287 mat)  ->  {args[3]}");
     return 0;
 }
