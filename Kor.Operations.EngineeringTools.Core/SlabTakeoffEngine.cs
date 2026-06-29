@@ -210,9 +210,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 // thickness alone under-prices → an explicit thickness-split unknown for AI to apportion.
                 var distinctThk = SlabThicknessZoner.ReadCallouts(vp).Select(c => c.ValueIn)
                                     .Where(v => v > 0).Distinct().OrderBy(v => v).ToList();
-                plate.Callouts = distinctThk;
                 int fieldThk = plate.Thk > 0 ? (int)Math.Round(plate.Thk) : (distinctThk.Count > 0 ? distinctThk[0] : 0);
-                bool hasDropBands = distinctThk.Count >= 2 && distinctThk.Any(v => v >= fieldThk + 6 && v >= 1.4 * fieldThk);
+                // The apportionment set is the FIELD slab plus only DEEPER drop bands. A thinner stray callout
+                // (a misread "5" SLAB, a topping/stair note) would drag the area-weighted depth the WRONG way,
+                // so anything below the field thickness is excluded before the question goes to AI.
+                var apportion = distinctThk.Where(v => v >= fieldThk).Distinct().OrderBy(v => v).ToList();
+                plate.Callouts = apportion;
+                bool hasDropBands = apportion.Count >= 2 && apportion.Any(v => v >= fieldThk + 6 && v >= 1.4 * fieldThk);
 
                 // Deterministic locate + area: the grid bubble box → padded poché crop. No readable grid (or a
                 // box that yields an implausible poché) → leave the area unresolved and flag NeedsLocate.
@@ -390,6 +394,22 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double PeerMedianFor(RawPlate r) =>
                 TowerOf(r.Label) is string tw && medianByTower.TryGetValue(tw, out var m) && m > 0 ? m : globalTowerMedian;
 
+            // The LOCAL peer for a degenerate-area check: same-tower resolved floors within a few levels of
+            // this one. A whole-tower median is podium-dominated, so it both mis-condemns a legitimately small
+            // SETBACK floor (19 NORTH ≈ its neighbour 18 NORTH, not the 15k podium) and would substitute a
+            // wrong (too-large) value. Nearest-level siblings keep podium compared to podium and setback to
+            // setback. Falls back to the tower median when a floor has no near neighbours.
+            double NearPeerMedian(RawPlate r)
+            {
+                if (!r.RepLevel.HasValue) return PeerMedianFor(r);
+                string? tw = TowerOf(r.Label);
+                var near = tkRaw.Where(x => !ReferenceEquals(x, r) && x.RepLevel.HasValue
+                                 && Math.Abs(x.RepLevel!.Value - r.RepLevel!.Value) <= 3
+                                 && TowerOf(x.Label) == tw && !x.NeedsLocate && x.Area >= DegenerateFloorSqFt)
+                                .Select(x => x.Area).ToList();
+                return near.Count > 0 ? Median(near) : PeerMedianFor(r);
+            }
+
             var tkPlates = new List<MeasuredPlate>();
             foreach (var r in tkRaw)
             {
@@ -423,15 +443,20 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
                 double area = r.Area;
                 double towerMedianArea = PeerMedianFor(r);
+                double nearMedian = NearPeerMedian(r);
                 bool degenerate = false;
-                // A degenerate locate box is implausibly small for ANY tower floor (a few hundred sqft) — NOT a
-                // setback floor that is legitimately smaller. Trigger on an ABSOLUTE floor or a tiny (<15%)
-                // fraction of the tower typical; a GridConfirmed plate (signals already agree) is never condemned.
-                if (r.RepLevel.HasValue && r.Basis != AreaBasis.GridConfirmed && towerMedianArea > 0
-                    && (area < DegenerateFloorSqFt || area < 0.15 * towerMedianArea))
+                // A degenerate locate is implausibly small for the floor it claims to be. Two cases substitute
+                // the NEAREST-level peer: an ABSOLUTE floor (a few hundred sqft — bad for any floor), and a
+                // NO-GRID plate (poché located by AI, no envelope cross-check) that came in under half its
+                // nearest-level siblings — almost certainly a sub-region grab. A GRID-BACKED plate is never
+                // condemned by the relative test: its grid envelope is trustworthy even for a legitimately
+                // small setback floor (18 NORTH at 5,320), so only the absolute floor applies to it.
+                bool noGridCrossCheck = r.Basis is AreaBasis.PocheOnly or AreaBasis.Unresolved;
+                if (r.RepLevel.HasValue && r.Basis != AreaBasis.GridConfirmed && nearMedian > 0
+                    && (area < DegenerateFloorSqFt || (noGridCrossCheck && area < 0.5 * nearMedian)))
                 {
-                    notes.Add($"  ! {r.Label}: area {area:N0} sqft implausible vs {(TowerOf(r.Label) ?? "tower")} median {towerMedianArea:N0} — substituting median (FLAG: degenerate locate box).");
-                    area = towerMedianArea; degenerate = true;
+                    notes.Add($"  ! {r.Label}: area {area:N0} sqft implausible vs nearest-level {(TowerOf(r.Label) ?? "tower")} peers {nearMedian:N0} — substituting (FLAG: degenerate locate box).");
+                    area = nearMedian; degenerate = true;
                 }
                 double peerRatio = r.RepLevel.HasValue && towerMedianArea > 0 ? area / towerMedianArea : double.NaN;
                 tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", area, thk, floors,
