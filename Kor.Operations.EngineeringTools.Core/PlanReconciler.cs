@@ -150,6 +150,20 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     $"'{levelLabel}' is a transfer/podium/mat level — the {thicknessIn:0.#}\" plan callout may be only the " +
                     "nominal slab; confirm whether built-up transfer or drop zones thicken it (the L01 case ran 48\")."));
 
+            // The standing scope boundary of any plan-read suspended slab. Plan area is corroborated three
+            // ways (grid envelope + poché flood + peer floors); the DEPTH is a single plan callout with no
+            // independent second signal. So the FIELD-slab volume is trustworthy, but the floor TOTAL is not
+            // certifiably complete: drop panels, beams and built-up transfer zones thicken the floor BELOW
+            // the slab and are never drawn as a plan thickness callout — they live only in the sections/model.
+            // Proven on 31065 (2026-06): L4-North reads identically to L2-North on the plan yet is 17% heavier
+            // in the model. No plan-level signal separates them, so the tool must not present a floor total as
+            // final. Info severity — it does not lower the FIELD-slab confidence, it scopes what that number is.
+            if (element == TakeoffElementType.Slab && thicknessIn > 0)
+                flags.Add(new(PlanFlagSeverity.Info, "FIELD_SLAB_ONLY",
+                    "Field-slab volume (plan area × plan thickness callout). Built-up zones below the slab — " +
+                    "drop panels, beams, transfer build-up — are not shown in plan callouts and are excluded; " +
+                    "a model/section QTO will read higher on any floor that has them. Confirm against the sections."));
+
             if (!scaleConfirmed)
                 flags.Add(new(PlanFlagSeverity.Review, "SCALE_UNCONFIRMED",
                     "Drawing scale taken from the title block only — not cross-checked against the grid spacing."));

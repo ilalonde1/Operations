@@ -10,11 +10,26 @@ public sealed class PlanReconcilerTests
     private static readonly PlanProfile Bc = PlanProfile.BcModerate;
 
     [Fact]
-    public void NormalSuspendedSlab_IsHighConfidence_NoFlags()
+    public void NormalSuspendedSlab_IsHighConfidence_FieldSlabScopeOnly()
     {
+        // A clean field measure stays High — but it carries the standing scope flag that the number is the
+        // FIELD slab only, not a certified floor total. Info severity, so it does not lower confidence.
         var check = PlanReconciler.Check(TakeoffElementType.Slab, areaSqFt: 9597, thicknessIn: 8, Bc);
         Assert.Equal(TakeoffConfidence.High, check.Confidence);
-        Assert.Empty(check.Flags);
+        var only = Assert.Single(check.Flags);
+        Assert.Equal("FIELD_SLAB_ONLY", only.Code);
+        Assert.Equal(PlanFlagSeverity.Info, only.Severity);
+    }
+
+    [Fact]
+    public void FieldSlabOnly_RidesEverySlab_ButNeverFoundation()
+    {
+        // The scope boundary belongs to plan-read suspended slabs (single-callout depth), not to mats —
+        // a Foundation mat is priced as its own thing and does not carry the suspended-slab caveat.
+        Assert.Contains(PlanReconciler.Check(TakeoffElementType.Slab, 9597, 8, Bc).Flags,
+            f => f.Code == "FIELD_SLAB_ONLY");
+        Assert.DoesNotContain(PlanReconciler.Check(TakeoffElementType.Foundation, 38_500, 130, Bc).Flags,
+            f => f.Code == "FIELD_SLAB_ONLY");
     }
 
     [Fact]

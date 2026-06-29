@@ -40,6 +40,18 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     File.WriteAllBytes(args[3], tkOut.Xlsx);
     Console.WriteLine($"\nPlates: {tkOut.Estimate.Plates.Count}   Slab concrete: {tkOut.TotalConcreteCuYd:N0} cu.yd   Rebar: {tkOut.TotalRebarLb:N0} lb");
 
+    // PER-LEVEL — these are FIELD-SLAB volumes: plan area × plan thickness callout. "GRID" means the field
+    // measurement is clean (area cross-checked by grid envelope + poché + peers, thickness from a real
+    // callout); it does NOT mean the floor TOTAL is final. Built-up zones below the slab — drop panels, beams,
+    // transfer build-up — are not drawn as plan callouts and are excluded, so a model/section QTO reads higher
+    // on any floor that has them. (Proven on 31065: L4-North reads identically to L2-North on the plan yet is
+    // 17% heavier in the model — no plan-level signal separates them.) "FLAG" = even the field measure is doubtful.
+    Console.WriteLine($"\nPer-level FIELD-SLAB volume — GRID = field measure clean, FLAG = verify the measure by hand:");
+    foreach (var pe in tkOut.Estimate.Plates.OrderByDescending(p => p.ConcreteTotalCuYd))
+        Console.WriteLine($"  {(pe.Check.Confidence == TakeoffConfidence.High ? "GRID" : "FLAG")}  {pe.Plate.Level,-18} {pe.ConcreteTotalCuYd,8:N0} cy  ({pe.ConcretePerFloorCuYd,6:N0}/flr)  [{pe.Check.Confidence}]");
+    Console.WriteLine("  NOTE: field-slab volumes — built-up zones below the slab (drops/beams/transfers) are NOT in plan");
+    Console.WriteLine("        callouts and are excluded. Confirm built-up volume against the sections before trusting any floor total.");
+
     // SYNOPSIS — the on-screen "unsure areas" the product surfaces before export (and the future AI
     // crucible converses about). Every plate the diligence engine could not fully trust, with the reasons.
     Console.WriteLine($"\nSynopsis: {tkOut.Estimate.Plates.Count - tkOut.Synopsis.Count}/{tkOut.Estimate.Plates.Count} plates clear; {tkOut.Synopsis.Count} need review (orange):");
