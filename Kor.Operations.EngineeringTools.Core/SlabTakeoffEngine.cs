@@ -162,6 +162,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         cx1 = (int)(grid.XMaxPt / vp.WidthPts * iw);
                         cy0 = (int)((vp.HeightPts - grid.YMaxPt) / vp.HeightPts * ih);   // PDF y-up → image y-down
                         cy1 = (int)((vp.HeightPts - grid.YMinPt) / vp.HeightPts * ih);
+                        // The grid box is tight to the gridlines (≈ the slab edge). The poché floods the
+                        // EXTERIOR seeded from the crop border, so the border must sit OUTSIDE the slab — pad
+                        // the box outward into the sheet margin (past the bubbles/dimension strings) so the
+                        // flood starts in paper and stops at the slab outline. Too small → the fill seeds
+                        // inside the slab and the poché collapses; this much clears the edge without reaching
+                        // a neighbouring plan (the inter-plan gap is far larger than 10%).
+                        int padX = (int)(0.10 * (cx1 - cx0)), padY = (int)(0.10 * (cy1 - cy0));
+                        cx0 -= padX; cx1 += padX; cy0 -= padY; cy1 += padY;
                         locateSrc = "grid";
                     }
                     else
