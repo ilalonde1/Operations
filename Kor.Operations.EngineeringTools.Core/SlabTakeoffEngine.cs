@@ -58,6 +58,26 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             public IReadOnlyList<PlanFlag> AreaFlags = Array.Empty<PlanFlag>();
         }
 
+        private static readonly System.Text.RegularExpressions.Regex TowerRx = new(@"\b(NORTH|SOUTH|EAST|WEST)\b",
+            System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        /// <summary>The tower a plate belongs to (its label's cardinal), or null for a podium/parkade plate
+        /// that belongs to no tower. Peer comparisons MUST stay within a tower: two towers have genuinely
+        /// different footprints (here north ≈15k sqft vs south ≈8.7k), so a same-level cross-tower comparison
+        /// would mislabel a good north floor "large" and a good south floor "small", and could wrongly
+        /// "correct" a real north plate against the smaller south one.</summary>
+        private static string? TowerOf(string label)
+        {
+            var m = TowerRx.Match(label ?? "");
+            return m.Success ? m.Groups[1].Value.ToUpperInvariant() : null;
+        }
+
+        private static double Median(IEnumerable<double> xs)
+        {
+            var s = xs.OrderBy(x => x).ToList();
+            return s.Count == 0 ? 0 : s[s.Count / 2];
+        }
+
         public static async Task<SlabTakeoffResult> RunAsync(
             SlabTakeoffRequest req, IPlanVision vision, IPlanRaster raster, CancellationToken ct = default)
         {
@@ -207,25 +227,27 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             if (tkRaw.Count == 0) throw new InvalidOperationException("No slab plates measured.");
 
-            // ── the hopper's SECOND peg: cross-tower sibling adjudication. A grid≫poché plate that
-            //    Reconcile resolved by trusting the grid is re-checked against its CONFIRMED same-level
-            //    siblings in the other tower(s). When this plate's grid is a high outlier vs the sibling
-            //    median while its poché matches it, the grid grabbed podium-width bubbles (a setback tower
-            //    bounded at full width) — the poché is the better number. Deterministic, no AI; a plate is
-            //    only overridden when a confirmed sibling vouches for the poché.
-            foreach (var grp in tkRaw.Where(r => r.RepLevel.HasValue).GroupBy(r => r.RepLevel!.Value))
+            // ── the hopper's SECOND peg: within-tower outlier adjudication. A grid≫poché plate that
+            //    Reconcile resolved by trusting the grid is re-checked against the CONFIRMED typical floors
+            //    of its OWN tower. The same tower's floors share a footprint, so when this plate's grid
+            //    balloons past the tower typical (a setback floor caught at full podium width) while its
+            //    poché matches the typical, the grid grabbed too much — the poché is the better number.
+            //    Per-tower, NOT same-level-cross-tower: the two towers differ in size, so comparing a north
+            //    floor to its south namesake would wrongly shrink a real north plate. Deterministic, no AI.
+            foreach (var grp in tkRaw.Where(r => r.RepLevel.HasValue && TowerOf(r.Label) != null)
+                                     .GroupBy(r => TowerOf(r.Label)!))
             {
                 var trustworthy = grp.Where(r => r.Basis is AreaBasis.GridConfirmed or AreaBasis.GridOnly)
-                                     .Select(r => r.Area).OrderBy(a => a).ToList();
+                                     .Select(r => r.Area).ToList();
                 if (trustworthy.Count == 0) continue;
-                double peerMedian = trustworthy[trustworthy.Count / 2];
+                double peerMedian = Median(trustworthy);
                 foreach (var r in grp.Where(r => r.Basis == AreaBasis.GridPocheDisagree))
                 {
                     var resolved = SlabAreaReconciler.ResolveAgainstPeers(
                         new AreaConsensus(r.Area, r.Basis, r.GridNet, r.Poche, r.AreaFlags), peerMedian);
                     if (resolved.Basis != r.Basis)
                     {
-                        notes.Add($"  ⇄ {r.Label}: grid {r.GridNet:N0} sqft is a {r.GridNet / peerMedian:P0} outlier vs level-{r.RepLevel} siblings ({peerMedian:N0}); using poché {r.Poche:N0} (FLAG: grid grabbed podium-width bubbles).");
+                        notes.Add($"  ⇄ {r.Label}: grid {r.GridNet:N0} sqft is a {r.GridNet / peerMedian:P0} outlier vs the {grp.Key} tower typical ({peerMedian:N0}); using poché {r.Poche:N0} (FLAG: grid grabbed podium-width bubbles).");
                         r.Area = resolved.AreaSqFt; r.Basis = resolved.Basis; r.AreaFlags = resolved.Flags;
                     }
                 }
@@ -262,11 +284,15 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             }
             var tileCounts = FloorMultiplier.TileTowerCounts(towerReps, topBandTop);
 
-            // Degenerate-box guard: the synthesis occasionally returns a tiny plate box, and on a typical plan
-            // that error is multiplied across the whole floor band. A tower plate far below its siblings'
-            // median area is almost certainly a bad locate — substitute the median (FLAGGED), don't ship a 9% plate.
-            var towerAreasSorted = tkRaw.Where(r => r.RepLevel.HasValue).Select(r => r.Area).OrderBy(a => a).ToList();
-            double towerMedianArea = towerAreasSorted.Count > 0 ? towerAreasSorted[towerAreasSorted.Count / 2] : 0;
+            // Degenerate-box guard + peer-area flags work off the PER-TOWER median floor area (two towers
+            // have different footprints, so a global median would mislabel a good north floor "large" and a
+            // good south floor "small"). Plates with no tower (podium/parkade) share a global fallback.
+            double globalTowerMedian = Median(tkRaw.Where(r => r.RepLevel.HasValue).Select(r => r.Area));
+            var medianByTower = tkRaw.Where(r => r.RepLevel.HasValue && TowerOf(r.Label) != null)
+                .GroupBy(r => TowerOf(r.Label)!)
+                .ToDictionary(g => g.Key, g => Median(g.Select(r => r.Area)), StringComparer.OrdinalIgnoreCase);
+            double PeerMedianFor(RawPlate r) =>
+                TowerOf(r.Label) is string tw && medianByTower.TryGetValue(tw, out var m) && m > 0 ? m : globalTowerMedian;
 
             var tkPlates = new List<MeasuredPlate>();
             foreach (var r in tkRaw)
@@ -295,15 +321,16 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 if (floors > 1) notes.Add($"  x {r.Label}: typical plan -> {floors} physical floors (FLAG: inferred contiguous stack, levels {r.RepLevel - floors + 1}-{r.RepLevel}).");
 
                 double area = r.Area;
+                double towerMedianArea = PeerMedianFor(r);
                 bool degenerate = false;
                 if (r.RepLevel.HasValue && towerMedianArea > 0 && area < 0.4 * towerMedianArea)
                 {
-                    notes.Add($"  ! {r.Label}: area {area:N0} sqft implausible vs tower median {towerMedianArea:N0} — substituting median (FLAG: degenerate locate box).");
+                    notes.Add($"  ! {r.Label}: area {area:N0} sqft implausible vs {(TowerOf(r.Label) ?? "tower")} median {towerMedianArea:N0} — substituting median (FLAG: degenerate locate box).");
                     area = towerMedianArea; degenerate = true;
                 }
-                // Peer-area ratio: tower typicals should be similar, so a tower plate far from the median is a
-                // likely locate error. Only the tower cohort has true peers; others (parkade halves, mezz,
-                // roof) are not directly comparable -> NaN (no peer flag).
+                // Peer-area ratio: a tower's own typical floors should be similar, so a plate far from its
+                // tower median is a likely locate error. Only tower floors have true peers; others (parkade
+                // halves, mezz, roof) are not directly comparable -> NaN (no peer flag).
                 double peerRatio = r.RepLevel.HasValue && towerMedianArea > 0 ? area / towerMedianArea : double.NaN;
                 tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", area, thk, floors,
                     FillRatio: r.FillRatio, ClusterCount: r.ClusterCount, ThicknessSource: thkSource,
