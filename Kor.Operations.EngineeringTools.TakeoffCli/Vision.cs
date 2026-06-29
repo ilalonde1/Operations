@@ -90,6 +90,10 @@ static class PlanVisionClient
         return await SendWithRetryAsync(JsonSerializer.Serialize(request));
     }
 
+    // How many times a throttled/failed call is retried before giving up. Rate limits (429) can persist
+    // for a full reset window, so this is generous — a single sheet should ride out a throttle, not fail.
+    private const int MaxRetries = 8;
+
     // Shared POST + retry (429/5xx + transport drops) for both the image and text forced-tool calls.
     private static async Task<string> SendWithRetryAsync(string body)
     {
@@ -105,9 +109,9 @@ static class PlanVisionClient
                 using var resp = await Http.SendAsync(req);
                 string respText = await resp.Content.ReadAsStringAsync();
                 int code = (int)resp.StatusCode;
-                if ((code == 429 || code >= 500) && attempt < 4)
+                if ((code == 429 || code >= 500) && attempt < MaxRetries)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)));
+                    await Task.Delay(RetryDelay(resp, attempt));
                     continue;
                 }
                 if (!resp.IsSuccessStatusCode)
@@ -116,11 +120,33 @@ static class PlanVisionClient
             }
             // A transport-level drop (connection reset, TLS write failure, timeout) is thrown before any
             // response and so isn't caught by the status-code check above — retry it like a 5xx.
-            catch (Exception ex) when (attempt < 4 && ex is HttpRequestException or IOException or System.Net.Sockets.SocketException or TaskCanceledException)
+            catch (Exception ex) when (attempt < MaxRetries && ex is HttpRequestException or IOException or System.Net.Sockets.SocketException or TaskCanceledException)
             {
-                await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)));
+                await Task.Delay(RetryDelay(null, attempt));
             }
         }
+    }
+
+    // The correct way to ride out an Anthropic rate limit: obey the server's own Retry-After (it tells you
+    // exactly when the window resets), and only fall back to exponential backoff with jitter when there is
+    // no header (a transport drop or a 5xx without one). The previous fixed 2/4/6/8s ignored Retry-After,
+    // so it could retry BEFORE the window reset — drawing another 429 — and gave up after just four tries.
+    private static TimeSpan RetryDelay(HttpResponseMessage? resp, int attempt)
+    {
+        if (resp?.Headers.RetryAfter is { } ra)
+        {
+            if (ra.Delta is { } d && d > TimeSpan.Zero) return Cap(d);
+            if (ra.Date is { } when)
+            {
+                var wait = when - DateTimeOffset.UtcNow;
+                if (wait > TimeSpan.Zero) return Cap(wait);
+            }
+        }
+        // Exponential 1.5, 3, 6, 12, 24, 45(cap)… plus a little jitter so parallel/retried calls de-sync.
+        double secs = Math.Min(45, 1.5 * Math.Pow(2, attempt));
+        return TimeSpan.FromSeconds(secs) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 750));
+
+        static TimeSpan Cap(TimeSpan t) => t > TimeSpan.FromSeconds(60) ? TimeSpan.FromSeconds(60) : t;
     }
 
     // ── Layer 2: estimator-synthesis over the exact digest (general, firm-agnostic) ──────────────
