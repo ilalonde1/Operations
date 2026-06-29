@@ -44,6 +44,18 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 ? (ImperialCalloutRe, SpacingMinIn, SpacingMaxIn, (s, sp) => $"#{s}@{sp}")
                 : (CalloutRe, SpacingMin, SpacingMax, (s, sp) => $"{s}M@{sp}");
 
+        // KOR-Vancouver BAR-LIST call-out: "16-15M13.9", "6-C15M08.5", "C15M3.11" — an optional bar
+        // QUANTITY, an optional C(ontinuous), a Canadian metric bar size, and a bar LENGTH (ft.in), glued
+        // into one token (spacing, when shown, is a SEPARATE "@ 10\"" token and is deliberately not relied
+        // on — word order from the text layer doesn't keep it adjacent). This is a THIRD grammar that runs
+        // ALONGSIDE the metric/imperial intensity patterns above, never instead of them: it requires a bar
+        // size GLUED to a decimal length (`15M13.9`), which the intensity callout "15M @ 200" never produces,
+        // so it adds nothing on Rory's 31065 metric set (kept byte-identical) and only captures the bar-list
+        // sets (e.g. Brewery District 30953) the intensity patterns read as empty. The full token is the key.
+        private static readonly Regex BarListRe =
+            new(@"\b(?:\d{1,3}-)?C?(\d{2})M\d{1,2}\.\d{1,2}\b", RegexOptions.Compiled);
+        private const int BarSizeMin = 10, BarSizeMax = 55;   // Canadian bars: 10M..55M, all multiples of 5
+
         public static IReadOnlyList<SheetCallouts> Extract(IReadOnlyList<string> pages, UnitSystem unit = UnitSystem.Metric)
         {
             var tokens = pages
@@ -85,6 +97,17 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                     int spacing = int.Parse(m.Groups[2].Value);
                     if (spacing < smin || spacing > smax) continue;
                     string key = keyFmt(int.Parse(m.Groups[1].Value), spacing);
+                    counter[key] = counter.GetValueOrDefault(key) + 1;
+                }
+
+                // Bar-list grammar (additive, all modes): captures "16-15M13.9"-style call-outs the intensity
+                // patterns above never see. Size must be a real Canadian bar (10..55M, multiple of 5) so a
+                // stray "12M34.5"-shaped dimension can't masquerade as a bar. The full token is the key.
+                foreach (Match m in BarListRe.Matches(pages[i]))
+                {
+                    int size = int.Parse(m.Groups[1].Value);
+                    if (size < BarSizeMin || size > BarSizeMax || size % 5 != 0) continue;
+                    string key = m.Value.ToUpperInvariant();
                     counter[key] = counter.GetValueOrDefault(key) + 1;
                 }
             }

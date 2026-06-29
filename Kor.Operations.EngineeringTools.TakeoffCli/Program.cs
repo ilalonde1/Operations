@@ -1255,6 +1255,17 @@ if (args.Length >= 4 && args[0].Equals("rebar", StringComparison.OrdinalIgnoreCa
     string ral = args.Length > 6 ? args[6] : "After";
     var rr = RebarChangeService.Compare(bPages, aPages, rbl, ral);
 
+    // "Can't-read" guard: matched real sheets but read ZERO reinforcing call-outs ⇒ the set's annotation
+    // grammar wasn't recognised. That is NOT "no change" — refuse to emit a falsely-reassuring report.
+    if (rr.SheetsCompared >= 3 && rr.TotalCalloutsRead == 0)
+    {
+        Console.Error.WriteLine(
+            $"ABORT: compared {rr.SheetsCompared} sheets but read 0 reinforcing call-outs — this set's " +
+            "call-out style was not recognised, so a change cannot be detected. This is NOT a 'no change' " +
+            "result. No report written.");
+        return 3;
+    }
+
     if (args.Length >= 9) // ... beforeCsv afterCsv -> full takeoff + change
     {
         var dens = RebarDensityTable.Default;

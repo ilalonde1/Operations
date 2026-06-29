@@ -38,5 +38,10 @@ namespace Kor.Operations.EngineeringTools.RebarChange
         int CalloutsAdded,
         int CalloutsRemoved,
         string BeforeLabel,
-        string AfterLabel);
+        string AfterLabel,
+        // Total reinforcing call-outs the extractor actually READ across both issues (sum of every sheet's
+        // before+after counts). The "can't-read" guard: a comparison of many sheets that read ~0 call-outs
+        // means the set's annotation grammar wasn't recognised — NOT that nothing changed. Hosts must surface
+        // that loudly rather than report a confident "0 changed".
+        int TotalCalloutsRead = 0);
 }

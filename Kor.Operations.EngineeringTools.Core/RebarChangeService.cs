@@ -73,7 +73,8 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 CalloutsAdded: calloutsAdded,
                 CalloutsRemoved: calloutsRemoved,
                 BeforeLabel: beforeLabel,
-                AfterLabel: afterLabel);
+                AfterLabel: afterLabel,
+                TotalCalloutsRead: changes.Sum(c => c.BeforeCount + c.AfterCount));
         }
 
         private static readonly IReadOnlyDictionary<string, int> Empty = new Dictionary<string, int>();
