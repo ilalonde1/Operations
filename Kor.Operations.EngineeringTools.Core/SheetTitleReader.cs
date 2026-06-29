@@ -89,7 +89,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var parsed = ParseTitleLine(titleLine);
             if (parsed is null) return null;
 
-            string? zone = SheetNumberZone(page, w, h) ?? parsed.Value.Zone;
+            // Zone priority: the sheet-number suffix ("-N"/"-S") is the most reliable match-line half;
+            // then a "TOWER NORTH/SOUTH" label in the title block (two-tower sets like 31065, whose title
+            // line carries no half); then any half embedded in the title text itself.
+            string? zone = SheetNumberZone(page, w, h)
+                        ?? TitleBlockTowerZone(page, w, h)
+                        ?? parsed.Value.Zone;
             return new SheetTitle(parsed.Value.Level, zone, titleLine.Trim());
         }
 
@@ -128,6 +133,33 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 "W" => "WEST",
                 _ => null,
             };
+        }
+
+        private static readonly Regex CardinalRx = new(@"^(NORTH|SOUTH|EAST|WEST)$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        /// <summary>
+        /// The tower a two-tower set draws, from a "TOWER &lt;CARDINAL&gt;" label in the title block (e.g.
+        /// 31065's "TOWER NORTH"/"TOWER SOUTH"), or null. STRICT to avoid the stray-north-arrow trap that
+        /// regressed Level-1 before: the cardinal AND a "TOWER" word must both sit in the title-block
+        /// region (right edge) at title-size font and share a baseline — a small page north-arrow cannot
+        /// satisfy all three. Distinguishes the two towers so their floors are not deduped together.
+        /// </summary>
+        private static string? TitleBlockTowerZone(VectorPageReader.PageContent page, double w, double h)
+        {
+            var titleWords = page.Words
+                .Where(t => t.Cx / w >= TitleRegionMinFx && t.Height >= TitleMinH)
+                .ToList();
+            var towers = titleWords.Where(t => t.Text.Equals("TOWER", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (towers.Count == 0) return null;
+            foreach (var tw in towers)
+            {
+                double tol = Math.Max(tw.Height * 0.8, 6.0);
+                var card = titleWords.FirstOrDefault(t => CardinalRx.IsMatch(t.Text) && Math.Abs(t.Cy - tw.Cy) <= tol);
+                if (!card.Equals(default(VectorPageReader.TextToken)))
+                    return card.Text.ToUpperInvariant();
+            }
+            return null;
         }
 
         // Canonicalise a level token: upper, single-spaced, ordinal suffix dropped ("2ND" -> "2"),

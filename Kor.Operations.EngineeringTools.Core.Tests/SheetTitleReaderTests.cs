@@ -90,6 +90,40 @@ public sealed class SheetTitleReaderTests
     }
 
     [Fact]
+    public void FromPage_reads_the_tower_zone_from_a_title_block_TOWER_label()
+    {
+        // 31065 form: title line "LEVEL 2 PLAN - CONCRETE" carries no half; the tower is a separate
+        // "TOWER NORTH" label in the title block one baseline above. Sheet number has no -N/-S suffix.
+        var north = SheetTitleReader.FromPage(Page(
+            Word("TOWER", 0.96, 0.12, 13.8), Word("NORTH", 0.94, 0.12, 13.8),
+            Word("LEVEL", 0.90, 0.14, 13.6), Word("2", 0.92, 0.14, 13.6),
+            Word("PLAN", 0.94, 0.14, 13.6), Word("CONCRETE", 0.97, 0.14, 13.6),
+            Word("S2.06.1", 0.93, 0.05, 28.0)))!;
+        Assert.Equal("2", north.Level);
+        Assert.Equal("NORTH", north.Zone);
+
+        var south = SheetTitleReader.FromPage(Page(
+            Word("TOWER", 0.96, 0.12, 13.8), Word("SOUTH", 0.94, 0.12, 13.8),
+            Word("LEVEL", 0.90, 0.14, 13.6), Word("2", 0.92, 0.14, 13.6), Word("PLAN", 0.94, 0.14, 13.6),
+            Word("S2.13.1", 0.93, 0.05, 28.0)))!;
+        Assert.Equal("SOUTH", south.Zone);
+        Assert.NotEqual(north.Key, south.Key);   // the two towers' level 2 are distinct plates that sum
+    }
+
+    [Fact]
+    public void FromPage_does_not_take_a_tower_zone_from_a_stray_small_north_arrow()
+    {
+        // A page north-arrow "NORTH" is small and not in the title block — it must not become the zone,
+        // even though a title-block "TOWER 1" word exists (the regression that broke Level-1 before).
+        var t = SheetTitleReader.FromPage(Page(
+            Word("TOWER", 0.95, 0.12, 13.8), Word("1", 0.97, 0.12, 13.8),
+            Word("LEVEL", 0.91, 0.14, 13.6), Word("3", 0.93, 0.14, 13.6), Word("PLAN", 0.95, 0.14, 13.6),
+            Word("NORTH", 0.50, 0.60, 7.0)))!;   // a small body north-arrow
+        Assert.Equal("3", t.Level);
+        Assert.Null(t.Zone);
+    }
+
+    [Fact]
     public void FromPage_returns_null_when_there_is_no_title_block_plan()
     {
         var page = Page(Word("SHEAR", 0.5, 0.5, 12.0), Word("WALL", 0.55, 0.5, 12.0), Word("SCHEDULE", 0.6, 0.5, 12.0));
