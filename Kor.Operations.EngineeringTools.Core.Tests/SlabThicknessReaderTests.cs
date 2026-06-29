@@ -86,4 +86,35 @@ public sealed class SlabThicknessReaderTests
         var lines = new List<string> { "10\" SLAB", "10\" SLAB", "10\" SLAB", "200 SLAB" };
         Assert.Equal(10, SlabThicknessReader.DominantThicknessIn(lines));
     }
+
+    // ── RecoverStructuralDepthIn: the wider read for a plate the field reader came up empty on ──
+
+    [Fact]
+    public void Recovery_reads_a_mat_or_slab_on_grade_depth_the_field_reader_skips()
+    {
+        // The field reader returns null for these (a word intervenes / it's a mat); recovery finds the depth.
+        Assert.Null(SlabThicknessReader.DominantThicknessIn(new List<string> { "4\" UNREINFORCED SLAB ON GRADE" }));
+        Assert.Equal(4, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "4\" UNREINFORCED SLAB ON GRADE" }));
+        Assert.Equal(24, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "24\" MAT" }));
+    }
+
+    [Fact]
+    public void Recovery_reads_a_metric_mat_depth_as_inches()
+    {
+        // A 600 mm parkade mat = 23.6" → 24".
+        Assert.Equal(24, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "600 MAT" }));
+        // A deep raft the field reader's 600 mm cap excludes (900 mm = 35.4" → 35").
+        Assert.Equal(35, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "900 RAFT" }));
+    }
+
+    [Fact]
+    public void Recovery_ignores_bare_slab_and_note_numbering()
+    {
+        // Bare "N\" SLAB" is the FIELD reader's job — recovery must not double-claim it.
+        Assert.Null(SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "10\" SLAB", "10\" SLAB" }));
+        // Note-numbering must never leak a phantom depth (the field reader's old trap).
+        Assert.Null(SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "5. SLABS TO BE CAMBERED" }));
+        Assert.Null(SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "GENERAL NOTES" }));
+        Assert.Null(SlabThicknessReader.RecoverStructuralDepthIn(null));
+    }
 }

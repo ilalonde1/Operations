@@ -89,6 +89,18 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return m.Success ? m.Groups[1].Value.ToUpperInvariant() : null;
         }
 
+        /// <summary>The structural CLASS a plate belongs to for a thickness peer-estimate: its tower cardinal
+        /// if it has one, else the leading letters of its level token (a parkade "P3"→"P", a roof "ROOF"). A
+        /// missing field-thickness is estimated only from the SAME class — a parkade mat is judged by other
+        /// parkade levels, never by a thin tower floor — so the substitute depth is structurally plausible.</summary>
+        private static string ClassKey(RawPlate r)
+        {
+            var tw = TowerOf(r.Label);
+            if (tw != null) return tw;
+            var m = System.Text.RegularExpressions.Regex.Match(r.LevelBase ?? "", "[A-Za-z]+");
+            return m.Success ? m.Value.ToUpperInvariant() : "?";
+        }
+
         private static double Median(IEnumerable<double> xs)
         {
             var s = xs.OrderBy(x => x).ToList();
@@ -380,6 +392,51 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     }
                     else notes.Add($"  ! {p.Label}: AI thickness split unusable — kept field thickness (flagged).");
                 }
+            }
+
+            // (c) THICKNESS — plate measured, but the field-slab reader found NO callout (a parkade mat, a
+            //     slab-on-grade, a podium raft — depths stated in forms that reader deliberately skips). This
+            //     is resolved deterministically, NOT by AI: the invariant is that a thickness never originates
+            //     from the model, only from exact text or a real peer. Two ordered passes so a peer-estimate
+            //     sees every text-recovered sibling: (1) re-read each plate's own pooled text with the wider
+            //     mat/SOG recogniser; (2) anything still missing → the nearest same-class resolved plate's
+            //     depth (flagged orange); (3) no peer at all → an honest residual the pricing pass drops.
+            var thkUnknowns = tkRaw.Where(p => p.NeedsThickness).ToList();
+            if (thkUnknowns.Count > 0) notes.Add($"phase 2c: {thkUnknowns.Count} plate(s) missing a field-thickness callout → deterministic recovery.");
+
+            double PeerClassThickness(RawPlate r)
+            {
+                string cls = ClassKey(r);
+                var same = tkRaw.Where(x => !ReferenceEquals(x, r) && x.Thk > 0 && ClassKey(x) == cls).ToList();
+                if (same.Count == 0) return 0;
+                // Nearest level within the class when both are levelled; else the class's modal depth.
+                if (r.RepLevel.HasValue && same.Any(x => x.RepLevel.HasValue))
+                    return same.Where(x => x.RepLevel.HasValue)
+                               .OrderBy(x => Math.Abs(x.RepLevel!.Value - r.RepLevel!.Value)).First().Thk;
+                return same.GroupBy(x => x.Thk).OrderByDescending(g => g.Count()).ThenByDescending(g => g.Key).First().Key;
+            }
+
+            foreach (var p in thkUnknowns)
+            {
+                ct.ThrowIfCancellationRequested();
+                var pool = tkPooled.TryGetValue(p.Key, out var pl) ? pl : (IEnumerable<string>)Array.Empty<string>();
+                if (SlabThicknessReader.RecoverStructuralDepthIn(pool) is int rt && rt > 0)
+                {
+                    p.Thk = rt; p.NeedsThickness = false;
+                    notes.Add($"  ⤷ {p.Label}: thickness {rt}\" recovered from a mat/SOG/raft callout the field-slab reader skips.");
+                }
+            }
+            foreach (var p in thkUnknowns.Where(p => p.NeedsThickness))
+            {
+                double peer = PeerClassThickness(p);
+                if (peer > 0)
+                {
+                    p.Thk = peer; p.NeedsThickness = false;
+                    p.AreaFlags = p.AreaFlags.Concat(new[] { new PlanFlag(PlanFlagSeverity.Review, "THICKNESS_ESTIMATED_PEERS",
+                        $"No slab-thickness callout on this plate; depth estimated from the nearest {ClassKey(p)} plate ({peer:N0}\") — verify against the drawing.") }).ToArray();
+                    notes.Add($"  ⤷ {p.Label}: no thickness callout — depth ESTIMATED {peer:N0}\" from nearest {ClassKey(p)} peer (flagged).");
+                }
+                else notes.Add($"  ! {p.Label}: no thickness callout and no same-class peer — RESIDUAL unknown, excluded from concrete.");
             }
 
             // ════════════════════ PHASE 3 — SYNTHESIS (merge + cross-check + price) ════════════════════

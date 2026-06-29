@@ -33,7 +33,19 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         private const int MaxIn = 48;    // thicker is a transfer mat, not a field slab
         private const int MinMm = 100;   // ~4"  — plausible structural slab in millimetres
         private const int MaxMm = 600;   // ~24" — above this is a transfer/mat, not a field slab
+        private const int RecoverMaxMm = 1200; // recovery (mats only) admits a deep mat foundation (~48")
         private const double MmPerInch = 25.4;
+
+        // RECOVERY anchors — the forms the strict field reader above DELIBERATELY skips: a mat/SOG/raft/
+        // topping depth, or a slab-on-grade where a descriptor word intervenes ("4" UNREINFORCED SLAB ON
+        // GRADE"). Bare «N" SLAB» is intentionally NOT an anchor here — that is the field reader's job, and
+        // excluding it keeps note-numbering ("5. SLABS") from leaking a phantom depth into the recovery pool.
+        private static readonly Regex RecoverImperialRx = new(
+            @"(\d{1,2})\s*[^\w\s]{1,2}(?:\s+\w+){0,2}?\s+(?:MATS?|SOG|RAFT|TOPPING|SLAB\s+ON\s+GRADE)\b",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex RecoverMetricRx = new(
+            @"(\d{2,4})\s*(?:MM)?(?:\s+\w+){0,2}?\s+(?:MATS?|SOG|RAFT|SLAB\s+ON\s+GRADE)\b",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
         /// The dominant field-slab thickness (inches) called out across the lines, or null. Reads BOTH
@@ -64,6 +76,44 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // Metric drawing: ≥2 metric callouts that at least match the imperial count (imperial here is
             // note-numbering noise). Convert the modal mm to inches.
             if (metricMm.Count >= 2 && metricMm.Count >= imperial.Count)
+            {
+                int modalMm = metricMm.GroupBy(v => v).OrderByDescending(g => g.Count()).ThenBy(g => g.Key).First().Key;
+                return (int)Math.Round(modalMm / MmPerInch, MidpointRounding.AwayFromZero);
+            }
+            if (imperial.Count == 0) return null;
+            return imperial.GroupBy(v => v).OrderByDescending(g => g.Count()).ThenBy(g => g.Key).First().Key;
+        }
+
+        /// <summary>
+        /// The WIDER recovery read for a plate the field reader above came up empty on: a parkade/podium
+        /// depth stated as a mat, a slab-on-grade, a raft or a topping — the forms <see cref="DominantThicknessIn"/>
+        /// intentionally skips. Returns the modal recovered depth (inches), or null when no such callout is on
+        /// the plate (the caller then estimates from a peer or leaves it an honest residual). NEVER reads bare
+        /// «N&quot; SLAB» — that is the field reader's domain — so this only ever ADDS depths the field read missed,
+        /// and is fired only AFTER the field read fails, so it cannot change a cleanly-read plate.
+        /// </summary>
+        public static int? RecoverStructuralDepthIn(IEnumerable<string>? lines)
+        {
+            if (lines is null) return null;
+            var imperial = new List<int>();
+            var metricMm = new List<int>();
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrEmpty(line)) continue;
+                foreach (Match m in RecoverImperialRx.Matches(line))
+                {
+                    int n = int.Parse(m.Groups[1].Value);
+                    if (n >= MinIn && n <= MaxIn) imperial.Add(n);
+                }
+                foreach (Match m in RecoverMetricRx.Matches(line))
+                {
+                    int n = int.Parse(m.Groups[1].Value);
+                    if (n >= MinMm && n <= RecoverMaxMm) metricMm.Add(n);
+                }
+            }
+            // Same metric-vs-imperial decision as the field reader: a metric sheet's matches win once they
+            // at least tie the imperial count (the imperial side is then inch-mark noise).
+            if (metricMm.Count >= 1 && metricMm.Count >= imperial.Count)
             {
                 int modalMm = metricMm.GroupBy(v => v).OrderByDescending(g => g.Count()).ThenBy(g => g.Key).First().Key;
                 return (int)Math.Round(modalMm / MmPerInch, MidpointRounding.AwayFromZero);
