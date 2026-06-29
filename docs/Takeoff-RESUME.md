@@ -91,6 +91,23 @@ that mostly isn't there. → These belong in ORANGE (flag + variable input), not
 - `b1867fbf` #20 wire reliability into pipeline + on-screen synopsis (232 Core tests)
 - `c928275b` METRIC thickness: read "200 SLAB" (mm) not just imperial inch marks (236 Core tests)
 
+## HOPPER BUILD (2026-06-28, user said "build the hopper") — IN PROGRESS
+The multi-signal cascade. Built as tested Core increments (all judgment in Core; CLI thin):
+- **Inc 1 DONE** `1ce1c2b1` `StructuralGridReader`/`GridFrame` — the AREA ANCHOR (grid-bubble envelope,
+  tower id, MultiPlan flag). 8 tests. `vector-signals` calls it (single source of truth).
+- **Inc 2 DONE** `a5edd8e3` `SlabAreaReconciler` — grid ⟷ poché converge → `AreaConsensus` + PlanFlags
+  (GridConfirmed / AREA_POCHE_LOW/HIGH / GridOnly / PocheOnly / Unresolved). netFactor 0.92 (calibratable). 8 tests.
+- **Inc 3 DONE** `81bfa2cb` wired into `SlabTakeoffEngine`: per plate reads grid + reconciles; grid is primary
+  area, poché confirms/flags; flags ride `MeasuredPlate.ExtraFlags`→PlanCheck. Same effective scale both signals.
+- **Inc 4 DONE** `98ae78dd` `SlabThicknessZoner` reads metric "200/450/900 SLAB"; CLI `vector-takeoff` gains
+  `[scale]` arg (use "1:100" for 31065 — imperial default is ~1:96, ~8% area low).
+- **Inc 5 TODO** grounded-AI adjudication hook: when AreaBasis=Unresolved or callouts garbled (podium/P3),
+  focus a READ-ONLY grounded AI on that spot (read grid dims/confirm boundary) → resolve OR honest orange.
+  HARD RULE (Ian): never hallucinate; genuine unknown stays orange.
+- **Inc 6 TODO** multi-plan split (typical band drawn as 2 plans), podium handling; re-run 31065 vs Revit.
+- VERIFY RUN in flight: `run_hopper.txt` / `hopper-31065.xlsx`, pages 12-51 @ 1:100. Compare per-level to
+  `scratchpad/31065-revit-targets.txt` (TOTAL 13,257 cy). Pre-hopper baseline was 9,748 cy (73.5%, error-cancelling).
+
 ## SIGNAL-EVIDENCE SWEEP (2026-06-28) — proof before building the "hopper" (user-directed)
 User reframed the architecture: a CASCADE ("hopper down the pegs") of INDEPENDENT area signals that
 converge → green, diverge → grounded-AI adjudication on that one spot → honest ORANGE if truly unknown
