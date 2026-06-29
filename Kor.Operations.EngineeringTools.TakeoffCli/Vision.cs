@@ -212,6 +212,53 @@ title block, notes, schedules, legends and key plans. The slab area is MEASURED 
 box, so hug the plate. Also report the level label and the nominal slab thickness in inches if stated.
 This is always a floor/foundation plan; always return slabBox.";
 
+    // Targeted thickness apportionment: ONE plate, already proven thickened by the deterministic pass.
+    // Given a crop of just that plate + the thicknesses (inches) its drawing calls out, return the % of the
+    // plan AREA at each. The model only apportions the bands it can SEE; the thickness values are given, not
+    // invented. Fired only on transfer/podium plates, so a set costs a handful of calls.
+    public static Task<string> ApportionThicknessJsonAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn)
+        => PostForcedToolAsync(ApportionThicknessTool(), "report_thickness_split",
+            ApportionThicknessPrompt + "\n\nThe drawing calls out these slab thicknesses on THIS plate (inches): "
+            + string.Join(", ", thicknessesIn) + ". Report the percentage of the plan AREA at each — they must sum to ~100.",
+            plateCropPng, 600);
+
+    private const string ApportionThicknessPrompt =
+@"You are a senior structural estimator looking at ONE suspended concrete floor PLATE (image provided). The
+plate is mostly a thin FIELD slab with one or more THICKENED ZONES (drop bands / transfer thickenings /
+drop panels) drawn as hatched or outlined regions, each labelled with a total depth. You are given the exact
+thickness values (in inches) the drawing states for this plate — do NOT invent others. Estimate, by eye from
+the drawing, what PERCENTAGE OF THE PLAN AREA sits at each given thickness. The thin field slab is the large
+remainder; the thickened bands are the smaller deeper regions. The percentages must sum to about 100. If you
+genuinely cannot tell a band's extent, give it your best visual estimate — never a number you cannot see.";
+
+    private static object ApportionThicknessTool() => new
+    {
+        name = "report_thickness_split",
+        description = "Report the percentage of a slab plate's plan area at each called-out thickness.",
+        input_schema = new
+        {
+            type = "object",
+            properties = new
+            {
+                fractions = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            thicknessIn = new { type = "number", description = "one of the given called-out thicknesses, in inches" },
+                            areaPct = new { type = "number", description = "percent of the plan area at this thickness, 0..100" }
+                        },
+                        required = new[] { "thicknessIn", "areaPct" }
+                    }
+                }
+            },
+            required = new[] { "fractions" }
+        }
+    };
+
     private static object LocatePlateTool() => new
     {
         name = "report_plate",

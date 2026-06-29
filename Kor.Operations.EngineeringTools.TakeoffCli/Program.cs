@@ -1349,12 +1349,15 @@ sealed class CliPlanVision : IPlanVision
         => PlanVisionClient.SynthesizePageAsync(pageJson);
     public Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default)
         => PlanVisionClient.LocatePlateAsync(pageJson, downscaledPng);
+    public Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default)
+        => PlanVisionClient.ApportionThicknessJsonAsync(plateCropPng, thicknessesIn);
 }
 
 sealed class CliPlanRaster : IPlanRaster
 {
     public (int Width, int Height) ImageSize(string path) => PlanRaster.ImageSize(path);
     public byte[] LoadDownscaledPng(string path, int maxEdge) => PlanRaster.LoadDownscaledPng(path, maxEdge);
+    public byte[] LoadCropPng(string path, int x0, int y0, int x1, int y1, int maxEdge) => PlanRaster.LoadCropPng(path, x0, y0, x1, y1, maxEdge);
     public RasterCrop LoadCrop(string path, int x0, int y0, int x1, int y1)
     {
         var c = PlanRaster.LoadCrop(path, x0, y0, x1, y1);
@@ -1419,6 +1422,26 @@ static class PlanRaster
     public static byte[] LoadDownscaledPng(string path, int maxEdge)
     {
         using var img = Image.Load<Rgb24>(path);
+        int longEdge = Math.Max(img.Width, img.Height);
+        if (longEdge > maxEdge)
+        {
+            double s = (double)maxEdge / longEdge;
+            img.Mutate(c => c.Resize(Math.Max(1, (int)(img.Width * s)), Math.Max(1, (int)(img.Height * s))));
+        }
+        using var ms = new MemoryStream();
+        img.Save(ms, new PngEncoder());
+        return ms.ToArray();
+    }
+
+    // A PNG of just one plate's pixel box (long edge capped at maxEdge) — a focused image for a targeted
+    // vision call so the model sees that plate alone, not the whole sheet.
+    public static byte[] LoadCropPng(string path, int x0, int y0, int x1, int y1, int maxEdge)
+    {
+        using var img = Image.Load<Rgb24>(path);
+        x0 = Math.Clamp(x0, 0, img.Width); x1 = Math.Clamp(x1, 0, img.Width);
+        y0 = Math.Clamp(y0, 0, img.Height); y1 = Math.Clamp(y1, 0, img.Height);
+        int w = Math.Max(1, x1 - x0), h = Math.Max(1, y1 - y0);
+        img.Mutate(c => c.Crop(new SixLabors.ImageSharp.Rectangle(x0, y0, w, h)));
         int longEdge = Math.Max(img.Width, img.Height);
         if (longEdge > maxEdge)
         {

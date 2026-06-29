@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,5 +23,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// <summary>Locate the slab plate on a page: given the page JSON and the downscaled PNG bytes,
         /// returns raw JSON with a normalized <c>slabBox</c> (and optional <c>level</c>/<c>slabThicknessIn</c>).</summary>
         Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default);
+
+        /// <summary>The ONE targeted thickness call: a transfer/podium plate the deterministic pass already
+        /// proved is thickened (its drawing calls out drop bands deeper than the field slab), but cannot
+        /// cheaply apportion. Given a PNG crop of just that plate and the thickness values (inches) its
+        /// drawing calls out, return raw JSON <c>{ "fractions": [ { "thicknessIn", "areaPct" } ] }</c> — the
+        /// % of the plan AREA at each thickness, summing to ~100. The model only apportions the bands it can
+        /// SEE; it never invents a thickness (those came from the exact text). Fired only on band plates, so
+        /// a whole set costs a handful of calls, not one per page.</summary>
+        Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default);
     }
 }

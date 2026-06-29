@@ -22,5 +22,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         /// <summary>The luminance of the pixel rectangle [x0,y0)–[x1,y1) of the full-resolution page.</summary>
         RasterCrop LoadCrop(string path, int x0, int y0, int x1, int y1);
+
+        /// <summary>The pixel rectangle [x0,y0)–[x1,y1) re-encoded as a PNG with its long edge capped at
+        /// <paramref name="maxEdge"/> — a focused image of ONE plate to send to a targeted vision call (e.g.
+        /// drop-band apportionment), so the model sees just that plate, not the whole sheet.</summary>
+        byte[] LoadCropPng(string path, int x0, int y0, int x1, int y1, int maxEdge);
     }
 }
