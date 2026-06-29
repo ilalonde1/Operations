@@ -113,12 +113,18 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             foreach (var page in tkDigest.Pages)
             {
                 ct.ThrowIfCancellationRequested();
-                string pj = JsonSerializer.Serialize(page, new JsonSerializerOptions { WriteIndented = false });
-                string kind;
-                try { using var cd = JsonDocument.Parse(await vision.SynthesizePageAsync(pj, ct)); kind = cd.RootElement.TryGetProperty("sheetKind", out var sk) && sk.ValueKind == JsonValueKind.String ? sk.GetString()! : "other"; }
-                catch (Exception ex) { notes.Add($"  ! p{page.Page}: classify failed: {ex.Message}"); continue; }
 
-                if (kind != "floor_plan" && kind != "foundation_plan") { notes.Add($"  p{page.Page}: {kind} (skip)"); continue; }
+                // ── DETERMINISTIC classify (Layer 1, NO AI): the title block names the sheet and the grid
+                //    bubbles prove there is a real plate. A measurable slab plan is a LEVELLED sheet that
+                //    shows a structural-grid envelope or a slab callout; details/schedules/sections have
+                //    neither and are skipped for free. The old per-page AI classify call is gone — it was
+                //    paying the model to answer a question the title block already answers.
+                var vp = VectorPageReader.ReadPage(req.PdfPath, page.Page);
+                var grid = StructuralGridReader.FromPage(vp);
+                int? pageThk = SlabThicknessReader.DominantThicknessIn(page.Lines);
+                bool leveled = page.Title?.Level is { Length: > 0 };
+                if (!(leveled && (grid?.IsLocatable == true || pageThk.HasValue)))
+                { notes.Add($"  p{page.Page}: {page.Title?.Display ?? "untitled"} — not a measurable slab plan (skip)"); continue; }
 
                 // Canonical identity off the exact title block. One slab per (level, zone): the same
                 // floor-half drawn twice (framing plan + reinforcing plan) must NOT be measured twice. Dedupe
@@ -139,20 +145,41 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 if (!File.Exists(png)) { notes.Add($"  ! p{page.Page}: render {png} missing, skipped."); continue; }
                 try
                 {
-                    using var ld = JsonDocument.Parse(await vision.LocatePlateAsync(pj, raster.LoadDownscaledPng(png, 1600), ct));
-                    var root = ld.RootElement;
-                    // Prefer the exact title-block level over the synthesised one; title is deterministic.
-                    string lvl = page.Title?.Display
-                        ?? (root.TryGetProperty("level", out var lv) && lv.ValueKind == JsonValueKind.String ? lv.GetString()! : $"p{page.Page}");
-                    double thk = root.TryGetProperty("slabThicknessIn", out var tv) && tv.ValueKind == JsonValueKind.Number ? tv.GetDouble() : 0;
-                    if (!root.TryGetProperty("slabBox", out var sbx) || sbx.ValueKind != JsonValueKind.Array) { notes.Add($"  ! {lvl}: no plate box, skipped."); continue; }
-                    var bb = sbx.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
-                    if (bb.Count < 4) { notes.Add($"  ! {lvl}: malformed plate box, skipped."); continue; }
-
+                    string lvl = page.Title?.Display ?? $"p{page.Page}";   // title is deterministic; no AI level
+                    double thk = pageThk ?? 0;                            // page's own slab callout (deterministic)
                     var (iw, ih) = raster.ImageSize(png);
-                    int cx0 = (int)(Math.Min(bb[0], bb[2]) * iw), cy0 = (int)(Math.Min(bb[1], bb[3]) * ih);
-                    var crop = raster.LoadCrop(png, cx0, cy0,
-                                                    (int)(Math.Max(bb[0], bb[2]) * iw), (int)(Math.Max(bb[1], bb[3]) * ih));
+
+                    // ── DETERMINISTIC locate (NO AI): the grid bubble box → pixel crop. The grid SPAN gives the
+                    //    area (via the reconciler); the grid BOX places it, so the poché cross-check is cropped
+                    //    straight from the grid. AI is called ONLY for the defined unknown — a levelled plan
+                    //    with slab callouts but no readable grid (the garbled/dense podium) — to point at the
+                    //    plate. Even then the model only returns a box; the numbers come from poché and text.
+                    int cx0, cy0, cx1, cy1;
+                    string locateSrc;
+                    if (grid?.IsLocatable == true)
+                    {
+                        cx0 = (int)(grid.XMinPt / vp.WidthPts * iw);
+                        cx1 = (int)(grid.XMaxPt / vp.WidthPts * iw);
+                        cy0 = (int)((vp.HeightPts - grid.YMaxPt) / vp.HeightPts * ih);   // PDF y-up → image y-down
+                        cy1 = (int)((vp.HeightPts - grid.YMinPt) / vp.HeightPts * ih);
+                        locateSrc = "grid";
+                    }
+                    else
+                    {
+                        string pj = JsonSerializer.Serialize(page, new JsonSerializerOptions { WriteIndented = false });
+                        using var ld = JsonDocument.Parse(await vision.LocatePlateAsync(pj, raster.LoadDownscaledPng(png, 1600), ct));
+                        var root = ld.RootElement;
+                        if (!root.TryGetProperty("slabBox", out var sbx) || sbx.ValueKind != JsonValueKind.Array) { notes.Add($"  ! {lvl}: AI locate returned no plate box, skipped."); continue; }
+                        var bb = sbx.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
+                        if (bb.Count < 4) { notes.Add($"  ! {lvl}: malformed plate box, skipped."); continue; }
+                        cx0 = (int)(Math.Min(bb[0], bb[2]) * iw); cy0 = (int)(Math.Min(bb[1], bb[3]) * ih);
+                        cx1 = (int)(Math.Max(bb[0], bb[2]) * iw); cy1 = (int)(Math.Max(bb[1], bb[3]) * ih);
+                        locateSrc = "ai";
+                        notes.Add($"  ? {lvl}: no readable grid — AI located the plate (defined unknown).");
+                    }
+                    cx0 = Math.Clamp(cx0, 0, iw - 1); cx1 = Math.Clamp(cx1, cx0 + 1, iw);
+                    cy0 = Math.Clamp(cy0, 0, ih - 1); cy1 = Math.Clamp(cy1, cy0 + 1, ih);
+                    var crop = raster.LoadCrop(png, cx0, cy0, cx1, cy1);
                     var cl = PlanGeometry.MeasureEnclosedClusters(crop.Lum, crop.Width, crop.Height);
                     double area = PlanGeometry.SquareFeet(cl.Count > 0 ? cl[0].LightPx : 0, tkMpp);
                     if (area < 500) { notes.Add($"  ! {lvl}: slab area {area:N0} sqft implausibly small, skipped."); continue; }
@@ -184,7 +211,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     double zonedThk = 0;
                     if (req.ApplyZoning && repLevel.HasValue && cl.Count > 0 && SlabThicknessReader.DominantThicknessIn(page.Lines) is int perPageModal)
                     {
-                        var pageWP = VectorPageReader.ReadPage(req.PdfPath, page.Page);
+                        var pageWP = vp;   // already read once at the top of the loop
                         var callouts = SlabThicknessZoner.ReadCallouts(pageWP);
                         var qual = SlabThicknessZoner.QualifyingValues(callouts, perPageModal);
                         if (qual.Count > 1)
@@ -207,10 +234,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         }
                     }
 
-                    // ── the hopper's AREA convergence: the structural-grid envelope (stable anchor) is
-                    //    reconciled with the poché (independent cross-check). The grid is the primary number
-                    //    where it reads; the poché confirms it or, when it has leaked/grabbed wrong, flags it.
-                    var grid = StructuralGridReader.FromPage(VectorPageReader.ReadPage(req.PdfPath, page.Page));
+                    // ── the hopper's AREA convergence: the structural-grid envelope (stable anchor, read once
+                    //    at the top of the loop) is reconciled with the poché (independent cross-check). The
+                    //    grid is the primary number where it reads; the poché confirms it or, when it has
+                    //    leaked/grabbed wrong, flags it.
                     var consensus = SlabAreaReconciler.Reconcile(grid, tkScaleDenom, area);
                     double plateArea = consensus.AreaSqFt > 0 ? consensus.AreaSqFt : area;
 
@@ -225,7 +252,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     string gridNote = grid is { IsUsable: true }
                         ? $"grid[{string.Join("", grid.XLabels.Take(1))}..{string.Join("", grid.XLabels.TakeLast(1))}×{string.Join("", grid.YLabels.Take(1))}..{string.Join("", grid.YLabels.TakeLast(1))}]"
                         : "grid[—]";
-                    notes.Add($"  p{page.Page}: {lvl,-18} slab {plateArea,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)"),-12} {consensus.Basis,-18} {gridNote} [poché {area,6:N0} fill {(double.IsNaN(fillRatio) ? 0 : fillRatio):0.00}]");
+                    notes.Add($"  p{page.Page}: {lvl,-18} slab {plateArea,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)"),-12} {consensus.Basis,-18} {gridNote} [poché {area,6:N0} fill {(double.IsNaN(fillRatio) ? 0 : fillRatio):0.00} via {locateSrc}]");
                 }
                 catch (Exception ex) { notes.Add($"  ! p{page.Page}: locate/measure failed: {ex.Message}"); }
             }
