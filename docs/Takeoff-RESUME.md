@@ -86,6 +86,41 @@ that mostly isn't there. → These belong in ORANGE (flag + variable input), not
 ## Commits so far (develop)
 - `1f89bb1c` thickness-zoning capability (gated) + corrected slab benchmark
 - `b7d6ed75` per-plate reliability/confidence model in Core (orange-flag engine)
+- `f1fb9a26` this RESUME doc
+- `01590d56` #22 SheetTitleReader reads TOWER NORTH/SOUTH zones (31065 two-tower)
+- `b1867fbf` #20 wire reliability into pipeline + on-screen synopsis (232 Core tests)
+
+## DONE this session
+- **#20 reliability WIRED** (commit b1867fbf): synopsis works; signal is cluster fill-of-own-extent
+  (NOT enclosed/box) + AREA_COMPLEX_LEVEL (podium/roof/mezz by level type, since L01/ROOF measure
+  locally-clean yet are ~3x off). Coronation: 5 clear / 20 review — honest. Total holds 20,400 cy.
+- **#22 TS/TN** (commit 01590d56): TOWER-label zone read; Coronation zero-regression. KNOWN GAP:
+  31065 reinforcing sheets lack the label -> blank zone -> won't dedup vs framing sibling -> would
+  double-count. FOLLOW-ON: sheet-block tower inference (a labelled sheet sets its S2.NN block's tower;
+  unlabelled siblings inherit). Sheet numbers DO encode tower (N=S2.0x, S=S2.1x) but uneven + OCR-garbled.
+
+## NOW (#23 in progress)
+31065 run launched (`run_31065.txt`, xlsx `31065-takeoff.xlsx`). Compare per-level to the Revit answer key
+(`scratchpad/31065-revit-targets.txt`, TOTAL 13,257 cy; L1 podium 3,109; typical L6-18 = 329 cy each;
+P1-P3 parkade). Watch for: the TS/TN double-count (reinforcing sheets), per-tower tiling, podium/roof flags.
+
+## In flight (this session, autonomous run) — verify then commit
+- **#20 reliability WIRED**: reworked `PlateReliabilityScorer` to emit `PlanFlag`s into the EXISTING
+  `PlanReconciler`/`PlanCheck` diligence system (NOT a parallel confidence). `MeasuredPlate` gained
+  measurement diagnostics (FillRatio, ClusterCount, ThicknessSource, DegenerateBox, PeerAreaRatio);
+  `PlanEstimatePipeline.Run` merges pricing + measurement flags via `PlanCheck.From`. CLI computes
+  fillRatio (`MeasureEnclosedArea`) + peer ratio + thickness source and prints a SYNOPSIS of plates
+  needing review. 222 Core tests. (Verifying via Coronation run `run_reliability.txt`.)
+- **#22 TS/TN zones DONE**: `SheetTitleReader.TitleBlockTowerZone` reads a "TOWER NORTH/SOUTH" label
+  from the title block (31065's two-tower form — title line has no half). STRICT (title-region +
+  title-size + same baseline) to avoid the stray-north-arrow regression. 224 Core tests.
+  NOTE: 31065 still needs **per-tower tiling** (two towers share level numbers — TileTowerCounts would
+  collide them); that's part of the 31065 run (#23), not the title reader.
+- **#23 prep**: 31065 PNGs render via `pdftoppm -png -r 110 "<31065 AFTER>.pdf" <dir>/p` ->
+  `scratchpad/31065_full/p-NN.png`. Revit floor answer key = `31065-floors-after.csv` (m³/level, TS/TN).
+
+## Render command (PDF -> PNG for poché)
+`pdftoppm -png -r 110 "<set>.pdf" <outdir>/p`  (Poppler; produces p-NN.png at 110 dpi to match the pipeline)
 
 ## Run commands
 - Slab takeoff: `takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last]`
