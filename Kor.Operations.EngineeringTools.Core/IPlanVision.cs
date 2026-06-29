@@ -21,8 +21,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         Task<string> SynthesizePageAsync(string pageJson, CancellationToken ct = default);
 
         /// <summary>Locate the slab plate on a page: given the page JSON and the downscaled PNG bytes,
-        /// returns raw JSON with a normalized <c>slabBox</c> (and optional <c>level</c>/<c>slabThicknessIn</c>).</summary>
-        Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default);
+        /// returns raw JSON with a normalized <c>slabBox</c> (and optional <c>level</c>/<c>slabThicknessIn</c>).
+        /// <paramref name="feedback"/> (null on the first pass) carries a GROUNDED correction from a failed
+        /// sanity check — e.g. "your box measured 1,973 sqft but the neighbouring floors are ~8,700" — so a
+        /// honing re-pass corrects against a real measurement, never a blind "try again".</summary>
+        Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default, string? feedback = null);
 
         /// <summary>The ONE targeted thickness call: a transfer/podium plate the deterministic pass already
         /// proved is thickened (its drawing calls out drop bands deeper than the field slab), but cannot
@@ -31,6 +34,6 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// % of the plan AREA at each thickness, summing to ~100. The model only apportions the bands it can
         /// SEE; it never invents a thickness (those came from the exact text). Fired only on band plates, so
         /// a whole set costs a handful of calls, not one per page.</summary>
-        Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default);
+        Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default, string? feedback = null);
     }
 }

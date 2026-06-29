@@ -201,9 +201,10 @@ conventions from any firm; do not assume one labelling style.";
 
     // Focused plate locator: ONE job — return the floor-slab plate box (required) for a plan page, so
     // poché can measure its area. Bundling this into the big synthesis tool made the model drop the box.
-    public static Task<string> LocatePlateAsync(string digestJson, byte[] png) =>
+    public static Task<string> LocatePlateAsync(string digestJson, byte[] png, string? feedback = null) =>
         PostForcedToolAsync(LocatePlateTool(), "report_plate", LocatePlatePrompt +
-            "\n\n=== SHEET DIGEST (exact vector facts; the level/thickness text is here) ===\n" + digestJson, png, 800);
+            "\n\n=== SHEET DIGEST (exact vector facts; the level/thickness text is here) ===\n" + digestJson +
+            (string.IsNullOrEmpty(feedback) ? "" : "\n\n=== ESTIMATOR FEEDBACK ON YOUR PREVIOUS BOX ===\n" + feedback), png, 800);
 
     private const string LocatePlatePrompt =
 @"You are locating the structural floor-slab PLATE on this plan sheet (image provided). Return a tight,
@@ -216,10 +217,11 @@ This is always a floor/foundation plan; always return slabBox.";
     // Given a crop of just that plate + the thicknesses (inches) its drawing calls out, return the % of the
     // plan AREA at each. The model only apportions the bands it can SEE; the thickness values are given, not
     // invented. Fired only on transfer/podium plates, so a set costs a handful of calls.
-    public static Task<string> ApportionThicknessJsonAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn)
+    public static Task<string> ApportionThicknessJsonAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, string? feedback = null)
         => PostForcedToolAsync(ApportionThicknessTool(), "report_thickness_split",
             ApportionThicknessPrompt + "\n\nThe drawing calls out these slab thicknesses on THIS plate (inches): "
-            + string.Join(", ", thicknessesIn) + ". Report the percentage of the plan AREA at each — they must sum to ~100.",
+            + string.Join(", ", thicknessesIn) + ". Report the percentage of the plan AREA at each — they must sum to ~100."
+            + (string.IsNullOrEmpty(feedback) ? "" : "\n\n=== ESTIMATOR FEEDBACK ON YOUR PREVIOUS ANSWER ===\n" + feedback),
             plateCropPng, 600);
 
     private const string ApportionThicknessPrompt =

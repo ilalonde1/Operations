@@ -1347,10 +1347,10 @@ sealed class CliPlanVision : IPlanVision
 {
     public Task<string> SynthesizePageAsync(string pageJson, CancellationToken ct = default)
         => PlanVisionClient.SynthesizePageAsync(pageJson);
-    public Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default)
-        => PlanVisionClient.LocatePlateAsync(pageJson, downscaledPng);
-    public Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default)
-        => PlanVisionClient.ApportionThicknessJsonAsync(plateCropPng, thicknessesIn);
+    public Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default, string? feedback = null)
+        => PlanVisionClient.LocatePlateAsync(pageJson, downscaledPng, feedback);
+    public Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default, string? feedback = null)
+        => PlanVisionClient.ApportionThicknessJsonAsync(plateCropPng, thicknessesIn, feedback);
 }
 
 sealed class CliPlanRaster : IPlanRaster

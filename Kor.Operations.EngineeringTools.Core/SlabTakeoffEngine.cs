@@ -95,6 +95,25 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return s.Count == 0 ? 0 : s[s.Count / 2];
         }
 
+        // How many times a still-failing AI unknown is re-asked (with grounded feedback) before it is left as
+        // an honest orange residual — 1 first pass + up to 2 honing passes.
+        private const int MaxAiPasses = 3;
+
+        /// <summary>The expected plate size for <paramref name="r"/> from the resolved floors within a few
+        /// levels of it in the SAME tower — the deterministic sanity bound a phase-2 AI locate hones against
+        /// (a setback floor is judged by its setback neighbours, a podium floor by its podium neighbours).
+        /// 0 when the plate has no near, resolved, grid-backed neighbours to judge by.</summary>
+        private static double NearLevelMedian(RawPlate r, IReadOnlyList<RawPlate> all)
+        {
+            if (!r.RepLevel.HasValue) return 0;
+            string? tw = TowerOf(r.Label);
+            var near = all.Where(x => !ReferenceEquals(x, r) && x.RepLevel.HasValue
+                             && Math.Abs(x.RepLevel!.Value - r.RepLevel!.Value) <= 3
+                             && TowerOf(x.Label) == tw && !x.NeedsLocate && x.Area >= DegenerateFloorSqFt)
+                            .Select(x => x.Area).ToList();
+            return near.Count > 0 ? Median(near) : 0;
+        }
+
         // A real tower-floor slab is never this small; an area below it is a degenerate locate box (a few
         // hundred sqft), NOT a setback floor that is merely smaller than the podium-level floors. Used both
         // to trigger the degenerate substitution and to exclude bad boxes from the per-tower typical median.
@@ -276,55 +295,90 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 ct.ThrowIfCancellationRequested();
                 var page = tkDigest.Pages.FirstOrDefault(pg => pg.Page == p.Page);
 
-                // (a) LOCATE — no readable grid: ask AI for the plate box, then measure the poché deterministically.
+                // (a) LOCATE — no readable grid: ask AI for the plate box, MEASURE the poché, and HONE. The
+                //     deterministic measurement is the ground truth a re-pass corrects against: if the box
+                //     measured far from the plate's nearest-level neighbours, tell the model exactly that and
+                //     ask again (≤ MaxAiPasses). Keep the best attempt; converge within band → trust, else flag.
                 if (p.NeedsLocate && page != null)
                 {
-                    try
+                    var (iw, ih) = raster.ImageSize(p.Png);
+                    string pj = JsonSerializer.Serialize(page, new JsonSerializerOptions { WriteIndented = false });
+                    double expect = NearLevelMedian(p, tkRaw);
+                    (int X0, int Y0, int X1, int Y1, double Area, double Fill, int Clusters)? best = null;
+                    double bestErr = double.MaxValue;
+                    string? feedback = null;
+                    for (int pass = 0; pass < MaxAiPasses; pass++)
                     {
-                        var (iw, ih) = raster.ImageSize(p.Png);
-                        string pj = JsonSerializer.Serialize(page, new JsonSerializerOptions { WriteIndented = false });
-                        using var ld = JsonDocument.Parse(await vision.LocatePlateAsync(pj, raster.LoadDownscaledPng(p.Png, 1600), ct));
-                        var root = ld.RootElement;
-                        if (root.TryGetProperty("slabBox", out var sbx) && sbx.ValueKind == JsonValueKind.Array)
+                        try
                         {
+                            using var ld = JsonDocument.Parse(await vision.LocatePlateAsync(pj, raster.LoadDownscaledPng(p.Png, 1600), ct, feedback));
+                            if (!ld.RootElement.TryGetProperty("slabBox", out var sbx) || sbx.ValueKind != JsonValueKind.Array) break;
                             var bb = sbx.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
-                            if (bb.Count >= 4)
-                            {
-                                int bx0 = Math.Clamp((int)(Math.Min(bb[0], bb[2]) * iw), 0, iw - 1), by0 = Math.Clamp((int)(Math.Min(bb[1], bb[3]) * ih), 0, ih - 1);
-                                int bx1 = Math.Clamp((int)(Math.Max(bb[0], bb[2]) * iw), bx0 + 1, iw), by1 = Math.Clamp((int)(Math.Max(bb[1], bb[3]) * ih), by0 + 1, ih);
-                                var (area, fill, clusters) = MeasurePoche(raster, p.Png, bx0, by0, bx1, by1, tkMpp);
-                                if (area >= 500)
-                                {
-                                    var consensus = SlabAreaReconciler.Reconcile(null, tkScaleDenom, area);   // no grid → poché stands alone
-                                    p.Area = consensus.AreaSqFt; p.FillRatio = fill; p.ClusterCount = clusters;
-                                    p.Poche = area; p.Basis = consensus.Basis; p.AreaFlags = consensus.Flags;
-                                    p.Cx0 = bx0; p.Cy0 = by0; p.Cx1 = bx1; p.Cy1 = by1; p.HasBox = true; p.NeedsLocate = false;
-                                    notes.Add($"  ⤷ {p.Label}: AI located plate → {area:N0} sqft (no grid).");
-                                }
-                                else notes.Add($"  ! {p.Label}: AI-located box still measured {area:N0} sqft — left as residual unknown.");
-                            }
+                            if (bb.Count < 4) break;
+                            int bx0 = Math.Clamp((int)(Math.Min(bb[0], bb[2]) * iw), 0, iw - 1), by0 = Math.Clamp((int)(Math.Min(bb[1], bb[3]) * ih), 0, ih - 1);
+                            int bx1 = Math.Clamp((int)(Math.Max(bb[0], bb[2]) * iw), bx0 + 1, iw), by1 = Math.Clamp((int)(Math.Max(bb[1], bb[3]) * ih), by0 + 1, ih);
+                            var (area, fill, clusters) = MeasurePoche(raster, p.Png, bx0, by0, bx1, by1, tkMpp);
+                            double err = expect > 0 ? Math.Abs(area - expect) / expect : (area >= 500 ? 0 : 1);
+                            if (area >= 500 && err < bestErr) { best = (bx0, by0, bx1, by1, area, fill, clusters); bestErr = err; }
+                            if (area >= 500 && (expect <= 0 || err <= 0.4)) break;   // converged within band (or no peer to judge by)
+                            feedback = expect > 0
+                                ? $"Your bounding box measured about {area:N0} sqft of slab, but the floors within a few levels of this one measure about {expect:N0} sqft, so this plate should be a similar size. Your box was {(area < expect ? "TOO SMALL — it grabbed only part of the plate" : "TOO LARGE — it grabbed neighbouring plans, schedules or the title block")}. Return a corrected box around the WHOLE floor-slab plate."
+                                : $"Your bounding box measured only about {area:N0} sqft, which is implausibly small for a floor slab. Return a box around the WHOLE floor-slab plate, excluding the title block and notes.";
                         }
+                        catch (Exception ex) { notes.Add($"  ! {p.Label}: AI locate pass {pass + 1} failed: {ex.Message}"); break; }
                     }
-                    catch (Exception ex) { notes.Add($"  ! {p.Label}: AI locate failed: {ex.Message}"); }
+                    if (best is { } b)
+                    {
+                        var consensus = SlabAreaReconciler.Reconcile(null, tkScaleDenom, b.Area);   // no grid → poché stands alone
+                        p.Area = consensus.AreaSqFt; p.FillRatio = b.Fill; p.ClusterCount = b.Clusters;
+                        p.Poche = b.Area; p.Basis = consensus.Basis; p.AreaFlags = consensus.Flags;
+                        p.Cx0 = b.X0; p.Cy0 = b.Y0; p.Cx1 = b.X1; p.Cy1 = b.Y1; p.HasBox = true; p.NeedsLocate = false;
+                        notes.Add($"  ⤷ {p.Label}: AI located plate → {b.Area:N0} sqft" +
+                                  (expect > 0 ? $" (peers ~{expect:N0}; {(bestErr <= 0.4 ? "converged" : $"best of {MaxAiPasses}, still off — flagged")})." : "."));
+                    }
+                    else if (expect > 0)
+                    {
+                        // AI could not locate the plate after honing, but it is a KNOWN floor whose nearest-level
+                        // neighbours are resolved — estimate its area from them (flagged orange) rather than drop
+                        // a real floor. Uses the plate's own neighbours, never the answer key; the human verifies.
+                        p.Area = expect; p.Basis = AreaBasis.PocheOnly; p.HasBox = false; p.NeedsLocate = false;
+                        p.AreaFlags = new[] { new PlanFlag(PlanFlagSeverity.Review, "AREA_ESTIMATED_PEERS",
+                            $"AI could not locate this plate; its area was estimated from its nearest-level neighbours ({expect:N0} sqft) — verify against the drawing.") };
+                        notes.Add($"  ⤷ {p.Label}: AI could not locate — area ESTIMATED from nearest-level peers ({expect:N0} sqft, flagged).");
+                    }
+                    else notes.Add($"  ! {p.Label}: AI could not locate a plausible plate and has no near peers — residual unknown.");
                 }
 
-                // (b) THICKNESS SPLIT — drop bands: ask AI the area % per called-out thickness; compute the
-                //     area-weighted effective depth deterministically from its answer.
+                // (b) THICKNESS SPLIT — drop bands: ask the area % per called-out thickness, then HONE. A
+                //     thickened transfer plate's effective depth MUST exceed its field slab (the drawing calls
+                //     out deeper bands); if the split came back at/below the field, the model missed the bands —
+                //     re-ask, naming the deeper callouts to find (≤ MaxAiPasses). Grounded in the drawing's own
+                //     callouts, never the answer key; converge above field → trust, else keep best + flag.
                 if (p.NeedsThicknessSplit && p.HasBox && p.Callouts.Count >= 2)
                 {
-                    try
+                    int field = p.Callouts.Min();
+                    double bestEff = 0;
+                    string? feedback = null;
+                    for (int pass = 0; pass < MaxAiPasses; pass++)
                     {
-                        var cropPng = raster.LoadCropPng(p.Png, p.Cx0, p.Cy0, p.Cx1, p.Cy1, 1200);
-                        using var sd = JsonDocument.Parse(await vision.ApportionThicknessAsync(cropPng, p.Callouts, ct));
-                        double eff = EffectiveFromSplit(sd.RootElement, p.Callouts);
-                        if (eff > 0)
+                        try
                         {
-                            p.ZonedThk = eff; p.NeedsThicknessSplit = false;
-                            notes.Add($"  ⤷ {p.Label}: AI apportioned drop bands [{string.Join("/", p.Callouts)}\"] → effective {eff:N1}\".");
+                            var cropPng = raster.LoadCropPng(p.Png, p.Cx0, p.Cy0, p.Cx1, p.Cy1, 1200);
+                            using var sd = JsonDocument.Parse(await vision.ApportionThicknessAsync(cropPng, p.Callouts, ct, feedback));
+                            double eff = EffectiveFromSplit(sd.RootElement, p.Callouts);
+                            if (eff > bestEff) bestEff = eff;
+                            if (eff > field + 0.5) break;   // found real thickening → accept
+                            feedback = $"Your split put almost all of the area at the thin {field}\" field slab and missed the thickened zones. The drawing EXPLICITLY calls out deeper bands at {string.Join("\", ", p.Callouts.Where(c => c > field))}\" on THIS plate — find those hatched/outlined thickened regions and give each a realistic share of the plan area. The effective depth must come out greater than {field}\".";
                         }
-                        else notes.Add($"  ! {p.Label}: AI thickness split unusable — kept field thickness (flagged).");
+                        catch (Exception ex) { notes.Add($"  ! {p.Label}: AI apportion pass {pass + 1} failed: {ex.Message}"); break; }
                     }
-                    catch (Exception ex) { notes.Add($"  ! {p.Label}: AI thickness apportion failed: {ex.Message}"); }
+                    if (bestEff > 0)
+                    {
+                        p.ZonedThk = bestEff; p.NeedsThicknessSplit = false;
+                        notes.Add($"  ⤷ {p.Label}: AI apportioned bands [{string.Join("/", p.Callouts)}\"] → effective {bestEff:N1}\"" +
+                                  (bestEff > field + 0.5 ? "." : $" (≈ field after {MaxAiPasses} passes — flagged)."));
+                    }
+                    else notes.Add($"  ! {p.Label}: AI thickness split unusable — kept field thickness (flagged).");
                 }
             }
 
@@ -395,19 +449,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 TowerOf(r.Label) is string tw && medianByTower.TryGetValue(tw, out var m) && m > 0 ? m : globalTowerMedian;
 
             // The LOCAL peer for a degenerate-area check: same-tower resolved floors within a few levels of
-            // this one. A whole-tower median is podium-dominated, so it both mis-condemns a legitimately small
-            // SETBACK floor (19 NORTH ≈ its neighbour 18 NORTH, not the 15k podium) and would substitute a
-            // wrong (too-large) value. Nearest-level siblings keep podium compared to podium and setback to
-            // setback. Falls back to the tower median when a floor has no near neighbours.
+            // this one (shared with the phase-2 locate honing). A whole-tower median is podium-dominated, so
+            // it both mis-condemns a legitimately small SETBACK floor and would substitute a wrong (too-large)
+            // value. Falls back to the tower median when a floor has no near neighbours.
             double NearPeerMedian(RawPlate r)
             {
-                if (!r.RepLevel.HasValue) return PeerMedianFor(r);
-                string? tw = TowerOf(r.Label);
-                var near = tkRaw.Where(x => !ReferenceEquals(x, r) && x.RepLevel.HasValue
-                                 && Math.Abs(x.RepLevel!.Value - r.RepLevel!.Value) <= 3
-                                 && TowerOf(x.Label) == tw && !x.NeedsLocate && x.Area >= DegenerateFloorSqFt)
-                                .Select(x => x.Area).ToList();
-                return near.Count > 0 ? Median(near) : PeerMedianFor(r);
+                double near = NearLevelMedian(r, tkRaw);
+                return near > 0 ? near : PeerMedianFor(r);
             }
 
             var tkPlates = new List<MeasuredPlate>();
