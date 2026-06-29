@@ -101,6 +101,26 @@ The multi-signal cascade. Built as tested Core increments (all judgment in Core;
   area, poché confirms/flags; flags ride `MeasuredPlate.ExtraFlags`→PlanCheck. Same effective scale both signals.
 - **Inc 4 DONE** `98ae78dd` `SlabThicknessZoner` reads metric "200/450/900 SLAB"; CLI `vector-takeoff` gains
   `[scale]` arg (use "1:100" for 31065 — imperial default is ~1:96, ~8% area low).
+## THREE-PHASE PIPELINE (2026-06-29 — Ian's mandated architecture) — BUILT + VERIFIED 73%
+Ian's spec, verbatim: (1) lock down the DETERMINISTIC side completely, emit an explicit UNKNOWNS list
+(never guess, never silently drop); (2) hand the unknowns to AI as specific data-attached questions, one
+call per unknown; (3) SYNTHESIZE deterministic + AI into one answer + honest residual. Built as that
+structure in `SlabTakeoffEngine.RunAsync`:
+- PHASE 1 deterministic: title classify + grid-box locate/poché + field-thickness callout; flags
+  NeedsLocate / NeedsThicknessSplit / NeedsThickness on each plate. 19 NORTH is now a LISTED unknown.
+- PHASE 2 AI: per unknown — `LocatePlateAsync` (garbled grid) or new `ApportionThicknessAsync` (drop-band
+  area split → effective depth via `EffectiveFromSplit`). New `IPlanRaster.LoadCropPng`. Clean set = 0 calls.
+- PHASE 3 synthesis: within-tower adjudication + tiling + degenerate guard + price + residual.
+Commits: `3630180a` (pipeline), `3587bf95` (nearest-level peer + drop sub-field callouts).
+VERIFIED 31065 (run_hopper8, pages 12-51, 1:100): **9,682 cy = 73% vs Revit 13,257**, 6 targeted AI calls.
+Per-floor: L3 102%, L19 93%, L6-18 90%, L5 89%, L4 87%, L2 75% — TOWER IS GOOD. Residual gap = podium L1
+(54%, AREA_POCHE_LOW + apportion under) + parkade P1 71% / P2 68% / P3 0 (no thickness). Progression this
+session: 65% (det-only, dropped floors) → 73% (honest, no over-counts).
+OPEN (verified, next): P3 missing-thickness has no AI handler (residual); P1/P2 drop bands not tripped by
+the detector; podium L1 poché area low; 2 SOUTH apportion 10.7" (Revit implies thicker); AI-locate VARIES
+run-to-run on no-grid plates (3 SOUTH measured 1,973 one run, 10,530 the next) — degenerate guard absorbs
+the low side but reproducibility on no-grid plates is imperfect.
+
 ## DETERMINISTIC-FIRST REWIRE (2026-06-28 late — the $1/set gate) — DONE, validated $0/run
 Ian's hard bar: DOA if a set costs more than ~$1 to read. Root cause: the engine called AI to CLASSIFY
 every page + LOCATE every plate (~80 Sonnet calls/set) when the title block + grid bubbles already answer
