@@ -1321,6 +1321,33 @@ if (args.Length >= 4 && args[0].Equals("rebar", StringComparison.OrdinalIgnoreCa
                       $"(content {rr.ContentChanged}, new {rr.NewSheets}, removed {rr.RemovedSheets})");
     foreach (var s in rr.Sheets.Where(s => s.Status != RebarChangeStatus.Unchanged))
         Console.WriteLine($"  {s.Sheet,-11} {s.Status,-12} net {s.NetDelta,+3} : {string.Join(", ", s.Added.Concat(s.Removed))}");
+
+    // Bar-list WEIGHT (qty × length × CSA mass) — the lb number a manual rebar comparison produces. Only
+    // printed where the set actually uses bar-list call-outs; an intensity-only set (Rory's 31065) weighs
+    // 0 and the section is suppressed, so that path's output is unchanged.
+    {
+        var bSheets = RebarCalloutExtractor.Extract(bPages).ToDictionary(s => s.Sheet);
+        var aSheets = RebarCalloutExtractor.Extract(aPages).ToDictionary(s => s.Sheet);
+        double tb = 0, ta = 0; int unweigh = 0;
+        var rows = new List<(string Sheet, double B, double A)>();
+        foreach (var sh in bSheets.Keys.Union(aSheets.Keys).OrderBy(x => x))
+        {
+            var wb = bSheets.TryGetValue(sh, out var sbc) ? RebarBarListWeigher.Weigh(sbc.Callouts) : default;
+            var wa = aSheets.TryGetValue(sh, out var sac) ? RebarBarListWeigher.Weigh(sac.Callouts) : default;
+            if (wb.WeightLb <= 0 && wa.WeightLb <= 0 && wb.UnweighableCallouts == 0 && wa.UnweighableCallouts == 0) continue;
+            rows.Add((sh, wb.WeightLb, wa.WeightLb));
+            tb += wb.WeightLb; ta += wa.WeightLb; unweigh += wb.UnweighableCallouts + wa.UnweighableCallouts;
+        }
+        if (tb > 0 || ta > 0)
+        {
+            Console.WriteLine($"\nBar-list rebar weight (qty×length×CSA mass; readable quantity-bearing call-outs only):");
+            Console.WriteLine($"  {"Sheet",-11} {rbl,13} {ral,13} {"Δ lb",13}");
+            foreach (var r in rows.OrderByDescending(r => System.Math.Abs(r.A - r.B)))
+                Console.WriteLine($"  {r.Sheet,-11} {r.B,13:N0} {r.A,13:N0} {r.A - r.B,13:+#,##0;-#,##0;0}");
+            Console.WriteLine($"  {"TOTAL",-11} {tb,13:N0} {ta,13:N0} {ta - tb,13:+#,##0;-#,##0;0}");
+            Console.WriteLine($"  NOTE: a call-out-SUM estimate, not a full per-element model (no mat-by-area / hooks / studrails / stirrups). Unweighable continuous call-outs skipped: {unweigh}.");
+        }
+    }
     Console.WriteLine($"Wrote {args[3]}");
     return 0;
 }
