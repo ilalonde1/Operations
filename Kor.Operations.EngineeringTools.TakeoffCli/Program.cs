@@ -363,76 +363,16 @@ if (args.Length >= 1 && args[0].Equals("vector-signals", StringComparison.Ordina
     Console.WriteLine($"  fill (filled-region sum):       {fillSum,10:N0} sqft   (filled paths: {filled.Count})");
     Console.WriteLine($"  env  (stroked envelope, gross): {env,10:N0} sqft");
 
-    // (grid) dimensioned structural-grid bubble envelope: grid bubbles are standalone digit (1..13) and
-    // letter (A..F) tokens arrayed along the plan margins. The most-populated digit ROW gives the X span;
-    // the most-populated letter COLUMN gives the Y span; their product is the gridded plate envelope.
-    var digitRx = new System.Text.RegularExpressions.Regex(@"^\d{1,2}$");
-    var letterRx = new System.Text.RegularExpressions.Regex(@"^[A-F]$");
-    // Grid bubbles: digit columns run along the top/bottom edges (a HORIZONTAL row), letter rows along the
-    // left/right edges (a VERTICAL column). Digits are margin-banded (top/bottom) to drop interior strays;
-    // letters are NOT fx-banded (a tower plate sits on either half of the sheet, so its A–F can be anywhere),
-    // instead taken from their most-populated collinear column. A span is read off the dominant line after
-    // median-gap outlier trimming, so an off-interval stray bubble (the parkade "1'") can't inflate it.
-    double H2 = pc.HeightPts;
-    // Grid bubbles share a consistent LARGE font; interior stray digits/letters (dimensions, notes,
-    // detail markers) are smaller or odd-sized. Keep only tokens near the dominant bubble height — that
-    // one filter removes most of the noise that fixed margins/columns could not.
-    static double DominantHeight(IReadOnlyList<VectorPageReader.TextToken> ts)
+    // (grid) the dimensioned structural-grid envelope — now read by the Core StructuralGridReader (one
+    // source of truth shared with the engine). Running it here verifies Core on the real sheets.
+    var gf = StructuralGridReader.FromPage(pc);
+    if (gf != null)
     {
-        if (ts.Count == 0) return 0;
-        return ts.Select(t => Math.Round(t.MaxY - t.MinY)).Where(h => h > 0)
-                 .GroupBy(h => h).OrderByDescending(g => g.Count()).ThenByDescending(g => g.Key)
-                 .First().Key;
+        Console.WriteLine($"  grid X bubbles ({gf.XLabels.Count}): [{string.Join(",", gf.XLabels)}]  span {gf.XSpanPt:F0}pt = {gf.XSpanPt * mPerPt:F1}m");
+        Console.WriteLine($"  grid Y bubbles ({gf.YLabels.Count}): [{string.Join(",", gf.YLabels)}]  span {gf.YSpanPt:F0}pt = {gf.YSpanPt * mPerPt:F1}m");
+        Console.WriteLine($"  grid (envelope X×Y):            {gf.EnvelopeSqFt(scaleDenom),10:N0} sqft   multiPlan={gf.MultiPlan} usable={gf.IsUsable}");
     }
-    static bool NearH(VectorPageReader.TextToken t, double h) { double th = t.MaxY - t.MinY; return h > 0 && th >= 0.8 * h && th <= 1.25 * h; }
-
-    // Digit X-grid: margin tokens, isolate the single most-populous bubble ROW (one Cy band — keeps the
-    // grid row away from dimension strings in the opposite margin), THEN keep its dominant-height tokens.
-    var marginDigits = pc.Words.Where(t => digitRx.IsMatch(t.Text.Trim()) && (t.Cy / H2 > 0.85 || t.Cy / H2 < 0.15)).ToList();
-    var digitRow = (marginDigits.GroupBy(t => Math.Round(t.Cy / 12.0)).OrderByDescending(g => g.Count()).FirstOrDefault()
-                    ?.ToList()) ?? new List<VectorPageReader.TextToken>();
-    double dH = DominantHeight(digitRow);
-    digitRow = digitRow.Where(t => NearH(t, dH)).ToList();
-    // Letter Y-grid: keep dominant-height letters anywhere outside the title block (an L-shaped plate
-    // splits A–D and E–F across two columns, so do NOT restrict to one column — height alone is enough).
-    var allLetters = pc.Words.Where(t => letterRx.IsMatch(t.Text.Trim()) && t.Cx / pc.WidthPts < 0.95).ToList();
-    double lH = DominantHeight(allLetters);
-    var letterCol = allLetters.Where(t => NearH(t, lH)).ToList();
-
-    // Span of a collinear bubble line along one coordinate, after trimming end strays by median spacing.
-    static double LineSpan(IEnumerable<double> coords)
-    {
-        var c = coords.OrderBy(x => x).ToList();
-        if (c.Count < 2) return 0;
-        var gaps = new List<double>();
-        for (int i = 1; i < c.Count; i++) gaps.Add(c[i] - c[i - 1]);
-        var sorted = gaps.OrderBy(x => x).ToList();
-        double med = sorted[sorted.Count / 2];
-        if (med <= 0) med = sorted.LastOrDefault(x => x > 0);
-        while (c.Count > 2 && c[1] - c[0] > 2.0 * med) c.RemoveAt(0);
-        while (c.Count > 2 && c[^1] - c[^2] > 2.0 * med) c.RemoveAt(c.Count - 1);
-        return c[^1] - c[0];
-    }
-    double xSpanPt = digitRow.Count >= 2 ? LineSpan(digitRow.Select(t => t.Cx)) : 0;
-    double ySpanPt = letterCol.Count >= 2 ? LineSpan(letterCol.Select(t => t.Cy)) : 0;
-
-    // Verbose bubble dump (pass "dump" as any arg): every digit/letter candidate with its position, so a
-    // failing sheet's grid noise (stray digits, partial/odd letter columns) can be diagnosed.
-    if (args.Any(a => a.Equals("dump", StringComparison.OrdinalIgnoreCase)))
-    {
-        Console.WriteLine("  -- all digit tokens (val@fx,fy h) --");
-        foreach (var t in pc.Words.Where(t => digitRx.IsMatch(t.Text.Trim())).OrderBy(t => t.Cx))
-            Console.WriteLine($"      {t.Text,3}@{t.Cx / pc.WidthPts:F2},{t.Cy / H2:F2} h{t.MaxY - t.MinY:F0}");
-        Console.WriteLine("  -- all letter tokens (val@fx,fy h) --");
-        foreach (var t in pc.Words.Where(t => letterRx.IsMatch(t.Text.Trim())).OrderByDescending(t => t.Cy))
-            Console.WriteLine($"      {t.Text,3}@{t.Cx / pc.WidthPts:F2},{t.Cy / H2:F2} h{t.MaxY - t.MinY:F0}");
-    }
-    double gridEnv = xSpanPt * ySpanPt * ft2PerPt2;
-    string dseq = digitRow != null ? string.Join(",", digitRow.OrderBy(t => t.Cx).Select(t => t.Text)) : "—";
-    string lseq = letterCol != null ? string.Join(",", letterCol.OrderByDescending(t => t.Cy).Select(t => t.Text)) : "—";
-    Console.WriteLine($"  grid X bubbles ({digitRow?.Count() ?? 0}): [{dseq}]  span {xSpanPt:F0}pt = {xSpanPt * mPerPt:F1}m");
-    Console.WriteLine($"  grid Y bubbles ({letterCol?.Count() ?? 0}): [{lseq}]  span {ySpanPt:F0}pt = {ySpanPt * mPerPt:F1}m");
-    Console.WriteLine($"  grid (envelope X×Y):            {gridEnv,10:N0} sqft");
+    else Console.WriteLine("  grid: no bubbles found");
 
     // (thk) slab-thickness callouts (metric mm): pair each "SLAB" token with the nearest number to its
     // left on the same row. The distribution (field 200 vs band 450/900) is what drives zoning on the
