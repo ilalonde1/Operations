@@ -368,18 +368,65 @@ if (args.Length >= 1 && args[0].Equals("vector-signals", StringComparison.Ordina
     // the most-populated letter COLUMN gives the Y span; their product is the gridded plate envelope.
     var digitRx = new System.Text.RegularExpressions.Regex(@"^\d{1,2}$");
     var letterRx = new System.Text.RegularExpressions.Regex(@"^[A-F]$");
-    // Grid bubbles live in the OUTER margins (digit columns along the top/bottom edges, letter rows along
-    // the left/right edges of the plan) — interior stray digits/letters are rejected by the margin bands.
-    double W2 = pc.WidthPts, H2 = pc.HeightPts;
-    var digits = pc.Words.Where(t => digitRx.IsMatch(t.Text.Trim())
-        && (t.Cy / H2 > 0.85 || t.Cy / H2 < 0.15)).ToList();
-    var letters = pc.Words.Where(t => letterRx.IsMatch(t.Text.Trim())
-        && (t.Cx / W2 < 0.12 || (t.Cx / W2 > 0.72 && t.Cx / W2 < 0.86))).ToList();
-    // Most-populated horizontal row of digits (bucket by Cy), and vertical column of letters (bucket by Cx).
-    var digitRow = digits.GroupBy(t => Math.Round(t.Cy / 12.0)).OrderByDescending(g => g.Count()).FirstOrDefault();
-    var letterCol = letters.GroupBy(t => Math.Round(t.Cx / 12.0)).OrderByDescending(g => g.Count()).FirstOrDefault();
-    double xSpanPt = digitRow != null && digitRow.Count() >= 2 ? digitRow.Max(t => t.Cx) - digitRow.Min(t => t.Cx) : 0;
-    double ySpanPt = letterCol != null && letterCol.Count() >= 2 ? letterCol.Max(t => t.Cy) - letterCol.Min(t => t.Cy) : 0;
+    // Grid bubbles: digit columns run along the top/bottom edges (a HORIZONTAL row), letter rows along the
+    // left/right edges (a VERTICAL column). Digits are margin-banded (top/bottom) to drop interior strays;
+    // letters are NOT fx-banded (a tower plate sits on either half of the sheet, so its A–F can be anywhere),
+    // instead taken from their most-populated collinear column. A span is read off the dominant line after
+    // median-gap outlier trimming, so an off-interval stray bubble (the parkade "1'") can't inflate it.
+    double H2 = pc.HeightPts;
+    // Grid bubbles share a consistent LARGE font; interior stray digits/letters (dimensions, notes,
+    // detail markers) are smaller or odd-sized. Keep only tokens near the dominant bubble height — that
+    // one filter removes most of the noise that fixed margins/columns could not.
+    static double DominantHeight(IReadOnlyList<VectorPageReader.TextToken> ts)
+    {
+        if (ts.Count == 0) return 0;
+        return ts.Select(t => Math.Round(t.MaxY - t.MinY)).Where(h => h > 0)
+                 .GroupBy(h => h).OrderByDescending(g => g.Count()).ThenByDescending(g => g.Key)
+                 .First().Key;
+    }
+    static bool NearH(VectorPageReader.TextToken t, double h) { double th = t.MaxY - t.MinY; return h > 0 && th >= 0.8 * h && th <= 1.25 * h; }
+
+    // Digit X-grid: margin tokens, isolate the single most-populous bubble ROW (one Cy band — keeps the
+    // grid row away from dimension strings in the opposite margin), THEN keep its dominant-height tokens.
+    var marginDigits = pc.Words.Where(t => digitRx.IsMatch(t.Text.Trim()) && (t.Cy / H2 > 0.85 || t.Cy / H2 < 0.15)).ToList();
+    var digitRow = (marginDigits.GroupBy(t => Math.Round(t.Cy / 12.0)).OrderByDescending(g => g.Count()).FirstOrDefault()
+                    ?.ToList()) ?? new List<VectorPageReader.TextToken>();
+    double dH = DominantHeight(digitRow);
+    digitRow = digitRow.Where(t => NearH(t, dH)).ToList();
+    // Letter Y-grid: keep dominant-height letters anywhere outside the title block (an L-shaped plate
+    // splits A–D and E–F across two columns, so do NOT restrict to one column — height alone is enough).
+    var allLetters = pc.Words.Where(t => letterRx.IsMatch(t.Text.Trim()) && t.Cx / pc.WidthPts < 0.95).ToList();
+    double lH = DominantHeight(allLetters);
+    var letterCol = allLetters.Where(t => NearH(t, lH)).ToList();
+
+    // Span of a collinear bubble line along one coordinate, after trimming end strays by median spacing.
+    static double LineSpan(IEnumerable<double> coords)
+    {
+        var c = coords.OrderBy(x => x).ToList();
+        if (c.Count < 2) return 0;
+        var gaps = new List<double>();
+        for (int i = 1; i < c.Count; i++) gaps.Add(c[i] - c[i - 1]);
+        var sorted = gaps.OrderBy(x => x).ToList();
+        double med = sorted[sorted.Count / 2];
+        if (med <= 0) med = sorted.LastOrDefault(x => x > 0);
+        while (c.Count > 2 && c[1] - c[0] > 2.0 * med) c.RemoveAt(0);
+        while (c.Count > 2 && c[^1] - c[^2] > 2.0 * med) c.RemoveAt(c.Count - 1);
+        return c[^1] - c[0];
+    }
+    double xSpanPt = digitRow.Count >= 2 ? LineSpan(digitRow.Select(t => t.Cx)) : 0;
+    double ySpanPt = letterCol.Count >= 2 ? LineSpan(letterCol.Select(t => t.Cy)) : 0;
+
+    // Verbose bubble dump (pass "dump" as any arg): every digit/letter candidate with its position, so a
+    // failing sheet's grid noise (stray digits, partial/odd letter columns) can be diagnosed.
+    if (args.Any(a => a.Equals("dump", StringComparison.OrdinalIgnoreCase)))
+    {
+        Console.WriteLine("  -- all digit tokens (val@fx,fy h) --");
+        foreach (var t in pc.Words.Where(t => digitRx.IsMatch(t.Text.Trim())).OrderBy(t => t.Cx))
+            Console.WriteLine($"      {t.Text,3}@{t.Cx / pc.WidthPts:F2},{t.Cy / H2:F2} h{t.MaxY - t.MinY:F0}");
+        Console.WriteLine("  -- all letter tokens (val@fx,fy h) --");
+        foreach (var t in pc.Words.Where(t => letterRx.IsMatch(t.Text.Trim())).OrderByDescending(t => t.Cy))
+            Console.WriteLine($"      {t.Text,3}@{t.Cx / pc.WidthPts:F2},{t.Cy / H2:F2} h{t.MaxY - t.MinY:F0}");
+    }
     double gridEnv = xSpanPt * ySpanPt * ft2PerPt2;
     string dseq = digitRow != null ? string.Join(",", digitRow.OrderBy(t => t.Cx).Select(t => t.Text)) : "—";
     string lseq = letterCol != null ? string.Join(",", letterCol.OrderByDescending(t => t.Cy).Select(t => t.Text)) : "—";

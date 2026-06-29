@@ -111,6 +111,18 @@ on clean-tower(p30)/podium(p12)/parkade(p16,p14,p20)/south-fail(p40), metric 1:1
 PROPOSED HOPPER: area = grid-envelope×net ⟷ poché(in box) converge; tower id from bubbles; thickness =
 metric callout + zoning; diverge/noisy → grounded-AI adjudication → orange if unknown. Probe: `vector-signals`.
 
+### Grid-detector PROOF rounds (2026-06-28, deeper)
+Net factor CORRECTED: grid envelope (N+S) ≈ true Revit area on typical floors (L3 1.02, L4 0.93); ≈1.0, NOT
+0.78 (earlier north-only error). Transfer L2 grid/area=0.71 ⇒ the +40% is the 450/900 drop bands (zoning).
+Detector hardened in `vector-signals`: digits = margin row → dominant-height → median-gap trim; letters =
+dominant-height (NO column lock, L-shaped plates split A–D/E–F). Results: N towers all [1-8]×[A-F]=19,854;
+S towers [9-13]×[A-F]=11,460; podium [1-13]×[A-F×2]=24,185; parkade P1/P3 clean=19,854/20,893 (P2 one stray
+"4" → minor trim tune). STABLE per tower (poché varied 6k-13k on same floors; grid identical).
+CONFIRMED by image (p36 S2.10.1): typical tower 6-18 is a REAL SETBACK (grids 2-5×B-F, smaller than podium
+1-8×A-F) AND that sheet carries TWO plans (odd 7-17 / even 6-18) side-by-side → grid spans both (doubled
+[2,3,4,5,2,3,4,5]) → needs MULTI-PLAN SPLIT (detectable: repeated label run + big X-gap). Open detector work:
+multi-plan split + P2 stray-trim; both addressable, not fundamental. Net signal verdict: GRID IS THE ANCHOR.
+
 ## 31065 BASELINE (2026-06-28, #23 verified) — 9,748 cy vs Revit 13,257 = 73.5%
 Up from 46% on the metric-thickness fix alone. 18 plates, 13 clear / 5 review. The remaining 26.5% is
 NOT silent error — it is 3 levels the engine FLAGGED or DROPPED, exactly as the orange model should:
