@@ -49,4 +49,41 @@ public sealed class SlabThicknessReaderTests
         // 2" is a topping; 60" is a mat — neither is a field slab.
         Assert.Null(SlabThicknessReader.DominantThicknessIn(new List<string> { "2\" SLAB", "60\" SLAB" }));
     }
+
+    [Fact]
+    public void Reads_a_metric_mm_callout_as_inches()
+    {
+        // 5380 Heather (31065) calls out the field slab as "200 SLAB" — 200 mm = 7.87" → 8".
+        var lines = new List<string> { "200 SLAB", "200 SLAB GC1", "200 SLAB", "300 15M @ 200 VERTS" };
+        Assert.Equal(8, SlabThicknessReader.DominantThicknessIn(lines));
+    }
+
+    [Fact]
+    public void Metric_callouts_beat_note_numbering_noise()
+    {
+        // The trap that fooled the imperial-only reader: "5. SLABS TO BE CAMBERED" matched as 5",
+        // overriding the real metric callouts. The metric pool must win on a metric drawing.
+        var lines = new List<string>
+        {
+            "5. SLABS TO BE CAMBERED PER STRUCTURAL",
+            "200 SLAB", "200 SLAB", "250 SLAB",
+        };
+        Assert.Equal(8, SlabThicknessReader.DominantThicknessIn(lines)); // modal 200 mm → 8"
+    }
+
+    [Fact]
+    public void A_thicker_metric_field_slab_converts()
+    {
+        // A podium at 300 mm = 11.81" → 12".
+        var lines = new List<string> { "300 SLAB", "300 SLAB", "300 SLAB" };
+        Assert.Equal(12, SlabThicknessReader.DominantThicknessIn(lines));
+    }
+
+    [Fact]
+    public void A_lone_stray_metric_match_does_not_flip_an_imperial_drawing()
+    {
+        // One coincidental "200 SLAB" must not turn an imperial set metric — needs ≥2 and ≥ imperial count.
+        var lines = new List<string> { "10\" SLAB", "10\" SLAB", "10\" SLAB", "200 SLAB" };
+        Assert.Equal(10, SlabThicknessReader.DominantThicknessIn(lines));
+    }
 }
