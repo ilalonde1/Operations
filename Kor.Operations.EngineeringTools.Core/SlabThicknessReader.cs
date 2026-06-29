@@ -36,15 +36,17 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         private const int RecoverMaxMm = 1200; // recovery (mats only) admits a deep mat foundation (~48")
         private const double MmPerInch = 25.4;
 
-        // RECOVERY anchors — the forms the strict field reader above DELIBERATELY skips: a mat/SOG/raft/
-        // topping depth, or a slab-on-grade where a descriptor word intervenes ("4" UNREINFORCED SLAB ON
-        // GRADE"). Bare «N" SLAB» is intentionally NOT an anchor here — that is the field reader's job, and
-        // excluding it keeps note-numbering ("5. SLABS") from leaking a phantom depth into the recovery pool.
+        // RECOVERY anchors — a STRUCTURAL base-slab depth the field reader skips only because it isn't stated
+        // in the bare «N" SLAB» shape: a transfer MAT or a RAFT. Deliberately NOT slab-on-grade / SOG / topping:
+        // the field reader excludes those for a STRUCTURAL reason (a 4" unreinforced topping is not a suspended
+        // slab), and re-admitting them here would let a thin SOG masquerade as a parkade slab's depth and
+        // pre-empt the (thicker, correct) same-class peer estimate. Bare «N" SLAB» is also excluded — that is
+        // the field reader's job, and excluding it keeps note-numbering ("5. SLABS") out of the recovery pool.
         private static readonly Regex RecoverImperialRx = new(
-            @"(\d{1,2})\s*[^\w\s]{1,2}(?:\s+\w+){0,2}?\s+(?:MATS?|SOG|RAFT|TOPPING|SLAB\s+ON\s+GRADE)\b",
+            @"(\d{1,2})\s*[^\w\s]{1,2}(?:\s+\w+){0,2}?\s+(?:MATS?|RAFT)\b",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex RecoverMetricRx = new(
-            @"(\d{2,4})\s*(?:MM)?(?:\s+\w+){0,2}?\s+(?:MATS?|SOG|RAFT|SLAB\s+ON\s+GRADE)\b",
+            @"(\d{2,4})\s*(?:MM)?(?:\s+\w+){0,2}?\s+(?:MATS?|RAFT)\b",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
@@ -85,12 +87,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         }
 
         /// <summary>
-        /// The WIDER recovery read for a plate the field reader above came up empty on: a parkade/podium
-        /// depth stated as a mat, a slab-on-grade, a raft or a topping — the forms <see cref="DominantThicknessIn"/>
-        /// intentionally skips. Returns the modal recovered depth (inches), or null when no such callout is on
-        /// the plate (the caller then estimates from a peer or leaves it an honest residual). NEVER reads bare
-        /// «N&quot; SLAB» — that is the field reader's domain — so this only ever ADDS depths the field read missed,
-        /// and is fired only AFTER the field read fails, so it cannot change a cleanly-read plate.
+        /// The WIDER recovery read for a plate the field reader above came up empty on: a STRUCTURAL base-slab
+        /// depth stated as a transfer MAT or a RAFT — the forms <see cref="DominantThicknessIn"/> skips only
+        /// because they aren't the bare «N&quot; SLAB» shape. Returns the modal recovered depth (inches), or null
+        /// when no such callout is on the plate (the caller then estimates from a same-class peer or leaves it an
+        /// honest residual). DELIBERATELY does NOT read slab-on-grade / SOG / topping (a non-structural element
+        /// the field reader excludes on purpose) nor bare «N&quot; SLAB» (the field reader's domain), so it only
+        /// ADDS real structural depths the field read missed, and is fired only AFTER the field read fails.
         /// </summary>
         public static int? RecoverStructuralDepthIn(IEnumerable<string>? lines)
         {

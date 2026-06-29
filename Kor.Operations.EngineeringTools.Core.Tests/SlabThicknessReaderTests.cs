@@ -90,21 +90,25 @@ public sealed class SlabThicknessReaderTests
     // ── RecoverStructuralDepthIn: the wider read for a plate the field reader came up empty on ──
 
     [Fact]
-    public void Recovery_reads_a_mat_or_slab_on_grade_depth_the_field_reader_skips()
+    public void Recovery_reads_a_structural_mat_or_raft_depth_the_field_reader_skips()
     {
-        // The field reader returns null for these (a word intervenes / it's a mat); recovery finds the depth.
-        Assert.Null(SlabThicknessReader.DominantThicknessIn(new List<string> { "4\" UNREINFORCED SLAB ON GRADE" }));
-        Assert.Equal(4, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "4\" UNREINFORCED SLAB ON GRADE" }));
+        // The field reader returns null for a mat ("MAT" isn't the bare «N" SLAB» shape); recovery finds it.
+        Assert.Null(SlabThicknessReader.DominantThicknessIn(new List<string> { "24\" MAT" }));
         Assert.Equal(24, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "24\" MAT" }));
+        // A 600 mm parkade mat = 23.6" → 24"; a deep raft (900 mm = 35.4" → 35").
+        Assert.Equal(24, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "600 MAT" }));
+        Assert.Equal(35, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "900 RAFT" }));
     }
 
     [Fact]
-    public void Recovery_reads_a_metric_mat_depth_as_inches()
+    public void Recovery_does_NOT_admit_a_slab_on_grade_or_topping()
     {
-        // A 600 mm parkade mat = 23.6" → 24".
-        Assert.Equal(24, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "600 MAT" }));
-        // A deep raft the field reader's 600 mm cap excludes (900 mm = 35.4" → 35").
-        Assert.Equal(35, SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "900 RAFT" }));
+        // A 4" unreinforced SOG/topping is NON-structural — the field reader excludes it on purpose, and so
+        // must recovery, so a thin topping can't masquerade as a parkade slab's depth and pre-empt the (thicker)
+        // same-class peer estimate. Both forms must come back null from recovery.
+        Assert.Null(SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "4\" UNREINFORCED SLAB ON GRADE" }));
+        Assert.Null(SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "2\" TOPPING" }));
+        Assert.Null(SlabThicknessReader.RecoverStructuralDepthIn(new List<string> { "100 SOG" }));
     }
 
     [Fact]
