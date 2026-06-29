@@ -89,6 +89,35 @@ that mostly isn't there. → These belong in ORANGE (flag + variable input), not
 - `f1fb9a26` this RESUME doc
 - `01590d56` #22 SheetTitleReader reads TOWER NORTH/SOUTH zones (31065 two-tower)
 - `b1867fbf` #20 wire reliability into pipeline + on-screen synopsis (232 Core tests)
+- `c928275b` METRIC thickness: read "200 SLAB" (mm) not just imperial inch marks (236 Core tests)
+
+## 31065 BASELINE (2026-06-28, #23 verified) — 9,748 cy vs Revit 13,257 = 73.5%
+Up from 46% on the metric-thickness fix alone. 18 plates, 13 clear / 5 review. The remaining 26.5% is
+NOT silent error — it is 3 levels the engine FLAGGED or DROPPED, exactly as the orange model should:
+- **"Level 1" podium DROPPED** (no thickness) + **"1" measured but AREA_SMALL (47% of peers)** — the SAME
+  physical level split across two title forms ("Level 1" vs "1") that don't pool/reconcile. Revit L1 = 3,109 cy
+  (the big podium), badly under-counted. ROOT: title normalization. **This is the #1 next fix.**
+- **"Level 5" DROPPED** (vs "5"/"5 NORTH"/"5 SOUTH") — same title-normalization split.
+- **"P3" DROPPED** (15,694 sqft, no thickness/sibling) — P3 parkade callout not read. Revit P3 = 640 cy lost.
+  ROOT: P3 sheet's pooled text had no qualifying SLAB callout (maybe SOG wording); inspect its digest.
+- TS/TN two-tower tiling WORKS: 18 NORTH and 18 SOUTH each tile 6-18 (13 floors) as separate plates.
+- Metric thickness CONFIRMED across the set: tower 7.87" (200mm), parkade 9.84" (250mm).
+NEXT (ordered): (1) title normalization ("Level N"→"N", tower-suffix base) so split levels pool/reconcile
++ stop dropping L1/L5; (2) P3 callout/SOG read; then re-run for a new baseline. Then #24 orange xlsx.
+
+## NEXT-SESSION STATE (2026-06-28 autonomous run — read before building)
+- **Metric thickness FIX shipped** (`c928275b`): `SlabThicknessReader` now reads metric "200 SLAB" (mm,
+  100-600 → ÷25.4 in) alongside imperial. The 31065 trap was "5. SLABS TO BE CAMBERED" matching as 5" and
+  overriding synthesis for the whole tower. Pools separate cleanly (inch mark blocks metric; digit-SLAB
+  adjacency blocks imperial note-numbering); ≥2 metric ≥ imperial count ⇒ metric wins.
+- **#21 Core engine DONE** (`a39fe533`): `SlabTakeoffEngine.RunAsync(SlabTakeoffRequest, IPlanVision,
+  IPlanRaster) → SlabTakeoffResult` in Core — the host (CLI today, WPF next) supplies the 2 AI calls
+  (`IPlanVision`) + raster I/O (`IPlanRaster`); CLI is a thin caller via `CliPlanVision`/`CliPlanRaster`.
+  Returns data (plates, xlsx bytes, totals, Notes trace, Synopsis). 236 tests + 1-page smoke reproduce.
+- **Throttle fix DONE** (`30e01eaa`): vision retry honors Anthropic `Retry-After` + exp backoff/jitter, 8 tries.
+- The WPF app can now call `SlabTakeoffEngine.RunAsync` directly — that is the "Generate takeoff" button's
+  engine. It still needs app-side `IPlanVision`/`IPlanRaster` impls (reuse the firm's Anthropic path + an
+  ImageSharp/WPF decoder) and the on-screen synopsis panel binds to `SlabTakeoffResult.Synopsis`.
 
 ## DONE this session
 - **#20 reliability WIRED** (commit b1867fbf): synopsis works; signal is cluster fill-of-own-extent
