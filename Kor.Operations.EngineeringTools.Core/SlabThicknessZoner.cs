@@ -35,6 +35,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         private static readonly Regex TailRx = new(@"(\d{1,2})\s*[^\w\s]{1,2}\s*$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        // Metric tail: a 2–3 digit millimetre depth directly before SLAB (no inch mark) — "200 SLAB",
+        // "900 SLAB". Mirrors SlabThicknessReader's metric handling so a metric set zones too.
+        private static readonly Regex MetricTailRx = new(@"(\d{2,3})\s*$", RegexOptions.Compiled);
+        private const int MinMm = 100, MaxMm = 1200;
+        private const double MmPerInch = 25.4;
+
         private const double BaselineTolPt = 6.0;    // same-line tolerance (matches ReadTextLines)
         private const double LeftReachPt = 60.0;     // how far left of SLAB to look for its number
 
@@ -65,9 +71,19 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     .ToList();
                 if (left.Count == 0) continue;
                 string ctx = string.Join(" ", left.Select(w => w.Text));
+
+                // Imperial («10" SLAB») first; if there is no inch mark, try a metric mm tail («200 SLAB»).
+                int v;
                 var m = TailRx.Match(ctx);
-                if (!m.Success) continue;
-                int v = int.Parse(m.Groups[1].Value);
+                if (m.Success) v = int.Parse(m.Groups[1].Value);
+                else
+                {
+                    var mm = MetricTailRx.Match(ctx);
+                    if (!mm.Success) continue;
+                    int mmVal = int.Parse(mm.Groups[1].Value);
+                    if (mmVal < MinMm || mmVal > MaxMm) continue;
+                    v = (int)Math.Round(mmVal / MmPerInch, MidpointRounding.AwayFromZero);
+                }
                 if (v < MinIn || v > MaxIn) continue;
                 callouts.Add(new Callout(slab.Cx, slab.Cy, v));
             }

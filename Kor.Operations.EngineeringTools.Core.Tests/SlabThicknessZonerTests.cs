@@ -40,6 +40,20 @@ public sealed class SlabThicknessZonerTests
     }
 
     [Fact]
+    public void Reads_metric_mm_callouts_as_inches()
+    {
+        // A metric transfer floor: 200mm field + 900mm/450mm drop bands → 8" field + 35"/18" bands.
+        var page = Page(Callout("200", "SLAB", 600, 100)
+            .Concat(Callout("900", "SLAB", 500, 300))
+            .Concat(Callout("450", "SLAB", 400, 500)).ToArray());
+        var callouts = SlabThicknessZoner.ReadCallouts(page);
+        Assert.Equal(3, callouts.Count);
+        Assert.Contains(callouts, c => c.ValueIn == 8);    // 200mm
+        Assert.Contains(callouts, c => c.ValueIn == 35);   // 900mm band
+        Assert.Contains(callouts, c => c.ValueIn == 18);   // 450mm band
+    }
+
+    [Fact]
     public void Skips_slab_on_grade_and_column_callouts_like_the_reader_does()
     {
         // "UNREINFORCED SLAB" — a word, not a number, sits immediately left of SLAB.

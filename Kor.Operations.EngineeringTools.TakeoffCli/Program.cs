@@ -20,16 +20,18 @@ if (args.Length >= 1 && args[0].Equals("vision-estimate", StringComparison.Ordin
 // EXISTING pipeline -> xlsx + total vs QTO. Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last]
 if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last]"); return 1; }
+    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale]"); return 1; }
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
     if (string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set."); return 2; }
     int? tkFirst = args.Length >= 5 && int.TryParse(args[4], out var tf) ? tf : null;
     int? tkLast  = args.Length >= 6 && int.TryParse(args[5], out var tl) ? tl : null;
+    // Optional scale note (e.g. "1:100" for a metric set, "1/8\"=1'-0\"" imperial). Defaults to imperial.
+    string tkScale = args.Length >= 7 && !string.IsNullOrWhiteSpace(args[6]) ? args[6] : "1/8\"=1'-0\"";
 
     // The whole measure→reconcile→price→synopsis spine now lives in Core (SlabTakeoffEngine) so the WPF
     // app runs it identically; this command is a thin host that supplies the AI + raster I/O and renders
     // the engine's note trace, totals, and orange synopsis exactly as before.
-    var tkReq = new SlabTakeoffRequest(args[1], args[2], tkFirst, tkLast);
+    var tkReq = new SlabTakeoffRequest(args[1], args[2], tkFirst, tkLast, Scale: tkScale);
     SlabTakeoffResult tkOut;
     try { tkOut = await SlabTakeoffEngine.RunAsync(tkReq, new CliPlanVision(), new CliPlanRaster()); }
     catch (Exception ex) { Console.Error.WriteLine(ex.Message); return 2; }
