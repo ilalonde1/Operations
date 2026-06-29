@@ -78,6 +78,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return s.Count == 0 ? 0 : s[s.Count / 2];
         }
 
+        // A real tower-floor slab is never this small; an area below it is a degenerate locate box (a few
+        // hundred sqft), NOT a setback floor that is merely smaller than the podium-level floors. Used both
+        // to trigger the degenerate substitution and to exclude bad boxes from the per-tower typical median.
+        private const double DegenerateFloorSqFt = 1500;
+
         public static async Task<SlabTakeoffResult> RunAsync(
             SlabTakeoffRequest req, IPlanVision vision, IPlanRaster raster, CancellationToken ct = default)
         {
@@ -287,8 +292,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // Degenerate-box guard + peer-area flags work off the PER-TOWER median floor area (two towers
             // have different footprints, so a global median would mislabel a good north floor "large" and a
             // good south floor "small"). Plates with no tower (podium/parkade) share a global fallback.
-            double globalTowerMedian = Median(tkRaw.Where(r => r.RepLevel.HasValue).Select(r => r.Area));
-            var medianByTower = tkRaw.Where(r => r.RepLevel.HasValue && TowerOf(r.Label) != null)
+            // The typical-floor median excludes degenerate bad boxes so a couple of 200-sqft mislocates don't
+            // drag the "typical" down (and so the substitute value below is a real floor, not a half-bad one).
+            double globalTowerMedian = Median(tkRaw.Where(r => r.RepLevel.HasValue && r.Area >= DegenerateFloorSqFt).Select(r => r.Area));
+            var medianByTower = tkRaw.Where(r => r.RepLevel.HasValue && r.Area >= DegenerateFloorSqFt && TowerOf(r.Label) != null)
                 .GroupBy(r => TowerOf(r.Label)!)
                 .ToDictionary(g => g.Key, g => Median(g.Select(r => r.Area)), StringComparer.OrdinalIgnoreCase);
             double PeerMedianFor(RawPlate r) =>
@@ -323,7 +330,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 double area = r.Area;
                 double towerMedianArea = PeerMedianFor(r);
                 bool degenerate = false;
-                if (r.RepLevel.HasValue && towerMedianArea > 0 && area < 0.4 * towerMedianArea)
+                // A degenerate locate box is implausibly small for ANY tower floor (a few hundred sqft) — NOT
+                // a setback floor that is legitimately smaller than the podium-level floors. So the trigger is
+                // an ABSOLUTE floor or a tiny fraction (<15%) of the tower typical; and a GridConfirmed plate
+                // (grid and poché already agree on its area) is never condemned — that is the trustworthy case.
+                if (r.RepLevel.HasValue && r.Basis != AreaBasis.GridConfirmed && towerMedianArea > 0
+                    && (area < DegenerateFloorSqFt || area < 0.15 * towerMedianArea))
                 {
                     notes.Add($"  ! {r.Label}: area {area:N0} sqft implausible vs {(TowerOf(r.Label) ?? "tower")} median {towerMedianArea:N0} — substituting median (FLAG: degenerate locate box).");
                     area = towerMedianArea; degenerate = true;
