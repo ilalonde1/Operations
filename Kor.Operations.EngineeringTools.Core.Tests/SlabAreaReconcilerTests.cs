@@ -88,4 +88,53 @@ public sealed class SlabAreaReconcilerTests
         var r = SlabAreaReconciler.Reconcile(thin, 100, pocheSqFt: 9000);
         Assert.Equal(AreaBasis.PocheOnly, r.Basis);
     }
+
+    // ── Cross-tower sibling adjudication (ResolveAgainstPeers) ──────────────────────────────────────────
+    // A divergent consensus: grid says 16,979 (the 18-SOUTH full-podium-width mis-read), poché says 6,656.
+    private static AreaConsensus Diverged(double grid = 16979, double poche = 6656)
+        => new(grid, AreaBasis.GridPocheDisagree, grid, poche,
+               new[] { new PlanFlag(PlanFlagSeverity.Review, "AREA_POCHE_LOW", "poché low") });
+
+    [Fact]
+    public void Sibling_adjudication_overrides_a_grid_outlier_with_the_peer_consistent_poche()
+    {
+        // 18-NORTH (the confirmed sibling) measured 5,319 sqft. The 18-SOUTH grid is 3.2× that while its
+        // poché (6,656) matches it → the grid grabbed podium-width bubbles; use the poché.
+        var r = SlabAreaReconciler.ResolveAgainstPeers(Diverged(), peerMedianSqFt: 5319);
+        Assert.Equal(AreaBasis.PocheOnly, r.Basis);
+        Assert.Equal(6656, r.AreaSqFt, 0);
+        Assert.Contains(r.Flags, f => f.Code == "AREA_GRID_OUTLIER" && f.Severity == PlanFlagSeverity.Review);
+    }
+
+    [Fact]
+    public void Sibling_adjudication_leaves_a_genuinely_leaky_plate_on_the_grid()
+    {
+        // Grid is in line with peers (not an outlier) and the poché collapsed — a real leaky plate, NOT a
+        // bad envelope. The grid must stand; the adjudicator must not "rescue" a leaked poché.
+        var leaky = new AreaConsensus(5500, AreaBasis.GridPocheDisagree, 5500, 449,
+            new[] { new PlanFlag(PlanFlagSeverity.Review, "AREA_POCHE_LOW", "poché low") });
+        var r = SlabAreaReconciler.ResolveAgainstPeers(leaky, peerMedianSqFt: 5319);
+        Assert.Equal(AreaBasis.GridPocheDisagree, r.Basis);   // unchanged
+        Assert.Equal(5500, r.AreaSqFt, 0);
+    }
+
+    [Fact]
+    public void Sibling_adjudication_holds_when_the_poche_does_not_match_the_peers_either()
+    {
+        // Grid is an outlier, but the poché (2,000) is also far from the 5,319 peer median → no signal can
+        // be vouched for; leave it as-is for the AI/human pass (stays orange).
+        var r = SlabAreaReconciler.ResolveAgainstPeers(Diverged(grid: 16979, poche: 2000), peerMedianSqFt: 5319);
+        Assert.Equal(AreaBasis.GridPocheDisagree, r.Basis);
+        Assert.Equal(16979, r.AreaSqFt, 0);
+    }
+
+    [Fact]
+    public void Sibling_adjudication_is_a_noop_on_confirmed_or_peerless_plates()
+    {
+        var confirmed = new AreaConsensus(5319, AreaBasis.GridConfirmed, 5319, 5400, System.Array.Empty<PlanFlag>());
+        Assert.Same(confirmed, SlabAreaReconciler.ResolveAgainstPeers(confirmed, 5319));   // wrong basis → untouched
+        Assert.Same(confirmed, SlabAreaReconciler.ResolveAgainstPeers(confirmed, 0));      // no peers → untouched
+        var diverged = Diverged();
+        Assert.Same(diverged, SlabAreaReconciler.ResolveAgainstPeers(diverged, 0));        // no peer median → untouched
+    }
 }

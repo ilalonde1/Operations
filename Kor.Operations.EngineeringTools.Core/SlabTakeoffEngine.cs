@@ -45,6 +45,19 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     /// </summary>
     public static class SlabTakeoffEngine
     {
+        /// <summary>One plate's mutable working state between measurement and pricing: the reconciled area
+        /// (and the raw grid-net/poché/basis it came from, so the sibling adjudicator can re-decide), plus
+        /// the identity, thickness and quality diagnostics the pricing pass needs.</summary>
+        private sealed class RawPlate
+        {
+            public string Label = "", LevelBase = "", Key = "";
+            public int? RepLevel;
+            public double Area, Thk, ZonedThk, FillRatio, GridNet, Poche;
+            public int ClusterCount;
+            public AreaBasis Basis;
+            public IReadOnlyList<PlanFlag> AreaFlags = Array.Empty<PlanFlag>();
+        }
+
         public static async Task<SlabTakeoffResult> RunAsync(
             SlabTakeoffRequest req, IPlanVision vision, IPlanRaster raster, CancellationToken ct = default)
         {
@@ -57,9 +70,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double tkMpp = PlanGeometry.MetresPerPixel(req.Scale, req.Dpi) ?? 0;
             var tkProfile = PlanProfile.ByName(req.ProfileName);
 
-            // Raw per-plate measurements (area is deterministic poché; thickness may be missing from
-            // synthesis and is reconciled across a level's match-line halves below before pricing).
-            var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk, double ZonedThk, double FillRatio, int ClusterCount, IReadOnlyList<PlanFlag> AreaFlags)>();
+            // Raw per-plate measurements (area is the reconciled grid/poché consensus; thickness may be
+            // missing from synthesis and is reconciled across a level's match-line halves below before
+            // pricing). A mutable class (not a tuple) so the cross-tower sibling adjudication pass below can
+            // override a plate's area/flags after every plate — and its siblings — have been measured.
+            var tkRaw = new List<RawPlate>();
             // The grid envelope and the poché are read in the SAME effective scale (derived from tkMpp), so
             // the reconciler compares like with like regardless of the absolute scale note.
             double tkScaleDenom = tkMpp > 0 ? tkMpp * req.Dpi / 0.0254 : 100.0;
@@ -174,7 +189,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     var consensus = SlabAreaReconciler.Reconcile(grid, tkScaleDenom, area);
                     double plateArea = consensus.AreaSqFt > 0 ? consensus.AreaSqFt : area;
 
-                    tkRaw.Add((lvl, levelBase, key, repLevel, plateArea, thk, zonedThk, fillRatio, cl.Count, consensus.Flags));
+                    tkRaw.Add(new RawPlate
+                    {
+                        Label = lvl, LevelBase = levelBase, Key = key, RepLevel = repLevel,
+                        Area = plateArea, Thk = thk, ZonedThk = zonedThk, FillRatio = fillRatio,
+                        ClusterCount = cl.Count, GridNet = consensus.GridNetSqFt ?? 0,
+                        Poche = consensus.PocheSqFt ?? area, Basis = consensus.Basis, AreaFlags = consensus.Flags,
+                    });
                     if (page.Title is { } tk) tkMeasured.Add(tk.Key);   // this key now has a real measured plate
                     string gridNote = grid is { IsUsable: true }
                         ? $"grid[{string.Join("", grid.XLabels.Take(1))}..{string.Join("", grid.XLabels.TakeLast(1))}×{string.Join("", grid.YLabels.Take(1))}..{string.Join("", grid.YLabels.TakeLast(1))}]"
@@ -185,6 +206,30 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             }
 
             if (tkRaw.Count == 0) throw new InvalidOperationException("No slab plates measured.");
+
+            // ── the hopper's SECOND peg: cross-tower sibling adjudication. A grid≫poché plate that
+            //    Reconcile resolved by trusting the grid is re-checked against its CONFIRMED same-level
+            //    siblings in the other tower(s). When this plate's grid is a high outlier vs the sibling
+            //    median while its poché matches it, the grid grabbed podium-width bubbles (a setback tower
+            //    bounded at full width) — the poché is the better number. Deterministic, no AI; a plate is
+            //    only overridden when a confirmed sibling vouches for the poché.
+            foreach (var grp in tkRaw.Where(r => r.RepLevel.HasValue).GroupBy(r => r.RepLevel!.Value))
+            {
+                var trustworthy = grp.Where(r => r.Basis is AreaBasis.GridConfirmed or AreaBasis.GridOnly)
+                                     .Select(r => r.Area).OrderBy(a => a).ToList();
+                if (trustworthy.Count == 0) continue;
+                double peerMedian = trustworthy[trustworthy.Count / 2];
+                foreach (var r in grp.Where(r => r.Basis == AreaBasis.GridPocheDisagree))
+                {
+                    var resolved = SlabAreaReconciler.ResolveAgainstPeers(
+                        new AreaConsensus(r.Area, r.Basis, r.GridNet, r.Poche, r.AreaFlags), peerMedian);
+                    if (resolved.Basis != r.Basis)
+                    {
+                        notes.Add($"  ⇄ {r.Label}: grid {r.GridNet:N0} sqft is a {r.GridNet / peerMedian:P0} outlier vs level-{r.RepLevel} siblings ({peerMedian:N0}); using poché {r.Poche:N0} (FLAG: grid grabbed podium-width bubbles).");
+                        r.Area = resolved.AreaSqFt; r.Basis = resolved.Basis; r.AreaFlags = resolved.Flags;
+                    }
+                }
+            }
 
             // PRIMARY thickness: the drawing's own slab callout ("10\" SLAB" / metric "200 SLAB"), read
             // deterministically from the exact text pooled across a level's sheets — stable run-to-run.

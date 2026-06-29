@@ -42,6 +42,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         public const double AgreeLo = 0.70;
         public const double AgreeHi = 1.30;
 
+        // Cross-tower sibling adjudication bands. A divergent plate's GRID this many× its same-level peer
+        // median = the envelope grabbed too much (a setback tower read at full podium width); its POCHÉ
+        // within this fraction of the peer median = the poché is the number a confirmed sibling vouches for.
+        public const double PeerGridOutlierHi = 1.6;
+        public const double PeerPocheBand = 0.55;
+
         public static AreaConsensus Reconcile(GridFrame? grid, double scaleDenom, double? pocheSqFt,
             double netFactor = DefaultNetFactor)
         {
@@ -86,6 +92,38 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             flags.Add(new(PlanFlagSeverity.Review, "AREA_UNRESOLVED",
                 "Neither the structural grid nor the poché produced an area — the plate could not be measured; resolve before relying on it."));
             return new(0, AreaBasis.Unresolved, null, null, flags);
+        }
+
+        /// <summary>
+        /// The hopper's SECOND peg: cross-tower sibling adjudication. <see cref="Reconcile"/> resolves a
+        /// grid≫poché divergence by trusting the grid (assuming the poché leaked) — right for a leaky plate,
+        /// WRONG when the grid itself over-read (a setback tower whose typical plate was bounded at full
+        /// podium width because the detector caught the wrong bubble run). Those two cases are indistinguishable
+        /// from one plate, but a building gives a free tie-breaker: the SAME floor level has a comparable plate
+        /// in every tower. So when this divergent plate's GRID is a high outlier vs the median of its CONFIRMED
+        /// same-level siblings while its POCHÉ matches them, the grid grabbed too much — the poché is the better
+        /// number. Deterministic, no AI: a number is only overridden when a confirmed sibling vouches for it;
+        /// otherwise the plate is returned unchanged (and stays orange for the AI/human pass).
+        /// </summary>
+        public static AreaConsensus ResolveAgainstPeers(AreaConsensus consensus, double peerMedianSqFt)
+        {
+            if (consensus is null || peerMedianSqFt <= 0) return consensus!;
+            if (consensus.Basis != AreaBasis.GridPocheDisagree) return consensus;
+            if (consensus.GridNetSqFt is not double gn || consensus.PocheSqFt is not double pp || gn <= 0 || pp <= 0)
+                return consensus;
+
+            double gridVsPeer = gn / peerMedianSqFt;
+            double pocheVsPeer = pp / peerMedianSqFt;
+            bool gridIsOutlier = gridVsPeer >= PeerGridOutlierHi;
+            bool pocheConsistent = pocheVsPeer >= 1 - PeerPocheBand && pocheVsPeer <= 1 + PeerPocheBand;
+            if (!gridIsOutlier || !pocheConsistent) return consensus;
+
+            var flags = new List<PlanFlag>
+            {
+                new(PlanFlagSeverity.Review, "AREA_GRID_OUTLIER",
+                    $"Grid envelope ({gn:N0} sqft) is {gridVsPeer:P0} of the same-level sibling median ({peerMedianSqFt:N0}) while the poché ({pp:N0}) matches it — the grid grabbed podium-width bubbles (a setback tower read at full width); the poché area was used."),
+            };
+            return new AreaConsensus(pp, AreaBasis.PocheOnly, gn, pp, flags);
         }
     }
 }
