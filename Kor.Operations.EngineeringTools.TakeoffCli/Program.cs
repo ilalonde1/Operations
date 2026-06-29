@@ -315,6 +315,92 @@ if (args.Length >= 1 && args[0].Equals("vector-geom", StringComparison.OrdinalIg
     return 0;
 }
 
+// EVIDENCE probe: compute EVERY candidate slab-AREA signal for one sheet, in the drawing's real scale,
+// so we can see which signal is reliable per sheet type BEFORE building a cascade. No AI. Usage:
+//   takeoff vector-signals <pdf> <page> [png] [scaleDenom=100] [dpi=110]
+// Signals: (P) raster poché largest+sum, (poly) largest closed vector polygon, (fill) filled-region sum,
+//          (env) stroked-geometry envelope, (grid) dimensioned structural-grid bubble envelope.
+if (args.Length >= 1 && args[0].Equals("vector-signals", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff vector-signals <pdf> <page> [png] [scaleDenom=100] [dpi=110]"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
+    if (!int.TryParse(args[2], out int sgPage) || sgPage < 1) { Console.Error.WriteLine("Page must be positive."); return 2; }
+    string? sgPng = args.Length >= 4 && File.Exists(args[3]) ? args[3] : null;
+    double scaleDenom = args.Length >= 5 && double.TryParse(args[4], out var sd) ? sd : 100.0;
+    double dpi = args.Length >= 6 && double.TryParse(args[5], out var dp) ? dp : 110.0;
+
+    // Real-world conversion at scale 1:scaleDenom. 1 pt = 1/72 in (paper); real = paper × scaleDenom.
+    double mPerPt = scaleDenom * (0.0254 / 72.0);
+    double ft2PerPt2 = (mPerPt * 3.28084) * (mPerPt * 3.28084);
+    double mpp = scaleDenom * (0.0254 / dpi);   // metres per pixel of the render, real-world
+
+    static double Shoelace(IReadOnlyList<(double X, double Y)> p)
+    {
+        double a = 0; int n = p.Count;
+        if (n < 3) return 0;
+        for (int i = 0; i < n; i++) { var u = p[i]; var v = p[(i + 1) % n]; a += u.X * v.Y - v.X * u.Y; }
+        return Math.Abs(a) / 2.0;
+    }
+
+    var pc = VectorPageReader.ReadPage(args[1], sgPage);
+    Console.WriteLine($"Page {sgPage}: {pc.WidthPts:F0}x{pc.HeightPts:F0}pt, scale 1:{scaleDenom:F0}, {pc.Paths.Count} paths, {pc.Words.Count} words");
+    Console.WriteLine($"  (1pt = {mPerPt:F4}m real; 1pt² = {ft2PerPt2:F4} sqft)");
+
+    // (poly) largest closed vector polygon
+    double polyMax = 0; var closed = pc.Paths.Where(p => p.IsClosed && p.Points.Count >= 3).ToList();
+    foreach (var g in closed) polyMax = Math.Max(polyMax, Shoelace(g.Points) * ft2PerPt2);
+    // (fill) filled-region sum
+    var filled = closed.Where(p => p.IsFilled).ToList();
+    double fillSum = filled.Sum(g => Shoelace(g.Points) * ft2PerPt2);
+    // (env) stroked-geometry envelope (gross bound)
+    var stroked = pc.Paths.Where(p => p.IsStroked && p.Points.Count >= 2).ToList();
+    double env = 0;
+    if (stroked.Count > 0)
+        env = (stroked.Max(p => p.MaxX) - stroked.Min(p => p.MinX))
+            * (stroked.Max(p => p.MaxY) - stroked.Min(p => p.MinY)) * ft2PerPt2;
+
+    Console.WriteLine($"  poly (largest closed polygon):  {polyMax,10:N0} sqft   (closed paths: {closed.Count})");
+    Console.WriteLine($"  fill (filled-region sum):       {fillSum,10:N0} sqft   (filled paths: {filled.Count})");
+    Console.WriteLine($"  env  (stroked envelope, gross): {env,10:N0} sqft");
+
+    // (grid) dimensioned structural-grid bubble envelope: grid bubbles are standalone digit (1..13) and
+    // letter (A..F) tokens arrayed along the plan margins. The most-populated digit ROW gives the X span;
+    // the most-populated letter COLUMN gives the Y span; their product is the gridded plate envelope.
+    var digitRx = new System.Text.RegularExpressions.Regex(@"^\d{1,2}$");
+    var letterRx = new System.Text.RegularExpressions.Regex(@"^[A-F]$");
+    // Grid bubbles live in the OUTER margins (digit columns along the top/bottom edges, letter rows along
+    // the left/right edges of the plan) — interior stray digits/letters are rejected by the margin bands.
+    double W2 = pc.WidthPts, H2 = pc.HeightPts;
+    var digits = pc.Words.Where(t => digitRx.IsMatch(t.Text.Trim())
+        && (t.Cy / H2 > 0.85 || t.Cy / H2 < 0.15)).ToList();
+    var letters = pc.Words.Where(t => letterRx.IsMatch(t.Text.Trim())
+        && (t.Cx / W2 < 0.12 || (t.Cx / W2 > 0.72 && t.Cx / W2 < 0.86))).ToList();
+    // Most-populated horizontal row of digits (bucket by Cy), and vertical column of letters (bucket by Cx).
+    var digitRow = digits.GroupBy(t => Math.Round(t.Cy / 12.0)).OrderByDescending(g => g.Count()).FirstOrDefault();
+    var letterCol = letters.GroupBy(t => Math.Round(t.Cx / 12.0)).OrderByDescending(g => g.Count()).FirstOrDefault();
+    double xSpanPt = digitRow != null && digitRow.Count() >= 2 ? digitRow.Max(t => t.Cx) - digitRow.Min(t => t.Cx) : 0;
+    double ySpanPt = letterCol != null && letterCol.Count() >= 2 ? letterCol.Max(t => t.Cy) - letterCol.Min(t => t.Cy) : 0;
+    double gridEnv = xSpanPt * ySpanPt * ft2PerPt2;
+    string dseq = digitRow != null ? string.Join(",", digitRow.OrderBy(t => t.Cx).Select(t => t.Text)) : "—";
+    string lseq = letterCol != null ? string.Join(",", letterCol.OrderByDescending(t => t.Cy).Select(t => t.Text)) : "—";
+    Console.WriteLine($"  grid X bubbles ({digitRow?.Count() ?? 0}): [{dseq}]  span {xSpanPt:F0}pt = {xSpanPt * mPerPt:F1}m");
+    Console.WriteLine($"  grid Y bubbles ({letterCol?.Count() ?? 0}): [{lseq}]  span {ySpanPt:F0}pt = {ySpanPt * mPerPt:F1}m");
+    Console.WriteLine($"  grid (envelope X×Y):            {gridEnv,10:N0} sqft");
+
+    // (P) raster poché largest cluster + sum of top clusters (no AI box — full page)
+    if (sgPng != null)
+    {
+        var (iw, ih) = PlanRaster.ImageSize(sgPng);
+        var img = PlanRaster.LoadCrop(sgPng, 0, 0, iw, ih);
+        var cl = PlanGeometry.MeasureEnclosedClusters(img.Lum, img.Width, img.Height);
+        double pocheMax = cl.Count > 0 ? PlanGeometry.SquareFeet(cl[0].LightPx, mpp) : 0;
+        double pocheSum = cl.Take(12).Sum(c => PlanGeometry.SquareFeet(c.LightPx, mpp));
+        Console.WriteLine($"  poché largest cluster:          {pocheMax,10:N0} sqft   (of {cl.Count} clusters)");
+        Console.WriteLine($"  poché sum top-12 clusters:      {pocheSum,10:N0} sqft");
+    }
+    return 0;
+}
+
 // Title-block probe: dump words by FONT SIZE (height) and normalized position, so we can see where the
 // sheet title actually lives (corner? largest font?) vs stray cross-references. Usage:
 //   takeoff vector-words <pdf> <page> [needle]

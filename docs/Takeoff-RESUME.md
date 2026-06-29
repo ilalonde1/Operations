@@ -91,6 +91,26 @@ that mostly isn't there. → These belong in ORANGE (flag + variable input), not
 - `b1867fbf` #20 wire reliability into pipeline + on-screen synopsis (232 Core tests)
 - `c928275b` METRIC thickness: read "200 SLAB" (mm) not just imperial inch marks (236 Core tests)
 
+## SIGNAL-EVIDENCE SWEEP (2026-06-28) — proof before building the "hopper" (user-directed)
+User reframed the architecture: a CASCADE ("hopper down the pegs") of INDEPENDENT area signals that
+converge → green, diverge → grounded-AI adjudication on that one spot → honest ORANGE if truly unknown
+(NEVER hallucinate). Before building, proved each signal with the `vector-signals` probe (Program.cs, no AI),
+on clean-tower(p30)/podium(p12)/parkade(p16,p14,p20)/south-fail(p40), metric 1:100:
+- **Vector polygon (shoelace): DEAD** — segment soup, largest closed path ≤5,208 sqft (columns), no slab outline.
+- **Stroked envelope: USELESS** — catches the sheet frame (53,103 sqft on every sheet).
+- **Filled-region sum: PARTIAL** — meaningful only on podium (32,172 sqft, slab drawn as fill), tiny on towers.
+- **Raster poché (in AI box): WORKS on dense sheets** (tower 12,998≈Revit), FAILS on sparse concrete-outline
+  (south 449). Reinforcing-sibling fallback (tower-zone fix 6a8795ab) recovers most failures.
+- **GRID-BUBBLE ENVELOPE: STRONG (the winner)** — estimator's own method. Margin-banded detector reads clean
+  sequences: p30 north [1-8]×[A-F], p40 south [9-13], p12 podium [1-13]×[A-F]. Calibrates: L3 north env 16,408
+  ×0.78 net ×7.87" = 311cy ≈ Revit 309. RECOVERS THE PODIUM poché can't (20-32k sqft vs 4-7k fragment).
+  Bubbles also identify the tower for free (N=1-8, S=9-13). Noisy on parkade (stray "1", partial letters) +
+  south-letter band needs widening — refinements, not failures.
+- **Thickness zoning (450/900 drop bands): FEASIBLE** — all 22 SLAB callouts located on the transfer sheet;
+  needs the same metric fix the thickness reader got (SlabThicknessZoner reads "900 SLAB" wrong) + a valid plate.
+PROPOSED HOPPER: area = grid-envelope×net ⟷ poché(in box) converge; tower id from bubbles; thickness =
+metric callout + zoning; diverge/noisy → grounded-AI adjudication → orange if unknown. Probe: `vector-signals`.
+
 ## 31065 BASELINE (2026-06-28, #23 verified) — 9,748 cy vs Revit 13,257 = 73.5%
 Up from 46% on the metric-thickness fix alone. 18 plates, 13 clear / 5 review. The remaining 26.5% is
 NOT silent error — it is 3 levels the engine FLAGGED or DROPPED, exactly as the orange model should:
