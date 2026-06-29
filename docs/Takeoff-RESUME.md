@@ -101,6 +101,27 @@ The multi-signal cascade. Built as tested Core increments (all judgment in Core;
   area, poché confirms/flags; flags ride `MeasuredPlate.ExtraFlags`→PlanCheck. Same effective scale both signals.
 - **Inc 4 DONE** `98ae78dd` `SlabThicknessZoner` reads metric "200/450/900 SLAB"; CLI `vector-takeoff` gains
   `[scale]` arg (use "1:100" for 31065 — imperial default is ~1:96, ~8% area low).
+## DETERMINISTIC-FIRST REWIRE (2026-06-28 late — the $1/set gate) — DONE, validated $0/run
+Ian's hard bar: DOA if a set costs more than ~$1 to read. Root cause: the engine called AI to CLASSIFY
+every page + LOCATE every plate (~80 Sonnet calls/set) when the title block + grid bubbles already answer
+both. Rewired to deterministic-first; **AI now fires ONLY on a defined unknown** (a levelled plan with slab
+callouts but NO readable grid), and even then only returns a box. Commits:
+- `8f614b6e` GridFrame exposes its absolute plate box (XMin/Max,YMin/Max) + IsLocatable — keystone.
+- `6fb0e2d9` engine: deterministic classify (title level + grid/callout) + deterministic locate (grid box
+  → pixel crop); AI only on no-grid plan-candidate. Per-plate trace shows `via grid` vs `via ai`.
+- `43690418` pad the grid crop 10% outward — the poché floods the exterior FROM the crop border, so the
+  border must be OUTSIDE the slab; un-padded it seeded inside and poché collapsed (812 vs ~14k). Fixed.
+**VALIDATED on 31065 (run_hopper5.txt, pages 12-51 @1:100): ZERO AI calls — `via grid` on every plate, $0.**
+7/14 plates GridConfirmed GREEN, poché within ~3% of the old paid-AI numbers; 18 SOUTH adjudicator still
+fires (16,979→6,666). Total 8,586 cy (honest; podium+setbacks under/flagged, not silently wrong).
+KNOWN REGRESSIONS from grid-box locate (next, now FREE to iterate since runs cost $0):
+- Setback floors (18N/19N/19S) have tiny grid boxes → poché under-measures → 19 NORTH dropped (<500 skip),
+  18N/19S flagged AREA_POCHE_LOW. Fix: scale pad / floor the crop size for small setback plates, OR trust
+  grid envelope when poché<threshold on a confirmed-tower setback.
+- p12/p13 podium key-plans have no parseable title → skipped as "untitled" (were excluded before too). Make
+  it a FLAG / route gridded-but-untitled sheets to the AI level-only unknown, don't silently drop.
+NOTE: full-set runs are now ~free; STILL validate on a 2-3 page subset first (e.g. `28 30`) out of habit.
+
 - **Inc 5 TODO** grounded-AI adjudication hook: when AreaBasis=Unresolved or callouts garbled (podium/P3),
   focus a READ-ONLY grounded AI on that spot (read grid dims/confirm boundary) → resolve OR honest orange.
   HARD RULE (Ian): never hallucinate; genuine unknown stays orange.
