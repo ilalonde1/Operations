@@ -21,6 +21,15 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         double YSpanPt,                  // bubble span down the plate, PDF points
         bool MultiPlan)                  // the sheet carries >1 plan (a repeated label run) — span is ONE plan's
     {
+        // Absolute bubble-box extents in PDF points (y-up origin, the VectorPageReader convention). The grid
+        // SPAN gives the area; the BOX gives the plate's location, so the poché can be measured inside the
+        // grid-derived rectangle WITHOUT a paid AI locate call. 0 when the box was not populated (e.g. a grid
+        // hand-built in a test from spans only) — callers must check IsLocatable before using it.
+        public double XMinPt { get; init; }
+        public double XMaxPt { get; init; }
+        public double YMinPt { get; init; }
+        public double YMaxPt { get; init; }
+
         /// <summary>The gross plate envelope in square feet at scale 1:<paramref name="scaleDenom"/>
         /// (e.g. 100 for a metric 1:100 sheet). Paper points → real units → square feet.</summary>
         public double EnvelopeSqFt(double scaleDenom)
@@ -31,6 +40,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         /// <summary>True if the grid was read with enough bubbles on both axes to trust the envelope.</summary>
         public bool IsUsable => XLabels.Count >= 2 && YLabels.Count >= 2 && XSpanPt > 0 && YSpanPt > 0;
+
+        /// <summary>True if the absolute plate box is populated, so the poché can be cropped from the grid
+        /// (the deterministic replacement for the AI locate call).</summary>
+        public bool IsLocatable => IsUsable && XMaxPt > XMinPt && YMaxPt > YMinPt;
     }
 
     /// <summary>
@@ -65,7 +78,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 .GroupBy(t => Math.Round(t.Cy / 12.0)).OrderByDescending(g => g.Count())
                 .FirstOrDefault()?.ToList() ?? new List<VectorPageReader.TextToken>();
             row = KeepDominantHeight(row);
-            var (xLabels, xSpan, xClusters) = DominantCluster(row, t => t.Cx);
+            var (xLabels, xSpan, xMin, xMax, xClusters) = DominantCluster(row, t => t.Cx);
 
             // ── Y grid (letters): dominant-height single letters outside the title block; widest cluster. ──
             var allLetters = page.Words
@@ -73,10 +86,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 .ToList();
             allLetters = KeepDominantHeight(allLetters);
             // top→bottom: Cy is up-from-bottom, so order the labels by DESCENDING Cy.
-            var (yLabels, ySpan, yClusters) = DominantCluster(allLetters, t => t.Cy, descendingLabels: true);
+            var (yLabels, ySpan, yMin, yMax, yClusters) = DominantCluster(allLetters, t => t.Cy, descendingLabels: true);
 
             if (xLabels.Count == 0 && yLabels.Count == 0) return null;
-            return new GridFrame(xLabels, yLabels, xSpan, ySpan, MultiPlan: xClusters > 1 || yClusters > 1);
+            return new GridFrame(xLabels, yLabels, xSpan, ySpan, MultiPlan: xClusters > 1 || yClusters > 1)
+            {
+                XMinPt = xMin, XMaxPt = xMax, YMinPt = yMin, YMaxPt = yMax,
+            };
         }
 
         /// <summary>Grid bubbles share one large font; keep tokens near the dominant (modal) height so
@@ -96,13 +112,15 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// return the WIDEST cluster's labels (in reading order) and its span, plus the cluster count. A
         /// count &gt; 1 means the sheet carries more than one plan; we report the dominant single plan.
         /// </summary>
-        private static (IReadOnlyList<string> Labels, double Span, int Clusters) DominantCluster(
+        private static (IReadOnlyList<string> Labels, double Span, double Min, double Max, int Clusters) DominantCluster(
             IReadOnlyList<VectorPageReader.TextToken> tokens,
             Func<VectorPageReader.TextToken, double> coord,
             bool descendingLabels = false)
         {
             var ts = tokens.OrderBy(coord).ToList();
-            if (ts.Count < 2) return (ts.Select(t => t.Text.Trim()).ToList(), 0, ts.Count > 0 ? 1 : 0);
+            if (ts.Count < 2)
+                return (ts.Select(t => t.Text.Trim()).ToList(), 0,
+                        ts.Count > 0 ? coord(ts[0]) : 0, ts.Count > 0 ? coord(ts[0]) : 0, ts.Count > 0 ? 1 : 0);
 
             var gaps = new List<double>();
             for (int i = 1; i < ts.Count; i++) gaps.Add(coord(ts[i]) - coord(ts[i - 1]));
@@ -122,11 +140,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var best = clusters.OrderByDescending(c => c.Count).ThenByDescending(c => coord(c[^1]) - coord(c[0])).First();
             var ordered = descendingLabels ? best.OrderByDescending(coord) : best.OrderBy(coord);
             var labels = ordered.Select(t => t.Text.Trim()).ToList();
-            double span = coord(best[^1]) - coord(best[0]);
+            double lo = best.Min(coord), hi = best.Max(coord);
+            double span = hi - lo;
             // Only a SUBSTANTIAL second cluster (≥3 bubbles = another plan) counts as multi-plan; a lone
             // off-interval stray forms a 1-token cluster and is ignored (the dominant cluster excludes it).
             int plans = clusters.Count(c => c.Count >= 3);
-            return (labels, span, plans);
+            return (labels, span, lo, hi, plans);
         }
     }
 }

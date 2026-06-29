@@ -115,4 +115,29 @@ public sealed class StructuralGridReaderTests
     public void Returns_null_when_no_grid_bubbles_are_present()
         => Assert.Null(StructuralGridReader.FromPage(Page(
             T("SHEAR", 1000, 800, 9), T("WALL", 1100, 800, 9), T("SCHEDULE", 1250, 800, 9))));
+
+    [Fact]
+    public void Exposes_the_absolute_plate_box_so_the_poche_can_be_cropped_from_the_grid()
+    {
+        // The deterministic replacement for the AI locate: digits 1..8 span x∈[400,1800], letters A..F span
+        // y∈[400,1400]. The box must bound those bubbles so a downstream crop measures the right rectangle.
+        var f = StructuralGridReader.FromPage(Page(NorthGrid().ToArray()))!;
+        Assert.True(f.IsLocatable);
+        Assert.Equal(400, f.XMinPt, 1);
+        Assert.Equal(1800, f.XMaxPt, 1);
+        Assert.Equal(400, f.YMinPt, 1);
+        Assert.Equal(1400, f.YMaxPt, 1);
+        // The box width/height agree with the spans (box is the absolute placement of the same bubbles).
+        Assert.Equal(f.XSpanPt, f.XMaxPt - f.XMinPt, 1);
+        Assert.Equal(f.YSpanPt, f.YMaxPt - f.YMinPt, 1);
+    }
+
+    [Fact]
+    public void A_span_only_grid_is_usable_but_not_locatable()
+    {
+        // A grid hand-built from spans (no box) — usable for area, but the poché cannot be cropped from it.
+        var f = new GridFrame(new[] { "1", "2" }, new[] { "A", "B" }, 1400, 1000, false);
+        Assert.True(f.IsUsable);
+        Assert.False(f.IsLocatable);
+    }
 }
