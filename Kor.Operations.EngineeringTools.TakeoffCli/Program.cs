@@ -434,6 +434,23 @@ if (args.Length >= 1 && args[0].Equals("vector-signals", StringComparison.Ordina
     Console.WriteLine($"  grid Y bubbles ({letterCol?.Count() ?? 0}): [{lseq}]  span {ySpanPt:F0}pt = {ySpanPt * mPerPt:F1}m");
     Console.WriteLine($"  grid (envelope X×Y):            {gridEnv,10:N0} sqft");
 
+    // (thk) slab-thickness callouts (metric mm): pair each "SLAB" token with the nearest number to its
+    // left on the same row. The distribution (field 200 vs band 450/900) is what drives zoning on the
+    // transfer levels that a single field thickness under-prices.
+    var numRx = new System.Text.RegularExpressions.Regex(@"^\d{2,4}$");
+    var slabToks = pc.Words.Where(t => t.Text.Equals("SLAB", StringComparison.OrdinalIgnoreCase)).ToList();
+    var thkTally = new SortedDictionary<int, int>();
+    foreach (var s in slabToks)
+    {
+        double sh = s.MaxY - s.MinY;
+        var cand = pc.Words
+            .Where(t => numRx.IsMatch(t.Text) && Math.Abs(t.Cy - s.Cy) < Math.Max(sh, 6) && t.Cx < s.Cx && s.Cx - t.Cx < 9 * Math.Max(sh, 6))
+            .OrderByDescending(t => t.Cx).FirstOrDefault();
+        if (!cand.Equals(default(VectorPageReader.TextToken)) && int.TryParse(cand.Text, out int mm) && mm >= 100 && mm <= 1200)
+            thkTally[mm] = thkTally.GetValueOrDefault(mm) + 1;
+    }
+    Console.WriteLine($"  SLAB callouts (mm×n): {(thkTally.Count > 0 ? string.Join("  ", thkTally.OrderByDescending(k => k.Value).Select(k => $"{k.Key}×{k.Value}")) : "—")}");
+
     // (P) raster poché largest cluster + sum of top clusters (no AI box — full page)
     if (sgPng != null)
     {

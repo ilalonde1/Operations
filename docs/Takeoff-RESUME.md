@@ -123,6 +123,20 @@ CONFIRMED by image (p36 S2.10.1): typical tower 6-18 is a REAL SETBACK (grids 2-
 [2,3,4,5,2,3,4,5]) → needs MULTI-PLAN SPLIT (detectable: repeated label run + big X-gap). Open detector work:
 multi-plan split + P2 stray-trim; both addressable, not fundamental. Net signal verdict: GRID IS THE ANCHOR.
 
+### THICKNESS/ZONING proof (2026-06-28) — last signal
+Slab-callout distribution (mm×n, paired number↔SLAB in `vector-signals`): L3 typical 200×2/250×1 (single
+field, no zoning needed ✓); L2-S transfer 200×4/900×3/450×1 (the DROP BANDS — the +40% the single field
+misses, detectable+quantifiable ✓); P1 250×9/200×1, P2 250×4/600×1/150×1 (field + thick zone ✓); L1 podium
+& P3 = — (pairing FAILS on dense/garbled text → AI-adjudication/orange). Verdict: field thickness proven;
+drop-band zoning FEASIBLE (bands detectable); podium/P3 callout extraction is the hard residual.
+
+### FULL SIGNAL VERDICT (all proven, 2026-06-28)
+AREA: polygon DEAD · stroked-env useless(frame) · filled-sum partial(podium) · poché works-dense/fails-sparse/noisy
+· **GRID-ENVELOPE = anchor** (stable, ≈true area ±2-7%, clean on single-plan sheets). THICKNESS: field-modal
+proven · drop-band zoning feasible · podium/P3 dense-text = AI. IDENTITY: grid bubbles give tower+level.
+RESIDUALS (all characterized → AI-adjudication/orange, none fundamental): multi-plan split, podium/P3 callout
++ podium area, parkade P2 stray-trim. READY to build the hopper on this evidence (pending Ian's go).
+
 ## 31065 BASELINE (2026-06-28, #23 verified) — 9,748 cy vs Revit 13,257 = 73.5%
 Up from 46% on the metric-thickness fix alone. 18 plates, 13 clear / 5 review. The remaining 26.5% is
 NOT silent error — it is 3 levels the engine FLAGGED or DROPPED, exactly as the orange model should:
