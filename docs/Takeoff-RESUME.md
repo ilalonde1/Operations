@@ -105,8 +105,27 @@ The multi-signal cascade. Built as tested Core increments (all judgment in Core;
   focus a READ-ONLY grounded AI on that spot (read grid dims/confirm boundary) → resolve OR honest orange.
   HARD RULE (Ian): never hallucinate; genuine unknown stays orange.
 - **Inc 6 TODO** multi-plan split (typical band drawn as 2 plans), podium handling; re-run 31065 vs Revit.
-- VERIFY RUN in flight: `run_hopper.txt` / `hopper-31065.xlsx`, pages 12-51 @ 1:100. Compare per-level to
-  `scratchpad/31065-revit-targets.txt` (TOTAL 13,257 cy). Pre-hopper baseline was 9,748 cy (73.5%, error-cancelling).
+
+### VERIFY RUN DONE (2026-06-28) — hopper 12,688 cy vs Revit 13,257 = 95.7% (BUT error-cancelling — read carefully)
+`run_hopper.txt`/`hopper-31065.xlsx`, pages 12-51 @ 1:100. The 95.7% is NOT real accuracy — it is L1 podium
+UNDER (−1,953) cancelling L6-18 south OVER (+2,880). The HONEST win: **every materially-wrong plate
+self-flagged ORANGE; the GREEN plates are accurate** (2 NORTH 372.7cy vs Revit L2-N 358cy = 96%). Per-floor:
+| Floor | Revit | Hopper | Status |
+| P3 | 640 | 0 | EXCLUDED no-thk, flagged |
+| P2 | 1027 | 696 | 🟠 TRANSFER_THK |
+| P1 | 791 | 564 | 🟠 TRANSFER_THK |
+| L1 | 3109 | 1156 | 🟠 POCHE_LOW×2  **−1953** |
+| L2 | 882 | 690 | 2N🟢 / 2S🟠 |
+| L3 | 618 | 588 | 3N🟢 |
+| L4 | 673 | 588 | 4S🟢 |
+| L5 | 598 | 532 | 5N🟢 |
+| L6-18 | 4277 | 7157 | 🟠 POCHE_LOW  **+2880** |
+| L19 | 503 | 717 | 🟠×2 |
+| ROOF | 132 | 0 | out of page range |
+**#1 fixable defect (Inc 5/6 target):** `18 SOUTH` took grid env 16,979 sqft (grid `9..13×B..F` = podium width,
+MISSED the tower setback) while sibling `18 NORTH` correctly caught it (`2..5×B..F`=5,319). Poché (6,656) was
+CLOSER to truth and got overruled. Rule to add: on a TYPICAL tower plate, when grid≫poché AND a sibling tower's
+setback envelope is far smaller, distrust the grid (it grabbed podium-width bubbles) → adjudicate / use poché.
 
 ## SIGNAL-EVIDENCE SWEEP (2026-06-28) — proof before building the "hopper" (user-directed)
 User reframed the architecture: a CASCADE ("hopper down the pegs") of INDEPENDENT area signals that
