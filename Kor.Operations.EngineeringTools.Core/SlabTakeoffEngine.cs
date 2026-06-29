@@ -179,6 +179,25 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return psum > 0 ? wsum / psum : 0;
         }
 
+        // Words a page's text layer yields — split each digest line on whitespace. The cheap signal that
+        // separates a vector drawing (hundreds–thousands of words: grids, dims, callouts) from a flattened
+        // image page (≈0).
+        private static int WordsOnPage(PageDigest p) =>
+            p.Lines.Sum(l => l.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length);
+
+        /// <summary>Cheap, no-AI readability verdict for a built digest — does this set carry the vector text
+        /// the takeoff needs, or is it a scanned/flattened image set the tool is blind to? Public so a host
+        /// can pre-check a bid PDF before committing to a full run.</summary>
+        public static PdfReadability AssessReadability(DrawingDigest digest)
+        {
+            ArgumentNullException.ThrowIfNull(digest);
+            return PdfReadabilityAssessor.Assess(digest.Pages.Select(WordsOnPage).ToList());
+        }
+
+        /// <summary>Build the digest and assess readability in one cheap step (text only — no raster, no AI).</summary>
+        public static PdfReadability AssessReadability(string pdfPath, int? firstPage = null, int? lastPage = null)
+            => AssessReadability(DrawingDigestBuilder.Build(pdfPath, firstPage, lastPage));
+
         public static async Task<SlabTakeoffResult> RunAsync(
             SlabTakeoffRequest req, IPlanVision vision, IPlanRaster raster, CancellationToken ct = default)
         {
@@ -201,6 +220,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var tkPooled = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             var tkDigest = DrawingDigestBuilder.Build(req.PdfPath, req.FirstPage, req.LastPage);
             notes.Add($"vector-takeoff: {tkDigest.Pages.Count} page(s) in range.");
+
+            // PRE-FLIGHT READABILITY — refuse a scanned/flattened set NOW, before any raster or AI spend, so
+            // the tool never bluffs a number off a drawing it cannot actually read. (Costs nothing: the text
+            // layer is already in the digest.)
+            var readability = AssessReadability(tkDigest);
+            if (!readability.Readable)
+                throw new PdfNotReadableException(readability.Reason);
 
             // ════════════════════ PHASE 1 — DETERMINISTIC PASS (no AI) ════════════════════
             // Resolve every number the drawing gives up for free; record what it can't as an explicit unknown
