@@ -30,7 +30,7 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     var tkProfile = PlanProfile.ByName("BC-moderate");
     // Raw per-plate measurements (area is deterministic poché; thickness may be missing from synthesis
     // and is reconciled across a level's match-line halves below before pricing).
-    var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk, double ZonedThk)>();
+    var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk, double ZonedThk, double FillRatio, int ClusterCount)>();
 
     var tkMeasured = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // keys with a SUCCESSFUL slab plate
     // Pooled text per canonical (level, zone) key — across ALL its sheets incl. the deduped reinforcing
@@ -84,6 +84,14 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             double area = PlanGeometry.SquareFeet(cl.Count > 0 ? cl[0].LightPx : 0, tkMpp);
             if (area < 500) { Console.Error.WriteLine($"  ! {lvl}: slab area {area:N0} sqft implausibly small, skipped."); continue; }
 
+            // Measurement-quality diagnostic: how DENSELY the measured plate fills its own extent. A
+            // well-sealed plate fills its bounding box (a solid slab); a leaky/open boundary (the L01
+            // podium) leaves a sparse skeleton spanning a large bbox -> low fill -> under-measured. This
+            // separates good from bad, unlike enclosed/located-box (which only measures the box's margin).
+            double fillRatio = cl.Count > 0 && cl[0].Width > 0 && cl[0].Height > 0
+                ? (double)cl[0].LightPx / ((double)cl[0].Width * cl[0].Height)
+                : double.NaN;
+
             // Keep the plate even if thickness is missing — area is solid; thickness is reconciled below
             // from the sibling match-line half of the same level (slab depth is constant across the line).
             string levelBase = page.Title?.Level ?? lvl;
@@ -135,9 +143,9 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                 }
             }
 
-            tkRaw.Add((lvl, levelBase, key, repLevel, area, thk, zonedThk));
+            tkRaw.Add((lvl, levelBase, key, repLevel, area, thk, zonedThk, fillRatio, cl.Count));
             if (page.Title is { } tk) tkMeasured.Add(tk.Key);   // this key now has a real measured plate
-            Console.WriteLine($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)")}");
+            Console.WriteLine($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)"),-14} [fill {(double.IsNaN(fillRatio) ? 0 : fillRatio):0.00} clusters {cl.Count}]");
         }
         catch (Exception ex) { Console.Error.WriteLine($"  ! p{page.Page}: locate/measure failed: {ex.Message}"); }
     }
@@ -185,21 +193,23 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     foreach (var r in tkRaw)
     {
         double thk = r.Thk;   // synthesised read
+        var thkSource = ThicknessSource.None;
         // A genuinely multi-thickness plate prices at its own area-weighted zoned thickness — it has
         // explicit callouts for every zone (that is why it qualified), so it needs no sibling reconcile.
         // Tiling + the degenerate-box guard below still apply (this is a tower plate).
         if (r.ZonedThk > 0)
         {
-            thk = r.ZonedThk;
+            thk = r.ZonedThk; thkSource = ThicknessSource.Callout;
         }
         else if (tkDetThk.TryGetValue(r.LevelBase, out var det) && det.HasValue)
         {
             if (thk > 0 && Math.Abs(thk - det.Value) > 0.5)
                 Console.WriteLine($"  ~ {r.Label}: thickness {det.Value}\" from slab callout (synthesis said {thk}\").");
-            thk = det.Value;
+            thk = det.Value; thkSource = ThicknessSource.Callout;
         }
         else if (thk <= 0 && tkThkByLevel.TryGetValue(r.LevelBase, out var inferred))
-        { thk = inferred; Console.WriteLine($"  ~ {r.Label}: thickness inherited {thk}\" from level {r.LevelBase} (synthesis fallback, no callout)."); }
+        { thk = inferred; thkSource = ThicknessSource.SynthesisFallback; Console.WriteLine($"  ~ {r.Label}: thickness inherited {thk}\" from level {r.LevelBase} (synthesis fallback, no callout)."); }
+        else if (thk > 0) thkSource = ThicknessSource.SynthesisFallback;   // the page's own synth read, no callout pooled
         if (thk <= 0) { Console.Error.WriteLine($"  ! {r.Label}: no thickness for level {r.LevelBase} (no callout, no sibling), FLAGGED + excluded from concrete."); continue; }
 
         // Parkade/roof and any non-numeric level are 1:1; tower levels take their tiled floor count.
@@ -207,12 +217,19 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         if (floors > 1) Console.WriteLine($"  x {r.Label}: typical plan -> {floors} physical floors (FLAG: inferred contiguous stack, levels {r.RepLevel - floors + 1}-{r.RepLevel}).");
 
         double area = r.Area;
+        bool degenerate = false;
         if (r.RepLevel.HasValue && towerMedianArea > 0 && area < 0.4 * towerMedianArea)
         {
             Console.WriteLine($"  ! {r.Label}: area {area:N0} sqft implausible vs tower median {towerMedianArea:N0} — substituting median (FLAG: degenerate locate box).");
-            area = towerMedianArea;
+            area = towerMedianArea; degenerate = true;
         }
-        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", area, thk, floors));
+        // Peer-area ratio: tower typicals should be similar, so a tower plate far from the median is a
+        // likely locate error. Only the tower cohort has true peers; others (parkade halves, mezz, roof)
+        // are not directly comparable -> NaN (no peer flag).
+        double peerRatio = r.RepLevel.HasValue && towerMedianArea > 0 ? area / towerMedianArea : double.NaN;
+        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", area, thk, floors,
+            FillRatio: r.FillRatio, ClusterCount: r.ClusterCount, ThicknessSource: thkSource,
+            DegenerateBox: degenerate, PeerAreaRatio: peerRatio));
     }
 
     if (tkPlates.Count == 0) { Console.Error.WriteLine("No priceable slab plates (no thickness anywhere)."); return 2; }
@@ -221,7 +238,15 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     var tkModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(args[1]), "Vector takeoff", "", DateTime.UtcNow, tkComputed);
     File.WriteAllBytes(args[3], StructuralTakeoffReportGenerator.BuildXlsx(tkModel));
     Console.WriteLine($"\nPlates: {tkPlates.Count}   Slab concrete: {tkResult.TotalConcreteCuYd:N0} cu.yd   Rebar: {tkComputed.TotalRebarWeight:N0} lb");
-    Console.WriteLine($"(QTO slab benchmark 24,495 cy / full QTO 38,705 cy)  ->  {args[3]}");
+
+    // SYNOPSIS — the on-screen "unsure areas" the product surfaces before export (and the future AI
+    // crucible converses about). Every plate the diligence engine could not fully trust, with the reasons.
+    var review = tkResult.Plates.Where(p => p.Check.Confidence != TakeoffConfidence.High).ToList();
+    Console.WriteLine($"\nSynopsis: {tkResult.Plates.Count - review.Count}/{tkResult.Plates.Count} plates clear; {review.Count} need review (orange):");
+    foreach (var pe in review.OrderByDescending(p => p.Check.HasCritical))
+        foreach (var fl in pe.Check.Flags.Where(f => f.Severity != PlanFlagSeverity.Info))
+            Console.WriteLine($"   [{fl.Severity}] {pe.Plate.Level,-16} {fl.Code,-20} {fl.Message}");
+    Console.WriteLine($"\n(suspended-slab benchmark: 31044 Coronation = 20,208 cy net of the 4,287 mat)  ->  {args[3]}");
     return 0;
 }
 

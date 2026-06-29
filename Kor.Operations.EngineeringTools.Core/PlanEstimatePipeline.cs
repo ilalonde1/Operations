@@ -21,7 +21,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         int Count = 1,
         string Grade = "",
         bool ScaleConfirmed = true,
-        double? RebarLbPerCyOverride = null);
+        double? RebarLbPerCyOverride = null,
+        // ── measurement-quality diagnostics (drive the reliability flags; defaults = "not assessed") ──
+        double FillRatio = double.NaN,                                   // enclosed area / located-box area
+        int ClusterCount = 0,                                           // enclosed-region fragment count
+        ThicknessSource ThicknessSource = ThicknessSource.Callout,      // where the thickness came from
+        bool DegenerateBox = false,                                     // area substituted from peer median
+        double PeerAreaRatio = double.NaN);                             // area / peer-group median area
 
     /// <summary>A priced plate: its per-floor and total concrete, plus the diligence verdict.</summary>
     public sealed record PlateEstimate(
@@ -68,8 +74,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     ? p.AreaSqFt * (p.DimensionIn / 12.0) / CubicFeetPerCubicYard
                     : 0.0;
                 double total = perFloor * Math.Max(0, p.Count);
-                var check = PlanReconciler.Check(
-                    p.Element, p.AreaSqFt, p.DimensionIn, profile, p.ScaleConfirmed, p.RebarLbPerCyOverride, p.Level);
+                // Two complementary diligence sources fold into ONE check: pricing/structural plausibility
+                // (PlanReconciler) and measurement quality (how the area/thickness were actually obtained).
+                var pricingFlags = PlanReconciler.Check(
+                    p.Element, p.AreaSqFt, p.DimensionIn, profile, p.ScaleConfirmed, p.RebarLbPerCyOverride, p.Level).Flags;
+                var measurementFlags = PlateReliabilityScorer.MeasurementFlags(
+                    p.FillRatio, p.ClusterCount, p.ThicknessSource, p.DegenerateBox, p.PeerAreaRatio, p.Level);
+                var check = PlanCheck.From(pricingFlags.Concat(measurementFlags).ToList());
 
                 estimates.Add(new PlateEstimate(p, perFloor, total, check));
                 inputs.Add(new StructuralTakeoffInput(p.Level, p.Element, p.Variant, total, FormworkArea: 0, p.Grade));

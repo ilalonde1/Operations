@@ -24,6 +24,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     public sealed record PlanCheck(TakeoffConfidence Confidence, IReadOnlyList<PlanFlag> Flags)
     {
         public bool HasCritical => Flags.Any(f => f.Severity == PlanFlagSeverity.Critical);
+
+        /// <summary>Build a check from a flag set: High only when nothing beyond Info was raised; any
+        /// Review/Critical → Review. The single place this rule lives, so every diligence source
+        /// (pricing plausibility AND measurement quality) folds into one confidence.</summary>
+        public static PlanCheck From(IReadOnlyList<PlanFlag> flags) => new(
+            flags.All(f => f.Severity == PlanFlagSeverity.Info) ? TakeoffConfidence.High : TakeoffConfidence.Review,
+            flags);
     }
 
     /// <summary>
@@ -155,11 +162,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         $"Reinforcing {ovr:0} lb/cu.yd is far from the {profile.Name} norm of {norm:0} for {element} — confirm the ratio."));
             }
 
-            // High only when nothing beyond informational was raised; any Review/Critical → Review.
-            var confidence = flags.All(f => f.Severity == PlanFlagSeverity.Info)
-                ? TakeoffConfidence.High
-                : TakeoffConfidence.Review;
-            return new PlanCheck(confidence, flags);
+            return PlanCheck.From(flags);
         }
 
         // Lowest occupied/structural levels and explicit transfer keywords — where built-up transfer
