@@ -25,225 +25,23 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     if (string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set."); return 2; }
     int? tkFirst = args.Length >= 5 && int.TryParse(args[4], out var tf) ? tf : null;
     int? tkLast  = args.Length >= 6 && int.TryParse(args[5], out var tl) ? tl : null;
-    string tkPngDir = args[2];
-    double tkMpp = PlanGeometry.MetresPerPixel("1/8\"=1'-0\"", 110) ?? 0;
-    var tkProfile = PlanProfile.ByName("BC-moderate");
-    // Raw per-plate measurements (area is deterministic poché; thickness may be missing from synthesis
-    // and is reconciled across a level's match-line halves below before pricing).
-    var tkRaw = new List<(string Label, string LevelBase, string Key, int? RepLevel, double Area, double Thk, double ZonedThk, double FillRatio, int ClusterCount)>();
 
-    var tkMeasured = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // keys with a SUCCESSFUL slab plate
-    // Pooled text per canonical (level, zone) key — across ALL its sheets incl. the deduped reinforcing
-    // ones — so a typical-floor band stated only on a sibling sheet still drives the multiplier.
-    var tkPooled = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-    var tkDigest = DrawingDigestBuilder.Build(args[1], tkFirst, tkLast);
-    Console.WriteLine($"vector-takeoff: {tkDigest.Pages.Count} page(s) in range, classifying...");
-    foreach (var page in tkDigest.Pages)
-    {
-        string pj = JsonSerializer.Serialize(page, new JsonSerializerOptions { WriteIndented = false });
-        string kind;
-        try { using var cd = JsonDocument.Parse(await PlanVisionClient.SynthesizePageAsync(pj)); kind = cd.RootElement.TryGetProperty("sheetKind", out var sk) && sk.ValueKind == JsonValueKind.String ? sk.GetString()! : "other"; }
-        catch (Exception ex) { Console.Error.WriteLine($"  ! p{page.Page}: classify failed: {ex.Message}"); continue; }
+    // The whole measure→reconcile→price→synopsis spine now lives in Core (SlabTakeoffEngine) so the WPF
+    // app runs it identically; this command is a thin host that supplies the AI + raster I/O and renders
+    // the engine's note trace, totals, and orange synopsis exactly as before.
+    var tkReq = new SlabTakeoffRequest(args[1], args[2], tkFirst, tkLast);
+    SlabTakeoffResult tkOut;
+    try { tkOut = await SlabTakeoffEngine.RunAsync(tkReq, new CliPlanVision(), new CliPlanRaster()); }
+    catch (Exception ex) { Console.Error.WriteLine(ex.Message); return 2; }
 
-        if (kind != "floor_plan" && kind != "foundation_plan") { Console.WriteLine($"  p{page.Page}: {kind} (skip)"); continue; }
-
-        // Canonical identity off the exact title block. One slab per (level, zone): the same floor-half
-        // drawn twice (framing plan + reinforcing plan) must NOT be measured twice. Dedupe BEFORE the
-        // locate call so duplicate sheets cost nothing. First sheet of an identity wins (framing precedes
-        // reinforcing in the set); the dropped sheet is a rebar/detail source, not a second slab volume.
-        if (page.Title is { } t0)
-        {
-            // Pool every sheet's text under its canonical key BEFORE the dup-skip, so the floor-band note
-            // on a reinforcing sheet (which we skip for measurement) still feeds the multiplier.
-            if (!tkPooled.TryGetValue(t0.Key, out var pool)) { pool = new List<string>(); tkPooled[t0.Key] = pool; }
-            pool.AddRange(page.Lines);
-            // Skip ONLY once this key has a SUCCESSFUL measurement — so if the first sheet of a level is a
-            // reinforcing/penthouse sheet that fails to locate, a later framing sheet still gets measured.
-            if (tkMeasured.Contains(t0.Key)) { Console.WriteLine($"  p{page.Page}: {t0.Display} — dup of an already-counted plan, slab not double-counted (skip)"); continue; }
-        }
-
-        string png = Path.Combine(tkPngDir, $"p-{page.Page:D2}.png");
-        if (!File.Exists(png)) { Console.Error.WriteLine($"  ! p{page.Page}: render {png} missing, skipped."); continue; }
-        try
-        {
-            using var ld = JsonDocument.Parse(await PlanVisionClient.LocatePlateAsync(pj, PlanRaster.LoadDownscaledPng(png, 1600)));
-            var root = ld.RootElement;
-            // Prefer the exact title-block level over the synthesised one; title is deterministic.
-            string lvl = page.Title?.Display
-                ?? (root.TryGetProperty("level", out var lv) && lv.ValueKind == JsonValueKind.String ? lv.GetString()! : $"p{page.Page}");
-            double thk = root.TryGetProperty("slabThicknessIn", out var tv) && tv.ValueKind == JsonValueKind.Number ? tv.GetDouble() : 0;
-            if (!root.TryGetProperty("slabBox", out var sbx) || sbx.ValueKind != JsonValueKind.Array) { Console.Error.WriteLine($"  ! {lvl}: no plate box, skipped."); continue; }
-            var bb = sbx.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Number).Select(e => e.GetDouble()).ToList();
-            if (bb.Count < 4) { Console.Error.WriteLine($"  ! {lvl}: malformed plate box, skipped."); continue; }
-
-            var (iw, ih) = PlanRaster.ImageSize(png);
-            int cx0 = (int)(Math.Min(bb[0], bb[2]) * iw), cy0 = (int)(Math.Min(bb[1], bb[3]) * ih);
-            var crop = PlanRaster.LoadCrop(png, cx0, cy0,
-                                                (int)(Math.Max(bb[0], bb[2]) * iw), (int)(Math.Max(bb[1], bb[3]) * ih));
-            var cl = PlanGeometry.MeasureEnclosedClusters(crop.Lum, crop.Width, crop.Height);
-            double area = PlanGeometry.SquareFeet(cl.Count > 0 ? cl[0].LightPx : 0, tkMpp);
-            if (area < 500) { Console.Error.WriteLine($"  ! {lvl}: slab area {area:N0} sqft implausibly small, skipped."); continue; }
-
-            // Measurement-quality diagnostic: how DENSELY the measured plate fills its own extent. A
-            // well-sealed plate fills its bounding box (a solid slab); a leaky/open boundary (the L01
-            // podium) leaves a sparse skeleton spanning a large bbox -> low fill -> under-measured. This
-            // separates good from bad, unlike enclosed/located-box (which only measures the box's margin).
-            double fillRatio = cl.Count > 0 && cl[0].Width > 0 && cl[0].Height > 0
-                ? (double)cl[0].LightPx / ((double)cl[0].Width * cl[0].Height)
-                : double.NaN;
-
-            // Keep the plate even if thickness is missing — area is solid; thickness is reconciled below
-            // from the sibling match-line half of the same level (slab depth is constant across the line).
-            string levelBase = page.Title?.Level ?? lvl;
-            string key = page.Title?.Key ?? lvl;
-            // Representative storey for the typical-floor band: numeric or L-prefixed levels only
-            // (a tower's "13"/"L13"). P-parkade, basements, roof, mezzanines are 1:1 -> no multiplier.
-            string lvlTok = page.Title?.Level ?? "";
-            string lvlDigits = lvlTok.StartsWith("L", StringComparison.OrdinalIgnoreCase) && lvlTok.Length > 1 ? lvlTok.Substring(1) : lvlTok;
-            int? repLevel = int.TryParse(lvlDigits, out var rl) ? rl : (int?)null;
-
-            // Thickness ZONING (numbers from exact text, geometry only locates): a floor is rarely one
-            // thickness. Where the drawing genuinely calls out multiple field thicknesses (a tower's 8"
-            // wings + 12" core), split the measured area by nearest callout and price an area-weighted
-            // effective thickness. A uniform slab with stray callouts is unaffected (qualifying gate).
-            // TOWER PLATES ONLY (RepLevel): those are clean single-plan sheets where a thickness error is
-            // amplified across the floor band. Parkade/mezzanine/roof are 1:1 with dense, mixed callouts
-            // (an 18" podium transfer slab beside 10"/12" notes) — they read more robustly from the pooled
-            // modal below than from a per-page Voronoi, so they keep the deterministic path.
-            // OFF by default: the Coronation QTO (our answer key) models each level at a SINGLE slab
-            // thickness (e.g. L13 = 8" flat; the 12" callouts are minor drop panels, not 42% of the
-            // floor). Voronoi zoning over-weights those localized callouts and pushes typical floors
-            // ~12% OVER the QTO. The capability is verified (probe `vector-zones`, Core tests) and stays
-            // available for a future drawing whose QTO is itself zone-resolved — but the default matches
-            // the answer key's single-thickness-per-level methodology.
-            const bool tkApplyZoning = false;
-            double zonedThk = 0;
-            if (tkApplyZoning && repLevel.HasValue && cl.Count > 0 && SlabThicknessReader.DominantThicknessIn(page.Lines) is int perPageModal)
-            {
-                var pageWP = VectorPageReader.ReadPage(args[1], page.Page);
-                var callouts = SlabThicknessZoner.ReadCallouts(pageWP);
-                var qual = SlabThicknessZoner.QualifyingValues(callouts, perPageModal);
-                if (qual.Count > 1)
-                {
-                    var calloutPx = callouts.Where(c => qual.Contains(c.ValueIn))
-                        .Select(c => new PlanGeometry.CalloutPx(
-                            c.Cx / pageWP.WidthPts * iw - cx0,
-                            (pageWP.HeightPts - c.Cy) / pageWP.HeightPts * ih - cy0,
-                            c.ValueIn))
-                        .Where(c => c.X >= 0 && c.X < crop.Width && c.Y >= 0 && c.Y < crop.Height)
-                        .ToList();
-                    var zonePx = PlanGeometry.ThicknessZoneFractions(crop.Lum, crop.Width, crop.Height,
-                        calloutPx, cl[0].MinX, cl[0].MinY, cl[0].MaxX, cl[0].MaxY);
-                    zonedThk = SlabThicknessZoner.EffectiveThicknessIn(zonePx, perPageModal);
-                    long zt = zonePx.Values.Sum();
-                    if (zt > 0)
-                        Console.WriteLine($"  z {lvl}: multi-thickness slab " +
-                            string.Join(" + ", zonePx.OrderByDescending(k => k.Value).Select(k => $"{100.0 * k.Value / zt:N0}%@{k.Key}\"")) +
-                            $" -> effective {zonedThk:N1}\" (FLAG: zoned).");
-                }
-            }
-
-            tkRaw.Add((lvl, levelBase, key, repLevel, area, thk, zonedThk, fillRatio, cl.Count));
-            if (page.Title is { } tk) tkMeasured.Add(tk.Key);   // this key now has a real measured plate
-            Console.WriteLine($"  p{page.Page}: {lvl,-20} slab {area,7:N0} sqft x {(thk > 0 ? thk + "\"" : "?\" (reconcile)"),-14} [fill {(double.IsNaN(fillRatio) ? 0 : fillRatio):0.00} clusters {cl.Count}]");
-        }
-        catch (Exception ex) { Console.Error.WriteLine($"  ! p{page.Page}: locate/measure failed: {ex.Message}"); }
-    }
-
-    if (tkRaw.Count == 0) { Console.Error.WriteLine("No slab plates measured."); return 2; }
-
-    // PRIMARY thickness: the drawing's own slab callout ("10\" SLAB"), read deterministically from the
-    // exact text pooled across a level's sheets — stable run-to-run, unlike the synthesised image read.
-    var tkDetThk = tkRaw.GroupBy(r => r.LevelBase, StringComparer.OrdinalIgnoreCase).ToDictionary(
-        g => g.Key,
-        g => SlabThicknessReader.DominantThicknessIn(
-                g.Select(r => r.Key).Distinct().SelectMany(k => tkPooled.TryGetValue(k, out var p) ? p : Enumerable.Empty<string>())),
-        StringComparer.OrdinalIgnoreCase);
-
-    // FALLBACK thickness: a level's modal synthesised value, for any level whose drawing states no callout.
-    var tkThkByLevel = tkRaw.Where(r => r.Thk > 0)
-        .GroupBy(r => r.LevelBase)
-        .ToDictionary(g => g.Key,
-                      g => g.GroupBy(r => r.Thk).OrderByDescending(t => t.Count()).ThenByDescending(t => t.Key).First().Key,
-                      StringComparer.OrdinalIgnoreCase);
-
-    // Tower typical plans tile the building: each governs a contiguous stack from above the previous
-    // typical level up to its own. Boundaries are the representative levels we read off the title block,
-    // so floors no band explicitly names still get counted by the plan below them (no orphan floors).
-    var towerReps = tkRaw.Where(r => r.RepLevel.HasValue).Select(r => r.RepLevel!.Value).Distinct().OrderBy(x => x).ToList();
-    int topBandTop = towerReps.Count > 0 ? towerReps[^1] : 0;
-    if (towerReps.Count > 0)
-    {
-        string topKey = tkRaw.First(r => r.RepLevel == towerReps[^1]).Key;
-        if (tkPooled.TryGetValue(topKey, out var topPool))
-        {
-            var bands = FloorMultiplier.Bands(topPool);
-            if (bands.Count > 0) topBandTop = Math.Max(topBandTop, bands.Max(b => b.High));
-        }
-    }
-    var tileCounts = FloorMultiplier.TileTowerCounts(towerReps, topBandTop);
-
-    // Degenerate-box guard: the synthesis occasionally returns a tiny plate box, and on a typical plan
-    // that error is multiplied across the whole floor band. A tower plate far below its siblings' median
-    // area is almost certainly a bad locate — substitute the median (FLAGGED), don't ship a 9% plate.
-    var towerAreasSorted = tkRaw.Where(r => r.RepLevel.HasValue).Select(r => r.Area).OrderBy(a => a).ToList();
-    double towerMedianArea = towerAreasSorted.Count > 0 ? towerAreasSorted[towerAreasSorted.Count / 2] : 0;
-
-    var tkPlates = new List<MeasuredPlate>();
-    foreach (var r in tkRaw)
-    {
-        double thk = r.Thk;   // synthesised read
-        var thkSource = ThicknessSource.None;
-        // A genuinely multi-thickness plate prices at its own area-weighted zoned thickness — it has
-        // explicit callouts for every zone (that is why it qualified), so it needs no sibling reconcile.
-        // Tiling + the degenerate-box guard below still apply (this is a tower plate).
-        if (r.ZonedThk > 0)
-        {
-            thk = r.ZonedThk; thkSource = ThicknessSource.Callout;
-        }
-        else if (tkDetThk.TryGetValue(r.LevelBase, out var det) && det.HasValue)
-        {
-            if (thk > 0 && Math.Abs(thk - det.Value) > 0.5)
-                Console.WriteLine($"  ~ {r.Label}: thickness {det.Value}\" from slab callout (synthesis said {thk}\").");
-            thk = det.Value; thkSource = ThicknessSource.Callout;
-        }
-        else if (thk <= 0 && tkThkByLevel.TryGetValue(r.LevelBase, out var inferred))
-        { thk = inferred; thkSource = ThicknessSource.SynthesisFallback; Console.WriteLine($"  ~ {r.Label}: thickness inherited {thk}\" from level {r.LevelBase} (synthesis fallback, no callout)."); }
-        else if (thk > 0) thkSource = ThicknessSource.SynthesisFallback;   // the page's own synth read, no callout pooled
-        if (thk <= 0) { Console.Error.WriteLine($"  ! {r.Label}: no thickness for level {r.LevelBase} (no callout, no sibling), FLAGGED + excluded from concrete."); continue; }
-
-        // Parkade/roof and any non-numeric level are 1:1; tower levels take their tiled floor count.
-        int floors = r.RepLevel is int rep && tileCounts.TryGetValue(rep, out var c) ? c : 1;
-        if (floors > 1) Console.WriteLine($"  x {r.Label}: typical plan -> {floors} physical floors (FLAG: inferred contiguous stack, levels {r.RepLevel - floors + 1}-{r.RepLevel}).");
-
-        double area = r.Area;
-        bool degenerate = false;
-        if (r.RepLevel.HasValue && towerMedianArea > 0 && area < 0.4 * towerMedianArea)
-        {
-            Console.WriteLine($"  ! {r.Label}: area {area:N0} sqft implausible vs tower median {towerMedianArea:N0} — substituting median (FLAG: degenerate locate box).");
-            area = towerMedianArea; degenerate = true;
-        }
-        // Peer-area ratio: tower typicals should be similar, so a tower plate far from the median is a
-        // likely locate error. Only the tower cohort has true peers; others (parkade halves, mezz, roof)
-        // are not directly comparable -> NaN (no peer flag).
-        double peerRatio = r.RepLevel.HasValue && towerMedianArea > 0 ? area / towerMedianArea : double.NaN;
-        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", area, thk, floors,
-            FillRatio: r.FillRatio, ClusterCount: r.ClusterCount, ThicknessSource: thkSource,
-            DegenerateBox: degenerate, PeerAreaRatio: peerRatio));
-    }
-
-    if (tkPlates.Count == 0) { Console.Error.WriteLine("No priceable slab plates (no thickness anywhere)."); return 2; }
-    var tkResult = PlanEstimatePipeline.Run(tkPlates, tkProfile);
-    var tkComputed = StructuralTakeoffService.Compute(tkResult.TakeoffInputs, tkProfile.ToImperialDensityTable());
-    var tkModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(args[1]), "Vector takeoff", "", DateTime.UtcNow, tkComputed);
-    File.WriteAllBytes(args[3], StructuralTakeoffReportGenerator.BuildXlsx(tkModel));
-    Console.WriteLine($"\nPlates: {tkPlates.Count}   Slab concrete: {tkResult.TotalConcreteCuYd:N0} cu.yd   Rebar: {tkComputed.TotalRebarWeight:N0} lb");
+    foreach (var n in tkOut.Notes) Console.WriteLine(n);
+    File.WriteAllBytes(args[3], tkOut.Xlsx);
+    Console.WriteLine($"\nPlates: {tkOut.Estimate.Plates.Count}   Slab concrete: {tkOut.TotalConcreteCuYd:N0} cu.yd   Rebar: {tkOut.TotalRebarLb:N0} lb");
 
     // SYNOPSIS — the on-screen "unsure areas" the product surfaces before export (and the future AI
     // crucible converses about). Every plate the diligence engine could not fully trust, with the reasons.
-    var review = tkResult.Plates.Where(p => p.Check.Confidence != TakeoffConfidence.High).ToList();
-    Console.WriteLine($"\nSynopsis: {tkResult.Plates.Count - review.Count}/{tkResult.Plates.Count} plates clear; {review.Count} need review (orange):");
-    foreach (var pe in review.OrderByDescending(p => p.Check.HasCritical))
+    Console.WriteLine($"\nSynopsis: {tkOut.Estimate.Plates.Count - tkOut.Synopsis.Count}/{tkOut.Estimate.Plates.Count} plates clear; {tkOut.Synopsis.Count} need review (orange):");
+    foreach (var pe in tkOut.Synopsis.OrderByDescending(p => p.Check.HasCritical))
         foreach (var fl in pe.Check.Flags.Where(f => f.Severity != PlanFlagSeverity.Info))
             Console.WriteLine($"   [{fl.Severity}] {pe.Plate.Level,-16} {fl.Code,-20} {fl.Message}");
     Console.WriteLine($"\n(suspended-slab benchmark: 31044 Coronation = 20,208 cy net of the 4,287 mat)  ->  {args[3]}");
@@ -1451,6 +1249,27 @@ return 0;
 
 // Decodes a rasterized plan page (PNG) and crops a region into the pixel buffers the Core
 // PlanGeometry engine consumes. Crop box is [x0,x1) × [y0,y1), clamped to the image.
+// The CLI's concrete I/O for the Core engine: the Anthropic-backed vision calls and the ImageSharp
+// raster decode. The WPF app will register its own equivalents — the engine depends on neither.
+sealed class CliPlanVision : IPlanVision
+{
+    public Task<string> SynthesizePageAsync(string pageJson, CancellationToken ct = default)
+        => PlanVisionClient.SynthesizePageAsync(pageJson);
+    public Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default)
+        => PlanVisionClient.LocatePlateAsync(pageJson, downscaledPng);
+}
+
+sealed class CliPlanRaster : IPlanRaster
+{
+    public (int Width, int Height) ImageSize(string path) => PlanRaster.ImageSize(path);
+    public byte[] LoadDownscaledPng(string path, int maxEdge) => PlanRaster.LoadDownscaledPng(path, maxEdge);
+    public RasterCrop LoadCrop(string path, int x0, int y0, int x1, int y1)
+    {
+        var c = PlanRaster.LoadCrop(path, x0, y0, x1, y1);
+        return new RasterCrop(c.Lum, c.Width, c.Height);
+    }
+}
+
 static class PlanRaster
 {
     public readonly record struct Crop(byte[] Lum, byte[] R, byte[] G, byte[] B, int Width, int Height);
