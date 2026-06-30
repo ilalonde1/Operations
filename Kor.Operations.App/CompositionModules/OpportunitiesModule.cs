@@ -105,6 +105,8 @@ internal static class OpportunitiesModule
         services.AddTransient<PrimePipelineWindow>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardView>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.BazaarViewModel>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.BazaarView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.EventsViewModel>();

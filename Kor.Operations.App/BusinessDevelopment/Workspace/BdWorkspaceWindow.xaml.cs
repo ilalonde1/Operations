@@ -142,6 +142,12 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<AdminView>();
     }
 
+    private void Bazaar_Click(object sender, RoutedEventArgs e)
+    {
+        SetActiveNav(BazaarButton);
+        ContentHost.Content = _services.GetRequiredService<BazaarView>();
+    }
+
     private void Pursuits_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(PursuitsButton);
@@ -188,6 +194,7 @@ public partial class BdWorkspaceWindow : Window
             EventsButton,
             CompetitionButton,
             AdminButton,
+            BazaarButton,
             BdTrackingButton,
             PursuitsButton,
             ProposalsButton,
