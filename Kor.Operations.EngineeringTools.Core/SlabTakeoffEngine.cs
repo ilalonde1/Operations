@@ -228,6 +228,16 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             if (!readability.Readable)
                 throw new PdfNotReadableException(readability.Reason);
 
+            // The slab measure reads off RASTERIZED pages (poché flood, image fusion) — it needs p-NN.png
+            // pre-rendered in PngDir; Core/CLI does not rasterize (the app supplies its own renderer). If NONE
+            // of the in-range pages has an image, say so plainly here instead of dying later with the cryptic
+            // "No slab plates measured" after every page was silently skipped for a missing render.
+            int rendered = tkDigest.Pages.Count(pg => File.Exists(Path.Combine(req.PngDir, $"p-{pg.Page:D2}.png")));
+            if (rendered == 0)
+                throw new InvalidOperationException(
+                    $"No rendered page images in '{req.PngDir}' (expected p-01.png … p-{tkDigest.Pages.Max(p => p.Page):D2}.png). " +
+                    "The slab takeoff measures off rasterized pages — render the PDF to PNGs in that folder first; this host does not rasterize.");
+
             // ════════════════════ PHASE 1 — DETERMINISTIC PASS (no AI) ════════════════════
             // Resolve every number the drawing gives up for free; record what it can't as an explicit unknown
             // ON the plate (NeedsLocate / NeedsThicknessSplit / NeedsThickness). Nothing is guessed and nothing
