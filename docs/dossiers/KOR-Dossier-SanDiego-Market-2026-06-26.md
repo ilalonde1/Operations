@@ -100,16 +100,15 @@ Five firms from the standard SD competitive set are **not live SD building-SE co
 - **vs. KOR:** Complements rather than competes; minimal direct conflict — potential collaborator, not target.
 
 #### Smaller/regional SE firms holding specific lanes
-- **Chelsea Investment Corp affordable-housing SE (RESOLVED, partial):** **Harrington Heights → DCI Engineers** (CONFIRMED via JWDA project page; civil = Nasland, MEP = Robison, GC = Level 10). **Taormina, Modica, Addison@SDSU → SE not publicly named** (architect McKinley, GC Emmerson, civil Fuscoe; no SE in any accessible source — honest gap, get via SEAOSD/permit). **Fuscoe is the *civil* engineer, NOT the SE** — do not treat it as the SE incumbent.
+- **Chelsea Investment Corp** (affordable housing) — **Harrington Heights uses DCI Engineers**; on Taormina, Modica, and Addison@SDSU the structural engineer isn't publicly named (an opening — confirm via SEAOSD/permit records). Note Fuscoe is Chelsea's *civil* engineer, not its SE.
 - **Coffman / DCI / A.B. Court / WSP(Englekirk)** rotate on Miller Hull projects by type.
-- **DCI Engineers** (id 38923) is **BNIM's SE on Keeler Court** (71-unit affordable, 2023). **CORRECTION:** the earlier "Fard Engineers" attribution was wrong — **Fard is an MEP firm, not an SE**; it was the mechanical/electrical engineer on Keeler Court. Burkett & Wong (BWE) also rotates on BNIM work. To displace on the BNIM channel, target DCI (Ryan Slaybaugh, SD office at 101 W. Broadway).
-- **Mass-timber SE incumbents (deep-honed — this is KOR's white-space lane):**
-  - **Facet NW** (id 77638, `facetnw.com` — DB domain corrected from a parked one) is the **active SD mass-timber incumbent**: SE of record on **Harvey / Harvey Mini** (Hillcrest, 9-story, ~65 units — *tallest mass timber in SoCal*). Principal **Jordan Janicki**. Only a one-project SD track record so far → **move on the next SD CLT opportunity before Facet entrenches.**
-  - **"Steven Crook" = a person at HED (Harley Ellis Devereaux)** (id 68932), *not* an independent firm (misattribution corrected). He's SE on **9625 Towne Centre Drive** — the first approved CLT application in San Diego (Alexandria RE, glulam+CLT).
-  - **BC peers circling but NOT yet in SD developer-residential CLT (KOR's uncontested window):** Equilibrium Consulting (Eric Karsh; Google MT1 Sunnyvale — KOR's closest BC peer), StructureCraft (Abbotsford design-build, premium model), Aspect (CA work is temp-works only). None hold SD developer-resi CLT — that gap is the opening; Aspect is a viable *partner* (fabrication depth) where KOR holds the SD SE-of-record.
-  - **Envision Engineering** (id 76968, `envisioninc.io`) — conventional SD firm, **no mass-timber work and possibly defunct (Yelp shows CLOSED as of Jan 2026)**; not a mass-timber competitor.
-- **Josephson-Werdowatz** (id 77669) — domusstudio's civic/sacred SE. Two-principal SD firm (Rancho Bernardo), **aging leadership + heavy expert-witness practice** (Carl Josephson retained on 1,500+ cases) → limited new-design throughput. Displace on larger mixed-use/institutional work with domusstudio.
-- **VCA Structural** (id 77668) — Trammell Crow Residential's SE (Modera SD, Alexan Monrovia). **NO San Diego office** (HQ Orange CA; also Denver/Honolulu) — serves SD remotely from 60+ mi away. Clean local-responsiveness displacement angle, same shape as the Glotman wedge.
+- **DCI Engineers** is **BNIM's SE on Keeler Court** (71-unit affordable, 2023; not "Fard," which is the project's MEP engineer). Burkett & Wong also rotates on BNIM work. To win the BNIM channel, target DCI (Ryan Slaybaugh, SD office at 101 W. Broadway).
+- **Mass timber — KOR's white-space lane:**
+  - **Facet NW** is the **active SD mass-timber incumbent**: SE of record on **Harvey / Harvey Mini** (Hillcrest, 9-story, ~65 units — *tallest mass timber in SoCal*). Principal **Jordan Janicki**. Only one SD project so far → **move on the next SD CLT opportunity before Facet entrenches.**
+  - **Steven Crook** (at **HED / Harley Ellis Devereaux**) is SE on **9625 Towne Centre Drive** — the first approved CLT application in San Diego (Alexandria RE, glulam+CLT).
+  - **BC peers circling but not yet in SD developer-residential CLT (KOR's uncontested window):** Equilibrium Consulting (Eric Karsh; Google MT1, Sunnyvale — KOR's closest BC peer), StructureCraft (Abbotsford design-build, premium model), Aspect (CA work is temporary-works only). None hold SD developer-resi CLT — that gap is the opening; Aspect is a viable *partner* (fabrication depth) where KOR holds the SD SE-of-record.
+- **Josephson-Werdowatz** — domusstudio's civic/sacred SE. Two-principal SD firm (Rancho Bernardo) with aging leadership and a heavy expert-witness practice → limited new-design throughput. Displace on larger mixed-use/institutional work with domusstudio.
+- **VCA Structural** — Trammell Crow Residential's SE (Modera SD, Alexan Monrovia). **No San Diego office** (Orange, CA, 60+ mi away) — serves SD remotely. Clean local-responsiveness wedge, the same shape as the Glotman gap.
 
 #### Watch item — Vancouver rival already in California
 - **Glotman Simpson** (Vancouver, a direct KOR peer) appears on the **Seaport San Diego** project team listing and is SE-of-record on a **843 N Spring St LA mass-timber** project. `[MED]` KOR is not the only BC SE pursuing SoCal — **speed matters.**
@@ -142,7 +141,7 @@ These are the firms that win SD building work and choose the structural sub. The
 | **JWDA / Joseph Wong Design Associates** | Downtown towers, multifamily, hospitality, higher ed | **KOR Structural** (The Lindley, 37-story, 2025) `[HIGH]` | **WARMEST — active client** | **#1 — deepen** |
 | **DBRDS / De Bartolo + Rimanic** | Hospitality, multifamily, mixed-use, high-rise (boutique, ~4 staff) | **KPFF** (The Margot, 475 W Broadway, Union & B, University Canyon) `[HIGH]` | **WARM — KOR on bid list** | **#2 — push on next RFP** |
 | **BNIM** | Affordable, office, life-science, civic (growing fast in SD) | **Rotates** — Burkett & Wong (Makers Quarter D), Fard (Keeler Court); Block A SE UNVERIFIED | Open — no SE lock | **#3 — pursue** |
-| **HMC Architects** | Healthcare, K-12, higher ed, civic (ENR 2023 CA Firm of Year) | **UNVERIFIED — none published** | **De-prioritize** — deep-hone confirms HMC is K-12 (DSA) + healthcare (HCAI) dominant with *zero* developer-residential; both segments are credential-gated for KOR. Thin civic-only long-tail. | ↓ low |
+| **HMC Architects** | Healthcare, K-12, higher ed, civic (ENR 2023 CA Firm of Year) | None published | **De-prioritize** — K-12 (DSA) + healthcare (HCAI) dominant with no developer-residential; both are credential-gated for KOR. Thin civic-only long-tail. | low |
 | **AC Martin** *(LA firm, new SD office)* | Multifamily, mixed-use, affordable, civic | Network not yet locked (SD office opened ~late 2023) | **OPEN — early-mover window** | **new — target Sami Khoury / Gilbert Rocca** |
 | **Miller Hull** | Civic, higher ed, affordable, life-science | Coffman (civic), **DCI (mixed-use resi — Parco)**, WSP/Englekirk (seismic research) | Type-matched, no lock | #5 — enter via mixed-use |
 | **Safdie Rabines** | Multifamily, campus housing, civic, bridges, **cultural** | **KPFF** in the Sea Breeze / North City ecosystem `[MED]` — **BUT three near-term marquee commissions have NO SE named yet: Oceanside Museum of Art expansion, San Diego Museum of Art (Balboa Park) renovation, Midway Rising** `[OPEN SEATS]` | Design-sensitive; cultural/heritage fits KOR | **↑ #3 — genuine open seats on cultural work** |
@@ -198,7 +197,7 @@ These are the firms that win SD building work and choose the structural sub. The
 - **Two real footholds, not zero:** KOR is the **confirmed SE-of-record on The Lindley** (37-story JWDA tower, completed 2025) — a blue-chip, verifiable SD high-rise credential — and is **on DBRDS's structural bid list** (warm hospitality/multifamily architect).
 - **The incumbent reality:** KPFF is the firm KOR will most often displace — named SE for DBRDS, Carrier Johnson, and Safdie Rabines, and the largest structural team in the market. DCI owns downtown concrete resi towers. KOR cannot win on scale.
 - **No SD track record in most segments** — but The Lindley + a Vancouver-developer-residential pedigree + mass-timber/seismic depth are genuine, transferable assets.
-- **The Glotman Simpson wedge (sharpened by the deep-hone — KOR's cleanest displacement vector):** Bosa and Pinnacle import **Glotman Simpson** for their SD towers. Glotman has an **LA office but NO San Diego office**, and has served **~50 SD high-rises remotely from Vancouver/LA**. That is the one major rival genuinely lacking SD boots — unlike **KPFF (SD office since 1994) and DCI (SD office since 2001)**, which are *local* incumbents that must be displaced on principal-attention/sector grounds, not presence. Pitch Bosa SD / Pinnacle SD before they auto-dial Vancouver. *(Caveat: Glotman is already pursuing CA — Seaport SD team + an LA mass-timber project — so speed matters; the mass-timber niche is open now but won't stay open.)*
+- **The Glotman Simpson wedge — KOR's cleanest displacement vector:** Bosa and Pinnacle import **Glotman Simpson** for their SD towers. Glotman has an **LA office but NO San Diego office**, and has served **~50 SD high-rises remotely from Vancouver/LA**. That is the one major rival genuinely lacking SD boots — unlike **KPFF (SD office since 1994) and DCI (SD office since 2001)**, which are *local* incumbents that must be displaced on principal-attention/sector grounds, not presence. Pitch Bosa SD / Pinnacle SD before they auto-dial Vancouver. *(Caveat: Glotman is already pursuing CA — Seaport SD team + an LA mass-timber project — so speed matters; the mass-timber niche is open now but won't stay open.)*
 - **Licensing gate (must confirm before any pursuit):** All SD work requires a **California-licensed SE** (or CA Civil PE with SE authorization for lower-seismic structures). Civic/K-12 work additionally requires **DSA** approval; acute-care healthcare requires **HCAI/OSHPD**. NAVFAC/military requires teaming with one of the 8 IDIQ prime GCs (and clearance readiness on some projects). KOR's CA registration status should be confirmed as step one — it gates everything below.
 - **1650 Hotel Circle — VERIFY THE ADDRESS:** Public records show an active 12-story mixed-use SDP at **1650 Hotel Circle NORTH** (149 units, filed Mar-2025, developer/architect unnamed in the notice). **No active project verified at 1650 Hotel Circle SOUTH.** `[UNVERIFIED]` Confirm the address and the DBRDS connection with the referral source before the trip — this is the stated SD beachhead and the data does not cleanly corroborate it.
 
@@ -235,19 +234,10 @@ These are the firms that win SD building work and choose the structural sub. The
 
 ---
 
-## DATA GAPS & ORGS FLAGGED FOR INGEST
+## Two caveats before citing
 
-**Major data gaps:**
-- **SE-of-record is unpublished for ~90% of named projects.** The single highest-value next BD/research action is mapping who actually stamps SD structures — best obtained via SEAOSD/EGBC network, permit records, or direct outreach, not web search.
-- **1650 Hotel Circle "South" does not exist** — the real project is 1650 Hotel Circle *North* (PRJ-1130310); the DBRDS-as-architect link is unverified. Do not assert it; confirm with the referral source.
-- SD vs Vancouver construction-volume head-to-head not available (incompatible data formats).
-- **Chelsea Investment Corp's affordable-housing SE is still unidentified** (Fuscoe = civil only) — dedicated follow-up search flagged.
-
-**Competitive-set ingest status (resolved this pass — all now canonicals with enrichment):**
-- ✅ **VCA Structural** (77668, Trammell Crow's remote SE — no SD office), **Josephson-Werdowatz** (77669, domusstudio's SE) — newly ingested.
-- ✅ Honed: Thornton Tomasetti (68746, Carrier Johnson blocker, SD office), SGH (76786), Risha (68619 — **LA-only, not a SD SE**), Labib Funk (77097, SD multifamily — top displacement target), Glotman Simpson (38926), KPFF (38927), DCI (38923), Coffman (38921), Holmes (77661).
-- **Corrected:** Fuscoe (77639) = civil, not SE; "Fard Engineers" = MEP, not SE (BNIM's Keeler Court SE is DCI 38923).
-- **Still open:** Envision Engineering California, Facet NW, Steven Crook, StructureCraft (mass-timber SE holders); A.B. Court & Associates, Patterson Engineering, MDEP (mid-market field); the unidentified Chelsea SE.
+- **The structural engineer of record is unpublished for most named SD projects.** Where this dossier names an incumbent SE, it's because a firm, architect, or award names them; otherwise treat incumbency as unconfirmed and verify through the SEAOSD network or permit records before asserting it in a meeting.
+- **1650 Hotel Circle "South" does not exist** — the real project is 1650 Hotel Circle *North*, and the DBRDS link to it is unverified. Don't lead with it; confirm the address and the architect with the referral source first.
 
 ---
 

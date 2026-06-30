@@ -8,13 +8,12 @@
 - **Culled 50k → 17.8k warm orgs** (32k orphan commodity-vendor rows cold-archived; fully reversible — any resurfaces on a real pursuit). The pursuit targets below were untouched (all have KOR projects/relationships).
 - **100+ duplicate clusters merged** (incl. the BC health-authority cluster 32→9 clean entities), **81 mis-classified Kinds corrected** (e.g. AECOM/RJC/SMP now correctly tagged **Competitor**), MPI structural-engineer/GC foreign keys completed, and the **duplicate-creation cycle closed** at the resolver (safe fuzzy-match before create) so the brain stays clean going forward.
 - **Every org + person ID in this doc re-verified against the cleaned graph 2026-06-21 — all resolve correctly** (Pinnacle #53665, Onni #38949, Amacon #169/#71060, Emerge #111, Evantra #203, RBI #14, Lark #53694/#72260, Kerkhoff, Yellowridge, + the full De Cotiis person directory #1399/#1406/#3757/#9303-9305/#901/#902/#903/#1940/#1941). The Lark "Unknown" stray rows (#55097/#27243) are confirmed already-merged.
-- **Full deep re-enrichment now running** across all 6,401 + 4,211 BD-relevant orgs (Developers/Architects/GCs/Competitors/Buyers/KorClients) — so by the Tuesday intel deliverable, every target in §5 will carry fresh, web-verified narrative + people + signals on the clean graph, not the pre-cull state.
+- **Targeted, cost-controlled enrichment — priority targets first.** The indiscriminate always-on enrichment of the full ~10k-org base was retired (it was the main cost driver); enrichment now prioritises the high-value pursuit targets and runs in controlled, verified passes. The §5 targets sit on the cleaned graph with web-verified narrative + people + signals; lower-priority orgs are enriched only as they become relevant.
 
 **How to read this:**
-- **kp=N** — number of KOR projects on record with that org (warmth signal). ✅Deltek = linked Deltek client.
+- **kp=N** — number of KOR projects on record with that org (warmth signal). Deltek = linked Deltek client.
 - **[conf: High/Med/Low]** — confidence in the *name resolution* (the meeting audio garbled many names).
-- Names in **bold** are the corrected/confirmed spellings; the transcript's garbled version is shown in *(quotes)* where useful.
-- ⚠️ = an intel flag to read before acting.
+- Names in **bold** are the corrected/confirmed spellings.
 
 > **Already actioned & verified (live CRM engagement IDs as of 2026-06-20):** the meeting's pursuits are **live in the CRM** — RBI **#4**, Pinnacle International **#11**, M'Akola **#12/#19**, Purpose Driven **#15**, Mundi **#61**, Bosa Development **#70**, Graham/Richmond Hospital **#91**, Open Form **#92**, Squamish/Nch'ḵay̓ **#93**, plus Rory's modular pair **Emerge Modular (Greg Zemrau) #95** and **Evantra Developments #97**. *(RBI moved from #90 → #4 when the session's dedup remapped the org to canonical #14.)* Names were also cleaned in the Biz Brain (dedup merges, reclassify, aliases, contacts). Full detail in **§10 (Brain)** and **§11 (CRM)**.
 
@@ -26,17 +25,17 @@
 
 | # | Your task (source §) | Status | Note |
 |---|---|---|---|
-| A | **Awards** — brain finds AEC awards to apply for (§4) | ✅ **DONE** | Industry Awards Finder built + deployed; auto-discovers KOR-enterable award programs; surfaces in the app. Auto-*apply* still human-review by design. |
-| B | **Scout John's 5 California developer cos** (§5 USA) | ✅ **DONE (Greystar)** | KOR-Greystar-Scout + California dossier/field-guide/call-sheet delivered. Other 4 await John naming them. |
-| C | **Design-build / "big-fee" qualification research** (§1#5, §5) | ✅ **DONE** | Prime-Consultant channel mapped: KOR wins public/design-build work as the **architect's structural sub** on the prime team — target architects *before* the RFP. + CA field guide. |
-| D | **Biz Brain build-out** — clean data, dedup, CRM (§2) | ✅ **DONE + ongoing** | 50k→17.8k cull, 100+ dup merges (incl. HA cluster), 81 Kind fixes, MPI FKs, dup-creation cycle closed; CRM pursuits loaded (§11). **Full deep re-enrichment now running.** |
-| E | **Social-media automation** — LinkedIn auto-post + Instagram (§4) | 🔄 **In progress** | LinkedIn app-setup checklist done 2026-06-20; Instagram + the every-2-days auto-post still to wire. |
-| F | **Meeting synopsis + action sheet** (3–4 packages, 2–3 people each) (§2) | 🔄 **Pending** | The "intel by Tuesday" deliverable. |
-| G | **Ad-hoc enrichment in the app** | ✅ **EXISTS (orgs)** | Org Dossier has a "Refresh Intel" button (→ queues a FirmNarrative research trigger the Worker drains). **People don't have it yet** — gap to close. |
-| H | **Name the tool** (§2) | ⬜ Open | Biz Brain / KIA / KSA / ICE / Frank. |
-| I | **Plug GIS contact + Broadway/SkyTrain rezoning list into brain** (§2) | ⬜ Blocked | Awaiting Omar's contact + list. |
-| J | **Confirm EGBC SRG course details** (JM takes the course) (§1#1) | ⬜ Open | |
-| K | **Stage the broader §5 reach-out list as CRM engagements** (§11) | ⬜ Your call | Say the word. |
+| A | **Awards** — brain finds AEC awards to apply for (§4) | **DONE** | Industry Awards Finder built + deployed; auto-discovers KOR-enterable award programs; surfaces in the app. Auto-*apply* still human-review by design. |
+| B | **Scout John's 5 California developer cos** (§5 USA) | **DONE (Greystar)** | KOR-Greystar-Scout + California dossier/field-guide/call-sheet delivered. Other 4 await John naming them. |
+| C | **Design-build / "big-fee" qualification research** (§1#5, §5) | **DONE** | Prime-Consultant channel mapped: KOR wins public/design-build work as the **architect's structural sub** on the prime team — target architects *before* the RFP. + CA field guide. |
+| D | **Biz Brain build-out** — clean data, dedup, CRM (§2) | **DONE + ongoing** | 50k→17.8k cull, 100+ dup merges (incl. HA cluster), 81 Kind fixes, MPI FKs, dup-creation cycle closed; CRM pursuits loaded (§11). **Enrichment now targeted + cost-controlled** (priority targets first; the always-on full-base pass was retired). |
+| E | **Social-media automation** — LinkedIn auto-post + Instagram (§4) | **In progress** | LinkedIn app-setup checklist done 2026-06-20; Instagram + the every-2-days auto-post still to wire. |
+| F | **Meeting synopsis + action sheet** (3–4 packages, 2–3 people each) (§2) | **Pending** | The "intel by Tuesday" deliverable. |
+| G | **Ad-hoc enrichment in the app** | **EXISTS (orgs)** | Org Dossier has a "Refresh Intel" button (→ queues a FirmNarrative research trigger the Worker drains). **People don't have it yet** — gap to close. |
+| H | **Name the tool** (§2) | Open | Biz Brain / KIA / KSA / ICE / Frank. |
+| I | **Plug GIS contact + Broadway/SkyTrain rezoning list into brain** (§2) | Blocked | Awaiting Omar's contact + list. |
+| J | **Confirm EGBC SRG course details** (JM takes the course) (§1#1) | Open | |
+| K | **Stage the broader §5 reach-out list as CRM engagements** (§11) | Your call | Say the word. |
 
 ---
 
@@ -80,57 +79,57 @@
 ## 5. Target lists by region (corrected names → owner → action)
 
 ### Vancouver Lower Mainland — Omar (lead), John, Jim
-- **Pinnacle International** [conf: High] — kp=8, ✅CL00333. Work in Alberta, new San Diego properties, Vancouver business; warm but stale. → John + Omar meet **Michael De Cotiis** *("Mike Dakotis")*, President/owner. ⚠️ See Pinnacle/Onni note in §7.
-- **Bosa Development** [High] — kp=78, ✅CL00047. Reconnect **Matt Patzer** (VP Construction, mpatzer@thinkbosa.com); meet **Paul Lamme** *("Paul LeMay")*, VP Development **Bosa San Diego**, in California.
-- **Bosa Properties** [High] — kp=44, ✅CL00048 (separate entity). **JB** to set up lunch ("we got zero from Bosa Properties").
-- **Intergulf Development Group** [High] — kp=8, ✅CL00204. One job under construction; John knows the "top dog"; an **Axiom** contact intro'd a PM.
+- **Pinnacle International** [conf: High] — kp=8, CL00333. Work in Alberta, new San Diego properties, Vancouver business; warm but stale. → John + Omar meet **Michael De Cotiis**, President/owner. See Pinnacle/Onni note in §7.
+- **Bosa Development** [High] — kp=78, CL00047. Reconnect **Matt Patzer** (VP Construction, mpatzer@thinkbosa.com); meet **Paul Lamme**, VP Development **Bosa San Diego**, in California.
+- **Bosa Properties** [High] — kp=44, CL00048 (separate entity). **JB** to set up lunch ("we got zero from Bosa Properties").
+- **Intergulf Development Group** [High] — kp=8, CL00204. One job under construction; John knows the "top dog"; an **Axiom** contact intro'd a PM.
 - **Ledcor** [High] — kp=10. Soft intro via existing **TELUS** work (the **Telus-via-Ledcor** link is a real record in our data); backdoor connection in Edmonton; partner up.
-- **Omicron Development Inc.** [High] — kp=4, ✅CL00305. Soft intro, already doing TI; chase light-civil/infrastructure (Conor via **Bruno**).
+- **Omicron Development Inc.** [High] — kp=4, CL00305. Soft intro, already doing TI; chase light-civil/infrastructure (Conor via **Bruno**).
 - **Graham (Construction)** [High] — **AJ** (rebar) intro'd; Graham is GC on **Richmond Hospital** (likely phase 2 & 3). Set up meeting w/ Graham + **Bert**. Graham knows someone at **Ellison** who'll intro to **Bird**.
 - **"BD"** (developer w/ a farm/light-industrial division; did light industrial on "Ramer," TI at Station Square) — via **Rick**; pursue another division (leasing/light industrial). *[name not yet resolved — verify with Omar]*
 - **UBC ecosystem** — **Manit's** wife teaches a UBC course; ~100 UBC buildings coming; Omar meeting **Emma** next week. **JM** to work the UBC development side (an engineer there had major issues → opening). **Jack** (from Potem) intro to **SFU** and **UBC Trust** — lunch w/ UBC Trust in July.
 - **ANH** — Omar teaming ANH with **AJ** (a placer w/ his own company) so ANH can compete with **LMS** on development work.
-- **Mundi Hotel Enterprises** *("Mundai Group")* [High company / Low person] — Kamloops; President **Ron Mundi**. Not yet in our DB. **Rory Allen** there (ex-"CDA" → Tim Properties [folded] → Mundi). KOR did a hotel for them; hotels across the interior, expanding to Vancouver/Burnaby, lots in Alberta; **big downtown Vancouver tower** floated. Omar intro'd **Adrian (EGC)**. Sent a rental/wood-frame proposal (with Conor). **Alan** willing to share competitor fee data (KOR fees ran low in Edmonton).
+- **Mundi Hotel Enterprises** [High company / Low person] — Kamloops; President **Ron Mundi**. (In the brain as #70864 — reclassified Unknown→Developer; CRM eng #61.) **Rory Allen** there (ex-"CDA" → Tim Properties [folded] → Mundi). KOR did a hotel for them; hotels across the interior, expanding to Vancouver/Burnaby, lots in Alberta; **big downtown Vancouver tower** floated. Omar intro'd **Adrian (EGC)**. Sent a rental/wood-frame proposal (with Conor). **Alan** willing to share competitor fee data (KOR fees ran low in Edmonton).
 - **Squamish Nation → Nch'ḵay̓ Development Corp** [High] — **Jacob Lewis III (Xayil)**, Director of Community Development. Omar coffee **July 8** (relationship only, no work talk); then meet the dev team.
-- **M'akola Development Services** *("Makola/Mákola")* [High] — KorClient, ✅Deltek (Indigenous housing, Victoria, office here). Target the dev lead (no "VP Development" title; closest is **Kaela Schramm**, Dir. Projects & Planning — the *"McCullough girl"* Omar met at ULI). Also a **City Spaces** contact (didn't return call).
+- **M'akola Development Services** [High] — KorClient, Deltek (Indigenous housing, Victoria, office here). Target the dev lead (no "VP Development" title; closest is **Kaela Schramm**, Dir. Projects & Planning — the *"McCullough girl"* Omar met at ULI). Also a **City Spaces** contact (didn't return call).
 - **GIS consultant** (met at ULI) — does property/"open quake" studies for City of Vancouver + City of Victoria; can tip where cities plan to build (residential/industrial/schools/hospital/fire/police). → Omar to give Ian the contact; plug into brain.
 - **PCI Developments** [High] — Cambie & Broadway tower. Omar has contact via **Brad Howard** + a PM + site super + VP-Dev phone (via **Jacob** of **Urban One**); door not shut, not answering → phone Brad again.
-- **Onni Group** [High] — #38949. **Jason** setting up a meeting; reconnect with **Mr. Morris / the Morrises** = **Morris De Cotiis** (Onni principal, construction & property mgmt; #9303). Onni is run by the late founder Inno's sons — **Rossano** (President, #1406), **Morris**, **Giulio**, **Paolo**. ⚠️ *Distinct from "Bonnis Properties" (#70958, kp=30) — don't conflate.* (Onni is the De Cotiis-family sibling firm to Pinnacle — see §7.)
-- **Shape Properties** [High] — ✅Deltek. "Nothing moving, don't want to meet"; Omar will phone anyway. (JB issue surfaced here.)
-- **RBI Group of Companies** [High] — kp=6, ✅Deltek. New-ish client, cash-rich, buying property, heavy **WSP** user. KOR building **Richmond Hotel**; got **137th St**; likely **Cobalt Hotel**; **Edmonton hotel** drawings coming; lots in interior. → pitch re-engineering his WSP projects for profitability.
+- **Onni Group** [High] — #38949. **Jason** setting up a meeting; reconnect with **Mr. Morris / the Morrises** = **Morris De Cotiis** (Onni principal, construction & property mgmt; #9303). Onni is run by the late founder Inno's sons — **Rossano** (President, #1406), **Morris**, **Giulio**, **Paolo**. *Distinct from "Bonnis Properties" (#70958, kp=30) — don't conflate.* (Onni is the De Cotiis-family sibling firm to Pinnacle — see §7.)
+- **Shape Properties** [High] — Deltek. "Nothing moving, don't want to meet"; Omar will phone anyway. (JB issue surfaced here.)
+- **RBI Group of Companies** [High] — kp=6, Deltek. New-ish client, cash-rich, buying property, heavy **WSP** user. KOR building **Richmond Hotel**; got **137th St**; likely **Cobalt Hotel**; **Edmonton hotel** drawings coming; lots in interior. → pitch re-engineering his WSP projects for profitability.
 - **VGM Group / BMZ / Gary / Suki** *(spellings unverified)* — cash-rich developer network bidding low on receivership deals; **Bonnie** bought Hudson's Bay + Atmosphere. Relationship intel.
-- **McAllister** ("Let Mac") — tougher revisit. **Beto** — go meet (Resident is their biggest tower). **Charmaine** — arrange a visit re: their biggest tower. *[Beto/Charmaine unresolved — verify with Omar]*
-- **Axiom Builders** [High] — kp=12, ✅CL00527. Argentina contact helping; set up Axiom Calgary meeting; team on Vancouver Island work.
+- **McAllister** — tougher revisit. **Beto** — go meet (Resident is their biggest tower). **Charmaine** — arrange a visit re: their biggest tower. *[Beto/Charmaine unresolved — verify with Omar]*
+- **Axiom Builders** [High] — kp=12, CL00527. Argentina contact helping; set up Axiom Calgary meeting; team on Vancouver Island work.
 - Omar in contact with many **unknown Vancouver-office architects** — broaden the net.
 
 ### Vancouver Island — Rory (lead)
-- **Merrick Architecture** [High] — ✅Deltek; has an Island office. John knows someone; get warm intro to Victoria; Rory + John go.
+- **Merrick Architecture** [High] — Deltek; has an Island office. John knows someone; get warm intro to Victoria; Rory + John go.
 - **Wensley Architecture** [High] — Victoria office; principal **Neil Jacobsen** *(verify — not in DB; Neil Banik retired, was him + Barry Way)*. Rory did a Wensley job in Duncan (**Paddle Road**).
 - **Kerkhoff Construction** (kerkhoff.ca) [High] — already in brain: KorClient #186 (Kerkhoff Development) + Developer #70544 (Kerkhoff Construction). Was GC on the Paddle Road job; KOR got paid out when Kerkhoff didn't pay. The new owner Rory called *"Ridge/Bridge North America"* = **North American Development Group** (#54449, already linked to Kerkhoff in the brain).
-- **The Lark Group** [High] — Surrey; CEO **Larry Fisher**. ⚠️ **In the brain but duplicated** — #53694 "The Lark Group" (Developer), #72260 "Lark Projects Ltd." (GC, BC Housing-confirmed), plus #55097/#27243 ("Unknown"). Needs **merge + reclassify**, not a new record. Reconnect; **Jason** works with them (Abbotsford); KOR did **Legion Veterans Village** (2nd tower "Lucent" sold to **Landa Global**). The founder-death/sale Rory recalled is **unconfirmed** — verify before referencing.
+- **The Lark Group** [High] — Surrey; CEO **Kirk Fisher**. **In the brain but duplicated** — #53694 "The Lark Group" (Developer), #72260 "Lark Projects Ltd." (GC, BC Housing-confirmed), plus #55097/#27243 ("Unknown"). Needs **merge + reclassify**, not a new record. Reconnect; **Jason** works with them (Abbotsford); KOR did **Legion Veterans Village** (2nd tower "Lucent" sold to **Landa Global**). **Verified:** founder **Larry Fisher** died Feb 2023; his son **Kirk Fisher** is now CEO — so Rory's founder-death recollection was right, but the *live* contact is **Kirk**, not Larry.
 - **City of Nanaimo** — municipal-direct work (steady stream).
 - **Farmer Construction Ltd.** (Victoria, since 1951) [High] — biggest Southern-Island GC; approach. (**Campbell Construction Ltd.** also big.)
 - **Dino** *(co. = "Moniz"? — JB has long Moniz relationship; John designed Dino's brother **Gab Carrie**'s house)* — flagship tower (architect **Perkins + Will**) being sold; selling Granville + Kingsway sites; reducing portfolio; seeking partners. Keep warm. *[Dino's surname/company unresolved — verify with Rory/JB]*
 - **Modular push (Rory's headline):**
-  - **Greg Zemrau — Emerge Modular** [High] *("Gregg")* — **existing KOR client (#111)**; KOR ≈ his prime consultant. **(Rory's update — now in CRM as engagement #95.)** Live: White Rock Marine Dr (2 fourplexes), Vancouver fourplex (in shop), **Duncan ~4-storey by the university (proposal owed)**, retrofit Greg's warehouse, plant on mainland/island, upgrade Alberta plant. **Simon** learning **Autodesk Advanced Steel** → charge for shop drawings. Greg wants developer partners with sites+funding; he supplies modules. CMHC change: **5% down** on modular (even >$1M, transfers to homeowner) — lean in.
+  - **Greg Zemrau — Emerge Modular** [High] — **existing KOR client (#111)**; KOR ≈ his prime consultant. **(Rory's update — now in CRM as engagement #95.)** Live: White Rock Marine Dr (2 fourplexes), Vancouver fourplex (in shop), **Duncan ~4-storey by the university (proposal owed)**, retrofit Greg's warehouse, plant on mainland/island, upgrade Alberta plant. **Simon** learning **Autodesk Advanced Steel** → charge for shop drawings. Greg wants developer partners with sites+funding; he supplies modules. CMHC change: **5% down** on modular (even >$1M, transfers to homeowner) — lean in.
     - **Evantra Developments** [High] — #203, **existing KOR client** (eng #97). The Langford/Victoria developer that several of Greg's KOR jobs come in through — the developer-partner side of the modular pipeline. Rory's lead; keep Emerge ↔ Evantra linked.
-  - **Yellowridge Construction Ltd.** *("Yellow Ridge")* [High] — **existing KOR client (#115)** + Yellowridge Design Build (#70585); Port Moody design-builder, leading the **Defence Canada** design-build bid (off-site/modular/panelized). (We have a relationship here already — not a cold approach.) Rory met twice; rubric rewards 2 projects where the whole team worked together; Defence Canada prioritizes off-site methods.
-  - **WHB Group** *("WWBH")* [Med] — New Westminster formwork/rebar; principal **John Wu** (Chinese-group modular connections; ≠ the BC Housing "John Wu" in our DB).
-  - **Wilson Chang** *(vs. "Wilson Shen")* [Low] — Island modular operator. ⚠️ Our DB has a **Wilson Chang (architect)** — may be a *different* person; don't merge. The **Thind** developers project could be a large modular tower in Burnaby (steel modules from China, Canada Builds funding) — see ⚠️ Thind note in §7.
+  - **Yellowridge Construction Ltd.** [High] — **existing KOR client (#115)** + Yellowridge Design Build (#70585); Port Moody design-builder, leading the **Defence Canada** design-build bid (off-site/modular/panelized). (We have a relationship here already — not a cold approach.) Rory met twice; rubric rewards 2 projects where the whole team worked together; Defence Canada prioritizes off-site methods.
+  - **WHB Group** [Med] — New Westminster formwork/rebar; principal **John Wu** (Chinese-group modular connections; ≠ the BC Housing "John Wu" in our DB).
+  - **Wilson Chang** *(vs. "Wilson Shen")* [Low] — Island modular operator. Our DB has a **Wilson Chang (architect)** — may be a *different* person; don't merge. The **Thind** developers project could be a large modular tower in Burnaby (steel modules from China, Canada Builds funding) — see Thind note in §7.
 - **Website:** add modular capability (carefully — proprietary).
 - **Island sites:** Parksville (out of ground), Duncan (pouring L1 next week), **Langford** (keep KOR name off until it's a go — Denbrook/liability sensitivity).
 
 ### Okanagan & Interior — Conor (lead)
 - Most active BD; big pipeline if it moves. Goes to Kelowna (took Simon last time).
-- **Orchard Park Properties** *("Apriano")* [High] — principal **Apriano Meola** (ex-Pinnacle/Onni; co-founder with Anthony Beyrouti). Built **Water Street by the Park**, Kelowna (3 towers). John met him pre-Jeremy → introduce Conor.
-- **Losing the Penticton ("Politano") office space** — decided to let it go (confirmed).
+- **Orchard Park Properties** [High] — principal **Apriano Meola** (ex-Pinnacle/Onni; co-founder with Anthony Beyrouti). Built **Water Street by the Park**, Kelowna (3 towers). John met him pre-Jeremy → introduce Conor.
+- **Losing the Penticton office space** — decided to let it go (confirmed).
 - Conor to give Ian his Vancouver/Interior contact list; co-pitched the Mundi/RBI rental with Omar.
 
 ### Andrea — get more front-facing (explicit ask)
-- **Arno Matis Architecture (AMA)** [High] — ⚠️ the transcript's *"Amy/Aromatis/Larno/Mattis"* are **all one firm / one person: Arno Matis** (founder; ex-Bing Thom). Does heavy rezoning + some design/construction; works with clients who also use **RJC**. Amy/AMA gave KOR's name to such a client → go meet AMA. (Andrea building rapport — helped Arno with a kitchen reno.)
+- **Arno Matis Architecture (AMA)** [High] — the transcript's *"Amy/Aromatis/Larno/Mattis"* are **all one firm / one person: Arno Matis** (founder; ex-Bing Thom). Does heavy rezoning + some design/construction; works with clients who also use **RJC**. Amy/AMA gave KOR's name to such a client → go meet AMA. (Andrea building rapport — helped Arno with a kitchen reno.)
 - **"Griffin" (architect)** — *distinct from Griffin the field lead.* Wanted to wait (Marcelo left, overloaded) but would meet; Andrea + others. *[surname unresolved]*
 - **Marcela/Marsa** — left, "resurrected herself," from Chile; may bring something.
-- **Purpose Driven Development** [High] — ✅Deltek; founder **Carla Guerrera**; contact **Annelise van der Veen** *("Dan Van Mueller/King")*. All-women consultant teams. Reviewed/awarded KOR the **Church of Epiphany** project (KOR has it per the meeting; not externally findable — internal record stands).
+- **Purpose Driven Development** [High] — Deltek; founder **Carla Guerrera**; contact **Annelise van der Veen**. All-women consultant teams. Reviewed/awarded KOR the **Church of Epiphany** project (KOR has it per the meeting; not externally findable — internal record stands).
 
 ### USA / California — John (lead), Jim
 - John to California in ~2 weeks; gave Ian **5 existing-relationship developer companies** to scout for pipeline before meetings (only **Greystar** named — San Diego, key people **Bob Faith** [Founder/CEO], **John Wilbeck** [MD Development, Canada]).
@@ -157,7 +156,7 @@
    Michael is **uncle** to the Onni/Amacon next-gen. That's why the room said *"his dad died… that's his brother… it's not Pinnacle"* — they were half-remembering Inno's 2020 death and the cousin firms. **No recent (2024–26) De Cotiis death.** Treat all three as adjacent — a strong Pinnacle (Michael) relationship sits next to Onni + Amacon decision-makers.
 2. **Thind Properties is distressed.** kp=17 historically, but **Eclipse Brentwood is under creditor protection (~$189M owed to KingSett), 2024-25.** The "biggest modular tower in Vancouver" floated with the *"old Thind developers"* is real but **high-risk** — pursue with eyes open; the steel-modules-from-China / Canada Builds angle is unverified.
 3. **"Amy at AMA / Aromatis / Larno / Mattis" is one person** — **Arno Matis**. Don't create four contacts.
-4. **Lark Group is already in the brain — and duplicated** (Developer #53694 + GC #72260 + two "Unknown" rows). This is a **merge/reclassify** job, not an add. (Earlier draft wrongly called it net-new.)
+4. **Lark Group is already in the brain — and duplicated** (Developer #53694 + GC #72260 + two "Unknown" rows). This is a **merge/reclassify** job, not an add.
 5. **Onni ≠ Bonnis Properties** (kp=30) — two different orgs in our data; keep separate.
 6. **Yellowridge & Kerkhoff are existing KOR clients** (#115, #186) — the Defence Canada modular bid and the Paddle Road story both run through relationships we already have, not cold contacts.
 
@@ -190,7 +189,7 @@
 - **Rory Allen** (Mundi Hotel Enterprises) — no public trace; confirm with Omar.
 - **Neil Jacobsen / Neil Banik / Barry Way** (Wensley Victoria) — not in DB; confirm with Rory.
 - **"BD" developer**, **Beto**, **Charmaine**, **Dino**'s surname/company, the **GIS consultant**'s firm, **VGM/BMZ/Gary/Suki** — confirm spellings/identities with Omar/Rory before brain ingest.
-- ~~**Gregg** (modular)~~ — **RESOLVED 2026-06-20: Greg Zemrau, Emerge Modular (#111)**; developer side = Evantra Developments (#203). Both live in CRM (eng #95/#97).
+- **Gregg** (modular) — **RESOLVED 2026-06-20: Greg Zemrau, Emerge Modular (#111)**; developer side = Evantra Developments (#203). Both live in CRM (eng #95/#97).
 - **Wilson Chang** — confirm whether the Island modular operator is the same as our DB architect (likely not).
 
 ---
@@ -198,14 +197,14 @@
 ## 10. Biz Brain ingest (applied & verified 2026-06-19)
 
 The brain already held ~all of these orgs (often duplicated), so the meeting yielded little net-new. Batch **applied & verified** (details + audit trail in `output/brain-ingest-2026-06-19/`):
-- ✅ **3 dedup merges** — Lark ×2 (stray "Unknown" rows folded into Developer #53694 / GC #72260, arms kept separate), Nch'ḵay̓ #70915 → #54983. Allowlist override + post-audit done.
-- ✅ **1 reclassify** — Mundi #70864 `Unknown → Developer`.
-- ✅ **4 aliases** — "Mundai Group", "Yellow Ridge", "Open Forum", "Open RD" → their canonicals (all resolve).
-- ✅ **2 contacts** — Annelise van der Veen (#13816 → Purpose Driven), Jacob Lewis III (#13817 → Nch'ḵay̓), affiliations wired.
-- ✅ **De Cotiis family fully enriched (2026-06-20)** — Michael (#1399, Pinnacle) plus the Onni branch (Inno 1937–2020 #3757; sons Rossano #1406, Morris #9303, Giulio #9304, Paolo #9305) and the Amacon branch (Marcello #901, Marc #1941, Donato #902, Italo #1940, Lilliana #903) are all in the brain with affiliations wired; duplicate person rows (Don/Mike/Donato dups) retired. See §7 #1.
-- ⏭️ **WHB Group / John Wu — skipped** (IntelPerson key is name-only → would fuse with the existing BC-Housing "John Wu"). *(Note: the M1 identity-anchor re-key shipped 2026-06-20 now keys people by email→LinkedIn→name+org, so this is safer to revisit.)*
+- **3 dedup merges** — Lark ×2 (stray "Unknown" rows folded into Developer #53694 / GC #72260, arms kept separate), Nch'ḵay̓ #70915 → #54983. Allowlist override + post-audit done.
+- **1 reclassify** — Mundi #70864 `Unknown → Developer`.
+- **4 aliases** — "Mundai Group", "Yellow Ridge", "Open Forum", "Open RD" → their canonicals (all resolve).
+- **2 contacts** — Annelise van der Veen (#13816 → Purpose Driven), Jacob Lewis III (#13817 → Nch'ḵay̓), affiliations wired.
+- **De Cotiis family fully enriched (2026-06-20)** — Michael (#1399, Pinnacle) plus the Onni branch (Inno 1937–2020 #3757; sons Rossano #1406, Morris #9303, Giulio #9304, Paolo #9305) and the Amacon branch (Marcello #901, Marc #1941, Donato #902, Italo #1940, Lilliana #903) are all in the brain with affiliations wired; duplicate person rows (Don/Mike/Donato dups) retired. See §7 #1.
+- **WHB Group / John Wu — skipped** (IntelPerson key is name-only → would fuse with the existing BC-Housing "John Wu"). *(Note: the M1 identity-anchor re-key shipped 2026-06-20 now keys people by email→LinkedIn→name+org, so this is safer to revisit.)*
 
-**Brain-wide hardening since the meeting (2026-06-21):** beyond these meeting-specific writes, the whole module was cleaned — 50k→17.8k warm orgs (commodity-vendor cull, reversible), 100+ dup clusters merged incl. the BC health-authority cluster (32→9), 81 Kind corrections, MPI FK completion, and the resolver dup-creation cycle closed (fuzzy pre-create match). Full deep re-enrichment of all BD-relevant orgs is now running. Net effect for these pursuits: the targets sit in a deduped, correctly-typed, FK-sound graph and will carry fresh verified intel by the Tuesday deliverable. All IDs in this doc re-verified 2026-06-21.
+**Brain-wide hardening since the meeting (2026-06-21):** beyond these meeting-specific writes, the whole module was cleaned — 50k→17.8k warm orgs (commodity-vendor cull, reversible), 100+ dup clusters merged incl. the BC health-authority cluster (32→9), 81 Kind corrections, MPI FK completion, and the resolver dup-creation cycle closed (fuzzy pre-create match). Enrichment is now **targeted and cost-controlled** — the high-value pursuit targets are enriched on the cleaned graph; the indiscriminate always-on full-base pass was retired. Net effect for these pursuits: the targets sit in a deduped, correctly-typed, FK-sound graph with verified intel. All IDs in this doc re-verified 2026-06-21.
 
 ---
 

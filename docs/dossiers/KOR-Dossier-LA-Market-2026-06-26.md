@@ -150,7 +150,7 @@ An unplanned but immediately large SE demand event. **Every rebuild requires ful
 
 ## 2. Competitive Landscape — Structural Engineers in LA
 
-**Ownership note (hardened by the 2026-06-26 deep-hone):** Multiple LA SE firms have undergone acquisition. **Englekirk → WSP (Oct 2021): the boutique is measurably hollowing out — ~90 employees at acquisition, confirmed ~43 by March 2026 (a 52% headcount decline).** Robert Englekirk is Chairman Emeritus; Tony Ghodsi is now an SVP inside a 65,000-person global firm. No single 2026 trigger event, but the cumulative client-drift is at its most acute *now* — the displacement window is real, not theoretical. Brandow & Johnston is now B&J HBK, Inc. (HBK Engineering, Jan 2018). **Nabih Youssef Associates: founder Nabih died July 2024; CEO is now son John Paul Youssef — a legal/business professional, NOT a structural engineer.** The four remaining Principals cover the landmark tier (unassailable 3–5 yrs), but the *personal-relationship* layer that won boutique mid-market PBSD commissions is gone — a real $5–50M-tier opening.
+**Ownership note:** Multiple LA SE firms have undergone acquisition. **Englekirk → WSP (Oct 2021): the boutique is measurably hollowing out — ~90 employees at acquisition, confirmed ~43 by March 2026 (a 52% headcount decline).** Robert Englekirk is Chairman Emeritus; Tony Ghodsi is now an SVP inside a 65,000-person global firm. No single 2026 trigger event, but the cumulative client-drift is at its most acute *now* — the displacement window is real, not theoretical. Brandow & Johnston is now B&J HBK, Inc. (HBK Engineering, Jan 2018). **Nabih Youssef Associates: founder Nabih died July 2024; CEO is now son John Paul Youssef — a legal/business professional, NOT a structural engineer.** The four remaining Principals cover the landmark tier (unassailable 3–5 yrs), but the *personal-relationship* layer that won boutique mid-market PBSD commissions is gone — a real $5–50M-tier opening.
 
 ### 2.1 Tier 1: Trophy / Supertall (NOT KOR's lane)
 
@@ -256,7 +256,7 @@ An unplanned but immediately large SE demand event. **Every rebuild requires ful
 | **Hackman Capital Partners** | **Television City $1.25B** — ~980,000 SF TV/studio campus adaptive reuse + residential; **approved January 2025** | **Adamson Associates** (AOR) | SE not confirmed — no incumbent named in research | **High-value open SE opportunity.** Television City is the largest entertainment/mixed-use adaptive reuse in LA right now. Structural scope = complex existing concrete/steel TV-production facility + new residential above/adjacent. Reach Hackman + Adamson Associates before SE is locked. [C — architect/dev agent] |
 | **Jamison Properties** | DTLA office-to-residential conversions (active AB 2011 pipeline) | Various | Englekirk pre-WSP | Glen Lee (glee@jamisongroup.com). Adaptive reuse + seismic assessment = KOR's skill. [C — prior research] |
 | **Greenland Group** | Metropolis (Gensler/Saiful Bouquet, 39-story + hotel); major DTLA presence | Gensler | Saiful Bouquet | Locked on Metropolis. Monitor for next Greenland LA project. [C — Saiful Bouquet website] |
-| **Mitsui Fudosan America** | Figueroa Eight (Englekirk/WSP, 41-story, DTLA) | [architect not confirmed] | Englekirk/WSP | Post-WSP, Mitsui Fudosan's loyalty to the "Englekirk" brand vs the WSP reality is worth probing. Contact: Stanislav Morkun (smorkun@mfra.com, Apollo-verified per prior research). [C — prior research] |
+| **Mitsui Fudosan America** | Figueroa Eight (Englekirk/WSP, 41-story, DTLA) | [architect not confirmed] | Englekirk/WSP | Post-WSP, Mitsui Fudosan's loyalty to the "Englekirk" brand vs the WSP reality is worth probing. Contact: Stanislav Morkun (smorkun@mfra.com). |
 | **Hudson Pacific Properties** | Google Westside Pavilion (creative office adaptive reuse, Gensler/Englekirk/WSP) | Gensler | Englekirk/WSP | Locked on Westside Pavilion. Monitor next Hudson Pacific LA adaptive reuse. [C — DCI; Englekirk] |
 
 ### 4.2 Public Owners & Capital Programs
@@ -325,7 +325,7 @@ An unplanned but immediately large SE demand event. **Every rebuild requires ful
 | 3 | **Onni Group — Times Mirror Square + Arts District** | Warm developer re-engagement | Vancouver principals meeting; Onni HQ | Onni Vancouver development leadership [via Vancouver BD contacts] | Pre-groundbreaking |
 | 4 | **AC Martin — Times Mirror Square SE (open)** | High-rise architect outreach | Jim's LA network → Michael Chang; Times Mirror SE appears unconfirmed | Michael Chang, AC Martin Managing Principal | Immediate; before SE lock |
 | 5 | **Carmel Partners (William Cipes)** | Englekirk/WSP displacement | Boutique-seismic alternative pitch; next LA project | wcipes@carmelpartners.com | 2026 (peak window) |
-| 6 | **Withee Malcolm Architects** | Englekirk/WSP architect-side displacement | "We're the boutique Englekirk was before WSP" | [identify via Apollo/Hunter] | 2026 |
+| 6 | **Withee Malcolm Architects** | Englekirk/WSP architect-side displacement | "We're the boutique Englekirk was before WSP" | [contact TBD] | 2026 |
 | 7 | **Jamison Properties (Glen Lee)** | DTLA adaptive reuse | Seismic assessment of existing concrete buildings = KOR niche | glee@jamisongroup.com | Active now |
 | 8 | **Intergulf LA forward pipeline** | Existing client expansion | Ask: what is Intergulf's next LA acquisition? | Intergulf Vancouver contacts (via Hartford relationship) | Ongoing |
 | 9 | **Hackman Capital / Adamson Associates — Television City ($1.25B, 980K SF)** | Major adaptive reuse SE seat | Reach Hackman Capital development team + Adamson Associates; SE unconfirmed | Hackman Capital LA principals; Adamson Associates [identify] | Immediate — approved Jan 2025, SE selection in progress |
@@ -348,9 +348,9 @@ An unplanned but immediately large SE demand event. **Every rebuild requires ful
 
 ---
 
-## 6. Firms to Flag for BD Ingestion
+## 6. Additional LA targets to pursue
 
-Firms identified in this research not yet in KOR's BD graph. Flag for canonical ingestion and enrichment:
+Developers and architects worth opening, with the reason each is in play:
 
 | Firm | Type | Why flag |
 |---|---|---|

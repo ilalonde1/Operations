@@ -65,7 +65,7 @@ Approach in this order: Mandy (routing) → Harmon + Wayne (principals meeting) 
 |---|---|---|---|
 | **Mandy Serrano** | Marketing Director | mandy@hwengr.com | /in/amandaserrano |
 | **Bryan Wayne, PE, LEED AP** | Principal — Electrical (co-founder) | bryan@hwengr.com | /in/bryan-wayne-p-e-leed-a-p-a99a965 |
-| **Tom Harmon, PE** | Principal — Mechanical (co-founder) | *not Apollo-indexed; request from Mandy* | /in/tom-harmon-p-e-54110936 |
+| **Tom Harmon, PE** | Principal — Mechanical (co-founder) | *request from Mandy* | /in/tom-harmon-p-e-54110936 |
 | Austin Wayne | Director of Electrical Engineering | austin@hwengr.com | — |
 | Eric Trafton | Plumbing Director | eric@hwengr.com | — |
 | Travis Wagner, PE | Mechanical Director | *(not yet verified)* | — |
