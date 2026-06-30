@@ -92,6 +92,15 @@ public sealed class BdReportsViewModelTests
                 new[] { new BdActionStatusCount("Open", "PursuitAngle", 3) },
                 new[] { new BdOpenActionRow(1, "Graham", "PursuitAngle", "Engage Trifunov", "Alex Trifunov", null) }));
 
+        public Task<string> GetTeamingGraphHtmlAsync(CancellationToken ct)
+            => Task.FromResult("<html><body>teaming-graph</body></html>");
+
+        public Task<string> GetPriorityTreemapHtmlAsync(CancellationToken ct)
+            => Task.FromResult("<html><body>priority-treemap</body></html>");
+
+        public Task<string> GetAttackCardsHtmlAsync(CancellationToken ct)
+            => Task.FromResult("<html><body>attack-cards</body></html>");
+
         public List<(string Category, string Format)> Logged { get; } = new();
 
         public Task LogReportGeneratedAsync(string category, string format, string generatedByUser, int? recordCount, string? notes, CancellationToken ct)
