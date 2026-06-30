@@ -335,12 +335,18 @@ namespace Kor.Operations.App.FeeProposal
             }
         }
 
+        /// <summary>Raised after a proposal is persisted, carrying its id. When the
+        /// builder was launched from a pursuit, the CRM uses this to link the proposal
+        /// to the pursuit's opportunity and advance the pursuit's stage.</summary>
+        public event EventHandler<string>? ProposalSaved;
+
         public async Task SaveProposalAsync(CancellationToken ct = default)
         {
             _proposal.Name = DocumentName;
             _proposal.Blocks = Blocks.Select(b => b.Block).ToList();
             await _proposalStore.SaveAsync(_proposal, ct);
             IsDirty = false;
+            ProposalSaved?.Invoke(this, _proposal.Id);
         }
 
         public async Task SaveProposalAsAsync(string newName, CancellationToken ct = default)
@@ -354,6 +360,7 @@ namespace Kor.Operations.App.FeeProposal
             _proposal = clone;
             DocumentName = newName;
             IsDirty = false;
+            ProposalSaved?.Invoke(this, _proposal.Id);
         }
 
         public void OpenProposal(FeeProposalModel proposal)

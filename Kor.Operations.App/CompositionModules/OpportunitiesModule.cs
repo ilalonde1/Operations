@@ -214,6 +214,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<IPursuitGrabStore>(_ => new SqlPursuitGrabStore(options.OpportunitiesDb));
         services.AddSingleton<IPursuitOverwatchStore>(_ => new SqlPursuitOverwatchStore(options.OpportunitiesDb));
         services.AddSingleton<IBdAttributionStore>(_ => new SqlBdAttributionStore(options.OpportunitiesDb));
+        services.AddSingleton<IOpportunityFeeProposalLinkStore>(_ => new SqlOpportunityFeeProposalLinkStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmActivityStore>(_ => new SqlCrmActivityStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmContactStore>(_ => new SqlCrmContactStore(options.OpportunitiesDb));
 

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -102,7 +103,8 @@ public partial class CrmView : UserControl
 
     private void BuildFeeProposalButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_vm.Selected is null)
+        var row = _vm.Selected;
+        if (row is null)
         {
             return;
         }
@@ -110,16 +112,32 @@ public partial class CrmView : UserControl
         var win = _services.GetRequiredService<FeeProposalBuilderWindow>();
         win.Owner = Window.GetWindow(this);
 
-        var key = _vm.Selected.OpportunityKey;
-        var name = string.IsNullOrWhiteSpace(_vm.Selected.ProjectName) ? key : $"{key} — {_vm.Selected.ProjectName}";
+        var key = row.OpportunityKey;
+        var name = string.IsNullOrWhiteSpace(row.ProjectName) ? key : $"{key} — {row.ProjectName}";
+        // Only opportunity-backed (grabbed) pursuits can be linked — the link table
+        // FKs to Opportunities. BD-tracking pursuits have no OpportunityId, so the
+        // proposal still builds, it just isn't linked.
+        var opportunityId = row.OpportunityId;
+        var engagementId = row.Id;
 
-        win.Loaded += (_, _) =>
+        // One-shot: Loaded can fire more than once; wire prefill + linkage exactly once.
+        RoutedEventHandler? loaded = null;
+        loaded = (_, _) =>
         {
+            win.Loaded -= loaded;
             try
             {
                 if (win.DataContext is FeeProposalBuilderViewModel proposalVm)
                 {
                     proposalVm.StartFromOpportunity(name);
+
+                    if (opportunityId.HasValue)
+                    {
+                        EventHandler<string> onSaved = async (_, proposalId) =>
+                            await LinkProposalToPursuitAsync(opportunityId.Value, engagementId, proposalId).ConfigureAwait(true);
+                        proposalVm.ProposalSaved += onSaved;
+                        win.Closed += (_, _) => proposalVm.ProposalSaved -= onSaved;
+                    }
                 }
             }
             catch (Exception ex)
@@ -128,8 +146,46 @@ public partial class CrmView : UserControl
                 _vm.SetStatusMessage("Fee proposal opened, but automatic prefill failed.");
             }
         };
+        win.Loaded += loaded;
 
         win.Show();
+    }
+
+    /// <summary>
+    /// Wire a saved fee proposal back to the originating pursuit: write the
+    /// opportunity↔proposal link (soft, cross-DB) and advance a still-Drafting
+    /// pursuit to Submitted. Best-effort — a failure never blocks the proposal.
+    /// </summary>
+    private async Task LinkProposalToPursuitAsync(long opportunityId, long engagementId, string proposalId)
+    {
+        try
+        {
+            if (!Guid.TryParse(proposalId, out var feeProposalId))
+            {
+                return;
+            }
+
+            var actor = ResolveActor();
+            var linkStore = _services.GetRequiredService<Kor.Opportunities.Data.Opportunities.IOpportunityFeeProposalLinkStore>();
+            await linkStore.LinkAsync(opportunityId, feeProposalId, actor, CancellationToken.None).ConfigureAwait(true);
+
+            // Re-read fresh state before advancing so a builder that stayed open can't
+            // overwrite a pursuit that has since moved on — advance only if still Drafting,
+            // and update the CURRENT engagement, not the one captured at launch.
+            await ReloadAsync().ConfigureAwait(true);
+            var fresh = _vm.Engagements.FirstOrDefault(r => r.Id == engagementId);
+            if (fresh is not null && fresh.Engagement.Stage == CrmEngagementStage.Drafting)
+            {
+                await _vm.ChangeStageAsync(fresh, CrmEngagementStage.Submitted, actor, CancellationToken.None).ConfigureAwait(true);
+                await ReloadAsync().ConfigureAwait(true);
+            }
+
+            _vm.SetStatusMessage("Fee proposal linked to this pursuit.");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Linking fee proposal to pursuit failed.");
+        }
     }
 
     private void BuildBrochureButton_Click(object sender, RoutedEventArgs e)
