@@ -369,7 +369,7 @@ WHERE Id = @id AND RowVersion = @rv;";
         cmd.Parameters.Add("@submittedAt", SqlDbType.DateTimeOffset).Value = (object?)o.ProposalSubmittedAtUtc ?? DBNull.Value;
         cmd.Parameters.Add("@outcomeAt", SqlDbType.DateTimeOffset).Value = (object?)o.OutcomeAtUtc ?? DBNull.Value;
 
-        cmd.Parameters.Add("@ownerId", SqlDbType.NVarChar, 20).Value = (object?)o.OwnerStaffId ?? DBNull.Value;
+        cmd.Parameters.Add("@ownerId", SqlDbType.NVarChar, 150).Value = (object?)o.OwnerStaffId ?? DBNull.Value;
         cmd.Parameters.Add("@reviewerIds", SqlDbType.NVarChar, 500).Value = (object?)o.ReviewerStaffIds ?? DBNull.Value;
 
         AddDecimal(cmd, "@score", precision: 10, scale: 4, value: o.RelevanceScore);

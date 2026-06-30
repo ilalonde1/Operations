@@ -207,6 +207,7 @@ internal static class OpportunitiesModule
         // off opportunities.Opportunities; same connection string + concurrency
         // discipline as the rest of the schema.
         services.AddSingleton<ICrmEngagementStore>(_ => new SqlCrmEngagementStore(options.OpportunitiesDb));
+        services.AddSingleton<IPursuitGrabStore>(_ => new SqlPursuitGrabStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmActivityStore>(_ => new SqlCrmActivityStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmContactStore>(_ => new SqlCrmContactStore(options.OpportunitiesDb));
 

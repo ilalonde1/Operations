@@ -9,6 +9,7 @@ using Kor.Operations.App.Opportunities;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Data.Opportunities;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
@@ -25,22 +26,41 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
     public const string Provider = "Opportunity Bazaar (BD)";
 
     private readonly IOpportunityStore _opportunityStore;
+    private readonly IPursuitGrabStore _grabStore;
 
+    private OpportunityRowView? _selected;
     private string _statusMessage = "Ready.";
     private bool _isLoading;
+    private bool _isGrabbing;
 
     // Immutable snapshot of the loaded pool, swapped on the UI thread after each
     // load. BuildContext()/HasData run on AppAiContextBuilder's worker thread and
     // read this reference instead of enumerating the live ObservableCollection.
     private OpportunityRowView[] _contextSnapshot = Array.Empty<OpportunityRowView>();
 
-    public BazaarViewModel(IOpportunityStore opportunityStore)
+    public BazaarViewModel(IOpportunityStore opportunityStore, IPursuitGrabStore grabStore)
     {
         _opportunityStore = opportunityStore ?? throw new ArgumentNullException(nameof(opportunityStore));
+        _grabStore = grabStore ?? throw new ArgumentNullException(nameof(grabStore));
     }
 
     /// <summary>The un-claimed opportunity pool, ranked best-first.</summary>
     public ObservableCollection<OpportunityRowView> Grabbable { get; } = new();
+
+    /// <summary>The row selected in the grid; the Grab action targets it.</summary>
+    public OpportunityRowView? Selected
+    {
+        get => _selected;
+        set
+        {
+            if (SetField(ref _selected, value))
+            {
+                OnPropertyChanged(nameof(CanGrab));
+            }
+        }
+    }
+
+    public bool CanGrab => _selected is not null && !_isGrabbing;
 
     public string StatusMessage
     {
@@ -110,6 +130,50 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Claim <paramref name="row"/> for <paramref name="staffUpn"/> via the
+    /// guarded grab transaction. On success the row leaves the Bazaar (it is no
+    /// longer New/un-owned) and becomes a Drafting pursuit in the CRM. If it was
+    /// taken by someone else first, it is removed too (it has left the pool).
+    /// </summary>
+    public async Task<GrabOutcome> GrabAsync(OpportunityRowView row, string staffUpn, CancellationToken ct)
+    {
+        if (_isGrabbing)
+        {
+            // A grab is already in flight; ignore the re-entrant click so its
+            // AlreadyTaken result can't overwrite the first grab's status.
+            return GrabOutcome.AlreadyTaken;
+        }
+
+        _isGrabbing = true;
+        OnPropertyChanged(nameof(CanGrab));
+        try
+        {
+            var result = await _grabStore.GrabAsync(row.Id, staffUpn, ct).ConfigureAwait(true);
+
+            // Either way the opportunity has left the New/un-owned pool — drop it.
+            Grabbable.Remove(row);
+            if (ReferenceEquals(_selected, row))
+            {
+                Selected = null;
+            }
+            _contextSnapshot = Grabbable.ToArray();
+
+            StatusMessage = result.Outcome == GrabOutcome.Grabbed
+                ? $"Grabbed “{row.Name}” — now a Drafting pursuit in your Pursuits list."
+                : $"“{row.Name}” was already taken — removed from the Bazaar.";
+
+            OnPropertyChanged(nameof(HasGrabbable));
+            OnPropertyChanged(nameof(Headline));
+            return result.Outcome;
+        }
+        finally
+        {
+            _isGrabbing = false;
+            OnPropertyChanged(nameof(CanGrab));
         }
     }
 

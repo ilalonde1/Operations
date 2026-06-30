@@ -17,6 +17,11 @@
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
             <Button Content="Refresh" Width="100" Click="RefreshButton_Click"/>
+            <Button Content="Grab selected" Width="140" Margin="10,0,0,0"
+                    Click="GrabButton_Click"
+                    IsEnabled="{Binding CanGrab}"
+                    Style="{StaticResource Button.Primary}"
+                    ToolTip="Claim the selected opportunity — it leaves the Bazaar and becomes a Drafting pursuit you own."/>
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource Card}">
@@ -43,7 +48,8 @@
                           SelectionUnit="FullRow"
                           IsReadOnly="True"
                           HeadersVisibility="Column"
-                          ItemsSource="{Binding Grabbable}">
+                          ItemsSource="{Binding Grabbable}"
+                          SelectedItem="{Binding Selected}">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="Relevance" Width="110">
                             <DataGridTemplateColumn.CellTemplate>

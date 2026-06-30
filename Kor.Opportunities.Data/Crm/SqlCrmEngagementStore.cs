@@ -182,7 +182,7 @@ WHERE OpportunityId IS NULL
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@buyerCanonicalOrgId", SqlDbType.BigInt).Value = buyerCanonicalOrgId;
-        cmd.Parameters.Add("@ownerStaffId", SqlDbType.NVarChar, 20).Value = ownerStaffId;
+        cmd.Parameters.Add("@ownerStaffId", SqlDbType.NVarChar, 150).Value = ownerStaffId;
         cmd.Parameters.Add("@region", SqlDbType.NVarChar, 40).Value = region;
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         return await reader.ReadAsync(ct).ConfigureAwait(false) ? MapReader(reader) : null;
@@ -240,7 +240,7 @@ WHERE Id = @id AND RowVersion = @rv;";
         // have no parent RFP). Convert null -> DBNull explicitly.
         cmd.Parameters.Add("@oppId", SqlDbType.BigInt).Value = (object?)e.OpportunityId ?? DBNull.Value;
         cmd.Parameters.Add("@stage", SqlDbType.Int).Value = (int)e.Stage;
-        cmd.Parameters.Add("@owner", SqlDbType.NVarChar, 20).Value = (object?)e.OwnerStaffId ?? DBNull.Value;
+        cmd.Parameters.Add("@owner", SqlDbType.NVarChar, 150).Value = (object?)e.OwnerStaffId ?? DBNull.Value;
         cmd.Parameters.Add("@assigned", SqlDbType.NVarChar, 500).Value = (object?)e.AssignedStaffIds ?? DBNull.Value;
         AddDecimal(cmd, "@margin", precision: 5, scale: 2, value: e.TargetMargin);
         AddDecimal(cmd, "@fee", precision: 18, scale: 2, value: e.ProposedFee);
