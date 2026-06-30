@@ -39,6 +39,18 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         // majority of pages image-only) is. Granville's structural set ran 4 of 5 image-only → refused.
         public const double BlindPageFraction = 0.5;
 
+        /// <summary>Readability from raw per-page text (one string per page, as the rebar/page-text reader
+        /// yields it) — splits each page on whitespace and defers to <see cref="Assess(IReadOnlyList{int})"/>,
+        /// so every caller counts words the same way.</summary>
+        public static PdfReadability AssessPageTexts(IReadOnlyList<string> pageTexts)
+        {
+            ArgumentNullException.ThrowIfNull(pageTexts);
+            var words = pageTexts
+                .Select(t => (t ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length)
+                .ToList();
+            return Assess(words);
+        }
+
         /// <summary>Decide readability from the per-page extractable-word counts. Pure and deterministic, so
         /// the threshold is unit-tested directly with synthetic counts — no PDF needed.</summary>
         public static PdfReadability Assess(IReadOnlyList<int> wordsPerPage)

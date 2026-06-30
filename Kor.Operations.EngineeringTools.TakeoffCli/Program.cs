@@ -1331,6 +1331,20 @@ if (args.Length >= 4 && args[0].Equals("rebar", StringComparison.OrdinalIgnoreCa
 {
     var bPages = PdfPageTextReader.ReadPages(args[1]);
     var aPages = PdfPageTextReader.ReadPages(args[2]);
+
+    // PRE-CHECK — refuse up front if EITHER set is scanned/flattened (no vector text layer). You cannot
+    // detect a callout change against a side the tool is blind to, so catch it here with a clear reason
+    // rather than only at the later 0-callouts guard. Exit 3, no report written.
+    foreach (var (label, path, pages) in new[] { ("BEFORE", args[1], bPages), ("AFTER", args[2], aPages) })
+    {
+        var rv = PdfReadabilityAssessor.AssessPageTexts(pages);
+        if (!rv.Readable)
+        {
+            Console.Error.WriteLine($"CANNOT READ THE {label} SET ({Path.GetFileName(path)}) — {rv.Reason}");
+            return 3;
+        }
+    }
+
     string rname = args.Length > 4 ? args[4] : string.Empty;
     string rbl = args.Length > 5 ? args[5] : "Before";
     string ral = args.Length > 6 ? args[6] : "After";

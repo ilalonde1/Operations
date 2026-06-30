@@ -60,4 +60,27 @@ public sealed class PdfReadabilityTests
     {
         Assert.False(PdfReadabilityAssessor.Assess(new List<int>()).Readable);
     }
+
+    [Fact]
+    public void AssessPageTexts_counts_words_per_page_string()
+    {
+        // Two rich text pages + three empty (image) pages → majority image-only → blind.
+        var pages = new List<string>
+        {
+            string.Join(" ", Enumerable.Repeat("15M@200", 300)),
+            string.Join(" ", Enumerable.Repeat("10M@300", 300)),
+            "", "   ", "S-2",
+        };
+        var v = PdfReadabilityAssessor.AssessPageTexts(pages);
+        Assert.False(v.Readable);
+        Assert.Equal(3, v.ImageOnlyPages);
+    }
+
+    [Fact]
+    public void AssessPageTexts_readable_when_pages_carry_text()
+    {
+        var pages = Enumerable.Range(0, 8)
+            .Select(_ => string.Join(" ", Enumerable.Repeat("callout", 400))).ToList();
+        Assert.True(PdfReadabilityAssessor.AssessPageTexts(pages).Readable);
+    }
 }
