@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Media;
+using Microsoft.Data.SqlClient;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Operations.App.Crm;
@@ -697,8 +698,9 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         // / already owned. Re-fetch the engagement that now exists for it.
         saved ??= await _engagementStore.GetByOpportunityAsync(row.Model.Id, ct).ConfigureAwait(true);
 
-        // Legacy fallback: opportunity is non-New with no engagement yet (e.g. a
-        // status set outside this flow). Create one owned by the actor.
+        // Fallback: GrabAsync reported AlreadyTaken but no engagement exists yet —
+        // the opportunity isn't grabbable (already owned, or a non-New status such
+        // as a Lost opp being promoted). Create one owned by the actor.
         if (saved is null)
         {
             var draft = new CrmEngagement
@@ -707,7 +709,37 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
                 Stage = CrmEngagementStage.Drafting,
                 OwnerStaffId = actor,
             };
-            saved = await _engagementStore.InsertAsync(draft, actor, ct).ConfigureAwait(true);
+            try
+            {
+                saved = await _engagementStore.InsertAsync(draft, actor, ct).ConfigureAwait(true);
+            }
+            catch (SqlException ex) when (ex.Number is 2601 or 2627)
+            {
+                // A concurrent caller created it first (the filtered unique index on
+                // OpportunityId blocks the duplicate) — re-fetch the now-existing one.
+                saved = await _engagementStore.GetByOpportunityAsync(row.Model.Id, ct).ConfigureAwait(true);
+            }
+
+            // Preserve the old status semantics the explicit bump used to provide:
+            // a still-New opportunity that couldn't be grabbed (already owned) still
+            // advances to Pursuing once it has a pursuit. Non-New statuses are left
+            // alone (don't resurrect a Lost opp).
+            if (saved is not null && row.Model.Status is OpportunityStatus.New)
+            {
+                try
+                {
+                    await ChangeStatusAsync(row, OpportunityStatus.Pursuing, actor, ct).ConfigureAwait(true);
+                }
+                catch (OpportunityConcurrencyException)
+                {
+                    // engagement exists; the status bump is a courtesy
+                }
+            }
+        }
+
+        if (saved is null)
+        {
+            throw new InvalidOperationException($"Could not create or find a pursuit for opportunity {row.Model.Id}.");
         }
 
         if (_selected?.Model.Id == row.Model.Id && _selectedEngagement is null)
