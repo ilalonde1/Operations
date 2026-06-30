@@ -22,7 +22,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         double Dpi = 110,
         string ProfileName = "BC-moderate",
         bool ApplyZoning = false,
-        double StoreyHeightIn = 126);   // 10.5 ft typical — prices the wall/column gray-fill footprint; assumed, flagged
+        double StoreyHeightIn = 126,    // 10.5 ft typical — the FALLBACK used for a level with no supplied height
+        IReadOnlyDictionary<string, double>? StoreyHeightInByLevel = null);  // real floor-to-floor (inches) per level
+            // from the architectural set; keyed by level label (tower cardinal optional). Levels absent here fall
+            // back to StoreyHeightIn (flagged). This is the clean-at-source path: the takeoff prices verticals at
+            // the AUTHORITATIVE height when given it, instead of scraping a fragile elevation read off the plans.
 
     /// <summary>Why a plate could not be priced and is therefore NOT in the total — the honest residual the
     /// three-phase pipeline owes alongside the answer. <see cref="ResidualKind.AreaUnresolved"/>: no grid and
@@ -105,6 +109,44 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var m = TowerRx.Match(label ?? "");
             return m.Success ? m.Groups[1].Value.ToUpperInvariant() : null;
         }
+
+        // A plate label → its physical-floor key for the storey-height lookup: strip the tower cardinal and
+        // "TOWER" ("1 NORTH" / "LEVEL 2 SOUTH TOWER" → L1 / L2) so ONE supplied height per floor serves both
+        // towers, then canonicalize the level token the same way the schedules do ("LEVEL 19" ↔ "L19").
+        private static readonly System.Text.RegularExpressions.Regex TowerWordsRx =
+            new(@"\b(NORTH|SOUTH|EAST|WEST|TOWER)\b",
+                System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        /// <summary>The physical-floor key a storey-height map is matched on: tower cardinal stripped, level
+        /// token normalized ("1 NORTH" → "L1", "LEVEL P1" → "P1"). A plate's own label drops the "LEVEL"
+        /// prefix ("1 NORTH") while a user's override may keep it ("LEVEL 1"); both must land on the same key,
+        /// so a bare floor number is given the same "L&lt;n&gt;" form ScheduleTakeoff.NormalizeLevel gives "LEVEL n".
+        /// Exposed for testing the override path.</summary>
+        public static string NormalizeLevelKey(string label)
+        {
+            string s = ScheduleTakeoff.NormalizeLevel(System.Text.RegularExpressions.Regex.Replace(
+                TowerWordsRx.Replace(label ?? "", " "), @"\s+", " ").Trim());
+            return System.Text.RegularExpressions.Regex.IsMatch(s, @"^\d+$") ? "L" + s : s;   // "1" → "L1"
+        }
+
+        /// <summary>Re-key a caller-supplied storey-height map onto normalized floor keys (so "LEVEL 1",
+        /// "L1", "1 NORTH" all resolve to the same floor), dropping non-positive heights. Null/empty in → null.</summary>
+        public static Dictionary<string, double>? NormalizeHeightMap(IReadOnlyDictionary<string, double>? raw)
+        {
+            if (raw is null || raw.Count == 0) return null;
+            var map = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in raw) if (kv.Value > 0) map[NormalizeLevelKey(kv.Key)] = kv.Value;   // last wins
+            return map.Count > 0 ? map : null;
+        }
+
+        /// <summary>The storey height (inches) to price a level's verticals at: the per-level override when one
+        /// was supplied for that floor (the authoritative architectural floor-to-floor), else the typical
+        /// fallback. <paramref name="normalizedByLevel"/> must already be keyed by <see cref="NormalizeLevelKey"/>
+        /// (use <see cref="NormalizeHeightMap"/>). Returns (height, true) when the override applied.</summary>
+        public static (double Inches, bool Known) ResolveStoreyHeightIn(
+            string label, IReadOnlyDictionary<string, double>? normalizedByLevel, double fallbackIn) =>
+            normalizedByLevel != null && normalizedByLevel.TryGetValue(NormalizeLevelKey(label), out var h) && h > 0
+                ? (h, true) : (fallbackIn, false);
 
         /// <summary>The structural CLASS a plate belongs to for a thickness peer-estimate: its tower cardinal
         /// if it has one, else the leading letters of its level token (a parkade "P3"→"P", a roof "ROOF"). A
@@ -633,6 +675,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             }
 
             var tkPlates = new List<MeasuredPlate>();
+            // Real per-level floor-to-floor heights (architectural set) re-keyed onto normalized floor keys;
+            // a level absent here falls back to the typical, flagged. Counters drive a one-line summary note.
+            var heightByLevel = NormalizeHeightMap(req.StoreyHeightInByLevel);
+            int htKnownLevels = 0, htAssumedLevels = 0;
             var residual = new List<SlabResidual>();
             foreach (var r in tkRaw)
             {
@@ -703,13 +749,21 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 // rode a bad locate. The storey height is an assumed typical, flagged in the engine notes once.
                 if (!degenerate && (r.WallSqFt > 0 || r.ColSqFt > 0))
                 {
+                    var (storeyIn, known) = ResolveStoreyHeightIn(r.Label, heightByLevel, req.StoreyHeightIn);
+                    if (known) htKnownLevels++; else htAssumedLevels++;
                     if (r.WallSqFt > 0)
-                        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Wall, "shear", r.WallSqFt, req.StoreyHeightIn, floors));
+                        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Wall, "shear", r.WallSqFt, storeyIn, floors));
                     if (r.ColSqFt > 0)
-                        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Column, null, r.ColSqFt, req.StoreyHeightIn, floors));
-                    notes.Add($"      {r.Label}: + gray-fill wall {r.WallSqFt:N0} / col {r.ColSqFt:N0} sqft × {req.StoreyHeightIn / 12:0.0}ft × {floors} flr (deterministic; storey height assumed).");
+                        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Column, null, r.ColSqFt, storeyIn, floors));
+                    notes.Add($"      {r.Label}: + gray-fill wall {r.WallSqFt:N0} / col {r.ColSqFt:N0} sqft × {storeyIn / 12:0.0}ft × {floors} flr "
+                        + $"(deterministic; storey height {(known ? "from supplied floor-to-floor" : "ASSUMED typical")}).");
                 }
             }
+
+            if (htKnownLevels + htAssumedLevels > 0)
+                notes.Add(htKnownLevels == 0
+                    ? $"  storey heights: ALL {htAssumedLevels} vertical level(s) priced at the assumed typical {req.StoreyHeightIn / 12:0.0}ft — supply per-level floor-to-floor for exact heights."
+                    : $"  storey heights: {htKnownLevels} level(s) priced at supplied floor-to-floor, {htAssumedLevels} fell back to the assumed typical {req.StoreyHeightIn / 12:0.0}ft.");
 
             if (tkPlates.Count == 0)
                 throw new InvalidOperationException(

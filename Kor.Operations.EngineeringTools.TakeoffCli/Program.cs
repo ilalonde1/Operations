@@ -83,7 +83,7 @@ if (args.Length >= 1 && args[0].Equals("ifc-takeoff", StringComparison.OrdinalIg
 // EXISTING pipeline -> xlsx + total vs QTO. Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last]
 if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale]"); return 1; }
+    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson]"); return 1; }
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
     if (string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set."); return 2; }
     int? tkFirst = args.Length >= 5 && int.TryParse(args[4], out var tf) ? tf : null;
@@ -91,10 +91,31 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     // Optional scale note (e.g. "1:100" for a metric set, "1/8\"=1'-0\"" imperial). Defaults to imperial.
     string tkScale = args.Length >= 7 && !string.IsNullOrWhiteSpace(args[6]) ? args[6] : "1/8\"=1'-0\"";
 
+    // Optional storey-height file (clean-at-source): { "storeyHeightFt": 10.5, "byLevel": { "P1": 13, "LEVEL 1": 12, ... } }
+    // — real floor-to-floor heights (FEET) from the architectural set. byLevel prices each named level's verticals
+    // exactly; storeyHeightFt sets the typical fallback for the rest. Absent → the engine's 10.5ft default, flagged.
+    double tkStoreyIn = 126; Dictionary<string, double>? tkHeights = null;
+    if (args.Length >= 8 && File.Exists(args[7]))
+    {
+        try
+        {
+            using var hd = JsonDocument.Parse(File.ReadAllText(args[7]));
+            if (hd.RootElement.TryGetProperty("storeyHeightFt", out var sh) && sh.TryGetDouble(out var shv) && shv > 0) tkStoreyIn = shv * 12;
+            if (hd.RootElement.TryGetProperty("byLevel", out var bl) && bl.ValueKind == JsonValueKind.Object)
+            {
+                tkHeights = new(StringComparer.OrdinalIgnoreCase);
+                foreach (var p in bl.EnumerateObject()) if (p.Value.TryGetDouble(out var ft) && ft > 0) tkHeights[p.Name] = ft * 12;  // feet → inches
+            }
+            Console.WriteLine($"Storey heights: typical {tkStoreyIn / 12:0.0}ft{(tkHeights is { Count: > 0 } ? $" + {tkHeights.Count} per-level from {Path.GetFileName(args[7])}" : "")}.");
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"Heights file '{args[7]}' unreadable ({ex.Message}); using typical {tkStoreyIn / 12:0.0}ft."); }
+    }
+
     // The whole measure→reconcile→price→synopsis spine now lives in Core (SlabTakeoffEngine) so the WPF
     // app runs it identically; this command is a thin host that supplies the AI + raster I/O and renders
     // the engine's note trace, totals, and orange synopsis exactly as before.
-    var tkReq = new SlabTakeoffRequest(args[1], args[2], tkFirst, tkLast, Scale: tkScale);
+    var tkReq = new SlabTakeoffRequest(args[1], args[2], tkFirst, tkLast, Scale: tkScale,
+        StoreyHeightIn: tkStoreyIn, StoreyHeightInByLevel: tkHeights);
 
     // Render the PDF's pages to p-NN.png at the request's render dpi if they aren't already there, so the
     // tool is self-contained — no separate rasterizing step, no cryptic "no rendered images" death.
@@ -272,7 +293,7 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         // The priced whole-building number (slab + deterministic gray-fill walls/columns) already came from the
         // engine and is in the xlsx. The schedule reads below are an INDEPENDENT CROSS-CHECK only — never added,
         // so the noisy schedule×key-plan path can't swing or zero the answer; it just offers a second opinion.
-        Console.WriteLine($"\nWHOLE-BUILDING (deterministic gray-fill verticals; storey height assumed {typicalStoreyIn / 12:0.0}ft typical):");
+        Console.WriteLine($"\nWHOLE-BUILDING (deterministic gray-fill verticals; per-level storey heights where supplied, else typical {typicalStoreyIn / 12:0.0}ft — see 'storey heights' note above):");
         Console.WriteLine($"  slab + foundations   {slabCy,8:N0} cy");
         Console.WriteLine($"  walls   (gray-fill)  {wallCyGeom,8:N0} cy");
         Console.WriteLine($"  columns (gray-fill)  {colCyGeom,8:N0} cy");
@@ -1390,6 +1411,38 @@ if (args.Length >= 3 && args[0].Equals("sched-tokens", StringComparison.OrdinalI
         Console.WriteLine($"  h={t.Height,6:N1}  fx={t.Cx / pw,4:0.00}  \"{t.Text}\"");
     double maxH = pc.Words.Count > 0 ? pc.Words.Max(t => t.Height) : 0;
     Console.WriteLine($"  (largest token on page: h={maxH:N1})");
+    return 0;
+}
+
+// DIAGNOSTIC: takeoff elev-scan <pdf> [first] [last] — find where the set states floor elevations / storey
+// heights. Scans every page for elevation-pattern tokens (feet-inch "100'-0", metric "+45.000", "EL"/"T.O.")
+// and for "FLOOR TO FLOOR"/"STOREY" notes, and on any page carrying a level ladder dumps each LEVEL row's full
+// baseline so a level→elevation column (if present) is visible. Verifies the real source before any reader.
+if (args.Length >= 2 && args[0].Equals("elev-scan", StringComparison.OrdinalIgnoreCase))
+{
+    int ef = args.Length >= 3 && int.TryParse(args[2], out var a) ? a : 1;
+    int el = args.Length >= 4 && int.TryParse(args[3], out var b) ? b : ef + 199;
+    var feetInch = new System.Text.RegularExpressions.Regex(@"^[+\-]?\d{1,3}'\s*-?\s*\d{1,2}", System.Text.RegularExpressions.RegexOptions.Compiled);
+    var metricEl = new System.Text.RegularExpressions.Regex(@"^[+\-]\d{2,3}[.,]\d{2,3}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+    for (int pg = ef; pg <= el; pg++)
+    {
+        VectorPageReader.PageContent pc; try { pc = VectorPageReader.ReadPage(args[1], pg); } catch { break; }
+        if (pc.Words.Count == 0) continue;
+        var elevToks = pc.Words.Where(t => { var u = (t.Text ?? "").Trim().ToUpperInvariant();
+            return feetInch.IsMatch(u) || metricEl.IsMatch(u) || u is "EL" or "EL." or "ELEV" or "ELEV." or "T.O." or "T/O"; }).ToList();
+        string despaced = string.Concat(string.Join(" ", pc.Words.Select(w => w.Text)).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
+        bool ftf = despaced.Contains("FLOORTOFLOOR") || despaced.Contains("STOREYHEIGHT") || despaced.Contains("STORYHEIGHT") || despaced.Contains("TYP.FLR") || despaced.Contains("FLR.TOFLR");
+        var ladder = ScheduleGridReader.ReadLevelLadder(pc);
+        if (elevToks.Count == 0 && !ftf && ladder.Count == 0) continue;
+        Console.WriteLine($"p{pg}: {elevToks.Count} elevation-pattern token(s){(ftf ? "  [has FLOOR-TO-FLOOR/STOREY note]" : "")}{(ladder.Count > 0 ? $"  [level ladder: {ladder.Count} rows]" : "")}");
+        foreach (var t in elevToks.Take(12)) Console.WriteLine($"    elev  fx={t.Cx / pc.WidthPts:0.00} fy={t.Cy / pc.HeightPts:0.00}  \"{t.Text}\"");
+        if (ladder.Count >= 3)
+            foreach (var r in ladder.Take(6))
+            {
+                var rowToks = pc.Words.Where(w => Math.Abs(w.Cy - r.Y) <= 7).OrderBy(w => w.Cx).Select(w => w.Text);
+                Console.WriteLine($"    row {r.Normalized,-8}: {string.Join(" | ", rowToks)}");
+            }
+    }
     return 0;
 }
 
