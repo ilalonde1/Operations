@@ -14,6 +14,7 @@ using Microsoft.Kiota.Abstractions.Authentication;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Drives.Item.Items.Item.CreateUploadSession;
+using Microsoft.Graph.Users.Item.SendMail;
 using Kor.Operations.Core;
 using Polly;
 using Polly.Retry;
@@ -111,6 +112,23 @@ namespace Kor.Operations.Graph
             CancellationToken ct,
             string? senderUpn,
             IEnumerable<string>? toAndCcEmails);
+
+        /// <summary>
+        /// Sends a plain notification email (HTML body) as <paramref name="senderUpn"/>.
+        /// Unlike <see cref="SendMailAsync"/> this carries no transmittal/cover-sheet
+        /// payload — it is for simple in-app notifications (e.g. pursuit reassignment).
+        /// </summary>
+        /// <param name="senderUpn">Mailbox to send as (the signed-in user).</param>
+        /// <param name="toEmails">Recipient addresses.</param>
+        /// <param name="subject">Subject line.</param>
+        /// <param name="htmlBody">HTML message body.</param>
+        /// <param name="ct">Cancellation token.</param>
+        Task SendSimpleMailAsync(
+            string senderUpn,
+            IEnumerable<string> toEmails,
+            string subject,
+            string htmlBody,
+            CancellationToken ct);
 
         /// <summary>
         /// Attempts to retrieve the profile photo for a user.
@@ -635,6 +653,42 @@ namespace Kor.Operations.Graph
             // The single-attempt invocation below is inlined where the retry
             // pipeline used to be.
             await SendMailInnerAsync(header, coverSheetServerUrl, coverSheetLocalPath, attachCover, ct, senderUpn, toAndCcEmails).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc />
+        public async Task SendSimpleMailAsync(
+            string senderUpn,
+            IEnumerable<string> toEmails,
+            string subject,
+            string htmlBody,
+            CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(senderUpn))
+                throw new InvalidOperationException("Sender (From) address is required.");
+
+            var recipients = (toEmails ?? Enumerable.Empty<string>())
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => new Microsoft.Graph.Models.Recipient
+                {
+                    EmailAddress = new Microsoft.Graph.Models.EmailAddress { Address = e.Trim() },
+                })
+                .ToList();
+            if (recipients.Count == 0)
+                throw new InvalidOperationException("At least one recipient is required.");
+
+            var requestBody = new SendMailPostRequestBody
+            {
+                Message = new Message
+                {
+                    Subject = subject,
+                    Body = new ItemBody { ContentType = BodyType.Html, Content = htmlBody },
+                    ToRecipients = recipients,
+                },
+                SaveToSentItems = true,
+            };
+
+            // Single attempt, like SendMailAsync: /sendMail is not safely retryable.
+            await _graph.Users[senderUpn].SendMail.PostAsync(requestBody, cancellationToken: ct).ConfigureAwait(false);
         }
 
         private async Task SendMailInnerAsync(

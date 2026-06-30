@@ -56,15 +56,6 @@ public sealed class OverwatchViewModel : ObservableObject, IAiContextProvider
 
     public bool CanReassign => _selected is not null && !_isReassigning;
 
-    /// <summary>Distinct owners currently holding pursuits — the reassign target
-    /// candidates (the editable picker also accepts a new owner).</summary>
-    public IReadOnlyList<string> KnownOwners =>
-        Pursuits.Select(p => p.OwnerDisplay)
-                .Where(o => !string.IsNullOrWhiteSpace(o))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(o => o, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
     public string StatusMessage
     {
         get => _statusMessage;

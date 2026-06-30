@@ -1,10 +1,15 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.Options;
+using Kor.Operations.Data;
+using Kor.Operations.Graph;
 using Kor.Operations.Services;
 using Kor.Opportunities.Data.Crm;
 
@@ -12,18 +17,23 @@ namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
 /// <summary>
 /// Manager overwatch board — read-only list of every owned, active pursuit
-/// with its staleness signal, hosted in <c>BdWorkspaceWindow</c>'s ContentHost
-/// via the "Overwatch" nav button. Registers its VM as an AI context provider.
+/// with its staleness signal, plus one-click reassign. Hosted in
+/// <c>BdWorkspaceWindow</c>'s ContentHost via the "Overwatch" nav button.
 /// </summary>
 public partial class OverwatchView : UserControl
 {
     private readonly OverwatchViewModel _vm;
+    private readonly IGraphFacade _graph;
+    private readonly PreferencesRepository _preferences;
     private CancellationTokenSource? _cts;
     private bool _initialized;
+    private bool _reassignBusy;
 
-    public OverwatchView(OverwatchViewModel vm)
+    public OverwatchView(OverwatchViewModel vm, IGraphFacade graph, PreferencesRepository preferences)
     {
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+        _graph = graph ?? throw new ArgumentNullException(nameof(graph));
+        _preferences = preferences ?? throw new ArgumentNullException(nameof(preferences));
         InitializeComponent();
         DataContext = _vm;
     }
@@ -59,26 +69,41 @@ public partial class OverwatchView : UserControl
 
     private async void ReassignButton_Click(object sender, RoutedEventArgs e)
     {
+        // Guard the WHOLE flow (directory load + dialog + reassign + email), not
+        // just the VM reassign — otherwise a double-click opens two dialogs.
+        if (_reassignBusy)
+        {
+            return;
+        }
+
         var row = _vm.Selected;
         if (row is null)
         {
             return;
         }
 
-        var dlg = new ReassignDialog(row.ProjectName, row.OwnerDisplay, _vm.KnownOwners)
-        {
-            Owner = Window.GetWindow(this),
-        };
-        if (dlg.ShowDialog() != true)
-        {
-            return;
-        }
-
+        _reassignBusy = true;
         try
         {
-            var outcome = await _vm.ReassignAsync(row, dlg.TargetOwner, ResolveActor(), dlg.Reason, CancellationToken.None)
+            var managerUpn = ResolveActor();
+            var people = await LoadDirectoryAsync(managerUpn).ConfigureAwait(true);
+
+            var dlg = new ReassignDialog(row.ProjectName, row.OwnerDisplay, people)
+            {
+                Owner = Window.GetWindow(this),
+            };
+            if (dlg.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var outcome = await _vm.ReassignAsync(row, dlg.TargetOwner, managerUpn, dlg.Reason, CancellationToken.None)
                 .ConfigureAwait(true);
-            if (outcome != ReassignOutcome.Reassigned)
+            if (outcome == ReassignOutcome.Reassigned)
+            {
+                await TrySendReassignEmailAsync(managerUpn, dlg.TargetEmail, dlg.TargetDisplay, row, dlg.Reason).ConfigureAwait(true);
+            }
+            else
             {
                 // Not-moved cases (already moved / target duplicate) — surface the why.
                 MessageBox.Show(Window.GetWindow(this), _vm.StatusMessage, "Reassign", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -88,10 +113,84 @@ public partial class OverwatchView : UserControl
         {
             MessageBox.Show(Window.GetWindow(this), ex.Message, "Reassign failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+        finally
+        {
+            _reassignBusy = false;
+        }
     }
 
-    /// <summary>Acting manager identity for the assignment audit — same
-    /// resolution the Opportunities/Bazaar views use.</summary>
+    /// <summary>
+    /// The acting manager's team directory (AD-sourced, the same UserTeamMembers
+    /// cache the TeamsPicker uses), de-duplicated by email. Failures degrade to an
+    /// empty list — the picker stays editable so a manager can still type an address.
+    /// </summary>
+    private async Task<IReadOnlyList<PersonOption>> LoadDirectoryAsync(string managerUpn)
+    {
+        try
+        {
+            var members = await _preferences.GetMembersForUserAsync(managerUpn).ConfigureAwait(true);
+            return members
+                .Where(m => !string.IsNullOrWhiteSpace(m.Email))
+                .GroupBy(m => m.Email, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .Select(m => new PersonOption(
+                    string.IsNullOrWhiteSpace(m.DisplayName) ? m.Email : m.DisplayName!,
+                    m.Email))
+                .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch
+        {
+            return Array.Empty<PersonOption>();
+        }
+    }
+
+    /// <summary>
+    /// Notify the new owner by email (sent as the signed-in manager). The reassign
+    /// has already committed; an email failure is surfaced as a warning, never an
+    /// error — and is skipped entirely when the owner isn't an email address
+    /// (e.g. a legacy first-name owner).
+    /// </summary>
+    private async Task TrySendReassignEmailAsync(
+        string managerUpn, string toEmail, string toDisplay, OverwatchRowView row, string? reason)
+    {
+        if (string.IsNullOrWhiteSpace(toEmail) || !toEmail.Contains('@'))
+        {
+            return;
+        }
+
+        try
+        {
+            var subject = $"Pursuit assigned to you: {row.ProjectName}";
+            var reasonHtml = string.IsNullOrWhiteSpace(reason)
+                ? string.Empty
+                : $"<p><b>Note:</b> {WebUtility.HtmlEncode(reason)}</p>";
+            var buyer = string.IsNullOrWhiteSpace(row.Buyer)
+                ? string.Empty
+                : $" ({WebUtility.HtmlEncode(row.Buyer)})";
+            var body =
+                $"<p>Hi {WebUtility.HtmlEncode(toDisplay)},</p>" +
+                $"<p>You've been assigned the pursuit <b>{WebUtility.HtmlEncode(row.ProjectName)}</b>{buyer} in the BD workspace.</p>" +
+                reasonHtml +
+                "<p>Open <b>Business Development &#8594; Pursuits</b> to work it.</p>" +
+                $"<p style=\"color:#6B7280;font-size:12px\">Reassigned by {WebUtility.HtmlEncode(managerUpn)} via the KOR Operations app.</p>";
+
+            await _graph.SendSimpleMailAsync(managerUpn, new[] { toEmail }, subject, body, CancellationToken.None)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                Window.GetWindow(this),
+                $"The pursuit was reassigned, but the notification email to {toDisplay} could not be sent:\n\n{ex.Message}",
+                "Reassigned (email not sent)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>Acting manager identity for the assignment audit + email sender —
+    /// same resolution the Opportunities/Bazaar views use.</summary>
     private static string ResolveActor()
     {
         if (!string.IsNullOrWhiteSpace(global::Kor.Operations.OperationsApp.SignedInUserUpn))
