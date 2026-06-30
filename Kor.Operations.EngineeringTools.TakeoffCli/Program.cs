@@ -95,6 +95,16 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     // app runs it identically; this command is a thin host that supplies the AI + raster I/O and renders
     // the engine's note trace, totals, and orange synopsis exactly as before.
     var tkReq = new SlabTakeoffRequest(args[1], args[2], tkFirst, tkLast, Scale: tkScale);
+
+    // Render the PDF's pages to p-NN.png at the request's render dpi if they aren't already there, so the
+    // tool is self-contained — no separate rasterizing step, no cryptic "no rendered images" death.
+    try
+    {
+        int made = PlanPdfRenderer.RenderMissing(tkReq.PdfPath, tkReq.PngDir, tkReq.Dpi, tkFirst, tkLast);
+        if (made > 0) Console.WriteLine($"Rendered {made} page(s) to {tkReq.PngDir} @ {tkReq.Dpi:0} dpi.");
+    }
+    catch (Exception ex) { Console.Error.WriteLine($"PDF render failed: {ex.Message}"); return 2; }
+
     SlabTakeoffResult tkOut;
     try { tkOut = await SlabTakeoffEngine.RunAsync(tkReq, new CliPlanVision(), new CliPlanRaster()); }
     catch (PdfNotReadableException ex)
