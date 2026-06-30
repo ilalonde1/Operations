@@ -146,6 +146,45 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         foreach (var rz in tkOut.Residual)
             Console.WriteLine($"   [{rz.Kind}] {rz.Label,-16} {rz.Note}");
     }
+    // ── WHOLE-BUILDING: add COLUMN concrete from the column schedule(s) ──────────────────────────────
+    // Find each column-schedule sheet, read its grid (vision), fill the sizes down the deterministic level
+    // ladder, and price via the existing ComputeColumn. BALLPARK for now — one column per mark and a typical
+    // storey height; the per-mark COUNT (key plan) and real storey heights are the next increment. Flagged
+    // as such, never presented as final. Walls + footings follow the same pattern.
+    try
+    {
+        var tkDig = DrawingDigestBuilder.Build(args[1], tkFirst, tkLast);
+        const double typicalStoreyIn = 126.0;  // 10.5 ft
+        double colCuYd = 0; int colSheets = 0, colMarks = 0;
+        foreach (var pg in tkDig.Pages)
+        {
+            string despaced = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
+            bool isColSchedSheet = despaced.Contains("COLUMNSCHEDULE") &&
+                                   (despaced.Contains("NORTHTOWER") || despaced.Contains("SOUTHTOWER") || despaced.Contains("TOWERCOLUMN"));
+            string cpng = Path.Combine(args[2], $"p-{pg.Page:D2}.png");
+            if (!isColSchedSheet || !File.Exists(cpng)) continue;
+
+            var ladder = ScheduleGridReader.ReadLevelLadder(VectorPageReader.ReadPage(args[1], pg.Page))
+                            .OrderByDescending(r => r.Y).Select(r => r.RawLabel).ToList();
+            if (ladder.Count < 3) continue;
+
+            string cjson = await PlanVisionClient.ReadColumnScheduleJsonAsync(PlanRaster.LoadDownscaledPng(cpng, 1600));
+            var cbands = ScheduleConcreteReader.ColumnBands(cjson, ladder);
+            if (cbands.Count == 0) continue;
+
+            var cres = ScheduleTakeoff.ComputeColumn(ladder, ladder.Select(_ => typicalStoreyIn).ToList(), cbands);
+            colCuYd += cres.TotalCuYd; colSheets++; colMarks += cres.MarksPriced;
+            Console.WriteLine($"  column schedule p{pg.Page}: {cres.MarksPriced} marks over {ladder.Count} levels -> {cres.TotalCuYd:N0} cy");
+        }
+        if (colSheets > 0)
+        {
+            Console.WriteLine($"\nColumns (BALLPARK — 1 per mark, {typicalStoreyIn / 12:0.0}ft storeys; counts+heights are the next pass):");
+            Console.WriteLine($"  {colCuYd:N0} cu.yd from {colSheets} schedule(s), {colMarks} marks");
+            Console.WriteLine($"WHOLE-BUILDING so far:  slab {tkOut.TotalConcreteCuYd:N0}  +  columns {colCuYd:N0}  =  {tkOut.TotalConcreteCuYd + colCuYd:N0} cu.yd   (walls + footings pending)");
+        }
+    }
+    catch (Exception ex) { Console.Error.WriteLine($"  (column takeoff skipped: {ex.Message})"); }
+
     Console.WriteLine($"\n(suspended-slab benchmark: 31044 Coronation = 20,208 cy net of the 4,287 mat)  ->  {args[3]}");
     return 0;
 }
