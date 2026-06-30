@@ -66,10 +66,16 @@ ELSE
 BEGIN
     DECLARE @eng TABLE (Id bigint);
 
+    -- Carry the opportunity's already-resolved buyer canonical org onto the
+    -- engagement (Stage 1 = Drafting) so the Pursuit Cockpit intel spoke and
+    -- the overwatch buyer column light up for grabbed pursuits, not just
+    -- BD-tracking ones. The opportunity row is locked by the UPDATE above.
     INSERT INTO opportunities.CrmEngagements
-        (OpportunityId, Stage, OwnerStaffId, CreatedBy, UpdatedBy)
+        (OpportunityId, Stage, OwnerStaffId, BuyerCanonicalOrgId, CreatedBy, UpdatedBy)
     OUTPUT inserted.Id INTO @eng
-    VALUES (@id, 1, @me, @me, @me);                -- Stage 1 = Drafting
+    SELECT @id, 1, @me, o.BuyerCanonicalOrgId, @me, @me
+    FROM opportunities.Opportunities o
+    WHERE o.Id = @id;
 
     DECLARE @newEng bigint = (SELECT TOP 1 Id FROM @eng);
 
