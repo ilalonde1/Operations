@@ -109,6 +109,8 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.BazaarView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchView>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AttributionViewModel>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AttributionView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.EventsViewModel>();
@@ -211,6 +213,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<ICrmEngagementStore>(_ => new SqlCrmEngagementStore(options.OpportunitiesDb));
         services.AddSingleton<IPursuitGrabStore>(_ => new SqlPursuitGrabStore(options.OpportunitiesDb));
         services.AddSingleton<IPursuitOverwatchStore>(_ => new SqlPursuitOverwatchStore(options.OpportunitiesDb));
+        services.AddSingleton<IBdAttributionStore>(_ => new SqlBdAttributionStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmActivityStore>(_ => new SqlCrmActivityStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmContactStore>(_ => new SqlCrmContactStore(options.OpportunitiesDb));
 

@@ -160,6 +160,12 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<OverwatchView>();
     }
 
+    private void Attribution_Click(object sender, RoutedEventArgs e)
+    {
+        SetActiveNav(AttributionButton);
+        ContentHost.Content = _services.GetRequiredService<AttributionView>();
+    }
+
     private void BdTracking_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(BdTrackingButton);
@@ -204,6 +210,7 @@ public partial class BdWorkspaceWindow : Window
             BdTrackingButton,
             PursuitsButton,
             OverwatchButton,
+            AttributionButton,
             ProposalsButton,
             BrochuresButton,
         })
