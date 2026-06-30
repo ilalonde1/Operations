@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -25,15 +26,46 @@ public sealed record PursuitOverwatchRow(
     DateTimeOffset OpenedAtUtc,
     int ActivityCount);
 
+/// <summary>Outcome of a reassign attempt.</summary>
+public enum ReassignOutcome
+{
+    /// <summary>Owner changed; the move was logged.</summary>
+    Reassigned,
+
+    /// <summary>The pursuit was no longer owned by the expected owner (someone
+    /// else moved it first); the board is stale. No change made.</summary>
+    OwnerChanged,
+
+    /// <summary>The target owner already holds a BD-tracking pursuit for the same
+    /// buyer + region (the unique BD-relationship key). No change made.</summary>
+    DuplicateForTarget,
+}
+
 /// <summary>
-/// Read model for the manager overwatch board — every owned, active pursuit
-/// (engagement owned by someone, in Drafting/Submitted) with its staleness
-/// signal. Set-based single query (no per-row brief loading; see design M6).
-/// Reassign lands as a follow-up guarded transaction.
+/// Read model + reassign for the manager overwatch board — every owned, active
+/// pursuit (engagement owned by someone, in Drafting/Submitted) with its
+/// staleness signal. Set-based single query (no per-row brief loading; see
+/// design M6).
 /// </summary>
 public interface IPursuitOverwatchStore
 {
     Task<IReadOnlyList<PursuitOverwatchRow>> ListAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Move a pursuit from <paramref name="fromOwner"/> to
+    /// <paramref name="toOwner"/> in one guarded transaction: re-owns the
+    /// engagement (and its parent opportunity, if any), and logs the move.
+    /// Guarded on the current owner so a stale board can't clobber a concurrent
+    /// reassign.
+    /// </summary>
+    Task<ReassignOutcome> ReassignAsync(
+        long engagementId,
+        long? opportunityId,
+        string fromOwner,
+        string toOwner,
+        string byStaff,
+        string? reason,
+        CancellationToken ct);
 }
 
 public sealed class SqlPursuitOverwatchStore : IPursuitOverwatchStore
@@ -64,6 +96,43 @@ OUTER APPLY (
 WHERE e.OwnerStaffId IS NOT NULL
   AND e.Stage IN (1, 3)
 ORDER BY COALESCE(la.LastActivityUtc, e.OpenedAtUtc) ASC;";
+
+    // Re-own the engagement (guard: still owned by @from), sync the parent
+    // opportunity's owner when present, and log the move — one transaction.
+    private const string ReassignSql = @"
+SET XACT_ABORT ON;
+SET NOCOUNT ON;
+
+BEGIN TRANSACTION;
+
+UPDATE opportunities.CrmEngagements
+   SET OwnerStaffId = @to,
+       UpdatedAtUtc  = SYSDATETIMEOFFSET(),
+       UpdatedBy     = @by
+ WHERE Id = @engId
+   AND OwnerStaffId = @from;
+
+IF @@ROWCOUNT = 0
+BEGIN
+    ROLLBACK TRANSACTION;
+    SELECT CAST(0 AS int) AS Ok;
+END
+ELSE
+BEGIN
+    IF @oppId IS NOT NULL
+        UPDATE opportunities.Opportunities
+           SET OwnerStaffId = @to,
+               UpdatedAtUtc  = SYSDATETIMEOFFSET(),
+               UpdatedBy     = @by
+         WHERE Id = @oppId;
+
+    INSERT INTO opportunities.OpportunityAssignmentLog
+        (OpportunityId, EngagementId, Action, FromStaffId, ToStaffId, ByStaffId, Reason)
+    VALUES (@oppId, @engId, N'Reassign', @from, @to, @by, @reason);
+
+    COMMIT TRANSACTION;
+    SELECT CAST(1 AS int) AS Ok;
+END";
 
     private readonly string _connectionString;
 
@@ -101,5 +170,44 @@ ORDER BY COALESCE(la.LastActivityUtc, e.OpenedAtUtc) ASC;";
         }
 
         return rows;
+    }
+
+    public async Task<ReassignOutcome> ReassignAsync(
+        long engagementId,
+        long? opportunityId,
+        string fromOwner,
+        string toOwner,
+        string byStaff,
+        string? reason,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(toOwner))
+        {
+            throw new ArgumentException("A target owner is required.", nameof(toOwner));
+        }
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(ReassignSql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@engId", SqlDbType.BigInt).Value = engagementId;
+        cmd.Parameters.Add("@oppId", SqlDbType.BigInt).Value = (object?)opportunityId ?? DBNull.Value;
+        cmd.Parameters.Add("@from", SqlDbType.NVarChar, 150).Value = fromOwner;
+        cmd.Parameters.Add("@to", SqlDbType.NVarChar, 150).Value = toOwner.Trim();
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = byStaff;
+        cmd.Parameters.Add("@reason", SqlDbType.NVarChar, 400).Value =
+            string.IsNullOrWhiteSpace(reason) ? DBNull.Value : reason.Trim();
+
+        try
+        {
+            var scalar = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            var ok = scalar is int i ? i : Convert.ToInt32(scalar);
+            return ok == 1 ? ReassignOutcome.Reassigned : ReassignOutcome.OwnerChanged;
+        }
+        catch (SqlException ex) when (ex.Number is 2601 or 2627)
+        {
+            // Target already holds a BD-tracking pursuit for this buyer+region
+            // (the unique UX_CrmEngagements_BdRelationship key). XACT_ABORT rolled back.
+            return ReassignOutcome.DuplicateForTarget;
+        }
     }
 }

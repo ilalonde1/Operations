@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
@@ -29,6 +30,7 @@ public sealed class OverwatchViewModel : ObservableObject, IAiContextProvider
     private OverwatchRowView? _selected;
     private string _statusMessage = "Ready.";
     private bool _isLoading;
+    private bool _isReassigning;
 
     private OverwatchRowView[] _contextSnapshot = Array.Empty<OverwatchRowView>();
 
@@ -43,8 +45,25 @@ public sealed class OverwatchViewModel : ObservableObject, IAiContextProvider
     public OverwatchRowView? Selected
     {
         get => _selected;
-        set => SetField(ref _selected, value);
+        set
+        {
+            if (SetField(ref _selected, value))
+            {
+                OnPropertyChanged(nameof(CanReassign));
+            }
+        }
     }
+
+    public bool CanReassign => _selected is not null && !_isReassigning;
+
+    /// <summary>Distinct owners currently holding pursuits — the reassign target
+    /// candidates (the editable picker also accepts a new owner).</summary>
+    public IReadOnlyList<string> KnownOwners =>
+        Pursuits.Select(p => p.OwnerDisplay)
+                .Where(o => !string.IsNullOrWhiteSpace(o))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(o => o, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
     public string StatusMessage
     {
@@ -109,6 +128,51 @@ public sealed class OverwatchViewModel : ObservableObject, IAiContextProvider
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Reassign <paramref name="row"/> to <paramref name="toOwner"/> (acting as
+    /// <paramref name="byStaff"/>). On success the board reloads so the new owner
+    /// + sort order are reflected. Re-entrancy-guarded.
+    /// </summary>
+    public async Task<ReassignOutcome> ReassignAsync(
+        OverwatchRowView row, string toOwner, string byStaff, string? reason, CancellationToken ct)
+    {
+        if (_isReassigning)
+        {
+            return ReassignOutcome.OwnerChanged;
+        }
+
+        _isReassigning = true;
+        OnPropertyChanged(nameof(CanReassign));
+        try
+        {
+            var outcome = await _store.ReassignAsync(
+                row.EngagementId, row.OpportunityId, row.OwnerDisplay, toOwner, byStaff, reason, ct)
+                .ConfigureAwait(true);
+
+            if (outcome == ReassignOutcome.Reassigned)
+            {
+                // Owner changed → reload so the board re-sorts and the AI snapshot
+                // refreshes. Set the status AFTER, so LoadAsync's "Loaded N…"
+                // doesn't clobber the reassign confirmation.
+                await LoadAsync(ct).ConfigureAwait(true);
+            }
+
+            StatusMessage = outcome switch
+            {
+                ReassignOutcome.Reassigned => $"Reassigned “{row.ProjectName}” from {row.OwnerDisplay} to {toOwner}.",
+                ReassignOutcome.OwnerChanged => $"“{row.ProjectName}” was already moved by someone else — refresh to see who owns it.",
+                ReassignOutcome.DuplicateForTarget => $"{toOwner} already holds a pursuit for this buyer/region — not moved.",
+                _ => StatusMessage,
+            };
+            return outcome;
+        }
+        finally
+        {
+            _isReassigning = false;
+            OnPropertyChanged(nameof(CanReassign));
         }
     }
 

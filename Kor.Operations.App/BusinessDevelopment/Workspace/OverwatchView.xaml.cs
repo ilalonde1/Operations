@@ -4,7 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Kor.Operations.App.Options;
 using Kor.Operations.Services;
+using Kor.Opportunities.Data.Crm;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
@@ -53,6 +55,57 @@ public partial class OverwatchView : UserControl
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
         await ReloadAsync().ConfigureAwait(true);
+    }
+
+    private async void ReassignButton_Click(object sender, RoutedEventArgs e)
+    {
+        var row = _vm.Selected;
+        if (row is null)
+        {
+            return;
+        }
+
+        var dlg = new ReassignDialog(row.ProjectName, row.OwnerDisplay, _vm.KnownOwners)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dlg.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var outcome = await _vm.ReassignAsync(row, dlg.TargetOwner, ResolveActor(), dlg.Reason, CancellationToken.None)
+                .ConfigureAwait(true);
+            if (outcome != ReassignOutcome.Reassigned)
+            {
+                // Not-moved cases (already moved / target duplicate) — surface the why.
+                MessageBox.Show(Window.GetWindow(this), _vm.StatusMessage, "Reassign", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "Reassign failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Acting manager identity for the assignment audit — same
+    /// resolution the Opportunities/Bazaar views use.</summary>
+    private static string ResolveActor()
+    {
+        if (!string.IsNullOrWhiteSpace(global::Kor.Operations.OperationsApp.SignedInUserUpn))
+        {
+            return global::Kor.Operations.OperationsApp.SignedInUserUpn.Trim();
+        }
+
+        var overrideUpn = AppServices.Get<UserOptions>().UserUpnOverride;
+        if (!string.IsNullOrWhiteSpace(overrideUpn))
+        {
+            return overrideUpn.Trim();
+        }
+
+        return Environment.UserName;
     }
 
     private async Task ReloadAsync()

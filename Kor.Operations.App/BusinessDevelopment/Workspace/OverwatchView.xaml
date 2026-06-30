@@ -17,6 +17,11 @@
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
             <Button Content="Refresh" Width="100" Click="RefreshButton_Click"/>
+            <Button Content="Reassign…" Width="120" Margin="10,0,0,0"
+                    Click="ReassignButton_Click"
+                    IsEnabled="{Binding CanReassign}"
+                    Style="{StaticResource Button.Primary}"
+                    ToolTip="Hand the selected pursuit to a different owner (logged)."/>
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource Card}">
