@@ -159,6 +159,48 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         double colCuYd = 0, wallCuYd = 0; int colSheets = 0, colMarks = 0, wallSheets = 0, wallMarks = 0;
         var extraInputs = new List<StructuralTakeoffInput>();   // column + wall per-level rows for the xlsx
 
+        // A single schedule/key-plan vision call is fragile: it occasionally returns empty or an outlier,
+        // and the wall total hangs on it — one empty response ZEROES a whole tower (31065 p53 read 0 cy one
+        // run, 1,053 the next). So each sheet is read N times and the MEDIAN priced result is taken: a lone
+        // empty/outlier read can no longer zero or swing the sheet. Reads that come back empty are dropped,
+        // not counted as zero. Spread (min..max) is printed so the remaining read-to-read variance is visible.
+        const int VisionReads = 3;
+
+        async Task<(ScheduleTakeoff.ScheduleResult res, int distinctMarks, double lo, double hi)?>
+            ReadColumnSheetAsync(byte[] png, List<string> ladder, List<double> storeys)
+        {
+            var got = new List<(ScheduleTakeoff.ScheduleResult res, int marks)>();
+            for (int i = 0; i < VisionReads; i++)
+            {
+                var counts = ScheduleConcreteReader.ColumnCounts(await PlanVisionClient.ReadColumnCountsJsonAsync(png));
+                var cbands = ScheduleConcreteReader.ColumnBands(await PlanVisionClient.ReadColumnScheduleJsonAsync(png), ladder, counts);
+                if (cbands.Count == 0) continue;
+                var res = ScheduleTakeoff.ComputeColumn(ladder, storeys, cbands);
+                if (res.TotalCuYd > 0) got.Add((res, counts.Count > 0 ? counts.Count : res.MarksPriced));
+            }
+            if (got.Count == 0) return null;
+            got = got.OrderBy(g => g.res.TotalCuYd).ToList();
+            var mid = got[got.Count / 2];
+            return (mid.res, mid.marks, got[0].res.TotalCuYd, got[^1].res.TotalCuYd);
+        }
+
+        async Task<(ScheduleTakeoff.ScheduleResult res, double lo, double hi)?>
+            ReadWallSheetAsync(byte[] png, List<string> ladder, List<double> storeys)
+        {
+            var got = new List<ScheduleTakeoff.ScheduleResult>();
+            for (int i = 0; i < VisionReads; i++)
+            {
+                var wbands = ScheduleConcreteReader.WallBands(await PlanVisionClient.ReadWallScheduleJsonAsync(png));
+                var wlen = ScheduleConcreteReader.WallLengthsByMark(await PlanVisionClient.ReadWallKeyPlanJsonAsync(png));
+                if (wbands.Count == 0 || wlen.Count == 0) continue;
+                var res = ScheduleTakeoff.ComputeWall(ladder, storeys, wlen, wbands);
+                if (res.TotalCuYd > 0) got.Add(res);
+            }
+            if (got.Count == 0) return null;
+            got = got.OrderBy(r => r.TotalCuYd).ToList();
+            return (got[got.Count / 2], got[0].TotalCuYd, got[^1].TotalCuYd);
+        }
+
         foreach (var pg in tkDig.Pages)
         {
             string ppng = Path.Combine(args[2], $"p-{pg.Page:D2}.png");
@@ -179,19 +221,16 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                 if (ladder.Count >= 3)
                 {
                     var cpngB = PlanRaster.LoadDownscaledPng(ppng, 1600);
-                    string cjson = await PlanVisionClient.ReadColumnScheduleJsonAsync(cpngB);
-                    // Per-mark COUNT from the key plan on the same sheet — a mark can label several columns.
-                    var counts = ScheduleConcreteReader.ColumnCounts(await PlanVisionClient.ReadColumnCountsJsonAsync(cpngB));
-                    var cbands = ScheduleConcreteReader.ColumnBands(cjson, ladder, counts);
-                    if (cbands.Count > 0)
+                    var got = await ReadColumnSheetAsync(cpngB, ladder, ladder.Select(_ => typicalStoreyIn).ToList());
+                    if (got is { } c)
                     {
-                        var cres = ScheduleTakeoff.ComputeColumn(ladder, ladder.Select(_ => typicalStoreyIn).ToList(), cbands);
-                        colCuYd += cres.TotalCuYd; colSheets++; colMarks += cres.MarksPriced;
-                        foreach (var pl in cres.PerLevel.Where(p => p.ConcreteCuYd > 0))
+                        colCuYd += c.res.TotalCuYd; colSheets++; colMarks += c.res.MarksPriced;
+                        foreach (var pl in c.res.PerLevel.Where(p => p.ConcreteCuYd > 0))
                             extraInputs.Add(new StructuralTakeoffInput(pl.Level, TakeoffElementType.Column, null, pl.ConcreteCuYd));
-                        int distinct = counts.Count > 0 ? counts.Count : cres.MarksPriced;
-                        Console.WriteLine($"  column schedule p{pg.Page}: {cres.MarksPriced} columns ({distinct} marks) over {ladder.Count} levels -> {cres.TotalCuYd:N0} cy");
+                        string spread = c.hi > c.lo ? $" [{VisionReads} reads {c.lo:N0}..{c.hi:N0}]" : "";
+                        Console.WriteLine($"  column schedule p{pg.Page}: {c.res.MarksPriced} columns ({c.distinctMarks} marks) over {ladder.Count} levels -> {c.res.TotalCuYd:N0} cy{spread}");
                     }
+                    else Console.WriteLine($"  column schedule p{pg.Page}: vision returned nothing usable over {VisionReads} reads (skipped, not counted as 0)");
                 }
             }
 
@@ -202,16 +241,17 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                 if (ladder.Count >= 3)
                 {
                     var png = PlanRaster.LoadDownscaledPng(ppng, 1600);
-                    var wbands = ScheduleConcreteReader.WallBands(await PlanVisionClient.ReadWallScheduleJsonAsync(png));
-                    var wlen = ScheduleConcreteReader.WallLengthsByMark(await PlanVisionClient.ReadWallKeyPlanJsonAsync(png));
-                    if (wbands.Count > 0 && wlen.Count > 0)
+                    var got = await ReadWallSheetAsync(png, ladder, ladder.Select(_ => typicalStoreyIn).ToList());
+                    if (got is { } wv)
                     {
-                        var wres = ScheduleTakeoff.ComputeWall(ladder, ladder.Select(_ => typicalStoreyIn).ToList(), wlen, wbands);
+                        var wres = wv.res;
                         wallCuYd += wres.TotalCuYd; wallSheets++; wallMarks += wres.MarksPriced;
                         foreach (var pl in wres.PerLevel.Where(p => p.ConcreteCuYd > 0))
                             extraInputs.Add(new StructuralTakeoffInput(pl.Level, TakeoffElementType.Wall, null, pl.ConcreteCuYd));
-                        Console.WriteLine($"  wall schedule p{pg.Page}: {wres.MarksPriced} marks priced ({wres.BandsApplied} bands) -> {wres.TotalCuYd:N0} cy");
+                        string spread = wv.hi > wv.lo ? $" [{VisionReads} reads {wv.lo:N0}..{wv.hi:N0}]" : "";
+                        Console.WriteLine($"  wall schedule p{pg.Page}: {wres.MarksPriced} marks priced ({wres.BandsApplied} bands) -> {wres.TotalCuYd:N0} cy{spread}");
                     }
+                    else Console.WriteLine($"  wall schedule p{pg.Page}: vision returned nothing usable over {VisionReads} reads (skipped, not counted as 0)");
                 }
             }
         }
