@@ -31,7 +31,12 @@ public sealed class DeltekOdbcOptions
     /// UI are planned (Prompt 17c).
     /// </summary>
     public double PartnerImputedCostRate { get; set; } = 250.0;
-    public bool UseTargetRateBudget { get; set; }          // false = peer-based (default), true = target-rate formula
+    // true = target-rate formula (DEFAULT); false = peer-based.
+    // Peer-median retired as default 2026-06-28: it medians eng hours over closed projects at
+    // wildly different lifecycle stages (e.g. 11–3212 eng hrs for the same fee/construction type),
+    // producing garbage-low budgets and false "Critical" delivery flags. The fee/Target formula
+    // is calibrated and fee-proportionate. Toggle still available in the Financials window.
+    public bool UseTargetRateBudget { get; set; } = true;
 }
 
 public sealed class FinancialsOptions

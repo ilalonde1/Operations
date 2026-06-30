@@ -84,12 +84,8 @@ namespace Kor.Operations.PMTools
 
         public string EngBudgetDisplay => IsEngBudgetEstimated ? $"{EngBudget:N1} *" : $"{EngBudget:N1}";
         public string DraftBudgetDisplay => IsDraftBudgetEstimated ? $"{DraftBudget:N1} *" : $"{DraftBudget:N1}";
-        public string EngBudgetTooltip => IsEngBudgetEstimated
-            ? $"Estimated — no budget in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}"
-            : "Actual budget from Deltek PRLabor.";
-        public string DraftBudgetTooltip => IsDraftBudgetEstimated
-            ? $"Estimated — no budget in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}"
-            : "Actual budget from Deltek PRLabor.";
+        public string EngBudgetTooltip => $"Estimated — KOR does not budget hours in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}";
+        public string DraftBudgetTooltip => $"Estimated — KOR does not budget hours in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}";
 
         public double InspHrs { get; private set; }
         public int TotalInspections { get; private set; }
@@ -189,12 +185,12 @@ namespace Kor.Operations.PMTools
                 EngHrs = p.EngHrs,
                 RemainingEngHours = engRemaining,
                 EngPercent = p.EngBudget == 0 ? 0 : p.EngHrs / p.EngBudget,
-                IsEngBudgetEstimated = p.EngBudgetActual <= 0,
+                IsEngBudgetEstimated = true,
                 DraftBudget = p.DraftBudget,
                 DraftHrs = p.DraftHrs,
                 RemainingDraftHours = draftRemaining,
                 DraftPercent = p.DraftBudget == 0 ? 0 : p.DraftHrs / p.DraftBudget,
-                IsDraftBudgetEstimated = p.DraftBudgetActual <= 0,
+                IsDraftBudgetEstimated = true,
                 BudgetPeerCount = p.BudgetPeerCount,
                 InspHrs = p.InspHrs,
                 TotalInspections = p.TotalInspections,

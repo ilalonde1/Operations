@@ -68,13 +68,12 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "Engineering Budget (hrs)",
             Description =
                 "Engineering hours budgeted for this project.\n\n" +
-                "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
-                "Purple italic with * = estimated — no budget exists in Deltek.\n\n" +
+                "Purple italic with * = estimated — KOR does not budget hours in Deltek.\n\n" +
                 "HOW ESTIMATES ARE CALCULATED:\n" +
                 "Primary: Peer-based — finds similar completed projects (fee ±50%, same construction type/phase, 50+ hrs) and uses their median eng hours.\n" +
                 "Fallback: Formula — (Fee / Target) × (Combined / EngRate). Only used when fewer than 3 peers found.\n\n" +
                 "The peer-based approach is much more accurate because it accounts for construction type and project complexity, not just fee.",
-            Formula = "Actual: PRLabor | Primary: Peer median | Fallback: (Fee / Target) × (Combined / EngRate)"
+            Formula = "Primary: Peer median | Fallback: (Fee / Target) × (Combined / EngRate)"
         };
         d["PmTools_EngHrs"] = new FinancialMetricDefinition
         {
@@ -109,13 +108,12 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "Drafting Budget (hrs)",
             Description =
                 "Drafting hours budgeted for this project.\n\n" +
-                "Black text = actual budget from Deltek (PRLabor.EstimateHrs).\n" +
-                "Purple italic with * = estimated — no budget exists in Deltek.\n\n" +
+                "Purple italic with * = estimated — KOR does not budget hours in Deltek.\n\n" +
                 "HOW ESTIMATES ARE CALCULATED:\n" +
                 "Primary: Peer-based — finds similar completed projects (fee ±50%, same construction type/phase, 50+ hrs) and uses their median draft hours.\n" +
                 "Fallback: Formula — (Fee / Target) × (Combined / DraftRate). Only used when fewer than 3 peers found.\n\n" +
                 "The peer-based approach is much more accurate because it accounts for construction type and project complexity, not just fee.",
-            Formula = "Actual: PRLabor | Primary: Peer median | Fallback: (Fee / Target) × (Combined / DraftRate)"
+            Formula = "Primary: Peer median | Fallback: (Fee / Target) × (Combined / DraftRate)"
         };
         d["PmTools_DraftHrs"] = new FinancialMetricDefinition
         {

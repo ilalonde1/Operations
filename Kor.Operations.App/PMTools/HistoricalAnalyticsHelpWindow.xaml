@@ -58,24 +58,24 @@
                 <!-- BUDGET ESTIMATION -->
                 <TextBlock Text="BUDGET ESTIMATION — HOW ESTIMATED HOURS ARE CALCULATED" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,6"/>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,6">
-                    When Deltek has no budgeted hours for a project (no PRLabor record), the app estimates them using a three-tier priority system:
+                    KOR does not budget hours in Deltek. The app estimates engineering and drafting budgets using a two-tier priority system:
                 </TextBlock>
                 <Border Background="#F8FAFC" CornerRadius="6" Padding="12,10" Margin="0,0,0,6" BorderBrush="#E2E8F0" BorderThickness="1">
                     <StackPanel>
                         <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" Margin="0,0,0,4">
-                            Priority 1: Deltek Actual (PRLabor)
+                            Priority 1: Peer-Based Median (primary method)
                         </TextBlock>
                         <TextBlock FontSize="11.5" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,8">
-                            If a PM has entered budgeted hours directly in Deltek, those values are used as-is. This is rare but always takes precedence.
+                            The app finds similar completed projects from the firm's history and uses their median eng/draft hours as the estimate.
                         </TextBlock>
                         <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#16A34A" Margin="0,0,0,4">
-                            Priority 2: Peer-Based Median (primary method)
+                            Peer matching details
                         </TextBlock>
                         <TextBlock FontSize="11.5" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,8">
                             The app finds similar completed projects from the firm's history and uses their median eng/draft hours as the estimate. "Similar" means: fee within ±50%, same construction type and phase when possible, 50+ production hours. The system uses tiered matching — it tries phase + construction type first, then type only, then phase only, then all fee-matched candidates. It picks the top 8 closest by fee and takes the median. The "Peers Used" row in the detail card shows how many peers were matched (3-8 = good, 5+ = strong confidence).
                         </TextBlock>
                         <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4">
-                            Priority 3: Formula Fallback (last resort)
+                            Priority 2: Formula Fallback (last resort)
                         </TextBlock>
                         <TextBlock FontSize="11.5" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap">
                             Only used when fewer than 3 peers are found (unusual fee range or rare construction type). Formula: Fee ÷ Target $/hr, split 58% eng / 42% draft. Target rate = $185/hr. The Eng Rate (474) and Draft Rate (655) control the split. These can be adjusted in the Financials section.
@@ -83,7 +83,7 @@
                     </StackPanel>
                 </Border>
                 <TextBlock FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,16">
-                    Estimated budgets show in purple in the grids. Projects with actual Deltek budgets (PRLabor records) are never affected by either the peer matching or the formula.
+                    Budgets show in purple in the grids because they are estimates. Peer-matched budgets are primary; the formula is used only when too few similar projects are available.
                 </TextBlock>
 
                 <!-- SIMILAR PROJECTS -->

@@ -191,7 +191,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
                => $"{index + 1}. {line.Pm}  {line.ActiveProjectCount} projects, ${line.TotalActiveFee:N0} active fee")) +
            "\n\n" +
            $"Active projects over computed budget (>{AnalyticsThresholds.OverBudgetFactor:N2} eng or draft hrs / budget): {summary.OverComputedBudgetActiveCount:N0}\n" +
-           "Note: budget denominator is sourced per-project from Deltek actual, peer-median, or formula/target-rate fallback. See breakdown below.\n\n" +
+           "Note: budget denominator is sourced per-project from peer-median, formula, or target-rate fallback. See breakdown below.\n\n" +
            "Active projects by budget source:\n" +
            BuildBudgetSourceLines(summary.ActiveProjectsByBudgetSource);
 
@@ -205,7 +205,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
 
     private static string BuildBudgetSourceLines(IReadOnlyDictionary<string, int> breakdown)
     {
-        var preferredOrder = new[] { "Deltek", "Peers", "Formula", "Target Rate", "Unknown" };
+        var preferredOrder = new[] { "Peers", "Formula", "Target Rate", "Unknown" };
         var lines = new List<string>();
         foreach (var key in preferredOrder)
         {

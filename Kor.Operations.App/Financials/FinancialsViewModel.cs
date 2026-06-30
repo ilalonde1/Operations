@@ -44,7 +44,7 @@ namespace Kor.Operations.Financials
         private double _engRate = 474;
         private double _draftRate = 655;
         private double _targetBilling = 185;
-        private bool _useTargetRateBudget;
+        private bool _useTargetRateBudget = true;   // default to Target Rate formula (peer-median retired as default — see DeltekOdbcOptions.UseTargetRateBudget)
         private int _watchlistCount;
         private int _allActiveCount;
 

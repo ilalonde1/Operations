@@ -37,7 +37,7 @@ namespace Kor.Operations.PMTools
                     ws.Cell(ri, 5).Value = r.ConstructionType;
                     ws.Cell(ri, 6).Value = r.Fee;              ws.Cell(ri, 6).Style.NumberFormat.Format = "$#,##0";
                     WritePctCell(ws.Cell(ri, 7), r.PercentBilled, r.PercentBilled.ToString("P0"));
-                    WriteBudgetCell(ws.Cell(ri, 8), r.EngBudget, r.Project.EngBudgetActual <= 0);
+                    WriteBudgetCell(ws.Cell(ri, 8), r.EngBudget, true);
                     ws.Cell(ri, 9).Value = r.EngHours;         ws.Cell(ri, 9).Style.NumberFormat.Format = "0.0";
                     ws.Cell(ri, 10).Value = r.RemainingEngHours; ws.Cell(ri, 10).Style.NumberFormat.Format = "0.0";
                     if (r.RemainingEngHours < 0) { ws.Cell(ri, 10).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 10).Style.Font.Bold = true; }
@@ -59,7 +59,7 @@ namespace Kor.Operations.PMTools
                     ws.Cell(ri, 5).Value = r.ConstructionType;
                     ws.Cell(ri, 6).Value = r.Fee;                ws.Cell(ri, 6).Style.NumberFormat.Format = "$#,##0";
                     WritePctCell(ws.Cell(ri, 7), r.PercentBilled, r.PercentBilled.ToString("P0"));
-                    WriteBudgetCell(ws.Cell(ri, 8), r.DraftBudget, r.Project.DraftBudgetActual <= 0);
+                    WriteBudgetCell(ws.Cell(ri, 8), r.DraftBudget, true);
                     ws.Cell(ri, 9).Value = r.DraftHours;         ws.Cell(ri, 9).Style.NumberFormat.Format = "0.0";
                     ws.Cell(ri, 10).Value = r.RemainingDraftHours; ws.Cell(ri, 10).Style.NumberFormat.Format = "0.0";
                     if (r.RemainingDraftHours < 0) { ws.Cell(ri, 10).Style.Font.FontColor = XLColor.FromHtml("#DC2626"); ws.Cell(ri, 10).Style.Font.Bold = true; }

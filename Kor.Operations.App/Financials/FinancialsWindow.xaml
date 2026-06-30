@@ -180,7 +180,7 @@
                                     These rates only affect the formula fallback. Most projects use peer-based estimates. Eng/Draft rates control the 58%/42% split. Target = portfolio median $/hr.
                                 </TextBlock>
                                 <TextBlock TextWrapping="Wrap" FontSize="11.5" FontStyle="Italic" Foreground="#9CA3AF">
-                                    Only affects estimated budgets (purple in grids). Projects with Deltek PRLabor hours are never affected.
+                                    Affects formula fallback budgets only; peer-based budgets continue to use matched historical projects.
                                 </TextBlock>
                             </StackPanel>
                         </StackPanel.ToolTip>

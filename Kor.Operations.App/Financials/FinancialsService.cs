@@ -203,7 +203,6 @@ namespace Kor.Operations.Financials
             var t2b = Task.Run(() => LoadHourlyRevenueSync(factory, catalog, wbs1List, ct), ct);
             var t3  = Task.Run(() => LoadHoursByLaborSync(factory, catalog, wbs1List, ct), ct);
             var t3b = Task.Run(() => LoadCostByLaborSync(factory, catalog, wbs1List, ct), ct);
-            var t4  = Task.Run(() => LoadPrLaborSync(factory, catalog, wbs1List, ct), ct);
             var t5  = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
             var t6  = Task.Run(() => LoadInspectionCountsSync(factory, catalog, wbs1List, ct), ct);
             var t7  = Task.Run(() => LoadClientLookupSync(factory, catalog, wbs1List, ct), ct);
@@ -216,14 +215,13 @@ namespace Kor.Operations.Financials
             var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
             var t10 = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
 
-            await Task.WhenAll(t2, t2c, t2b, t3, t3b, t4, t5, t6, t7, t8, t9, t10).ConfigureAwait(false);
+            await Task.WhenAll(t2, t2c, t2b, t3, t3b, t5, t6, t7, t8, t9, t10).ConfigureAwait(false);
 
             var feeBilledByWbs1    = t2.Result;
             var unpostedFeeBilledByWbs1 = t2c.Result;
             var hourlyRevByWbs1    = t2b.Result;
             var hrsByWbs1AndLabor  = t3.Result;
             var costByWbs1AndLabor = t3b.Result;
-            var prLaborBudgetByKey = t4.Result;
             var apByWbs1           = t5.Result;
             var inspectionsByWbs1  = t6.Result;
             var clientByWbs1       = t7.Result;
@@ -263,14 +261,9 @@ namespace Kor.Operations.Financials
                 var adminCost   = GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.Admin);
                 var nonBillCost = GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.NonBillable);
 
-                var prLaborIdEng   = _odbcOptions.PrLaborIdEng;
-                var prLaborIdDraft = _odbcOptions.PrLaborIdDraft;
-                var engBudgetActual   = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm)  && lm.TryGetValue(prLaborIdEng,   out var eb) ? eb : 0.0;
-                var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(prLaborIdDraft, out var db) ? db : 0.0;
-
                 // Budget modes:
                 //   Target Rate: Fee / TargetRate for ALL projects. Simple, predictable, driven by the Target slider.
-                //   Peer-Based:  1) Deltek actual  2) Peer median from similar closed projects  3) Formula fallback.
+                //   Peer-Based:  1) Peer median from similar closed projects  2) Formula fallback.
                 var peerCount = 0;
                 string budgetSource;
                 double engBudget, draftBudget;
@@ -280,12 +273,6 @@ namespace Kor.Operations.Financials
                     engBudget = CalcBudget(totalFee, _odbcOptions.EngRate, u3);
                     draftBudget = CalcBudget(totalFee, _odbcOptions.DraftRate, u3);
                     budgetSource = "Target Rate";
-                }
-                else if (engBudgetActual > 0 && draftBudgetActual > 0)
-                {
-                    engBudget = engBudgetActual;
-                    draftBudget = draftBudgetActual;
-                    budgetSource = "Deltek";
                 }
                 else
                 {
@@ -350,8 +337,6 @@ namespace Kor.Operations.Financials
 
                     DraftBudget      = draftBudget,
                     EngBudget        = engBudget,
-                    DraftBudgetActual = draftBudgetActual,
-                    EngBudgetActual  = engBudgetActual,
                     DraftPercent     = SafeDiv(draft, draftBudget),
                     EngPercent       = SafeDiv(eng,   engBudget),
 
@@ -662,39 +647,6 @@ GROUP BY WBS1, LaborCode;";
                     if (string.IsNullOrWhiteSpace(wbs1) || laborObj == null) continue;
                     if (TryParseLaborCode(laborObj, out var laborCode))
                         result[(wbs1, laborCode)] = GetDouble(r, 2);
-                }
-            }
-            return result;
-        }
-
-        private static Dictionary<string, Dictionary<string, double>> LoadPrLaborSync(
-            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
-        {
-            var result = new Dictionary<string, Dictionary<string, double>>(StringComparer.OrdinalIgnoreCase);
-            using var cn = factory.Create();
-            try { cn.Open(); }
-            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (PR labor).", ex); }
-            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
-            {
-                using var cmd = cn.CreateCommand();
-                cmd.CommandTimeout = SqlTimeouts.Batch;
-                cmd.CommandText = $@"
-SELECT WBS1, LaborID, SUM(COALESCE(EstimateHrs,0)) AS BudgetHrs
-FROM [{catalog}].dbo.PRLabor
-WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
-GROUP BY WBS1, LaborID;";
-                AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
-                using var r = cmd.ExecuteReader();
-                while (r.Read())
-                {
-                    ct.ThrowIfCancellationRequested();
-                    var wbs1    = GetTrimmed(r, 0);
-                    var laborId = GetTrimmed(r, 1);
-                    if (string.IsNullOrWhiteSpace(wbs1) || string.IsNullOrWhiteSpace(laborId)) continue;
-                    if (!result.TryGetValue(wbs1, out var inner))
-                        result[wbs1] = inner = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-                    inner[laborId] = GetDouble(r, 2);
                 }
             }
             return result;
@@ -1803,8 +1755,6 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 
         public double DraftBudget { get; set; }
         public double EngBudget { get; set; }
-        public double EngBudgetActual { get; set; }
-        public double DraftBudgetActual { get; set; }
         public double DraftPercent { get; set; }
         public double EngPercent { get; set; }
         public double FeePerHours { get; set; }
