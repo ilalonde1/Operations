@@ -179,6 +179,36 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return psum > 0 ? wsum / psum : 0;
         }
 
+        // A wood-frame or steel-framed set simply HAS no concrete suspended slabs to take off — that honest
+        // "nothing to price" is different from "I couldn't read the callouts", and the set's own framing
+        // vocabulary tells them apart. Returns a hint suffix when the set reads clearly as wood or steel
+        // (and not predominantly concrete), else empty. Cheap keyword sniff — a HINT in a message, never a
+        // gate, so a false read costs a wording nuance, nothing more.
+        public static string NonConcreteHint(IEnumerable<string> lines)
+        {
+            int wood = 0, steel = 0;
+            foreach (var ln in lines)
+            {
+                string u = (ln ?? "").ToUpperInvariant();
+                if (u.Contains("TRUSS") || u.Contains("JOIST") || u.Contains("GLULAM") || u.Contains("PLYWOOD")
+                    || u.Contains("SHEATHING") || u.Contains("WOOD") || u.Contains(" LVL") || u.Contains("HANGER")) wood++;
+                if (u.Contains("WIDE FLANGE") || u.Contains(" HSS") || u.Contains("BASE PLATE")
+                    || u.Contains("STRUCTURAL STEEL") || RolledShapeRx.IsMatch(u)) steel++;
+            }
+            // ABSOLUTE count, not vs concrete: a wood-frame set still has concrete FOUNDATIONS, so it can name
+            // concrete as much as wood (Birken: wood 205 / concrete 227). But a concrete tower names framing
+            // timber ~0–5 times — so a substantial absolute framing-vocab count is the honest discriminator.
+            const int FramingFloor = 8;
+            if (wood >= FramingFloor && wood >= steel)
+                return " This set reads as WOOD-FRAME (trusses/joists) — it likely has no concrete suspended slabs to take off.";
+            if (steel >= FramingFloor && steel > wood)
+                return " This set reads as STEEL-FRAMED — it likely has no concrete suspended slabs to take off.";
+            return "";
+        }
+
+        private static readonly System.Text.RegularExpressions.Regex RolledShapeRx =
+            new(@"\bW\d{2,3}X\d", System.Text.RegularExpressions.RegexOptions.Compiled);
+
         // Words a page's text layer yields — split each digest line on whitespace. The cheap signal that
         // separates a vector drawing (hundreds–thousands of words: grids, dims, callouts) from a flattened
         // image page (≈0).
@@ -341,7 +371,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             tkRaw = tkRaw.GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
                          .Select(g => g.FirstOrDefault(p => !p.NeedsLocate) ?? g.First()).ToList();
 
-            if (tkRaw.Count == 0) throw new InvalidOperationException("No slab plates measured.");
+            if (tkRaw.Count == 0)
+                throw new InvalidOperationException(
+                    "No measurable slab plans found — no leveled sheet carried a structural grid or a slab callout." +
+                    NonConcreteHint(tkDigest.Pages.SelectMany(p => p.Lines)) +
+                    " If this is a concrete building, its sheet titles or callouts may not be in a readable form.");
 
             // ════════════════════ PHASE 2 — AI RESOLVES THE UNKNOWNS (one targeted call each) ════════════════════
             // Only flagged plates reach here; a fully deterministic set makes ZERO calls. Each call is a
@@ -627,7 +661,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     DegenerateBox: degenerate, PeerAreaRatio: peerRatio, ExtraFlags: r.AreaFlags));
             }
 
-            if (tkPlates.Count == 0) throw new InvalidOperationException("No priceable slab plates (no thickness anywhere).");
+            if (tkPlates.Count == 0)
+                throw new InvalidOperationException(
+                    "No concrete slab thickness found on any candidate plan — nothing to price." +
+                    NonConcreteHint(tkDigest.Pages.SelectMany(p => p.Lines)) +
+                    " If concrete is expected, the slab thickness callouts were not in a readable form.");
 
             var tkResult = PlanEstimatePipeline.Run(tkPlates, tkProfile);
             var tkComputed = StructuralTakeoffService.Compute(tkResult.TakeoffInputs, tkProfile.ToImperialDensityTable());
