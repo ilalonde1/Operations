@@ -72,7 +72,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// (from the schedule's own level column or the slab takeoff), not inferred from the change-points.
         /// Sizes are taken as read (inches); a mark with no positive size is skipped.
         /// </summary>
-        public static List<ScheduleTakeoff.ColumnBand> ColumnBands(string json, IReadOnlyList<string> ladderTopToBottom)
+        public static List<ScheduleTakeoff.ColumnBand> ColumnBands(
+            string json, IReadOnlyList<string> ladderTopToBottom,
+            IReadOnlyDictionary<string, int>? countsByMark = null)
         {
             ArgumentNullException.ThrowIfNull(ladderTopToBottom);
             var doc = JsonSerializer.Deserialize<ColDoc>(json) ?? new ColDoc();
@@ -103,12 +105,21 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 // Fill down: from the topmost stated level, carry the last size to every floor below.
                 int first = Array.FindIndex(stated, s => s.HasValue);
                 if (first < 0) continue;
-                (double w, double d)? carry = null;
-                for (int i = first; i < ladder.Count; i++)
+
+                // Each PHYSICAL column of this mark is priced separately — ComputeColumn keys on mark and
+                // sets (not sums) per mark, so N identical columns must carry distinct marks ("C1#1"…"C1#N").
+                // Count defaults to 1 (the schedule lists one cell per mark) until a key-plan count says more.
+                int count = countsByMark != null && countsByMark.TryGetValue(byMark.Key, out var ct) && ct > 0 ? ct : 1;
+                for (int k = 1; k <= count; k++)
                 {
-                    if (stated[i].HasValue) carry = stated[i];
-                    if (carry is { } c)
-                        bands.Add(new ScheduleTakeoff.ColumnBand(byMark.Key, ladder[i], ladder[i], c.w, c.d));
+                    string mk = count > 1 ? $"{byMark.Key}#{k}" : byMark.Key;
+                    (double w, double d)? carry = null;
+                    for (int i = first; i < ladder.Count; i++)
+                    {
+                        if (stated[i].HasValue) carry = stated[i];
+                        if (carry is { } c)
+                            bands.Add(new ScheduleTakeoff.ColumnBand(mk, ladder[i], ladder[i], c.w, c.d));
+                    }
                 }
             }
             return bands;
@@ -120,6 +131,23 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         {
             var doc = JsonSerializer.Deserialize<ColDoc>(json) ?? new ColDoc();
             return OrderLevels(doc.entries.SelectMany(e => new[] { e.levelTop, e.levelBottom }));
+        }
+
+        private sealed class CountRow { public string mark { get; set; } = ""; public int count { get; set; } }
+        private sealed class CountDoc { public List<CountRow> counts { get; set; } = new(); }
+
+        /// <summary>Per-mark column COUNT from the key-plan counts JSON (mark → how many columns drawn).</summary>
+        public static Dictionary<string, int> ColumnCounts(string json)
+        {
+            var doc = JsonSerializer.Deserialize<CountDoc>(json) ?? new CountDoc();
+            var m = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in doc.counts)
+            {
+                string mk = (r.mark ?? "").Trim();
+                if (mk.Length == 0 || r.count <= 0) continue;
+                m[mk] = m.TryGetValue(mk, out var e) ? e + r.count : r.count;
+            }
+            return m;
         }
 
         /// <summary>Wall bands from the shear-wall-schedule JSON. The schedule already gives each mark's

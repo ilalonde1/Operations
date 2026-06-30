@@ -157,36 +157,46 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         var tkDig = DrawingDigestBuilder.Build(args[1], tkFirst, tkLast);
         const double typicalStoreyIn = 126.0;  // 10.5 ft
         double colCuYd = 0, wallCuYd = 0; int colSheets = 0, colMarks = 0, wallSheets = 0, wallMarks = 0;
+        var extraInputs = new List<StructuralTakeoffInput>();   // column + wall per-level rows for the xlsx
 
         foreach (var pg in tkDig.Pages)
         {
-            string despaced = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
-            bool tower = despaced.Contains("NORTHTOWER") || despaced.Contains("SOUTHTOWER");
             string ppng = Path.Combine(args[2], $"p-{pg.Page:D2}.png");
             if (!File.Exists(ppng)) continue;
 
-            List<string> Ladder() => ScheduleGridReader.ReadLevelLadder(VectorPageReader.ReadPage(args[1], pg.Page))
+            // A schedule sheet is identified by its TITLE BLOCK, not a page-wide text scan: a general-notes
+            // sheet that mentions "shear wall schedule" in prose must not be read as one (31065 p3 read as
+            // 150 cy of phantom wall before this gate). HasScheduleTitle requires the phrase at title size
+            // on the right edge.
+            var page = VectorPageReader.ReadPage(args[1], pg.Page);
+            List<string> Ladder() => ScheduleGridReader.ReadLevelLadder(page)
                                         .OrderByDescending(r => r.Y).Select(r => r.RawLabel).ToList();
 
             // COLUMN schedule sheet
-            if (despaced.Contains("COLUMNSCHEDULE") && (tower || despaced.Contains("TOWERCOLUMN")))
+            if (SheetTitleReader.HasScheduleTitle(page, "COLUMN"))
             {
                 var ladder = Ladder();
                 if (ladder.Count >= 3)
                 {
-                    string cjson = await PlanVisionClient.ReadColumnScheduleJsonAsync(PlanRaster.LoadDownscaledPng(ppng, 1600));
-                    var cbands = ScheduleConcreteReader.ColumnBands(cjson, ladder);
+                    var cpngB = PlanRaster.LoadDownscaledPng(ppng, 1600);
+                    string cjson = await PlanVisionClient.ReadColumnScheduleJsonAsync(cpngB);
+                    // Per-mark COUNT from the key plan on the same sheet — a mark can label several columns.
+                    var counts = ScheduleConcreteReader.ColumnCounts(await PlanVisionClient.ReadColumnCountsJsonAsync(cpngB));
+                    var cbands = ScheduleConcreteReader.ColumnBands(cjson, ladder, counts);
                     if (cbands.Count > 0)
                     {
                         var cres = ScheduleTakeoff.ComputeColumn(ladder, ladder.Select(_ => typicalStoreyIn).ToList(), cbands);
                         colCuYd += cres.TotalCuYd; colSheets++; colMarks += cres.MarksPriced;
-                        Console.WriteLine($"  column schedule p{pg.Page}: {cres.MarksPriced} marks over {ladder.Count} levels -> {cres.TotalCuYd:N0} cy");
+                        foreach (var pl in cres.PerLevel.Where(p => p.ConcreteCuYd > 0))
+                            extraInputs.Add(new StructuralTakeoffInput(pl.Level, TakeoffElementType.Column, null, pl.ConcreteCuYd));
+                        int distinct = counts.Count > 0 ? counts.Count : cres.MarksPriced;
+                        Console.WriteLine($"  column schedule p{pg.Page}: {cres.MarksPriced} columns ({distinct} marks) over {ladder.Count} levels -> {cres.TotalCuYd:N0} cy");
                     }
                 }
             }
 
             // SHEAR-WALL schedule sheet (schedule + key plan live on the same sheet)
-            if (despaced.Contains("SHEARWALLSCHEDULE") && tower)
+            if (SheetTitleReader.HasScheduleTitle(page, "SHEAR"))
             {
                 var ladder = Ladder();
                 if (ladder.Count >= 3)
@@ -198,21 +208,47 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                     {
                         var wres = ScheduleTakeoff.ComputeWall(ladder, ladder.Select(_ => typicalStoreyIn).ToList(), wlen, wbands);
                         wallCuYd += wres.TotalCuYd; wallSheets++; wallMarks += wres.MarksPriced;
+                        foreach (var pl in wres.PerLevel.Where(p => p.ConcreteCuYd > 0))
+                            extraInputs.Add(new StructuralTakeoffInput(pl.Level, TakeoffElementType.Wall, null, pl.ConcreteCuYd));
                         Console.WriteLine($"  wall schedule p{pg.Page}: {wres.MarksPriced} marks priced ({wres.BandsApplied} bands) -> {wres.TotalCuYd:N0} cy");
                     }
                 }
             }
         }
 
+        // FOOTINGS — auto-quantify only when the set carries a real footing SCHEDULE grid (mark → size).
+        // When the foundation sizes are "SEE PLAN" (no schedule), say so as an honest residual rather than
+        // fabricate — the parkade slabs are already counted above; the spread/strip footings below are not.
+        bool footingSchedulePresent = tkDig.Pages.Any(pg =>
+        {
+            string ds = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
+            return ds.Contains("FOOTINGSCHEDULE");
+        });
+        string footingNote = footingSchedulePresent
+            ? "footings: a footing schedule is present but its sizes are given on-plan (\"SEE PLAN\"), not as a machine-readable grid — quantify the footings by hand. Parkade slabs ARE counted above."
+            : "footings: no machine-readable footing schedule found — if the set has spread/strip footings, quantify them by hand. Parkade slabs ARE counted above.";
+
         if (colSheets > 0 || wallSheets > 0)
         {
             double slab = tkOut.TotalConcreteCuYd;
-            Console.WriteLine($"\nWHOLE-BUILDING (BALLPARK — 1 col/mark, {typicalStoreyIn / 12:0.0}ft storeys; counts+heights next):");
+            Console.WriteLine($"\nWHOLE-BUILDING (column counts from key plan; storeys assumed {typicalStoreyIn / 12:0.0}ft typical):");
             Console.WriteLine($"  slab    {slab,8:N0} cy");
             if (colSheets > 0)  Console.WriteLine($"  columns {colCuYd,8:N0} cy  ({colMarks} marks / {colSheets} sheet(s))");
             if (wallSheets > 0) Console.WriteLine($"  walls   {wallCuYd,8:N0} cy  ({wallMarks} marks / {wallSheets} sheet(s))");
             Console.WriteLine($"  {"":8} --------");
-            Console.WriteLine($"  TOTAL   {slab + colCuYd + wallCuYd,8:N0} cy   (footings pending)");
+            Console.WriteLine($"  TOTAL   {slab + colCuYd + wallCuYd,8:N0} cy");
+            Console.WriteLine($"  RESIDUAL: {footingNote}");
+
+            // Rewrite the workbook with the WHOLE building — slab rows (as the engine computed them) plus the
+            // column + wall rows, priced through the same report so the xlsx matches the combined total.
+            if (extraInputs.Count > 0)
+            {
+                var combined = tkOut.Estimate.TakeoffInputs.Concat(extraInputs).ToList();
+                var computed = StructuralTakeoffService.Compute(combined, PlanProfile.BcModerate.ToImperialDensityTable());
+                var wbModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(args[1]), "Whole-building vector takeoff", "", DateTime.UtcNow, computed);
+                File.WriteAllBytes(args[3], StructuralTakeoffReportGenerator.BuildXlsx(wbModel));
+                Console.WriteLine($"  xlsx now includes slab + columns + walls -> {args[3]}");
+            }
         }
     }
     catch (Exception ex) { Console.Error.WriteLine($"  (column/wall takeoff skipped: {ex.Message})"); }
@@ -1296,10 +1332,29 @@ if (args.Length >= 3 && args[0].Equals("sched-read", StringComparison.OrdinalIgn
     string sjson = args[1].ToLowerInvariant() switch
     {
         "column" or "col" => await PlanVisionClient.ReadColumnScheduleJsonAsync(spng),
+        "colcount" or "count" => await PlanVisionClient.ReadColumnCountsJsonAsync(spng),
         "keyplan" or "key" => await PlanVisionClient.ReadWallKeyPlanJsonAsync(spng),
         _ => await PlanVisionClient.ReadWallScheduleJsonAsync(spng),
     };
     Console.WriteLine(sjson);
+    return 0;
+}
+
+// DIAGNOSTIC: takeoff sched-tokens <pdf> <page> — dump every token whose text contains a schedule keyword,
+// with font height + x-fraction, to tell a real schedule-sheet TITLE from a prose mention on a notes sheet.
+if (args.Length >= 3 && args[0].Equals("sched-tokens", StringComparison.OrdinalIgnoreCase))
+{
+    var pc = VectorPageReader.ReadPage(args[1], int.Parse(args[2]));
+    double pw = pc.WidthPts;
+    var hits = pc.Words
+        .Where(t => t.Text.ToUpperInvariant() is var u && (u.Contains("SCHEDULE") || u.Contains("SCHED")
+                    || u.Contains("COLUMN") || u.Contains("SHEAR") || u.Contains("WALL")))
+        .OrderByDescending(t => t.Height).ToList();
+    Console.WriteLine($"page {args[2]}: w={pw:N0}pt, {pc.Words.Count} tokens; schedule-keyword tokens:");
+    foreach (var t in hits.Take(40))
+        Console.WriteLine($"  h={t.Height,6:N1}  fx={t.Cx / pw,4:0.00}  \"{t.Text}\"");
+    double maxH = pc.Words.Count > 0 ? pc.Words.Max(t => t.Height) : 0;
+    Console.WriteLine($"  (largest token on page: h={maxH:N1})");
     return 0;
 }
 

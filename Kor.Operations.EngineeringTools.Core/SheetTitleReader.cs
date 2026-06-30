@@ -99,6 +99,26 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         }
 
         /// <summary>
+        /// True when the page's TITLE BLOCK names a schedule of the given kind — a title-size token
+        /// (≥ <see cref="TitleMinH"/>) in the right-edge title region (≥ <see cref="TitleRegionMinFx"/>)
+        /// reading "SCHEDULE", together with a same-region title-size token for the kind keyword
+        /// ("SHEAR" for shear-wall, "COLUMN" for column). This distinguishes the actual schedule SHEET
+        /// from a general-notes sheet that merely mentions "… per the shear wall schedule …" in small
+        /// prose — a page-wide text scan matches that prose and over-counts (31065 p3 was read as 150 cy
+        /// of phantom wall before this gate). The real 31065 schedule titles sit at h≈13.8, fx≈0.93; the
+        /// p3 prose mentions top out at h≈6.1, so the margin is wide.
+        /// </summary>
+        public static bool HasScheduleTitle(VectorPageReader.PageContent? page, string kindKeyword)
+        {
+            if (page is null || page.WidthPts <= 0 || page.Words.Count == 0) return false;
+            double w = page.WidthPts;
+            bool TitleToken(string sub) => page.Words.Any(t =>
+                t.Height >= TitleMinH && t.Cx / w >= TitleRegionMinFx
+                && t.Text.IndexOf(sub, StringComparison.OrdinalIgnoreCase) >= 0);
+            return TitleToken("SCHEDULE") && TitleToken(kindKeyword);
+        }
+
+        /// <summary>
         /// Parse an already-isolated title line into (level, zone), or null if it is not a plan title.
         /// Exposed for testing the pure text parse independently of page geometry.
         /// </summary>

@@ -39,6 +39,10 @@ static class PlanVisionClient
     public static Task<string> ReadColumnScheduleJsonAsync(byte[] pngBytes) =>
         PostForcedToolAsync(ColumnScheduleTool(), "report_column_schedule", ColumnSchedulePrompt, pngBytes, 8000);
 
+    /// <summary>Counts how many columns of each mark are drawn on a column key plan (a floor of squares).</summary>
+    public static Task<string> ReadColumnCountsJsonAsync(byte[] pngBytes) =>
+        PostForcedToolAsync(ColumnCountTool(), "report_column_counts", ColumnCountPrompt, pngBytes, 3072);
+
     /// <summary>Posts the PNG with a forced tool call and returns that tool's raw input JSON.</summary>
     private static async Task<string> PostForcedToolAsync(object tool, string toolName, string prompt, byte[] pngBytes, int maxTokens)
     {
@@ -394,6 +398,36 @@ genuinely cannot tell a band's extent, give it your best visual estimate — nev
             required = new[] { "marks" }
         }
     };
+
+    private static object ColumnCountTool() => new
+    {
+        name = "report_column_counts",
+        description = "Report how many columns of each mark are drawn on the column key plan.",
+        input_schema = new
+        {
+            type = "object",
+            properties = new
+            {
+                counts = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            mark = new { type = "string", description = "column mark, e.g. C1, C12, PC1" },
+                            count = new { type = "integer", description = "how many columns of this mark are drawn on the key plan" }
+                        },
+                        required = new[] { "mark", "count" }
+                    }
+                }
+            },
+            required = new[] { "counts" }
+        }
+    };
+
+    private const string ColumnCountPrompt = @"This sheet contains a COLUMN SCHEDULE KEY PLAN — a small floor plan of the tower where each column is drawn as a small filled/outlined square and labelled with its mark (C1, C2, C3, …). Count how many distinct column locations (squares) of EACH mark are drawn on the key plan. Each physical square is one column — count the squares, not the labels (a mark may label several identical squares, or a single one). Return one entry per mark with its total count on this one floor. If you genuinely cannot see a key plan with countable columns, return an empty list.";
 
     private static object ColumnScheduleTool() => new
     {

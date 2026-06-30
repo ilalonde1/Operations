@@ -57,6 +57,32 @@ public sealed class ScheduleConcreteReaderTests
     }
 
     [Fact]
+    public void Column_counts_replicate_each_physical_column_as_a_distinct_mark()
+    {
+        // C1 with count 2 must price as TWO columns (ComputeColumn sets per mark, so they need distinct marks).
+        const string json = @"{""entries"":[
+            {""mark"":""C1"",""levelTop"":""LEVEL 2"",""levelBottom"":""LEVEL 1"",""widthIn"":24,""depthIn"":24}]}";
+        var ladder = new[] { "LEVEL 2", "LEVEL 1" };
+        var counts = new Dictionary<string, int> { ["C1"] = 2 };
+
+        var one = ScheduleConcreteReader.ColumnBands(json, ladder);                 // default 1
+        var two = ScheduleConcreteReader.ColumnBands(json, ladder, counts);
+        var rOne = ScheduleTakeoff.ComputeColumn(ladder, ladder.Select(_ => 126.0).ToList(), one);
+        var rTwo = ScheduleTakeoff.ComputeColumn(ladder, ladder.Select(_ => 126.0).ToList(), two);
+
+        Assert.Equal(2 * rOne.TotalCuYd, rTwo.TotalCuYd, 3);   // exactly double
+        Assert.Equal(2, rTwo.MarksPriced);                     // two distinct physical columns
+    }
+
+    [Fact]
+    public void Column_counts_parse_from_keyplan_json()
+    {
+        var c = ScheduleConcreteReader.ColumnCounts(@"{""counts"":[{""mark"":""C1"",""count"":2},{""mark"":""C12A"",""count"":1}]}");
+        Assert.Equal(2, c["C1"]);
+        Assert.Equal(1, c["C12A"]);
+    }
+
+    [Fact]
     public void Wall_thickness_in_mm_is_normalized_to_inches()
     {
         // W16 reads "300" (mm) and Z11 reads "12" (inches) — both must end up as inches, ~11.8 and 12.

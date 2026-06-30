@@ -148,6 +148,48 @@ public sealed class SheetTitleReaderTests
         Assert.Null(SheetTitleReader.FromPage(null));
     }
 
+    // ── Schedule-sheet title gate (real schedule SHEET vs a prose mention on a notes sheet) ──
+    [Fact]
+    public void HasScheduleTitle_true_for_a_real_schedule_title_block()
+    {
+        // 31065 p52/p53: "SHEAR WALL SCHEDULE" at title size on the right edge (h≈13.8, fx≈0.93).
+        var page = Page(
+            Word("SHEAR", 0.91, 0.95, 13.8), Word("WALL", 0.93, 0.95, 13.6),
+            Word("SCHEDULE", 0.95, 0.95, 13.8));
+        Assert.True(SheetTitleReader.HasScheduleTitle(page, "SHEAR"));
+        Assert.False(SheetTitleReader.HasScheduleTitle(page, "COLUMN")); // wrong kind keyword
+    }
+
+    [Fact]
+    public void HasScheduleTitle_true_for_a_real_column_schedule_title_block()
+    {
+        // 31065 p63/p64: "COLUMN SCHEDULE" at title size on the right edge (h≈13.8, fx≈0.93/0.96).
+        var page = Page(Word("COLUMN", 0.93, 0.95, 13.8), Word("SCHEDULE", 0.96, 0.95, 13.8));
+        Assert.True(SheetTitleReader.HasScheduleTitle(page, "COLUMN"));
+    }
+
+    [Fact]
+    public void HasScheduleTitle_false_for_a_prose_mention_on_a_notes_sheet()
+    {
+        // 31065 p3 (concrete notes): "SHEAR … SCHEDULE" only in small body prose (h≈6.1) — must NOT count,
+        // else the sheet is read as a phantom 150 cy of wall.
+        var page = Page(
+            Word("SHEAR", 0.81, 0.50, 6.1), Word("WALL", 0.82, 0.50, 6.0),
+            Word("SCHEDULE", 0.83, 0.50, 6.1),
+            Word("WALL", 0.37, 0.70, 19.6));   // a big "WALL" that is NOT the word "SCHEDULE"
+        Assert.False(SheetTitleReader.HasScheduleTitle(page, "SHEAR"));
+        Assert.False(SheetTitleReader.HasScheduleTitle(page, "COLUMN"));
+    }
+
+    [Fact]
+    public void HasScheduleTitle_false_when_the_schedule_title_is_not_in_the_right_edge_region()
+    {
+        // A title-size "SCHEDULE" sitting mid-sheet (fx≈0.5) is not a title block — reject.
+        var page = Page(Word("SHEAR", 0.48, 0.5, 13.8), Word("SCHEDULE", 0.52, 0.5, 13.8));
+        Assert.False(SheetTitleReader.HasScheduleTitle(page, "SHEAR"));
+        Assert.False(SheetTitleReader.HasScheduleTitle(null, "SHEAR"));
+    }
+
     [Fact]
     public void Distinct_zones_of_the_same_level_have_distinct_keys_but_a_redrawn_half_matches()
     {
