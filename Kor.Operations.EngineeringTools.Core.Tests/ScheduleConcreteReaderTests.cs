@@ -57,6 +57,39 @@ public sealed class ScheduleConcreteReaderTests
     }
 
     [Fact]
+    public void Wall_thickness_in_mm_is_normalized_to_inches()
+    {
+        // W16 reads "300" (mm) and Z11 reads "12" (inches) — both must end up as inches, ~11.8 and 12.
+        const string json = @"{""entries"":[
+            {""mark"":""W16"",""levelTop"":""LEVEL 19"",""levelBottom"":""LEVEL 1"",""thicknessIn"":300},
+            {""mark"":""Z11"",""levelTop"":""LEVEL 9"",""levelBottom"":""LEVEL 1"",""thicknessIn"":12}]}";
+        var bands = ScheduleConcreteReader.WallBands(json);
+        Assert.Equal(11.81, bands.Single(b => b.Mark == "W16").ThicknessIn, 2);   // 300 mm → 11.81"
+        Assert.Equal(12.0, bands.Single(b => b.Mark == "Z11").ThicknessIn, 2);    // already inches
+    }
+
+    [Fact]
+    public void Wall_lengths_sum_per_repeated_mark()
+    {
+        const string json = @"{""marks"":[{""mark"":""W14"",""lengthFt"":22},{""mark"":""W14"",""lengthFt"":22},{""mark"":""W16"",""lengthFt"":10}]}";
+        var len = ScheduleConcreteReader.WallLengthsByMark(json);
+        Assert.Equal(44, len["W14"]);     // both core faces
+        Assert.Equal(10, len["W16"]);
+    }
+
+    [Fact]
+    public void Wall_prices_through_ComputeWall_only_when_mark_has_both_length_and_thickness()
+    {
+        var bands = ScheduleConcreteReader.WallBands(
+            @"{""entries"":[{""mark"":""W1"",""levelTop"":""LEVEL 2"",""levelBottom"":""LEVEL 1"",""thicknessIn"":12}]}");
+        var len = ScheduleConcreteReader.WallLengthsByMark(@"{""marks"":[{""mark"":""W1"",""lengthFt"":20}]}");
+        var ladder = new[] { "LEVEL 2", "LEVEL 1" };
+        var r = ScheduleTakeoff.ComputeWall(ladder, ladder.Select(_ => 126.0).ToList(), len, bands);
+        // 20 ft × 1 ft (12") = 20 sq.ft × 10.5 ft × 2 levels = 420 cu.ft = 15.56 cu.yd.
+        Assert.Equal(15.56, r.TotalCuYd, 2);
+    }
+
+    [Fact]
     public void Empty_or_sizeless_json_yields_no_bands()
     {
         Assert.Empty(ScheduleConcreteReader.ColumnBands(@"{""entries"":[]}", Ladder5));

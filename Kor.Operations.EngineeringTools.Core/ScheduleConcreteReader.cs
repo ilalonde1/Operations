@@ -29,6 +29,24 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         private sealed class ColDoc { public List<ColEntry> entries { get; set; } = new(); }
 
+        private sealed class WallEntry
+        {
+            public string mark { get; set; } = "";
+            public string levelTop { get; set; } = "";
+            public string levelBottom { get; set; } = "";
+            public double thicknessIn { get; set; }
+        }
+        private sealed class WallDoc { public List<WallEntry> entries { get; set; } = new(); }
+
+        private sealed class KeyMark { public string mark { get; set; } = ""; public double lengthFt { get; set; } }
+        private sealed class KeyDoc { public List<KeyMark> marks { get; set; } = new(); }
+
+        // The vision reader returns member sizes inconsistently — some already converted to inches (a 450 mm
+        // column reads 17.7), some left in millimetres (a 300 mm wall reads 300). No concrete tower member is
+        // more than ~40" in least dimension, so any value over 60 is millimetres and is converted. This keeps
+        // a 300 mm wall from being priced as a 25-FOOT-thick one.
+        private static double AsInches(double v) => v > 60 ? v / 25.4 : v;
+
         /// <summary>Order level labels top-to-bottom: LEVEL 19 … LEVEL 1, then P1, P2 … (parkade below grade).</summary>
         public static List<string> OrderLevels(IEnumerable<string> levels) =>
             levels.Where(l => !string.IsNullOrWhiteSpace(l))
@@ -77,8 +95,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     if (!idx.TryGetValue(ScheduleTakeoff.NormalizeLevel(e.levelTop), out int a)
                         || !idx.TryGetValue(ScheduleTakeoff.NormalizeLevel(e.levelBottom), out int b)) continue;
                     if (a > b) (a, b) = (b, a);
-                    double d = e.depthIn > 0 ? e.depthIn : e.widthIn;
-                    for (int i = a; i <= b; i++) stated[i] = (e.widthIn, d);
+                    double w = AsInches(e.widthIn);
+                    double d = AsInches(e.depthIn > 0 ? e.depthIn : e.widthIn);
+                    for (int i = a; i <= b; i++) stated[i] = (w, d);
                 }
 
                 // Fill down: from the topmost stated level, carry the last size to every floor below.
@@ -101,6 +120,38 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         {
             var doc = JsonSerializer.Deserialize<ColDoc>(json) ?? new ColDoc();
             return OrderLevels(doc.entries.SelectMany(e => new[] { e.levelTop, e.levelBottom }));
+        }
+
+        /// <summary>Wall bands from the shear-wall-schedule JSON. The schedule already gives each mark's
+        /// thickness over a level RANGE, so no fill-down is needed — just map and normalize the unit. A mark
+        /// with no positive thickness, or an implausibly thick one (over 40"/1000 mm, a misread), is dropped.</summary>
+        public static List<ScheduleTakeoff.WallBand> WallBands(string json)
+        {
+            var doc = JsonSerializer.Deserialize<WallDoc>(json) ?? new WallDoc();
+            var bands = new List<ScheduleTakeoff.WallBand>();
+            foreach (var e in doc.entries)
+            {
+                if (string.IsNullOrWhiteSpace(e.mark) || !(e.thicknessIn > 0)) continue;
+                double thk = AsInches(e.thicknessIn);
+                if (thk > 40) continue;                                  // no suspended concrete wall is 40"+ thick
+                bands.Add(new ScheduleTakeoff.WallBand(e.mark.Trim(), e.levelTop, e.levelBottom, thk));
+            }
+            return bands;
+        }
+
+        /// <summary>Mark → total plan length (ft) from the wall key-plan JSON. The same mark can label both
+        /// faces of a core, so lengths for a repeated mark are SUMMED (matching how the schedule is read).</summary>
+        public static Dictionary<string, double> WallLengthsByMark(string json)
+        {
+            var doc = JsonSerializer.Deserialize<KeyDoc>(json) ?? new KeyDoc();
+            var len = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var m in doc.marks)
+            {
+                string mk = (m.mark ?? "").Trim();
+                if (mk.Length == 0 || !(m.lengthFt > 0)) continue;
+                len[mk] = len.TryGetValue(mk, out var e) ? e + m.lengthFt : m.lengthFt;
+            }
+            return len;
         }
     }
 }
