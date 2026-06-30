@@ -55,6 +55,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private readonly ICrmContactStore _contactStore;
     private readonly IOpportunityObservationStore _observationStore;
     private readonly IOpportunityInterestedFirmStore _interestStore;
+    private readonly IPursuitGrabStore _grabStore;
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
     // RefreshHeartbeatAsync runs the assignment off the UI thread). Mirrors the
@@ -96,7 +97,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         ICrmActivityStore activityStore,
         ICrmContactStore contactStore,
         IOpportunityObservationStore observationStore,
-        IOpportunityInterestedFirmStore interestStore)
+        IOpportunityInterestedFirmStore interestStore,
+        IPursuitGrabStore grabStore)
     {
         _store = store;
         _heartbeatStore = heartbeatStore;
@@ -110,6 +112,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         _contactStore = contactStore ?? throw new ArgumentNullException(nameof(contactStore));
         _observationStore = observationStore ?? throw new ArgumentNullException(nameof(observationStore));
         _interestStore = interestStore ?? throw new ArgumentNullException(nameof(interestStore));
+        _grabStore = grabStore ?? throw new ArgumentNullException(nameof(grabStore));
 
         FilteredOpportunitiesView = CollectionViewSource.GetDefaultView(Opportunities);
         FilteredOpportunitiesView.Filter = OpportunityFilterPredicate;
@@ -676,26 +679,35 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             return existing;
         }
 
-        var draft = new CrmEngagement
+        // Claim via the single, atomic grab path shared with the Bazaar (design
+        // §C3): it sets the actor as owner, flips Status New->Pursuing, carries the
+        // buyer canonical org, and writes the assignment log — all in one guarded
+        // transaction. This replaces the old racy create + status-bump, so every
+        // way a pursuit is born from an opportunity (Bazaar "Grab", RFPs "Promote
+        // to Pursuit", or logging the first activity/contact) produces an
+        // identical, correctly-owned, logged pursuit.
+        CrmEngagement? saved = null;
+        var grab = await _grabStore.GrabAsync(row.Model.Id, actor, ct).ConfigureAwait(true);
+        if (grab.Outcome == GrabOutcome.Grabbed)
         {
-            OpportunityId = row.Model.Id,
-            Stage = CrmEngagementStage.Drafting,
-            OwnerStaffId = row.Model.OwnerStaffId,
-        };
-        var saved = await _engagementStore.InsertAsync(draft, actor, ct).ConfigureAwait(true);
+            saved = await _engagementStore.GetByIdAsync(grab.EngagementId, ct).ConfigureAwait(true);
+        }
 
-        // Bump status using the captured row, not _selected, so a row switch
-        // mid-write cannot redirect the bump to a different opportunity.
-        if (row.Model.Status is OpportunityStatus.New)
+        // AlreadyTaken: a concurrent claim won, or the opportunity is no longer New
+        // / already owned. Re-fetch the engagement that now exists for it.
+        saved ??= await _engagementStore.GetByOpportunityAsync(row.Model.Id, ct).ConfigureAwait(true);
+
+        // Legacy fallback: opportunity is non-New with no engagement yet (e.g. a
+        // status set outside this flow). Create one owned by the actor.
+        if (saved is null)
         {
-            try
+            var draft = new CrmEngagement
             {
-                await ChangeStatusAsync(row, OpportunityStatus.Pursuing, actor, ct).ConfigureAwait(true);
-            }
-            catch (OpportunityConcurrencyException)
-            {
-                // engagement exists, status bump is a courtesy
-            }
+                OpportunityId = row.Model.Id,
+                Stage = CrmEngagementStage.Drafting,
+                OwnerStaffId = actor,
+            };
+            saved = await _engagementStore.InsertAsync(draft, actor, ct).ConfigureAwait(true);
         }
 
         if (_selected?.Model.Id == row.Model.Id && _selectedEngagement is null)
