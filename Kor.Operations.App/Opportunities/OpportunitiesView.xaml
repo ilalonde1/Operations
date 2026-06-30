@@ -215,6 +215,18 @@
                     <DataGridTextColumn Header="Name"          Binding="{Binding Name}"                  Width="*"/>
                     <DataGridTextColumn Header="Buyer"         Binding="{Binding BuyerName}"             Width="220"/>
                     <DataGridTextColumn Header="Status"        Binding="{Binding Status}"                Width="120"/>
+                    <DataGridTemplateColumn Header="Bazaar" Width="90" SortMemberPath="IsAvailableInBazaar">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource Risk.HighConfidence.Foreground}" CornerRadius="999"
+                                        Margin="2" Padding="7,2" HorizontalAlignment="Left"
+                                        ToolTip="Un-claimed — available to grab in the Bazaar."
+                                        Visibility="{Binding IsAvailableInBazaar, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                    <TextBlock Text="&#x2713;" FontFamily="Segoe UI Symbol" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Discipline"    Binding="{Binding Discipline}"            Width="100"/>
                     <DataGridTextColumn Header="Value"         Binding="{Binding EstimatedValueDisplay}" Width="120"/>
                     <DataGridTextColumn Header="Deadline"      Binding="{Binding DeadlineDisplay}"       Width="100"/>
