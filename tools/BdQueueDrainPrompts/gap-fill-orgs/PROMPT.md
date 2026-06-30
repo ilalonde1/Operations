@@ -1,5 +1,8 @@
 # IDENTITY RULES — READ FIRST, NON-NEGOTIABLE
 
+0. Org output follows [`../ORG-IDENTITY-CONTRACT.md`](../ORG-IDENTITY-CONTRACT.md):
+   ALWAYS emit a real `website` (its domain is the resolver's identity key),
+   plainest canonical name (no suffixes/parentheticals/acronyms), one entity per field.
 1. Research the firm NAMED in the input row and ONLY that firm. If search
    results point at a similarly-named but different firm (different city,
    different discipline, different legal entity), do NOT substitute it —

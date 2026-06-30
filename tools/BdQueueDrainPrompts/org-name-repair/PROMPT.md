@@ -7,6 +7,11 @@ job is NOT firm research. It is one question per org:
 
 > **What is this organization's correct name — verified by a source?**
 
+The corrected name + `website` must follow
+[`../ORG-IDENTITY-CONTRACT.md`](../ORG-IDENTITY-CONTRACT.md): plainest canonical
+form (no legal suffixes / parentheticals / acronyms / project tags), and emit the
+firm's real `website` — its domain is the resolver's identity key.
+
 KOR's ingest tool reads each output, renames the org, preserves the old
 garbled string as an alias, and clears the suppression so the org re-enters
 normal enrichment. A wrong name here poisons the canonical graph, so the

@@ -7,6 +7,13 @@ with no registered extractor). All NEW honing prompts and drain outputs
 MUST emit this shape. The legacy shapes remain readable (see "Legacy
 shapes" below) but must not be produced going forward.
 
+> **Emitting organizations (proponent / architect / structuralEngineer /
+> generalContractor, or any org record)?** Follow
+> [`ORG-IDENTITY-CONTRACT.md`](ORG-IDENTITY-CONTRACT.md): always emit a real
+> `website` (the domain is the resolver's identity key, migration 271), use the
+> plainest canonical name (no suffixes/parentheticals/acronyms/project tags),
+> one legal entity per field.
+
 ## Envelope
 
 Every drain output file is an envelope:
