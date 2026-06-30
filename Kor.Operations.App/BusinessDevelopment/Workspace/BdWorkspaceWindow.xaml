@@ -78,6 +78,8 @@
                     <Button x:Name="BdTrackingButton" Content="BD Tracking" Style="{StaticResource NavButton}" Click="BdTracking_Click"
                             ToolTip="The KOR Structural BD Tracking 2026 spreadsheet, ingested. Region tabs + per-initiator filter + rollup."/>
                     <Button x:Name="PursuitsButton" Content="Pursuits" Style="{StaticResource NavButton}" Click="Pursuits_Click"/>
+                    <Button x:Name="OverwatchButton" Content="Overwatch" Style="{StaticResource NavButton}" Click="Overwatch_Click"
+                            ToolTip="Manager board — every owned active pursuit, who owns it, and what's going cold."/>
                     <Button x:Name="ProposalsButton" Content="Proposals" Style="{StaticResource NavButton}" Click="Proposals_Click"/>
                     <Button x:Name="BrochuresButton" Content="Brochures" Style="{StaticResource NavButton}" Click="Brochures_Click"/>
                 </StackPanel>
