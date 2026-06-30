@@ -1,0 +1,24 @@
+# Fragment cleanup — parenthetical/variant orgs minted during the 2026-06-27 autonomous research run,
+# each a dup of an established pre-run canonical (survivor). Survivors verified as the older/established
+# record via base-name match (strip-at-paren). Ambiguous multi-survivor cases (Englekirk, KNA, FNHA) and
+# suffix-variant misses (e.g. Protostatix Engineering 77750) deliberately EXCLUDED for separate review.
+# LoserId,SurvivorId,Reason
+77715,85,DA Architects + Planners (Downs Archambault) -> DA Architects + Planners
+77688,54246,de Hoog & Kierulf (dHKa) variant -> deHoog & Kierulf Architects
+77679,71252,Kirsten Reite Architecture (KRA) -> Kirsten Reite Architecture
+77717,69756,Low Hammond Rowe (LHR) -> Low Hammond Rowe Architects
+77695,476,Alberta Health Services (AHS) -> Alberta Health Services
+77708,70907,BC Indigenous Housing Society (BCIHS) -> BC Indigenous Housing Society
+77712,459,University of British Columbia (Vancouver) -> University of British Columbia
+77763,76560,Associated Engineering (A.E.) -> Associated Engineering
+77734,38923,DCI Engineers (DCI+SDE) -> DCI Engineers
+77637,76968,Envision Engineering (CA) -> Envision Engineering
+77661,73788,Holmes (US) -> Holmes
+77735,68690,Holmes Structures (Holmes US) -> Holmes Structures
+77764,77118,John A. Martin & Associates (JAM) -> John A. Martin & Associates
+77785,38927,KPFF Consulting Engineers (San Diego) -> KPFF Consulting Engineers
+77749,75649,McElhanney (structural via BPTEC) -> McElhanney
+77693,72124,Protostatix (a division of Englobe) -> Protostatix
+77754,69014,RJC Engineers (Read Jones Christoffersen) -> RJC Engineers
+77726,69426,BentallGreenOak -> BentallGreenOak (Canada) LP
+77673,77473,Long Beach Unified School District variant -> Long Beach Unified School District

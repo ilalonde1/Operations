@@ -1,0 +1,5 @@
+# Fragment cleanup pass 2e — Graham LP-suffix dup found during B12 transit ingest.
+# 69232 "Graham Construction" is the established survivor (6 affiliations); 77897 "Graham Construction
+# and Engineering LP" minted this run with 0 affiliations. Same firm, LP suffix bypassed aggressive key.
+# LoserId,SurvivorId,Reason
+77897,69232,Graham Construction and Engineering LP -> Graham Construction

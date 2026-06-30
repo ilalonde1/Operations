@@ -1,0 +1,29 @@
+# Fragment cleanup pass 2 — project-tag ("BaseOrg — Project") and suffix-variant fragments minted during the
+# 2026-06-27 autonomous run, each merged into its established base canonical (single unambiguous survivor,
+# verified by prefix-match + eyeball). EXCLUDED (ambiguous — base itself has pre-existing dups, flag for Ian):
+#   Interior Health (54977 vs 77388), Island Health (77387 vs 54979), FNHA (18865 vs 77447),
+#   Englekirk (38924 vs 77120), KNA (70103 vs 75709), HDR (72190 survivor unverified).
+# LoserId,SurvivorId,Reason
+77776,54571,KMBR Architects Planners -> KMBR Architects
+77701,68972,Parkin Architects Western Ltd. -> Parkin Architects
+77713,69688,Perkins&Will Vancouver -> Perkins&Will
+77689,16944,Thinkspace Projects -> ThinkSpace
+77738,38975,ZGF Architects - Portland -> ZGF Architects
+77797,68717,Port of Portland / UO project -> Port of Portland
+77744,68717,Port of Portland - Mass Timber Campus -> Port of Portland
+77792,68990,SD62 - North Langford Secondary -> SD62 Sooke School District
+77788,76045,YMCA Calgary + Library (West District) -> YMCA Calgary
+77755,75868,Bush Bohlman & Partners LLP (BB&P) -> Bush Bohlman & Partners
+77759,68998,Herold Engineering Limited (now Englobe) -> Herold Engineering
+77750,72124,Protostatix Engineering (division of Englobe) -> Protostatix
+77798,75183,Alexandria Real Estate - Campus Point -> Alexandria Real Estate Equities
+77796,68642,Crescent Heights - 10 South Van Ness -> Crescent Heights
+77746,68706,Skanska USA Commercial Development -> Skanska USA
+77794,71506,Stryke Group - Nexus Penticton -> Stryke Group
+77699,69232,Graham Construction & Engineering Inc. -> Graham Construction
+77685,69232,Graham Construction & Engineering / GDB -> Graham Construction
+77676,13243,PCL Construction Management Inc. -> PCL Construction
+77786,53119,City of Calgary (Foothills Fieldhouse) -> City of Calgary
+77787,53280,City of Edmonton (Fire Stations) -> City of Edmonton
+77795,18863,District of Saanich - Fire Station 2 -> District of Saanich
+77742,69291,Kalesnikoff Mass Timber -> Kalesnikoff
