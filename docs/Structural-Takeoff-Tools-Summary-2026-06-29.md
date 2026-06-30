@@ -65,6 +65,8 @@ Five tools, one shared rule: **read what the drawing actually says, flag what it
 
 ## Before app integration (your review gates this)
 
-- **Slab tool needs a rasterizer wired to the app's renderer** — the CLI relies on externally pre-rendered PNGs; the app must render pages to feed phase-2 measurement. This is the one real dependency to resolve when surfacing it in the app.
+- **Slab tool now renders its own pages** (Docnet.Core / bundled PDFium) — the pre-render requirement and its cryptic failure are gone; `vector-takeoff` runs self-contained from just the PDF. Verified end-to-end on 31065 (renders 73 pages, runs to a per-level result). The app can reuse `PlanPdfRenderer` or its own renderer.
 - `ifc-takeoff` would benefit from **one real IFC export** to validate against a known total before it's offered in the app.
-- The other three (`rebar`, `overlay`, `pdf-readable`) are self-contained and app-ready as-is.
+- `rebar`, `overlay`, `pdf-readable` are self-contained and app-ready as-is.
+
+**Net: all five tools now run self-contained from their inputs.** The remaining app-phase work is UI surfacing, not capability.
