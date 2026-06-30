@@ -1313,6 +1313,18 @@ if (args.Length >= 3 && args[0].Equals("single", StringComparison.OrdinalIgnoreC
 // Usage: takeoff overlay <before.pdf> <after.pdf> <out.pdf> [name] [beforeLabel] [afterLabel] [imperial]
 if (args.Length >= 4 && args[0].Equals("overlay", StringComparison.OrdinalIgnoreCase))
 {
+    // Same honest front door as `rebar`: refuse a scanned/flattened side up front rather than emit a
+    // falsely-reassuring "no changes" markup off a drawing the tool cannot read.
+    foreach (var (label, path) in new[] { ("BEFORE", args[1]), ("AFTER", args[2]) })
+    {
+        var orv = PdfReadabilityAssessor.AssessPageTexts(PdfPageTextReader.ReadPages(path));
+        if (!orv.Readable)
+        {
+            Console.Error.WriteLine($"CANNOT READ THE {label} SET ({Path.GetFileName(path)}) — {orv.Reason}");
+            return 3;
+        }
+    }
+
     string oname = args.Length > 4 ? args[4] : string.Empty;
     string obl   = args.Length > 5 ? args[5] : "Before";
     string oal   = args.Length > 6 ? args[6] : "After";
