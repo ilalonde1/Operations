@@ -21,7 +21,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         string Scale = "1/8\"=1'-0\"",
         double Dpi = 110,
         string ProfileName = "BC-moderate",
-        bool ApplyZoning = false);
+        bool ApplyZoning = false,
+        double StoreyHeightIn = 126);   // 10.5 ft typical — prices the wall/column gray-fill footprint; assumed, flagged
 
     /// <summary>Why a plate could not be priced and is therefore NOT in the total — the honest residual the
     /// three-phase pipeline owes alongside the answer. <see cref="ResidualKind.AreaUnresolved"/>: no grid and
@@ -72,6 +73,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             public int ClusterCount;
             public AreaBasis Basis;
             public IReadOnlyList<PlanFlag> AreaFlags = Array.Empty<PlanFlag>();
+
+            // Co-located vertical concrete measured off the SAME plate crop: the solid-gray-fill footprint
+            // (sqft) of the shear walls and the columns drawn on this slab. Deterministic (PlanGeometry), so it
+            // does not depend on the fragile schedule×key-plan read. Priced at the storey height × reconciled
+            // floor count, on top of the slab (the slab area spans gross, under them, so this is additional).
+            public double WallSqFt, ColSqFt;
 
             // Phase-2 context: where the plate is (page + render + pixel box) so a targeted AI call can be
             // re-issued against just this plate, and the distinct thickness callouts (inches) the drawing
@@ -145,7 +152,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// plate area (sqft at <paramref name="mpp"/>), how densely it fills its own extent, and the cluster
         /// count. The one place area is measured, shared by the deterministic grid-box pass and the phase-2
         /// AI-located pass so they measure identically.</summary>
-        private static (double Area, double Fill, int Clusters) MeasurePoche(
+        private static (double Area, double Fill, int Clusters, double WallSqFt, double ColSqFt) MeasurePoche(
             IPlanRaster raster, string png, int x0, int y0, int x1, int y1, double mpp)
         {
             var crop = raster.LoadCrop(png, x0, y0, x1, y1);
@@ -153,7 +160,35 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double area = PlanGeometry.SquareFeet(cl.Count > 0 ? cl[0].LightPx : 0, mpp);
             double fill = cl.Count > 0 && cl[0].Width > 0 && cl[0].Height > 0
                 ? (double)cl[0].LightPx / ((double)cl[0].Width * cl[0].Height) : double.NaN;
-            return (area, fill, cl.Count);
+            var (wallSqFt, colSqFt) = MeasureVerticalFootprint(crop, mpp);
+            return (area, fill, cl.Count, wallSqFt, colSqFt);
+        }
+
+        /// <summary>
+        /// Splits the solid-gray-fill footprint inside a plate crop into shear-wall vs column area (sq.ft),
+        /// the deterministic vertical-concrete measure validated on Coronation (+3.8% vs QTO). Reuses the
+        /// <see cref="PlanGeometry"/> primitives: connected gray-fill blobs, each classified by shape
+        /// (<see cref="PlanGeometry.ClassifyVertical"/>) — columns are compact, walls are elongated runs or
+        /// simply too large to be a column. Returns (0,0) when the crop carries no colour planes (luminance
+        /// alone cannot isolate the neutral gray) rather than guessing. This is the same method the orphaned
+        /// vision-estimate command used; it is lifted here so the live PDF takeoff measures verticals the same
+        /// proven way instead of the fragile schedule×key-plan read.
+        /// </summary>
+        private static (double WallSqFt, double ColSqFt) MeasureVerticalFootprint(RasterCrop crop, double mpp)
+        {
+            if (crop.R is null || crop.G is null || crop.B is null || mpp <= 0) return (0, 0);
+            double sqftPerPx = mpp * mpp * 10.763910416709722;
+            long colMinPx = Math.Max(20L, (long)(0.2 / sqftPerPx));   // drop sub-0.2-sq.ft gray speckle
+            long colMaxPx = (long)(25.0 / sqftPerPx);                 // a column footprint caps ~25 sq.ft; bigger ⇒ wall
+            var comps = PlanGeometry.MeasureGrayComponents(
+                crop.R, crop.G, crop.B, crop.Width, crop.Height, minPixels: colMinPx);
+            long wallPx = 0, colPx = 0;
+            foreach (var gc in comps)
+            {
+                if (PlanGeometry.ClassifyVertical(gc, colMaxPx) == PlanGeometry.VerticalKind.Wall) wallPx += gc.AreaPx;
+                else colPx += gc.AreaPx;
+            }
+            return (PlanGeometry.SquareFeet(wallPx, mpp), PlanGeometry.SquareFeet(colPx, mpp));
         }
 
         /// <summary>The area-weighted effective thickness (inches) from an AI drop-band apportionment —
@@ -338,7 +373,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     cy0 = Math.Clamp(cy0 - padY, 0, ih - 1); cy1 = Math.Clamp(cy1 + padY, cy0 + 1, ih);
                     plate.Cx0 = cx0; plate.Cy0 = cy0; plate.Cx1 = cx1; plate.Cy1 = cy1; plate.HasBox = true;
 
-                    var (area, fill, clusters) = MeasurePoche(raster, png, cx0, cy0, cx1, cy1, tkMpp);
+                    var (area, fill, clusters, wallSqFt, colSqFt) = MeasurePoche(raster, png, cx0, cy0, cx1, cy1, tkMpp);
                     if (area >= 500)
                     {
                         var consensus = SlabAreaReconciler.Reconcile(grid, tkScaleDenom, area);
@@ -346,6 +381,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         plate.FillRatio = fill; plate.ClusterCount = clusters;
                         plate.GridNet = consensus.GridNetSqFt ?? 0; plate.Poche = consensus.PocheSqFt ?? area;
                         plate.Basis = consensus.Basis; plate.AreaFlags = consensus.Flags;
+                        plate.WallSqFt = wallSqFt; plate.ColSqFt = colSqFt;   // co-located vertical concrete, same crop
                     }
                     else plate.NeedsLocate = true;   // the grid box gave a bad poché — hand the locate to AI
                 }
@@ -396,7 +432,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     var (iw, ih) = raster.ImageSize(p.Png);
                     string pj = JsonSerializer.Serialize(page, new JsonSerializerOptions { WriteIndented = false });
                     double expect = NearLevelMedian(p, tkRaw);
-                    (int X0, int Y0, int X1, int Y1, double Area, double Fill, int Clusters)? best = null;
+                    (int X0, int Y0, int X1, int Y1, double Area, double Fill, int Clusters, double WallSqFt, double ColSqFt)? best = null;
                     double bestErr = double.MaxValue;
                     string? feedback = null;
                     for (int pass = 0; pass < MaxAiPasses; pass++)
@@ -409,9 +445,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                             if (bb.Count < 4) break;
                             int bx0 = Math.Clamp((int)(Math.Min(bb[0], bb[2]) * iw), 0, iw - 1), by0 = Math.Clamp((int)(Math.Min(bb[1], bb[3]) * ih), 0, ih - 1);
                             int bx1 = Math.Clamp((int)(Math.Max(bb[0], bb[2]) * iw), bx0 + 1, iw), by1 = Math.Clamp((int)(Math.Max(bb[1], bb[3]) * ih), by0 + 1, ih);
-                            var (area, fill, clusters) = MeasurePoche(raster, p.Png, bx0, by0, bx1, by1, tkMpp);
+                            var (area, fill, clusters, wallSqFt, colSqFt) = MeasurePoche(raster, p.Png, bx0, by0, bx1, by1, tkMpp);
                             double err = expect > 0 ? Math.Abs(area - expect) / expect : (area >= 500 ? 0 : 1);
-                            if (area >= 500 && err < bestErr) { best = (bx0, by0, bx1, by1, area, fill, clusters); bestErr = err; }
+                            if (area >= 500 && err < bestErr) { best = (bx0, by0, bx1, by1, area, fill, clusters, wallSqFt, colSqFt); bestErr = err; }
                             if (area >= 500 && (expect <= 0 || err <= 0.4)) break;   // converged within band (or no peer to judge by)
                             feedback = expect > 0
                                 ? $"Your bounding box measured about {area:N0} sqft of slab, but the floors within a few levels of this one measure about {expect:N0} sqft, so this plate should be a similar size. Your box was {(area < expect ? "TOO SMALL — it grabbed only part of the plate" : "TOO LARGE — it grabbed neighbouring plans, schedules or the title block")}. Return a corrected box around the WHOLE floor-slab plate."
@@ -424,6 +460,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         var consensus = SlabAreaReconciler.Reconcile(null, tkScaleDenom, b.Area);   // no grid → poché stands alone
                         p.Area = consensus.AreaSqFt; p.FillRatio = b.Fill; p.ClusterCount = b.Clusters;
                         p.Poche = b.Area; p.Basis = consensus.Basis; p.AreaFlags = consensus.Flags;
+                        p.WallSqFt = b.WallSqFt; p.ColSqFt = b.ColSqFt;   // co-located vertical concrete from the located crop
                         p.Cx0 = b.X0; p.Cy0 = b.Y0; p.Cx1 = b.X1; p.Cy1 = b.Y1; p.HasBox = true; p.NeedsLocate = false;
                         notes.Add($"  ⤷ {p.Label}: AI located plate → {b.Area:N0} sqft" +
                                   (expect > 0 ? $" (peers ~{expect:N0}; {(bestErr <= 0.4 ? "converged" : $"best of {MaxAiPasses}, still off — flagged")})." : "."));
@@ -659,6 +696,19 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", area, thk, floors,
                     FillRatio: r.FillRatio, ClusterCount: r.ClusterCount, ThicknessSource: thkSource,
                     DegenerateBox: degenerate, PeerAreaRatio: peerRatio, ExtraFlags: r.AreaFlags));
+
+                // Co-located vertical concrete (deterministic gray-fill footprint) priced at the storey height
+                // and the SAME reconciled floor count as the slab — additional concrete (the slab area spans
+                // gross, beneath the walls/columns). Suppressed on a degenerate box, where the measurement
+                // rode a bad locate. The storey height is an assumed typical, flagged in the engine notes once.
+                if (!degenerate && (r.WallSqFt > 0 || r.ColSqFt > 0))
+                {
+                    if (r.WallSqFt > 0)
+                        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Wall, "shear", r.WallSqFt, req.StoreyHeightIn, floors));
+                    if (r.ColSqFt > 0)
+                        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Column, null, r.ColSqFt, req.StoreyHeightIn, floors));
+                    notes.Add($"      {r.Label}: + gray-fill wall {r.WallSqFt:N0} / col {r.ColSqFt:N0} sqft × {req.StoreyHeightIn / 12:0.0}ft × {floors} flr (deterministic; storey height assumed).");
+                }
             }
 
             if (tkPlates.Count == 0)

@@ -117,7 +117,13 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
 
     foreach (var n in tkOut.Notes) Console.WriteLine(n);
     File.WriteAllBytes(args[3], tkOut.Xlsx);
-    Console.WriteLine($"\nPlates: {tkOut.Estimate.Plates.Count}   Slab concrete: {tkOut.TotalConcreteCuYd:N0} cu.yd   Rebar: {tkOut.TotalRebarLb:N0} lb");
+    // The engine total now includes the deterministic gray-fill walls + columns (priced per plate), so break
+    // it down by element rather than calling it slab-only.
+    double wallCyGeom = tkOut.Estimate.Plates.Where(p => p.Plate.Element == TakeoffElementType.Wall).Sum(p => p.ConcreteTotalCuYd);
+    double colCyGeom  = tkOut.Estimate.Plates.Where(p => p.Plate.Element == TakeoffElementType.Column).Sum(p => p.ConcreteTotalCuYd);
+    double slabCy     = tkOut.TotalConcreteCuYd - wallCyGeom - colCyGeom;
+    Console.WriteLine($"\nPlates: {tkOut.Estimate.Plates.Count}   Concrete: {tkOut.TotalConcreteCuYd:N0} cu.yd "
+        + $"(slab/fdn {slabCy:N0} + walls {wallCyGeom:N0} + columns {colCyGeom:N0})   Rebar: {tkOut.TotalRebarLb:N0} lb");
 
     // PER-LEVEL — these are FIELD-SLAB volumes: plan area × plan thickness callout. "GRID" means the field
     // measurement is clean (area cross-checked by grid envelope + poché + peers, thickness from a real
@@ -157,7 +163,6 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         var tkDig = DrawingDigestBuilder.Build(args[1], tkFirst, tkLast);
         const double typicalStoreyIn = 126.0;  // 10.5 ft
         double colCuYd = 0, wallCuYd = 0; int colSheets = 0, colMarks = 0, wallSheets = 0, wallMarks = 0;
-        var extraInputs = new List<StructuralTakeoffInput>();   // column + wall per-level rows for the xlsx
 
         // A single schedule/key-plan vision call is fragile: it occasionally returns empty or an outlier,
         // and the wall total hangs on it — one empty response ZEROES a whole tower (31065 p53 read 0 cy one
@@ -225,8 +230,6 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                     if (got is { } c)
                     {
                         colCuYd += c.res.TotalCuYd; colSheets++; colMarks += c.res.MarksPriced;
-                        foreach (var pl in c.res.PerLevel.Where(p => p.ConcreteCuYd > 0))
-                            extraInputs.Add(new StructuralTakeoffInput(pl.Level, TakeoffElementType.Column, null, pl.ConcreteCuYd));
                         string spread = c.hi > c.lo ? $" [{VisionReads} reads {c.lo:N0}..{c.hi:N0}]" : "";
                         Console.WriteLine($"  column schedule p{pg.Page}: {c.res.MarksPriced} columns ({c.distinctMarks} marks) over {ladder.Count} levels -> {c.res.TotalCuYd:N0} cy{spread}");
                     }
@@ -246,8 +249,6 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                     {
                         var wres = wv.res;
                         wallCuYd += wres.TotalCuYd; wallSheets++; wallMarks += wres.MarksPriced;
-                        foreach (var pl in wres.PerLevel.Where(p => p.ConcreteCuYd > 0))
-                            extraInputs.Add(new StructuralTakeoffInput(pl.Level, TakeoffElementType.Wall, null, pl.ConcreteCuYd));
                         string spread = wv.hi > wv.lo ? $" [{VisionReads} reads {wv.lo:N0}..{wv.hi:N0}]" : "";
                         Console.WriteLine($"  wall schedule p{pg.Page}: {wres.MarksPriced} marks priced ({wres.BandsApplied} bands) -> {wres.TotalCuYd:N0} cy{spread}");
                     }
@@ -268,30 +269,24 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             ? "footings: a footing schedule is present but its sizes are given on-plan (\"SEE PLAN\"), not as a machine-readable grid — quantify the footings by hand. Parkade slabs ARE counted above."
             : "footings: no machine-readable footing schedule found — if the set has spread/strip footings, quantify them by hand. Parkade slabs ARE counted above.";
 
+        // The priced whole-building number (slab + deterministic gray-fill walls/columns) already came from the
+        // engine and is in the xlsx. The schedule reads below are an INDEPENDENT CROSS-CHECK only — never added,
+        // so the noisy schedule×key-plan path can't swing or zero the answer; it just offers a second opinion.
+        Console.WriteLine($"\nWHOLE-BUILDING (deterministic gray-fill verticals; storey height assumed {typicalStoreyIn / 12:0.0}ft typical):");
+        Console.WriteLine($"  slab + foundations   {slabCy,8:N0} cy");
+        Console.WriteLine($"  walls   (gray-fill)  {wallCyGeom,8:N0} cy");
+        Console.WriteLine($"  columns (gray-fill)  {colCyGeom,8:N0} cy");
+        Console.WriteLine($"  {"":21}--------");
+        Console.WriteLine($"  TOTAL   {tkOut.TotalConcreteCuYd,8:N0} cy   (in {args[3]})");
+        Console.WriteLine($"  RESIDUAL: {footingNote}");
         if (colSheets > 0 || wallSheets > 0)
         {
-            double slab = tkOut.TotalConcreteCuYd;
-            Console.WriteLine($"\nWHOLE-BUILDING (column counts from key plan; storeys assumed {typicalStoreyIn / 12:0.0}ft typical):");
-            Console.WriteLine($"  slab    {slab,8:N0} cy");
-            if (colSheets > 0)  Console.WriteLine($"  columns {colCuYd,8:N0} cy  ({colMarks} marks / {colSheets} sheet(s))");
-            if (wallSheets > 0) Console.WriteLine($"  walls   {wallCuYd,8:N0} cy  ({wallMarks} marks / {wallSheets} sheet(s))");
-            Console.WriteLine($"  {"":8} --------");
-            Console.WriteLine($"  TOTAL   {slab + colCuYd + wallCuYd,8:N0} cy");
-            Console.WriteLine($"  RESIDUAL: {footingNote}");
-
-            // Rewrite the workbook with the WHOLE building — slab rows (as the engine computed them) plus the
-            // column + wall rows, priced through the same report so the xlsx matches the combined total.
-            if (extraInputs.Count > 0)
-            {
-                var combined = tkOut.Estimate.TakeoffInputs.Concat(extraInputs).ToList();
-                var computed = StructuralTakeoffService.Compute(combined, PlanProfile.BcModerate.ToImperialDensityTable());
-                var wbModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(args[1]), "Whole-building vector takeoff", "", DateTime.UtcNow, computed);
-                File.WriteAllBytes(args[3], StructuralTakeoffReportGenerator.BuildXlsx(wbModel));
-                Console.WriteLine($"  xlsx now includes slab + columns + walls -> {args[3]}");
-            }
+            Console.WriteLine($"  cross-check — schedule sheets (NOT added; independent of the geometry above):");
+            if (colSheets > 0) Console.WriteLine($"    columns: schedule ~{colCuYd:N0} cy ({colMarks} marks / {colSheets} sheet(s))  vs gray-fill {colCyGeom:N0} cy");
+            if (wallSheets > 0) Console.WriteLine($"    walls:   schedule ~{wallCuYd:N0} cy ({wallMarks} marks / {wallSheets} sheet(s))  vs gray-fill {wallCyGeom:N0} cy");
         }
     }
-    catch (Exception ex) { Console.Error.WriteLine($"  (column/wall takeoff skipped: {ex.Message})"); }
+    catch (Exception ex) { Console.Error.WriteLine($"  (vertical cross-check skipped: {ex.Message})"); }
 
     Console.WriteLine($"\n(suspended-slab benchmark: 31044 Coronation = 20,208 cy net of the 4,287 mat)  ->  {args[3]}");
     return 0;
@@ -1708,7 +1703,7 @@ sealed class CliPlanRaster : IPlanRaster
     public RasterCrop LoadCrop(string path, int x0, int y0, int x1, int y1)
     {
         var c = PlanRaster.LoadCrop(path, x0, y0, x1, y1);
-        return new RasterCrop(c.Lum, c.Width, c.Height);
+        return new RasterCrop(c.Lum, c.Width, c.Height, c.R, c.G, c.B);   // RGB planes → gray-fill vertical measurement
     }
 }
 

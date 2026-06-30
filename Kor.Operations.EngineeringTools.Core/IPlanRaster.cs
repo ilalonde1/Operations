@@ -2,9 +2,14 @@
 
 namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 {
-    /// <summary>A cropped region of a rendered sheet as 8-bit luminance — the only channel the slab poché
-    /// needs. <see cref="Lum"/> is row-major, length <see cref="Width"/>×<see cref="Height"/>.</summary>
-    public readonly record struct RasterCrop(byte[] Lum, int Width, int Height);
+    /// <summary>A cropped region of a rendered sheet. <see cref="Lum"/> is row-major 8-bit luminance — the
+    /// channel the slab poché needs — length <see cref="Width"/>×<see cref="Height"/>. <see cref="R"/>/
+    /// <see cref="G"/>/<see cref="B"/> are the matching colour planes when the decoder supplies them; they are
+    /// needed to isolate the neutral-GRAY wall/column fill from coloured line-work (luminance alone cannot tell
+    /// a grey fill from an equally-bright colour). Null when only luminance was decoded — the vertical
+    /// measurement then yields nothing rather than guessing.</summary>
+    public readonly record struct RasterCrop(byte[] Lum, int Width, int Height,
+        byte[]? R = null, byte[]? G = null, byte[]? B = null);
 
     /// <summary>
     /// The raster I/O the engine needs, kept behind an interface so the Core engine does NOT depend on an
