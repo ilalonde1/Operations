@@ -1215,6 +1215,23 @@ if (args.Length >= 2 && args[0].Equals("wallplan", StringComparison.OrdinalIgnor
 
 // Core-wall concrete the estimator's way: cross-reference the CORE WALL KEY PLAN (each mark's length)
 // with the SHEAR WALL SCHEDULE (each mark's thickness per level band), priced over a level list.
+// Diagnostic: run a vision schedule/keyplan reader on a rendered sheet and print the extracted JSON, to
+// PROVE the dense wall/column schedules are machine-readable before wiring them into the takeoff.
+// kind = wall | column | keyplan.  Usage: takeoff sched-read <kind> <sheet.png>
+if (args.Length >= 3 && args[0].Equals("sched-read", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[2])) { Console.Error.WriteLine($"Not found '{args[2]}'."); return 2; }
+    var spng = PlanRaster.LoadDownscaledPng(args[2], 1600);
+    string sjson = args[1].ToLowerInvariant() switch
+    {
+        "column" or "col" => await PlanVisionClient.ReadColumnScheduleJsonAsync(spng),
+        "keyplan" or "key" => await PlanVisionClient.ReadWallKeyPlanJsonAsync(spng),
+        _ => await PlanVisionClient.ReadWallScheduleJsonAsync(spng),
+    };
+    Console.WriteLine(sjson);
+    return 0;
+}
+
 // Usage: takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>
 //   levels.json: { "storeyHeightFt": 10.5, "levels": ["LEVEL 20", ... , "P7"] }  (top to bottom)
 if (args.Length >= 4 && args[0].Equals("wallconcrete", StringComparison.OrdinalIgnoreCase))
