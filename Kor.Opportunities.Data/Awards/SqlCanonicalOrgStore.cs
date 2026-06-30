@@ -30,6 +30,7 @@ public sealed class SqlCanonicalOrgStore : ICanonicalOrgStore
         CancellationToken ct)
     {
         var fuzzyNormalizedName = CanonicalOrgResolver.NormalizeForFuzzyMatch(displayName);
+        var websiteDomain = CanonicalOrgResolver.ExtractWebsiteDomain(website);
         var allowFuzzySurvivorAttach = !CanonicalOrgResolver.IsGenericNameDenied(NormalizeName(displayName))
             && !CanonicalOrgResolver.IsGenericNameDenied(fuzzyNormalizedName);
 
@@ -85,9 +86,9 @@ END
 IF @existingId IS NULL
 BEGIN
     INSERT INTO opportunities.CanonicalOrg
-        (Kind, DisplayName, FuzzyNormalizedName, ClendorClientId, Website, Notes)
+        (Kind, DisplayName, FuzzyNormalizedName, ClendorClientId, Website, WebsiteDomain, Notes)
     VALUES
-        (@kind, @name, @fuzzy, @clendor, @website, @notes);
+        (@kind, @name, @fuzzy, @clendor, @website, @websiteDomain, @notes);
 
     SET @existingId = CONVERT(bigint, SCOPE_IDENTITY());
 END
@@ -128,6 +129,7 @@ BEGIN
         DisplayName = CASE WHEN Kind IN (N'KorStructural', N'KorClient') THEN DisplayName ELSE @name END,
         FuzzyNormalizedName = @fuzzy,
         Website = COALESCE(Website, @website),
+        WebsiteDomain = COALESCE(WebsiteDomain, @websiteDomain),
         Notes = COALESCE(Notes, @notes),
         UpdatedAtUtc = sysdatetimeoffset()
     WHERE Id = @existingId;
@@ -148,6 +150,7 @@ SELECT @existingId;";
         cmd.Parameters.Add("@allowFuzzy", SqlDbType.Bit).Value = allowFuzzySurvivorAttach;
         cmd.Parameters.Add("@clendor", SqlDbType.VarChar, 32).Value = (object?)clendorClientId ?? DBNull.Value;
         cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = (object?)website ?? DBNull.Value;
+        cmd.Parameters.Add("@websiteDomain", SqlDbType.NVarChar, 255).Value = string.IsNullOrWhiteSpace(websiteDomain) ? (object)DBNull.Value : websiteDomain;
         cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)notes ?? DBNull.Value;
 
         try
@@ -443,6 +446,39 @@ ORDER BY
         return v is null or DBNull ? null : Convert.ToInt64(v);
     }
 
+    public async Task<long?> FindByWebsiteDomainAsync(string domain, CancellationToken ct)
+    {
+        if (CanonicalOrgResolver.IsGenericWebsiteDomainDenied(domain)) return null;
+
+        const string sql = @"
+SELECT TOP 1 co.Id
+FROM opportunities.CanonicalOrg co
+OUTER APPLY (
+    SELECT COUNT_BIG(*) AS AffiliationCount
+    FROM opportunities.IntelPersonAffiliation ipa
+    WHERE ipa.CanonicalOrgId = co.Id
+) ipa
+OUTER APPLY (
+    SELECT COUNT_BIG(*) AS EnrichmentCount
+    FROM opportunities.CanonicalOrgEnrichment e
+    WHERE e.CanonicalOrgId = co.Id
+) enr
+WHERE co.WebsiteDomain = @domain
+  AND co.RetiredAtUtc IS NULL
+ORDER BY
+    CASE WHEN co.Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
+    CASE WHEN co.ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+    CONVERT(bigint, ipa.AffiliationCount) + CONVERT(bigint, enr.EnrichmentCount) DESC,
+    co.Id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@domain", SqlDbType.NVarChar, 255).Value = domain.Trim().ToLowerInvariant();
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
     public async Task<long?> ResolveCanonicalOrgMergeAsync(long canonicalOrgId, CancellationToken ct)
     {
         const string sql = @"
@@ -573,12 +609,17 @@ FROM (
     {
         if (string.IsNullOrWhiteSpace(website) && string.IsNullOrWhiteSpace(notes)) return;
 
+        var websiteDomain = CanonicalOrgResolver.ExtractWebsiteDomain(website);
+
         const string sql = @"
 UPDATE opportunities.CanonicalOrg
 SET Website = COALESCE(Website, @website),
+    WebsiteDomain = COALESCE(WebsiteDomain, @websiteDomain),
     Notes = COALESCE(Notes, @notes),
     UpdatedAtUtc = CASE
-        WHEN (Website IS NULL AND @website IS NOT NULL) OR (Notes IS NULL AND @notes IS NOT NULL)
+        WHEN (Website IS NULL AND @website IS NOT NULL)
+          OR (WebsiteDomain IS NULL AND @websiteDomain IS NOT NULL)
+          OR (Notes IS NULL AND @notes IS NOT NULL)
         THEN sysdatetimeoffset()
         ELSE UpdatedAtUtc
     END
@@ -591,6 +632,9 @@ WHERE Id = @id;";
         cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = string.IsNullOrWhiteSpace(website)
             ? (object)DBNull.Value
             : website;
+        cmd.Parameters.Add("@websiteDomain", SqlDbType.NVarChar, 255).Value = string.IsNullOrWhiteSpace(websiteDomain)
+            ? (object)DBNull.Value
+            : websiteDomain;
         cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = string.IsNullOrWhiteSpace(notes)
             ? (object)DBNull.Value
             : notes;

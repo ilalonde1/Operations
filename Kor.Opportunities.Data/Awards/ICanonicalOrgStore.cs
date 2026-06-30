@@ -63,6 +63,12 @@ public interface ICanonicalOrgStore
     Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct);
 
     /// <summary>
+    /// Find the deterministic live CanonicalOrg survivor for the supplied
+    /// website domain. Generic/shared host domains are ignored.
+    /// </summary>
+    Task<long?> FindByWebsiteDomainAsync(string domain, CancellationToken ct);
+
+    /// <summary>
     /// Follow the CanonicalOrgMerge ledger from a merged-away org id to the
     /// deepest live survivor. Returns null when the id has no live survivor.
     /// </summary>

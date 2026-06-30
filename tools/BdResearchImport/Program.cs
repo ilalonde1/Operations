@@ -171,13 +171,14 @@ internal static class Program
         {
             var options = ImportOptions.Parse(args);
             var canonicalIngestMode = !string.IsNullOrWhiteSpace(options.IngestCanonicalFolder);
+            var backfillOrgDomainsMode = options.BackfillOrgDomains;
             if (options.Audit)
             {
                 RunResearchFileAudit(options);
                 return 0;
             }
 
-            if ((!options.DryRun || canonicalIngestMode) && string.IsNullOrWhiteSpace(options.OpportunitiesDb))
+            if ((!options.DryRun || canonicalIngestMode || backfillOrgDomainsMode) && string.IsNullOrWhiteSpace(options.OpportunitiesDb))
             {
                 Console.Error.WriteLine("Missing connection string. Set KOR_OPPORTUNITIES_OPPORTUNITIESDB or pass --db.");
                 return 2;
@@ -191,6 +192,11 @@ internal static class Program
                 e.Cancel = true;
                 cts.Cancel();
             };
+
+            if (backfillOrgDomainsMode)
+            {
+                return await BackfillOrgDomainsAsync(options, cts.Token).ConfigureAwait(false);
+            }
 
             var db = options.DryRun && !canonicalIngestMode ? null : options.OpportunitiesDb;
             var orgStore = db is null ? null : new SqlCanonicalOrgStore(db);
@@ -498,6 +504,7 @@ internal static class Program
             var kindFieldPresent = record.TryGetProperty("kind", out var kindElement)
                 && kindElement.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined;
             var kind = String(record, "kind") ?? OrgKinds.Unknown;
+            var website = String(record, "website") ?? String(record, "websiteUrl");
             if (options.StrictCanonicalSchema && !kindFieldPresent)
             {
                 ingestStats.StrictViolations++;
@@ -525,7 +532,7 @@ internal static class Program
 
             if (orgId is null)
             {
-                var wouldMatch = await AlreadyResolvableAsync(displayName).ConfigureAwait(false);
+                var wouldMatch = await AlreadyResolvableAsync(displayName, website).ConfigureAwait(false);
                 if (options.DryRun)
                 {
                     orgId = wouldMatch ? 0L : null;
@@ -537,7 +544,8 @@ internal static class Program
                         kind,
                         source: "research-ingest",
                         ct: ct,
-                        allowCreate: true).ConfigureAwait(false);
+                        allowCreate: true,
+                        website: website).ConfigureAwait(false);
 
                     if (!orgId.HasValue)
                     {
@@ -611,7 +619,7 @@ internal static class Program
             AddCount(ingestStats.IngestedByProvider, providerName);
         }
 
-        async Task<bool> AlreadyResolvableAsync(string displayName)
+        async Task<bool> AlreadyResolvableAsync(string displayName, string? website)
         {
             var trimmed = displayName.Trim();
             var alias = await orgStore.LookupAliasAsync(trimmed, "research-ingest", ct).ConfigureAwait(false);
@@ -626,7 +634,14 @@ internal static class Program
                 return false;
             }
 
-            return (await orgStore.FindByNormalizedNameAsync(normalized, ct).ConfigureAwait(false)).HasValue;
+            if ((await orgStore.FindByNormalizedNameAsync(normalized, ct).ConfigureAwait(false)).HasValue)
+            {
+                return true;
+            }
+
+            var domain = CanonicalOrgResolver.ExtractWebsiteDomain(website);
+            return !CanonicalOrgResolver.IsGenericWebsiteDomainDenied(domain)
+                && (await orgStore.FindByWebsiteDomainAsync(domain, ct).ConfigureAwait(false)).HasValue;
         }
 
         static string? GetDisplayName(JsonElement record, out string? aliasField)
@@ -787,6 +802,76 @@ internal static class Program
         return options.StrictCanonicalSchema && ingestStats.StrictViolations > 0 ? 3 : 0;
     }
 
+    private static async Task<int> BackfillOrgDomainsAsync(ImportOptions options, CancellationToken ct)
+    {
+        const int BatchSize = 500;
+        var scanned = 0;
+        var updated = 0;
+        long lastId = 0;
+
+        await using var con = new SqlConnection(options.OpportunitiesDb);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        while (true)
+        {
+            var batch = new List<(long Id, string Website)>();
+            await using (var cmd = new SqlCommand(@"
+SELECT TOP (@batch) Id, Website
+FROM opportunities.CanonicalOrg
+WHERE Id > @lastId
+  AND RetiredAtUtc IS NULL
+  AND WebsiteDomain IS NULL
+  AND NULLIF(LTRIM(RTRIM(Website)), N'') IS NOT NULL
+ORDER BY Id;", con) { CommandTimeout = 60 })
+            {
+                cmd.Parameters.Add("@batch", SqlDbType.Int).Value = BatchSize;
+                cmd.Parameters.Add("@lastId", SqlDbType.BigInt).Value = lastId;
+                await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    batch.Add((r.GetInt64(0), r.GetString(1)));
+                }
+            }
+
+            if (batch.Count == 0)
+            {
+                break;
+            }
+
+            lastId = batch[^1].Id;
+            foreach (var row in batch)
+            {
+                ct.ThrowIfCancellationRequested();
+                scanned++;
+                var domain = CanonicalOrgResolver.ExtractWebsiteDomain(row.Website);
+                if (string.IsNullOrWhiteSpace(domain))
+                {
+                    continue;
+                }
+
+                if (options.DryRun)
+                {
+                    updated++;
+                    continue;
+                }
+
+                await using var update = new SqlCommand(@"
+UPDATE opportunities.CanonicalOrg
+SET WebsiteDomain = COALESCE(WebsiteDomain, @domain),
+    UpdatedAtUtc = CASE WHEN WebsiteDomain IS NULL THEN sysdatetimeoffset() ELSE UpdatedAtUtc END
+WHERE Id = @id
+  AND RetiredAtUtc IS NULL
+  AND WebsiteDomain IS NULL;", con) { CommandTimeout = 60 };
+                update.Parameters.Add("@id", SqlDbType.BigInt).Value = row.Id;
+                update.Parameters.Add("@domain", SqlDbType.NVarChar, 255).Value = domain;
+                updated += await update.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            }
+        }
+
+        var verb = options.DryRun ? "Would backfill" : "Backfilled";
+        Console.WriteLine($"{verb} WebsiteDomain on {updated} CanonicalOrg row(s); scanned {scanned} live org(s) with Website and missing WebsiteDomain.");
+        return 0;
+    }
     private static async Task<Dictionary<string, long>> BuildAggressiveKeyIndexAsync(
         string connectionString,
         CancellationToken ct)
@@ -2859,12 +2944,18 @@ ORDER BY Id;";
 
     private static async Task UpdateOrgWebsiteAsync(string db, long id, string website, CancellationToken ct)
     {
+        var domain = CanonicalOrgResolver.ExtractWebsiteDomain(website);
         await using var con = new SqlConnection(db);
         await con.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(
-            "UPDATE opportunities.CanonicalOrg SET Website = COALESCE(Website, @w), UpdatedAtUtc = sysdatetimeoffset() WHERE Id = @id;",
+        await using var cmd = new SqlCommand(@"
+UPDATE opportunities.CanonicalOrg
+SET Website = COALESCE(Website, @w),
+    WebsiteDomain = COALESCE(WebsiteDomain, @domain),
+    UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id;",
             con) { CommandTimeout = 60 };
         cmd.Parameters.Add("@w", SqlDbType.NVarChar, 500).Value = website;
+        cmd.Parameters.Add("@domain", SqlDbType.NVarChar, 255).Value = string.IsNullOrWhiteSpace(domain) ? (object)DBNull.Value : domain;
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = id;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
@@ -8264,7 +8355,8 @@ WHERE Id = @id
         string? IngestCanonicalFolder,
         string? IngestCanonicalProviderOverride,
         bool StrictCanonicalSchema,
-        bool Audit)
+        bool Audit,
+        bool BackfillOrgDomains)
     {
         public static ImportOptions Parse(string[] args)
         {
@@ -8279,6 +8371,7 @@ WHERE Id = @id
             string? ingestCanonicalProviderOverride = null;
             var strictCanonicalSchema = false;
             var audit = false;
+            var backfillOrgDomains = false;
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -8317,6 +8410,9 @@ WHERE Id = @id
                     case "--audit":
                         audit = true;
                         break;
+                    case "--backfill-org-domains":
+                        backfillOrgDomains = true;
+                        break;
                     default:
                         throw new ArgumentException($"Unknown argument '{args[i]}'.");
                 }
@@ -8333,7 +8429,8 @@ WHERE Id = @id
                 ingestCanonicalFolder,
                 ingestCanonicalProviderOverride,
                 strictCanonicalSchema,
-                audit);
+                audit,
+                backfillOrgDomains);
         }
 
         private static decimal ParseFxRate(string value)

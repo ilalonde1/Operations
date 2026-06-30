@@ -57,9 +57,34 @@ public sealed class CanonicalOrgResolver
 
     private static readonly Meter ResolverMeter = new("Kor.Opportunities.Data.CanonicalOrgResolver");
     private static readonly Counter<int> MatchedByFuzzySurvivorCounter = ResolverMeter.CreateCounter<int>("matchedByFuzzySurvivor");
+    private static readonly Counter<int> MatchedByDomainCounter = ResolverMeter.CreateCounter<int>("matchedByDomain");
     private static readonly Counter<int> CreatedNewCounter = ResolverMeter.CreateCounter<int>("createdNew");
     private static readonly Counter<int> RedirectedFromMergedCounter = ResolverMeter.CreateCounter<int>("redirectedFromMerged");
     private static readonly Counter<int> SkippedRetiredCounter = ResolverMeter.CreateCounter<int>("skippedRetired");
+
+    private static readonly HashSet<string> GenericWebsiteDomainDenylist = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "squarespace.com",
+        "wixsite.com",
+        "wordpress.com",
+        "godaddysites.com",
+        "weebly.com",
+        "business.site",
+        "blogspot.com",
+        "google.com",
+        "sites.google.com",
+        "facebook.com",
+        "instagram.com",
+        "linkedin.com",
+        "linktr.ee",
+        "carrd.co",
+        "webflow.io",
+        "myshopify.com",
+        "square.site",
+        "strikingly.com",
+        "jimdosite.com",
+        "yolasite.com",
+    };
 
     private readonly ICanonicalOrgStore _store;
     private readonly ILogger<CanonicalOrgResolver> _logger;
@@ -91,6 +116,34 @@ public sealed class CanonicalOrgResolver
     public static bool IsGenericNameDenied(string normalizedName)
         => GenericNameDenylist.Contains(normalizedName);
 
+    public static bool IsGenericWebsiteDomainDenied(string? domain)
+    {
+        if (string.IsNullOrWhiteSpace(domain)) return true;
+        var d = domain.Trim().ToLowerInvariant();
+        if (d.Length < 4) return true;
+
+        foreach (var denied in GenericWebsiteDomainDenylist)
+        {
+            if (d.Equals(denied, System.StringComparison.OrdinalIgnoreCase)
+                || d.EndsWith("." + denied, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static string ExtractWebsiteDomain(string? website)
+    {
+        if (string.IsNullOrWhiteSpace(website)) return "";
+        var s = website.Trim();
+        var i = s.IndexOf("://", System.StringComparison.Ordinal); if (i >= 0) s = s[(i + 3)..];
+        if (s.StartsWith("www.", System.StringComparison.OrdinalIgnoreCase)) s = s[4..];
+        var slash = s.IndexOfAny(new[] { '/', '?', '#', ' ' }); if (slash >= 0) s = s[..slash];
+        return s.Trim().ToLowerInvariant();
+    }
+
     public Task<long?> ResolveBuyerAsync(string? rawName, CancellationToken ct)
         => ResolveAsync(rawName, OrgKinds.Buyer, OrgAliasSources.OpportunityAwardsAwarding, ct);
 
@@ -115,6 +168,7 @@ public sealed class CanonicalOrgResolver
         var trimmed = rawName.Trim();
         var cleaned = StripIntakeNoise(trimmed);
         var normalized = NormalizeName(cleaned);
+        var websiteDomain = ExtractWebsiteDomain(website);
 
         if (IsGenericNameDenied(normalized))
         {
@@ -148,6 +202,7 @@ public sealed class CanonicalOrgResolver
         var fuzzyKey = NormalizeForFuzzyMatch(cleaned);
         long? canonicalId = null;
         var matchedByAlias = false;
+        var matchedByDomain = false;
         var matchedByFuzzySurvivor = false;
         var redirectedFromMerged = false;
         var createdNew = false;
@@ -199,6 +254,29 @@ public sealed class CanonicalOrgResolver
 
         if (canonicalId is null)
         {
+            if (!IsGenericWebsiteDomainDenied(websiteDomain))
+            {
+                canonicalId = await _store.FindByWebsiteDomainAsync(websiteDomain, ct).ConfigureAwait(false);
+                matchedByDomain = canonicalId.HasValue;
+                if (matchedByDomain)
+                {
+                    classifiedBy = "auto-domain";
+                    aliasNotes = "Matched by website domain";
+                }
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "Skipped website-domain attach for org '{RawName}' from source '{Source}': domain='{Domain}', denylistedOrInvalid={Denylisted}.",
+                    cleaned,
+                    source,
+                    websiteDomain,
+                    true);
+            }
+        }
+
+        if (canonicalId is null)
+        {
             if (ResolverFuzzySurvivorAttachEnabled && fuzzyKey.Length >= 8 && !IsGenericNameDenied(fuzzyKey))
             {
                 canonicalId = await _store.FindByFuzzyNormalizedNameAsync(fuzzyKey, ct).ConfigureAwait(false);
@@ -241,7 +319,7 @@ public sealed class CanonicalOrgResolver
                 await RecordUnclassifiedAliasAsync(cleaned, source, 10, "auto-unresolved", "Creation disabled for this source", ct)
                     .ConfigureAwait(false);
                 _logger.LogDebug("Org '{RawName}' ({Source}) was not resolved; creation disabled.", cleaned, source);
-                EmitResolverStats(matchedByFuzzySurvivor, createdNew, redirectedFromMerged, skippedRetired);
+                EmitResolverStats(matchedByDomain, matchedByFuzzySurvivor, createdNew, redirectedFromMerged, skippedRetired);
                 return null;
             }
 
@@ -291,7 +369,7 @@ public sealed class CanonicalOrgResolver
                 .ConfigureAwait(false);
         }
 
-        EmitResolverStats(matchedByFuzzySurvivor, createdNew, redirectedFromMerged, skippedRetired);
+        EmitResolverStats(matchedByDomain, matchedByFuzzySurvivor, createdNew, redirectedFromMerged, skippedRetired);
         _logger.LogDebug("Resolved org '{RawName}' ({Source}) to CanonicalOrgId {CanonicalOrgId}.", cleaned, source, canonicalId);
         return canonicalId;
     }
@@ -323,11 +401,13 @@ public sealed class CanonicalOrgResolver
     }
 
     private static void EmitResolverStats(
+        bool matchedByDomain,
         bool matchedByFuzzySurvivor,
         bool createdNew,
         bool redirectedFromMerged,
         int skippedRetired)
     {
+        if (matchedByDomain) MatchedByDomainCounter.Add(1);
         if (matchedByFuzzySurvivor) MatchedByFuzzySurvivorCounter.Add(1);
         if (createdNew) CreatedNewCounter.Add(1);
         if (redirectedFromMerged) RedirectedFromMergedCounter.Add(1);

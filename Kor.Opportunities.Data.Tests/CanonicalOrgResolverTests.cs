@@ -121,6 +121,74 @@ public sealed class CanonicalOrgResolverTests
         Assert.Equal("first note", org.Notes);
     }
 
+    [Fact]
+    public async Task ResolveAsync_WebsiteDomainResolvesNameVariantToExistingOrg()
+    {
+        var store = new FakeCanonicalOrgStore();
+        var existingId = store.AddOrg("Formline Architecture + Urbanism", website: "https://www.formline.ca/studio");
+        var resolver = CreateResolver(store);
+
+        var resolved = await resolver.ResolveAsync(
+            "Formline Architecture",
+            OrgKinds.Architect,
+            Source,
+            CancellationToken.None,
+            website: "http://formline.ca/projects");
+
+        Assert.Equal(existingId, resolved);
+        Assert.Single(store.LiveOrgs);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_GenericSharedDomainDoesNotCollapseDistinctFirms()
+    {
+        var store = new FakeCanonicalOrgStore();
+        var firstId = store.AddOrg("North Practice", website: "https://business.site/north");
+        var resolver = CreateResolver(store);
+
+        var resolved = await resolver.ResolveAsync(
+            "South Practice",
+            OrgKinds.Architect,
+            Source,
+            CancellationToken.None,
+            website: "https://business.site/south");
+
+        Assert.NotEqual(firstId, resolved);
+        Assert.Equal(2, store.LiveOrgs.Count);
+        Assert.Equal(0, store.FindByWebsiteDomainCalls);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_DomainMatchPrefersDeterministicSurvivor()
+    {
+        var store = new FakeCanonicalOrgStore();
+        store.AddOrg("Domain Low Id", id: 40, website: "https://domain-match.test", affiliationCount: 1, enrichmentCount: 1);
+        var winnerId = store.AddOrg("Domain Rich", id: 41, website: "https://www.domain-match.test/about", affiliationCount: 10, enrichmentCount: 5);
+        var resolver = CreateResolver(store);
+
+        var resolved = await resolver.ResolveAsync(
+            "Unrelated Domain Name",
+            OrgKinds.Architect,
+            Source,
+            CancellationToken.None,
+            website: "https://domain-match.test/contact");
+
+        Assert.Equal(winnerId, resolved);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_WithoutWebsiteDoesNotUseDomainMatch()
+    {
+        var store = new FakeCanonicalOrgStore();
+        var existingId = store.AddOrg("Formline Architecture + Urbanism", website: "https://formline.ca");
+        var resolver = CreateResolver(store);
+
+        var resolved = await resolver.ResolveAsync("Formline Architecture", OrgKinds.Architect, Source, CancellationToken.None);
+
+        Assert.NotEqual(existingId, resolved);
+        Assert.Equal(2, store.LiveOrgs.Count);
+        Assert.Equal(0, store.FindByWebsiteDomainCalls);
+    }
     private static CanonicalOrgResolver CreateResolver(FakeCanonicalOrgStore store)
         => new(store, NullLogger<CanonicalOrgResolver>.Instance, resolverFuzzySurvivorAttach: true);
 
@@ -135,6 +203,7 @@ public sealed class CanonicalOrgResolverTests
         public IReadOnlyList<FakeOrg> LiveOrgs => Orgs.Where(o => !o.Retired).ToList();
         public Dictionary<(string RawName, string Source), OrgAliasRow> Aliases { get; } = [];
         public int UnretireCalls { get; private set; }
+        public int FindByWebsiteDomainCalls { get; private set; }
 
         public long AddOrg(
             string displayName,
@@ -146,7 +215,8 @@ public sealed class CanonicalOrgResolverTests
             bool retired = false,
             int affiliationCount = 0,
             int enrichmentCount = 0,
-            IEnumerable<string>? extraFuzzyKeys = null)
+            IEnumerable<string>? extraFuzzyKeys = null,
+            string? websiteDomain = null)
         {
             var org = new FakeOrg(
                 id ?? _nextOrgId++,
@@ -154,6 +224,7 @@ public sealed class CanonicalOrgResolverTests
                 displayName,
                 clendorClientId,
                 website,
+                websiteDomain ?? CanonicalOrgResolver.ExtractWebsiteDomain(website),
                 notes,
                 retired,
                 affiliationCount,
@@ -241,6 +312,14 @@ public sealed class CanonicalOrgResolverTests
             => Task.FromResult(fuzzyKey.Length < 8
                 ? null
                 : SelectSurvivor(Orgs.Where(o => !o.Retired && HasFuzzyKey(o, fuzzyKey)))?.Id);
+
+        public Task<long?> FindByWebsiteDomainAsync(string domain, CancellationToken ct)
+        {
+            FindByWebsiteDomainCalls++;
+            if (CanonicalOrgResolver.IsGenericWebsiteDomainDenied(domain)) return Task.FromResult<long?>(null);
+            return Task.FromResult(SelectSurvivor(Orgs.Where(o => !o.Retired
+                && string.Equals(o.WebsiteDomain, domain, StringComparison.OrdinalIgnoreCase)))?.Id);
+        }
 
         public Task<long?> ResolveCanonicalOrgMergeAsync(long canonicalOrgId, CancellationToken ct)
         {
@@ -362,6 +441,8 @@ public sealed class CanonicalOrgResolverTests
         private static void Promote(FakeOrg org, string? website, string? notes)
         {
             if (org.Website is null && !string.IsNullOrWhiteSpace(website)) org.Website = website;
+            var domain = CanonicalOrgResolver.ExtractWebsiteDomain(website);
+            if (org.WebsiteDomain is null && !string.IsNullOrWhiteSpace(domain)) org.WebsiteDomain = domain;
             if (org.Notes is null && !string.IsNullOrWhiteSpace(notes)) org.Notes = notes;
         }
 
@@ -386,6 +467,7 @@ public sealed class CanonicalOrgResolverTests
         string displayName,
         string? clendorClientId,
         string? website,
+        string? websiteDomain,
         string? notes,
         bool retired,
         int affiliationCount,
@@ -396,6 +478,7 @@ public sealed class CanonicalOrgResolverTests
         public string DisplayName { get; set; } = displayName;
         public string? ClendorClientId { get; set; } = clendorClientId;
         public string? Website { get; set; } = website;
+        public string? WebsiteDomain { get; set; } = string.IsNullOrWhiteSpace(websiteDomain) ? null : websiteDomain;
         public string? Notes { get; set; } = notes;
         public bool Retired { get; set; } = retired;
         public int AffiliationCount { get; set; } = affiliationCount;

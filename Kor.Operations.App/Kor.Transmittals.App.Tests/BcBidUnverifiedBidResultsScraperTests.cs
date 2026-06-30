@@ -176,6 +176,9 @@ public sealed class BcBidUnverifiedBidResultsScraperTests
         public Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct)
             => Task.FromResult<long?>(null);
 
+        public Task<long?> FindByWebsiteDomainAsync(string domain, CancellationToken ct)
+            => Task.FromResult<long?>(null);
+
         public Task<long?> ResolveCanonicalOrgMergeAsync(long canonicalOrgId, CancellationToken ct)
             => Task.FromResult<long?>(null);
 

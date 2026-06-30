@@ -3,6 +3,7 @@ using System.Data;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Kor.Opportunities.Data.Awards;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.Contacts;
@@ -67,7 +68,7 @@ HAVING SUM(CASE WHEN NULLIF(LTRIM(RTRIM(p.Email)),'') IS NOT NULL THEN 1 ELSE 0 
             // Domain guard: only propagate when the firm's known-email domain matches its OWN
             // website. Prevents inheriting a foreign domain from a mis-affiliated person
             // (e.g. an architect roster polluted with a builder's people on the builder's domain).
-            var siteDomain = ExtractDomain(firm.Website);
+            var siteDomain = CanonicalOrgResolver.ExtractWebsiteDomain(firm.Website);
             if (string.IsNullOrWhiteSpace(siteDomain) || !string.Equals(siteDomain, domain, StringComparison.OrdinalIgnoreCase))
                 continue;
             foreach (var g in gaps)
@@ -100,7 +101,7 @@ HAVING SUM(CASE WHEN NULLIF(LTRIM(RTRIM(p.Email)),'') IS NOT NULL THEN 1 ELSE 0 
             cmd.Parameters.Add("@max", SqlDbType.Int).Value = creditCap;
             await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
             while (await r.ReadAsync(ct).ConfigureAwait(false))
-                targets.Add((r.GetInt64(0), r.GetString(1), ExtractDomain(r.GetString(2))));
+                targets.Add((r.GetInt64(0), r.GetString(1), CanonicalOrgResolver.ExtractWebsiteDomain(r.GetString(2))));
         }
 
         int credits = 0, filled = 0;
@@ -212,15 +213,6 @@ WHERE Id=@id AND NULLIF(LTRIM(RTRIM(Email)),'') IS NULL;", con) { CommandTimeout
         return (parts[0], parts[^1]);
     }
 
-    internal static string ExtractDomain(string? website)
-    {
-        if (string.IsNullOrWhiteSpace(website)) return "";
-        var s = website.Trim();
-        var i = s.IndexOf("://", StringComparison.Ordinal); if (i >= 0) s = s[(i + 3)..];
-        if (s.StartsWith("www.", StringComparison.OrdinalIgnoreCase)) s = s[4..];
-        var slash = s.IndexOfAny(new[] { '/', '?', '#', ' ' }); if (slash >= 0) s = s[..slash];
-        return s.Trim().ToLowerInvariant();
-    }
 
     internal static (Func<string, string, string> Build, string Domain)? DerivePattern(List<(string Name, string Email)> known)
     {
