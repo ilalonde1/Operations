@@ -34,6 +34,14 @@ public sealed class CrmEngagementRowView
     public string ProjectName => Opportunity?.Name ?? (Engagement.PotentialProjects ?? "(no project named yet)");
     public string Buyer => Opportunity?.BuyerName ?? "";
 
+    /// <summary>The buyer's canonical org id, when known — the key into the org
+    /// intel/dossier. Null for pursuits whose buyer hasn't been resolved to a
+    /// canonical org (e.g. freshly grabbed opportunities).</summary>
+    public long? BuyerCanonicalOrgId => Engagement.BuyerCanonicalOrgId;
+
+    /// <summary>True when the buyer can be opened in the intel dossier.</summary>
+    public bool HasBuyerIntel => Engagement.BuyerCanonicalOrgId.HasValue;
+
     public string ProposedFeeDisplay =>
         Engagement.ProposedFee.HasValue ? $"{Engagement.ProposedFee.Value:C0}" : "";
 

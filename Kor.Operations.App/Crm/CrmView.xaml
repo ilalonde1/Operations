@@ -21,6 +21,9 @@
                 <Style TargetType="Button" BasedOn="{StaticResource Button.ActionBar}"/>
             </StackPanel.Resources>
             <Button Content="Refresh" Width="100" Click="RefreshButton_Click"/>
+            <Button Content="Buyer intel…" Width="120" Click="BuyerIntelButton_Click"
+                    IsEnabled="{Binding Selected.HasBuyerIntel, FallbackValue=False}"
+                    ToolTip="Open the buyer's intel dossier — key people, signals, and KOR track record for this pursuit."/>
             <Button Content="Edit engagement…" Width="160" Click="EditEngagementButton_Click"/>
             <Button Content="Build Fee Proposal…" Width="160" Click="BuildFeeProposalButton_Click"
                     ToolTip="Open the Fee Proposal Builder pre-named for this engagement."/>

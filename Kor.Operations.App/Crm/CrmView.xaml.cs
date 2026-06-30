@@ -79,6 +79,27 @@ public partial class CrmView : UserControl
         await ReloadAsync().ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Pursuit Cockpit intel spoke: open the selected pursuit's buyer in the
+    /// org intel dossier (key people, signals, KOR track record) — reusing the
+    /// existing OrgDossierWindow rather than re-rendering intel here.
+    /// </summary>
+    private void BuyerIntelButton_Click(object sender, RoutedEventArgs e)
+    {
+        var orgId = _vm.Selected?.BuyerCanonicalOrgId;
+        if (orgId is null)
+        {
+            return;
+        }
+
+        var dossierVm = _services.GetRequiredService<App.Opportunities.OrgDossierViewModel>();
+        var win = new App.Opportunities.OrgDossierWindow(dossierVm, orgId.Value)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        win.Show();
+    }
+
     private void BuildFeeProposalButton_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.Selected is null)
