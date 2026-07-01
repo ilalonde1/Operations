@@ -259,13 +259,16 @@ foreach (var ex in IntelExtractorBootstrap.GetDefaultExtractors())
 }
 builder.Services.AddSingleton<DefaultIntelExtractor>();
 builder.Services.AddSingleton<IntelExtractorRegistry>();
-builder.Services.AddSingleton<IntelPersistenceService>(sp => new IntelPersistenceService(Cs(sp)));
+builder.Services.AddSingleton<IntelPersistenceService>(sp => new IntelPersistenceService(
+    Cs(sp),
+    sp.GetRequiredService<ILogger<IntelPersistenceService>>()));
 builder.Services.AddSingleton<IntelReadService>(sp => new IntelReadService(Cs(sp)));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentTrackingStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore(
         Cs(sp),
         sp.GetRequiredService<IntelExtractorRegistry>(),
-        sp.GetRequiredService<IntelPersistenceService>()));
+        sp.GetRequiredService<IntelPersistenceService>(),
+        sp.GetRequiredService<ILogger<Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore>>()));
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.EnrichmentDispatcher>();
 
 builder.Services.AddHttpClient<Kor.Opportunities.Data.Awards.BcRegistryProvider>(c =>

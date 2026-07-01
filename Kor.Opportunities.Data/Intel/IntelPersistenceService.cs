@@ -1,6 +1,8 @@
 #nullable enable
 using System.Data;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kor.Opportunities.Data.Intel;
 
@@ -18,7 +20,9 @@ public sealed class IntelPersistenceService
     private const int CommandTimeoutSeconds = 30;
     private readonly string _connectionString;
 
-    public IntelPersistenceService(string opportunitiesConnectionString)
+    private readonly ILogger _logger;
+
+    public IntelPersistenceService(string opportunitiesConnectionString, ILogger<IntelPersistenceService>? logger = null)
     {
         if (string.IsNullOrWhiteSpace(opportunitiesConnectionString))
         {
@@ -26,6 +30,7 @@ public sealed class IntelPersistenceService
         }
 
         _connectionString = opportunitiesConnectionString;
+        _logger = logger ?? NullLogger<IntelPersistenceService>.Instance;
     }
 
     /// <summary>
@@ -103,7 +108,7 @@ UPDATE opportunities.IntelAction
             {
                 if (!IntelPersonNameGuard.IsValid(draft.DisplayName, out var reason))
                 {
-                    System.Diagnostics.Trace.TraceWarning("IntelPerson row rejected: name='{0}', reason={1}, provider={2}, enrichmentId={3}.", draft.DisplayName, reason, ctx.ProviderName, ctx.SourceEnrichmentId);
+                    _logger.LogWarning("IntelPerson row rejected: name='{Name}', reason={Reason}, provider={Provider}, enrichmentId={EnrichmentId}.", draft.DisplayName, reason, ctx.ProviderName, ctx.SourceEnrichmentId);
                     continue;
                 }
 
@@ -119,6 +124,11 @@ UPDATE opportunities.IntelAction
                     ctx,
                     ct).ConfigureAwait(false);
 
+                // The resolve proc doesn't report insert-vs-update, so count each
+                // successfully resolved person as "updated" (touched) — telemetry
+                // previously always read 0 persons (audit 2026-07-01 n15).
+                persons.Add(new MergeCounts(0, 1));
+
                 var normalizedName = IntelNaturalKey.Normalize(draft.DisplayName);
                 if (normalizedName.Length > 0)
                 {
@@ -133,7 +143,7 @@ UPDATE opportunities.IntelAction
             {
                 if (!IntelPersonNameGuard.IsValid(draft.PersonDisplayName, out var affReason))
                 {
-                    System.Diagnostics.Trace.TraceWarning("IntelPersonAffiliation row rejected: name='{0}', reason={1}, provider={2}.", draft.PersonDisplayName, affReason, ctx.ProviderName);
+                    _logger.LogWarning("IntelPersonAffiliation row rejected: name='{Name}', reason={Reason}, provider={Provider}.", draft.PersonDisplayName, affReason, ctx.ProviderName);
                     continue;
                 }
 
@@ -158,6 +168,7 @@ UPDATE opportunities.IntelAction
                             draft.CanonicalOrgId,
                             ctx,
                             ct).ConfigureAwait(false);
+                        persons.Add(new MergeCounts(0, 1));
                     }
 
                     if (normalizedName.Length > 0)
@@ -225,7 +236,7 @@ UPDATE opportunities.IntelAction
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.TraceWarning("Intel persistence rollback failed: {0}", ex.Message);
+                _logger.LogWarning(ex, "Intel persistence rollback failed.");
             }
 
             throw;
@@ -269,7 +280,7 @@ UPDATE opportunities.IntelAction
     private static string BuildPersonMapKey(string normalizedName, long canonicalOrgId)
         => string.Concat(normalizedName, "|org:", canonicalOrgId.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
-    private static Task<MergeCounts> MergeAffiliationAsync(
+    private Task<MergeCounts> MergeAffiliationAsync(
         SqlConnection con,
         SqlTransaction tx,
         IntelPersonAffiliationDraft draft,
@@ -279,7 +290,7 @@ UPDATE opportunities.IntelAction
     {
         if (!IntelPersonNameGuard.IsValid(draft.PersonDisplayName, out var affReason))
         {
-            System.Diagnostics.Trace.TraceWarning("IntelPersonAffiliation row rejected: name='{0}', reason={1}, provider={2}.", draft.PersonDisplayName, affReason, ctx.ProviderName);
+            _logger.LogWarning("IntelPersonAffiliation row rejected: name='{Name}', reason={Reason}, provider={Provider}.", draft.PersonDisplayName, affReason, ctx.ProviderName);
             return Task.FromResult(default(MergeCounts));
         }
 

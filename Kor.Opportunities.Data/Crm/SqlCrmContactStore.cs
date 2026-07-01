@@ -91,16 +91,24 @@ WHERE Id = @id AND RowVersion = @rv;";
         return MapReader(reader);
     }
 
-    public async Task DeleteAsync(long contactId, CancellationToken ct)
+    public async Task DeleteAsync(long contactId, byte[] rowVersion, CancellationToken ct)
     {
+        // Guarded like Insert/Update: a stale UI can't delete a contact someone
+        // just edited (audit 2026-07-01 n8 — this was the only unguarded hard
+        // delete in the BD model).
         const string sql = @"
-DELETE FROM opportunities.CrmContacts WHERE Id = @id;";
+DELETE FROM opportunities.CrmContacts WHERE Id = @id AND RowVersion = @rv;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = contactId;
-        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        cmd.Parameters.Add("@rv", SqlDbType.Timestamp).Value = rowVersion;
+        var affected = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        if (affected == 0)
+        {
+            throw new CrmConcurrencyException(nameof(CrmContact), contactId);
+        }
     }
 
     public async Task<IReadOnlyList<CrmContact>> ListByEngagementAsync(long engagementId, CancellationToken ct)

@@ -15,4 +15,8 @@ public interface IHistoricalOpportunityObservationStore
     Task<OpportunityObservation?> TryInsertAsync(OpportunityObservation observation, CancellationToken ct);
 
     Task LinkAsync(long observationId, long historicalOpportunityId, CancellationToken ct);
+
+    /// <summary>Fetches the observation carrying the given content hash, or null.
+    /// Used by ingestion's repair path (see <c>IOpportunityObservationStore</c>).</summary>
+    Task<OpportunityObservation?> TryGetByHashAsync(byte[] hashSha256, CancellationToken ct);
 }

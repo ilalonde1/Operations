@@ -27,5 +27,11 @@ public interface IOpportunityObservationStore
     /// links a new observation to a freshly-created canonical opportunity.</summary>
     Task LinkAsync(long observationId, long opportunityId, CancellationToken ct);
 
+    /// <summary>Fetches the observation carrying the given content hash, or null.
+    /// Used by ingestion's repair path: a duplicate-hash hit whose opportunity is
+    /// missing (a prior run failed mid-persist) re-creates the opportunity and
+    /// re-links the stranded observation.</summary>
+    Task<OpportunityObservation?> TryGetByHashAsync(byte[] hashSha256, CancellationToken ct);
+
     Task<IReadOnlyList<OpportunityObservation>> ListByOpportunityAsync(long opportunityId, CancellationToken ct);
 }

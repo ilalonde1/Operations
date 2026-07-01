@@ -46,14 +46,20 @@ public sealed class DataRetirementJob : IJob
         await using var cn = new SqlConnection(opt.OpportunitiesDb);
         await cn.OpenAsync(ct).ConfigureAwait(false);
 
+        // Audit 2026-07-01 n5: stamp UpdatedBy so the audit trail shows the job
+        // (not the last human) as the author of automated expiry, and never expire
+        // an owned row — a just-grabbed opportunity is mid-transaction between
+        // ownership and the Pursuing status flip for a moment.
         var oppsExpired = await ExecuteNonQueryAsync(cn, @"
 UPDATE opportunities.Opportunities
 SET Status         = 7,
     WonLostOutcome = 3,
     OutcomeReason  = N'Auto-expired: submission deadline passed (no bid).',
     OutcomeAtUtc   = SYSDATETIMEOFFSET(),
-    UpdatedAtUtc   = SYSDATETIMEOFFSET()
+    UpdatedAtUtc   = SYSDATETIMEOFFSET(),
+    UpdatedBy      = N'DataRetirementJob'
 WHERE Status = 1
+  AND OwnerStaffId IS NULL
   AND SubmissionDeadlineUtc IS NOT NULL
   AND SubmissionDeadlineUtc < SYSDATETIMEOFFSET();", ct).ConfigureAwait(false);
 
@@ -63,8 +69,10 @@ SET Status         = 7,
     WonLostOutcome = 3,
     OutcomeReason  = @reason,
     OutcomeAtUtc   = SYSDATETIMEOFFSET(),
-    UpdatedAtUtc   = SYSDATETIMEOFFSET()
+    UpdatedAtUtc   = SYSDATETIMEOFFSET(),
+    UpdatedBy      = N'DataRetirementJob'
 WHERE Status = 1
+  AND OwnerStaffId IS NULL
   AND SubmissionDeadlineUtc IS NULL
   AND UpdatedAtUtc < DATEADD(day, -@staleOppDays, SYSDATETIMEOFFSET());", ct, cmd =>
         {

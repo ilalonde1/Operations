@@ -142,7 +142,8 @@ internal static class OpportunitiesModule
             new Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore(
                 options.OpportunitiesDb,
                 sp.GetRequiredService<IntelExtractorRegistry>(),
-                sp.GetRequiredService<IntelPersistenceService>()));
+                sp.GetRequiredService<IntelPersistenceService>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Kor.Opportunities.Data.Awards.SqlEnrichmentTrackingStore>>()));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IKorClientBdIntelligenceStore>(
             _ => new Kor.Opportunities.Data.Awards.SqlKorClientBdIntelligenceStore(options.OpportunitiesDb));
         services.AddSingleton<Kor.Opportunities.Data.Awards.IArchitectDisplacementBriefStore>(
@@ -158,7 +159,9 @@ internal static class OpportunitiesModule
         }
         services.AddSingleton<DefaultIntelExtractor>();
         services.AddSingleton<IntelExtractorRegistry>();
-        services.AddSingleton<IntelPersistenceService>(_ => new IntelPersistenceService(options.OpportunitiesDb));
+        services.AddSingleton<IntelPersistenceService>(sp => new IntelPersistenceService(
+            options.OpportunitiesDb,
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<IntelPersistenceService>>()));
         services.AddSingleton<IProjectIntelExtractor, ProjectBriefExtractor>();
         services.AddSingleton<IProjectIntelExtractor, ProjectBriefHoningExtractor>();
         services.AddSingleton<DefaultProjectIntelExtractor>();

@@ -389,7 +389,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
     public async Task DeleteContactAsync(CrmContactRowView row, CancellationToken ct)
     {
-        await _contactStore.DeleteAsync(row.Id, ct).ConfigureAwait(true);
+        await _contactStore.DeleteAsync(row.Id, row.Model.RowVersion, ct).ConfigureAwait(true);
         Contacts.Remove(row);
         StatusMessage = $"Removed contact {row.DisplayName}.";
     }

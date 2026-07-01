@@ -170,9 +170,13 @@ VALUES
         string region,
         CancellationToken ct)
     {
+        // No lock hints: in autocommit mode UPDLOCK/HOLDLOCK release at statement
+        // end, so they never provided the check-then-insert protection they
+        // implied. Race safety for InsertAsync rests (correctly) on the unique
+        // BD-relationship index + its 2601/2627 catch.
         var sql = $@"
 SELECT {AllColumns}
-FROM opportunities.CrmEngagements WITH (UPDLOCK, HOLDLOCK)
+FROM opportunities.CrmEngagements
 WHERE OpportunityId IS NULL
   AND BuyerCanonicalOrgId = @buyerCanonicalOrgId
   AND OwnerStaffId = @ownerStaffId

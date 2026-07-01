@@ -20,17 +20,21 @@ public sealed class SqlEnrichmentTrackingStore : IEnrichmentTrackingStore
     private readonly string _connectionString;
     private readonly IntelExtractorRegistry? _intelRegistry;
     private readonly IntelPersistenceService? _intelPersistence;
+    private readonly Microsoft.Extensions.Logging.ILogger _logger;
 
     public SqlEnrichmentTrackingStore(
         string connectionString,
         IntelExtractorRegistry? intelRegistry = null,
-        IntelPersistenceService? intelPersistence = null)
+        IntelPersistenceService? intelPersistence = null,
+        Microsoft.Extensions.Logging.ILogger<SqlEnrichmentTrackingStore>? logger = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new ArgumentException("Connection string is required.", nameof(connectionString));
         _connectionString = connectionString;
         _intelRegistry = intelRegistry;
         _intelPersistence = intelPersistence;
+        _logger = logger
+            ?? (Microsoft.Extensions.Logging.ILogger)Microsoft.Extensions.Logging.Abstractions.NullLogger<SqlEnrichmentTrackingStore>.Instance;
     }
 
     public static (long Extracted, long MissingExtractor) GetIntelCounters() =>
@@ -144,7 +148,7 @@ ORDER  BY ProviderName;";
     {
         var refreshStartTime = DateTimeOffset.UtcNow;
         const string sql = @"
-MERGE opportunities.CanonicalOrgEnrichment AS t
+MERGE opportunities.CanonicalOrgEnrichment WITH (HOLDLOCK) AS t
 USING (SELECT @id AS CanonicalOrgId, @prov AS ProviderName) AS s
    ON t.CanonicalOrgId = s.CanonicalOrgId AND t.ProviderName = s.ProviderName
 WHEN MATCHED THEN UPDATE SET
@@ -247,19 +251,21 @@ WHEN NOT MATCHED THEN INSERT
         }
         catch (JsonException ex)
         {
-            System.Diagnostics.Trace.TraceWarning(
-                "Intel extraction skipped: ResultJson parse failed for {0}/{1}: {2}",
-                providerName,
-                canonicalOrgId,
-                ex.Message);
+            Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(
+                _logger, ex,
+                "Intel extraction skipped: ResultJson parse failed for {Provider}/{OrgId}.",
+                providerName, canonicalOrgId);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Trace.TraceWarning(
-                "Intel extraction failed for {0}/{1}: {2}",
-                providerName,
-                canonicalOrgId,
-                ex.Message);
+            // Audit 2026-07-01 M3: this used to go to System.Diagnostics.Trace with
+            // no listener wired — a failed intel persist was invisible AND the
+            // enrichment stayed 'ok', so the intel silently never landed. Surface
+            // it as an ERROR through the real logging pipeline.
+            Microsoft.Extensions.Logging.LoggerExtensions.LogError(
+                _logger, ex,
+                "Intel extraction/persist FAILED for {Provider}/{OrgId} — enrichment is marked ok but its intel did not land.",
+                providerName, canonicalOrgId);
         }
     }
 

@@ -236,9 +236,19 @@ public sealed class IngestionService : IIngestionService
             if (await _opportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false) is not null)
             {
                 await RunPersistedAckAsync(source, candidate, ct).ConfigureAwait(false);
+                return CandidateOutcome.Duplicate;
             }
 
-            return CandidateOutcome.Duplicate;
+            // Duplicate hash but NO opportunity: a prior run committed the
+            // observation and then failed before persisting the opportunity.
+            // Without repair the candidate is permanently dropped — every later
+            // run hits the hash and returns Duplicate. Recover the stranded
+            // observation and fall through to create + link (audit 2026-07-01 C2).
+            persistedObservation = await _observationStore.TryGetByHashAsync(hash, ct).ConfigureAwait(false);
+            if (persistedObservation is null)
+            {
+                return CandidateOutcome.Duplicate;
+            }
         }
 
         var existing = await _opportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false);
@@ -339,9 +349,16 @@ public sealed class IngestionService : IIngestionService
             if (await _historicalOpportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false) is not null)
             {
                 await RunPersistedAckAsync(source, candidate, ct).ConfigureAwait(false);
+                return CandidateOutcome.Duplicate;
             }
 
-            return CandidateOutcome.Duplicate;
+            // Same repair as ProcessCandidateAsync (audit 2026-07-01 C2): duplicate
+            // hash with no historical opportunity = a prior run failed mid-persist.
+            persistedObservation = await _historicalObservationStore.TryGetByHashAsync(hash, ct).ConfigureAwait(false);
+            if (persistedObservation is null)
+            {
+                return CandidateOutcome.Duplicate;
+            }
         }
 
         var existing = await _historicalOpportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false);

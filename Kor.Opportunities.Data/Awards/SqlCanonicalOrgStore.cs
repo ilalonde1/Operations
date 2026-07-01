@@ -650,7 +650,7 @@ WHERE Id = @id;";
         CancellationToken ct)
     {
         const string sql = @"
-MERGE opportunities.OrgAlias AS t
+MERGE opportunities.OrgAlias WITH (HOLDLOCK) AS t
 USING (SELECT @raw AS RawName, @src AS Source) AS s
    ON t.RawName = s.RawName AND t.Source = s.Source
 -- Re-classify only when there is a new canonical AND the existing row is not

@@ -96,6 +96,21 @@ WHERE Id = @id;";
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
+    public async Task<OpportunityObservation?> TryGetByHashAsync(byte[] hashSha256, CancellationToken ct)
+    {
+        var sql = $@"
+SELECT {AllColumns}
+FROM opportunities.OpportunityObservations
+WHERE HashSha256 = @hash;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@hash", SqlDbType.VarBinary, 32).Value = hashSha256;
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        return await reader.ReadAsync(ct).ConfigureAwait(false) ? MapReader(reader) : null;
+    }
+
     public async Task<IReadOnlyList<OpportunityObservation>> ListByOpportunityAsync(long opportunityId, CancellationToken ct)
     {
         var sql = $@"

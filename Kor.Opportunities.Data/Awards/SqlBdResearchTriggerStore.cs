@@ -34,12 +34,33 @@ InputTokens, OutputTokens";
 
     public async Task<Guid> EnqueueAsync(long canonicalOrgId, string providerName, string requestedBy, CancellationToken ct)
     {
+        // Guarded find-or-insert (same pattern as the person twin): two callers
+        // racing the enqueue no longer mint duplicate Pending triggers — i.e.
+        // the same org researched twice for double token spend (audit n9).
         const string sql = @"
-INSERT INTO opportunities.BdResearchTriggers
-    (CanonicalOrgId, ProviderName, Status, RequestedBy)
-OUTPUT inserted.Id
-VALUES
-    (@id, @provider, 'Pending', @who);";
+SET XACT_ABORT ON;
+DECLARE @triggerId uniqueidentifier;
+
+BEGIN TRAN;
+
+SELECT TOP (1) @triggerId = Id
+FROM opportunities.BdResearchTriggers WITH (UPDLOCK, HOLDLOCK)
+WHERE CanonicalOrgId = @id
+  AND ProviderName = @provider
+  AND Status IN ('Pending', 'InProgress')
+ORDER BY RequestedAtUtc;
+
+IF @triggerId IS NULL
+BEGIN
+    SET @triggerId = NEWID();
+    INSERT INTO opportunities.BdResearchTriggers
+        (Id, CanonicalOrgId, ProviderName, Status, RequestedBy)
+    VALUES
+        (@triggerId, @id, @provider, 'Pending', @who);
+END;
+
+COMMIT TRAN;
+SELECT @triggerId;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);

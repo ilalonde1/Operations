@@ -17,7 +17,10 @@ public interface ICrmContactStore
 
     Task<CrmContact> UpdateAsync(CrmContact contact, string actorDisplay, CancellationToken ct);
 
-    Task DeleteAsync(long contactId, CancellationToken ct);
+    /// <summary>Deletes a contact, guarded by RowVersion like Update — raises
+    /// <see cref="CrmConcurrencyException"/> when the row was edited (or already
+    /// deleted) since the caller loaded it.</summary>
+    Task DeleteAsync(long contactId, byte[] rowVersion, CancellationToken ct);
 
     Task<IReadOnlyList<CrmContact>> ListByEngagementAsync(long engagementId, CancellationToken ct);
 }

@@ -181,8 +181,8 @@ VALUES
             inserted = MapReader(reader);
         }
 
-        await ResolveBuyerCanonicalAsync(inserted.Id, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
-        return inserted;
+        var freshRvAfterInsert = await ResolveBuyerCanonicalAsync(inserted.Id, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
+        return freshRvAfterInsert is null ? inserted : inserted with { RowVersion = freshRvAfterInsert };
     }
 
     public async Task<Opportunity> UpdateAsync(Opportunity opportunity, string actorDisplay, CancellationToken ct)
@@ -235,28 +235,33 @@ WHERE Id = @id AND RowVersion = @rv;";
             updated = MapReader(reader);
         }
 
-        await ResolveBuyerCanonicalAsync(updated.Id, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
-        return updated;
+        var freshRvAfterUpdate = await ResolveBuyerCanonicalAsync(updated.Id, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
+        return freshRvAfterUpdate is null ? updated : updated with { RowVersion = freshRvAfterUpdate };
     }
 
-    private async Task ResolveBuyerCanonicalAsync(long opportunityId, string sourceKey, string? buyerName, CancellationToken ct)
+    /// <summary>
+    /// Best-effort canonical resolution at insert/update time (Round 9c).
+    /// Returns the row's NEW RowVersion when it updated the row, else null —
+    /// the secondary UPDATE bumps the rowversion behind the record the caller
+    /// is about to return, and handing back a stale token made the very next
+    /// save throw a phantom OpportunityConcurrencyException (audit 2026-07-01 M1).
+    /// </summary>
+    private async Task<byte[]?> ResolveBuyerCanonicalAsync(long opportunityId, string sourceKey, string? buyerName, CancellationToken ct)
     {
-        // Round 9c — best-effort canonical resolution at insert/update time so
-        // every opportunity points at the right CanonicalOrg without backfill.
-        if (_canonicalResolver is null || string.IsNullOrWhiteSpace(buyerName)) return;
+        if (_canonicalResolver is null || string.IsNullOrWhiteSpace(buyerName)) return null;
         try
         {
             var buyerId = await _canonicalResolver.ResolveOpportunityBuyerAsync(buyerName, ct).ConfigureAwait(false);
-            if (!buyerId.HasValue) return;
+            if (!buyerId.HasValue) return null;
 
             await using var con = new SqlConnection(_connectionString);
             await con.OpenAsync(ct).ConfigureAwait(false);
             await using var upd = new SqlCommand(
-                "UPDATE opportunities.Opportunities SET BuyerCanonicalOrgId = @b WHERE Id = @id;", con)
+                "UPDATE opportunities.Opportunities SET BuyerCanonicalOrgId = @b OUTPUT inserted.RowVersion WHERE Id = @id;", con)
             { CommandTimeout = CommandTimeoutSeconds };
             upd.Parameters.Add("@id", SqlDbType.BigInt).Value = opportunityId;
             upd.Parameters.Add("@b", SqlDbType.BigInt).Value = buyerId.Value;
-            await upd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            return await upd.ExecuteScalarAsync(ct).ConfigureAwait(false) as byte[];
         }
         catch (Exception ex)
         {
@@ -265,6 +270,7 @@ WHERE Id = @id AND RowVersion = @rv;";
                 "Canonical resolution failed for buyer '{BuyerName}' on opportunity {SourceKey}",
                 buyerName,
                 sourceKey);
+            return null;
         }
     }
 
