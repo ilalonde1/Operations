@@ -19,8 +19,32 @@ using FeeProposalModel = Kor.Operations.Core.Models.Proposal.FeeProposal;
 
 namespace Kor.Operations.App.FeeProposal
 {
-    public sealed class FeeProposalBuilderViewModel : ObservableObject
+    public sealed class FeeProposalBuilderViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
     {
+        public const string Provider = "Fee Proposal Builder (BD)";
+
+        // ===== IAiContextProvider =====
+        // Scalars/computed strings only (same posture as the Events/Admin providers);
+        // BuildContext runs on the ask path, which today executes on the dispatcher.
+
+        public string ProviderName => Provider;
+
+        public bool HasData => Blocks.Count > 0 || !string.IsNullOrWhiteSpace(DocumentName);
+
+        public string BuildContext()
+        {
+            var dirty = IsDirty ? " (unsaved changes)" : string.Empty;
+            return $"Fee proposal being built: \"{DocumentName}\"{dirty}. {BlockSummaryText}";
+        }
+
+        public string BuildLocalContext()
+        {
+            var selected = SelectedBlock;
+            return selected is null
+                ? string.Empty
+                : $"Selected proposal block: {selected.Block.BlockType} (\"{selected.TemplateName}\").";
+        }
+
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
