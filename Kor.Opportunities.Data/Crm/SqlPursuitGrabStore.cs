@@ -79,6 +79,11 @@ BEGIN
 
     DECLARE @newEng bigint = (SELECT TOP 1 Id FROM @eng);
 
+    -- Record the pursuit's opening stage so stage-age analytics have a start
+    -- point (audit 2026-07-01 M2 — the history table previously had no writers).
+    INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId)
+    VALUES (@newEng, 1, @me);
+
     INSERT INTO opportunities.OpportunityAssignmentLog
         (OpportunityId, EngagementId, Action, ToStaffId, ByStaffId, Reason)
     VALUES (@id, @newEng, N'Grab', @me, @me, N'Grabbed from the Bazaar');

@@ -153,6 +153,7 @@ VALUES
             throw;
         }
 
+        CrmEngagement inserted;
         await using (reader)
         {
             if (!await reader.ReadAsync(ct).ConfigureAwait(false))
@@ -160,8 +161,27 @@ VALUES
                 throw new InvalidOperationException("INSERT did not return a row.");
             }
 
-            return MapReader(reader);
+            inserted = MapReader(reader);
         }
+
+        // Record the opening stage so stage-age analytics have a start point
+        // (audit 2026-07-01 M2 — the history table previously had no writers).
+        await WriteStageHistoryAsync(con, inserted.Id, (int)inserted.Stage, actorDisplay, ct).ConfigureAwait(false);
+        return inserted;
+    }
+
+    private static async Task WriteStageHistoryAsync(
+        SqlConnection con, long engagementId, int stage, string actorDisplay, CancellationToken ct)
+    {
+        const string sql = @"
+INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId)
+VALUES (@eng, @stage, @by);";
+
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@eng", SqlDbType.BigInt).Value = engagementId;
+        cmd.Parameters.Add("@stage", SqlDbType.Int).Value = stage;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = actorDisplay;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
     private async Task<CrmEngagement?> GetByBdTrackingNaturalKeyAsync(
@@ -218,7 +238,8 @@ OUTPUT
     inserted.TargetMargin, inserted.ProposedFee, inserted.ProposedHours, inserted.Notes,
     inserted.OpenedAtUtc, inserted.ClosedAtUtc, inserted.OutcomeNotes,
     inserted.BuyerCanonicalOrgId, inserted.Region, inserted.ProposalsSubmittedCad, inserted.ProposalsAcceptedCad, inserted.PotentialProjects,
-    inserted.CreatedAtUtc, inserted.CreatedBy, inserted.UpdatedAtUtc, inserted.UpdatedBy, inserted.RowVersion
+    inserted.CreatedAtUtc, inserted.CreatedBy, inserted.UpdatedAtUtc, inserted.UpdatedBy, inserted.RowVersion,
+    deleted.Stage
 WHERE Id = @id AND RowVersion = @rv;";
 
         await using var con = new SqlConnection(_connectionString);
@@ -229,13 +250,27 @@ WHERE Id = @id AND RowVersion = @rv;";
         cmd.Parameters.Add("@rv", SqlDbType.Binary, 8).Value = engagement.RowVersion;
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
 
-        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+        CrmEngagement updated;
+        int previousStage;
+        await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
-            throw new CrmConcurrencyException(nameof(CrmEngagement), engagement.Id);
+            if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                throw new CrmConcurrencyException(nameof(CrmEngagement), engagement.Id);
+            }
+
+            updated = MapReader(reader);
+            previousStage = reader.GetInt32(22); // deleted.Stage, appended after the row image
         }
 
-        return MapReader(reader);
+        // Record the transition so stage-age analytics have a timeline
+        // (audit 2026-07-01 M2 — the history table previously had no writers).
+        if ((int)updated.Stage != previousStage)
+        {
+            await WriteStageHistoryAsync(con, updated.Id, (int)updated.Stage, actorDisplay, ct).ConfigureAwait(false);
+        }
+
+        return updated;
     }
 
     private static void BindEngagementParams(SqlCommand cmd, CrmEngagement e)
