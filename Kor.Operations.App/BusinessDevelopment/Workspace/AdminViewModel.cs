@@ -172,13 +172,19 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         }
     }
 
+    // Re-entrancy guard for the two fire-and-forget admin writes: a double-click
+    // on Run Now queued the job twice, and two rapid Enabled toggles raced
+    // unordered writes (audit 2026-07-01 4.2).
+    private bool _adminWriteBusy;
+
     private async Task RunNowAsync(ScheduledJobRow? row)
     {
-        if (row is null)
+        if (row is null || _adminWriteBusy)
         {
             return;
         }
 
+        _adminWriteBusy = true;
         try
         {
             await _schedules.EnqueueTriggerAsync(row.JobName, "AdminUI", CancellationToken.None).ConfigureAwait(true);
@@ -188,15 +194,20 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         {
             StatusMessage = $"Failed to queue {row.JobName}: {ex.Message}";
         }
+        finally
+        {
+            _adminWriteBusy = false;
+        }
     }
 
     private async Task ToggleEnabledAsync(ScheduledJobRow? row)
     {
-        if (row is null)
+        if (row is null || _adminWriteBusy)
         {
             return;
         }
 
+        _adminWriteBusy = true;
         try
         {
             await _schedules.UpdateEnabledAsync(row.JobName, row.IsEnabled, CancellationToken.None).ConfigureAwait(true);
@@ -206,6 +217,10 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         {
             row.IsEnabled = !row.IsEnabled;
             StatusMessage = $"Failed to toggle {row.JobName}: {ex.Message}";
+        }
+        finally
+        {
+            _adminWriteBusy = false;
         }
     }
 
@@ -242,7 +257,11 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         var win = new JobRunHistoryWindow
         {
             DataContext = vm,
-            Owner = Application.Current?.MainWindow,
+            // Own the BD workspace (where this view is hosted), not MainWindow —
+            // otherwise the modal centers on/blocks Home while the workspace
+            // stays clickable behind it (audit 2026-07-01 2.5).
+            Owner = Application.Current?.Windows.OfType<BdWorkspaceWindow>().FirstOrDefault(w => w.IsVisible)
+                ?? Application.Current?.MainWindow,
         };
         _ = vm.LoadAsync(CancellationToken.None);
         win.ShowDialog();

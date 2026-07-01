@@ -79,14 +79,37 @@ public partial class OpportunitiesView : UserControl
     private async void GenerateBriefAsWord_Click(object sender, RoutedEventArgs e)
         => await GenerateOpportunityBriefAsync(asPdf: false).ConfigureAwait(true);
 
+    // Re-entrancy guard: a double-click ran two concurrent generations +
+    // Deltek pulls (audit 2026-07-01 4.5).
+    private bool _briefGenerating;
+
     private async Task GenerateOpportunityBriefAsync(bool asPdf)
     {
+        if (_briefGenerating)
+        {
+            return;
+        }
+
         var row = _vm.Selected;
         if (row is null)
         {
             MessageBox.Show("Select an opportunity first.", "Generate Brief", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+
+        _briefGenerating = true;
+        try
+        {
+            await GenerateOpportunityBriefCoreAsync(row, asPdf).ConfigureAwait(true);
+        }
+        finally
+        {
+            _briefGenerating = false;
+        }
+    }
+
+    private async Task GenerateOpportunityBriefCoreAsync(OpportunityRowView row, bool asPdf)
+    {
 
         var briefStore = AppServices.Get<Kor.Opportunities.Data.Briefs.IBriefDataStore>();
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);

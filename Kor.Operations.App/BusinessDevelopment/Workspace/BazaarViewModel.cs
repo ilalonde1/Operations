@@ -143,9 +143,10 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
     {
         if (_isGrabbing)
         {
-            // A grab is already in flight; ignore the re-entrant click so its
-            // AlreadyTaken result can't overwrite the first grab's status.
-            return GrabOutcome.AlreadyTaken;
+            // A grab is already in flight; drop the re-entrant click. Ignored —
+            // not AlreadyTaken — so the view doesn't tell the user someone else
+            // claimed it (audit 2026-07-01 n6: the old sentinel message lied).
+            return GrabOutcome.Ignored;
         }
 
         _isGrabbing = true;

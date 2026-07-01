@@ -132,7 +132,10 @@ public sealed class OverwatchViewModel : ObservableObject, IAiContextProvider
     {
         if (_isReassigning)
         {
-            return ReassignOutcome.OwnerChanged;
+            // Re-entrant click while a reassign is in flight: drop it silently
+            // (audit 2026-07-01 n6 — OwnerChanged here made the view claim
+            // "already moved by someone else", which was false).
+            return ReassignOutcome.Ignored;
         }
 
         _isReassigning = true;

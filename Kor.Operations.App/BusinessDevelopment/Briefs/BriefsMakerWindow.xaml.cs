@@ -121,7 +121,20 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
     private async void OrgPicker_OrgSelected(object? sender, long orgId)
     {
         _selectedOrgId = orgId;
-        var row = await _canonicalOrgStore.GetCanonicalOrgAsync(orgId, CancellationToken.None).ConfigureAwait(true);
+        Kor.Opportunities.Core.Models.CanonicalOrgRow? row;
+        try
+        {
+            row = await _canonicalOrgStore.GetCanonicalOrgAsync(orgId, CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            // async void picker handler: an unguarded store failure here crashed
+            // the whole app on the first click in this window (audit 2026-07-01).
+            Serilog.Log.Warning(ex, "BriefsMaker org pick failed for org {OrgId}.", orgId);
+            MessageBox.Show(this, $"Could not load that organization:\n{ex.Message}", "Briefs Maker", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         if (_selectedOrgId != orgId)
         {
             return; // stale load — a newer pick superseded this one
@@ -145,8 +158,19 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
     private async void ProjectPicker_ProjectSelected(object? sender, long id)
     {
         _selectedProjectId = id;
-        var data = await _briefStore.GetProjectBriefAsync(id, CancellationToken.None)
-            .ConfigureAwait(true);
+        Kor.Opportunities.Data.Briefs.ProjectBriefData? data;
+        try
+        {
+            data = await _briefStore.GetProjectBriefAsync(id, CancellationToken.None)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "BriefsMaker project pick failed for project {ProjectId}.", id);
+            MessageBox.Show(this, $"Could not load that project:\n{ex.Message}", "Briefs Maker", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         if (_selectedProjectId != id)
         {
             return; // stale load — a newer pick superseded this one
@@ -174,8 +198,19 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
     private async void PersonPicker_PersonSelected(object? sender, long id)
     {
         _selectedPersonId = id;
-        var data = await _briefStore.GetPersonBriefAsync(id, CancellationToken.None)
-            .ConfigureAwait(true);
+        Kor.Opportunities.Data.Briefs.PersonBriefData? data;
+        try
+        {
+            data = await _briefStore.GetPersonBriefAsync(id, CancellationToken.None)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "BriefsMaker person pick failed for person {PersonId}.", id);
+            MessageBox.Show(this, $"Could not load that person:\n{ex.Message}", "Briefs Maker", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         if (_selectedPersonId != id)
         {
             return; // stale load — a newer pick superseded this one

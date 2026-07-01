@@ -103,9 +103,10 @@ public partial class OverwatchView : UserControl
             {
                 await TrySendReassignEmailAsync(managerUpn, dlg.TargetEmail, dlg.TargetDisplay, row, dlg.Reason).ConfigureAwait(true);
             }
-            else
+            else if (outcome != ReassignOutcome.Ignored)
             {
                 // Not-moved cases (already moved / target duplicate) — surface the why.
+                // Ignored = a dropped re-entrant click; showing anything would lie.
                 MessageBox.Show(Window.GetWindow(this), _vm.StatusMessage, "Reassign", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }

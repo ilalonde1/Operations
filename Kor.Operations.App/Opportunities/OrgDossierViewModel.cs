@@ -775,6 +775,16 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
 
     private void RaiseIntelCollectionProperties()
     {
+        // Completes the half-applied snapshot pattern (audit 2026-07-01 1.1):
+        // Sections/Projects/RecentWins already snapshot for the AI context, but
+        // the intel collections were enumerated live by AppendIntelContext.
+        // Both the fill and clear paths end here, on the UI thread.
+        _intelActionsContextSnapshot = IntelActions.ToArray();
+        _intelPeopleContextSnapshot = IntelPeople.ToArray();
+        _intelSignalsContextSnapshot = IntelSignals.ToArray();
+        _intelWorksContextSnapshot = IntelWorks.ToArray();
+        _intelRisksContextSnapshot = IntelRisks.ToArray();
+
         OnPropertyChanged(nameof(HasIntelActions));
         OnPropertyChanged(nameof(HasIntelPeople));
         OnPropertyChanged(nameof(HasIntelSignals));
@@ -783,6 +793,12 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         OnPropertyChanged(nameof(HasExtendedNarratives));
         OnPropertyChanged(nameof(HasAnyIntel));
     }
+
+    private IntelActionRow[] _intelActionsContextSnapshot = Array.Empty<IntelActionRow>();
+    private IntelPersonRow[] _intelPeopleContextSnapshot = Array.Empty<IntelPersonRow>();
+    private IntelSignalRow[] _intelSignalsContextSnapshot = Array.Empty<IntelSignalRow>();
+    private IntelWorkRow[] _intelWorksContextSnapshot = Array.Empty<IntelWorkRow>();
+    private IntelRiskRow[] _intelRisksContextSnapshot = Array.Empty<IntelRiskRow>();
 
     private static bool IsSynopsisNarrative(string narrativeType)
         => string.Equals(narrativeType, "Current", StringComparison.OrdinalIgnoreCase)
@@ -1156,10 +1172,14 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
 
     private void AppendIntelContext(StringBuilder sb)
     {
-        if (!HasAnyIntel)
-        {
-            return;
-        }
+        // Reads the UI-thread-swapped snapshots, never the live collections —
+        // completes the snapshot pattern the other dossier sections already use
+        // (audit 2026-07-01 1.1).
+        var actions = _intelActionsContextSnapshot;
+        var people = _intelPeopleContextSnapshot;
+        var signals = _intelSignalsContextSnapshot;
+        var works = _intelWorksContextSnapshot;
+        var risks = _intelRisksContextSnapshot;
 
         if (!string.IsNullOrWhiteSpace(SynopsisP1) || !string.IsNullOrWhiteSpace(SynopsisP2))
         {
@@ -1169,21 +1189,21 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             if (!string.IsNullOrWhiteSpace(SynopsisP2)) sb.AppendLine($"  {SynopsisP2}");
         }
 
-        if (IntelActions.Count > 0)
+        if (actions.Length > 0)
         {
             sb.AppendLine();
             sb.AppendLine("RECOMMENDED ACTIONS:");
-            foreach (var a in IntelActions)
+            foreach (var a in actions)
             {
                 sb.AppendLine($"  - {HumanizeIntelType(a.ActionType)}: {a.Recommendation}{OptionalParen("target", a.TargetPersonName)}{OptionalInline("Timing", a.TimingNotes)} ({a.Confidence}, {a.Freshness}, {a.RefreshedAtUtc:yyyy-MM-dd})");
             }
         }
 
-        if (IntelPeople.Count > 0)
+        if (people.Length > 0)
         {
             sb.AppendLine();
             sb.AppendLine("KEY PEOPLE:");
-            foreach (var p in IntelPeople)
+            foreach (var p in people)
             {
                 var prefix = p.IsCurrent ? "" : "(former) ";
                 var title = string.IsNullOrWhiteSpace(p.Title) ? "" : " - " + p.Title;
@@ -1191,22 +1211,22 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             }
         }
 
-        if (IntelSignals.Count > 0)
+        if (signals.Length > 0)
         {
             sb.AppendLine();
             sb.AppendLine("RECENT SIGNALS:");
-            foreach (var s in IntelSignals)
+            foreach (var s in signals)
             {
                 var detail = string.IsNullOrWhiteSpace(s.Detail) ? "" : " - " + s.Detail;
                 sb.AppendLine($"  - {HumanizeIntelType(s.SignalType)}: {s.Subject}{detail} ({s.Confidence}, {s.Freshness}, {s.RefreshedAtUtc:yyyy-MM-dd})");
             }
         }
 
-        if (IntelWorks.Count > 0)
+        if (works.Length > 0)
         {
             sb.AppendLine();
             sb.AppendLine("RESEARCH PORTFOLIO:");
-            foreach (var w in IntelWorks)
+            foreach (var w in works)
             {
                 var role = string.IsNullOrWhiteSpace(w.Role) ? "" : " - " + w.Role;
                 var year = string.IsNullOrWhiteSpace(w.YearApprox) ? "" : " (" + w.YearApprox + ")";
@@ -1214,11 +1234,11 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
             }
         }
 
-        if (IntelRisks.Count > 0)
+        if (risks.Length > 0)
         {
             sb.AppendLine();
             sb.AppendLine("RISKS / VULNERABILITIES:");
-            foreach (var r in IntelRisks)
+            foreach (var r in risks)
             {
                 var mitigation = string.IsNullOrWhiteSpace(r.MitigationNotes) ? "" : " Mitigation: " + r.MitigationNotes;
                 sb.AppendLine($"  - {HumanizeIntelType(r.RiskType)}: {r.Description}{mitigation} ({r.Confidence}, {r.Freshness}, {r.RefreshedAtUtc:yyyy-MM-dd})");

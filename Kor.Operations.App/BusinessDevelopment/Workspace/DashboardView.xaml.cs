@@ -14,11 +14,9 @@ public partial class DashboardView : UserControl
     private readonly IServiceProvider? _services;
     private CancellationTokenSource? _cts;
 
-    public DashboardView()
-    {
-        InitializeComponent();
-    }
-
+    // No parameterless ctor: MS.DI picks the greediest resolvable constructor,
+    // but if selection ever regressed the bare ctor produced a view with no
+    // DataContext where every drill-down silently no-ops (audit 2026-07-01 D5).
     public DashboardView(DashboardViewModel vm, IServiceProvider services)
     {
         InitializeComponent();
@@ -96,7 +94,28 @@ public partial class DashboardView : UserControl
     {
         if (DataContext is not DashboardViewModel vm) return;
         if (sender is not Button btn || btn.Tag is not Kor.Opportunities.Data.Intel.PriorityActionRow row) return;
-        await vm.SetActionStatusAsync(row.ActionId, status, CancellationToken.None).ConfigureAwait(true);
+
+        // Disable during the write (double-click double-fired the update), and
+        // surface a failed write instead of silently no-op'ing (audit 4.3/8.1).
+        btn.IsEnabled = false;
+        try
+        {
+            var ok = await vm.SetActionStatusAsync(row.ActionId, status, CancellationToken.None).ConfigureAwait(true);
+            if (!ok)
+            {
+                MessageBox.Show(OwnerWindow(),
+                    $"The action could not be marked {status} — it may have been retired or removed. Refresh and try again.",
+                    "Priority Actions", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(OwnerWindow(), ex.Message, "Priority Actions — Update Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            btn.IsEnabled = true;
+        }
     }
 
     private void PriorityAction_OpenOrg_Click(object sender, RoutedEventArgs e)

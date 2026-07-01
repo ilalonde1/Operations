@@ -134,7 +134,12 @@ public partial class ClientIntelligenceWindow : Window
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(PendingClientId)) return;
+        // Loaded can re-fire: retire any previous CTS instead of orphaning it
+        // (audit 2026-07-01 2.4).
+        var prev = _cts;
         _cts = new CancellationTokenSource();
+        prev?.Cancel();
+        prev?.Dispose();
         try
         {
             await _vm.LoadAsync(PendingClientId.Trim(), _cts.Token).ConfigureAwait(true);
@@ -149,6 +154,11 @@ public partial class ClientIntelligenceWindow : Window
     {
         _cts?.Cancel();
         _cts?.Dispose();
+        // _searchCts was previously leaked here: an in-flight Deltek search kept
+        // running after close (audit 2026-07-01 2.4).
+        _searchCts?.Cancel();
+        _searchCts?.Dispose();
+        _searchCts = null;
         base.OnClosed(e);
         AppServices.Get<AppAiContextBuilder>().Unregister(_vm);
     }

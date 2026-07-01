@@ -118,6 +118,24 @@ public sealed class BdTrackingViewModel : INotifyPropertyChanged, Kor.Operations
         {
             _filteredEngagements.Add(r);
         }
+
+        RefreshAiContextSnapshot();
+    }
+
+    // Baked on the UI thread at every load/filter change so BuildContext never
+    // enumerates the live collections from the ask path (audit 2026-07-01 1.2 —
+    // the sanctioned immutable-snapshot pattern).
+    private string _aiContextLine = "BD Tracking — not loaded yet.";
+    private bool _aiHasData;
+
+    private void RefreshAiContextSnapshot()
+    {
+        var roll = Rollup;
+        _aiHasData = Engagements.Count > 0;
+        _aiContextLine =
+            $"BD Tracking — {Engagements.Count:N0} engagements across {Engagements.Select(r => r.Region).Distinct().Count()} regions; " +
+            $"currently filtered to {SelectedRegion} / initiator={SelectedInitiator}; " +
+            $"rollup: {roll.ActivityCount} engagements, ${roll.ProposalsSubmittedCad:N0} submitted, ${roll.ProposalsAcceptedCad:N0} accepted, capture rate {roll.CaptureRate:P0}.";
     }
 
     // Round 37c (T6.001): the status line used to say "Loaded N..." forever,
@@ -408,17 +426,15 @@ ORDER  BY l.Confidence DESC;";
     }
 
     // ===== IAiContextProvider =====
+    // Reads only the UI-thread-baked snapshot fields (never the live collections).
     public string ProviderName => "BD Tracking";
-    public bool HasData => Engagements.Count > 0;
-    public string BuildContext()
-    {
-        var roll = Rollup;
-        return $"BD Tracking — {Engagements.Count:N0} engagements across {Engagements.Select(r => r.Region).Distinct().Count()} regions; currently filtered to {SelectedRegion} / initiator={SelectedInitiator}; rollup: {roll.ActivityCount} engagements, ${roll.ProposalsSubmittedCad:N0} submitted, ${roll.ProposalsAcceptedCad:N0} accepted, capture rate {roll.CaptureRate:P0}.";
-    }
+    public bool HasData => _aiHasData;
+    public string BuildContext() => _aiContextLine;
     public string BuildLocalContext()
     {
-        if (Selected is null) return BuildContext();
-        return $"{BuildContext()} Selected: {Selected.BuyerDisplayName} (initiator={Selected.Initiator}, region={Selected.Region}, activities={Selected.ActivityCount}); potential projects: {Selected.PotentialProjects ?? "(none)"}.";
+        var selected = Selected;
+        if (selected is null) return BuildContext();
+        return $"{BuildContext()} Selected: {selected.BuyerDisplayName} (initiator={selected.Initiator}, region={selected.Region}, activities={selected.ActivityCount}); potential projects: {selected.PotentialProjects ?? "(none)"}.";
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

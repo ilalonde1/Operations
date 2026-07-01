@@ -79,11 +79,15 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     }
 
     public string ProviderName => "BD Reports";
-    public bool HasData => Sectors.Count > 0;
+    public bool HasData => _sectorsContextSnapshot.Length > 0;
+
+    // UI-thread-swapped snapshot so BuildContext never enumerates the live
+    // Sectors collection from the ask path (audit 2026-07-01 1.3).
+    private SectorCardVm[] _sectorsContextSnapshot = Array.Empty<SectorCardVm>();
 
     public string BuildContext()
     {
-        var perSector = string.Join("; ", Sectors.Select(s =>
+        var perSector = string.Join("; ", _sectorsContextSnapshot.Select(s =>
             $"{s.Title}: {s.PursueUrgent + s.Pursue} pursue ({s.PursueUrgent} urgent), {s.Monitor} monitor, {s.Discover} discover, {s.NotHoned} not honed"));
         var selected = SelectedSector is { } sel ? $" Currently viewing: {sel.Title}." : string.Empty;
         return $"BD Reports dashboard — {perSector}.{selected}";
@@ -186,6 +190,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
                     s.FreshCount, s.AgingCount, s.StaleCount));
             }
 
+            _sectorsContextSnapshot = Sectors.ToArray();
             OnPropertyChanged(nameof(HasData));
             StatusMessage = $"{Sectors.Count} sectors loaded.";
         }

@@ -15,6 +15,10 @@ public enum GrabOutcome
 
     /// <summary>Someone else grabbed it first (or it left the New pool). No change made.</summary>
     AlreadyTaken,
+
+    /// <summary>The request was dropped without touching the database (e.g. a
+    /// re-entrant double-click while a grab was in flight). Show nothing.</summary>
+    Ignored,
 }
 
 /// <summary>Result of <see cref="IPursuitGrabStore.GrabAsync"/>.</summary>

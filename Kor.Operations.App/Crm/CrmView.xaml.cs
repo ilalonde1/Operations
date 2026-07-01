@@ -201,8 +201,12 @@ public partial class CrmView : UserControl
         var key = _vm.Selected.OpportunityKey;
         var name = string.IsNullOrWhiteSpace(_vm.Selected.ProjectName) ? key : $"{key} — {_vm.Selected.ProjectName}";
 
-        win.Loaded += (_, _) =>
+        // One-shot: Loaded can fire more than once; a re-fire would reset the
+        // user's in-progress brochure (same fix as the fee-proposal path above).
+        RoutedEventHandler? brochureLoaded = null;
+        brochureLoaded = (_, _) =>
         {
+            win.Loaded -= brochureLoaded;
             try
             {
                 if (win.DataContext is BrochureBuilderViewModel brochureVm)
@@ -216,6 +220,7 @@ public partial class CrmView : UserControl
                 _vm.SetStatusMessage("Brochure opened, but automatic prefill failed.");
             }
         };
+        win.Loaded += brochureLoaded;
 
         win.Show();
     }
@@ -403,9 +408,23 @@ public partial class CrmView : UserControl
 
     private string ResolveActor()
     {
-        // The CrmView is hosted inside BdWorkspaceWindow; its KorHeader carries
-        // the signed-in user's email. Fall back to Environment.UserName if the
-        // header isn't reachable (early-loaded or no email set).
+        // Unified with the Opportunities/Bazaar/Overwatch resolver (audit
+        // 2026-07-01 8.4): SignedInUserUpn first, then the UserOptions override,
+        // then the header email, then the Windows account. Previously this view
+        // skipped straight to the header/machine account, so early actions in a
+        // freshly opened workspace stamped a different identity format than the
+        // ownership/attribution features key on.
+        if (!string.IsNullOrWhiteSpace(global::Kor.Operations.OperationsApp.SignedInUserUpn))
+        {
+            return global::Kor.Operations.OperationsApp.SignedInUserUpn.Trim();
+        }
+
+        var overrideUpn = AppServices.Get<Kor.Operations.App.Options.UserOptions>().UserUpnOverride;
+        if (!string.IsNullOrWhiteSpace(overrideUpn))
+        {
+            return overrideUpn.Trim();
+        }
+
         var ownerWindow = Window.GetWindow(this);
         if (ownerWindow?.FindName("HeaderBar") is KorHeader header
             && !string.IsNullOrWhiteSpace(header.UserEmail))

@@ -38,6 +38,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private DeltekClientIntelligence? _deltekContext;
     private CrmAnalyticsSnapshot? _analytics;
     private CancellationTokenSource? _detailCts;
+    private CrmEngagementRowView[] _contextSnapshot = Array.Empty<CrmEngagementRowView>();
 
     public CrmViewModel(
         ICrmEngagementStore engagementStore,
@@ -222,6 +223,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             Selected = preservedId.HasValue
                 ? Engagements.FirstOrDefault(r => r.Id == preservedId.Value) ?? Engagements.FirstOrDefault()
                 : Engagements.FirstOrDefault();
+
+            _contextSnapshot = Engagements.ToArray();
 
             // Per-stage pipeline summary (pills above the list). Fixed order so
             // the layout is stable; only stages with rows are shown.
@@ -417,15 +420,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
     public string ProviderName => Provider;
 
-    public bool HasData => Engagements.Count > 0;
+    public bool HasData => _contextSnapshot.Length > 0;
 
     public string BuildContext()
     {
-        // Snapshot Engagements up front. BuildContext runs on
-        // AppAiContextBuilder's worker thread while CRM refresh paths mutate
-        // the collection on the UI thread; without the snapshot a mid-Ask
-        // refresh silently drops this section (Batch 102 audit pattern).
-        var engagements = Engagements.ToArray();
+        // Read the UI-thread-swapped snapshot (set at the end of LoadAsync) —
+        // ToArray() on the live collection from the ask path was itself a
+        // latent cross-thread race (audit 2026-07-01 1.4).
+        var engagements = _contextSnapshot;
 
         var sb = new StringBuilder();
         sb.AppendLine($"Total CRM engagements: {engagements.Length}.");

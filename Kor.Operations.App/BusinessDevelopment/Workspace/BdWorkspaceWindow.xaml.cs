@@ -22,8 +22,19 @@ public partial class BdWorkspaceWindow : Window
         GlobalSearch.Store = _services.GetRequiredService<ICanonicalOrgStore>();
     }
 
+    private bool _loadedOnce;
+
     private async void BdWorkspaceWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        // Loaded can re-fire (re-templating/theme reload); wiring the search
+        // subscription twice would open N dossiers per click (audit 2026-07-01 2.1).
+        if (_loadedOnce)
+        {
+            return;
+        }
+
+        _loadedOnce = true;
+
         try
         {
             await HeaderLoader.ApplyAsync(HeaderBar).ConfigureAwait(true);
@@ -33,8 +44,20 @@ public partial class BdWorkspaceWindow : Window
             // Header identity is cosmetic and should not block the workspace.
         }
 
-        SetActiveNav(DashboardButton);
-        ContentHost.Content = _services.GetRequiredService<DashboardView>();
+        try
+        {
+            SetActiveNav(DashboardButton);
+            ContentHost.Content = _services.GetRequiredService<DashboardView>();
+        }
+        catch (Exception ex)
+        {
+            // async void Loaded: an unguarded DI/ctor failure here crashed the
+            // whole app on workspace open (audit 2026-07-01 3.7).
+            Serilog.Log.Error(ex, "BD workspace dashboard failed to load.");
+            MessageBox.Show(this, $"The dashboard could not be loaded:\n{ex.Message}",
+                "Business Development", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
         GlobalSearch.OrgSelected += (_, orgId) => OpenOrgDossier(orgId);
     }
 
@@ -113,7 +136,7 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<RelationshipsView>();
     }
 
-    private void OpenOrgDossier(long canonicalOrgId)
+    private async void OpenOrgDossier(long canonicalOrgId)
     {
         NavigateToRelationships();
         if (ContentHost.Content is not RelationshipsView relView)
@@ -121,7 +144,18 @@ public partial class BdWorkspaceWindow : Window
             return;
         }
 
-        _ = relView.SelectOrgAsync(canonicalOrgId);
+        try
+        {
+            await relView.SelectOrgAsync(canonicalOrgId).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            // Previously fire-and-forget: a failing global-search click did
+            // nothing, silently (audit 2026-07-01 3.8).
+            Serilog.Log.Warning(ex, "Open org dossier failed for org {OrgId}.", canonicalOrgId);
+            MessageBox.Show(this, $"Could not open that organization:\n{ex.Message}",
+                "Business Development", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     public void NavigateToEvents()

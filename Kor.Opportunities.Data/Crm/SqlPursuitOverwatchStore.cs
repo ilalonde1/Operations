@@ -39,6 +39,10 @@ public enum ReassignOutcome
     /// <summary>The target owner already holds a BD-tracking pursuit for the same
     /// buyer + region (the unique BD-relationship key). No change made.</summary>
     DuplicateForTarget,
+
+    /// <summary>The request was dropped without touching the database (e.g. a
+    /// re-entrant double-click while a reassign was in flight). Show nothing.</summary>
+    Ignored,
 }
 
 /// <summary>

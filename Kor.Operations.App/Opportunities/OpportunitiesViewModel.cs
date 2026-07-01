@@ -231,10 +231,21 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
             OnPropertyChanged(nameof(HasSelected));
             OnPropertyChanged(nameof(NoEngagement));
-            _ = LoadSelectedIntelligenceAsync(CancellationToken.None);
-            _ = LoadSelectedDetailAsync(CancellationToken.None);
+
+            // Per-selection CancellationTokenSource (the CrmViewModel pattern,
+            // audit 2026-07-01 4.1): a slow previous detail load can't pile up
+            // behind rapid scrolling, and an A→B→A reselection can't leave two
+            // concurrent loads for the same id interleaving into the collections.
+            var prevCts = _detailCts;
+            _detailCts = new CancellationTokenSource();
+            prevCts?.Cancel();
+            prevCts?.Dispose();
+            _ = LoadSelectedIntelligenceAsync(_detailCts.Token);
+            _ = LoadSelectedDetailAsync(_detailCts.Token);
         }
     }
+
+    private CancellationTokenSource? _detailCts;
 
     public string StatusMessage
     {
@@ -402,6 +413,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
                 Selected = Opportunities.FirstOrDefault(r => r.OpportunityKey == preservedKey);
             }
 
+            _oppContextSnapshot = Opportunities.ToArray();
+
             await RefreshHeartbeatAsync(ct).ConfigureAwait(true);
             await RefreshIngestionRunsAsync(ct).ConfigureAwait(true);
 
@@ -433,6 +446,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             {
                 IngestionRuns.Add(new IngestionRunRowView(r));
             }
+
+            _runsContextSnapshot = IngestionRuns.ToArray();
         }
         catch (OperationCanceledException)
         {
@@ -468,7 +483,12 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
             _selectedIntelligence = loaded;
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer selection (per-selection CTS) — the caller is
+            // fire-and-forget, so swallowing (not rethrowing) avoids an unobserved
+            // task exception.
+        }
         catch (Exception)
         {
             // Best-effort - never block the grid. AI just won't see the rich
@@ -1042,16 +1062,17 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     public string ProviderName => Provider;
 
-    public bool HasData => Opportunities.Count > 0;
+    public bool HasData => _oppContextSnapshot.Length > 0;
+
+    // UI-thread-swapped snapshots (set at the end of the load paths) so the ask
+    // path never enumerates the live collections (audit 2026-07-01 1.4).
+    private OpportunityRowView[] _oppContextSnapshot = Array.Empty<OpportunityRowView>();
+    private IngestionRunRowView[] _runsContextSnapshot = Array.Empty<IngestionRunRowView>();
 
     public string BuildContext()
     {
-        // Snapshot Opportunities + IngestionRuns up front. BuildContext runs
-        // on AppAiContextBuilder's worker thread while the BD refresh paths
-        // mutate these on the UI thread; without the snapshot a mid-Ask
-        // refresh silently drops this section (Batch 102 audit pattern).
-        var opportunities = Opportunities.ToArray();
-        var ingestionRuns = IngestionRuns.ToArray();
+        var opportunities = _oppContextSnapshot;
+        var ingestionRuns = _runsContextSnapshot;
 
         // Firm-wide pursuit pipeline summary. Group by status, list deadlines
         // within 30 days, list anything in Pursuing/Submitted (the hot list).
