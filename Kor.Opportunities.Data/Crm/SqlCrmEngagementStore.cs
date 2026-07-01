@@ -129,7 +129,11 @@ VALUES
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        // Engagement insert + its stage-history row commit together — a history
+        // failure must not leave a committed engagement behind a thrown "save
+        // failed" (Codex P1 on the audit-fix review).
+        await using var tx = (SqlTransaction)await con.BeginTransactionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con, tx) { CommandTimeout = CommandTimeoutSeconds };
         BindEngagementParams(cmd, engagement);
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
 
@@ -140,6 +144,7 @@ VALUES
         }
         catch (SqlException ex) when (hasBdTrackingNaturalKey && ex.Number is 2601 or 2627)
         {
+            await tx.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
             var existing = await GetByBdTrackingNaturalKeyAsync(
                 engagement.BuyerCanonicalOrgId!.Value,
                 engagement.OwnerStaffId!,
@@ -166,18 +171,19 @@ VALUES
 
         // Record the opening stage so stage-age analytics have a start point
         // (audit 2026-07-01 M2 — the history table previously had no writers).
-        await WriteStageHistoryAsync(con, inserted.Id, (int)inserted.Stage, actorDisplay, ct).ConfigureAwait(false);
+        await WriteStageHistoryAsync(con, tx, inserted.Id, (int)inserted.Stage, actorDisplay, ct).ConfigureAwait(false);
+        await tx.CommitAsync(ct).ConfigureAwait(false);
         return inserted;
     }
 
     private static async Task WriteStageHistoryAsync(
-        SqlConnection con, long engagementId, int stage, string actorDisplay, CancellationToken ct)
+        SqlConnection con, SqlTransaction tx, long engagementId, int stage, string actorDisplay, CancellationToken ct)
     {
         const string sql = @"
 INSERT INTO opportunities.CrmEngagementStageHistory (EngagementId, Stage, ByStaffId)
 VALUES (@eng, @stage, @by);";
 
-        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        await using var cmd = new SqlCommand(sql, con, tx) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@eng", SqlDbType.BigInt).Value = engagementId;
         cmd.Parameters.Add("@stage", SqlDbType.Int).Value = stage;
         cmd.Parameters.Add("@by", SqlDbType.NVarChar, 150).Value = actorDisplay;
@@ -244,32 +250,40 @@ WHERE Id = @id AND RowVersion = @rv;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        // Update + stage-history commit together (Codex P1 on the audit-fix review).
+        await using var tx = (SqlTransaction)await con.BeginTransactionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con, tx) { CommandTimeout = CommandTimeoutSeconds };
         BindEngagementParams(cmd, engagement);
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = engagement.Id;
         cmd.Parameters.Add("@rv", SqlDbType.Binary, 8).Value = engagement.RowVersion;
         cmd.Parameters.Add("@actor", SqlDbType.NVarChar, 150).Value = actorDisplay;
 
-        CrmEngagement updated;
-        int previousStage;
+        CrmEngagement? updated = null;
+        var previousStage = 0;
         await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
-            if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            if (await reader.ReadAsync(ct).ConfigureAwait(false))
             {
-                throw new CrmConcurrencyException(nameof(CrmEngagement), engagement.Id);
+                updated = MapReader(reader);
+                previousStage = reader.GetInt32(22); // deleted.Stage, appended after the row image
             }
+        }
 
-            updated = MapReader(reader);
-            previousStage = reader.GetInt32(22); // deleted.Stage, appended after the row image
+        if (updated is null)
+        {
+            // Reader must be disposed before the rollback can use the connection.
+            await tx.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
+            throw new CrmConcurrencyException(nameof(CrmEngagement), engagement.Id);
         }
 
         // Record the transition so stage-age analytics have a timeline
         // (audit 2026-07-01 M2 — the history table previously had no writers).
         if ((int)updated.Stage != previousStage)
         {
-            await WriteStageHistoryAsync(con, updated.Id, (int)updated.Stage, actorDisplay, ct).ConfigureAwait(false);
+            await WriteStageHistoryAsync(con, tx, updated.Id, (int)updated.Stage, actorDisplay, ct).ConfigureAwait(false);
         }
 
+        await tx.CommitAsync(ct).ConfigureAwait(false);
         return updated;
     }
 

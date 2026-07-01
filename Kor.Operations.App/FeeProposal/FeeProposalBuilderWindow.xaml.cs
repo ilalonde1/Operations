@@ -395,8 +395,20 @@ namespace Kor.Operations.App.FeeProposal
             _ => BuildEmptyEditor(),
         };
 
+        private bool _saveBeforeCloseInFlight;
+
         protected override async void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
+            // A close attempt while the save-before-close is still running must
+            // not re-prompt (choosing "No" there could close the dirty window
+            // under the in-flight save). Block until the save resolves.
+            if (_saveBeforeCloseInFlight)
+            {
+                e.Cancel = true;
+                base.OnClosing(e);
+                return;
+            }
+
             if (_vm.IsDirty && !_closeAfterSave)
             {
                 var result = MessageBox.Show(
@@ -420,9 +432,21 @@ namespace Kor.Operations.App.FeeProposal
                     // otherwise a failed save silently loses the proposal.
                     e.Cancel = true;
                     base.OnClosing(e);
-                    if (await TrySaveAsync("Fee Proposal — Save Before Close"))
+                    _saveBeforeCloseInFlight = true;
+                    try
                     {
-                        _closeAfterSave = true;
+                        if (await TrySaveAsync("Fee Proposal — Save Before Close"))
+                        {
+                            _closeAfterSave = true;
+                        }
+                    }
+                    finally
+                    {
+                        _saveBeforeCloseInFlight = false;
+                    }
+
+                    if (_closeAfterSave)
+                    {
                         Close();
                     }
 

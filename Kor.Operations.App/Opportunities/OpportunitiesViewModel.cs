@@ -236,10 +236,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             // audit 2026-07-01 4.1): a slow previous detail load can't pile up
             // behind rapid scrolling, and an A→B→A reselection can't leave two
             // concurrent loads for the same id interleaving into the collections.
+            // Cancel but deliberately do NOT Dispose the superseded CTS — the old
+            // fire-and-forget loads may still hold its token inside async DB calls,
+            // and disposing under them surfaces ObjectDisposedException instead of
+            // clean cancellation. A cancelled, undisposed CTS with no timer just
+            // gets collected.
             var prevCts = _detailCts;
             _detailCts = new CancellationTokenSource();
             prevCts?.Cancel();
-            prevCts?.Dispose();
             _ = LoadSelectedIntelligenceAsync(_detailCts.Token);
             _ = LoadSelectedDetailAsync(_detailCts.Token);
         }

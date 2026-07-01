@@ -181,7 +181,7 @@ VALUES
             inserted = MapReader(reader);
         }
 
-        var freshRvAfterInsert = await ResolveBuyerCanonicalAsync(inserted.Id, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
+        var freshRvAfterInsert = await ResolveBuyerCanonicalAsync(inserted.Id, inserted.RowVersion, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
         return freshRvAfterInsert is null ? inserted : inserted with { RowVersion = freshRvAfterInsert };
     }
 
@@ -235,7 +235,7 @@ WHERE Id = @id AND RowVersion = @rv;";
             updated = MapReader(reader);
         }
 
-        var freshRvAfterUpdate = await ResolveBuyerCanonicalAsync(updated.Id, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
+        var freshRvAfterUpdate = await ResolveBuyerCanonicalAsync(updated.Id, updated.RowVersion, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
         return freshRvAfterUpdate is null ? updated : updated with { RowVersion = freshRvAfterUpdate };
     }
 
@@ -245,8 +245,12 @@ WHERE Id = @id AND RowVersion = @rv;";
     /// the secondary UPDATE bumps the rowversion behind the record the caller
     /// is about to return, and handing back a stale token made the very next
     /// save throw a phantom OpportunityConcurrencyException (audit 2026-07-01 M1).
+    /// The UPDATE is guarded on the rowversion the caller just observed so a
+    /// concurrent writer between the two statements is never masked: the guard
+    /// misses, null returns, the caller keeps its stale token, and the next save
+    /// raises the concurrency conflict it should.
     /// </summary>
-    private async Task<byte[]?> ResolveBuyerCanonicalAsync(long opportunityId, string sourceKey, string? buyerName, CancellationToken ct)
+    private async Task<byte[]?> ResolveBuyerCanonicalAsync(long opportunityId, byte[] observedRowVersion, string sourceKey, string? buyerName, CancellationToken ct)
     {
         if (_canonicalResolver is null || string.IsNullOrWhiteSpace(buyerName)) return null;
         try
@@ -257,10 +261,11 @@ WHERE Id = @id AND RowVersion = @rv;";
             await using var con = new SqlConnection(_connectionString);
             await con.OpenAsync(ct).ConfigureAwait(false);
             await using var upd = new SqlCommand(
-                "UPDATE opportunities.Opportunities SET BuyerCanonicalOrgId = @b OUTPUT inserted.RowVersion WHERE Id = @id;", con)
+                "UPDATE opportunities.Opportunities SET BuyerCanonicalOrgId = @b OUTPUT inserted.RowVersion WHERE Id = @id AND RowVersion = @rv;", con)
             { CommandTimeout = CommandTimeoutSeconds };
             upd.Parameters.Add("@id", SqlDbType.BigInt).Value = opportunityId;
             upd.Parameters.Add("@b", SqlDbType.BigInt).Value = buyerId.Value;
+            upd.Parameters.Add("@rv", SqlDbType.Binary, 8).Value = observedRowVersion;
             return await upd.ExecuteScalarAsync(ct).ConfigureAwait(false) as byte[];
         }
         catch (Exception ex)

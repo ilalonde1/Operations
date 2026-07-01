@@ -244,8 +244,11 @@ public sealed class IngestionService : IIngestionService
             // Without repair the candidate is permanently dropped — every later
             // run hits the hash and returns Duplicate. Recover the stranded
             // observation and fall through to create + link (audit 2026-07-01 C2).
+            // Repair ONLY genuinely stranded observations (OpportunityId null):
+            // an already-linked one means the composed key drifted since the
+            // original ingest — re-pointing it would steal it from its opportunity.
             persistedObservation = await _observationStore.TryGetByHashAsync(hash, ct).ConfigureAwait(false);
-            if (persistedObservation is null)
+            if (persistedObservation is null || persistedObservation.OpportunityId is not null)
             {
                 return CandidateOutcome.Duplicate;
             }
@@ -354,8 +357,10 @@ public sealed class IngestionService : IIngestionService
 
             // Same repair as ProcessCandidateAsync (audit 2026-07-01 C2): duplicate
             // hash with no historical opportunity = a prior run failed mid-persist.
+            // Only genuinely stranded observations (OpportunityId null) qualify —
+            // see the live-path comment about key drift stealing linked rows.
             persistedObservation = await _historicalObservationStore.TryGetByHashAsync(hash, ct).ConfigureAwait(false);
-            if (persistedObservation is null)
+            if (persistedObservation is null || persistedObservation.OpportunityId is not null)
             {
                 return CandidateOutcome.Duplicate;
             }
