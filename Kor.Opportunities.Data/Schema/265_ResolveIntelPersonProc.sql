@@ -1,5 +1,6 @@
-USE [KorOpportunitiesDb];
-GO
+/* Connection-scoped like every other migration — the hardcoded USE was removed
+   (audit 2026-07-01 m6): it broke execution against differently-named targets
+   (dev/restore copies). Run against the intended database's connection. */
 
 /* =====================================================================
    265 — Shared IntelPerson resolver/create proc.

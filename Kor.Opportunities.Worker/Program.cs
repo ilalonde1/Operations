@@ -857,22 +857,14 @@ builder.Services.AddQuartz(q =>
            cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
   });
 
-  // CanonicalOrgDedupJob is retired/no-op. Keep the registration only so any
-  // legacy trigger fires a visible skip message; real merges run through the
-  // supervised tools/BdCanonicalDedup CLI.
+  // CanonicalOrgDedupJob is retired/no-op — real merges run through the
+  // supervised tools/BdCanonicalDedup CLI. The weekly trigger was removed
+  // (audit 2026-07-01 n2): a scheduled no-op wrote JobRuns rows and showed as
+  // a healthy job in the Admin grid, misleading operational dashboards. The
+  // job class stays registered (durable) so a manually enqueued legacy trigger
+  // still fires the visible skip message instead of erroring.
   var canonicalDedupKey = new JobKey("CanonicalOrgDedupJob");
-  q.AddJob<Kor.Opportunities.Worker.Services.CanonicalOrgDedupJob>(opts => opts.WithIdentity(canonicalDedupKey));
-
-  q.AddTrigger(t =>
-  {
-      // Default: Sundays at 03:00 Pacific. After the Saturday-overnight ingest
-      // crons settle and before the AbMajorProjectsInventory Sunday-03:30 import
-      // (next week's dedup catches dups that one introduces).
-      var cron = builder.Configuration["CanonicalOrgDedupCronSchedule"] ?? "0 0 3 ? * SUN";
-      t.ForJob(canonicalDedupKey)
-       .WithIdentity("CanonicalOrgDedupTrigger")
-       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
-  });
+  q.AddJob<Kor.Opportunities.Worker.Services.CanonicalOrgDedupJob>(opts => opts.WithIdentity(canonicalDedupKey).StoreDurably());
 
   var dataHealthAuditKey = new JobKey("DataHealthAuditJob");
   q.AddJob<Kor.Opportunities.Worker.Services.DataHealthAuditJob>(opts => opts.WithIdentity(dataHealthAuditKey));

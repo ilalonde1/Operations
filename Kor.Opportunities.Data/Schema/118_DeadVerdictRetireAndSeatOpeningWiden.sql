@@ -43,6 +43,10 @@ FROM opportunities.MajorProjectsInventory m
 JOIN opportunities.MajorProjectEnrichment e
   ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
 WHERE m.RetiredAtUtc IS NULL
+  -- Replay-safety retrofit (audit 2026-07-01): never retire an MPI a pursuit
+  -- is linked to (single chokepoint — the child retires below key off @DeadMpis).
+  AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagementProjectLink l
+                  WHERE l.MajorProjectsInventoryId = m.Id)
   AND COALESCE(JSON_VALUE(e.ResultJson, '$.honingPass.verdict'),
                JSON_VALUE(e.ResultJson, '$.verdict')) = N'DEAD';
 PRINT 'DEAD-verdict active MPIs found: ' + CAST(@@ROWCOUNT AS varchar(10));

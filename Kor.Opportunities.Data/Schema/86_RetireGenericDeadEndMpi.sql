@@ -20,6 +20,10 @@ UPDATE opportunities.MajorProjectsInventory
 SET RetiredAtUtc = sysdatetimeoffset(),
     RetiredReason = N'R95-extra Phase B: generic-name MPI row, unresearchable (proponent drain confirmed)'
 WHERE RetiredAtUtc IS NULL
+  -- Replay-safety retrofit (audit 2026-07-01): never retire an MPI a pursuit
+  -- is linked to — mirrors DataRetirementJob's exemption from migration-267 era.
+  AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagementProjectLink l
+                  WHERE l.MajorProjectsInventoryId = opportunities.MajorProjectsInventory.Id)
   AND (ProponentName IS NULL OR LEN(LTRIM(RTRIM(ProponentName))) = 0)
   AND ProjectName IN (
       N'Condominium Development',

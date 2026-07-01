@@ -46,6 +46,12 @@ public static class BdVisualHtml
     // Cool slate -> amber -> KOR red, readable on white. t in [0,1].
     private const string HeatFn = @"function heat(t){t=Math.max(0,Math.min(1,t));if(t<0.5){var u=t/0.5;return `rgb(${Math.round(159+73*u)},${Math.round(179-16*u)},${Math.round(200-139*u)})`;}var u=(t-0.5)/0.5;return `rgb(${Math.round(232-40*u)},${Math.round(163-106*u)},${Math.round(61-18*u)})`;}";
 
+    // HTML-encode DB-sourced strings before DOM insertion. Org/project names
+    // originate from scraped external sources — a hostile name would otherwise
+    // execute in the WebView2 preview (audit 2026-07-01 M10). JSON serialization
+    // protects the /*DATA*/ slot; this protects the innerHTML/template-literal sinks.
+    private const string EscFn = @"function esc(s){return s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/""/g,'&quot;');}";
+
     private const string GraphHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""><title>Teaming Attack-Graph</title>
 <script src=""https://unpkg.com/force-graph""></script><style>" + Css + @"
   #legend{bottom:12px;left:12px} #search{position:fixed;top:10px;right:16px;width:220px}
@@ -62,8 +68,9 @@ public static class BdVisualHtml
 <div id=""g""></div><script>
 const data=/*DATA*/;const maxAttack={{MAXATTACK}}||1;
 " + HeatFn + @"
+" + EscFn + @"
 const el=document.getElementById('g');const G=ForceGraph()(el).backgroundColor('#ffffff').graphData(data).nodeId('id')
-.nodeLabel(n=>`<div style='font:12px Calibri;color:#1f2328'><b>${n.name}</b><br>${n.kind} · $${n.attack}M attack · ${n.pursuits} live pursuit(s) · ${n.warm?'WARM — we know people':'cold — no contacts yet'}</div>`)
+.nodeLabel(n=>`<div style='font:12px Calibri;color:#1f2328'><b>${esc(n.name)}</b><br>${esc(n.kind)} · $${n.attack}M attack · ${n.pursuits} live pursuit(s) · ${n.warm?'WARM — we know people':'cold — no contacts yet'}</div>`)
 .nodeColor(n=>n.kind==='KorStructural'?'#602640':heat(n.attack/maxAttack)).nodeVal(n=>Math.max(1,n.pursuits)).nodeRelSize(5)
 .linkColor(()=>'rgba(120,130,140,0.22)').linkWidth(l=>Math.min(5,l.w))
 .nodeCanvasObjectMode(()=>'after')
@@ -88,11 +95,12 @@ document.getElementById('search').addEventListener('input',e=>{const q=e.target.
 <div class=""sub"">Top {{N}} orgs on live pursuits. Tile size = opportunity value (pursuit $ &times; urgency). <b style=""color:#caffd5"">Green</b> = warm (we know them) · <b style=""color:#ffd5cf"">red</b> = no contacts yet. Grouped by kind.</div></div>
 <div id=""t""></div><div class=""legend"" id=""legend""><span class=""sw"" style=""background:#2da44e""></span>warm &nbsp; <span class=""sw"" style=""background:#c0392b""></span>cold — bigger = more $ at stake</div><script>
 const data=/*DATA*/;
+" + EscFn + @"
 function draw(){const W=window.innerWidth-16,H=window.innerHeight-72;
 const root=d3.hierarchy({children:Array.from(d3.group(data,d=>d.kind),([k,v])=>({name:k,children:v}))}).sum(d=>d.attack||0.01).sort((a,b)=>b.value-a.value);
 d3.treemap().size([W,H]).paddingInner(1).paddingTop(15)(root);const t=d3.select('#t');t.selectAll('*').remove();
-t.selectAll('div.g').data(root.children).enter().append('div').attr('class','tile').style('left',d=>d.x0+'px').style('top',d=>d.y0+'px').style('width',d=>(d.x1-d.x0)+'px').style('height',d=>(d.y1-d.y0)+'px').style('background','#eaeef2').style('color','#57606a').style('border','1px solid #d0d7de').html(d=>'<b>'+d.data.name+'</b>');
-t.selectAll('div.l').data(root.leaves()).enter().append('div').attr('class','tile').style('left',d=>d.x0+'px').style('top',d=>d.y0+'px').style('width',d=>(d.x1-d.x0)+'px').style('height',d=>(d.y1-d.y0)+'px').style('background',d=>d.data.warm?'#2da44e':'#c0392b').style('color','#fff').on('mousemove',function(ev,d){const tip=document.getElementById('tip');tip.style.display='block';tip.style.left=(ev.clientX+14)+'px';tip.style.top=(ev.clientY+14)+'px';tip.innerHTML='<b>'+d.data.name+'</b><br>'+d.data.kind+' · $'+d.data.attack+'M attack · '+d.data.pursuits+' pursuit(s)<br>'+(d.data.warm?'WARM — we know people':'cold — no contacts yet');}).on('mouseleave',function(){document.getElementById('tip').style.display='none';}).html(d=>((d.x1-d.x0>56&&d.y1-d.y0>24)?('<b>'+(d.data.name.length>24?d.data.name.slice(0,23)+'…':d.data.name)+'</b><br>$'+d.data.attack+'M'):''));}
+t.selectAll('div.g').data(root.children).enter().append('div').attr('class','tile').style('left',d=>d.x0+'px').style('top',d=>d.y0+'px').style('width',d=>(d.x1-d.x0)+'px').style('height',d=>(d.y1-d.y0)+'px').style('background','#eaeef2').style('color','#57606a').style('border','1px solid #d0d7de').html(d=>'<b>'+esc(d.data.name)+'</b>');
+t.selectAll('div.l').data(root.leaves()).enter().append('div').attr('class','tile').style('left',d=>d.x0+'px').style('top',d=>d.y0+'px').style('width',d=>(d.x1-d.x0)+'px').style('height',d=>(d.y1-d.y0)+'px').style('background',d=>d.data.warm?'#2da44e':'#c0392b').style('color','#fff').on('mousemove',function(ev,d){const tip=document.getElementById('tip');tip.style.display='block';tip.style.left=(ev.clientX+14)+'px';tip.style.top=(ev.clientY+14)+'px';tip.innerHTML='<b>'+esc(d.data.name)+'</b><br>'+esc(d.data.kind)+' · $'+d.data.attack+'M attack · '+d.data.pursuits+' pursuit(s)<br>'+(d.data.warm?'WARM — we know people':'cold — no contacts yet');}).on('mouseleave',function(){document.getElementById('tip').style.display='none';}).html(d=>((d.x1-d.x0>56&&d.y1-d.y0>24)?('<b>'+esc(d.data.name.length>24?d.data.name.slice(0,23)+'…':d.data.name)+'</b><br>$'+d.data.attack+'M'):''));}
 window.addEventListener('resize',draw);draw();</script></body></html>";
 
     private const string CardsHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""><title>Opportunity Attack Cards</title><style>" + Css + @"
@@ -107,14 +115,15 @@ window.addEventListener('resize',draw);draw();</script></body></html>";
 <div class=""sub"">{{N}} live pursuits (urgent first). Per deal: the team + KOR's path-in. <b style=""color:#caffd5"">green</b>=warm (we know them) · <b style=""color:#ffd5cf"">red</b>=displace incumbent SE · <b style=""color:#ffe8c2"">amber</b>=open seat.</div></div>
 <input id=""f"" class=""find"" placeholder=""filter pursuits…""><div id=""wrap""></div><script>
 const data=/*DATA*/;
+" + EscFn + @"
 function cad(v){if(v==null)return '';if(v>=1e9)return '$'+(v/1e9).toFixed(1)+'B';if(v>=1e6)return '$'+(v/1e6).toFixed(0)+'M';return '$'+Math.round(v/1e3)+'K';}
 function pill(t,c){return `<span class=""pill"" style=""background:${c}"">${t}</span>`;}
-function arch(c){if(!c.arch)return '<span style=""color:#8b949e"">— unknown route</span>';return c.arch+(c.archPeople>0?pill('warm','#2da44e'):pill('cold','#8b949e'));}
-function se(c){if(c.seIsKor)return (c.se||'KOR')+pill('OURS','#2da44e');if(c.se)return c.se+pill('displace','#c0392b');return '<span style=""color:#9a6700"">open seat</span>'+pill('SEAT','#d29922');}
-function org(n){return n?n:'<span style=""color:#8b949e"">—</span>';}
+function arch(c){if(!c.arch)return '<span style=""color:#8b949e"">— unknown route</span>';return esc(c.arch)+(c.archPeople>0?pill('warm','#2da44e'):pill('cold','#8b949e'));}
+function se(c){if(c.seIsKor)return esc(c.se||'KOR')+pill('OURS','#2da44e');if(c.se)return esc(c.se)+pill('displace','#c0392b');return '<span style=""color:#9a6700"">open seat</span>'+pill('SEAT','#d29922');}
+function org(n){return n?esc(n):'<span style=""color:#8b949e"">—</span>';}
 function render(list){document.getElementById('wrap').innerHTML=list.map(c=>`
-<div class=""card ${c.verdict==='PURSUE_URGENT'?'urgent':''}""><div class=""pname"">${c.project}</div>
-<div class=""meta"">${c.verdict} · ${c.province} · ${cad(c.cost)}</div>
+<div class=""card ${c.verdict==='PURSUE_URGENT'?'urgent':''}""><div class=""pname"">${esc(c.project)}</div>
+<div class=""meta"">${esc(c.verdict)} · ${esc(c.province)} · ${cad(c.cost)}</div>
 <div class=""row""><span class=""role"">Architect</span><span class=""who"">${arch(c)}</span></div>
 <div class=""row""><span class=""role"">Structural</span><span class=""who"">${se(c)}</span></div>
 <div class=""row""><span class=""role"">GC</span><span class=""who"">${org(c.gc)}</span></div>
