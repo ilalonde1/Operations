@@ -1,0 +1,22 @@
+# Reviewed merge of pre-existing ambiguous org families (2026-06-30). Survivor = Clendor/Deltek-anchored
+# row where present (frozen authoritative), else richest by refs. Same-entity verified by domain + name.
+# Composites (multi-firm names) and cross-role (DIALOG/HDR architect-vs-competitor) DELIBERATELY EXCLUDED.
+# LoserId,SurvivorId,Reason
+77733,153,Arcadis -> Arcadis IBI Group (Clendor CL00483)
+77674,153,IBI Group (Arcadis) -> Arcadis IBI Group
+77915,153,IBI Group / Arcadis (ArcadisIBI) -> Arcadis IBI Group
+77923,153,IBI Group (residential tower) project-tag -> Arcadis IBI Group
+77765,38924,Englekirk (now WSP) -> Englekirk Structural Engineers (Clendor)
+77120,38924,Englekirk (WSP) -> Englekirk Structural Engineers (Clendor)
+77447,18865,FNHA (BC) -> First Nations Health Authority
+77709,18865,FNHA (FNHA) -> First Nations Health Authority
+77388,54977,Interior Health Authority -> Interior Health
+77791,54977,Interior Health Authority - Cottonwoods project-tag -> Interior Health
+77789,54977,Interior Health Authority - Vernon Jubilee project-tag -> Interior Health
+77387,54979,Island Health (VIHA) -> Island Health
+77790,54979,Island Health (VIHA) -> Island Health
+77766,70103,KNA Structural (now KNA/RTM) -> KNA Structural Engineers
+75709,70103,KNA Structural (now part of RTM) -> KNA Structural Engineers
+77751,38928,Krahn Engineering (Krahn Group) -> Krahn Engineering Ltd. (Clendor V0064)
+77877,38928,Krahn Group of Companies -> Krahn Engineering Ltd. (Clendor V0064)
+75678,38928,Krahn Group of Companies (Krahn Engineering) -> Krahn Engineering Ltd. (Clendor V0064)
