@@ -57,14 +57,14 @@ Every claim below is **[V]** verified (primary source, checked 2026-06-30/07-01)
 5. Print: this pack + the Walk-In Card + the full DIALOG brief (reference copy).
 
 ## 5. Debrief capture — within 24h of landing home
-For **each** meeting, record (a voice memo is fine — it gets ingested into the BD platform):
+For **each** meeting, record (a voice memo is fine — it all gets filed into KOR's business-development database):
 1. **DIALOG:** Is UHNBC structural in-house at DIALOG BC or open to a partner? Who do they reach for on the next Kaye-scale co-SE? Where is Edmonton structural bandwidth tightest (sectors, months)? Any names mentioned (partners, competitors, projects)?
 2. **Enoch:** Status + procurement route for each vertical build (Elders lodge / cultural centre / health facility); Tawaw's structural arrangement; prequalification process and timing.
 3. **Clark:** How the design-partner roster works, who owns it, next pursuit where a structural partner is needed; YEG North Tower SE status.
 4. **GEC:** NorQuest grant timing expectation; how GEC picks SEs; other GEC Edmonton pursuits 2026-27.
 5. **Everything:** every firm/person/project named in any room — even in passing. These become platform records; they're how the next trip starts warmer than this one.
 
-**Hand the notes to Ian/BD → they get verified and ingested through the standard pipeline (ingest → dedup → decompose), same as this pack was built.**
+**Hand the notes to Ian — they get fact-checked and filed into the BD database, the same way this pack was built. Every name and project you catch makes the next trip start warmer.**
 
 ---
-*Verification: platform-first (295 pre-existing AB/Edmonton enrichment rows mined), then 2 targeted research passes (meeting candidates; market macro) with per-claim primary sources and self-honing (both passes corrected earlier figures: $43.3B→$37.2B sourced; RJC 4→2 AB offices; Scott Benoit Vancouver-not-Edmonton; school boards don't procure SEs). Sources: enochnation.ca, cib-bic.ca, gecarchitecture.com, norquest.ca, majorprojects.alberta.ca, clarkbuilders.com, alberta.ca, apega.ca, purchasing.alberta.ca, rjc.ca, englobecorp.com, mcelhanney.com, entuitive.com, CBC/CTV. All org/contact intel ingested to the BD platform 2026-07-01 (provider: Edmonton-Trip-Research-2026-07-01).*
+*Verification: built first from KOR's existing research database (295 prior Alberta/Edmonton records reviewed), then two targeted research passes (meeting candidates; market picture), every claim checked against a primary source. Figures corrected along the way: $43.3B→$37.2B (sourced provincial number); RJC has 2 AB offices not 4; Scott Benoit is Vancouver-based; school boards don't hire the structural engineers. Sources: enochnation.ca, cib-bic.ca, gecarchitecture.com, norquest.ca, majorprojects.alberta.ca, clarkbuilders.com, alberta.ca, apega.ca, purchasing.alberta.ca, rjc.ca, englobecorp.com, mcelhanney.com, entuitive.com, CBC/CTV. All firm and contact details in this pack were filed into KOR's BD database on 2026-07-01.*
