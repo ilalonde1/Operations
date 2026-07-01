@@ -40,6 +40,10 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private CancellationTokenSource? _detailCts;
     private CrmEngagementRowView[] _contextSnapshot = Array.Empty<CrmEngagementRowView>();
 
+    /// <summary>When set before the first load (e.g. by the Overwatch board's
+    /// double-click), that engagement arrives selected. Consumed once.</summary>
+    public long? PendingSelectEngagementId { get; set; }
+
     public CrmViewModel(
         ICrmEngagementStore engagementStore,
         ICrmActivityStore activityStore,
@@ -220,9 +224,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
                 Engagements.Add(new CrmEngagementRowView(e, opp));
             }
 
-            Selected = preservedId.HasValue
-                ? Engagements.FirstOrDefault(r => r.Id == preservedId.Value) ?? Engagements.FirstOrDefault()
-                : Engagements.FirstOrDefault();
+            // Pending scoped-open (Overwatch double-click) wins over preservation.
+            var pendingId = PendingSelectEngagementId;
+            PendingSelectEngagementId = null;
+            Selected = pendingId.HasValue
+                ? Engagements.FirstOrDefault(r => r.Id == pendingId.Value) ?? Engagements.FirstOrDefault()
+                : preservedId.HasValue
+                    ? Engagements.FirstOrDefault(r => r.Id == preservedId.Value) ?? Engagements.FirstOrDefault()
+                    : Engagements.FirstOrDefault();
 
             _contextSnapshot = Engagements.ToArray();
 

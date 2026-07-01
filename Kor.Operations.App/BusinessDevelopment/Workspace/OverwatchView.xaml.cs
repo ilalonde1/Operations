@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.Options;
-using Kor.Operations.Data;
 using Kor.Operations.Graph;
 using Kor.Operations.Services;
 using Kor.Opportunities.Data.Crm;
@@ -24,16 +23,16 @@ public partial class OverwatchView : UserControl
 {
     private readonly OverwatchViewModel _vm;
     private readonly IGraphFacade _graph;
-    private readonly PreferencesRepository _preferences;
+    private readonly Kor.Operations.Core.Services.IProposalStaffStore _staffStore;
     private CancellationTokenSource? _cts;
     private bool _initialized;
     private bool _reassignBusy;
 
-    public OverwatchView(OverwatchViewModel vm, IGraphFacade graph, PreferencesRepository preferences)
+    public OverwatchView(OverwatchViewModel vm, IGraphFacade graph, Kor.Operations.Core.Services.IProposalStaffStore staffStore)
     {
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
         _graph = graph ?? throw new ArgumentNullException(nameof(graph));
-        _preferences = preferences ?? throw new ArgumentNullException(nameof(preferences));
+        _staffStore = staffStore ?? throw new ArgumentNullException(nameof(staffStore));
         InitializeComponent();
         DataContext = _vm;
     }
@@ -67,6 +66,22 @@ public partial class OverwatchView : UserControl
         await ReloadAsync().ConfigureAwait(true);
     }
 
+    /// <summary>Double-click = open and manage the pursuit: navigate the
+    /// workspace to Pursuits with this engagement pre-selected.</summary>
+    private void OverwatchGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        var row = _vm.Selected;
+        if (row is null)
+        {
+            return;
+        }
+
+        if (Window.GetWindow(this) is BdWorkspaceWindow workspace)
+        {
+            workspace.NavigateToPursuit(row.EngagementId);
+        }
+    }
+
     private async void ReassignButton_Click(object sender, RoutedEventArgs e)
     {
         // Guard the WHOLE flow (directory load + dialog + reassign + email), not
@@ -86,7 +101,7 @@ public partial class OverwatchView : UserControl
         try
         {
             var managerUpn = ResolveActor();
-            var people = await LoadDirectoryAsync(managerUpn).ConfigureAwait(true);
+            var people = await LoadDirectoryAsync().ConfigureAwait(true);
 
             var dlg = new ReassignDialog(row.ProjectName, row.OwnerDisplay, people)
             {
@@ -121,22 +136,27 @@ public partial class OverwatchView : UserControl
     }
 
     /// <summary>
-    /// The acting manager's team directory (AD-sourced, the same UserTeamMembers
-    /// cache the TeamsPicker uses), de-duplicated by email. Failures degrade to an
-    /// empty list — the picker stays editable so a manager can still type an address.
+    /// The FIRM's staff list (IProposalStaffStore — the same curated roster the
+    /// fee-proposal builder's "Manage Staff" maintains), not the acting user's
+    /// personal transmittals-team cache: that cache only held the manager's own
+    /// team (2 people), which made the reassign dropdown useless. Staff without
+    /// an email are still listed (their FullName becomes the stored owner —
+    /// matching the legacy first-name owners); the email notification is simply
+    /// skipped for them. Failures degrade to an empty list — the picker stays
+    /// editable so a manager can always type a person.
     /// </summary>
-    private async Task<IReadOnlyList<PersonOption>> LoadDirectoryAsync(string managerUpn)
+    private async Task<IReadOnlyList<PersonOption>> LoadDirectoryAsync()
     {
         try
         {
-            var members = await _preferences.GetMembersForUserAsync(managerUpn).ConfigureAwait(true);
-            return members
-                .Where(m => !string.IsNullOrWhiteSpace(m.Email))
-                .GroupBy(m => m.Email, StringComparer.OrdinalIgnoreCase)
+            var staff = await _staffStore.LoadAllAsync(CancellationToken.None).ConfigureAwait(true);
+            return staff
+                .Where(s => !string.IsNullOrWhiteSpace(s.FullName))
+                .GroupBy(s => string.IsNullOrWhiteSpace(s.Email) ? s.FullName : s.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(g => g.First())
-                .Select(m => new PersonOption(
-                    string.IsNullOrWhiteSpace(m.DisplayName) ? m.Email : m.DisplayName!,
-                    m.Email))
+                .Select(s => new PersonOption(
+                    s.FullName.Trim(),
+                    string.IsNullOrWhiteSpace(s.Email) ? s.FullName.Trim() : s.Email.Trim()))
                 .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }

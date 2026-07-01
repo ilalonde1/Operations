@@ -188,6 +188,24 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<App.Crm.CrmView>();
     }
 
+    /// <summary>
+    /// Open the Pursuits screen scoped to one engagement — the Overwatch board's
+    /// double-click "manage this pursuit" path. Same pending-state pattern as
+    /// <see cref="NavigateToForwardPipelineWithFilter"/>: stamp the id on the VM
+    /// before its first load so the row arrives selected.
+    /// </summary>
+    public void NavigateToPursuit(long engagementId)
+    {
+        SetActiveNav(PursuitsButton);
+        var view = _services.GetRequiredService<App.Crm.CrmView>();
+        if (view.DataContext is App.Crm.CrmViewModel vm)
+        {
+            vm.PendingSelectEngagementId = engagementId;
+        }
+
+        ContentHost.Content = view;
+    }
+
     private void Overwatch_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(OverwatchButton);

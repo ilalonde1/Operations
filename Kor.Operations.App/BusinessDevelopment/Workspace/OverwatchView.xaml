@@ -49,7 +49,9 @@
                           IsReadOnly="True"
                           HeadersVisibility="Column"
                           ItemsSource="{Binding Pursuits}"
-                          SelectedItem="{Binding Selected}">
+                          SelectedItem="{Binding Selected}"
+                          MouseDoubleClick="OverwatchGrid_MouseDoubleClick"
+                          ToolTip="Double-click a pursuit to open and manage it in Pursuits.">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="Staleness" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
