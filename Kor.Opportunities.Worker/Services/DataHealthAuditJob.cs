@@ -96,6 +96,51 @@ internal sealed class DataHealthAuditJob : IJob
         GROUP BY co.Kind ORDER BY Total DESC
         """;
 
+    private const string Q8IdentityDriftSql = """
+        WITH LiveNames AS (
+            SELECT NormalizedName
+            FROM opportunities.CanonicalOrg
+            WHERE RetiredAtUtc IS NULL
+              AND NormalizedName IS NOT NULL
+              AND LEN(NormalizedName) >= 3
+            GROUP BY NormalizedName
+        ), RetiredNames AS (
+            SELECT NormalizedName
+            FROM opportunities.CanonicalOrg
+            WHERE RetiredAtUtc IS NOT NULL
+              AND NormalizedName IS NOT NULL
+              AND LEN(NormalizedName) >= 3
+            GROUP BY NormalizedName
+        ), NameTwins AS (
+            SELECT l.NormalizedName
+            FROM LiveNames l
+            JOIN RetiredNames r ON r.NormalizedName = l.NormalizedName
+        ), LiveDomains AS (
+            SELECT WebsiteDomain
+            FROM opportunities.CanonicalOrg
+            WHERE RetiredAtUtc IS NULL
+              AND WebsiteDomain IS NOT NULL
+              AND LEN(WebsiteDomain) >= 4
+            GROUP BY WebsiteDomain
+        ), RetiredDomains AS (
+            SELECT WebsiteDomain
+            FROM opportunities.CanonicalOrg
+            WHERE RetiredAtUtc IS NOT NULL
+              AND WebsiteDomain IS NOT NULL
+              AND LEN(WebsiteDomain) >= 4
+            GROUP BY WebsiteDomain
+        ), DomainTwins AS (
+            SELECT l.WebsiteDomain
+            FROM LiveDomains l
+            JOIN RetiredDomains r ON r.WebsiteDomain = l.WebsiteDomain
+        )
+        SELECT 'Identity' AS Category, 'exact-name live+retired collisions' AS Label, COUNT_BIG(*) AS N
+        FROM NameTwins
+        UNION ALL
+        SELECT 'Identity' AS Category, 'domain live+retired collisions' AS Label, COUNT_BIG(*) AS N
+        FROM DomainTwins
+        """;
+
     private readonly IOptions<OpportunitiesWorkerOptions> _options;
     private readonly ILogger<DataHealthAuditJob> _logger;
 
@@ -132,6 +177,7 @@ internal sealed class DataHealthAuditJob : IJob
             var kindMismatches = await QueryAsync(connection, Q5KindSuffixMismatchSql, ReadKindMismatchRow, context.CancellationToken).ConfigureAwait(false);
             var fkOrphanRates = await QueryAsync(connection, Q6FkOrphanRatesSql, ReadFkOrphanRateRow, context.CancellationToken).ConfigureAwait(false);
             var enrichmentCoverage = await QueryAsync(connection, Q7EnrichmentCoverageSql, ReadEnrichmentCoverageRow, context.CancellationToken).ConfigureAwait(false);
+            var identityDrift = await QueryAsync(connection, Q8IdentityDriftSql, ReadIdentityDriftRow, context.CancellationToken).ConfigureAwait(false);
 
             sw.Stop();
 
@@ -154,7 +200,8 @@ internal sealed class DataHealthAuditJob : IJob
                 dirtPatterns,
                 kindMismatches,
                 fkOrphanRates,
-                enrichmentCoverage);
+                enrichmentCoverage,
+                identityDrift);
 
             await File.WriteAllTextAsync(timestampedPath, markdown, Encoding.UTF8, context.CancellationToken).ConfigureAwait(false);
             await File.WriteAllTextAsync(latestPath, markdown, Encoding.UTF8, context.CancellationToken).ConfigureAwait(false);
@@ -215,7 +262,8 @@ internal sealed class DataHealthAuditJob : IJob
         IReadOnlyList<DirtPatternRow> dirtPatterns,
         IReadOnlyList<KindMismatchRow> kindMismatches,
         IReadOnlyList<FkOrphanRateRow> fkOrphanRates,
-        IReadOnlyList<EnrichmentCoverageRow> enrichmentCoverage)
+        IReadOnlyList<EnrichmentCoverageRow> enrichmentCoverage,
+        IReadOnlyList<IdentityDriftRow> identityDrift)
     {
         var sb = new StringBuilder();
         sb.Append("# Data Health Audit  ").AppendLine(timestampUtc.ToString("O", CultureInfo.InvariantCulture));
@@ -309,6 +357,18 @@ internal sealed class DataHealthAuditJob : IJob
         }
 
         sb.AppendLine();
+        sb.AppendLine("## H. Identity drift sentinels");
+        sb.AppendLine("| Category | Label | Count |");
+        sb.AppendLine("|---|---|---:|");
+        foreach (var row in identityDrift)
+        {
+            sb.Append("| ").Append(Md(row.Category))
+                .Append(" | ").Append(Md(row.Label))
+                .Append(" | ").Append(row.N.ToString("N0", CultureInfo.InvariantCulture))
+                .AppendLine(" |");
+        }
+
+        sb.AppendLine();
         sb.AppendLine("---");
         sb.Append("Report file: `").Append(reportPath.Replace("`", "'")).AppendLine("`");
         return sb.ToString();
@@ -334,6 +394,9 @@ internal sealed class DataHealthAuditJob : IJob
 
     private static EnrichmentCoverageRow ReadEnrichmentCoverageRow(SqlDataReader r) =>
         new(GetString(r, 0), GetInt64(r, 1), GetInt64(r, 2), GetNullableDecimal(r, 3));
+
+    private static IdentityDriftRow ReadIdentityDriftRow(SqlDataReader r) =>
+        new(GetString(r, 0), GetString(r, 1), GetInt64(r, 2));
 
     private static string GetString(SqlDataReader r, int ordinal) =>
         r.IsDBNull(ordinal) ? string.Empty : r.GetString(ordinal);
@@ -378,4 +441,6 @@ internal sealed class DataHealthAuditJob : IJob
     private sealed record FkOrphanRateRow(string Col, long Total, long NullCount, decimal? PctNull);
 
     private sealed record EnrichmentCoverageRow(string Kind, long Total, long WithAnyEnrich, decimal? PctEnriched);
+
+    private sealed record IdentityDriftRow(string Category, string Label, long N);
 }
