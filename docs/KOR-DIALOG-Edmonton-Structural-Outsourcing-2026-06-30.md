@@ -3,7 +3,19 @@
 
 Claims are **[V]** verified (primary source) or **[H]** hypothesis to test in the room. A **"Do NOT say"** list is at the end. Primary contact: **Georg Josi** — Partner, Structural Engineer, Edmonton Studio Chair (PhD, PEng).
 
-## Bottom line — what DIALOG outsources structural engineering for
+## THE ANSWER — what DIALOG outsources structural for, IN EDMONTON [V]
+*(The commissioning question: "they have a massive structural department but are so busy they outsource — what types of projects, focus on Edmonton?")*
+
+In Edmonton, DIALOG has brought in external structural engineers on **three project types**:
+1. **Very large hospitals delivered design-build** — **Kaye Edmonton Clinic (~$900M): DIALOG + Yolles (now Jacobs) as co-equal structural engineers.** Their own award submission cites the *"massive scale and ambitious schedule"* as the reason — so the "too busy → outsource" premise is **exactly right for this project type**, and only this one. Below mega-scale they stay in-house (Norwood $364M, Edson, Grande Prairie ~$680M).
+2. **High-rise residential towers** — **The Parks (45+35 st) → RJC; The Hendrix (27 st) → RJC.** On Edmonton towers the developer typically procures structural separately from architecture; RJC currently owns that lane.
+3. **Architecture-only commissions** (client hires structural directly) — **HSBC Place repositioning → ISL + RJC; Brewery District → ISL.** *(Mega-venues also go external — Rogers Place → Thornton Tomasetti prime, DIALOG associate — but under HOK, not DIALOG's choice.)*
+
+**They do NOT outsource in Edmonton:** standard-scale hospitals, civic/cultural (Royal Alberta Museum, Winspear), **bridges & transit (strongest in-house domain** — Walterdale, Valley Line), airport buildings, rec centres, own office towers (Enbridge Centre).
+
+**The July-10 implication:** the realistic lane is the **Kaye-model mega-hospital co-SE** ("who do you reach for next time?") plus **overflow capacity** — their Edmonton structural partner bench has thinned (Montgomery → emeritus, S. Renihan → transit) while the RPK merger added healthcare workload. The rest of this brief is the firm-wide evidence, the people, and how to run the meeting.
+
+## Firm-wide pattern — what DIALOG outsources structural engineering for
 DIALOG self-performs the bulk of its structural with a deep multidisciplinary bench. External (or co-) structural engineers appear in **five recurring situations** [V]:
 
 1. **Tower work, where the developer procures structural separately from architecture.** On high-rises, DIALOG plays *either* the architect role *or* the consulting-SE role — almost never both. As architect/AOR (usually under a design lead): Vancouver House (BIG → Glotman Simpson + BuroHappold), Brookfield Place 60st (AFK → Entuitive), The Parks (Hariri Pontarini → RJC), The Hendrix (→ RJC). As SE-only: the ex-**Jones Kwong Kishi** practice (merged into DIALOG **Oct 2013**) engineered Shangri-La Vancouver/Toronto (62/65st), Fairmont Pacific Rim, Shaw Tower — **for other architects (James KM Cheng)**, not as DIALOG-prime. The only verified DIALOG-prime-with-in-house-structural building is **Enbridge Centre (26st)**.
