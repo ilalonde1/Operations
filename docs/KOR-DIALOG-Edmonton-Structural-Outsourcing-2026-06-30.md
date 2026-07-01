@@ -60,7 +60,7 @@ Partner-owned (50+ partners, flat governance, no single CEO), **600+ staff, 6 st
 2. Don't say "DIALOG outsources hospital structural" broadly — they self-perform at ~$680M (GP Regional) and ~$1B (UHN Toronto Western, CM delivery). The co-SE cases are AB PCL design-builds.
 3. **Don't pitch UHNBC as an open SE seat** — structural is most likely inside DIALOG BC's own scope (no structural alliance participant named; "Engineering" is in their BC entity's legal name). Frame as a capacity-support question. And don't call Prince George seismic-intensive (PGA ≈ Edmonton's).
 4. Don't say Vancouver has "only one structural engineer" (≥3) or is "tall-building only" (Broadway Subway, housing) — the accurate gap is **no healthcare structural track record**.
-5. **Don't say Oosterhof "chairs" the seismic committee** — voting member of SC-ED (chair: Perry Adebar, UBC). Don't call him DIALOG's "only seismic specialist."
+5. **Don't say Oosterhof "chairs" the seismic committee** — he's a voting member of the Standing Committee on Earthquake Design (the chair is Perry Adebar, UBC). Don't call him DIALOG's "only seismic specialist."
 6. Don't imply IE 1.5 is new (since ~1990), don't cite a "1% drift limit" for the new check (**0.5%**, Art. 4.1.8.23), don't call the rule Alberta-unique (national since NBC 2020; new *to Alberta* May 1 2024), don't attribute Foothills McCaig structural to Stantec (unverified), don't say UHNBC construction starts "fall 2026" (~2027).
 
 ## Questions for Georg Josi (July 10)
