@@ -1,74 +1,64 @@
-# DIALOG Edmonton — Structural Outsourcing Brief
-**KOR Structural · July 10, 2026 meeting · Verified + deepened 2026-06-30 (2 research + 4 adversarial verification passes)**
+# DIALOG — Structural Outsourcing Brief
+**KOR Structural · July 10, 2026 meeting · Verified 2026-06-30 (4 research + 6 adversarial verification passes; ~60 projects catalogued firm-wide)**
 
-> Every claim is **[Verified]** (primary source) or **[Hypothesis]**. A **"Do NOT say"** list flags the meeting landmines. Decision-maker: **Georg Josi**, Partner/Structural Engineer/Edmonton Studio Chair (PhD, PEng).
-
----
-
-## Bottom line — the honest answer to "what does DIALOG outsource structural for?"
-
-**Less than the premise assumes. DIALOG self-performs the large majority of its structural — including most hospitals and its venue work — with a deep in-house structural bench.** It brings in an external structural engineer only in three **narrow** situations [all Verified]:
-
-1. **Top-scale healthcare, as a co-SE (not a hand-off):** On the **Kaye Edmonton Clinic** (~$900M, university-affiliated) DIALOG and **Yolles (now Jacobs)** were **co-equal** structural engineers. This is the exception, at the very top of the scale — not DIALOG's norm.
-2. **Mass timber / novel typologies:** **Fast+Epp** (e.g. The Hive). Entrenched (Fast+Epp has an Edmonton office since 2012).
-3. **High-rise residential towers:** **RJC Engineers** (The Parks; DIALOG co-architect w/ Hariri Pontarini).
-
-**What DIALOG does IN-HOUSE (do not pitch these):** most hospitals (GP Regional → Ralph Hildenbrandt; Edson → Sandra Renihan; Calgary Cancer Centre → DIALOG+Stantec), **venues** (ICE District/Rogers Place structural team incl. Steven Oosterhof — TT was arena prime, DIALOG associate), **bridges & transit** (Walterdale led in-house; Neil Robson, Steven Prozniak).
-
-**Implication:** this is a **relationship / long-game** meeting, not an open-seat pitch. KOR's realistic wedge is *specialist healthcare-seismic depth + overflow capacity at the top scale* — not "you outsource, hire us."
+> Every claim is **[Verified]** (primary source) or **[Hypothesis]**. A **"Do NOT say"** list flags meeting landmines. Decision-maker: **Georg Josi**, Partner/Structural Engineer/Edmonton Studio Chair (PhD, PEng).
 
 ---
 
-## The "open seats" reality check (verified)
-- **Edmonton Event Park** — DIALOG+HNTB, no SE named publicly. But DIALOG likely **self-performs** (Oosterhof did the adjacent ICE District), OR **Thornton Tomasetti** gets it via HNTB (TT = HNTB's SE on Ryan Field + Vegas A's, and did **Rogers Place** next door). **KOR's odds are low — probe, don't pitch.**
-- **NAIT Advanced Skills Centre** — GEC+DIALOG, PCL builder, early works ~spring 2026. DIALOG almost certainly **self-performs**; no separate SE RFP. Effectively **not open.**
+## Bottom line — what DIALOG outsources structural engineering for
 
-The one real regulatory wedge if a US firm (e.g. Walter P Moore) were in the mix: **APEGA Permit to Practice is mandatory** to seal Alberta structural drawings [Verified] — but TT already operates in Canada, so it doesn't protect KOR against TT.
+DIALOG self-performs the bulk of its structural with a deep in-house bench. It brings in an external (or co-) structural engineer in **five recurring situations** [all Verified against ≥60 projects]:
 
----
+1. **Tall towers (~30+ storeys)** — structural goes external **regardless of DIALOG's architect role**. Verified: Brookfield Place Calgary (60 st) → Entuitive; Telus Sky (58 st) → Glotman Simpson; Vancouver House (53 st) → BuroHappold + Glotman Simpson; JW Marriott/ICE District (55 st) → Thornton Tomasetti; The Parks (45+35 st) → RJC. *(Self-performs low/mid-rise when prime — Enbridge Centre, 26 st, in-house.)*
+2. **Design-architect-of-record role** — when a design/starchitect leads and DIALOG is delivery/AOR: Calgary Central Library (Snøhetta design → Entuitive); Brookfield (Arney Fender Katsalidis design → Entuitive).
+3. **Mega-scale healthcare under design-build/alliance (~$800M+ design-award budget)** — co-SE: Kaye Edmonton Clinic (~$900M) → **Jacobs (ex-Yolles), co-equal**; Calgary Cancer Centre ($1.4B, PCL DB) → **DIALOG + Stantec co-SE.**
+4. **Specialist structural innovation they lack** — pioneer seismic mass timber → **Fast+Epp** (The Hive); rammed earth → **Equilibrium** (Nk'Mip); life sciences → **Blackwell**; forensic concrete → RJC (Glenbow).
+5. **A studio lacking the relevant specialization** — e.g., DIALOG **Vancouver has structural engineers but no healthcare specialization** (healthcare structural is run from Calgary) → drives external/teamed structural on BC healthcare (see UHNBC below).
 
-## Where KOR realistically fits (the actual play)
-1. **Healthcare co-SE / overflow at the top scale** — position KOR as the specialist structural partner DIALOG reaches for when a hospital hits Kaye-scale or their in-house team is maxed. Long-game.
-2. **Misericordia Community Hospital inpatient tower** (~350 beds per provincial reporting; Acute Care Action Plan, Nov 2025; planning-only funding) — **architect seat is OPEN** → if DIALOG wins the architect role, KOR could ride as co-SE. The better teaming target. *(Grey Nuns tower is real but Stantec is already architect → structural-teaming only.)*
-3. **Seismic specialist depth** — the NBC post-disaster hospital angle (below) as *added specialist capacity*, not "you can't do this" (DIALOG's in-house team knows the code).
+**Self-performs (do NOT pitch these):** transit / bridges (their strongest domain — Walterdale, Valley Line, Broadway Subway — always in-house), low/mid-rise buildings, standard institutional & civic (Royal Alberta Museum, Winspear, Enbridge Centre), standard CLT timber, and **healthcare under ~$800M in Alberta/Ontario when they're prime** (Grande Prairie ~$647M design budget → Hildenbrandt/Lenzin; Edson → Renihan).
 
-**Differentiation line [Verified, use this wording]:** *"Since May 1, 2024, Alberta builds to the NBC 2023 Alberta Edition (based on NBC 2020) — hospitals are post-disaster buildings, seismic importance factor 1.5, with the new near-elastic / limited-damage objective. That's a standard BC firms have designed to for a decade; KOR brings that hospital-seismic depth as added capacity."* (Do not call it Alberta-unique — it's national.)
-
----
-
-## Prerequisites — close before July 10 (only KOR can)
-1. **APEGA Permit to Practice + a licensed responsible member.** Hard legal requirement — *no Alberta structural work is possible without it.* Confirm status.
-2. **Nameable BC hospital / high-importance SE references.** The healthcare pitch is hollow without them — DIALOG's public portfolio shows KOR none. Line up specific projects to cite.
+**One-line meeting answer:** *"DIALOG outsources structural on tall towers, on projects where a design architect leads, on mega-scale design-build hospitals (as co-SE), on specialist-innovation work, and where a studio lacks the specialty — and self-performs transit/bridges, mid-rise, standard civic, and sub-$800M home-market healthcare."*
 
 ---
 
-## Competitors (verified)
-| Firm | Role vs DIALOG | Note |
-|---|---|---|
-| **RJC Engineers** | Incumbent — towers + AB healthcare (South Health Campus) | The one to displace on healthcare |
-| **Fast+Epp** | Mass-timber partner (Edmonton office since 2012) | Don't contest this lane |
-| **Thornton Tomasetti** | HNTB's venue SE (Rogers Place, Ryan Field, Vegas A's) | Threat on Event Park if HNTB drives SE |
-| **Entuitive** | Edmonton office (2016), institutional | **No AB hospital record — don't overstate** |
-| **Jacobs (ex-Yolles)** | The Kaye co-SE precedent | Context |
+## External structural-engineer partner map (verified)
+Jacobs (ex-Yolles) · Stantec · RJC Engineers · Fast+Epp · Glotman Simpson · Entuitive · BuroHappold · Thornton Tomasetti · Equilibrium Consulting · Blackwell · ISL Engineering · Structural Design Group. *(RJC and Entuitive are the ones KOR most directly competes with for AB/BC institutional-and-healthcare overflow.)*
 
-## DIALOG Edmonton structural bench (verified — this is why they self-perform)
-Georg Josi (Partner, Studio Chair) · **Steven Oosterhof** (Partner, PhD/PEng/PE/SE — venue/ICE District) · **Neil Robson** (Partner — transport/institutional) · Sandra Renihan (Partner, Edmonton, transit-focus) · Steven Prozniak (Assoc, bridges) · Ryan Renihan, Larissa Ulcar, Victoria Buffam (Assoc) · Jeff DiBattista (Partner Emeritus, engaged). *(Calgary healthcare structural: Ralph Hildenbrandt, Chris Lenzin.)*
+---
+
+## The actionable opening — UHNBC Acute Care Tower, Prince George BC [Verified]
+- **$1.579B**; **DIALOG + EllisDon** named preferred proponent (Oct 2025); alliance agreement signed **Dec 2025**; **design/development phase runs through late 2026, construction 2027.**
+- **Structural engineer is publicly unnamed** — the alliance names only EllisDon, DIALOG BC, PML Mechanical, Houle Electric. SE-sub selection is realistic during the 2026 design phase → **pursuable but time-sensitive.**
+- **Why KOR fits:** it's **in BC (KOR home turf — no APEGA barrier)**, and it sits in DIALOG's **Vancouver healthcare-structural specialization gap.** This is the single best, real opening — far more actionable than the Edmonton venue/hospital seats.
+
+*Edmonton items for context: Event Park (DIALOG+HNTB — likely DIALOG self-perform or Thornton Tomasetti) and NAIT (likely DIALOG self-perform) are probe-not-pitch. Misericordia inpatient tower (architect seat open, planning-only funding) is a long-lead AB teaming watch.*
+
+---
+
+## DIALOG structural bench (verified — why they self-perform so much)
+**Edmonton:** Georg Josi (Partner, Studio Chair), Steven Oosterhof (Partner — venue/ICE District), Neil Robson (Partner — transport/institutional), Sandra Renihan (Partner — transit focus), Steven Prozniak (Assoc — bridges), Ryan Renihan / Larissa Ulcar / Victoria Buffam (Assoc), Jeff DiBattista (Partner Emeritus, engaged).
+**Calgary (healthcare structural):** Ralph Hildenbrandt, Chris Lenzin.
+**Vancouver (tall-building/commercial — no healthcare specialty):** Fadi Ghorayeb (Managing Partner), Thomas Wu (Partner), Mehrak Razavi (Principal Assoc).
 
 ---
 
 ## Do NOT say (fact-check landmines)
-1. **Do NOT** say "DIALOG outsources hospital structural" — **refuted;** they self-perform (Hildenbrandt/Renihan/Lenzin lead it). This would be embarrassing in front of their engineers.
-2. **Do NOT** present Event Park or NAIT as open SE seats — likely self-performed / TT.
-3. **Do NOT** say Oosterhof was Rogers Place SE-of-record — **TT was prime;** DIALOG was associate structural.
-4. **Do NOT** assert "Chris Minerva (TT) holds an Alberta PEng" — unverified (aggregator only); check APEGA directory first if it matters.
-5. **Do NOT** call the seismic requirement Alberta-unique, or date it "2023" — it's national NBC 2020, effective in AB **May 1 2024.**
-6. **Do NOT** overstate Entuitive's AB hospital experience — they have none public.
+1. **Do NOT** say DIALOG self-performs structural on 60-storey towers — refuted; tall towers go to Entuitive/Glotman/BuroHappold/TT.
+2. **Do NOT** say DIALOG "outsources hospital structural" broadly — they self-perform sub-$800M home-market hospitals in-house (Hildenbrandt/Renihan/Lenzin).
+3. **Do NOT** say DIALOG Vancouver has "only one structural engineer" — there are ≥3; the real point is **no healthcare specialization**.
+4. **Do NOT** attribute Foothills McCaig Tower structural to Stantec — unverified; say "a separate structural firm" (DIALOG was architecture-only).
+5. **Do NOT** say UHNBC construction starts "fall 2026" — it's **2027**; design phase through late 2026.
+6. **Do NOT** say Oosterhof was Rogers Place SE-of-record (TT was prime); or that the AB seismic rule is Alberta-unique (national NBC 2020, effective in AB **May 1 2024**, hospitals post-disaster IE 1.5).
 
-## Reframed questions for Georg Josi (relationship, not seat-hunting)
-1. "When a hospital hits Kaye-scale, or your team's stacked, do you still bring in a co-SE — and who do you reach for?"
-2. "On the acute-care towers coming (Misericordia/Grey Nuns), are you positioning for the architect role — and how do you structure structural on those?"
-3. "Where's your structural bandwidth tightest over the next 24 months?"
-4. "What would make an external structural partner genuinely useful to your Edmonton studio — capacity, a specialty, a geography?"
+## Questions for Georg Josi (July 10)
+1. "On **UHNBC** in Prince George — how are you sourcing structural within the alliance? Is there a role for a BC structural partner?"
+2. "When a hospital hits Kaye/Calgary-Cancer scale under design-build, how do you structure the co-SE — and who do you reach for?"
+3. "Your Vancouver studio's structural strength is tall-building — how do you cover healthcare structural there?"
+4. "Where's your structural bandwidth tightest over the next 24 months?"
+
+## Prerequisites — close before July 10 (only KOR can)
+1. **APEGA Permit to Practice** for any Alberta work (hard requirement) — *though UHNBC being in BC removes this barrier for the best opening.*
+2. **Nameable BC hospital / high-importance SE references** — the healthcare-seismic wedge (NBC post-disaster, IE 1.5, effective AB May 1 2024) is only credible with real references.
 
 ---
-*Verification: 2 research passes + 4 adversarial primary-source fact-checks (SE credits, project currency, roster, self-perform/venue-SE, regulatory/pipeline), 2026-06-30. Sources: dialogdesign.ca, majorprojects.alberta.ca, alberta.ca, apega.ca, thorntontomasetti.com, oeg.ca, rjc.ca, fastepp.com, entuitive.com, Canadian Consulting Engineer/Architect. Confidence per claim; "[Hypothesis]" = test in the room, do not assert.*
+*Verification: 4 research passes (2 SE-mechanics/pipeline, 2 portfolio catalogue) + 6 adversarial primary-source fact-checks (~60 projects), 2026-06-30. Sources: dialogdesign.ca, majorprojects.alberta.ca, infrastructurebc.com, northernhealth.ca, alberta.ca, apega.ca, entuitive.com, glotmansimpson.com, thorntontomasetti.com, archdaily.com, Canadian Consulting Engineer/Architect, rjc.ca, fastepp.com. Confidence per claim; "[Hypothesis]" = test in the room, do not assert.*
