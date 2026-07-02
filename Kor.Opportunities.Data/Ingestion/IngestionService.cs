@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -581,10 +582,17 @@ public sealed class IngestionService : IIngestionService
     }
 
     /// <summary>
-    /// Builds the dedup key — uppercased, pipe-separated <c>Title|Buyer|Location|Url</c>
-    /// — and returns its SHA-256 digest. Matches the doc-comment on
-    /// <see cref="OpportunityObservation.HashSha256"/>; do not change without
-    /// rebuilding the observation table.
+    /// Builds the dedup key — uppercased, pipe-separated
+    /// <c>Title|Buyer|Location|Url|Deadline</c> — and returns its SHA-256 digest.
+    /// The submission deadline joined the key in the 2026-07-01 completeness
+    /// audit: without it, an AMENDED posting (deadline extension — same
+    /// title/buyer/url) collided with its original observation and returned
+    /// Duplicate before ever reaching the refresh block, so deadline changes
+    /// were silently never picked up and opportunities auto-expired on stale
+    /// dates. Changing the formula is safe without rebuilding the observation
+    /// table: the first re-observation of each posting simply inserts a new
+    /// observation row and flows through the key-matched refresh path
+    /// (idempotent; no duplicate opportunities are created).
     /// </summary>
     private static byte[] ComputeHash(OpportunityCandidate candidate)
     {
@@ -592,7 +600,8 @@ public sealed class IngestionService : IIngestionService
             (candidate.Title ?? "").Trim().ToUpperInvariant(),
             (candidate.Buyer ?? "").Trim().ToUpperInvariant(),
             (candidate.Location ?? "").Trim().ToUpperInvariant(),
-            (candidate.Url ?? "").Trim().ToUpperInvariant());
+            (candidate.Url ?? "").Trim().ToUpperInvariant(),
+            candidate.SubmissionDeadlineUtc?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) ?? "");
 
         return SHA256.HashData(Encoding.UTF8.GetBytes(key));
     }

@@ -179,7 +179,24 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         // didn't match Ivalua's id-based <button> pager, so pagination quit early
         // at a random page (yields bounced 30/75/90/150 run-to-run).
         var maxIndex = await ReadIntFieldAsync(page, "#maxpageindexbody_x_grid_grd", 0).ConfigureAwait(false);
+        var totalItems = await ReadIntFieldAsync(page, "#totalitemsbody_x_grid_grd", -1).ConfigureAwait(false);
         var lastPage = Math.Min(maxIndex, maxPages - 1);
+
+        // Completeness telemetry (audit 2026-07-01): truncation must be loud.
+        // 282/282 runs returned exactly 150 rows and nothing said whether that
+        // was the whole portal or a binding cap.
+        if (maxIndex > maxPages - 1)
+        {
+            _logger.LogWarning(
+                "BC Bid pagination TRUNCATED: portal reports {PortalPages} pages (totalItems field: {TotalItems}) but maxPages caps the scrape at {MaxPages} — raise playwright.maxPages in the source config.",
+                maxIndex + 1, totalItems, maxPages);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "BC Bid pagination: portal reports {PortalPages} page(s) (totalItems field: {TotalItems}); scraping all of them.",
+                maxIndex + 1, totalItems);
+        }
         for (var idx = 0; idx <= lastPage; idx++)
         {
             candidates.AddRange(await ExtractPageAsync(page, baseUri, columnMap, ct).ConfigureAwait(false));
