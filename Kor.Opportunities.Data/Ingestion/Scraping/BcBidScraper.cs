@@ -34,6 +34,13 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
     private static readonly string[] KeywordInputSelectors =
     [
         KeywordInputSelector,
+        // 2026-07-01 portal change: the labelled "Keyword(s)" input is gone.
+        // The search form's only free-text query field is now Ivalua's
+        // body_x_txtQuery (class "prompt"); the id$= fallback survives Ivalua
+        // renaming the container prefix. Verified from the production
+        // keyword-box diagnostic dump (trigger e921190e, 2026-07-01 17:08).
+        "input#body_x_txtQuery",
+        "input[id$='_txtQuery']",
         "input[id*='keyword' i]",
         "input[name*='keyword' i]",
         "input[placeholder*='Keyword' i]",
