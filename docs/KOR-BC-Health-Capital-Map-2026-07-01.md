@@ -64,4 +64,4 @@ Kamloops Cancer Centre (EllisDon PDB — **Glotman Simpson**, u/c to 2028) · Co
 - **Method:** built platform-first (25 BC health projects already held), then 3 parallel research passes + 2 deep-verification passes (~55 projects, all six authorities + Providence). Corrections made en route: New St. Paul's builder (PCL, not EllisDon), BCCH-CHC/Complex-Care are one project (MPI dup retired), Bradley Centre reframed (cancelled LTC replacement), Bush Bohlman's Cowichan role precisely stated (design-team sub-consultant, not alliance signatory).
 
 ---
-*All organizations, seats, and gates in this map are filed in the BD platform (provider: BCHealth-Map-2026-07-01) with the open seats stamped for the dashboard. Full per-project source tables: scratchpad research files metro.md, regions.md, architects-se.md + the Interior Health and Cowichan/UHNBC verification reports.*
+*All organizations, seats, and gates in this map are filed in KOR's BD database (dated 2026-07-01), with the genuinely open seats flagged on the dashboard. Full per-project source tables live in the underlying research files retained with this report.*

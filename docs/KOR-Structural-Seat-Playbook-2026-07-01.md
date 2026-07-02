@@ -70,7 +70,7 @@ The meta-finding across every dossier this summer: **by the time a structural se
 
 ## Operating cadence (how this stays alive)
 1. **Formation events, not tender ads:** the platform's research jobs watch rezoning approvals, capital-grant announcements, alliance formations, and preferred-proponent awards — the moments seats actually get decided.
-2. **Every engineer meeting feeds the machine:** debriefs are ingested within a day; every named firm/person/project becomes a record. The next pursuit starts warmer than the last.
+2. **Every engineer meeting feeds the machine:** debrief notes are filed into the BD database within a day; every named firm, person, and project becomes a record. The next pursuit starts warmer than the last.
 3. **Every claim stays challengeable:** all of the above traces to primary sources or KOR's own Deltek records; anything inferred is labeled. When a fact fails re-verification, it gets corrected in the source dossier — this document inherits those corrections.
 
 ---
