@@ -97,6 +97,28 @@ public static class StructuralRelevanceGate
         "bus depot",
         "depot",
         "maintenance facility",
+        // Reject-table review 2026-07-01 (opportunities.RelevanceGateRejects):
+        "municipal hall",
+        "roof replacement",
+        "re-roof",
+        "reroof",
+        "elevator modernization",
+        "elevator replacement",
+        "elevator upgrade",
+        "pre-engineered",
+        // French vocabulary — CanadaBuys federal postings can be French-only;
+        // accented and unaccented variants both included because upstream
+        // encodings vary.
+        "bâtiment",
+        "batiment",
+        "immeuble",
+        "école",
+        "ecole",
+        "hôpital",
+        "hopital",
+        "logement",
+        "agrandissement",
+        "charpente",
     };
 
     private static readonly string[] HardIrrelevantSignals =
@@ -214,7 +236,17 @@ public static class StructuralRelevanceGate
         "tailings",
         "smelter",
         "smelting",
-        "coal",
+        // NOT bare "coal": Vancouver's Coal Harbour neighbourhood collides
+        // (\bcoal\b killed "Coal Harbour Phase 2 - Construction Manager
+        // Pre-Qualification" — a real pursuit). Industrial coal work always
+        // arrives with one of these qualifiers.
+        "coal mine",
+        "coal mining",
+        "coal terminal",
+        "coal-fired",
+        "coal fired",
+        "coal handling",
+        "coal export",
         "lng",
         "natural gas",
         "gas plant",
@@ -275,8 +307,13 @@ public static class StructuralRelevanceGate
         "a/e services",
         "a-e services",
         "consulting engineering",
+        "engineering consulting",
         "engineering services",
         "engineering consultant",
+        "ingénierie",
+        "ingenierie",
+        "génie-conseil",
+        "genie-conseil",
         "design services",
         "design consultant",
         "building design",
