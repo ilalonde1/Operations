@@ -153,8 +153,8 @@ internal sealed class DataHealthAuditJob : IJob
     // always record 0 in IngestionRuns by design.
     private const string Q9SourceStalenessSql = """
         WITH SourceRuns AS (
-            SELECT s.Name,
-                   MAX(CASE WHEN r.InsertedCount + r.DuplicateCount > 0 THEN r.EndedAtUtc END) AS LastProducedUtc,
+            SELECT s.Id, s.Name,
+                   MAX(CASE WHEN r.InsertedCount + r.DuplicateCount > 0 THEN r.EndedAtUtc END) AS LastRunProducedUtc,
                    MAX(r.EndedAtUtc) AS LastRunUtc,
                    SUM(CASE WHEN r.EndedAtUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()) THEN 1 ELSE 0 END) AS Runs7d,
                    SUM(CASE WHEN r.EndedAtUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()) THEN r.SkippedCount ELSE 0 END) AS Skipped7d,
@@ -166,7 +166,21 @@ internal sealed class DataHealthAuditJob : IJob
             WHERE s.IsEnabled = 1
               AND s.IsHistorical = 0
               AND s.SourceType NOT IN (0, 7, 18, 99)
-            GROUP BY s.Name
+            GROUP BY s.Id, s.Name
+        ),
+        SourceProduction AS (
+            -- IngestionRuns history has a start date; observations are the ground truth
+            -- for "has this source ever produced" (Bonfire_KPU produced 2026-05-20 but
+            -- its run history only begins 2026-06-01 — runs alone mislabel it NEVER-PRODUCED).
+            SELECT sr.Name,
+                   (SELECT MAX(v) FROM (VALUES (sr.LastRunProducedUtc), (ob.LastObservedUtc)) AS x(v)) AS LastProducedUtc,
+                   sr.LastRunUtc, sr.Runs7d, sr.Skipped7d, sr.RunsAllTime
+            FROM SourceRuns sr
+            OUTER APPLY (
+                SELECT MAX(o.IngestedAtUtc) AS LastObservedUtc
+                FROM opportunities.OpportunityObservations o
+                WHERE o.OpportunitySourceId = sr.Id
+            ) ob
         )
         SELECT Name,
                CASE
@@ -177,7 +191,7 @@ internal sealed class DataHealthAuditJob : IJob
                CONVERT(varchar(19), LastProducedUtc, 120) AS LastProduced,
                CONVERT(varchar(19), LastRunUtc, 120) AS LastRun,
                Runs7d
-        FROM SourceRuns
+        FROM SourceProduction
         WHERE (LastProducedUtc IS NULL AND RunsAllTime >= 10)
            OR (LastProducedUtc < DATEADD(day, -14, SYSDATETIMEOFFSET()) AND Runs7d >= 5)
         ORDER BY Name
