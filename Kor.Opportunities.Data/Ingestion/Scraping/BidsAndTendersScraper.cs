@@ -87,6 +87,7 @@ public sealed class BidsAndTendersScraper : PlaywrightScraperBase<OpportunityCan
         }
 
         var baseUri = new Uri(source.BaseUrl);
+        var truncated = false;
         for (var pageNum = 1; pageNum <= maxPages; pageNum++)
         {
             ct.ThrowIfCancellationRequested();
@@ -98,6 +99,21 @@ public sealed class BidsAndTendersScraper : PlaywrightScraperBase<OpportunityCan
             {
                 break;
             }
+
+            // Advancing on the final allowed page means the portal had more.
+            if (pageNum == maxPages)
+            {
+                truncated = true;
+            }
+        }
+
+        if (truncated)
+        {
+            _logger.LogWarning(
+                "bids&tenders pagination TRUNCATED at {MaxPages} page(s) for {Source} — the portal offered another page; raise playwright.maxPages in the source config.",
+                maxPages, source.Name);
+            IngestionRunDiagnostics.AddWarning(
+                $"pagination truncated at {maxPages} page(s) — portal offered more; raise playwright.maxPages");
         }
 
         if (candidates.Count == 0)

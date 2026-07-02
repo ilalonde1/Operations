@@ -32,11 +32,14 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
         @"\b(?:\d{4}-\d{1,2}-\d{1,2}|[A-Z][a-z]{2,8}\s+\d{1,2},?\s+\d{4}|\d{1,2}/\d{1,2}/\d{4})\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private readonly ILogger<AlbertaPurchasingScraper> _logger;
+
     public AlbertaPurchasingScraper(
         PlaywrightBrowserPool pool,
         ILogger<AlbertaPurchasingScraper> logger)
         : base(pool, logger)
     {
+        _logger = logger;
     }
 
     public override OpportunitySourceType SourceType => OpportunitySourceType.AlbertaPurchasingConnection;
@@ -72,6 +75,7 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
         await TrySelectMaxPageSizeAsync(page).ConfigureAwait(false);
 
         var baseUri = new Uri(source.BaseUrl);
+        var truncated = false;
         for (var pageNum = 1; pageNum <= maxPages; pageNum++)
         {
             ct.ThrowIfCancellationRequested();
@@ -83,6 +87,21 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
             {
                 break;
             }
+
+            // Advancing on the final allowed page means the portal had more.
+            if (pageNum == maxPages)
+            {
+                truncated = true;
+            }
+        }
+
+        if (truncated)
+        {
+            _logger.LogWarning(
+                "APC pagination TRUNCATED at {MaxPages} page(s) for {Source} — the portal offered another page; raise playwright.maxPages in the source config.",
+                maxPages, source.Name);
+            IngestionRunDiagnostics.AddWarning(
+                $"pagination truncated at {maxPages} page(s) — portal offered more; raise playwright.maxPages");
         }
 
         if (candidates.Count == 0)

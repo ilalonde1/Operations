@@ -201,6 +201,15 @@ WHERE StartedAtUtc < DATEADD(day, -@days, SYSDATETIMEOFFSET());",
             cmd => cmd.Parameters.Add("@days", System.Data.SqlDbType.Int).Value = telemetryRetentionDays,
             commandTimeoutSeconds: 300).ConfigureAwait(false);
 
+        // Gate rejects need a longer horizon than run telemetry: the point of
+        // the table is periodic (roughly monthly) false-negative review, so a
+        // reject must survive several review cycles before it ages out.
+        var gateRejectsDeleted = await ExecuteNonQueryAsync(cn, @"
+DELETE FROM opportunities.RelevanceGateRejects
+WHERE LastRejectedAtUtc < DATEADD(day, -120, SYSDATETIMEOFFSET());",
+            ct,
+            commandTimeoutSeconds: 300).ConfigureAwait(false);
+
         // Cascade-retire intel orphaned on a retired parent. Org/project retirement
         // (here, the dedup merge tool, manual cleanup) does not always cascade to
         // child intel, which leaves live actions/signals/people/narratives attached
@@ -243,7 +252,7 @@ WHERE RetiredAtUtc IS NULL
         }).ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects retired by completion year={ProjectsRetiredByCompletionYear}; events retired={EventsRetired}; orgs archived={OrgsArchived}; orgs resurrected={OrgsResurrected}; ingestion triggers deleted={IngestionTriggersDeleted}; ingestion runs deleted={IngestionRunsDeleted}; job runs deleted={JobRunsDeleted}; orphan intel retired={OrphanIntelRetired}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
+            "Data retirement completed: opps expired={OppsExpired}; opps aged-out={OppsAgedOut}; projects retired={ProjectsRetired}; projects retired by completion year={ProjectsRetiredByCompletionYear}; events retired={EventsRetired}; orgs archived={OrgsArchived}; orgs resurrected={OrgsResurrected}; ingestion triggers deleted={IngestionTriggersDeleted}; ingestion runs deleted={IngestionRunsDeleted}; job runs deleted={JobRunsDeleted}; gate rejects deleted={GateRejectsDeleted}; orphan intel retired={OrphanIntelRetired}; projects stale={ProjectsStale}; elapsedMs={ElapsedMs}.",
             oppsExpired,
             oppsAgedOut,
             projectsRetired,
@@ -254,6 +263,7 @@ WHERE RetiredAtUtc IS NULL
             ingestionTriggersDeleted,
             ingestionRunsDeleted,
             jobRunsDeleted,
+            gateRejectsDeleted,
             orphanIntelRetired,
             projectsStale,
             sw.ElapsedMilliseconds);

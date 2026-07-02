@@ -23,12 +23,15 @@ public sealed class BcBidAwardsScraper : PlaywrightScraperBase<AwardCandidate>, 
 
     private readonly BcBidCredentials _credentials;
 
+    private readonly ILogger<BcBidAwardsScraper> _logger;
+
     public BcBidAwardsScraper(
         PlaywrightBrowserPool pool,
         ILogger<BcBidAwardsScraper> logger,
         BcBidCredentials credentials)
         : base(pool, logger)
     {
+        _logger = logger;
         _credentials = credentials;
     }
 
@@ -120,6 +123,7 @@ public sealed class BcBidAwardsScraper : PlaywrightScraperBase<AwardCandidate>, 
         var candidates = new List<AwardCandidate>();
         var maxPages = ResolveInt(sourceConfig, "playwright.maxPages", DefaultMaxPages);
 
+        var truncated = false;
         for (var pageNum = 1; pageNum <= maxPages; pageNum++)
         {
             var pageCandidates = await ExtractPageAsync(page, baseUri, ct).ConfigureAwait(false);
@@ -129,6 +133,21 @@ public sealed class BcBidAwardsScraper : PlaywrightScraperBase<AwardCandidate>, 
             {
                 break;
             }
+
+            // Advancing on the final allowed page means the portal had more.
+            if (pageNum == maxPages)
+            {
+                truncated = true;
+            }
+        }
+
+        if (truncated)
+        {
+            _logger.LogWarning(
+                "BC Bid awards pagination TRUNCATED at {MaxPages} page(s) for {Source} — the portal offered another page; raise playwright.maxPages in the source config.",
+                maxPages, source.Name);
+            IngestionRunDiagnostics.AddWarning(
+                $"pagination truncated at {maxPages} page(s) — portal offered more; raise playwright.maxPages");
         }
 
         return candidates;

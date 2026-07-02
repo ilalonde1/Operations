@@ -132,6 +132,7 @@ public sealed class BcBidHistoricalScraper
             }
 
             typesWithRows++;
+            var truncated = false;
             for (var pageNum = 1; pageNum <= maxPages; pageNum++)
             {
                 ct.ThrowIfCancellationRequested();
@@ -143,6 +144,21 @@ public sealed class BcBidHistoricalScraper
                 {
                     break;
                 }
+
+                // Advancing on the final allowed page means the portal had more.
+                if (pageNum == maxPages)
+                {
+                    truncated = true;
+                }
+            }
+
+            if (truncated)
+            {
+                _logger.LogWarning(
+                    "BC Bid historical pagination TRUNCATED at {MaxPages} page(s) for type {HistoricalType} — the portal offered another page; raise playwright.maxPages in the source config.",
+                    maxPages, historicalType.Text);
+                IngestionRunDiagnostics.AddWarning(
+                    $"pagination truncated at {maxPages} page(s) for type '{historicalType.Text}' — portal offered more; raise playwright.maxPages");
             }
         }
 

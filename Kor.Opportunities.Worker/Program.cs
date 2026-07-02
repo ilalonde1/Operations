@@ -227,6 +227,10 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.AwardAgentEnrichment
             builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.IHistoricalOpportunityObservationStore>(sp =>
                 new Kor.Opportunities.Data.HistoricalOpportunities.SqlHistoricalOpportunityObservationStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionRunStore>(sp => new SqlIngestionRunStore(Cs(sp)));
+            builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IRelevanceGateRejectStore>(sp =>
+                new SqlRelevanceGateRejectStore(
+                    Cs(sp),
+                    sp.GetService<ILogger<SqlRelevanceGateRejectStore>>()));
             builder.Services.AddSingleton<IJobRunStore>(sp => new SqlJobRunStore(Cs(sp)));
             builder.Services.AddSingleton<IJobScheduleStore>(sp => new SqlJobScheduleStore(Cs(sp)));
             builder.Services.AddSingleton<IIngestionTriggerStore>(sp => new SqlIngestionTriggerStore(

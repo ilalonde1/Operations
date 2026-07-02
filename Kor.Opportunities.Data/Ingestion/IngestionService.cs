@@ -61,6 +61,7 @@ public sealed class IngestionService : IIngestionService
     private readonly IHistoricalOpportunityObservationStore _historicalObservationStore;
     private readonly IOpportunityScoringService _scoringService;
     private readonly IIngestionRunStore _runStore;
+    private readonly IRelevanceGateRejectStore _gateRejectStore;
     private readonly ILogger<IngestionService> _logger;
 
     public IngestionService(
@@ -71,6 +72,7 @@ public sealed class IngestionService : IIngestionService
         IHistoricalOpportunityObservationStore historicalObservationStore,
         IOpportunityScoringService scoringService,
         IIngestionRunStore runStore,
+        IRelevanceGateRejectStore gateRejectStore,
         ILogger<IngestionService> logger)
     {
         _sourceStore = sourceStore;
@@ -80,6 +82,7 @@ public sealed class IngestionService : IIngestionService
         _historicalObservationStore = historicalObservationStore;
         _scoringService = scoringService;
         _runStore = runStore;
+        _gateRejectStore = gateRejectStore;
         _logger = logger;
     }
 
@@ -102,6 +105,12 @@ public sealed class IngestionService : IIngestionService
         try
         {
             var mappings = await _sourceStore.GetMappingsAsync(source.Id, ct).ConfigureAwait(false);
+
+            // Ambient degradation channel: a provider that survives in a worse
+            // mode (Socrata dropping $where, a scraper hitting its page cap)
+            // reports it here; drained into ErrorSummary below with Success
+            // left honest.
+            IngestionRunDiagnostics.BeginRun();
             var candidates = await provider.FetchAsync(source, mappings, ct).ConfigureAwait(false);
 
             _logger.LogInformation(
@@ -129,6 +138,13 @@ public sealed class IngestionService : IIngestionService
                         candidate.Title,
                         source.Name,
                         relevance.RejectReason);
+                    await _gateRejectStore.RecordAsync(
+                        source.Name,
+                        candidate.Title,
+                        candidate.Buyer,
+                        candidate.Url,
+                        relevance.RejectReason ?? "unspecified",
+                        ct).ConfigureAwait(false);
                     await RunRejectedAckAsync(source, candidate, ct).ConfigureAwait(false);
                     continue;
                 }
@@ -163,6 +179,16 @@ public sealed class IngestionService : IIngestionService
             }
 
             var success = failed == 0;
+
+            var degradations = IngestionRunDiagnostics.Drain();
+            if (degradations.Count > 0)
+            {
+                errorSummary = Truncate("DEGRADED: " + string.Join(" | ", degradations), 2000);
+                _logger.LogWarning(
+                    "Ingestion {Run} for {Source} completed DEGRADED: {Degradations}",
+                    runId, source.Name, string.Join(" | ", degradations));
+            }
+
             await _runStore.CompleteAsync(runId, success, inserted, duplicate, skipped, failed, errorSummary, CancellationToken.None)
                 .ConfigureAwait(false);
 

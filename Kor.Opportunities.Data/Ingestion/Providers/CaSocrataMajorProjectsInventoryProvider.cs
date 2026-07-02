@@ -173,6 +173,8 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
             if (!response.IsSuccessStatusCode && response.StatusCode == System.Net.HttpStatusCode.BadRequest && !string.IsNullOrWhiteSpace(where))
             {
                 _logger.LogWarning("CA Socrata source {Source} rejected configured $where filter; retrying page without server-side filter.", source.Name);
+                IngestionRunDiagnostics.AddWarning(
+                    $"$where filter rejected by portal (HTTP 400); page at offset {offset.ToString(CultureInfo.InvariantCulture)} fetched unfiltered — server-side scope silently broadened, review the configured filter");
                 using var fallbackRequest = new HttpRequestMessage(
                     HttpMethod.Get,
                     AddQuery(

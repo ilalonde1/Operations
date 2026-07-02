@@ -92,6 +92,7 @@ public sealed class AlbertaPurchasingAwardsScraper : PlaywrightScraperBase<Award
         var baseUri = new Uri(source.BaseUrl);
         var maxPages = ResolveInt(sourceConfig, "playwright.maxPages", DefaultMaxPages);
 
+        var truncated = false;
         for (var pageNum = 1; pageNum <= maxPages; pageNum++)
         {
             ct.ThrowIfCancellationRequested();
@@ -103,6 +104,21 @@ public sealed class AlbertaPurchasingAwardsScraper : PlaywrightScraperBase<Award
             {
                 break;
             }
+
+            // Advancing on the final allowed page means the portal had more.
+            if (pageNum == maxPages)
+            {
+                truncated = true;
+            }
+        }
+
+        if (truncated)
+        {
+            _logger.LogWarning(
+                "APC awards pagination TRUNCATED at {MaxPages} page(s) for {Source} — the portal offered another page; raise playwright.maxPages in the source config.",
+                maxPages, source.Name);
+            IngestionRunDiagnostics.AddWarning(
+                $"pagination truncated at {maxPages} page(s) — portal offered more; raise playwright.maxPages");
         }
 
         if (candidates.Count == 0)
