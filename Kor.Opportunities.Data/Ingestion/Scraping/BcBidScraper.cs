@@ -240,6 +240,25 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
             "BC Bid keyword filter '{Keyword}' skipped: keyword input selector not found ({Selector}).",
             keyword,
             string.Join(", ", KeywordInputSelectors));
+
+        // Diagnostic: the portal changed its search-box markup (2026-06/07 —
+        // none of the selectors above match anymore). Log an inventory of the
+        // text inputs actually on the page so the selector list can be refreshed
+        // from a production run without hand-driving the authenticated portal.
+        try
+        {
+            var inventory = await page.EvaluateAsync<string>(@"() =>
+                Array.from(document.querySelectorAll('input, textarea'))
+                    .filter(el => el.type !== 'hidden' && el.type !== 'checkbox' && el.type !== 'radio' && el.type !== 'submit' && el.type !== 'button')
+                    .slice(0, 40)
+                    .map(el => `type=${el.type||''} id=${el.id||''} name=${el.name||''} placeholder=${el.getAttribute('placeholder')||''} aria-label=${el.getAttribute('aria-label')||''} class=${(el.className||'').toString().slice(0,80)}`)
+                    .join(' || ')").ConfigureAwait(false);
+            _logger.LogWarning("BC Bid keyword-box diagnostic — visible text inputs on the page: {Inputs}", inventory);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "BC Bid keyword-box diagnostic failed.");
+        }
     }
 
     internal static string? ResolveKeywordFilter(IReadOnlyDictionary<string, string> sourceConfig)
@@ -332,6 +351,16 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
             return -1;
         }
 
+        int FindStartsWith(string prefix)
+        {
+            for (var i = 0; i < headers.Count; i++)
+            {
+                if (headers[i].StartsWith(prefix, StringComparison.Ordinal)) return i;
+            }
+
+            return -1;
+        }
+
         // Header labels per the production-verified Ivalua grid (the
         // historical scraper documents the same column set). Buyer is the
         // "Organization (Issued by)" column — matched on the "issued by"
@@ -341,8 +370,14 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
         var title = FindExact("opportunity description");
         var commodities = FindExact("commodities");
         var solicitationType = FindExact("type");
+        // 2026-07-01 portal change: the date columns are now rendered as
+        // "issue date and time (pacific time)" / "closing date and time
+        // (pacific time)". Exact-match first (old layout), then prefix-match —
+        // StartsWith, not Contains, so "last updated"/"ends in" can't collide.
         var issueDate = FindExact("issue date");
+        if (issueDate < 0) issueDate = FindStartsWith("issue date");
         var closingDate = FindExact("closing date");
+        if (closingDate < 0) closingDate = FindStartsWith("closing date");
         var buyer = FindContains("issued by");
 
         var missing = new List<string>();
