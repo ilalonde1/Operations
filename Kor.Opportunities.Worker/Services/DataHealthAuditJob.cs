@@ -141,6 +141,48 @@ internal sealed class DataHealthAuditJob : IJob
         FROM DomainTwins
         """;
 
+    // Source-staleness sentinel (completeness audit 2026-07-01): the pipeline's
+    // only loud failure mode is a thrown provider — a source that keeps running
+    // green while producing NOTHING (portal moved, filter broke, session died)
+    // is invisible. APC was dead-green for 18 days. Verdicts:
+    //   DEAD-GREEN      produced before, nothing in 14 days despite >=5 recent runs
+    //   NEVER-PRODUCED  >=10 runs all-time, never produced, feed emitting nothing
+    //   GATED           never produced BUT candidates are arriving and being
+    //                   skipped/rejected — feed alive, review the relevance gate
+    // MPI sources (type 18) are excluded — their providers upsert internally and
+    // always record 0 in IngestionRuns by design.
+    private const string Q9SourceStalenessSql = """
+        WITH SourceRuns AS (
+            SELECT s.Name,
+                   MAX(CASE WHEN r.InsertedCount + r.DuplicateCount > 0 THEN r.EndedAtUtc END) AS LastProducedUtc,
+                   MAX(r.EndedAtUtc) AS LastRunUtc,
+                   SUM(CASE WHEN r.EndedAtUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()) THEN 1 ELSE 0 END) AS Runs7d,
+                   SUM(CASE WHEN r.EndedAtUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()) THEN r.SkippedCount ELSE 0 END) AS Skipped7d,
+                   COUNT_BIG(r.Id) AS RunsAllTime
+            FROM opportunities.OpportunitySources s
+            LEFT JOIN opportunities.IngestionRuns r
+              ON r.ProviderName LIKE s.Name + N' (%'
+              OR r.ProviderName LIKE N'Awards: ' + s.Name + N' (%'
+            WHERE s.IsEnabled = 1
+              AND s.IsHistorical = 0
+              AND s.SourceType NOT IN (0, 7, 18, 99)
+            GROUP BY s.Name
+        )
+        SELECT Name,
+               CASE
+                   WHEN LastProducedUtc IS NOT NULL THEN 'DEAD-GREEN'
+                   WHEN Skipped7d > 0 THEN 'GATED (feed alive)'
+                   ELSE 'NEVER-PRODUCED'
+               END AS Verdict,
+               CONVERT(varchar(19), LastProducedUtc, 120) AS LastProduced,
+               CONVERT(varchar(19), LastRunUtc, 120) AS LastRun,
+               Runs7d
+        FROM SourceRuns
+        WHERE (LastProducedUtc IS NULL AND RunsAllTime >= 10)
+           OR (LastProducedUtc < DATEADD(day, -14, SYSDATETIMEOFFSET()) AND Runs7d >= 5)
+        ORDER BY Name
+        """;
+
     private readonly IOptions<OpportunitiesWorkerOptions> _options;
     private readonly ILogger<DataHealthAuditJob> _logger;
 
@@ -178,6 +220,18 @@ internal sealed class DataHealthAuditJob : IJob
             var fkOrphanRates = await QueryAsync(connection, Q6FkOrphanRatesSql, ReadFkOrphanRateRow, context.CancellationToken).ConfigureAwait(false);
             var enrichmentCoverage = await QueryAsync(connection, Q7EnrichmentCoverageSql, ReadEnrichmentCoverageRow, context.CancellationToken).ConfigureAwait(false);
             var identityDrift = await QueryAsync(connection, Q8IdentityDriftSql, ReadIdentityDriftRow, context.CancellationToken).ConfigureAwait(false);
+            var staleSources = await QueryAsync(connection, Q9SourceStalenessSql, ReadSourceStalenessRow, context.CancellationToken).ConfigureAwait(false);
+
+            // The one loud path: a stale source is an operational incident, not a
+            // report footnote — surface it at WARNING so it lands in the log review.
+            foreach (var stale in staleSources)
+            {
+                _logger.LogWarning(
+                    "Source-staleness sentinel: {Source} is {Verdict} (last produced: {LastProduced}; last run: {LastRun}; runs last 7d: {Runs7d}).",
+                    stale.Name, stale.Verdict,
+                    string.IsNullOrEmpty(stale.LastProduced) ? "never" : stale.LastProduced,
+                    stale.LastRun, stale.Runs7d);
+            }
 
             sw.Stop();
 
@@ -201,14 +255,15 @@ internal sealed class DataHealthAuditJob : IJob
                 kindMismatches,
                 fkOrphanRates,
                 enrichmentCoverage,
-                identityDrift);
+                identityDrift,
+                staleSources);
 
             await File.WriteAllTextAsync(timestampedPath, markdown, Encoding.UTF8, context.CancellationToken).ConfigureAwait(false);
             await File.WriteAllTextAsync(latestPath, markdown, Encoding.UTF8, context.CancellationToken).ConfigureAwait(false);
 
             var created7d = messAccumulation.Sum(x => x.Created7Days);
             var dirt = dirtPatterns.Sum(x => x.N);
-            var summary = $"DataHealthAudit OK: created7d={created7d}; bareTop25={bareTargets.Count}; dirt={dirt}; report={latestPath}";
+            var summary = $"DataHealthAudit OK: created7d={created7d}; bareTop25={bareTargets.Count}; dirt={dirt}; staleSources={staleSources.Count}; report={latestPath}";
             if (summary.Length > 1000)
             {
                 summary = summary[..1000];
@@ -263,7 +318,8 @@ internal sealed class DataHealthAuditJob : IJob
         IReadOnlyList<KindMismatchRow> kindMismatches,
         IReadOnlyList<FkOrphanRateRow> fkOrphanRates,
         IReadOnlyList<EnrichmentCoverageRow> enrichmentCoverage,
-        IReadOnlyList<IdentityDriftRow> identityDrift)
+        IReadOnlyList<IdentityDriftRow> identityDrift,
+        IReadOnlyList<SourceStalenessRow> staleSources)
     {
         var sb = new StringBuilder();
         sb.Append("# Data Health Audit  ").AppendLine(timestampUtc.ToString("O", CultureInfo.InvariantCulture));
@@ -369,6 +425,27 @@ internal sealed class DataHealthAuditJob : IJob
         }
 
         sb.AppendLine();
+        sb.AppendLine("## I. Source staleness sentinels");
+        if (staleSources.Count == 0)
+        {
+            sb.AppendLine("All enabled sources produced within their window. ✔");
+        }
+        else
+        {
+            sb.AppendLine("| Source | Verdict | Last produced | Last run | Runs 7d |");
+            sb.AppendLine("|---|---|---|---|---:|");
+            foreach (var row in staleSources)
+            {
+                sb.Append("| ").Append(Md(row.Name))
+                    .Append(" | ").Append(Md(row.Verdict))
+                    .Append(" | ").Append(Md(string.IsNullOrEmpty(row.LastProduced) ? "never" : row.LastProduced))
+                    .Append(" | ").Append(Md(row.LastRun))
+                    .Append(" | ").Append(row.Runs7d.ToString("N0", CultureInfo.InvariantCulture))
+                    .AppendLine(" |");
+            }
+        }
+
+        sb.AppendLine();
         sb.AppendLine("---");
         sb.Append("Report file: `").Append(reportPath.Replace("`", "'")).AppendLine("`");
         return sb.ToString();
@@ -397,6 +474,9 @@ internal sealed class DataHealthAuditJob : IJob
 
     private static IdentityDriftRow ReadIdentityDriftRow(SqlDataReader r) =>
         new(GetString(r, 0), GetString(r, 1), GetInt64(r, 2));
+
+    private static SourceStalenessRow ReadSourceStalenessRow(SqlDataReader r) =>
+        new(GetString(r, 0), GetString(r, 1), GetString(r, 2), GetString(r, 3), GetInt64(r, 4));
 
     private static string GetString(SqlDataReader r, int ordinal) =>
         r.IsDBNull(ordinal) ? string.Empty : r.GetString(ordinal);
@@ -443,4 +523,6 @@ internal sealed class DataHealthAuditJob : IJob
     private sealed record EnrichmentCoverageRow(string Kind, long Total, long WithAnyEnrich, decimal? PctEnriched);
 
     private sealed record IdentityDriftRow(string Category, string Label, long N);
+
+    private sealed record SourceStalenessRow(string Name, string Verdict, string LastProduced, string LastRun, long Runs7d);
 }
