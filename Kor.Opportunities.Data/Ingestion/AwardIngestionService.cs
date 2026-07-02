@@ -77,6 +77,11 @@ public sealed class AwardIngestionService
         try
         {
             var mappings = await _sourceStore.GetMappingsAsync(source.Id, ct).ConfigureAwait(false);
+
+            // Same degradation channel as IngestionService: award scrapers
+            // report page-cap truncation etc. here; drained into ErrorSummary
+            // below with Success left honest.
+            IngestionRunDiagnostics.BeginRun();
             var candidates = await provider.FetchAsync(source, mappings, ct).ConfigureAwait(false);
             foreach (var candidate in candidates)
             {
@@ -128,9 +133,20 @@ public sealed class AwardIngestionService
             }
 
             sw.Stop();
+
+            string? degradedSummary = null;
+            var degradations = IngestionRunDiagnostics.Drain();
+            if (degradations.Count > 0)
+            {
+                degradedSummary = Truncate("DEGRADED: " + string.Join(" | ", degradations), 2000);
+                _logger.LogWarning(
+                    "Awards ingestion {Source} completed DEGRADED: {Degradations}",
+                    source.Name, string.Join(" | ", degradations));
+            }
+
             await _runStore.CompleteAsync(runId, success: true,
                 insertedCount: inserted, duplicateCount: updated,
-                skippedCount: 0, failedCount: 0, errorSummary: null, ct).ConfigureAwait(false);
+                skippedCount: 0, failedCount: 0, errorSummary: degradedSummary, ct).ConfigureAwait(false);
             _logger.LogInformation(
                 "Awards ingestion {Source}: {Inserted} new / {Updated} updated ({OrgResolved} gate-kept org-resolved, {RawOnly} gate-rejected raw-name-only) in {Elapsed}ms.",
                 source.Name, inserted, updated, orgResolved, rawOnly, sw.ElapsedMilliseconds);

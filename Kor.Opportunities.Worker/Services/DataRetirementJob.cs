@@ -205,6 +205,7 @@ WHERE StartedAtUtc < DATEADD(day, -@days, SYSDATETIMEOFFSET());",
         // the table is periodic (roughly monthly) false-negative review, so a
         // reject must survive several review cycles before it ages out.
         var gateRejectsDeleted = await ExecuteNonQueryAsync(cn, @"
+IF OBJECT_ID(N'opportunities.RelevanceGateRejects', N'U') IS NOT NULL
 DELETE FROM opportunities.RelevanceGateRejects
 WHERE LastRejectedAtUtc < DATEADD(day, -120, SYSDATETIMEOFFSET());",
             ct,

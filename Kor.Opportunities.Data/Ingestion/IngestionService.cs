@@ -178,6 +178,11 @@ public sealed class IngestionService : IIngestionService
                 }
             }
 
+            // The reject store deliberately swallows OperationCanceledException;
+            // don't let a cancellation on the final candidate fall through to a
+            // successful completion.
+            ct.ThrowIfCancellationRequested();
+
             var success = failed == 0;
 
             var degradations = IngestionRunDiagnostics.Drain();
