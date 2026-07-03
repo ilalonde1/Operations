@@ -10,6 +10,8 @@ using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Fonts.Standard14Fonts;
+using UglyToad.PdfPig.Outline;
+using UglyToad.PdfPig.Outline.Destinations;
 using UglyToad.PdfPig.Writer;
 
 namespace Kor.Operations.EngineeringTools.RebarChange
@@ -86,24 +88,56 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             var builder = new PdfDocumentBuilder();
             var font = builder.AddStandard14Font(Standard14Font.HelveticaBold);
 
-            BuildCover(builder, font, projectName, beforeLabel, afterLabel, plan);
-
+            // Decide every page BEFORE drawing anything, so the cover can print each sheet's page
+            // number and the document outline can point at real destinations. Only a page that
+            // actually carries a box is emitted — a sheet with additions only must not produce a
+            // blank "removed in RED" before-page (and vice-versa), which reads as broken.
+            var emissions = new List<(PageModel Pg, bool FromBefore, HashSet<string> Keys,
+                (byte R, byte G, byte B) Color, string Sheet, string Label)>();
             foreach (var (sheet, added, removed) in plan)
             {
-                // Only emit a page that actually carries a box. A sheet with additions only must not
-                // produce a blank "removed in RED" before-page (and vice-versa) — that reads as broken.
                 if (removed.Count > 0 && bMap.TryGetValue(sheet, out var bp))
                     foreach (var pg in bp)
-                        if (pg.Callouts.Any(h => removed.Contains(h.Key)))
-                            DrawSheet(builder, before, font, pg, removed, Red,
-                                $"{sheet}  -  {beforeLabel}   (removed reinforcing in RED)");
+                    {
+                        int boxes = pg.Callouts.Count(h => removed.Contains(h.Key));
+                        int keys = pg.Callouts.Where(h => removed.Contains(h.Key)).Select(h => h.Key).Distinct().Count();
+                        if (boxes > 0) emissions.Add((pg, true, removed, Red, sheet,
+                            $"{sheet}  -  {beforeLabel}   (removed reinforcing in RED - {keys} call-out(s), {boxes} box(es))"));
+                    }
 
                 if (added.Count > 0 && aMap.TryGetValue(sheet, out var ap))
                     foreach (var pg in ap)
-                        if (pg.Callouts.Any(h => added.Contains(h.Key)))
-                            DrawSheet(builder, after, font, pg, added, Green,
-                                $"{sheet}  -  {afterLabel}   (added reinforcing in GREEN)");
+                    {
+                        int boxes = pg.Callouts.Count(h => added.Contains(h.Key));
+                        int keys = pg.Callouts.Where(h => added.Contains(h.Key)).Select(h => h.Key).Distinct().Count();
+                        if (boxes > 0) emissions.Add((pg, false, added, Green, sheet,
+                            $"{sheet}  -  {afterLabel}   (added reinforcing in GREEN - {keys} call-out(s), {boxes} box(es))"));
+                    }
             }
+
+            // Cover is page 1; emissions follow in order. First emitted page per sheet = its index entry.
+            var pageOfSheet = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < emissions.Count; i++) pageOfSheet.TryAdd(emissions[i].Sheet, i + 2);
+
+            BuildCover(builder, font, projectName, beforeLabel, afterLabel, plan, pageOfSheet);
+
+            foreach (var e in emissions)
+                DrawSheet(builder, e.FromBefore ? before : after, font, e.Pg, e.Keys, e.Color, e.Label);
+
+            // Document outline: jump straight to any sheet's marked page from the viewer's bookmark
+            // panel (Rory reads these in Bluebeam/Acrobat, where the panel is the navigation).
+            var marks = new List<BookmarkNode>
+            {
+                new DocumentBookmarkNode("Cover - change index", 0,
+                    new ExplicitDestination(1, ExplicitDestinationType.FitPage, new ExplicitDestinationCoordinates(null)),
+                    Array.Empty<BookmarkNode>()),
+            };
+            for (int i = 0; i < emissions.Count; i++)
+                marks.Add(new DocumentBookmarkNode(
+                    $"{emissions[i].Sheet} - {(emissions[i].FromBefore ? "removed (RED)" : "added (GREEN)")}", 0,
+                    new ExplicitDestination(i + 2, ExplicitDestinationType.FitPage, new ExplicitDestinationCoordinates(null)),
+                    Array.Empty<BookmarkNode>()));
+            builder.Bookmarks = new Bookmarks(marks);
 
             return builder.Build();
         }
@@ -129,7 +163,8 @@ namespace Kor.Operations.EngineeringTools.RebarChange
         private static void BuildCover(
             PdfDocumentBuilder builder, PdfDocumentBuilder.AddedFont font,
             string projectName, string beforeLabel, string afterLabel,
-            List<(string Sheet, HashSet<string> Added, HashSet<string> Removed)> plan)
+            List<(string Sheet, HashSet<string> Added, HashSet<string> Removed)> plan,
+            IReadOnlyDictionary<string, int> pageOfSheet)
         {
             const double Left = 50, RightX = 572; // 612pt page, ~40pt right margin
             var cv = builder.AddPage(612, 792);
@@ -144,17 +179,36 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             y = DrawWrapped(cv, font, $"GREEN box = reinforcing ADDED by {afterLabel} (on the {afterLabel} sheet)", Left, y, 12, RightX, 16);
             cv.SetTextAndFillColor(Red.R, Red.G, Red.B);
             y = DrawWrapped(cv, font, $"RED box = reinforcing REMOVED since {beforeLabel} (on the {beforeLabel} sheet)", Left, y - 2, 12, RightX, 16);
-            cv.ResetColor();
+            // ResetColor does not restore the text fill to black here, so set the body colour explicitly.
+            cv.SetTextAndFillColor(Navy.R, Navy.G, Navy.B);
             y = DrawWrapped(cv, font,
                 $"The sheets below are boxed on the actual drawings: removed (red) on {beforeLabel}, added (green) on {afterLabel}. The Change Report (.xlsx) is the complete sheet-by-sheet list.",
                 Left, y - 4, 10, RightX, 14);
+            y = DrawWrapped(cv, font,
+                "A box marks EVERY occurrence of a changed call-out on its sheet, so a sheet can show more boxes than its added/removed count. Each page header states both counts.",
+                Left, y - 2, 10, RightX, 14);
 
-            y -= 16;
+            int totalAdded = plan.Sum(p => p.Added.Count), totalRemoved = plan.Sum(p => p.Removed.Count);
+            y = DrawWrapped(cv, font,
+                $"{plan.Count} sheet(s) changed  -  {totalAdded} call-out(s) added, {totalRemoved} removed.",
+                Left, y - 8, 11, RightX, 15);
+
+            y -= 10;
+            int shown = 0;
             foreach (var p in plan)
             {
-                cv.AddText($"{p.Sheet}    +{p.Added.Count} added   -{p.Removed.Count} removed", 10, new PdfPoint(55, y), font);
+                // Leave room for the "and N more" line — the index must never truncate silently.
+                if (y < 56 && shown < plan.Count - 1)
+                {
+                    cv.AddText($"... and {plan.Count - shown} more sheet(s) - see the Change Report (.xlsx).",
+                        10, new PdfPoint(55, y), font);
+                    break;
+                }
+                string pn = pageOfSheet.TryGetValue(p.Sheet, out var n) ? $"p.{n}" : "";
+                cv.AddText($"{p.Sheet}    +{p.Added.Count} added   -{p.Removed.Count} removed    {pn}",
+                    10, new PdfPoint(55, y), font);
                 y -= 15;
-                if (y < 40) break;
+                shown++;
             }
         }
 

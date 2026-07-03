@@ -1414,6 +1414,19 @@ if (args.Length >= 3 && args[0].Equals("sched-tokens", StringComparison.OrdinalI
     return 0;
 }
 
+// DIAGNOSTIC: takeoff render <pdf> <pngDir> [dpi] [first] [last] — rasterize pages to p-NN.png for inspection.
+if (args.Length >= 3 && args[0].Equals("render", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
+    double rdpi = args.Length >= 4 && double.TryParse(args[3], out var rd) ? rd : 110;
+    int? rf = args.Length >= 5 && int.TryParse(args[4], out var ra) ? ra : null;
+    int? rl = args.Length >= 6 && int.TryParse(args[5], out var rb) ? rb : null;
+    Directory.CreateDirectory(args[2]);
+    int rn = PlanPdfRenderer.RenderMissing(args[1], args[2], rdpi, rf, rl);
+    Console.WriteLine($"rendered {rn} page(s) -> {args[2]} @ {rdpi:0} dpi");
+    return 0;
+}
+
 // DIAGNOSTIC: takeoff elev-scan <pdf> [first] [last] — find where the set states floor elevations / storey
 // heights. Scans every page for elevation-pattern tokens (feet-inch "100'-0", metric "+45.000", "EL"/"T.O.")
 // and for "FLOOR TO FLOOR"/"STOREY" notes, and on any page carrying a level ladder dumps each LEVEL row's full
@@ -1574,7 +1587,10 @@ if (args.Length >= 4 && args[0].Equals("overlay", StringComparison.OrdinalIgnore
     var obytes = RebarOverlayGenerator.Build(args[1], args[2], oname, obl, oal, ounit);
     File.WriteAllBytes(args[3], obytes);
     using (var doc = UglyToad.PdfPig.PdfDocument.Open(obytes))
-        Console.WriteLine($"Markup pages: {doc.NumberOfPages}");
+    {
+        int nbm = doc.TryGetBookmarks(out var bms) ? bms.Roots.Count : 0;
+        Console.WriteLine($"Markup pages: {doc.NumberOfPages}   bookmarks: {nbm}");
+    }
     Console.WriteLine($"Wrote {args[3]}");
     return 0;
 }
