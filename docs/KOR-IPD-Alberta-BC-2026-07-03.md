@@ -59,6 +59,21 @@ The practical translation: **the entry skill KOR already has (being the firm arc
 - **Architects:** **ACI** (Jason McConaghie — principal and IPDA board member; the EPSB/EXPO thread), **Group2** (Craig Webber — claims 17 IPD projects, its own count [UNVERIFIED beyond the six named in Section 4]; the Red Deer/Strathcona/King's thread), **Reimagine** (ex-Manasc Isaac; Mosaic, RDP), **Number TEN**. **DIALOG: an IPDA member but zero delivered Alberta IPD found** — the forming DIALOG relationship is not an IPD door today (though their Edmonton studio is worth asking about unannounced pursuits; note DIALOG does appear in BC alliance pursuit pairings with EllisDon — Section 6).
 
 - **The room where this community actually meets:** the **Integrated Project Delivery Alliance (IPDA)** — Canadian, Alberta-heavy board (WSP Structures Alberta's Patrick Taylor is Treasurer; members include EPSB, the Cities of Edmonton and Calgary, U of A, EPCOR, Strathcona County, RJC, Stantec, DIALOG, Bird, PCL, Graham — **KOR is not on the list**), plus free monthly IPD "Lean Coffee" meetups in Edmonton and Calgary. **IPDA's 2026 national conference is in Calgary — Fairmont Palliser, November 3–4, 2026** (registration pricing not yet posted on the conference site) — the highest-value room in the country for this, and it is in Alberta this cycle.
+- **The call list** (contact details verified 2026-07-03 unless labeled; pattern-inferred addresses match each firm's confirmed email format but are unconfirmed — verify before relying on them):
+
+| Person | Role / why them | Email |
+|---|---|---|
+| **Jason McConaghie** | Principal, ACI + IPDA board — the strongest single door into Edmonton IPD | jmcconaghie@aci-arch.com *(verified)* |
+| **Craig Webber** | Principal, Group2 — **Past President of the IPDA**; the most experienced IPD architect in Alberta | craig.webber@group2.ca *(matches firm pattern; unconfirmed)* |
+| **Jen Hancock** | VP Collaborative Construction, Chandos — the field's most visible practice leader | jhancock@chandos.com *(inferred pattern, unconfirmed)* |
+| **Lindsay Worton** | Chandos; IPDA Education Co-Chair | lworton@chandos.com *(inferred pattern, unconfirmed)* |
+| **Padraig McCarthy** | VP & District Manager Calgary, Chandos — natural pre-contact before the November conference | pmccarthy@chandos.com *(verified)* |
+| **D'Arcy Newberry** | SVP Strategic Operations, Chandos | dnewberry@chandos.com *(verified)* |
+| **Glenn Cyrankiewicz** | CEO & Principal, Delnor — the contractor that was itself once a first-time IPD entrant | glennc@delnor.ca *(verified)* |
+| **Paul Verhesen** | President, Clark Builders | paul.verhesen@clarkbuilders.com *(verified)* |
+| **Avel Espiritu** | Host, Edmonton IPD Lean Coffee (free monthly meetup) | avel@red-5.ca *(published)* |
+
+Competitor contacts — RJC's three regional IPD leads — are on file in KOR's BD database with the same treatment; they are listed there for market awareness, not outreach.
 - **How a first-timer gets in (documented cases):** owners mandate IPD → the contractor/architect core cascade-selects consultants → selection interviews test collaborative behaviour and culture fit, not IPD résumé; **training comes after selection**. One Alberta RFP (Strathcona Fire Station 7) required the structural engineer named on the team at submission — meaning the relationship must exist *before* the posting. The realistic KOR path: **APEGA Permit to Practice first** (hard prerequisite, already on KOR's Alberta list) → IPDA membership + Edmonton Lean Coffee presence → conventional work or genuine relationships with Chandos/Delnor/Clark and ACI/Group2 → be the seismic/mass-timber-capable option RJC isn't when the next team forms.
 
 ## 6. BC — what IPD means at home [V unless noted]
