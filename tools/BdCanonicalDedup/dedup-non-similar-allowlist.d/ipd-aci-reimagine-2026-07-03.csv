@@ -1,0 +1,6 @@
+LoserId,SurvivorId,Reason,Reviewer,ReviewedAt
+75562,68756,ACI Architects Inc. same firm as ACI Architecture Inc. (aci-arch.com both),claude-session,2026-07-03
+16054,68756,Stephens Kozak ACI is the legacy name of ACI Architecture Inc.,claude-session,2026-07-03
+76000,75560,Manasc Isaac rebranded to Reimagine Architects,claude-session,2026-07-03
+77692,75560,Reimagine (formerly Manasc Isaac) duplicate of Reimagine Architects,claude-session,2026-07-03
+77918,77831,Revery Architecture (design architect) annotated dup of Revery Architecture,claude-session,2026-07-03

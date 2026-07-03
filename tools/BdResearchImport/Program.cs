@@ -2723,7 +2723,93 @@ ORDER BY Id;";
     private static string? CleanTeamName(string? name)
     {
         var trimmed = NullIfBlank(name);
-        return string.Equals(trimmed, "unknown", StringComparison.OrdinalIgnoreCase) ? null : trimmed;
+        if (trimmed is null || string.Equals(trimmed, "unknown", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        // Guard against multi-firm narrative strings ("Firm A (role); Firm B (role)")
+        // reaching the org resolver as a single name — the migration-153 junk-org class.
+        // Uncertainty phrasing means no single firm can honestly hold the seat.
+        var lower = trimmed.ToLowerInvariant();
+        if (lower.Contains("neither") || lower.Contains("not publicly") || lower.Contains("not confirmed")
+            || lower.Contains("not disclosed") || lower.Contains("in-house within") || lower.Contains(" tbd"))
+        {
+            return null;
+        }
+
+        if (trimmed.Contains(';') || trimmed.Contains(" / "))
+        {
+            // Split only at depth 0 — separators inside parentheses are annotation text,
+            // not firm boundaries ("A Inc. (with B / C as architect of record)").
+            var segments = SplitTeamSegments(trimmed);
+            if (segments.Length == 0) return null;
+
+            // A segment annotated as the firm of record/prime wins; otherwise the first.
+            static bool IsOfRecord(string s)
+            {
+                var l = s.ToLowerInvariant();
+                return l.Contains("record") || l.Contains("prime") || l.Contains("confirmed");
+            }
+
+            trimmed = (segments.FirstOrDefault(IsOfRecord) ?? segments[0]).Trim();
+        }
+
+        // Strip trailing role annotations: "Kasian (architect of record)" -> "Kasian".
+        while (Regex.IsMatch(trimmed, @"\s*\([^()]*\)\s*$"))
+        {
+            trimmed = Regex.Replace(trimmed, @"\s*\([^()]*\)\s*$", string.Empty).Trim();
+        }
+
+        // Whatever survives must look like a name, not a sentence fragment.
+        if (trimmed.Length == 0 || trimmed.Contains(';')
+            || trimmed.Contains('(') || trimmed.Contains(')'))
+        {
+            return null;
+        }
+
+        var lowered = trimmed.ToLowerInvariant();
+        if (lowered.Contains("multiple") || lowered.Contains("various") || lowered.Contains("unnamed")
+            || lowered == "tbd" || lowered.StartsWith("unknown"))
+        {
+            return null;
+        }
+
+        return trimmed;
+    }
+
+    private static string[] SplitTeamSegments(string value)
+    {
+        var segments = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var depth = 0;
+        for (var i = 0; i < value.Length; i++)
+        {
+            var c = value[i];
+            if (c == '(') depth++;
+            else if (c == ')') depth = Math.Max(0, depth - 1);
+
+            if (depth == 0 && c == ';')
+            {
+                segments.Add(current.ToString());
+                current.Clear();
+                continue;
+            }
+
+            if (depth == 0 && c == '/'
+                && i > 0 && char.IsWhiteSpace(value[i - 1])
+                && i + 1 < value.Length && char.IsWhiteSpace(value[i + 1]))
+            {
+                segments.Add(current.ToString());
+                current.Clear();
+                continue;
+            }
+
+            current.Append(c);
+        }
+
+        segments.Add(current.ToString());
+        return segments.Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
     }
 
     private static bool IsUnknownName(string? name)
