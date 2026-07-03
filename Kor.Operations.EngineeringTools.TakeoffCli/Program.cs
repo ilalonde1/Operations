@@ -1414,6 +1414,26 @@ if (args.Length >= 3 && args[0].Equals("sched-tokens", StringComparison.OrdinalI
     return 0;
 }
 
+// DIAGNOSTIC: takeoff dedupe-probe <pdf> <page> <needle> — PdfPig words matching needle with EXACT
+// coordinates, before and after PdfWordDedupe, to verify double-draw (fake-bold) collapsing.
+if (args.Length >= 4 && args[0].Equals("dedupe-probe", StringComparison.OrdinalIgnoreCase))
+{
+    using var dpDoc = UglyToad.PdfPig.PdfDocument.Open(args[1]);
+    var dpPage = dpDoc.GetPage(int.Parse(args[2]));
+    var raw = dpPage.GetWords().ToList();
+    var kept = Kor.Operations.EngineeringTools.RebarChange.PdfWordDedupe.Filter(raw);
+    Console.WriteLine($"page {args[2]}: raw {raw.Count} words -> deduped {kept.Count}");
+    foreach (var (label, list) in new[] { ("RAW", raw), ("KEPT", kept) })
+    {
+        var hits = list.Where(w => w.Text.Contains(args[3], StringComparison.OrdinalIgnoreCase))
+                       .OrderBy(w => w.BoundingBox.Left).ThenBy(w => w.BoundingBox.Bottom).ToList();
+        Console.WriteLine($"  {label}: {hits.Count} '{args[3]}' hit(s)");
+        foreach (var w in hits.Take(30))
+            Console.WriteLine($"    L={w.BoundingBox.Left:F2} B={w.BoundingBox.Bottom:F2} \"{w.Text}\"");
+    }
+    return 0;
+}
+
 // DIAGNOSTIC: takeoff render <pdf> <pngDir> [dpi] [first] [last] — rasterize pages to p-NN.png for inspection.
 if (args.Length >= 3 && args[0].Equals("render", StringComparison.OrdinalIgnoreCase))
 {
@@ -1683,6 +1703,8 @@ if (args.Length >= 4 && args[0].Equals("rebar", StringComparison.OrdinalIgnoreCa
 
     Console.WriteLine($"Sheets compared {rr.SheetsCompared}, changed {rr.SheetsChanged} " +
                       $"(content {rr.ContentChanged}, new {rr.NewSheets}, removed {rr.RemovedSheets})");
+    Console.WriteLine($"Net weighable rebar change: {rr.NetWeightLb:+#,##0;-#,##0;0} lb "
+        + $"(+{rr.AddedWeightLb:N0} / -{rr.RemovedWeightLb:N0}; {rr.UnweighedChanges} changed call-out(s) carry no count/length)");
     foreach (var s in rr.Sheets.Where(s => s.Status != RebarChangeStatus.Unchanged))
         Console.WriteLine($"  {s.Sheet,-11} {s.Status,-12} net {s.NetDelta,+3} : {string.Join(", ", s.Added.Concat(s.Removed))}");
 

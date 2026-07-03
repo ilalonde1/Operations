@@ -110,6 +110,18 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                     string key = m.Value.ToUpperInvariant();
                     counter[key] = counter.GetValueOrDefault(key) + 1;
                 }
+
+                // PLAN-callout grammar (additive, all modes): "36-15M4700 @ 125" — count-size-LENGTH(mm)
+                // [@ spacing], the form reinforcing is called up on the plans themselves. The glued mm
+                // length keeps it disjoint from the intensity form ("15M @ 200", no glued digits) and the
+                // bar-list form ("16-15M13.9", feet-inch dot), so this adds plan steel without disturbing
+                // either. These are the changes that take the manual work: schedules are read in minutes,
+                // the 20 scattered plan bars are not.
+                foreach (Match m in RebarPlanCallout.TextRe.Matches(pages[i]))
+                {
+                    var pc = RebarPlanCallout.FromGroups(m);
+                    if (pc is { } v) counter[v.Key] = counter.GetValueOrDefault(v.Key) + 1;
+                }
             }
 
             return byOwn

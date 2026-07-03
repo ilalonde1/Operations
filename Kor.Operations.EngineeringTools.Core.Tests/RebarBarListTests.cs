@@ -59,8 +59,11 @@ public sealed class RebarBarListTests
         var r = RebarChangeService.Compare(Issue("16-15M13.9"), Issue("18-15M13.9"), "IFC", "SSI#11");
         var s = r.Sheets.Single(x => x.Sheet == "S2.01.1");
         Assert.Equal(RebarChangeStatus.Changed, s.Status);
-        Assert.Contains("+1x 18-15M13.9", s.Added);
-        Assert.Contains("-1x 16-15M13.9", s.Removed);
+        // The added/removed lines now carry the weight of the change (qty × ft-in length × CSA mass):
+        // 18 bars × 13'-9" × 1.570 kg/m = +261 lb in, 16 × 13'-9" = -232 lb out — net +29 lb of steel.
+        Assert.Contains(s.Added, x => x.StartsWith("+1x 18-15M13.9"));
+        Assert.Contains(s.Removed, x => x.StartsWith("-1x 16-15M13.9"));
+        Assert.Equal(29.0, s.NetWeightLb, 0);
     }
 
     [Fact]

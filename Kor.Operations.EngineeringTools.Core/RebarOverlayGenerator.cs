@@ -73,16 +73,79 @@ namespace Kor.Operations.EngineeringTools.RebarChange
 
             var sheets = bMap.Keys.Union(aMap.Keys).Distinct().OrderBy(SortKey).ToList();
 
-            // Per sheet: which call-out keys were added (on after) / removed (off before).
-            var plan = new List<(string Sheet, HashSet<string> Added, HashSet<string> Removed)>();
+            // Per sheet: match call-out INSTANCES across the two issues by key AND position, and keep
+            // only the unmatched ones. An unchanged call-out sits at the same coordinates in both
+            // issues (a reissued annotation doesn't move), so it pairs off and is never boxed — even
+            // when the same TEXT was added elsewhere on the sheet. This is what makes the box land on
+            // the new PC5 row instead of on PC1's identical, unchanged cell: a count-diff knows the
+            // key gained an instance; only the position knows WHICH instance is the new one.
+            // Weight: each unmatched instance contributes its own lb (count × length × CSA mass) when
+            // the call-out carries a quantity; instances with none are tallied unweighed, not guessed.
+            const double MatchTolPt = 8.0;   // reissued-unchanged text does not move; well under one cell/annotation pitch
+            var plan = new List<(string Sheet,
+                List<(PageModel Pg, Hit H)> Added, List<(PageModel Pg, Hit H)> Removed,
+                double NetLb, int Unweighed)>();
             foreach (var s in sheets)
             {
-                var bc = Counts(bMap, s);
-                var ac = Counts(aMap, s);
-                var added = ac.Keys.Where(k => ac[k] > bc.GetValueOrDefault(k)).ToHashSet();
-                var removed = bc.Keys.Where(k => bc[k] > ac.GetValueOrDefault(k)).ToHashSet();
-                if (added.Count > 0 || removed.Count > 0)
-                    plan.Add((s, added, removed));
+                var bHits = (bMap.TryGetValue(s, out var bpg) ? bpg : new List<PageModel>())
+                    .SelectMany(pg => pg.Callouts.Select(h => (Pg: pg, H: h))).ToList();
+                var aHits = (aMap.TryGetValue(s, out var apg) ? apg : new List<PageModel>())
+                    .SelectMany(pg => pg.Callouts.Select(h => (Pg: pg, H: h))).ToList();
+
+                var addedInst = new List<(PageModel Pg, Hit H)>();
+                var removedInst = new List<(PageModel Pg, Hit H)>();
+                foreach (var key in aHits.Select(x => x.H.Key).Union(bHits.Select(x => x.H.Key)).Distinct())
+                {
+                    var bl = bHits.Where(x => x.H.Key == key).ToList();
+                    var al = aHits.Where(x => x.H.Key == key).ToList();
+                    var usedB = new bool[bl.Count];
+                    var pendingA = new List<(PageModel Pg, Hit H)>();
+
+                    // Pass 1 — same place: an unchanged annotation doesn't move, so it pairs off here.
+                    foreach (var a in al)
+                    {
+                        int best = -1; double bestD = MatchTolPt;
+                        for (int i = 0; i < bl.Count; i++)
+                        {
+                            if (usedB[i]) continue;
+                            double d = Math.Max(Math.Abs(bl[i].H.Left - a.H.Left), Math.Abs(bl[i].H.Bottom - a.H.Bottom));
+                            if (d <= bestD) { bestD = d; best = i; }
+                        }
+                        if (best >= 0) usedB[best] = true;
+                        else pendingA.Add(a);
+                    }
+
+                    // Pass 2 — moved-but-identical: an inserted row/relaid table SHIFTS the unchanged
+                    // neighbours, which must not read as changes. Remaining same-key instances pair up
+                    // nearest-first at any distance; only the COUNT EXCESS survives — and it is the
+                    // instances farthest from any counterpart, i.e. the genuinely new/removed ones.
+                    var freeB = Enumerable.Range(0, bl.Count).Where(i => !usedB[i]).ToList();
+                    while (pendingA.Count > 0 && freeB.Count > 0)
+                    {
+                        double bestD = double.MaxValue; int ai = -1, bi = -1;
+                        for (int a2 = 0; a2 < pendingA.Count; a2++)
+                            foreach (var b2 in freeB)
+                            {
+                                double d = Math.Max(Math.Abs(bl[b2].H.Left - pendingA[a2].H.Left),
+                                                    Math.Abs(bl[b2].H.Bottom - pendingA[a2].H.Bottom));
+                                if (d < bestD) { bestD = d; ai = a2; bi = b2; }
+                            }
+                        pendingA.RemoveAt(ai);
+                        freeB.Remove(bi);
+                        usedB[bi] = true;
+                    }
+
+                    addedInst.AddRange(pendingA);
+                    foreach (var i in freeB) removedInst.Add(bl[i]);
+                }
+                if (addedInst.Count == 0 && removedInst.Count == 0) continue;
+
+                double netLb = 0; int unweighed = 0;
+                foreach (var (_, h) in addedInst)
+                    if (RebarBarListWeigher.KeyWeightLb(h.Key) is double lb) netLb += lb; else unweighed++;
+                foreach (var (_, h) in removedInst)
+                    if (RebarBarListWeigher.KeyWeightLb(h.Key) is double lb) netLb -= lb; else unweighed++;
+                plan.Add((s, addedInst, removedInst, netLb, unweighed));
             }
 
             var builder = new PdfDocumentBuilder();
@@ -92,27 +155,24 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             // number and the document outline can point at real destinations. Only a page that
             // actually carries a box is emitted — a sheet with additions only must not produce a
             // blank "removed in RED" before-page (and vice-versa), which reads as broken.
-            var emissions = new List<(PageModel Pg, bool FromBefore, HashSet<string> Keys,
+            var emissions = new List<(PageModel Pg, bool FromBefore, List<Hit> Hits,
                 (byte R, byte G, byte B) Color, string Sheet, string Label)>();
-            foreach (var (sheet, added, removed) in plan)
+            foreach (var (sheet, addedInst, removedInst, _, _) in plan)
             {
-                if (removed.Count > 0 && bMap.TryGetValue(sheet, out var bp))
-                    foreach (var pg in bp)
-                    {
-                        int boxes = pg.Callouts.Count(h => removed.Contains(h.Key));
-                        int keys = pg.Callouts.Where(h => removed.Contains(h.Key)).Select(h => h.Key).Distinct().Count();
-                        if (boxes > 0) emissions.Add((pg, true, removed, Red, sheet,
-                            $"{sheet}  -  {beforeLabel}   (removed reinforcing in RED - {keys} call-out(s), {boxes} box(es))"));
-                    }
-
-                if (added.Count > 0 && aMap.TryGetValue(sheet, out var ap))
-                    foreach (var pg in ap)
-                    {
-                        int boxes = pg.Callouts.Count(h => added.Contains(h.Key));
-                        int keys = pg.Callouts.Where(h => added.Contains(h.Key)).Select(h => h.Key).Distinct().Count();
-                        if (boxes > 0) emissions.Add((pg, false, added, Green, sheet,
-                            $"{sheet}  -  {afterLabel}   (added reinforcing in GREEN - {keys} call-out(s), {boxes} box(es))"));
-                    }
+                foreach (var g in removedInst.GroupBy(x => x.Pg))
+                {
+                    var hits = g.Select(x => x.H).ToList();
+                    int keys = hits.Select(h => h.Key).Distinct().Count();
+                    emissions.Add((g.Key, true, hits, Red, sheet,
+                        $"{sheet}  -  {beforeLabel}   (removed reinforcing in RED - {keys} call-out(s), {hits.Count} box(es))"));
+                }
+                foreach (var g in addedInst.GroupBy(x => x.Pg))
+                {
+                    var hits = g.Select(x => x.H).ToList();
+                    int keys = hits.Select(h => h.Key).Distinct().Count();
+                    emissions.Add((g.Key, false, hits, Green, sheet,
+                        $"{sheet}  -  {afterLabel}   (added reinforcing in GREEN - {keys} call-out(s), {hits.Count} box(es))"));
+                }
             }
 
             // Cover is page 1; emissions follow in order. First emitted page per sheet = its index entry.
@@ -122,7 +182,7 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             BuildCover(builder, font, projectName, beforeLabel, afterLabel, plan, pageOfSheet);
 
             foreach (var e in emissions)
-                DrawSheet(builder, e.FromBefore ? before : after, font, e.Pg, e.Keys, e.Color, e.Label);
+                DrawSheet(builder, e.FromBefore ? before : after, font, e.Pg, e.Hits, e.Color, e.Label);
 
             // Document outline: jump straight to any sheet's marked page from the viewer's bookmark
             // panel (Rory reads these in Bluebeam/Acrobat, where the panel is the navigation).
@@ -144,12 +204,14 @@ namespace Kor.Operations.EngineeringTools.RebarChange
 
         private static void DrawSheet(
             PdfDocumentBuilder builder, PdfDocument doc, PdfDocumentBuilder.AddedFont font,
-            PageModel pg, HashSet<string> keys, (byte R, byte G, byte B) color, string label)
+            PageModel pg, IReadOnlyList<Hit> hits, (byte R, byte G, byte B) color, string label)
         {
             var page = builder.AddPage(doc, pg.Num);
             page.SetStrokeColor(color.R, color.G, color.B);
             const double pad = 3.0;
-            foreach (var h in pg.Callouts.Where(h => keys.Contains(h.Key)))
+            // Boxes are the position-matched CHANGED instances only — an unchanged occurrence of the
+            // same call-out text elsewhere on the sheet is deliberately not boxed.
+            foreach (var h in hits)
             {
                 page.DrawRectangle(
                     new PdfPoint(h.Left - pad, h.Bottom - pad),
@@ -163,7 +225,8 @@ namespace Kor.Operations.EngineeringTools.RebarChange
         private static void BuildCover(
             PdfDocumentBuilder builder, PdfDocumentBuilder.AddedFont font,
             string projectName, string beforeLabel, string afterLabel,
-            List<(string Sheet, HashSet<string> Added, HashSet<string> Removed)> plan,
+            List<(string Sheet, List<(PageModel Pg, Hit H)> Added, List<(PageModel Pg, Hit H)> Removed,
+                double NetLb, int Unweighed)> plan,
             IReadOnlyDictionary<string, int> pageOfSheet)
         {
             const double Left = 50, RightX = 572; // 612pt page, ~40pt right margin
@@ -185,13 +248,21 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 $"The sheets below are boxed on the actual drawings: removed (red) on {beforeLabel}, added (green) on {afterLabel}. The Change Report (.xlsx) is the complete sheet-by-sheet list.",
                 Left, y - 4, 10, RightX, 14);
             y = DrawWrapped(cv, font,
-                "A box marks EVERY occurrence of a changed call-out on its sheet, so a sheet can show more boxes than its added/removed count. Each page header states both counts.",
+                "A box marks the SPECIFIC call-out instance that changed (matched by text AND position between the issues) - an identical, unchanged call-out elsewhere on the sheet is not boxed. Each page header states the counts.",
                 Left, y - 2, 10, RightX, 14);
 
             int totalAdded = plan.Sum(p => p.Added.Count), totalRemoved = plan.Sum(p => p.Removed.Count);
+            double netLb = plan.Sum(p => p.NetLb);
+            int unweighed = plan.Sum(p => p.Unweighed);
             y = DrawWrapped(cv, font,
                 $"{plan.Count} sheet(s) changed  -  {totalAdded} call-out(s) added, {totalRemoved} removed.",
                 Left, y - 8, 11, RightX, 15);
+            // The number this report exists for: the rebar weight this issue adds or removes, from the
+            // quantity-bearing call-outs (count x length x CSA mass). Unweighable changes are declared.
+            y = DrawWrapped(cv, font,
+                $"Net weighable rebar change: {netLb:+#,##0;-#,##0;0} lb"
+                + (unweighed > 0 ? $"  ({unweighed} changed call-out(s) carry no count/length and are NOT in the lb figure)" : ""),
+                Left, y - 2, 11, RightX, 15);
 
             y -= 10;
             int shown = 0;
@@ -205,7 +276,8 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                     break;
                 }
                 string pn = pageOfSheet.TryGetValue(p.Sheet, out var n) ? $"p.{n}" : "";
-                cv.AddText($"{p.Sheet}    +{p.Added.Count} added   -{p.Removed.Count} removed    {pn}",
+                string lb = Math.Abs(p.NetLb) >= 0.5 ? $"   {p.NetLb:+#,##0;-#,##0} lb" : "";
+                cv.AddText($"{p.Sheet}    +{p.Added.Count} added   -{p.Removed.Count} removed{lb}    {pn}",
                     10, new PdfPoint(55, y), font);
                 y -= 15;
                 shown++;
@@ -251,7 +323,9 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             var pages = new List<PageModel>();
             foreach (var page in doc.GetPages())
             {
-                var words = page.GetWords().ToList();
+                // Fake-bold double-draws out first: a bolded-but-unchanged call-out must not read
+                // as a second occurrence (it made the diff box unchanged schedule cells as "added").
+                var words = PdfWordDedupe.Filter(page.GetWords());
                 var hits = new List<(string, double, double, double)>();
                 foreach (var w in words)
                     foreach (Match m in SheetRe.Matches(w.Text))
@@ -321,6 +395,40 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             for (int i = 0; i < words.Count; i++)
             {
                 var t = words[i].Text;
+
+                // PLAN call-out ("36-15M4700 @ 125"): the qty-size-LENGTH token is the anchor — it
+                // alone identifies (and weighs) the call-out; the spacing joins when it follows as
+                // "@" + "125" (or glued). Checked before the intensity forms; the glued mm length
+                // makes the grammars disjoint, so nothing is ever parsed twice.
+                var mpf = RebarPlanCallout.WordFull.Match(t);
+                var mps = mpf.Success ? mpf : RebarPlanCallout.WordStart.Match(t);
+                if (mps.Success)
+                {
+                    var parsed = RebarPlanCallout.FromGroups(mps);
+                    if (parsed is { } pc)
+                    {
+                        var box = words[i].BoundingBox;
+                        if (!mpf.Success)   // spacing not glued on — look for it in the next words
+                            for (int j = i + 1; j <= Math.Min(i + 2, words.Count - 1); j++)
+                            {
+                                if (words[j].Text == "@") continue;
+                                var msp2 = space.Match(words[j].Text);
+                                if (msp2.Success && int.TryParse(msp2.Groups[1].Value, out int sp)
+                                    && sp >= RebarPlanCallout.SpacingMinMm && sp <= RebarPlanCallout.SpacingMaxMm)
+                                {
+                                    pc = pc with { SpacingMm = sp };
+                                    var b2 = words[j].BoundingBox;
+                                    box = new PdfRectangle(
+                                        Math.Min(box.Left, b2.Left), Math.Min(box.Bottom, b2.Bottom),
+                                        Math.Max(box.Right, b2.Right), Math.Max(box.Top, b2.Top));
+                                }
+                                break;
+                            }
+                        outp.Add(new Hit(pc.Key, box.Left, box.Bottom, box.Width, box.Height));
+                        continue;
+                    }
+                }
+
                 var mf = full.Match(t);
                 if (mf.Success)
                 {

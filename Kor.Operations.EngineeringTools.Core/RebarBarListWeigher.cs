@@ -47,18 +47,40 @@ namespace Kor.Operations.EngineeringTools.RebarChange
 
         public readonly record struct SheetWeight(double WeightLb, int WeighedCallouts, int UnweighableCallouts);
 
-        /// <summary>Total bar-list weight for one sheet's call-out multiset (count × per-call-out weight),
-        /// plus how many call-outs could not be weighed (continuous with no bar count).</summary>
+        /// <summary>Weight (lb) of ONE instance of a call-out key, from whichever quantity-bearing
+        /// grammar it belongs to — bar-list ("16-15M13.9", feet-inch) or plan ("36-15M4700@125",
+        /// mm). Null when the key carries no computable weight: an intensity key ("15M@200") has no
+        /// count or length, and a continuous bar has no count — neither is ever guessed.</summary>
+        public static double? KeyWeightLb(string key)
+        {
+            var c = Parse(key);
+            if (c is { } bc) return bc.Qty is null ? null : WeightLb(bc);
+            var pc = RebarPlanCallout.ParseKey(key);
+            return pc is { } v ? RebarPlanCallout.WeightLb(v) : null;
+        }
+
+        /// <summary>Total weight for one sheet's call-out multiset (count × per-call-out weight),
+        /// over BOTH quantity-bearing grammars (bar-list and plan call-outs), plus how many
+        /// call-outs could not be weighed (continuous / no bar count).</summary>
         public static SheetWeight Weigh(IReadOnlyDictionary<string, int> callouts)
         {
             double lb = 0; int weighed = 0, unweighable = 0;
             foreach (var kv in callouts)
             {
                 var c = Parse(kv.Key);
-                if (c is null) continue;                                   // intensity key — not a bar-list weight
-                if (c.Value.Qty is null) { unweighable += kv.Value; continue; }
-                lb += kv.Value * WeightLb(c.Value);
-                weighed += kv.Value;
+                if (c is { } bc)
+                {
+                    if (bc.Qty is null) unweighable += kv.Value;
+                    else { lb += kv.Value * WeightLb(bc); weighed += kv.Value; }
+                    continue;
+                }
+                var pc = RebarPlanCallout.ParseKey(kv.Key);
+                if (pc is { } v)
+                {
+                    if (RebarPlanCallout.WeightLb(v) is double d) { lb += kv.Value * d; weighed += kv.Value; }
+                    else unweighable += kv.Value;
+                }
+                // else: intensity key — no weight computable from the call-out alone
             }
             return new SheetWeight(lb, weighed, unweighable);
         }

@@ -41,11 +41,20 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 var added = new List<string>();
                 var removed = new List<string>();
                 int net = 0;
+                // Weight delta of this sheet's changes — the number the whole exercise exists for
+                // ("this SI adds N lb of rebar"). Only quantity-bearing call-outs (count × length ×
+                // CSA mass) are weighed; intensity/continuous changes are tallied unweighed, never guessed.
+                double addedLb = 0, removedLb = 0; int unweighedChanges = 0;
                 foreach (var k in cb.Keys.Union(ca.Keys).OrderBy(x => x))
                 {
                     int d = cb.GetValueOrDefault(k) - ca.GetValueOrDefault(k);
-                    if (d > 0) { added.Add($"+{d}x {k}"); net += d; }
-                    else if (d < 0) { removed.Add($"{d}x {k}"); net += d; }
+                    if (d == 0) continue;
+                    double? lbEach = RebarBarListWeigher.KeyWeightLb(k);
+                    string w = lbEach is double lw ? $"  ({d * lw:+#,##0;-#,##0} lb)" : "";
+                    if (d > 0) { added.Add($"+{d}x {k}{w}"); net += d; }
+                    else { removed.Add($"{d}x {k}{w}"); net += d; }
+                    if (lbEach is double each) { if (d > 0) addedLb += d * each; else removedLb += -d * each; }
+                    else unweighedChanges += Math.Abs(d);
                 }
 
                 RebarChangeStatus status;
@@ -60,7 +69,8 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 calloutsRemoved += Math.Max(0, beforeN - afterN);
 
                 string title = (inB ? sb!.Title : sa!.Title) ?? "";
-                changes.Add(new RebarSheetChange(s, title, status, beforeN, afterN, afterN - beforeN, added, removed));
+                changes.Add(new RebarSheetChange(s, title, status, beforeN, afterN, afterN - beforeN, added, removed,
+                    AddedWeightLb: addedLb, RemovedWeightLb: removedLb, UnweighedChanges: unweighedChanges));
             }
 
             return new RebarChangeResult(
@@ -74,7 +84,10 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 CalloutsRemoved: calloutsRemoved,
                 BeforeLabel: beforeLabel,
                 AfterLabel: afterLabel,
-                TotalCalloutsRead: changes.Sum(c => c.BeforeCount + c.AfterCount));
+                TotalCalloutsRead: changes.Sum(c => c.BeforeCount + c.AfterCount),
+                AddedWeightLb: changes.Sum(c => c.AddedWeightLb),
+                RemovedWeightLb: changes.Sum(c => c.RemovedWeightLb),
+                UnweighedChanges: changes.Sum(c => c.UnweighedChanges));
         }
 
         private static readonly IReadOnlyDictionary<string, int> Empty = new Dictionary<string, int>();
