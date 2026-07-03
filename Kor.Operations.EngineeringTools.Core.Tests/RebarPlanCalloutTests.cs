@@ -52,6 +52,29 @@ public sealed class RebarPlanCalloutTests
         Assert.Equal("6-20M4800", p!.Value.Key);
     }
 
+    // ── word-token parsing (the overlay path) ────────────────────────────────
+    [Theory]
+    [InlineData("2-15M6000,", "2-15M6000")]        // glued comma from the annotation text
+    [InlineData("(36-15M4700", "36-15M4700")]      // glued opening bracket
+    [InlineData("24-20M6400@250.", "24-20M6400@250")]
+    public void Punctuated_word_tokens_still_parse(string word, string key)
+    {
+        var p = RebarPlanCallout.TryParseWordToken(word, out _);
+        Assert.NotNull(p);
+        Assert.Equal(key, p!.Value.Key);
+    }
+
+    [Fact]
+    public void TryParseWordToken_reports_glued_spacing_so_callers_skip_lookahead()
+    {
+        Assert.NotNull(RebarPlanCallout.TryParseWordToken("24-20M6400@250", out bool glued));
+        Assert.True(glued);
+        Assert.NotNull(RebarPlanCallout.TryParseWordToken("24-20M6400", out glued));
+        Assert.False(glued);
+        Assert.Null(RebarPlanCallout.TryParseWordToken("15M", out _));       // intensity anchor — not a plan token
+        Assert.Null(RebarPlanCallout.TryParseWordToken("HOOK", out _));
+    }
+
     // ── weights ──────────────────────────────────────────────────────────────
     [Fact]
     public void Plan_callout_weight_is_count_times_length_times_csa_mass()

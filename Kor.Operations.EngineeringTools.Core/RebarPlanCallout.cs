@@ -80,6 +80,26 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             return m.Success ? FromGroups(m) : null;
         }
 
+        /// <summary>Strip punctuation glued to a word token by the annotation text ("2-15M6000," /
+        /// "(36-15M4700"). Word extractors keep such characters attached, and an exact-token match
+        /// would silently drop the call-out from the PDF markup while the text path still counts it —
+        /// the two reports must never tell different stories over a comma.</summary>
+        public static string TrimWordToken(string word) => (word ?? "").Trim('(', ')', ',', '.', ';', ':', '*');
+
+        /// <summary>Parse one positioned WORD as a plan call-out — the whole call-out glued
+        /// ("36-15M4700@125") or its qty-size-length anchor ("36-15M4700", spacing may follow as
+        /// separate words). Glued punctuation is trimmed first. Null when the word is not a plan
+        /// call-out. <paramref name="hadGluedSpacing"/> says whether the spacing was already in the
+        /// word (callers then skip the lookahead).</summary>
+        public static Parsed? TryParseWordToken(string word, out bool hadGluedSpacing)
+        {
+            string t = TrimWordToken(word);
+            var m = WordFull.Match(t);
+            hadGluedSpacing = m.Success;
+            if (!m.Success) m = WordStart.Match(t);
+            return m.Success ? FromGroups(m) : null;
+        }
+
         /// <summary>Weight in pounds of ONE instance of this call-out: count × length × CSA kg/m,
         /// converted to lb. Null when unweighable (no bar count — e.g. a continuous "C15M1200@350",
         /// whose bar count depends on the run extent the call-out doesn't state).</summary>

@@ -171,7 +171,9 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 .ToList();
         }
 
-        private static Dictionary<string, string> BuildTitles(IReadOnlyList<string> pages)
+        /// <summary>Sheet number → title, read from the drawing-index page (the page with the most
+        /// distinct sheet tokens). Public so the PDF-pipeline comparison can attach the same titles.</summary>
+        public static Dictionary<string, string> BuildTitles(IReadOnlyList<string> pages)
         {
             var titles = new Dictionary<string, string>();
 

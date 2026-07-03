@@ -1604,7 +1604,9 @@ if (args.Length >= 4 && args[0].Equals("overlay", StringComparison.OrdinalIgnore
     string oal   = args.Length > 6 ? args[6] : "After";
     var ounit = (args.Length > 7 && args[7].Equals("imperial", StringComparison.OrdinalIgnoreCase))
         ? UnitSystem.Imperial : UnitSystem.Metric;
-    var obytes = RebarOverlayGenerator.Build(args[1], args[2], oname, obl, oal, ounit);
+    byte[] obytes;
+    try { obytes = RebarOverlayGenerator.Build(args[1], args[2], oname, obl, oal, ounit); }
+    catch (InvalidOperationException ex) { Console.Error.WriteLine($"ABORT: {ex.Message}"); return 3; }
     File.WriteAllBytes(args[3], obytes);
     using (var doc = UglyToad.PdfPig.PdfDocument.Open(obytes))
     {
@@ -1637,7 +1639,8 @@ if (args.Length >= 4 && args[0].Equals("rebar", StringComparison.OrdinalIgnoreCa
     string rname = args.Length > 4 ? args[4] : string.Empty;
     string rbl = args.Length > 5 ? args[5] : "Before";
     string ral = args.Length > 6 ? args[6] : "After";
-    var rr = RebarChangeService.Compare(bPages, aPages, rbl, ral);
+    // Positioned-word pipeline (same as the overlay markup) so the ledger and the PDF tell one story.
+    var rr = RebarChangeService.ComparePdfs(args[1], args[2], rbl, ral);
 
     // "Can't-read" guard: matched real sheets but read ZERO reinforcing call-outs ⇒ the set's annotation
     // grammar wasn't recognised. That is NOT "no change" — refuse to emit a falsely-reassuring report.
@@ -1708,18 +1711,23 @@ if (args.Length >= 4 && args[0].Equals("rebar", StringComparison.OrdinalIgnoreCa
     foreach (var s in rr.Sheets.Where(s => s.Status != RebarChangeStatus.Unchanged))
         Console.WriteLine($"  {s.Sheet,-11} {s.Status,-12} net {s.NetDelta,+3} : {string.Join(", ", s.Added.Concat(s.Removed))}");
 
-    // Bar-list WEIGHT (qty × length × CSA mass) — the lb number a manual rebar comparison produces. Only
-    // printed where the set actually uses bar-list call-outs; an intensity-only set (Rory's 31065) weighs
-    // 0 and the section is suppressed, so that path's output is unchanged.
+    // Per-issue WEIGHT (qty × length × CSA mass) — the lb number a manual rebar comparison produces.
+    // Read through the SAME positioned pipeline as the change result above, so the absolute sums and
+    // the change deltas can never disagree about what was read.
     {
-        var bSheets = RebarCalloutExtractor.Extract(bPages).ToDictionary(s => s.Sheet);
-        var aSheets = RebarCalloutExtractor.Extract(aPages).ToDictionary(s => s.Sheet);
+        Dictionary<string, Dictionary<string, int>> LoadCounts(string path)
+        {
+            using var doc = UglyToad.PdfPig.PdfDocument.Open(path);
+            return RebarPdfReader.SheetCounts(RebarPdfReader.OwnSheet(RebarPdfReader.Read(doc, UnitSystem.Metric)));
+        }
+        var bSheets = LoadCounts(args[1]);
+        var aSheets = LoadCounts(args[2]);
         double tb = 0, ta = 0; int unweigh = 0;
         var rows = new List<(string Sheet, double B, double A)>();
         foreach (var sh in bSheets.Keys.Union(aSheets.Keys).OrderBy(x => x))
         {
-            var wb = bSheets.TryGetValue(sh, out var sbc) ? RebarBarListWeigher.Weigh(sbc.Callouts) : default;
-            var wa = aSheets.TryGetValue(sh, out var sac) ? RebarBarListWeigher.Weigh(sac.Callouts) : default;
+            var wb = bSheets.TryGetValue(sh, out var sbc) ? RebarBarListWeigher.Weigh(sbc) : default;
+            var wa = aSheets.TryGetValue(sh, out var sac) ? RebarBarListWeigher.Weigh(sac) : default;
             if (wb.WeightLb <= 0 && wa.WeightLb <= 0 && wb.UnweighableCallouts == 0 && wa.UnweighableCallouts == 0) continue;
             rows.Add((sh, wb.WeightLb, wa.WeightLb));
             tb += wb.WeightLb; ta += wa.WeightLb; unweigh += wb.UnweighableCallouts + wa.UnweighableCallouts;

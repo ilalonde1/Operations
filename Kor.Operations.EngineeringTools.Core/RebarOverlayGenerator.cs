@@ -7,12 +7,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using UglyToad.PdfPig;
-using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Fonts.Standard14Fonts;
 using UglyToad.PdfPig.Outline;
 using UglyToad.PdfPig.Outline.Destinations;
 using UglyToad.PdfPig.Writer;
+using Hit = Kor.Operations.EngineeringTools.RebarChange.RebarPdfReader.Hit;
+using PageModel = Kor.Operations.EngineeringTools.RebarChange.RebarPdfReader.PageModel;
 
 namespace Kor.Operations.EngineeringTools.RebarChange
 {
@@ -25,9 +26,6 @@ namespace Kor.Operations.EngineeringTools.RebarChange
     /// </summary>
     public static class RebarOverlayGenerator
     {
-        private static readonly Regex SheetRe =
-            new(@"\bS\d{1,2}(?:\.\d{1,2}){1,3}[A-Z]?\b", RegexOptions.Compiled);
-
         private static readonly (byte R, byte G, byte B) Red = (200, 30, 30);
         private static readonly (byte R, byte G, byte B) Green = (0, 140, 55);
         private static readonly (byte R, byte G, byte B) Navy = (31, 56, 100);
@@ -52,26 +50,26 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             return BuildCore(before, after, projectName, beforeLabel, afterLabel, unit);
         }
 
-        private sealed record Hit(string Key, double Left, double Bottom, double Width, double Height);
-
-        private sealed class PageModel
-        {
-            public int Num;
-            public double W, H;
-            public List<(string Token, double Height, double Cx, double Cy)> SheetHits = new();
-            public List<Hit> Callouts = new();
-        }
-
         private static byte[] BuildCore(
             PdfDocument before, PdfDocument after,
             string projectName, string beforeLabel, string afterLabel, UnitSystem unit)
         {
-            var bPages = Read(before, unit);
-            var aPages = Read(after, unit);
-            var bMap = OwnSheet(bPages);
-            var aMap = OwnSheet(aPages);
+            var bPages = RebarPdfReader.Read(before, unit);
+            var aPages = RebarPdfReader.Read(after, unit);
+            var bMap = RebarPdfReader.OwnSheet(bPages);
+            var aMap = RebarPdfReader.OwnSheet(aPages);
 
             var sheets = bMap.Keys.Union(aMap.Keys).Distinct().OrderBy(SortKey).ToList();
+
+            // Can't-read guard (same rule as the xlsx path): real sheets but ZERO reinforcing
+            // call-outs read on BOTH issues means this set's annotation grammar wasn't recognised.
+            // That is NOT "no changes" — refuse rather than emit a falsely-reassuring empty markup.
+            int totalRead = bMap.Values.Concat(aMap.Values).Sum(pgs => pgs.Sum(p => p.Callouts.Count));
+            if (sheets.Count >= 3 && totalRead == 0)
+                throw new InvalidOperationException(
+                    $"Compared {sheets.Count} sheets but read 0 reinforcing call-outs on either issue — " +
+                    "this set's call-out style was not recognised, so changes cannot be detected. " +
+                    "This is NOT a 'no change' result; no markup was produced.");
 
             // Per sheet: match call-out INSTANCES across the two issues by key AND position, and keep
             // only the unmatched ones. An unchanged call-out sits at the same coordinates in both
@@ -314,153 +312,6 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 sb.Append(w);
             }
             if (sb.Length > 0) yield return sb.ToString();
-        }
-
-        // ---- extraction (positioned, unit-aware) ----
-
-        private static List<PageModel> Read(PdfDocument doc, UnitSystem unit)
-        {
-            var pages = new List<PageModel>();
-            foreach (var page in doc.GetPages())
-            {
-                // Fake-bold double-draws out first: a bolded-but-unchanged call-out must not read
-                // as a second occurrence (it made the diff box unchanged schedule cells as "added").
-                var words = PdfWordDedupe.Filter(page.GetWords());
-                var hits = new List<(string, double, double, double)>();
-                foreach (var w in words)
-                    foreach (Match m in SheetRe.Matches(w.Text))
-                    {
-                        var bb = w.BoundingBox;
-                        hits.Add((m.Value, bb.Height, (bb.Left + bb.Right) / 2.0, (bb.Bottom + bb.Top) / 2.0));
-                    }
-                pages.Add(new PageModel
-                {
-                    Num = page.Number,
-                    W = page.Width,
-                    H = page.Height,
-                    SheetHits = hits,
-                    Callouts = AssembleCallouts(words, unit),
-                });
-            }
-            return pages;
-        }
-
-        // sheet -> owning pages. Own sheet = the title-block number (largest sheet token in the
-        // bottom-right title block, else the largest on the page). Robust on details sheets, where
-        // the own number recurs in every detail bubble so a frequency rule wrongly picks a
-        // cross-reference. Index/cover pages (many distinct tokens) are excluded.
-        private static Dictionary<string, List<PageModel>> OwnSheet(List<PageModel> pages)
-        {
-            var map = new Dictionary<string, List<PageModel>>();
-            foreach (var pg in pages)
-            {
-                if (pg.SheetHits.Count == 0) continue;
-                if (pg.SheetHits.Select(h => h.Token).Distinct().Count() > 30) continue; // index/cover
-                var own = OwnFor(pg);
-                if (own is null) continue;
-                if (!map.TryGetValue(own, out var list)) map[own] = list = new List<PageModel>();
-                list.Add(pg);
-            }
-            return map;
-        }
-
-        private static string? OwnFor(PageModel pg)
-        {
-            var inBlock = pg.SheetHits.Where(h => h.Cx > 0.72 * pg.W && h.Cy < 0.28 * pg.H).ToList();
-            var pool = inBlock.Count > 0 ? inBlock : pg.SheetHits;
-            return pool.OrderByDescending(h => h.Height).ThenByDescending(h => h.Cx).First().Token;
-        }
-
-        private static Dictionary<string, int> Counts(Dictionary<string, List<PageModel>> map, string sheet)
-        {
-            var c = new Dictionary<string, int>();
-            if (map.TryGetValue(sheet, out var pages))
-                foreach (var pg in pages)
-                    foreach (var h in pg.Callouts)
-                        c[h.Key] = c.GetValueOrDefault(h.Key) + 1;
-            return c;
-        }
-
-        // Assemble "##M@spacing" (metric) or "#n@spacing" (imperial) call-outs with their boxes,
-        // walking words in reading order and merging the spacing token when it is separate.
-        private static List<Hit> AssembleCallouts(List<Word> words, UnitSystem unit)
-        {
-            bool imp = unit == UnitSystem.Imperial;
-            var full = imp ? new Regex(@"^#(\d{1,2})@(\d{1,2})[""″]?$") : new Regex(@"^(\d{2})M@(\d{2,4})$");
-            var start = imp ? new Regex(@"^#(\d{1,2})@?$") : new Regex(@"^(\d{2})M@?$");
-            var space = imp ? new Regex(@"^(\d{1,2})[""″]?$") : new Regex(@"^(\d{2,4})$");
-            int smin = imp ? 3 : 75, smax = imp ? 48 : 750;
-
-            var outp = new List<Hit>();
-            for (int i = 0; i < words.Count; i++)
-            {
-                var t = words[i].Text;
-
-                // PLAN call-out ("36-15M4700 @ 125"): the qty-size-LENGTH token is the anchor — it
-                // alone identifies (and weighs) the call-out; the spacing joins when it follows as
-                // "@" + "125" (or glued). Checked before the intensity forms; the glued mm length
-                // makes the grammars disjoint, so nothing is ever parsed twice.
-                var mpf = RebarPlanCallout.WordFull.Match(t);
-                var mps = mpf.Success ? mpf : RebarPlanCallout.WordStart.Match(t);
-                if (mps.Success)
-                {
-                    var parsed = RebarPlanCallout.FromGroups(mps);
-                    if (parsed is { } pc)
-                    {
-                        var box = words[i].BoundingBox;
-                        if (!mpf.Success)   // spacing not glued on — look for it in the next words
-                            for (int j = i + 1; j <= Math.Min(i + 2, words.Count - 1); j++)
-                            {
-                                if (words[j].Text == "@") continue;
-                                var msp2 = space.Match(words[j].Text);
-                                if (msp2.Success && int.TryParse(msp2.Groups[1].Value, out int sp)
-                                    && sp >= RebarPlanCallout.SpacingMinMm && sp <= RebarPlanCallout.SpacingMaxMm)
-                                {
-                                    pc = pc with { SpacingMm = sp };
-                                    var b2 = words[j].BoundingBox;
-                                    box = new PdfRectangle(
-                                        Math.Min(box.Left, b2.Left), Math.Min(box.Bottom, b2.Bottom),
-                                        Math.Max(box.Right, b2.Right), Math.Max(box.Top, b2.Top));
-                                }
-                                break;
-                            }
-                        outp.Add(new Hit(pc.Key, box.Left, box.Bottom, box.Width, box.Height));
-                        continue;
-                    }
-                }
-
-                var mf = full.Match(t);
-                if (mf.Success)
-                {
-                    AddHit(outp, imp, int.Parse(mf.Groups[1].Value), int.Parse(mf.Groups[2].Value), smin, smax, words[i].BoundingBox);
-                    continue;
-                }
-                var ms = start.Match(t);
-                if (!ms.Success) continue;
-                for (int j = i + 1; j <= Math.Min(i + 2, words.Count - 1); j++)
-                {
-                    if (words[j].Text == "@") continue;
-                    var msp = space.Match(words[j].Text);
-                    if (msp.Success)
-                    {
-                        var b1 = words[i].BoundingBox;
-                        var b2 = words[j].BoundingBox;
-                        var union = new PdfRectangle(
-                            Math.Min(b1.Left, b2.Left), Math.Min(b1.Bottom, b2.Bottom),
-                            Math.Max(b1.Right, b2.Right), Math.Max(b1.Top, b2.Top));
-                        AddHit(outp, imp, int.Parse(ms.Groups[1].Value), int.Parse(msp.Groups[1].Value), smin, smax, union);
-                    }
-                    break;
-                }
-            }
-            return outp;
-        }
-
-        private static void AddHit(List<Hit> outp, bool imp, int size, int spacing, int smin, int smax, PdfRectangle box)
-        {
-            if (spacing < smin || spacing > smax) return;
-            string key = imp ? $"#{size}@{spacing}" : $"{size}M@{spacing}";
-            outp.Add(new Hit(key, box.Left, box.Bottom, box.Width, box.Height));
         }
 
         private static string SortKey(string sheet) => Regex.Replace(sheet, @"\d+", m => m.Value.PadLeft(4, '0'));

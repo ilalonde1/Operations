@@ -13,6 +13,36 @@ namespace Kor.Operations.EngineeringTools.RebarChange
     /// </summary>
     public static class RebarChangeService
     {
+        /// <summary>
+        /// Compare two PDFs through the SAME positioned-word pipeline the overlay markup uses
+        /// (<see cref="RebarPdfReader"/>: fake-bold dedupe, plan+intensity grammars, title-block sheet
+        /// ownership) — so the xlsx ledger and the marked-up PDF can never disagree about what was
+        /// read. Prefer this over the page-text overload whenever the source PDFs are available.
+        /// </summary>
+        public static RebarChangeResult ComparePdfs(
+            string beforePdfPath, string afterPdfPath,
+            string beforeLabel = "Before", string afterLabel = "After",
+            UnitSystem unit = UnitSystem.Metric)
+        {
+            ArgumentNullException.ThrowIfNull(beforePdfPath);
+            ArgumentNullException.ThrowIfNull(afterPdfPath);
+
+            // Titles from the drawing index (text is fine for titles); AFTER's index wins, BEFORE fills gaps.
+            var titles = RebarCalloutExtractor.BuildTitles(PdfPageTextReader.ReadPages(afterPdfPath));
+            foreach (var kv in RebarCalloutExtractor.BuildTitles(PdfPageTextReader.ReadPages(beforePdfPath)))
+                titles.TryAdd(kv.Key, kv.Value);
+
+            Dictionary<string, SheetCallouts> Load(string path)
+            {
+                using var doc = UglyToad.PdfPig.PdfDocument.Open(path);
+                return RebarPdfReader.SheetCounts(RebarPdfReader.OwnSheet(RebarPdfReader.Read(doc, unit)))
+                    .ToDictionary(kv => kv.Key,
+                                  kv => new SheetCallouts(kv.Key, titles.GetValueOrDefault(kv.Key, ""), kv.Value));
+            }
+
+            return Diff(Load(beforePdfPath), Load(afterPdfPath), beforeLabel, afterLabel);
+        }
+
         public static RebarChangeResult Compare(
             IReadOnlyList<string> beforePages,
             IReadOnlyList<string> afterPages,
@@ -25,6 +55,14 @@ namespace Kor.Operations.EngineeringTools.RebarChange
 
             var a = RebarCalloutExtractor.Extract(beforePages, unit).ToDictionary(s => s.Sheet);
             var b = RebarCalloutExtractor.Extract(afterPages, unit).ToDictionary(s => s.Sheet);
+            return Diff(a, b, beforeLabel, afterLabel);
+        }
+
+        private static RebarChangeResult Diff(
+            Dictionary<string, SheetCallouts> a,
+            Dictionary<string, SheetCallouts> b,
+            string beforeLabel, string afterLabel)
+        {
 
             var sheets = a.Keys.Union(b.Keys).Distinct().OrderBy(SortKey).ToList();
 
