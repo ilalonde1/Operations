@@ -392,18 +392,78 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                 fdnBreakdown.Add($"    p{pg.Page} {flevel,-10} {ft.Mark,-4} x{n,3} @ {ft.LengthMm:0}x{ft.WidthMm:0}x{ft.DepthMm:0} = {cy,7:N0} cy");
             }
         }
+        // HATCHED MATS (core/pit footings) — the drawing convention: a deep mat is drawn as a
+        // cross-hatched region with its own "#### DEEP ... FOOTING" note. Deterministic pairing:
+        // hatched regions (PlanGeometry.MeasureHatchedRegions) are priced ONLY when a DEEP note sits
+        // within reach of the region; hatch without a depth note (hairpin extents, poché) is ignored,
+        // a note without hatch stays residual. Area × noted depth, flagged for review.
+        double matCy = 0; var matBreakdown = new List<string>();
+        try
+        {
+            double? matMpp = PlanGeometry.MetresPerPixel(tkScale, tkReq.Dpi);
+            var deepRe = new System.Text.RegularExpressions.Regex(@"^(\d{3,4})$");
+            foreach (var pg in tkDig.Pages)
+            {
+                string ds3 = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
+                if (!ds3.Contains("FOUNDATIONSCHEDULE") && !ds3.Contains("FOOTINGSCHEDULE")) continue;
+                string mpng = Path.Combine(args[2], $"p-{pg.Page:D2}.png");
+                if (matMpp is not double mv || !File.Exists(mpng)) continue;
+                var crop = PlanRaster.LoadCrop(mpng, 0, 0, int.MaxValue / 2, int.MaxValue / 2);
+                var regions = PlanGeometry.MeasureHatchedRegions(crop.Lum, crop.Width, crop.Height);
+                if (regions.Count == 0) continue;
+                var mpage = VectorPageReader.ReadPage(args[1], pg.Page);
+                string mlevel = SheetTitleReader.FromPage(mpage)?.Display ?? "FOUNDATION";
+                // "1800 DEEP" note positions, mapped into render pixels.
+                var deepNotes = new List<(double Px, double Py, int Mm)>();
+                foreach (var w in mpage.Words)
+                {
+                    if (!w.Text.StartsWith("DEEP", StringComparison.OrdinalIgnoreCase)) continue;
+                    foreach (var n in mpage.Words)
+                    {
+                        var m = deepRe.Match(n.Text.Trim().Replace(",", ""));
+                        if (!m.Success || Math.Abs(n.Cy - w.Cy) > 7 || n.Cx >= w.Cx || w.Cx - n.Cx > 80) continue;
+                        int mm = int.Parse(m.Groups[1].Value);
+                        if (mm < 500 || mm > 4000) continue;   // a MAT depth; slab callouts are shallower
+                        deepNotes.Add((n.Cx / mpage.WidthPts * crop.Width,
+                                       (mpage.HeightPts - n.Cy) / mpage.HeightPts * crop.Height, mm));
+                    }
+                }
+                if (deepNotes.Count == 0) continue;
+                foreach (var rg in regions)
+                {
+                    double areaSqFt = PlanGeometry.SquareFeet(rg.AreaPx, mv);
+                    if (areaSqFt < 100) continue;              // a mat, not a hatch speck
+                    // The note's leader lands beside the region — pair within 1.5 region-widths.
+                    double reach = 1.5 * Math.Max(rg.Width, rg.Height);
+                    var near = deepNotes.Where(d2 =>
+                            d2.Px >= rg.MinX - reach && d2.Px <= rg.MaxX + reach &&
+                            d2.Py >= rg.MinY - reach && d2.Py <= rg.MaxY + reach)
+                        .OrderBy(d2 => Math.Abs(d2.Px - rg.CentroidX) + Math.Abs(d2.Py - rg.CentroidY))
+                        .ToList();
+                    if (near.Count == 0) continue;
+                    double cy = areaSqFt * (near[0].Mm / 304.8) / 27.0;
+                    matCy += cy;
+                    fdnInputs.Add(new StructuralTakeoffInput(mlevel, TakeoffElementType.Foundation, "hatched mat", cy));
+                    matBreakdown.Add($"    p{pg.Page} {mlevel,-10} hatched mat {areaSqFt,6:N0} sqft x {near[0].Mm}mm DEEP = {cy,6:N0} cy (FLAGGED - verify extent/depth)");
+                }
+            }
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"  (hatched-mat takeoff skipped: {ex.Message})"); }
+        fdnCy += matCy;
+
         // Name every foundation element the takeoff does NOT price, so the residual is a checklist,
         // not a shrug: strip footings (lengths are plan geometry) and any core/pit mats the notes call out.
         var unpriced = new List<string>();
         if (stripMarks.Count > 0) unpriced.Add($"strip footings {string.Join(", ", stripMarks)} (lengths on plan)");
         // Point the core-footing residual at a FOUNDATION PLAN page (where the hatched mat is drawn),
         // not at whichever notes sheet mentions the phrase first.
-        foreach (var pg in tkDig.Pages)
-        {
-            string ds2 = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
-            if (ds2.Contains("COREFOOTING") && ds2.Contains("FOUNDATIONPLAN"))
-            { unpriced.Add($"core footing (p{pg.Page} — hatched mat, depth in plan note)"); break; }
-        }
+        if (matCy == 0)
+            foreach (var pg in tkDig.Pages)
+            {
+                string ds2 = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
+                if (ds2.Contains("COREFOOTING") && ds2.Contains("FOUNDATIONPLAN"))
+                { unpriced.Add($"core footing (p{pg.Page} — hatched mat, depth in plan note)"); break; }
+            }
         string footingNote = fdnInputs.Count > 0
             ? $"NOT priced, quantify by hand: {string.Join("; ", unpriced.DefaultIfEmpty("nothing further found"))}. Spread footings ARE priced above."
             : "footings: no machine-readable footing schedule found — if the set has spread/strip footings, quantify them by hand. Parkade slabs ARE counted above.";
@@ -466,8 +526,9 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             Console.WriteLine($"  columns (gray-fill)  {colFinalCy,8:N0} cy  (no readable column schedule — footprint fallback)");
         if (fdnInputs.Count > 0)
         {
-            Console.WriteLine($"  spread footings      {fdnCy,8:N0} cy  (schedule × counted plan marks)");
+            Console.WriteLine($"  foundations          {fdnCy,8:N0} cy  (spread: schedule × counted marks; mats: hatch × DEEP note)");
             foreach (var line in fdnBreakdown) Console.WriteLine(line);
+            foreach (var line in matBreakdown) Console.WriteLine(line);
         }
         Console.WriteLine($"  {"":21}--------");
         Console.WriteLine($"  TOTAL   {wbTotal,8:N0} cy   (in {args[3]})");
