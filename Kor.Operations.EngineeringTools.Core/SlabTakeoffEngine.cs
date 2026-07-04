@@ -459,8 +459,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     var modeGrp = offsets.GroupBy(o => o).OrderByDescending(g => g.Count()).First();
                     if (modeGrp.Count() < 2 || modeGrp.Count() * 3 < offsets.Count * 2) continue;
                     int mode = modeGrp.Key;
+                    // INTERPOLATION ONLY: the linear map is proven only between the titled siblings.
+                    // Above them, sets change stride (Lindley's S2.18.1 is LEVEL 37, not 13 — the upper
+                    // tower shares typicals, so ordinals outrun levels) — extrapolating printed a wrong
+                    // level with confidence, the worst possible failure. Outside the range → residual.
+                    int loOrd = grp.Min(p => p.Ordinal), hiOrd = grp.Max(p => p.Ordinal);
                     foreach (var (pageNo, series, ordinal) in untitledNums.Where(u => u.Series == grp.Key))
                     {
+                        if (ordinal < loOrd || ordinal > hiOrd) continue;
                         int lvl = ordinal + mode;
                         if (lvl < 1 || lvl > 99) continue;
                         tkInferredTitles[pageNo] = new SheetTitle(lvl.ToString(System.Globalization.CultureInfo.InvariantCulture),

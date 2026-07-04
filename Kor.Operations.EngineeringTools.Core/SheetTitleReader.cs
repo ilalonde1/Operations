@@ -133,17 +133,27 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             {
                 double wlo = anchor.Cy - 6.0 * anchorH, whi = anchor.Cy + 3.0 * anchorH;
                 double wLineH = Math.Max(anchorH * 0.6, 4.0);
-                string wrapped = string.Join(" ", rightEdge
+                var windowToks = rightEdge
                     .Where(t => t.Height >= 0.5 * anchorH && t.Cy >= wlo && t.Cy <= whi
                                 && !StampTokenRx.IsMatch(t.Text.Trim()))
+                    .ToList();
+                string wrapped = string.Join(" ", windowToks
                     .GroupBy(t => Math.Round(t.Cy / wLineH))
                     .OrderByDescending(g => g.Key)
                     .SelectMany(g => g.OrderBy(t => t.Cx).Select(t => t.Text)));
+                // A ROTATED title runs bottom-up along the sheet edge: its words share a COLUMN, so the
+                // column-wise reading order (ascending Cy within a Cx group) reconstructs it.
+                string rotated = string.Join(" ", windowToks
+                    .GroupBy(t => Math.Round(t.Cx / wLineH))
+                    .OrderBy(g => g.Key)
+                    .SelectMany(g => g.OrderBy(t => t.Cy).Select(t => t.Text)));
                 // Both stacking orders exist: "LEVEL 6 / CONCRETE OUTLINE / PLAN" and the inverted
                 // "CONCRETE OUTLINE PLAN / LEVEL 6" (the level designator under the title). A
                 // LEVEL-anchored title (no PLAN word at all) must carry a plan-ish descriptor.
                 var m = WrappedTitleRx.Match(wrapped);
                 if (!m.Success) m = WrappedTitleRevRx.Match(wrapped);
+                if (!m.Success) m = WrappedTitleRx.Match(rotated);
+                if (!m.Success) m = WrappedTitleRevRx.Match(rotated);
                 if (!m.Success && levelAnchored && PlanishDescriptorRx.IsMatch(wrapped))
                     m = LevelOnlyTitleRx.Match(wrapped);
                 if (m.Success)
