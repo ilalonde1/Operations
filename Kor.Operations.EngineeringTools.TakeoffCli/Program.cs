@@ -182,8 +182,14 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     try
     {
         var tkDig = DrawingDigestBuilder.Build(args[1], tkFirst, tkLast);
-        const double typicalStoreyIn = 126.0;  // 10.5 ft
+        double typicalStoreyIn = tkStoreyIn;   // typical fallback; per-level heights below when supplied
+        var schedHeights = SlabTakeoffEngine.NormalizeHeightMap(tkHeights);
+        double StoreyOf(string lvl) => SlabTakeoffEngine.ResolveStoreyHeightIn(lvl, schedHeights, tkStoreyIn).Inches;
         double colCuYd = 0, wallCuYd = 0; int colSheets = 0, colMarks = 0, wallSheets = 0, wallMarks = 0;
+        // Per-sheet schedule column results, with the sheet's tower identity — the composition below
+        // makes the SCHEDULE the priced source for the floors it covers (validated closest to the
+        // model), with gray-fill only filling floors no schedule covers.
+        var colSched = new List<(int Page, string? Tower, ScheduleTakeoff.ScheduleResult Res)>();
 
         // A single schedule/key-plan vision call is fragile: it occasionally returns empty or an outlier,
         // and the wall total hangs on it — one empty response ZEROES a whole tower (31065 p53 read 0 cy one
@@ -247,12 +253,16 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                 if (ladder.Count >= 3)
                 {
                     var cpngB = PlanRaster.LoadDownscaledPng(ppng, 1600);
-                    var got = await ReadColumnSheetAsync(cpngB, ladder, ladder.Select(_ => typicalStoreyIn).ToList());
+                    var got = await ReadColumnSheetAsync(cpngB, ladder, ladder.Select(StoreyOf).ToList());
                     if (got is { } c)
                     {
                         colCuYd += c.res.TotalCuYd; colSheets++; colMarks += c.res.MarksPriced;
+                        string despaced = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(ch => !char.IsWhiteSpace(ch)));
+                        string? tower = despaced.Contains("NORTHTOWER") ? "NORTH" : despaced.Contains("SOUTHTOWER") ? "SOUTH"
+                                      : despaced.Contains("EASTTOWER") ? "EAST" : despaced.Contains("WESTTOWER") ? "WEST" : null;
+                        colSched.Add((pg.Page, tower, c.res));
                         string spread = c.hi > c.lo ? $" [{VisionReads} reads {c.lo:N0}..{c.hi:N0}]" : "";
-                        Console.WriteLine($"  column schedule p{pg.Page}: {c.res.MarksPriced} columns ({c.distinctMarks} marks) over {ladder.Count} levels -> {c.res.TotalCuYd:N0} cy{spread}");
+                        Console.WriteLine($"  column schedule p{pg.Page}{(tower is null ? "" : $" ({tower} tower)")}: {c.res.MarksPriced} columns ({c.distinctMarks} marks) over {ladder.Count} levels -> {c.res.TotalCuYd:N0} cy{spread}");
                     }
                     else Console.WriteLine($"  column schedule p{pg.Page}: vision returned nothing usable over {VisionReads} reads (skipped, not counted as 0)");
                 }
@@ -265,7 +275,7 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                 if (ladder.Count >= 3)
                 {
                     var png = PlanRaster.LoadDownscaledPng(ppng, 1600);
-                    var got = await ReadWallSheetAsync(png, ladder, ladder.Select(_ => typicalStoreyIn).ToList());
+                    var got = await ReadWallSheetAsync(png, ladder, ladder.Select(StoreyOf).ToList());
                     if (got is { } wv)
                     {
                         var wres = wv.res;
@@ -275,6 +285,80 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                     }
                     else Console.WriteLine($"  wall schedule p{pg.Page}: vision returned nothing usable over {VisionReads} reads (skipped, not counted as 0)");
                 }
+            }
+        }
+
+        // ── SCHEDULE-FIRST COLUMNS ────────────────────────────────────────────────────────────────
+        // The column SCHEDULE states every column's true size; the gray-fill footprint only infers it
+        // (and over-reads: fills, symbols and stocky wall ends masquerade as columns — +127% vs the
+        // model on the validation building, where the schedule read landed within 18%). So wherever a
+        // same-tower column schedule covers a floor, the schedule is the priced source and the engine's
+        // gray-fill column row is REPLACED; gray-fill prices only the floors no schedule covers. Each
+        // floor's columns come from exactly one source; when no schedule is readable, nothing changes.
+        var engineInputs = tkOut.Estimate.TakeoffInputs.ToList();
+        var schedColInputs = new List<StructuralTakeoffInput>();
+        double schedColCy = 0, keptGrayColCy = 0;
+        if (colSched.Count > 0)
+        {
+            // Engine label -> (tower, floor keys). "6-18 NORTH (x13)" is the band form the engine emits.
+            (string? Tower, List<string> Floors) ParseLabel(string label)
+            {
+                string u = label.ToUpperInvariant();
+                string? tw = u.Contains("NORTH") ? "NORTH" : u.Contains("SOUTH") ? "SOUTH"
+                           : u.Contains("EAST") ? "EAST" : u.Contains("WEST") ? "WEST" : null;
+                var band = System.Text.RegularExpressions.Regex.Match(u, @"^(\d+)\s*-\s*(\d+)\b");
+                if (band.Success)
+                {
+                    int lo = int.Parse(band.Groups[1].Value), hi = int.Parse(band.Groups[2].Value);
+                    return (tw, Enumerable.Range(lo, hi - lo + 1).Select(i => $"L{i}").ToList());
+                }
+                return (tw, new List<string> { SlabTakeoffEngine.NormalizeLevelKey(label) });
+            }
+
+            // Floors each tower's schedule actually priced (normalized, e.g. "L19", "P1").
+            var covered = new Dictionary<string, HashSet<string>>();
+            foreach (var (_, tower, res) in colSched)
+            {
+                var set = covered.TryGetValue(tower ?? "", out var s) ? s : covered[tower ?? ""] = new(StringComparer.OrdinalIgnoreCase);
+                foreach (var lf in res.PerLevel.Where(l => l.ConcreteCuYd > 0))
+                    set.Add(ScheduleTakeoff.NormalizeLevel(lf.Level));
+            }
+
+            // Engine column rows: replaced when EVERY floor they price is schedule-covered for their
+            // tower; kept (and their floors reserved) otherwise — a floor is never priced twice.
+            var reserved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // "TOWER|FLOOR" kept by gray-fill
+            var keptEngine = new List<StructuralTakeoffInput>();
+            foreach (var inp in engineInputs)
+            {
+                if (inp.Element != TakeoffElementType.Column) { keptEngine.Add(inp); continue; }
+                var (tw, floors) = ParseLabel(inp.Level);
+                bool allCovered = covered.TryGetValue(tw ?? "", out var set) && floors.All(set.Contains);
+                if (allCovered) continue;                                   // schedule replaces this row
+                keptEngine.Add(inp);
+                keptGrayColCy += inp.ConcreteVolume;
+                foreach (var f in floors) reserved.Add($"{tw}|{f}");
+            }
+            engineInputs = keptEngine;
+
+            // Schedule rows for every covered floor not reserved by a kept gray-fill row, labelled to
+            // match the engine's level rows so the workbook stays one row per level.
+            var engineLabels = tkOut.Estimate.TakeoffInputs.Select(i => i.Level).Distinct()
+                .Select(l => (Label: l, Parsed: ParseLabel(l))).ToList();
+            var byLabel = new Dictionary<string, double>();
+            foreach (var (_, tower, res) in colSched)
+                foreach (var lf in res.PerLevel.Where(l => l.ConcreteCuYd > 0))
+                {
+                    string f = ScheduleTakeoff.NormalizeLevel(lf.Level);
+                    if (reserved.Contains($"{tower}|{f}")) continue;
+                    string label = engineLabels.FirstOrDefault(e =>
+                        (e.Parsed.Tower ?? "") == (tower ?? "") && e.Parsed.Floors.Contains(f)).Label
+                        ?? (tower is null ? f : $"{f} {tower}");
+                    byLabel[label] = byLabel.GetValueOrDefault(label) + lf.ConcreteCuYd;
+                }
+            foreach (var kv in byLabel)
+            {
+                schedColInputs.Add(new StructuralTakeoffInput(kv.Key, TakeoffElementType.Column, "schedule", kv.Value));
+                schedColCy += kv.Value;
             }
         }
 
@@ -318,14 +402,15 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             ? $"NOT priced, quantify by hand: {string.Join("; ", unpriced.DefaultIfEmpty("nothing further found"))}. Spread footings ARE priced above."
             : "footings: no machine-readable footing schedule found — if the set has spread/strip footings, quantify them by hand. Parkade slabs ARE counted above.";
 
-        // Fold the priced foundations into the workbook: engine rows + foundation rows, recomputed and
-        // re-written so the xlsx total matches the console total. The basis/caveat text stays honest.
-        if (fdnInputs.Count > 0)
+        // Rebuild the workbook whenever the composition changed anything: engine rows (with replaced
+        // gray-fill column rows removed) + schedule column rows + foundation rows, recomputed so the
+        // xlsx matches the console total. The basis/caveat text states exactly what each source was.
+        if (fdnInputs.Count > 0 || schedColInputs.Count > 0)
         {
-            var combined = tkOut.Estimate.TakeoffInputs.Concat(fdnInputs).ToList();
+            var combined = engineInputs.Concat(schedColInputs).Concat(fdnInputs).ToList();
             var wbComputed = StructuralTakeoffService.Compute(combined, PlanProfile.BcModerate.ToImperialDensityTable());
             var wbModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(args[1]), "Vector takeoff", "", DateTime.UtcNow, wbComputed,
-                ConcreteBasis: "Concrete is MEASURED OFF THE DRAWINGS (slab poché + grid cross-check; walls/columns from gray-fill footprints × storey height; spread footings from the foundation schedule × counted plan marks) — a drawing takeoff, not model geometry. Transfer/built-up zones below slabs are NOT in plan callouts; verify transfer-prone levels against the sections.",
+                ConcreteBasis: "Concrete is MEASURED OFF THE DRAWINGS — a drawing takeoff, not model geometry. Slabs: poché + grid cross-check. Columns: the drawing's column schedules × key-plan counts × storey height (gray-fill footprint only where no schedule covers a floor). Walls: gray-fill footprints × storey height. Spread footings: the foundation schedule × counted plan marks. Transfer/built-up zones below slabs are NOT in plan callouts; verify transfer-prone levels against the sections.",
                 FoundationNote: footingNote);
             File.WriteAllBytes(args[3], StructuralTakeoffReportGenerator.BuildXlsx(wbModel));
         }
@@ -333,24 +418,27 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         // The priced whole-building number (slab + deterministic gray-fill walls/columns) already came from the
         // engine and is in the xlsx. The schedule reads below are an INDEPENDENT CROSS-CHECK only — never added,
         // so the noisy schedule×key-plan path can't swing or zero the answer; it just offers a second opinion.
-        Console.WriteLine($"\nWHOLE-BUILDING (deterministic gray-fill verticals; per-level storey heights where supplied, else typical {typicalStoreyIn / 12:0.0}ft — see 'storey heights' note above):");
+        double colFinalCy = schedColInputs.Count > 0 ? schedColCy + keptGrayColCy : colCyGeom;
+        double wbTotal = slabCy + wallCyGeom + colFinalCy + fdnCy;
+        Console.WriteLine($"\nWHOLE-BUILDING (per-level storey heights where supplied, else typical {typicalStoreyIn / 12:0.0}ft — see 'storey heights' note above):");
         Console.WriteLine($"  slab (incl. mats)    {slabCy,8:N0} cy");
         Console.WriteLine($"  walls   (gray-fill)  {wallCyGeom,8:N0} cy");
-        Console.WriteLine($"  columns (gray-fill)  {colCyGeom,8:N0} cy");
+        if (schedColInputs.Count > 0)
+            Console.WriteLine($"  columns              {colFinalCy,8:N0} cy  (schedule-first: {schedColCy:N0} from schedules"
+                + (keptGrayColCy > 0 ? $" + {keptGrayColCy:N0} gray-fill on uncovered floors)" : ")"));
+        else
+            Console.WriteLine($"  columns (gray-fill)  {colFinalCy,8:N0} cy  (no readable column schedule — footprint fallback)");
         if (fdnInputs.Count > 0)
         {
             Console.WriteLine($"  spread footings      {fdnCy,8:N0} cy  (schedule × counted plan marks)");
             foreach (var line in fdnBreakdown) Console.WriteLine(line);
         }
         Console.WriteLine($"  {"":21}--------");
-        Console.WriteLine($"  TOTAL   {tkOut.TotalConcreteCuYd + fdnCy,8:N0} cy   (in {args[3]})");
+        Console.WriteLine($"  TOTAL   {wbTotal,8:N0} cy   (in {args[3]})");
         Console.WriteLine($"  RESIDUAL: {footingNote}");
-        if (colSheets > 0 || wallSheets > 0)
-        {
-            Console.WriteLine($"  cross-check — schedule sheets (NOT added; independent of the geometry above):");
-            if (colSheets > 0) Console.WriteLine($"    columns: schedule ~{colCuYd:N0} cy ({colMarks} marks / {colSheets} sheet(s))  vs gray-fill {colCyGeom:N0} cy");
-            if (wallSheets > 0) Console.WriteLine($"    walls:   schedule ~{wallCuYd:N0} cy ({wallMarks} marks / {wallSheets} sheet(s))  vs gray-fill {wallCyGeom:N0} cy");
-        }
+        Console.WriteLine($"  cross-check (NOT added — independent second opinions):");
+        if (schedColInputs.Count > 0) Console.WriteLine($"    columns: gray-fill footprint {colCyGeom:N0} cy  vs schedule-first {colFinalCy:N0} cy above");
+        if (wallSheets > 0) Console.WriteLine($"    walls:   schedule ~{wallCuYd:N0} cy ({wallMarks} marks / {wallSheets} sheet(s))  vs gray-fill {wallCyGeom:N0} cy above");
     }
     catch (Exception ex) { Console.Error.WriteLine($"  (vertical cross-check skipped: {ex.Message})"); }
 
