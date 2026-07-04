@@ -42,6 +42,27 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             @"(?:LEVEL\s+)?(?<lvl>P\d{1,2}(?:\s+MEZZ(?:ANINE)?)?|L\d{1,2}|B\d{1,2}|PH\d?|ROOF|MAIN|GROUND|\d{1,2}(?:ST|ND|RD|TH)?)\.?\s+(?:FLOOR\s+|FRAMING\s+|FORMWORK\s+)?PLAN(?:\s*[-–—]?\s*(?<zone>NORTH|SOUTH|EAST|WEST))?",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        // The wrapped-title retry: explicit LEVEL keyword, the level token (optionally MEZZ-modified),
+        // then PLAN within a few descriptive words ("LEVEL 6 CONCRETE OUTLINE PLAN").
+        private static readonly Regex WrappedTitleRx = new(
+            @"LEVEL\s+(?<lvl>P?\d{1,2}(?:\s+MEZZ(?:ANINE)?\.?)?|B\d{1,2}|PH\d?|ROOF|MAIN|GROUND)\.?(?:\s+\S+){0,4}?\s+PLAN(?:\s*[-–—]?\s*(?<zone>NORTH|SOUTH|EAST|WEST))?",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        // The level token must END at whitespace — "\b" alone let a plot timestamp donate its hours
+        // ("LEVEL … 12:10:06" matched lvl=12 through the colon boundary on a FOUNDATION RAFT sheet).
+        private static readonly Regex WrappedTitleRevRx = new(
+            @"\bPLAN\b(?:\s*[-–—]?\s*(?<zone>NORTH|SOUTH|EAST|WEST))?(?:\s+\S+){0,3}?\s+LEVEL\s+(?<lvl>P?\d{1,2}(?:\s+MEZZ(?:ANINE)?\.?)?|B\d{1,2}|PH\d?|ROOF|MAIN|GROUND)(?=\s|$)",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        // LEVEL-anchored titles (no PLAN word): the level token plus, elsewhere in the wrapped title,
+        // a descriptor that only a plan sheet carries.
+        private static readonly Regex LevelOnlyTitleRx = new(
+            @"LEVEL\s+(?<lvl>P?\d{1,2}(?:\s+MEZZ(?:ANINE)?\.?)?|B\d{1,2}|PH\d?|ROOF|MAIN|GROUND)(?=\s|$)(?:.*?\b(?<zone>NORTH|SOUTH|EAST|WEST)\b)?",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        // Plot stamps (dates, times) live in the title block too — never part of a title.
+        private static readonly Regex StampTokenRx = new(@"^\d{1,4}[-/:.]\d{1,2}[-/:.]\d{1,4}", RegexOptions.Compiled);
+        private static readonly Regex PlanishDescriptorRx = new(
+            @"\b(CONCRETE|OUTLINE|FRAMING|FORMWORK|REINFORCING|SLAB|DIAPHRAGM)\b",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
         // A drawing sheet number like "S2.02-N", "S2.09.1-S": a letter+digit code, optional .sub parts,
         // optional cardinal-half suffix. The suffix is the reliable match-line zone.
         private static readonly Regex SheetNumRx = new(@"^[A-Z]{1,2}\d[\d.]*(?:-(?<half>[NSEW]))?$",
@@ -69,6 +90,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             if (rightEdge.Count == 0) return null;
 
             // Anchor on the largest "PLAN" on the right edge — the sheet title's PLAN, not a note's.
+            // Some blocks title a plan sheet WITHOUT the word ("LEVEL 7 / CONCRETE OUTLINE"): fall back
+            // to the largest title-size "LEVEL" token as the anchor; the wrapped parse below then
+            // requires a plan-ish descriptor around it, so a notes sheet whose block merely says LEVEL
+            // cannot become a plan identity.
             VectorPageReader.TextToken anchor = default;
             double anchorH = 0;
             foreach (var t in rightEdge)
@@ -76,6 +101,17 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 if (t.Height < TitleMinH) continue;
                 if (!t.Text.StartsWith("PLAN", StringComparison.OrdinalIgnoreCase)) continue;
                 if (t.Height > anchorH) { anchor = t; anchorH = t.Height; }
+            }
+            bool levelAnchored = false;
+            if (anchorH <= 0)
+            {
+                foreach (var t in rightEdge)
+                {
+                    if (t.Height < TitleMinH) continue;
+                    if (!t.Text.Equals("LEVEL", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (t.Height > anchorH) { anchor = t; anchorH = t.Height; }
+                }
+                levelAnchored = anchorH > 0;
             }
             if (anchorH <= 0) return null;
 
@@ -87,6 +123,33 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 .Select(t => t.Text));
 
             var parsed = ParseTitleLine(titleLine);
+            // Wrapped title: some blocks stack the title over several lines ("LEVEL 6 / CONCRETE
+            // OUTLINE / PLAN"), so the anchor's own baseline carries only "PLAN". Retry on the
+            // title-size words in a window around the anchor, joined in reading order. This liberal
+            // parse requires the explicit LEVEL keyword (with an optional MEZZ modifier) so it can
+            // tolerate the descriptive words between — safe because the input is only the isolated
+            // title band, never page prose.
+            if (parsed is null)
+            {
+                double wlo = anchor.Cy - 6.0 * anchorH, whi = anchor.Cy + 3.0 * anchorH;
+                double wLineH = Math.Max(anchorH * 0.6, 4.0);
+                string wrapped = string.Join(" ", rightEdge
+                    .Where(t => t.Height >= 0.5 * anchorH && t.Cy >= wlo && t.Cy <= whi
+                                && !StampTokenRx.IsMatch(t.Text.Trim()))
+                    .GroupBy(t => Math.Round(t.Cy / wLineH))
+                    .OrderByDescending(g => g.Key)
+                    .SelectMany(g => g.OrderBy(t => t.Cx).Select(t => t.Text)));
+                // Both stacking orders exist: "LEVEL 6 / CONCRETE OUTLINE / PLAN" and the inverted
+                // "CONCRETE OUTLINE PLAN / LEVEL 6" (the level designator under the title). A
+                // LEVEL-anchored title (no PLAN word at all) must carry a plan-ish descriptor.
+                var m = WrappedTitleRx.Match(wrapped);
+                if (!m.Success) m = WrappedTitleRevRx.Match(wrapped);
+                if (!m.Success && levelAnchored && PlanishDescriptorRx.IsMatch(wrapped))
+                    m = LevelOnlyTitleRx.Match(wrapped);
+                if (m.Success)
+                    parsed = (NormalizeLevel(m.Groups["lvl"].Value),
+                              m.Groups["zone"].Success ? m.Groups["zone"].Value.ToUpperInvariant() : null);
+            }
             if (parsed is null) return null;
 
             // Zone priority: the sheet-number suffix ("-N"/"-S") is the most reliable match-line half;
@@ -130,6 +193,27 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             string lvl = NormalizeLevel(m.Groups["lvl"].Value);
             string? zone = m.Groups["zone"].Success ? m.Groups["zone"].Value.ToUpperInvariant() : null;
             return (lvl, zone);
+        }
+
+        /// <summary>
+        /// The sheet NUMBER from the bottom-right corner ("S2.12.1"), or null. Exposed because a set
+        /// whose level numerals are outlined vector art (unreadable as text) still numbers its sheets
+        /// in a per-level series — titled siblings teach the series→level offset, and the sheet number
+        /// then identifies the level of an otherwise untitled plan (flagged, never silent).
+        /// </summary>
+        public static string? SheetNumberToken(VectorPageReader.PageContent? page)
+        {
+            if (page is null || page.WidthPts <= 0 || page.HeightPts <= 0) return null;
+            double w = page.WidthPts, h = page.HeightPts;
+            VectorPageReader.TextToken best = default;
+            double bestH = 0;
+            foreach (var t in page.Words)
+            {
+                if (t.Height < SheetNumMinH || t.Cx / w < SheetNumMinFx || t.Cy / h > SheetNumMaxFy) continue;
+                if (!SheetNumRx.IsMatch(t.Text)) continue;
+                if (t.Height > bestH) { best = t; bestH = t.Height; }
+            }
+            return bestH > 0 ? best.Text.Trim() : null;
         }
 
         // The match-line half from the bottom-right sheet number's suffix ("S2.02-N" -> NORTH), or null.
@@ -196,7 +280,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         // MEZZANINE -> MEZZ. Keeps "P1 MEZZ" distinct from "P1".
         private static string NormalizeLevel(string raw)
         {
-            string s = Regex.Replace(raw.ToUpperInvariant().Trim(), @"\s+", " ");
+            string s = Regex.Replace(raw.ToUpperInvariant().Trim(), @"\s+", " ").TrimEnd('.');
             s = s.Replace("MEZZANINE", "MEZZ");
             s = Regex.Replace(s, @"^(\d{1,2})(?:ST|ND|RD|TH)\b", "$1");
             return s;

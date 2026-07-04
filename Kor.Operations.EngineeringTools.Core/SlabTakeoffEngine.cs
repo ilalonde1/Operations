@@ -420,6 +420,59 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             string tkFallbackNote = tkScaleExplicit ? req.Scale! : (tkModalScale ?? FallbackScale);
             double tkFallbackMpp = PlanGeometry.MetresPerPixel(tkFallbackNote, req.Dpi) ?? 0;
 
+            // LEVEL-FROM-SHEET-NUMBER inference: a set whose big level numerals are OUTLINED vector art
+            // (no text token — Lindley draws "7" as artwork) leaves its plan sheets untitled, yet the
+            // sheets are numbered in a per-level SERIES ("S2.11.1" = level 6, "S2.12.1" = level 7). The
+            // titled siblings teach the series→level offset; a consistent fit (≥2 agreeing pairs, no
+            // dissent) then names the untitled plans — each flagged, never silent. No fit → no guess.
+            var tkInferredTitles = new Dictionary<int, SheetTitle>();
+            {
+                var pairs = new List<(string Series, int Ordinal, int Level)>();
+                var untitledNums = new List<(int Page, string Series, int Ordinal)>();
+                // The series key includes the SUB-part: one level owns several sheets ("S2.11.1" the
+                // outline, "S2.20.2" the reinforcing), and only sheets of the same KIND share a linear
+                // level↔ordinal mapping.
+                var seriesRx = new System.Text.RegularExpressions.Regex(@"^([A-Z]{1,2}\d)\.(\d+)(\.\d+)?$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                foreach (var pg in tkDigest.Pages)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var vp0 = VectorPageReader.ReadPage(req.PdfPath, pg.Page);
+                    var num = SheetTitleReader.SheetNumberToken(vp0);
+                    if (num is null) continue;
+                    var sm = seriesRx.Match(num.Split('-')[0]);
+                    if (!sm.Success) continue;
+                    string series = sm.Groups[1].Value.ToUpperInvariant() + (sm.Groups[3].Success ? "|" + sm.Groups[3].Value : "");
+                    int ordinal = int.Parse(sm.Groups[2].Value);
+                    if (pg.Title?.Level is { } ll && int.TryParse(ll.TrimStart('L'), out int lvlNum))
+                        pairs.Add((series, ordinal, lvlNum));
+                    else if (pg.Title is null)
+                        untitledNums.Add((pg.Page, series, ordinal));
+                }
+                foreach (var grp in pairs.GroupBy(p => p.Series))
+                {
+                    // The offset must be the clear consensus (≥2 pairs, ≥⅔ agreement) — a single odd
+                    // sheet (a renumbered addendum) must not block the whole series, but a series with
+                    // no consensus stays uninferred. Only ordinals INSIDE the confirmed range are named:
+                    // extrapolating past the last titled sibling would guess at roofs/basements.
+                    var offsets = grp.Select(p => p.Level - p.Ordinal).ToList();
+                    var modeGrp = offsets.GroupBy(o => o).OrderByDescending(g => g.Count()).First();
+                    if (modeGrp.Count() < 2 || modeGrp.Count() * 3 < offsets.Count * 2) continue;
+                    int mode = modeGrp.Key;
+                    foreach (var (pageNo, series, ordinal) in untitledNums.Where(u => u.Series == grp.Key))
+                    {
+                        int lvl = ordinal + mode;
+                        if (lvl < 1 || lvl > 99) continue;
+                        tkInferredTitles[pageNo] = new SheetTitle(lvl.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            null, $"(level {lvl} inferred from sheet number series {grp.Key}, offset {mode:+0;-0})");
+                    }
+                }
+                notes.Add($"  sheet-number series: {pairs.Count} titled pair(s), {untitledNums.Count} untitled candidate(s) → {tkInferredTitles.Count} level(s) inferred (flagged).");
+                if (tkInferredTitles.Count == 0 && pairs.Count > 0)
+                    foreach (var grp in pairs.GroupBy(p => p.Series))
+                        notes.Add($"    series {grp.Key}: level→ordinal pairs [{string.Join(", ", grp.Select(p => $"{p.Level}→{p.Ordinal}"))}] — no consensus offset.");
+            }
+
             // ════════════════════ PHASE 1 — DETERMINISTIC PASS (no AI) ════════════════════
             // Resolve every number the drawing gives up for free; record what it can't as an explicit unknown
             // ON the plate (NeedsLocate / NeedsThicknessSplit / NeedsThickness). Nothing is guessed and nothing
@@ -431,16 +484,19 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
                 // Deterministic classify: a measurable slab plan is a LEVELLED sheet that shows a structural
                 // grid envelope or a slab callout. Details/schedules/sections have neither → skipped for free.
+                // A sheet whose level numeral is outlined artwork takes its inferred sheet-number identity.
                 var vp = VectorPageReader.ReadPage(req.PdfPath, page.Page);
                 var grid = StructuralGridReader.FromPage(vp);
                 int? pageThk = SlabThicknessReader.DominantThicknessIn(page.Lines);
-                bool leveled = page.Title?.Level is { Length: > 0 };
+                var pageTitle = page.Title ?? (tkInferredTitles.TryGetValue(page.Page, out var inf) ? inf : null);
+                bool titleInferred = page.Title is null && pageTitle is not null;
+                bool leveled = pageTitle?.Level is { Length: > 0 };
                 if (!(leveled && (grid?.IsLocatable == true || pageThk.HasValue)))
-                { notes.Add($"  p{page.Page}: {page.Title?.Display ?? "untitled"} — not a measurable slab plan (skip)"); continue; }
+                { notes.Add($"  p{page.Page}: {pageTitle?.Display ?? "untitled"} — not a measurable slab plan (skip)"); continue; }
 
                 // Canonical identity off the exact title block; pool every sheet's text (even deduped ones), and
                 // skip a duplicate only once the identity already has a RESOLVED plate.
-                if (page.Title is { } t0)
+                if (pageTitle is { } t0)
                 {
                     if (!tkPooled.TryGetValue(t0.Key, out var pool)) { pool = new List<string>(); tkPooled[t0.Key] = pool; }
                     pool.AddRange(page.Lines);
@@ -450,10 +506,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 string png = Path.Combine(req.PngDir, $"p-{page.Page:D2}.png");
                 if (!File.Exists(png)) { notes.Add($"  ! p{page.Page}: render {png} missing, skipped."); continue; }
 
-                string lvl = page.Title?.Display ?? $"p{page.Page}";
-                string levelBase = page.Title?.Level ?? lvl;
-                string key = page.Title?.Key ?? lvl;
-                string lvlTok = page.Title?.Level ?? "";
+                string lvl = pageTitle?.Display ?? $"p{page.Page}";
+                string levelBase = pageTitle?.Level ?? lvl;
+                string key = pageTitle?.Key ?? lvl;
+                string lvlTok = pageTitle?.Level ?? "";
                 string lvlDigits = lvlTok.StartsWith("L", StringComparison.OrdinalIgnoreCase) && lvlTok.Length > 1 ? lvlTok.Substring(1) : lvlTok;
                 int? repLevel = int.TryParse(lvlDigits, out var rl) ? rl : (int?)null;
                 var (iw, ih) = raster.ImageSize(png);
@@ -481,6 +537,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         " — verify the sheet scale.") }).ToArray();
                 else if (sheetScale is not null && tkScaleNotes.Add(sheetScale))
                     notes.Add($"  p{page.Page}: sheet scale {sheetScale.Trim()} ({(tkScaleExplicit ? "operator override" : "title block")}).");
+                if (titleInferred)
+                    plate.AreaFlags = plate.AreaFlags.Concat(new[] { new PlanFlag(PlanFlagSeverity.Review, "LEVEL_FROM_SHEET_NUMBER",
+                        $"This sheet's level numeral is drawn as artwork (no readable text); its level comes from the sheet-number series {pageTitle!.Raw} — verify the level.") }).ToArray();
 
                 // The full callout list WITH positions: values drive the split decision; positions drive
                 // the deterministic Voronoi apportionment once the plate's box is known (phase 2).
@@ -534,7 +593,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 else if (fieldThk <= 0) plate.NeedsThickness = true;
 
                 tkRaw.Add(plate);
-                if (!plate.NeedsLocate && page.Title is { } tk) tkMeasured.Add(tk.Key);
+                if (!plate.NeedsLocate && pageTitle is { } tk) tkMeasured.Add(tk.Key);
                 string need = string.Join("+", new[]
                 {
                     plate.NeedsLocate ? "locate" : null,
