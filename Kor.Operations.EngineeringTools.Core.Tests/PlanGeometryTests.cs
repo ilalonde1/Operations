@@ -307,6 +307,68 @@ public sealed class PlanGeometryTests
             Array.Empty<PlanGeometry.CalloutPx>(), 10, 10, 50, 50));
     }
 
+    [Fact]
+    public void VoronoiCellShares_SplitsBoxByNearestCallout()
+    {
+        // Pure point geometry — no raster, so a leaky (unenclosed) plate cannot collapse the split.
+        var callouts = new[]
+        {
+            new PlanGeometry.CalloutPx(75, 100, 12),
+            new PlanGeometry.CalloutPx(125, 100, 35),
+        };
+        var shares = PlanGeometry.VoronoiCellShares(callouts, 50, 40, 150, 160, step: 1);
+
+        long total = 0; foreach (var v in shares.Values) total += v;
+        Assert.True(shares.ContainsKey(12) && shares.ContainsKey(35));
+        Assert.InRange((double)shares[12] / total, 0.45, 0.55);   // divide midway (x≈100)
+    }
+
+    [Fact]
+    public void VoronoiCellShares_CalloutCountTracksZoneExtent()
+    {
+        // A deep band annotated at three spots along the right side owns more of the box than a
+        // single field callout on the far left — count/spread drives share, as on a real transfer sheet.
+        var callouts = new[]
+        {
+            new PlanGeometry.CalloutPx(10, 50, 12),
+            new PlanGeometry.CalloutPx(70, 20, 35),
+            new PlanGeometry.CalloutPx(70, 50, 35),
+            new PlanGeometry.CalloutPx(70, 80, 35),
+        };
+        var shares = PlanGeometry.VoronoiCellShares(callouts, 0, 0, 99, 99, step: 1);
+        long total = 0; foreach (var v in shares.Values) total += v;
+        Assert.True((double)shares[35] / total > 0.5);
+    }
+
+    [Fact]
+    public void VoronoiCellShares_SingleCallout_OwnsWholeBox()
+    {
+        var shares = PlanGeometry.VoronoiCellShares(
+            new[] { new PlanGeometry.CalloutPx(5, 5, 10) }, 0, 0, 49, 49, step: 1);
+        Assert.Equal(50L * 50L, shares[10]);
+    }
+
+    [Fact]
+    public void VoronoiCellShares_NoCallouts_ReturnsEmpty()
+    {
+        Assert.Empty(PlanGeometry.VoronoiCellShares(Array.Empty<PlanGeometry.CalloutPx>(), 0, 0, 9, 9));
+    }
+
+    [Fact]
+    public void VoronoiCellShares_SamplingStep_PreservesFractions()
+    {
+        var callouts = new[]
+        {
+            new PlanGeometry.CalloutPx(25, 50, 8),
+            new PlanGeometry.CalloutPx(75, 50, 24),
+        };
+        var fine = PlanGeometry.VoronoiCellShares(callouts, 0, 0, 99, 99, step: 1);
+        var coarse = PlanGeometry.VoronoiCellShares(callouts, 0, 0, 99, 99, step: 2);
+        double fineFrac = (double)fine[8] / (fine[8] + fine[24]);
+        double coarseFrac = (double)coarse[8] / (coarse[8] + coarse[24]);
+        Assert.InRange(coarseFrac, fineFrac - 0.02, fineFrac + 0.02);
+    }
+
     // ── synthetic-image helpers ─────────────────────────────────────────────────────────────
 
     private static byte[] White(int w, int h)

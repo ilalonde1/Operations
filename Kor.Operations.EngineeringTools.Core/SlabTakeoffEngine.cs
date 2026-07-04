@@ -11,17 +11,18 @@ using System.Threading.Tasks;
 namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 {
     /// <summary>What the app's "Generate takeoff" button needs: the drawing set, where its pages are
-    /// rendered, and the read parameters. Defaults match the validated pipeline (1/8&quot;=1'-0&quot; @ 110 dpi,
-    /// BC-moderate density, single-thickness-per-level to match the answer-key methodology).</summary>
+    /// rendered, and the read parameters. <see cref="Scale"/> null (the default) measures each sheet at
+    /// the scale ITS title block states (<see cref="SheetScaleReader"/>), falling back — flagged — to
+    /// 1/8&quot;=1'-0&quot; when a sheet states none; a non-null value is an explicit operator override that
+    /// wins on every sheet.</summary>
     public sealed record SlabTakeoffRequest(
         string PdfPath,
         string PngDir,
         int? FirstPage = null,
         int? LastPage = null,
-        string Scale = "1/8\"=1'-0\"",
+        string? Scale = null,
         double Dpi = 110,
         string ProfileName = "BC-moderate",
-        bool ApplyZoning = false,
         double StoreyHeightIn = 126,    // 10.5 ft typical — the FALLBACK used for a level with no supplied height
         IReadOnlyDictionary<string, double>? StoreyHeightInByLevel = null);  // real floor-to-floor (inches) per level
             // from the architectural set; keyed by level label (tower cardinal optional). Levels absent here fall
@@ -91,6 +92,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             public int Page; public string Png = "";
             public int Cx0, Cy0, Cx1, Cy1; public bool HasBox;
             public IReadOnlyList<int> Callouts = Array.Empty<int>();
+            // Every qualifying thickness callout WITH its position (PDF points) — the deterministic
+            // Voronoi apportionment's input; and this sheet's own metres-per-pixel (title-block scale).
+            public IReadOnlyList<SlabThicknessZoner.Callout> CalloutPts = Array.Empty<SlabThicknessZoner.Callout>();
+            public double Mpp;
+            public double PageWidthPts, PageHeightPts;   // for mapping callout PDF pts → render px
 
             // The explicit unknowns this plate carries out of the deterministic pass (phase 1) — the work
             // list phase 2 hands to AI. Cleared as each is resolved; whatever remains is the honest residual.
@@ -342,12 +348,20 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             if (!File.Exists(req.PdfPath)) throw new FileNotFoundException("PDF not found.", req.PdfPath);
 
             var notes = new List<string>();
-            double tkMpp = PlanGeometry.MetresPerPixel(req.Scale, req.Dpi) ?? 0;
+            // Scale precedence per sheet: an explicit request override wins everywhere (and MUST parse —
+            // a junk override would otherwise measure the whole set at mpp 0 and silently degrade every
+            // plate); otherwise each sheet is measured at the scale its OWN title block states; a sheet
+            // stating none falls back — flagged — because an assumed scale is a systematic error on every
+            // area (a 1:100 metric sheet measured at the 1:96 imperial default under-prices areas ~8%).
+            const string FallbackScale = "1/8\"=1'-0\"";
+            bool tkScaleExplicit = !string.IsNullOrWhiteSpace(req.Scale);
+            if (tkScaleExplicit && PlanGeometry.MetresPerPixel(req.Scale, req.Dpi) is null)
+                throw new ArgumentException(
+                    $"Scale override '{req.Scale}' is not a readable scale note — expected e.g. \"1:100\" or \"1/8\\\"=1'-0\\\"\".",
+                    nameof(req));
+            var tkScaleNotes = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // distinct sheet scales seen (for the trace)
             var tkProfile = PlanProfile.ByName(req.ProfileName);
             var tkRaw = new List<RawPlate>();
-            // The grid envelope and the poché are read in the SAME effective scale (derived from tkMpp), so
-            // the reconciler compares like with like regardless of the absolute scale note.
-            double tkScaleDenom = tkMpp > 0 ? tkMpp * req.Dpi / 0.0254 : 100.0;
 
             var tkMeasured = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // keys with a resolved area
             // Pooled text per canonical (level, zone) key — across ALL its sheets incl. the deduped
@@ -372,6 +386,29 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 throw new InvalidOperationException(
                     $"No rendered page images in '{req.PngDir}' (expected p-01.png … p-{tkDigest.Pages.Max(p => p.Page):D2}.png). " +
                     "The slab takeoff measures off rasterized pages — render the PDF to PNGs in that folder first; this host does not rasterize.");
+
+            // The fallback for a sheet stating NO readable scale is the SET'S OWN stated scale (the modal
+            // across its sheets) — the sheets of one drawing set share the plan scale, so a missing field
+            // on one sheet is assumed from its siblings, exactly as an estimator would; the imperial
+            // default applies only when no sheet in the set states any scale at all. This keeps every
+            // plate in ONE consistent world, so the cross-plate peer checks (nearest-level expected
+            // areas, per-tower medians) always compare like with like even when one sheet falls back.
+            string? tkModalScale = null;
+            if (!tkScaleExplicit)
+            {
+                var stated = new List<(string Note, double Mpp)>();
+                foreach (var pg in tkDigest.Pages)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (SheetScaleReader.FromPage(VectorPageReader.ReadPage(req.PdfPath, pg.Page)) is string s
+                        && PlanGeometry.MetresPerPixel(s, req.Dpi) is double m)
+                        stated.Add((s, m));
+                }
+                tkModalScale = stated.GroupBy(s => s.Mpp).OrderByDescending(g => g.Count())
+                                     .Select(g => g.First().Note).FirstOrDefault();
+            }
+            string tkFallbackNote = tkScaleExplicit ? req.Scale! : (tkModalScale ?? FallbackScale);
+            double tkFallbackMpp = PlanGeometry.MetresPerPixel(tkFallbackNote, req.Dpi) ?? 0;
 
             // ════════════════════ PHASE 1 — DETERMINISTIC PASS (no AI) ════════════════════
             // Resolve every number the drawing gives up for free; record what it can't as an explicit unknown
@@ -415,19 +452,41 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 {
                     Label = lvl, LevelBase = levelBase, Key = key, RepLevel = repLevel,
                     Thk = pageThk ?? 0, Page = page.Page, Png = png,
+                    PageWidthPts = vp.WidthPts, PageHeightPts = vp.HeightPts,
                 };
 
+                // This sheet's own scale: the title block's stated SCALE field unless the request carries
+                // an explicit override. A sheet stating none measures at the fallback and is flagged —
+                // an assumed scale silently biases every area on the plate.
+                string? sheetScale = tkScaleExplicit ? req.Scale : SheetScaleReader.FromPage(vp);
+                plate.Mpp = (sheetScale is null ? tkFallbackMpp
+                            : PlanGeometry.MetresPerPixel(sheetScale, req.Dpi) ?? tkFallbackMpp);
+                double plateScaleDenom = plate.Mpp > 0 ? plate.Mpp * req.Dpi / 0.0254 : 100.0;
+                if (sheetScale is null && !tkScaleExplicit)
+                    plate.AreaFlags = plate.AreaFlags.Concat(new[] { new PlanFlag(PlanFlagSeverity.Review, "SCALE_ASSUMED",
+                        $"No SCALE note was read from this sheet's title block; areas priced at " +
+                        (tkModalScale is not null
+                            ? $"the set's stated scale ({tkFallbackNote.Trim()})"
+                            : $"the assumed {FallbackScale}") +
+                        " — verify the sheet scale.") }).ToArray();
+                else if (sheetScale is not null && tkScaleNotes.Add(sheetScale))
+                    notes.Add($"  p{page.Page}: sheet scale {sheetScale.Trim()} ({(tkScaleExplicit ? "operator override" : "title block")}).");
+
+                // The full callout list WITH positions: values drive the split decision; positions drive
+                // the deterministic Voronoi apportionment once the plate's box is known (phase 2).
+                var pageCallouts = SlabThicknessZoner.ReadCallouts(vp);
                 // Distinct thickness callouts (inches): the field slab + any deeper drop bands. A band deeper
                 // than the field (≥ field+6" and ≥1.4×) means a thickened transfer/podium plate the field
-                // thickness alone under-prices → an explicit thickness-split unknown for AI to apportion.
-                var distinctThk = SlabThicknessZoner.ReadCallouts(vp).Select(c => c.ValueIn)
+                // thickness alone under-prices → an explicit thickness-split unknown to apportion.
+                var distinctThk = pageCallouts.Select(c => c.ValueIn)
                                     .Where(v => v > 0).Distinct().OrderBy(v => v).ToList();
                 int fieldThk = plate.Thk > 0 ? (int)Math.Round(plate.Thk) : (distinctThk.Count > 0 ? distinctThk[0] : 0);
                 // The apportionment set is the FIELD slab plus only DEEPER drop bands. A thinner stray callout
                 // (a misread "5" SLAB, a topping/stair note) would drag the area-weighted depth the WRONG way,
-                // so anything below the field thickness is excluded before the question goes to AI.
+                // so anything below the field thickness is excluded before it is apportioned.
                 var apportion = distinctThk.Where(v => v >= fieldThk).Distinct().OrderBy(v => v).ToList();
                 plate.Callouts = apportion;
+                plate.CalloutPts = pageCallouts.Where(c => apportion.Contains(c.ValueIn)).ToList();
                 bool hasDropBands = apportion.Count >= 2 && apportion.Any(v => v >= fieldThk + 6 && v >= 1.4 * fieldThk);
 
                 // Deterministic locate + area: the grid bubble box → padded poché crop. No readable grid (or a
@@ -443,14 +502,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     cy0 = Math.Clamp(cy0 - padY, 0, ih - 1); cy1 = Math.Clamp(cy1 + padY, cy0 + 1, ih);
                     plate.Cx0 = cx0; plate.Cy0 = cy0; plate.Cx1 = cx1; plate.Cy1 = cy1; plate.HasBox = true;
 
-                    var (area, fill, clusters, wallSqFt, colSqFt, boundaryFt) = MeasurePoche(raster, png, cx0, cy0, cx1, cy1, tkMpp);
+                    var (area, fill, clusters, wallSqFt, colSqFt, boundaryFt) = MeasurePoche(raster, png, cx0, cy0, cx1, cy1, plate.Mpp);
                     if (area >= 500)
                     {
-                        var consensus = SlabAreaReconciler.Reconcile(grid, tkScaleDenom, area);
+                        var consensus = SlabAreaReconciler.Reconcile(grid, plateScaleDenom, area);
                         plate.Area = consensus.AreaSqFt > 0 ? consensus.AreaSqFt : area;
                         plate.FillRatio = fill; plate.ClusterCount = clusters;
                         plate.GridNet = consensus.GridNetSqFt ?? 0; plate.Poche = consensus.PocheSqFt ?? area;
-                        plate.Basis = consensus.Basis; plate.AreaFlags = consensus.Flags;
+                        plate.Basis = consensus.Basis; plate.AreaFlags = plate.AreaFlags.Concat(consensus.Flags).ToArray();
                         plate.WallSqFt = wallSqFt; plate.ColSqFt = colSqFt;   // co-located vertical concrete, same crop
                         // Perimeter/basement wall inputs: the plate's outer contour length + the page's own
                         // "NNN WALL" thickness notes. Priced only for below-grade plates at the emit step.
@@ -519,7 +578,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                             if (bb.Count < 4) break;
                             int bx0 = Math.Clamp((int)(Math.Min(bb[0], bb[2]) * iw), 0, iw - 1), by0 = Math.Clamp((int)(Math.Min(bb[1], bb[3]) * ih), 0, ih - 1);
                             int bx1 = Math.Clamp((int)(Math.Max(bb[0], bb[2]) * iw), bx0 + 1, iw), by1 = Math.Clamp((int)(Math.Max(bb[1], bb[3]) * ih), by0 + 1, ih);
-                            var (area, fill, clusters, wallSqFt, colSqFt, _) = MeasurePoche(raster, p.Png, bx0, by0, bx1, by1, tkMpp);
+                            var (area, fill, clusters, wallSqFt, colSqFt, _) = MeasurePoche(raster, p.Png, bx0, by0, bx1, by1, p.Mpp);
                             double err = expect > 0 ? Math.Abs(area - expect) / expect : (area >= 500 ? 0 : 1);
                             if (area >= 500 && err < bestErr) { best = (bx0, by0, bx1, by1, area, fill, clusters, wallSqFt, colSqFt); bestErr = err; }
                             if (area >= 500 && (expect <= 0 || err <= 0.4)) break;   // converged within band (or no peer to judge by)
@@ -531,9 +590,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     }
                     if (best is { } b)
                     {
-                        var consensus = SlabAreaReconciler.Reconcile(null, tkScaleDenom, b.Area);   // no grid → poché stands alone
+                        double pDenom = p.Mpp > 0 ? p.Mpp * req.Dpi / 0.0254 : 100.0;
+                        var consensus = SlabAreaReconciler.Reconcile(null, pDenom, b.Area);   // no grid → poché stands alone
                         p.Area = consensus.AreaSqFt; p.FillRatio = b.Fill; p.ClusterCount = b.Clusters;
-                        p.Poche = b.Area; p.Basis = consensus.Basis; p.AreaFlags = consensus.Flags;
+                        p.Poche = b.Area; p.Basis = consensus.Basis; p.AreaFlags = p.AreaFlags.Concat(consensus.Flags).ToArray();
                         p.WallSqFt = b.WallSqFt; p.ColSqFt = b.ColSqFt;   // co-located vertical concrete from the located crop
                         p.Cx0 = b.X0; p.Cy0 = b.Y0; p.Cx1 = b.X1; p.Cy1 = b.Y1; p.HasBox = true; p.NeedsLocate = false;
                         notes.Add($"  ⤷ {p.Label}: AI located plate → {b.Area:N0} sqft" +
@@ -545,43 +605,110 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         // neighbours are resolved — estimate its area from them (flagged orange) rather than drop
                         // a real floor. Uses the plate's own neighbours, never the answer key; the human verifies.
                         p.Area = expect; p.Basis = AreaBasis.PocheOnly; p.HasBox = false; p.NeedsLocate = false;
-                        p.AreaFlags = new[] { new PlanFlag(PlanFlagSeverity.Review, "AREA_ESTIMATED_PEERS",
-                            $"AI could not locate this plate; its area was estimated from its nearest-level neighbours ({expect:N0} sqft) — verify against the drawing.") };
+                        p.AreaFlags = p.AreaFlags.Concat(new[] { new PlanFlag(PlanFlagSeverity.Review, "AREA_ESTIMATED_PEERS",
+                            $"AI could not locate this plate; its area was estimated from its nearest-level neighbours ({expect:N0} sqft) — verify against the drawing.") }).ToArray();
                         notes.Add($"  ⤷ {p.Label}: AI could not locate — area ESTIMATED from nearest-level peers ({expect:N0} sqft, flagged).");
                     }
                     else notes.Add($"  ! {p.Label}: AI could not locate a plausible plate and has no near peers — residual unknown.");
                 }
 
-                // (b) THICKNESS SPLIT — drop bands: ask the area % per called-out thickness, then HONE. A
-                //     thickened transfer plate's effective depth MUST exceed its field slab (the drawing calls
-                //     out deeper bands); if the split came back at/below the field, the model missed the bands —
-                //     re-ask, naming the deeper callouts to find (≤ MaxAiPasses). Grounded in the drawing's own
-                //     callouts, never the answer key; converge above field → trust, else keep best + flag.
+                // (b) THICKNESS SPLIT — drop bands. DETERMINISTIC FIRST: each zone's share is its own
+                //     callouts' Voronoi cells over the plate box (engineers scatter a zone's callout across
+                //     its extent, so cell area tracks zone area; the values come from the exact callout TEXT,
+                //     geometry only says WHERE). This replaced the AI-first apportionment: the vision split
+                //     under-weighted deep bands whenever a barely-above-field answer cleared the old
+                //     acceptance bar (31065 L1-N accepted 15.6" against deep callouts reading ~22"). One AI
+                //     apportion pass remains as the independent CROSS-CHECK — disagreement flags the plate
+                //     orange, and only the deterministic number is ever priced. AI becomes the PRIMARY only
+                //     when the deterministic split has nothing to stand on (<2 in-box callout values).
                 if (p.NeedsThicknessSplit && p.HasBox && p.Callouts.Count >= 2)
                 {
                     int field = p.Callouts.Min();
-                    double bestEff = 0;
-                    string? feedback = null;
-                    for (int pass = 0; pass < MaxAiPasses; pass++)
+
+                    // Map the qualifying callouts (PDF pts, y-up) into render px and keep those inside
+                    // the plate's own box — callouts in details/notes/legends elsewhere never vote.
+                    var (ziw, zih) = raster.ImageSize(p.Png);
+                    var inBox = (p.PageWidthPts > 0 && p.PageHeightPts > 0
+                            ? p.CalloutPts.Select(c => new PlanGeometry.CalloutPx(
+                                c.Cx / p.PageWidthPts * ziw,
+                                (p.PageHeightPts - c.Cy) / p.PageHeightPts * zih,
+                                c.ValueIn))
+                            : Enumerable.Empty<PlanGeometry.CalloutPx>())
+                        .Where(c => c.X >= p.Cx0 && c.X <= p.Cx1 && c.Y >= p.Cy0 && c.Y <= p.Cy1)
+                        .ToList();
+
+                    // The deterministic split only stands when the FIELD value is itself represented
+                    // inside the box: without a thin anchor the Voronoi would hand the WHOLE plate to
+                    // the deep bands (a field thickness stated only in a legend/notes prices 2-3x over).
+                    var inBoxVals = inBox.Select(c => c.Value).Distinct().ToList();
+                    double vorEff = 0;
+                    if (inBoxVals.Count >= 2 && inBoxVals.Contains(field))
                     {
+                        var shares = PlanGeometry.VoronoiCellShares(inBox, p.Cx0, p.Cy0, p.Cx1, p.Cy1);
+                        vorEff = SlabThicknessZoner.EffectiveThicknessIn(shares, field);
+                        long tot = shares.Values.Sum();
+                        string dist = string.Join(", ", shares.OrderBy(kv => kv.Key)
+                            .Select(kv => $"{kv.Key}\"={(tot > 0 ? 100.0 * kv.Value / tot : 0):N0}%"));
+                        notes.Add($"  ⤷ {p.Label}: Voronoi split [{dist}] over {inBox.Count} in-box callouts → effective {vorEff:N1}\" (deterministic).");
+                    }
+
+                    if (vorEff > 0)
+                    {
+                        // Deterministic number priced; ONE un-honed vision apportionment as the
+                        // independent cross-check — disagreement flags, never re-prices.
+                        p.ZonedThk = vorEff; p.NeedsThicknessSplit = false;
+                        double aiEff = 0;
                         try
                         {
                             var cropPng = raster.LoadCropPng(p.Png, p.Cx0, p.Cy0, p.Cx1, p.Cy1, 1200);
-                            using var sd = JsonDocument.Parse(await vision.ApportionThicknessAsync(cropPng, p.Callouts, ct, feedback));
-                            double eff = EffectiveFromSplit(sd.RootElement, p.Callouts);
-                            if (eff > bestEff) bestEff = eff;
-                            if (eff > field + 0.5) break;   // found real thickening → accept
-                            feedback = $"Your split put almost all of the area at the thin {field}\" field slab and missed the thickened zones. The drawing EXPLICITLY calls out deeper bands at {string.Join("\", ", p.Callouts.Where(c => c > field))}\" on THIS plate — find those hatched/outlined thickened regions and give each a realistic share of the plan area. The effective depth must come out greater than {field}\".";
+                            using var sd = JsonDocument.Parse(await vision.ApportionThicknessAsync(cropPng, p.Callouts, ct, null));
+                            aiEff = EffectiveFromSplit(sd.RootElement, p.Callouts);
                         }
-                        catch (Exception ex) { notes.Add($"  ! {p.Label}: AI apportion pass {pass + 1} failed: {ex.Message}"); break; }
+                        catch (Exception ex) { notes.Add($"  ! {p.Label}: AI apportion cross-check failed: {ex.Message}"); }
+                        if (aiEff > 0 && Math.Abs(aiEff - vorEff) > 0.25 * vorEff)
+                        {
+                            p.AreaFlags = p.AreaFlags.Concat(new[] { new PlanFlag(PlanFlagSeverity.Review, "THK_SPLIT_DISAGREE",
+                                $"The deterministic Voronoi thickness split ({vorEff:N1}\") and the vision apportionment ({aiEff:N1}\") disagree by more than 25% — the Voronoi value was priced; verify the drop-band extents on the drawing.") }).ToArray();
+                            notes.Add($"  ~ {p.Label}: vision cross-check {aiEff:N1}\" vs Voronoi {vorEff:N1}\" — DISAGREE >25%, flagged (Voronoi priced).");
+                        }
+                        else if (aiEff > 0)
+                            notes.Add($"  ⤷ {p.Label}: vision cross-check {aiEff:N1}\" agrees (Voronoi {vorEff:N1}\" priced).");
                     }
-                    if (bestEff > 0)
+                    else
                     {
-                        p.ZonedThk = bestEff; p.NeedsThicknessSplit = false;
-                        notes.Add($"  ⤷ {p.Label}: AI apportioned bands [{string.Join("/", p.Callouts)}\"] → effective {bestEff:N1}\"" +
-                                  (bestEff > field + 0.5 ? "." : $" (≈ field after {MaxAiPasses} passes — flagged)."));
+                        // AI PRIMARY — the deterministic split has nothing to stand on, so the original
+                        // honing loop runs: a split at/below the field means the model missed the bands
+                        // the drawing explicitly calls out — re-ask naming them (≤ MaxAiPasses), keep best.
+                        double bestEff = 0;
+                        string? feedback = null;
+                        for (int pass = 0; pass < MaxAiPasses; pass++)
+                        {
+                            try
+                            {
+                                var cropPng = raster.LoadCropPng(p.Png, p.Cx0, p.Cy0, p.Cx1, p.Cy1, 1200);
+                                using var sd = JsonDocument.Parse(await vision.ApportionThicknessAsync(cropPng, p.Callouts, ct, feedback));
+                                double eff = EffectiveFromSplit(sd.RootElement, p.Callouts);
+                                if (eff > bestEff) bestEff = eff;
+                                if (eff > field + 0.5) break;   // found real thickening → accept
+                                feedback = $"Your split put almost all of the area at the thin {field}\" field slab and missed the thickened zones. The drawing EXPLICITLY calls out deeper bands at {string.Join("\", ", p.Callouts.Where(c => c > field))}\" on THIS plate — find those hatched/outlined thickened regions and give each a realistic share of the plan area. The effective depth must come out greater than {field}\".";
+                            }
+                            catch (Exception ex) { notes.Add($"  ! {p.Label}: AI apportion pass {pass + 1} failed: {ex.Message}"); break; }
+                        }
+                        if (bestEff > 0)
+                        {
+                            p.ZonedThk = bestEff; p.NeedsThicknessSplit = false;
+                            p.AreaFlags = p.AreaFlags.Concat(new[] { new PlanFlag(PlanFlagSeverity.Review, "THK_SPLIT_AI_ONLY",
+                                $"Drop-band split priced from the vision apportionment ({bestEff:N1}\") — the deterministic Voronoi split had no in-box field anchor to stand on; verify against the drawing.") }).ToArray();
+                            notes.Add($"  ⤷ {p.Label}: AI apportioned bands [{string.Join("/", p.Callouts)}\"] → effective {bestEff:N1}\"" +
+                                      (bestEff > field + 0.5 ? " (no deterministic split possible — flagged)." : $" (≈ field after {MaxAiPasses} passes — flagged)."));
+                        }
+                        else
+                        {
+                            p.AreaFlags = p.AreaFlags.Concat(new[] { new PlanFlag(PlanFlagSeverity.Review, "THK_SPLIT_UNRESOLVED",
+                                $"This plate calls out deeper drop bands ({string.Join("\", ", p.Callouts)}\") that neither the deterministic split nor the vision apportionment could quantify — priced at the {field}\" field thickness; quantify the thickened zones by hand.") }).ToArray();
+                            notes.Add($"  ! {p.Label}: thickness split unusable (no deterministic split, AI failed) — kept field thickness (flagged).");
+                        }
                     }
-                    else notes.Add($"  ! {p.Label}: AI thickness split unusable — kept field thickness (flagged).");
                 }
             }
 
@@ -650,7 +777,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     if (resolved.Basis != r.Basis)
                     {
                         notes.Add($"  ⇄ {r.Label}: grid {r.GridNet:N0} sqft is a {r.GridNet / peerMedian:P0} outlier vs the {grp.Key} tower typical ({peerMedian:N0}); using poché {r.Poche:N0} (FLAG: grid grabbed podium-width bubbles).");
-                        r.Area = resolved.AreaSqFt; r.Basis = resolved.Basis; r.AreaFlags = resolved.Flags;
+                        // The peer resolution re-decides the AREA story, so its flags replace the AREA_*
+                        // ones — but the plate's non-area flags (SCALE_ASSUMED, THK_SPLIT_*) still hold
+                        // and must survive, or the estimator loses the assumed-scale/disagreement warnings.
+                        r.Area = resolved.AreaSqFt; r.Basis = resolved.Basis;
+                        r.AreaFlags = r.AreaFlags.Where(f => !f.Code.StartsWith("AREA_", StringComparison.Ordinal))
+                                                 .Concat(resolved.Flags).ToArray();
                     }
                 }
             }

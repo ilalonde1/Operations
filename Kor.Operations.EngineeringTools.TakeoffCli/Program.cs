@@ -88,8 +88,9 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     if (string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set."); return 2; }
     int? tkFirst = args.Length >= 5 && int.TryParse(args[4], out var tf) ? tf : null;
     int? tkLast  = args.Length >= 6 && int.TryParse(args[5], out var tl) ? tl : null;
-    // Optional scale note (e.g. "1:100" for a metric set, "1/8\"=1'-0\"" imperial). Defaults to imperial.
-    string tkScale = args.Length >= 7 && !string.IsNullOrWhiteSpace(args[6]) ? args[6] : "1/8\"=1'-0\"";
+    // Optional scale note OVERRIDE (e.g. "1:100" metric, "1/8\"=1'-0\"" imperial). Absent → each sheet
+    // is measured at the scale ITS title block states (SheetScaleReader); imperial fallback, flagged.
+    string? tkScale = args.Length >= 7 && !string.IsNullOrWhiteSpace(args[6]) ? args[6] : null;
 
     // Optional storey-height file (clean-at-source): { "storeyHeightFt": 10.5, "byLevel": { "P1": 13, "LEVEL 1": 12, ... } }
     // — real floor-to-floor heights (FEET) from the architectural set. byLevel prices each named level's verticals
@@ -400,18 +401,26 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         double matCy = 0; var matBreakdown = new List<string>();
         try
         {
-            double? matMpp = PlanGeometry.MetresPerPixel(tkScale, tkReq.Dpi);
             var deepRe = new System.Text.RegularExpressions.Regex(@"^(\d{3,4})$");
             foreach (var pg in tkDig.Pages)
             {
                 string ds3 = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
                 if (!ds3.Contains("FOUNDATIONSCHEDULE") && !ds3.Contains("FOOTINGSCHEDULE")) continue;
                 string mpng = Path.Combine(args[2], $"p-{pg.Page:D2}.png");
-                if (matMpp is not double mv || !File.Exists(mpng)) continue;
+                if (!File.Exists(mpng)) continue;
+                var mpage = VectorPageReader.ReadPage(args[1], pg.Page);
+                // This sheet's own scale (title block), unless the operator overrode it — same precedence
+                // as the engine, so the mats and the slabs are measured in the same world. An assumed
+                // scale is SAID here (the engine flags its plates; the mats only have this trace).
+                string? matScale = tkScale ?? SheetScaleReader.FromPage(mpage);
+                double? matMpp = PlanGeometry.MetresPerPixel(matScale ?? "1/8\"=1'-0\"", tkReq.Dpi);
+                if (matMpp is not double mv)
+                { Console.Error.WriteLine($"  ! hatched-mat p{pg.Page}: scale note unresolvable — page skipped, quantify its mats by hand."); continue; }
+                if (matScale is null)
+                    Console.WriteLine($"  ~ hatched-mat p{pg.Page}: no stated scale on this sheet — mats measured at the assumed 1/8\"=1'-0\" (verify).");
                 var crop = PlanRaster.LoadCrop(mpng, 0, 0, int.MaxValue / 2, int.MaxValue / 2);
                 var regions = PlanGeometry.MeasureHatchedRegions(crop.Lum, crop.Width, crop.Height);
                 if (regions.Count == 0) continue;
-                var mpage = VectorPageReader.ReadPage(args[1], pg.Page);
                 string mlevel = SheetTitleReader.FromPage(mpage)?.Display ?? "FOUNDATION";
                 // "1800 DEEP" note positions, mapped into render pixels.
                 var deepNotes = new List<(double Px, double Py, int Mm)>();
@@ -897,6 +906,29 @@ if (args.Length >= 1 && args[0].Equals("vector-signals", StringComparison.Ordina
         Console.WriteLine($"  poché largest cluster:          {pocheMax,10:N0} sqft   (of {cl.Count} clusters)");
         Console.WriteLine($"  poché sum top-12 clusters:      {pocheSum,10:N0} sqft");
     }
+    return 0;
+}
+
+// Sheet-scale probe: the title-block SCALE each page states (SheetScaleReader) and the mpp it converts
+// to — proves what the takeoff will measure at, page by page, before a run. Usage:
+//   takeoff scale-scan <pdf> [first] [last]
+if (args.Length >= 2 && args[0].Equals("scale-scan", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
+    int scFirst = args.Length >= 3 && int.TryParse(args[2], out var sf) ? sf : 1;
+    int scLast = args.Length >= 4 && int.TryParse(args[3], out var sl) ? sl : int.MaxValue;
+    var scDig = DrawingDigestBuilder.Build(args[1], scFirst, scLast == int.MaxValue ? null : scLast);
+    int stated = 0;
+    foreach (var pg in scDig.Pages)
+    {
+        var spc = VectorPageReader.ReadPage(args[1], pg.Page);
+        string? sn = SheetScaleReader.FromPage(spc);
+        if (sn is not null) stated++;
+        Console.WriteLine($"  p{pg.Page,-3} {pg.Title?.Display ?? "untitled",-18} scale: " +
+            (sn is null ? "— (none stated / unparseable → fallback 1/8\"=1'-0\", flagged)"
+                        : $"{sn.Trim()}  (mpp@110dpi {PlanGeometry.MetresPerPixel(sn, 110):0.000000})"));
+    }
+    Console.WriteLine($"{stated}/{scDig.Pages.Count} page(s) state a machine-readable scale.");
     return 0;
 }
 

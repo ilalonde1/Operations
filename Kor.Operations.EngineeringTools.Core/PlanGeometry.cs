@@ -293,6 +293,47 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         }
 
         /// <summary>
+        /// Voronoi cell AREAS of the thickness callouts over the plate's bounding box — pure point
+        /// geometry, no raster. <see cref="ThicknessZoneFractions"/> assigns only the enclosed-light
+        /// pixels, which is exact on a tight plate but collapses on a LEAKY one (an open slab edge floods
+        /// the interior "exterior", leaving a fragment): precisely the podium/transfer sheets where the
+        /// deep zones live. On those plates the fair deterministic estimate of each zone's SHARE is its
+        /// callouts' Voronoi cells clipped to the plate box — engineers scatter a zone's callout across
+        /// its extent, so cell area tracks zone area. The caller multiplies the shares by the plate's own
+        /// reconciled area; this never measures concrete, only apportions it. Pass ONLY qualifying
+        /// callouts (the field value plus its genuine deeper bands), as with the raster split.
+        /// </summary>
+        public static IReadOnlyDictionary<int, long> VoronoiCellShares(
+            IReadOnlyList<CalloutPx> callouts,
+            int minX,
+            int minY,
+            int maxX,
+            int maxY,
+            int step = 2)
+        {
+            var result = new Dictionary<int, long>();
+            if (callouts is null || callouts.Count == 0 || maxX < minX || maxY < minY) return result;
+            int s = Math.Max(1, step);
+            for (int y = minY; y <= maxY; y += s)
+            {
+                for (int x = minX; x <= maxX; x += s)
+                {
+                    double best = double.MaxValue;
+                    int bestVal = callouts[0].Value;
+                    for (int c = 0; c < callouts.Count; c++)
+                    {
+                        double dx = x - callouts[c].X, dy = y - callouts[c].Y;
+                        double d = dx * dx + dy * dy;
+                        if (d < best) { best = d; bestVal = callouts[c].Value; }
+                    }
+                    result.TryGetValue(bestVal, out var cur);
+                    result[bestVal] = cur + 1;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
         /// Counts solid gray-filled footprint pixels. Walls and columns are filled with a light,
         /// near-neutral gray on the concrete-outline sheets; this isolates that fill from black
         /// line-work (below <paramref name="loThreshold"/>), white background (above

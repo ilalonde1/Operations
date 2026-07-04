@@ -62,9 +62,19 @@ that mostly isn't there. → These belong in ORANGE (flag + variable input), not
   `SlabThicknessReader` (field thk from "N\" SLAB" callout, modal), `DrawingDigest`/`VectorPageReader`,
   `ScheduleTakeoff`, `PlanEstimatePipeline`, `StructuralTakeoffReportGenerator` (xlsx).
 - `SlabThicknessZoner` + `PlanGeometry.ThicknessZoneFractions` — multi-thickness Voronoi zoning.
-  **GATED OFF** (`const bool tkApplyZoning = false` in Program.cs): the QTO models each level at a SINGLE
-  thickness, so zoning OVER-counts typical floors ~12%. Capability kept (probe `vector-zones`, 9 tests).
-  Do NOT re-enable unless a future answer key is itself zone-resolved.
+  **SUPERSEDED 2026-07-03**: the old `tkApplyZoning` gate (and its dangling `ApplyZoning` request param)
+  is DELETED. Drop-band plates (`NeedsThicknessSplit`) are now split DETERMINISTICALLY in the engine:
+  `PlanGeometry.VoronoiCellShares` (pure point Voronoi over the plate box — immune to leaky poché) over
+  the in-box ≥-field callouts, requiring the field value in-box as the thin anchor; ONE un-honed vision
+  apportionment remains as a cross-check (>25% disagreement → `THK_SPLIT_DISAGREE`, Voronoi priced);
+  the honed AI loop is the primary only when the Voronoi has no anchor (`THK_SPLIT_AI_ONLY`). Typical
+  single-thickness floors are untouched (the old ~12% over-count cannot recur — no split without deep
+  bands). 31065: 1N 24.6", 1S 28.0" (Revit-implied ~27"), 2S 16.6" — identical across sequential runs.
+- `SheetScaleReader` — the title-block SCALE field (bottom-right corner, value must directly follow the
+  label), per-sheet mpp in the engine; explicit CLI scale = override (throws if unparseable); no note →
+  the SET's modal stated scale, else imperial default + `SCALE_ASSUMED` flag. `takeoff scale-scan <pdf>`
+  proves what a set will measure at. (31065 states 1:100; the old runs measured it at the 1:96 imperial
+  default — every area was systematically −7.8%.)
 - `PlateReliability` + `PlateReliabilityScorer` — the **orange-flag engine** (High/Med/Low + reasons from
   fill-ratio, fragmentation, degenerate box, thickness source, peer-area outlier). Tested, NOT yet wired.
 - 221 Core tests green.
