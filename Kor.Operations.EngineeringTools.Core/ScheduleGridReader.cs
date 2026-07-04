@@ -258,20 +258,39 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     && t.Cx >= xLo && t.Cx <= xHi)).ToList();
             if (outside.Count == 0) return new(StringComparer.OrdinalIgnoreCase);
 
-            // The key plan is one tight cluster of mark labels; stray mentions (detail bubbles, notes)
-            // sit elsewhere. Single-linkage cluster the outside tokens (≤150pt gap) and count only the
-            // LARGEST cluster — the key plan itself.
+            // The key plan region is ANCHORED by its own title — a "KEY" word with "PLAN" beside it —
+            // which is the drawing convention, not a guess. Cluster the outside mark tokens
+            // (single-linkage, ≤200pt gaps) and count the cluster NEAREST a KEY-PLAN anchor; with no
+            // anchor on the page, fall back to the largest cluster. Stray mentions in details and
+            // notes live in other clusters and never count.
+            var anchors = new List<(double X, double Y)>();
+            foreach (var w in page.Words)
+            {
+                if (!w.Text.Equals("KEY", StringComparison.OrdinalIgnoreCase)) continue;
+                if (page.Words.Any(p2 => p2.Text.StartsWith("PLAN", StringComparison.OrdinalIgnoreCase)
+                                      && Math.Abs(p2.Cy - w.Cy) <= 8 && Math.Abs(p2.Cx - w.Cx) <= 90))
+                    anchors.Add((w.Cx, w.Cy));
+            }
+
             var cluster = new int[outside.Count];
             for (int i = 0; i < outside.Count; i++) cluster[i] = i;
             int Find(int a) { while (cluster[a] != a) { cluster[a] = cluster[cluster[a]]; a = cluster[a]; } return a; }
             for (int i = 0; i < outside.Count; i++)
                 for (int j = i + 1; j < outside.Count; j++)
-                    if (Math.Abs(outside[i].Cx - outside[j].Cx) <= 150 && Math.Abs(outside[i].Cy - outside[j].Cy) <= 150)
+                    if (Math.Abs(outside[i].Cx - outside[j].Cx) <= 200 && Math.Abs(outside[i].Cy - outside[j].Cy) <= 200)
                     { int ri = Find(i), rj = Find(j); if (ri != rj) cluster[ri] = rj; }
-            var byRoot = Enumerable.Range(0, outside.Count).GroupBy(Find).OrderByDescending(g => g.Count()).First();
+
+            var groups = Enumerable.Range(0, outside.Count).GroupBy(Find).ToList();
+            IGrouping<int, int> chosen;
+            if (anchors.Count > 0)
+                chosen = groups.OrderBy(g => g.Min(i => anchors.Min(a =>
+                             Math.Max(Math.Abs(outside[i].Cx - a.X), Math.Abs(outside[i].Cy - a.Y)))))
+                         .First();
+            else
+                chosen = groups.OrderByDescending(g => g.Count()).First();
 
             var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            foreach (var i in byRoot)
+            foreach (var i in chosen)
             {
                 string k = outside[i].Text.Trim().ToUpperInvariant();
                 counts[k] = counts.GetValueOrDefault(k) + 1;

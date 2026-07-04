@@ -1549,6 +1549,20 @@ if (args.Length >= 2 && args[0].Equals("wallplan", StringComparison.OrdinalIgnor
 // with the SHEAR WALL SCHEDULE (each mark's thickness per level band), priced over a level list.
 // Diagnostic: run a vision schedule/keyplan reader on a rendered sheet and print the extracted JSON, to
 // PROVE the dense wall/column schedules are machine-readable before wiring them into the takeoff.
+// DIAGNOSTIC: takeoff perim <png> [scale] [dpi] — plate contour length off a rendered page (largest
+// component, hairlines opened away) — validates the below-grade perimeter-wall measurement.
+if (args.Length >= 2 && args[0].Equals("perim", StringComparison.OrdinalIgnoreCase))
+{
+    string pscale = args.Length >= 3 ? args[2] : "1/8\"=1'-0\"";
+    double pdpi = args.Length >= 4 && double.TryParse(args[3], out var pd) ? pd : 110;
+    double? pmpp = PlanGeometry.MetresPerPixel(pscale, pdpi);
+    if (pmpp is null) { Console.Error.WriteLine("bad scale"); return 2; }
+    var pcrop = PlanRaster.LoadCrop(args[1], 0, 0, int.MaxValue / 2, int.MaxValue / 2);
+    double m = PlanGeometry.BoundaryMetres(pcrop.Lum, pcrop.Width, pcrop.Height, pmpp.Value);
+    Console.WriteLine($"{pcrop.Width}x{pcrop.Height}px  contour = {m * 3.2808399:N0} ft");
+    return 0;
+}
+
 // DIAGNOSTIC: takeoff col-text <pdf> <page> — the DETERMINISTIC column-schedule read (text grid, no vision):
 // bands, key-plan counts, and the priced result at 10.5ft storeys.
 if (args.Length >= 3 && args[0].Equals("col-text", StringComparison.OrdinalIgnoreCase))

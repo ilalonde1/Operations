@@ -504,6 +504,16 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             }
             if (bestId == 0) return 0;
 
+            // Hairline attachments inflate the contour: a 1–2 px leader/dimension line touching the
+            // outline JOINS the component and contributes its own doubled length. A wall at drawing
+            // scale is many pixels thick, so a small morphological OPENING (erode then dilate) removes
+            // the hairlines while leaving the wall outline intact — the contour that remains is the
+            // plate's, not its annotations'.
+            var mask = new bool[n];
+            for (int i = 0; i < n; i++) mask[i] = comp[i] == bestId;
+            for (int k = 0; k < 2; k++) mask = Erode(mask, width, height);
+            for (int k = 0; k < 2; k++) mask = Dilate(mask, width, height);
+
             long edges = 0;
             for (int y = 0; y < height; y++)
             {
@@ -511,12 +521,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 for (int x = 0; x < width; x++)
                 {
                     int i = row + x;
-                    if (comp[i] != bestId) continue;
-                    // Count each exterior neighbour edge once (border pixels face implicit exterior).
-                    if (x == 0 || exterior[i - 1]) edges++;
-                    if (x == width - 1 || exterior[i + 1]) edges++;
-                    if (y == 0 || exterior[i - width]) edges++;
-                    if (y == height - 1 || exterior[i + width]) edges++;
+                    if (!mask[i]) continue;
+                    // Count each outside-mask neighbour edge once (border pixels face implicit exterior).
+                    if (x == 0 || !mask[i - 1]) edges++;
+                    if (x == width - 1 || !mask[i + 1]) edges++;
+                    if (y == 0 || !mask[i - width]) edges++;
+                    if (y == height - 1 || !mask[i + width]) edges++;
                 }
             }
             return edges * metresPerPixel;
