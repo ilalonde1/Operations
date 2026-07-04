@@ -516,8 +516,86 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             ReadOnlySpan<byte> luminance, int width, int height, double metresPerPixel,
             int darkThreshold = 110, bool sealHairlineGaps = true)
         {
-            ValidateBuffer(luminance.Length, width, height, nameof(luminance));
             if (metresPerPixel <= 0) throw new ArgumentOutOfRangeException(nameof(metresPerPixel));
+            var mask = LargestEnclosedMask(luminance, width, height, darkThreshold, sealHairlineGaps);
+            if (mask is null) return 0;
+            long edges = 0;
+            for (int y = 0; y < height; y++)
+            {
+                int row = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    int i = row + x;
+                    if (!mask[i]) continue;
+                    if (x == 0 || !mask[i - 1]) edges++;
+                    if (x == width - 1 || !mask[i + 1]) edges++;
+                    if (y == 0 || !mask[i - width]) edges++;
+                    if (y == height - 1 || !mask[i + width]) edges++;
+                }
+            }
+            return edges * metresPerPixel;
+        }
+
+        /// <summary>
+        /// The plate's outer contour length split by NEAREST MARK — the strip-footing measure. A strip
+        /// footing runs CONTINUOUSLY under the basement wall (the schedule says so: "BOTTOM CONT."), and
+        /// the plan labels each run with its mark (SF1/SF2) — so each foot of the measured perimeter
+        /// belongs to the run whose mark is closest, exactly the Voronoi-by-annotation principle the
+        /// thickness zones use. The numbers (width × depth) come from the schedule TEXT; the geometry
+        /// only says how long each mark's run is. Marks in crop pixel coordinates; returns the total
+        /// contour metres plus each mark index's share in metres (empty when no marks).
+        /// </summary>
+        public static (double TotalMetres, IReadOnlyDictionary<int, double> MetresByMark) BoundaryMetresByNearestMark(
+            ReadOnlySpan<byte> luminance, int width, int height, double metresPerPixel,
+            IReadOnlyList<(double X, double Y)> marks,
+            int darkThreshold = 110, bool sealHairlineGaps = true)
+        {
+            if (metresPerPixel <= 0) throw new ArgumentOutOfRangeException(nameof(metresPerPixel));
+            var byMark = new Dictionary<int, double>();
+            var mask = LargestEnclosedMask(luminance, width, height, darkThreshold, sealHairlineGaps);
+            if (mask is null) return (0, byMark);
+            long edges = 0;
+            var edgeCounts = new Dictionary<int, long>();
+            for (int y = 0; y < height; y++)
+            {
+                int row = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    int i = row + x;
+                    if (!mask[i]) continue;
+                    int e = 0;
+                    if (x == 0 || !mask[i - 1]) e++;
+                    if (x == width - 1 || !mask[i + 1]) e++;
+                    if (y == 0 || !mask[i - width]) e++;
+                    if (y == height - 1 || !mask[i + width]) e++;
+                    if (e == 0) continue;
+                    edges += e;
+                    if (marks is { Count: > 0 })
+                    {
+                        double best = double.MaxValue; int bi = 0;
+                        for (int m = 0; m < marks.Count; m++)
+                        {
+                            double dx = x - marks[m].X, dy = y - marks[m].Y;
+                            double d = dx * dx + dy * dy;
+                            if (d < best) { best = d; bi = m; }
+                        }
+                        edgeCounts.TryGetValue(bi, out var cur);
+                        edgeCounts[bi] = cur + e;
+                    }
+                }
+            }
+            foreach (var kv in edgeCounts) byMark[kv.Key] = kv.Value * metresPerPixel;
+            return (edges * metresPerPixel, byMark);
+        }
+
+        // The largest enclosed (non-exterior) component's mask after a small opening — the plate itself,
+        // free of schedule tables/notes (each has its own contour; measuring all read a perimeter 5× long)
+        // and of hairline leader/dimension attachments (a 1–2 px line JOINS the component and contributes
+        // its own doubled length; a wall at drawing scale is many pixels thick and survives the opening).
+        private static bool[]? LargestEnclosedMask(
+            ReadOnlySpan<byte> luminance, int width, int height, int darkThreshold, bool sealHairlineGaps)
+        {
+            ValidateBuffer(luminance.Length, width, height, nameof(luminance));
             var (_, exterior) = ComputeDarkAndExterior(luminance, width, height, darkThreshold, sealHairlineGaps);
             int n = width * height;
 
@@ -543,34 +621,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
                 if (size > bestSize) { bestSize = size; bestId = id; }
             }
-            if (bestId == 0) return 0;
+            if (bestId == 0) return null;
 
-            // Hairline attachments inflate the contour: a 1–2 px leader/dimension line touching the
-            // outline JOINS the component and contributes its own doubled length. A wall at drawing
-            // scale is many pixels thick, so a small morphological OPENING (erode then dilate) removes
-            // the hairlines while leaving the wall outline intact — the contour that remains is the
-            // plate's, not its annotations'.
             var mask = new bool[n];
             for (int i = 0; i < n; i++) mask[i] = comp[i] == bestId;
             for (int k = 0; k < 2; k++) mask = Erode(mask, width, height);
             for (int k = 0; k < 2; k++) mask = Dilate(mask, width, height);
-
-            long edges = 0;
-            for (int y = 0; y < height; y++)
-            {
-                int row = y * width;
-                for (int x = 0; x < width; x++)
-                {
-                    int i = row + x;
-                    if (!mask[i]) continue;
-                    // Count each outside-mask neighbour edge once (border pixels face implicit exterior).
-                    if (x == 0 || !mask[i - 1]) edges++;
-                    if (x == width - 1 || !mask[i + 1]) edges++;
-                    if (y == 0 || !mask[i - width]) edges++;
-                    if (y == height - 1 || !mask[i + width]) edges++;
-                }
-            }
-            return edges * metresPerPixel;
+            return mask;
         }
 
         /// <summary>Square metres for a pixel count at a given real-world metres-per-pixel.</summary>

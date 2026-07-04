@@ -395,7 +395,12 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
 
         // FOUNDATIONS — deterministic, from the drawing's own FOUNDATION SCHEDULE (mark → L×W×D DEEP)
         // × the mark placements counted on the foundation plans, outside the table. Spread footings are
-        // priced; strip footings (two dims — the length lives in plan geometry) stay an honest residual.
+        // priced directly. STRIP footings (two dims) run CONTINUOUSLY under the basement walls — the
+        // schedule itself says "BOTTOM CONT." — so each mark's LENGTH is its share of the plan's outer
+        // contour, split by nearest mark (the same Voronoi-by-annotation principle as the thickness
+        // zones); width × depth stay the schedule's exact text. Flagged: the contour staircases on
+        // diagonals, includes matchline edges, and misses interior strip runs — verify against the plan.
+        // No contour or no placements → the mark stays a NAMED residual, never silently dropped.
         double fdnCy = 0;
         var fdnInputs = new List<StructuralTakeoffInput>();
         var fdnBreakdown = new List<string>();
@@ -407,12 +412,56 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             var fpPage = VectorPageReader.ReadPage(args[1], pg.Page);
             var (ftypes, tableBox) = FootingScheduleReader.ReadSchedule(fpPage);
             if (ftypes.Count == 0) continue;
-            var placements = FootingScheduleReader.CountPlacements(fpPage, ftypes, tableBox);
+            var fpPositions = FootingScheduleReader.PlacementPositions(fpPage, ftypes, tableBox);
+            var placements = fpPositions.ToDictionary(kv => kv.Key, kv => kv.Value.Count, StringComparer.OrdinalIgnoreCase);
             string flevel = SheetTitleReader.FromPage(fpPage)?.Display ?? "FOUNDATION";
+
+            // Strip runs: contour metres per strip mark, from the page's own crop. One contour pass
+            // per page, all strip marks together (they compete for the same perimeter).
+            var stripTypes = ftypes.Where(t => !t.IsSpread && t.WidthMm > 0 && t.DepthMm > 0
+                                            && fpPositions.GetValueOrDefault(t.Mark) is { Count: > 0 }).ToList();
+            var stripLenFt = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            if (stripTypes.Count > 0)
+            {
+                string spng = Path.Combine(args[2], $"p-{pg.Page:D2}.png");
+                string? fScale = tkScale ?? SheetScaleReader.FromPage(fpPage);
+                double? fMpp = PlanGeometry.MetresPerPixel(fScale ?? "1/8\"=1'-0\"", tkReq.Dpi);
+                if (File.Exists(spng) && fMpp is double fmv)
+                {
+                    var fcrop = PlanRaster.LoadCrop(spng, 0, 0, int.MaxValue / 2, int.MaxValue / 2);
+                    // All strip-mark positions, PDF pts → crop px; remember which mark owns each index.
+                    var pts = new List<(double X, double Y)>();
+                    var owner = new List<string>();
+                    foreach (var st in stripTypes)
+                        foreach (var (mx, my) in fpPositions[st.Mark])
+                        {
+                            pts.Add((mx / fpPage.WidthPts * fcrop.Width,
+                                     (fpPage.HeightPts - my) / fpPage.HeightPts * fcrop.Height));
+                            owner.Add(st.Mark);
+                        }
+                    var (_, byMark) = PlanGeometry.BoundaryMetresByNearestMark(
+                        fcrop.Lum, fcrop.Width, fcrop.Height, fmv, pts);
+                    foreach (var kv in byMark)
+                        stripLenFt[owner[kv.Key]] = stripLenFt.GetValueOrDefault(owner[kv.Key]) + kv.Value * 3.2808399;
+                }
+            }
+
             foreach (var ft in ftypes)
             {
                 int n = placements.GetValueOrDefault(ft.Mark);
-                if (!ft.IsSpread) { if (n > 0) stripMarks.Add($"{ft.Mark} x{n} (p{pg.Page})"); continue; }
+                if (!ft.IsSpread)
+                {
+                    if (n == 0) continue;
+                    if (stripLenFt.TryGetValue(ft.Mark, out var lenFt) && lenFt > 0)
+                    {
+                        double scy = (lenFt / 3.2808399 * 1000) * ft.WidthMm * ft.DepthMm / 1e9 * 1.30795;
+                        fdnCy += scy;
+                        fdnInputs.Add(new StructuralTakeoffInput(flevel, TakeoffElementType.Foundation, "strip footing", scy));
+                        fdnBreakdown.Add($"    p{pg.Page} {flevel,-10} {ft.Mark,-4} strip {lenFt,5:N0} ft x {ft.WidthMm:0}x{ft.DepthMm:0} = {scy,6:N0} cy (FLAGGED - contour run, verify)");
+                    }
+                    else stripMarks.Add($"{ft.Mark} x{n} (p{pg.Page})");
+                    continue;
+                }
                 if (n == 0) continue;
                 double cy = n * ft.VolumeCuYdEach;
                 fdnCy += cy;

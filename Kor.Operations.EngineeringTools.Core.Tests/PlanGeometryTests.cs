@@ -355,6 +355,37 @@ public sealed class PlanGeometryTests
     }
 
     [Fact]
+    public void BoundaryMetresByNearestMark_SplitsContourByNearestMark()
+    {
+        // A 100×60 enclosed plate; one mark near the LEFT edge, one near the RIGHT. Each should own
+        // roughly half the contour (split falls at the vertical midline).
+        const int w = 140, h = 100;
+        var lum = White(w, h);
+        DrawRectOutline(lum, w, 20, 20, 119, 79);
+        var marks = new List<(double X, double Y)> { (25, 50), (114, 50) };
+        var (total, byMark) = PlanGeometry.BoundaryMetresByNearestMark(lum, w, h, 0.01, marks);
+
+        Assert.True(total > 0);
+        Assert.Equal(2, byMark.Count);
+        Assert.InRange(byMark[0] / total, 0.40, 0.60);
+        Assert.InRange(byMark[0] + byMark[1], total * 0.99, total * 1.01);   // every edge assigned
+        // And the unsplit measure agrees with the split total.
+        Assert.Equal(PlanGeometry.BoundaryMetres(lum, w, h, 0.01), total, 3);
+    }
+
+    [Fact]
+    public void BoundaryMetresByNearestMark_NoMarks_TotalOnly()
+    {
+        const int w = 80, h = 80;
+        var lum = White(w, h);
+        DrawRectOutline(lum, w, 15, 15, 64, 64);
+        var (total, byMark) = PlanGeometry.BoundaryMetresByNearestMark(
+            lum, w, h, 0.01, Array.Empty<(double, double)>());
+        Assert.True(total > 0);
+        Assert.Empty(byMark);
+    }
+
+    [Fact]
     public void VoronoiCellShares_SamplingStep_PreservesFractions()
     {
         var callouts = new[]

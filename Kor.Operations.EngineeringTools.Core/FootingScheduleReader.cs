@@ -99,10 +99,22 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             VectorPageReader.PageContent page,
             IReadOnlyList<FootingType> types,
             (double MinX, double MinY, double MaxX, double MaxY) tableBox)
+            => PlacementPositions(page, types, tableBox)
+                .ToDictionary(kv => kv.Key, kv => kv.Value.Count, StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Every plan placement of each mark WITH its position (PDF points, y-up) — the same
+        /// outside-the-table filter as <see cref="CountPlacements"/>. Positions let a strip footing's
+        /// contour run be assigned to its nearest mark (the length the schedule itself cannot state).
+        /// </summary>
+        public static Dictionary<string, List<(double X, double Y)>> PlacementPositions(
+            VectorPageReader.PageContent page,
+            IReadOnlyList<FootingType> types,
+            (double MinX, double MinY, double MaxX, double MaxY) tableBox)
         {
             ArgumentNullException.ThrowIfNull(page);
             var marks = new HashSet<string>(types.Select(t => t.Mark), StringComparer.OrdinalIgnoreCase);
-            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var found = new Dictionary<string, List<(double X, double Y)>>(StringComparer.OrdinalIgnoreCase);
             foreach (var w in page.Words)
             {
                 string txt = w.Text.Trim();
@@ -110,9 +122,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 bool inTable = w.Cx >= tableBox.MinX && w.Cx <= tableBox.MaxX
                             && w.Cy >= tableBox.MinY && w.Cy <= tableBox.MaxY;
                 if (inTable) continue;
-                counts[txt] = counts.GetValueOrDefault(txt) + 1;
+                if (!found.TryGetValue(txt, out var list)) found[txt] = list = new List<(double X, double Y)>();
+                list.Add((w.Cx, w.Cy));
             }
-            return counts;
+            return found;
         }
     }
 }

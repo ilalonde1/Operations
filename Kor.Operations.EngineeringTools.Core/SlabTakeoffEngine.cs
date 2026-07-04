@@ -931,23 +931,35 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
                 // PERIMETER/basement wall — the one wall the gray-fill can never see, because on a
                 // below-grade plan it IS the plate outline the flood-fill treats as boundary. Priced as
-                // contour length × the page's own "NNN WALL" thickness × storey height, flagged for
-                // review (contour staircasing + crop fragments can over-read; the thickness is the
-                // page's median note). Left unpriced and flagged when the page states no thickness.
+                // contour length × a "NNN WALL" thickness note × storey height, flagged for review
+                // (contour staircasing + crop fragments can over-read). Thickness precedence: the page's
+                // OWN median note; else the nearest below-grade SIBLING's note — one continuous basement
+                // wall runs past every parkade level, and only one of those plans repeats the note
+                // (31065: P1 states 200 WALL, P3/P2 state none — the same wall). Assumed-from-sibling is
+                // flagged as such. No note anywhere below grade → unpriced, said plainly.
                 if (!degenerate && IsBelowGrade(r.Label) && r.PerimeterFt > 0)
                 {
                     var (pStoreyIn, _) = ResolveStoreyHeightIn(r.Label, heightByLevel, req.StoreyHeightIn);
-                    if (r.WallThkMm > 0)
+                    double perimThkMm = r.WallThkMm;
+                    string thkSrc = "the page's";
+                    if (perimThkMm <= 0)
                     {
-                        double thkFt = r.WallThkMm / 304.8;
+                        var sib = tkRaw.Where(x => !ReferenceEquals(x, r) && IsBelowGrade(x.Label) && x.WallThkMm > 0)
+                                       .OrderBy(x => Math.Abs((x.RepLevel ?? 0) - (r.RepLevel ?? 0)))
+                                       .FirstOrDefault();
+                        if (sib is not null) { perimThkMm = sib.WallThkMm; thkSrc = $"sibling {sib.Label}'s"; }
+                    }
+                    if (perimThkMm > 0)
+                    {
+                        double thkFt = perimThkMm / 304.8;
                         tkPlates.Add(new MeasuredPlate(rowLabel, TakeoffElementType.Wall, "perimeter",
                             r.PerimeterFt * thkFt, pStoreyIn, floors,
                             ExtraFlags: new[] { new PlanFlag(PlanFlagSeverity.Review, "PERIMETER_WALL_EST",
-                                $"Perimeter wall estimated from the plate contour ({r.PerimeterFt:N0} ft) × the page's {r.WallThkMm:0} mm WALL note × storey height — verify length and thickness on the drawing.") }));
-                        notes.Add($"      {r.Label}: + perimeter wall {r.PerimeterFt:N0} ft × {r.WallThkMm:0}mm × {pStoreyIn / 12:0.0}ft (below-grade contour; FLAGGED estimate).");
+                                $"Perimeter wall estimated from the plate contour ({r.PerimeterFt:N0} ft) × {thkSrc} {perimThkMm:0} mm WALL note × storey height — verify length and thickness on the drawing.") }));
+                        notes.Add($"      {r.Label}: + perimeter wall {r.PerimeterFt:N0} ft × {perimThkMm:0}mm × {pStoreyIn / 12:0.0}ft (below-grade contour; {(thkSrc == "the page's" ? "FLAGGED estimate" : $"thickness from {thkSrc} note — FLAGGED")}).");
                     }
                     else
-                        notes.Add($"  ~ {r.Label}: below-grade perimeter {r.PerimeterFt:N0} ft measured but the page states no NNN WALL thickness — perimeter wall NOT priced, quantify by hand.");
+                        notes.Add($"  ~ {r.Label}: below-grade perimeter {r.PerimeterFt:N0} ft measured but no plan below grade states a NNN WALL thickness — perimeter wall NOT priced, quantify by hand.");
                 }
             }
 
