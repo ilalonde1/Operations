@@ -1549,6 +1549,35 @@ if (args.Length >= 2 && args[0].Equals("wallplan", StringComparison.OrdinalIgnor
 // with the SHEAR WALL SCHEDULE (each mark's thickness per level band), priced over a level list.
 // Diagnostic: run a vision schedule/keyplan reader on a rendered sheet and print the extracted JSON, to
 // PROVE the dense wall/column schedules are machine-readable before wiring them into the takeoff.
+// DIAGNOSTIC: takeoff col-text <pdf> <page> — the DETERMINISTIC column-schedule read (text grid, no vision):
+// bands, key-plan counts, and the priced result at 10.5ft storeys.
+if (args.Length >= 3 && args[0].Equals("col-text", StringComparison.OrdinalIgnoreCase))
+{
+    var cpage = VectorPageReader.ReadPage(args[1], int.Parse(args[2]));
+    var cladder = ScheduleGridReader.ReadLevelLadder(cpage).OrderByDescending(r => r.Y).Select(r => r.RawLabel).ToList();
+    var cbands = ScheduleGridReader.ReadColumnBands(cpage);
+    var cmarks = cbands.Select(b => b.Mark).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    var ccounts = ScheduleGridReader.CountColumnMarks(cpage, cmarks);
+    Console.WriteLine($"ladder {cladder.Count} levels; {cbands.Count} band-rows over {cmarks.Count} mark(s)");
+    foreach (var mk in cmarks.OrderBy(m => m))
+    {
+        var mb = cbands.Where(b => b.Mark.Equals(mk, StringComparison.OrdinalIgnoreCase)).ToList();
+        Console.WriteLine($"  {mk,-5} x{ccounts.GetValueOrDefault(mk.ToUpperInvariant(), 1),2}  {mb.Count} level(s), sizes {string.Join("|", mb.Select(b => $"{b.WidthIn * 25.4:0}x{b.DepthIn * 25.4:0}").Distinct())}");
+    }
+    // Price with counts (distinct-mark replication) at typical storeys, for comparison with vision.
+    var expanded = new List<ScheduleTakeoff.ColumnBand>();
+    foreach (var b in cbands)
+    {
+        int n = Math.Max(1, ccounts.GetValueOrDefault(b.Mark.ToUpperInvariant(), 1));
+        for (int k = 1; k <= n; k++)
+            expanded.Add(n == 1 ? b : b with { Mark = $"{b.Mark}#{k}" });
+    }
+    var norm = cladder.Select(ScheduleTakeoff.NormalizeLevel).ToList();
+    var cres = ScheduleTakeoff.ComputeColumn(norm, norm.Select(_ => 126.0).ToList(), expanded);
+    Console.WriteLine($"priced: {cres.MarksPriced} columns -> {cres.TotalCuYd:N0} cy (10.5ft storeys)");
+    return 0;
+}
+
 // kind = wall | column | keyplan.  Usage: takeoff sched-read <kind> <sheet.png>
 if (args.Length >= 3 && args[0].Equals("sched-read", StringComparison.OrdinalIgnoreCase))
 {
