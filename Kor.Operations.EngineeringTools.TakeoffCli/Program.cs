@@ -298,23 +298,24 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         var engineInputs = tkOut.Estimate.TakeoffInputs.ToList();
         var schedColInputs = new List<StructuralTakeoffInput>();
         double schedColCy = 0, keptGrayColCy = 0;
+
+        // Engine label -> (tower, floor keys). "6-18 NORTH (x13)" is the band form the engine emits.
+        (string? Tower, List<string> Floors) ParseLabel(string label)
+        {
+            string u = label.ToUpperInvariant();
+            string? tw = u.Contains("NORTH") ? "NORTH" : u.Contains("SOUTH") ? "SOUTH"
+                       : u.Contains("EAST") ? "EAST" : u.Contains("WEST") ? "WEST" : null;
+            var band = System.Text.RegularExpressions.Regex.Match(u, @"^(\d+)\s*-\s*(\d+)\b");
+            if (band.Success)
+            {
+                int lo = int.Parse(band.Groups[1].Value), hi = int.Parse(band.Groups[2].Value);
+                return (tw, Enumerable.Range(lo, hi - lo + 1).Select(i => $"L{i}").ToList());
+            }
+            return (tw, new List<string> { SlabTakeoffEngine.NormalizeLevelKey(label) });
+        }
+
         if (colSched.Count > 0)
         {
-            // Engine label -> (tower, floor keys). "6-18 NORTH (x13)" is the band form the engine emits.
-            (string? Tower, List<string> Floors) ParseLabel(string label)
-            {
-                string u = label.ToUpperInvariant();
-                string? tw = u.Contains("NORTH") ? "NORTH" : u.Contains("SOUTH") ? "SOUTH"
-                           : u.Contains("EAST") ? "EAST" : u.Contains("WEST") ? "WEST" : null;
-                var band = System.Text.RegularExpressions.Regex.Match(u, @"^(\d+)\s*-\s*(\d+)\b");
-                if (band.Success)
-                {
-                    int lo = int.Parse(band.Groups[1].Value), hi = int.Parse(band.Groups[2].Value);
-                    return (tw, Enumerable.Range(lo, hi - lo + 1).Select(i => $"L{i}").ToList());
-                }
-                return (tw, new List<string> { SlabTakeoffEngine.NormalizeLevelKey(label) });
-            }
-
             // Floors each tower's schedule actually priced (normalized, e.g. "L19", "P1").
             var covered = new Dictionary<string, HashSet<string>>();
             foreach (var (_, tower, res) in colSched)
@@ -349,7 +350,9 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
                 foreach (var lf in res.PerLevel.Where(l => l.ConcreteCuYd > 0))
                 {
                     string f = ScheduleTakeoff.NormalizeLevel(lf.Level);
-                    if (reserved.Contains($"{tower}|{f}")) continue;
+                    // A kept gray-fill row with NO tower (parkade "P1") prices the whole floor plate —
+                    // a tower schedule reaching into that floor must not add its columns on top.
+                    if (reserved.Contains($"{tower}|{f}") || reserved.Contains($"|{f}")) continue;
                     string label = engineLabels.FirstOrDefault(e =>
                         (e.Parsed.Tower ?? "") == (tower ?? "") && e.Parsed.Floors.Contains(f)).Label
                         ?? (tower is null ? f : $"{f} {tower}");
@@ -402,16 +405,46 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             ? $"NOT priced, quantify by hand: {string.Join("; ", unpriced.DefaultIfEmpty("nothing further found"))}. Spread footings ARE priced above."
             : "footings: no machine-readable footing schedule found — if the set has spread/strip footings, quantify them by hand. Parkade slabs ARE counted above.";
 
+        // CALL-OUT REBAR CROSS-CHECK — per level, the sum of the quantity-bearing reinforcing call-outs
+        // readable on that level's sheets (count × length × CSA mass, via the same grammar the rebar
+        // change tool uses). An independent second opinion on the density-based reinforcing column;
+        // never a bar list (mats-by-area, ties and continuous bars carry no computable weight).
+        var calloutLb = new Dictionary<string, double>();
+        try
+        {
+            using var cdoc = UglyToad.PdfPig.PdfDocument.Open(args[1]);
+            var cPages = Kor.Operations.EngineeringTools.RebarChange.RebarPdfReader.Read(cdoc, UnitSystem.Metric)
+                .ToDictionary(p => p.Num);
+            var engineLbl = tkOut.Estimate.TakeoffInputs.Select(i => i.Level).Distinct()
+                .Select(l => (Label: l, P: ParseLabel(l))).ToList();
+            foreach (var pg in tkDig.Pages)
+            {
+                if (pg.Title is null || !cPages.TryGetValue(pg.Page, out var cp)) continue;
+                double lb = cp.Callouts
+                    .Select(h => Kor.Operations.EngineeringTools.RebarChange.RebarBarListWeigher.KeyWeightLb(h.Key))
+                    .Where(w => w.HasValue).Sum(w => w!.Value);
+                if (lb <= 0) continue;
+                string floor = SlabTakeoffEngine.NormalizeLevelKey(pg.Title.Level);
+                string? tw = pg.Title.Zone;
+                string label = engineLbl.FirstOrDefault(e => (e.P.Tower ?? "") == (tw ?? "") && e.P.Floors.Contains(floor)).Label
+                            ?? engineLbl.FirstOrDefault(e => e.P.Floors.Contains(floor)).Label
+                            ?? pg.Title.Display;
+                calloutLb[label] = calloutLb.GetValueOrDefault(label) + lb;
+            }
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"  (call-out rebar cross-check skipped: {ex.Message})"); }
+
         // Rebuild the workbook whenever the composition changed anything: engine rows (with replaced
         // gray-fill column rows removed) + schedule column rows + foundation rows, recomputed so the
         // xlsx matches the console total. The basis/caveat text states exactly what each source was.
-        if (fdnInputs.Count > 0 || schedColInputs.Count > 0)
+        if (fdnInputs.Count > 0 || schedColInputs.Count > 0 || calloutLb.Count > 0)
         {
             var combined = engineInputs.Concat(schedColInputs).Concat(fdnInputs).ToList();
             var wbComputed = StructuralTakeoffService.Compute(combined, PlanProfile.BcModerate.ToImperialDensityTable());
             var wbModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(args[1]), "Vector takeoff", "", DateTime.UtcNow, wbComputed,
-                ConcreteBasis: "Concrete is MEASURED OFF THE DRAWINGS — a drawing takeoff, not model geometry. Slabs: poché + grid cross-check. Columns: the drawing's column schedules × key-plan counts × storey height (gray-fill footprint only where no schedule covers a floor). Walls: gray-fill footprints × storey height. Spread footings: the foundation schedule × counted plan marks. Transfer/built-up zones below slabs are NOT in plan callouts; verify transfer-prone levels against the sections.",
-                FoundationNote: footingNote);
+                ConcreteBasis: "Concrete is MEASURED OFF THE DRAWINGS — a drawing takeoff, not model geometry. Slabs: poché + grid cross-check. Columns: the drawing's column schedules × key-plan counts × storey height (gray-fill footprint only where no schedule covers a floor). Walls: gray-fill footprints × storey height (+ flagged below-grade perimeter walls from the plate contour). Spread footings: the foundation schedule × counted plan marks. Transfer/built-up zones below slabs are NOT in plan callouts; verify transfer-prone levels against the sections.",
+                FoundationNote: footingNote,
+                CalloutRebarLbByLevel: calloutLb.Count > 0 ? calloutLb : null);
             File.WriteAllBytes(args[3], StructuralTakeoffReportGenerator.BuildXlsx(wbModel));
         }
 

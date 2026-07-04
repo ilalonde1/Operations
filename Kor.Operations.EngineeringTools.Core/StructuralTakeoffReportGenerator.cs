@@ -21,7 +21,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         string? ConcreteBasis = null,
         // Set when foundations were NOT measured: the Foundation column is annotated and this note is
         // printed, so a structural 0 reads as "not measured", never as "no foundation concrete".
-        string? FoundationNote = null);
+        string? FoundationNote = null,
+        // Per-level sum of the QUANTITY-BEARING reinforcing call-outs readable on that level's sheets
+        // (count × length × CSA mass) — an independent cross-check on the density estimate. Not a bar
+        // list: mats-by-area, ties and continuous bars carry no computable weight and are excluded.
+        IReadOnlyDictionary<string, double>? CalloutRebarLbByLevel = null);
 
     /// <summary>
     /// Per-floor absolute takeoff workbook — concrete + reinforcing + formwork by level, in the
@@ -208,20 +212,23 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             int cRebStart = cConcTotal + 1, cRebTotal = cRebStart + Buckets.Length; // 7..11
             int cIntensity = cRebTotal + 1; // 12
             int cForm = cIntensity + 1;     // 13
+            bool hasCallout = model.CalloutRebarLbByLevel is { Count: > 0 };
+            int cCallout = hasCallout ? cForm + 1 : -1;
+            int cLastCol = hasCallout ? cCallout : cForm;
 
             // Titles span the table width (merged) so long text never overflows off the printed page.
-            ws.Range(1, 1, 1, cForm).Merge();
+            ws.Range(1, 1, 1, cLastCol).Merge();
             ws.Cell(1, 1).Value = $"{model.ProjectWbs1} {model.ProjectName}  Structural Quantity Takeoff".Trim();
             ws.Cell(1, 1).Style.Font.SetBold().Font.SetFontSize(15).Font.FontColor = Navy;
-            ws.Range(2, 1, 2, cForm).Merge();
+            ws.Range(2, 1, 2, cLastCol).Merge();
             ws.Cell(2, 1).Value = $"{model.IssueLabel}    |    Generated {model.GeneratedUtc:yyyy-MM-dd}    |    {(r.Unit == UnitSystem.Imperial ? "Imperial" : "Metric")} units";
             ws.Cell(2, 1).Style.Font.SetItalic().Font.FontColor = Grey;
-            ws.Range(3, 1, 3, cForm).Merge();
+            ws.Range(3, 1, 3, cLastCol).Merge();
             ws.Cell(3, 1).Value = $"Reinforcing is a calibrated estimate — edit the orange densities on '{BasisSheet}' and every floor recomputes. "
                 + (model.ConcreteBasis ?? "Concrete is from the model (exact).");
             ws.Cell(3, 1).Style.Font.SetItalic().Font.FontColor = Grey;
 
-            ws.Range(hr, 1, hr, cForm).Style.Fill.BackgroundColor = Navy;
+            ws.Range(hr, 1, hr, cLastCol).Style.Fill.BackgroundColor = Navy;
             ws.Range(hr, cConcStart, hr, cConcTotal).Merge();
             ws.Cell(hr, cConcStart).Value = $"Concrete ({vU})";
             ws.Range(hr, cRebStart, hr, cRebTotal).Merge();
@@ -253,7 +260,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             ws.Cell(sr, cRebTotal).Value = "Total";
             ws.Cell(sr, cIntensity).Value = $"Reinf.\nintensity\n({wU}/{vU})";
             ws.Cell(sr, cForm).Value = $"Formwork\n({aU})";
-            var hdr = ws.Range(sr, 1, sr, cForm);
+            if (hasCallout) ws.Cell(sr, cCallout).Value = $"Call-out\nreinf. x-chk\n({wU})";
+            var hdr = ws.Range(sr, 1, sr, cLastCol);
             hdr.Style.Fill.BackgroundColor = Navy;
             hdr.Style.Font.SetBold().Font.FontColor = XLColor.White;
             hdr.Style.Alignment.WrapText = true;
@@ -284,7 +292,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 ws.Cell(row, cIntensity).FormulaA1 =
                     $"=IF({Dcol(cConcTotal)}{row}>0,{Dcol(cRebTotal)}{row}/{Dcol(cConcTotal)}{row},0)";
                 ws.Cell(row, cForm).Value = Math.Round(form.GetValueOrDefault(lvl));
-                ws.Range(row, 1, row, cForm).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                if (hasCallout) ws.Cell(row, cCallout).Value = Math.Round(model.CalloutRebarLbByLevel!.GetValueOrDefault(lvl));
+                ws.Range(row, 1, row, cLastCol).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
                 row++;
             }
 
@@ -300,13 +309,23 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             ws.Cell(row, cIntensity).FormulaA1 =
                 $"=IF({Dcol(cConcTotal)}{row}>0,{Dcol(cRebTotal)}{row}/{Dcol(cConcTotal)}{row},0)";
             ws.Cell(row, cForm).FormulaA1 = SumCol(cForm, first, last);
-            var tot = ws.Range(row, 1, row, cForm);
+            if (hasCallout) ws.Cell(row, cCallout).FormulaA1 = SumCol(cCallout, first, last);
+            var tot = ws.Range(row, 1, row, cLastCol);
             tot.Style.Fill.BackgroundColor = Light;
             tot.Style.Font.Bold = true;
             tot.Style.Border.TopBorder = XLBorderStyleValues.Medium;
 
             ws.Range(first, cConcStart, row, cConcTotal).Style.NumberFormat.Format = "#,##0.0";
-            ws.Range(first, cRebStart, row, cForm).Style.NumberFormat.Format = "#,##0";
+            ws.Range(first, cRebStart, row, cLastCol).Style.NumberFormat.Format = "#,##0";
+            if (hasCallout)
+            {
+                int fnRow = row + 1;
+                ws.Range(fnRow, 1, fnRow, cLastCol).Merge();
+                ws.Cell(fnRow, 1).Value = "Call-out cross-check = the quantity-bearing reinforcing call-outs readable on that level's sheets (count × length × CSA mass) — an independent check on the density estimate, NOT a bar list (mats-by-area, ties and continuous bars carry no computable weight and are excluded).";
+                ws.Cell(fnRow, 1).Style.Font.SetItalic().Font.FontColor = Grey;
+                ws.Cell(fnRow, 1).Style.Alignment.WrapText = true;
+                ws.Row(fnRow).Height = 26;
+            }
 
             int n = row + 2;
             ws.Cell(n, 1).Value = "Total concrete"; ws.Cell(n, 2).FormulaA1 = $"={Dcol(cConcTotal)}{row}"; ws.Cell(n, 3).Value = vU;
@@ -317,7 +336,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             if (model.FoundationNote is not null)
             {
                 n++;
-                ws.Range(n + 2, 1, n + 2, cForm).Merge();
+                ws.Range(n + 2, 1, n + 2, cLastCol).Merge();
                 ws.Cell(n + 2, 1).Value = $"* {model.FoundationNote}";
                 ws.Cell(n + 2, 1).Style.Font.SetItalic().Font.FontColor = Grey;
                 ws.Cell(n + 2, 1).Style.Alignment.WrapText = true;
@@ -325,7 +344,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             }
 
             ws.Column(1).Width = 16;
-            for (int c = 2; c <= cForm; c++) ws.Column(c).Width = 11;
+            for (int c = 2; c <= cLastCol; c++) ws.Column(c).Width = 11;
             ws.SheetView.FreezeRows(sr);
 
             // Print layout — landscape, scaled to one page wide, grouped header repeated on each page.
@@ -336,7 +355,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             ws.PageSetup.Margins.Left = 0.4; ws.PageSetup.Margins.Right = 0.4;
             ws.PageSetup.Margins.Top = 0.5; ws.PageSetup.Margins.Bottom = 0.5;
             ws.PageSetup.SetRowsToRepeatAtTop(hr, sr);
-            ws.PageSetup.PrintAreas.Add(ws.Range(1, 1, n + 2, cForm).RangeAddress.ToString());
+            ws.PageSetup.PrintAreas.Add(ws.Range(1, 1, n + 2, cLastCol).RangeAddress.ToString());
         }
 
         private static string SumCol(int col, int first, int last)
