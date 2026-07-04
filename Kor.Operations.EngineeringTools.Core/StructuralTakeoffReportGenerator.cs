@@ -14,7 +14,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         string ProjectName,
         string IssueLabel,
         DateTime GeneratedUtc,
-        StructuralTakeoffResult Result);
+        StructuralTakeoffResult Result,
+        // Where the CONCRETE numbers came from, stated on the workbook. The default wording is the
+        // model path ("from the model (exact)"); a drawing-measured takeoff MUST override it — the
+        // report must never claim model exactness for numbers measured off plans.
+        string? ConcreteBasis = null,
+        // Set when foundations were NOT measured: the Foundation column is annotated and this note is
+        // printed, so a structural 0 reads as "not measured", never as "no foundation concrete".
+        string? FoundationNote = null);
 
     /// <summary>
     /// Per-floor absolute takeoff workbook — concrete + reinforcing + formwork by level, in the
@@ -157,13 +164,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             ws.Cell(n, 2).Style.Font.Bold = true;
             foreach (var note in new[]
             {
-                "Concrete volume comes from the model schedule — modelled solid geometry, exact.",
+                model.ConcreteBasis ?? "Concrete volume comes from the model schedule — modelled solid geometry, exact.",
+                model.FoundationNote,
                 "Reinforcing = concrete volume × the density above. Columns, walls and foundations are the firm's ratio method (exact); the slab density is BASE flexural steel.",
                 "For slabs with diaphragm / collector / post-tensioning steel beyond the base ratio, raise the slab density (or add a slab variant row) until the per-floor intensity matches your experience.",
                 "Calibrate against one hand-checked level or the fabricator's bar list, then the whole takeoff is tuned to the job.",
                 "High-level estimate for budgeting — the firm figure comes from the fabricator's bar schedule.",
                 "Issued by Kor Structural • EGBC Permit 1000378",
-            })
+            }.Where(s => !string.IsNullOrWhiteSpace(s)).Cast<string>())
             {
                 n++;
                 ws.Range(n, 2, n, 8).Merge();          // contain long notes within the page width
@@ -209,7 +217,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             ws.Cell(2, 1).Value = $"{model.IssueLabel}    |    Generated {model.GeneratedUtc:yyyy-MM-dd}    |    {(r.Unit == UnitSystem.Imperial ? "Imperial" : "Metric")} units";
             ws.Cell(2, 1).Style.Font.SetItalic().Font.FontColor = Grey;
             ws.Range(3, 1, 3, cForm).Merge();
-            ws.Cell(3, 1).Value = $"Reinforcing is a calibrated estimate — edit the orange densities on '{BasisSheet}' and every floor recomputes. Concrete is from the model (exact).";
+            ws.Cell(3, 1).Value = $"Reinforcing is a calibrated estimate — edit the orange densities on '{BasisSheet}' and every floor recomputes. "
+                + (model.ConcreteBasis ?? "Concrete is from the model (exact).");
             ws.Cell(3, 1).Style.Font.SetItalic().Font.FontColor = Grey;
 
             ws.Range(hr, 1, hr, cForm).Style.Fill.BackgroundColor = Navy;
@@ -231,6 +240,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             {
                 ws.Cell(sr, cConcStart + i).Value = Buckets[i];
                 ws.Cell(sr, cRebStart + i).Value = Buckets[i];
+            }
+            // An unmeasured Foundation column is annotated, so its zeros read as "not measured",
+            // never as "the building has no foundation concrete".
+            if (model.FoundationNote is not null)
+            {
+                int fi = Array.IndexOf(Buckets, "Foundation");
+                ws.Cell(sr, cConcStart + fi).Value = "Foundation*";
+                ws.Cell(sr, cRebStart + fi).Value = "Foundation*";
             }
             ws.Cell(sr, cConcTotal).Value = "Total";
             ws.Cell(sr, cRebTotal).Value = "Total";
@@ -297,6 +314,15 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             ws.Cell(n + 2, 1).Value = "Overall intensity"; ws.Cell(n + 2, 2).FormulaA1 = $"=IF(B{n}>0,B{n + 1}/B{n},0)"; ws.Cell(n + 2, 3).Value = $"{wU}/{vU}";
             ws.Range(n, 1, n + 2, 1).Style.Font.Bold = true;
             ws.Range(n, 2, n + 2, 2).Style.NumberFormat.Format = "#,##0";
+            if (model.FoundationNote is not null)
+            {
+                n++;
+                ws.Range(n + 2, 1, n + 2, cForm).Merge();
+                ws.Cell(n + 2, 1).Value = $"* {model.FoundationNote}";
+                ws.Cell(n + 2, 1).Style.Font.SetItalic().Font.FontColor = Grey;
+                ws.Cell(n + 2, 1).Style.Alignment.WrapText = true;
+                ws.Row(n + 2).Height = 26;
+            }
 
             ws.Column(1).Width = 16;
             for (int c = 2; c <= cForm; c++) ws.Column(c).Width = 11;

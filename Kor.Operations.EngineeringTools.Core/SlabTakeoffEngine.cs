@@ -739,7 +739,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     area = nearMedian; degenerate = true;
                 }
                 double peerRatio = r.RepLevel.HasValue && towerMedianArea > 0 ? area / towerMedianArea : double.NaN;
-                tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Slab, "suspended", area, thk, floors,
+                // A tiled typical plan represents a BAND of floors — the report row must say so
+                // ("6-18 NORTH (x13)"), not display the representative level as if it were one floor.
+                // r.Label stays the logic key (peer groups, storey-height lookup); only the display changes.
+                string rowLabel = floors > 1 && r.RepLevel is int repL
+                    ? $"{repL - floors + 1}-{repL}{(TowerOf(r.Label) is string tw ? " " + tw : "")} (x{floors})"
+                    : r.Label;
+                tkPlates.Add(new MeasuredPlate(rowLabel, TakeoffElementType.Slab, "suspended", area, thk, floors,
                     FillRatio: r.FillRatio, ClusterCount: r.ClusterCount, ThicknessSource: thkSource,
                     DegenerateBox: degenerate, PeerAreaRatio: peerRatio, ExtraFlags: r.AreaFlags));
 
@@ -752,9 +758,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     var (storeyIn, known) = ResolveStoreyHeightIn(r.Label, heightByLevel, req.StoreyHeightIn);
                     if (known) htKnownLevels++; else htAssumedLevels++;
                     if (r.WallSqFt > 0)
-                        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Wall, "shear", r.WallSqFt, storeyIn, floors));
+                        tkPlates.Add(new MeasuredPlate(rowLabel, TakeoffElementType.Wall, "shear", r.WallSqFt, storeyIn, floors));
                     if (r.ColSqFt > 0)
-                        tkPlates.Add(new MeasuredPlate(r.Label, TakeoffElementType.Column, null, r.ColSqFt, storeyIn, floors));
+                        tkPlates.Add(new MeasuredPlate(rowLabel, TakeoffElementType.Column, null, r.ColSqFt, storeyIn, floors));
                     notes.Add($"      {r.Label}: + gray-fill wall {r.WallSqFt:N0} / col {r.ColSqFt:N0} sqft × {storeyIn / 12:0.0}ft × {floors} flr "
                         + $"(deterministic; storey height {(known ? "from supplied floor-to-floor" : "ASSUMED typical")}).");
                 }
@@ -773,7 +779,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             var tkResult = PlanEstimatePipeline.Run(tkPlates, tkProfile);
             var tkComputed = StructuralTakeoffService.Compute(tkResult.TakeoffInputs, tkProfile.ToImperialDensityTable());
-            var tkModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(req.PdfPath), "Vector takeoff", "", DateTime.UtcNow, tkComputed);
+            var tkModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(req.PdfPath), "Vector takeoff", "", DateTime.UtcNow, tkComputed,
+                ConcreteBasis: "Concrete is MEASURED OFF THE DRAWINGS (slab poché + grid cross-check; walls/columns from gray-fill footprints × storey height) — a drawing takeoff, not model geometry. Transfer/built-up zones below slabs are NOT in plan callouts; verify transfer-prone levels against the sections.",
+                FoundationNote: "Foundations are NOT measured by this takeoff — footings/grade beams must be quantified by hand (parkade slabs ARE counted, as slabs).");
             byte[] xlsx = StructuralTakeoffReportGenerator.BuildXlsx(tkModel);
 
             // SYNOPSIS — every plate the diligence engine could not fully trust (drives the app's "unsure
