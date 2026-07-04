@@ -23,6 +23,23 @@ static class PlanVisionClient
         Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY")
         ?? Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
 
+    // ── response replay cache ─────────────────────────────────────────────────────────────────
+    // Every vision answer is keyed by the EXACT request body (model + prompt + image + tool schema),
+    // so re-running the same drawing set replays the stored answers: $0 spent and byte-identical
+    // numbers. CacheSalt separates deliberate re-asks that WANT independent samples (the median-of-N
+    // schedule reads set it to the read index); everything else runs at salt 0. Off until the host
+    // sets CacheDir. A cache entry is only ever a SUCCESSFUL response — failures are never replayed.
+    public static string? CacheDir;
+    public static int CacheSalt;
+    public static int CacheHits, CacheMisses;
+
+    private static string? CachePath(string body)
+    {
+        if (string.IsNullOrEmpty(CacheDir)) return null;
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(body)));
+        return Path.Combine(CacheDir, $"v-{hash[..24]}-s{CacheSalt}.json");
+    }
+
     /// <summary>Sends the page PNG, forces the report_sheet tool, returns its raw input JSON.</summary>
     public static Task<string> ReadSheetJsonAsync(byte[] pngBytes) =>
         PostForcedToolAsync(ReportSheetTool(), "report_sheet", Prompt, pngBytes, 2048);
@@ -101,6 +118,13 @@ static class PlanVisionClient
     // Shared POST + retry (429/5xx + transport drops) for both the image and text forced-tool calls.
     private static async Task<string> SendWithRetryAsync(string body)
     {
+        string? cachePath = CachePath(body);
+        if (cachePath is not null && File.Exists(cachePath))
+        {
+            CacheHits++;
+            return await File.ReadAllTextAsync(cachePath);
+        }
+
         for (int attempt = 0; ; attempt++)
         {
             try
@@ -120,7 +144,14 @@ static class PlanVisionClient
                 }
                 if (!resp.IsSuccessStatusCode)
                     throw new HttpRequestException($"Anthropic {code}: {Truncate(respText, 500)}");
-                return ExtractToolInput(respText);
+                string extracted = ExtractToolInput(respText);
+                if (cachePath is not null)
+                {
+                    CacheMisses++;
+                    Directory.CreateDirectory(CacheDir!);
+                    await File.WriteAllTextAsync(cachePath, extracted);
+                }
+                return extracted;
             }
             // A transport-level drop (connection reset, TLS write failure, timeout) is thrown before any
             // response and so isn't caught by the status-code check above — retry it like a 5xx.

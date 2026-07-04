@@ -83,9 +83,17 @@ if (args.Length >= 1 && args[0].Equals("ifc-takeoff", StringComparison.OrdinalIg
 // EXISTING pipeline -> xlsx + total vs QTO. Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last]
 if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson]"); return 1; }
+    // Spend controls. Vision answers are CACHED under <pngDir>/.vision-cache keyed by the exact
+    // request, so re-running a set replays them: $0 spent, byte-identical numbers. --fresh discards
+    // the stored answers (a deliberate new sample — this SPENDS); --deterministic makes no vision
+    // calls at all (unpriceable pieces become flags/residuals) — the free regression mode.
+    bool tkDeterministic = args.Any(a => a.Equals("--deterministic", StringComparison.OrdinalIgnoreCase));
+    bool tkFresh = args.Any(a => a.Equals("--fresh", StringComparison.OrdinalIgnoreCase));
+    args = args.Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToArray();
+
+    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson] [--deterministic] [--fresh]"); return 1; }
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
-    if (string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set."); return 2; }
+    if (!tkDeterministic && string.IsNullOrWhiteSpace(PlanVisionClient.ApiKey)) { Console.Error.WriteLine("KOR_ANTHROPIC_KEY not set (or run with --deterministic)."); return 2; }
     int? tkFirst = args.Length >= 5 && int.TryParse(args[4], out var tf) ? tf : null;
     int? tkLast  = args.Length >= 6 && int.TryParse(args[5], out var tl) ? tl : null;
     // Optional scale note OVERRIDE (e.g. "1:100" metric, "1/8\"=1'-0\"" imperial). Absent → each sheet
@@ -127,8 +135,15 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     }
     catch (Exception ex) { Console.Error.WriteLine($"PDF render failed: {ex.Message}"); return 2; }
 
+    if (!tkDeterministic)
+    {
+        string tkCacheDir = Path.Combine(args[2], ".vision-cache");
+        if (tkFresh && Directory.Exists(tkCacheDir)) Directory.Delete(tkCacheDir, true);
+        PlanVisionClient.CacheDir = tkCacheDir;
+    }
+
     SlabTakeoffResult tkOut;
-    try { tkOut = await SlabTakeoffEngine.RunAsync(tkReq, new CliPlanVision(), new CliPlanRaster()); }
+    try { tkOut = await SlabTakeoffEngine.RunAsync(tkReq, tkDeterministic ? new NoPlanVision() : new CliPlanVision(), new CliPlanRaster()); }
     catch (PdfNotReadableException ex)
     {
         // The set is unreadable — say so plainly and abort BEFORE pretending a number. Distinct exit code 3.
@@ -153,8 +168,13 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
     // transfer build-up — are not drawn as plan callouts and are excluded, so a model/section QTO reads higher
     // on any floor that has them. (Proven on 31065: L4-North reads identically to L2-North on the plan yet is
     // 17% heavier in the model — no plan-level signal separates them.) "FLAG" = even the field measure is doubtful.
+    // SLAB plates only — Estimate.Plates also carries the gray-fill wall/column plates, and printing
+    // them unlabelled under a "FIELD-SLAB" heading reads as triple-counted slab (the list would sum
+    // ~50% over the priced slab line above). Element totals are in the header; walls/columns detail
+    // is in the xlsx.
     Console.WriteLine($"\nPer-level FIELD-SLAB volume — GRID = field measure clean, FLAG = verify the measure by hand:");
-    foreach (var pe in tkOut.Estimate.Plates.OrderByDescending(p => p.ConcreteTotalCuYd))
+    foreach (var pe in tkOut.Estimate.Plates.Where(p => p.Plate.Element == TakeoffElementType.Slab)
+                                            .OrderByDescending(p => p.ConcreteTotalCuYd))
         Console.WriteLine($"  {(pe.Check.Confidence == TakeoffConfidence.High ? "GRID" : "FLAG")}  {pe.Plate.Level,-18} {pe.ConcreteTotalCuYd,8:N0} cy  ({pe.ConcretePerFloorCuYd,6:N0}/flr)  [{pe.Check.Confidence}]");
     Console.WriteLine("  NOTE: field-slab volumes — built-up zones below the slab (drops/beams/transfers) are NOT in plan");
     Console.WriteLine("        callouts and are excluded. Confirm built-up volume against the sections before trusting any floor total.");
@@ -205,12 +225,16 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             var got = new List<(ScheduleTakeoff.ScheduleResult res, int marks)>();
             for (int i = 0; i < VisionReads; i++)
             {
+                // Each read salts the cache differently: the median WANTS independent samples, and a
+                // replayed run then reproduces all N of them (median included) without spending.
+                PlanVisionClient.CacheSalt = i;
                 var counts = ScheduleConcreteReader.ColumnCounts(await PlanVisionClient.ReadColumnCountsJsonAsync(png));
                 var cbands = ScheduleConcreteReader.ColumnBands(await PlanVisionClient.ReadColumnScheduleJsonAsync(png), ladder, counts);
                 if (cbands.Count == 0) continue;
                 var res = ScheduleTakeoff.ComputeColumn(ladder, storeys, cbands);
                 if (res.TotalCuYd > 0) got.Add((res, counts.Count > 0 ? counts.Count : res.MarksPriced));
             }
+            PlanVisionClient.CacheSalt = 0;
             if (got.Count == 0) return null;
             got = got.OrderBy(g => g.res.TotalCuYd).ToList();
             var mid = got[got.Count / 2];
@@ -223,12 +247,14 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             var got = new List<ScheduleTakeoff.ScheduleResult>();
             for (int i = 0; i < VisionReads; i++)
             {
+                PlanVisionClient.CacheSalt = i;   // independent sample per read; all N replay from cache
                 var wbands = ScheduleConcreteReader.WallBands(await PlanVisionClient.ReadWallScheduleJsonAsync(png));
                 var wlen = ScheduleConcreteReader.WallLengthsByMark(await PlanVisionClient.ReadWallKeyPlanJsonAsync(png));
                 if (wbands.Count == 0 || wlen.Count == 0) continue;
                 var res = ScheduleTakeoff.ComputeWall(ladder, storeys, wlen, wbands);
                 if (res.TotalCuYd > 0) got.Add(res);
             }
+            PlanVisionClient.CacheSalt = 0;
             if (got.Count == 0) return null;
             got = got.OrderBy(r => r.TotalCuYd).ToList();
             return (got[got.Count / 2], got[0].TotalCuYd, got[^1].TotalCuYd);
@@ -236,6 +262,7 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
 
         foreach (var pg in tkDig.Pages)
         {
+            if (tkDeterministic) break;   // no vision: columns price from gray-fill alone; schedule reads skipped
             string ppng = Path.Combine(args[2], $"p-{pg.Page:D2}.png");
             if (!File.Exists(ppng)) continue;
 
@@ -547,6 +574,12 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         if (wallSheets > 0) Console.WriteLine($"    walls:   schedule ~{wallCuYd:N0} cy ({wallMarks} marks / {wallSheets} sheet(s))  vs gray-fill {wallCyGeom:N0} cy above");
     }
     catch (Exception ex) { Console.Error.WriteLine($"  (vertical cross-check skipped: {ex.Message})"); }
+
+    // SPEND TRACE — always say what this run cost and what it replayed, so a surprise invoice is
+    // impossible: fresh API calls are the only spend; cache replays and --deterministic are $0.
+    Console.WriteLine(tkDeterministic
+        ? "  vision: DISABLED (--deterministic) — 0 API calls, $0."
+        : $"  vision: {PlanVisionClient.CacheMisses} fresh API call(s) SPENT, {PlanVisionClient.CacheHits} replayed from cache ({Path.Combine(args[2], ".vision-cache")}).");
 
     Console.WriteLine($"\n(suspended-slab benchmark: 31044 Coronation = 20,208 cy net of the 4,287 mat)  ->  {args[3]}");
     return 0;
@@ -2131,6 +2164,18 @@ sealed class CliPlanVision : IPlanVision
         => PlanVisionClient.LocatePlateAsync(pageJson, downscaledPng, feedback);
     public Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default, string? feedback = null)
         => PlanVisionClient.ApportionThicknessJsonAsync(plateCropPng, thicknessesIn, feedback);
+}
+
+// --deterministic: no vision, no spend. Every method throws; the engine already treats a failed
+// vision call as an unresolved unknown (peer-estimated or residual, flagged) — so this yields the
+// honest free takeoff: everything the drawings give up deterministically, nothing invented.
+sealed class NoPlanVision : IPlanVision
+{
+    private static Task<string> No() => Task.FromException<string>(
+        new InvalidOperationException("vision disabled (--deterministic)"));
+    public Task<string> SynthesizePageAsync(string pageJson, CancellationToken ct = default) => No();
+    public Task<string> LocatePlateAsync(string pageJson, byte[] downscaledPng, CancellationToken ct = default, string? feedback = null) => No();
+    public Task<string> ApportionThicknessAsync(byte[] plateCropPng, IReadOnlyList<int> thicknessesIn, CancellationToken ct = default, string? feedback = null) => No();
 }
 
 sealed class CliPlanRaster : IPlanRaster
