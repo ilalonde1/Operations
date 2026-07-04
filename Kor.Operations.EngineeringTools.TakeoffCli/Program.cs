@@ -278,27 +278,72 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             }
         }
 
-        // FOOTINGS — auto-quantify only when the set carries a real footing SCHEDULE grid (mark → size).
-        // When the foundation sizes are "SEE PLAN" (no schedule), say so as an honest residual rather than
-        // fabricate — the parkade slabs are already counted above; the spread/strip footings below are not.
-        bool footingSchedulePresent = tkDig.Pages.Any(pg =>
+        // FOUNDATIONS — deterministic, from the drawing's own FOUNDATION SCHEDULE (mark → L×W×D DEEP)
+        // × the mark placements counted on the foundation plans, outside the table. Spread footings are
+        // priced; strip footings (two dims — the length lives in plan geometry) stay an honest residual.
+        double fdnCy = 0;
+        var fdnInputs = new List<StructuralTakeoffInput>();
+        var fdnBreakdown = new List<string>();
+        var stripMarks = new List<string>();
+        foreach (var pg in tkDig.Pages)
         {
             string ds = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
-            return ds.Contains("FOOTINGSCHEDULE");
-        });
-        string footingNote = footingSchedulePresent
-            ? "footings: a footing schedule is present but its sizes are given on-plan (\"SEE PLAN\"), not as a machine-readable grid — quantify the footings by hand. Parkade slabs ARE counted above."
+            if (!ds.Contains("FOUNDATIONSCHEDULE") && !ds.Contains("FOOTINGSCHEDULE")) continue;
+            var fpPage = VectorPageReader.ReadPage(args[1], pg.Page);
+            var (ftypes, tableBox) = FootingScheduleReader.ReadSchedule(fpPage);
+            if (ftypes.Count == 0) continue;
+            var placements = FootingScheduleReader.CountPlacements(fpPage, ftypes, tableBox);
+            string flevel = SheetTitleReader.FromPage(fpPage)?.Display ?? "FOUNDATION";
+            foreach (var ft in ftypes)
+            {
+                int n = placements.GetValueOrDefault(ft.Mark);
+                if (!ft.IsSpread) { if (n > 0) stripMarks.Add($"{ft.Mark} x{n} (p{pg.Page})"); continue; }
+                if (n == 0) continue;
+                double cy = n * ft.VolumeCuYdEach;
+                fdnCy += cy;
+                fdnInputs.Add(new StructuralTakeoffInput(flevel, TakeoffElementType.Foundation, "spread footing", cy));
+                fdnBreakdown.Add($"    p{pg.Page} {flevel,-10} {ft.Mark,-4} x{n,3} @ {ft.LengthMm:0}x{ft.WidthMm:0}x{ft.DepthMm:0} = {cy,7:N0} cy");
+            }
+        }
+        // Name every foundation element the takeoff does NOT price, so the residual is a checklist,
+        // not a shrug: strip footings (lengths are plan geometry) and any core/pit mats the notes call out.
+        var unpriced = new List<string>();
+        if (stripMarks.Count > 0) unpriced.Add($"strip footings {string.Join(", ", stripMarks)} (lengths on plan)");
+        foreach (var pg in tkDig.Pages)
+        {
+            string ds2 = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
+            if (ds2.Contains("COREFOOTING")) { unpriced.Add($"core footing (p{pg.Page} — hatched mat, depth in plan note)"); break; }
+        }
+        string footingNote = fdnInputs.Count > 0
+            ? $"NOT priced, quantify by hand: {string.Join("; ", unpriced.DefaultIfEmpty("nothing further found"))}. Spread footings ARE priced above."
             : "footings: no machine-readable footing schedule found — if the set has spread/strip footings, quantify them by hand. Parkade slabs ARE counted above.";
+
+        // Fold the priced foundations into the workbook: engine rows + foundation rows, recomputed and
+        // re-written so the xlsx total matches the console total. The basis/caveat text stays honest.
+        if (fdnInputs.Count > 0)
+        {
+            var combined = tkOut.Estimate.TakeoffInputs.Concat(fdnInputs).ToList();
+            var wbComputed = StructuralTakeoffService.Compute(combined, PlanProfile.BcModerate.ToImperialDensityTable());
+            var wbModel = new StructuralTakeoffReportModel(Path.GetFileNameWithoutExtension(args[1]), "Vector takeoff", "", DateTime.UtcNow, wbComputed,
+                ConcreteBasis: "Concrete is MEASURED OFF THE DRAWINGS (slab poché + grid cross-check; walls/columns from gray-fill footprints × storey height; spread footings from the foundation schedule × counted plan marks) — a drawing takeoff, not model geometry. Transfer/built-up zones below slabs are NOT in plan callouts; verify transfer-prone levels against the sections.",
+                FoundationNote: footingNote);
+            File.WriteAllBytes(args[3], StructuralTakeoffReportGenerator.BuildXlsx(wbModel));
+        }
 
         // The priced whole-building number (slab + deterministic gray-fill walls/columns) already came from the
         // engine and is in the xlsx. The schedule reads below are an INDEPENDENT CROSS-CHECK only — never added,
         // so the noisy schedule×key-plan path can't swing or zero the answer; it just offers a second opinion.
         Console.WriteLine($"\nWHOLE-BUILDING (deterministic gray-fill verticals; per-level storey heights where supplied, else typical {typicalStoreyIn / 12:0.0}ft — see 'storey heights' note above):");
-        Console.WriteLine($"  slab + foundations   {slabCy,8:N0} cy");
+        Console.WriteLine($"  slab (incl. mats)    {slabCy,8:N0} cy");
         Console.WriteLine($"  walls   (gray-fill)  {wallCyGeom,8:N0} cy");
         Console.WriteLine($"  columns (gray-fill)  {colCyGeom,8:N0} cy");
+        if (fdnInputs.Count > 0)
+        {
+            Console.WriteLine($"  spread footings      {fdnCy,8:N0} cy  (schedule × counted plan marks)");
+            foreach (var line in fdnBreakdown) Console.WriteLine(line);
+        }
         Console.WriteLine($"  {"":21}--------");
-        Console.WriteLine($"  TOTAL   {tkOut.TotalConcreteCuYd,8:N0} cy   (in {args[3]})");
+        Console.WriteLine($"  TOTAL   {tkOut.TotalConcreteCuYd + fdnCy,8:N0} cy   (in {args[3]})");
         Console.WriteLine($"  RESIDUAL: {footingNote}");
         if (colSheets > 0 || wallSheets > 0)
         {
@@ -1431,6 +1476,40 @@ if (args.Length >= 4 && args[0].Equals("dedupe-probe", StringComparison.OrdinalI
         foreach (var w in hits.Take(30))
             Console.WriteLine($"    L={w.BoundingBox.Left:F2} B={w.BoundingBox.Bottom:F2} \"{w.Text}\"");
     }
+    return 0;
+}
+
+// DIAGNOSTIC: takeoff footings <pdf> [first] [last] — run the deterministic footing-schedule takeoff
+// standalone: schedule rows, per-mark plan placements, priced spread-footing volumes.
+if (args.Length >= 2 && args[0].Equals("footings", StringComparison.OrdinalIgnoreCase))
+{
+    int ff = args.Length >= 3 && int.TryParse(args[2], out var fa) ? fa : 1;
+    int fl = args.Length >= 4 && int.TryParse(args[3], out var fb) ? fb : ff + 199;
+    double total = 0;
+    for (int pg = ff; pg <= fl; pg++)
+    {
+        VectorPageReader.PageContent pc; try { pc = VectorPageReader.ReadPage(args[1], pg); } catch { break; }
+        if (pc.Words.Count == 0) continue;
+        string ds = string.Concat(string.Join(" ", pc.Words.Select(w => w.Text)).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
+        if (!ds.Contains("FOUNDATIONSCHEDULE") && !ds.Contains("FOOTINGSCHEDULE")) continue;
+        var (ftypes, box) = FootingScheduleReader.ReadSchedule(pc);
+        if (ftypes.Count == 0) { Console.WriteLine($"p{pg}: schedule text present but no parseable rows"); continue; }
+        var counts = FootingScheduleReader.CountPlacements(pc, ftypes, box);
+        string lvl = SheetTitleReader.FromPage(pc)?.Display ?? "?";
+        Console.WriteLine($"p{pg} ({lvl}): {ftypes.Count} schedule row(s)");
+        foreach (var ft in ftypes)
+        {
+            int n = counts.GetValueOrDefault(ft.Mark);
+            if (ft.IsSpread)
+            {
+                double cy = n * ft.VolumeCuYdEach;
+                total += cy;
+                Console.WriteLine($"    {ft.Mark,-4} {ft.LengthMm,5:0}x{ft.WidthMm,4:0}x{ft.DepthMm,4:0} DEEP  x{n,3}  = {cy,7:N1} cy");
+            }
+            else Console.WriteLine($"    {ft.Mark,-4} {ft.WidthMm,5:0}x{ft.DepthMm,4:0} DEEP (STRIP) x{n,3}  — length on plan, residual");
+        }
+    }
+    Console.WriteLine($"TOTAL spread footings: {total:N0} cy");
     return 0;
 }
 
