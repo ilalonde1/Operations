@@ -478,6 +478,32 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             ValidateBuffer(luminance.Length, width, height, nameof(luminance));
             if (metresPerPixel <= 0) throw new ArgumentOutOfRangeException(nameof(metresPerPixel));
             var (_, exterior) = ComputeDarkAndExterior(luminance, width, height, darkThreshold, sealHairlineGaps);
+            int n = width * height;
+
+            // The crop carries more than the plate — schedule tables, notes, north arrows — and every
+            // one of them has a contour. Only the LARGEST connected non-exterior component is the plate;
+            // measuring all contours read a parkade perimeter 5× long. Label components, keep the biggest.
+            var comp = new int[n];           // 0 = unlabelled/exterior; else component id
+            int nextId = 0, bestId = 0; long bestSize = 0;
+            var q = new Queue<int>();
+            for (int s = 0; s < n; s++)
+            {
+                if (exterior[s] || comp[s] != 0) continue;
+                int id = ++nextId; long size = 0;
+                comp[s] = id; q.Enqueue(s);
+                while (q.Count > 0)
+                {
+                    int i = q.Dequeue(); size++;
+                    int x = i % width, y = i / width;
+                    Visit(i - 1, x > 0); Visit(i + 1, x < width - 1);
+                    Visit(i - width, y > 0); Visit(i + width, y < height - 1);
+                    void Visit(int j, bool inBounds)
+                    { if (inBounds && !exterior[j] && comp[j] == 0) { comp[j] = id; q.Enqueue(j); } }
+                }
+                if (size > bestSize) { bestSize = size; bestId = id; }
+            }
+            if (bestId == 0) return 0;
+
             long edges = 0;
             for (int y = 0; y < height; y++)
             {
@@ -485,7 +511,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 for (int x = 0; x < width; x++)
                 {
                     int i = row + x;
-                    if (exterior[i]) continue;
+                    if (comp[i] != bestId) continue;
                     // Count each exterior neighbour edge once (border pixels face implicit exterior).
                     if (x == 0 || exterior[i - 1]) edges++;
                     if (x == width - 1 || exterior[i + 1]) edges++;

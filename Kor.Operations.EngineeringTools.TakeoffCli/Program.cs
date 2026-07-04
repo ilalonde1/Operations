@@ -396,10 +396,13 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         // not a shrug: strip footings (lengths are plan geometry) and any core/pit mats the notes call out.
         var unpriced = new List<string>();
         if (stripMarks.Count > 0) unpriced.Add($"strip footings {string.Join(", ", stripMarks)} (lengths on plan)");
+        // Point the core-footing residual at a FOUNDATION PLAN page (where the hatched mat is drawn),
+        // not at whichever notes sheet mentions the phrase first.
         foreach (var pg in tkDig.Pages)
         {
             string ds2 = string.Concat(string.Join(" ", pg.Lines).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
-            if (ds2.Contains("COREFOOTING")) { unpriced.Add($"core footing (p{pg.Page} — hatched mat, depth in plan note)"); break; }
+            if (ds2.Contains("COREFOOTING") && ds2.Contains("FOUNDATIONPLAN"))
+            { unpriced.Add($"core footing (p{pg.Page} — hatched mat, depth in plan note)"); break; }
         }
         string footingNote = fdnInputs.Count > 0
             ? $"NOT priced, quantify by hand: {string.Join("; ", unpriced.DefaultIfEmpty("nothing further found"))}. Spread footings ARE priced above."
