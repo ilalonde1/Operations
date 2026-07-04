@@ -427,6 +427,32 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // dissent) then names the untitled plans — each flagged, never silent. No fit → no guess.
             var tkInferredTitles = new Dictionary<int, SheetTitle>();
             {
+                // FIRST: body-text dominance. A plan sheet's own body names its level over and over —
+                // per-level component tables ("LEVEL 37 NONSTRUCTURAL COMPONENT TABLE"), per-level
+                // schedules ("LEVEL 37 STEEL COLUMN SCHEDULE") — while cross-references to OTHER levels
+                // are the minority. When one level takes ≥60% of a page's "LEVEL n" mentions (≥3 of
+                // them) and the title block read nothing, that level names the sheet — flagged. These
+                // body-titled pages then also ANCHOR the sheet-number interpolation below.
+                var bodyLvlRx = new System.Text.RegularExpressions.Regex(@"\bLEVEL\s+(P?\d{1,2})\b",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                var bodyTitled = new Dictionary<int, int>();   // page -> numeric level
+                foreach (var pg in tkDigest.Pages)
+                {
+                    if (pg.Title is not null) continue;
+                    var mentions = pg.Lines.SelectMany(l => bodyLvlRx.Matches(l).Cast<System.Text.RegularExpressions.Match>())
+                        .Select(m => m.Groups[1].Value.ToUpperInvariant())
+                        .Where(v => !v.StartsWith("P")).ToList();   // parkade levels keep their real titles
+                    if (mentions.Count < 3) continue;
+                    var top = mentions.GroupBy(v => v).OrderByDescending(g => g.Count()).First();
+                    if (top.Count() * 10 < mentions.Count * 6) continue;   // <60% — ambiguous, no guess
+                    if (!int.TryParse(top.Key, out int bl) || bl < 1 || bl > 99) continue;
+                    bodyTitled[pg.Page] = bl;
+                    tkInferredTitles[pg.Page] = new SheetTitle(bl.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        null, $"(level {bl} named by the sheet's own body text: {top.Count()}/{mentions.Count} LEVEL mentions)");
+                }
+                if (bodyTitled.Count > 0)
+                    notes.Add($"  body-text titling: {bodyTitled.Count} untitled sheet(s) named by their own per-level tables/schedules (flagged).");
+
                 var pairs = new List<(string Series, int Ordinal, int Level)>();
                 var untitledNums = new List<(int Page, string Series, int Ordinal)>();
                 // The series key includes the SUB-part: one level owns several sheets ("S2.11.1" the
@@ -444,9 +470,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     if (!sm.Success) continue;
                     string series = sm.Groups[1].Value.ToUpperInvariant() + (sm.Groups[3].Success ? "|" + sm.Groups[3].Value : "");
                     int ordinal = int.Parse(sm.Groups[2].Value);
-                    if (pg.Title?.Level is { } ll && int.TryParse(ll.TrimStart('L'), out int lvlNum))
-                        pairs.Add((series, ordinal, lvlNum));
-                    else if (pg.Title is null)
+                    int? knownLvl = pg.Title?.Level is { } ll && int.TryParse(ll.TrimStart('L'), out int lvlNum) ? lvlNum
+                                  : bodyTitled.TryGetValue(pg.Page, out int bt2) ? bt2 : (int?)null;
+                    if (knownLvl is int kl)
+                        pairs.Add((series, ordinal, kl));
+                    else if (pg.Title is null && !tkInferredTitles.ContainsKey(pg.Page))
                         untitledNums.Add((pg.Page, series, ordinal));
                 }
                 foreach (var grp in pairs.GroupBy(p => p.Series))
