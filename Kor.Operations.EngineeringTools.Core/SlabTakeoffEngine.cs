@@ -83,6 +83,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // does not depend on the fragile schedule×key-plan read. Priced at the storey height × reconciled
             // floor count, on top of the slab (the slab area spans gross, under them, so this is additional).
             public double WallSqFt, ColSqFt;
+            public double PerimeterFt, WallThkMm;   // plate boundary + the page's own "NNN WALL" thickness note (below-grade perimeter walls)
 
             // Phase-2 context: where the plate is (page + render + pixel box) so a targeted AI call can be
             // re-issued against just this plate, and the distinct thickness callouts (inches) the drawing
@@ -109,6 +110,32 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var m = TowerRx.Match(label ?? "");
             return m.Success ? m.Groups[1].Value.ToUpperInvariant() : null;
         }
+
+        /// <summary>The page's own wall-thickness convention: the median of its "NNN WALL" notes
+        /// ("200 WALL TO U/S LEVEL 1 ..."), 150–500 mm. 0 when the page states none — the perimeter
+        /// wall is then left unpriced and flagged, never guessed.</summary>
+        private static double MedianWallThicknessMm(VectorPageReader.PageContent page)
+        {
+            var vals = new List<double>();
+            foreach (var w in page.Words)
+            {
+                if (!w.Text.Equals("WALL", StringComparison.OrdinalIgnoreCase)) continue;
+                foreach (var n in page.Words)
+                {
+                    if (Math.Abs(n.Cy - w.Cy) > 6 || n.Cx >= w.Cx || w.Cx - n.Cx > 45) continue;
+                    if (n.Text.Length == 3 && int.TryParse(n.Text, out int mm) && mm >= 150 && mm <= 500)
+                        vals.Add(mm);
+                }
+            }
+            if (vals.Count == 0) return 0;
+            vals.Sort();
+            return vals[vals.Count / 2];
+        }
+
+        /// <summary>Below-grade plate ("P1", "B2" — not "PH")? The plate outline of a below-grade level
+        /// IS its perimeter/basement wall; above grade the outline is just the slab edge.</summary>
+        private static bool IsBelowGrade(string label) =>
+            System.Text.RegularExpressions.Regex.IsMatch(NormalizeLevelKey(label), @"^[PB]\d");
 
         // A plate label → its physical-floor key for the storey-height lookup: strip the tower cardinal and
         // "TOWER" ("1 NORTH" / "LEVEL 2 SOUTH TOWER" → L1 / L2) so ONE supplied height per floor serves both
@@ -194,7 +221,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// plate area (sqft at <paramref name="mpp"/>), how densely it fills its own extent, and the cluster
         /// count. The one place area is measured, shared by the deterministic grid-box pass and the phase-2
         /// AI-located pass so they measure identically.</summary>
-        private static (double Area, double Fill, int Clusters, double WallSqFt, double ColSqFt) MeasurePoche(
+        private static (double Area, double Fill, int Clusters, double WallSqFt, double ColSqFt, double BoundaryFt) MeasurePoche(
             IPlanRaster raster, string png, int x0, int y0, int x1, int y1, double mpp)
         {
             var crop = raster.LoadCrop(png, x0, y0, x1, y1);
@@ -203,7 +230,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double fill = cl.Count > 0 && cl[0].Width > 0 && cl[0].Height > 0
                 ? (double)cl[0].LightPx / ((double)cl[0].Width * cl[0].Height) : double.NaN;
             var (wallSqFt, colSqFt) = MeasureVerticalFootprint(crop, mpp);
-            return (area, fill, cl.Count, wallSqFt, colSqFt);
+            double boundaryFt = PlanGeometry.BoundaryMetres(crop.Lum, crop.Width, crop.Height, mpp) * 3.2808399;
+            return (area, fill, cl.Count, wallSqFt, colSqFt, boundaryFt);
         }
 
         /// <summary>
@@ -415,7 +443,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     cy0 = Math.Clamp(cy0 - padY, 0, ih - 1); cy1 = Math.Clamp(cy1 + padY, cy0 + 1, ih);
                     plate.Cx0 = cx0; plate.Cy0 = cy0; plate.Cx1 = cx1; plate.Cy1 = cy1; plate.HasBox = true;
 
-                    var (area, fill, clusters, wallSqFt, colSqFt) = MeasurePoche(raster, png, cx0, cy0, cx1, cy1, tkMpp);
+                    var (area, fill, clusters, wallSqFt, colSqFt, boundaryFt) = MeasurePoche(raster, png, cx0, cy0, cx1, cy1, tkMpp);
                     if (area >= 500)
                     {
                         var consensus = SlabAreaReconciler.Reconcile(grid, tkScaleDenom, area);
@@ -424,6 +452,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         plate.GridNet = consensus.GridNetSqFt ?? 0; plate.Poche = consensus.PocheSqFt ?? area;
                         plate.Basis = consensus.Basis; plate.AreaFlags = consensus.Flags;
                         plate.WallSqFt = wallSqFt; plate.ColSqFt = colSqFt;   // co-located vertical concrete, same crop
+                        // Perimeter/basement wall inputs: the plate's outer contour length + the page's own
+                        // "NNN WALL" thickness notes. Priced only for below-grade plates at the emit step.
+                        plate.PerimeterFt = boundaryFt;
+                        plate.WallThkMm = MedianWallThicknessMm(vp);
                     }
                     else plate.NeedsLocate = true;   // the grid box gave a bad poché — hand the locate to AI
                 }
@@ -487,7 +519,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                             if (bb.Count < 4) break;
                             int bx0 = Math.Clamp((int)(Math.Min(bb[0], bb[2]) * iw), 0, iw - 1), by0 = Math.Clamp((int)(Math.Min(bb[1], bb[3]) * ih), 0, ih - 1);
                             int bx1 = Math.Clamp((int)(Math.Max(bb[0], bb[2]) * iw), bx0 + 1, iw), by1 = Math.Clamp((int)(Math.Max(bb[1], bb[3]) * ih), by0 + 1, ih);
-                            var (area, fill, clusters, wallSqFt, colSqFt) = MeasurePoche(raster, p.Png, bx0, by0, bx1, by1, tkMpp);
+                            var (area, fill, clusters, wallSqFt, colSqFt, _) = MeasurePoche(raster, p.Png, bx0, by0, bx1, by1, tkMpp);
                             double err = expect > 0 ? Math.Abs(area - expect) / expect : (area >= 500 ? 0 : 1);
                             if (area >= 500 && err < bestErr) { best = (bx0, by0, bx1, by1, area, fill, clusters, wallSqFt, colSqFt); bestErr = err; }
                             if (area >= 500 && (expect <= 0 || err <= 0.4)) break;   // converged within band (or no peer to judge by)
@@ -763,6 +795,27 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         tkPlates.Add(new MeasuredPlate(rowLabel, TakeoffElementType.Column, null, r.ColSqFt, storeyIn, floors));
                     notes.Add($"      {r.Label}: + gray-fill wall {r.WallSqFt:N0} / col {r.ColSqFt:N0} sqft × {storeyIn / 12:0.0}ft × {floors} flr "
                         + $"(deterministic; storey height {(known ? "from supplied floor-to-floor" : "ASSUMED typical")}).");
+                }
+
+                // PERIMETER/basement wall — the one wall the gray-fill can never see, because on a
+                // below-grade plan it IS the plate outline the flood-fill treats as boundary. Priced as
+                // contour length × the page's own "NNN WALL" thickness × storey height, flagged for
+                // review (contour staircasing + crop fragments can over-read; the thickness is the
+                // page's median note). Left unpriced and flagged when the page states no thickness.
+                if (!degenerate && IsBelowGrade(r.Label) && r.PerimeterFt > 0)
+                {
+                    var (pStoreyIn, _) = ResolveStoreyHeightIn(r.Label, heightByLevel, req.StoreyHeightIn);
+                    if (r.WallThkMm > 0)
+                    {
+                        double thkFt = r.WallThkMm / 304.8;
+                        tkPlates.Add(new MeasuredPlate(rowLabel, TakeoffElementType.Wall, "perimeter",
+                            r.PerimeterFt * thkFt, pStoreyIn, floors,
+                            ExtraFlags: new[] { new PlanFlag(PlanFlagSeverity.Review, "PERIMETER_WALL_EST",
+                                $"Perimeter wall estimated from the plate contour ({r.PerimeterFt:N0} ft) × the page's {r.WallThkMm:0} mm WALL note × storey height — verify length and thickness on the drawing.") }));
+                        notes.Add($"      {r.Label}: + perimeter wall {r.PerimeterFt:N0} ft × {r.WallThkMm:0}mm × {pStoreyIn / 12:0.0}ft (below-grade contour; FLAGGED estimate).");
+                    }
+                    else
+                        notes.Add($"  ~ {r.Label}: below-grade perimeter {r.PerimeterFt:N0} ft measured but the page states no NNN WALL thickness — perimeter wall NOT priced, quantify by hand.");
                 }
             }
 

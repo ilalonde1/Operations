@@ -463,6 +463,39 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return bins;
         }
 
+        /// <summary>
+        /// Length (metres) of the boundary between the EXTERIOR and the enclosed plate — the plate's
+        /// outer contour, counted as exterior↔non-exterior 4-neighbour pixel edges × metres-per-pixel.
+        /// On a below-grade plan this contour IS the perimeter/basement wall centreline (the wall is
+        /// drawn as the plate boundary, which is exactly why the gray-fill footprint never sees it).
+        /// Orthogonal walls measure near-exact; a diagonal run staircases up to ×1.41 — acceptable for
+        /// a flagged estimate on predominantly rectilinear basements.
+        /// </summary>
+        public static double BoundaryMetres(
+            ReadOnlySpan<byte> luminance, int width, int height, double metresPerPixel,
+            int darkThreshold = 110, bool sealHairlineGaps = true)
+        {
+            ValidateBuffer(luminance.Length, width, height, nameof(luminance));
+            if (metresPerPixel <= 0) throw new ArgumentOutOfRangeException(nameof(metresPerPixel));
+            var (_, exterior) = ComputeDarkAndExterior(luminance, width, height, darkThreshold, sealHairlineGaps);
+            long edges = 0;
+            for (int y = 0; y < height; y++)
+            {
+                int row = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    int i = row + x;
+                    if (exterior[i]) continue;
+                    // Count each exterior neighbour edge once (border pixels face implicit exterior).
+                    if (x == 0 || exterior[i - 1]) edges++;
+                    if (x == width - 1 || exterior[i + 1]) edges++;
+                    if (y == 0 || exterior[i - width]) edges++;
+                    if (y == height - 1 || exterior[i + width]) edges++;
+                }
+            }
+            return edges * metresPerPixel;
+        }
+
         /// <summary>Square metres for a pixel count at a given real-world metres-per-pixel.</summary>
         public static double SquareMetres(long pixels, double metresPerPixel)
         {
