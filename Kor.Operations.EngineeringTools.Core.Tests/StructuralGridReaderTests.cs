@@ -140,4 +140,92 @@ public sealed class StructuralGridReaderTests
         Assert.True(f.IsUsable);
         Assert.False(f.IsLocatable);
     }
+
+    // ── circle-bubble primary detector ──────────────────────────────────────────────────────────
+
+    // A drawn bubble: a 4-anchor Bézier-style circle (N/E/S/W points, closed) of diameter d at (cx,cy).
+    private static VectorPageReader.GeomPath Circle(double cx, double cy, double d = 28)
+    {
+        double r = d / 2;
+        return new VectorPageReader.GeomPath(
+            new List<(double X, double Y)> { (cx, cy + r), (cx + r, cy), (cx, cy - r), (cx - r, cy), (cx, cy + r) },
+            IsClosed: true, IsFilled: false, IsStroked: true,
+            MinX: cx - r, MinY: cy - r, MaxX: cx + r, MaxY: cy + r);
+    }
+
+    private static VectorPageReader.PageContent PageWithPaths(
+        IEnumerable<VectorPageReader.TextToken> words, IEnumerable<VectorPageReader.GeomPath> paths)
+        => new(1, W, H, words.ToList(), paths.ToList());
+
+    [Fact]
+    public void Circle_bubbles_decide_the_axis_by_run_orientation_not_label_class()
+    {
+        // Coronation anatomy: LETTERS run ACROSS the top; DIGITS run DOWN the side — the transpose of
+        // 31065. Noise capitals at prose height (which broke the fallback) must not matter, because the
+        // circle-contained labels win.
+        var words = new List<VectorPageReader.TextToken>();
+        var paths = new List<VectorPageReader.GeomPath>();
+        string[] cols = { "A", "B", "C", "D", "E", "F", "G", "H" };
+        for (int i = 0; i < cols.Length; i++)
+        { words.Add(T(cols[i], 500 + i * 130, 1640)); paths.Add(Circle(500 + i * 130, 1640)); }
+        for (int g = 1; g <= 10; g++)
+        { words.Add(T(g.ToString(), 1750, 1550 - g * 130)); paths.Add(Circle(1750, 1550 - g * 130)); }
+        // Stray prose capitals (the old fallback trap).
+        words.Add(T("T", 900, 900)); words.Add(T("N", 950, 900)); words.Add(T("D", 1000, 900));
+
+        var f = StructuralGridReader.FromPage(PageWithPaths(words, paths))!;
+        Assert.Equal(cols, f.XLabels);
+        Assert.Equal(Enumerable.Range(1, 10).Select(i => i.ToString()).ToArray(), f.YLabels);
+        Assert.Equal(7 * 130, f.XSpanPt, 1);
+        Assert.Equal(9 * 130, f.YSpanPt, 1);
+    }
+
+    [Fact]
+    public void L_split_letter_columns_union_but_a_partial_plans_duplicate_digit_does_not()
+    {
+        // 31065 p16 anatomy: main plan digits 1..8 across the top; letters split across TWO columns
+        // (A..D right edge, E..G at the matchline edge) — one grid, unioned. A PARTIAL ramp plan on the
+        // same sheet carries its own circled "4": a duplicated label = another plan, excluded.
+        var words = new List<VectorPageReader.TextToken>();
+        var paths = new List<VectorPageReader.GeomPath>();
+        for (int g = 1; g <= 8; g++)
+        { words.Add(T(g.ToString(), 300 + (g - 1) * 200, 1640)); paths.Add(Circle(300 + (g - 1) * 200, 1640)); }
+        string[] right = { "A", "B", "C", "D" };
+        for (int i = 0; i < right.Length; i++)
+        { words.Add(T(right[i], 2300, 1500 - i * 150)); paths.Add(Circle(2300, 1500 - i * 150)); }
+        string[] mid = { "E", "F", "G" };
+        for (int i = 0; i < mid.Length; i++)
+        { words.Add(T(mid[i], 1950, 900 - i * 150)); paths.Add(Circle(1950, 900 - i * 150)); }
+        // The partial plan's own "4", further right on the same top row.
+        words.Add(T("4", 2450, 1640)); paths.Add(Circle(2450, 1640));
+
+        var f = StructuralGridReader.FromPage(PageWithPaths(words, paths))!;
+        Assert.Equal(Enumerable.Range(1, 8).Select(i => i.ToString()).ToArray(), f.XLabels);   // no second "4"
+        Assert.Equal(7 * 200, f.XSpanPt, 1);
+        Assert.Equal(new[] { "A", "B", "C", "D", "E", "F", "G" }, f.YLabels);                  // both columns
+        Assert.Equal(1500 - 600, f.YSpanPt, 1);
+    }
+
+    [Fact]
+    public void Detail_marker_circles_and_key_plan_miniatures_never_join_a_run()
+    {
+        // A detail marker is a circle with TWO stacked tokens; key-plan bubbles are miniatures of a
+        // different diameter. Neither may pollute the main runs.
+        var words = new List<VectorPageReader.TextToken>();
+        var paths = new List<VectorPageReader.GeomPath>();
+        for (int g = 1; g <= 6; g++)
+        { words.Add(T(g.ToString(), 400 + (g - 1) * 250, 1640)); paths.Add(Circle(400 + (g - 1) * 250, 1640)); }
+        string[] rows = { "A", "B", "C", "D" };
+        for (int i = 0; i < rows.Length; i++)
+        { words.Add(T(rows[i], 250, 1450 - i * 200)); paths.Add(Circle(250, 1450 - i * 200)); }
+        // Detail marker: circle with number + sheet ref stacked.
+        words.Add(T("7", 1200, 1000)); words.Add(T("S5.01", 1200, 990, 8)); paths.Add(Circle(1200, 995, 34));
+        // Key-plan miniatures: ⌀14 circles with their own digits, far bottom-left.
+        for (int g = 9; g <= 12; g++)
+        { words.Add(T(g.ToString(), 150 + (g - 9) * 40, 150, 8)); paths.Add(Circle(150 + (g - 9) * 40, 150, 14)); }
+
+        var f = StructuralGridReader.FromPage(PageWithPaths(words, paths))!;
+        Assert.Equal(new[] { "1", "2", "3", "4", "5", "6" }, f.XLabels);
+        Assert.Equal(new[] { "A", "B", "C", "D" }, f.YLabels);
+    }
 }

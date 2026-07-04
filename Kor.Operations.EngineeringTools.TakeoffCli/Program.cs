@@ -150,6 +150,14 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         Console.Error.WriteLine($"CANNOT READ THIS SET — {ex.Message}");
         return 3;
     }
+    catch (SlabTakeoffNothingPricedException ex)
+    {
+        // Nothing priced — print the engine's full phase trace FIRST, so the failure is diagnosable
+        // (which pages classified, which plates failed locate/thickness), then the verdict.
+        foreach (var n in ex.Notes) Console.WriteLine(n);
+        Console.Error.WriteLine(ex.Message);
+        return 2;
+    }
     catch (Exception ex) { Console.Error.WriteLine(ex.Message); return 2; }
 
     foreach (var n in tkOut.Notes) Console.WriteLine(n);
@@ -959,6 +967,44 @@ if (args.Length >= 1 && args[0].Equals("vector-signals", StringComparison.Ordina
         Console.WriteLine($"  grid (envelope X×Y):            {gf.EnvelopeSqFt(scaleDenom),10:N0} sqft   multiPlan={gf.MultiPlan} usable={gf.IsUsable}");
     }
     else Console.WriteLine("  grid: no bubbles found");
+
+    // (circles) bubble-shaped path stats — evidence for the circle-primary grid detector: how the set
+    // actually draws its bubbles (closed? point count? radial spread?), so the detector's geometry
+    // rules are chosen from sheets, not guessed.
+    var round = pc.Paths.Where(p =>
+        p.Width >= 8 && p.Width <= 40 && p.Height >= 8 && p.Height <= 40
+        && Math.Abs(p.Width - p.Height) <= 0.25 * Math.Max(p.Width, p.Height)
+        && p.Points.Count >= 3).ToList();
+    Console.WriteLine($"  circle-ish paths (8-40pt, square bbox): {round.Count}  (closed: {round.Count(p => p.IsClosed)})");
+    int trueCircles = 0, oneDigit = 0, oneLetter = 0, multiTok = 0, zeroTok = 0;
+    var digRx = new System.Text.RegularExpressions.Regex(@"^\d{1,2}$");
+    var letRx = new System.Text.RegularExpressions.Regex(@"^[A-Z]$");
+    var sampleLines = new List<string>();
+    foreach (var p in round)
+    {
+        double ccx = (p.MinX + p.MaxX) / 2, ccy = (p.MinY + p.MaxY) / 2, rr = (p.Width + p.Height) / 4;
+        double dmin = double.MaxValue, dmax = 0;
+        foreach (var (px, py) in p.Points)
+        {
+            double d = Math.Sqrt((px - ccx) * (px - ccx) + (py - ccy) * (py - ccy)) / rr;
+            dmin = Math.Min(dmin, d); dmax = Math.Max(dmax, d);
+        }
+        bool isCircle = dmin >= 0.75 && dmax <= 1.25;
+        if (!isCircle) continue;
+        trueCircles++;
+        var inTok = pc.Words.Where(t =>
+            (t.Cx - ccx) * (t.Cx - ccx) + (t.Cy - ccy) * (t.Cy - ccy) <= rr * rr * 0.81).ToList();
+        if (inTok.Count == 0) zeroTok++;
+        else if (inTok.Count > 1) multiTok++;
+        else if (digRx.IsMatch(inTok[0].Text.Trim())) oneDigit++;
+        else if (letRx.IsMatch(inTok[0].Text.Trim())) oneLetter++;
+        if (inTok.Count == 1 && (digRx.IsMatch(inTok[0].Text.Trim()) || letRx.IsMatch(inTok[0].Text.Trim())))
+            sampleLines.Add($"    [{inTok[0].Text.Trim(),3}] fx={ccx / pc.WidthPts:F2} fy={ccy / pc.HeightPts:F2} ⌀{p.Width:F0}");
+        else if (sampleLines.Count < 40 && inTok.Count > 0)
+            sampleLines.Add($"    ({string.Join("|", inTok.Select(t => t.Text).Take(3)),6}) fx={ccx / pc.WidthPts:F2} fy={ccy / pc.HeightPts:F2} ⌀{p.Width:F0} (not a label)");
+    }
+    Console.WriteLine($"  true circles: {trueCircles}  → 1-digit {oneDigit}, 1-letter {oneLetter}, multi-token {multiTok}, empty {zeroTok}");
+    foreach (var ln in sampleLines.Take(40)) Console.WriteLine(ln);
 
     // (thk) slab-thickness callouts (metric mm): pair each "SLAB" token with the nearest number to its
     // left on the same row. The distribution (field 200 vs band 450/900) is what drives zoning on the

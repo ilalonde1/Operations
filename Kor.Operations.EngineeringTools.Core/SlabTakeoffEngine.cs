@@ -29,6 +29,16 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // back to StoreyHeightIn (flagged). This is the clean-at-source path: the takeoff prices verticals at
             // the AUTHORITATIVE height when given it, instead of scraping a fragile elevation read off the plans.
 
+    /// <summary>The takeoff ran but priced NOTHING — thrown WITH the full phase trace, because a bare
+    /// "nothing to price" one-liner hides exactly the evidence needed to see why (which pages classified,
+    /// which plates failed locate/thickness). The host prints <see cref="Notes"/> before the message.</summary>
+    public sealed class SlabTakeoffNothingPricedException : InvalidOperationException
+    {
+        public IReadOnlyList<string> Notes { get; }
+        public SlabTakeoffNothingPricedException(string message, IReadOnlyList<string> notes)
+            : base(message) => Notes = notes ?? Array.Empty<string>();
+    }
+
     /// <summary>Why a plate could not be priced and is therefore NOT in the total — the honest residual the
     /// three-phase pipeline owes alongside the answer. <see cref="ResidualKind.AreaUnresolved"/>: no grid and
     /// AI could not locate the plate; <see cref="ResidualKind.ThicknessUnresolved"/>: the plate measured but no
@@ -541,10 +551,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                          .Select(g => g.FirstOrDefault(p => !p.NeedsLocate) ?? g.First()).ToList();
 
             if (tkRaw.Count == 0)
-                throw new InvalidOperationException(
+                throw new SlabTakeoffNothingPricedException(
                     "No measurable slab plans found — no leveled sheet carried a structural grid or a slab callout." +
                     NonConcreteHint(tkDigest.Pages.SelectMany(p => p.Lines)) +
-                    " If this is a concrete building, its sheet titles or callouts may not be in a readable form.");
+                    " If this is a concrete building, its sheet titles or callouts may not be in a readable form.", notes);
 
             // ════════════════════ PHASE 2 — AI RESOLVES THE UNKNOWNS (one targeted call each) ════════════════════
             // Only flagged plates reach here; a fully deterministic set makes ZERO calls. Each call is a
@@ -969,10 +979,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     : $"  storey heights: {htKnownLevels} level(s) priced at supplied floor-to-floor, {htAssumedLevels} fell back to the assumed typical {req.StoreyHeightIn / 12:0.0}ft.");
 
             if (tkPlates.Count == 0)
-                throw new InvalidOperationException(
+                throw new SlabTakeoffNothingPricedException(
                     "No concrete slab thickness found on any candidate plan — nothing to price." +
                     NonConcreteHint(tkDigest.Pages.SelectMany(p => p.Lines)) +
-                    " If concrete is expected, the slab thickness callouts were not in a readable form.");
+                    " If concrete is expected, the slab thickness callouts were not in a readable form.", notes);
 
             var tkResult = PlanEstimatePipeline.Run(tkPlates, tkProfile);
             var tkComputed = StructuralTakeoffService.Compute(tkResult.TakeoffInputs, tkProfile.ToImperialDensityTable());
