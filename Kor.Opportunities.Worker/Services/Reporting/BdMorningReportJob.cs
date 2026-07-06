@@ -126,6 +126,69 @@ WHERE RetiredAtUtc IS NULL AND FirstSeenAtUtc >= DATEADD(hour, -24, sysdatetimeo
             if (newMpiTotal > newMpis.Count) { sb.Append($"<p style=\"color:#666\">…and {newMpiTotal - newMpis.Count} more.</p>"); }
         }
 
+        // --- Public roster & pre-qual watch (Mondays only) ---------------------
+        // 2026-07-06 (Ian): weekly digest of open consultant rosters / pre-qual
+        // lists relevant to KOR (structural/buildings) + health-authority RFPQs,
+        // so nothing in the BC Bid feed sits unactioned. Rides the daily email.
+        if (DateTime.Now.DayOfWeek == DayOfWeek.Monday)
+        {
+            sb.Append("<h3>Public roster &amp; pre-qual watch <span style=\"color:#666;font-weight:normal\">(open)</span></h3>");
+            try
+            {
+                var rosterRows = new List<(string Buyer, string Name, DateTimeOffset? Due, string? Url)>();
+                await using (var cmd = new SqlCommand(@"
+SELECT o.BuyerName, o.Name, o.SubmissionDeadlineUtc,
+       (SELECT TOP 1 ob.Url FROM opportunities.OpportunityObservations ob WHERE ob.OpportunityId = o.Id AND ob.IsActive = 1) AS Url
+FROM opportunities.Opportunities o
+WHERE o.SubmissionDeadlineUtc >= sysdatetimeoffset()
+  AND ( UPPER(o.Name) LIKE N'%PRE-QUAL%' OR UPPER(o.Name) LIKE N'%PREQUAL%' OR UPPER(o.Name) LIKE N'%RFPQ%' OR UPPER(o.Name) LIKE N'%RFSQ%'
+     OR UPPER(o.Name) LIKE N'%ROSTER%' OR UPPER(o.Name) LIKE N'%STANDING%' OR UPPER(o.Name) LIKE N'%QUALIFIED SUPPLIER%'
+     OR UPPER(o.Name) LIKE N'%MULTI-USE%' OR UPPER(o.Name) LIKE N'%ON-CALL%' OR UPPER(o.Name) LIKE N'%AS AND WHEN%' )
+  AND ( UPPER(o.Name) LIKE N'%ENGINEER%' OR UPPER(o.Name) LIKE N'%CONSULT%' OR UPPER(o.Name) LIKE N'%STRUCTURAL%'
+     OR UPPER(o.Name) LIKE N'%ARCHITECT%' OR UPPER(o.Name) LIKE N'%BUILDING%' OR UPPER(o.Name) LIKE N'%FACILIT%'
+     OR UPPER(o.Name) LIKE N'%PROFESSIONAL%' OR UPPER(o.BuyerName) LIKE N'%HEALTH%' )
+  AND UPPER(o.Name) NOT LIKE N'%CONTRACTOR%' AND UPPER(o.Name) NOT LIKE N'%EQUIPMENT%' AND UPPER(o.Name) NOT LIKE N'%FURNITURE%'
+  AND UPPER(o.Name) NOT LIKE N'%FENCE%' AND UPPER(o.Name) NOT LIKE N'%FOREST%' AND UPPER(o.Name) NOT LIKE N'%PAINTING%'
+  AND UPPER(o.Name) NOT LIKE N'%WAYFINDING%' AND UPPER(o.Name) NOT LIKE N'%TRAIL%' AND UPPER(o.Name) NOT LIKE N'%PATHWAY%'
+  AND UPPER(o.Name) NOT LIKE N'%I.T.%' AND UPPER(o.Name) NOT LIKE N'%CONTRACTING%' AND UPPER(o.Name) NOT LIKE N'%TRANSPORTATION%'
+ORDER BY o.SubmissionDeadlineUtc ASC;", con))
+                await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+                {
+                    while (await r.ReadAsync(ct).ConfigureAwait(false))
+                    {
+                        rosterRows.Add((
+                            r.IsDBNull(0) ? "" : r.GetString(0),
+                            r.IsDBNull(1) ? "" : r.GetString(1),
+                            r.IsDBNull(2) ? (DateTimeOffset?)null : r.GetDateTimeOffset(2),
+                            r.IsDBNull(3) ? null : r.GetString(3)));
+                    }
+                }
+
+                if (rosterRows.Count == 0) { sb.Append("<p style=\"color:#666\">None open.</p>"); }
+                else
+                {
+                    sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+                    foreach (var (buyer, name, due, url) in rosterRows)
+                    {
+                        var soon = due.HasValue && due.Value.ToUniversalTime() <= DateTimeOffset.UtcNow.AddDays(14);
+                        var dueTxt = due.HasValue ? due.Value.ToString("yyyy-MM-dd") : "—";
+                        var nameHtml = string.IsNullOrWhiteSpace(url)
+                            ? WebUtility.HtmlEncode(name)
+                            : $"<a href=\"{WebUtility.HtmlEncode(url)}\">{WebUtility.HtmlEncode(name)}</a>";
+                        var dueStyle = soon ? "color:#C8102E;font-weight:bold" : "color:#666";
+                        sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(buyer)}</td>" +
+                                  $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{nameHtml}</td>" +
+                                  $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;{dueStyle}\">{WebUtility.HtmlEncode(dueTxt)}</td></tr>");
+                    }
+                    sb.Append("</table>");
+                }
+            }
+            catch (Exception ex)
+            {
+                sb.Append($"<p style=\"color:#C8102E\">Roster watch failed: {WebUtility.HtmlEncode(ex.GetType().Name)}: {WebUtility.HtmlEncode(ex.Message)}</p>");
+            }
+        }
+
         // --- Verdict movement --------------------------------------------------
         sb.Append("<h3>Verdict movement</h3>");
         var pursueRows = new List<string>();
