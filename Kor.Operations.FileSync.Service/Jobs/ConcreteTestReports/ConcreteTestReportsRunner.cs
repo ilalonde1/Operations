@@ -2,8 +2,8 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
 using ClosedXML.Excel;
+using Kor.Operations.FileSync.Service.Alerting;
 using Kor.Operations.FileSync.Service.ControlPlane;
 using Kor.Operations.FileSync.Service.Jobs.Shared;
 using Microsoft.Extensions.Logging;
@@ -13,37 +13,53 @@ using Microsoft.Graph.Users.Item.SendMail;
 
 namespace Kor.Operations.FileSync.Service.Jobs.ConcreteTestReports;
 
-// Port of _Scripts Rebuild/Concrete Test Reports/File-ConcreteTestReports.ps1.
+// Port of _Scripts Rebuild/Concrete Test Reports/File-ConcreteTestReports.ps1,
+// hardened 2026-07-06 after the 430-file silent-backlog incident:
 //
-// Behavior parity vs PS1:
-//   - Same matching policy: AgencyNo containment, then agency-name token
-//     fallback, with Agency-name-in-filename as the disambiguation tiebreak.
-//   - Same per-PM rollup CSVs + Unassigned catch-all CSV.
-//   - Same email body shape (HTML table) with per-PM CSV attachment.
-//   - Same RenameOnConflict semantics: default = overwrite, opt-in =
-//     "(1)", "(2)", ... up to next free slot.
+//   - Matching is AgencyNo-containment ONLY. The PS1's agency-name token
+//     fallback was removed: across 2026-04..06 it produced 178 false
+//     "Ambiguous" results (generic tokens like "and"/"west"/"hastings")
+//     and not a single good move. A file without a recognizable agency
+//     number is now honestly Unmatched.
+//   - Nested-key preference: when both "MB53192" and "MB53192-1" rows
+//     match, the longer (more specific) key wins instead of Ambiguous.
+//   - Default window (no args) is ALL files older than the current month,
+//     not just the previous calendar month. Agencies routinely deliver
+//     late with prior-month write times preserved; the old one-shot
+//     window stranded those files forever.
+//   - Live runs email AlertRecipient a list of every file that could NOT
+//     be filed (unmatched/ambiguous/noTarget/failed). Leftovers used to
+//     sit invisibly while the run reported Success.
+//
+// Otherwise behavior-parity with the PS1: per-PM rollup CSVs + Unassigned
+// catch-all, HTML-table PM email with CSV attachment, RenameOnConflict
+// default = overwrite.
 //
 // Shadow mode: NEVER touches the file server (no moves, no email sends);
 // summaries land under ShadowOutputDir/<runStamp>/ on the local box.
 // Live mode: writes to OutputRoot/<MonthTag>/ on the file server, performs
 // the actual moves, and sends Graph mail.
 //
-// Args: optional yyyy-MM string. Empty/null => previous calendar month.
+// Args: optional yyyy-MM string. Empty/null => everything before the
+// current month; explicit month => that month only (targeted re-runs).
 internal sealed class ConcreteTestReportsRunner : IJobRunner
 {
     public const string Name = "ConcreteTestReports";
 
     private readonly IControlPlaneStore _store;
     private readonly GraphServiceClient _graph;
+    private readonly IAlertNotifier _alerter;
     private readonly ILogger<ConcreteTestReportsRunner> _logger;
 
     public ConcreteTestReportsRunner(
         IControlPlaneStore store,
         GraphServiceClient graph,
+        IAlertNotifier alerter,
         ILogger<ConcreteTestReportsRunner> logger)
     {
         _store = store;
         _graph = graph;
+        _alerter = alerter;
         _logger = logger;
     }
 
@@ -53,13 +69,21 @@ internal sealed class ConcreteTestReportsRunner : IJobRunner
     {
         var knobs = await _store.GetKnobsAsync(Name, ct).ConfigureAwait(false);
         var opts = ConcreteTestReportsOptions.FromKnobs(knobs);
-        var month = ParseMonth(args);
-        var monthStart = month;
-        var monthEnd = month.AddMonths(1);
-        var monthTag = month.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+
+        // Explicit yyyy-MM args => that month only (targeted re-run).
+        // Default => sweep EVERYTHING older than the current month, so
+        // late-delivered files with prior-month write times are picked up
+        // by the next scheduled run instead of stranded forever.
+        var explicitMonth = TryParseMonth(args);
+        var today = DateTime.Today;
+        var currentMonthStart = new DateTime(today.Year, today.Month, 1);
+        var windowStart = explicitMonth ?? DateTime.MinValue;
+        var windowEnd = explicitMonth?.AddMonths(1) ?? currentMonthStart;
+        var monthTag = (explicitMonth ?? currentMonthStart.AddMonths(-1)).ToString("yyyy-MM", CultureInfo.InvariantCulture);
+        var windowLabel = explicitMonth is null ? $"all months through {monthTag}" : monthTag;
         var isShadow = string.Equals(config.Mode, "Shadow", StringComparison.OrdinalIgnoreCase);
 
-        _logger.LogInformation("Starting CTR run for {Month} (mode={Mode}, source={Source}).", monthTag, config.Mode, triggerSource);
+        _logger.LogInformation("Starting CTR run for {Window} (mode={Mode}, source={Source}).", windowLabel, config.Mode, triggerSource);
 
         if (!File.Exists(opts.MappingXlsx))
             return new JobRunResult(false, $"Mapping workbook not found: {opts.MappingXlsx}");
@@ -90,29 +114,18 @@ internal sealed class ConcreteTestReportsRunner : IJobRunner
                 list.Add(m);
             }
 
-            var byAgencyTokens = new Dictionary<string, List<MappingRow>>(StringComparer.OrdinalIgnoreCase);
-            foreach (var m in mapping)
-            {
-                foreach (var t in Tokenize(m.AgencyName))
-                {
-                    if (!byAgencyTokens.TryGetValue(t, out var list))
-                        byAgencyTokens[t] = list = new List<MappingRow>();
-                    list.Add(m);
-                }
-            }
-
             var sourceFiles = new DirectoryInfo(opts.SourceRoot)
                 .EnumerateFiles("*", SearchOption.TopDirectoryOnly)
                 .Where(f => opts.Extensions.Contains(f.Extension, StringComparer.OrdinalIgnoreCase))
-                .Where(f => f.LastWriteTime >= monthStart && f.LastWriteTime < monthEnd)
+                .Where(f => f.LastWriteTime >= windowStart && f.LastWriteTime < windowEnd)
                 .ToList();
-            _logger.LogInformation("Found {Count} candidate file(s) for {Month} (root only).", sourceFiles.Count, monthTag);
+            _logger.LogInformation("Found {Count} candidate file(s) for {Window} (root only).", sourceFiles.Count, windowLabel);
 
             var results = new List<FileMoveResult>(sourceFiles.Count);
             foreach (var f in sourceFiles)
             {
                 ct.ThrowIfCancellationRequested();
-                var match = MatchFile(f.Name, byAgencyNo, byAgencyTokens);
+                var match = MatchFile(f.Name, byAgencyNo);
                 if (match.Status != FileMatchStatus.Single)
                 {
                     var status = match.Status switch
@@ -242,12 +255,23 @@ internal sealed class ConcreteTestReportsRunner : IJobRunner
             int noTarget = results.Count(r => r.Status == FileMoveStatus.NoTarget);
             int failed = results.Count(r => r.Status == FileMoveStatus.Failed);
 
+            // A Success run that quietly leaves files behind is how a
+            // 430-file backlog built up unnoticed (2026-02..07). In Live,
+            // email the operator the exact leftover list; best-effort so a
+            // mail hiccup never poisons the run result.
+            var leftovers = results
+                .Where(r => r.Status is FileMoveStatus.Unmatched or FileMoveStatus.Ambiguous or FileMoveStatus.NoTarget or FileMoveStatus.Failed)
+                .ToList();
+            if (!isShadow && leftovers.Count > 0)
+                await TrySendLeftoverAlertAsync(windowLabel, leftovers, masterCsvPath, opts, ct).ConfigureAwait(false);
+
             var verb = isShadow ? "Would move" : "Moved";
             var emailVerb = isShadow ? "Would email" : "Emailed";
             return new JobRunResult(
                 Success: failed == 0,
-                Summary: $"{verb} {(isShadow ? wouldMove : moved)}/{sourceFiles.Count} files for {monthTag}; " +
-                    $"unmatched={unmatched}, ambiguous={ambiguous}, noTarget={noTarget}, failed={failed}. " +
+                Summary: $"{verb} {(isShadow ? wouldMove : moved)}/{sourceFiles.Count} files for {windowLabel}; " +
+                    $"unmatched={unmatched}, ambiguous={ambiguous}, noTarget={noTarget}, failed={failed}" +
+                    $"{(!isShadow && leftovers.Count > 0 ? $" (leftover alert emailed for {leftovers.Count})" : string.Empty)}. " +
                     $"{emailVerb} {(isShadow ? pmCsvCount - pmSkippedNoEmail : pmEmailedCount)} PM(s); skipped {pmSkippedNoEmail} (no email mapping). " +
                     $"Output: {runRoot}");
         }
@@ -257,15 +281,61 @@ internal sealed class ConcreteTestReportsRunner : IJobRunner
         }
     }
 
-    private static DateTime ParseMonth(string? args)
+    private static DateTime? TryParseMonth(string? args)
     {
         if (!string.IsNullOrWhiteSpace(args)
             && DateTime.TryParseExact(args.Trim() + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
             return d;
-        // Default = previous calendar month, like the PS1 default.
-        var now = DateTime.Today;
-        var first = new DateTime(now.Year, now.Month, 1);
-        return first.AddMonths(-1);
+        return null;
+    }
+
+    // Live-only: tell the operator exactly which reports the run could not
+    // file and why, instead of letting them silently accumulate in the
+    // source folder. Failure to send is logged, never thrown.
+    private async Task TrySendLeftoverAlertAsync(
+        string windowLabel,
+        IReadOnlyList<FileMoveResult> leftovers,
+        string masterCsvPath,
+        ConcreteTestReportsOptions opts,
+        CancellationToken ct)
+    {
+        try
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"ConcreteTestReports run for {windowLabel} could not file {leftovers.Count} report(s).");
+            sb.AppendLine($"They are still sitting in: {opts.SourceRoot}");
+            sb.AppendLine();
+            foreach (var r in leftovers.OrderBy(r => r.Status).ThenBy(r => r.SourceFile, StringComparer.OrdinalIgnoreCase))
+            {
+                sb.Append(r.Status).Append("  ").Append(Path.GetFileName(r.SourceFile));
+                if (!string.IsNullOrWhiteSpace(r.Note)) sb.Append("  [").Append(r.Note).Append(']');
+                sb.AppendLine();
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("Unmatched  = no row in the mapping sheet has this file's agency project number (or the filename has no number).");
+            sb.AppendLine("Ambiguous  = more than one mapping row matched; candidates listed in brackets.");
+            sb.AppendLine($"Mapping sheet: {opts.MappingXlsx}");
+            sb.AppendLine($"Run detail:    {masterCsvPath}");
+            sb.AppendLine();
+            sb.AppendLine("Fix the sheet (or the filenames), then the next monthly run sweeps them up automatically.");
+
+            using var alertCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            alertCts.CancelAfter(TimeSpan.FromSeconds(30));
+            await _alerter.SendAlertAsync(
+                $"[FileSync] ConcreteTestReports: {leftovers.Count} report(s) NOT filed ({windowLabel})",
+                sb.ToString(),
+                alertCts.Token).ConfigureAwait(false);
+            _logger.LogInformation("Leftover alert sent ({Count} file(s)).", leftovers.Count);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not send leftover alert ({Count} file(s)).", leftovers.Count);
+        }
     }
 
     private static string? CopyToTemp(string source)
@@ -359,31 +429,34 @@ internal sealed class ConcreteTestReportsRunner : IJobRunner
 
     private static FileMatch MatchFile(
         string fileName,
-        Dictionary<string, List<MappingRow>> byAgencyNo,
-        Dictionary<string, List<MappingRow>> byAgencyTokens)
+        Dictionary<string, List<MappingRow>> byAgencyNo)
     {
         var lower = fileName.ToLowerInvariant();
 
-        // 1) AgencyNo containment.
-        var hits = new HashSet<MappingRow>();
-        foreach (var (key, list) in byAgencyNo)
+        // AgencyNo containment only -- see class comment for why the
+        // agency-name token fallback was removed.
+        var hitKeys = new List<string>();
+        foreach (var key in byAgencyNo.Keys)
         {
             if (lower.Contains(key, StringComparison.Ordinal))
-                foreach (var m in list) hits.Add(m);
+                hitKeys.Add(key);
         }
 
-        // 2) Fallback: agency-name token match (3+ char alnum tokens).
-        if (hits.Count == 0)
-        {
-            foreach (var t in Regex.Split(lower, "[^a-z0-9]+"))
-            {
-                if (t.Length >= 3 && byAgencyTokens.TryGetValue(t, out var list))
-                    foreach (var m in list) hits.Add(m);
-            }
-        }
-
-        if (hits.Count == 0)
+        if (hitKeys.Count == 0)
             return new FileMatch(FileMatchStatus.None, Array.Empty<MappingRow>());
+
+        // Nested-key preference: when one matched key is a substring of a
+        // longer matched key ("MB53192" vs "MB53192-1"), the longer key is
+        // the more specific row -- drop the shorter one instead of calling
+        // the file Ambiguous.
+        if (hitKeys.Count > 1)
+        {
+            hitKeys = hitKeys
+                .Where(k => !hitKeys.Any(other => other.Length > k.Length && other.Contains(k, StringComparison.Ordinal)))
+                .ToList();
+        }
+
+        var hits = new HashSet<MappingRow>(hitKeys.SelectMany(k => byAgencyNo[k]));
 
         // Disambiguation: if any candidate's Agency string is also in the
         // filename, prefer those.
@@ -392,18 +465,18 @@ internal sealed class ConcreteTestReportsRunner : IJobRunner
             .ToList();
         var final = preferred.Count > 0 ? preferred : hits.ToList();
 
+        // Multiple sheet rows that agree on the destination folder are one
+        // match, not an ambiguity (the sheet legitimately carries more than
+        // one row per project, e.g. per testing scope).
+        if (final.Count > 1
+            && final.Select(c => c.TargetRoot).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1)
+        {
+            final = new List<MappingRow> { final[0] };
+        }
+
         return final.Count == 1
             ? new FileMatch(FileMatchStatus.Single, final)
             : new FileMatch(FileMatchStatus.Multiple, final);
-    }
-
-    private static IEnumerable<string> Tokenize(string s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) yield break;
-        foreach (var t in Regex.Split(s, "[^A-Za-z0-9]+"))
-        {
-            if (t.Length >= 3) yield return t.ToLowerInvariant();
-        }
     }
 
     private static string MoveWithPolicy(string src, string dst, bool renameOnConflict)
