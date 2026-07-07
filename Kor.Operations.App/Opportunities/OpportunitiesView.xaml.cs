@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -226,8 +227,10 @@ public partial class OpportunitiesView : UserControl
 
     /// <summary>
     /// Creates a Pursuit engagement from the selected opportunity (or opens the
-    /// existing one) and shows the CRM window. Idempotent: if an engagement
-    /// already exists for this opportunity we don't duplicate it.
+    /// existing one) and opens it in the BD workspace Pursuits screen.
+    /// Idempotent: if an engagement already exists for this opportunity we
+    /// don't duplicate it. Routes to CrmView via the workspace (fix F6 — the
+    /// old CrmWindow twin lacked proposal linkage and the audited actor chain).
     /// </summary>
     private async void PromoteToPursuitButton_Click(object sender, RoutedEventArgs e)
     {
@@ -238,11 +241,8 @@ public partial class OpportunitiesView : UserControl
 
         try
         {
-            await _vm.EnsureEngagementAsync(ResolveActor(), CancellationToken.None).ConfigureAwait(true);
-
-            var win = _services.GetRequiredService<App.Crm.CrmWindow>();
-            win.Owner = OwnerWindow();
-            win.Show();
+            var engagement = await _vm.EnsureEngagementAsync(ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            OpenPursuitInWorkspace(engagement.Id);
         }
         catch (Exception ex)
         {
@@ -257,9 +257,24 @@ public partial class OpportunitiesView : UserControl
             return;
         }
 
-        var win = _services.GetRequiredService<App.Crm.CrmWindow>();
-        win.Owner = OwnerWindow();
-        win.Show();
+        OpenPursuitInWorkspace(_vm.SelectedEngagement.Id);
+    }
+
+    /// <summary>
+    /// One pursuit door (fix F6): reuse a visible BD workspace when there is
+    /// one, else open a fresh one, and land on Pursuits with the engagement
+    /// pre-selected — the same path the Overwatch double-click takes.
+    /// </summary>
+    private void OpenPursuitInWorkspace(long engagementId)
+    {
+        var workspace = System.Windows.Application.Current?.Windows
+                            .OfType<App.BusinessDevelopment.Workspace.BdWorkspaceWindow>()
+                            .FirstOrDefault(w => w.IsVisible)
+                        ?? _services.GetRequiredService<App.BusinessDevelopment.Workspace.BdWorkspaceWindow>();
+
+        workspace.NavigateToPursuit(engagementId);
+        workspace.Show();
+        workspace.Activate();
     }
 
     private void OpenRfpButton_Click(object sender, RoutedEventArgs e)

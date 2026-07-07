@@ -16,11 +16,12 @@ using Serilog;
 namespace Kor.Operations.App.Crm;
 
 /// <summary>
-/// Inline UserControl version of the Pursuits (CRM) screen. Hosted in
-/// <c>BdWorkspaceWindow</c>'s ContentHost via the "Pursuits" nav button.
-/// Mirrors <c>CrmWindow</c>'s logic. Sub-window drill-downs (Fee Proposal
-/// Builder, Brochure Builder, Client Intelligence, Engagement edit dialog)
-/// still open as Windows owned by the workspace.
+/// THE Pursuits (CRM) screen — the single implementation since the CrmWindow
+/// twin's retirement (fix F6, 2026-07-07). Hosted in <c>BdWorkspaceWindow</c>'s
+/// ContentHost via the "Pursuits" nav button; every pursuit door (Overwatch
+/// double-click, RFPs Promote/Open, Bazaar grab) routes here. Sub-window
+/// drill-downs (Fee Proposal Builder, Brochure Builder, Client Intelligence,
+/// Engagement edit dialog) still open as Windows owned by the workspace.
 /// </summary>
 public partial class CrmView : UserControl
 {

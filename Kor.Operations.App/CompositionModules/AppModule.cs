@@ -212,9 +212,9 @@ internal static class AppModule
         services.AddTransient<FileSyncCommandCenterViewModel>();
         services.AddTransient<FileSyncCommandCenterWindow>();
 
-        // BD hub - bundles Opportunities, CRM (Phase 5), FeeProposal, Brochure
-        // under one HomeWindow tile.
-        services.AddTransient<App.BusinessDevelopment.BusinessDevelopmentWindow>();
+        // The legacy BusinessDevelopmentWindow hub was retired 2026-07-07 with
+        // CrmWindow (fix F6): it had no remaining callers (BdWorkspaceWindow is
+        // the BD front door) and its CRM button reached the divergent twin.
 
         return services;
     }

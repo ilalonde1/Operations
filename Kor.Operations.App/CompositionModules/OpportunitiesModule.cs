@@ -252,8 +252,10 @@ internal static class OpportunitiesModule
                 deltekOptions.Catalog);
         });
 
+        // CrmWindow (the divergent standalone twin) was retired 2026-07-07 (fix
+        // F6): every pursuit door now routes to CrmView inside BdWorkspaceWindow,
+        // so CRM features are authored exactly once.
         services.AddTransient<CrmViewModel>();
-        services.AddTransient<CrmWindow>();
         services.AddTransient<CrmView>();
 
         // BD Tracking spreadsheet replica (migration 48-49; 70 engagements ingested

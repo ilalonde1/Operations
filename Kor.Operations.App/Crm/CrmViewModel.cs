@@ -17,10 +17,11 @@ using Kor.Opportunities.Data.Opportunities;
 namespace Kor.Operations.App.Crm;
 
 /// <summary>
-/// ViewModel behind <c>CrmWindow</c>. Holds the engagement list (left
-/// master), the activity log + contacts for the selected engagement
-/// (right detail), and exposes <see cref="IAiContextProvider"/> so the
-/// pipeline plus pursuit notes feed the AI context.
+/// ViewModel behind <c>CrmView</c> (the Pursuits screen). Holds the
+/// engagement list (left master), the activity log + contacts for the
+/// selected engagement (right detail), and exposes
+/// <see cref="IAiContextProvider"/> so the pipeline plus pursuit notes feed
+/// the AI context.
 /// </summary>
 public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 {
