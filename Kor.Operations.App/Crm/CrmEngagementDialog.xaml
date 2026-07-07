@@ -28,8 +28,11 @@
         <ComboBox Grid.Row="0" Grid.Column="1" x:Name="StageBox" Margin="0,0,0,8"
                   ItemsSource="{Binding StageOptions}"/>
 
-        <TextBlock Grid.Row="1" Grid.Column="0" Text="Owner staff id" Margin="0,0,0,8" VerticalAlignment="Center"/>
-        <TextBox Grid.Row="1" Grid.Column="1" x:Name="OwnerBox" Margin="0,0,0,8"/>
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="Owner" Margin="0,0,0,8" VerticalAlignment="Center"/>
+        <ComboBox Grid.Row="1" Grid.Column="1" x:Name="OwnerCombo" Margin="0,0,0,8"
+                  IsEditable="True" IsTextSearchEnabled="True"
+                  DisplayMemberPath="Display" TextSearch.TextPath="Display"
+                  ToolTip="Pick from the firm roster. Leaving this unchanged keeps the current owner — an owner can never be blanked from here."/>
 
         <TextBlock Grid.Row="2" Grid.Column="0" Text="Proposed fee (CAD)" Margin="0,0,0,8" VerticalAlignment="Center"/>
         <TextBox Grid.Row="2" Grid.Column="1" x:Name="FeeBox" Margin="0,0,0,8"/>

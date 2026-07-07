@@ -318,15 +318,27 @@ public partial class CrmView : UserControl
         }
     }
 
-    private void EditEngagementButton_Click(object sender, RoutedEventArgs e)
+    private async void EditEngagementButton_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.Selected is null)
         {
             return;
         }
 
-        var wasLost = _vm.Selected.Engagement.Stage == CrmEngagementStage.Lost;
-        var dlg = new CrmEngagementDialog(_vm.Selected.Engagement) { Owner = Window.GetWindow(this) };
+        // Fix F5: owner is picked from the firm roster (same source as the
+        // Overwatch reassign picker). Load failure degrades to an empty,
+        // still-editable combo.
+        var staffStore = _services.GetRequiredService<Kor.Operations.Core.Services.IProposalStaffStore>();
+        var people = await BusinessDevelopment.Workspace.StaffDirectory.LoadOptionsAsync(staffStore).ConfigureAwait(true);
+
+        var row = _vm.Selected;
+        if (row is null)
+        {
+            return; // selection vanished while the roster loaded
+        }
+
+        var wasLost = row.Engagement.Stage == CrmEngagementStage.Lost;
+        var dlg = new CrmEngagementDialog(row.Engagement, people) { Owner = Window.GetWindow(this) };
         if (dlg.ShowDialog() != true || dlg.Result is null)
         {
             return;

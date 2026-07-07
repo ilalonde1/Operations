@@ -7083,7 +7083,10 @@ WHERE  OpportunityId IS NULL
         long? existing = null;
         await using (var cmd = new SqlCommand(lookupSql, con))
         {
-            cmd.Parameters.Add("@init", System.Data.SqlDbType.NVarChar, 20).Value = initiator;
+            // 150 matches the column width post-migration 270 (fix F4): a 20-wide
+            // param client-side-truncates long identities into a NEW owner format
+            // that splits one human across attribution GROUP BYs.
+            cmd.Parameters.Add("@init", System.Data.SqlDbType.NVarChar, 150).Value = initiator;
             cmd.Parameters.Add("@region", System.Data.SqlDbType.NVarChar, 40).Value = region;
             cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = (object?)buyerId ?? DBNull.Value;
             var r = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
@@ -7113,6 +7116,11 @@ WHERE  Id = @id;";
             return new EngagementUpsertResult(eId, false);
         }
 
+        // KNOWN BYPASS (F14, documented not fixed): this raw INSERT writes no
+        // CrmEngagementStageHistory row, so importer-born engagements have no
+        // stage-history start point. Stage-age readers MUST use
+        // COALESCE(min(history.EnteredAtUtc), e.OpenedAtUtc) — the same fallback
+        // the 75 legacy + 177 backfill rows already require.
         const string insertSql = @"
 INSERT INTO opportunities.CrmEngagements
     (OpportunityId, Stage, OwnerStaffId, BuyerCanonicalOrgId, Region,
@@ -7125,7 +7133,8 @@ VALUES
      @actor, @actor);";
         await using (var cmd = new SqlCommand(insertSql, con))
         {
-            cmd.Parameters.Add("@init", System.Data.SqlDbType.NVarChar, 20).Value = initiator;
+            // 150-wide param — see the lookup above (fix F4).
+            cmd.Parameters.Add("@init", System.Data.SqlDbType.NVarChar, 150).Value = initiator;
             cmd.Parameters.Add("@buyer", System.Data.SqlDbType.BigInt).Value = (object?)buyerId ?? DBNull.Value;
             cmd.Parameters.Add("@region", System.Data.SqlDbType.NVarChar, 40).Value = region;
             cmd.Parameters.Add("@submitted", System.Data.SqlDbType.Decimal).Value = (object?)submitted ?? DBNull.Value;

@@ -143,28 +143,11 @@ public partial class OverwatchView : UserControl
     /// an email are still listed (their FullName becomes the stored owner —
     /// matching the legacy first-name owners); the email notification is simply
     /// skipped for them. Failures degrade to an empty list — the picker stays
-    /// editable so a manager can always type a person.
+    /// editable so a manager can always type a person. Shared with the CRM
+    /// owner picker via StaffDirectory (fix F5).
     /// </summary>
-    private async Task<IReadOnlyList<PersonOption>> LoadDirectoryAsync()
-    {
-        try
-        {
-            var staff = await _staffStore.LoadAllAsync(CancellationToken.None).ConfigureAwait(true);
-            return staff
-                .Where(s => !string.IsNullOrWhiteSpace(s.FullName))
-                .GroupBy(s => string.IsNullOrWhiteSpace(s.Email) ? s.FullName : s.Email, StringComparer.OrdinalIgnoreCase)
-                .Select(g => g.First())
-                .Select(s => new PersonOption(
-                    s.FullName.Trim(),
-                    string.IsNullOrWhiteSpace(s.Email) ? s.FullName.Trim() : s.Email.Trim()))
-                .OrderBy(p => p.Display, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-        catch
-        {
-            return Array.Empty<PersonOption>();
-        }
-    }
+    private Task<IReadOnlyList<PersonOption>> LoadDirectoryAsync()
+        => StaffDirectory.LoadOptionsAsync(_staffStore);
 
     /// <summary>
     /// Notify the new owner by email (sent as the signed-in manager). The reassign
