@@ -15,14 +15,21 @@ public sealed class SqlCrmEngagementStore : ICrmEngagementStore
 
     // Round 37a (BD-AUDIT-20260530-R2 T1.001): adds the five migration-48
     // BD-tracking columns to the shared column list. Order must stay in sync
-    // with MapReader's ordinal access below — append-at-end-before-audit keeps
-    // existing call sites' Id/OpportunityId/Stage/... ordinals stable.
+    // with MapReader's ordinal access below — append-at-end keeps existing
+    // call sites' Id/OpportunityId/Stage/... ordinals stable.
+    //
+    // Fix F2 (CRM plan 2026-07-06): the eight migration-267 outcome/provenance
+    // columns finally get a read path (ordinals 22-29, appended after
+    // RowVersion so nothing existing shifts). UpdateAsync's deleted.Stage
+    // moves to ordinal 30 accordingly.
     private const string AllColumns = @"
 Id, OpportunityId, Stage, OwnerStaffId, AssignedStaffIds,
 TargetMargin, ProposedFee, ProposedHours, Notes,
 OpenedAtUtc, ClosedAtUtc, OutcomeNotes,
 BuyerCanonicalOrgId, Region, ProposalsSubmittedCad, ProposalsAcceptedCad, PotentialProjects,
-CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy, RowVersion";
+CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy, RowVersion,
+WonLostOutcome, OutcomeReason, LostToCanonicalOrgId, WonProjectWbs1,
+NextActionDueUtc, NextActionNote, ExternalSource, ExternalSourceKey";
 
     private readonly string _connectionString;
 
@@ -113,18 +120,24 @@ INSERT INTO opportunities.CrmEngagements
      TargetMargin, ProposedFee, ProposedHours, Notes,
      OpenedAtUtc, ClosedAtUtc, OutcomeNotes,
      BuyerCanonicalOrgId, Region, ProposalsSubmittedCad, ProposalsAcceptedCad, PotentialProjects,
+     WonLostOutcome, OutcomeReason, LostToCanonicalOrgId, WonProjectWbs1,
+     NextActionDueUtc, NextActionNote, ExternalSource, ExternalSourceKey,
      CreatedBy, UpdatedBy)
 OUTPUT
     inserted.Id, inserted.OpportunityId, inserted.Stage, inserted.OwnerStaffId, inserted.AssignedStaffIds,
     inserted.TargetMargin, inserted.ProposedFee, inserted.ProposedHours, inserted.Notes,
     inserted.OpenedAtUtc, inserted.ClosedAtUtc, inserted.OutcomeNotes,
     inserted.BuyerCanonicalOrgId, inserted.Region, inserted.ProposalsSubmittedCad, inserted.ProposalsAcceptedCad, inserted.PotentialProjects,
-    inserted.CreatedAtUtc, inserted.CreatedBy, inserted.UpdatedAtUtc, inserted.UpdatedBy, inserted.RowVersion
+    inserted.CreatedAtUtc, inserted.CreatedBy, inserted.UpdatedAtUtc, inserted.UpdatedBy, inserted.RowVersion,
+    inserted.WonLostOutcome, inserted.OutcomeReason, inserted.LostToCanonicalOrgId, inserted.WonProjectWbs1,
+    inserted.NextActionDueUtc, inserted.NextActionNote, inserted.ExternalSource, inserted.ExternalSourceKey
 VALUES
     (@oppId, @stage, @owner, @assigned,
      @margin, @fee, @hours, @notes,
      @openedAt, @closedAt, @outcomeNotes,
      @buyerCanonicalOrgId, @region, @proposalsSubmittedCad, @proposalsAcceptedCad, @potentialProjects,
+     @wonLostOutcome, @outcomeReason, @lostToCanonicalOrgId, @wonProjectWbs1,
+     @nextActionDueUtc, @nextActionNote, @externalSource, @externalSourceKey,
      @actor, @actor);";
 
         await using var con = new SqlConnection(_connectionString);
@@ -220,6 +233,16 @@ WHERE OpportunityId IS NULL
 
     public async Task<CrmEngagement> UpdateAsync(CrmEngagement engagement, string actorDisplay, CancellationToken ct)
     {
+        // ClosedAtUtc is SERVER-owned (fix F7): entering a terminal stage stamps
+        // it once, staying terminal preserves the original close date (an
+        // outcome-flavour switch is not a re-close), and reopening clears it —
+        // both close doors (stage menu, edit dialog) get identical semantics
+        // and no caller can forget the stamp or resurrect a stale one.
+        //
+        // ExternalSource/ExternalSourceKey are deliberately NOT in the SET list:
+        // provenance is immutable after insert (fix F2). The outcome columns ARE
+        // set — the model now carries them (read-modify-write, never a blind
+        // overwrite of unread columns).
         var sql = $@"
 UPDATE opportunities.CrmEngagements
 SET Stage                 = @stage,
@@ -230,13 +253,21 @@ SET Stage                 = @stage,
     ProposedHours         = @hours,
     Notes                 = @notes,
     OpenedAtUtc           = @openedAt,
-    ClosedAtUtc           = @closedAt,
+    ClosedAtUtc           = CASE WHEN @stage IN (6, 7)
+                                 THEN CASE WHEN Stage IN (6, 7) THEN ClosedAtUtc ELSE sysdatetimeoffset() END
+                                 ELSE NULL END,
     OutcomeNotes          = @outcomeNotes,
     BuyerCanonicalOrgId   = @buyerCanonicalOrgId,
     Region                = @region,
     ProposalsSubmittedCad = @proposalsSubmittedCad,
     ProposalsAcceptedCad  = @proposalsAcceptedCad,
     PotentialProjects     = @potentialProjects,
+    WonLostOutcome        = @wonLostOutcome,
+    OutcomeReason         = @outcomeReason,
+    LostToCanonicalOrgId  = @lostToCanonicalOrgId,
+    WonProjectWbs1        = @wonProjectWbs1,
+    NextActionDueUtc      = @nextActionDueUtc,
+    NextActionNote        = @nextActionNote,
     UpdatedAtUtc          = sysdatetimeoffset(),
     UpdatedBy             = @actor
 OUTPUT
@@ -245,6 +276,8 @@ OUTPUT
     inserted.OpenedAtUtc, inserted.ClosedAtUtc, inserted.OutcomeNotes,
     inserted.BuyerCanonicalOrgId, inserted.Region, inserted.ProposalsSubmittedCad, inserted.ProposalsAcceptedCad, inserted.PotentialProjects,
     inserted.CreatedAtUtc, inserted.CreatedBy, inserted.UpdatedAtUtc, inserted.UpdatedBy, inserted.RowVersion,
+    inserted.WonLostOutcome, inserted.OutcomeReason, inserted.LostToCanonicalOrgId, inserted.WonProjectWbs1,
+    inserted.NextActionDueUtc, inserted.NextActionNote, inserted.ExternalSource, inserted.ExternalSourceKey,
     deleted.Stage
 WHERE Id = @id AND RowVersion = @rv;";
 
@@ -265,7 +298,7 @@ WHERE Id = @id AND RowVersion = @rv;";
             if (await reader.ReadAsync(ct).ConfigureAwait(false))
             {
                 updated = MapReader(reader);
-                previousStage = reader.GetInt32(22); // deleted.Stage, appended after the row image
+                previousStage = reader.GetInt32(30); // deleted.Stage, appended after the row image (22-29 = outcome columns)
             }
         }
 
@@ -308,6 +341,17 @@ WHERE Id = @id AND RowVersion = @rv;";
         AddDecimal(cmd, "@proposalsSubmittedCad", precision: 18, scale: 2, value: e.ProposalsSubmittedCad);
         AddDecimal(cmd, "@proposalsAcceptedCad", precision: 18, scale: 2, value: e.ProposalsAcceptedCad);
         cmd.Parameters.Add("@potentialProjects", SqlDbType.NVarChar, -1).Value = (object?)e.PotentialProjects ?? DBNull.Value;
+        // Fix F2: migration-267 outcome/provenance columns. @externalSource/Key
+        // are referenced by INSERT only (UPDATE treats provenance as immutable);
+        // unreferenced parameters on the UPDATE command are harmless.
+        cmd.Parameters.Add("@wonLostOutcome", SqlDbType.Int).Value = (object?)(int?)e.WonLostOutcome ?? DBNull.Value;
+        cmd.Parameters.Add("@outcomeReason", SqlDbType.NVarChar, 2000).Value = (object?)e.OutcomeReason ?? DBNull.Value;
+        cmd.Parameters.Add("@lostToCanonicalOrgId", SqlDbType.BigInt).Value = (object?)e.LostToCanonicalOrgId ?? DBNull.Value;
+        cmd.Parameters.Add("@wonProjectWbs1", SqlDbType.NVarChar, 50).Value = (object?)e.WonProjectWbs1 ?? DBNull.Value;
+        cmd.Parameters.Add("@nextActionDueUtc", SqlDbType.DateTimeOffset).Value = (object?)e.NextActionDueUtc ?? DBNull.Value;
+        cmd.Parameters.Add("@nextActionNote", SqlDbType.NVarChar, 500).Value = (object?)e.NextActionNote ?? DBNull.Value;
+        cmd.Parameters.Add("@externalSource", SqlDbType.NVarChar, 50).Value = (object?)e.ExternalSource ?? DBNull.Value;
+        cmd.Parameters.Add("@externalSourceKey", SqlDbType.NVarChar, 200).Value = (object?)e.ExternalSourceKey ?? DBNull.Value;
     }
 
     private static void AddDecimal(SqlCommand cmd, string name, byte precision, byte scale, decimal? value)
@@ -346,5 +390,14 @@ WHERE Id = @id AND RowVersion = @rv;";
         UpdatedAtUtc = r.GetDateTimeOffset(19),
         UpdatedBy = r.GetString(20),
         RowVersion = (byte[])r.GetValue(21),
+        // Fix F2: migration-267 outcome/provenance columns at ordinals 22-29.
+        WonLostOutcome = r.IsDBNull(22) ? null : (WonLostOutcome)r.GetInt32(22),
+        OutcomeReason = r.IsDBNull(23) ? null : r.GetString(23),
+        LostToCanonicalOrgId = r.IsDBNull(24) ? null : r.GetInt64(24),
+        WonProjectWbs1 = r.IsDBNull(25) ? null : r.GetString(25),
+        NextActionDueUtc = r.IsDBNull(26) ? null : r.GetDateTimeOffset(26),
+        NextActionNote = r.IsDBNull(27) ? null : r.GetString(27),
+        ExternalSource = r.IsDBNull(28) ? null : r.GetString(28),
+        ExternalSourceKey = r.IsDBNull(29) ? null : r.GetString(29),
     };
 }

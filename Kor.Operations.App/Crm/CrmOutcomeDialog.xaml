@@ -1,0 +1,61 @@
+<Window x:Class="Kor.Operations.App.Crm.CrmOutcomeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.App.Controls"
+        Title="Pursuit outcome"
+        Width="460" Height="330"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" x:Name="HeaderText"
+                   TextWrapping="Wrap" FontWeight="SemiBold"
+                   Foreground="{StaticResource Brand.Primary.Brush}"
+                   Margin="0,0,0,10"/>
+
+        <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,0,0,10">
+            <RadioButton x:Name="LostRadio" Content="Lost — someone else won it" IsChecked="True"
+                         Checked="OutcomeRadio_Checked" Margin="0,0,0,4"/>
+            <RadioButton x:Name="NoBidRadio" Content="No-bid — we chose not to pursue"
+                         Checked="OutcomeRadio_Checked" Margin="0,0,0,4"/>
+            <RadioButton x:Name="WithdrawnRadio" Content="Withdrawn — the buyer cancelled or pulled it"
+                         Checked="OutcomeRadio_Checked"/>
+        </StackPanel>
+
+        <TextBlock Grid.Row="2" x:Name="LostToLabel" Text="Lost to (optional — start typing the firm)" FontSize="12"
+                   Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+        <controls:OrgSearchTypeahead Grid.Row="3" x:Name="LostToSearch"
+                                     PlaceholderText="Who won it?"
+                                     Margin="0,0,0,4"/>
+        <TextBlock Grid.Row="4" x:Name="LostToPicked" FontSize="11"
+                   Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,8"
+                   Visibility="Collapsed"/>
+
+        <StackPanel Grid.Row="5" Orientation="Vertical" Margin="0,0,0,4">
+            <TextBlock Text="Why (optional, one line)" FontSize="12"
+                       Foreground="{StaticResource Text.Secondary}" Margin="0,0,0,4"/>
+            <TextBox x:Name="ReasonBox" Padding="10,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Skip" Width="90" Margin="0,0,8,0" IsDefault="True" IsCancel="True"
+                    ToolTip="Close without recording an outcome — you can still edit the engagement later."/>
+            <Button Content="Save outcome" Width="130"
+                    Style="{StaticResource Button.Primary}"
+                    Click="Save_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

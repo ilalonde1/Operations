@@ -277,11 +277,44 @@ public partial class CrmView : UserControl
 
         try
         {
-            await _vm.ChangeStageAsync(_vm.Selected, newStage, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            var wasLost = _vm.Selected.Engagement.Stage == CrmEngagementStage.Lost;
+            var saved = await _vm.ChangeStageAsync(_vm.Selected, newStage, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+
+            if (newStage == CrmEngagementStage.Lost && !wasLost)
+            {
+                await PromptForLostOutcomeAsync(saved).ConfigureAwait(true);
+            }
         }
         catch (Exception ex)
         {
             MessageBox.Show(Window.GetWindow(this), ex.Message, "CRM — Stage Change Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Plan 1.5: the only moment the owner knows who beat us. One optional
+    /// dialog — Skip is the default and costs one click; saving records
+    /// outcome/lost-to/reason via read-modify-write on the fresh row.
+    /// </summary>
+    private async Task PromptForLostOutcomeAsync(Kor.Opportunities.Core.Models.CrmEngagement fresh)
+    {
+        try
+        {
+            var orgStore = _services.GetRequiredService<Kor.Opportunities.Data.Awards.ICanonicalOrgStore>();
+            var name = _vm.Engagements.FirstOrDefault(r => r.Id == fresh.Id)?.ProjectName ?? "(pursuit)";
+            var dlg = new CrmOutcomeDialog(name, orgStore) { Owner = Window.GetWindow(this) };
+            if (dlg.ShowDialog() != true)
+            {
+                return; // Skip — never mandatory
+            }
+
+            await _vm.SetLostOutcomeAsync(fresh, dlg.Outcome, dlg.LostToCanonicalOrgId, dlg.Reason, ResolveActor(), CancellationToken.None)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            // The stage change already committed; outcome capture is best-effort.
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "CRM — Outcome Not Saved", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -292,20 +325,28 @@ public partial class CrmView : UserControl
             return;
         }
 
+        var wasLost = _vm.Selected.Engagement.Stage == CrmEngagementStage.Lost;
         var dlg = new CrmEngagementDialog(_vm.Selected.Engagement) { Owner = Window.GetWindow(this) };
         if (dlg.ShowDialog() != true || dlg.Result is null)
         {
             return;
         }
 
-        _ = SaveEditedEngagementAsync(dlg.Result);
+        _ = SaveEditedEngagementAsync(dlg.Result, promptLostOutcome: dlg.Result.Stage == CrmEngagementStage.Lost && !wasLost);
     }
 
-    private async Task SaveEditedEngagementAsync(CrmEngagement edited)
+    private async Task SaveEditedEngagementAsync(CrmEngagement edited, bool promptLostOutcome)
     {
         try
         {
-            await _vm.SaveEngagementAsync(edited, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+            var saved = await _vm.SaveEngagementAsync(edited, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+
+            // Same close-out prompt as the stage menu (plan 1.5) — both Lost
+            // doors behave identically.
+            if (promptLostOutcome)
+            {
+                await PromptForLostOutcomeAsync(saved).ConfigureAwait(true);
+            }
         }
         catch (Exception ex)
         {

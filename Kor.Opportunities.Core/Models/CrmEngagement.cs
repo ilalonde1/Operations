@@ -79,6 +79,37 @@ public sealed record CrmEngagement
     /// fuzzy-matches this against MajorProjectsInventory project names.
     /// </summary>
     public string? PotentialProjects { get; init; }
+
+    // ===== Pursuit-outcome / provenance columns (migration 267) =====
+    //
+    // Written when a pursuit closes (outcome) or at birth (provenance). The
+    // store's UpdateAsync deliberately excludes ExternalSource/Key from its
+    // SET list — provenance is immutable after insert (fix F2).
+
+    /// <summary>How the pursuit resolved: Won/Lost/NoBid/Withdrawn. Null while open.</summary>
+    public WonLostOutcome? WonLostOutcome { get; init; }
+
+    /// <summary>One-line human reason captured at close ("lost on fee", "went design-build").</summary>
+    public string? OutcomeReason { get; init; }
+
+    /// <summary>FK to CanonicalOrg(Id) — who beat us, when known. Lost only.</summary>
+    public long? LostToCanonicalOrgId { get; init; }
+
+    /// <summary>Deltek project WBS1 the win became, once linked. Won only.</summary>
+    public string? WonProjectWbs1 { get; init; }
+
+    /// <summary>Optional next-action tickler (no UI consumer yet — see plan anti-feature 4).</summary>
+    public DateTimeOffset? NextActionDueUtc { get; init; }
+
+    public string? NextActionNote { get; init; }
+
+    /// <summary>Birth provenance: 'Grab.&lt;feed&gt;' for claimed opportunities,
+    /// 'Deltek.CustomProposal' for the migration-268 win backfill. Immutable.</summary>
+    public string? ExternalSource { get; init; }
+
+    /// <summary>Unique key within <see cref="ExternalSource"/> (OpportunityKey for
+    /// grabs; Deltek proposal key for the backfill). Immutable.</summary>
+    public string? ExternalSourceKey { get; init; }
 }
 
 /// <summary>

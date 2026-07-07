@@ -341,17 +341,44 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
     public async Task<CrmEngagement> ChangeStageAsync(CrmEngagementRowView row, CrmEngagementStage newStage, string actor, CancellationToken ct)
     {
-        var updated = row.Engagement with
-        {
-            Stage = newStage,
-            ClosedAtUtc = IsTerminal(newStage) ? (row.Engagement.ClosedAtUtc ?? DateTimeOffset.UtcNow) : row.Engagement.ClosedAtUtc,
-        };
+        // ClosedAtUtc is server-owned (fix F7): the store's UpdateAsync stamps it
+        // on entering Won/Lost, preserves it while terminal, and clears it on
+        // reopen — identically for every close door.
+        var updated = row.Engagement with { Stage = newStage };
 
         var saved = await _engagementStore.UpdateAsync(updated, actor, ct).ConfigureAwait(true);
         ReplaceEngagement(saved);
         StatusMessage = $"{row.OpportunityKey}: stage → {newStage}.";
         return saved;
     }
+
+    /// <summary>
+    /// Writes the optional close-out facts captured by the Lost-outcome prompt
+    /// (plan 1.5). Read-modify-write over the freshly saved row so nothing else
+    /// is disturbed; RowVersion guards the race.
+    /// </summary>
+    public async Task<CrmEngagement> SetLostOutcomeAsync(
+        CrmEngagement fresh, WonLostOutcome outcome, long? lostToCanonicalOrgId, string? reason, string actor, CancellationToken ct)
+    {
+        var updated = fresh with
+        {
+            WonLostOutcome = outcome,
+            LostToCanonicalOrgId = outcome == Kor.Opportunities.Core.Models.WonLostOutcome.Lost ? lostToCanonicalOrgId : null,
+            OutcomeReason = string.IsNullOrWhiteSpace(reason) ? fresh.OutcomeReason : reason.Trim(),
+        };
+
+        var saved = await _engagementStore.UpdateAsync(updated, actor, ct).ConfigureAwait(true);
+        ReplaceEngagement(saved);
+        StatusMessage = $"{OutcomeLabel(outcome)} outcome recorded.";
+        return saved;
+    }
+
+    private static string OutcomeLabel(WonLostOutcome o) => o switch
+    {
+        Kor.Opportunities.Core.Models.WonLostOutcome.NoBid => "No-bid",
+        Kor.Opportunities.Core.Models.WonLostOutcome.Withdrawn => "Withdrawn",
+        _ => o.ToString(),
+    };
 
     public async Task<CrmEngagement> SaveEngagementAsync(CrmEngagement edited, string actor, CancellationToken ct)
     {
@@ -435,9 +462,6 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             }
         }
     }
-
-    private static bool IsTerminal(CrmEngagementStage s)
-        => s is CrmEngagementStage.Won or CrmEngagementStage.Lost;
 
     // ------------------------------------------------------------------------
     // IAiContextProvider
