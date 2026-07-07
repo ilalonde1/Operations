@@ -10,7 +10,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Media;
-using Microsoft.Data.SqlClient;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Operations.App.Crm;
@@ -724,25 +723,17 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
         // Fallback: GrabAsync reported AlreadyTaken but no engagement exists yet —
         // the opportunity isn't grabbable (already owned, or a non-New status such
-        // as a Lost opp being promoted). Create one owned by the actor.
+        // as a Lost opp being promoted). Claim it server-side (fix F9): the old
+        // client-side InsertAsync dropped the buyer canonical org (dead Buyer-intel
+        // button) and never wrote the assignment log, so same-shaped pursuits
+        // behaved differently depending on which door created them.
         if (saved is null)
         {
-            var draft = new CrmEngagement
-            {
-                OpportunityId = row.Model.Id,
-                Stage = CrmEngagementStage.Drafting,
-                OwnerStaffId = actor,
-            };
-            try
-            {
-                saved = await _engagementStore.InsertAsync(draft, actor, ct).ConfigureAwait(true);
-            }
-            catch (SqlException ex) when (ex.Number is 2601 or 2627)
-            {
-                // A concurrent caller created it first (the filtered unique index on
-                // OpportunityId blocks the duplicate) — re-fetch the now-existing one.
-                saved = await _engagementStore.GetByOpportunityAsync(row.Model.Id, ct).ConfigureAwait(true);
-            }
+            var claimedId = await _grabStore.ClaimOwnedAsync(row.Model.Id, actor, ct).ConfigureAwait(true);
+            saved = claimedId > 0
+                ? await _engagementStore.GetByIdAsync(claimedId, ct).ConfigureAwait(true)
+                // 0 = a concurrent caller created it first — re-fetch the winner's row.
+                : await _engagementStore.GetByOpportunityAsync(row.Model.Id, ct).ConfigureAwait(true);
 
             // Preserve the old status semantics the explicit bump used to provide:
             // a still-New opportunity that couldn't be grabbed (already owned) still

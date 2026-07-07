@@ -376,7 +376,16 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         };
 
         var saved = await _activityStore.AppendAsync(activity, actor, ct).ConfigureAwait(true);
-        Activities.Insert(0, new CrmActivityRowView(saved));
+
+        // The DB write targeted engagementId explicitly; only the detail panel is
+        // selection-bound. If the user switched rows during the await, inserting
+        // here would show the activity under the WRONG engagement (fix F10 — same
+        // guard LoadDetailAsync already uses).
+        if (Selected?.Id == engagementId)
+        {
+            Activities.Insert(0, new CrmActivityRowView(saved));
+        }
+
         StatusMessage = $"Logged {type}: {subject}.";
         return saved;
     }
@@ -394,7 +403,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         };
 
         var saved = await _contactStore.InsertAsync(contact, actor, ct).ConfigureAwait(true);
-        Contacts.Add(new CrmContactRowView(saved));
+
+        // Same stale-selection guard as AppendActivityAsync (fix F10): the row
+        // may have changed during the await; the write itself was correct.
+        if (Selected?.Id == engagementId)
+        {
+            Contacts.Add(new CrmContactRowView(saved));
+        }
+
         StatusMessage = $"Added contact {displayName}.";
         return saved;
     }

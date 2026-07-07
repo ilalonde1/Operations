@@ -159,6 +159,7 @@ public sealed class OverwatchViewModel : ObservableObject, IAiContextProvider
                 ReassignOutcome.Reassigned => $"Reassigned “{row.ProjectName}” from {row.OwnerDisplay} to {toOwner}.",
                 ReassignOutcome.OwnerChanged => $"“{row.ProjectName}” was already moved by someone else — refresh to see who owns it.",
                 ReassignOutcome.DuplicateForTarget => $"{toOwner} already holds a pursuit for this buyer/region — not moved.",
+                ReassignOutcome.PursuitClosed => $"“{row.ProjectName}” has closed (Won/Lost) since the board loaded — not moved. Refresh the board.",
                 _ => StatusMessage,
             };
             return outcome;

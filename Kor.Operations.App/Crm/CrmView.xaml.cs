@@ -133,8 +133,17 @@ public partial class CrmView : UserControl
 
                     if (opportunityId.HasValue)
                     {
-                        EventHandler<string> onSaved = async (_, proposalId) =>
+                        // One-shot on the FIRST save (fix F11): a builder left open
+                        // and repurposed for a different project would otherwise
+                        // link (and re-advance) the ORIGINAL pursuit on every
+                        // subsequent save. The Closed unsubscribe stays as a
+                        // belt-and-braces cleanup for the never-saved case.
+                        EventHandler<string>? onSaved = null;
+                        onSaved = async (_, proposalId) =>
+                        {
+                            proposalVm.ProposalSaved -= onSaved;
                             await LinkProposalToPursuitAsync(opportunityId.Value, engagementId, proposalId).ConfigureAwait(true);
+                        };
                         proposalVm.ProposalSaved += onSaved;
                         win.Closed += (_, _) => proposalVm.ProposalSaved -= onSaved;
                     }

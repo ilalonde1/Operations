@@ -40,6 +40,11 @@ public enum ReassignOutcome
     /// buyer + region (the unique BD-relationship key). No change made.</summary>
     DuplicateForTarget,
 
+    /// <summary>The pursuit closed (Won/Lost) since the board loaded. Re-owning a
+    /// closed pursuit would silently rewrite win/loss attribution, so the move is
+    /// refused (fix F3, CRM plan 2026-07-06). No change made.</summary>
+    PursuitClosed,
+
     /// <summary>The request was dropped without touching the database (e.g. a
     /// re-entrant double-click while a reassign was in flight). Show nothing.</summary>
     Ignored,
@@ -86,7 +91,11 @@ SELECT e.Id                                            AS EngagementId,
        e.Stage                                         AS Stage,
        COALESCE(o.Name, e.PotentialProjects, N'(unnamed)') AS ProjectName,
        COALESCE(o.BuyerName, N'')                      AS Buyer,
-       e.Region                                        AS Region,
+       -- BD-tracking rows carry the spreadsheet Region; grabbed pursuits have
+       -- none (Opportunities has no Region column — F1 deviation, documented),
+       -- so fall back to the opportunity's real ProjectProvince rather than
+       -- rendering blank. Both values are real data; neither is derived.
+       COALESCE(e.Region, o.ProjectProvince)           AS Region,
        la.LastActivityUtc                              AS LastActivityUtc,
        e.OpenedAtUtc                                   AS OpenedAtUtc,
        COALESCE(la.ActivityCount, 0)                   AS ActivityCount
@@ -101,8 +110,11 @@ WHERE e.OwnerStaffId IS NOT NULL
   AND e.Stage IN (1, 3)
 ORDER BY COALESCE(la.LastActivityUtc, e.OpenedAtUtc) ASC;";
 
-    // Re-own the engagement (guard: still owned by @from), sync the parent
-    // opportunity's owner when present, and log the move — one transaction.
+    // Re-own the engagement (guard: still owned by @from AND still active), sync
+    // the parent opportunity's owner when present, and log the move — one
+    // transaction. The Stage IN (1,3) guard stops a stale board from re-owning a
+    // closed Won/Lost pursuit, which would rewrite win/loss attribution (fix F3);
+    // Ok=2 tells the caller the pursuit closed, Ok=0 that the owner changed.
     private const string ReassignSql = @"
 SET XACT_ABORT ON;
 SET NOCOUNT ON;
@@ -114,12 +126,17 @@ UPDATE opportunities.CrmEngagements
        UpdatedAtUtc  = SYSDATETIMEOFFSET(),
        UpdatedBy     = @by
  WHERE Id = @engId
-   AND OwnerStaffId = @from;
+   AND OwnerStaffId = @from
+   AND Stage IN (1, 3);
 
 IF @@ROWCOUNT = 0
 BEGIN
     ROLLBACK TRANSACTION;
-    SELECT CAST(0 AS int) AS Ok;
+    SELECT CASE WHEN EXISTS (SELECT 1 FROM opportunities.CrmEngagements
+                             WHERE Id = @engId AND Stage NOT IN (1, 3))
+                THEN CAST(2 AS int)
+                ELSE CAST(0 AS int)
+           END AS Ok;
 END
 ELSE
 BEGIN
@@ -205,7 +222,12 @@ END";
         {
             var scalar = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
             var ok = scalar is int i ? i : Convert.ToInt32(scalar);
-            return ok == 1 ? ReassignOutcome.Reassigned : ReassignOutcome.OwnerChanged;
+            return ok switch
+            {
+                1 => ReassignOutcome.Reassigned,
+                2 => ReassignOutcome.PursuitClosed,
+                _ => ReassignOutcome.OwnerChanged,
+            };
         }
         catch (SqlException ex) when (ex.Number is 2601 or 2627)
         {
