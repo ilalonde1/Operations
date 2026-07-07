@@ -43,22 +43,22 @@
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>
-            <Separator Margin="16,4,16,4"/>
-
-            <!-- Plan 1.1: find your pursuit without scanning 252 rows. -->
-            <TextBox Width="220" Padding="10,0" VerticalContentAlignment="Center"
-                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                     ToolTip="Search key / project / buyer / owner (debounced)."/>
-            <ToggleButton Content="Mine" Width="70" Margin="8,0,0,0"
-                          IsChecked="{Binding MineOnly}"
-                          ToolTip="Show only pursuits you own."/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Orientation="Vertical">
             <!-- Pipeline-by-stage pills — CLICK-FILTERS (plan 1.1). The default
                  view is live pursuits; Won/Lost pills reveal closed history.
-                 The active pill gets a dark ring. -->
-            <ItemsControl ItemsSource="{Binding StageSummary}" Margin="0,0,0,8"
+                 The active pill gets a dark ring. Search + Mine live on this
+                 row (the action toolbar clips at ≤1600px). -->
+            <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                <ToggleButton DockPanel.Dock="Right" Content="Mine" Width="70"
+                              IsChecked="{Binding MineOnly}"
+                              ToolTip="Show only pursuits you own."/>
+                <TextBox DockPanel.Dock="Right" Width="220" Margin="0,0,8,0" Padding="10,0"
+                         VerticalContentAlignment="Center"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Search key / project / buyer / owner (debounced)."/>
+            <ItemsControl DockPanel.Dock="Left" ItemsSource="{Binding StageSummary}"
                           Visibility="{Binding HasStageSummary, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
@@ -90,6 +90,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </DockPanel>
 
             <Border Margin="0,0,0,8" Padding="10,6"
                     Background="#F4F8FB" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
