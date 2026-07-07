@@ -46,8 +46,31 @@ public partial class CrmView : UserControl
         }
 
         _initialized = true;
+        // Plan 1.1: the Mine toggle keys on the resolved identity; the row
+        // filter installs on the grid's default collection view.
+        _vm.CurrentActorUpn = ResolveActor();
+        _vm.EnsureViewFilterInstalled();
         AppServices.Get<AppAiContextBuilder>().Register(_vm);
         await ReloadAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Plan 1.1: stage pills are click-filters.</summary>
+    private void StageChip_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: CrmViewModel.StageChip chip })
+        {
+            _vm.SetStageChipFilter(chip.Key);
+        }
+    }
+
+    /// <summary>Plan 1.2: Enter in the subject box logs immediately.</summary>
+    private void ActivitySubjectBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
+        {
+            e.Handled = true;
+            LogActivityButton_Click(sender, e);
+        }
     }
 
     private void View_Unloaded(object sender, RoutedEventArgs e)
@@ -179,6 +202,26 @@ public partial class CrmView : UserControl
             var linkStore = _services.GetRequiredService<Kor.Opportunities.Data.Opportunities.IOpportunityFeeProposalLinkStore>();
             await linkStore.LinkAsync(opportunityId, feeProposalId, actor, CancellationToken.None).ConfigureAwait(true);
 
+            // Plan 1.6: the proposal event logs ITSELF — nobody types "sent the
+            // fee proposal". Makes the Overwatch staleness clock truthful for
+            // the most important pursuit event. F11's one-shot bounds this to
+            // one activity per builder launch; residual duplicates from
+            // re-opening the builder are honest noise (documented decision).
+            try
+            {
+                await _vm.AppendActivityAsync(
+                    engagementId,
+                    CrmActivityType.Deliverable,
+                    "Fee proposal saved",
+                    $"Fee proposal {feeProposalId:N} saved from this pursuit and linked to its opportunity.",
+                    actor,
+                    CancellationToken.None).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Auto-logging the fee-proposal activity failed; the link itself committed.");
+            }
+
             // Re-read fresh state before advancing so a builder that stayed open can't
             // overwrite a pursuit that has since moved on — advance only if still Drafting,
             // and update the CURRENT engagement, not the one captured at launch.
@@ -238,11 +281,13 @@ public partial class CrmView : UserControl
     private void ClientIntelligenceButton_Click(object sender, RoutedEventArgs e)
     {
         var owner = Window.GetWindow(this);
-        var deltekId = _vm.Selected?.Opportunity?.DeltekClientId;
+        // Plan 1.3: same key the Deltek panel resolved (buyer-org Clendor path
+        // first, opportunity fallback) so panel and drill can never disagree.
+        var deltekId = _vm.ResolvedDeltekClientId;
         if (string.IsNullOrWhiteSpace(deltekId))
         {
             MessageBox.Show(owner,
-                "This engagement isn't linked to a Deltek client.",
+                "No Deltek record for this engagement's buyer.",
                 "CRM — Client Intelligence",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -445,7 +490,21 @@ public partial class CrmView : UserControl
             return;
         }
 
-        var type = (CrmActivityType)(ActivityTypeBox.SelectedItem ?? CrmActivityType.Note);
+        var type = ActivityTypeBox.SelectedItem is CrmViewModel.ActivityTypeOption opt
+            ? opt.Value
+            : CrmActivityType.Note;
+
+        // Plan 1.2: optional backdate. A picked past date is recorded at local
+        // noon (honest day-resolution — the user knows the day, not the minute);
+        // blank or today = now.
+        DateTimeOffset? occurredAt = null;
+        if (ActivityDateBox.SelectedDate is { } picked && picked.Date != DateTime.Today)
+        {
+            occurredAt = new DateTimeOffset(picked.Date.AddHours(12), TimeZoneInfo.Local.GetUtcOffset(picked.Date.AddHours(12)))
+                .ToUniversalTime();
+        }
+
+        var contactId = (ActivityContactBox.SelectedItem as CrmContactRowView)?.Id;
 
         try
         {
@@ -455,10 +514,15 @@ public partial class CrmView : UserControl
                 subject,
                 NullIfBlank(ActivityBodyBox.Text),
                 ResolveActor(),
-                CancellationToken.None).ConfigureAwait(true);
+                CancellationToken.None,
+                occurredAt,
+                contactId).ConfigureAwait(true);
 
             ActivitySubjectBox.Clear();
             ActivityBodyBox.Clear();
+            ActivityDateBox.SelectedDate = null;
+            ActivityContactBox.SelectedItem = null;
+            ActivitySubjectBox.Focus();
         }
         catch (Exception ex)
         {

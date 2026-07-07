@@ -43,11 +43,21 @@
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>
+            <Separator Margin="16,4,16,4"/>
+
+            <!-- Plan 1.1: find your pursuit without scanning 252 rows. -->
+            <TextBox Width="220" Padding="10,0" VerticalContentAlignment="Center"
+                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Search key / project / buyer / owner (debounced)."/>
+            <ToggleButton Content="Mine" Width="70" Margin="8,0,0,0"
+                          IsChecked="{Binding MineOnly}"
+                          ToolTip="Show only pursuits you own."/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Orientation="Vertical">
-            <!-- Pipeline-by-stage pills. Colours match the row stage badges; makes
-                 the win history (Won 177) land at a glance. -->
+            <!-- Pipeline-by-stage pills — CLICK-FILTERS (plan 1.1). The default
+                 view is live pursuits; Won/Lost pills reveal closed history.
+                 The active pill gets a dark ring. -->
             <ItemsControl ItemsSource="{Binding StageSummary}" Margin="0,0,0,8"
                           Visibility="{Binding HasStageSummary, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                 <ItemsControl.ItemsPanel>
@@ -55,7 +65,23 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="{Binding Brush}" CornerRadius="999" Padding="12,4" Margin="0,0,8,0">
+                        <Border Background="{Binding Brush}" CornerRadius="999" Padding="12,4" Margin="0,0,8,0"
+                                Cursor="Hand" MouseLeftButtonUp="StageChip_MouseUp"
+                                ToolTip="Click to filter the list to this stage; click again for the live view.">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                    <Setter Property="Opacity" Value="0.72"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="BorderThickness" Value="2"/>
+                                            <Setter Property="BorderBrush" Value="#1F2937"/>
+                                            <Setter Property="Opacity" Value="1"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding Label}" Foreground="White" FontWeight="SemiBold" FontSize="12"/>
                                 <TextBlock Text="{Binding Count}" Foreground="White" FontWeight="Bold" FontSize="12" Margin="7,0,0,0"/>
@@ -238,12 +264,22 @@
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Text="Activity log" Margin="0,0,0,8" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
 
+                        <!-- Plan 1.2: one-decision logging — type + subject + Enter.
+                             Everything else (date, contact, notes) is optional. -->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
                             <ComboBox x:Name="ActivityTypeBox" Width="110" Margin="0,0,4,0"
-                                      ItemsSource="{Binding ActivityTypeOptions}" SelectedIndex="0"/>
-                            <TextBox x:Name="ActivitySubjectBox" Width="240" Margin="0,0,4,0"
-                                     ToolTip="Subject (required)"/>
-                            <TextBox x:Name="ActivityBodyBox" Width="320" Margin="0,0,4,0"
+                                      ItemsSource="{Binding ActivityTypeOptions}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedIndex="0"/>
+                            <TextBox x:Name="ActivitySubjectBox" Width="220" Margin="0,0,4,0"
+                                     KeyDown="ActivitySubjectBox_KeyDown"
+                                     ToolTip="Subject (required). Press Enter to log."/>
+                            <DatePicker x:Name="ActivityDateBox" Width="110" Margin="0,0,4,0"
+                                        ToolTip="When it happened (optional — blank = now). Friday's call can be logged on Monday."/>
+                            <ComboBox x:Name="ActivityContactBox" Width="140" Margin="0,0,4,0"
+                                      ItemsSource="{Binding Contacts}" DisplayMemberPath="DisplayName"
+                                      ToolTip="Who it was with (optional — this engagement's contacts)."/>
+                            <TextBox x:Name="ActivityBodyBox" Width="220" Margin="0,0,4,0"
                                      ToolTip="Notes (optional)"/>
                             <Button Content="Log" Width="60" Click="LogActivityButton_Click"/>
                         </StackPanel>

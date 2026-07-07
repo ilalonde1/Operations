@@ -32,6 +32,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private readonly ICrmContactStore _contactStore;
     private readonly IOpportunityStore _opportunityStore;
     private readonly IDeltekClientContextService _deltekContextService;
+    private readonly Kor.Opportunities.Data.Awards.ICanonicalOrgStore _orgStore;
 
     private CrmEngagementRowView? _selected;
     private string _statusMessage = "Ready.";
@@ -40,6 +41,21 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private CrmAnalyticsSnapshot? _analytics;
     private CancellationTokenSource? _detailCts;
     private CrmEngagementRowView[] _contextSnapshot = Array.Empty<CrmEngagementRowView>();
+
+    // Plan 1.1 — view-level filters. Filtering happens on the default
+    // ICollectionView over Engagements, so the underlying collection (and the
+    // AI context snapshot, which deliberately stays FULL-population — the
+    // assistant must see all of reality, not the user's current filter) is
+    // never reduced.
+    private string? _stageFilterKey;                    // null = live default (Drafting + Submitted)
+    private string _searchText = string.Empty;
+    private bool _mineOnly;
+    private readonly Debouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(250));
+
+    /// <summary>Resolved identity of the signed-in user (set by the view on
+    /// load) — the "Mine" toggle matches OwnerStaffId against this. Exact
+    /// match only: legacy first-name owners stay D2's problem, no guessing.</summary>
+    public string? CurrentActorUpn { get; set; }
 
     /// <summary>When set before the first load (e.g. by the Overwatch board's
     /// double-click), that engagement arrives selected. Consumed once.</summary>
@@ -50,31 +66,169 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         ICrmActivityStore activityStore,
         ICrmContactStore contactStore,
         IOpportunityStore opportunityStore,
-        IDeltekClientContextService deltekContextService)
+        IDeltekClientContextService deltekContextService,
+        Kor.Opportunities.Data.Awards.ICanonicalOrgStore orgStore)
     {
         _engagementStore = engagementStore;
         _activityStore = activityStore;
         _contactStore = contactStore;
         _opportunityStore = opportunityStore;
         _deltekContextService = deltekContextService;
+        _orgStore = orgStore;
     }
 
     public ObservableCollection<CrmEngagementRowView> Engagements { get; } = new();
+
+    /// <summary>Install the row filter on the default collection view (the
+    /// grid's ItemsSource binding resolves to the same view). Idempotent;
+    /// called from the view's Loaded (UI thread).</summary>
+    public void EnsureViewFilterInstalled()
+    {
+        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(Engagements);
+        view.Filter ??= FilterRow;
+    }
+
+    private bool FilterRow(object item)
+    {
+        if (item is not CrmEngagementRowView row)
+        {
+            return false;
+        }
+
+        var stage = row.Engagement.Stage;
+        var stageOk = _stageFilterKey is null
+            ? stage is CrmEngagementStage.Drafting or CrmEngagementStage.Submitted
+            : Enum.TryParse<CrmEngagementStage>(_stageFilterKey, out var wanted) && stage == wanted;
+        if (!stageOk)
+        {
+            return false;
+        }
+
+        if (_mineOnly && !string.Equals(row.Engagement.OwnerStaffId, CurrentActorUpn, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            var q = _searchText.Trim();
+            var hit = Contains(row.OpportunityKey, q)
+                   || Contains(row.ProjectName, q)
+                   || Contains(row.Buyer, q)
+                   || Contains(row.OwnerDisplay, q);
+            if (!hit)
+            {
+                return false;
+            }
+        }
+
+        return true;
+
+        static bool Contains(string? s, string q)
+            => !string.IsNullOrEmpty(s) && s.Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Debounced grid search over key / project / buyer / owner.</summary>
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (SetField(ref _searchText, value ?? string.Empty))
+            {
+                _searchDebouncer.Run(async () =>
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(RefreshEngagementsView));
+            }
+        }
+    }
+
+    /// <summary>Show only pursuits owned by <see cref="CurrentActorUpn"/>.</summary>
+    public bool MineOnly
+    {
+        get => _mineOnly;
+        set
+        {
+            if (SetField(ref _mineOnly, value))
+            {
+                RefreshEngagementsView();
+            }
+        }
+    }
+
+    /// <summary>Pill click: filter to that stage; clicking the active pill (or
+    /// the Live pill) returns to the live default.</summary>
+    public void SetStageChipFilter(string key)
+    {
+        _stageFilterKey = key == LiveChipKey || key == _stageFilterKey ? null : key;
+        RebuildStageChips();
+        RefreshEngagementsView();
+    }
+
+    private void RefreshEngagementsView()
+    {
+        System.Windows.Data.CollectionViewSource.GetDefaultView(Engagements).Refresh();
+    }
+
+    private void RebuildStageChips()
+    {
+        StageSummary.Clear();
+        var rows = Engagements.Select(r => r.Engagement).ToList();
+
+        var liveCount = rows.Count(e => e.Stage is CrmEngagementStage.Drafting or CrmEngagementStage.Submitted);
+        StageSummary.Add(new StageChip(
+            "Live", liveCount, CrmEngagementRowView.BrushFor(CrmEngagementStage.Drafting),
+            LiveChipKey, IsActive: _stageFilterKey is null));
+
+        foreach (var stage in new[]
+                 {
+                     CrmEngagementStage.Won, CrmEngagementStage.Submitted,
+                     CrmEngagementStage.Drafting, CrmEngagementStage.Lost,
+                 })
+        {
+            var count = rows.Count(e => e.Stage == stage);
+            if (count > 0)
+            {
+                StageSummary.Add(new StageChip(
+                    stage.ToString(), count, CrmEngagementRowView.BrushFor(stage),
+                    stage.ToString(), IsActive: _stageFilterKey == stage.ToString()));
+            }
+        }
+
+        OnPropertyChanged(nameof(HasStageSummary));
+    }
 
     public ObservableCollection<CrmActivityRowView> Activities { get; } = new();
 
     public ObservableCollection<CrmContactRowView> Contacts { get; } = new();
 
-    /// <summary>Per-stage pipeline counts shown as coloured pills above the list
-    /// (e.g. "Won 177"), so the backfilled win history is immediately visible.</summary>
+    /// <summary>Per-stage pipeline counts shown as coloured pills above the list.
+    /// Plan 1.1: the pills are CLICK-FILTERS — the default view shows live
+    /// pursuits (Drafting + Submitted); clicking Won/Lost reveals the closed
+    /// history; clicking the active pill returns to the live default.</summary>
     public ObservableCollection<StageChip> StageSummary { get; } = new();
     public bool HasStageSummary => StageSummary.Count > 0;
 
-    public sealed record StageChip(string Label, int Count, Brush Brush);
+    public sealed record StageChip(string Label, int Count, Brush Brush, string Key, bool IsActive);
+
+    /// <summary>Chip key for the default live view (Drafting + Submitted).</summary>
+    public const string LiveChipKey = "Live";
 
     public IReadOnlyList<CrmEngagementStage> StageOptions { get; } = Enum.GetValues<CrmEngagementStage>();
 
-    public IReadOnlyList<CrmActivityType> ActivityTypeOptions { get; } = Enum.GetValues<CrmActivityType>();
+    /// <summary>Friendly display names for the activity-type picker (plan 1.2 —
+    /// "EmailOut" is developer spelling, not user spelling).</summary>
+    public sealed record ActivityTypeOption(CrmActivityType Value, string Label);
+
+    public IReadOnlyList<ActivityTypeOption> ActivityTypeOptions { get; } = new[]
+    {
+        new ActivityTypeOption(CrmActivityType.Note, "Note"),
+        new ActivityTypeOption(CrmActivityType.Call, "Call"),
+        new ActivityTypeOption(CrmActivityType.Meeting, "Meeting"),
+        new ActivityTypeOption(CrmActivityType.EmailOut, "Email out"),
+        new ActivityTypeOption(CrmActivityType.EmailIn, "Email in"),
+        new ActivityTypeOption(CrmActivityType.Deliverable, "Deliverable"),
+        new ActivityTypeOption(CrmActivityType.Other, "Other"),
+    };
 
     public CrmEngagementRowView? Selected
     {
@@ -229,33 +383,36 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
                 Engagements.Add(new CrmEngagementRowView(e, opp));
             }
 
-            // Pending scoped-open (Overwatch double-click) wins over preservation.
+            // Pending scoped-open (Overwatch double-click / workspace deep-link)
+            // wins over preservation.
             var pendingId = PendingSelectEngagementId;
             PendingSelectEngagementId = null;
-            Selected = pendingId.HasValue
-                ? Engagements.FirstOrDefault(r => r.Id == pendingId.Value) ?? Engagements.FirstOrDefault()
-                : preservedId.HasValue
+            var pendingRow = pendingId.HasValue ? Engagements.FirstOrDefault(r => r.Id == pendingId.Value) : null;
+            Selected = pendingRow
+                ?? (preservedId.HasValue
                     ? Engagements.FirstOrDefault(r => r.Id == preservedId.Value) ?? Engagements.FirstOrDefault()
-                    : Engagements.FirstOrDefault();
+                    : Engagements.FirstOrDefault());
 
+            // A deep-linked pursuit must be VISIBLE: if the current filters would
+            // hide it (e.g. a closed pursuit under the live default, or an active
+            // Mine/search filter), reset them to show the row (plan 1.1).
+            if (pendingRow is not null && !FilterRow(pendingRow))
+            {
+                _stageFilterKey = pendingRow.Engagement.Stage is CrmEngagementStage.Drafting or CrmEngagementStage.Submitted
+                    ? null
+                    : pendingRow.Engagement.Stage.ToString();
+                if (_mineOnly) { _mineOnly = false; OnPropertyChanged(nameof(MineOnly)); }
+                if (_searchText.Length > 0) { _searchText = string.Empty; OnPropertyChanged(nameof(SearchText)); }
+            }
+
+            // FULL population, independent of grid filters — the AI must see
+            // all of reality (documented decision, plan 1.1).
             _contextSnapshot = Engagements.ToArray();
 
-            // Per-stage pipeline summary (pills above the list). Fixed order so
-            // the layout is stable; only stages with rows are shown.
-            StageSummary.Clear();
-            foreach (var stage in new[]
-                     {
-                         CrmEngagementStage.Won, CrmEngagementStage.Submitted,
-                         CrmEngagementStage.Drafting, CrmEngagementStage.Lost,
-                     })
-            {
-                var count = engagements.Count(e => e.Stage == stage);
-                if (count > 0)
-                {
-                    StageSummary.Add(new StageChip(stage.ToString(), count, CrmEngagementRowView.BrushFor(stage)));
-                }
-            }
-            OnPropertyChanged(nameof(HasStageSummary));
+            // Per-stage pipeline pills (click-filters, plan 1.1) + re-apply the
+            // current filter to the refilled collection.
+            RebuildStageChips();
+            RefreshEngagementsView();
 
             // Refresh the analytics snapshot off the same data we just loaded.
             // Pure projection — no extra DB round-trip.
@@ -279,11 +436,17 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         }
     }
 
+    /// <summary>The Deltek client id the detail panel resolved for the selected
+    /// engagement (buyer-org Clendor path first, opportunity fallback). The
+    /// "Details" client-intelligence drill uses this — same key as the panel.</summary>
+    public string? ResolvedDeltekClientId { get; private set; }
+
     private async Task LoadDetailAsync(CancellationToken ct)
     {
         Activities.Clear();
         Contacts.Clear();
         DeltekContext = null;
+        ResolvedDeltekClientId = null;
         if (Selected is null)
         {
             return;
@@ -312,10 +475,36 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
                 Contacts.Add(new CrmContactRowView(c));
             }
 
-            // Phase 5c: pull the Deltek client roll-up if the linked Opportunity
-            // has a Deltek client mapping. ODBC failure leaves DeltekContext null
-            // — never blocks the rest of the detail load.
-            var deltekId = Selected.Opportunity?.DeltekClientId;
+            // Plan 1.3 (re-key): the Deltek roll-up keys on the engagement's
+            // BuyerCanonicalOrgId → CanonicalOrg.ClendorClientId — the path that
+            // reaches ~82% of engagements — with the linked Opportunity's
+            // DeltekClientId as fallback (populated on 0/1,646 opportunities
+            // today, kept for correctness). The old key was fallback-only, so
+            // the panel rendered for 0% of engagements. Resolution is by org
+            // ID, never name equality. ODBC/lookup failure leaves DeltekContext
+            // null — never blocks the rest of the detail load.
+            string? deltekId = null;
+            if (Selected.Engagement.BuyerCanonicalOrgId is { } buyerOrgId)
+            {
+                try
+                {
+                    var org = await _orgStore.GetCanonicalOrgAsync(buyerOrgId, ct).ConfigureAwait(true);
+                    if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+                    deltekId = string.IsNullOrWhiteSpace(org?.ClendorClientId) ? null : org!.ClendorClientId;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "Canonical-org lookup for engagement {EngagementId} failed; Deltek panel falls back to the opportunity key.", engagementId);
+                }
+            }
+
+            deltekId ??= Selected?.Opportunity?.DeltekClientId;
+            ResolvedDeltekClientId = string.IsNullOrWhiteSpace(deltekId) ? null : deltekId;
+
             if (!string.IsNullOrWhiteSpace(deltekId))
             {
                 try
@@ -396,7 +585,16 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         return saved;
     }
 
-    public async Task<CrmActivity> AppendActivityAsync(long engagementId, CrmActivityType type, string subject, string? body, string actor, CancellationToken ct)
+    /// <summary>
+    /// Appends one activity. Plan 1.2: <paramref name="occurredAtUtc"/> lets the
+    /// user record WHEN it actually happened (Friday's call logged on Monday);
+    /// null = now. <paramref name="contactId"/> soft-links the engagement
+    /// contact it was with. Append-only always — backdating is a parameter,
+    /// never a mutation.
+    /// </summary>
+    public async Task<CrmActivity> AppendActivityAsync(
+        long engagementId, CrmActivityType type, string subject, string? body, string actor, CancellationToken ct,
+        DateTimeOffset? occurredAtUtc = null, long? contactId = null)
     {
         var activity = new CrmActivity
         {
@@ -404,7 +602,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             ActivityType = type,
             Subject = subject,
             Body = body,
-            OccurredAtUtc = DateTimeOffset.UtcNow,
+            OccurredAtUtc = occurredAtUtc ?? DateTimeOffset.UtcNow,
+            ContactId = contactId,
         };
 
         var saved = await _activityStore.AppendAsync(activity, actor, ct).ConfigureAwait(true);

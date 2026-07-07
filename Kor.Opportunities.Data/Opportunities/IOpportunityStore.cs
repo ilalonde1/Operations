@@ -23,6 +23,16 @@ public interface IOpportunityStore
     Task<Opportunity?> GetByKeyAsync(string opportunityKey, CancellationToken ct);
 
     /// <summary>
+    /// The opportunity's already-resolved buyer canonical-org id, or null when
+    /// the buyer hasn't been resolved (or the row is gone). Lean single-column
+    /// read — BuyerCanonicalOrgId is deliberately NOT on the domain model /
+    /// AllColumns (a model widening would ripple MapReader ordinals across
+    /// every consumer); the Bazaar buyer-dossier affordance (plan 1.4) looks it
+    /// up on demand instead.
+    /// </summary>
+    Task<long?> GetBuyerCanonicalOrgIdAsync(long opportunityId, CancellationToken ct);
+
+    /// <summary>
     /// Inserts a new row. The supplied <see cref="Opportunity.Id"/> is ignored
     /// (IDENTITY column). Returns the row as persisted, with the assigned Id,
     /// CreatedAt/UpdatedAt timestamps, and RowVersion populated.

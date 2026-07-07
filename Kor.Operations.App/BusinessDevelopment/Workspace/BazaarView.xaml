@@ -49,7 +49,9 @@
                           IsReadOnly="True"
                           HeadersVisibility="Column"
                           ItemsSource="{Binding Grabbable}"
-                          SelectedItem="{Binding Selected}">
+                          SelectedItem="{Binding Selected}"
+                          MouseDoubleClick="BazaarGrid_MouseDoubleClick"
+                          ToolTip="Double-click a row to open the buyer's intel dossier before deciding to grab.">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="Relevance" Width="110">
                             <DataGridTemplateColumn.CellTemplate>

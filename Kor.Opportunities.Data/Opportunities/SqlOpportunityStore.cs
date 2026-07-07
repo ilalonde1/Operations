@@ -130,6 +130,23 @@ WHERE OpportunityKey = @key;";
         return await reader.ReadAsync(ct).ConfigureAwait(false) ? MapReader(reader) : null;
     }
 
+    public async Task<long?> GetBuyerCanonicalOrgIdAsync(long opportunityId, CancellationToken ct)
+    {
+        // Lean single-column read (plan 1.4): BuyerCanonicalOrgId lives on the
+        // table (migration 22) but deliberately not on the domain model.
+        const string sql = @"
+SELECT BuyerCanonicalOrgId
+FROM opportunities.Opportunities
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = opportunityId;
+        var scalar = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return scalar is long l ? l : null;
+    }
+
     public async Task<Opportunity> InsertAsync(Opportunity opportunity, string actorDisplay, CancellationToken ct)
     {
         var classifiedOpportunity = WithPrimeClassification(opportunity);

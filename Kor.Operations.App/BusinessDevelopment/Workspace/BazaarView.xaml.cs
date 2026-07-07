@@ -19,12 +19,15 @@ namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 public partial class BazaarView : UserControl
 {
     private readonly BazaarViewModel _vm;
+    private readonly IServiceProvider _services;
     private CancellationTokenSource? _cts;
     private bool _initialized;
+    private bool _dossierBusy;
 
-    public BazaarView(BazaarViewModel vm)
+    public BazaarView(BazaarViewModel vm, IServiceProvider services)
     {
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+        _services = services ?? throw new ArgumentNullException(nameof(services));
         InitializeComponent();
         DataContext = _vm;
     }
@@ -80,8 +83,8 @@ public partial class BazaarView : UserControl
 
         try
         {
-            var outcome = await _vm.GrabAsync(row, actor, CancellationToken.None).ConfigureAwait(true);
-            if (outcome == GrabOutcome.AlreadyTaken)
+            var result = await _vm.GrabAsync(row, actor, CancellationToken.None).ConfigureAwait(true);
+            if (result.Outcome == GrabOutcome.AlreadyTaken)
             {
                 MessageBox.Show(
                     Window.GetWindow(this),
@@ -90,10 +93,65 @@ public partial class BazaarView : UserControl
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
+            else if (result.Outcome == GrabOutcome.Grabbed && result.EngagementId > 0
+                     && Window.GetWindow(this) is BdWorkspaceWindow workspace)
+            {
+                // Plan 1.4: a successful grab lands the user IN the pursuit —
+                // same door the Overwatch double-click uses — instead of
+                // leaving them staring at the Bazaar wondering where it went.
+                workspace.NavigateToPursuit(result.EngagementId);
+            }
         }
         catch (Exception ex)
         {
             MessageBox.Show(Window.GetWindow(this), ex.Message, "Grab failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Plan 1.4 — intel-informed grab: double-click opens the buyer's intel
+    /// dossier (reusing OrgDossierWindow, never re-rendering intel here) so the
+    /// claim decision stops being blind. Unresolved buyers get an honest
+    /// message, not a broken window.
+    /// </summary>
+    private async void BazaarGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        var row = _vm.Selected;
+        if (row is null || _dossierBusy)
+        {
+            return;
+        }
+
+        _dossierBusy = true;
+        try
+        {
+            var orgId = await _vm.GetBuyerCanonicalOrgIdAsync(row, CancellationToken.None).ConfigureAwait(true);
+            if (orgId is null)
+            {
+                MessageBox.Show(
+                    Window.GetWindow(this),
+                    $"“{row.BuyerName}” hasn't been resolved to a canonical org yet, so there is no dossier to open.",
+                    "No buyer intel",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            var dossierVm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetRequiredService<App.Opportunities.OrgDossierViewModel>(_services);
+            var win = new App.Opportunities.OrgDossierWindow(dossierVm, orgId.Value)
+            {
+                Owner = Window.GetWindow(this),
+            };
+            win.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "Buyer intel failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _dossierBusy = false;
         }
     }
 

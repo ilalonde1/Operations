@@ -134,19 +134,29 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
     }
 
     /// <summary>
+    /// On-demand buyer-org lookup for the dossier affordance (plan 1.4): the
+    /// pool rows are domain Opportunities, which deliberately don't carry
+    /// BuyerCanonicalOrgId — one lean read resolves it when the user asks.
+    /// </summary>
+    public Task<long?> GetBuyerCanonicalOrgIdAsync(OpportunityRowView row, CancellationToken ct)
+        => _opportunityStore.GetBuyerCanonicalOrgIdAsync(row.Id, ct);
+
+    /// <summary>
     /// Claim <paramref name="row"/> for <paramref name="staffUpn"/> via the
     /// guarded grab transaction. On success the row leaves the Bazaar (it is no
-    /// longer New/un-owned) and becomes a Drafting pursuit in the CRM. If it was
-    /// taken by someone else first, it is removed too (it has left the pool).
+    /// longer New/un-owned) and becomes a Drafting pursuit in the CRM (the
+    /// result carries the new engagement id so the view can deep-link straight
+    /// to it — plan 1.4). If it was taken by someone else first, it is removed
+    /// too (it has left the pool).
     /// </summary>
-    public async Task<GrabOutcome> GrabAsync(OpportunityRowView row, string staffUpn, CancellationToken ct)
+    public async Task<GrabResult> GrabAsync(OpportunityRowView row, string staffUpn, CancellationToken ct)
     {
         if (_isGrabbing)
         {
             // A grab is already in flight; drop the re-entrant click. Ignored —
             // not AlreadyTaken — so the view doesn't tell the user someone else
             // claimed it (audit 2026-07-01 n6: the old sentinel message lied).
-            return GrabOutcome.Ignored;
+            return new GrabResult(GrabOutcome.Ignored, 0);
         }
 
         _isGrabbing = true;
@@ -169,7 +179,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
 
             OnPropertyChanged(nameof(HasGrabbable));
             OnPropertyChanged(nameof(Headline));
-            return result.Outcome;
+            return result;
         }
         finally
         {
