@@ -29,6 +29,7 @@ public partial class CrmView : UserControl
     private readonly IServiceProvider _services;
     private CancellationTokenSource? _cts;
     private bool _initialized;
+    private bool _isLoggingActivity;
 
     public CrmView(CrmViewModel vm, IServiceProvider services)
     {
@@ -63,10 +64,12 @@ public partial class CrmView : UserControl
         }
     }
 
-    /// <summary>Plan 1.2: Enter in the subject box logs immediately.</summary>
+    /// <summary>Plan 1.2: Enter in the subject box logs immediately. IsRepeat
+    /// filters keyboard auto-repeat — a held Enter must log ONCE (review fix
+    /// 2026-07-07; the _isLoggingActivity guard covers the rest).</summary>
     private void ActivitySubjectBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (e.Key == System.Windows.Input.Key.Enter)
+        if (e.Key == System.Windows.Input.Key.Enter && !e.IsRepeat)
         {
             e.Handled = true;
             LogActivityButton_Click(sender, e);
@@ -477,7 +480,11 @@ public partial class CrmView : UserControl
 
     private async void LogActivityButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_vm.Selected is null)
+        // Re-entrancy guard (review fix 2026-07-07): the dispatcher pumps
+        // queued clicks/Enter presses during the awaited append, and
+        // CrmActivities is append-only — every duplicate would be permanent.
+        // Same pattern as BazaarView._dossierBusy.
+        if (_isLoggingActivity || _vm.Selected is null)
         {
             return;
         }
@@ -494,11 +501,12 @@ public partial class CrmView : UserControl
             ? opt.Value
             : CrmActivityType.Note;
 
-        // Plan 1.2: optional backdate. A picked past date is recorded at local
+        // Plan 1.2: optional backdate. A picked PAST date is recorded at local
         // noon (honest day-resolution — the user knows the day, not the minute);
-        // blank or today = now.
+        // blank, today, or a future date = now. Future OccurredAtUtc would push
+        // the Overwatch staleness clock into the future (review fix 2026-07-07).
         DateTimeOffset? occurredAt = null;
-        if (ActivityDateBox.SelectedDate is { } picked && picked.Date != DateTime.Today)
+        if (ActivityDateBox.SelectedDate is { } picked && picked.Date < DateTime.Today)
         {
             occurredAt = new DateTimeOffset(picked.Date.AddHours(12), TimeZoneInfo.Local.GetUtcOffset(picked.Date.AddHours(12)))
                 .ToUniversalTime();
@@ -506,6 +514,7 @@ public partial class CrmView : UserControl
 
         var contactId = (ActivityContactBox.SelectedItem as CrmContactRowView)?.Id;
 
+        _isLoggingActivity = true;
         try
         {
             await _vm.AppendActivityAsync(
@@ -527,6 +536,10 @@ public partial class CrmView : UserControl
         catch (Exception ex)
         {
             MessageBox.Show(owner, ex.Message, "CRM — Log Activity Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _isLoggingActivity = false;
         }
     }
 

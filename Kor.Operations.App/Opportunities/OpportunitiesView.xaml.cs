@@ -274,6 +274,11 @@ public partial class OpportunitiesView : UserControl
 
         workspace.NavigateToPursuit(engagementId);
         workspace.Show();
+        if (workspace.WindowState == WindowState.Minimized)
+        {
+            // Activate() alone does not restore a minimized window (review fix).
+            workspace.WindowState = WindowState.Normal;
+        }
         workspace.Activate();
     }
 

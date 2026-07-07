@@ -233,16 +233,21 @@ WHERE OpportunityId IS NULL
 
     public async Task<CrmEngagement> UpdateAsync(CrmEngagement engagement, string actorDisplay, CancellationToken ct)
     {
-        // ClosedAtUtc is SERVER-owned (fix F7): entering a terminal stage stamps
-        // it once, staying terminal preserves the original close date (an
-        // outcome-flavour switch is not a re-close), and reopening clears it —
-        // both close doors (stage menu, edit dialog) get identical semantics
-        // and no caller can forget the stamp or resurrect a stale one.
+        // Close-out columns are SERVER-owned (fix F7 + adversarial-review fix
+        // 2026-07-07): the stage decides what outcome data can exist, so no
+        // caller — either close door, a stale model, or a future path — can
+        // commit a contradictory row (e.g. Stage=Won carrying WonLostOutcome=
+        // Lost + a phantom competitor after a reopen→re-close cycle).
+        //   ClosedAtUtc: entering terminal stamps once (honouring a caller-
+        //     supplied historical date — seed importers — else now); staying
+        //     terminal preserves the original; reopening clears it.
+        //   WonLostOutcome: Won forces 1; Lost accepts 2/3/4 (Lost/NoBid/
+        //     Withdrawn); non-terminal clears.
+        //   LostToCanonicalOrgId: Lost only. WonProjectWbs1: Won only.
+        //   OutcomeReason: terminal only.
         //
         // ExternalSource/ExternalSourceKey are deliberately NOT in the SET list:
-        // provenance is immutable after insert (fix F2). The outcome columns ARE
-        // set — the model now carries them (read-modify-write, never a blind
-        // overwrite of unread columns).
+        // provenance is immutable after insert (fix F2).
         var sql = $@"
 UPDATE opportunities.CrmEngagements
 SET Stage                 = @stage,
@@ -254,7 +259,7 @@ SET Stage                 = @stage,
     Notes                 = @notes,
     OpenedAtUtc           = @openedAt,
     ClosedAtUtc           = CASE WHEN @stage IN (6, 7)
-                                 THEN CASE WHEN Stage IN (6, 7) THEN ClosedAtUtc ELSE sysdatetimeoffset() END
+                                 THEN CASE WHEN Stage IN (6, 7) THEN ClosedAtUtc ELSE COALESCE(@closedAt, sysdatetimeoffset()) END
                                  ELSE NULL END,
     OutcomeNotes          = @outcomeNotes,
     BuyerCanonicalOrgId   = @buyerCanonicalOrgId,
@@ -262,10 +267,12 @@ SET Stage                 = @stage,
     ProposalsSubmittedCad = @proposalsSubmittedCad,
     ProposalsAcceptedCad  = @proposalsAcceptedCad,
     PotentialProjects     = @potentialProjects,
-    WonLostOutcome        = @wonLostOutcome,
-    OutcomeReason         = @outcomeReason,
-    LostToCanonicalOrgId  = @lostToCanonicalOrgId,
-    WonProjectWbs1        = @wonProjectWbs1,
+    WonLostOutcome        = CASE WHEN @stage = 6 THEN 1
+                                 WHEN @stage = 7 THEN CASE WHEN @wonLostOutcome IN (2, 3, 4) THEN @wonLostOutcome ELSE NULL END
+                                 ELSE NULL END,
+    OutcomeReason         = CASE WHEN @stage IN (6, 7) THEN @outcomeReason ELSE NULL END,
+    LostToCanonicalOrgId  = CASE WHEN @stage = 7 THEN @lostToCanonicalOrgId ELSE NULL END,
+    WonProjectWbs1        = CASE WHEN @stage = 6 THEN @wonProjectWbs1 ELSE NULL END,
     NextActionDueUtc      = @nextActionDueUtc,
     NextActionNote        = @nextActionNote,
     UpdatedAtUtc          = sysdatetimeoffset(),

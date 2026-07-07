@@ -46,8 +46,16 @@ public partial class BdWorkspaceWindow : Window
 
         try
         {
-            SetActiveNav(DashboardButton);
-            ContentHost.Content = _services.GetRequiredService<DashboardView>();
+            // Default to the Dashboard ONLY when nothing has claimed the host:
+            // a caller that navigated before Show() (OpportunitiesView's
+            // Promote/Open deep-link via NavigateToPursuit) must not be
+            // clobbered — the HeaderLoader await above means this runs AFTER
+            // any pre-Show navigation (review fix, 2026-07-07).
+            if (ContentHost.Content is null)
+            {
+                SetActiveNav(DashboardButton);
+                ContentHost.Content = _services.GetRequiredService<DashboardView>();
+            }
         }
         catch (Exception ex)
         {

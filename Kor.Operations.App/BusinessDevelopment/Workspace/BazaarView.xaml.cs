@@ -122,6 +122,21 @@ public partial class BazaarView : UserControl
             return;
         }
 
+        // Only a double-click that originated ON a row opens the dossier —
+        // header/scrollbar/empty-space double-clicks were opening the dossier
+        // for whatever row happened to be selected (review fix 2026-07-07).
+        var origin = e.OriginalSource as System.Windows.DependencyObject;
+        var onRow = false;
+        while (origin is not null)
+        {
+            if (origin is DataGridRow) { onRow = true; break; }
+            origin = System.Windows.Media.VisualTreeHelper.GetParent(origin);
+        }
+        if (!onRow)
+        {
+            return;
+        }
+
         _dossierBusy = true;
         try
         {

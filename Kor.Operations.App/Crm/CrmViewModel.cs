@@ -388,10 +388,16 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             var pendingId = PendingSelectEngagementId;
             PendingSelectEngagementId = null;
             var pendingRow = pendingId.HasValue ? Engagements.FirstOrDefault(r => r.Id == pendingId.Value) : null;
+            // Preserve/first-row fallbacks are FILTER-AWARE (review fix
+            // 2026-07-07): the raw store order is UpdatedAtUtc DESC, so a
+            // just-closed pursuit sorts first and would otherwise arrive as an
+            // invisible selection under the live default. pendingRow is exempt —
+            // the reset below makes it visible.
             Selected = pendingRow
                 ?? (preservedId.HasValue
-                    ? Engagements.FirstOrDefault(r => r.Id == preservedId.Value) ?? Engagements.FirstOrDefault()
-                    : Engagements.FirstOrDefault());
+                    ? Engagements.FirstOrDefault(r => r.Id == preservedId.Value && FilterRow(r))
+                    : null)
+                ?? Engagements.FirstOrDefault(FilterRow);
 
             // A deep-linked pursuit must be VISIBLE: if the current filters would
             // hide it (e.g. a closed pursuit under the live default, or an active
@@ -661,7 +667,15 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             {
                 var opp = Engagements[i].Opportunity;
                 Engagements[i] = new CrmEngagementRowView(saved, opp);
-                Selected = Engagements[i];
+
+                // Review fix 2026-07-07: a stage change can move the row out of
+                // the current filter (mark Lost under the live view). Keeping it
+                // Selected while INVISIBLE let the toolbar silently act on a row
+                // no one could see. Re-select only when still visible; refresh
+                // the pills so counts reflect the change either way.
+                Selected = FilterRow(Engagements[i]) ? Engagements[i] : null;
+                RebuildStageChips();
+                RefreshEngagementsView();
                 return;
             }
         }

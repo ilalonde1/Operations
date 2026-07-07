@@ -67,7 +67,8 @@ public sealed class IntelRetirementJob : IJob
                    JOIN opportunities.CrmEngagements ce
                      ON ce.BuyerCanonicalOrgId = pa.CanonicalOrgId
                     AND ce.Stage IN (1, 3)
-                   WHERE pa.IntelPersonId = opportunities.IntelPerson.Id)";
+                   WHERE pa.IntelPersonId = opportunities.IntelPerson.Id
+                     AND pa.RetiredAtUtc IS NULL)";
 
     public async Task Execute(IJobExecutionContext context)
     {

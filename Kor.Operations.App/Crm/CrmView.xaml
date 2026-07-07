@@ -276,7 +276,7 @@
                                      KeyDown="ActivitySubjectBox_KeyDown"
                                      ToolTip="Subject (required). Press Enter to log."/>
                             <DatePicker x:Name="ActivityDateBox" Width="110" Margin="0,0,4,0"
-                                        ToolTip="When it happened (optional — blank = now). Friday's call can be logged on Monday."/>
+                                        ToolTip="When it happened (optional — blank = now). Friday's call can be logged on Monday. Future dates are treated as now."/>
                             <ComboBox x:Name="ActivityContactBox" Width="140" Margin="0,0,4,0"
                                       ItemsSource="{Binding Contacts}" DisplayMemberPath="DisplayName"
                                       ToolTip="Who it was with (optional — this engagement's contacts)."/>
