@@ -172,12 +172,15 @@ public partial class OverwatchView : UserControl
             var buyer = string.IsNullOrWhiteSpace(row.Buyer)
                 ? string.Empty
                 : $" ({WebUtility.HtmlEncode(row.Buyer)})";
-            var body =
+            var inner =
                 $"<p>Hi {WebUtility.HtmlEncode(toDisplay)},</p>" +
                 $"<p>You've been assigned the pursuit <b>{WebUtility.HtmlEncode(row.ProjectName)}</b>{buyer} in the BD workspace.</p>" +
                 reasonHtml +
                 "<p>Open <b>Business Development &#8594; Pursuits</b> to work it.</p>" +
                 $"<p style=\"color:#6B7280;font-size:12px\">Reassigned by {WebUtility.HtmlEncode(managerUpn)} via the KOR Operations app.</p>";
+            // Branded shell like every other app-sent mail (fix F15) — raw HTML
+            // bodies are the divergence class the shared template exists to kill.
+            var body = global::Kor.Operations.KorEmailTemplate.Shell("PURSUIT REASSIGNED", inner);
 
             await _graph.SendSimpleMailAsync(managerUpn, new[] { toEmail }, subject, body, CancellationToken.None)
                 .ConfigureAwait(true);

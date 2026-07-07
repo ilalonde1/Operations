@@ -10,18 +10,26 @@ namespace Kor.Operations.App.Crm;
 /// One-shot snapshot of CRM performance — feeds the analytics panel and
 /// the AI context. Pure projection over engagements + linked opportunities;
 /// no DB hit beyond what CrmViewModel already loaded.
+///
+/// Fix F12 (CRM plan 2026-07-06): populations are SEGMENTED. The 177
+/// migration-268 wins (ExternalSource = 'Deltek.CustomProposal') are flat
+/// history with no owner and no loss denominator — blending them yields a
+/// vanity 100% win rate. Won/Lost/WinRate/slices/fees/duration below are
+/// LIVE-population only; the backfill is reported as its own counts.
 /// </summary>
 public sealed record CrmAnalyticsSnapshot(
     int TotalEngagements,
     IReadOnlyList<CrmStageCount> ByStage,
-    int Won,
-    int Lost,
-    double WinRate,                                      // won / (won + lost); 0 if denominator 0
-    IReadOnlyList<CrmSlicedWinRate> ByBuyerType,
-    IReadOnlyList<CrmSlicedWinRate> ByOwner,
-    decimal AvgWonProposedFee,
-    decimal AvgLostProposedFee,
-    TimeSpan? AvgPursuitDuration);                       // OpenedAtUtc → ClosedAtUtc, Won/Lost only
+    int Won,                                             // live population only
+    int Lost,                                            // live population only
+    double WinRate,                                      // live won / (won + lost); 0 if denominator 0
+    IReadOnlyList<CrmSlicedWinRate> ByBuyerType,         // live population only
+    IReadOnlyList<CrmSlicedWinRate> ByOwner,             // live population only
+    decimal AvgWonProposedFee,                           // live population only
+    decimal AvgLostProposedFee,                          // live population only
+    TimeSpan? AvgPursuitDuration,                        // live Won/Lost with ClosedAtUtc only
+    int BackfillWins,                                    // Deltek.CustomProposal rows (all Won)
+    decimal BackfillWonFee);                             // their summed ProposedFee
 
 public sealed record CrmStageCount(CrmEngagementStage Stage, int Count);
 
@@ -34,6 +42,13 @@ public sealed record CrmSlicedWinRate(
 
 public static class CrmAnalyticsService
 {
+    /// <summary>The migration-268 backfill provenance key. Rows carrying it are
+    /// historical Deltek wins, not live pursuit outcomes.</summary>
+    public const string BackfillExternalSource = "Deltek.CustomProposal";
+
+    public static bool IsBackfill(CrmEngagement e)
+        => string.Equals(e.ExternalSource, BackfillExternalSource, StringComparison.OrdinalIgnoreCase);
+
     public static CrmAnalyticsSnapshot Compute(
         IReadOnlyCollection<CrmEngagement> engagements,
         IReadOnlyDictionary<long, Opportunity> opportunitiesById)
@@ -49,13 +64,21 @@ public static class CrmAnalyticsService
             .Select(g => new CrmStageCount(g.Key, g.Count()))
             .ToList();
 
-        var won = engagements.Count(e => e.Stage == CrmEngagementStage.Won);
-        var lost = engagements.Count(e => e.Stage == CrmEngagementStage.Lost);
+        // F12 segmentation: rates and fee stats over the LIVE population only.
+        var live = engagements.Where(e => !IsBackfill(e)).ToList();
+        var backfill = engagements.Where(IsBackfill).ToList();
+        var backfillWins = backfill.Count(e => e.Stage == CrmEngagementStage.Won);
+        var backfillWonFee = backfill
+            .Where(e => e.Stage == CrmEngagementStage.Won && e.ProposedFee.HasValue)
+            .Sum(e => e.ProposedFee!.Value);
+
+        var won = live.Count(e => e.Stage == CrmEngagementStage.Won);
+        var lost = live.Count(e => e.Stage == CrmEngagementStage.Lost);
         var winRate = (won + lost) > 0 ? (double)won / (won + lost) : 0.0;
 
         // Slice 1: by buyer type. We pull the linked Opportunity's BuyerType.
         // Engagements whose Opportunity is missing get bucketed as "Unknown".
-        var byBuyerType = engagements
+        var byBuyerType = live
             .GroupBy(e => e.OpportunityId.HasValue && opportunitiesById.TryGetValue(e.OpportunityId.Value, out var o)
                 ? o.BuyerType.ToString()
                 : "Unknown")
@@ -65,17 +88,17 @@ public static class CrmAnalyticsService
             .ToList();
 
         // Slice 2: by owner staff id. Empty / null bucketed as "(unassigned)".
-        var byOwner = engagements
+        var byOwner = live
             .GroupBy(e => string.IsNullOrWhiteSpace(e.OwnerStaffId) ? "(unassigned)" : e.OwnerStaffId!)
             .Select(g => SliceWinRate(g.Key, g))
             .OrderByDescending(s => s.Won + s.Lost + s.Active)
             .ThenByDescending(s => s.WinRate)
             .ToList();
 
-        var avgWonFee = AvgFee(engagements.Where(e => e.Stage == CrmEngagementStage.Won));
-        var avgLostFee = AvgFee(engagements.Where(e => e.Stage == CrmEngagementStage.Lost));
+        var avgWonFee = AvgFee(live.Where(e => e.Stage == CrmEngagementStage.Won));
+        var avgLostFee = AvgFee(live.Where(e => e.Stage == CrmEngagementStage.Lost));
 
-        var resolved = engagements
+        var resolved = live
             .Where(e => (e.Stage == CrmEngagementStage.Won || e.Stage == CrmEngagementStage.Lost)
                      && e.ClosedAtUtc.HasValue)
             .Select(e => e.ClosedAtUtc!.Value - e.OpenedAtUtc)
@@ -94,7 +117,9 @@ public static class CrmAnalyticsService
             ByOwner: byOwner,
             AvgWonProposedFee: avgWonFee,
             AvgLostProposedFee: avgLostFee,
-            AvgPursuitDuration: avgDuration);
+            AvgPursuitDuration: avgDuration,
+            BackfillWins: backfillWins,
+            BackfillWonFee: backfillWonFee);
     }
 
     private static CrmSlicedWinRate SliceWinRate(string bucket, IEnumerable<CrmEngagement> rows)
@@ -128,5 +153,7 @@ public static class CrmAnalyticsService
         ByOwner: Array.Empty<CrmSlicedWinRate>(),
         AvgWonProposedFee: 0m,
         AvgLostProposedFee: 0m,
-        AvgPursuitDuration: null);
+        AvgPursuitDuration: null,
+        BackfillWins: 0,
+        BackfillWonFee: 0m);
 }

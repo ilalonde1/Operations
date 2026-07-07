@@ -223,7 +223,11 @@ WHERE LastRejectedAtUtc < DATEADD(day, -120, SYSDATETIMEOFFSET());",
         var orphanIntelRetired = await ExecuteScalarIntAsync(cn, @"
 DECLARE @s NVARCHAR(MAX) = N'DECLARE @n INT = 0;';
 SELECT @s = @s + N'UPDATE x SET RetiredAtUtc = SYSDATETIMEOFFSET() FROM opportunities.' + QUOTENAME(t.name)
-  + N' x JOIN opportunities.CanonicalOrg c ON c.Id = x.CanonicalOrgId WHERE x.RetiredAtUtc IS NULL AND c.RetiredAtUtc IS NOT NULL; SET @n += @@ROWCOUNT;' + CHAR(10)
+  + N' x JOIN opportunities.CanonicalOrg c ON c.Id = x.CanonicalOrgId WHERE x.RetiredAtUtc IS NULL AND c.RetiredAtUtc IS NOT NULL'
+  -- Fix F13: never cascade-retire intel belonging to the buyer of a LIVE
+  -- pursuit (Stage 1/3) — a retired-but-still-referenced buyer org is itself
+  -- the anomaly to surface, not a reason to strip the pursuit''s intel.
+  + N' AND NOT EXISTS (SELECT 1 FROM opportunities.CrmEngagements ce WHERE ce.Stage IN (1, 3) AND ce.BuyerCanonicalOrgId = c.Id); SET @n += @@ROWCOUNT;' + CHAR(10)
 FROM sys.tables t
 WHERE SCHEMA_NAME(t.schema_id) = N'opportunities' AND t.name LIKE N'Intel%'
   AND EXISTS (SELECT 1 FROM sys.columns col WHERE col.object_id = t.object_id AND col.name = N'CanonicalOrgId')

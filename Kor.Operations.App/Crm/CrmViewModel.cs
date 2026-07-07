@@ -155,7 +155,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
     public bool HasAnalytics => _analytics is { TotalEngagements: > 0 };
 
-    /// <summary>One-line headline: total / win rate / avg won fee.</summary>
+    /// <summary>One-line headline, populations segmented (fix F12): the 177
+    /// backfilled Deltek wins never blend into the live win rate.</summary>
     public string AnalyticsHeadline
     {
         get
@@ -163,11 +164,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             if (_analytics is null || _analytics.TotalEngagements == 0) return string.Empty;
             var won = _analytics.Won;
             var lost = _analytics.Lost;
-            var rate = (won + lost) > 0 ? _analytics.WinRate.ToString("P0") : "—";
+            var rate = (won + lost) > 0 ? _analytics.WinRate.ToString("P0") : "— (no live outcomes yet)";
+            var backfill = _analytics.BackfillWins > 0
+                ? $"  •  {_analytics.BackfillWins} historical Deltek wins ({_analytics.BackfillWonFee.ToString("C0", CultureInfo.CurrentCulture)}, backfill)"
+                : string.Empty;
             var avgWonFee = _analytics.AvgWonProposedFee > 0
                 ? $"  •  avg won fee {_analytics.AvgWonProposedFee.ToString("C0", CultureInfo.CurrentCulture)}"
                 : string.Empty;
-            return $"{_analytics.TotalEngagements} engagement(s)  •  {won}W / {lost}L  •  win rate {rate}{avgWonFee}";
+            return $"{_analytics.TotalEngagements} engagement(s){backfill}  •  live: {won}W / {lost}L  •  live win rate {rate}{avgWonFee}";
         }
     }
 
@@ -510,14 +514,23 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             }
         }
 
-        var won = engagements.Count(r => r.Engagement.Stage == CrmEngagementStage.Won);
-        var lost = engagements.Count(r => r.Engagement.Stage == CrmEngagementStage.Lost);
-        if (won + lost > 0)
+        // Fix F12: segment populations before quoting any rate — the 177
+        // backfilled Deltek wins have no owner and no loss denominator, so a
+        // blended rate is a vanity 100%.
+        var backfillWins = engagements.Count(r =>
+            CrmAnalyticsService.IsBackfill(r.Engagement) && r.Engagement.Stage == CrmEngagementStage.Won);
+        var liveRows = engagements.Where(r => !CrmAnalyticsService.IsBackfill(r.Engagement)).ToArray();
+        var won = liveRows.Count(r => r.Engagement.Stage == CrmEngagementStage.Won);
+        var lost = liveRows.Count(r => r.Engagement.Stage == CrmEngagementStage.Lost);
+        sb.AppendLine();
+        if (backfillWins > 0)
         {
-            var rate = (double)won / (won + lost);
-            sb.AppendLine();
-            sb.AppendLine($"Trailing win rate (won vs lost): {won} / {won + lost} = {rate:P0}");
+            sb.AppendLine($"NOTE: {backfillWins} of the Won engagements are a historical Deltek backfill (ExternalSource 'Deltek.CustomProposal') — flat history with no owner and no loss denominator. Never quote a win rate that blends them with live pursuits.");
         }
+
+        sb.AppendLine((won + lost) > 0
+            ? $"Live win rate (won vs lost, backfill excluded): {won} / {won + lost} = {(double)won / (won + lost):P0}"
+            : "Live win rate: no live pursuit outcomes recorded yet.");
 
         if (_analytics is { TotalEngagements: > 0 } a && (a.Won + a.Lost) > 0)
         {
