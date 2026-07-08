@@ -130,6 +130,16 @@ internal static class Program
         "IntelPersonAffiliation.CanonicalOrgId",
     };
 
+    // Nightly-recomputed rollups whose loser rows are deliberately DELETED
+    // (not repointed): CrmBuyerEmailWarmth is PK'd on CanonicalOrgId, so a
+    // repoint would collide when the survivor already has a row, and the
+    // CrmEnrichmentJob rebuilds the survivor's rollup at 03:45 UTC anyway —
+    // nothing durable is lost (migration 274, CRM plan 3.1).
+    private static readonly HashSet<string> RollupDeleteTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CrmBuyerEmailWarmth.CanonicalOrgId",
+    };
+
     private static async Task<int> Main(string[] args)
     {
         try
@@ -564,6 +574,7 @@ WHERE fk.referenced_object_id = OBJECT_ID('opportunities.CanonicalOrg');";
             StringComparer.OrdinalIgnoreCase);
         handled.UnionWith(IntelDeleteTargets);
         handled.UnionWith(IntelAffiliationRepointTargets);
+        handled.UnionWith(RollupDeleteTargets);
 
         var unhandled = new List<string>();
         await using (var fkCmd = new SqlCommand(fkSql, con))
@@ -847,6 +858,9 @@ ORDER BY co.Id;";
             result.IntelRowsDropped = intelResult.RowsDropped;
             AddTableCount(result.FkRepointsByTable, "IntelPersonAffiliation", intelResult.AffiliationsRepointed);
             result.EnrichmentCollisionsResolved = await DeleteEnrichmentCollisionsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
+            // RollupDeleteTargets: losers' warmth rollups drop; the nightly
+            // CrmEnrichmentJob recomputes the survivor's from source.
+            await DeleteWarmthRollupsAsync(con, tx).ConfigureAwait(false);
             result.NewsMentionCollisionsResolved = await DeleteNewsMentionCollisionsAsync(con, tx, group.Survivor.Id, newsMentionTypeKeyExists).ConfigureAwait(false);
             result.DisplacementBriefCollisionsResolved = await DeleteDisplacementBriefCollisionsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
 
@@ -1140,6 +1154,20 @@ SELECT @rows AS RowsDropped, @affiliationRepoints AS AffiliationsRepointed;";
         return new IntelDependentsResult(
             reader.GetInt32(0),
             reader.GetInt32(1));
+    }
+
+    /// <summary>Drop the losers' email-warmth rollups (RollupDeleteTargets):
+    /// PK CanonicalOrgId makes repointing collide when the survivor already
+    /// has a row, and the nightly CrmEnrichmentJob recomputes the survivor's
+    /// rollup from source. IF-guarded so the tool still runs against DBs
+    /// that predate migration 274.</summary>
+    private static async Task<int> DeleteWarmthRollupsAsync(SqlConnection con, SqlTransaction tx)
+    {
+        const string sql = @"
+IF OBJECT_ID(N'opportunities.CrmBuyerEmailWarmth', N'U') IS NOT NULL
+    DELETE w FROM opportunities.CrmBuyerEmailWarmth w JOIN #Losers l ON l.Id = w.CanonicalOrgId;";
+        await using var cmd = new SqlCommand(sql, con, tx);
+        return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
     private static async Task<int> DeleteEnrichmentCollisionsAsync(SqlConnection con, SqlTransaction tx, long survivorId)

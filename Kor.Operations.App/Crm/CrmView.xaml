@@ -20,20 +20,23 @@
             <StackPanel.Resources>
                 <Style TargetType="Button" BasedOn="{StaticResource Button.ActionBar}"/>
             </StackPanel.Resources>
-            <Button Content="Refresh" Width="100" Click="RefreshButton_Click"/>
-            <Button Content="Buyer intel…" Width="120" Click="BuyerIntelButton_Click"
+            <!-- Widths trimmed so the full toolbar fits the workspace's default
+                 1360px window (review nit — 'Set stage' clipped). -->
+            <Button Content="Refresh" Width="80" Click="RefreshButton_Click"/>
+            <Button Content="Buyer intel…" Width="110" Click="BuyerIntelButton_Click"
                     IsEnabled="{Binding Selected.HasBuyerIntel, FallbackValue=False}"
                     ToolTip="Open the buyer's intel dossier — key people, signals, and KOR track record for this pursuit."/>
             <Button Content="Opportunity brief…" Width="140" Click="OpportunityBriefButton_Click"
                     IsEnabled="{Binding Selected.HasOpportunity, FallbackValue=False}"
                     ToolTip="Generate the full per-pursuit brief PDF (RFP + buyer + market context). Plan 2.4."/>
-            <Button Content="Link Deltek project…" Width="150" Click="LinkDeltekProjectButton_Click"
+            <Button Content="Link project…" Width="110" Click="LinkDeltekProjectButton_Click"
                     IsEnabled="{Binding Selected.IsWon, FallbackValue=False}"
                     ToolTip="Record which Deltek project this win became (WBS1). Plan 2.5 — the opportunity→project bridge."/>
-            <Button Content="Edit engagement…" Width="160" Click="EditEngagementButton_Click"/>
-            <Button Content="Build Fee Proposal…" Width="160" Click="BuildFeeProposalButton_Click"
+            <Button Content="Edit…" Width="80" Click="EditEngagementButton_Click"
+                    ToolTip="Edit the engagement (owner, fee, notes, stage)."/>
+            <Button Content="Fee Proposal…" Width="120" Click="BuildFeeProposalButton_Click"
                     ToolTip="Open the Fee Proposal Builder pre-named for this engagement."/>
-            <Button Content="Build Brochure…" Width="140" Margin="0,0,16,0" Click="BuildBrochureButton_Click"
+            <Button Content="Brochure…" Width="100" Margin="0,0,16,0" Click="BuildBrochureButton_Click"
                     ToolTip="Open the Sales Brochure Builder pre-named for this engagement."/>
             <Separator Margin="0,4,16,4"/>
 

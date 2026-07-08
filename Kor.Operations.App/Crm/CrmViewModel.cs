@@ -515,11 +515,6 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             var contacts = await _contactStore.ListByEngagementAsync(engagementId, ct).ConfigureAwait(true);
             if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
 
-            // Phase 2/3 context reads — each best-effort and individually
-            // guarded; a hiccup in one never blocks the detail panel.
-            await LoadPursuitContextAsync(engagementId, ct).ConfigureAwait(true);
-            if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
-
             foreach (var a in activities)
             {
                 Activities.Add(new CrmActivityRowView(a));
@@ -529,6 +524,12 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             {
                 Contacts.Add(new CrmContactRowView(c));
             }
+
+            // Phase 2/3 context reads AFTER the core panel renders (review nit:
+            // fetched activities must not wait on warmth/history round-trips) —
+            // each best-effort and individually guarded.
+            await LoadPursuitContextAsync(engagementId, ct).ConfigureAwait(true);
+            if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
 
             // Plan 1.3 (re-key): the Deltek roll-up keys on the engagement's
             // BuyerCanonicalOrgId → CanonicalOrg.ClendorClientId — the path that
@@ -608,15 +609,21 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             {
                 var w = await _contextStore.GetWarmthAsync(orgId, ct).ConfigureAwait(true);
                 if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+                // The rollup only refreshes while a pursuit of this buyer is
+                // LIVE — surface the compute date once it's stale so a closed
+                // pursuit's numbers read as "as of", never as current (review nit).
+                var asOf = w is not null && (DateTimeOffset.Now - w.ComputedAtUtc).TotalDays > 2
+                    ? $" (as of {w.ComputedAtUtc.LocalDateTime:yyyy-MM-dd})"
+                    : "";
                 if (w is { LastTouchUtc: not null })
                 {
                     var days = Math.Max(0, (int)(DateTimeOffset.Now - w.LastTouchUtc.Value).TotalDays);
                     var top = string.IsNullOrWhiteSpace(w.TopCorrespondent) ? "" : $" · mostly {w.TopCorrespondent}";
-                    WarmthSummary = $"Filed correspondence with @{w.Domain}: last {days}d ago · {w.Emails90d} in 90d · {w.EmailsAllTime} all-time{top}";
+                    WarmthSummary = $"Filed correspondence with @{w.Domain}: last {days}d ago · {w.Emails90d} in 90d · {w.EmailsAllTime} all-time{top}{asOf}";
                 }
                 else if (w is not null)
                 {
-                    WarmthSummary = $"No filed correspondence with @{w.Domain}.";
+                    WarmthSummary = $"No filed correspondence with @{w.Domain}.{asOf}";
                 }
             }
             catch (OperationCanceledException) { throw; }
@@ -667,9 +674,12 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
                 if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
                 if (firms.Count > 0)
                 {
-                    var names = firms.Select(f => f.RawFirmName).Distinct(StringComparer.OrdinalIgnoreCase).Take(12).ToList();
-                    var more = firms.Count > names.Count ? $" (+{firms.Count - names.Count} more)" : "";
-                    PlanTakersSummary = $"Plan takers ({firms.Count}): {string.Join(" · ", names)}{more}";
+                    // Distinct-name counts throughout — raw rows can repeat a
+                    // firm across portals (review nit: '+N more' overstated).
+                    var distinct = firms.Select(f => f.RawFirmName).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    var names = distinct.Take(12).ToList();
+                    var more = distinct.Count > names.Count ? $" (+{distinct.Count - names.Count} more)" : "";
+                    PlanTakersSummary = $"Plan takers ({distinct.Count}): {string.Join(" · ", names)}{more}";
                 }
             }
             catch (OperationCanceledException) { throw; }

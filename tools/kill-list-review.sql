@@ -19,13 +19,14 @@ FROM opportunities.BdUiOpens
 GROUP BY Surface
 ORDER BY Opens30d DESC;
 
--- Report generation, last 30 / 90 days (BdReportAuditLog, migration 121).
-SELECT ReportKey,
+-- Report generation, last 30 / 90 days (BdReportAuditLog, migration 121 —
+-- columns are Category/Format/GeneratedAtUtc).
+SELECT Category, Format,
        SUM(CASE WHEN GeneratedAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset()) THEN 1 ELSE 0 END) AS Gens30d,
        SUM(CASE WHEN GeneratedAtUtc >= DATEADD(DAY, -90, sysdatetimeoffset()) THEN 1 ELSE 0 END) AS Gens90d,
        MAX(GeneratedAtUtc) AS LastGenerated
 FROM opportunities.BdReportAuditLog
-GROUP BY ReportKey
+GROUP BY Category, Format
 ORDER BY Gens30d DESC;
 
 -- Adoption milestones (plan Phase 1 exit criteria): first organic grab,

@@ -109,8 +109,8 @@ ORDER BY o.SubmissionDeadlineUtc ASC;", con))
                 {
                     closing.Add((
                         r.IsDBNull(0) ? "(unowned)" : r.GetString(0),
-                        r.GetString(1),
-                        r.GetString(2),
+                        r.IsDBNull(1) ? "(unnamed)" : r.GetString(1),
+                        r.IsDBNull(2) ? "" : r.GetString(2),
                         r.GetDateTimeOffset(3)));
                 }
             }
@@ -121,12 +121,15 @@ ORDER BY o.SubmissionDeadlineUtc ASC;", con))
                 sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
                 foreach (var (pOwner, project, buyer, due) in closing)
                 {
-                    var days = (due - DateTimeOffset.UtcNow).TotalDays;
+                    // Floor once and use it for BOTH threshold and display, so
+                    // the same "5d" can't render red in one row and plain in
+                    // another (review nit).
+                    var days = (int)Math.Floor((due - DateTimeOffset.UtcNow).TotalDays);
                     var dueStyle = days < 5 ? "color:#C8102E;font-weight:bold" : "color:#1a1a1a";
                     sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(project)}</td>" +
                               $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(buyer)}</td>" +
                               $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(pOwner)}</td>" +
-                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;{dueStyle}\">due {due.ToLocalTime():MMM d} ({days:F0}d)</td></tr>");
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;{dueStyle}\">due {due.ToLocalTime():MMM d} ({days}d)</td></tr>");
                 }
                 sb.Append("</table>");
             }

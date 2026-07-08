@@ -102,8 +102,26 @@ WHERE e.Stage IN (1, 3);";
             }
         }
 
-        var skipped = targets.Count(t => GenericDomains.Contains(t.Domain));
-        var usable = targets.Where(t => !GenericDomains.Contains(t.Domain)).ToList();
+        // Adversarial-review fix (P1, 2026-07-07): domains flow from scraped
+        // CanonicalOrg.WebsiteDomain with NO validation upstream — a stray
+        // LIKE metacharacter (% _ [) silently over/under-matches, writing
+        // WRONG aggregates that then rank the Overwatch board. Only plausible
+        // hostnames run; everything else is log-skipped (degrade-gracefully).
+        var invalid = targets
+            .Where(t => !GenericDomains.Contains(t.Domain) && !System.Text.RegularExpressions.Regex.IsMatch(
+                t.Domain, "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$"))
+            .ToList();
+        foreach (var (orgId, domain) in invalid)
+        {
+            _logger.LogWarning("{Job}: org {OrgId} skipped — WebsiteDomain '{Domain}' is not a plausible hostname.",
+                nameof(CrmEnrichmentJob), orgId, domain);
+        }
+
+        var skipped = targets.Count(t => GenericDomains.Contains(t.Domain)) + invalid.Count;
+        var usable = targets
+            .Where(t => !GenericDomains.Contains(t.Domain))
+            .Except(invalid)
+            .ToList();
         if (usable.Count == 0)
         {
             return (0, skipped);
@@ -111,6 +129,12 @@ WHERE e.Stage IN (1, 3);";
 
         // 2. Per-domain aggregate over the filed-email corpus (email-index conn).
         //    One domain at a time — nightly-tier LIKE scans, sequential on purpose.
+        //
+        //    Recipient matching is ANCHORED (review fix): ToList/CcList entries
+        //    are '; '-delimited (occasionally '{addr} display-name'), so an
+        //    address ends at ';', '}', or end-of-string — a bare trailing '%'
+        //    made 'acme.co' swallow '@acme.com' mail. FromEmail is a single
+        //    address, so ends-with is already anchored.
         const string warmthSql = @"
 SELECT MAX(m.SentOnUtc)                                                        AS LastTouchUtc,
        MAX(CASE WHEN m.FromEmail LIKE N'%@' + @domain THEN m.SentOnUtc END)    AS LastInboundUtc,
@@ -118,8 +142,12 @@ SELECT MAX(m.SentOnUtc)                                                        A
        COUNT_BIG(*)                                                            AS EmailsAllTime
 FROM dbo.Emails m
 WHERE m.FromEmail LIKE N'%@' + @domain
-   OR m.ToList  LIKE N'%@' + @domain + N'%'
-   OR m.CcList  LIKE N'%@' + @domain + N'%';
+   OR m.ToList  LIKE N'%@' + @domain + N';%'
+   OR m.ToList  LIKE N'%@' + @domain + N'}%'
+   OR m.ToList  LIKE N'%@' + @domain
+   OR m.CcList  LIKE N'%@' + @domain + N';%'
+   OR m.CcList  LIKE N'%@' + @domain + N'}%'
+   OR m.CcList  LIKE N'%@' + @domain;
 
 SELECT TOP 1 m.FromEmail
 FROM dbo.Emails m
@@ -156,43 +184,50 @@ WHEN NOT MATCHED THEN INSERT
 
             try
             {
-                await using var cmd = new SqlCommand(warmthSql, mailCon) { CommandTimeout = CommandTimeoutSeconds };
-                cmd.Parameters.Add("@domain", SqlDbType.NVarChar, 200).Value = domain;
-                await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
-                if (await r.ReadAsync(ct).ConfigureAwait(false))
+                await using (var cmd = new SqlCommand(warmthSql, mailCon) { CommandTimeout = CommandTimeoutSeconds })
                 {
-                    // dbo.Emails.SentOnUtc is datetime2 (UTC by contract) —
-                    // GetDateTimeOffset would throw InvalidCastException.
-                    lastTouch = r.IsDBNull(0) ? null : new DateTimeOffset(DateTime.SpecifyKind(r.GetDateTime(0), DateTimeKind.Utc));
-                    lastInbound = r.IsDBNull(1) ? null : new DateTimeOffset(DateTime.SpecifyKind(r.GetDateTime(1), DateTimeKind.Utc));
-                    e90 = r.IsDBNull(2) ? 0 : r.GetInt32(2);
-                    eAll = r.IsDBNull(3) ? 0 : r.GetInt64(3);
+                    cmd.Parameters.Add("@domain", SqlDbType.NVarChar, 200).Value = domain;
+                    await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                    if (await r.ReadAsync(ct).ConfigureAwait(false))
+                    {
+                        // dbo.Emails.SentOnUtc is datetime2 (UTC by contract) —
+                        // GetDateTimeOffset would throw InvalidCastException.
+                        lastTouch = r.IsDBNull(0) ? null : new DateTimeOffset(DateTime.SpecifyKind(r.GetDateTime(0), DateTimeKind.Utc));
+                        lastInbound = r.IsDBNull(1) ? null : new DateTimeOffset(DateTime.SpecifyKind(r.GetDateTime(1), DateTimeKind.Utc));
+                        e90 = r.IsDBNull(2) ? 0 : r.GetInt32(2);
+                        eAll = r.IsDBNull(3) ? 0 : r.GetInt64(3);
+                    }
+
+                    if (await r.NextResultAsync(ct).ConfigureAwait(false)
+                        && await r.ReadAsync(ct).ConfigureAwait(false))
+                    {
+                        top = r.IsDBNull(0) ? null : r.GetString(0);
+                    }
                 }
 
-                if (await r.NextResultAsync(ct).ConfigureAwait(false)
-                    && await r.ReadAsync(ct).ConfigureAwait(false))
+                // The WRITE sits inside the same per-domain guard (review fix):
+                // an org merged/deleted mid-sweep throws an FK violation on the
+                // MERGE's INSERT branch — that one org is stale-until-tomorrow,
+                // never a reason to abandon the rest of the night's sweep.
+                await using (var up = new SqlCommand(upsertSql, writeCon) { CommandTimeout = CommandTimeoutSeconds })
                 {
-                    top = r.IsDBNull(0) ? null : r.GetString(0);
+                    up.Parameters.Add("@orgId", SqlDbType.BigInt).Value = orgId;
+                    up.Parameters.Add("@domain", SqlDbType.NVarChar, 200).Value = domain;
+                    up.Parameters.Add("@lastTouch", SqlDbType.DateTimeOffset).Value = (object?)lastTouch ?? DBNull.Value;
+                    up.Parameters.Add("@lastInbound", SqlDbType.DateTimeOffset).Value = (object?)lastInbound ?? DBNull.Value;
+                    up.Parameters.Add("@e90", SqlDbType.Int).Value = e90;
+                    up.Parameters.Add("@eAll", SqlDbType.BigInt).Value = eAll;
+                    up.Parameters.Add("@top", SqlDbType.NVarChar, 320).Value = (object?)top ?? DBNull.Value;
+                    await up.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // One bad domain (weird chars, timeout) must not kill the sweep.
-                _logger.LogWarning(ex, "{Job}: warmth aggregate failed for domain {Domain}; org {OrgId} skipped.",
+                // One bad domain (weird chars, timeout, mid-run org merge) must
+                // not kill the sweep.
+                _logger.LogWarning(ex, "{Job}: warmth pass failed for domain {Domain}; org {OrgId} skipped this run.",
                     nameof(CrmEnrichmentJob), domain, orgId);
                 continue;
-            }
-
-            await using (var up = new SqlCommand(upsertSql, writeCon) { CommandTimeout = CommandTimeoutSeconds })
-            {
-                up.Parameters.Add("@orgId", SqlDbType.BigInt).Value = orgId;
-                up.Parameters.Add("@domain", SqlDbType.NVarChar, 200).Value = domain;
-                up.Parameters.Add("@lastTouch", SqlDbType.DateTimeOffset).Value = (object?)lastTouch ?? DBNull.Value;
-                up.Parameters.Add("@lastInbound", SqlDbType.DateTimeOffset).Value = (object?)lastInbound ?? DBNull.Value;
-                up.Parameters.Add("@e90", SqlDbType.Int).Value = e90;
-                up.Parameters.Add("@eAll", SqlDbType.BigInt).Value = eAll;
-                up.Parameters.Add("@top", SqlDbType.NVarChar, 320).Value = (object?)top ?? DBNull.Value;
-                await up.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
             }
 
             updated++;

@@ -63,13 +63,29 @@ public partial class CrmView : UserControl
     /// on save. Named "Opportunity brief" to avoid colliding with the MPI
     /// PursuitBriefWindow (a different brief for a different entity).
     /// </summary>
+    private bool _briefBusy;
+
     private async void OpportunityBriefButton_Click(object sender, RoutedEventArgs e)
     {
         var row = _vm.Selected;
-        if (row?.OpportunityId is not { } opportunityId)
+        if (row?.OpportunityId is not { } opportunityId || _briefBusy)
         {
             return;
         }
+
+        _briefBusy = true;
+        try
+        {
+            await GenerateOpportunityBriefAsync(opportunityId).ConfigureAwait(true);
+        }
+        finally
+        {
+            _briefBusy = false;
+        }
+    }
+
+    private async Task GenerateOpportunityBriefAsync(long opportunityId)
+    {
 
         var briefStore = AppServices.Get<Kor.Opportunities.Data.Briefs.IBriefDataStore>();
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);

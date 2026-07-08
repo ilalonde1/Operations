@@ -126,14 +126,19 @@ OUTER APPLY (
     FROM opportunities.CrmEngagementStageHistory h
     WHERE h.EngagementId = e.Id AND h.Stage = e.Stage
 ) sh
+CROSS APPLY (
+    SELECT CASE WHEN w.LastTouchUtc IS NULL THEN la.LastActivityUtc
+                WHEN la.LastActivityUtc IS NULL THEN w.LastTouchUtc
+                WHEN w.LastTouchUtc > la.LastActivityUtc THEN w.LastTouchUtc
+                ELSE la.LastActivityUtc END AS FusedTouchUtc
+) f
 WHERE e.OwnerStaffId IS NOT NULL
   AND e.Stage IN (1, 3)
-ORDER BY COALESCE(
-    CASE WHEN w.LastTouchUtc IS NULL THEN la.LastActivityUtc
-         WHEN la.LastActivityUtc IS NULL THEN w.LastTouchUtc
-         WHEN w.LastTouchUtc > la.LastActivityUtc THEN w.LastTouchUtc
-         ELSE la.LastActivityUtc END,
-    e.OpenedAtUtc) ASC;";
+-- Staleness is PURSUIT-scoped: floored at OpenedAtUtc so org-level email
+-- history older than the pursuit can't rank a fresh pursuit as the coldest
+-- row (review fix).
+ORDER BY CASE WHEN f.FusedTouchUtc IS NULL OR f.FusedTouchUtc < e.OpenedAtUtc
+              THEN e.OpenedAtUtc ELSE f.FusedTouchUtc END ASC;";
 
     // Re-own the engagement (guard: still owned by @from AND still active), sync
     // the parent opportunity's owner when present, and log the move — one

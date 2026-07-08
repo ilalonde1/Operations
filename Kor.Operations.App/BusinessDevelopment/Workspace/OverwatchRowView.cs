@@ -43,7 +43,12 @@ public sealed class OverwatchRowView
         }
 
         LastTouchUtc = reference;
-        DaysSinceTouch = Math.Max(0, (int)(DateTimeOffset.Now - reference).TotalDays);
+        // Staleness badge is PURSUIT-scoped: floored at OpenedAtUtc so a
+        // relationship's old email history can't make a fresh pursuit read as
+        // 600d cold (review fix). The Last-touch column keeps the TRUE last
+        // touch + source — relationship-scoped by design.
+        var staleReference = reference < row.OpenedAtUtc ? row.OpenedAtUtc : reference;
+        DaysSinceTouch = Math.Max(0, (int)(DateTimeOffset.Now - staleReference).TotalDays);
         StageAgeDays = Math.Max(0, (int)(DateTimeOffset.Now - row.StageSinceUtc).TotalDays);
     }
 
