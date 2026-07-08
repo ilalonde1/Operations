@@ -97,17 +97,25 @@ public sealed class BdMorningReportJob : IJob
         }
     }
 
-    private sealed record OwnerPursuitRow(string Owner, string Project, string Buyer, DateTimeOffset? Due, DateTimeOffset Reference);
+    private sealed record OwnerPursuitRow(string Owner, string Project, string Buyer, DateTimeOffset? Due, DateTimeOffset? LastTouch);
 
     /// <summary>
     /// Send each owner of live pursuits their own digest: the pursuits they own
-    /// that are closing soon (&lt;14d) or going cold (&gt;21d since the newest of
-    /// a logged activity OR a filed email — the same fused staleness the
-    /// Overwatch board uses). Owners are resolved to a mailbox by: an
-    /// email-shaped owner is used directly (grabbed pursuits); a legacy
-    /// first-name owner is looked up in the verified map; anything else is
-    /// left to the manager report (never guessed). One send per owner; a single
-    /// failure never stops the rest.
+    /// that are closing soon (&lt;14d) or going cold. "Going cold" here means a
+    /// pursuit that was ACTUALLY WORKED — it has a logged activity or a filed
+    /// email — and that last real touch went quiet 21–90 days ago (recently
+    /// cooling). A pursuit that was never touched (e.g. an ingested BD-Tracking
+    /// backlog row) is NOT "cold" — it never started; and one last touched &gt;90d
+    /// ago is not "going cold" either — it is long dead (a retire-stale-pursuits
+    /// job, not a daily nudge). Both are excluded rather than flooding day-one
+    /// inboxes. Rows with no real project name are skipped too. This is stricter than the Overwatch board's fused staleness
+    /// (which floors at OpenedAtUtc); the personal nudge holds a higher signal
+    /// bar. Trade-off: a grabbed-but-never-touched pursuit won't nudge here — the
+    /// manager report and the Overwatch board still surface it.
+    /// Owners are resolved to a mailbox by: an email-shaped owner is used
+    /// directly (grabbed pursuits); a legacy first-name owner via the directory /
+    /// verified map; anything else is left to the manager report (never guessed).
+    /// One send per owner; a single failure never stops the rest.
     /// </summary>
     private async Task SendPerOwnerDigestsAsync(OpportunitiesWorkerOptions opt, System.Threading.CancellationToken ct)
     {
@@ -122,8 +130,11 @@ SELECT e.OwnerStaffId,
        COALESCE(o.Name, e.PotentialProjects, N'(unnamed)') AS Project,
        COALESCE(o.BuyerName, N'')                          AS Buyer,
        o.SubmissionDeadlineUtc                             AS Due,
-       -- fused staleness reference = newest of activity / filed email / opened
-       (SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc), (e.OpenedAtUtc)) AS t(v)) AS Reference
+       -- last REAL touch = newest of a logged activity or a filed email.
+       -- Deliberately NOT floored at OpenedAtUtc: a never-touched pursuit has
+       -- no real touch, so it is not 'going cold' — this keeps the ingested
+       -- BD-Tracking backlog out of the personal digest.
+       (SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc)) AS t(v)) AS LastTouch
 FROM opportunities.CrmEngagements e
 LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
 LEFT JOIN opportunities.CrmBuyerEmailWarmth w ON w.CanonicalOrgId = e.BuyerCanonicalOrgId
@@ -132,12 +143,18 @@ OUTER APPLY (
     FROM opportunities.CrmActivities a WHERE a.EngagementId = e.Id
 ) la
 WHERE e.Stage IN (1, 3) AND e.OwnerStaffId IS NOT NULL
+  -- Only pursuits with a real name — a nameless '(unnamed)' row can't be
+  -- acted on from an email.
+  AND (NULLIF(LTRIM(RTRIM(o.Name)), N'') IS NOT NULL
+    OR NULLIF(LTRIM(RTRIM(e.PotentialProjects)), N'') IS NOT NULL)
   AND (
     (o.SubmissionDeadlineUtc IS NOT NULL
        AND o.SubmissionDeadlineUtc >= SYSDATETIMEOFFSET()
        AND o.SubmissionDeadlineUtc <  DATEADD(DAY, 14, SYSDATETIMEOFFSET()))
-    OR (SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc), (e.OpenedAtUtc)) AS t(v))
-         < DATEADD(DAY, -21, SYSDATETIMEOFFSET())
+    OR ((SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc)) AS t(v))
+           < DATEADD(DAY, -21, SYSDATETIMEOFFSET())
+        AND (SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc)) AS t(v))
+           >= DATEADD(DAY, -90, SYSDATETIMEOFFSET()))
   )
 ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
             { CommandTimeout = 120 };
@@ -150,7 +167,7 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
                     r.GetString(1),
                     r.IsDBNull(2) ? "" : r.GetString(2),
                     r.IsDBNull(3) ? null : r.GetDateTimeOffset(3),
-                    r.GetDateTimeOffset(4)));
+                    r.IsDBNull(4) ? (DateTimeOffset?)null : r.GetDateTimeOffset(4)));
             }
         }
 
@@ -276,9 +293,13 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
             .Where(x => x.Due is { } d && d >= now && d < now.AddDays(14))
             .OrderBy(x => x.Due)
             .ToList();
+        // Cold = a real touch that went quiet 21–90 days ago ("recently cooling").
+        // The 90-day floor keeps ancient dead pursuits (an imported meeting from
+        // last year) out of a daily nudge — those are a retire-stale-pursuits
+        // job, not a personal reminder.
         var cold = rows
-            .Where(x => x.Reference < now.AddDays(-21))
-            .OrderBy(x => x.Reference)
+            .Where(x => x.LastTouch is { } t && t < now.AddDays(-21) && t >= now.AddDays(-90))
+            .OrderBy(x => x.LastTouch)
             .ToList();
 
         if (closing.Count == 0 && cold.Count == 0) return null;
@@ -304,11 +325,11 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
 
         if (cold.Count > 0)
         {
-            sb.Append("<h3>Going cold <span style=\"color:#666;font-weight:normal\">(no touch in 21+ days)</span></h3>");
+            sb.Append("<h3>Going cold <span style=\"color:#666;font-weight:normal\">(worked, then quiet 21–90 days)</span></h3>");
             sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
             foreach (var row in cold)
             {
-                var days = (int)Math.Floor((now - row.Reference).TotalDays);
+                var days = (int)Math.Floor((now - row.LastTouch!.Value).TotalDays);
                 sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(row.Project)}</td>" +
                           $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(row.Buyer)}</td>" +
                           $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;color:#C8102E\">{days}d cold</td></tr>");
