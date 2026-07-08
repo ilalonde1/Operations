@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -75,6 +76,194 @@ public sealed class BdMorningReportJob : IJob
             // for tomorrow's fire.
             _logger.LogError(ex, "{Job} failed.", nameof(BdMorningReportJob));
         }
+
+        // Per-owner digest (plan D6) — each owner ALSO gets their own focused
+        // email. Dormant until enabled; isolated from the manager report above
+        // so a per-owner hiccup never breaks the main send.
+        if (opt.MorningReportPerOwnerEnabled)
+        {
+            try
+            {
+                await SendPerOwnerDigestsAsync(opt, context.CancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "{Job}: per-owner digest pass failed.", nameof(BdMorningReportJob));
+            }
+        }
+    }
+
+    private sealed record OwnerPursuitRow(string Owner, string Project, string Buyer, DateTimeOffset? Due, DateTimeOffset Reference);
+
+    /// <summary>
+    /// Send each owner of live pursuits their own digest: the pursuits they own
+    /// that are closing soon (&lt;14d) or going cold (&gt;21d since the newest of
+    /// a logged activity OR a filed email — the same fused staleness the
+    /// Overwatch board uses). Owners are resolved to a mailbox by: an
+    /// email-shaped owner is used directly (grabbed pursuits); a legacy
+    /// first-name owner is looked up in the verified map; anything else is
+    /// left to the manager report (never guessed). One send per owner; a single
+    /// failure never stops the rest.
+    /// </summary>
+    private async Task SendPerOwnerDigestsAsync(OpportunitiesWorkerOptions opt, System.Threading.CancellationToken ct)
+    {
+        var ownerMap = ParseOwnerEmailMap(opt.MorningReportOwnerEmailMap);
+
+        var rows = new List<OwnerPursuitRow>();
+        await using (var con = new SqlConnection(opt.OpportunitiesDb))
+        {
+            await con.OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = new SqlCommand(@"
+SELECT e.OwnerStaffId,
+       COALESCE(o.Name, e.PotentialProjects, N'(unnamed)') AS Project,
+       COALESCE(o.BuyerName, N'')                          AS Buyer,
+       o.SubmissionDeadlineUtc                             AS Due,
+       -- fused staleness reference = newest of activity / filed email / opened
+       (SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc), (e.OpenedAtUtc)) AS t(v)) AS Reference
+FROM opportunities.CrmEngagements e
+LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+LEFT JOIN opportunities.CrmBuyerEmailWarmth w ON w.CanonicalOrgId = e.BuyerCanonicalOrgId
+OUTER APPLY (
+    SELECT MAX(a.OccurredAtUtc) AS LastActivityUtc
+    FROM opportunities.CrmActivities a WHERE a.EngagementId = e.Id
+) la
+WHERE e.Stage IN (1, 3) AND e.OwnerStaffId IS NOT NULL
+  AND (
+    (o.SubmissionDeadlineUtc IS NOT NULL
+       AND o.SubmissionDeadlineUtc >= SYSDATETIMEOFFSET()
+       AND o.SubmissionDeadlineUtc <  DATEADD(DAY, 14, SYSDATETIMEOFFSET()))
+    OR (SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc), (e.OpenedAtUtc)) AS t(v))
+         < DATEADD(DAY, -21, SYSDATETIMEOFFSET())
+  )
+ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
+            { CommandTimeout = 120 };
+
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                rows.Add(new OwnerPursuitRow(
+                    r.GetString(0),
+                    r.GetString(1),
+                    r.IsDBNull(2) ? "" : r.GetString(2),
+                    r.IsDBNull(3) ? null : r.GetDateTimeOffset(3),
+                    r.GetDateTimeOffset(4)));
+            }
+        }
+
+        var sent = 0;
+        var unrouted = 0;
+        foreach (var group in rows.GroupBy(x => x.Owner, StringComparer.OrdinalIgnoreCase))
+        {
+            var mailbox = ResolveMailbox(group.Key, ownerMap);
+            if (mailbox is null)
+            {
+                unrouted++;
+                _logger.LogInformation(
+                    "{Job}: owner '{Owner}' has {Count} pursuit(s) needing attention but no mailbox (not an email, not in the map); left to the manager report.",
+                    nameof(BdMorningReportJob), group.Key, group.Count());
+                continue;
+            }
+
+            try
+            {
+                var html = BuildPerOwnerHtml(group.Key, group.ToList());
+                await _mail.SendHtmlAsync(
+                    opt.MorningReportTenantId, opt.MorningReportClientId, opt.MorningReportClientSecret,
+                    opt.MorningReportSenderUpn, mailbox,
+                    $"Your KOR pursuits need attention — {DateTime.Now:ddd MMM d}",
+                    html, ct).ConfigureAwait(false);
+                sent++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "{Job}: per-owner send to {Mailbox} failed.", nameof(BdMorningReportJob), mailbox);
+            }
+        }
+
+        _logger.LogInformation("{Job}: per-owner digests sent={Sent}, unrouted={Unrouted}.", nameof(BdMorningReportJob), sent, unrouted);
+    }
+
+    private static Dictionary<string, string> ParseOwnerEmailMap(string? raw)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(raw)) return map;
+        foreach (var pair in raw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var eq = pair.IndexOf('=');
+            if (eq <= 0) continue;
+            var name = pair[..eq].Trim();
+            var email = pair[(eq + 1)..].Trim();
+            if (name.Length > 0 && email.Contains('@'))
+            {
+                map[name] = email;
+            }
+        }
+
+        return map;
+    }
+
+    /// <summary>Email-shaped owner → itself; legacy name → verified map; else null.</summary>
+    private static string? ResolveMailbox(string owner, IReadOnlyDictionary<string, string> map)
+    {
+        var o = owner.Trim();
+        if (o.Contains('@')) return o;
+        return map.TryGetValue(o, out var email) ? email : null;
+    }
+
+    private static string BuildPerOwnerHtml(string owner, List<OwnerPursuitRow> rows)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var closing = rows
+            .Where(x => x.Due is { } d && d >= now && d < now.AddDays(14))
+            .OrderBy(x => x.Due)
+            .ToList();
+        var cold = rows
+            .Where(x => x.Reference < now.AddDays(-21))
+            .OrderBy(x => x.Reference)
+            .ToList();
+
+        var sb = new StringBuilder();
+        sb.Append("<html><body style=\"font-family:Segoe UI,Arial,sans-serif;color:#1a1a1a;max-width:720px\">");
+        sb.Append("<h2 style=\"border-bottom:3px solid #C8102E;padding-bottom:6px\">Your pursuits</h2>");
+        sb.Append($"<p style=\"color:#666\">{WebUtility.HtmlEncode(DisplayOwner(owner))} — {DateTime.Now:yyyy-MM-dd}. What needs a nudge today.</p>");
+
+        if (closing.Count > 0)
+        {
+            sb.Append("<h3>Closing soon</h3><table style=\"border-collapse:collapse;width:100%\">");
+            foreach (var row in closing)
+            {
+                var days = (int)Math.Floor(((row.Due!.Value) - now).TotalDays);
+                var style = days < 5 ? "color:#C8102E;font-weight:bold" : "color:#1a1a1a";
+                sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(row.Project)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(row.Buyer)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;{style}\">due {row.Due!.Value.ToLocalTime():MMM d} ({days}d)</td></tr>");
+            }
+            sb.Append("</table>");
+        }
+
+        if (cold.Count > 0)
+        {
+            sb.Append("<h3>Going cold <span style=\"color:#666;font-weight:normal\">(no touch in 21+ days)</span></h3>");
+            sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+            foreach (var row in cold)
+            {
+                var days = (int)Math.Floor((now - row.Reference).TotalDays);
+                sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(row.Project)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(row.Buyer)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;color:#C8102E\">{days}d cold</td></tr>");
+            }
+            sb.Append("</table>");
+        }
+
+        sb.Append("<p style=\"color:#888;font-size:12px;margin-top:14px\">Open <b>Business Development &#8594; Pursuits</b> in the KOR app to work these. Staleness counts a logged call or a filed email as a touch.</p>");
+        sb.Append("</body></html>");
+        return sb.ToString();
+    }
+
+    private static string DisplayOwner(string owner)
+    {
+        var at = owner.IndexOf('@');
+        return at > 0 ? owner[..at] : owner;
     }
 
     private static async Task<string> BuildHtmlAsync(string cs, string queueDrainRoot, System.Threading.CancellationToken ct)

@@ -282,4 +282,20 @@ public sealed class OpportunitiesWorkerOptions
     public string MorningReportClientSecret { get; set; } = "";
     public string MorningReportSenderUpn { get; set; } = "ilalonde@korstructural.com";
     public string MorningReportRecipient { get; set; } = "ilalonde@korstructural.com";
+
+    // --- 2026-07-08: per-owner morning digest (plan D6) ---
+    // When enabled, each owner of live pursuits ALSO gets their own focused
+    // email (their pursuits closing soon + going cold). Ships DORMANT: flip
+    // KOR_OPPORTUNITIES_MORNINGREPORTPEROWNERENABLED=true when BD access opens
+    // to the team. The manager report (MorningReportRecipient) always lists
+    // everyone, so nothing is lost while this is off or an owner is unrouted.
+    public bool MorningReportPerOwnerEnabled { get; set; } = false;
+
+    // Verified owner -> mailbox map for LEGACY first-name owners (D2's "small
+    // hand-verified map"). Grabbed pursuits store the owner's email and resolve
+    // WITHOUT this map; only the 75 legacy BD-tracking first-name owners need
+    // it. Format: "Conor=cmcdonald@korstructural.com;Jim=jmarkulin@korstructural.com".
+    // An owner that is neither an email nor mapped is left to the manager report
+    // (never guessed). Set via KOR_OPPORTUNITIES_MORNINGREPORTOWNEREMAILMAP.
+    public string MorningReportOwnerEmailMap { get; set; } = "";
 }
