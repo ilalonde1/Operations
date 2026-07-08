@@ -430,12 +430,29 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
                         () => new Dictionary<string, string>());
                     return new DeltekKorPursuitDeltekAccessor(factory, options.DeltekCatalog);
                 });
+                // D2: EMMain employee directory for the BD staff-identity sync.
+                builder.Services.AddSingleton<IKorStaffDirectoryAccessor>(sp =>
+                {
+                    var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                    var dsn = string.IsNullOrWhiteSpace(options.DeltekDsn) ? "Deltek" : options.DeltekDsn;
+                    var factory = new VpOdbcDsnFactory(
+                        dsn,
+                        options.DeltekUser,
+                        options.DeltekPassword,
+                        () => new Dictionary<string, string>());
+                    return new DeltekKorStaffDirectoryAccessor(factory, options.DeltekCatalog);
+                });
             }
             else
             {
                 builder.Services.AddSingleton<IKorWonProjectAccessor, NullKorWonProjectAccessor>();
                 builder.Services.AddSingleton<IKorPursuitDeltekAccessor, NullKorPursuitDeltekAccessor>();
+                builder.Services.AddSingleton<IKorStaffDirectoryAccessor, NullKorStaffDirectoryAccessor>();
             }
+            // D2: BD staff-identity directory (owner -> mailbox). SQL-only, always
+            // available; read by the per-owner digest, written by the sync job.
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Crm.IBdStaffDirectory>(sp =>
+                new Kor.Opportunities.Data.Crm.SqlBdStaffDirectory(Cs(sp)));
             builder.Services.AddSingleton<IOpportunityScoringService, RuleBasedOpportunityScoringService>();
 
             // Ingestion: dispatcher fans out to a provider keyed by SourceType. Add new
@@ -1027,6 +1044,20 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["KorPursuitDeltekSyncCronSchedule"] ?? "0 30 5 * * ?";
       t.ForJob(korPursuitDeltekSyncKey)
        .WithIdentity("KorPursuitDeltekSyncTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  // D2: refresh the BD staff-identity directory (opportunities.BdStaff) from
+  // Deltek EMMain BEFORE the 6am morning report, so the per-owner digest routes
+  // on a fresh directory.
+  var bdStaffDirectorySyncKey = new JobKey("BdStaffDirectorySyncJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.BdStaffDirectorySyncJob>(opts => opts.WithIdentity(bdStaffDirectorySyncKey));
+
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["BdStaffDirectorySyncCronSchedule"] ?? "0 15 5 * * ?";
+      t.ForJob(bdStaffDirectorySyncKey)
+       .WithIdentity("BdStaffDirectorySyncTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 

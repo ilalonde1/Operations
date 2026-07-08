@@ -271,6 +271,17 @@ public sealed class OpportunitiesWorkerOptions
     public bool KorPursuitDeltekSyncEnabled { get; set; } = true;
     public string? KorPursuitDeltekSyncCronSchedule { get; set; }
 
+    // --- 2026-07-08: BD staff directory sync (plan D2, BdStaffDirectorySyncJob) ---
+    // Fills opportunities.BdStaff (owner-identity map) from Deltek EMMain: every
+    // employee email becomes a routable identity, and legacy first-name owners
+    // are bridged to a mailbox on an unambiguous single-name match (never a
+    // guess). Runs before the 6am morning report so the directory is fresh. The
+    // per-owner digest resolves owners through this table first, then the
+    // hand-verified MorningReportOwnerEmailMap override. Safe no-op if Deltek
+    // is unavailable. Default cron 05:15 (see Program.cs).
+    public bool BdStaffDirectorySyncEnabled { get; set; } = true;
+    public string? BdStaffDirectorySyncCronSchedule { get; set; }
+
     // --- 2026-06-11: BD morning report email (BdMorningReportJob) ---
     // Graph creds = the FileSync app registration (Mail.Send application
     // permission); set via KOR_OPPORTUNITIES_MORNINGREPORT* Machine env

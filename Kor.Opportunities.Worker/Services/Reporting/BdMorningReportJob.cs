@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Kor.Opportunities.Data.Crm;
 using Kor.Opportunities.Worker.Options;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -26,15 +27,18 @@ public sealed class BdMorningReportJob : IJob
 {
     private readonly IOptions<OpportunitiesWorkerOptions> _options;
     private readonly GraphMailSender _mail;
+    private readonly IBdStaffDirectory _staff;
     private readonly ILogger<BdMorningReportJob> _logger;
 
     public BdMorningReportJob(
         IOptions<OpportunitiesWorkerOptions> options,
         GraphMailSender mail,
+        IBdStaffDirectory staff,
         ILogger<BdMorningReportJob> logger)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _mail = mail ?? throw new ArgumentNullException(nameof(mail));
+        _staff = staff ?? throw new ArgumentNullException(nameof(staff));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -158,7 +162,7 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
         var unrouted = 0;
         foreach (var group in rows.GroupBy(x => x.Owner, StringComparer.OrdinalIgnoreCase))
         {
-            var mailbox = ResolveMailbox(group.Key, ownerMap);
+            var mailbox = await ResolveMailboxAsync(group.Key, ownerMap, ct).ConfigureAwait(false);
             if (mailbox is null)
             {
                 unrouted++;
@@ -241,12 +245,28 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
         return map;
     }
 
-    /// <summary>Email-shaped owner → itself; legacy name → verified map; else null.</summary>
-    private static string? ResolveMailbox(string owner, IReadOnlyDictionary<string, string> map)
+    /// <summary>
+    /// Resolve a pursuit owner to a mailbox, in precedence order:
+    /// (1) the hand-verified config override (MorningReportOwnerEmailMap),
+    /// (2) the Deltek-synced BD staff directory (self-routing emails + bridged
+    /// legacy first names), (3) an email-shaped owner self-routing even before
+    /// the first directory sync. Anything else is unrouted (never guessed).
+    /// </summary>
+    private async Task<string?> ResolveMailboxAsync(
+        string owner, IReadOnlyDictionary<string, string> map, System.Threading.CancellationToken ct)
     {
         var o = owner.Trim();
-        if (o.Contains('@')) return o;
-        return map.TryGetValue(o, out var email) ? email : null;
+        if (map.TryGetValue(o, out var mapped) && !string.IsNullOrWhiteSpace(mapped)) return mapped;
+
+        var dir = await _staff.ResolveMailboxAsync(o, ct).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(dir)) return dir;
+
+        // Self-route a UPN/email owner ONLY when the directory has no row for it
+        // yet (pre-first-sync). If a row exists but resolved to null, that's an
+        // intentional suppression (IsActive=0) or a pending mailbox — honor it
+        // rather than blast a possibly-dead address.
+        if (o.Contains('@') && !await _staff.IsKnownAsync(o, ct).ConfigureAwait(false)) return o;
+        return null;
     }
 
     private static string? BuildPerOwnerHtml(string owner, List<OwnerPursuitRow> rows)
