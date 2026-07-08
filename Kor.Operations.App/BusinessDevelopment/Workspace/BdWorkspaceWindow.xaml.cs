@@ -234,7 +234,9 @@ public partial class BdWorkspaceWindow : Window
 
     private void Proposals_Click(object sender, RoutedEventArgs e)
     {
-        SetActiveNav(ProposalsButton);
+        // Opens a SEPARATE window; the workspace content pane is unchanged, so
+        // we must NOT restyle the rail — highlighting "Proposals" while the pane
+        // still shows the previous section was a lying "you are here" cue.
         var win = AppServices.Get<App.FeeProposal.FeeProposalBuilderWindow>();
         win.Owner = this;
         win.Show();
@@ -242,7 +244,7 @@ public partial class BdWorkspaceWindow : Window
 
     private void Brochures_Click(object sender, RoutedEventArgs e)
     {
-        SetActiveNav(BrochuresButton);
+        // Separate window — see Proposals_Click: do not touch the rail highlight.
         var win = _brochureFactory();
         win.Owner = this;
         win.Show();
@@ -257,6 +259,11 @@ public partial class BdWorkspaceWindow : Window
 
     private void SetActiveNav(Button active)
     {
+        // Reflect the active section in the page header ("Business Development /
+        // <section>") so there's a real "you are here" cue, not just the rail
+        // highlight. The button label IS the section name.
+        HeaderBar.SubtitleText = active.Content as string ?? "Workspace";
+
         foreach (var button in new[]
         {
             DashboardButton,

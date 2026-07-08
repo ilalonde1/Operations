@@ -30,6 +30,16 @@
             <Setter Property="BorderThickness" Value="3,0,0,0"/>
             <Setter Property="Foreground" Value="{StaticResource Brand.Primary.Brush}"/>
         </Style>
+
+        <!-- Round 2026-07-08 (E4 nav polish): labeled rail groups so the
+             Bazaar -> Pursuits -> Overwatch lifecycle reads as a flow. -->
+        <Style x:Key="NavGroupHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="Opacity" Value="0.65"/>
+            <Setter Property="Margin" Value="12,10,0,3"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -61,6 +71,7 @@
                     <appControls:OrgSearchTypeahead x:Name="GlobalSearch"
                                                     Margin="0,0,0,10"/>
 
+                    <TextBlock Text="EXPLORE" Style="{StaticResource NavGroupHeader}" Margin="12,0,0,3"/>
                     <Button x:Name="DashboardButton" Content="Dashboard" Style="{StaticResource ActiveNavButton}" Click="Dashboard_Click"/>
                     <Button x:Name="RfpsButton" Content="RFPs" Style="{StaticResource NavButton}" Click="Rfps_Click"/>
                     <Button x:Name="UpcomingButton" Content="Forward Pipeline" Style="{StaticResource NavButton}" Click="Upcoming_Click"/>
@@ -72,7 +83,8 @@
                     <Button x:Name="CompetitionButton" Content="Market History" Style="{StaticResource NavButton}" Click="Competition_Click"/>
                     <Button x:Name="AdminButton" Content="Admin" Style="{StaticResource NavButton}" Click="Admin_Click"/>
                     <Button x:Name="BriefsMakerButton" Content="Make a Brief..." Style="{StaticResource NavButton}" Click="BriefsMaker_Click"/>
-                    <Separator Margin="0,8"/>
+
+                    <TextBlock Text="PURSUIT PIPELINE" Style="{StaticResource NavGroupHeader}"/>
                     <Button x:Name="BazaarButton" Content="Bazaar" Style="{StaticResource NavButton}" Click="Bazaar_Click"
                             ToolTip="The clearing house — un-claimed opportunities ranked by relevance. Grab one to start an owned pursuit."/>
                     <Button x:Name="BdTrackingButton" Content="BD Tracking" Style="{StaticResource NavButton}" Click="BdTracking_Click"
@@ -82,8 +94,11 @@
                             ToolTip="Manager board — every owned active pursuit, who owns it, and what's going cold."/>
                     <Button x:Name="AttributionButton" Content="Attribution" Style="{StaticResource NavButton}" Click="Attribution_Click"
                             ToolTip="BD scorecard — wins, won fee, active pursuits, and what's attributable to the BD system."/>
-                    <Button x:Name="ProposalsButton" Content="Proposals" Style="{StaticResource NavButton}" Click="Proposals_Click"/>
-                    <Button x:Name="BrochuresButton" Content="Brochures" Style="{StaticResource NavButton}" Click="Brochures_Click"/>
+                    <TextBlock Text="TOOLS" Style="{StaticResource NavGroupHeader}"/>
+                    <Button x:Name="ProposalsButton" Content="Proposals" Style="{StaticResource NavButton}" Click="Proposals_Click"
+                            ToolTip="Opens the Fee Proposal Builder in a separate window."/>
+                    <Button x:Name="BrochuresButton" Content="Brochures" Style="{StaticResource NavButton}" Click="Brochures_Click"
+                            ToolTip="Opens the Sales Brochure Builder in a separate window."/>
                 </StackPanel>
             </Border>
 
