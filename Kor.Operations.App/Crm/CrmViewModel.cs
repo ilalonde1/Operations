@@ -35,6 +35,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private readonly Kor.Opportunities.Data.Awards.ICanonicalOrgStore _orgStore;
     private readonly IPursuitContextStore _contextStore;
     private readonly Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore _interestStore;
+    private readonly IPursuitFileStore _fileStore;
+    private readonly IPursuitFileStorage _fileStorage;
 
     private CrmEngagementRowView? _selected;
     private string _statusMessage = "Ready.";
@@ -71,7 +73,9 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         IDeltekClientContextService deltekContextService,
         Kor.Opportunities.Data.Awards.ICanonicalOrgStore orgStore,
         IPursuitContextStore contextStore,
-        Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore interestStore)
+        Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore interestStore,
+        IPursuitFileStore fileStore,
+        IPursuitFileStorage fileStorage)
     {
         _engagementStore = engagementStore;
         _activityStore = activityStore;
@@ -81,6 +85,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         _orgStore = orgStore;
         _contextStore = contextStore;
         _interestStore = interestStore;
+        _fileStore = fileStore;
+        _fileStorage = fileStorage;
     }
 
     public ObservableCollection<CrmEngagementRowView> Engagements { get; } = new();
@@ -206,6 +212,13 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     public ObservableCollection<CrmActivityRowView> Activities { get; } = new();
 
     public ObservableCollection<CrmContactRowView> Contacts { get; } = new();
+
+    /// <summary>Attachments on the selected pursuit (RFP PDFs, proposals,
+    /// call recordings). Bytes live on the LAN share.</summary>
+    public ObservableCollection<PursuitFileRowView> Files { get; } = new();
+
+    /// <summary>False when no share is configured — the view hides the Files panel.</summary>
+    public bool FilesEnabled => _fileStorage.IsConfigured;
 
     /// <summary>Per-stage pipeline counts shown as coloured pills above the list.
     /// Plan 1.1: the pills are CLICK-FILTERS — the default view shows live
@@ -492,6 +505,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     {
         Activities.Clear();
         Contacts.Clear();
+        Files.Clear();
         DeltekContext = null;
         ResolvedDeltekClientId = null;
         WarmthSummary = string.Empty;
@@ -523,6 +537,16 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             foreach (var c in contacts)
             {
                 Contacts.Add(new CrmContactRowView(c));
+            }
+
+            if (_fileStorage.IsConfigured)
+            {
+                var files = await _fileStore.ListByEngagementAsync(engagementId, ct).ConfigureAwait(true);
+                if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+                foreach (var f in files)
+                {
+                    Files.Add(new PursuitFileRowView(f));
+                }
             }
 
             // Phase 2/3 context reads AFTER the core panel renders (review nit:
@@ -808,6 +832,66 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         await _contactStore.DeleteAsync(row.Id, row.Model.RowVersion, ct).ConfigureAwait(true);
         Contacts.Remove(row);
         StatusMessage = $"Removed contact {row.DisplayName}.";
+    }
+
+    /// <summary>
+    /// Copy dropped/browsed files onto the pursuit — each to the LAN share, then
+    /// indexed in the DB. Returns how many landed; a per-file failure is
+    /// reported but doesn't abort the rest. The write targeted engagementId
+    /// explicitly, so a mid-copy row switch only skips the UI insert (fix
+    /// pattern shared with activity/contact adds).
+    /// </summary>
+    public async Task<int> AddFilesAsync(
+        long engagementId, long? opportunityId, string pursuitLabel, IReadOnlyList<string> sourcePaths, string actor, CancellationToken ct)
+    {
+        var added = 0;
+        var failures = 0;
+        foreach (var source in sourcePaths)
+        {
+            try
+            {
+                var stored = await _fileStorage.StoreAsync(engagementId, pursuitLabel, source, ct).ConfigureAwait(true);
+                var saved = await _fileStore.AddAsync(
+                    engagementId, opportunityId, stored.FileName, stored.StoredPath,
+                    stored.Sha256, stored.SizeBytes, stored.ContentType, actor, ct).ConfigureAwait(true);
+
+                if (Selected?.Id == engagementId)
+                {
+                    Files.Insert(0, new PursuitFileRowView(saved));
+                }
+
+                added++;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                failures++;
+                Serilog.Log.Warning(ex, "Attaching '{File}' to engagement {EngagementId} failed.", source, engagementId);
+            }
+        }
+
+        StatusMessage = failures == 0
+            ? $"Attached {added} file{(added == 1 ? "" : "s")}."
+            : $"Attached {added}; {failures} could not be copied to the share.";
+        return added;
+    }
+
+    /// <summary>Remove an attachment: drop the DB row, then delete the file from
+    /// the share (best-effort). The row goes first so a share hiccup can't leave
+    /// a dangling index entry.</summary>
+    public async Task RemoveFileAsync(PursuitFileRowView row, CancellationToken ct)
+    {
+        var storedPath = await _fileStore.RemoveAsync(row.Id, ct).ConfigureAwait(true);
+        Files.Remove(row);
+        if (!string.IsNullOrWhiteSpace(storedPath))
+        {
+            _fileStorage.TryDelete(storedPath!);
+        }
+
+        StatusMessage = $"Removed {row.FileName}.";
     }
 
     private void ReplaceEngagement(CrmEngagement saved)

@@ -21,6 +21,11 @@ public sealed class StorageOptions
     public string ProjectsRoot { get; init; } = "";
     public string StandardDetailsFileStorageRootPath { get; init; } = "";
     public string BrochureSharedProposalsRootPath { get; init; } = "";
+
+    /// <summary>UNC root for pursuit attachments (RFP PDFs, proposals, call
+    /// recordings). Per-pursuit subfolders are created under it. LAN-only by
+    /// design (Ian, 2026-07-08). App.config appSetting 'BD.PursuitFilesRoot'.</summary>
+    public string PursuitFilesRoot { get; init; } = "";
 }
 
 public sealed class UserOptions

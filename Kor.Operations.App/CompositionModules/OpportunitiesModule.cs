@@ -230,6 +230,11 @@ internal static class OpportunitiesModule
         services.AddSingleton<IPursuitContextStore>(_ => new SqlPursuitContextStore(options.OpportunitiesDb));
         services.AddSingleton<IBdUiOpenStore>(_ => new SqlBdUiOpenStore(options.OpportunitiesDb));
 
+        // Pursuit attachments (Ian, 2026-07-08): DB index + LAN-share bytes.
+        services.AddSingleton<IPursuitFileStore>(_ => new SqlPursuitFileStore(options.OpportunitiesDb));
+        services.AddSingleton<App.Crm.IPursuitFileStorage>(
+            _ => new App.Crm.LanPursuitFileStorage(CompositionHelpers.GetStorageOptions().PursuitFilesRoot));
+
         // Phase 5c: Deltek client roll-up (lifetime fee, project count, last
         // engagement) shown on the CRM detail panel for any engagement whose
         // linked Opportunity has DeltekClientId set. Reuses VpOdbcDsnFactory +

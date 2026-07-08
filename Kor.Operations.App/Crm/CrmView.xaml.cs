@@ -1,5 +1,7 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -651,6 +653,131 @@ public partial class CrmView : UserControl
         finally
         {
             _isLoggingActivity = false;
+        }
+    }
+
+    // ---- Files: drag-and-drop / browse / open / remove (2026-07-08) --------
+
+    private bool _filesBusy;
+
+    private void FilesPanel_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = (_vm.Selected is not null && e.Data.GetDataPresent(DataFormats.FileDrop))
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async void FilesPanel_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            return;
+        }
+
+        // Files only — a dropped folder is skipped (File.Exists is false for dirs).
+        var files = ((string[])e.Data.GetData(DataFormats.FileDrop)).Where(File.Exists).ToArray();
+        await AttachFilesAsync(files).ConfigureAwait(true);
+    }
+
+    private async void BrowseFilesButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Attach files to this pursuit",
+            Multiselect = true,
+            CheckFileExists = true,
+        };
+        if (dlg.ShowDialog(Window.GetWindow(this)) != true)
+        {
+            return;
+        }
+
+        await AttachFilesAsync(dlg.FileNames).ConfigureAwait(true);
+    }
+
+    private async Task AttachFilesAsync(IReadOnlyList<string> paths)
+    {
+        var owner = Window.GetWindow(this);
+        var row = _vm.Selected;
+        if (row is null)
+        {
+            MessageBox.Show(owner, "Pick a pursuit first, then attach files to it.", "CRM — Files",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (_filesBusy || paths.Count == 0)
+        {
+            return;
+        }
+
+        _filesBusy = true;
+        try
+        {
+            _vm.SetStatusMessage($"Copying {paths.Count} file{(paths.Count == 1 ? "" : "s")} to the share…");
+            var label = string.IsNullOrWhiteSpace(row.OpportunityKey) ? row.ProjectName : row.OpportunityKey;
+            await _vm.AddFilesAsync(row.Id, row.OpportunityId, label, paths, ResolveActor(), CancellationToken.None)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(owner, ex.Message, "CRM — Attach Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _filesBusy = false;
+        }
+    }
+
+    private void FilesGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        => OpenSelectedFile();
+
+    private void OpenFileButton_Click(object sender, RoutedEventArgs e) => OpenSelectedFile();
+
+    private void OpenSelectedFile()
+    {
+        if (FilesGrid.SelectedItem is not PursuitFileRowView row)
+        {
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(row.StoredPath)
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this),
+                $"Couldn't open {row.FileName}. It may have been moved or the share is unreachable.\n\n{ex.Message}",
+                "CRM — Open File", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void RemoveFileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (FilesGrid.SelectedItem is not PursuitFileRowView row)
+        {
+            return;
+        }
+
+        var owner = Window.GetWindow(this);
+        if (MessageBox.Show(owner, $"Remove “{row.FileName}” and delete it from the share?",
+                "CRM — Remove File", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            await _vm.RemoveFileAsync(row, CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(owner, ex.Message, "CRM — Remove File Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

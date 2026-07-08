@@ -58,7 +58,8 @@ internal static class CompositionHelpers
     {
         ProjectsRoot = GetRequiredAppSetting(AppConfigKeys.ProjectsRoot),
         StandardDetailsFileStorageRootPath = ConfigurationManager.AppSettings[AppConfigKeys.StandardDetailsFileStorageRootPath] ?? "",
-        BrochureSharedProposalsRootPath = ConfigurationManager.AppSettings[AppConfigKeys.BrochureSharedProposalsRootPath] ?? ""
+        BrochureSharedProposalsRootPath = ConfigurationManager.AppSettings[AppConfigKeys.BrochureSharedProposalsRootPath] ?? "",
+        PursuitFilesRoot = ConfigurationManager.AppSettings[AppConfigKeys.PursuitFilesRoot] ?? ""
     };
 
     internal static UserOptions GetUserOptions() => _userOptions ??= new UserOptions

@@ -7,6 +7,7 @@ namespace Kor.Operations.Services
         public const string DefaultFromEmail = "DefaultFromEmail";
         public const string DeltekOdbcDsn = "DeltekOdbcDsn";
         public const string BrochureSharedProposalsRootPath = "Brochure.SharedProposalsRootPath";
+        public const string PursuitFilesRoot = "BD.PursuitFilesRoot";
         public const string CompensationPoolRate = "Compensation.PoolRate";
         public const string FinancialsPnLGlFlipSign = "Financials.PnL.GlFlipSign";
         public const string FinancialsPnLIncomeGroupTypes = "Financials.PnL.IncomeGroupTypes";

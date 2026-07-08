@@ -166,6 +166,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="2*"/>
                     <RowDefinition Height="3*"/>
+                    <RowDefinition Height="2*"/>
                 </Grid.RowDefinitions>
 
                 <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,8">
@@ -324,6 +325,46 @@
                                 <DataGridTextColumn Header="Type"     Binding="{Binding TypeDisplay}"     Width="90"/>
                                 <DataGridTextColumn Header="Subject"  Binding="{Binding Subject}"         Width="*"/>
                                 <DataGridTextColumn Header="By"       Binding="{Binding CreatedBy}"       Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <!-- Files (2026-07-08): drag onto the panel or Browse. Bytes go to
+                     the LAN share; the list indexes them. Hidden if no share set. -->
+                <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,8,0,0"
+                        AllowDrop="True" Drop="FilesPanel_Drop" DragOver="FilesPanel_DragOver"
+                        Visibility="{Binding FilesEnabled, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,6" LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left" Text="Files" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Brand.Primary.Brush}" VerticalAlignment="Center"/>
+                            <TextBlock DockPanel.Dock="Left" Text="  — drag files here, or" FontSize="11"
+                                       Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                            <Button DockPanel.Dock="Left" Content="Browse…" Width="80" Margin="6,0,0,0"
+                                    Click="BrowseFilesButton_Click"/>
+                            <Button DockPanel.Dock="Right" Content="Remove" Width="70" Margin="4,0,0,0"
+                                    Click="RemoveFileButton_Click"
+                                    ToolTip="Remove the selected file and delete it from the share."/>
+                            <Button DockPanel.Dock="Right" Content="Open" Width="60"
+                                    Click="OpenFileButton_Click"
+                                    ToolTip="Open the selected file."/>
+                        </DockPanel>
+                        <DataGrid Grid.Row="1" x:Name="FilesGrid"
+                                  AutoGenerateColumns="False" SelectionMode="Single" IsReadOnly="True"
+                                  HeadersVisibility="Column" ItemsSource="{Binding Files}"
+                                  AllowDrop="True" Drop="FilesPanel_Drop" DragOver="FilesPanel_DragOver"
+                                  MouseDoubleClick="FilesGrid_MouseDoubleClick">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name"  Binding="{Binding FileName}"          Width="*"/>
+                                <DataGridTextColumn Header="Type"  Binding="{Binding TypeDisplay}"       Width="90"/>
+                                <DataGridTextColumn Header="Size"  Binding="{Binding SizeDisplay}"       Width="80"/>
+                                <DataGridTextColumn Header="By"    Binding="{Binding UploadedByDisplay}" Width="110"/>
+                                <DataGridTextColumn Header="Added" Binding="{Binding UploadedDisplay}"   Width="120"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
