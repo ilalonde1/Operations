@@ -6,6 +6,16 @@ public sealed class OpportunitiesWorkerOptions
     /// <summary>SQL Server connection string for KorOpportunitiesDb.</summary>
     public string OpportunitiesDb { get; init; } = "";
 
+    /// <summary>
+    /// SQL Server connection string for KorEmailIndex (the filed-email corpus).
+    /// Used ONLY by CrmEnrichmentJob's email-warmth section; empty disables
+    /// that section with a logged warning. Deliberately a separate connection —
+    /// the opportunities login has no rights on KorEmailIndex (plan D7:
+    /// aggregate via the email-index login, no new grants). Set via appsettings
+    /// 'EmailIndexDb' or the KOR_OPPORTUNITIES_EMAILINDEXDB env var.
+    /// </summary>
+    public string EmailIndexDb { get; init; } = "";
+
     /// <summary>How often the Worker writes a heartbeat row (default 60s).</summary>
     public int HeartbeatSeconds { get; init; } = 60;
 

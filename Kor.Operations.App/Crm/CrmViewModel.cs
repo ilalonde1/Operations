@@ -33,6 +33,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     private readonly IOpportunityStore _opportunityStore;
     private readonly IDeltekClientContextService _deltekContextService;
     private readonly Kor.Opportunities.Data.Awards.ICanonicalOrgStore _orgStore;
+    private readonly IPursuitContextStore _contextStore;
+    private readonly Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore _interestStore;
 
     private CrmEngagementRowView? _selected;
     private string _statusMessage = "Ready.";
@@ -67,7 +69,9 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         ICrmContactStore contactStore,
         IOpportunityStore opportunityStore,
         IDeltekClientContextService deltekContextService,
-        Kor.Opportunities.Data.Awards.ICanonicalOrgStore orgStore)
+        Kor.Opportunities.Data.Awards.ICanonicalOrgStore orgStore,
+        IPursuitContextStore contextStore,
+        Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore interestStore)
     {
         _engagementStore = engagementStore;
         _activityStore = activityStore;
@@ -75,6 +79,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         _opportunityStore = opportunityStore;
         _deltekContextService = deltekContextService;
         _orgStore = orgStore;
+        _contextStore = contextStore;
+        _interestStore = interestStore;
     }
 
     public ObservableCollection<CrmEngagementRowView> Engagements { get; } = new();
@@ -447,12 +453,50 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     /// "Details" client-intelligence drill uses this — same key as the panel.</summary>
     public string? ResolvedDeltekClientId { get; private set; }
 
+    private string _warmthSummary = string.Empty;
+    private string _pursuitHistorySummary = string.Empty;
+    private string _planTakersSummary = string.Empty;
+
+    /// <summary>Plan 3.1: one computed line from the nightly email-warmth rollup —
+    /// "Filed correspondence with acme.com: last 12d ago · 9 in 90d · …". Empty
+    /// when the buyer is unresolved or has no rollup ("no data", never "cold").</summary>
+    public string WarmthSummary
+    {
+        get => _warmthSummary;
+        private set { if (SetField(ref _warmthSummary, value)) OnPropertyChanged(nameof(HasWarmth)); }
+    }
+
+    public bool HasWarmth => _warmthSummary.Length > 0;
+
+    /// <summary>Plan 2.2a/2.2b: claim/reassign history + current stage age —
+    /// first reader of the (previously write-only) audit tables.</summary>
+    public string PursuitHistorySummary
+    {
+        get => _pursuitHistorySummary;
+        private set { if (SetField(ref _pursuitHistorySummary, value)) OnPropertyChanged(nameof(HasPursuitHistory)); }
+    }
+
+    public bool HasPursuitHistory => _pursuitHistorySummary.Length > 0;
+
+    /// <summary>Plan 2.3: who else took plans on this RFP (raw portal names —
+    /// rendered as text, never faked into org identities). Empty collapses.</summary>
+    public string PlanTakersSummary
+    {
+        get => _planTakersSummary;
+        private set { if (SetField(ref _planTakersSummary, value)) OnPropertyChanged(nameof(HasPlanTakers)); }
+    }
+
+    public bool HasPlanTakers => _planTakersSummary.Length > 0;
+
     private async Task LoadDetailAsync(CancellationToken ct)
     {
         Activities.Clear();
         Contacts.Clear();
         DeltekContext = null;
         ResolvedDeltekClientId = null;
+        WarmthSummary = string.Empty;
+        PursuitHistorySummary = string.Empty;
+        PlanTakersSummary = string.Empty;
         if (Selected is null)
         {
             return;
@@ -469,6 +513,11 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
 
             var contacts = await _contactStore.ListByEngagementAsync(engagementId, ct).ConfigureAwait(true);
+            if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+
+            // Phase 2/3 context reads — each best-effort and individually
+            // guarded; a hiccup in one never blocks the detail panel.
+            await LoadPursuitContextAsync(engagementId, ct).ConfigureAwait(true);
             if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
 
             foreach (var a in activities)
@@ -536,6 +585,98 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         catch (Exception ex)
         {
             StatusMessage = $"Detail load failed: {ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Phase 2/3 detail context (plan 2.2a/2.2b/2.3/3.1): email warmth,
+    /// claim/reassign history + stage age, plan takers. All read-only, all
+    /// best-effort, all guarded against mid-await row switches.
+    /// </summary>
+    private async Task LoadPursuitContextAsync(long engagementId, CancellationToken ct)
+    {
+        var row = Selected;
+        if (row is null || row.Id != engagementId)
+        {
+            return;
+        }
+
+        // 3.1 — email warmth for the buyer org.
+        if (row.Engagement.BuyerCanonicalOrgId is { } orgId)
+        {
+            try
+            {
+                var w = await _contextStore.GetWarmthAsync(orgId, ct).ConfigureAwait(true);
+                if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+                if (w is { LastTouchUtc: not null })
+                {
+                    var days = Math.Max(0, (int)(DateTimeOffset.Now - w.LastTouchUtc.Value).TotalDays);
+                    var top = string.IsNullOrWhiteSpace(w.TopCorrespondent) ? "" : $" · mostly {w.TopCorrespondent}";
+                    WarmthSummary = $"Filed correspondence with @{w.Domain}: last {days}d ago · {w.Emails90d} in 90d · {w.EmailsAllTime} all-time{top}";
+                }
+                else if (w is not null)
+                {
+                    WarmthSummary = $"No filed correspondence with @{w.Domain}.";
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Warmth read failed for engagement {EngagementId}.", engagementId);
+            }
+        }
+
+        // 2.2a/2.2b — claim/reassign history + current stage age.
+        try
+        {
+            var assignments = await _contextStore.ListAssignmentsAsync(engagementId, ct).ConfigureAwait(true);
+            if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+            var stageSince = await _contextStore.GetStageSinceAsync(engagementId, (int)row.Engagement.Stage, ct).ConfigureAwait(true)
+                             ?? row.Engagement.OpenedAtUtc; // F14 COALESCE contract (pre-history rows)
+            if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+
+            var parts = new List<string>();
+            foreach (var a in assignments)
+            {
+                var d = a.AtUtc.LocalDateTime.ToString("yyyy-MM-dd");
+                parts.Add(a.Action switch
+                {
+                    "Grab" => $"Grabbed by {a.ToStaffId} {d}",
+                    "Claim" => $"Claimed by {a.ToStaffId} {d}",
+                    "Reassign" => $"Reassigned {a.FromStaffId} → {a.ToStaffId} {d}",
+                    _ => $"{a.Action} {d}",
+                });
+            }
+
+            var stageAgeDays = Math.Max(0, (int)(DateTimeOffset.Now - stageSince).TotalDays);
+            parts.Add($"In {row.Engagement.Stage} {stageAgeDays}d");
+            PursuitHistorySummary = string.Join("  ·  ", parts);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Pursuit-history read failed for engagement {EngagementId}.", engagementId);
+        }
+
+        // 2.3 — plan takers (opportunity-backed pursuits only; raw names).
+        if (row.OpportunityId is { } oppId)
+        {
+            try
+            {
+                var firms = await _interestStore.ListByOpportunityAsync(oppId, ct).ConfigureAwait(true);
+                if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+                if (firms.Count > 0)
+                {
+                    var names = firms.Select(f => f.RawFirmName).Distinct(StringComparer.OrdinalIgnoreCase).Take(12).ToList();
+                    var more = firms.Count > names.Count ? $" (+{firms.Count - names.Count} more)" : "";
+                    PlanTakersSummary = $"Plan takers ({firms.Count}): {string.Join(" · ", names)}{more}";
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Plan-taker read failed for opportunity {OpportunityId}.", oppId);
+            }
         }
     }
 
@@ -828,6 +969,26 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             DeltekClientIntelligenceFormatter.Append(sb, dc);
         }
 
+        // Phase 2/3 context lines (plan 2.2/2.3/3.1) — same strings the panel
+        // shows, so the AI and the user read identical facts.
+        if (HasWarmth) { sb.AppendLine(); sb.AppendLine(WarmthSummary); }
+        if (HasPursuitHistory) { sb.AppendLine(PursuitHistorySummary); }
+        if (HasPlanTakers) { sb.AppendLine(PlanTakersSummary); }
+
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Plan 2.5: link the Won pursuit to the Deltek project it became.
+    /// Read-modify-write on the fresh row; the store's stage-consistency CASE
+    /// only persists WonProjectWbs1 while the stage is Won.
+    /// </summary>
+    public async Task<CrmEngagement> SetWonProjectAsync(CrmEngagement fresh, string wbs1, string actor, CancellationToken ct)
+    {
+        var updated = fresh with { WonProjectWbs1 = wbs1.Trim() };
+        var saved = await _engagementStore.UpdateAsync(updated, actor, ct).ConfigureAwait(true);
+        ReplaceEngagement(saved);
+        StatusMessage = $"Linked to Deltek project {saved.WonProjectWbs1}.";
+        return saved;
     }
 }

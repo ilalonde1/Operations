@@ -13,6 +13,11 @@ namespace Kor.Opportunities.Data.Crm;
 /// signals a manager scans — owner, stage, last-activity age (staleness),
 /// how long it has been open. <paramref name="OpportunityId"/> is null for
 /// BD-tracking pursuits (no parent Opportunity); non-null for grabbed ones.
+/// Plan 3.1/2.2a additions: <paramref name="EmailLastTouchUtc"/> is the
+/// nightly email-warmth rollup's newest filed correspondence with the buyer
+/// (fused into the staleness reference, source-labelled in the UI);
+/// <paramref name="StageSinceUtc"/> is when the CURRENT stage was entered
+/// (stage history, falling back to OpenedAtUtc for pre-history rows).
 /// </summary>
 public sealed record PursuitOverwatchRow(
     long EngagementId,
@@ -24,7 +29,9 @@ public sealed record PursuitOverwatchRow(
     string? Region,
     DateTimeOffset? LastActivityUtc,
     DateTimeOffset OpenedAtUtc,
-    int ActivityCount);
+    int ActivityCount,
+    DateTimeOffset? EmailLastTouchUtc,
+    DateTimeOffset StageSinceUtc);
 
 /// <summary>Outcome of a reassign attempt.</summary>
 public enum ReassignOutcome
@@ -83,7 +90,12 @@ public sealed class SqlPursuitOverwatchStore : IPursuitOverwatchStore
 
     // Active stages: Drafting(1), Submitted(3). Won(6)/Lost(7) are closed and
     // not the manager's concern here. Coldest-first so what is going stale
-    // floats to the top.
+    // floats to the top — the reference now FUSES logged activity with the
+    // nightly email-warmth rollup (plan 3.1: a board that ignored 368k filed
+    // emails was permanently, falsely cold), still one set-based query
+    // (design M6). Stage-age (plan 2.2a) reads the current stage's newest
+    // history row, falling back to OpenedAtUtc for pre-history rows (the
+    // COALESCE contract documented at the importer bypass, F14).
     private const string BoardSql = @"
 SELECT e.Id                                            AS EngagementId,
        e.OpportunityId                                 AS OpportunityId,
@@ -98,17 +110,30 @@ SELECT e.Id                                            AS EngagementId,
        COALESCE(e.Region, o.ProjectProvince)           AS Region,
        la.LastActivityUtc                              AS LastActivityUtc,
        e.OpenedAtUtc                                   AS OpenedAtUtc,
-       COALESCE(la.ActivityCount, 0)                   AS ActivityCount
+       COALESCE(la.ActivityCount, 0)                   AS ActivityCount,
+       w.LastTouchUtc                                  AS EmailLastTouchUtc,
+       COALESCE(sh.StageSinceUtc, e.OpenedAtUtc)       AS StageSinceUtc
 FROM opportunities.CrmEngagements e
 LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+LEFT JOIN opportunities.CrmBuyerEmailWarmth w ON w.CanonicalOrgId = e.BuyerCanonicalOrgId
 OUTER APPLY (
     SELECT MAX(a.OccurredAtUtc) AS LastActivityUtc, COUNT(*) AS ActivityCount
     FROM opportunities.CrmActivities a
     WHERE a.EngagementId = e.Id
 ) la
+OUTER APPLY (
+    SELECT MAX(h.EnteredAtUtc) AS StageSinceUtc
+    FROM opportunities.CrmEngagementStageHistory h
+    WHERE h.EngagementId = e.Id AND h.Stage = e.Stage
+) sh
 WHERE e.OwnerStaffId IS NOT NULL
   AND e.Stage IN (1, 3)
-ORDER BY COALESCE(la.LastActivityUtc, e.OpenedAtUtc) ASC;";
+ORDER BY COALESCE(
+    CASE WHEN w.LastTouchUtc IS NULL THEN la.LastActivityUtc
+         WHEN la.LastActivityUtc IS NULL THEN w.LastTouchUtc
+         WHEN w.LastTouchUtc > la.LastActivityUtc THEN w.LastTouchUtc
+         ELSE la.LastActivityUtc END,
+    e.OpenedAtUtc) ASC;";
 
     // Re-own the engagement (guard: still owned by @from AND still active), sync
     // the parent opportunity's owner when present, and log the move — one
@@ -187,7 +212,9 @@ END";
                 Region: reader.IsDBNull(6) ? null : reader.GetString(6),
                 LastActivityUtc: reader.IsDBNull(7) ? null : reader.GetDateTimeOffset(7),
                 OpenedAtUtc: reader.GetDateTimeOffset(8),
-                ActivityCount: reader.GetInt32(9)));
+                ActivityCount: reader.GetInt32(9),
+                EmailLastTouchUtc: reader.IsDBNull(10) ? null : reader.GetDateTimeOffset(10),
+                StageSinceUtc: reader.GetDateTimeOffset(11)));
         }
 
         return rows;

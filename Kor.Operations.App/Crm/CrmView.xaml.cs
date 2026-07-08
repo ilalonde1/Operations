@@ -52,7 +52,102 @@ public partial class CrmView : UserControl
         _vm.CurrentActorUpn = ResolveActor();
         _vm.EnsureViewFilterInstalled();
         AppServices.Get<AppAiContextBuilder>().Register(_vm);
+        // Plan 2.2c: adoption instrumentation — fire-and-forget, expendable.
+        AppServices.Get<Kor.Opportunities.Data.Crm.IBdUiOpenStore>().RecordOpen("Pursuits", ResolveActor());
         await ReloadAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Plan 2.4: the rich per-pursuit brief (RFP + buyer + market context) —
+    /// previously reachable only from the RFPs screen. One click, PDF, opens
+    /// on save. Named "Opportunity brief" to avoid colliding with the MPI
+    /// PursuitBriefWindow (a different brief for a different entity).
+    /// </summary>
+    private async void OpportunityBriefButton_Click(object sender, RoutedEventArgs e)
+    {
+        var row = _vm.Selected;
+        if (row?.OpportunityId is not { } opportunityId)
+        {
+            return;
+        }
+
+        var briefStore = AppServices.Get<Kor.Opportunities.Data.Briefs.IBriefDataStore>();
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        var path = System.IO.Path.Combine(desktop, $"KOR-Pursuit-Brief-{opportunityId}-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
+
+        _vm.SetStatusMessage("Generating pursuit brief…");
+        try
+        {
+            var data = await briefStore.GetOpportunityBriefAsync(opportunityId, CancellationToken.None).ConfigureAwait(true);
+            if (data is null)
+            {
+                _vm.SetStatusMessage("Brief failed: opportunity not found.");
+                return;
+            }
+
+            var pdf = AppServices.Get<BusinessDevelopment.Briefs.IBriefPdfGenerator>();
+            await Task.Run(() => pdf.WriteOpportunityBrief(data, path)).ConfigureAwait(true);
+
+            _vm.SetStatusMessage("Brief saved: " + path);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _vm.SetStatusMessage("Brief failed: " + ex.Message);
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "CRM — Opportunity Brief Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private bool _linkProjectBusy;
+
+    /// <summary>
+    /// Plan 2.5: record which Deltek project a Won pursuit became. Candidates
+    /// from the buyer's Clendor client (same key the Deltek panel resolved);
+    /// typed-WBS1 fallback covers any win. Suggest/confirm, never auto-write.
+    /// </summary>
+    private async void LinkDeltekProjectButton_Click(object sender, RoutedEventArgs e)
+    {
+        var row = _vm.Selected;
+        if (row is null || !row.IsWon || _linkProjectBusy)
+        {
+            return;
+        }
+
+        _linkProjectBusy = true;
+        try
+        {
+            var candidates = System.Array.Empty<Kor.Opportunities.Core.Deltek.KorWonProjectRow>()
+                as System.Collections.Generic.IReadOnlyList<Kor.Opportunities.Core.Deltek.KorWonProjectRow>;
+            var clendorId = _vm.ResolvedDeltekClientId;
+            if (!string.IsNullOrWhiteSpace(clendorId))
+            {
+                try
+                {
+                    var accessor = _services.GetRequiredService<Kor.Opportunities.Core.Deltek.IKorWonProjectAccessor>();
+                    candidates = await accessor.GetForClientAsync(clendorId, 40, CancellationToken.None).ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Deltek project lookup for client {ClientId} failed; manual WBS1 entry still available.", clendorId);
+                }
+            }
+
+            var dlg = new CrmWonProjectDialog(row.ProjectName, candidates) { Owner = Window.GetWindow(this) };
+            if (dlg.ShowDialog() != true || string.IsNullOrWhiteSpace(dlg.SelectedWbs1))
+            {
+                return;
+            }
+
+            await _vm.SetWonProjectAsync(row.Engagement, dlg.SelectedWbs1, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "CRM — Link Deltek Project Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _linkProjectBusy = false;
+        }
     }
 
     /// <summary>Plan 1.1: stage pills are click-filters.</summary>

@@ -42,6 +42,10 @@ public sealed class CrmEngagementRowView
     /// <summary>True when the buyer can be opened in the intel dossier.</summary>
     public bool HasBuyerIntel => Engagement.BuyerCanonicalOrgId.HasValue;
 
+    /// <summary>True for closed-won pursuits — gates the "Link Deltek project…"
+    /// action (plan 2.5).</summary>
+    public bool IsWon => Engagement.Stage == CrmEngagementStage.Won;
+
     public string ProposedFeeDisplay =>
         Engagement.ProposedFee.HasValue ? $"{Engagement.ProposedFee.Value:C0}" : "";
 

@@ -24,6 +24,12 @@
             <Button Content="Buyer intel…" Width="120" Click="BuyerIntelButton_Click"
                     IsEnabled="{Binding Selected.HasBuyerIntel, FallbackValue=False}"
                     ToolTip="Open the buyer's intel dossier — key people, signals, and KOR track record for this pursuit."/>
+            <Button Content="Opportunity brief…" Width="140" Click="OpportunityBriefButton_Click"
+                    IsEnabled="{Binding Selected.HasOpportunity, FallbackValue=False}"
+                    ToolTip="Generate the full per-pursuit brief PDF (RFP + buyer + market context). Plan 2.4."/>
+            <Button Content="Link Deltek project…" Width="150" Click="LinkDeltekProjectButton_Click"
+                    IsEnabled="{Binding Selected.IsWon, FallbackValue=False}"
+                    ToolTip="Record which Deltek project this win became (WBS1). Plan 2.5 — the opportunity→project bridge."/>
             <Button Content="Edit engagement…" Width="160" Click="EditEngagementButton_Click"/>
             <Button Content="Build Fee Proposal…" Width="160" Click="BuildFeeProposalButton_Click"
                     ToolTip="Open the Fee Proposal Builder pre-named for this engagement."/>
@@ -224,7 +230,17 @@
                             </Grid>
                         </Border>
 
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+                        <!-- Plan 3.1 + 2.3: passive context lines — collapse when empty. -->
+                        <StackPanel Grid.Row="2" Orientation="Vertical">
+                        <TextBlock Text="{Binding WarmthSummary}" FontSize="11" Margin="0,0,0,6"
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"
+                                   Visibility="{Binding HasWarmth, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                   ToolTip="Nightly rollup of the filed-email corpus for this buyer's domain. Aggregates only — never bodies."/>
+                        <TextBlock Text="{Binding PlanTakersSummary}" FontSize="11" Margin="0,0,0,6"
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"
+                                   Visibility="{Binding HasPlanTakers, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                   ToolTip="Firms that downloaded/expressed interest on this RFP (portal names as-published)."/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBox x:Name="ContactNameBox" Width="170" Margin="0,0,4,0"
                                      ToolTip="Display name (required)"/>
                             <TextBox x:Name="ContactRoleBox" Width="130" Margin="0,0,4,0"
@@ -236,6 +252,7 @@
                             <CheckBox x:Name="ContactPrimaryCheck" Content="primary" Margin="0,4,8,0"/>
                             <Button Content="Add" Width="60" Click="AddContactButton_Click"/>
                             <Button Content="Remove" Width="70" Margin="4,0,0,0" Click="RemoveContactButton_Click"/>
+                        </StackPanel>
                         </StackPanel>
 
                         <DataGrid Grid.Row="3"
@@ -263,7 +280,14 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Activity log" Margin="0,0,0,8" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
+                        <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,8">
+                            <TextBlock Text="Activity log" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
+                            <!-- Plan 2.2a/2.2b: claim/reassign history + stage age (first
+                                 readers of the audit tables). Collapses when empty. -->
+                            <TextBlock Text="{Binding PursuitHistorySummary}" FontSize="11" Margin="0,4,0,0"
+                                       Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"
+                                       Visibility="{Binding HasPursuitHistory, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                        </StackPanel>
 
                         <!-- Plan 1.2: one-decision logging — type + subject + Enter.
                              Everything else (date, contact, notes) is optional. -->

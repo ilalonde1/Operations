@@ -220,6 +220,10 @@ internal static class OpportunitiesModule
         services.AddSingleton<IOpportunityFeeProposalLinkStore>(_ => new SqlOpportunityFeeProposalLinkStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmActivityStore>(_ => new SqlCrmActivityStore(options.OpportunitiesDb));
         services.AddSingleton<ICrmContactStore>(_ => new SqlCrmContactStore(options.OpportunitiesDb));
+        // CRM plan Phase 2/3 (2026-07-07): detail-panel context readers (email
+        // warmth / assignment history / stage-age) + the adoption counter.
+        services.AddSingleton<IPursuitContextStore>(_ => new SqlPursuitContextStore(options.OpportunitiesDb));
+        services.AddSingleton<IBdUiOpenStore>(_ => new SqlBdUiOpenStore(options.OpportunitiesDb));
 
         // Phase 5c: Deltek client roll-up (lifetime fee, project count, last
         // engagement) shown on the CRM detail panel for any engagement whose

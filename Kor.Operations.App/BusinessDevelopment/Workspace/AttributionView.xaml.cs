@@ -35,6 +35,9 @@ public partial class AttributionView : UserControl
 
         _initialized = true;
         AppServices.Get<AppAiContextBuilder>().Register(_vm);
+        // Plan 2.2c: adoption instrumentation — fire-and-forget, expendable.
+        // (No actor resolver in this view; surface-level counts are the point.)
+        AppServices.Get<Kor.Opportunities.Data.Crm.IBdUiOpenStore>().RecordOpen("Attribution", null);
         await ReloadAsync().ConfigureAwait(true);
     }
 

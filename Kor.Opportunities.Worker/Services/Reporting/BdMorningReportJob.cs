@@ -87,6 +87,55 @@ public sealed class BdMorningReportJob : IJob
         sb.Append("<h2 style=\"border-bottom:3px solid #C8102E;padding-bottom:6px\">KOR BD Morning Report</h2>");
         sb.Append($"<p style=\"color:#666\">Generated {DateTime.Now:yyyy-MM-dd HH:mm} from live KorOpportunitiesDb. Window: last 24 hours.</p>");
 
+        // --- Owned pursuits closing soon (CRM plan 2.1a, 2026-07-07) ----------
+        // Anti-abandonment: a grabbed pursuit whose RFP deadline is inside 14
+        // days gets top billing so it can't die silently. Suppressed when zero;
+        // per-section try/catch so a CRM hiccup never kills the whole report.
+        try
+        {
+            var closing = new List<(string Owner, string Project, string Buyer, DateTimeOffset Due)>();
+            await using (var cmd = new SqlCommand(@"
+SELECT e.OwnerStaffId, o.Name, o.BuyerName, o.SubmissionDeadlineUtc
+FROM opportunities.CrmEngagements e
+JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+WHERE e.Stage IN (1, 3)
+  AND o.SubmissionDeadlineUtc IS NOT NULL
+  AND o.SubmissionDeadlineUtc >= sysdatetimeoffset()
+  AND o.SubmissionDeadlineUtc < DATEADD(DAY, 14, sysdatetimeoffset())
+ORDER BY o.SubmissionDeadlineUtc ASC;", con))
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    closing.Add((
+                        r.IsDBNull(0) ? "(unowned)" : r.GetString(0),
+                        r.GetString(1),
+                        r.GetString(2),
+                        r.GetDateTimeOffset(3)));
+                }
+            }
+
+            if (closing.Count > 0)
+            {
+                sb.Append($"<h3>Owned pursuits closing soon <span style=\"color:#666;font-weight:normal\">({closing.Count})</span></h3>");
+                sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+                foreach (var (pOwner, project, buyer, due) in closing)
+                {
+                    var days = (due - DateTimeOffset.UtcNow).TotalDays;
+                    var dueStyle = days < 5 ? "color:#C8102E;font-weight:bold" : "color:#1a1a1a";
+                    sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(project)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(buyer)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(pOwner)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;{dueStyle}\">due {due.ToLocalTime():MMM d} ({days:F0}d)</td></tr>");
+                }
+                sb.Append("</table>");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.Append($"<p style=\"color:#C8102E\">Owned-pursuits section failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
+        }
+
         // --- New opportunities -------------------------------------------------
         var newMpis = new List<(string Name, string Province, string Cost)>();
         await using (var cmd = new SqlCommand(@"

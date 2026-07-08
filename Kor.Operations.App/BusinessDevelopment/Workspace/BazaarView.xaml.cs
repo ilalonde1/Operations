@@ -41,6 +41,8 @@ public partial class BazaarView : UserControl
 
         _initialized = true;
         AppServices.Get<AppAiContextBuilder>().Register(_vm);
+        // Plan 2.2c: adoption instrumentation — fire-and-forget, expendable.
+        AppServices.Get<Kor.Opportunities.Data.Crm.IBdUiOpenStore>().RecordOpen("Bazaar", ResolveActor());
         await ReloadAsync().ConfigureAwait(true);
     }
 

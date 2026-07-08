@@ -861,6 +861,23 @@ builder.Services.AddQuartz(q =>
            cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  // CRM plan 3.1 (2026-07-07): THE nightly CRM enrichment job — email-warmth
+  // rollup per live-pursuit buyer (sections, never sibling jobs; plan
+  // anti-feature 15). 03:45 UTC, after intel retirement (02:00) and the
+  // catch-up job (03:30), before data retirement (04:30).
+  var crmEnrichmentKey = new JobKey("CrmEnrichmentJob");
+  q.AddJob<Kor.Opportunities.Worker.Jobs.CrmEnrichmentJob>(opts => opts.WithIdentity(crmEnrichmentKey));
+
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["CrmEnrichmentCronSchedule"] ?? "0 45 3 * * ?";
+      t.ForJob(crmEnrichmentKey)
+       .WithIdentity("CrmEnrichmentTrigger")
+       .WithCronSchedule(
+           cron,
+           cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   // CanonicalOrgDedupJob is retired/no-op — real merges run through the
   // supervised tools/BdCanonicalDedup CLI. The weekly trigger was removed
   // (audit 2026-07-01 n2): a scheduled no-op wrote JobRuns rows and showed as

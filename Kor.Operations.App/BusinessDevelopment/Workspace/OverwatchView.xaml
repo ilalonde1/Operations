@@ -64,11 +64,13 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Owner"      Binding="{Binding OwnerDisplay}"        Width="110"/>
-                        <DataGridTextColumn Header="Stage"      Binding="{Binding StageDisplay}"        Width="90"/>
+                        <!-- Plan 2.2a: stage + how long it has sat there ("Drafting 34d"). -->
+                        <DataGridTextColumn Header="Stage"      Binding="{Binding StageAgeDisplay}"     Width="110"/>
                         <DataGridTextColumn Header="Project"    Binding="{Binding ProjectName}"         Width="*"/>
                         <DataGridTextColumn Header="Buyer"      Binding="{Binding Buyer}"               Width="170"/>
                         <DataGridTextColumn Header="Region"     Binding="{Binding RegionDisplay}"       Width="90"/>
-                        <DataGridTextColumn Header="Last touch" Binding="{Binding LastTouchDisplay}"    Width="100"/>
+                        <!-- Plan 3.1: fused touch, source-labelled ("2026-07-01 (email)"). -->
+                        <DataGridTextColumn Header="Last touch" Binding="{Binding LastTouchDisplay}"    Width="140"/>
                         <DataGridTextColumn Header="Acts"       Binding="{Binding ActivityCountDisplay}" Width="50"/>
                         <DataGridTextColumn Header="Opened"     Binding="{Binding OpenedDisplay}"       Width="100"/>
                     </DataGrid.Columns>

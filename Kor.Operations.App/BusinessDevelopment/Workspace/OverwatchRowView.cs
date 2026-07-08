@@ -21,8 +21,30 @@ public sealed class OverwatchRowView
     public OverwatchRowView(PursuitOverwatchRow row)
     {
         Row = row;
-        var reference = row.LastActivityUtc ?? row.OpenedAtUtc;
+
+        // Plan 3.1 fusion: the staleness reference is the NEWEST of logged
+        // activity and filed email correspondence (nightly warmth rollup),
+        // source-labelled so a manager knows what kind of touch it was.
+        DateTimeOffset reference;
+        if (row.EmailLastTouchUtc is { } email && (row.LastActivityUtc is not { } act || email > act))
+        {
+            reference = email;
+            TouchSource = "email";
+        }
+        else if (row.LastActivityUtc is { } activity)
+        {
+            reference = activity;
+            TouchSource = "activity";
+        }
+        else
+        {
+            reference = row.OpenedAtUtc;
+            TouchSource = "none";
+        }
+
+        LastTouchUtc = reference;
         DaysSinceTouch = Math.Max(0, (int)(DateTimeOffset.Now - reference).TotalDays);
+        StageAgeDays = Math.Max(0, (int)(DateTimeOffset.Now - row.StageSinceUtc).TotalDays);
     }
 
     public PursuitOverwatchRow Row { get; }
@@ -37,12 +59,24 @@ public sealed class OverwatchRowView
 
     public int DaysSinceTouch { get; }
 
-    /// <summary>"3d" / "41d" — age since last activity (or since opened if never touched).</summary>
+    /// <summary>Which signal produced the staleness reference: "activity", "email", or "none".</summary>
+    public string TouchSource { get; }
+
+    /// <summary>Days in the CURRENT stage (plan 2.2a; stage history with OpenedAtUtc fallback).</summary>
+    public int StageAgeDays { get; }
+
+    /// <summary>"Drafting 34d" — the stage plus how long it has sat there.</summary>
+    public string StageAgeDisplay => $"{StageDisplay} {StageAgeDays}d";
+
+    private DateTimeOffset LastTouchUtc { get; }
+
+    /// <summary>"3d" / "41d" — age since last touch (activity or filed email;
+    /// since opened if neither exists).</summary>
     public string StalenessDisplay => $"{DaysSinceTouch}d";
 
-    public string LastTouchDisplay => Row.LastActivityUtc.HasValue
-        ? Row.LastActivityUtc.Value.LocalDateTime.ToString("yyyy-MM-dd")
-        : "never";
+    public string LastTouchDisplay => TouchSource == "none"
+        ? "never"
+        : $"{LastTouchUtc.LocalDateTime:yyyy-MM-dd} ({TouchSource})";
 
     public string OpenedDisplay => Row.OpenedAtUtc.LocalDateTime.ToString("yyyy-MM-dd");
 
