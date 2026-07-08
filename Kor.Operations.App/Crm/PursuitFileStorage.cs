@@ -57,13 +57,30 @@ public sealed class LanPursuitFileStorage : IPursuitFileStorage
         var folder = Path.Combine(_root, PursuitFolder(engagementId, pursuitLabel));
         Directory.CreateDirectory(folder);
 
-        var target = UniquePath(folder, safeName);
-
-        // File.Copy streams under the hood — safe for large videos.
-        await Task.Run(() => File.Copy(sourcePath, target, overwrite: false), ct).ConfigureAwait(false);
+        // Copy with a small retry (review fix 2026-07-08): another user
+        // attaching the same name to the same pursuit can win the
+        // File.Exists→Copy race — overwrite:false throws rather than clobber
+        // their bytes, so recompute the unique name and try again.
+        var target = string.Empty;
+        for (var attempt = 0; ; attempt++)
+        {
+            target = UniquePath(folder, safeName);
+            try
+            {
+                // File.Copy streams under the hood — safe for large videos.
+                await Task.Run(() => File.Copy(sourcePath, target, overwrite: false), ct).ConfigureAwait(false);
+                break;
+            }
+            catch (IOException) when (attempt < 5 && File.Exists(target))
+            {
+                // A racer created this name between the check and the copy; loop.
+            }
+        }
 
         var info = new FileInfo(target);
-        var sha = await ComputeSha256Async(target, ct).ConfigureAwait(false);
+        // Hash the SOURCE (usually local), not the share copy — halves network
+        // I/O for a big video and avoids reading the whole file back off the LAN.
+        var sha = await ComputeSha256Async(sourcePath, ct).ConfigureAwait(false);
 
         return new PursuitFileUpload(
             FileName: Path.GetFileName(target),
@@ -143,7 +160,7 @@ public sealed class LanPursuitFileStorage : IPursuitFileStorage
 
     private static string GuessContentType(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
-        ".pdf" => "application/pdf",
+        ".pdf" => "PDF",
         ".doc" or ".docx" => "Word document",
         ".xls" or ".xlsx" => "Excel workbook",
         ".ppt" or ".pptx" => "PowerPoint",

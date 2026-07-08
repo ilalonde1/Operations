@@ -11,9 +11,19 @@
     OpportunityId optional.
 
     Additive + idempotent. Both parent FKs are ON DELETE NO ACTION: pursuits
-    and opportunities are soft-retired (RetiredAtUtc), never hard-deleted, so
-    cascade isn't needed — and NO ACTION avoids the multiple-cascade-path error
-    that two cascading FKs into the same graph would raise.
+    and opportunities are soft-retired (RetiredAtUtc), never hard-deleted in
+    normal operation, so cascade isn't needed — and NO ACTION avoids the
+    multiple-cascade-path error that two cascading FKs into the same graph
+    would raise. NO ACTION is deliberately the safe choice (it refuses to
+    silently drop file rows).
+
+    CAVEAT (adversarial review 2026-07-08): the ONE documented hard-delete of
+    CrmEngagements is the win-history seed reversal
+    (DELETE ... WHERE ExternalSource = N'Deltek.CustomProposal', migration 268).
+    If a backfilled-Won engagement ever has an attachment, that reversal will
+    be FK-blocked until its OpportunityFiles rows are removed first. Rare +
+    trivially worked around; left as NO ACTION rather than risk a cascade-path
+    change on an applied migration.
 */
 
 SET QUOTED_IDENTIFIER ON;

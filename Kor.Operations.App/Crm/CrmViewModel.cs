@@ -541,11 +541,25 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
 
             if (_fileStorage.IsConfigured)
             {
-                var files = await _fileStore.ListByEngagementAsync(engagementId, ct).ConfigureAwait(true);
-                if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
-                foreach (var f in files)
+                // Individually guarded (review fix 2026-07-08): a transient
+                // OpportunityFiles fault must NOT jump to the outer catch and
+                // take the Deltek roll-up + Phase 2/3 context panels down with it.
+                try
                 {
-                    Files.Add(new PursuitFileRowView(f));
+                    var files = await _fileStore.ListByEngagementAsync(engagementId, ct).ConfigureAwait(true);
+                    if (ct.IsCancellationRequested || Selected?.Id != engagementId) return;
+                    foreach (var f in files)
+                    {
+                        Files.Add(new PursuitFileRowView(f));
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "Attachment list load failed for engagement {EngagementId}.", engagementId);
                 }
             }
 
@@ -848,9 +862,26 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         var failures = 0;
         foreach (var source in sourcePaths)
         {
+            PursuitFileUpload stored;
             try
             {
-                var stored = await _fileStorage.StoreAsync(engagementId, pursuitLabel, source, ct).ConfigureAwait(true);
+                stored = await _fileStorage.StoreAsync(engagementId, pursuitLabel, source, ct).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                failures++;
+                Serilog.Log.Warning(ex, "Copying '{File}' to the share (engagement {EngagementId}) failed.", source, engagementId);
+                continue;
+            }
+
+            // The bytes are on the share; if indexing them fails, delete the
+            // copy so it can't linger as an invisible orphan (review fix).
+            try
+            {
                 var saved = await _fileStore.AddAsync(
                     engagementId, opportunityId, stored.FileName, stored.StoredPath,
                     stored.Sha256, stored.SizeBytes, stored.ContentType, actor, ct).ConfigureAwait(true);
@@ -864,12 +895,14 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             }
             catch (OperationCanceledException)
             {
+                _fileStorage.TryDelete(stored.StoredPath);
                 throw;
             }
             catch (Exception ex)
             {
+                _fileStorage.TryDelete(stored.StoredPath);
                 failures++;
-                Serilog.Log.Warning(ex, "Attaching '{File}' to engagement {EngagementId} failed.", source, engagementId);
+                Serilog.Log.Warning(ex, "Indexing '{File}' failed; removed the orphaned copy (engagement {EngagementId}).", stored.FileName, engagementId);
             }
         }
 
