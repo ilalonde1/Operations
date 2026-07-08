@@ -1,12 +1,18 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Opportunities;
+using Serilog;
 
 namespace Kor.Operations.App.Opportunities;
 
@@ -20,18 +26,37 @@ namespace Kor.Operations.App.Opportunities;
 public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
 {
     private readonly Opportunity? _existing;
+    private readonly IOpportunityDuplicateFinder? _duplicateFinder;
     private string _errorMessage = string.Empty;
+    private string _duplicateHint = string.Empty;
+
+    // Live-hint debounce + the last computed matches (reused by Save so a fresh
+    // save doesn't wait on a re-query when nothing changed).
+    private readonly DispatcherTimer _hintTimer;
+    private CancellationTokenSource? _hintCts;
+    private IReadOnlyList<OpportunityDuplicateCandidate> _lastMatches = Array.Empty<OpportunityDuplicateCandidate>();
+    private bool _duplicateConfirmed;
 
     public OpportunityEntryDialog()
-        : this(null)
+        : this(null, null)
     {
     }
 
     public OpportunityEntryDialog(Opportunity? existing)
+        : this(existing, null)
+    {
+    }
+
+    public OpportunityEntryDialog(Opportunity? existing, IOpportunityDuplicateFinder? duplicateFinder)
     {
         _existing = existing;
+        _duplicateFinder = duplicateFinder;
         InitializeComponent();
         DataContext = this;
+
+        _hintTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _hintTimer.Tick += async (_, _) => await RefreshDuplicateHintAsync().ConfigureAwait(true);
+        Closed += (_, _) => { _hintTimer.Stop(); _hintCts?.Cancel(); _hintCts?.Dispose(); };
 
         PopulateChoiceBoxes();
         if (_existing is null)
@@ -68,8 +93,31 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>The persisted record to feed into the store on Save.</summary>
+    /// <summary>The persisted record to feed into the store on Save. Null when
+    /// the user chose to open an existing opportunity instead (see
+    /// <see cref="OpenExistingKey"/>).</summary>
     public Opportunity? Result { get; private set; }
+
+    /// <summary>Set (with DialogResult=true, Result=null) when the user picked
+    /// "Open the existing one" on the duplicate prompt — the caller navigates
+    /// to this opportunity instead of inserting.</summary>
+    public string? OpenExistingKey { get; private set; }
+
+    public string DuplicateHint
+    {
+        get => _duplicateHint;
+        private set
+        {
+            if (!string.Equals(_duplicateHint, value, StringComparison.Ordinal))
+            {
+                _duplicateHint = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasDuplicateHint));
+            }
+        }
+    }
+
+    public bool HasDuplicateHint => !string.IsNullOrWhiteSpace(_duplicateHint);
 
     public string HeaderText { get; private set; } = "New Opportunity";
 
@@ -106,7 +154,65 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
         Close();
     }
 
-    private void SaveButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Restart the live-hint debounce; a fresh edit re-arms the guard
+    /// even after a prior "Save anyway".</summary>
+    private void DuplicateInput_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_duplicateFinder is null || _existing is not null)
+        {
+            return;
+        }
+
+        _duplicateConfirmed = false;
+        _hintTimer.Stop();
+        _hintTimer.Start();
+    }
+
+    private async Task RefreshDuplicateHintAsync()
+    {
+        _hintTimer.Stop();
+        if (_duplicateFinder is null || _existing is not null)
+        {
+            return;
+        }
+
+        var name = (NameBox.Text ?? string.Empty).Trim();
+        var buyer = (BuyerBox.Text ?? string.Empty).Trim();
+        if (name.Length < 4 || buyer.Length < 3)
+        {
+            _lastMatches = Array.Empty<OpportunityDuplicateCandidate>();
+            DuplicateHint = string.Empty;
+            return;
+        }
+
+        _hintCts?.Cancel();
+        _hintCts?.Dispose();
+        _hintCts = new CancellationTokenSource();
+        var ct = _hintCts.Token;
+        try
+        {
+            var matches = await _duplicateFinder.FindAsync(buyer, name, NullIfEmpty(CityBox.Text), null, ct)
+                .ConfigureAwait(true);
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _lastMatches = matches;
+            DuplicateHint = matches.Count == 0
+                ? string.Empty
+                : $"⚠ {matches.Count} possible existing match{(matches.Count == 1 ? "" : "es")} — you can open it on Save.";
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Live duplicate-hint check failed.");
+        }
+    }
+
+    private async void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         ErrorMessage = string.Empty;
 
@@ -130,6 +236,47 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
         {
             ErrorMessage = "Buyer name is required.";
             return;
+        }
+
+        // Duplicate guard (new entries only): a fresh check on Save, then the
+        // picker. Never blocks — the user can always open the existing one or
+        // save anyway. A prior "Save anyway" on the same text short-circuits.
+        if (_duplicateFinder is not null && _existing is null && !_duplicateConfirmed)
+        {
+            IReadOnlyList<OpportunityDuplicateCandidate> matches;
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                matches = await _duplicateFinder.FindAsync(buyer, name, NullIfEmpty(CityBox.Text), null, cts.Token)
+                    .ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                // A duplicate-check failure must never block a legitimate save.
+                Log.Warning(ex, "Duplicate check on save failed; allowing the save.");
+                matches = Array.Empty<OpportunityDuplicateCandidate>();
+            }
+
+            if (matches.Count > 0)
+            {
+                var prompt = new OpportunityDuplicateDialog(name, matches) { Owner = this };
+                var shown = prompt.ShowDialog();
+                if (shown != true || prompt.Choice == DuplicateChoice.Cancel)
+                {
+                    return; // back to editing
+                }
+
+                if (prompt.Choice == DuplicateChoice.OpenExisting)
+                {
+                    OpenExistingKey = prompt.SelectedKey;
+                    Result = null;
+                    DialogResult = true;
+                    Close();
+                    return;
+                }
+
+                _duplicateConfirmed = true; // SaveAnyway
+            }
         }
 
         decimal? estimatedValue = null;

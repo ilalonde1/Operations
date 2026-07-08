@@ -934,6 +934,34 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         return saved;
     }
 
+    /// <summary>
+    /// Select the loaded opportunity with this key (duplicate-guard "open the
+    /// existing one" route, 2026-07-07). Clears active filters if the target
+    /// would otherwise be hidden. Returns false when the key isn't loaded.
+    /// </summary>
+    public bool SelectByKey(string key)
+    {
+        var row = Opportunities.FirstOrDefault(
+            r => string.Equals(r.OpportunityKey, key, StringComparison.OrdinalIgnoreCase));
+        if (row is null)
+        {
+            return false;
+        }
+
+        if (!OpportunityFilterPredicate(row))
+        {
+            // Each setter refreshes the collection view.
+            StatusFilter = null;
+            TierFilter = null;
+            ProvinceFilter = null;
+            PrimeConsultantOnly = false;
+            FilterText = string.Empty;
+        }
+
+        Selected = row;
+        return true;
+    }
+
     private void ReplaceRow(Opportunity saved)
     {
         for (int i = 0; i < Opportunities.Count; i++)

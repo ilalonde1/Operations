@@ -154,8 +154,22 @@ public partial class OpportunitiesView : UserControl
 
     private async void NewButton_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new OpportunityEntryDialog { Owner = OwnerWindow() };
-        if (dlg.ShowDialog() != true || dlg.Result is null)
+        // Manual-entry duplicate guard (2026-07-07): the dialog warns live and
+        // offers "open the existing one" on Save.
+        var finder = _services.GetService<IOpportunityDuplicateFinder>();
+        var dlg = new OpportunityEntryDialog(null, finder) { Owner = OwnerWindow() };
+        if (dlg.ShowDialog() != true)
+        {
+            return;
+        }
+
+        if (dlg.OpenExistingKey is { } existingKey)
+        {
+            OpenExistingOpportunity(existingKey);
+            return;
+        }
+
+        if (dlg.Result is null)
         {
             return;
         }
@@ -167,6 +181,23 @@ public partial class OpportunitiesView : UserControl
         catch (Exception ex)
         {
             MessageBox.Show(OwnerWindow(), ex.Message, "Opportunities — Insert Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>Land the user on an existing opportunity chosen from the
+    /// duplicate prompt (its detail panel surfaces the pursuit, if any).</summary>
+    private void OpenExistingOpportunity(string key)
+    {
+        if (_vm.SelectByKey(key))
+        {
+            OpportunitiesGrid.ScrollIntoView(_vm.Selected!);
+            OpportunitiesGrid.Focus();
+        }
+        else
+        {
+            MessageBox.Show(OwnerWindow(),
+                $"Opportunity {key} isn't in the current view — click Refresh to load it.",
+                "Opportunities", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 

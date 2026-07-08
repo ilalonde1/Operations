@@ -44,6 +44,11 @@ internal static class OpportunitiesModule
             sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
             sp.GetService<ILogger<SqlOpportunityStore>>()));
 
+        // Manual-entry duplicate guard (2026-07-07): thin finder over the store,
+        // consumed by OpportunityEntryDialog.
+        services.AddSingleton<App.Opportunities.IOpportunityDuplicateFinder>(
+            sp => new App.Opportunities.OpportunityDuplicateFinder(sp.GetRequiredService<IOpportunityStore>()));
+
         // Phase 4A/D: ingestion-side stores. Singletons - all stateless; the App
         // reads observations + ingestion-run history for the admin viewer and
         // writes trigger rows for the "Run Now" button.

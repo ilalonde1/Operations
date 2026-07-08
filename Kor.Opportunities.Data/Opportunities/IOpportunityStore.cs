@@ -33,6 +33,24 @@ public interface IOpportunityStore
     Task<long?> GetBuyerCanonicalOrgIdAsync(long opportunityId, CancellationToken ct);
 
     /// <summary>
+    /// Manual-entry duplicate guard (2026-07-07): finds active opportunities
+    /// likely to be the SAME real-world RFP as a proposed manual entry, ranked
+    /// most-likely-first. Buyer matching resolves <paramref name="buyerName"/>
+    /// to a canonical org (read-only) so "City of Vancouver" and "Vancouver
+    /// (City of)" match; title matching uses <see cref="OpportunityDuplicateScorer"/>.
+    /// Never mutates. Returns at most <paramref name="take"/> candidates whose
+    /// confidence is Medium or High. Excludes the opportunity with
+    /// <paramref name="excludeKey"/> (the row being edited, if any).
+    /// </summary>
+    Task<IReadOnlyList<OpportunityDuplicateCandidate>> FindPossibleDuplicatesAsync(
+        string buyerName,
+        string name,
+        string? city,
+        string? excludeKey,
+        int take,
+        CancellationToken ct);
+
+    /// <summary>
     /// Inserts a new row. The supplied <see cref="Opportunity.Id"/> is ignored
     /// (IDENTITY column). Returns the row as persisted, with the assigned Id,
     /// CreatedAt/UpdatedAt timestamps, and RowVersion populated.

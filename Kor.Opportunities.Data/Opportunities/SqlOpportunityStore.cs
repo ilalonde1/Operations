@@ -147,6 +147,140 @@ WHERE Id = @id;";
         return scalar is long l ? l : null;
     }
 
+    public async Task<IReadOnlyList<OpportunityDuplicateCandidate>> FindPossibleDuplicatesAsync(
+        string buyerName, string name, string? city, string? excludeKey, int take, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(buyerName))
+        {
+            return Array.Empty<OpportunityDuplicateCandidate>();
+        }
+
+        // Read-only buyer resolution (allowCreate:false) — never mints an org
+        // during a duplicate CHECK. "City of Vancouver" and "Vancouver (City
+        // of)" resolve to the same id, so a manual re-entry of an ingested RFP
+        // lands on the same buyer.
+        long? typedBuyerId = null;
+        if (_canonicalResolver is not null && !string.IsNullOrWhiteSpace(buyerName))
+        {
+            try
+            {
+                typedBuyerId = await _canonicalResolver.ResolveAsync(
+                    buyerName, OrgKinds.Buyer, OrgAliasSources.OpportunitiesBuyer, ct, allowCreate: false)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Duplicate-guard buyer resolve failed for '{Buyer}'.", buyerName);
+            }
+        }
+
+        // Candidate set (bounded, active opps only — Status not Won(6)/Lost(7)):
+        //   - buyer resolved  -> everything sharing that canonical buyer (indexed)
+        //   - buyer NOT resolved (brand-new buyer) -> name-token LIKE prefilter,
+        //     so a same-title/new-buyer dup is still caught without scanning all.
+        var conditions = new List<string> { "o.Status NOT IN (6, 7)" };
+        string? likeToken = null;
+        if (typedBuyerId.HasValue)
+        {
+            conditions.Add("o.BuyerCanonicalOrgId = @buyerId");
+        }
+        else
+        {
+            likeToken = LongestSignificantToken(name);
+            if (likeToken is null)
+            {
+                return Array.Empty<OpportunityDuplicateCandidate>();
+            }
+
+            conditions.Add("o.Name LIKE @tok ESCAPE N'\\'");
+        }
+
+        var sql = $@"
+SELECT o.OpportunityKey, o.Name, o.BuyerName, o.Status, o.ProjectCity, o.BuyerCanonicalOrgId,
+       CASE WHEN EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.OpportunityId = o.Id) THEN 1 ELSE 0 END AS HasPursuit
+FROM opportunities.Opportunities o
+WHERE {string.Join(" AND ", conditions)};";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        if (typedBuyerId.HasValue)
+        {
+            cmd.Parameters.Add("@buyerId", SqlDbType.BigInt).Value = typedBuyerId.Value;
+        }
+        else
+        {
+            cmd.Parameters.Add("@tok", SqlDbType.NVarChar, 400).Value = "%" + EscapeLike(likeToken!) + "%";
+        }
+
+        var typedBuyerNorm = CanonicalOrgResolver.NormalizeName(CanonicalOrgResolver.StripIntakeNoise(buyerName ?? string.Empty));
+        var results = new List<OpportunityDuplicateCandidate>();
+        await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var candKey = reader.GetString(0);
+                if (!string.IsNullOrEmpty(excludeKey) && string.Equals(candKey, excludeKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var candName = reader.GetString(1);
+                var candBuyer = reader.GetString(2);
+                var candBuyerId = reader.IsDBNull(5) ? (long?)null : reader.GetInt64(5);
+
+                var sameBuyer = (typedBuyerId.HasValue && candBuyerId == typedBuyerId)
+                    || (typedBuyerNorm.Length >= 3
+                        && CanonicalOrgResolver.NormalizeName(CanonicalOrgResolver.StripIntakeNoise(candBuyer)) == typedBuyerNorm);
+
+                var score = OpportunityDuplicateScorer.NameSimilarity(name, candName);
+                var confidence = OpportunityDuplicateScorer.Classify(score, sameBuyer);
+                if (confidence == DuplicateConfidence.None)
+                {
+                    continue;
+                }
+
+                results.Add(new OpportunityDuplicateCandidate(
+                    candKey, candName, candBuyer, reader.GetInt32(3),
+                    reader.IsDBNull(4) ? null : reader.GetString(4),
+                    reader.GetInt32(6) == 1, sameBuyer, score, confidence));
+            }
+        }
+
+        return results
+            .OrderByDescending(r => r.Confidence)
+            .ThenByDescending(r => r.NameScore)
+            .Take(Math.Max(1, take))
+            .ToList();
+    }
+
+    /// <summary>Longest name word (len ≥ 4) for the new-buyer LIKE prefilter.</summary>
+    private static string? LongestSignificantToken(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        string? best = null;
+        var word = new System.Text.StringBuilder();
+        void Flush()
+        {
+            if (word.Length >= 4 && (best is null || word.Length > best.Length))
+            {
+                best = word.ToString();
+            }
+            word.Clear();
+        }
+
+        foreach (var ch in name)
+        {
+            if (char.IsLetterOrDigit(ch)) word.Append(ch);
+            else Flush();
+        }
+        Flush();
+        return best;
+    }
+
+    private static string EscapeLike(string s)
+        => s.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_").Replace("[", "\\[");
+
     public async Task<Opportunity> InsertAsync(Opportunity opportunity, string actorDisplay, CancellationToken ct)
     {
         var classifiedOpportunity = WithPrimeClassification(opportunity);
