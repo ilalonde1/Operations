@@ -29,6 +29,16 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
 
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
 
+    // U4: large pipeline sums ($59B) overflowed the fixed-width stat tile and
+    // clipped to a broken "$59,014,997,". Show a compact, readable magnitude.
+    private static string FormatCompactCad(decimal v)
+    {
+        if (v >= 1_000_000_000m) return string.Format(CanadianCulture, "${0:0.0}B", v / 1_000_000_000m);
+        if (v >= 1_000_000m) return string.Format(CanadianCulture, "${0:0.0}M", v / 1_000_000m);
+        if (v >= 1_000m) return string.Format(CanadianCulture, "${0:0}K", v / 1_000m);
+        return string.Format(CanadianCulture, "{0:C0}", v);
+    }
+
     private readonly IPrimePipelineStore _primePipeline;
     private readonly IOpportunityStore _opportunities;
     private readonly IBdDashboardStore _bdDashboard;
@@ -312,7 +322,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
             OpenRfpsDisplay = pipeline.Count(r => string.Equals(r.PipelineType, "Open RFP", StringComparison.OrdinalIgnoreCase)).ToString("N0", CanadianCulture);
             UpcomingProjectsDisplay = pipeline.Count(r => string.Equals(r.PipelineType, "Pipeline Project", StringComparison.OrdinalIgnoreCase)).ToString("N0", CanadianCulture);
             ClosingSoonDisplay = opps.Count(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= sevenDays).ToString("N0", CanadianCulture);
-            PipelineValueDisplay = string.Format(CanadianCulture, "{0:C0}", pipeline.Sum(r => r.EstimatedValueCad ?? 0m));
+            PipelineValueDisplay = FormatCompactCad(pipeline.Sum(r => r.EstimatedValueCad ?? 0m));
             RadarCount = funnel.RadarCount;
             BidWindowCount = funnel.BidWindowCount;
             OpenSeatCount = funnel.OpenSeatCount;
@@ -340,7 +350,10 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
                     o.SubmissionDeadlineUtc?.LocalDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))));
 
             Replace(SectorBars, BuildBars(pipeline
-                .GroupBy(r => string.IsNullOrWhiteSpace(r.Sector) ? "Other" : r.Sector!)
+                // U4: canonicalize case so "Education" and "education" are one bar.
+                .GroupBy(r => string.IsNullOrWhiteSpace(r.Sector)
+                    ? "Other"
+                    : CanadianCulture.TextInfo.ToTitleCase(r.Sector!.Trim().ToLowerInvariant()))
                 .Select(g => (Label: g.Key, Count: g.Count()))));
 
             Replace(MarketBars, BuildBars(pipeline

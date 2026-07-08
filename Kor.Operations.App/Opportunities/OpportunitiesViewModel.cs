@@ -272,8 +272,23 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     public string HeartbeatHealth
     {
         get => _heartbeatHealth;
-        private set => SetField(ref _heartbeatHealth, value);
+        private set
+        {
+            if (SetField(ref _heartbeatHealth, value))
+            {
+                OnPropertyChanged(nameof(HeartbeatIsAlarming));
+            }
+        }
     }
+
+    /// <summary>
+    /// True only when the worker is actually behind (Amber/Red). The heartbeat
+    /// strip binds its visibility here so end users see it ONLY when something is
+    /// wrong — a healthy/loading worker is dev noise on a daily screen.
+    /// </summary>
+    public bool HeartbeatIsAlarming =>
+        string.Equals(_heartbeatHealth, "Amber", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(_heartbeatHealth, "Red", StringComparison.OrdinalIgnoreCase);
 
     public Brush HeartbeatBrush
     {

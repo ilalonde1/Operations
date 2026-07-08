@@ -22,22 +22,32 @@
             </StackPanel.Resources>
             <!-- Widths trimmed so the full toolbar fits the workspace's default
                  1360px window (review nit — 'Set stage' clipped). -->
+            <!-- U2: core actions inline, everything else under "More" so the
+                 toolbar isn't a wall of equal buttons. No features removed. -->
             <Button Content="Refresh" Width="80" Click="RefreshButton_Click"/>
-            <Button Content="Buyer intel…" Width="110" Click="BuyerIntelButton_Click"
-                    IsEnabled="{Binding Selected.HasBuyerIntel, FallbackValue=False}"
-                    ToolTip="Open the buyer's intel dossier — key people, signals, and KOR track record for this pursuit."/>
-            <Button Content="Opportunity brief…" Width="140" Click="OpportunityBriefButton_Click"
-                    IsEnabled="{Binding Selected.HasOpportunity, FallbackValue=False}"
-                    ToolTip="Generate the full per-pursuit brief PDF (RFP + buyer + market context). Plan 2.4."/>
-            <Button Content="Link project…" Width="110" Click="LinkDeltekProjectButton_Click"
-                    IsEnabled="{Binding Selected.IsWon, FallbackValue=False}"
-                    ToolTip="Record which Deltek project this win became (WBS1). Plan 2.5 — the opportunity→project bridge."/>
             <Button Content="Edit…" Width="80" Click="EditEngagementButton_Click"
                     ToolTip="Edit the engagement (owner, fee, notes, stage)."/>
-            <Button Content="Fee Proposal…" Width="120" Click="BuildFeeProposalButton_Click"
-                    ToolTip="Open the Fee Proposal Builder pre-named for this engagement."/>
-            <Button Content="Brochure…" Width="100" Margin="0,0,16,0" Click="BuildBrochureButton_Click"
-                    ToolTip="Open the Sales Brochure Builder pre-named for this engagement."/>
+            <Button Content="More  ▾" Width="90" Margin="0,0,16,0" Click="MoreActionsButton_Click"
+                    ToolTip="More actions for the selected pursuit.">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Buyer profile…" Click="BuyerIntelButton_Click"
+                                  IsEnabled="{Binding Selected.HasBuyerIntel, FallbackValue=False}"
+                                  ToolTip="Open the buyer's dossier — key people, signals, and KOR track record."/>
+                        <MenuItem Header="Project brief…" Click="OpportunityBriefButton_Click"
+                                  IsEnabled="{Binding Selected.HasOpportunity, FallbackValue=False}"
+                                  ToolTip="Generate the full per-pursuit brief PDF (RFP + buyer + market context)."/>
+                        <MenuItem Header="Link to project…" Click="LinkDeltekProjectButton_Click"
+                                  IsEnabled="{Binding Selected.IsWon, FallbackValue=False}"
+                                  ToolTip="Record which Deltek project this win became (WBS1)."/>
+                        <Separator/>
+                        <MenuItem Header="Fee Proposal…" Click="BuildFeeProposalButton_Click"
+                                  ToolTip="Open the Fee Proposal Builder pre-named for this engagement."/>
+                        <MenuItem Header="Brochure…" Click="BuildBrochureButton_Click"
+                                  ToolTip="Open the Sales Brochure Builder pre-named for this engagement."/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
             <Separator Margin="0,4,16,4"/>
 
             <Button x:Name="SetStageButton" Content="Set stage" Width="100"
@@ -116,9 +126,9 @@
 
         <Grid Grid.Row="2" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Style="{StaticResource Card}">
@@ -148,12 +158,13 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Key"     Binding="{Binding OpportunityKey}"     Width="140"/>
-                            <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}"        Width="*"/>
-                            <DataGridTextColumn Header="Buyer"   Binding="{Binding Buyer}"              Width="180"/>
-                            <DataGridTextColumn Header="Owner"   Binding="{Binding OwnerDisplay}"       Width="80"/>
-                            <DataGridTextColumn Header="Fee"     Binding="{Binding ProposedFeeDisplay}" Width="90"/>
-                            <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedDisplay}"     Width="120"/>
+                            <!-- U1: Project is the identifier — give it a floor so it
+                                 never collapses; Buyer flexes; Key/Fee live in the
+                                 detail panel to keep the list scannable. -->
+                            <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}"        Width="2*" MinWidth="180"/>
+                            <DataGridTextColumn Header="Buyer"   Binding="{Binding Buyer}"              Width="*"  MinWidth="120"/>
+                            <DataGridTextColumn Header="Owner"   Binding="{Binding OwnerDisplay}"       Width="90"/>
+                            <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedDisplay}"     Width="100"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>

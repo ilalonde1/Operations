@@ -85,15 +85,15 @@
                     <Button x:Name="BriefsMakerButton" Content="Make a Brief..." Style="{StaticResource NavButton}" Click="BriefsMaker_Click"/>
 
                     <TextBlock Text="PURSUIT PIPELINE" Style="{StaticResource NavGroupHeader}"/>
-                    <Button x:Name="BazaarButton" Content="Bazaar" Style="{StaticResource NavButton}" Click="Bazaar_Click"
-                            ToolTip="The clearing house — un-claimed opportunities ranked by relevance. Grab one to start an owned pursuit."/>
+                    <Button x:Name="BazaarButton" Content="Grab Opportunities" Style="{StaticResource NavButton}" Click="Bazaar_Click"
+                            ToolTip="The clearing house — un-claimed opportunities ranked by relevance. Grab one to start an owned pursuit. (Bazaar)"/>
                     <Button x:Name="BdTrackingButton" Content="BD Tracking" Style="{StaticResource NavButton}" Click="BdTracking_Click"
                             ToolTip="The KOR Structural BD Tracking 2026 spreadsheet, ingested. Region tabs + per-initiator filter + rollup."/>
                     <Button x:Name="PursuitsButton" Content="Pursuits" Style="{StaticResource NavButton}" Click="Pursuits_Click"/>
-                    <Button x:Name="OverwatchButton" Content="Overwatch" Style="{StaticResource NavButton}" Click="Overwatch_Click"
-                            ToolTip="Manager board — every owned active pursuit, who owns it, and what's going cold."/>
-                    <Button x:Name="AttributionButton" Content="Attribution" Style="{StaticResource NavButton}" Click="Attribution_Click"
-                            ToolTip="BD scorecard — wins, won fee, active pursuits, and what's attributable to the BD system."/>
+                    <Button x:Name="OverwatchButton" Content="Pursuit Monitor" Style="{StaticResource NavButton}" Click="Overwatch_Click"
+                            ToolTip="Manager board — every owned active pursuit, who owns it, and what's going cold. (Overwatch)"/>
+                    <Button x:Name="AttributionButton" Content="BD Scorecard" Style="{StaticResource NavButton}" Click="Attribution_Click"
+                            ToolTip="Wins, won fee, active pursuits, and what's attributable to the BD system. (Attribution)"/>
                     <TextBlock Text="TOOLS" Style="{StaticResource NavGroupHeader}"/>
                     <Button x:Name="ProposalsButton" Content="Proposals" Style="{StaticResource NavButton}" Click="Proposals_Click"
                             ToolTip="Opens the Fee Proposal Builder in a separate window."/>

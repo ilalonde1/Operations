@@ -144,6 +144,11 @@ public sealed class OpportunityRowView
         ["SAMGOV"] = "SAM.gov",
         ["BDALERTS"] = "BD Alerts (Email)",
         ["BCGOVNEW"] = "BC Gov News",
+        ["BCBID"] = "BC Bid",
+        ["BCBIDENG"] = "BC Bid",
+        ["COVAWARD"] = "COV Awards",
+        ["APC"] = "Alberta (APC)",
+        ["MERX"] = "MERX",
         ["MAN"] = "Manual",
     };
 

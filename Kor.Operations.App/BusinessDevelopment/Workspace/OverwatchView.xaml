@@ -32,7 +32,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="Pursuit Overwatch"
+                <TextBlock Grid.Row="0" Text="Pursuit Monitor"
                            FontSize="14" FontWeight="SemiBold"
                            Foreground="{StaticResource Brand.Primary.Brush}"
                            Margin="0,0,0,2"/>
@@ -66,8 +66,8 @@
                         <DataGridTextColumn Header="Owner"      Binding="{Binding OwnerDisplay}"        Width="110"/>
                         <!-- Plan 2.2a: stage + how long it has sat there ("Drafting 34d"). -->
                         <DataGridTextColumn Header="Stage"      Binding="{Binding StageAgeDisplay}"     Width="110"/>
-                        <DataGridTextColumn Header="Project"    Binding="{Binding ProjectName}"         Width="*"/>
-                        <DataGridTextColumn Header="Buyer"      Binding="{Binding Buyer}"               Width="170"/>
+                        <DataGridTextColumn Header="Project"    Binding="{Binding ProjectName}"         Width="*" MinWidth="220"/>
+                        <DataGridTextColumn Header="Buyer"      Binding="{Binding Buyer}"               Width="150" MinWidth="110"/>
                         <DataGridTextColumn Header="Region"     Binding="{Binding RegionDisplay}"       Width="90"/>
                         <!-- Plan 3.1: fused touch, source-labelled ("2026-07-01 (email)"). -->
                         <DataGridTextColumn Header="Last touch" Binding="{Binding LastTouchDisplay}"    Width="140"/>

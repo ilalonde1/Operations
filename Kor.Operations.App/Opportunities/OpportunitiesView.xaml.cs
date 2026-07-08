@@ -74,6 +74,16 @@ public partial class OpportunitiesView : UserControl
         await ReloadAsync().ConfigureAwait(true);
     }
 
+    // U2: the "More" toolbar button drops its menu of secondary actions.
+    private void MoreActionsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button b && b.ContextMenu is not null)
+        {
+            b.ContextMenu.PlacementTarget = b;
+            b.ContextMenu.IsOpen = true;
+        }
+    }
+
     private async void GenerateBriefButton_Click(object sender, RoutedEventArgs e)
         => await GenerateOpportunityBriefAsync(asPdf: true).ConfigureAwait(true);
 

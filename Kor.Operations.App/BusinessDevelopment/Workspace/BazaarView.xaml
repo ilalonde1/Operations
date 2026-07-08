@@ -32,7 +32,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="Opportunity Bazaar"
+                <TextBlock Grid.Row="0" Text="Grab Opportunities"
                            FontSize="14" FontWeight="SemiBold"
                            Foreground="{StaticResource Brand.Primary.Brush}"
                            Margin="0,0,0,2"/>
@@ -66,11 +66,11 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Source"   Binding="{Binding SourceDisplay}"          Width="110"/>
-                        <DataGridTextColumn Header="Name"     Binding="{Binding Name}"                   Width="*"/>
-                        <DataGridTextColumn Header="Buyer"    Binding="{Binding BuyerName}"              Width="190"/>
-                        <DataGridTextColumn Header="Location" Binding="{Binding LocationDisplay}"        Width="150"/>
-                        <DataGridTextColumn Header="Est. value" Binding="{Binding EstimatedValueDisplay}" Width="120"/>
+                        <DataGridTextColumn Header="Source"   Binding="{Binding SourceDisplay}"          Width="100"/>
+                        <DataGridTextColumn Header="Name"     Binding="{Binding Name}"                   Width="*" MinWidth="240"/>
+                        <DataGridTextColumn Header="Buyer"    Binding="{Binding BuyerName}"              Width="190" MinWidth="150"/>
+                        <DataGridTextColumn Header="Location" Binding="{Binding LocationDisplay}"        Width="120"/>
+                        <DataGridTextColumn Header="Est. value" Binding="{Binding EstimatedValueDisplay}" Width="110"/>
                         <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineDisplay}"        Width="100"/>
                     </DataGrid.Columns>
                 </DataGrid>

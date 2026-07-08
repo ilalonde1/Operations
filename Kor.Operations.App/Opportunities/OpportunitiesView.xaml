@@ -21,10 +21,13 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Heartbeat strip. Background tinted by VM-supplied brush so a stale
-             worker is loud, not subtle. -->
+        <!-- Heartbeat strip. Shown ONLY when the worker is actually behind
+             (Amber/Red) — hidden when healthy so it isn't dev noise on a daily
+             screen. Background tinted by VM-supplied brush so a stale worker is
+             loud, not subtle. -->
         <Border Grid.Row="1" Margin="12,0,12,8" Padding="14,8"
-                Background="{Binding HeartbeatBrush}">
+                Background="{Binding HeartbeatBrush}"
+                Visibility="{Binding HeartbeatIsAlarming, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
             <TextBlock Text="{Binding HeartbeatLine}"
                        Foreground="White"
                        FontWeight="SemiBold"/>
@@ -37,21 +40,21 @@
             <StackPanel.Resources>
                 <Style TargetType="Button" BasedOn="{StaticResource Button.ActionBar}"/>
             </StackPanel.Resources>
+            <!-- U2: one clear primary (Start Pursuit); New/Edit inline; the power
+                 and ops actions live under "More" so this isn't a 10-button wall. -->
             <Button Content="Refresh"  Width="100" Click="RefreshButton_Click"/>
-            <Button Content="New"      Width="100" Click="NewButton_Click"
-                    Style="{StaticResource Button.ActionBarPrimary}"/>
-            <Button Content="Edit…"    Width="100" Click="EditButton_Click"/>
-            <Button Content="Scoring…" Width="100" Click="ScoringButton_Click"/>
+            <Button Content="New"      Width="90"  Click="NewButton_Click"/>
+            <Button Content="Edit…"    Width="80"  Click="EditButton_Click"/>
             <Button x:Name="PromoteToPursuitButton"
-                    Content="Promote to Pursuit"
-                    Width="140"
+                    Content="Start Pursuit"
+                    Width="130"
+                    Style="{StaticResource Button.ActionBarPrimary}"
                     Click="PromoteToPursuitButton_Click"
                     ToolTip="Create a Pursuit (engagement) from the selected opportunity, or open the existing one."/>
 
             <Button x:Name="GenerateBriefButton"
-                    Content="Generate Brief"
-                    Width="130"
-                    Style="{StaticResource Button.ActionBarPrimary}"
+                    Content="Brief"
+                    Width="90"
                     Click="GenerateBriefButton_Click"
                     ToolTip="Generate a one-page PDF pursuit brief for the selected opportunity (saved to Desktop). Right-click to export as Word.">
                 <Button.ContextMenu>
@@ -62,11 +65,17 @@
                 </Button.ContextMenu>
             </Button>
 
-            <Button x:Name="ClientIntelligenceButton"
-                    Content="Client Intelligence"
-                    Width="160"
-                    Click="ClientIntelligenceButton_Click"
-                    ToolTip="Open the Deltek client intelligence window for the selected opportunity. Disabled when the row has no Deltek client link."/>
+            <Button Content="More  ▾" Width="90" Click="MoreActionsButton_Click"
+                    ToolTip="More actions for the selected opportunity.">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Client profile…" Click="ClientIntelligenceButton_Click"
+                                  ToolTip="Open the Deltek client intelligence window for the selected opportunity."/>
+                        <MenuItem Header="Relevance score…" Click="ScoringButton_Click"
+                                  ToolTip="Adjust the relevance scoring profile."/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
 
             <Button x:Name="RunNowButton"
                     Content="Run Source ▾"
@@ -169,7 +178,7 @@
                       SelectedItem="{Binding Selected}"
                       MouseDoubleClick="OpportunitiesGrid_MouseDoubleClick">
                 <DataGrid.Columns>
-                    <DataGridTemplateColumn Header="Repeat" Width="70" SortMemberPath="IsRepeatClient">
+                    <DataGridTemplateColumn Header="Repeat" Width="52" SortMemberPath="IsRepeatClient">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="{StaticResource Risk.HighConfidence.Foreground}" CornerRadius="999"
@@ -201,7 +210,7 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Prime" Width="70" SortMemberPath="IsPrimeConsultantRfp">
+                    <DataGridTemplateColumn Header="Prime" Width="52" SortMemberPath="IsPrimeConsultantRfp">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="{StaticResource CorporateBlue}" CornerRadius="999"
@@ -212,8 +221,8 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Name"          Binding="{Binding Name}"                  Width="*"/>
-                    <DataGridTextColumn Header="Buyer"         Binding="{Binding BuyerName}"             Width="220"/>
+                    <DataGridTextColumn Header="Name"          Binding="{Binding Name}"                  Width="*" MinWidth="260"/>
+                    <DataGridTextColumn Header="Buyer"         Binding="{Binding BuyerName}"             Width="200" MinWidth="150"/>
                     <DataGridTemplateColumn Header="Status" Width="150" SortMemberPath="Status">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -229,20 +238,24 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Discipline"    Binding="{Binding Discipline}"            Width="100"/>
-                    <DataGridTextColumn Header="Value"         Binding="{Binding EstimatedValueDisplay}" Width="120"/>
+                    <DataGridTextColumn Header="Discipline"    Binding="{Binding Discipline}"            Width="90"/>
+                    <DataGridTextColumn Header="Value"         Binding="{Binding EstimatedValueDisplay}" Width="110"/>
                     <DataGridTextColumn Header="Deadline"      Binding="{Binding DeadlineDisplay}"       Width="100"/>
-                    <DataGridTextColumn Header="Owner"         Binding="{Binding OwnerStaffId}"          Width="80"/>
-                    <DataGridTextColumn Header="Updated"       Binding="{Binding UpdatedAtDisplay}"      Width="140"/>
+                    <DataGridTextColumn Header="Owner"         Binding="{Binding OwnerStaffId}"          Width="70"/>
+                    <DataGridTextColumn Header="Updated"       Binding="{Binding UpdatedAtDisplay}"      Width="100"/>
                 </DataGrid.Columns>
             </DataGrid>
 
             <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
                           Background="{StaticResource Panel.Border}" ResizeBehavior="PreviousAndNext"/>
 
-            <Border Grid.Column="2" Width="420" Background="White" Padding="14" Margin="0">
+            <!-- U1: the detail panel is 420px; collapse it entirely when nothing
+                 is selected so the list gets the full width instead of staring at
+                 an empty pane. -->
+            <Border Grid.Column="2" Width="420" Background="White" Padding="14" Margin="0"
+                    Visibility="{Binding HasSelected, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Visibility="{Binding HasSelected, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                    <StackPanel>
                         <!-- Header: project name -->
                         <TextBlock Text="{Binding Selected.Name}"
                                    FontSize="16" FontWeight="SemiBold"

@@ -166,7 +166,7 @@
                             <TextBlock Text="{Binding PriorityActionsCount, StringFormat='({0})'}"
                                        Foreground="White" FontSize="11" FontWeight="SemiBold"/>
                         </Border>
-                        <TextBlock Text="top open recommendations across all orgs — acknowledge or move to CRM"
+                        <TextBlock Text="Suggested next moves — mark done, or start a pursuit"
                                    Foreground="{StaticResource Text.Secondary}"
                                    FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -316,8 +316,8 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="Open Seats" Foreground="White" FontWeight="SemiBold" FontSize="15"/>
-                                <TextBlock Text="Act now" Foreground="#FFE4DA" FontSize="12" Margin="0,2,0,0"/>
+                                <TextBlock Text="Reachable Now" Foreground="White" FontWeight="SemiBold" FontSize="15"/>
+                                <TextBlock Text="Act now — structural seat open" Foreground="#FFE4DA" FontSize="12" Margin="0,2,0,0"/>
                             </StackPanel>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding OpenSeatCountDisplay}"
@@ -343,8 +343,8 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="In Bid Window" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
-                                <TextBlock Text="Procurement / design" Foreground="#C8D2DE" FontSize="12" Margin="0,2,0,0"/>
+                                <TextBlock Text="In Bidding" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                                <TextBlock Text="Being procured now" Foreground="#C8D2DE" FontSize="12" Margin="0,2,0,0"/>
                             </StackPanel>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding BidWindowCountDisplay}"
@@ -370,8 +370,8 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="Radar" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
-                                <TextBlock Text="Watch" Foreground="#E0E2E4" FontSize="12" Margin="0,2,0,0"/>
+                                <TextBlock Text="Watching" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                                <TextBlock Text="Longer-term — keep an eye on" Foreground="#E0E2E4" FontSize="12" Margin="0,2,0,0"/>
                             </StackPanel>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding RadarCountDisplay}"
@@ -475,8 +475,8 @@
                               ItemsSource="{Binding LatestRfps}"
                               MouseDoubleClick="LatestRfpsGrid_MouseDoubleClick">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="180"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" MinWidth="160"/>
+                            <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="160"/>
                             <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="80"/>
                             <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
                             <DataGridTextColumn Header="Deadline" Binding="{Binding Deadline}" Width="100"/>

@@ -220,6 +220,16 @@ public partial class CrmView : UserControl
         await ReloadAsync().ConfigureAwait(true);
     }
 
+    // U2: the "More" toolbar button drops its menu of secondary pursuit actions.
+    private void MoreActionsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button b && b.ContextMenu is not null)
+        {
+            b.ContextMenu.PlacementTarget = b;
+            b.ContextMenu.IsOpen = true;
+        }
+    }
+
     /// <summary>
     /// Pursuit Cockpit intel spoke: open the selected pursuit's buyer in the
     /// org intel dossier (key people, signals, KOR track record) — reusing the
