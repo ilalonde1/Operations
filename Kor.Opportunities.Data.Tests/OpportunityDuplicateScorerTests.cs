@@ -74,6 +74,29 @@ public sealed class OpportunityDuplicateScorerTests
         Assert.NotEqual(DuplicateConfidence.High, OpportunityDuplicateScorer.Classify(score, sameBuyer: true));
     }
 
+    // --- Review regression guards (2026-07-07) -----------------------------
+
+    [Fact]
+    public void CoarseBuyer_DifferentCapitalProjects_NotFlaggedDespiteBoilerplate()
+    {
+        // Two unrelated Government-of-Alberta RFPs sharing procurement
+        // boilerplate must NOT flag as a same-buyer dup (the trigram half now
+        // scores over significant tokens only, not the shared boilerplate).
+        var score = OpportunityDuplicateScorer.NameSimilarity(
+            "Request for Proposal - New Building Condition Assessments",
+            "Request for Proposal - Medical Sciences Building Roof Renewal");
+        Assert.Equal(DuplicateConfidence.None, OpportunityDuplicateScorer.Classify(score, sameBuyer: true));
+    }
+
+    [Fact]
+    public void Reordered_Title_ScoresIdenticalToOriginalOrder()
+    {
+        // Trigram over sorted tokens ⇒ word order doesn't change the score.
+        var a = OpportunityDuplicateScorer.NameSimilarity(
+            "Coquitlam Landfill Engineering Assessment", "Engineering Assessment Coquitlam Landfill");
+        Assert.True(a >= 0.95, $"reordered identical titles should score ~1.0, got {a}");
+    }
+
     [Fact]
     public void NameSimilarity_BlankInputs_ScoreZero()
     {

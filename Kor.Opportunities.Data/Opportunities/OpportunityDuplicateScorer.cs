@@ -52,20 +52,20 @@ public static class OpportunityDuplicateScorer
 
         var ta = Tokens(a);
         var tb = Tokens(b);
-        var jaccard = Jaccard(ta, tb);
 
-        var na = Collapse(a);
-        var nb = Collapse(b);
-        var trigram = TrigramDice(na, nb);
-
-        // Guard the degenerate case where stopword-stripping empties one side:
-        // fall back to trigram-only so "RFP Services" vs "RFP Services Inc"
-        // don't score 0 purely because every token was a stopword.
+        // Both halves score over the SIGNIFICANT tokens only — never the raw
+        // string (adversarial review 2026-07-07: trigrams over shared
+        // procurement boilerplate like "consultingengineeringservicesfor…"
+        // falsely inflated similarity between different capital projects at a
+        // coarse buyer). All-boilerplate titles collapse to 0 (not flagged).
         if (ta.Count == 0 || tb.Count == 0)
         {
-            return trigram;
+            return 0.0;
         }
 
+        var jaccard = Jaccard(ta, tb);
+        var trigram = TrigramDice(string.Concat(ta.OrderBy(t => t, StringComparer.Ordinal)),
+                                  string.Concat(tb.OrderBy(t => t, StringComparer.Ordinal)));
         return (jaccard + trigram) / 2.0;
     }
 
@@ -117,18 +117,6 @@ public static class OpportunityDuplicateScorer
         {
             yield return word.ToString();
         }
-    }
-
-    private static string Collapse(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return string.Empty;
-        var sb = new System.Text.StringBuilder(s.Length);
-        foreach (var ch in s.ToLowerInvariant())
-        {
-            if (char.IsLetterOrDigit(ch)) sb.Append(ch);
-        }
-
-        return sb.ToString();
     }
 
     private static double Jaccard(List<string> a, List<string> b)

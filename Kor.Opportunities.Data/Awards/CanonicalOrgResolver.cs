@@ -374,6 +374,53 @@ public sealed class CanonicalOrgResolver
         return canonicalId;
     }
 
+    /// <summary>
+    /// PURE READ-ONLY resolve: returns the existing canonical id for a raw name
+    /// (alias → merged-alias-survivor → normalized → merged-name-survivor →
+    /// fuzzy survivor), or null when nothing matches. Writes NOTHING — no
+    /// alias rows, no unclassified records, no org creation. Use this for
+    /// look-ups that must never mutate, such as the manual-entry duplicate
+    /// guard's live-typing check (adversarial review 2026-07-07: ResolveAsync
+    /// with allowCreate:false still wrote UnclassifiedAlias rows on every
+    /// debounce tick).
+    /// </summary>
+    public async Task<long?> FindExistingAsync(string? rawName, string source, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(rawName)) return null;
+        var trimmed = rawName.Trim();
+        var cleaned = StripIntakeNoise(trimmed);
+        var normalized = NormalizeName(cleaned);
+        if (normalized.Length < 3 || IsGenericNameDenied(normalized) || IsConcatenatedMultiEntity(cleaned))
+        {
+            return null;
+        }
+
+        var alias = await _store.LookupAliasAsync(trimmed, source, ct).ConfigureAwait(false);
+        if (alias is not null && alias.CanonicalOrgId.HasValue)
+        {
+            var redirected = await ResolveMergeOrSameAsync(alias.CanonicalOrgId.Value, ct).ConfigureAwait(false);
+            return redirected.Id;
+        }
+
+        var mergedAliasSurvivor = await _store.FindMergedSurvivorByAliasAsync(trimmed, source, ct).ConfigureAwait(false);
+        if (mergedAliasSurvivor.HasValue) return mergedAliasSurvivor.Value;
+
+        var byName = await _store.FindByNormalizedNameAsync(normalized, ct).ConfigureAwait(false);
+        if (byName.HasValue) return byName.Value;
+
+        var mergedNameSurvivor = await _store.FindMergedSurvivorByNormalizedNameAsync(normalized, ct).ConfigureAwait(false);
+        if (mergedNameSurvivor.HasValue) return mergedNameSurvivor.Value;
+
+        var fuzzyKey = NormalizeForFuzzyMatch(cleaned);
+        if (ResolverFuzzySurvivorAttachEnabled && fuzzyKey.Length >= 8 && !IsGenericNameDenied(fuzzyKey))
+        {
+            var fuzzy = await _store.FindByFuzzyNormalizedNameAsync(fuzzyKey, ct).ConfigureAwait(false);
+            if (fuzzy.HasValue) return fuzzy.Value;
+        }
+
+        return null;
+    }
+
     private async Task<(long Id, bool Redirected)> ResolveMergeOrSameAsync(long canonicalOrgId, CancellationToken ct)
     {
         var survivorId = await _store.ResolveCanonicalOrgMergeAsync(canonicalOrgId, ct).ConfigureAwait(false);

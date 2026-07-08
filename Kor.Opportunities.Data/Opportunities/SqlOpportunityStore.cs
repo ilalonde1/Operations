@@ -155,17 +155,18 @@ WHERE Id = @id;";
             return Array.Empty<OpportunityDuplicateCandidate>();
         }
 
-        // Read-only buyer resolution (allowCreate:false) — never mints an org
-        // during a duplicate CHECK. "City of Vancouver" and "Vancouver (City
-        // of)" resolve to the same id, so a manual re-entry of an ingested RFP
-        // lands on the same buyer.
+        // Read-only buyer resolution — PURE find, never writes (adversarial
+        // review 2026-07-07: the old ResolveAsync(allowCreate:false) still wrote
+        // UnclassifiedAlias rows on every debounce tick). "City of Vancouver"
+        // and "Vancouver (City of)" resolve to the same id, so a re-entry of an
+        // ingested RFP scores as the same buyer even against NULL-FK rows.
         long? typedBuyerId = null;
         if (_canonicalResolver is not null && !string.IsNullOrWhiteSpace(buyerName))
         {
             try
             {
-                typedBuyerId = await _canonicalResolver.ResolveAsync(
-                    buyerName, OrgKinds.Buyer, OrgAliasSources.OpportunitiesBuyer, ct, allowCreate: false)
+                typedBuyerId = await _canonicalResolver
+                    .FindExistingAsync(buyerName, OrgAliasSources.OpportunitiesBuyer, ct)
                     .ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -174,43 +175,59 @@ WHERE Id = @id;";
             }
         }
 
-        // Candidate set (bounded, active opps only — Status not Won(6)/Lost(7)):
-        //   - buyer resolved  -> everything sharing that canonical buyer (indexed)
-        //   - buyer NOT resolved (brand-new buyer) -> name-token LIKE prefilter,
-        //     so a same-title/new-buyer dup is still caught without scanning all.
-        var conditions = new List<string> { "o.Status NOT IN (6, 7)" };
-        string? likeToken = null;
-        if (typedBuyerId.HasValue)
+        // Candidate set is bounded by NAME TOKENS, not by buyer (review fixes):
+        //   - catches dups whose existing row has a NULL BuyerCanonicalOrgId
+        //     (freshly-ingested rows — the ones most likely re-entered);
+        //   - keeps a coarse buyer (thousands of opps) from being scored whole
+        //     on every 500ms tick;
+        //   - INCLUDES closed Won/Lost opps so re-entering a completed RFP is
+        //     flagged (the dialog shows its status).
+        // The top few significant title words (≥4 chars) OR'd; TOP 500 by
+        // recency backstops a very common token. sameBuyer is computed app-side
+        // (canonical id OR normalized raw-name equality) for scoring.
+        var tokens = SignificantTokens(name, max: 3);
+        var likeParams = new List<string>();
+        var likeClauses = new List<string>();
+        for (var i = 0; i < tokens.Count; i++)
         {
-            conditions.Add("o.BuyerCanonicalOrgId = @buyerId");
+            likeClauses.Add($"o.Name LIKE @t{i} ESCAPE N'\\'");
+            likeParams.Add("%" + EscapeLike(tokens[i]) + "%");
+        }
+
+        string where;
+        if (likeClauses.Count > 0)
+        {
+            where = "(" + string.Join(" OR ", likeClauses) + ")";
+        }
+        else if (typedBuyerId.HasValue)
+        {
+            // No usable title token (very short name): fall back to this buyer's
+            // opps, still bounded by TOP 500 recency.
+            where = "o.BuyerCanonicalOrgId = @buyerId";
         }
         else
         {
-            likeToken = LongestSignificantToken(name);
-            if (likeToken is null)
-            {
-                return Array.Empty<OpportunityDuplicateCandidate>();
-            }
-
-            conditions.Add("o.Name LIKE @tok ESCAPE N'\\'");
+            return Array.Empty<OpportunityDuplicateCandidate>();
         }
 
         var sql = $@"
-SELECT o.OpportunityKey, o.Name, o.BuyerName, o.Status, o.ProjectCity, o.BuyerCanonicalOrgId,
+SELECT TOP 500
+       o.OpportunityKey, o.Name, o.BuyerName, o.Status, o.ProjectCity, o.BuyerCanonicalOrgId,
        CASE WHEN EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.OpportunityId = o.Id) THEN 1 ELSE 0 END AS HasPursuit
 FROM opportunities.Opportunities o
-WHERE {string.Join(" AND ", conditions)};";
+WHERE {where}
+ORDER BY o.UpdatedAtUtc DESC;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
-        if (typedBuyerId.HasValue)
+        for (var i = 0; i < likeParams.Count; i++)
+        {
+            cmd.Parameters.Add($"@t{i}", SqlDbType.NVarChar, 400).Value = likeParams[i];
+        }
+        if (likeClauses.Count == 0 && typedBuyerId.HasValue)
         {
             cmd.Parameters.Add("@buyerId", SqlDbType.BigInt).Value = typedBuyerId.Value;
-        }
-        else
-        {
-            cmd.Parameters.Add("@tok", SqlDbType.NVarChar, 400).Value = "%" + EscapeLike(likeToken!) + "%";
         }
 
         var typedBuyerNorm = CanonicalOrgResolver.NormalizeName(CanonicalOrgResolver.StripIntakeNoise(buyerName ?? string.Empty));
@@ -254,28 +271,31 @@ WHERE {string.Join(" AND ", conditions)};";
             .ToList();
     }
 
-    /// <summary>Longest name word (len ≥ 4) for the new-buyer LIKE prefilter.</summary>
-    private static string? LongestSignificantToken(string? name)
+    /// <summary>The <paramref name="max"/> longest distinct name words (len ≥ 4)
+    /// for the candidate LIKE prefilter — the most selective title tokens.</summary>
+    private static List<string> SignificantTokens(string? name, int max)
     {
-        if (string.IsNullOrWhiteSpace(name)) return null;
-        string? best = null;
+        if (string.IsNullOrWhiteSpace(name)) return new List<string>();
+        var words = new List<string>();
         var word = new System.Text.StringBuilder();
         void Flush()
         {
-            if (word.Length >= 4 && (best is null || word.Length > best.Length))
-            {
-                best = word.ToString();
-            }
+            if (word.Length >= 4) words.Add(word.ToString());
             word.Clear();
         }
 
         foreach (var ch in name)
         {
-            if (char.IsLetterOrDigit(ch)) word.Append(ch);
+            if (char.IsLetterOrDigit(ch)) word.Append(char.ToLowerInvariant(ch));
             else Flush();
         }
         Flush();
-        return best;
+
+        return words
+            .Distinct(StringComparer.Ordinal)
+            .OrderByDescending(w => w.Length)
+            .Take(max)
+            .ToList();
     }
 
     private static string EscapeLike(string s)

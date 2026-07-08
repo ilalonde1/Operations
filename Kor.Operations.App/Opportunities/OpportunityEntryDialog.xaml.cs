@@ -34,8 +34,8 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
     // save doesn't wait on a re-query when nothing changed).
     private readonly DispatcherTimer _hintTimer;
     private CancellationTokenSource? _hintCts;
-    private IReadOnlyList<OpportunityDuplicateCandidate> _lastMatches = Array.Empty<OpportunityDuplicateCandidate>();
     private bool _duplicateConfirmed;
+    private bool _saving;
 
     public OpportunityEntryDialog()
         : this(null, null)
@@ -180,7 +180,6 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
         var buyer = (BuyerBox.Text ?? string.Empty).Trim();
         if (name.Length < 4 || buyer.Length < 3)
         {
-            _lastMatches = Array.Empty<OpportunityDuplicateCandidate>();
             DuplicateHint = string.Empty;
             return;
         }
@@ -198,7 +197,6 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
                 return;
             }
 
-            _lastMatches = matches;
             DuplicateHint = matches.Count == 0
                 ? string.Empty
                 : $"⚠ {matches.Count} possible existing match{(matches.Count == 1 ? "" : "es")} — you can open it on Save.";
@@ -213,6 +211,36 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
     }
 
     private async void SaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Re-entrancy guard (review fix 2026-07-07): Save is async void and
+        // awaits the duplicate check + a nested modal; a second click/Enter
+        // during that await would run a second save and could set DialogResult
+        // on an already-closing window (crash). Disable the button too.
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        SaveButton.IsEnabled = false;
+        try
+        {
+            await SaveCoreAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            // async void: an unhandled exception here would crash the app.
+            Log.Warning(ex, "Opportunity save failed.");
+            ErrorMessage = $"Save failed: {ex.Message}";
+        }
+        finally
+        {
+            _saving = false;
+            SaveButton.IsEnabled = true;
+        }
+    }
+
+    private async Task SaveCoreAsync()
     {
         ErrorMessage = string.Empty;
 
