@@ -150,7 +150,11 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
             }
         }
 
-        var sent = 0;
+        // Resolve every owner group to a mailbox, then MERGE by resolved
+        // mailbox — a person who owns both legacy (first-name) and grabbed
+        // (email) pursuits, or two aliases pointing at one address, must get ONE
+        // complete digest, not two fragments each missing half the list.
+        var byMailbox = new Dictionary<string, List<OwnerPursuitRow>>(StringComparer.OrdinalIgnoreCase);
         var unrouted = 0;
         foreach (var group in rows.GroupBy(x => x.Owner, StringComparer.OrdinalIgnoreCase))
         {
@@ -164,9 +168,41 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
                 continue;
             }
 
+            if (!byMailbox.TryGetValue(mailbox, out var list))
+            {
+                list = new List<OwnerPursuitRow>();
+                byMailbox[mailbox] = list;
+            }
+
+            list.AddRange(group);
+        }
+
+        // Defensive cap: distinct owner mailboxes is bounded by staff count. A
+        // count this high means OwnerStaffId got polluted (bad ingest/merge) —
+        // abort rather than blast an unattended 6am mail-out to real inboxes.
+        const int maxMailboxes = 25;
+        if (byMailbox.Count > maxMailboxes)
+        {
+            _logger.LogError(
+                "{Job}: per-owner pass aborted — {Count} distinct mailboxes exceeds cap {Cap}; check OwnerStaffId data quality.",
+                nameof(BdMorningReportJob), byMailbox.Count, maxMailboxes);
+            return;
+        }
+
+        var sent = 0;
+        var failed = 0;
+        foreach (var (mailbox, list) in byMailbox)
+        {
+            var html = BuildPerOwnerHtml(mailbox, list);
+            if (html is null)
+            {
+                // Both tables came out empty (query/threshold drift). Don't
+                // send a blank "your pursuits need attention" email.
+                continue;
+            }
+
             try
             {
-                var html = BuildPerOwnerHtml(group.Key, group.ToList());
                 await _mail.SendHtmlAsync(
                     opt.MorningReportTenantId, opt.MorningReportClientId, opt.MorningReportClientSecret,
                     opt.MorningReportSenderUpn, mailbox,
@@ -176,11 +212,14 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
             }
             catch (Exception ex)
             {
+                failed++;
                 _logger.LogWarning(ex, "{Job}: per-owner send to {Mailbox} failed.", nameof(BdMorningReportJob), mailbox);
             }
         }
 
-        _logger.LogInformation("{Job}: per-owner digests sent={Sent}, unrouted={Unrouted}.", nameof(BdMorningReportJob), sent, unrouted);
+        _logger.LogInformation(
+            "{Job}: per-owner digests sent={Sent}, failed={Failed}, unrouted={Unrouted}.",
+            nameof(BdMorningReportJob), sent, failed, unrouted);
     }
 
     private static Dictionary<string, string> ParseOwnerEmailMap(string? raw)
@@ -210,7 +249,7 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
         return map.TryGetValue(o, out var email) ? email : null;
     }
 
-    private static string BuildPerOwnerHtml(string owner, List<OwnerPursuitRow> rows)
+    private static string? BuildPerOwnerHtml(string owner, List<OwnerPursuitRow> rows)
     {
         var now = DateTimeOffset.UtcNow;
         var closing = rows
@@ -221,6 +260,8 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
             .Where(x => x.Reference < now.AddDays(-21))
             .OrderBy(x => x.Reference)
             .ToList();
+
+        if (closing.Count == 0 && cold.Count == 0) return null;
 
         var sb = new StringBuilder();
         sb.Append("<html><body style=\"font-family:Segoe UI,Arial,sans-serif;color:#1a1a1a;max-width:720px\">");
