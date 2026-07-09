@@ -146,7 +146,8 @@
                               IsReadOnly="True"
                               HeadersVisibility="Column"
                               ItemsSource="{Binding Engagements}"
-                              SelectedItem="{Binding Selected}">
+                              SelectedItem="{Binding Selected}"
+                              SelectionChanged="EngagementsGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Stage" Width="120">
                                 <DataGridTemplateColumn.CellTemplate>

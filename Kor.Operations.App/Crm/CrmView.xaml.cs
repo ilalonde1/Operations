@@ -220,6 +220,18 @@ public partial class CrmView : UserControl
         await ReloadAsync().ConfigureAwait(true);
     }
 
+    // When a pursuit is selected — including programmatically, e.g. arriving from
+    // Pursuit Monitor's double-click via PendingSelectEngagementId — scroll the
+    // row into view. WPF does not auto-scroll to a programmatic selection, which
+    // made landing here feel like "nothing happened / dumped into the list".
+    private void EngagementsGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (EngagementsGrid.SelectedItem is not null)
+        {
+            EngagementsGrid.ScrollIntoView(EngagementsGrid.SelectedItem);
+        }
+    }
+
     // U2: the "More" toolbar button drops its menu of secondary pursuit actions.
     private void MoreActionsButton_Click(object sender, RoutedEventArgs e)
     {

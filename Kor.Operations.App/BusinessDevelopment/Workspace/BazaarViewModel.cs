@@ -92,7 +92,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
     public async Task LoadAsync(CancellationToken ct)
     {
         IsLoading = true;
-        StatusMessage = "Loading the Bazaar…";
+        StatusMessage = "Loading opportunities to grab…";
         try
         {
             // Reuse the tested list path (excludes closed Won/Lost), then keep

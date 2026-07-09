@@ -230,9 +230,9 @@
                                     <TextBlock Text="{Binding Status}" VerticalAlignment="Center"/>
                                     <Border Background="{StaticResource Risk.HighConfidence.Foreground}" CornerRadius="999"
                                             Margin="6,0,0,0" Padding="6,1" VerticalAlignment="Center"
-                                            ToolTip="Un-claimed — available to grab in the Bazaar."
+                                            ToolTip="Un-claimed — available to grab as a pursuit."
                                             Visibility="{Binding IsAvailableInBazaar, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                                        <TextBlock Text="Bazaar" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Grab" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
                                     </Border>
                                 </StackPanel>
                             </DataTemplate>

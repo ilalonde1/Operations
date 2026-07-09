@@ -74,7 +74,7 @@ public partial class BazaarView : UserControl
         var actor = ResolveActor();
         var confirm = MessageBox.Show(
             Window.GetWindow(this),
-            $"Grab “{row.Name}” for {actor}?\n\nIt leaves the Bazaar and becomes a Drafting pursuit you own in Pursuits.",
+            $"Grab “{row.Name}” for {actor}?\n\nIt leaves this list and becomes a Drafting pursuit you own in Pursuits.",
             "Grab opportunity",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Question);
@@ -90,7 +90,7 @@ public partial class BazaarView : UserControl
             {
                 MessageBox.Show(
                     Window.GetWindow(this),
-                    $"“{row.Name}” was already claimed by someone else, so it has been removed from the Bazaar.",
+                    $"“{row.Name}” was already claimed by someone else, so it has been removed from the list.",
                     "Already taken",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
