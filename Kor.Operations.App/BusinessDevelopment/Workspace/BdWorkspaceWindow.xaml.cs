@@ -70,7 +70,7 @@ public partial class BdWorkspaceWindow : Window
     }
 
     private void Dashboard_Click(object sender, RoutedEventArgs e) => NavigateToDashboard();
-    private void Rfps_Click(object sender, RoutedEventArgs e) => NavigateToRfps();
+    private void Opportunities_Click(object sender, RoutedEventArgs e) => NavigateToOpportunities();
     private void Upcoming_Click(object sender, RoutedEventArgs e) => NavigateToForwardPipeline();
     private void Relationships_Click(object sender, RoutedEventArgs e) => NavigateToRelationships();
     private void Events_Click(object sender, RoutedEventArgs e) => NavigateToEvents();
@@ -88,11 +88,21 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<DashboardView>();
     }
 
-    public void NavigateToRfps()
+    /// <summary>
+    /// The merged Opportunities surface (RFPs + Grab in one). Default opens on
+    /// "To grab" (the un-claimed, ranked pool); pass allTenders:true to open on
+    /// the full registry (dashboard "Latest RFPs" deep-links).
+    /// </summary>
+    public void NavigateToOpportunities(bool allTenders = false)
     {
-        SetActiveNav(RfpsButton);
-        ContentHost.Content = _services.GetRequiredService<App.Opportunities.OpportunitiesView>();
+        SetActiveNav(OpportunitiesButton);
+        var hub = _services.GetRequiredService<OpportunitiesHubView>();
+        hub.ShowMode(allTenders);
+        ContentHost.Content = hub;
     }
+
+    /// <summary>Back-compat for existing callers (dashboard). Opens the full tender list.</summary>
+    public void NavigateToRfps() => NavigateToOpportunities(allTenders: true);
 
     public void NavigateToForwardPipeline()
     {
@@ -184,12 +194,6 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<AdminView>();
     }
 
-    private void Bazaar_Click(object sender, RoutedEventArgs e)
-    {
-        SetActiveNav(BazaarButton);
-        ContentHost.Content = _services.GetRequiredService<BazaarView>();
-    }
-
     private void Pursuits_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(PursuitsButton);
@@ -257,23 +261,38 @@ public partial class BdWorkspaceWindow : Window
         win.ShowDialog();
     }
 
+    // ===== Back navigation =====
+    private readonly System.Collections.Generic.Stack<string> _backStack = new();
+    private string? _currentSection;
+    private bool _restoringNav;
+
     private void SetActiveNav(Button active)
     {
+        var key = active.Content as string ?? "Workspace";
+
+        // Remember where we were so Back works — unless this switch IS a Back.
+        if (!_restoringNav && _currentSection is not null && _currentSection != key)
+        {
+            _backStack.Push(_currentSection);
+        }
+
+        _currentSection = key;
+        BackButton.IsEnabled = _backStack.Count > 0;
+
         // Reflect the active section in the page header ("Business Development /
         // <section>") so there's a real "you are here" cue, not just the rail
         // highlight. The button label IS the section name.
-        HeaderBar.SubtitleText = active.Content as string ?? "Workspace";
+        HeaderBar.SubtitleText = key;
 
         foreach (var button in new[]
         {
             DashboardButton,
-            RfpsButton,
+            OpportunitiesButton,
             UpcomingButton,
             RelationshipsButton,
             EventsButton,
             CompetitionButton,
             AdminButton,
-            BazaarButton,
             BdTrackingButton,
             PursuitsButton,
             OverwatchButton,
@@ -283,6 +302,36 @@ public partial class BdWorkspaceWindow : Window
         })
         {
             button.Style = (Style)FindResource(ReferenceEquals(button, active) ? "ActiveNavButton" : "NavButton");
+        }
+    }
+
+    private void BackButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_backStack.Count == 0) return;
+        var prev = _backStack.Pop();
+        _restoringNav = true;
+        try { NavigateByKey(prev); }
+        finally { _restoringNav = false; }
+        BackButton.IsEnabled = _backStack.Count > 0;
+    }
+
+    private void NavigateByKey(string key)
+    {
+        var empty = new RoutedEventArgs();
+        switch (key)
+        {
+            case "Dashboard": NavigateToDashboard(); break;
+            case "Opportunities": NavigateToOpportunities(); break;
+            case "Future Projects": NavigateToForwardPipeline(); break;
+            case "Relationships": NavigateToRelationships(); break;
+            case "Events": NavigateToEvents(); break;
+            case "Market History": NavigateToCompetition(); break;
+            case "Admin": Admin_Click(this, empty); break;
+            case "Pursuits": Pursuits_Click(this, empty); break;
+            case "Pursuit Monitor": Overwatch_Click(this, empty); break;
+            case "BD Scorecard": Attribution_Click(this, empty); break;
+            case "BD Tracking": BdTracking_Click(this, empty); break;
+            default: NavigateToDashboard(); break;
         }
     }
 }

@@ -112,6 +112,7 @@ internal static class OpportunitiesModule
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.DashboardView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.BazaarViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.BazaarView>();
+        services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OpportunitiesHubView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchViewModel>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.OverwatchView>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Workspace.AttributionViewModel>();

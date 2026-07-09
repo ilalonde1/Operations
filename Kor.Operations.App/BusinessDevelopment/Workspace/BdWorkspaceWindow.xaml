@@ -71,34 +71,45 @@
                     <appControls:OrgSearchTypeahead x:Name="GlobalSearch"
                                                     Margin="0,0,0,10"/>
 
-                    <TextBlock Text="EXPLORE" Style="{StaticResource NavGroupHeader}" Margin="12,0,0,3"/>
-                    <Button x:Name="DashboardButton" Content="Dashboard" Style="{StaticResource ActiveNavButton}" Click="Dashboard_Click"/>
-                    <Button x:Name="RfpsButton" Content="RFPs" Style="{StaticResource NavButton}" Click="Rfps_Click"/>
-                    <Button x:Name="UpcomingButton" Content="Forward Pipeline" Style="{StaticResource NavButton}" Click="Upcoming_Click"/>
-                    <Button x:Name="RelationshipsButton" Content="Relationships" Style="{StaticResource NavButton}" Click="Relationships_Click"/>
-                    <Button x:Name="EventsButton" Content="Events" Style="{StaticResource NavButton}" Click="Events_Click"/>
-                    <!-- Round 54: relabeled from "Competition" — the tab contains
-                         Historical RFPs + Awards (past public procurements);
-                         "Competition" only fit half of it. -->
-                    <Button x:Name="CompetitionButton" Content="Market History" Style="{StaticResource NavButton}" Click="Competition_Click"/>
-                    <Button x:Name="AdminButton" Content="Admin" Style="{StaticResource NavButton}" Click="Admin_Click"/>
-                    <Button x:Name="BriefsMakerButton" Content="Make a Brief..." Style="{StaticResource NavButton}" Click="BriefsMaker_Click"/>
+                    <!-- 2026-07-09 IA consolidation: rail regrouped to mirror the
+                         workflow (Find -> Pursue -> Know -> Tools); RFPs + Grab
+                         merged into one "Opportunities" surface; back-nav added. -->
+                    <Button x:Name="BackButton" Content="←  Back" Style="{StaticResource NavButton}"
+                            Click="BackButton_Click" IsEnabled="False" Margin="0,0,0,4"
+                            ToolTip="Back to the previous screen."/>
 
-                    <TextBlock Text="PURSUIT PIPELINE" Style="{StaticResource NavGroupHeader}"/>
-                    <Button x:Name="BazaarButton" Content="Grab Opportunities" Style="{StaticResource NavButton}" Click="Bazaar_Click"
-                            ToolTip="The clearing house — un-claimed opportunities ranked by relevance. Grab one to start an owned pursuit. (Bazaar)"/>
-                    <Button x:Name="BdTrackingButton" Content="BD Tracking" Style="{StaticResource NavButton}" Click="BdTracking_Click"
-                            ToolTip="The KOR Structural BD Tracking 2026 spreadsheet, ingested. Region tabs + per-initiator filter + rollup."/>
-                    <Button x:Name="PursuitsButton" Content="Pursuits" Style="{StaticResource NavButton}" Click="Pursuits_Click"/>
+                    <TextBlock Text="FIND" Style="{StaticResource NavGroupHeader}" Margin="12,0,0,3"/>
+                    <Button x:Name="DashboardButton" Content="Dashboard" Style="{StaticResource ActiveNavButton}" Click="Dashboard_Click"/>
+                    <Button x:Name="OpportunitiesButton" Content="Opportunities" Style="{StaticResource NavButton}" Click="Opportunities_Click"
+                            ToolTip="Open tenders — 'To grab' (un-claimed, ranked by fit) or 'All tenders' (the full registry)."/>
+                    <Button x:Name="UpcomingButton" Content="Future Projects" Style="{StaticResource NavButton}" Click="Upcoming_Click"
+                            ToolTip="Major projects on the horizon — earlier than tenders, before an RFP exists."/>
+
+                    <TextBlock Text="PURSUE" Style="{StaticResource NavGroupHeader}"/>
+                    <Button x:Name="PursuitsButton" Content="Pursuits" Style="{StaticResource NavButton}" Click="Pursuits_Click"
+                            ToolTip="The pursuits you own — calls, contacts, stages, outcomes."/>
                     <Button x:Name="OverwatchButton" Content="Pursuit Monitor" Style="{StaticResource NavButton}" Click="Overwatch_Click"
-                            ToolTip="Manager board — every owned active pursuit, who owns it, and what's going cold. (Overwatch)"/>
+                            ToolTip="Manager board — every owned active pursuit, coldest first."/>
+
+                    <TextBlock Text="KNOW" Style="{StaticResource NavGroupHeader}"/>
+                    <Button x:Name="RelationshipsButton" Content="Relationships" Style="{StaticResource NavButton}" Click="Relationships_Click"/>
                     <Button x:Name="AttributionButton" Content="BD Scorecard" Style="{StaticResource NavButton}" Click="Attribution_Click"
-                            ToolTip="Wins, won fee, active pursuits, and what's attributable to the BD system. (Attribution)"/>
+                            ToolTip="Wins, won fee, active pursuits — the honest scorecard."/>
+                    <Button x:Name="CompetitionButton" Content="Market History" Style="{StaticResource NavButton}" Click="Competition_Click"
+                            ToolTip="Who won what, historically — the competitor record."/>
+                    <Button x:Name="EventsButton" Content="Events" Style="{StaticResource NavButton}" Click="Events_Click"/>
+                    <Button x:Name="BdTrackingButton" Content="BD Tracking" Style="{StaticResource NavButton}" Click="BdTracking_Click"
+                            ToolTip="The KOR Structural BD Tracking 2026 spreadsheet, ingested (read-only)."/>
+
                     <TextBlock Text="TOOLS" Style="{StaticResource NavGroupHeader}"/>
+                    <Button x:Name="BriefsMakerButton" Content="Make a Brief..." Style="{StaticResource NavButton}" Click="BriefsMaker_Click"/>
                     <Button x:Name="ProposalsButton" Content="Proposals" Style="{StaticResource NavButton}" Click="Proposals_Click"
                             ToolTip="Opens the Fee Proposal Builder in a separate window."/>
                     <Button x:Name="BrochuresButton" Content="Brochures" Style="{StaticResource NavButton}" Click="Brochures_Click"
                             ToolTip="Opens the Sales Brochure Builder in a separate window."/>
+
+                    <Button x:Name="AdminButton" Content="Admin" Style="{StaticResource NavButton}" Click="Admin_Click"
+                            Margin="0,14,0,2" ToolTip="Sources, ingestion, and settings."/>
                 </StackPanel>
             </Border>
 

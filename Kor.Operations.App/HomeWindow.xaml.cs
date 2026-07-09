@@ -284,7 +284,10 @@ namespace Kor.Operations
                 }
                 else
                 {
-                    OpportunitiesTileHost.Visibility = canSeeOpportunities ? Visibility.Visible : Visibility.Collapsed;
+                    // 2026-07-09 IA consolidation: the "Opportunities (BD)" tile was a
+                    // literal duplicate of the workspace's Opportunities surface. It no
+                    // longer appears on Home — opportunities live in the BD workspace.
+                    OpportunitiesTileHost.Visibility = Visibility.Collapsed;
                 }
 
                 RebuildHomeCardsLayout();
