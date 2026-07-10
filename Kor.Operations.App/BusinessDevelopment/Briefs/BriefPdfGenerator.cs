@@ -913,7 +913,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         });
     }
 
-    private static IEnumerable<string> FormatTopOrgs(IReadOnlyList<RegionTopOrg> orgs, string countSuffix,
+    internal static IEnumerable<string> FormatTopOrgs(IReadOnlyList<RegionTopOrg> orgs, string countSuffix,
         bool korNote, string empty, bool ownerNote = false)
     {
         if (orgs.Count == 0)
@@ -932,7 +932,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> RegionLiveRfpsLines(RegionBriefData d)
+    internal static IEnumerable<string> RegionLiveRfpsLines(RegionBriefData d)
     {
         if (d.LiveRfps.Count == 0)
         {
@@ -945,7 +945,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> RegionForwardLines(RegionBriefData d)
+    internal static IEnumerable<string> RegionForwardLines(RegionBriefData d)
     {
         if (d.ForwardProjects.Count == 0)
         {
@@ -958,7 +958,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> RegionEventLines(RegionBriefData d)
+    internal static IEnumerable<string> RegionEventLines(RegionBriefData d)
     {
         if (d.UpcomingEvents.Count == 0)
         {
@@ -972,7 +972,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> RegionIntelActionBullets(RegionIntelRollup intel)
+    internal static IEnumerable<string> RegionIntelActionBullets(RegionIntelRollup intel)
     {
         if (intel.TopActions.Count == 0)
         {
@@ -996,7 +996,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> RegionLeadershipChangeBullets(RegionIntelRollup intel)
+    internal static IEnumerable<string> RegionLeadershipChangeBullets(RegionIntelRollup intel)
     {
         foreach (var s in intel.RecentLeadershipChanges)
         {
@@ -1014,7 +1014,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> RegionCapacityRiskBullets(RegionIntelRollup intel)
+    internal static IEnumerable<string> RegionCapacityRiskBullets(RegionIntelRollup intel)
     {
         foreach (var r in intel.TopCapacityRisks)
         {
@@ -1232,7 +1232,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             .Text(string.IsNullOrWhiteSpace(text) ? "—" : text).FontSize(8.5f).LineHeight(1.3f).FontColor(Text);
     }
 
-    private static IEnumerable<string> OrgHistoryBullets(OrgBriefData d)
+    internal static IEnumerable<string> OrgHistoryBullets(OrgBriefData d)
     {
         if (d.KorProjectsCount > 0)
         {
@@ -1260,7 +1260,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> OrgRecentBullets(OrgBriefData d)
+    internal static IEnumerable<string> OrgRecentBullets(OrgBriefData d)
     {
         if (d.RecentProjects.Count == 0)
         {
@@ -1273,7 +1273,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> OrgActionBullets(OrgIntelBundle? intel)
+    internal static IEnumerable<string> OrgActionBullets(OrgIntelBundle? intel)
     {
         if (intel is null || intel.Actions.Count == 0)
         {
@@ -1297,7 +1297,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> OrgIntelPeopleBullets(OrgIntelBundle? intel)
+    internal static IEnumerable<string> OrgIntelPeopleBullets(OrgIntelBundle? intel)
     {
         if (intel is null || intel.People.Count == 0)
         {
@@ -1317,7 +1317,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> OrgSignalBullets(OrgIntelBundle? intel)
+    internal static IEnumerable<string> OrgSignalBullets(OrgIntelBundle? intel)
     {
         if (intel is null || intel.Signals.Count == 0)
         {
@@ -1337,7 +1337,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> OrgIntelWorkBullets(OrgIntelBundle? intel)
+    internal static IEnumerable<string> OrgIntelWorkBullets(OrgIntelBundle? intel)
     {
         if (intel is null || intel.Works.Count == 0)
         {
@@ -1360,7 +1360,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> OrgRiskBullets(OrgIntelBundle? intel)
+    internal static IEnumerable<string> OrgRiskBullets(OrgIntelBundle? intel)
     {
         if (intel is null || intel.Risks.Count == 0)
         {
@@ -1605,7 +1605,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static OrgEnrichment ParseEnrichment(string? json)
+    internal static OrgEnrichment ParseEnrichment(string? json)
     {
         var enrichment = new OrgEnrichment();
         if (string.IsNullOrWhiteSpace(json)) return enrichment;
@@ -1651,7 +1651,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         return enrichment;
     }
 
-    private sealed class OrgEnrichment
+    internal sealed class OrgEnrichment
     {
         public string? HqCity { get; set; }
         public List<string> Sectors { get; } = new();

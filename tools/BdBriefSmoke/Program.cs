@@ -18,7 +18,7 @@ Console.WriteLine($"Output directory: {outDir}");
 
 var intelRead = new IntelReadService(cs);
 var store = new SqlBriefDataStore(cs, intelRead);
-IBriefPdfGenerator pdf = new BriefPdfGenerator();
+IBriefPdfGenerator pdf = new HtmlBriefPdfGenerator();
 
 // ===== 1. AHS Org Brief =====
 const long ahsId = 476;

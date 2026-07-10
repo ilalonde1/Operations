@@ -73,7 +73,7 @@ internal static class OpportunitiesModule
         services.AddSingleton<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefGenerator,
             Kor.Operations.App.BusinessDevelopment.Briefs.BriefGenerator>();
         services.AddSingleton<Kor.Operations.App.BusinessDevelopment.Briefs.IBriefPdfGenerator,
-            Kor.Operations.App.BusinessDevelopment.Briefs.BriefPdfGenerator>();
+            Kor.Operations.App.BusinessDevelopment.Briefs.HtmlBriefPdfGenerator>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Briefs.RegionBriefDialog>();
         services.AddTransient<Kor.Operations.App.BusinessDevelopment.Briefs.BriefsMakerWindow>();
 
