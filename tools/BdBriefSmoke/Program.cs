@@ -89,5 +89,27 @@ var gvrdPdfPath = Path.Combine(outDir, "GVRD-RegionBrief.pdf");
 pdf.WriteRegionBrief(gvrdData, gvrdPdfPath);
 Console.WriteLine($"  PDF written     : {gvrdPdfPath} ({new FileInfo(gvrdPdfPath).Length:N0} bytes)");
 
-Console.WriteLine($"\nAll 3 PDFs in: {outDir}");
+// ===== 4. Project Brief (RWA E 10th, MPI 11340) =====
+Console.WriteLine("\n[4] Loading Project Brief for MPI 11340 (453-461 E 10th)...");
+var projData = await store.GetProjectBriefAsync(11340, CancellationToken.None);
+if (projData is not null)
+{
+    var projPdfPath = Path.Combine(outDir, "E10th-ProjectBrief.pdf");
+    pdf.WriteProjectBrief(projData, projPdfPath);
+    Console.WriteLine($"  PDF written     : {projPdfPath} ({new FileInfo(projPdfPath).Length:N0} bytes)");
+}
+else Console.WriteLine("  (MPI 11340 not found - skipped)");
+
+// ===== 5. Person Brief (Jen Hancock, 13140) =====
+Console.WriteLine("\n[5] Loading Person Brief for IntelPerson 13140 (Jen Hancock)...");
+var persData = await store.GetPersonBriefAsync(13140, CancellationToken.None);
+if (persData is not null)
+{
+    var persPdfPath = Path.Combine(outDir, "Hancock-PersonBrief.pdf");
+    pdf.WritePersonBrief(persData, persPdfPath);
+    Console.WriteLine($"  PDF written     : {persPdfPath} ({new FileInfo(persPdfPath).Length:N0} bytes)");
+}
+else Console.WriteLine("  (person 13140 not found - skipped)");
+
+Console.WriteLine($"\nAll PDFs in: {outDir}");
 return 0;

@@ -174,7 +174,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         });
     }
 
-    private static string SectorHeaderTitle(SectorBriefRequest r)
+    internal static string SectorHeaderTitle(SectorBriefRequest r)
     {
         var geo = string.IsNullOrWhiteSpace(r.City) ? r.Province : $"{r.City}, {r.Province}";
         string sectorBit;
@@ -200,7 +200,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         return sectorBit + "  " + geo;
     }
 
-    private static IEnumerable<string> SectorFilterBullets(SectorBriefData d)
+    internal static IEnumerable<string> SectorFilterBullets(SectorBriefData d)
     {
         var r = d.Request;
         yield return $"Geography: {(string.IsNullOrWhiteSpace(r.City) ? r.Province : r.City + ", " + r.Province)}";
@@ -216,7 +216,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             yield return $"Extra keyword: \"{r.ExtraKeyword}\"";
     }
 
-    private static IEnumerable<string> SectorLiveRfpBullets(SectorBriefData d)
+    internal static IEnumerable<string> SectorLiveRfpBullets(SectorBriefData d)
     {
         foreach (var r in d.LiveRfps)
         {
@@ -227,7 +227,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> SectorForwardProjectBullets(SectorBriefData d)
+    internal static IEnumerable<string> SectorForwardProjectBullets(SectorBriefData d)
     {
         foreach (var p in d.ForwardProjects)
         {
@@ -240,7 +240,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> SectorRecentAwardBullets(SectorBriefData d)
+    internal static IEnumerable<string> SectorRecentAwardBullets(SectorBriefData d)
     {
         foreach (var a in d.RecentAwards)
         {
@@ -252,7 +252,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> SectorTopOrgBullets(IReadOnlyList<SectorTopOrg> orgs)
+    internal static IEnumerable<string> SectorTopOrgBullets(IReadOnlyList<SectorTopOrg> orgs)
     {
         foreach (var o in orgs)
         {
@@ -263,7 +263,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> SectorKorPortfolioBullets(SectorBriefData d)
+    internal static IEnumerable<string> SectorKorPortfolioBullets(SectorBriefData d)
     {
         foreach (var k in d.KorPortfolio)
         {
@@ -276,7 +276,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> SectorIntelSignalBullets(SectorBriefData d)
+    internal static IEnumerable<string> SectorIntelSignalBullets(SectorBriefData d)
     {
         foreach (var s in d.RelevantSignals)
         {
@@ -356,14 +356,14 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         });
     }
 
-    private static IEnumerable<string> OppWarmthBullets(OpportunityBriefData d)
+    internal static IEnumerable<string> OppWarmthBullets(OpportunityBriefData d)
     {
         yield return $"Prime-consultant building RFP — the architect's team is being assembled now, before the structural seat is set. Classifier confidence {d.PrimeConfidence.ToString("F2", CultureInfo.InvariantCulture)}.";
         yield return "Sector AND geography both match KOR's wheelhouse — exactly the type of work we win in this market.";
         yield return "Live in active procurement — actionable window for an architect intro.";
     }
 
-    private static IEnumerable<string> OppAngleBullets(OpportunityBriefData d)
+    internal static IEnumerable<string> OppAngleBullets(OpportunityBriefData d)
     {
         yield return d.OwnerKorProjectsCount > 0
             ? $"Owner relationship: KOR has {d.OwnerKorProjectsCount} prior project(s) with {d.BuyerName} — warm-call territory; reference the relationship directly."
@@ -386,7 +386,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> OppEventBullets(OpportunityBriefData d)
+    internal static IEnumerable<string> OppEventBullets(OpportunityBriefData d)
     {
         if (d.MatchedEvent is { } ev)
         {
@@ -411,7 +411,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> OppNextStepBullets(OpportunityBriefData d)
+    internal static IEnumerable<string> OppNextStepBullets(OpportunityBriefData d)
     {
         if (!string.IsNullOrWhiteSpace(d.LikelyArchitectName))
         {
@@ -421,7 +421,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         yield return "Confirm owner's procurement timeline + submission requirements; align KOR resourcing for the deadline.";
     }
 
-    private static IEnumerable<string> OppBuyerIntelBullets(OrgIntelBundle intel)
+    internal static IEnumerable<string> OppBuyerIntelBullets(OrgIntelBundle intel)
     {
         if (intel.Actions.Count + intel.People.Count + intel.Signals.Count == 0)
         {
@@ -445,7 +445,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> OppArchitectIntelBullets(OrgIntelBundle intel)
+    internal static IEnumerable<string> OppArchitectIntelBullets(OrgIntelBundle intel)
     {
         if (intel.Actions.Count + intel.Risks.Count + intel.Signals.Count == 0)
         {
@@ -567,7 +567,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         });
     }
 
-    private static IEnumerable<string> ProjectScheduleBullets(ProjectBriefData d)
+    internal static IEnumerable<string> ProjectScheduleBullets(ProjectBriefData d)
     {
         yield return $"{d.StartYear?.ToString(CultureInfo.InvariantCulture) ?? "?"} - {d.CompletionYear?.ToString(CultureInfo.InvariantCulture) ?? "?"}";
         if (!string.IsNullOrWhiteSpace(d.ScheduleNotes))
@@ -576,7 +576,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> ProjectTeamBullets(ProjectBriefData d)
+    internal static IEnumerable<string> ProjectTeamBullets(ProjectBriefData d)
     {
         foreach (var line in ProjectLinkedOrgBullets("Proponent", d.ProponentName, d.ProponentSummary, structuralCallout: false))
         {
@@ -596,7 +596,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> ProjectMentionWorkBullets(ProjectBriefData d)
+    internal static IEnumerable<string> ProjectMentionWorkBullets(ProjectBriefData d)
     {
         foreach (var m in d.MentionsInWorkHistory)
         {
@@ -608,7 +608,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> ProjectKeyPeopleBullets(ProjectBriefData d)
+    internal static IEnumerable<string> ProjectKeyPeopleBullets(ProjectBriefData d)
     {
         foreach (var p in d.IntelKeyPeople)
         {
@@ -616,7 +616,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> ProjectIntelSignalBullets(ProjectBriefData d)
+    internal static IEnumerable<string> ProjectIntelSignalBullets(ProjectBriefData d)
     {
         foreach (var s in d.IntelSignals)
         {
@@ -625,7 +625,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> ProjectIntelActionBullets(ProjectBriefData d)
+    internal static IEnumerable<string> ProjectIntelActionBullets(ProjectBriefData d)
     {
         foreach (var a in d.IntelActions)
         {
@@ -639,7 +639,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> ProjectIntelRiskBullets(ProjectBriefData d)
+    internal static IEnumerable<string> ProjectIntelRiskBullets(ProjectBriefData d)
     {
         foreach (var r in d.IntelRisks)
         {
@@ -647,7 +647,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> ProjectMentionSignalBullets(ProjectBriefData d)
+    internal static IEnumerable<string> ProjectMentionSignalBullets(ProjectBriefData d)
     {
         foreach (var s in d.RecentMentionSignals)
         {
@@ -656,7 +656,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> ProjectMentionActionBullets(ProjectBriefData d)
+    internal static IEnumerable<string> ProjectMentionActionBullets(ProjectBriefData d)
     {
         foreach (var a in d.OpenActionsMentioning)
         {
@@ -764,14 +764,14 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         });
     }
 
-    private static IEnumerable<string> PersonContactBullets(PersonBriefData d)
+    internal static IEnumerable<string> PersonContactBullets(PersonBriefData d)
     {
         if (!string.IsNullOrWhiteSpace(d.Email)) yield return d.Email!;
         if (!string.IsNullOrWhiteSpace(d.Phone)) yield return d.Phone!;
         if (!string.IsNullOrWhiteSpace(d.LinkedinUrl)) yield return d.LinkedinUrl!;
     }
 
-    private static IEnumerable<string> PersonSignalBullets(PersonBriefData d)
+    internal static IEnumerable<string> PersonSignalBullets(PersonBriefData d)
     {
         foreach (var s in d.RecentSignals)
         {
@@ -779,7 +779,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
-    private static IEnumerable<string> PersonActionBullets(PersonBriefData d)
+    internal static IEnumerable<string> PersonActionBullets(PersonBriefData d)
     {
         foreach (var a in d.OpenActions)
         {
@@ -1469,12 +1469,12 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     // === Helpers ===
 
-    private static string Nz(string? s) => string.IsNullOrWhiteSpace(s) ? "(unspecified)" : s!;
+    internal static string Nz(string? s) => string.IsNullOrWhiteSpace(s) ? "(unspecified)" : s!;
 
     private static string RegionOrgDisplayName(RegionTopOrg org)
         => string.IsNullOrWhiteSpace(org.ClendorClientId) ? org.DisplayName : "* " + org.DisplayName;
 
-    private static string FormatDeadline(DateTimeOffset? deadline)
+    internal static string FormatDeadline(DateTimeOffset? deadline)
     {
         if (!deadline.HasValue) return "not specified";
         var d = deadline.Value;
@@ -1482,25 +1482,25 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         return $"{d:yyyy-MM-dd} ({days} day(s))";
     }
 
-    private static string FormatValue(decimal? value)
+    internal static string FormatValue(decimal? value)
     {
         return value.HasValue && value.Value > 0
             ? "CAD " + value.Value.ToString("N0", CultureInfo.InvariantCulture)
             : "not stated";
     }
 
-    private static string FormatProjectValue(ProjectBriefData data)
+    internal static string FormatProjectValue(ProjectBriefData data)
         => data.EstimatedCostCad.HasValue && data.EstimatedCostCad.Value > 0
             ? "CAD " + data.EstimatedCostCad.Value.ToString("N0", CultureInfo.InvariantCulture)
             : string.IsNullOrWhiteSpace(data.EstimatedCostText) ? "not stated" : data.EstimatedCostText!;
 
-    private static string ProjectLocation(ProjectBriefData data)
+    internal static string ProjectLocation(ProjectBriefData data)
     {
         var cityPart = string.IsNullOrWhiteSpace(data.City) ? data.Province : $"{data.Province} / {data.City}";
         return string.IsNullOrWhiteSpace(data.Region) ? cityPart : $"{cityPart} / {data.Region}";
     }
 
-    private static string ProjectSector(ProjectBriefData data)
+    internal static string ProjectSector(ProjectBriefData data)
     {
         if (string.IsNullOrWhiteSpace(data.Sector))
         {

@@ -24,16 +24,186 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
     private readonly BriefPdfGenerator _fallback = new();
 
     public void WriteOpportunityBrief(OpportunityBriefData data, string outputPath)
-        => _fallback.WriteOpportunityBrief(data, outputPath);
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (!TryRenderHtmlPdf(BuildOpportunityHtml(data), outputPath))
+        {
+            _fallback.WriteOpportunityBrief(data, outputPath);
+        }
+    }
 
     public void WriteProjectBrief(ProjectBriefData data, string outputPath)
-        => _fallback.WriteProjectBrief(data, outputPath);
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (!TryRenderHtmlPdf(BuildProjectHtml(data), outputPath))
+        {
+            _fallback.WriteProjectBrief(data, outputPath);
+        }
+    }
 
     public void WritePersonBrief(PersonBriefData data, string outputPath)
-        => _fallback.WritePersonBrief(data, outputPath);
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (!TryRenderHtmlPdf(BuildPersonHtml(data), outputPath))
+        {
+            _fallback.WritePersonBrief(data, outputPath);
+        }
+    }
 
     public void WriteSectorBrief(SectorBriefData data, string outputPath)
-        => _fallback.WriteSectorBrief(data, outputPath);
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (!TryRenderHtmlPdf(BuildSectorHtml(data), outputPath))
+        {
+            _fallback.WriteSectorBrief(data, outputPath);
+        }
+    }
+
+    // ===== Opportunity =====
+
+    private static string BuildOpportunityHtml(OpportunityBriefData d)
+    {
+        var b = new HtmlDoc($"Pursuit Brief — {BriefPdfGenerator.Nz(d.Name)}");
+        var location = string.IsNullOrWhiteSpace(d.ProjectCity)
+            ? BriefPdfGenerator.Nz(d.ProjectProvince)
+            : $"{d.ProjectCity}, {BriefPdfGenerator.Nz(d.ProjectProvince)}";
+        b.Hero("Pursuit Brief", BriefPdfGenerator.Nz(d.Name),
+            "Warmest live target — recommended next move", new[]
+            {
+                ("Owner", BriefPdfGenerator.Nz(d.BuyerName)),
+                ("Location", location),
+                ("Sector", BriefPdfGenerator.Nz(d.PrimeProjectSector)),
+                ("Confidence", d.PrimeConfidence.ToString("F2", CultureInfo.InvariantCulture)),
+                ("Submission deadline", BriefPdfGenerator.FormatDeadline(d.SubmissionDeadlineUtc)),
+                ("Estimated value", BriefPdfGenerator.FormatValue(d.EstimatedValue)),
+            });
+
+        b.BulletSection("Why this is our warmest target right now", BriefPdfGenerator.OppWarmthBullets(d));
+        b.BulletSection("KOR's angle (relationship intelligence)", BriefPdfGenerator.OppAngleBullets(d));
+        b.BulletSection("Get in front of them this week", BriefPdfGenerator.OppEventBullets(d));
+        b.BulletSection("Recommended next steps", BriefPdfGenerator.OppNextStepBullets(d));
+        if (d.Intel?.BuyerIntel is not null)
+        {
+            b.BulletSection($"About the buyer ({d.BuyerName ?? "buyer"})",
+                BriefPdfGenerator.OppBuyerIntelBullets(d.Intel.BuyerIntel));
+        }
+        if (d.Intel?.ArchitectIntel is not null && !string.IsNullOrWhiteSpace(d.LikelyArchitectName))
+        {
+            b.BulletSection($"About the likely architect ({d.LikelyArchitectName})",
+                BriefPdfGenerator.OppArchitectIntelBullets(d.Intel.ArchitectIntel));
+        }
+        return b.Finish();
+    }
+
+    // ===== Project =====
+
+    private static string BuildProjectHtml(ProjectBriefData d)
+    {
+        var b = new HtmlDoc($"Project Brief — {BriefPdfGenerator.Nz(d.ProjectName)}");
+        b.Hero("Project Brief", BriefPdfGenerator.Nz(d.ProjectName),
+            "Pursuit prep for one forward-pipeline project", new[]
+            {
+                ("Stage", BriefPdfGenerator.Nz(d.Stage)),
+                ("Location", BriefPdfGenerator.ProjectLocation(d)),
+                ("Sector", BriefPdfGenerator.ProjectSector(d)),
+                ("Estimated value", BriefPdfGenerator.FormatProjectValue(d)),
+            });
+
+        var description = !string.IsNullOrWhiteSpace(d.IntelDescription)
+            ? d.IntelDescription!
+            : (string.IsNullOrWhiteSpace(d.ProjectDescription)
+                ? "No project description on file yet."
+                : d.ProjectDescription!);
+        b.ParagraphSection("Project description", description);
+        b.BulletSection("Schedule", BriefPdfGenerator.ProjectScheduleBullets(d));
+        if (!string.IsNullOrWhiteSpace(d.IntelStatus)) b.ParagraphSection("Status", d.IntelStatus!);
+        b.BulletSection("Team & KOR angle", BriefPdfGenerator.ProjectTeamBullets(d));
+        if (!string.IsNullOrWhiteSpace(d.IntelKorAngle)) b.ParagraphSection("KOR angle", d.IntelKorAngle!);
+        if (d.MentionsInWorkHistory.Count > 0)
+            b.BulletSection("On other portfolios", BriefPdfGenerator.ProjectMentionWorkBullets(d));
+        if (d.RecentMentionSignals.Count > 0)
+            b.BulletSection("Recent signals mentioning this project", BriefPdfGenerator.ProjectMentionSignalBullets(d));
+        if (d.OpenActionsMentioning.Count > 0)
+            b.BulletSection("KOR open actions mentioning this project", BriefPdfGenerator.ProjectMentionActionBullets(d));
+        if (d.IntelKeyPeople.Count > 0)
+            b.BulletSection("Key people on this project", BriefPdfGenerator.ProjectKeyPeopleBullets(d));
+        if (d.IntelSignals.Count > 0)
+            b.BulletSection("Project signals", BriefPdfGenerator.ProjectIntelSignalBullets(d));
+        if (d.IntelActions.Count > 0)
+            b.BulletSection("KOR actions on this project", BriefPdfGenerator.ProjectIntelActionBullets(d));
+        if (d.IntelRisks.Count > 0)
+            b.BulletSection("Project risks", BriefPdfGenerator.ProjectIntelRiskBullets(d));
+        b.LinkSection("Source", d.SourceUrl);
+        return b.Finish();
+    }
+
+    // ===== Person =====
+
+    private static string BuildPersonHtml(PersonBriefData d)
+    {
+        var b = new HtmlDoc($"Person Brief — {BriefPdfGenerator.Nz(d.DisplayName)}");
+        b.Hero("Person Brief", BriefPdfGenerator.Nz(d.DisplayName),
+            "Contact prep for one named individual", new[]
+            {
+                ("Current title", BriefPdfGenerator.Nz(d.CurrentTitle)),
+                ("Current employer", BriefPdfGenerator.Nz(d.CurrentEmployerName)),
+                ("Last seen", d.LastSeenAtUtc?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "not recorded"),
+            });
+
+        if (!string.IsNullOrWhiteSpace(d.Email) || !string.IsNullOrWhiteSpace(d.Phone)
+            || !string.IsNullOrWhiteSpace(d.LinkedinUrl))
+        {
+            b.BulletSection("Contact", BriefPdfGenerator.PersonContactBullets(d));
+        }
+        if (!string.IsNullOrWhiteSpace(d.Notes)) b.ParagraphSection("Notes", d.Notes!);
+        if (d.CurrentAffiliations.Count > 0)
+            b.AffiliationSection("Current roles", d.CurrentAffiliations, includeEndDate: false);
+        if (d.FormerAffiliations.Count > 0)
+            b.AffiliationSection("Career history", d.FormerAffiliations, includeEndDate: true);
+        if (d.RecentSignals.Count > 0)
+            b.BulletSection("Recent activity", BriefPdfGenerator.PersonSignalBullets(d));
+        if (d.OpenActions.Count > 0)
+            b.BulletSection("KOR open actions targeting this person", BriefPdfGenerator.PersonActionBullets(d));
+        return b.Finish();
+    }
+
+    // ===== Sector =====
+
+    private static string BuildSectorHtml(SectorBriefData d)
+    {
+        var title = BriefPdfGenerator.SectorHeaderTitle(d.Request);
+        var b = new HtmlDoc($"Sector Brief — {title}");
+        b.Hero("Sector Brief", title,
+            "Slice across the forward pipeline, live RFPs, and recent awards", new[]
+            {
+                ("Live RFPs", d.Counts.LiveRfpCount.ToString(CultureInfo.InvariantCulture)),
+                ("Forward pipeline", d.Counts.ForwardPipelineCount.ToString(CultureInfo.InvariantCulture)),
+                ("Recent awards", d.Counts.RecentAwardCount.ToString(CultureInfo.InvariantCulture)),
+                ("Pipeline $", d.Counts.TotalForwardPipelineCostCad is { } v
+                    ? v.ToString("C0", CultureInfo.CurrentCulture) : "—"),
+            });
+
+        b.BulletSection("Filter criteria", BriefPdfGenerator.SectorFilterBullets(d));
+        if (d.LiveRfps.Count > 0)
+            b.BulletSection("Live RFPs in this slice", BriefPdfGenerator.SectorLiveRfpBullets(d));
+        if (d.ForwardProjects.Count > 0)
+            b.BulletSection("Forward pipeline in this slice", BriefPdfGenerator.SectorForwardProjectBullets(d));
+        if (d.RecentAwards.Count > 0)
+            b.BulletSection("Recent awards in this slice (last 12 months)", BriefPdfGenerator.SectorRecentAwardBullets(d));
+        if (d.TopArchitects.Count > 0)
+            b.BulletSection("Top architects active in this slice", BriefPdfGenerator.SectorTopOrgBullets(d.TopArchitects));
+        if (d.TopOwners.Count > 0)
+            b.BulletSection("Top owners commissioning in this slice", BriefPdfGenerator.SectorTopOrgBullets(d.TopOwners));
+        if (d.TopGcs.Count > 0)
+            b.BulletSection("Top GCs in this slice", BriefPdfGenerator.SectorTopOrgBullets(d.TopGcs));
+        if (d.TopStructuralCompetitors.Count > 0)
+            b.BulletSection("Top structural competitors in this slice", BriefPdfGenerator.SectorTopOrgBullets(d.TopStructuralCompetitors));
+        if (d.KorPortfolio.Count > 0)
+            b.BulletSection("KOR's own track record in this slice", BriefPdfGenerator.SectorKorPortfolioBullets(d));
+        if (d.RelevantSignals.Count > 0)
+            b.BulletSection("Relevant Intel signals", BriefPdfGenerator.SectorIntelSignalBullets(d));
+        return b.Finish();
+    }
 
     public void WriteRegionBrief(RegionBriefData data, string outputPath)
     {
@@ -262,6 +432,44 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
         {
             OpenSection(heading);
             _sb.Append("<p class=\"muted\"><em>").Append(E(note)).Append("</em></p></section>");
+        }
+
+        public void ParagraphSection(string heading, string paragraph)
+        {
+            OpenSection(heading);
+            _sb.Append("<p>").Append(E(paragraph)).Append("</p></section>");
+        }
+
+        public void LinkSection(string heading, string? url)
+        {
+            OpenSection(heading);
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                _sb.Append("<p class=\"muted\"><em>No source URL on file.</em></p>");
+            }
+            else
+            {
+                _sb.Append("<p><a href=\"").Append(E(url)).Append("\">").Append(E(url)).Append("</a></p>");
+            }
+            _sb.Append("</section>");
+        }
+
+        public void AffiliationSection(string heading, IReadOnlyList<PersonAffiliationRow> rows, bool includeEndDate)
+        {
+            OpenSection(heading);
+            _sb.Append("<div class=\"table-wrap\"><table><thead><tr><th>Org</th><th>Title</th><th>")
+               .Append(includeEndDate ? "End" : "Department")
+               .Append("</th></tr></thead><tbody>");
+            foreach (var row in rows)
+            {
+                _sb.Append("<tr><td>").Append(E(row.OrgName))
+                   .Append("</td><td>").Append(E(BriefPdfGenerator.Nz(row.Title)))
+                   .Append("</td><td>").Append(E(includeEndDate
+                        ? BriefPdfGenerator.Nz(row.EndDateApprox)
+                        : BriefPdfGenerator.Nz(row.Department)))
+                   .Append("</td></tr>");
+            }
+            _sb.Append("</tbody></table></div></section>");
         }
 
         public void DeltekSection(OrgBriefDeltekSection dk)
