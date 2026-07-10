@@ -1113,6 +1113,21 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  // BD pipeline remediation rank 1 — the canonical-link backfill "wheel".
+  // Fires after the AB/BC/CA MPI ingests so freshly-ingested names are linked
+  // the same night. Write-path-agnostic: links any name-set / FK-null row.
+  var canonicalLinkBackfillKey = new JobKey("CanonicalLinkBackfillJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.CanonicalLinkBackfillJob>(opts => opts.WithIdentity(canonicalLinkBackfillKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: Sundays at 05:00 Pacific, after AB/BC/CA MPI (03:30/04:00/04:30).
+      var cron = builder.Configuration["CanonicalLinkBackfillCronSchedule"] ?? "0 0 5 ? * SUN";
+      t.ForJob(canonicalLinkBackfillKey)
+       .WithIdentity("CanonicalLinkBackfillTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
     var bcBidHistDocJobKey = new JobKey("BcBidHistoricalDocumentDownloadJob");
     q.AddJob<Kor.Opportunities.Worker.Services.BcBidHistoricalDocumentDownloadJob>(
         opts => opts.WithIdentity(bcBidHistDocJobKey));
@@ -1228,6 +1243,20 @@ builder.Services.AddQuartz(q =>
             Log.Information("  Graph email: {Status}", startupGraphConfigured ? "configured" : "no creds");
             Log.Information("  SAM.gov: {Status}", string.IsNullOrWhiteSpace(startupOptions.SamGovApiKey) ? "no key" : "configured");
             Log.Information("===========================================");
+
+            // Fail-closed (BD pipeline remediation rank 1): the canonical-link
+            // backfill wheel is only correct if its column registry matches the
+            // live schema. Verify at startup so drift crashes the Worker loudly
+            // here instead of silently running a blind backfill.
+            if (startupOptions.CanonicalLinkBackfillEnabled)
+            {
+                Kor.Opportunities.Data.Awards.CanonicalColumnRegistry
+                    .StartupVerifyAsync(startupOptions.OpportunitiesDb)
+                    .GetAwaiter().GetResult();
+                Log.Information("  CanonicalColumnRegistry: verified {Count} canonical columns",
+                    Kor.Opportunities.Data.Awards.CanonicalColumnRegistry.All.Count);
+            }
+
             host.Run();
         }
         catch (Exception ex)

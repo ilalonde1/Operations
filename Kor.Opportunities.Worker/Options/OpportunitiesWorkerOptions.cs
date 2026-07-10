@@ -221,6 +221,15 @@ public sealed class OpportunitiesWorkerOptions
     public int CanonicalOrgDedupMaxGroupsPerRun { get; set; } = 200;
     public string? CanonicalOrgDedupCronSchedule { get; set; }
 
+    // --- BD pipeline remediation rank 1: canonical-link backfill "wheel" ---
+    // Write-path-agnostic scheduled resolve-orphans. Walks CanonicalColumnRegistry
+    // and links any row whose *Name is set but whose *CanonicalOrgId is null,
+    // using the resolver's read-only FindExistingAsync (never mints a canonical).
+    // Runs Sundays 05:00 Pacific by default (after the AB/BC/CA MPI ingests).
+    public bool CanonicalLinkBackfillEnabled { get; set; } = true;
+    public string? CanonicalLinkBackfillCronSchedule { get; set; }
+    public int CanonicalLinkBackfillBatchSize { get; set; } = 500;
+
     public bool DataHealthAuditEnabled { get; set; } = true;
     public string? DataHealthAuditCronSchedule { get; set; }
     public string DataHealthAuditOutputDir { get; set; } =
