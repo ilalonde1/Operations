@@ -638,6 +638,9 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
                 };
             });
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidScraper>();
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.MerxDccScraper>();
+            builder.Services.AddSingleton<IOpportunityProvider>(
+                sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.MerxDccScraper>());
             builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IOpportunityProvider>(
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BcBidScraper>());
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidHistoricalScraper>();

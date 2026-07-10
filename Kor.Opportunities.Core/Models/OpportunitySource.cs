@@ -29,6 +29,8 @@ public enum OpportunitySourceType
     GenericCsvAward = 16,
     GenericJsonAward = 17,
     MajorProjectsInventory = 18,
+    // MERX public DCC solicitations listing (Playwright; WAF blocks plain HTTP).
+    MerxDcc = 19,
     Manual = 99,
 }
 
