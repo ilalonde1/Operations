@@ -857,6 +857,7 @@ ORDER BY co.Id;";
             var intelResult = await DeleteIntelDependentsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
             result.IntelRowsDropped = intelResult.RowsDropped;
             AddTableCount(result.FkRepointsByTable, "IntelPersonAffiliation", intelResult.AffiliationsRepointed);
+            AddTableCount(result.FkRepointsByTable, "IntelPerson (preserved)", intelResult.PersonsPreserved);
             result.EnrichmentCollisionsResolved = await DeleteEnrichmentCollisionsAsync(con, tx, group.Survivor.Id).ConfigureAwait(false);
             // RollupDeleteTargets: losers' warmth rollups drop; the nightly
             // CrmEnrichmentJob recomputes the survivor's from source.
@@ -979,6 +980,7 @@ WHERE s.Id = @survivor;";
         const string sql = @"
 DECLARE @rows int = 0;
 DECLARE @affiliationRepoints int = 0;
+DECLARE @personsPreserved int = 0;
 
 IF OBJECT_ID('tempdb..#DyingIntelEnrichments') IS NOT NULL DROP TABLE #DyingIntelEnrichments;
 CREATE TABLE #DyingIntelEnrichments (Id bigint NOT NULL PRIMARY KEY);
@@ -1110,18 +1112,25 @@ FROM opportunities.IntelPersonAffiliation a
 JOIN #Losers l ON l.Id = a.CanonicalOrgId;
 SET @affiliationRepoints += @@ROWCOUNT;
 
--- Drop Intel rows whose enrichment parent is about to disappear. Affiliation
--- rows must go first because they FK-reference IntelPerson.
-DELETE a
+-- People are NOT regenerable intel: BdIntelExtract cannot bring back Apollo
+-- reveals, Hunter finds, or hand-curated contacts. Repoint persons and their
+-- affiliations off dying enrichment parents onto the survivor's anchor row
+-- (the same anchor the loser-org affiliation repoint above already uses).
+-- 2026-07-03: this block previously DELETED them, silently erasing contacts
+-- on every merge where the two orgs shared a research provider.
+UPDATE p
+SET p.SourceEnrichmentId = @anchorEnrichmentId,
+    p.UpdatedAtUtc = sysdatetimeoffset()
+FROM opportunities.IntelPerson p
+WHERE p.SourceEnrichmentId IN (SELECT Id FROM #DyingIntelEnrichments);
+SET @personsPreserved += @@ROWCOUNT;
+
+UPDATE a
+SET a.SourceEnrichmentId = @anchorEnrichmentId,
+    a.UpdatedAtUtc = sysdatetimeoffset()
 FROM opportunities.IntelPersonAffiliation a
-WHERE a.SourceEnrichmentId IN (SELECT Id FROM #DyingIntelEnrichments)
-   OR EXISTS (
-       SELECT 1
-       FROM opportunities.IntelPerson p
-       WHERE p.Id = a.IntelPersonId
-         AND p.SourceEnrichmentId IN (SELECT Id FROM #DyingIntelEnrichments)
-   );
-SET @rows += @@ROWCOUNT;
+WHERE a.SourceEnrichmentId IN (SELECT Id FROM #DyingIntelEnrichments);
+SET @affiliationRepoints += @@ROWCOUNT;
 
 DELETE i FROM opportunities.IntelNarrative i WHERE i.SourceEnrichmentId IN (SELECT Id FROM #DyingIntelEnrichments);
 SET @rows += @@ROWCOUNT;
@@ -1133,8 +1142,6 @@ DELETE i FROM opportunities.IntelAction i WHERE i.SourceEnrichmentId IN (SELECT 
 SET @rows += @@ROWCOUNT;
 DELETE i FROM opportunities.IntelSignal i WHERE i.SourceEnrichmentId IN (SELECT Id FROM #DyingIntelEnrichments);
 SET @rows += @@ROWCOUNT;
-DELETE p FROM opportunities.IntelPerson p WHERE p.SourceEnrichmentId IN (SELECT Id FROM #DyingIntelEnrichments);
-SET @rows += @@ROWCOUNT;
 
 -- Orphan IntelPerson rows (no surviving affiliation).
 DELETE p
@@ -1145,7 +1152,7 @@ WHERE NOT EXISTS (
 SET @rows += @@ROWCOUNT;
 
 DROP TABLE #DyingIntelEnrichments;
-SELECT @rows AS RowsDropped, @affiliationRepoints AS AffiliationsRepointed;";
+SELECT @rows AS RowsDropped, @affiliationRepoints AS AffiliationsRepointed, @personsPreserved AS PersonsPreserved;";
 
         await using var cmd = new SqlCommand(sql, con, tx);
         cmd.Parameters.Add("@survivor", SqlDbType.BigInt).Value = survivorId;
@@ -1153,7 +1160,8 @@ SELECT @rows AS RowsDropped, @affiliationRepoints AS AffiliationsRepointed;";
         await reader.ReadAsync().ConfigureAwait(false);
         return new IntelDependentsResult(
             reader.GetInt32(0),
-            reader.GetInt32(1));
+            reader.GetInt32(1),
+            reader.GetInt32(2));
     }
 
     /// <summary>Drop the losers' email-warmth rollups (RollupDeleteTargets):
@@ -1173,6 +1181,10 @@ IF OBJECT_ID(N'opportunities.CrmBuyerEmailWarmth', N'U') IS NOT NULL
     private static async Task<int> DeleteEnrichmentCollisionsAsync(SqlConnection con, SqlTransaction tx, long survivorId)
     {
         const string sql = @"
+-- Guard (2026-07-03): never delete an enrichment row that still parents a
+-- person or affiliation — DeleteIntelDependentsAsync repoints them first, so
+-- these predicates normally no-op; they exist so no future path can reintroduce
+-- silent contact loss (an FK would either cascade-delete or hard-fail here).
 DELETE loser
 FROM opportunities.CanonicalOrgEnrichment loser
 JOIN #Losers l ON l.Id = loser.CanonicalOrgId
@@ -1182,7 +1194,9 @@ WHERE EXISTS (
     JOIN #Losers otherLoser ON otherLoser.Id = other.CanonicalOrgId
     WHERE other.ProviderName = loser.ProviderName
       AND other.Id < loser.Id
-);
+)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPerson p WHERE p.SourceEnrichmentId = loser.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.SourceEnrichmentId = loser.Id);
 
 DELETE loser
 FROM opportunities.CanonicalOrgEnrichment loser
@@ -1192,7 +1206,9 @@ WHERE EXISTS (
     FROM opportunities.CanonicalOrgEnrichment survivor
     WHERE survivor.CanonicalOrgId = @survivor
       AND survivor.ProviderName = loser.ProviderName
-);";
+)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPerson p WHERE p.SourceEnrichmentId = loser.Id)
+  AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.SourceEnrichmentId = loser.Id);";
         await using var cmd = new SqlCommand(sql, con, tx);
         cmd.Parameters.Add("@survivor", SqlDbType.BigInt).Value = survivorId;
         return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
@@ -1587,7 +1603,7 @@ JOIN #Losers l ON l.Id = co.Id;";
         public Dictionary<string, long> FkRepointsByTable { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
-    private sealed record IntelDependentsResult(int RowsDropped, int AffiliationsRepointed);
+    private sealed record IntelDependentsResult(int RowsDropped, int AffiliationsRepointed, int PersonsPreserved);
 
     private sealed class DisjointSet
     {

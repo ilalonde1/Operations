@@ -4,3 +4,5 @@ LoserId,SurvivorId,Reason,Reviewer,ReviewedAt
 76000,75560,Manasc Isaac rebranded to Reimagine Architects,claude-session,2026-07-03
 77692,75560,Reimagine (formerly Manasc Isaac) duplicate of Reimagine Architects,claude-session,2026-07-03
 77918,77831,Revery Architecture (design architect) annotated dup of Revery Architecture,claude-session,2026-07-03
+69694,69446,Ramsay Worden Architects rebranded to RWA Group Architecture 2018 (same firm same rwa.ca domain),claude-session,2026-07-03
+230932,230931,synthetic person-preservation test pair,claude-session,2026-07-03
