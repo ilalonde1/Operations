@@ -62,6 +62,9 @@ namespace Kor.Operations
             EnvironmentSecretOverrides.Apply();
             QuestPDF.Settings.License =
                 QuestPDF.Infrastructure.LicenseType.Community;
+            // Register the kor:// scheme so report links (kor://mpi/<id>) open the
+            // app from an exported PDF/email, not just inside the report preview.
+            KorUriScheme.EnsureRegistered();
             _services = AppCompositionRoot.BuildServiceProvider();
             Kor.Operations.Services.AppServices.Initialize(_services);
             _services.GetRequiredService<AppAiContextBuilder>().Register(_services.GetRequiredService<FirmContextProvider>());
@@ -117,6 +120,15 @@ namespace Kor.Operations
 
             MainWindow = startupWindow;
             startupWindow.Show();
+
+            // kor:// deep link on cold launch (a report PDF/email link opened the
+            // app) — open the target once the main window is up.
+            var coldLink = KorUriScheme.FindLink(args);
+            if (coldLink is not null)
+            {
+                _ = KorDeepLink.OpenAsync(coldLink);
+            }
+
             base.OnStartup(e);
         }
 

@@ -85,9 +85,27 @@ namespace Kor.Operations
                             .Where(File.Exists)
                             .ToList();
 
+                        var korLink = tokens.FirstOrDefault(t =>
+                            t.StartsWith("kor://", StringComparison.OrdinalIgnoreCase));
+
                         await Application.Current.Dispatcher.InvokeAsync(
                             () =>
                             {
+                                // kor:// deep link forwarded from a second instance
+                                // (a report PDF/email link clicked while the app is
+                                // already open): surface the app and open the target.
+                                if (korLink != null)
+                                {
+                                    if (Application.Current.MainWindow is { } main)
+                                    {
+                                        if (main.WindowState == WindowState.Minimized)
+                                            main.WindowState = WindowState.Normal;
+                                        main.Activate();
+                                    }
+
+                                    _ = KorDeepLink.OpenAsync(korLink);
+                                }
+
                                 if (emailSearchCmd)
                                 {
                                     var existing = Application.Current.Windows
