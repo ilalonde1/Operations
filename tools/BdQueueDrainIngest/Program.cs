@@ -742,6 +742,17 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", icon);
                     // also reads the existing FK + name (BD-Audit-2026-06-09 m6d) so
                     // an already-linked MPI never touches the resolver at all.
                     var trimmedName = proponentName.Trim();
+                    // Shared front-door guard: reject multi-firm / uncertainty strings
+                    // ("Not publicly confirmed", "A; B") before ResolveAsync can mint a
+                    // junk canonical from them. Same guard the MPI providers now use.
+                    var cleanedProponent = TeamNameCleaner.Clean(trimmedName);
+                    if (cleanedProponent is null)
+                    {
+                        log.LogInformation("{Name}: proponentName '{Raw}' is not a resolvable firm (junk/uncertainty); skipping.", name, trimmedName);
+                        skipped++;
+                        continue;
+                    }
+                    trimmedName = cleanedProponent;
                     var mpiExists = false;
                     long? existingCanonicalId = null;
                     string? existingProponentName = null;

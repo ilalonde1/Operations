@@ -215,7 +215,9 @@ public sealed class BcMajorProjectsInventoryProvider : IOpportunityProvider
 
         var description = Read(row, headers, "PROJECT_DESCRIPTION");
         var proponent = Read(row, headers, "DEVELOPER");
-        var architect = Read(row, headers, "ARCHITECT");
+        // Front-door de-junk: reduce multi-firm / uncertainty strings to a single
+        // firm (or null) before it reaches the resolver and the stored name.
+        var architect = TeamNameCleaner.Clean(Read(row, headers, "ARCHITECT"));
         var sector = Read(row, headers, "CONSTRUCTION_TYPE");
         var subSector = FirstNonBlank(
             Read(row, headers, "CONSTRUCTION_SUBTYPE"),
@@ -306,15 +308,15 @@ SET
     EstimatedCostCad        = @estimatedCostCad,
     EstimatedCostText       = @estimatedCostText,
     Stage                   = @stage,
-    ProponentName           = @proponentName,
-    ProponentCanonicalOrgId = @proponentCanonicalOrgId,
+    ProponentName           = COALESCE(ProponentName, @proponentName),
+    ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @proponentCanonicalOrgId),
     ArchitectName           = COALESCE(ArchitectName, @architectName),
     ArchitectCanonicalOrgId = COALESCE(ArchitectCanonicalOrgId, @architectCanonicalOrgId),
     MunicipalityName        = @municipalityName,
     RegionName              = @regionName,
     StartYear               = @startYear,
     CompletionYear          = @completionYear,
-    ScheduleNotes           = @scheduleNotes,
+    ScheduleNotes           = COALESCE(ScheduleNotes, @scheduleNotes),
     SourceUrl               = @sourceUrl,
     RawJson                 = @rawJson,
     LastSeenAtUtc           = sysdatetimeoffset(),

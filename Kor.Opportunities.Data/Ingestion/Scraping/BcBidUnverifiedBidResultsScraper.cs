@@ -783,7 +783,11 @@ public sealed class BcBidUnverifiedBidResultsScraper
             AwardingOrganization = string.IsNullOrWhiteSpace(issuingOrganization)
                 ? "Unknown"
                 : issuingOrganization,
-            AwardedToOrganization = "Pending - Bid Opened",
+            // Bid opened but not yet awarded — leave the awarded-to org blank rather
+            // than minting a "Pending - Bid Opened" placeholder canonical (migration
+            // 96 already had to clean 298 links from this exact recurrence). Blank is
+            // the model's "no org" convention and the resolver's blank-guard skips it.
+            AwardedToOrganization = string.Empty,
             ContractValue = null,
             ContractCurrency = "CAD",
             AwardedAtUtc = ParseDate(openingDate),

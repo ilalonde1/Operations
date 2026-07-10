@@ -32,6 +32,8 @@ public sealed class CanonicalOrgResolver
         "tbd",
         "unknown",
         "none",
+        "pending",
+        "pendingbidopened",
         "theproject",
         "theproponent",
         "government",
@@ -476,10 +478,12 @@ public sealed class CanonicalOrgResolver
             notes: notes,
             ct: ct);
 
-    private static readonly Regex ConcatGlue = new(@"(Authority|Corporation)[A-Z][a-z]", RegexOptions.Compiled);
+    private static readonly Regex ConcatGlue = new(@"(Ltd|Inc|Limited|Corp|Corporation|Authority|University)[A-Z][a-z]", RegexOptions.Compiled);
     private static readonly Regex AuthorityToken = new(@"\bAuthority\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex CorporationToken = new(@"\bCorporation\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex FirstNationToken = new(@"\bFirst Nation\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex UniversityToken = new(@"\bUniversity\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex SchoolDistrictToken = new(@"\bSchool District\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// <summary>
     /// Detects a name that is several real organizations concatenated into one — the
@@ -501,6 +505,8 @@ public sealed class CanonicalOrgResolver
         if (AuthorityToken.Matches(n).Count >= 2) return true;
         if (CorporationToken.Matches(n).Count >= 2) return true;
         if (FirstNationToken.Matches(n).Count >= 2) return true;
+        if (UniversityToken.Matches(n).Count >= 2) return true;
+        if (SchoolDistrictToken.Matches(n).Count >= 2) return true;
         return n.IndexOf("Health Care", System.StringComparison.OrdinalIgnoreCase) >= 0
             && n.IndexOf("Health Services", System.StringComparison.OrdinalIgnoreCase) >= 0;
     }

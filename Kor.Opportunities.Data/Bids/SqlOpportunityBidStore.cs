@@ -35,7 +35,7 @@ USING (SELECT @sourceId AS OpportunitySourceId,
   AND target.ExternalReference = src.ExternalReference
   AND target.BidderName = src.BidderName
 WHEN MATCHED THEN UPDATE SET
-    BidderCanonicalOrgId = @bidderCanonicalOrgId,
+    BidderCanonicalOrgId = COALESCE(target.BidderCanonicalOrgId, @bidderCanonicalOrgId),
     BidAmount = @amount,
     BidCurrency = @currency,
     BidderRank = @rank,

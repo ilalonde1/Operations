@@ -460,7 +460,9 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
             address is null ? null : $"{type} - {address}",
             permitNumber);
         var proponent = Read(row, sourceConfig, "proponentColumn", "applicant", "owner", "contractor", "developer", "name_of_applicant");
-        var architect = Read(row, sourceConfig, "architectColumn", "architect", "design_professional");
+        // Front-door de-junk: reduce multi-firm / uncertainty strings to a single
+        // firm (or null) before it reaches the resolver and the stored name.
+        var architect = TeamNameCleaner.Clean(Read(row, sourceConfig, "architectColumn", "architect", "design_professional"));
         var municipality = FirstNonBlank(Get(sourceConfig, "municipality"), Read(row, sourceConfig, "municipalityColumn", "city", "municipality"));
         // Enrich an address-composite name with ", <municipality> - <descriptor>" when configured.
         projectName = ComposeRichName(projectName, address, addressIsComposite, row, sourceConfig, municipality);
@@ -561,15 +563,15 @@ SET
     EstimatedCostCad        = @estimatedCostCad,
     EstimatedCostText       = @estimatedCostText,
     Stage                   = @stage,
-    ProponentName           = @proponentName,
-    ProponentCanonicalOrgId = @proponentCanonicalOrgId,
+    ProponentName           = COALESCE(ProponentName, @proponentName),
+    ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @proponentCanonicalOrgId),
     ArchitectName           = COALESCE(ArchitectName, @architectName),
     ArchitectCanonicalOrgId = COALESCE(ArchitectCanonicalOrgId, @architectCanonicalOrgId),
     MunicipalityName        = @municipalityName,
     RegionName              = @regionName,
     StartYear               = @startYear,
     CompletionYear          = @completionYear,
-    ScheduleNotes           = @scheduleNotes,
+    ScheduleNotes           = COALESCE(ScheduleNotes, @scheduleNotes),
     SourceUrl               = @sourceUrl,
     RawJson                 = @rawJson,
     LastSeenAtUtc           = sysdatetimeoffset(),
