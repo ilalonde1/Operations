@@ -63,6 +63,7 @@ public sealed class CanonicalOrgResolver
     private static readonly Counter<int> CreatedNewCounter = ResolverMeter.CreateCounter<int>("createdNew");
     private static readonly Counter<int> RedirectedFromMergedCounter = ResolverMeter.CreateCounter<int>("redirectedFromMerged");
     private static readonly Counter<int> SkippedRetiredCounter = ResolverMeter.CreateCounter<int>("skippedRetired");
+    private static readonly Counter<int> ResurrectedFromArchiveCounter = ResolverMeter.CreateCounter<int>("resurrectedFromArchive");
 
     private static readonly HashSet<string> GenericWebsiteDomainDenylist = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -311,6 +312,34 @@ public sealed class CanonicalOrgResolver
                     skippedRetired,
                     cleaned,
                     source);
+            }
+
+            // Rank 2 — resurrect, don't mint a twin. If exactly one retired org with
+            // this strict normalized name was archived for inactivity (born-archived
+            // on intake / low-value auto-archive) and is not a dedup loser, bring it
+            // back on this new reference instead of creating a duplicate. Born-archived
+            // rows are stamped "resurrects on any future reference" — this is the code
+            // that finally honours that promise. The alias is recorded by the shared
+            // path below (canonicalId is now non-null, not matched-by-alias).
+            if (allowCreate && !string.IsNullOrEmpty(normalized))
+            {
+                var resurrectId = await _store.FindResurrectableRetiredAsync(normalized, ct).ConfigureAwait(false);
+                if (resurrectId.HasValue
+                    && await _store.UnretireAsync(
+                        resurrectId.Value,
+                        $"Resurrected on reference from source '{source}' ('{cleaned}')",
+                        ct).ConfigureAwait(false))
+                {
+                    canonicalId = resurrectId.Value;
+                    classifiedBy = "auto-resurrect";
+                    aliasNotes = "Resurrected retired CanonicalOrg on a new reference";
+                    ResurrectedFromArchiveCounter.Add(1);
+                    _logger.LogInformation(
+                        "Resurrected retired CanonicalOrg {Id} for '{RawName}' from source '{Source}'.",
+                        resurrectId.Value,
+                        cleaned,
+                        source);
+                }
             }
         }
 

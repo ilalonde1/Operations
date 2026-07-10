@@ -35,8 +35,11 @@ public sealed class CanonicalOrgResolverTests
         Assert.Single(store.LiveOrgs);
     }
 
+    // Rank 2 (resurrect contract): a retired org archived for inactivity is brought
+    // back on a new reference rather than minting a duplicate twin. (Replaces the old
+    // RetiredSameNameOrg_IsNeverReturnedOrUnretired, which pinned the twin-factory bug.)
     [Fact]
-    public async Task RetiredSameNameOrg_IsNeverReturnedOrUnretired()
+    public async Task RetiredSameNameOrg_IsResurrected_NotTwinned()
     {
         var store = new FakeCanonicalOrgStore();
         var retiredId = store.AddOrg("Retired Same Name", retired: true);
@@ -44,11 +47,27 @@ public sealed class CanonicalOrgResolverTests
 
         var resolved = await resolver.ResolveAsync("Retired Same Name", OrgKinds.Buyer, Source, CancellationToken.None);
 
-        Assert.NotEqual(retiredId, resolved);
-        Assert.NotNull(resolved);
-        Assert.Contains(store.LiveOrgs, o => o.Id == resolved);
-        Assert.True(store.Orgs.Single(o => o.Id == retiredId).Retired);
+        Assert.Equal(retiredId, resolved);                                     // reused, not twinned
+        Assert.Equal(1, store.UnretireCalls);
+        Assert.False(store.Orgs.Single(o => o.Id == retiredId).Retired);       // brought back live
+    }
+
+    // The critical safety guard: a dedup LOSER (merged into a survivor) must never be
+    // resurrected — that would silently undo the merge and re-create the duplicate.
+    [Fact]
+    public async Task RetiredDedupLoser_IsNeverResurrected()
+    {
+        var store = new FakeCanonicalOrgStore();
+        var survivorId = store.AddOrg("Survivor Org");
+        var loserId = store.AddOrg("Retired Loser", retired: true);
+        store.AddMerge(loserId, survivorId);
+        var resolver = CreateResolver(store);
+
+        var resolved = await resolver.ResolveAsync("Retired Loser", OrgKinds.Buyer, Source, CancellationToken.None);
+
+        Assert.NotEqual(loserId, resolved);
         Assert.Equal(0, store.UnretireCalls);
+        Assert.True(store.Orgs.Single(o => o.Id == loserId).Retired);
     }
 
     [Fact]
@@ -303,6 +322,17 @@ public sealed class CanonicalOrgResolverTests
             var org = Orgs.Single(o => o.Id == canonicalOrgId);
             org.Retired = true;
             return Task.CompletedTask;
+        }
+
+        public Task<long?> FindResurrectableRetiredAsync(string normalizedName, CancellationToken ct)
+        {
+            // Eligible = a retired org matching the strict normalized name that is NOT
+            // a dedup loser (never resurrect a merged-away org). Exactly one, else null.
+            var matches = Orgs
+                .Where(o => o.Retired && Normalize(o) == normalizedName && !_mergeLedger.ContainsKey(o.Id))
+                .Select(o => o.Id)
+                .ToList();
+            return Task.FromResult<long?>(matches.Count == 1 ? matches[0] : null);
         }
 
         public Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)

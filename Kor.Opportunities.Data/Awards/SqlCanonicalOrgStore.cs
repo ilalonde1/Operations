@@ -601,6 +601,41 @@ FROM (
         return v is null or DBNull ? 0 : Convert.ToInt32(v);
     }
 
+    public async Task<long?> FindResurrectableRetiredAsync(string normalizedName, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(normalizedName)) return null;
+
+        // Only a retired org archived for INACTIVITY (born-archived on intake, or
+        // low-value auto-archive) may come back on a new reference — never a dedup
+        // loser (merged into a survivor), because resurrecting that undoes the merge
+        // and re-creates the duplicate the dedup pass carefully removed. Require
+        // exactly one strict-normalized-name match; ambiguity falls through to create.
+        const string sql = @"
+SELECT co.Id
+FROM opportunities.CanonicalOrg co
+WHERE co.NormalizedName = @norm
+  AND co.RetiredAtUtc IS NOT NULL
+  AND (co.RetiredReason LIKE N'Born-archived%' OR co.RetiredReason LIKE N'Low-value auto-archive%')
+  AND NOT EXISTS (
+      SELECT 1 FROM opportunities.CanonicalOrgMerge m
+      WHERE m.MergedFromCanonicalOrgId = co.Id);";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@norm", SqlDbType.NVarChar, 300).Value = normalizedName;
+
+        long? found = null;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            found = r.GetInt64(0);
+            // A second eligible row means the name is ambiguous — do not resurrect.
+            if (await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        }
+        return found;
+    }
+
     public async Task PromoteCanonicalOrgWebsiteNotesAsync(
         long canonicalOrgId,
         string? website,

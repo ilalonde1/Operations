@@ -48,6 +48,16 @@ public interface ICanonicalOrgStore
 
     Task<bool> UnretireAsync(long canonicalOrgId, string reason, CancellationToken ct);
 
+    /// <summary>
+    /// The single retired CanonicalOrg that is eligible to be resurrected for the
+    /// given strict normalized name, or null. Eligible = archived for inactivity
+    /// (born-archived on intake, or low-value auto-archive) and NOT a dedup loser
+    /// (an org merged into a survivor — resurrecting that would undo the merge).
+    /// Returns null when there is no match OR the match is ambiguous (more than
+    /// one eligible retired row), so the caller safely falls through to create.
+    /// </summary>
+    Task<long?> FindResurrectableRetiredAsync(string normalizedName, CancellationToken ct);
+
     Task MarkRetiredOnIntakeAsync(long canonicalOrgId, string reason, CancellationToken ct);
 
     /// <summary>
