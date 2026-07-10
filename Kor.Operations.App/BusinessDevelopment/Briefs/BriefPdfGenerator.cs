@@ -142,7 +142,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void SectorHeaderBand(IContainer container, SectorBriefData d)
     {
-        container.Background(Brand).Padding(10).Column(column =>
+        container.BorderBottom(2.5f).BorderColor(BrandAccent).Background(Brand).Padding(12).Column(column =>
         {
             column.Spacing(4);
             column.Item().Text("SECTOR BRIEF").FontSize(8)
@@ -324,7 +324,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     {
         // Round 49: tighter padding + tighter spacing + smaller title so the
         // header band stops eating ~25-30% of the page (see ss1).
-        container.Background(Brand).Padding(10).Column(column =>
+        container.BorderBottom(2.5f).BorderColor(BrandAccent).Background(Brand).Padding(12).Column(column =>
         {
             column.Spacing(4);
             column.Item().Text("PURSUIT BRIEF")
@@ -541,7 +541,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void ProjectHeaderBand(IContainer container, ProjectBriefData d)
     {
-        container.Background(Brand).Padding(10).Column(column =>
+        container.BorderBottom(2.5f).BorderColor(BrandAccent).Background(Brand).Padding(12).Column(column =>
         {
             column.Spacing(4);
             column.Item().Text("PROJECT BRIEF")
@@ -740,7 +740,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void PersonHeaderBand(IContainer container, PersonBriefData d)
     {
-        container.Background(Brand).Padding(10).Column(column =>
+        container.BorderBottom(2.5f).BorderColor(BrandAccent).Background(Brand).Padding(12).Column(column =>
         {
             column.Spacing(4);
             column.Item().Text("PERSON BRIEF")
@@ -828,12 +828,12 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     }
 
     private static void AffiliationHeaderCell(TableDescriptor table, string text)
-        => table.Cell().Background(Pale).Border(1).BorderColor(Border).Padding(4)
-            .Text(text).FontSize(8).Bold().FontColor(Brand);
+        => table.Cell().BorderBottom(1.5f).BorderColor(Brand).PaddingVertical(5).PaddingHorizontal(5)
+            .Text(text.ToUpperInvariant()).FontSize(7.5f).LetterSpacing(0.08f).Bold().FontColor(Brand);
 
     private static void AffiliationBodyCell(TableDescriptor table, string text)
-        => table.Cell().Border(1).BorderColor(Border).Padding(4)
-            .Text(text).FontSize(9).FontColor(Text);
+        => table.Cell().BorderBottom(0.5f).BorderColor(Border).PaddingVertical(5).PaddingHorizontal(5)
+            .Text(text).FontSize(9).LineHeight(1.3f).FontColor(Text);
 
     // === Region brief ===
 
@@ -891,7 +891,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     private static void RegionHeaderBand(IContainer container, RegionBriefData d)
     {
         var scope = string.IsNullOrWhiteSpace(d.City) ? d.Province : $"{d.Province} — {d.City}";
-        container.Background(Brand).Padding(10).Column(column =>
+        container.BorderBottom(2.5f).BorderColor(BrandAccent).Background(Brand).Padding(12).Column(column =>
         {
             column.Spacing(4);
             column.Item().Text("REGION BRIEF")
@@ -1100,7 +1100,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void OrgHeaderBand(IContainer container, OrgBriefData d, OrgEnrichment enrichment)
     {
-        container.Background(Brand).Padding(10).Column(column =>
+        container.BorderBottom(2.5f).BorderColor(BrandAccent).Background(Brand).Padding(12).Column(column =>
         {
             column.Spacing(4);
             column.Item().Text("ORGANIZATION BRIEF")
@@ -1222,14 +1222,14 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     private static void DeltekProjectHeader(TableDescriptor table, string text)
     {
-        table.Cell().BorderBottom(1).BorderColor(BrandAccent).Padding(3)
-            .Text(text).FontSize(8).Bold().FontColor(Brand);
+        table.Cell().BorderBottom(1.5f).BorderColor(Brand).PaddingVertical(4).PaddingHorizontal(3)
+            .Text(text.ToUpperInvariant()).FontSize(7.5f).LetterSpacing(0.08f).Bold().FontColor(Brand);
     }
 
     private static void DeltekProjectCell(TableDescriptor table, string? text)
     {
-        table.Cell().BorderBottom(1).BorderColor(Border).Padding(3)
-            .Text(string.IsNullOrWhiteSpace(text) ? "—" : text).FontSize(8.5f).FontColor(Text);
+        table.Cell().BorderBottom(0.5f).BorderColor(Border).PaddingVertical(4).PaddingHorizontal(3)
+            .Text(string.IsNullOrWhiteSpace(text) ? "—" : text).FontSize(8.5f).LineHeight(1.3f).FontColor(Text);
     }
 
     private static IEnumerable<string> OrgHistoryBullets(OrgBriefData d)
@@ -1392,16 +1392,17 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     {
         container.Column(column =>
         {
-            column.Spacing(6);
-            column.Item().BorderBottom(1).BorderColor(BrandAccent).PaddingBottom(4)
-                .Text(heading).FontSize(11.5f).Bold().FontColor(Brand);
+            column.Spacing(7);
+            column.Item().BorderBottom(2).BorderColor(BrandAccent).PaddingBottom(5)
+                .Text(heading.ToUpperInvariant()).FontSize(10).LetterSpacing(0.08f)
+                .Bold().FontColor(Brand);
 
             foreach (var bullet in bullets)
             {
                 column.Item().Row(row =>
                 {
                     row.ConstantItem(12).Text("•").FontColor(BrandAccent);
-                    row.RelativeItem().Text(bullet).FontSize(10).FontColor(Text);
+                    row.RelativeItem().Text(bullet).FontSize(10).LineHeight(1.35f).FontColor(Text);
                 });
             }
         });
@@ -1411,10 +1412,11 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     {
         container.Column(column =>
         {
-            column.Spacing(6);
-            column.Item().BorderBottom(1).BorderColor(BrandAccent).PaddingBottom(4)
-                .Text(heading).FontSize(11.5f).Bold().FontColor(Brand);
-            column.Item().Text(paragraph).FontSize(10).FontColor(Text);
+            column.Spacing(7);
+            column.Item().BorderBottom(2).BorderColor(BrandAccent).PaddingBottom(5)
+                .Text(heading.ToUpperInvariant()).FontSize(10).LetterSpacing(0.08f)
+                .Bold().FontColor(Brand);
+            column.Item().Text(paragraph).FontSize(10).LineHeight(1.35f).FontColor(Text);
         });
     }
 
