@@ -45,8 +45,11 @@ if (-not (Test-Path $Docx)) { throw "pandoc did not produce $Docx" }
 
 # ---- 2. Word COM: apply professional styling ----
 function RGB($r,$g,$b){ return [int]($r + ($g * 256) + ($b * 65536)) }   # WdColor = 0x00BBGGRR
-$brandNavy = RGB 31 59 95      # headings
+$brandNavy  = RGB 31 59 95     # headings / masthead
 $brandSlate = RGB 68 84 106    # subheads
+$inkSoft    = RGB 89 102 116   # meta / captions
+$ruleLight  = RGB 209 217 226  # hairline rules inside tables
+$calloutTint = RGB 232 238 246 # callout ground
 
 $word = New-Object -ComObject Word.Application
 $word.Visible = $false
@@ -54,74 +57,117 @@ $word.DisplayAlerts = 0
 try {
   $doc = $word.Documents.Open((Resolve-Path $Docx).Path)
 
-  # base body type
+  # ---- typography: editorial pairing instead of all-Calibri ----
+  # Georgia body (reads like a briefing), Segoe UI for headings/tables/meta.
   $normal = $doc.Styles.Item("Normal")
-  $normal.Font.Name = "Calibri"
-  $normal.Font.Size = 10.5
-  $normal.ParagraphFormat.LineSpacingRule = 0      # wdLineSpaceSingle
-  $normal.ParagraphFormat.SpaceAfter = 6
+  $normal.Font.Name = "Georgia"
+  $normal.Font.Size = 10
+  $normal.ParagraphFormat.LineSpacingRule = 5       # wdLineSpaceMultiple
+  $normal.ParagraphFormat.LineSpacing = 13.2        # ~1.1 lines: airy but compact
+  $normal.ParagraphFormat.SpaceAfter = 7
   $normal.ParagraphFormat.SpaceBefore = 0
 
-  # heading hierarchy (brand colour, tighter spacing above)
-  foreach ($h in @(@("Title",20,$brandNavy),@("Heading 1",15,$brandNavy),@("Heading 2",12.5,$brandNavy),@("Heading 3",11,$brandSlate))) {
+  # heading hierarchy: Segoe UI Semibold feel, brand colour, generous air above
+  foreach ($h in @(@("Title",23,$brandNavy),@("Heading 1",22,$brandNavy),@("Heading 2",13.5,$brandNavy),@("Heading 3",11,$brandSlate))) {
     try {
       $s = $doc.Styles.Item($h[0])
-      $s.Font.Name = "Calibri"
+      $s.Font.Name = "Segoe UI Semibold"
       $s.Font.Size = $h[1]
-      $s.Font.Bold = $true
+      $s.Font.Bold = ($h[1] -lt 20)   # big masthead sizes carry weight already
       $s.Font.Color = $h[2]
-      $s.ParagraphFormat.SpaceBefore = 12
-      $s.ParagraphFormat.SpaceAfter = 4
+      $s.ParagraphFormat.SpaceBefore = 16
+      $s.ParagraphFormat.SpaceAfter = 5
       $s.ParagraphFormat.KeepWithNext = $true
-      # each major section (## -> Heading 2) starts on a new page
       $s.ParagraphFormat.PageBreakBefore = ($h[0] -eq "Heading 2")
     } catch {}
   }
 
-  # every table -> styled, header shaded, rows banded, full width
+  # masthead: the doc title gets a strong brand rule beneath it (like the web pages)
+  foreach ($p in $doc.Paragraphs) {
+    try {
+      $sn = $p.Style.NameLocal
+      if ($sn -eq "Title" -or $sn -eq "Heading 1") {
+        $e = $p.Range.Borders.Item(-3)   # bottom
+        $e.LineStyle = 1; $e.Color = $brandNavy; $e.LineWidth = 18   # 2.25pt
+        $p.Format.SpaceAfter = 10
+        # the bold meta line right under the title reads as the sub-masthead
+        $nxt = $p.Range.Next(4, 1)       # wdParagraph
+        if ($nxt) {
+          $nxt.Font.Name = "Segoe UI"; $nxt.Font.Size = 8.5
+          $nxt.Font.Color = $inkSoft; $nxt.Font.Bold = $false
+          $nxt.Font.AllCaps = $false
+        }
+        break
+      }
+    } catch {}
+  }
+
+  # ---- tables: editorial rules, not grids ----
+  # No vertical lines, no heavy boxes: a 1.5pt brand rule under the header row,
+  # hairline separators between rows, generous padding — the web-page table look.
   for ($i = 1; $i -le $doc.Tables.Count; $i++) {
     $t = $doc.Tables.Item($i)
-    # NOTE: Word style names use " - Accent N" (hyphen with spaces). Names without
-    # the spaced hyphen silently fail to match, leaving tables unstyled. All
-    # candidates below are verified built-in names.
-    $applied = $false
-    foreach ($cand in @($TableStyle, "Grid Table 4 - Accent 1", "List Table 6 Colorful - Accent 1", "Grid Table 4 - Accent 5")) {
-      try { $t.Style = $cand; $applied = $true; break } catch {}
-    }
-    if (-not $applied) { Write-Warning "No table style matched for table $i (tried '$TableStyle' + fallbacks)." }
-    $t.ApplyStyleHeadingRows = $true
-    $t.ApplyStyleLastRow      = $false
-    $t.ApplyStyleFirstColumn  = $false
-    $t.ApplyStyleLastColumn   = $false
-    $t.ApplyStyleRowBands     = $true
-    $t.ApplyStyleColumnBands  = $false
+    try { $t.Style = "Table Grid" } catch {}
+    # clear everything, then draw only what we want
+    foreach ($side in @(-1,-2,-3,-4,-5,-6)) { try { $t.Borders.Item($side).LineStyle = 0 } catch {} }
+    try {
+      $t.Borders.Item(-1).LineStyle = 1; $t.Borders.Item(-1).Color = $brandNavy; $t.Borders.Item(-1).LineWidth = 8     # top rule 1pt
+      $t.Borders.Item(-3).LineStyle = 1; $t.Borders.Item(-3).Color = $ruleLight; $t.Borders.Item(-3).LineWidth = 4     # bottom hairline
+      $t.Borders.Item(-5).LineStyle = 1; $t.Borders.Item(-5).Color = $ruleLight; $t.Borders.Item(-5).LineWidth = 2     # row separators 0.25pt
+    } catch {}
+    try {
+      $hdrB = $t.Rows.Item(1).Borders.Item(-3)
+      $hdrB.LineStyle = 1; $hdrB.Color = $brandNavy; $hdrB.LineWidth = 12    # 1.5pt header rule
+    } catch {}
+    $t.Range.Font.Name = "Segoe UI"
+    $t.Range.Font.Size = 9
+    $hdr = $t.Rows.Item(1).Range
+    $hdr.Font.Bold = $true
+    $hdr.Font.Size = 8
+    $hdr.Font.AllCaps = $true
+    $hdr.Font.Color = $brandNavy
     try { $t.AutoFitBehavior(2) } catch {}          # wdAutoFitWindow
-    $t.Range.Font.Size = 9.5
-    $t.Rows.Item(1).Range.Font.Bold = $true
-    # repeat the header row at the top of every continuation page + don't split rows mid-cell
     try { $t.Rows.AllowBreakAcrossPages = $false } catch {}
     try { $t.Rows.Item(1).HeadingFormat = $true } catch {}
     try { $t.Rows.Item(1).AllowBreakAcrossPages = $false } catch {}
-    $t.TopPadding = 2; $t.BottomPadding = 2; $t.LeftPadding = 5; $t.RightPadding = 5
+    $t.TopPadding = 4; $t.BottomPadding = 4; $t.LeftPadding = 6; $t.RightPadding = 6
+    try { $t.Spacing = 0 } catch {}
   }
 
-  # blockquotes (pandoc style "Block Text") -> branded shaded callout box:
-  # light navy tint + thin navy border all around + inset. Makes ">" lines pop
-  # as a summary/callout instead of an understated left-bar quote.
-  $calloutTint = RGB 226 235 246
+  # blockquotes -> left-accent callout (thick brand bar + soft tint, no full box)
   foreach ($p in $doc.Paragraphs) {
     try {
       if ($p.Style.NameLocal -eq "Block Text") {
         $r = $p.Range
         $r.Shading.BackgroundPatternColor = $calloutTint
-        foreach ($side in @(-1,-2,-3,-4)) {   # top, left, bottom, right
-          $e = $r.Borders.Item($side); $e.LineStyle = 1; $e.Color = $brandNavy; $e.LineWidth = 8
-        }
-        $p.Format.LeftIndent = 10; $p.Format.RightIndent = 10
-        $p.Format.SpaceBefore = 6; $p.Format.SpaceAfter = 6
+        foreach ($side in @(-1,-3,-4)) { try { $r.Borders.Item($side).LineStyle = 0 } catch {} }
+        $e = $r.Borders.Item(-2); $e.LineStyle = 1; $e.Color = $brandNavy; $e.LineWidth = 24   # 3pt left bar
+        $p.Format.LeftIndent = 12; $p.Format.RightIndent = 10
+        $p.Format.SpaceBefore = 8; $p.Format.SpaceAfter = 8
+        $r.Font.Name = "Segoe UI"; $r.Font.Size = 10
       }
     } catch {}
   }
+
+  # ---- footer: brand rule + doc identity + page numbers (every page) ----
+  try {
+    $sec = $doc.Sections.Item(1)
+    $ftr = $sec.Footers.Item(1)                      # wdHeaderFooterPrimary
+    $fr = $ftr.Range
+    $fr.Text = ""
+    $fr.Font.Name = "Segoe UI"; $fr.Font.Size = 7.5; $fr.Font.Color = $inkSoft
+    $docTitle = [System.IO.Path]::GetFileNameWithoutExtension($Docx) -replace '-', ' '
+    $fr.Text = "KOR Structural  ·  $docTitle" + "`t`t"
+    $fr.Collapse(0)                                  # wdCollapseEnd
+    $fr.Fields.Add($fr, 33) | Out-Null               # wdFieldPage
+    $fr = $ftr.Range
+    $fr.InsertAfter(" of ")
+    $fr.Collapse(0)
+    $fr.Fields.Add($fr, 26) | Out-Null               # wdFieldNumPages
+    $fp = $ftr.Range.Paragraphs.Item(1)
+    $e = $fp.Range.Borders.Item(-1)                  # top rule above footer
+    $e.LineStyle = 1; $e.Color = $ruleLight; $e.LineWidth = 4
+  } catch {}
 
   # one-pager mode: tighten type, spacing and margins to fit a single page
   if ($NoPageBreaks) {
