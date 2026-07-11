@@ -608,6 +608,58 @@ SELECT
             sb.Append($"People briefed: <b>{r.GetInt32(3)}</b> · Open actions: <b>{r.GetInt32(4)}</b></p>");
         }
 
+        // --- Source health: DEAD-GREEN detection (audit-v2 #15) ----------------
+        // The weekly sentinel wrote these verdicts to a server-local markdown
+        // nobody opened — an 18-day source blackout once went unnoticed. The
+        // morning email is the channel that actually gets read. Flags enabled
+        // provider sources with no successful run inside 3x their crawl window
+        // (min 24h so fast sources don't false-alarm overnight).
+        await using (var cmd = new SqlCommand(@"
+SELECT s.Name,
+       lastOk.LastSuccessAtUtc
+FROM opportunities.OpportunitySources s
+OUTER APPLY (
+    SELECT MAX(r.StartedAtUtc) AS LastSuccessAtUtc
+    FROM opportunities.IngestionRuns r
+    WHERE r.Success = 1
+      AND (r.ProviderName LIKE s.Name + N' (%' OR r.ProviderName LIKE N'Awards: ' + s.Name + N' (%')
+) lastOk
+WHERE s.IsEnabled = 1
+  AND s.CrawlDelaySeconds > 0
+  AND s.SourceType NOT IN (0, 7, 99)
+  AND (lastOk.LastSuccessAtUtc IS NULL
+       OR lastOk.LastSuccessAtUtc < DATEADD(SECOND,
+             -(CASE WHEN s.CrawlDelaySeconds * 3 > 86400 THEN s.CrawlDelaySeconds * 3 ELSE 86400 END),
+             SYSDATETIMEOFFSET()))
+ORDER BY lastOk.LastSuccessAtUtc;", con))
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            var stale = new List<string>();
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var name = r.GetString(0);
+                var last = r.IsDBNull(1) ? (DateTimeOffset?)null : r.GetDateTimeOffset(1);
+                stale.Add(last is null
+                    ? $"<b>{WebUtility.HtmlEncode(name)}</b> — never produced a successful run"
+                    : $"<b>{WebUtility.HtmlEncode(name)}</b> — last success {(DateTimeOffset.UtcNow - last.Value.ToUniversalTime()).TotalDays:N1}d ago");
+            }
+
+            sb.Append("<h3>Source health</h3>");
+            if (stale.Count == 0)
+            {
+                sb.Append("<p>All enabled sources ran successfully within their windows.</p>");
+            }
+            else
+            {
+                sb.Append($"<p style=\"color:#C8102E\"><b>DEAD-GREEN:</b> {stale.Count} enabled source(s) with no recent successful run:</p><ul>");
+                foreach (var line in stale)
+                {
+                    sb.Append($"<li>{line}</li>");
+                }
+                sb.Append("</ul>");
+            }
+        }
+
         // --- Latest trigger report (server QueueDrain, 21:30 builder job) ------
         await using (var cmd = new SqlCommand(@"
 SELECT TOP 1 RunAtUtc, PendingQueues, ReportText

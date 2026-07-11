@@ -298,6 +298,11 @@ internal sealed class DataHealthAuditJob : IJob
 
             context.Result = failureSummary;
             _logger.LogError(ex, "{Job}: failed after {ElapsedMs}ms.", nameof(DataHealthAuditJob), sw.ElapsedMilliseconds);
+
+            // Audit-v2 #15: a swallowed failure recorded an unbroken green run
+            // history — the exact failure mode this audit job exists to catch.
+            // Rethrow (wrapped per the Quartz contract) so JobRuns records red.
+            throw new JobExecutionException(failureSummary, ex, refireImmediately: false);
         }
     }
 
