@@ -20,6 +20,11 @@ if (args.Length >= 2 && args[0] == "sector")
     return await SectorRun.RunAsync(args[1]);
 }
 
+if (args.Length >= 3 && args[0] == "emit")
+{
+    return await SectorEmit.RunAsync(args[1], args[2]);
+}
+
 // ensure mode: refresh a given id set on demand (used by the PS report builders
 // as a pre-step so the dossier they pull reflects on-demand-fresh verdicts).
 if (args.Length >= 2 && args[0] == "ensure")
