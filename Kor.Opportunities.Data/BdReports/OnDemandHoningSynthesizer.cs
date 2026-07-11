@@ -265,12 +265,37 @@ FROM h ORDER BY h.Id;";
         return (updated, approxTokens);
     }
 
+    // Audit-v2 #8: only persist plausible verdict tokens — a model returning prose
+    // ("the project appears cancelled") must not become a row's verdict.
+    private static readonly System.Text.RegularExpressions.Regex VerdictTokenShape =
+        new("^[a-z][a-z0-9-]{1,30}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private async Task PersistSynthesisAsync(long mpiId, string verdict, string? status, CancellationToken ct)
     {
+        // Audit-v2 #8: reject non-token verdicts instead of writing garbage.
+        var normalizedVerdict = verdict.Trim().ToLowerInvariant();
+        if (!VerdictTokenShape.IsMatch(normalizedVerdict))
+        {
+            return;
+        }
+
+        // Audit-v2 #8: lax JSON_MODIFY cannot create the missing intermediate
+        // '$.honingPass' object on legacy rows (which stored '$.verdict' at the
+        // root) — it silently returned the JSON UNCHANGED while LastRefreshAtUtc
+        // was stamped fresh, so a dead pursuit showed as freshly-verified for
+        // another 30 days. Normalize the shape first: create '$.honingPass' when
+        // absent, then the verdict/status writes always land.
         const string sql = @"
 UPDATE e
-SET e.ResultJson = JSON_MODIFY(JSON_MODIFY(e.ResultJson, '$.honingPass.verdict', @verdict),
-                               '$.honingPass.status', COALESCE(@status, JSON_VALUE(e.ResultJson,'$.honingPass.status'))),
+SET e.ResultJson =
+        JSON_MODIFY(JSON_MODIFY(
+            CASE WHEN JSON_QUERY(e.ResultJson, '$.honingPass') IS NULL
+                 THEN JSON_MODIFY(e.ResultJson, '$.honingPass', JSON_QUERY(N'{}'))
+                 ELSE e.ResultJson END,
+            '$.honingPass.verdict', @verdict),
+            '$.honingPass.status', COALESCE(@status,
+                                            JSON_VALUE(e.ResultJson,'$.honingPass.status'),
+                                            JSON_VALUE(e.ResultJson,'$.status'))),
     e.LastRefreshAtUtc = sysdatetimeoffset(),
     e.Notes = CONCAT(N'on-demand synthesis ', CONVERT(varchar(19), sysdatetimeoffset(), 126))
 FROM opportunities.MajorProjectEnrichment e
@@ -281,7 +306,7 @@ WHERE e.MajorProjectsInventoryId = @id;";
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con);
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
-        cmd.Parameters.Add("@verdict", SqlDbType.NVarChar, 40).Value = verdict;
+        cmd.Parameters.Add("@verdict", SqlDbType.NVarChar, 40).Value = normalizedVerdict;
         cmd.Parameters.Add("@status", SqlDbType.NVarChar, 400).Value = (object?)status ?? DBNull.Value;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
