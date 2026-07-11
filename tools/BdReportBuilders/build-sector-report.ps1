@@ -54,8 +54,42 @@ $tpl = Get-Content (Join-Path $repo 'tools\BdDocTemplate\reference-handbook.html
 $style = $tpl.Substring($tpl.IndexOf('<style>'), $tpl.IndexOf('</style>') + 8 - $tpl.IndexOf('<style>'))
 $extra = @'
 <style>.doc{max-width:46rem;margin:0 auto;padding:0 1.5rem}
-@media print{.doc{max-width:none;padding:0 16mm}html{font-size:12.5px!important}.hero{padding:12mm 16mm 8mm!important}.hero h1{font-size:24pt!important}}</style>
+/* actionables - loud by design */
+.acts{margin:.35rem 0 .6rem;padding:0;list-style:none}
+.acts li{position:relative;padding:.42rem .6rem .42rem 2rem;margin:0 0 .3rem;
+  background:var(--accent-bg,#FDEEE8);border-left:3px solid var(--accent);border-radius:4px;font-size:.96rem}
+.acts li::before{content:"\2192";position:absolute;left:.7rem;top:.42rem;color:var(--accent);font-weight:700}
+.acts .who{font-family:var(--mono);font-size:.82em;color:var(--accent-ink)}
+.acts .when{font-weight:600}
+.doactions{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent-ink);font-weight:700;margin:.2rem 0 .25rem}
+.rollup li{padding-left:2rem}
+@media print{:root{--accent-bg:#FDEEE8}.doc{max-width:none;padding:0 16mm}html{font-size:12.5px!important}
+  .hero{padding:12mm 16mm 8mm!important}.hero h1{font-size:24pt!important}.acts li{break-inside:avoid}}
+</style>
 '@
+
+# Renders a project's action list loudly. Falls back to the KOR angle when the
+# honing row carries no structured actions.
+function ActionsHtml { param($p)
+    $out = ''
+    $acts = @($p.actions)
+    if ($acts.Count -gt 0) {
+        $out += '<p class="doactions">Do this</p><ul class="acts">'
+        foreach ($a in ($acts | Select-Object -First 4)) {
+            $line = ''
+            if ($a.recommendation) { $line += (E $a.recommendation) }
+            elseif ($a.type)       { $line += (E $a.type) }
+            if ($a.targetPerson) { $line += " <span class=""who"">$(E $a.targetPerson)</span>" }
+            if ($a.timingNotes)  { $line += " &#183; <span class=""when"">$(E $a.timingNotes)</span>" }
+            if ($line) { $out += "<li>$line</li>" }
+        }
+        $out += '</ul>'
+    } elseif ($p.korAngle) {
+        $out += "<p class=""doactions"">Do this</p><ul class=""acts""><li>$(E $p.korAngle)</li></ul>"
+    }
+    return $out
+}
 
 $sb = [System.Text.StringBuilder]::new()
 [void]$sb.Append("<title>KOR $Title Sector Report</title>").Append($style).Append($extra)
@@ -69,16 +103,34 @@ $sb = [System.Text.StringBuilder]::new()
 <span>FRESHNESS $($fresh.Count)/$($rows.Count)</span></div></div></header><main class="doc">
 "@)
 
+# Top-of-report cross-cutting action rollup: every URGENT action, one list, so
+# "what to do this week" is the first thing seen.
+$rollup = @()
+foreach ($p in $urgent) { foreach ($a in @($p.actions | Select-Object -First 2)) {
+    $l = if ($a.recommendation) { $a.recommendation } elseif ($a.type) { $a.type } else { $null }
+    if ($l) {
+        $chip = "$(E $p.name): $(E $l)"
+        if ($a.targetPerson) { $chip += " <span class=""who"">$(E $a.targetPerson)</span>" }
+        if ($a.timingNotes)  { $chip += " &#183; <span class=""when"">$(E $a.timingNotes)</span>" }
+        $rollup += $chip
+    }
+}}
+if ($rollup.Count -gt 0) {
+    [void]$sb.Append('<section><p class="kicker">Act this week</p><h2>Top actions across this sector</h2><ul class="acts rollup">')
+    foreach ($c in ($rollup | Select-Object -First 8)) { [void]$sb.Append("<li>$c</li>") }
+    [void]$sb.Append('</ul></section>')
+}
+
 if ($urgent.Count -gt 0) {
     [void]$sb.Append('<section><p class="kicker">01 &#183; Urgent</p><h2>Act now</h2>')
     foreach ($p in $urgent) {
         [void]$sb.Append("<h3>$(E $p.name) <span class=""pill pill--live"">URGENT</span> $(AgeChip $p)</h3>")
+        [void]$sb.Append((ActionsHtml $p))
         [void]$sb.Append("<dl class=""map""><div><dt>Where</dt><dd>$(E $p.city), $(E $p.province)</dd></div><div><dt>Owner</dt><dd>$(E $p.proponent)</dd></div>")
         if ($p.cost)  { [void]$sb.Append("<div><dt>Value</dt><dd>$(E $p.cost)</dd></div>") }
         if ($p.stage) { [void]$sb.Append("<div><dt>Stage</dt><dd>$(E $p.stage)</dd></div>") }
         [void]$sb.Append('</dl>')
         if ($p.status)   { [void]$sb.Append("<p>$(E $p.status)</p>") }
-        if ($p.korAngle) { [void]$sb.Append("<div class=""box box--auto""><p class=""box__label"">KOR angle</p><p>$(E $p.korAngle)</p></div>") }
     }
     [void]$sb.Append('</section>')
 }
@@ -86,8 +138,8 @@ if ($pursue.Count -gt 0) {
     [void]$sb.Append('<section><p class="kicker">02 &#183; Pursue</p><h2>Open windows</h2>')
     foreach ($p in $pursue) {
         [void]$sb.Append("<h3>$(E $p.name) <span class=""pill pill--watch"">PURSUE</span> $(AgeChip $p)</h3>")
+        [void]$sb.Append((ActionsHtml $p))
         if ($p.status)   { [void]$sb.Append("<p>$(E $p.status)</p>") }
-        if ($p.korAngle) { [void]$sb.Append("<p><strong>Play:</strong> $(E $p.korAngle)</p>") }
     }
     [void]$sb.Append('</section>')
 }
