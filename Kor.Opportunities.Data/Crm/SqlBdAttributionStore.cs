@@ -39,6 +39,13 @@ public sealed class SqlBdAttributionStore : IBdAttributionStore
     private const int CommandTimeoutSeconds = 30;
 
     // CrmEngagementStage: Drafting=1, Submitted=3, Won=6, Lost=7.
+    //
+    // Audit-v2 #10: the headline summary and owner leaderboard exclude the
+    // migration-268 Deltek backfill (ExternalSource = 'Deltek.CustomProposal',
+    // 177 wins with a zero-loss denominator) — the same F12 segmentation
+    // CrmAnalyticsService enforces, so the Scorecard's win rate reflects LIVE
+    // pursuits instead of ~100%. The by-source breakdown stays inclusive: that
+    // is exactly where backfill history is surfaced, labelled by its source.
     private const string SummarySql = @"
 SELECT
     SUM(CASE WHEN Stage = 6 THEN 1 ELSE 0 END)                                          AS Wins,
@@ -46,7 +53,8 @@ SELECT
     SUM(CASE WHEN Stage IN (1, 3) THEN 1 ELSE 0 END)                                    AS ActivePursuits,
     SUM(CASE WHEN Stage = 3 THEN 1 ELSE 0 END)                                          AS Submitted,
     SUM(CASE WHEN Stage = 7 THEN 1 ELSE 0 END)                                          AS Lost
-FROM opportunities.CrmEngagements;
+FROM opportunities.CrmEngagements
+WHERE COALESCE(NULLIF(LTRIM(RTRIM(ExternalSource)), N''), N'') <> N'Deltek.CustomProposal';
 
 SELECT
     COALESCE(NULLIF(LTRIM(RTRIM(ExternalSource)), N''), N'(unrecorded)') AS Source,
@@ -63,6 +71,7 @@ SELECT
     SUM(CAST(ISNULL(ProposedFee, 0) AS decimal(18,2)))                  AS WonFee
 FROM opportunities.CrmEngagements
 WHERE Stage = 6
+  AND COALESCE(NULLIF(LTRIM(RTRIM(ExternalSource)), N''), N'') <> N'Deltek.CustomProposal'
 GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(OwnerStaffId)), N''), N'(unattributed)')
 ORDER BY Wins DESC;";
 
