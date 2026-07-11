@@ -984,17 +984,38 @@ ORDER BY m.EstimatedCostCad DESC;
 WITH TopTargets AS (
     SELECT TOP (@take) m.Id, m.ProjectName, m.ProjectStage, m.Province, m.MunicipalityName, m.ProponentName,
         e.ResultJson AS FirstPassBrief, m.EstimatedCostCad,
-        (SELECT COUNT(*) FROM opportunities.IntelProjectAction a WHERE a.MajorProjectsInventoryId = m.Id) AS ActionCount
+        (SELECT COUNT(*) FROM opportunities.IntelProjectAction a WHERE a.MajorProjectsInventoryId = m.Id) AS ActionCount,
+        eh0.HonedAtUtc, eh0.Verdict
     FROM opportunities.MajorProjectsInventory m
     INNER JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBrief'
         AND e.LastRefreshAtUtc >= DATEADD(DAY, -@firstPassMaxAgeDays, sysdatetimeoffset())
+    -- Latest honing row per project: its age drives priority.
+    OUTER APPLY (
+        SELECT TOP 1 eh.LastRefreshAtUtc AS HonedAtUtc,
+            COALESCE(NULLIF(JSON_VALUE(eh.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(eh.ResultJson,'$.verdict'),'')) AS Verdict
+        FROM opportunities.MajorProjectEnrichment eh
+        WHERE eh.MajorProjectsInventoryId = m.Id AND eh.ProviderName = N'ProjectBriefHoning' AND eh.ResultJson IS NOT NULL
+        ORDER BY eh.Id DESC) eh0
     WHERE m.RetiredAtUtc IS NULL
       AND m.ProjectStage IN (N'CapitalPlan',N'Planned',N'Concept',N'Design',N'Permitting',N'Procurement',N'Approved',N'Announced')
       AND (@category IS NULL OR m.ProjectCategoryName = @category)
       AND (@province IS NULL OR m.Province = @province)
       AND e.ResultJson IS NOT NULL AND LEN(e.ResultJson) > 200
-      AND (@includeRecentlyHoned = 1 OR NOT EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment eh WHERE eh.MajorProjectsInventoryId = m.Id AND eh.ProviderName = N'ProjectBriefHoning' AND eh.LastRefreshAtUtc >= DATEADD(DAY, -30, sysdatetimeoffset())))
-    ORDER BY ActionCount DESC, m.EstimatedCostCad DESC
+      -- STALENESS GATE (2026-07-10, replaces the flat 30-day exclusion): a
+      -- verdict is due for re-hone once it exceeds its class TTL - URGENT 7d,
+      -- PURSUE 30d, everything else 90d - so active pursuits refresh weekly and
+      -- the long tail can never quietly age past its window. Never-honed rows
+      -- (HonedAtUtc NULL) are always due.
+      AND (@includeRecentlyHoned = 1 OR eh0.HonedAtUtc IS NULL OR eh0.HonedAtUtc < DATEADD(DAY,
+            -CASE eh0.Verdict WHEN N'PURSUE_URGENT' THEN 7 WHEN N'PURSUE' THEN 30 ELSE 90 END,
+            sysdatetimeoffset()))
+    -- STALENESS-FIRST ORDER (was: ActionCount DESC, cost DESC - which starved
+    -- the stale tail while re-honing high-value rows repeatedly). Oldest-honed
+    -- and never-honed lead, so the same nightly budget always attacks the most
+    -- overdue verdicts and the whole pool cycles by age. Value breaks ties.
+    ORDER BY CASE WHEN eh0.HonedAtUtc IS NULL THEN 0 ELSE 1 END,
+             eh0.HonedAtUtc ASC,
+             ActionCount DESC, m.EstimatedCostCad DESC
 )
 SELECT * FROM TopTargets;
 "@
