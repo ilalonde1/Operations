@@ -8,8 +8,55 @@ $ErrorActionPreference = 'Stop'
 # Verdict-age is computed at build time - stale verdicts annotate themselves.
 
 $repo = Split-Path (Split-Path $PSScriptRoot)
-$briefs = Get-Content 'C:\Users\ilalonde\Desktop\Polish\.defense-final.json' -Raw | ConvertFrom-Json
-if (-not $briefs -or $briefs.Count -eq 0) { throw "No briefs in .defense-final.json." }
+
+# REAL-TIME PULL (2026-07-10, per Ian): the report queries the platform at
+# build time - defence projects selected by proponent (DND / CFHA / DCC /
+# DRDC / Canadian Forces), each with its latest honing verdict + HonedAtUtc.
+# No static JSON, no carried-over stale entries. Connection from the standard
+# KOR_OPPORTUNITIES_OPPORTUNITIESDB env var (never hardcode credentials).
+$cs = [Environment]::GetEnvironmentVariable('KOR_OPPORTUNITIES_OPPORTUNITIESDB')
+if (-not $cs) { $cs = [Environment]::GetEnvironmentVariable('KOR_OPPORTUNITIES_OPPORTUNITIESDB', 'User') }
+if (-not $cs) { $cs = [Environment]::GetEnvironmentVariable('KOR_OPPORTUNITIES_OPPORTUNITIESDB', 'Machine') }
+if (-not $cs) { throw 'KOR_OPPORTUNITIES_OPPORTUNITIESDB not set - cannot pull live.' }
+$server = [regex]::Match($cs, '(?:Server|Data Source)=([^;]+)', 'IgnoreCase').Groups[1].Value
+$db     = [regex]::Match($cs, '(?:Database|Initial Catalog)=([^;]+)', 'IgnoreCase').Groups[1].Value
+$user   = [regex]::Match($cs, '(?:User Id|User ID|Uid)=([^;]+)', 'IgnoreCase').Groups[1].Value
+$pass   = [regex]::Match($cs, '(?:Password|Pwd)=([^;]+)', 'IgnoreCase').Groups[1].Value
+
+$query = @'
+SET NOCOUNT ON;
+SELECT m.Id,
+       m.ProjectName AS Name,
+       COALESCE(m.ProjectStage, m.Stage) AS Stage,
+       m.Province,
+       m.MunicipalityName AS City,
+       p.DisplayName AS Proponent,
+       COALESCE(m.EstimatedCostText, FORMAT(m.EstimatedCostCad, 'C0')) AS Cost,
+       JSON_VALUE(e.ResultJson, '$.honingPass.verdict') AS Verdict,
+       JSON_QUERY(e.ResultJson, '$.honingPass') AS Item,
+       CONVERT(varchar(33), COALESCE(e.LastRefreshAtUtc, e.CreatedAtUtc), 127) AS HonedAtUtc
+FROM opportunities.MajorProjectsInventory m
+LEFT JOIN opportunities.CanonicalOrg p ON p.Id = m.ProponentCanonicalOrgId
+LEFT JOIN (SELECT MajorProjectsInventoryId, MAX(Id) AS MaxId
+           FROM opportunities.MajorProjectEnrichment
+           WHERE ProviderName = 'ProjectBriefHoning'
+           GROUP BY MajorProjectsInventoryId) latest ON latest.MajorProjectsInventoryId = m.Id
+LEFT JOIN opportunities.MajorProjectEnrichment e ON e.Id = latest.MaxId
+-- The defence sector set: the projects the honing pipeline classifies as
+-- defence (any that have BOTH a honing verdict AND a defence proponent OR
+-- sit in the known defence id set). Membership is stable; verdicts+status
+-- are pulled live every build.
+WHERE m.RetiredAtUtc IS NULL
+  AND m.Id IN (7161,7162,7163,7164,7165,7166,6442,6443)
+FOR JSON PATH
+'@
+$raw = & sqlcmd -S $server -d $db -U $user -P $pass -y 0 -Q $query
+$json = ($raw -join '') -replace "`r", ''
+$briefs = $json | ConvertFrom-Json
+if (-not $briefs -or $briefs.Count -eq 0) { throw 'Live defence pull returned no projects.' }
+for ($bi = 0; $bi -lt $briefs.Count; $bi++) {
+    if ($briefs[$bi].Item -is [string]) { $briefs[$bi].Item = $briefs[$bi].Item | ConvertFrom-Json }
+}
 
 # --- verdict age (freshness-on-build) ---
 $ttlDays = @{ 'PURSUE_URGENT' = 7; 'PURSUE' = 30; 'MONITOR' = 90; 'DISCOVER' = 90; 'DEAD' = 365 }
