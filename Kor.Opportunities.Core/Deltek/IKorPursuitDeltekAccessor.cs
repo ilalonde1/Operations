@@ -15,10 +15,21 @@ public interface IKorPursuitDeltekAccessor
     Task<IReadOnlyList<DeltekPursuitRow>> GetExplicitStagePursuitsAsync(CancellationToken ct);
 
     /// <summary>
-    /// Returns PR rows where ChargeType='P' (Promotional / pursuit cost tracking).
-    /// Older historical pursuit records predate PR.Stage flagging.
+    /// Returns PR rows where ChargeType='P' (Promotional / pursuit cost tracking)
+    /// that are NOT already covered by the explicit-stage query — the two result
+    /// sets are mutually exclusive so one real pursuit can never sync under two
+    /// external-source identities (audit-v2 #11).
     /// </summary>
     Task<IReadOnlyList<DeltekPursuitRow>> GetPromotionalPursuitsAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Returns the current PR rows for specific WBS1 keys — the won-transition
+    /// sweep (audit-v2 #11). This Deltek has no 'Won' stage code: a won pursuit's
+    /// Stage becomes '~WDEF~' (it became a project) and the row drops out of both
+    /// pull queries, freezing the KorPursuits copy at Pursuing forever without
+    /// this targeted lookup.
+    /// </summary>
+    Task<IReadOnlyList<DeltekPursuitRow>> GetPursuitsByWbs1Async(IReadOnlyCollection<string> wbs1Keys, CancellationToken ct);
 }
 
 public sealed record DeltekPursuitRow(

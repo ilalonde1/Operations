@@ -27,8 +27,42 @@ public sealed class DeltekKorPursuitDeltekAccessor : IKorPursuitDeltekAccessor
     public Task<IReadOnlyList<DeltekPursuitRow>> GetExplicitStagePursuitsAsync(CancellationToken ct)
         => QueryAsync("pr.Stage IN ('InPursuit', 'LOST', 'DNP')", ct);
 
+    // Audit-v2 #11: mutually exclusive with the explicit-stage query — a
+    // P-charged row with an explicit pursuit stage previously synced under BOTH
+    // external-source identities, forking one real pursuit into two rows.
+    // '~WDEF~' rows (won — the pursuit became a project) are excluded here and
+    // handled by the targeted won-transition sweep.
     public Task<IReadOnlyList<DeltekPursuitRow>> GetPromotionalPursuitsAsync(CancellationToken ct)
-        => QueryAsync("pr.ChargeType = 'P'", ct);
+        => QueryAsync("pr.ChargeType = 'P' AND (pr.Stage IS NULL OR pr.Stage NOT IN ('InPursuit', 'LOST', 'DNP', '~WDEF~'))", ct);
+
+    public Task<IReadOnlyList<DeltekPursuitRow>> GetPursuitsByWbs1Async(IReadOnlyCollection<string> wbs1Keys, CancellationToken ct)
+    {
+        if (wbs1Keys.Count == 0)
+        {
+            return Task.FromResult<IReadOnlyList<DeltekPursuitRow>>(Array.Empty<DeltekPursuitRow>());
+        }
+
+        // WBS1 keys are Deltek-issued project numbers; quote-escape and inline in
+        // capped chunks (ODBC parameter arrays aren't supported by this driver).
+        var results = new List<DeltekPursuitRow>();
+        return FetchChunksAsync();
+
+        async Task<IReadOnlyList<DeltekPursuitRow>> FetchChunksAsync()
+        {
+            const int chunkSize = 200;
+            var keys = new List<string>(wbs1Keys);
+            for (var i = 0; i < keys.Count; i += chunkSize)
+            {
+                ct.ThrowIfCancellationRequested();
+                var chunk = keys.GetRange(i, Math.Min(chunkSize, keys.Count - i));
+                var inList = string.Join(", ", chunk.ConvertAll(k => "'" + k.Replace("'", "''") + "'"));
+                var rows = await QueryAsync($"pr.WBS1 IN ({inList})", ct).ConfigureAwait(false);
+                results.AddRange(rows);
+            }
+
+            return results;
+        }
+    }
 
     private Task<IReadOnlyList<DeltekPursuitRow>> QueryAsync(string predicate, CancellationToken ct)
     {

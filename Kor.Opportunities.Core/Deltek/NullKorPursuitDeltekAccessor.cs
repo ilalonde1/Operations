@@ -13,4 +13,7 @@ public sealed class NullKorPursuitDeltekAccessor : IKorPursuitDeltekAccessor
 
     public Task<IReadOnlyList<DeltekPursuitRow>> GetPromotionalPursuitsAsync(CancellationToken ct)
         => Task.FromResult<IReadOnlyList<DeltekPursuitRow>>(Array.Empty<DeltekPursuitRow>());
+
+    public Task<IReadOnlyList<DeltekPursuitRow>> GetPursuitsByWbs1Async(IReadOnlyCollection<string> wbs1Keys, CancellationToken ct)
+        => Task.FromResult<IReadOnlyList<DeltekPursuitRow>>(Array.Empty<DeltekPursuitRow>());
 }

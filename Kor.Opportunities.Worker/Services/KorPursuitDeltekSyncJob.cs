@@ -74,12 +74,33 @@ public sealed class KorPursuitDeltekSyncJob : IJob
             Count(await TrySyncAsync(row, PursuitExternalSources.DeltekPRProposals, ct).ConfigureAwait(false));
         }
 
+        // Audit-v2 #11 — won-transition sweep. A won pursuit's Deltek Stage
+        // becomes '~WDEF~' and drops out of both pull queries, so without this
+        // the KorPursuits copy froze at Pursuing/Considering forever. Look up
+        // the current Deltek rows for our still-open synced pursuits and let the
+        // normal upsert path (MapStage now handles ~WDEF~ -> Won) transition them.
+        var wonTransitions = 0;
+        var openKeys = await LoadOpenDeltekPursuitKeysAsync(ct).ConfigureAwait(false);
+        if (openKeys.Count > 0)
+        {
+            var current = await _accessor.GetPursuitsByWbs1Async(openKeys, ct).ConfigureAwait(false);
+            foreach (var row in current)
+            {
+                if (string.Equals(row.Stage, "~WDEF~", StringComparison.OrdinalIgnoreCase))
+                {
+                    Count(await TrySyncAsync(row, PursuitExternalSources.DeltekPR, ct).ConfigureAwait(false));
+                    wonTransitions++;
+                }
+            }
+        }
+
         _logger.LogInformation(
-            "KorPursuit Deltek sync: explicit={Explicit} promotional={Promotional} inserted={Inserted} updated={Updated} resolutionFailures={Failures} elapsedMs={Ms}.",
+            "KorPursuit Deltek sync: explicit={Explicit} promotional={Promotional} inserted={Inserted} updated={Updated} wonTransitions={Won} resolutionFailures={Failures} elapsedMs={Ms}.",
             explicitRows.Count,
             promotionalRows.Count,
             inserted,
             updated,
+            wonTransitions,
             failures,
             sw.ElapsedMilliseconds);
 
@@ -159,7 +180,8 @@ SET
     KorBusinessDeveloper = COALESCE(KorBusinessDeveloper, @bizDev),
     KorProposalManager = COALESCE(KorProposalManager, @propMgr),
     UpdatedAtUtc = sysdatetimeoffset()
-WHERE ExternalSource = @extSource AND ExternalSourceKey = @extKey;
+WHERE ExternalSourceKey = @extKey
+  AND ExternalSource IN (N'Deltek.PR', N'Deltek.PRProposals');
 
 IF @@ROWCOUNT = 0
 BEGIN
@@ -234,6 +256,11 @@ SELECT @inserted;";
         if (string.Equals(stage, "InPursuit", StringComparison.OrdinalIgnoreCase)) return PursuitStages.Pursuing;
         if (string.Equals(stage, "LOST", StringComparison.OrdinalIgnoreCase)) return PursuitStages.Lost;
         if (string.Equals(stage, "DNP", StringComparison.OrdinalIgnoreCase)) return PursuitStages.Declined;
+        // Audit-v2 #11: this Deltek has no 'Won' stage code — a won pursuit's
+        // Stage becomes '~WDEF~' when it converts into a project (verified live:
+        // 9,296 ~WDEF~ rows, zero 'Won' rows). Reached via the won-transition
+        // sweep; the two pull queries exclude ~WDEF~.
+        if (string.Equals(stage, "~WDEF~", StringComparison.OrdinalIgnoreCase)) return PursuitStages.Won;
         if (string.Equals(chargeType, "P", StringComparison.OrdinalIgnoreCase)) return PursuitStages.Considering;
         return PursuitStages.Considering;
     }
@@ -242,5 +269,31 @@ SELECT @inserted;";
     {
         var trimmed = value?.Trim();
         return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+    }
+
+    /// <summary>
+    /// WBS1 keys of Deltek-synced pursuits still in a non-terminal stage — the
+    /// candidates for the won-transition sweep.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> LoadOpenDeltekPursuitKeysAsync(CancellationToken ct)
+    {
+        const string sql = @"
+SELECT DISTINCT ExternalSourceKey
+FROM opportunities.KorPursuits
+WHERE ExternalSource IN (N'Deltek.PR', N'Deltek.PRProposals')
+  AND Stage IN (N'Considering', N'Pursuing', N'Submitted')
+  AND ExternalSourceKey IS NOT NULL;";
+
+        var keys = new List<string>();
+        await using var con = new SqlConnection(_options.Value.OpportunitiesDb);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            keys.Add(reader.GetString(0));
+        }
+
+        return keys;
     }
 }
