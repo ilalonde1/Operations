@@ -20,7 +20,9 @@ $emit = Join-Path $env:TEMP "kor-sector-$Key.json"
 & dotnet run --project (Join-Path $repo 'tools\BdSynthesisSmoke') -- emit $Key $emit 2>&1 |
     Where-Object { $_ -match '^emit:' } | ForEach-Object { Write-Host "  $_" }
 if (-not (Test-Path $emit)) { throw "emit produced no data for sector '$Key'." }
-$rows = Get-Content $emit -Raw | ConvertFrom-Json
+$data = Get-Content $emit -Raw | ConvertFrom-Json
+$rows = @($data.projects)
+$market = @($data.market)
 if (-not $rows) { $rows = @() }
 
 # verdict age (freshness-on-build)
@@ -121,37 +123,71 @@ if ($rollup.Count -gt 0) {
     [void]$sb.Append('</ul></section>')
 }
 
+# Full detail card (actions loud on top, then facts, status, description,
+# schedule, people, recent signals) - the density the old reports had.
+function DetailCard { param($p, $pill)
+    $h = "<h3>$(E $p.name) $pill $(AgeChip $p)</h3>"
+    $h += (ActionsHtml $p)
+    $h += "<dl class=""map""><div><dt>Where</dt><dd>$(E $p.city), $(E $p.province)</dd></div><div><dt>Owner</dt><dd>$(E $p.proponent)</dd></div>"
+    if ($p.cost)  { $h += "<div><dt>Value</dt><dd>$(E $p.cost)</dd></div>" }
+    if ($p.stage) { $h += "<div><dt>Stage</dt><dd>$(E $p.stage)</dd></div>" }
+    $h += '</dl>'
+    if ($p.status)      { $h += "<p><strong>Status.</strong> $(E $p.status)</p>" }
+    if ($p.description -and $p.description -ne $p.status) { $h += "<p>$(E $p.description)</p>" }
+    if ($p.schedule)    { $h += "<p class=""muted""><strong>Schedule.</strong> $(E $p.schedule)</p>" }
+    $ppl = @($p.keyPeople)
+    if ($ppl.Count -gt 0) {
+        $items = ($ppl | Select-Object -First 5 | ForEach-Object {
+            $s = E $_.name; if ($_.title) { $s += " &#8212; $(E $_.title)" }; if ($_.side) { $s += " <span class=""who"">($(E $_.side))</span>" }; $s }) -join '; '
+        $h += "<p class=""muted""><strong>Key people.</strong> $items</p>"
+    }
+    $sig = @($p.signals)
+    if ($sig.Count -gt 0) {
+        $h += '<ul class="plain">'
+        foreach ($s in ($sig | Select-Object -First 3)) {
+            $l = E $s.subject; if ($s.detail) { $l += " &#8212; $(E $s.detail)" }; if ($s.occurredAt) { $l += " <span class=""who"">[$(E $s.occurredAt)]</span>" }
+            $h += "<li>$l</li>"
+        }
+        $h += '</ul>'
+    }
+    return $h
+}
+
 if ($urgent.Count -gt 0) {
     [void]$sb.Append('<section><p class="kicker">01 &#183; Urgent</p><h2>Act now</h2>')
-    foreach ($p in $urgent) {
-        [void]$sb.Append("<h3>$(E $p.name) <span class=""pill pill--live"">URGENT</span> $(AgeChip $p)</h3>")
-        [void]$sb.Append((ActionsHtml $p))
-        [void]$sb.Append("<dl class=""map""><div><dt>Where</dt><dd>$(E $p.city), $(E $p.province)</dd></div><div><dt>Owner</dt><dd>$(E $p.proponent)</dd></div>")
-        if ($p.cost)  { [void]$sb.Append("<div><dt>Value</dt><dd>$(E $p.cost)</dd></div>") }
-        if ($p.stage) { [void]$sb.Append("<div><dt>Stage</dt><dd>$(E $p.stage)</dd></div>") }
-        [void]$sb.Append('</dl>')
-        if ($p.status)   { [void]$sb.Append("<p>$(E $p.status)</p>") }
-    }
+    foreach ($p in $urgent) { [void]$sb.Append((DetailCard $p '<span class="pill pill--live">URGENT</span>')) }
     [void]$sb.Append('</section>')
 }
 if ($pursue.Count -gt 0) {
     [void]$sb.Append('<section><p class="kicker">02 &#183; Pursue</p><h2>Open windows</h2>')
-    foreach ($p in $pursue) {
-        [void]$sb.Append("<h3>$(E $p.name) <span class=""pill pill--watch"">PURSUE</span> $(AgeChip $p)</h3>")
-        [void]$sb.Append((ActionsHtml $p))
-        if ($p.status)   { [void]$sb.Append("<p>$(E $p.status)</p>") }
-    }
+    foreach ($p in $pursue) { [void]$sb.Append((DetailCard $p '<span class="pill pill--watch">PURSUE</span>')) }
     [void]$sb.Append('</section>')
 }
 if ($monitor.Count -gt 0) {
-    [void]$sb.Append('<section><p class="kicker">03 &#183; Monitor</p><h2>Watching</h2><div class="table-wrap"><table><thead><tr><th>Project</th><th>Owner</th><th>Prov</th><th>Age</th><th>Why</th></tr></thead><tbody>')
-    foreach ($p in $monitor) {
-        $ageCell = if ($null -eq $p.AgeDays) { '?' } elseif ($p.IsStale) { "$($p.AgeDays)d!" } else { "$($p.AgeDays)d" }
+    # Cap the table so big sectors don't produce pages of sparse "watching":
+    # show the top 25 by value, summarize the rest as a count.
+    $monShown = @($monitor | Sort-Object { if ($_.costNum) { [double]$_.costNum } else { 0 } } -Descending | Select-Object -First 25)
+    $more = $monitor.Count - $monShown.Count
+    $hdr = if ($more -gt 0) { "Watching &#8212; top $($monShown.Count) of $($monitor.Count) by value" } else { 'Watching' }
+    [void]$sb.Append("<section><p class=""kicker"">03 &#183; Monitor</p><h2>$hdr</h2><div class=""table-wrap""><table><thead><tr><th>Project</th><th>Owner</th><th>Prov</th><th>Value</th><th>Why</th></tr></thead><tbody>")
+    foreach ($p in $monShown) {
         $why = if ($p.korAngle) { $p.korAngle } else { $p.status }
-        if ($why -and ([string]$why).Length -gt 150) { $why = ([string]$why).Substring(0,150) + '...' }
-        [void]$sb.Append("<tr><td>$(E $p.name)</td><td>$(E $p.proponent)</td><td>$(E $p.province)</td><td>$ageCell</td><td>$(E $why)</td></tr>")
+        if ($why -and ([string]$why).Length -gt 140) { $why = ([string]$why).Substring(0,140) + '...' }
+        [void]$sb.Append("<tr><td>$(E $p.name)</td><td>$(E $p.proponent)</td><td>$(E $p.province)</td><td>$(E $p.cost)</td><td>$(E $why)</td></tr>")
     }
-    [void]$sb.Append('</tbody></table></div></section>')
+    [void]$sb.Append('</tbody></table></div>')
+    if ($more -gt 0) { [void]$sb.Append("<p class=""muted"">&#43; $more more monitored project(s) below the top-value cut &#8212; all live in the platform.</p>") }
+    [void]$sb.Append('</section>')
+}
+if ($market.Count -gt 0) {
+    [void]$sb.Append('<section><p class="kicker">05 &#183; Market signals</p><h2>What''s moving in this market</h2><ul class="plain">')
+    foreach ($s in ($market | Select-Object -First 15)) {
+        $l = "<strong>$(E $s.DisplayName)</strong> &#8212; $(E $s.Subject)"
+        if ($s.Detail) { $d = [string]$s.Detail; if ($d.Length -gt 180) { $d = $d.Substring(0,180) + '...' }; $l += ": $(E $d)" }
+        if ($s.OccurredAtApprox) { $l += " <span class=""who"">[$(E $s.OccurredAtApprox)]</span>" }
+        [void]$sb.Append("<li>$l</li>")
+    }
+    [void]$sb.Append('</ul></section>')
 }
 if ($dead.Count -gt 0) {
     [void]$sb.Append('<section><p class="kicker">04 &#183; Closed out</p><h2>Dead, reasons on record</h2><ul class="plain">')
