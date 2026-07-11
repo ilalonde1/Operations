@@ -92,6 +92,26 @@ public sealed class CanonicalOrgResolverTests
         Assert.False(store.Orgs.Single(o => o.Id == liveId).Retired);         // live org untouched
     }
 
+    // Audit-v2 #5: a CURATION retiree (procurement noise, junk purge) must neither
+    // resurrect (the curation decision stands) nor mint a live twin — it is reused
+    // cold, keeping the graph converged on the row a human already ruled on.
+    [Fact]
+    public async Task CurationRetiredOrg_IsReusedCold_NeverResurrectedOrTwinned()
+    {
+        var store = new FakeCanonicalOrgStore();
+        var curatedId = store.AddOrg("Procurement Noise Vendor", retired: true);
+        store.Orgs.Single(o => o.Id == curatedId).RetiredReason = "Curation m84: procurement noise purge";
+        var resolver = CreateResolver(store);
+
+        var resolved = await resolver.ResolveAsync(
+            "Procurement Noise Vendor", OrgKinds.Vendor, Source, CancellationToken.None);
+
+        Assert.Equal(curatedId, resolved);                                    // reused — no live twin
+        Assert.Equal(0, store.UnretireCalls);                                 // curation decision stands
+        Assert.True(store.Orgs.Single(o => o.Id == curatedId).Retired);
+        Assert.Single(store.Orgs);
+    }
+
     // The critical safety guard: a dedup LOSER (merged into a survivor) must never be
     // resurrected — that would silently undo the merge and re-create the duplicate.
     [Fact]
@@ -364,15 +384,19 @@ public sealed class CanonicalOrgResolverTests
             return Task.CompletedTask;
         }
 
-        public Task<long?> FindResurrectableRetiredAsync(string normalizedName, CancellationToken ct)
+        public Task<(long Id, bool InactivityArchived)?> FindResurrectableRetiredAsync(string normalizedName, CancellationToken ct)
         {
             // Eligible = a retired org matching the strict normalized name that is NOT
-            // a dedup loser (never resurrect a merged-away org). Exactly one, else null.
+            // a dedup loser (never reuse a merged-away org). Exactly one, else null.
             var matches = Orgs
                 .Where(o => o.Retired && Normalize(o) == normalizedName && !_mergeLedger.ContainsKey(o.Id))
-                .Select(o => o.Id)
                 .ToList();
-            return Task.FromResult<long?>(matches.Count == 1 ? matches[0] : null);
+            if (matches.Count != 1) return Task.FromResult<(long, bool)?>(null);
+            var m = matches[0];
+            var inactivity = m.RetiredReason is not null
+                && (m.RetiredReason.StartsWith("Born-archived", StringComparison.OrdinalIgnoreCase)
+                    || m.RetiredReason.StartsWith("Low-value auto-archive", StringComparison.OrdinalIgnoreCase));
+            return Task.FromResult<(long, bool)?>((m.Id, inactivity));
         }
 
         public Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)
@@ -551,6 +575,9 @@ public sealed class CanonicalOrgResolverTests
         public string? WebsiteDomain { get; set; } = string.IsNullOrWhiteSpace(websiteDomain) ? null : websiteDomain;
         public string? Notes { get; set; } = notes;
         public bool Retired { get; set; } = retired;
+        // Mirrors CanonicalOrg.RetiredReason classification: inactivity-archived
+        // rows may resurrect; curation retirees only ever get reused cold.
+        public string? RetiredReason { get; set; } = retired ? "Born-archived on intake (test default)" : null;
         public int AffiliationCount { get; set; } = affiliationCount;
         public int EnrichmentCount { get; set; } = enrichmentCount;
     }

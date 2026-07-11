@@ -328,32 +328,40 @@ public sealed class CanonicalOrgResolver
             // (research imports, Deltek sync) actually bring an org back to life.
             if (allowCreate && !string.IsNullOrEmpty(normalized))
             {
-                var archivedId = await _store.FindResurrectableRetiredAsync(normalized, ct).ConfigureAwait(false);
-                if (archivedId.HasValue)
+                var archived = await _store.FindResurrectableRetiredAsync(normalized, ct).ConfigureAwait(false);
+                if (archived is { } match)
                 {
-                    if (createArchived)
+                    // Resurrect ONLY when a deliberate (non-firehose) caller re-references
+                    // a row that was archived purely for dormancy. Everything else —
+                    // firehose re-touches AND curation retirees (procurement noise,
+                    // junk purges) — reuses the archived identity cold: no live twin,
+                    // no churn, and curation decisions stay made.
+                    if (!createArchived && match.InactivityArchived
+                        && await _store.UnretireAsync(
+                            match.Id,
+                            $"Resurrected on reference from source '{source}' ('{cleaned}')",
+                            ct).ConfigureAwait(false))
                     {
-                        canonicalId = archivedId.Value;
-                        classifiedBy = "auto-reuse-archived";
-                        aliasNotes = "Reused retired CanonicalOrg without resurrecting (firehose keep-cold)";
-                        _logger.LogDebug(
-                            "Reused retired CanonicalOrg {Id} for '{RawName}' from firehose source '{Source}' (kept cold).",
-                            archivedId.Value,
-                            cleaned,
-                            source);
-                    }
-                    else if (await _store.UnretireAsync(
-                        archivedId.Value,
-                        $"Resurrected on reference from source '{source}' ('{cleaned}')",
-                        ct).ConfigureAwait(false))
-                    {
-                        canonicalId = archivedId.Value;
+                        canonicalId = match.Id;
                         classifiedBy = "auto-resurrect";
                         aliasNotes = "Resurrected retired CanonicalOrg on a new reference";
                         ResurrectedFromArchiveCounter.Add(1);
                         _logger.LogInformation(
                             "Resurrected retired CanonicalOrg {Id} for '{RawName}' from source '{Source}'.",
-                            archivedId.Value,
+                            match.Id,
+                            cleaned,
+                            source);
+                    }
+                    else
+                    {
+                        canonicalId = match.Id;
+                        classifiedBy = "auto-reuse-archived";
+                        aliasNotes = createArchived
+                            ? "Reused retired CanonicalOrg without resurrecting (firehose keep-cold)"
+                            : "Reused retired CanonicalOrg without resurrecting (curation-retired stays cold)";
+                        _logger.LogDebug(
+                            "Reused retired CanonicalOrg {Id} for '{RawName}' from source '{Source}' (kept cold).",
+                            match.Id,
                             cleaned,
                             source);
                     }

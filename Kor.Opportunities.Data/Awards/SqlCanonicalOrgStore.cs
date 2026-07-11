@@ -609,21 +609,26 @@ FROM (
         return v is null or DBNull ? 0 : Convert.ToInt32(v);
     }
 
-    public async Task<long?> FindResurrectableRetiredAsync(string normalizedName, CancellationToken ct)
+    public async Task<(long Id, bool InactivityArchived)?> FindResurrectableRetiredAsync(string normalizedName, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(normalizedName)) return null;
 
-        // Only a retired org archived for INACTIVITY (born-archived on intake, or
-        // low-value auto-archive) may come back on a new reference — never a dedup
-        // loser (merged into a survivor), because resurrecting that undoes the merge
-        // and re-creates the duplicate the dedup pass carefully removed. Require
+        // Any retired org that is NOT a dedup loser may be REUSED on a new reference
+        // — never a merge loser (reusing that undoes the merge and re-creates the
+        // duplicate the dedup pass carefully removed). Whether the row may also be
+        // RESURRECTED is the caller's call, driven by InactivityArchived: only
+        // dormancy-archived rows (born-archived on intake / low-value auto-archive)
+        // come back to life; curation retirees (procurement noise, junk purges) are
+        // reused cold so they neither resurrect nor mint a live twin. Require
         // exactly one strict-normalized-name match; ambiguity falls through to create.
         const string sql = @"
-SELECT co.Id
+SELECT co.Id,
+       CASE WHEN co.RetiredReason LIKE N'Born-archived%'
+              OR co.RetiredReason LIKE N'Low-value auto-archive%'
+            THEN 1 ELSE 0 END AS InactivityArchived
 FROM opportunities.CanonicalOrg co
 WHERE co.NormalizedName = @norm
   AND co.RetiredAtUtc IS NOT NULL
-  AND (co.RetiredReason LIKE N'Born-archived%' OR co.RetiredReason LIKE N'Low-value auto-archive%')
   AND NOT EXISTS (
       SELECT 1 FROM opportunities.CanonicalOrgMerge m
       WHERE m.MergedFromCanonicalOrgId = co.Id);";
@@ -633,12 +638,12 @@ WHERE co.NormalizedName = @norm
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         cmd.Parameters.Add("@norm", SqlDbType.NVarChar, 300).Value = normalizedName;
 
-        long? found = null;
+        (long, bool)? found = null;
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         if (await r.ReadAsync(ct).ConfigureAwait(false))
         {
-            found = r.GetInt64(0);
-            // A second eligible row means the name is ambiguous — do not resurrect.
+            found = (r.GetInt64(0), r.GetInt32(1) == 1);
+            // A second eligible row means the name is ambiguous — do not reuse.
             if (await r.ReadAsync(ct).ConfigureAwait(false)) return null;
         }
         return found;
