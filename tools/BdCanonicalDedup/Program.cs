@@ -1039,7 +1039,17 @@ SET @rows += @@ROWCOUNT;
 -- Preserve hand-curated/Apollo-enriched contacts by repointing affiliations to
 -- the survivor. AI-generated intel above is still deleted because it
 -- regenerates via BdIntelExtract after the canonical-org merge.
+--
+-- Audit-v2 #4: persons whose affiliation rows get DELETED here are tracked so
+-- the orphan-person sweep at the end can be scoped to THIS merge instead of
+-- table-wide (which used to destroy every org-less discovery stub in the DB).
+CREATE TABLE #TouchedPersons (IntelPersonId bigint NOT NULL);
+
+-- Drop a loser affiliation only when the survivor already holds a LIVE
+-- affiliation for that person. Previously this matched retired/stale survivor
+-- rows too — deleting a person's only LIVE affiliation in favour of a dead one.
 DELETE a
+OUTPUT deleted.IntelPersonId INTO #TouchedPersons (IntelPersonId)
 FROM opportunities.IntelPersonAffiliation a
 JOIN #Losers l ON l.Id = a.CanonicalOrgId
 WHERE EXISTS (
@@ -1047,16 +1057,47 @@ WHERE EXISTS (
     FROM opportunities.IntelPersonAffiliation s
     WHERE s.IntelPersonId = a.IntelPersonId
       AND s.CanonicalOrgId = @survivor
+      AND s.RetiredAtUtc IS NULL
 );
 SET @rows += @@ROWCOUNT;
 
+-- Clear retired survivor rows that would collide with a repointed loser row's
+-- recomputed NaturalKey (person|survivor|title is unfiltered-unique): the live
+-- loser stint supersedes the retired duplicate of the same title.
+DELETE s
+OUTPUT deleted.IntelPersonId INTO #TouchedPersons (IntelPersonId)
+FROM opportunities.IntelPersonAffiliation s
+WHERE s.CanonicalOrgId = @survivor
+  AND s.RetiredAtUtc IS NOT NULL
+  AND EXISTS (
+      SELECT 1
+      FROM opportunities.IntelPersonAffiliation a
+      JOIN #Losers l ON l.Id = a.CanonicalOrgId
+      WHERE a.IntelPersonId = s.IntelPersonId
+        AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                LOWER(LTRIM(RTRIM(COALESCE(a.Title,N'')))),
+                ' ',''),'.',''),',',''),'''',''),'-',''),'&',''),'/',''),'(',''),')',''),'+','')
+          = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                LOWER(LTRIM(RTRIM(COALESCE(s.Title,N'')))),
+                ' ',''),'.',''),',',''),'''',''),'-',''),'&',''),'/',''),'(',''),')',''),'+','')
+  );
+SET @rows += @@ROWCOUNT;
+
+-- One affiliation per person survives the merge; prefer LIVE and current rows
+-- over retired/past ones (previously lowest-Id won, which could keep a dead
+-- stint and drop the live one).
 WITH RankedLoserAffiliations AS (
     SELECT a.Id,
-           ROW_NUMBER() OVER (PARTITION BY a.IntelPersonId ORDER BY a.Id) AS Rn
+           ROW_NUMBER() OVER (
+               PARTITION BY a.IntelPersonId
+               ORDER BY CASE WHEN a.RetiredAtUtc IS NULL THEN 0 ELSE 1 END,
+                        a.IsCurrent DESC,
+                        a.Id) AS Rn
     FROM opportunities.IntelPersonAffiliation a
     JOIN #Losers l ON l.Id = a.CanonicalOrgId
 )
 DELETE a
+OUTPUT deleted.IntelPersonId INTO #TouchedPersons (IntelPersonId)
 FROM opportunities.IntelPersonAffiliation a
 JOIN RankedLoserAffiliations r ON r.Id = a.Id
 WHERE r.Rn > 1;
@@ -1105,11 +1146,32 @@ SET
                 LOWER(LTRIM(RTRIM(COALESCE(a.Title,N'')))),
                 ' ',''),'.',''),',',''),'''',''),'-',''),'&',''),'/',''),'(',''),')',''),'+',''))
         AS VARCHAR(8000))), 2),
-    IsCurrent = 1,
-    LastSeenAtUtc = sysdatetimeoffset(),
     UpdatedAtUtc = sysdatetimeoffset()
 FROM opportunities.IntelPersonAffiliation a
 JOIN #Losers l ON l.Id = a.CanonicalOrgId;
+-- Audit-v2 #4: IsCurrent and LastSeenAtUtc are deliberately NOT touched — the
+-- old force-stamp (IsCurrent = 1, LastSeenAtUtc = now) fabricated current
+-- employment out of past stints on every merge.
+SET @affiliationRepoints += @@ROWCOUNT;
+
+-- Audit-v2 #4: rekey name|org NaturalKeys from loser org ids to the survivor.
+-- Without this, the next usp_ResolveOrCreateIntelPerson call computes
+-- name|org:<survivor>, misses the loser-keyed row, and mints a duplicate
+-- person — a latent duplicate factory on every merge. Skips a rekey whose
+-- target key is already taken (same-name person already at the survivor);
+-- that row stays findable via its email/linkedin/affiliation tiers.
+UPDATE p
+SET NaturalKey = tk.TargetKey,
+    UpdatedAtUtc = sysdatetimeoffset()
+FROM opportunities.IntelPerson p
+JOIN #Losers l
+    ON p.NaturalKey = CONVERT(CHAR(40), HASHBYTES('SHA1', CAST(
+        p.NormalizedName + N'|org:' + CONVERT(NVARCHAR(20), l.Id) AS VARCHAR(8000))), 2)
+CROSS APPLY (SELECT CONVERT(CHAR(40), HASHBYTES('SHA1', CAST(
+        p.NormalizedName + N'|org:' + CONVERT(NVARCHAR(20), @survivor) AS VARCHAR(8000))), 2) AS TargetKey) tk
+WHERE NOT EXISTS (
+    SELECT 1 FROM opportunities.IntelPerson x WHERE x.NaturalKey = tk.TargetKey
+);
 SET @affiliationRepoints += @@ROWCOUNT;
 
 -- People are NOT regenerable intel: BdIntelExtract cannot bring back Apollo
@@ -1143,14 +1205,19 @@ SET @rows += @@ROWCOUNT;
 DELETE i FROM opportunities.IntelSignal i WHERE i.SourceEnrichmentId IN (SELECT Id FROM #DyingIntelEnrichments);
 SET @rows += @@ROWCOUNT;
 
--- Orphan IntelPerson rows (no surviving affiliation).
+-- Orphan IntelPerson rows (no surviving affiliation) — SCOPED to persons whose
+-- affiliation rows were deleted by THIS merge. The old table-wide sweep deleted
+-- every affiliation-less person in the database on any merge, destroying
+-- first-pass discovery stubs that had nothing to do with the orgs being merged.
 DELETE p
 FROM opportunities.IntelPerson p
-WHERE NOT EXISTS (
+WHERE EXISTS (SELECT 1 FROM #TouchedPersons t WHERE t.IntelPersonId = p.Id)
+  AND NOT EXISTS (
     SELECT 1 FROM opportunities.IntelPersonAffiliation a WHERE a.IntelPersonId = p.Id
 );
 SET @rows += @@ROWCOUNT;
 
+DROP TABLE #TouchedPersons;
 DROP TABLE #DyingIntelEnrichments;
 SELECT @rows AS RowsDropped, @affiliationRepoints AS AffiliationsRepointed, @personsPreserved AS PersonsPreserved;";
 
