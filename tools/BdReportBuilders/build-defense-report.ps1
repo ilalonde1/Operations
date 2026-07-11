@@ -1,18 +1,17 @@
 $ErrorActionPreference = 'Stop'
-# BD-Audit-2026-06-09 M12: this builder was 100% hardcoded prose — regenerating
-# it reproduced the June-8 snapshot forever while .defense-final.json sat
-# unread. It now reads the JSON like the other sector builders. Defense-specific
-# framing (DCC procurement gates, security clearances, EllisDon strategic
-# observation) is kept as section intros; all project data comes from the JSON.
-# JSON shape: top-level Id/Name/Stage/Province/City/Proponent/Cost/Verdict,
-# honing intel nested under .Item (korAngle/status/schedule/description/...).
+# Defense sector report - canonical-template edition (2026-07-10).
+# The legacy Word-COM builder produced the old boxy look; this builder emits
+# the KOR document design system (tools/BdDocTemplate, single source of truth
+# for the <style> block) and renders the PDF via Format-BdWebPdf.ps1
+# (headless Edge). Data: Desktop\Polish\.defense-final.json (re-pull from
+# opportunities.MajorProjectEnrichment; entries carry HonedAtUtc).
+# Verdict-age is computed at build time - stale verdicts annotate themselves.
+
+$repo = Split-Path (Split-Path $PSScriptRoot)
 $briefs = Get-Content 'C:\Users\ilalonde\Desktop\Polish\.defense-final.json' -Raw | ConvertFrom-Json
-if (-not $briefs -or $briefs.Count -eq 0) {
-    throw "No briefs in .defense-final.json. Re-run the defense pull query."
-}
-# Verdict-age wiring (freshness-on-build, 2026-07-10): every verdict carries
-# HonedAtUtc; TTL per verdict class decides staleness. A report can no longer
-# silently reprint dead urgency - stale verdicts are annotated on their face.
+if (-not $briefs -or $briefs.Count -eq 0) { throw "No briefs in .defense-final.json." }
+
+# --- verdict age (freshness-on-build) ---
 $ttlDays = @{ 'PURSUE_URGENT' = 7; 'PURSUE' = 30; 'MONITOR' = 90; 'DISCOVER' = 90; 'DEAD' = 365 }
 $nowUtc = (Get-Date).ToUniversalTime()
 foreach ($b in $briefs) {
@@ -25,168 +24,124 @@ foreach ($b in $briefs) {
     $b | Add-Member -NotePropertyName AgeDays -NotePropertyValue $age -Force
     $b | Add-Member -NotePropertyName IsStale -NotePropertyValue $stale -Force
 }
-function AgeLine { param($b)
-    if ($null -eq $b.AgeDays) { return 'Verdict honed: (undated - treat as stale)' }
-    $d = [datetime]::Parse($b.HonedAtUtc).ToUniversalTime().ToString('yyyy-MM-dd')
-    $t = "Verdict honed: $d ($($b.AgeDays)d ago)"
-    if ($b.IsStale) { $t += ' - STALE, exceeds TTL for this verdict class; refresh before acting' }
-    return $t
-}
-$urgent = @($briefs | Where-Object {$_.Verdict -eq 'PURSUE_URGENT'})
-$pursue = @($briefs | Where-Object {$_.Verdict -in @('PURSUE','PURSUE_URGENT')})
+$urgent  = @($briefs | Where-Object {$_.Verdict -eq 'PURSUE_URGENT'})
+$pursue  = @($briefs | Where-Object {$_.Verdict -eq 'PURSUE'})
 $monitor = @($briefs | Where-Object {$_.Verdict -eq 'MONITOR'})
-$dead = @($briefs | Where-Object {$_.Verdict -eq 'DEAD'})
-$discover = @($briefs | Where-Object {$_.Verdict -eq 'DISCOVER'})
+$dead    = @($briefs | Where-Object {$_.Verdict -eq 'DEAD'})
+$fresh   = @($briefs | Where-Object { $null -ne $_.AgeDays -and -not $_.IsStale })
 
-$word = New-Object -ComObject Word.Application
-try {
-    $word.Visible = $false
-    $doc = $word.Documents.Add(); $sel = $word.Selection
-    $styles = $doc.Styles
-    $styles.Item('Heading 1').Font.Size = 16; $styles.Item('Heading 1').Font.Bold = $true
-    $styles.Item('Heading 1').ParagraphFormat.SpaceBefore = 0; $styles.Item('Heading 1').ParagraphFormat.SpaceAfter = 6
-    $styles.Item('Heading 2').Font.Size = 12; $styles.Item('Heading 2').Font.Bold = $true
-    $styles.Item('Heading 2').ParagraphFormat.SpaceBefore = 10; $styles.Item('Heading 2').ParagraphFormat.SpaceAfter = 3
-    $styles.Item('Heading 3').Font.Size = 10.5; $styles.Item('Heading 3').Font.Bold = $true
-    $styles.Item('Heading 3').ParagraphFormat.SpaceBefore = 6; $styles.Item('Heading 3').ParagraphFormat.SpaceAfter = 2
-    $styles.Item('Normal').Font.Size = 10; $styles.Item('Normal').ParagraphFormat.SpaceAfter = 4
-    $doc.PageSetup.TopMargin = 36; $doc.PageSetup.BottomMargin = 36; $doc.PageSetup.LeftMargin = 54; $doc.PageSetup.RightMargin = 54
+function E { param($s) if ($null -eq $s) { return '' }; [System.Net.WebUtility]::HtmlEncode([string]$s) }
+function AgeChip { param($b)
+    if ($null -eq $b.AgeDays) { return '<span class="pill pill--cold">UNDATED</span>' }
+    $d = [datetime]::Parse($b.HonedAtUtc).ToUniversalTime().ToString('yyyy-MM-dd')
+    if ($b.IsStale) { return "<span class=""pill pill--cold"">STALE - honed $d ($($b.AgeDays)d)</span>" }
+    return "<span class=""pill pill--fresh"">honed $d ($($b.AgeDays)d ago)</span>"
+}
 
-    function H1 { param($t) $sel.Style = $doc.Styles.Item('Heading 1'); $sel.TypeText($t); $sel.TypeParagraph() }
-    function H2 { param($t) $sel.Style = $doc.Styles.Item('Heading 2'); $sel.TypeText($t); $sel.TypeParagraph() }
-    function H3 { param($t) $sel.Style = $doc.Styles.Item('Heading 3'); $sel.TypeText($t); $sel.TypeParagraph() }
-    function P  { param($t) $sel.Style = $doc.Styles.Item('Normal');    $sel.TypeText($t); $sel.TypeParagraph() }
-    function B  { param($lbl, $val) $sel.Style = $doc.Styles.Item('Normal'); $sel.Font.Bold = 1; $sel.TypeText($lbl); $sel.Font.Bold = 0; $sel.TypeText($val); $sel.TypeParagraph() }
-    function Italic { param($t) $sel.Style = $doc.Styles.Item('Normal'); $sel.Font.Italic = 1; $sel.Font.Size = 9; $sel.TypeText($t); $sel.Font.Italic = 0; $sel.Font.Size = 10; $sel.TypeParagraph() }
-    function Safe { param($v, $max) if (-not $v) { return '' }; $s = [string]$v; if ($s.Length -le $max) { return $s }; return $s.Substring(0, $max) }
-    function MakeTable { param($headers, $rows)
-        $c = $headers.Count
-        if ($rows.Count -gt 0 -and -not ($rows[0] -is [System.Collections.IList] -or $rows[0] -is [array])) {
-            $chunked = New-Object System.Collections.ArrayList
-            for ($i = 0; $i -lt $rows.Count; $i += $c) {
-                $row = @()
-                for ($j = 0; $j -lt $c; $j++) {
-                    if ($i + $j -lt $rows.Count) { $row += [string]$rows[$i + $j] } else { $row += '' }
-                }
-                [void]$chunked.Add($row)
-            }
-            $rows = $chunked
+# --- canonical style from the single source of truth ---
+$tpl = Get-Content (Join-Path $repo 'tools\BdDocTemplate\reference-handbook.html') -Raw
+$style = $tpl.Substring($tpl.IndexOf('<style>'), $tpl.IndexOf('</style>') + 8 - $tpl.IndexOf('<style>'))
+$extra = @'
+<style>
+  .doc { max-width: 46rem; margin: 0 auto; padding: 0 1.5rem; }
+  @media print { .doc { max-width: none; padding: 0 16mm; }
+    html { font-size: 12.5px !important; }
+    .hero { padding: 12mm 16mm 8mm !important; }
+    .hero h1 { font-size: 24pt !important; } }
+</style>
+'@
+
+$sb = [System.Text.StringBuilder]::new()
+[void]$sb.Append('<title>KOR Defence Sector Report</title>').Append($style).Append($extra)
+
+[void]$sb.Append(@"
+<header class="hero"><div class="hero__wrap">
+<p class="hero__eyebrow">KOR Structural &#183; Sector Report &#183; Defence / Military</p>
+<h1>Defence &amp; military construction</h1>
+<p class="hero__lede">BC + Alberta pipeline with live DCC deadlines, named contacts, and today-true verdicts. Every verdict shows its age.</p>
+<div class="hero__meta">
+<span>BUILT $($nowUtc.ToString('yyyy-MM-dd HH:mm')) UTC</span>
+<span>$($briefs.Count) PROJECTS &#183; $($urgent.Count) URGENT</span>
+<span>FRESHNESS: $($fresh.Count)/$($briefs.Count) WITHIN WINDOW</span>
+</div></div></header><main class="doc">
+"@)
+
+# --- 01 urgent ---
+[void]$sb.Append('<section><p class="kicker">01 &#183; Urgent</p><h2>Act this week</h2>')
+foreach ($p in $urgent) {
+    [void]$sb.Append("<h3>$(E $p.Name) <span class=""pill pill--live"">URGENT</span> $(AgeChip $p)</h3>")
+    [void]$sb.Append("<dl class=""map"">")
+    [void]$sb.Append("<div><dt>Where</dt><dd>$(E $p.City), $(E $p.Province)</dd></div>")
+    [void]$sb.Append("<div><dt>Owner</dt><dd>$(E $p.Proponent)</dd></div>")
+    if ($p.Cost)  { [void]$sb.Append("<div><dt>Value</dt><dd>$(E $p.Cost)</dd></div>") }
+    if ($p.Stage) { [void]$sb.Append("<div><dt>Stage</dt><dd>$(E $p.Stage)</dd></div>") }
+    [void]$sb.Append('</dl>')
+    if ($p.Item.status) { [void]$sb.Append("<p>$(E $p.Item.status)</p>") }
+    $acts = @($p.Item.actions | Select-Object -First 3)
+    if ($acts.Count -gt 0) {
+        [void]$sb.Append('<ul class="plain">')
+        foreach ($a in $acts) {
+            $line = "<strong>$(E $a.type):</strong> $(E $a.recommendation)"
+            if ($a.targetPerson) { $line += " <span class=""path"">$(E $a.targetPerson)</span>" }
+            if ($a.timingNotes)  { $line += " &#8212; <em>$(E $a.timingNotes)</em>" }
+            [void]$sb.Append("<li>$line</li>")
         }
-        $r = $rows.Count + 1
-        $rng = $sel.Range; $tbl = $doc.Tables.Add($rng, $r, $c); $tbl.Style = "Table Grid"; $tbl.Range.Font.Size = 9
-        for ($i = 0; $i -lt $c; $i++) { $tbl.Cell(1, $i+1).Range.Text = $headers[$i]; $tbl.Cell(1, $i+1).Range.Bold = $true }
-        for ($r2 = 0; $r2 -lt $rows.Count; $r2++) {
-            for ($c2 = 0; $c2 -lt $c; $c2++) { $tbl.Cell($r2+2, $c2+1).Range.Text = [string]$rows[$r2][$c2] }
-        }
-        $word.Selection.EndKey(6) | Out-Null; $sel.TypeParagraph()
+        [void]$sb.Append('</ul>')
+    } elseif ($p.Item.korAngle) {
+        [void]$sb.Append("<div class=""box box--auto""><p class=""box__label"">KOR angle</p><p>$(E $p.Item.korAngle)</p></div>")
     }
+}
+[void]$sb.Append('</section>')
 
-    H1 'KOR Structural — Defense / Military BD Report'
-    Italic 'BC + Alberta defense and military construction pipeline, with named contacts and KOR action items. Generated from .defense-final.json (Sonnet first-pass + honing verification). Verdicts: PURSUE_URGENT / PURSUE / MONITOR / DEAD / DISCOVER. PROMPT-driven Yurkovich-class error catch confirmed the original DB filter pulled false positives (schools, civic arenas, RCMP, First Nations commercial misclassified as defense) — re-categorization candidates are flagged inside the MONITOR/DEAD briefs.'
-
-    H2 'Executive Summary'
-    B 'Defense projects honed: ' ($briefs.Count.ToString())
-    B 'PURSUE_URGENT — IMMEDIATE action: ' ($urgent.Count.ToString())
-    B 'PURSUE — open opportunities (incl. urgent): ' ($pursue.Count.ToString())
-    B 'MONITOR — watching, incl. re-categorization candidates: ' ($monitor.Count.ToString())
-    B 'DISCOVER — pre-procurement: ' ($discover.Count.ToString())
-    B 'DEAD — delivered, misclassified, or unverifiable: ' ($dead.Count.ToString())
-
-    $fresh = @($briefs | Where-Object { $null -ne $_.AgeDays -and -not $_.IsStale })
-    $staleC = @($briefs | Where-Object { $_.IsStale -or $null -eq $_.AgeDays })
-    B 'Verdict freshness: ' ("$($fresh.Count) of $($briefs.Count) verdicts within their freshness window; $($staleC.Count) stale or undated (annotated in place below).")
-    Italic ("Report built " + $nowUtc.ToString('yyyy-MM-dd HH:mm') + " UTC. Verdict ages are computed at build time - a regenerated report is always honest about how old its intelligence is.")
-
-    P 'Defense procurement reality: nearly everything flows through DCC (Defence Construction Canada) procurement gates, with CFHA (Canadian Forces Housing Agency) running the residential programs. Security clearance (Reliability or SECRET-level FSC) gates many structural sub slots — every PURSUE brief should be checked for clearance requirements before outreach. KOR''s entry is almost always as structural sub on a design-build prime''s team (EllisDon, PCL, Graham, Bird), not direct to DND.'
-
-    if ($urgent.Count -gt 0) {
-        H2 ("URGENT — IMMEDIATE action required ($($urgent.Count))")
-        foreach ($p in $urgent) {
-            H3 ("$($p.Id): $($p.Name)")
-            B 'Location: ' "$($p.City), $($p.Province)"
-            B 'Proponent: ' (Safe $p.Proponent 100)
-            if ($p.Cost) { B 'Value: ' $p.Cost }
-            if ($p.Stage) { B 'Stage: ' $p.Stage }
-            B 'Status: ' (Safe $p.Item.status 300)
-        Italic (AgeLine $p)
-            P (Safe $p.Item.korAngle 600)
-            if ($p.Item.schedule) { Italic ('Schedule: ' + (Safe $p.Item.schedule 300)) }
-            P ''
-        }
-    }
-
-    H2 ("1. PURSUE — Active opportunities ($($pursue.Count) projects)")
-    P 'Each PURSUE has an open structural sub-consultant window verified by the honing pass. The pursuit play is the design prime''s team, gated by DCC procurement and clearance requirements.'
+# --- 02 pursue ---
+if ($pursue.Count -gt 0) {
+    [void]$sb.Append('<section><p class="kicker">02 &#183; Pursue</p><h2>Open windows</h2>')
     foreach ($p in $pursue) {
-        H3 ("$($p.Id): $($p.Name)")
-        B 'Location: ' "$($p.City), $($p.Province)"
-        B 'Proponent: ' (Safe $p.Proponent 100)
-        if ($p.Cost) { B 'Value: ' $p.Cost }
-        if ($p.Stage) { B 'Stage: ' $p.Stage }
-        B 'Status: ' (Safe $p.Item.status 300)
-        Italic (AgeLine $p)
-        P (Safe $p.Item.korAngle 600)
-        if ($p.Item.schedule) { Italic ('Schedule: ' + (Safe $p.Item.schedule 300)) }
-        P ''
+        [void]$sb.Append("<h3>$(E $p.Name) <span class=""pill pill--watch"">PURSUE</span> $(AgeChip $p)</h3>")
+        if ($p.Item.status)   { [void]$sb.Append("<p>$(E $p.Item.status)</p>") }
+        if ($p.Item.korAngle) { [void]$sb.Append("<p><strong>Play:</strong> $(E $p.Item.korAngle)</p>") }
     }
+    [void]$sb.Append('</section>')
+}
 
-    H2 ("2. MONITOR — Watching but not actively pursuing ($($monitor.Count) projects)")
-    P 'Locked current phases, clearance-gated mega-packages, and filter false positives flagged by the honing pass for re-categorization out of the defense pipeline (civic, RCMP, First Nations commercial). The "Why MONITOR" column carries the verdict reasoning.'
-    MakeTable @('Id','Project','Proponent','Province','Age','Why MONITOR') @(
-        @(($monitor | ForEach-Object {
-            $ageCell = if ($null -eq $_.AgeDays) { '?' } elseif ($_.IsStale) { "$($_.AgeDays)d STALE" } else { "$($_.AgeDays)d" }
-            @($_.Id, (Safe $_.Name 50),
-              (Safe $_.Proponent 35),
-              $_.Province,
-              $ageCell,
-              (Safe $_.Item.korAngle 130))
-        }))
-    )
+# --- 03 monitor ---
+[void]$sb.Append('<section><p class="kicker">03 &#183; Monitor</p><h2>Watching, not chasing</h2>')
+[void]$sb.Append('<div class="table-wrap"><table><thead><tr><th>Project</th><th>Owner</th><th>Prov</th><th>Age</th><th>Why monitor</th></tr></thead><tbody>')
+foreach ($p in $monitor) {
+    $ageCell = if ($null -eq $p.AgeDays) { '?' } elseif ($p.IsStale) { "$($p.AgeDays)d STALE" } else { "$($p.AgeDays)d" }
+    $why = if ($p.Item.korAngle) { $p.Item.korAngle } else { $p.Item.status }
+    if ($why -and ([string]$why).Length -gt 160) { $why = ([string]$why).Substring(0,160) + '...' }
+    [void]$sb.Append("<tr><td>$(E $p.Name)</td><td>$(E $p.Proponent)</td><td>$(E $p.Province)</td><td>$ageCell</td><td>$(E $why)</td></tr>")
+}
+[void]$sb.Append('</tbody></table></div></section>')
 
-    if ($discover.Count -gt 0) {
-        H2 ("3. DISCOVER — Pre-procurement relationship-build ($($discover.Count) projects)")
-        foreach ($p in $discover) {
-            B ("Id $($p.Id): ") "$($p.Name) ($($p.Province))"
-            P "Proponent: $($p.Proponent) | Cost: $($p.Cost)"
-            P (Safe $p.Item.korAngle 400)
-            P ''
-        }
+# --- 04 dead ---
+if ($dead.Count -gt 0) {
+    [void]$sb.Append('<section><p class="kicker">04 &#183; Closed out</p><h2>Dead, with reasons on record</h2><ul class="plain">')
+    foreach ($p in $dead) {
+        $why = if ($p.Item.status) { $p.Item.status } else { $p.Item.korAngle }
+        if ($why -and ([string]$why).Length -gt 200) { $why = ([string]$why).Substring(0,200) + '...' }
+        [void]$sb.Append("<li><strong>$(E $p.Name)</strong> &#8212; $(E $why) $(AgeChip $p)</li>")
     }
-
-    H2 ("4. DEAD — Removed from pipeline ($($dead.Count) projects)")
-    P 'Delivered projects, misclassified non-defense MPIs, and unverifiable data-entry artifacts. Reference only — the "Why DEAD" column carries the honing reasoning (retire or re-categorize per brief).'
-    MakeTable @('Id','Project','Province','Why DEAD') @(
-        @(($dead | ForEach-Object {
-            @($_.Id, (Safe $_.Name 55),
-              $_.Province,
-              (Safe $_.Item.korAngle 140))
-        }))
-    )
-
-    H2 '5. Strategic observations'
-
-    H3 'DCC is the gate, primes are the door'
-    P 'Defense structural work is procured via DCC, but KOR''s entry point is the design-build prime''s sub-consultant list, not DCC directly. Identify the likely D-B contenders per pursuit (EllisDon, PCL, Graham, Bird) and pre-position before the RFP closes the team. Subscribe to MERX / buyandsell.gc.ca DCC notices for Pacific and Western regions.'
-
-    H3 'EllisDon as strategic defense relationship'
-    P 'EllisDon recurs across the defense briefs as design prime (see PURSUE/MONITOR entries above) — the same firm KOR is building toward in BC healthcare. EllisDon is to defense what Graham Design Builders is to BC healthcare: a strategic relationship to build deliberately. Contacts via their Victoria, Vancouver, or Calgary offices (named contacts in the EllisDon deep-dive and IntelPersonAffiliation).'
-
-    H3 'Security clearance capability'
-    P 'Several defense packages require Reliability or SECRET-level facility clearance for the structural sub. KOR should evaluate clearance capability once a concrete pursuit firms up — it is the recurring competitive gate across this sector.'
-
-    H3 'Defense MPI ingestion hygiene'
-    P 'The honing pass functioned partly as a data-hygiene audit: geographic proximity to a CFB caused schools, arenas, RCMP detachments, and First Nations commercial projects to auto-classify as defense. Tighter ingestion filters needed; re-categorization candidates are flagged per-brief in the MONITOR and DEAD sections above.'
-
-    # === SAVE ===
-    $outPath = 'C:\Users\ilalonde\Desktop\KOR-Defense-Military-BD-Report.docx'
-    $doc.SaveAs([ref]$outPath, [ref]16)
+    [void]$sb.Append('</ul></section>')
 }
-finally {
-    if ($doc) { try { $doc.Close(0) } catch {} }
-    if ($word) { try { $word.Quit() } catch {} }
-    if ($sel) { try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($sel) } catch {} }
-    if ($doc) { try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($doc) } catch {} }
-    if ($word) { try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($word) } catch {} }
-    [gc]::Collect(); [gc]::WaitForPendingFinalizers()
-}
-"Wrote: $outPath"
+
+# --- 05 how this sector works (stable framing) ---
+[void]$sb.Append(@'
+<section><p class="kicker">05 &#183; How this sector works</p><h2>Three rules that don&#8217;t change</h2>
+<ul class="plain">
+<li><strong>DCC is the gate, primes are the door.</strong> KOR enters as structural sub on a design-build prime&#8217;s team (EllisDon, PCL, Graham, Bird) &#8212; pre-position before the RFP closes the team. DCC&#8217;s MERX stream is now ingested by the platform automatically.</li>
+<li><strong>Clearance follows the team.</strong> Sponsorship triggers when a team names KOR (AFR rides the bid; DCC can sponsor direct). The qualification path is the companion brief.</li>
+<li><strong>EllisDon is the strategic relationship</strong> &#8212; recurring design prime across this sector, same firm KOR is building toward in BC healthcare.</li>
+</ul>
+<footer>KOR Structural &#8212; Confidential / Internal &#183; verdicts and ages computed at build time from the BD platform &#183; companion: KOR-Defence-Qualification-Path (clearances &amp; registrations).</footer>
+</section></main>
+'@)
+
+$tmpHtml = Join-Path $env:TEMP 'kor-defense-report.html'
+[System.IO.File]::WriteAllText($tmpHtml, $sb.ToString(), [System.Text.UTF8Encoding]::new($false))
+
+$pdfOut = Join-Path $repo "docs\KOR-Defence-Sector-Report-$($nowUtc.ToString('yyyy-MM-dd'))-web.pdf"
+& (Join-Path $repo 'tools\Format-BdWebPdf.ps1') -Html $tmpHtml -Pdf $pdfOut
+Copy-Item $pdfOut 'C:\Users\ilalonde\Desktop\KOR-Defence-Sector-Report.pdf' -Force
+"Wrote: $pdfOut (+ Desktop copy)"
