@@ -15,6 +15,11 @@ var apiKey = Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY")
           ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY", EnvironmentVariableTarget.Machine)
           ?? "";
 
+if (args.Length >= 2 && args[0] == "sector")
+{
+    return await SectorRun.RunAsync(args[1]);
+}
+
 var ids = args.Length > 0
     ? args.Select(long.Parse).ToList()
     : new List<long> { 7161, 7162, 7163, 7164, 7165, 7166, 6442, 6443 };

@@ -38,7 +38,11 @@ public sealed class OnDemandHoningSynthesizer
 {
     private const string AnthropicEndpoint = "https://api.anthropic.com/v1/messages";
     private const string AnthropicVersion = "2023-06-01";
-    private const string DefaultModel = "claude-haiku-4-5-20251001";  // cheapest tier; synthesis != research
+    // Sonnet, not Haiku: the cost GATE (fresh/quiet/unhoned skip) keeps the
+    // VOLUME of synthesis tiny, so we spend the per-call budget on ACCURACY - a
+    // capable model that only moves a verdict when the new signals genuinely
+    // warrant it. Accuracy over speed/cost, per direction 2026-07-10.
+    private const string DefaultModel = "claude-sonnet-5";  // synthesis != research; accurate delta over DB signals
     private const int MaxDuePerCall = 6;   // batch cap - one call covers a whole view
 
     private readonly string _connectionString;
@@ -61,7 +65,12 @@ public sealed class OnDemandHoningSynthesizer
         _logger = logger;
     }
 
-    public enum Freshness { Fresh, Quiet, Due }
+    // Unhoned = no prior honing row at all. On-demand does NOT touch these: a
+    // cheap delta-synthesis needs a baseline verdict to update, and there is no
+    // row to persist into (so they would re-fire on every view). First-pass
+    // research is the nightly pipeline's job; on-demand only keeps EXISTING
+    // verdicts current.
+    public enum Freshness { Fresh, Quiet, Due, Unhoned }
 
     public sealed record ProjectFreshness(
         long MpiId, string ProjectName, string? Verdict, DateTimeOffset? HonedAtUtc,
@@ -160,12 +169,23 @@ FROM h ORDER BY h.Id;";
             var newSignals = r.GetInt32(6) + r.GetInt32(7);
             var delta = r.IsDBNull(8) ? null : r.GetString(8);
 
-            var age = honedAt is null ? int.MaxValue : (int)Math.Max(0, (DateTimeOffset.UtcNow - honedAt.Value).TotalDays);
-            var stale = honedAt is null || age > ttl;
-            var cls = !stale ? Freshness.Fresh : (newSignals > 0 || honedAt is null ? Freshness.Due : Freshness.Quiet);
+            // No prior honing row -> Unhoned (skipped; nightly first-pass owns it).
+            Freshness cls;
+            int age;
+            if (honedAt is null || string.IsNullOrWhiteSpace(honingJson))
+            {
+                cls = Freshness.Unhoned;
+                age = -1;
+            }
+            else
+            {
+                age = (int)Math.Max(0, (DateTimeOffset.UtcNow - honedAt.Value).TotalDays);
+                var stale = age > ttl;
+                cls = !stale ? Freshness.Fresh : (newSignals > 0 ? Freshness.Due : Freshness.Quiet);
+            }
 
             results.Add(new ProjectFreshness(id, name, verdict, honedAt,
-                age == int.MaxValue ? -1 : age, ttl, newSignals, cls, honingJson, delta));
+                age, ttl, newSignals, cls, honingJson, delta));
         }
         return results;
     }
@@ -181,9 +201,9 @@ FROM h ORDER BY h.Id;";
         }
 
         var sb = new StringBuilder();
-        sb.AppendLine("Re-derive the current BD verdict for each project below from its PRIOR verdict plus the NEW signals since it was last assessed. Do not invent facts beyond the signals. For each, output the verdict that best fits now.");
-        sb.AppendLine("Verdicts: PURSUE_URGENT, PURSUE, MONITOR, DEAD.");
-        sb.AppendLine("Return ONLY JSON: {\"results\":[{\"id\":<int>,\"verdict\":\"...\",\"status\":\"<=280 chars, plain current state, no 'since June' framing\"}]}");
+        sb.AppendLine("You are updating BD verdicts. For each project you are given its PRIOR verdict (from a full research pass) plus the NEW signals ingested since. Update the verdict ONLY if the new signals genuinely warrant a change (e.g. a deadline passed, an award landed, a stage advanced); otherwise KEEP the prior verdict and only refresh the status wording to the current state. Never invent facts not present in the prior verdict or the new signals - if the signals are ambiguous, keep the prior verdict.");
+        sb.AppendLine("Verdicts: PURSUE_URGENT (live deadline/imminent), PURSUE (open window), MONITOR (watching), DEAD (closed/lost/awarded away).");
+        sb.AppendLine("Return ONLY JSON: {\"results\":[{\"id\":<int>,\"verdict\":\"...\",\"status\":\"<=280 chars, plain current state, no 'since June'/'changed' meta-framing\",\"changed\":true|false}]}");
         sb.AppendLine();
         foreach (var p in due)
         {
