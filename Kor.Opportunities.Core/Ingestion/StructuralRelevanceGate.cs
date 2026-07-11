@@ -329,8 +329,27 @@ public static class StructuralRelevanceGate
         .Select(signal => new Regex($@"\b{Regex.Escape(signal)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled))
         .ToArray();
 
+    // Audit-v2 #14: the keep-lists previously matched raw substrings while the
+    // reject-lists used word boundaries — so 'infrastructure' satisfied the
+    // building signal 'structure' and 'additional' satisfied 'addition', letting
+    // out-of-lane work pass the gate and (on the award path) mint canonical orgs
+    // for commodity vendors. Keep-signals are now word-bounded too, with a short
+    // morphological suffix (s/es/d/ed/ing) so verb stems keep their coverage
+    // ('constructing', 'renovated', 'towers') without substring false-passes.
+    private static readonly Regex[] BuildingSignalRegexes = BuildingSignals
+        .Select(signal => new Regex($@"\b{Regex.Escape(signal)}(?:s|es|d|ed|ing)?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled))
+        .ToArray();
+
+    private static readonly Regex[] ProfessionalSignalRegexes = ProfessionalSignals
+        .Select(signal => new Regex($@"\b{Regex.Escape(signal)}(?:s|es|d|ed|ing)?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled))
+        .ToArray();
+
     public static RelevanceDecision Evaluate(string? title, string? description, string? buyer)
     {
+        // Deliberately unused (audit-v2 #14 reviewed this): folding the buyer name
+        // into the keep-scan would false-pass out-of-lane work from building-sector
+        // buyers ("University of X" + "parking lot repaving"). Relevance is judged
+        // on what is being procured, not who is buying it.
         _ = buyer;
 
         var text = $"{title ?? string.Empty} {description ?? string.Empty}".ToLowerInvariant();
@@ -340,8 +359,8 @@ public static class StructuralRelevanceGate
             return new RelevanceDecision(false, $"out-of-lane: {matchedAlwaysIrrelevant}");
         }
 
-        var hasBuilding = ContainsAny(text, BuildingSignals);
-        var hasKeep = hasBuilding || ContainsAny(text, ProfessionalSignals);
+        var hasBuilding = MatchesAny(text, BuildingSignalRegexes);
+        var hasKeep = hasBuilding || MatchesAny(text, ProfessionalSignalRegexes);
         var matchedIrrelevant = FirstHardIrrelevantMatch(text);
 
         // Hard-irrelevant first (more specific reason), but only fatal when no
@@ -359,11 +378,11 @@ public static class StructuralRelevanceGate
         return new RelevanceDecision(true, null);
     }
 
-    private static bool ContainsAny(string value, string[] needles)
+    private static bool MatchesAny(string value, Regex[] patterns)
     {
-        foreach (var needle in needles)
+        foreach (var pattern in patterns)
         {
-            if (value.Contains(needle, StringComparison.OrdinalIgnoreCase))
+            if (pattern.IsMatch(value))
             {
                 return true;
             }
