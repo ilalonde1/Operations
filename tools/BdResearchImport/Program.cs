@@ -7658,7 +7658,11 @@ SELECT
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 60 };
         AddParams(cmd, r);
-        cmd.Parameters.Add("@coalesceTeamFields", SqlDbType.Bit).Value = string.Equals(r.Source, "PipelineSeatsNamed", StringComparison.OrdinalIgnoreCase);
+        // Audit-v2 #7: fill-only team fields for ALL sources (was PipelineSeatsNamed
+        // only) — a stream refresh must never wipe enriched prime-target teams.
+        // Deliberate corrections go through the honing path, which moves name+FK
+        // together; the wheel heals any FK a refresh leaves null.
+        cmd.Parameters.Add("@coalesceTeamFields", SqlDbType.Bit).Value = true;
         long? nameMatchedId = null;
         long resolvedId;
         await using (var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
@@ -7714,16 +7718,21 @@ SELECT
         const string sql = @"
 UPDATE opportunities.MajorProjectsInventory WITH (UPDLOCK, ROWLOCK)
 SET
+    -- Audit-v2 #7: name and FK move TOGETHER. Honing may correct a firm (name
+    -- wins when supplied), but the old shape updated the name while freezing
+    -- the FK — leaving the row displaying the new firm and linked to the old
+    -- one (stale-FK misattribution). When a name arrives, its FK takes the
+    -- incoming value too (null FK on a renamed firm is healed by the wheel).
     ArchitectName = COALESCE(@architectName, ArchitectName),
+    ArchitectCanonicalOrgId = CASE WHEN @architectName IS NOT NULL THEN @architectCanonicalOrgId ELSE ArchitectCanonicalOrgId END,
     StructuralEngineerName = COALESCE(@structuralEngineerName, StructuralEngineerName),
+    StructuralEngineerCanonicalOrgId = CASE WHEN @structuralEngineerName IS NOT NULL THEN @structuralEngineerCanonicalOrgId ELSE StructuralEngineerCanonicalOrgId END,
     GeneralContractorName = COALESCE(@generalContractorName, GeneralContractorName),
+    GeneralContractorCanonicalOrgId = CASE WHEN @generalContractorName IS NOT NULL THEN @generalContractorCanonicalOrgId ELSE GeneralContractorCanonicalOrgId END,
     ProponentName = COALESCE(@proponentName, ProponentName),
+    ProponentCanonicalOrgId = CASE WHEN @proponentName IS NOT NULL THEN @proponentCanonicalOrgId ELSE ProponentCanonicalOrgId END,
     Stage = COALESCE(@stage, Stage),
     CompletionYear = COALESCE(@completionYear, CompletionYear),
-    ArchitectCanonicalOrgId = COALESCE(ArchitectCanonicalOrgId, @architectCanonicalOrgId),
-    StructuralEngineerCanonicalOrgId = COALESCE(StructuralEngineerCanonicalOrgId, @structuralEngineerCanonicalOrgId),
-    GeneralContractorCanonicalOrgId = COALESCE(GeneralContractorCanonicalOrgId, @generalContractorCanonicalOrgId),
-    ProponentCanonicalOrgId = COALESCE(ProponentCanonicalOrgId, @proponentCanonicalOrgId),
     UpdatedAtUtc = sysdatetimeoffset()
 WHERE Id = @id;";
 
@@ -7773,9 +7782,11 @@ SET
     StructuralEngineerCanonicalOrgId = COALESCE(StructuralEngineerCanonicalOrgId, @structuralEngineerCanonicalOrgId),
     GeneralContractorName = COALESCE(GeneralContractorName, @generalContractorName),
     GeneralContractorCanonicalOrgId = COALESCE(GeneralContractorCanonicalOrgId, @generalContractorCanonicalOrgId),
-    SeatStatus = @seatStatus,
-    KorSeatOpening = @korSeatOpening,
-    SeatConfidence = @seatConfidence,
+    -- Audit-v2 #7: a fresh verdict updates the seat facts; a missing one no
+    -- longer wipes them (these used to be unconditional null-overwrites).
+    SeatStatus = COALESCE(@seatStatus, SeatStatus),
+    KorSeatOpening = COALESCE(@korSeatOpening, KorSeatOpening),
+    SeatConfidence = COALESCE(@seatConfidence, SeatConfidence),
     UpdatedAtUtc = sysdatetimeoffset()
 WHERE Id = @id;";
 
@@ -7789,11 +7800,29 @@ WHERE Id = @id;";
         AddLong(cmd, "@structuralEngineerCanonicalOrgId", structuralEngineerCanonicalOrgId);
         AddString(cmd, "@generalContractorName", generalContractorName, 500);
         AddLong(cmd, "@generalContractorCanonicalOrgId", generalContractorCanonicalOrgId);
-        AddString(cmd, "@seatStatus", seatStatus, 20);
+        AddString(cmd, "@seatStatus", NormalizeSeatStatus(seatStatus), 20);
         AddString(cmd, "@korSeatOpening", korSeatOpening, 500);
         AddString(cmd, "@seatConfidence", seatConfidence, 20);
 
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
+    }
+
+    /// <summary>
+    /// Audit-v2 #9: write-time SeatStatus vocabulary guard. Consumers match the
+    /// lowercase vocabulary (unknown / filled / likely-open / locked); migrations
+    /// 235/240 stamped 'Open' rows that were invisible to every open-seat count,
+    /// filter, and the MCP recipe. Normalizes case and maps open -> likely-open
+    /// so the vocabulary can't silently drift again.
+    /// </summary>
+    private static string? NormalizeSeatStatus(string? seatStatus)
+    {
+        var s = NullIfBlank(seatStatus)?.ToLowerInvariant();
+        return s switch
+        {
+            null => null,
+            "open" => "likely-open",
+            _ => s,
+        };
     }
 
     private static async Task<bool> UpdateMajorProjectReverifyAsync(
@@ -7815,7 +7844,7 @@ WHERE Id = @id;";
         const string sql = @"
 UPDATE opportunities.MajorProjectsInventory WITH (UPDLOCK, ROWLOCK)
 SET
-    Stage = @statusVerdict,
+    Stage = COALESCE(@statusVerdict, Stage),
     LastVerifiedAtUtc = sysdatetimeoffset(),
     RetiredAtUtc = CASE WHEN @retire = 1 THEN sysdatetimeoffset() ELSE RetiredAtUtc END,
     RetiredReason = CASE WHEN @retire = 1 THEN LEFT(N'Re-verify: ' + COALESCE(@statusVerdict, N'(blank)'), 200) ELSE RetiredReason END,
