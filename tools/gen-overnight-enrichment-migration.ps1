@@ -68,14 +68,18 @@ for($i=0; $i -lt $vals.Count; $i+=500){
 $strip = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(LTRIM(RTRIM({0}))),' ',''),'.',''),',',''),'''',''),'-',''),'&',''),'/',''),'(',''),')',''),'+','')"
 $pnStrip = ($strip -f 'p.PersonName')
 $tStrip  = ($strip -f 'p.Title')
+# Audit-v2 #12: emit the usp_ResolveOrCreateIntelPerson identity-anchor key
+# (email first, else name|org:<orgId>) — NEVER the bare-name key the proc
+# forbids and migration 255 spent a whole migration undoing.
+$nk = "CASE WHEN p.Email IS NOT NULL THEN CONVERT(CHAR(40),HASHBYTES('SHA1',CAST(LOWER(LTRIM(RTRIM(p.Email))) AS VARCHAR(8000))),2) ELSE CONVERT(CHAR(40),HASHBYTES('SHA1',CAST(CONCAT($pnStrip,'|org:',CAST(p.OrgId AS varchar(20))) AS VARCHAR(8000))),2) END"
 # IntelPerson MERGE
-[void]$sb.AppendLine(";WITH src AS (SELECT p.OrgId, p.PersonName, p.Title, p.Email, p.Src, p.Conf, p.Note, LOWER(LTRIM(RTRIM(p.PersonName))) AS Lowered, e.Id AS EnrId, CONVERT(CHAR(40),HASHBYTES('SHA1',CAST($pnStrip AS VARCHAR(8000))),2) AS NK FROM @people p JOIN opportunities.CanonicalOrgEnrichment e ON e.CanonicalOrgId=p.OrgId AND e.ProviderName=@Provider)")
+[void]$sb.AppendLine(";WITH src AS (SELECT p.OrgId, p.PersonName, p.Title, p.Email, p.Src, p.Conf, p.Note, LOWER(LTRIM(RTRIM(p.PersonName))) AS Lowered, e.Id AS EnrId, $nk AS NK FROM @people p JOIN opportunities.CanonicalOrgEnrichment e ON e.CanonicalOrgId=p.OrgId AND e.ProviderName=@Provider)")
 [void]$sb.AppendLine("MERGE opportunities.IntelPerson AS T USING src AS S ON T.NaturalKey=S.NK")
 [void]$sb.AppendLine("WHEN MATCHED THEN UPDATE SET LastSeenAtUtc=sysdatetimeoffset(), Corroborations=T.Corroborations+1, UpdatedAtUtc=sysdatetimeoffset(), Email=COALESCE(T.Email,S.Email), EmailSource=COALESCE(T.EmailSource,S.Src), EmailConfidence=COALESCE(T.EmailConfidence,S.Conf), Notes=COALESCE(T.Notes,S.Note)")
 [void]$sb.AppendLine("WHEN NOT MATCHED THEN INSERT (SourceProviderName, SourceEnrichmentId, SourceConfidence, NaturalKey, FirstSeenAtUtc, LastSeenAtUtc, CreatedAtUtc, UpdatedAtUtc, DisplayName, NormalizedName, Corroborations, Email, EmailSource, EmailConfidence, EmailCheckedAtUtc, Notes)")
 [void]$sb.AppendLine("VALUES (@Provider, S.EnrId, N'Medium', S.NK, sysdatetimeoffset(), sysdatetimeoffset(), sysdatetimeoffset(), sysdatetimeoffset(), S.PersonName, S.Lowered, 1, S.Email, S.Src, S.Conf, CASE WHEN S.Email IS NULL THEN NULL ELSE sysdatetimeoffset() END, S.Note);")
 # Affiliation MERGE
-[void]$sb.AppendLine(";WITH aff AS (SELECT ip.Id AS PersonId, p.OrgId, p.Title, e.Id AS EnrId, CONVERT(CHAR(40),HASHBYTES('SHA1',CAST(CONCAT(CAST(ip.Id AS varchar(20)),'|',CAST(p.OrgId AS varchar(20)),'|',$tStrip) AS VARCHAR(8000))),2) AS NK FROM @people p JOIN opportunities.IntelPerson ip ON ip.NaturalKey=CONVERT(CHAR(40),HASHBYTES('SHA1',CAST($pnStrip AS VARCHAR(8000))),2) JOIN opportunities.CanonicalOrgEnrichment e ON e.CanonicalOrgId=p.OrgId AND e.ProviderName=@Provider)")
+[void]$sb.AppendLine(";WITH aff AS (SELECT ip.Id AS PersonId, p.OrgId, p.Title, e.Id AS EnrId, CONVERT(CHAR(40),HASHBYTES('SHA1',CAST(CONCAT(CAST(ip.Id AS varchar(20)),'|',CAST(p.OrgId AS varchar(20)),'|',$tStrip) AS VARCHAR(8000))),2) AS NK FROM @people p JOIN opportunities.IntelPerson ip ON ip.NaturalKey=$nk JOIN opportunities.CanonicalOrgEnrichment e ON e.CanonicalOrgId=p.OrgId AND e.ProviderName=@Provider)")
 [void]$sb.AppendLine("MERGE opportunities.IntelPersonAffiliation AS T USING aff AS S ON T.IntelPersonId=S.PersonId AND T.CanonicalOrgId=S.OrgId")
 [void]$sb.AppendLine("WHEN MATCHED THEN UPDATE SET Title=COALESCE(T.Title,S.Title), IsCurrent=1, LastSeenAtUtc=sysdatetimeoffset(), UpdatedAtUtc=sysdatetimeoffset()")
 [void]$sb.AppendLine("WHEN NOT MATCHED THEN INSERT (SourceProviderName, SourceEnrichmentId, SourceConfidence, NaturalKey, FirstSeenAtUtc, LastSeenAtUtc, CreatedAtUtc, UpdatedAtUtc, IntelPersonId, CanonicalOrgId, Title, IsCurrent)")

@@ -50,6 +50,16 @@ BEGIN
     DECLARE @cleanNotes NVARCHAR(MAX) = NULLIF(LTRIM(RTRIM(@notes)), N'');
     DECLARE @emailKey NVARCHAR(200) = LOWER(COALESCE(@cleanEmail, N''));
     DECLARE @linkedinKey NVARCHAR(500) = LOWER(COALESCE(@cleanLinkedinUrl, N''));
+    /* Audit-v2 #12: a shared/role inbox is contact info, not identity — using it
+       as the priority-1 match (or as the NaturalKey) funnels every person at
+       info@ onto one row. Generic local-parts are stored but never anchor. */
+    DECLARE @emailIsGeneric BIT = 0;
+    IF @emailKey <> N'' AND CHARINDEX(N'@', @emailKey) > 1
+       AND LEFT(@emailKey, CHARINDEX(N'@', @emailKey) - 1) IN
+           (N'info', N'office', N'admin', N'contact', N'reception', N'properties',
+            N'hello', N'mail', N'enquiries', N'inquiries', N'sales', N'careers',
+            N'hr', N'accounting', N'frontdesk', N'general')
+        SET @emailIsGeneric = 1;
     DECLARE @normalizedName NVARCHAR(200) =
         LEFT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
              LOWER(LTRIM(RTRIM(COALESCE(@displayName, N'')))),
@@ -81,11 +91,16 @@ BEGIN
 
     SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
 
+    /* Audit-v2 #12: generic inboxes never anchor identity, and a row whose email
+       was pattern-GUESSED (EmailSource = 'PatternInferred') is not authoritative
+       enough to claim an incoming identity by email alone. */
     SELECT TOP (1) @foundId = p.Id
     FROM opportunities.IntelPerson AS p WITH (UPDLOCK, HOLDLOCK)
     WHERE p.RetiredAtUtc IS NULL
       AND @emailKey <> N''
+      AND @emailIsGeneric = 0
       AND LOWER(LTRIM(RTRIM(COALESCE(p.Email, N'')))) = @emailKey
+      AND COALESCE(p.EmailSource, N'') <> N'PatternInferred'
     ORDER BY p.Id;
 
     IF @foundId IS NULL
@@ -134,7 +149,13 @@ BEGIN
     IF @foundId IS NOT NULL
     BEGIN
         UPDATE opportunities.IntelPerson
-        SET Email = COALESCE(Email, @cleanEmail),
+        SET Email = CASE
+                WHEN Email IS NULL THEN @cleanEmail
+                WHEN @cleanEmail IS NOT NULL
+                     AND EmailSource = N'PatternInferred'
+                     AND COALESCE(@emailSourceForWrite, N'') <> N'PatternInferred'
+                THEN @cleanEmail  -- audit-v2 #12: verified displaces guessed
+                ELSE Email END,
             LinkedinUrl = COALESCE(LinkedinUrl, @cleanLinkedinUrl),
             Phone = COALESCE(Phone, @cleanPhone),
             Notes = COALESCE(Notes, @cleanNotes),
@@ -142,11 +163,15 @@ BEGIN
             EmailSource =
                 CASE
                     WHEN Email IS NULL AND @cleanEmail IS NOT NULL THEN COALESCE(EmailSource, @emailSourceForWrite)
+                    WHEN @cleanEmail IS NOT NULL AND EmailSource = N'PatternInferred'
+                         AND COALESCE(@emailSourceForWrite, N'') <> N'PatternInferred' THEN @emailSourceForWrite
                     ELSE EmailSource
                 END,
             EmailConfidence =
                 CASE
                     WHEN Email IS NULL AND @cleanEmail IS NOT NULL THEN COALESCE(EmailConfidence, @emailConfidenceForWrite)
+                    WHEN @cleanEmail IS NOT NULL AND EmailSource = N'PatternInferred'
+                         AND COALESCE(@emailSourceForWrite, N'') <> N'PatternInferred' THEN @emailConfidenceForWrite
                     ELSE EmailConfidence
                 END,
             LastSeenAtUtc = @now,
@@ -166,7 +191,7 @@ BEGIN
 
     SET @keyMaterial =
         CASE
-            WHEN @emailKey <> N'' THEN @emailKey
+            WHEN @emailKey <> N'' AND @emailIsGeneric = 0 THEN @emailKey
             WHEN @linkedinKey <> N'' THEN @linkedinKey
             WHEN @normalizedName <> N'' AND @orgId IS NOT NULL
                 THEN @normalizedName + N'|org:' + CONVERT(NVARCHAR(20), @orgId)
@@ -184,7 +209,13 @@ BEGIN
     IF @foundId IS NOT NULL
     BEGIN
         UPDATE opportunities.IntelPerson
-        SET Email = COALESCE(Email, @cleanEmail),
+        SET Email = CASE
+                WHEN Email IS NULL THEN @cleanEmail
+                WHEN @cleanEmail IS NOT NULL
+                     AND EmailSource = N'PatternInferred'
+                     AND COALESCE(@emailSourceForWrite, N'') <> N'PatternInferred'
+                THEN @cleanEmail  -- audit-v2 #12: verified displaces guessed
+                ELSE Email END,
             LinkedinUrl = COALESCE(LinkedinUrl, @cleanLinkedinUrl),
             Phone = COALESCE(Phone, @cleanPhone),
             Notes = COALESCE(Notes, @cleanNotes),
@@ -192,11 +223,15 @@ BEGIN
             EmailSource =
                 CASE
                     WHEN Email IS NULL AND @cleanEmail IS NOT NULL THEN COALESCE(EmailSource, @emailSourceForWrite)
+                    WHEN @cleanEmail IS NOT NULL AND EmailSource = N'PatternInferred'
+                         AND COALESCE(@emailSourceForWrite, N'') <> N'PatternInferred' THEN @emailSourceForWrite
                     ELSE EmailSource
                 END,
             EmailConfidence =
                 CASE
                     WHEN Email IS NULL AND @cleanEmail IS NOT NULL THEN COALESCE(EmailConfidence, @emailConfidenceForWrite)
+                    WHEN @cleanEmail IS NOT NULL AND EmailSource = N'PatternInferred'
+                         AND COALESCE(@emailSourceForWrite, N'') <> N'PatternInferred' THEN @emailConfidenceForWrite
                     ELSE EmailConfidence
                 END,
             LastSeenAtUtc = @now,
@@ -232,18 +267,28 @@ BEGIN
                     + N'[Resurrected ' + CONVERT(NVARCHAR(33), @now, 127)
                     + N' by ' + @provider + N' on re-discovery; was retired: '
                     + COALESCE(RetiredReason, N'(no reason)') + N']',
-            Email = COALESCE(Email, @cleanEmail),
+            Email = CASE
+                WHEN Email IS NULL THEN @cleanEmail
+                WHEN @cleanEmail IS NOT NULL
+                     AND EmailSource = N'PatternInferred'
+                     AND COALESCE(@emailSourceForWrite, N'') <> N'PatternInferred'
+                THEN @cleanEmail  -- audit-v2 #12: verified displaces guessed
+                ELSE Email END,
             LinkedinUrl = COALESCE(LinkedinUrl, @cleanLinkedinUrl),
             Phone = COALESCE(Phone, @cleanPhone),
             Corroborations = Corroborations + 1,
             EmailSource =
                 CASE
                     WHEN Email IS NULL AND @cleanEmail IS NOT NULL THEN COALESCE(EmailSource, @emailSourceForWrite)
+                    WHEN @cleanEmail IS NOT NULL AND EmailSource = N'PatternInferred'
+                         AND COALESCE(@emailSourceForWrite, N'') <> N'PatternInferred' THEN @emailSourceForWrite
                     ELSE EmailSource
                 END,
             EmailConfidence =
                 CASE
                     WHEN Email IS NULL AND @cleanEmail IS NOT NULL THEN COALESCE(EmailConfidence, @emailConfidenceForWrite)
+                    WHEN @cleanEmail IS NOT NULL AND EmailSource = N'PatternInferred'
+                         AND COALESCE(@emailSourceForWrite, N'') <> N'PatternInferred' THEN @emailConfidenceForWrite
                     ELSE EmailConfidence
                 END,
             LastSeenAtUtc = @now,

@@ -71,12 +71,25 @@ HAVING SUM(CASE WHEN NULLIF(LTRIM(RTRIM(p.Email)),'') IS NOT NULL THEN 1 ELSE 0 
             var siteDomain = CanonicalOrgResolver.ExtractWebsiteDomain(firm.Website);
             if (string.IsNullOrWhiteSpace(siteDomain) || !string.Equals(siteDomain, domain, StringComparison.OrdinalIgnoreCase))
                 continue;
+            // Audit-v2 #12: intra-firm duplicate-local guard. Two people whose names
+            // derive the same local part (J. Smith / Jane Smith -> jsmith@) must not
+            // both receive the same guessed address — one email on two person rows
+            // is an identity collision waiting to happen. Locals already taken by a
+            // KNOWN email at the firm are also off-limits.
+            var takenLocals = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var k in known)
+            {
+                var at = k.Email.IndexOf('@');
+                if (at > 0) takenLocals.Add(k.Email[..at].Trim());
+            }
+
             foreach (var g in gaps)
             {
                 var (gf, gl) = SplitName(g.Name);
                 if (Norm(gf).Length == 0 || Norm(gl).Length == 0) continue;
                 var local = build(Norm(gf), Norm(gl));
                 if (string.IsNullOrWhiteSpace(local)) continue;
+                if (!takenLocals.Add(local)) continue;
                 if (commit && await SetEmailAsync(con, g.Id, $"{local}@{domain}", "PatternInferred", 55, ct).ConfigureAwait(false))
                     written++;
                 else if (!commit) written++;
