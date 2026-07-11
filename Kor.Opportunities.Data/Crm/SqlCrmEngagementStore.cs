@@ -323,6 +323,26 @@ WHERE Id = @id AND RowVersion = @rv;";
             await WriteStageHistoryAsync(con, tx, updated.Id, (int)updated.Stage, actorDisplay, ct).ConfigureAwait(false);
         }
 
+        // Audit-v2 #3: a closed engagement must reach the Opportunities ledger the
+        // win-rate KPI reads — without this write-through the parent opportunity
+        // stays "Pursuing" forever and two dashboards answer "did we win?"
+        // differently. Same transaction as the stage change; CrmEngagementStage and
+        // OpportunityStatus share Won=6 / Lost=7 values by design (CrmEngagement.cs).
+        if ((int)updated.Stage != previousStage
+            && updated.OpportunityId is long parentOppId
+            && updated.Stage is CrmEngagementStage.Won or CrmEngagementStage.Lost)
+        {
+            await using var statusSync = new SqlCommand(
+                @"UPDATE opportunities.Opportunities
+                  SET Status = @status, UpdatedAtUtc = sysdatetimeoffset()
+                  WHERE Id = @oppId AND Status <> @status;",
+                con, tx)
+            { CommandTimeout = CommandTimeoutSeconds };
+            statusSync.Parameters.Add("@status", SqlDbType.Int).Value = (int)updated.Stage;
+            statusSync.Parameters.Add("@oppId", SqlDbType.BigInt).Value = parentOppId;
+            await statusSync.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+
         await tx.CommitAsync(ct).ConfigureAwait(false);
         return updated;
     }
