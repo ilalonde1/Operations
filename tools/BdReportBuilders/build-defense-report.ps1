@@ -10,6 +10,28 @@ $briefs = Get-Content 'C:\Users\ilalonde\Desktop\Polish\.defense-final.json' -Ra
 if (-not $briefs -or $briefs.Count -eq 0) {
     throw "No briefs in .defense-final.json. Re-run the defense pull query."
 }
+# Verdict-age wiring (freshness-on-build, 2026-07-10): every verdict carries
+# HonedAtUtc; TTL per verdict class decides staleness. A report can no longer
+# silently reprint dead urgency - stale verdicts are annotated on their face.
+$ttlDays = @{ 'PURSUE_URGENT' = 7; 'PURSUE' = 30; 'MONITOR' = 90; 'DISCOVER' = 90; 'DEAD' = 365 }
+$nowUtc = (Get-Date).ToUniversalTime()
+foreach ($b in $briefs) {
+    $age = $null; $stale = $false
+    if ($b.HonedAtUtc) {
+        $age = [int][math]::Floor(($nowUtc - ([datetime]::Parse($b.HonedAtUtc).ToUniversalTime())).TotalDays)
+        $ttl = if ($b.Verdict -and $ttlDays.ContainsKey([string]$b.Verdict)) { $ttlDays[[string]$b.Verdict] } else { 30 }
+        $stale = $age -gt $ttl
+    }
+    $b | Add-Member -NotePropertyName AgeDays -NotePropertyValue $age -Force
+    $b | Add-Member -NotePropertyName IsStale -NotePropertyValue $stale -Force
+}
+function AgeLine { param($b)
+    if ($null -eq $b.AgeDays) { return 'Verdict honed: (undated - treat as stale)' }
+    $d = [datetime]::Parse($b.HonedAtUtc).ToUniversalTime().ToString('yyyy-MM-dd')
+    $t = "Verdict honed: $d ($($b.AgeDays)d ago)"
+    if ($b.IsStale) { $t += ' - STALE, exceeds TTL for this verdict class; refresh before acting' }
+    return $t
+}
 $urgent = @($briefs | Where-Object {$_.Verdict -eq 'PURSUE_URGENT'})
 $pursue = @($briefs | Where-Object {$_.Verdict -in @('PURSUE','PURSUE_URGENT')})
 $monitor = @($briefs | Where-Object {$_.Verdict -eq 'MONITOR'})
@@ -70,6 +92,11 @@ try {
     B 'DISCOVER — pre-procurement: ' ($discover.Count.ToString())
     B 'DEAD — delivered, misclassified, or unverifiable: ' ($dead.Count.ToString())
 
+    $fresh = @($briefs | Where-Object { $null -ne $_.AgeDays -and -not $_.IsStale })
+    $staleC = @($briefs | Where-Object { $_.IsStale -or $null -eq $_.AgeDays })
+    B 'Verdict freshness: ' ("$($fresh.Count) of $($briefs.Count) verdicts within their freshness window; $($staleC.Count) stale or undated (annotated in place below).")
+    Italic ("Report built " + $nowUtc.ToString('yyyy-MM-dd HH:mm') + " UTC. Verdict ages are computed at build time - a regenerated report is always honest about how old its intelligence is.")
+
     P 'Defense procurement reality: nearly everything flows through DCC (Defence Construction Canada) procurement gates, with CFHA (Canadian Forces Housing Agency) running the residential programs. Security clearance (Reliability or SECRET-level FSC) gates many structural sub slots — every PURSUE brief should be checked for clearance requirements before outreach. KOR''s entry is almost always as structural sub on a design-build prime''s team (EllisDon, PCL, Graham, Bird), not direct to DND.'
 
     if ($urgent.Count -gt 0) {
@@ -81,6 +108,7 @@ try {
             if ($p.Cost) { B 'Value: ' $p.Cost }
             if ($p.Stage) { B 'Stage: ' $p.Stage }
             B 'Status: ' (Safe $p.Item.status 300)
+        Italic (AgeLine $p)
             P (Safe $p.Item.korAngle 600)
             if ($p.Item.schedule) { Italic ('Schedule: ' + (Safe $p.Item.schedule 300)) }
             P ''
@@ -96,6 +124,7 @@ try {
         if ($p.Cost) { B 'Value: ' $p.Cost }
         if ($p.Stage) { B 'Stage: ' $p.Stage }
         B 'Status: ' (Safe $p.Item.status 300)
+        Italic (AgeLine $p)
         P (Safe $p.Item.korAngle 600)
         if ($p.Item.schedule) { Italic ('Schedule: ' + (Safe $p.Item.schedule 300)) }
         P ''
@@ -103,11 +132,13 @@ try {
 
     H2 ("2. MONITOR — Watching but not actively pursuing ($($monitor.Count) projects)")
     P 'Locked current phases, clearance-gated mega-packages, and filter false positives flagged by the honing pass for re-categorization out of the defense pipeline (civic, RCMP, First Nations commercial). The "Why MONITOR" column carries the verdict reasoning.'
-    MakeTable @('Id','Project','Proponent','Province','Why MONITOR') @(
+    MakeTable @('Id','Project','Proponent','Province','Age','Why MONITOR') @(
         @(($monitor | ForEach-Object {
+            $ageCell = if ($null -eq $_.AgeDays) { '?' } elseif ($_.IsStale) { "$($_.AgeDays)d STALE" } else { "$($_.AgeDays)d" }
             @($_.Id, (Safe $_.Name 50),
               (Safe $_.Proponent 35),
               $_.Province,
+              $ageCell,
               (Safe $_.Item.korAngle 130))
         }))
     )
