@@ -20,6 +20,24 @@ if (args.Length >= 2 && args[0] == "sector")
     return await SectorRun.RunAsync(args[1]);
 }
 
+// ensure mode: refresh a given id set on demand (used by the PS report builders
+// as a pre-step so the dossier they pull reflects on-demand-fresh verdicts).
+if (args.Length >= 2 && args[0] == "ensure")
+{
+    var eids = args.Skip(1).Select(long.Parse).ToList();
+    var ecs = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB")
+           ?? Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB", EnvironmentVariableTarget.User)
+           ?? Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_OPPORTUNITIESDB", EnvironmentVariableTarget.Machine) ?? "";
+    var ekey = Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY")
+           ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY", EnvironmentVariableTarget.User)
+           ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY", EnvironmentVariableTarget.Machine) ?? "";
+    using var ehttp = new HttpClient { Timeout = TimeSpan.FromSeconds(180) };
+    var es = new OnDemandHoningSynthesizer(ecs, ehttp, ekey);
+    var er = await es.EnsureFreshAsync(eids, CancellationToken.None);
+    Console.WriteLine($"ensure: total={er.Total} fresh={er.Fresh} quiet={er.Quiet} due={er.Due} synthesized={er.Synthesized} ~tokens={er.TokensSpentApprox}");
+    return 0;
+}
+
 var ids = args.Length > 0
     ? args.Select(long.Parse).ToList()
     : new List<long> { 7161, 7162, 7163, 7164, 7165, 7166, 6442, 6443 };

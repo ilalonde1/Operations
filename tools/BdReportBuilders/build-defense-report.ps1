@@ -50,6 +50,16 @@ WHERE m.RetiredAtUtc IS NULL
   AND m.Id IN (7161,7162,7163,7164,7165,7166,6442,6443)
 FOR JSON PATH
 '@
+$defenceIds = @(7161,7162,7163,7164,7165,7166,6442,6443)
+
+# ON-DEMAND FRESHNESS PRE-STEP: refresh stale-and-changed verdicts before the
+# pull, so the dossier reflects current intelligence, not whatever the nightly
+# batch last wrote. Cost-gated (fresh/quiet/unhoned cost nothing); best-effort.
+try {
+    & dotnet run --project (Join-Path $repo 'tools\BdSynthesisSmoke') -- ensure @defenceIds 2>&1 |
+        Where-Object { $_ -match '^ensure:' } | ForEach-Object { Write-Host "  $_" }
+} catch { Write-Warning "on-demand ensure step skipped: $_" }
+
 $raw = & sqlcmd -S $server -d $db -U $user -P $pass -y 0 -Q $query
 $json = ($raw -join '') -replace "`r", ''
 $briefs = $json | ConvertFrom-Json
