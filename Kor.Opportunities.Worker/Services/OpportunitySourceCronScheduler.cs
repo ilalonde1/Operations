@@ -112,7 +112,14 @@ FROM opportunities.OpportunitySources s
 WHERE s.IsEnabled = 1
   AND s.CrawlDelaySeconds > 0
   -- Quartz-managed sources have their own schedules; don't double-trigger.
-  AND s.Name NOT IN ('CanadaBuys', 'CanadaBuysNew', 'SamGov', 'BdAlerts', 'AB_MajorProjectsInventory')
+  -- Audit-v2 #13: this list had drifted twice — 'BdAlerts' (real source is
+  -- 'BdAlertsMailbox', so the mailbox was polled by BOTH planes every ~15 min)
+  -- and only AB of the five MPI sources was listed (BC/CA re-fetched ~20k rows
+  -- DAILY on top of their weekly Sunday Quartz jobs, racing the same upserts).
+  -- Names below verified against live opportunities.OpportunitySources rows.
+  AND s.Name NOT IN ('CanadaBuys', 'CanadaBuysNew', 'SamGov', 'BdAlertsMailbox',
+                     'AB_MajorProjectsInventory', 'BC_MajorProjectsInventory',
+                     'CA_SocrataSF', 'CA_SocrataSanDiego', 'CA_SanJoseCkan', 'CA_CEQAnet')
   -- Unknown / BdOutreach / Manual: no provider by design.
   AND s.SourceType NOT IN (0, 7, 99)
   -- No pending or in-flight trigger already queued.
