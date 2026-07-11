@@ -4,6 +4,10 @@
 // so no Playwright browser download is needed.
 using Microsoft.Playwright;
 
+if (args.Length > 1 && args[0] == "pages")
+{
+    return await PageDump.RunAsync(args[1], args[2..]);
+}
 var outDir = args.Length > 0 ? args[0] : Environment.CurrentDirectory;
 Directory.CreateDirectory(outDir);
 
@@ -69,3 +73,5 @@ foreach (var url in new[] { "https://www.merx.com/dcc", "https://www.merx.com/pu
         Console.WriteLine($"   FAILED: {ex.Message}");
     }
 }
+
+return 0;
