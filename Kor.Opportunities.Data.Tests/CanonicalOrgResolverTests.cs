@@ -52,6 +52,46 @@ public sealed class CanonicalOrgResolverTests
         Assert.False(store.Orgs.Single(o => o.Id == retiredId).Retired);       // brought back live
     }
 
+    // Firehose doctrine (8687a2aa): createArchived callers (awards/bids/permits) REUSE
+    // an archived org's identity but never unretire it — otherwise every re-scrape
+    // drags the vendor live and the nightly retirement job re-archives it, forever.
+    [Fact]
+    public async Task FirehoseCreateArchived_ReusesArchivedOrg_WithoutResurrecting()
+    {
+        var store = new FakeCanonicalOrgStore();
+        var archivedId = store.AddOrg("Cold Commodity Vendor", retired: true);
+        var resolver = CreateResolver(store);
+
+        var resolved = await resolver.ResolveAsync(
+            "Cold Commodity Vendor", OrgKinds.Vendor, Source, CancellationToken.None, createArchived: true);
+
+        Assert.Equal(archivedId, resolved);                                   // identity reused — no archived twin
+        Assert.Equal(0, store.UnretireCalls);                                 // ...but kept cold
+        Assert.True(store.Orgs.Single(o => o.Id == archivedId).Retired);
+        Assert.Single(store.Orgs);                                            // nothing minted
+    }
+
+    // Born-archived stamping must fire only on a genuine insert: when the upsert's
+    // strict/fuzzy fallback matches a pre-existing LIVE org, createArchived must
+    // NOT retire that live org.
+    [Fact]
+    public async Task CreateArchived_NeverRetiresAPreexistingLiveOrg()
+    {
+        var store = new FakeCanonicalOrgStore();
+        var liveId = store.AddOrg("Alive Contractor Ltd");
+        // Fuzzy-survivor attach OFF so the resolve tiers miss and the request reaches
+        // the create path — where the upsert's own fuzzy fallback matches the live org.
+        var resolver = new CanonicalOrgResolver(
+            store, NullLogger<CanonicalOrgResolver>.Instance, resolverFuzzySurvivorAttach: false);
+
+        // Suffix variant: strict normalize differs ("...ltd" vs "...limited").
+        var resolved = await resolver.ResolveAsync(
+            "Alive Contractor Limited", OrgKinds.Vendor, Source, CancellationToken.None, createArchived: true);
+
+        Assert.Equal(liveId, resolved);
+        Assert.False(store.Orgs.Single(o => o.Id == liveId).Retired);         // live org untouched
+    }
+
     // The critical safety guard: a dedup LOSER (merged into a survivor) must never be
     // resurrected — that would silently undo the merge and re-create the duplicate.
     [Fact]
@@ -259,7 +299,7 @@ public sealed class CanonicalOrgResolverTests
 
         public void AddMerge(long loserId, long survivorId) => _mergeLedger[loserId] = survivorId;
 
-        public Task<long> UpsertCanonicalOrgAsync(
+        public Task<(long Id, bool Created)> UpsertCanonicalOrgAsync(
             string kind,
             string displayName,
             string? clendorClientId,
@@ -280,11 +320,11 @@ public sealed class CanonicalOrgResolverTests
             if (existing is not null)
             {
                 Promote(existing, website, notes);
-                return Task.FromResult(existing.Id);
+                return Task.FromResult((existing.Id, false));
             }
 
             var id = AddOrg(displayName, kind: kind, clendorClientId: clendorClientId, website: website, notes: notes);
-            return Task.FromResult(id);
+            return Task.FromResult((id, true));
         }
 
         public Task<CanonicalOrgRow?> GetCanonicalOrgAsync(long id, CancellationToken ct)

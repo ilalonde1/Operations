@@ -129,14 +129,14 @@ public sealed class BcBidUnverifiedBidResultsScraperTests
             _canonicalOrgId = canonicalOrgId;
         }
 
-        public Task<long> UpsertCanonicalOrgAsync(
+        public Task<(long Id, bool Created)> UpsertCanonicalOrgAsync(
             string kind,
             string displayName,
             string? clendorClientId,
             string? website,
             string? notes,
             CancellationToken ct)
-            => Task.FromResult(_canonicalOrgId);
+            => Task.FromResult((_canonicalOrgId, true));
 
         public Task<CanonicalOrgRow?> GetCanonicalOrgAsync(long id, CancellationToken ct)
             => Task.FromResult<CanonicalOrgRow?>(null);

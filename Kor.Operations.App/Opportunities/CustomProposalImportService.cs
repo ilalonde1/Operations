@@ -108,13 +108,13 @@ ORDER BY cp.SubmittalDate DESC";
                 if (!string.IsNullOrWhiteSpace(row.ClientID))
                 {
                     var existing = await _canonical.GetCanonicalOrgByClendorIdAsync(row.ClientID, ct).ConfigureAwait(false);
-                    buyerCanonId = existing?.Id ?? await _canonical.UpsertCanonicalOrgAsync(
+                    buyerCanonId = existing?.Id ?? (await _canonical.UpsertCanonicalOrgAsync(
                         OrgKinds.KorClient,
                         row.ClientName,
                         row.ClientID,
                         null,
                         null,
-                        ct).ConfigureAwait(false);
+                        ct).ConfigureAwait(false)).Id;
                 }
 
                 var beforeCount = await _pursuits.CountByExternalSourceAsync(PursuitExternalSources.DeltekCustomProposal, ct)

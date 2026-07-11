@@ -7273,7 +7273,7 @@ WHERE  EngagementId = @eid
             throw new InvalidOperationException("Canonical org store is not available.");
         }
 
-        var id = await store.UpsertCanonicalOrgAsync(kind, displayName, null, website, notes, ct).ConfigureAwait(false);
+        var (id, _) = await store.UpsertCanonicalOrgAsync(kind, displayName, null, website, notes, ct).ConfigureAwait(false);
         if (!options.Quiet)
         {
             Console.WriteLine($"[ORG] {source}: {displayName} -> CanonicalOrgId={id}");

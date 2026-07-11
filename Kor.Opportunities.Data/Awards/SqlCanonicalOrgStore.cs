@@ -21,7 +21,7 @@ public sealed class SqlCanonicalOrgStore : ICanonicalOrgStore
         _connectionString = connectionString;
     }
 
-    public async Task<long> UpsertCanonicalOrgAsync(
+    public async Task<(long Id, bool Created)> UpsertCanonicalOrgAsync(
         string kind,
         string displayName,
         string? clendorClientId,
@@ -38,6 +38,7 @@ public sealed class SqlCanonicalOrgStore : ICanonicalOrgStore
 SET XACT_ABORT ON;
 
 DECLARE @existingId bigint;
+DECLARE @created bit = 0;
 DECLARE @normalizedName nvarchar(300) = CAST(LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
     @name,
     ' ',''), '.',''), ',',''), '''',''), '-',''), '&',''), '/',''), '(',''), ')',''), '+',''))
@@ -91,6 +92,7 @@ BEGIN
         (@kind, @name, @fuzzy, @clendor, @website, @websiteDomain, @notes);
 
     SET @existingId = CONVERT(bigint, SCOPE_IDENTITY());
+    SET @created = 1;
 END
 ELSE
 BEGIN
@@ -137,7 +139,7 @@ END;
 
 COMMIT TRAN;
 
-SELECT @existingId;";
+SELECT @existingId AS Id, @created AS Created;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -155,17 +157,23 @@ SELECT @existingId;";
 
         try
         {
-            var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-            return Convert.ToInt64(v);
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                throw new InvalidOperationException("UpsertCanonicalOrgAsync returned no row.");
+            }
+
+            return (reader.GetInt64(0), reader.GetBoolean(1));
         }
         catch (SqlException ex) when (IsDuplicateKey(ex))
         {
+            // A concurrent writer won the insert race — the org exists, we did not create it.
             if (clendorClientId is not null)
             {
                 var existing = await GetCanonicalOrgByClendorIdAsync(clendorClientId, ct).ConfigureAwait(false);
                 if (existing is not null)
                 {
-                    return existing.Id;
+                    return (existing.Id, false);
                 }
             }
             else
@@ -173,7 +181,7 @@ SELECT @existingId;";
                 var id = await FindByNormalizedNameAsync(NormalizeName(displayName), ct).ConfigureAwait(false);
                 if (id.HasValue)
                 {
-                    return id.Value;
+                    return (id.Value, false);
                 }
             }
 

@@ -8,7 +8,13 @@ namespace Kor.Opportunities.Data.Awards;
 
 public interface ICanonicalOrgStore
 {
-    Task<long> UpsertCanonicalOrgAsync(
+    /// <summary>
+    /// Find-or-create a live canonical org. <c>Created</c> is true only when a new
+    /// row was inserted — callers that post-process a fresh mint (e.g. born-archived
+    /// stamping) MUST check it, or a race/fuzzy match can retire a pre-existing
+    /// LIVE org that merely matched.
+    /// </summary>
+    Task<(long Id, bool Created)> UpsertCanonicalOrgAsync(
         string kind,
         string displayName,
         string? clendorClientId,

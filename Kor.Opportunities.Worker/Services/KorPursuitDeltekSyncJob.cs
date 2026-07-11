@@ -215,13 +215,13 @@ SELECT @inserted;";
             return existing.Id;
         }
 
-        return await _canonical.UpsertCanonicalOrgAsync(
+        return (await _canonical.UpsertCanonicalOrgAsync(
             kind,
             string.IsNullOrWhiteSpace(displayName) ? id : displayName.Trim(),
             id,
             website: null,
             notes: null,
-            ct).ConfigureAwait(false);
+            ct).ConfigureAwait(false)).Id;
     }
 
     private static string MapStage(string stage, string chargeType)

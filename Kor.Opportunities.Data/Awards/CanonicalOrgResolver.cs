@@ -314,31 +314,49 @@ public sealed class CanonicalOrgResolver
                     source);
             }
 
-            // Rank 2 — resurrect, don't mint a twin. If exactly one retired org with
-            // this strict normalized name was archived for inactivity (born-archived
-            // on intake / low-value auto-archive) and is not a dedup loser, bring it
-            // back on this new reference instead of creating a duplicate. Born-archived
-            // rows are stamped "resurrects on any future reference" — this is the code
-            // that finally honours that promise. The alias is recorded by the shared
-            // path below (canonicalId is now non-null, not matched-by-alias).
+            // Rank 2 — resurrect (or reuse), don't mint a twin. If exactly one retired
+            // org with this strict normalized name was archived for inactivity
+            // (born-archived on intake / low-value auto-archive) and is not a dedup
+            // loser, reuse its identity instead of creating a duplicate. The alias is
+            // recorded by the shared path below (canonicalId non-null, not matched-by-alias).
+            //
+            // Firehose doctrine (8687a2aa): callers that pass createArchived:true are
+            // high-volume commodity feeds (awards, bids, permits) — they REUSE the
+            // archived row's id but must NOT unretire it, or every re-scrape drags the
+            // vendor into the warm set and the nightly retirement job re-archives it
+            // (perpetual live/archived churn). Only deliberate resolve callers
+            // (research imports, Deltek sync) actually bring an org back to life.
             if (allowCreate && !string.IsNullOrEmpty(normalized))
             {
-                var resurrectId = await _store.FindResurrectableRetiredAsync(normalized, ct).ConfigureAwait(false);
-                if (resurrectId.HasValue
-                    && await _store.UnretireAsync(
-                        resurrectId.Value,
+                var archivedId = await _store.FindResurrectableRetiredAsync(normalized, ct).ConfigureAwait(false);
+                if (archivedId.HasValue)
+                {
+                    if (createArchived)
+                    {
+                        canonicalId = archivedId.Value;
+                        classifiedBy = "auto-reuse-archived";
+                        aliasNotes = "Reused retired CanonicalOrg without resurrecting (firehose keep-cold)";
+                        _logger.LogDebug(
+                            "Reused retired CanonicalOrg {Id} for '{RawName}' from firehose source '{Source}' (kept cold).",
+                            archivedId.Value,
+                            cleaned,
+                            source);
+                    }
+                    else if (await _store.UnretireAsync(
+                        archivedId.Value,
                         $"Resurrected on reference from source '{source}' ('{cleaned}')",
                         ct).ConfigureAwait(false))
-                {
-                    canonicalId = resurrectId.Value;
-                    classifiedBy = "auto-resurrect";
-                    aliasNotes = "Resurrected retired CanonicalOrg on a new reference";
-                    ResurrectedFromArchiveCounter.Add(1);
-                    _logger.LogInformation(
-                        "Resurrected retired CanonicalOrg {Id} for '{RawName}' from source '{Source}'.",
-                        resurrectId.Value,
-                        cleaned,
-                        source);
+                    {
+                        canonicalId = archivedId.Value;
+                        classifiedBy = "auto-resurrect";
+                        aliasNotes = "Resurrected retired CanonicalOrg on a new reference";
+                        ResurrectedFromArchiveCounter.Add(1);
+                        _logger.LogInformation(
+                            "Resurrected retired CanonicalOrg {Id} for '{RawName}' from source '{Source}'.",
+                            archivedId.Value,
+                            cleaned,
+                            source);
+                    }
                 }
             }
         }
@@ -354,22 +372,26 @@ public sealed class CanonicalOrgResolver
                 return null;
             }
 
-            canonicalId = await _store.UpsertCanonicalOrgAsync(
+            var upsert = await _store.UpsertCanonicalOrgAsync(
                 kind: kind,
                 displayName: cleaned,
                 clendorClientId: null,
                 website: website,
                 notes: notes,
                 ct: ct).ConfigureAwait(false);
-            createdNew = true;
+            canonicalId = upsert.Id;
+            createdNew = upsert.Created;
             classifiedBy = "auto-new";
             aliasNotes = "Created by CanonicalOrgResolver (no live normalized/fuzzy-name match)";
 
-            if (createArchived)
+            // Born-archived stamping fires ONLY on a genuine insert. When the upsert's
+            // strict/fuzzy fallback matched a pre-existing LIVE org (or a concurrent
+            // writer won the race), retiring that id would archive a real live org.
+            if (createArchived && upsert.Created)
             {
                 await _store.MarkRetiredOnIntakeAsync(
                     canonicalId.Value,
-                    "Born-archived on intake: orphan procurement vendor; resurrects on any future reference",
+                    "Born-archived on intake: orphan procurement vendor; reused cold on future firehose references",
                     ct).ConfigureAwait(false);
             }
 
