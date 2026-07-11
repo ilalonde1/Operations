@@ -58,9 +58,26 @@ internal static class OpportunitiesModule
         services.AddSingleton<IPrimePipelineStore>(_ => new SqlPrimePipelineStore(options.OpportunitiesDb));
         services.AddSingleton<IBdDashboardStore>(_ => new SqlBdDashboardStore(options.OpportunitiesDb));
         // BD Reports (BD-UI-Plan-2026-06-08): dashboard cards, report generators
-        // and MCP BD tools all read through this one service.
+        // and MCP BD tools all read through this one service. When an Anthropic
+        // key is present, sector reads get view-time honing synthesis (stale +
+        // changed verdicts refreshed on the fly; fresh/quiet rows cost nothing).
+        var reportAnthropicKey =
+            Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY", EnvironmentVariableTarget.Machine)
+            ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY", EnvironmentVariableTarget.User)
+            ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY");
         services.AddSingleton<Kor.Opportunities.Data.BdReports.IBdReportService>(
-            _ => new Kor.Opportunities.Data.BdReports.SqlBdReportService(options.OpportunitiesDb));
+            _ =>
+            {
+                Kor.Opportunities.Data.BdReports.OnDemandHoningSynthesizer? synth = null;
+                if (!string.IsNullOrWhiteSpace(reportAnthropicKey))
+                {
+                    synth = new Kor.Opportunities.Data.BdReports.OnDemandHoningSynthesizer(
+                        options.OpportunitiesDb,
+                        new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(90) },
+                        reportAnthropicKey!);
+                }
+                return new Kor.Opportunities.Data.BdReports.SqlBdReportService(options.OpportunitiesDb, synth);
+            });
         services.AddSingleton<IPursuitBriefStore>(_ => new SqlPursuitBriefStore(options.OpportunitiesDb));
         services.AddSingleton<IIndustryEventStore>(_ => new SqlIndustryEventStore(options.OpportunitiesDb));
         services.AddSingleton<IntelReadService>(_ => new IntelReadService(options.OpportunitiesDb));

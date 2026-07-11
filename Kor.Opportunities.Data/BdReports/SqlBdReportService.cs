@@ -23,7 +23,13 @@ public sealed class SqlBdReportService : IBdReportService
 
     private readonly string _connectionString;
 
-    public SqlBdReportService(string connectionString)
+    // Optional: when present, sector reads refresh stale-and-changed verdicts on
+    // the fly (view-time synthesis) before returning. Null = the historic
+    // behaviour (serve whatever the nightly batch last wrote) - so existing
+    // callers and tests are unaffected.
+    private readonly OnDemandHoningSynthesizer? _synthesizer;
+
+    public SqlBdReportService(string connectionString, OnDemandHoningSynthesizer? synthesizer = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -31,6 +37,7 @@ public sealed class SqlBdReportService : IBdReportService
         }
 
         _connectionString = connectionString;
+        _synthesizer = synthesizer;
     }
 
     public async Task<IReadOnlyList<SectorVerdictSummary>> GetSectorSummariesAsync(CancellationToken ct)
@@ -144,8 +151,40 @@ LEFT JOIN opportunities.MajorProjectEnrichment e
 WHERE m.RetiredAtUtc IS NULL
   AND {def.MpiWhere};";
 
-        var rows = new List<PursuitBriefRow>();
+        var rows = await ReadPursuitRowsAsync(sql, ct).ConfigureAwait(false);
 
+        // View-time freshness: refresh only the stale-and-changed verdicts (the
+        // synthesizer's own cost gate means fresh/quiet rows cost nothing), then
+        // re-read so the report reflects the just-synthesized verdicts.
+        if (_synthesizer is not null && rows.Count > 0)
+        {
+            try
+            {
+                var result = await _synthesizer
+                    .EnsureFreshAsync(rows.Select(x => x.MpiId).ToList(), ct)
+                    .ConfigureAwait(false);
+                if (result.Synthesized > 0 || result.Quiet > 0)
+                {
+                    rows = await ReadPursuitRowsAsync(sql, ct).ConfigureAwait(false);
+                }
+            }
+            catch
+            {
+                // Best-effort: on any synthesis failure, serve cached verdicts
+                // rather than break the report.
+            }
+        }
+
+        return rows
+            .OrderBy(x => BdVerdicts.Rank(x.Verdict))
+            .ThenByDescending(x => x.EstimatedCostCad ?? decimal.MinValue)
+            .ThenBy(x => x.ProjectName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private async Task<List<PursuitBriefRow>> ReadPursuitRowsAsync(string sql, CancellationToken ct)
+    {
+        var rows = new List<PursuitBriefRow>();
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
@@ -154,12 +193,7 @@ WHERE m.RetiredAtUtc IS NULL
         {
             rows.Add(Hydrate(r));
         }
-
-        return rows
-            .OrderBy(x => BdVerdicts.Rank(x.Verdict))
-            .ThenByDescending(x => x.EstimatedCostCad ?? decimal.MinValue)
-            .ThenBy(x => x.ProjectName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return rows;
     }
 
     public async Task<IReadOnlyList<SectorIntelSignalRow>> GetSectorIntelSignalsAsync(string sectorKey, CancellationToken ct)
