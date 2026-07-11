@@ -69,6 +69,11 @@ public static class CanonicalColumnRegistry
         new("opportunities", "BuildingPermit", "ApplicantName",  "ApplicantCanonicalOrgId",  OrgKinds.Unknown,           false),
         new("opportunities", "BuildingPermit", "ContractorName", "ContractorCanonicalOrgId", OrgKinds.GeneralContractor, false),
         new("opportunities", "BuildingPermit", "OwnerName",      "OwnerCanonicalOrgId",      OrgKinds.Unknown,           false),
+
+        // KOR pursuits — the Deltek sync's resolve misses left these null forever
+        // with no repair path (audit-v2 #6); the wheel now heals them weekly.
+        new("opportunities", "KorPursuits", "BuyerName",  "BuyerCanonicalOrgId",  OrgKinds.Buyer,      false),
+        new("opportunities", "KorPursuits", "LostToName", "LostToCanonicalOrgId", OrgKinds.Competitor, false),
     };
 
     /// <summary>

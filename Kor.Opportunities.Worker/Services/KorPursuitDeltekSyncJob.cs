@@ -143,13 +143,18 @@ BEGIN TRAN;
 UPDATE opportunities.KorPursuits WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
 SET
     Stage = @stage,
-    BuyerName = @buyerName,
-    BuyerCanonicalOrgId = @buyerCanonicalOrgId,
+    -- Audit-v2 #6: canonical FKs and their paired names are fill-only — a
+    -- transient resolve miss (or blanked Deltek field) must never null a good
+    -- link, and name/FK move together so they can't point at different orgs.
+    BuyerName = COALESCE(BuyerName, @buyerName),
+    BuyerCanonicalOrgId = COALESCE(BuyerCanonicalOrgId, @buyerCanonicalOrgId),
     Title = @title,
-    LostToCanonicalOrgId = @lostToCanonicalOrgId,
-    LostToName = @lostToName,
+    LostToCanonicalOrgId = COALESCE(LostToCanonicalOrgId, @lostToCanonicalOrgId),
+    LostToName = COALESCE(LostToName, @lostToName),
     PursuitOpenedDate = @openDate,
-    SubmittedDate = @proposalDueDate,
+    -- Deltek's ProposalDueDate is the DUE date; SubmittedDate is CRM-owned and
+    -- was being silently overwritten with it on every nightly sync.
+    DueDate = COALESCE(@proposalDueDate, DueDate),
     AwardDate = @awardDate,
     KorBusinessDeveloper = COALESCE(KorBusinessDeveloper, @bizDev),
     KorProposalManager = COALESCE(KorProposalManager, @propMgr),
@@ -160,7 +165,7 @@ IF @@ROWCOUNT = 0
 BEGIN
     INSERT INTO opportunities.KorPursuits
         (Stage, BuyerName, BuyerCanonicalOrgId, Title, LostToCanonicalOrgId, LostToName,
-         PursuitOpenedDate, SubmittedDate, AwardDate,
+         PursuitOpenedDate, DueDate, AwardDate,
          KorBusinessDeveloper, KorProposalManager, BidCurrency,
          ExternalSource, ExternalSourceKey, CreatedByUser, CreatedAtUtc, UpdatedAtUtc)
     VALUES
