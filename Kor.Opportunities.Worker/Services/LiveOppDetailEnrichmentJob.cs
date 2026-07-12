@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Ingestion;
@@ -87,14 +88,18 @@ internal sealed class LiveOppDetailEnrichmentJob : IJob
             ct.ThrowIfCancellationRequested();
             processed++;
             LiveDetailResult? result = null;
-            try
+            var url = BuildDetailUrl(t.OpportunityKey);
+            if (url is not null)
             {
-                result = await _extractor.ExtractAsync(page, t.Url, ct).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                failures++;
-                _logger.LogWarning(ex, "{Key}: BC Bid detail extract failed; marking attempted", t.OpportunityKey);
+                try
+                {
+                    result = await _extractor.ExtractAsync(page, url, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    failures++;
+                    _logger.LogWarning(ex, "{Key}: BC Bid detail extract failed; marking attempted", t.OpportunityKey);
+                }
             }
 
             try
@@ -117,10 +122,9 @@ internal sealed class LiveOppDetailEnrichmentJob : IJob
     private static async Task<IReadOnlyList<Target>> LoadTargetsAsync(string db, int batch, CancellationToken ct)
     {
         const string sql = @"
-SELECT TOP (@batch) o.Id, o.OpportunityKey, o.Name, o.Url
+SELECT TOP (@batch) o.Id, o.OpportunityKey, o.Name
 FROM opportunities.Opportunities o
 WHERE o.OpportunityKey LIKE 'BCBID%'
-  AND o.Url IS NOT NULL
   AND o.Status IN (0,1)
   AND o.DetailEnrichedAtUtc IS NULL
 ORDER BY o.SubmissionDeadlineUtc ASC;";   // soonest-closing first
@@ -133,9 +137,19 @@ ORDER BY o.SubmissionDeadlineUtc ASC;";   // soonest-closing first
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         while (await r.ReadAsync(ct).ConfigureAwait(false))
         {
-            list.Add(new Target(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3)));
+            list.Add(new Target(r.GetInt64(0), r.GetString(1), r.GetString(2)));
         }
         return list;
+    }
+
+    // The BC Bid detail URL is derivable from the OpportunityKey's process id,
+    // e.g. "BCBID-230528" / "BCBIDENG-230528" -> .../process_manage_extranet/230528.
+    private static string? BuildDetailUrl(string opportunityKey)
+    {
+        var m = Regex.Match(opportunityKey, @"(\d{4,})\s*$");
+        return m.Success
+            ? $"https://bcbid.gov.bc.ca/page.aspx/en/bpm/process_manage_extranet/{m.Groups[1].Value}"
+            : null;
     }
 
     /// <summary>Fill-only persist + idempotent docs + always-mark-attempted.</summary>
@@ -205,5 +219,5 @@ WHERE NOT EXISTS (SELECT 1 FROM opportunities.OpportunityDocuments
 
     private static string Trunc(string s, int n) => s.Length <= n ? s : s.Substring(0, n);
 
-    private sealed record Target(long Id, string OpportunityKey, string Name, string Url);
+    private sealed record Target(long Id, string OpportunityKey, string Name);
 }
