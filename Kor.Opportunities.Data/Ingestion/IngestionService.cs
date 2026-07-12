@@ -322,6 +322,13 @@ public sealed class IngestionService : IIngestionService
                 ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
                 : (DateOnly?)null;
 
+            // Fill-only enrichment on re-observation: populate Discipline + contact
+            // when the existing row is blank, but never clobber a value already set
+            // (e.g. a human-classified Discipline via the app, or a prior source).
+            var refreshedDiscipline = existing.Discipline == OpportunityDiscipline.Unknown
+                ? DisciplineClassifier.Classify(candidate)
+                : existing.Discipline;
+
             var refreshed = existing with
             {
                 RelevanceScore = scored.Score,
@@ -329,6 +336,13 @@ public sealed class IngestionService : IIngestionService
                 SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc ?? existing.SubmissionDeadlineUtc,
                 RfpReleaseDate = candidateRfpDate ?? existing.RfpReleaseDate,
                 BuyerName = shouldBackfillBuyer ? Truncate(candidateBuyer!, 300) : existing.BuyerName,
+                Discipline = refreshedDiscipline,
+                BuyerContactName = string.IsNullOrWhiteSpace(existing.BuyerContactName) && !string.IsNullOrWhiteSpace(candidate.BuyerContactName)
+                    ? Truncate(candidate.BuyerContactName.Trim(), 120) : existing.BuyerContactName,
+                BuyerContactEmail = string.IsNullOrWhiteSpace(existing.BuyerContactEmail) && !string.IsNullOrWhiteSpace(candidate.BuyerContactEmail)
+                    ? Truncate(candidate.BuyerContactEmail.Trim(), 255) : existing.BuyerContactEmail,
+                BuyerContactPhone = string.IsNullOrWhiteSpace(existing.BuyerContactPhone) && !string.IsNullOrWhiteSpace(candidate.BuyerContactPhone)
+                    ? Truncate(candidate.BuyerContactPhone.Trim(), 40) : existing.BuyerContactPhone,
             };
 
             try
@@ -585,13 +599,16 @@ public sealed class IngestionService : IIngestionService
             ProjectProvince = string.IsNullOrWhiteSpace(candidate.ProjectProvince) ? null : Truncate(candidate.ProjectProvince.Trim(), 20),
             EstimatedValue = candidate.EstimatedValueCad,
             EstimatedValueCurrency = "CAD",
+            BuyerContactName = string.IsNullOrWhiteSpace(candidate.BuyerContactName) ? null : Truncate(candidate.BuyerContactName.Trim(), 120),
+            BuyerContactEmail = string.IsNullOrWhiteSpace(candidate.BuyerContactEmail) ? null : Truncate(candidate.BuyerContactEmail.Trim(), 255),
+            BuyerContactPhone = string.IsNullOrWhiteSpace(candidate.BuyerContactPhone) ? null : Truncate(candidate.BuyerContactPhone.Trim(), 40),
             RfpReleaseDate = candidate.PostedDateUtc.HasValue
                 ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
                 : null,
             SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc,
             Status = OpportunityStatus.New,
             IdentifiedAtUtc = candidate.PostedDateUtc ?? DateTimeOffset.UtcNow,
-            Discipline = OpportunityDiscipline.Unknown,
+            Discipline = DisciplineClassifier.Classify(candidate),
         };
     }
 

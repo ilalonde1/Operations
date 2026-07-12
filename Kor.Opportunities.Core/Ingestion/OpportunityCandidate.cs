@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -38,6 +39,20 @@ public sealed record OpportunityCandidate
     public string? ProjectProvince { get; init; }
 
     public decimal? EstimatedValueCad { get; init; }
+
+    /// <summary>Buyer / official-contact fields, when the source exposes them.
+    /// Mapped onto <see cref="Models.Opportunity"/> BuyerContact* columns.</summary>
+    public string? BuyerContactName { get; init; }
+
+    public string? BuyerContactEmail { get; init; }
+
+    public string? BuyerContactPhone { get; init; }
+
+    /// <summary>Raw commodity / category signals the source carries — UNSPSC or
+    /// GSIN or NAICS codes and/or their text (e.g. "81101505 - Structural
+    /// engineering"). Fed to <c>DisciplineClassifier</c> to derive
+    /// <see cref="Models.Opportunity.Discipline"/>. Null when unknown.</summary>
+    public IReadOnlyList<string>? CommodityCodes { get; init; }
 
     public DateTimeOffset? SubmissionDeadlineUtc { get; init; }
 

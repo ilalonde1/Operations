@@ -243,6 +243,14 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
         var postedDate = ParsePostedDate(opportunity.PostedDate);
         var deadline = ParseDeadline(opportunity.ResponseDeadLine);
 
+        var contact = opportunity.PointOfContact?.Find(p =>
+            !string.IsNullOrWhiteSpace(p.Email)
+            || !string.IsNullOrWhiteSpace(p.FullName)
+            || !string.IsNullOrWhiteSpace(p.Phone));
+        var commodityCodes = string.IsNullOrWhiteSpace(opportunity.NaicsCode)
+            ? null
+            : new List<string> { opportunity.NaicsCode.Trim() };
+
         return new OpportunityCandidate
         {
             Title = opportunity.Title.Trim(),
@@ -257,6 +265,10 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
                 : opportunity.PlaceOfPerformance.City.Name.Trim(),
             ProjectProvince = TrimUpper(opportunity.PlaceOfPerformance?.State?.Code, 20),
             EstimatedValueCad = null,
+            BuyerContactName = string.IsNullOrWhiteSpace(contact?.FullName) ? null : contact.FullName.Trim(),
+            BuyerContactEmail = string.IsNullOrWhiteSpace(contact?.Email) ? null : contact.Email.Trim(),
+            BuyerContactPhone = string.IsNullOrWhiteSpace(contact?.Phone) ? null : contact.Phone.Trim(),
+            CommodityCodes = commodityCodes,
             ExternalReference = opportunity.NoticeId.Trim(),
             RawJson = JsonSerializer.Serialize(opportunity, JsonOptions),
         };
@@ -379,8 +391,23 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
         [JsonPropertyName("officeAddress")]
         public SamGovOfficeAddress? OfficeAddress { get; init; }
 
+        [JsonPropertyName("pointOfContact")]
+        public List<SamGovPointOfContact>? PointOfContact { get; init; }
+
         [JsonExtensionData]
         public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+    }
+
+    private sealed class SamGovPointOfContact
+    {
+        [JsonPropertyName("fullName")]
+        public string? FullName { get; init; }
+
+        [JsonPropertyName("email")]
+        public string? Email { get; init; }
+
+        [JsonPropertyName("phone")]
+        public string? Phone { get; init; }
     }
 
     private sealed class SamGovPlaceOfPerformance

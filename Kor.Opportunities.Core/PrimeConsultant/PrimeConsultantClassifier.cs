@@ -241,7 +241,11 @@ public static class PrimeConsultantClassifier
         return new PrimeRfpClassification(
             isPrime,
             confidence,
-            ClassifyDisciplineType(o, likelyPrimeType),
+            // PrimeDisciplineType answers "architect-led vs engineer-led" (prime
+            // firm type). It is deliberately independent of Opportunity.Discipline
+            // (KOR structural-relevance), which is now auto-populated at ingestion
+            // by DisciplineClassifier — conflating them would pollute prime routing.
+            likelyPrimeType,
             sector,
             likelyPrimeType,
             IsKorSectorMatch(sector),
@@ -333,11 +337,6 @@ public static class PrimeConsultantClassifier
         if (title.Contains("engineer", StringComparison.OrdinalIgnoreCase)) return "engineering";
         return "unknown";
     }
-
-    private static string? ClassifyDisciplineType(Opportunity o, string likelyPrimeType)
-        => o.Discipline == OpportunityDiscipline.Unknown
-            ? likelyPrimeType
-            : o.Discipline.ToString();
 
     private static bool IsKorSectorMatch(string sector)
         => sector is "school" or "health" or "government_office" or "housing" or "university" or "recreational";

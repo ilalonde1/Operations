@@ -195,6 +195,24 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
             "tenderId",
             "solicitationNumber");
 
+        var contactName = CsvParser.FirstValue(row, headers,
+            "contactInfoName",
+            "contactInfoName-informationsContactNom");
+        var contactEmail = CsvParser.FirstValue(row, headers,
+            "contactInfoEmail",
+            "contactInfoEmail-informationsContactCourriel");
+        var contactPhone = CsvParser.FirstValue(row, headers,
+            "contactInfoPhone",
+            "contactInfoPhone-informationsContactTelephone");
+
+        // Commodity signals used to derive Discipline. CanadaBuys carries GSIN +
+        // UNSPSC codes (and their English text) per notice.
+        var commodityCodes = new List<string>();
+        AddIfPresent(commodityCodes, CsvParser.FirstValue(row, headers, "gsin", "gsin-nibs"));
+        AddIfPresent(commodityCodes, CsvParser.FirstValue(row, headers, "gsinDescription", "gsinDescription-nibsDescription"));
+        AddIfPresent(commodityCodes, CsvParser.FirstValue(row, headers, "unspsc"));
+        AddIfPresent(commodityCodes, CsvParser.FirstValue(row, headers, "unspscDescription"));
+
         // Re-build a JSON of the row in (header -> value) form so the observation
         // captures everything for future AI features without hard-coding columns.
         var rawJson = BuildRowJson(row, headers);
@@ -208,12 +226,24 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
             Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
             PostedDateUtc = postedDate,
             SubmissionDeadlineUtc = deadline,
-            ProjectCity = null,    // CanadaBuys CSV doesn't expose city directly
+            ProjectCity = null,    // CanadaBuys exposes only contactInfoCity (the
+                                   // procurement office, often Ottawa) — mapping it
+                                   // to ProjectCity mislabels location and pollutes
+                                   // relevance scoring, so leave it null.
             ProjectProvince = ExtractProvince(location),
             EstimatedValueCad = null, // CanadaBuys doesn't include estimated value
+            BuyerContactName = string.IsNullOrWhiteSpace(contactName) ? null : contactName.Trim(),
+            BuyerContactEmail = string.IsNullOrWhiteSpace(contactEmail) ? null : contactEmail.Trim(),
+            BuyerContactPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim(),
+            CommodityCodes = commodityCodes.Count > 0 ? commodityCodes : null,
             ExternalReference = external,
             RawJson = rawJson,
         };
+    }
+
+    private static void AddIfPresent(List<string> list, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value)) list.Add(value.Trim());
     }
 
     private static bool PassesConfiguredFilter(
