@@ -112,14 +112,10 @@ FROM opportunities.OpportunitySources s
 WHERE s.IsEnabled = 1
   AND s.CrawlDelaySeconds > 0
   -- Quartz-managed sources have their own schedules; don't double-trigger.
-  -- Audit-v2 #13: this list had drifted twice — 'BdAlerts' (real source is
-  -- 'BdAlertsMailbox', so the mailbox was polled by BOTH planes every ~15 min)
-  -- and only AB of the five MPI sources was listed (BC/CA re-fetched ~20k rows
-  -- DAILY on top of their weekly Sunday Quartz jobs, racing the same upserts).
-  -- Names below verified against live opportunities.OpportunitySources rows.
-  AND s.Name NOT IN ('CanadaBuys', 'CanadaBuysNew', 'SamGov', 'BdAlertsMailbox',
-                     'AB_MajorProjectsInventory', 'BC_MajorProjectsInventory',
-                     'CA_SocrataSF', 'CA_SocrataSanDiego', 'CA_SanJoseCkan', 'CA_CEQAnet')
+  -- Migration 281: plane ownership is DATA (QuartzManaged bit), not a
+  -- hand-maintained name list — the list drifted twice ('BdAlerts' vs the real
+  -- 'BdAlertsMailbox'; only AB of five MPI sources) and double-ran sources.
+  AND s.QuartzManaged = 0
   -- Unknown / BdOutreach / Manual: no provider by design.
   AND s.SourceType NOT IN (0, 7, 99)
   -- No pending or in-flight trigger already queued.
@@ -127,6 +123,17 @@ WHERE s.IsEnabled = 1
       SELECT 1 FROM opportunities.IngestionTriggers t
       WHERE t.OpportunitySourceId = s.Id
         AND t.Status IN ('Pending', 'InProgress')
+  )
+  -- Failure backoff (audit-v2 sweep): after a FAILED run, wait a full crawl
+  -- window before re-queueing instead of hammering a broken source every tick.
+  AND NOT EXISTS (
+      SELECT 1 FROM opportunities.IngestionTriggers tf
+      WHERE tf.OpportunitySourceId = s.Id
+        AND tf.Status = 'Failed'
+        AND tf.RequestedAtUtc > DATEADD(SECOND, -s.CrawlDelaySeconds, SYSDATETIMEOFFSET())
+        AND tf.RequestedAtUtc = (
+            SELECT MAX(t2.RequestedAtUtc) FROM opportunities.IngestionTriggers t2
+            WHERE t2.OpportunitySourceId = s.Id)
   )
   -- Has never run OR last completed run is older than crawl window.
   AND NOT EXISTS (

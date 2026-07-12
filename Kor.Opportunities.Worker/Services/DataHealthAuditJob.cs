@@ -44,18 +44,20 @@ internal sealed class DataHealthAuditJob : IJob
         WHERE co.Kind IN ('Architect','Buyer','Developer','GC','Competitor')
           AND co.RetiredAtUtc IS NULL
           AND co.Website IS NULL
-          AND (co.Notes IS NULL OR co.Notes NOT LIKE 'WebSearchNotFound:%')
+          AND (co.Notes IS NULL OR co.Notes NOT LIKE '%WebSearchNotFound:%') -- contains-match: the marker is APPENDED to Notes (audit-v2 sweep)
           AND (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory WHERE RetiredAtUtc IS NULL AND (ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id)) >= 5
         ORDER BY MpiRefs DESC
         """;
 
+    // Audit-v2 sweep: LIVE rows only — retired rows counted here meant approved
+    // retire-in-place cleanups never registered in the numbers.
     private const string Q4DirtPatternsSql = """
-        SELECT 'DBA prefix' AS Pattern, COUNT(*) AS N FROM opportunities.CanonicalOrg WHERE DisplayName LIKE '%DBA:%'
-        UNION ALL SELECT 'o/a wrapper', COUNT(*) FROM opportunities.CanonicalOrg WHERE DisplayName LIKE '% o/a %'
-        UNION ALL SELECT 'Procurement-noise suffix', COUNT(*) FROM opportunities.CanonicalOrg WHERE DisplayName LIKE '% Pre-Qualified%' OR DisplayName LIKE '% Bid Received%' OR DisplayName LIKE '% Successful Proponent%' OR DisplayName LIKE '% Awarded'
-        UNION ALL SELECT 'All-caps DisplayName', COUNT(*) FROM opportunities.CanonicalOrg WHERE DisplayName = UPPER(DisplayName) AND DisplayName <> LOWER(DisplayName) AND LEN(DisplayName) >= 6
-        UNION ALL SELECT 'Newline-corrupted', COUNT(*) FROM opportunities.CanonicalOrg WHERE DisplayName LIKE '%' + CHAR(10) + '%' OR DisplayName LIKE '%' + CHAR(13) + '%'
-        UNION ALL SELECT 'Junk pattern (URL/address/n-a)', COUNT(*) FROM opportunities.CanonicalOrg WHERE DisplayName LIKE 'http%' OR DisplayName LIKE 'www.%' OR DisplayName LIKE '#%' OR DisplayName IN ('yes','no','none','None','N/A','NA','TBD','TBA','Unknown','-','--','***','test','Test')
+        SELECT 'DBA prefix' AS Pattern, COUNT(*) AS N FROM opportunities.CanonicalOrg WHERE RetiredAtUtc IS NULL AND DisplayName LIKE '%DBA:%'
+        UNION ALL SELECT 'o/a wrapper', COUNT(*) FROM opportunities.CanonicalOrg WHERE RetiredAtUtc IS NULL AND DisplayName LIKE '% o/a %'
+        UNION ALL SELECT 'Procurement-noise suffix', COUNT(*) FROM opportunities.CanonicalOrg WHERE RetiredAtUtc IS NULL AND (DisplayName LIKE '% Pre-Qualified%' OR DisplayName LIKE '% Bid Received%' OR DisplayName LIKE '% Successful Proponent%' OR DisplayName LIKE '% Awarded')
+        UNION ALL SELECT 'All-caps DisplayName', COUNT(*) FROM opportunities.CanonicalOrg WHERE RetiredAtUtc IS NULL AND DisplayName = UPPER(DisplayName) AND DisplayName <> LOWER(DisplayName) AND LEN(DisplayName) >= 6
+        UNION ALL SELECT 'Newline-corrupted', COUNT(*) FROM opportunities.CanonicalOrg WHERE RetiredAtUtc IS NULL AND (DisplayName LIKE '%' + CHAR(10) + '%' OR DisplayName LIKE '%' + CHAR(13) + '%')
+        UNION ALL SELECT 'Junk pattern (URL/address/n-a)', COUNT(*) FROM opportunities.CanonicalOrg WHERE RetiredAtUtc IS NULL AND (DisplayName LIKE 'http%' OR DisplayName LIKE 'www.%' OR DisplayName LIKE '#%' OR DisplayName IN ('yes','no','none','None','N/A','NA','TBD','TBA','Unknown','-','--','***','test','Test'))
         """;
 
     private const string Q5KindSuffixMismatchSql = """
@@ -67,24 +69,21 @@ internal sealed class DataHealthAuditJob : IJob
         WHERE Kind='Buyer' AND RetiredAtUtc IS NULL AND (DisplayName LIKE '% Construction%' OR DisplayName LIKE '% Engineers%' OR DisplayName LIKE '% Architects%')
         """;
 
-    private const string Q6FkOrphanRatesSql = """
-        SELECT 'MPI.Architect' AS Col, COUNT(*) AS Total,
-          SUM(CASE WHEN ArchitectCanonicalOrgId IS NULL THEN 1 ELSE 0 END) AS NullCount,
-          CAST(100.0 * SUM(CASE WHEN ArchitectCanonicalOrgId IS NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) AS DECIMAL(5,1)) AS PctNull
-        FROM opportunities.MajorProjectsInventory
-        UNION ALL SELECT 'MPI.GC', COUNT(*),
-          SUM(CASE WHEN GeneralContractorCanonicalOrgId IS NULL THEN 1 ELSE 0 END),
-          CAST(100.0 * SUM(CASE WHEN GeneralContractorCanonicalOrgId IS NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) AS DECIMAL(5,1))
-        FROM opportunities.MajorProjectsInventory
-        UNION ALL SELECT 'Opportunities.Buyer', COUNT(*),
-          SUM(CASE WHEN BuyerCanonicalOrgId IS NULL THEN 1 ELSE 0 END),
-          CAST(100.0 * SUM(CASE WHEN BuyerCanonicalOrgId IS NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) AS DECIMAL(5,1))
-        FROM opportunities.Opportunities
-        UNION ALL SELECT 'OpportunityAwards.AwardedTo', COUNT(*),
-          SUM(CASE WHEN AwardedToCanonicalOrgId IS NULL THEN 1 ELSE 0 END),
-          CAST(100.0 * SUM(CASE WHEN AwardedToCanonicalOrgId IS NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) AS DECIMAL(5,1))
-        FROM opportunities.OpportunityAwards
-        """;
+    // Audit-v2 sweep: Q6 is generated from CanonicalColumnRegistry — the same
+    // declarative list the backfill wheel repairs — so every canonical column is
+    // audited automatically, with NAME-AWARE denominators (rows that actually
+    // carry a name) and retired rows excluded. The old hand-written version
+    // covered 4 of ~16 columns with name-blind, retired-polluted denominators
+    // that structurally could not improve.
+    private static readonly string Q6FkOrphanRatesSql = string.Join(
+        "\nUNION ALL\n",
+        Kor.Opportunities.Data.Awards.CanonicalColumnRegistry.All.Select(e =>
+            $"SELECT '{e.Table}.{e.NameColumn}' AS Col, COUNT(*) AS Total, " +
+            $"SUM(CASE WHEN [{e.FkColumn}] IS NULL THEN 1 ELSE 0 END) AS NullCount, " +
+            $"CAST(100.0 * SUM(CASE WHEN [{e.FkColumn}] IS NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) AS DECIMAL(5,1)) AS PctNull " +
+            $"FROM {e.QualifiedTable} " +
+            $"WHERE [{e.NameColumn}] IS NOT NULL AND LTRIM(RTRIM([{e.NameColumn}])) <> ''" +
+            (e.HasRetiredAtUtc ? " AND [RetiredAtUtc] IS NULL" : string.Empty)));
 
     private const string Q7EnrichmentCoverageSql = """
         SELECT co.Kind, COUNT(*) AS Total,

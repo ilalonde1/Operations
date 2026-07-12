@@ -593,11 +593,14 @@ public sealed class CanonicalOrgResolver
     /// <summary>
     /// Aggressive normalization that strips trailing corporate/role suffixes
     /// iteratively after stripping all non-alphanumeric chars. Single source
-    /// of truth shared with BdCanonicalDedup so the resolver collapses
-    /// "ACI Architecture" / "ACI Architects Inc." / "ACI Architecture Inc."
-    /// to the same key preventing the dup-creation cycle where the
-    /// resolver creates a new canonical that BdCanonicalDedup then has to
-    /// merge away.
+    /// of truth shared with BdCanonicalDedup so both compute identical keys.
+    ///
+    /// HONEST SCOPE (audit-v2 sweep): the resolver's own live-match tiers do
+    /// NOT use this key — live matching uses the strict NormalizedName and the
+    /// weaker NormalizeForFuzzyMatch (which keeps suffix distinctions like
+    /// "Architects" vs "Architecture"). This helper only feeds the supervised
+    /// dedup CLI and audit tooling; it does not by itself prevent the
+    /// create-then-merge cycle the previous version of this comment claimed.
     ///
     /// Mirrors NormalizeKey in tools/BdCanonicalDedup/Program.cs (extracted
     /// here so both call the same code).

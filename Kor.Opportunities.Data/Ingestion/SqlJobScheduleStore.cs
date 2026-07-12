@@ -295,7 +295,7 @@ FROM opportunities.CanonicalOrg co
 WHERE co.Kind IN ('Architect','Buyer','Developer','GC','Competitor')
   AND co.RetiredAtUtc IS NULL
   AND co.Website IS NULL
-  AND (co.Notes IS NULL OR co.Notes NOT LIKE 'WebSearchNotFound:%')
+  AND (co.Notes IS NULL OR co.Notes NOT LIKE '%WebSearchNotFound:%') -- contains-match: the marker is APPENDED to Notes (audit-v2 sweep)
   AND (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
          WHERE (ArchitectCanonicalOrgId=co.Id OR ProponentCanonicalOrgId=co.Id
             OR GeneralContractorCanonicalOrgId=co.Id OR StructuralEngineerCanonicalOrgId=co.Id)

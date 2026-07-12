@@ -152,6 +152,12 @@ public sealed class IngestionDispatcher : IIngestionDispatcher
             }
         }
 
-        return providers[^1];
+        // Audit-v2 sweep: this used to silently fall back to the LAST registered
+        // provider — a misnamed source would run the wrong portal's parser against
+        // the wrong endpoint and record green. Fail loudly with the candidates.
+        throw new InvalidOperationException(
+            $"No provider matched source '{source.Name}' (type {source.SourceType}) by name prefix. " +
+            $"Candidates: {string.Join(", ", providers.Select(p => p.GetType().Name))}. " +
+            "Rename the source to a provider prefix or register the intended provider.");
     }
 }

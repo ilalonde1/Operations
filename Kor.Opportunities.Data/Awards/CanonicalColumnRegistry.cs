@@ -74,6 +74,11 @@ public static class CanonicalColumnRegistry
         // with no repair path (audit-v2 #6); the wheel now heals them weekly.
         new("opportunities", "KorPursuits", "BuyerName",  "BuyerCanonicalOrgId",  OrgKinds.Buyer,      false),
         new("opportunities", "KorPursuits", "LostToName", "LostToCanonicalOrgId", OrgKinds.Competitor, false),
+
+        // Historical archive — its org strings had NO canonical FK columns at all
+        // until migration 280; the wheel links the ~9,884-row archive from here.
+        new("opportunities", "HistoricalOpportunities", "BuyerName",             "BuyerCanonicalOrgId",     OrgKinds.Buyer,  false),
+        new("opportunities", "HistoricalOpportunities", "AwardedToOrganization", "AwardedToCanonicalOrgId", OrgKinds.Vendor, false),
     };
 
     /// <summary>

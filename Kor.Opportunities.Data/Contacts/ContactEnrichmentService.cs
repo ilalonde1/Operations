@@ -9,8 +9,11 @@ using Microsoft.Data.SqlClient;
 namespace Kor.Opportunities.Data.Contacts;
 
 /// <summary>
-/// Shared decision-maker email enrichment — ONE implementation used by both the
-/// BdContactEnrich CLI and the weekly ContactEnrichmentJob (no split-brain).
+/// Shared decision-maker email enrichment. HONEST SCOPE (audit-v2 sweep): the
+/// "weekly ContactEnrichmentJob" this comment used to promise was never built —
+/// today the ONLY caller is the supervised BdContactEnrich CLI. A scheduled job
+/// would spend Hunter credits unattended, so per the spend-sign-off rule it
+/// stays CLI-invoked until deliberately promoted.
 ///
 /// Two strategies, cheapest first:
 ///   PatternPropagate  — FREE. Derives each firm's email format from the clean emails

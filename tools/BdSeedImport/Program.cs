@@ -37,7 +37,14 @@ internal static class Program
             var stats = new ImportStats();
             var ct = CancellationToken.None;
 
-            var opportunityStore = new SqlOpportunityStore(config.OpportunitiesDb);
+            // Audit-v2 sweep: construct WITH the resolver — seeded rows previously
+            // carried NULL BuyerCanonicalOrgId forever (no resolver at write, and no
+            // repair path until the weekly wheel landed). Resolve at the front door.
+            var opportunityStore = new SqlOpportunityStore(
+                config.OpportunitiesDb,
+                new Kor.Opportunities.Data.Awards.CanonicalOrgResolver(
+                    new Kor.Opportunities.Data.Awards.SqlCanonicalOrgStore(config.OpportunitiesDb),
+                    Microsoft.Extensions.Logging.Abstractions.NullLogger<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>.Instance));
             var crmStore = new SqlCrmEngagementStore(config.OpportunitiesDb);
             var deltek = new DeltekLookupCache(config);
 

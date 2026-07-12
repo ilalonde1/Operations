@@ -2,6 +2,14 @@
 // (https://purchasing.alberta.ca/historical-data — point-in-time June 7, 2024
 // snapshot of all open/closed/awarded postings from the legacy APC platform).
 //
+// ALREADY RUN — DO NOT RE-RUN (audit-v2 sweep). This tool MERGEs award rows
+// with raw org strings and no canonical resolution; that was flagged as a
+// resolver-bypass. Deliberately NOT retrofitted: the snapshot never updates,
+// the import is complete, and OpportunityAwards.Awarding/AwardedTo are in
+// CanonicalColumnRegistry — the weekly CanonicalLinkBackfillJob links this
+// tool's historical rows. Any future re-import must go through
+// SqlOpportunityAwardStore's resolver overload (see GovCanEngineeringImport).
+//
 // Why a separate tool: this is a 124MB / 95,663-row bulk import that runs
 // ONCE (the source file is never updated). Pulling it through the regular
 // IngestionService + IIngestionRunStore + per-row Worker scrape would be
