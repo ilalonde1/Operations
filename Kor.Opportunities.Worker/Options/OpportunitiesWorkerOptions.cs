@@ -252,6 +252,13 @@ public sealed class OpportunitiesWorkerOptions
     public string? BcBidPlanTakerEnrichmentCronSchedule { get; set; }
     public int BcBidPlanTakerEnrichmentBatchSize { get; set; } = 20;
 
+    // Phase-2 live-opp detail enricher (reads the BC Bid detail page for
+    // Discipline / contact / documents). Small batch + gentle cadence; each opp
+    // is attempted exactly once (DetailEnrichedAtUtc guard).
+    public bool LiveOppDetailEnrichmentEnabled { get; set; } = true;
+    public string? LiveOppDetailEnrichmentCronSchedule { get; set; }
+    public int LiveOppDetailEnrichmentBatchSize { get; set; } = 8;
+
     public bool BdDeltekLinkDryRunEnabled { get; set; } = true;
     public int BdDeltekLinkDryRunMaxTargets { get; set; } = 5000;
     public int BdDeltekLinkDryRunAlertThreshold { get; set; } = 25;

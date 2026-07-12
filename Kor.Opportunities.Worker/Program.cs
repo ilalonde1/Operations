@@ -675,6 +675,7 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             // one-shot ApcInterestBackfill tool resolve to the same extractor.
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ApcInterestExtractor>();
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidPlanTakerExtractor>();
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidLiveDetailExtractor>();
             builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore>(
                 sp =>
                 {
@@ -949,6 +950,17 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["BcBidPlanTakerEnrichmentCronSchedule"] ?? "0 43 0/2 * * ?";
       t.ForJob(bcBidPlanTakerEnrichmentKey)
        .WithIdentity("BcBidPlanTakerEnrichmentTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  // Phase-2 live-opp detail enricher (BC Bid detail page -> Discipline/contact/docs).
+  var liveOppDetailEnrichmentKey = new JobKey(nameof(Kor.Opportunities.Worker.Services.LiveOppDetailEnrichmentJob));
+  q.AddJob<Kor.Opportunities.Worker.Services.LiveOppDetailEnrichmentJob>(opts => opts.WithIdentity(liveOppDetailEnrichmentKey));
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["LiveOppDetailEnrichmentCronSchedule"] ?? "0 7 0/1 * * ?";  // hourly at :07
+      t.ForJob(liveOppDetailEnrichmentKey)
+       .WithIdentity("LiveOppDetailEnrichmentTrigger")
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 

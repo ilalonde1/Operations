@@ -55,5 +55,6 @@ internal static class ScheduledJobDefinitions
         new(nameof(CanonicalLinkBackfillJob), "CanonicalLinkBackfillCronSchedule", "0 0 5 ? * SUN", o => o.CanonicalLinkBackfillEnabled, "Cleanup"),
         new(nameof(Jobs.IntelRetirementJob), "IntelRetirementCronSchedule", "0 0 2 * * ?", _ => true, "Cleanup"),
         new(nameof(BcBidPlanTakerEnrichmentJob), "BcBidPlanTakerEnrichmentCronSchedule", "0 43 0/2 * * ?", o => o.BcBidPlanTakerEnrichmentEnabled, "Enrichment"),
+        new(nameof(LiveOppDetailEnrichmentJob), "LiveOppDetailEnrichmentCronSchedule", "0 7 0/1 * * ?", o => o.LiveOppDetailEnrichmentEnabled, "Enrichment"),
     ];
 }
