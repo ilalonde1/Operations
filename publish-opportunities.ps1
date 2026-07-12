@@ -25,7 +25,10 @@
 [CmdletBinding()]
 param(
     [string]$PublishRoot = 'C:\VIsual Studio Projects\_Publish\_Ops\Opportunities',
-    [int]$KeepLast = 3
+    [int]$KeepLast = 3,
+    # Escape hatch for a knowingly-red emergency deploy. Using it is a decision
+    # you own; the default is that a red suite produces NO deployable artifact.
+    [switch]$SkipTests
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,6 +37,23 @@ $projectPath = Join-Path $repoRoot 'Kor.Opportunities.Worker\Kor.Opportunities.W
 
 if (-not (Test-Path $projectPath)) {
     throw "Project not found at $projectPath. Run this from the repo root."
+}
+
+# ---- TEST GATE (doctrine D1-D4 + behavioral suite) --------------------------
+# Commercial-grade rule: a publish artifact cannot exist if the test suite is
+# red. This is what makes the doctrine tests ENFORCEMENT rather than advice —
+# there is no CI server, so the deploy pipeline is the gate.
+if (-not $SkipTests) {
+    Write-Host 'Test gate: Kor.Opportunities.Data.Tests (doctrine + behavioral) ...' -ForegroundColor Cyan
+    & dotnet test (Join-Path $repoRoot 'Kor.Opportunities.Data.Tests\Kor.Opportunities.Data.Tests.csproj') `
+        --configuration Release --nologo --verbosity quiet
+    if ($LASTEXITCODE -ne 0) {
+        throw 'TEST GATE FAILED - the suite is red, so no publish artifact was produced. Fix the failure (or, for a knowing emergency, re-run with -SkipTests and own it).'
+    }
+    Write-Host 'Test gate: green.' -ForegroundColor Green
+}
+else {
+    Write-Host 'TEST GATE SKIPPED (-SkipTests) - this deploy is unverified.' -ForegroundColor Yellow
 }
 
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
