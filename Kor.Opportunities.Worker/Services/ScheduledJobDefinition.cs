@@ -49,9 +49,11 @@ internal static class ScheduledJobDefinitions
         new(nameof(ApcInterestEnrichmentJob), "ApcInterestEnrichmentCronSchedule", "0 17 0/1 * * ?", o => o.ApcInterestEnrichmentEnabled, "Enrichment"),
         // 2026-06-11: daily 6am BD system-status email to Ian.
         new(nameof(Reporting.BdMorningReportJob), "MorningReportCronSchedule", "0 0 6 * * ?", o => o.MorningReportEnabled, "Reporting"),
-        // Audit-v2 #15: these two ran real schedules but were invisible in the
+        // Audit-v2 #15: these ran real schedules but were invisible in the
         // Admin job registry — an operator couldn't see, disable, or reschedule them.
+        // (BcBidPlanTakerEnrichmentJob caught by DoctrineTests D3 on first run.)
         new(nameof(CanonicalLinkBackfillJob), "CanonicalLinkBackfillCronSchedule", "0 0 5 ? * SUN", o => o.CanonicalLinkBackfillEnabled, "Cleanup"),
         new(nameof(Jobs.IntelRetirementJob), "IntelRetirementCronSchedule", "0 0 2 * * ?", _ => true, "Cleanup"),
+        new(nameof(BcBidPlanTakerEnrichmentJob), "BcBidPlanTakerEnrichmentCronSchedule", "0 43 0/2 * * ?", o => o.BcBidPlanTakerEnrichmentEnabled, "Enrichment"),
     ];
 }

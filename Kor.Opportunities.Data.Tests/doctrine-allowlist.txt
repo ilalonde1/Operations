@@ -1,0 +1,24 @@
+# Doctrine-test escapes (docs/BD-Doctrine.md). Format: file-suffix|line-fragment|reason
+# Every entry is a CONSCIOUS decision with a reason — never an "it's fine" shrug.
+# An entry without a defensible reason is a bug report.
+
+# D1 — canonical FK assignments verified SAFE on inspection (each reason states the guard):
+Kor.Opportunities.Data/Awards/SqlOpportunityInterestedFirmStore.cs|SET    ResolvedCanonicalOrgId = @canonicalId|deliberate REPOINT API (RepointCanonicalAsync): non-nullable param, callers resolve before calling; this IS the wheel's repair write
+Kor.Opportunities.Data/Crm/SqlCrmEngagementStore.cs|BuyerCanonicalOrgId   = @buyerCanonicalOrgId|CRM full-row save of a USER-owned engagement, rowversion-guarded; buyer is user/UI context, not a resolved-name link
+Kor.Opportunities.Data/Intel/IntelPersistenceService.cs|CanonicalOrgId = @canonicalOrgId|intel child rows: org id is the caller's non-null anchor context (which org this intel belongs to), never a resolved-name link
+Kor.Opportunities.Data/Intel/ProjectIntelPersistenceService.cs|CanonicalOrgId = @canonicalOrgId|intel child rows: same anchor-context pattern as IntelPersistenceService
+Kor.Opportunities.Data/Intel/ProjectIntelPersistenceService.cs|TargetCanonicalOrgId = @targetCanonicalOrgId|intel action target: set with org context at extraction, non-null anchor
+Kor.Opportunities.Data/Opportunities/SqlOpportunityStore.cs|SET BuyerCanonicalOrgId = @b OUTPUT|guarded UPSTREAM: `if (!buyerId.HasValue) return null;` precedes the UPDATE — only a SUCCESSFUL resolve writes; rowversion-guarded
+tools/BdCanonicalDedup/Program.cs|CanonicalOrgId = @survivor|merge machinery: deliberate loser->survivor repoint, the whole point of the tool
+tools/BdCanonicalDedup/Program.cs|SET m.MergedIntoCanonicalOrgId = @survivor|merge-ledger redirect to final survivor on chained merges
+tools/BdResearchImport/Program.cs|ArchitectCanonicalOrgId = @architectCanonicalOrgId,|UpdateMajorProjectArchitectForecastAsync: fill-only via WHERE ArchitectCanonicalOrgId IS NULL clause; name+FK written together
+
+# D3 — jobs deliberately absent from the Admin schedule registry:
+Kor.Opportunities.Worker/Program.cs|CanonicalOrgDedupJob|retired no-op kept durably registered so a stray legacy trigger doesn't error; auto-merge is forbidden (supervised CLI only)
+Kor.Opportunities.Worker/Program.cs|IntelExtractionCatchUpJob|self-managing catch-up job; cron fixed by design, not operator-tunable
+Kor.Opportunities.Worker/Program.cs|CrmEnrichmentJob|registered via its own options gate; sectioned nightly job (plan 3.1)
+Kor.Opportunities.Worker/Program.cs|BdResearchExecutorJob|research executor trio driven by BdResearchExecutorOptions, not operator cron
+Kor.Opportunities.Worker/Program.cs|BdProjectResearchExecutorJob|research executor trio driven by BdResearchExecutorOptions, not operator cron
+Kor.Opportunities.Worker/Program.cs|BdPersonResearchExecutorJob|research executor trio driven by BdResearchExecutorOptions, not operator cron
+Kor.Opportunities.Worker/Program.cs|BdStaffDirectorySyncJob|plan D2 sync; 05:15 fixed to precede the 6am morning report
+Kor.Opportunities.Worker/Program.cs|BdDeltekLinkDryRunJob|already in ScheduledJobDefinitions; name-substring guard

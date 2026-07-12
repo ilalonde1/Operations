@@ -27,13 +27,23 @@ public static class TeamNameCleaner
 {
     private static readonly Regex TrailingParenthetical = new(@"\s*\([^()]*\)\s*$", RegexOptions.Compiled);
 
+    // Doctrine D4: bare placeholders that once became "organizations" (45 'no'
+    // rows, 2 'yes' rows scrubbed live on 2026-07-11). Matched on the whole
+    // trimmed value, case-insensitively — a real firm never IS one of these.
+    private static readonly HashSet<string> BarePlaceholders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "no", "yes", "na", "n/a", "n.a.", "tbd", "tba", "tbc", "none", "null",
+        "unknown", "pending", "various", "multiple", "-", "--", "---", "***",
+        "same", "see above", "see notes", "not applicable",
+    };
+
     /// <summary>
     /// Reduce a raw team-name string to a single plausible firm, or null.
     /// </summary>
     public static string? Clean(string? name)
     {
         var trimmed = string.IsNullOrWhiteSpace(name) ? null : name!.Trim();
-        if (trimmed is null || string.Equals(trimmed, "unknown", StringComparison.OrdinalIgnoreCase))
+        if (trimmed is null || BarePlaceholders.Contains(trimmed))
         {
             return null;
         }
