@@ -676,6 +676,13 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ApcInterestExtractor>();
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidPlanTakerExtractor>();
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidLiveDetailExtractor>();
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BidsAndTendersLiveDetailExtractor>();
+            // Source-agnostic detail enrichment: every extractor is exposed under the
+            // shared interface; LiveOppDetailEnrichmentJob consumes IEnumerable<>.
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ILiveOppDetailExtractor>(
+                sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BcBidLiveDetailExtractor>());
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ILiveOppDetailExtractor>(
+                sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BidsAndTendersLiveDetailExtractor>());
             builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore>(
                 sp =>
                 {

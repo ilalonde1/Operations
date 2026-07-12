@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Text.RegularExpressions;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Ingestion;
@@ -17,36 +17,35 @@ using Quartz;
 namespace Kor.Opportunities.Worker.Services;
 
 /// <summary>
-/// Phase-2 live-opportunity detail enricher. Walks live BC Bid opportunities that
-/// have not yet had their detail page read (DetailEnrichedAtUtc IS NULL), opens
-/// the authenticated detail page via <see cref="BcBidLiveDetailExtractor"/>, and
-/// FILL-ONLY persists the recovered Discipline (from the commodity list), buyer
-/// contact, and RFx document references. Every attempted opp is stamped
-/// DetailEnrichedAtUtc so it is processed exactly once — never re-queued (the fix
-/// for the plan-taker starvation class of bug).
+/// Source-agnostic live-opportunity detail enricher. For each registered
+/// <see cref="ILiveOppDetailExtractor"/> (BC Bid, Bids&amp;Tenders, …) it walks live
+/// opps whose observation URL that extractor handles and that haven't been read
+/// yet (DetailEnrichedAtUtc IS NULL), opens the detail page, and FILL-ONLY
+/// persists the recovered Discipline (from commodity codes or the scraped
+/// description), buyer contact, and documents. Every attempted opp is stamped
+/// DetailEnrichedAtUtc so it is processed exactly once — never re-queued.
+///
+/// The detail URL comes from opportunities.OpportunityObservations.Url (populated
+/// for every source), so adding a portal is one new extractor + a DI registration
+/// — this job never changes.
 /// </summary>
 [DisallowConcurrentExecution]
 internal sealed class LiveOppDetailEnrichmentJob : IJob
 {
-    private const string SourcePortal = "BCBID";
-
     private readonly IOptions<OpportunitiesWorkerOptions> _options;
     private readonly ILogger<LiveOppDetailEnrichmentJob> _logger;
-    private readonly BcBidLiveDetailExtractor _extractor;
-    private readonly BcBidCredentials _credentials;
+    private readonly IEnumerable<ILiveOppDetailExtractor> _extractors;
     private readonly PlaywrightBrowserPool _browserPool;
 
     public LiveOppDetailEnrichmentJob(
         IOptions<OpportunitiesWorkerOptions> options,
         ILogger<LiveOppDetailEnrichmentJob> logger,
-        BcBidLiveDetailExtractor extractor,
-        BcBidCredentials credentials,
+        IEnumerable<ILiveOppDetailExtractor> extractors,
         PlaywrightBrowserPool browserPool)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _extractor = extractor ?? throw new ArgumentNullException(nameof(extractor));
-        _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
+        _extractors = extractors ?? throw new ArgumentNullException(nameof(extractors));
         _browserPool = browserPool ?? throw new ArgumentNullException(nameof(browserPool));
     }
 
@@ -58,103 +57,100 @@ internal sealed class LiveOppDetailEnrichmentJob : IJob
             _logger.LogInformation("{Job}: disabled by configuration", nameof(LiveOppDetailEnrichmentJob));
             return;
         }
-        if (!_credentials.IsConfigured)
-        {
-            _logger.LogInformation("{Job}: BC Bid credentials not configured; skipping", nameof(LiveOppDetailEnrichmentJob));
-            return;
-        }
 
         var ct = context.CancellationToken;
-        var batchSize = Math.Max(1, opt.LiveOppDetailEnrichmentBatchSize);
+        var batch = Math.Max(1, opt.LiveOppDetailEnrichmentBatchSize);
         var db = opt.OpportunitiesDb!;
 
-        var targets = await LoadTargetsAsync(db, batchSize, ct).ConfigureAwait(false);
-        if (targets.Count == 0)
-        {
-            _logger.LogInformation("{Job}: no un-enriched BC Bid opportunities", nameof(LiveOppDetailEnrichmentJob));
-            context.Result = "No un-enriched BCBID opps";
-            return;
-        }
-        _logger.LogInformation("{Job}: processing {Count} BC Bid opportunities", nameof(LiveOppDetailEnrichmentJob), targets.Count);
+        int totalProcessed = 0, totalDiscipline = 0, totalContact = 0, totalDocs = 0, totalFail = 0;
 
-        await using var ctxRef = await _browserPool.AcquireContextAsync(ct).ConfigureAwait(false);
-        var page = await ctxRef.NewPageAsync().ConfigureAwait(false);
-        await _extractor.LoginAsync(page, ct).ConfigureAwait(false);
-
-        int processed = 0, disciplineSet = 0, contactSet = 0, docsWritten = 0, failures = 0;
-
-        foreach (var t in targets)
+        foreach (var extractor in _extractors)
         {
             ct.ThrowIfCancellationRequested();
-            processed++;
-            LiveDetailResult? result = null;
-            var url = BuildDetailUrl(t.OpportunityKey);
-            if (url is not null)
+            if (!extractor.IsAvailable)
             {
+                _logger.LogInformation("{Job}: extractor {Src} unavailable; skipping", nameof(LiveOppDetailEnrichmentJob), extractor.Name);
+                continue;
+            }
+
+            var targets = await LoadTargetsAsync(db, extractor.UrlHostLike, batch, ct).ConfigureAwait(false);
+            if (targets.Count == 0) continue;
+
+            _logger.LogInformation("{Job}: {Src} — {Count} opps", nameof(LiveOppDetailEnrichmentJob), extractor.Name, targets.Count);
+
+            await using var ctxRef = await _browserPool.AcquireContextAsync(ct).ConfigureAwait(false);
+            var page = await ctxRef.NewPageAsync().ConfigureAwait(false);
+            if (extractor.RequiresLogin)
+            {
+                await extractor.LoginAsync(page, ct).ConfigureAwait(false);
+            }
+
+            foreach (var t in targets)
+            {
+                ct.ThrowIfCancellationRequested();
+                totalProcessed++;
+                LiveDetailResult? result = null;
                 try
                 {
-                    result = await _extractor.ExtractAsync(page, url, ct).ConfigureAwait(false);
+                    result = await extractor.ExtractAsync(page, t.Url, ct).ConfigureAwait(false);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    failures++;
-                    _logger.LogWarning(ex, "{Key}: BC Bid detail extract failed; marking attempted", t.OpportunityKey);
+                    totalFail++;
+                    _logger.LogWarning(ex, "{Key}: {Src} detail extract failed; marking attempted", t.OpportunityKey, extractor.Name);
                 }
-            }
 
-            try
-            {
-                var (d, c, docs) = await PersistAsync(db, t, result, ct).ConfigureAwait(false);
-                disciplineSet += d; contactSet += c; docsWritten += docs;
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                failures++;
-                _logger.LogWarning(ex, "{Key}: BC Bid detail persist failed", t.OpportunityKey);
+                try
+                {
+                    var (d, c, docs) = await PersistAsync(db, t, result, extractor.Name, ct).ConfigureAwait(false);
+                    totalDiscipline += d; totalContact += c; totalDocs += docs;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    totalFail++;
+                    _logger.LogWarning(ex, "{Key}: {Src} detail persist failed", t.OpportunityKey, extractor.Name);
+                }
             }
         }
 
-        var summary = $"processed={processed}; disciplineSet={disciplineSet}; contactSet={contactSet}; docs={docsWritten}; failures={failures}";
+        var summary = $"processed={totalProcessed}; disciplineSet={totalDiscipline}; contactSet={totalContact}; docs={totalDocs}; failures={totalFail}";
         _logger.LogInformation("{Job}: {Summary}", nameof(LiveOppDetailEnrichmentJob), summary);
         context.Result = summary;
     }
 
-    private static async Task<IReadOnlyList<Target>> LoadTargetsAsync(string db, int batch, CancellationToken ct)
+    private static async Task<IReadOnlyList<Target>> LoadTargetsAsync(string db, string hostLike, int batch, CancellationToken ct)
     {
         const string sql = @"
-SELECT TOP (@batch) o.Id, o.OpportunityKey, o.Name
+SELECT TOP (@batch) o.Id, o.OpportunityKey, o.Name, obs.Url
 FROM opportunities.Opportunities o
-WHERE o.OpportunityKey LIKE 'BCBID%'
-  AND o.Status IN (0,1)
+CROSS APPLY (
+    SELECT TOP 1 x.Url
+    FROM opportunities.OpportunityObservations x
+    WHERE x.OpportunityId = o.Id AND x.Url IS NOT NULL
+    ORDER BY x.IsActive DESC, x.IngestedAtUtc DESC
+) obs
+WHERE o.Status IN (0,1)
   AND o.DetailEnrichedAtUtc IS NULL
+  AND obs.Url LIKE @host
 ORDER BY o.SubmissionDeadlineUtc ASC;";   // soonest-closing first
 
         await using var con = new SqlConnection(db);
         await con.OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
         cmd.Parameters.Add("@batch", SqlDbType.Int).Value = batch;
+        cmd.Parameters.Add("@host", SqlDbType.NVarChar, 200).Value = hostLike;
         var list = new List<Target>();
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         while (await r.ReadAsync(ct).ConfigureAwait(false))
         {
-            list.Add(new Target(r.GetInt64(0), r.GetString(1), r.GetString(2)));
+            list.Add(new Target(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3)));
         }
         return list;
     }
 
-    // The BC Bid detail URL is derivable from the OpportunityKey's process id,
-    // e.g. "BCBID-230528" / "BCBIDENG-230528" -> .../process_manage_extranet/230528.
-    private static string? BuildDetailUrl(string opportunityKey)
-    {
-        var m = Regex.Match(opportunityKey, @"(\d{4,})\s*$");
-        return m.Success
-            ? $"https://bcbid.gov.bc.ca/page.aspx/en/bpm/process_manage_extranet/{m.Groups[1].Value}"
-            : null;
-    }
-
     /// <summary>Fill-only persist + idempotent docs + always-mark-attempted.</summary>
     private static async Task<(int discipline, int contact, int docs)> PersistAsync(
-        string db, Target t, LiveDetailResult? result, CancellationToken ct)
+        string db, Target t, LiveDetailResult? result, string sourcePortal, CancellationToken ct)
     {
         int discSet = 0, contactSet = 0, docsWritten = 0;
         await using var con = new SqlConnection(db);
@@ -162,7 +158,8 @@ ORDER BY o.SubmissionDeadlineUtc ASC;";   // soonest-closing first
 
         if (result is not null)
         {
-            var discipline = DisciplineClassifier.Classify(result.CommodityCodes, t.Name, null);
+            // Discipline from structured codes (BC Bid) or the scraped description (B&T).
+            var discipline = DisciplineClassifier.Classify(result.CommodityCodes, t.Name, result.Description);
             if (discipline != OpportunityDiscipline.Unknown)
             {
                 discSet += await ExecAsync(con,
@@ -189,6 +186,7 @@ ORDER BY o.SubmissionDeadlineUtc ASC;";   // soonest-closing first
             }
             foreach (var doc in result.Documents)
             {
+                if (string.IsNullOrWhiteSpace(doc.Url)) continue;
                 docsWritten += await ExecAsync(con, @"
 INSERT INTO opportunities.OpportunityDocuments (OpportunityId, DocumentName, DocumentUrl, SourcePortal)
 SELECT @id, @name, @url, @portal
@@ -197,12 +195,11 @@ WHERE NOT EXISTS (SELECT 1 FROM opportunities.OpportunityDocuments
                     ("@id", SqlDbType.BigInt, t.Id),
                     ("@name", SqlDbType.NVarChar, Trunc(doc.Name, 400)),
                     ("@url", SqlDbType.NVarChar, Trunc(doc.Url, 1000)),
-                    ("@portal", SqlDbType.NVarChar, SourcePortal));
+                    ("@portal", SqlDbType.NVarChar, sourcePortal));
             }
         }
 
-        // Always mark attempted — success, no-data, or extract failure — so no
-        // opp is ever re-queued forever.
+        // Always mark attempted (success, no-data, or failure) — no opp re-queues.
         await ExecAsync(con,
             "UPDATE opportunities.Opportunities SET DetailEnrichedAtUtc=sysdatetimeoffset() WHERE Id=@id AND DetailEnrichedAtUtc IS NULL",
             ("@id", SqlDbType.BigInt, t.Id));
@@ -219,5 +216,5 @@ WHERE NOT EXISTS (SELECT 1 FROM opportunities.OpportunityDocuments
 
     private static string Trunc(string s, int n) => s.Length <= n ? s : s.Substring(0, n);
 
-    private sealed record Target(long Id, string OpportunityKey, string Name);
+    private sealed record Target(long Id, string OpportunityKey, string Name, string Url);
 }

@@ -11,22 +11,9 @@ using Microsoft.Playwright;
 
 namespace Kor.Opportunities.Data.Ingestion.Scraping;
 
-public sealed record DetailLink(string Text, string Href);
-
-public sealed record DetailDocument(string Name, string Url);
-
-/// <summary>Structured result of reading a live BC Bid opportunity detail page.
-/// All fields optional — a page may expose some and not others.</summary>
-public sealed record LiveDetailResult(
-    IReadOnlyList<string> CommodityCodes,
-    string? ContactName,
-    string? ContactEmail,
-    string? ContactPhone,
-    IReadOnlyList<DetailDocument> Documents);
-
 /// <summary>
-/// Phase-2 detail-page reader for LIVE (open) BC Bid opportunities. Where the
-/// listing scrape (BcBidScraper) only captures title/buyer/close, this opens the
+/// Detail-page reader for LIVE (open) BC Bid opportunities. Where the listing
+/// scrape (BcBidScraper) only captures title/buyer/close, this opens the
 /// authenticated opportunity detail page and recovers the commodity/discipline
 /// list, the official contact, and the RFx document references — the content the
 /// pipeline was previously blind to.
@@ -35,8 +22,13 @@ public sealed record LiveDetailResult(
 /// there is one BCeID login path. The DOM-to-fields step is a pure function
 /// (<see cref="ParseDetail"/>) so it is unit-tested against captured page text.
 /// </summary>
-public sealed class BcBidLiveDetailExtractor
+public sealed class BcBidLiveDetailExtractor : ILiveOppDetailExtractor
 {
+    public string Name => "BCBID";
+    public string UrlHostLike => "%bcbid.gov.bc.ca%";
+    public bool RequiresLogin => true;
+    public bool IsAvailable => _credentials.IsConfigured;
+
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
     // UNSPSC-style commodity lines, e.g. "81101505 - Structural engineering".
@@ -49,11 +41,13 @@ public sealed class BcBidLiveDetailExtractor
         @"(?:\+?1[ .\-]?)?\(?\d{3}\)?[ .\-]?\d{3}[ .\-]?\d{4}", RegexOptions.Compiled);
 
     private readonly BcBidPlanTakerExtractor _login;
+    private readonly BcBidCredentials _credentials;
     private readonly ILogger<BcBidLiveDetailExtractor> _logger;
 
-    public BcBidLiveDetailExtractor(BcBidPlanTakerExtractor login, ILogger<BcBidLiveDetailExtractor> logger)
+    public BcBidLiveDetailExtractor(BcBidPlanTakerExtractor login, BcBidCredentials credentials, ILogger<BcBidLiveDetailExtractor> logger)
     {
         _login = login ?? throw new ArgumentNullException(nameof(login));
+        _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -148,7 +142,9 @@ public sealed class BcBidLiveDetailExtractor
             }
         }
 
-        return new LiveDetailResult(commodities, contactName, email, phone, docs);
+        // BC Bid discipline comes from the structured commodity codes, so Description
+        // is left null (the classifier reads CommodityCodes).
+        return new LiveDetailResult(commodities, null, contactName, email, phone, docs);
     }
 
     private static readonly string[] SystemEmailFragments =

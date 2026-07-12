@@ -45,12 +45,12 @@ if (string.IsNullOrWhiteSpace(db))
 const string loadSql = @"
 SELECT o.Id, o.Name, o.Discipline, o.OpportunityKey,
        o.BuyerContactName, o.BuyerContactEmail, o.BuyerContactPhone,
-       obs.RawJson
+       obs.RawJson, obs.Description
 FROM opportunities.Opportunities o
 OUTER APPLY (
-    SELECT TOP 1 x.RawJson
+    SELECT TOP 1 x.RawJson, x.Description
     FROM opportunities.OpportunityObservations x
-    WHERE x.OpportunityId = o.Id AND x.RawJson IS NOT NULL
+    WHERE x.OpportunityId = o.Id
     ORDER BY x.IsActive DESC, x.IngestedAtUtc DESC
 ) obs
 WHERE o.Status IN (0,1)   -- New / Reviewing (live)
@@ -72,7 +72,8 @@ await using (var con = new SqlConnection(db))
             r.IsDBNull(4) ? null : r.GetString(4),
             r.IsDBNull(5) ? null : r.GetString(5),
             r.IsDBNull(6) ? null : r.GetString(6),
-            r.IsDBNull(7) ? null : r.GetString(7)));
+            r.IsDBNull(7) ? null : r.GetString(7),
+            r.IsDBNull(8) ? null : r.GetString(8)));
     }
 }
 
@@ -89,10 +90,12 @@ await using (var wcon = new SqlConnection(db))
 
     foreach (var row in rows)
     {
-        // Discipline: classify from Name + the retained raw payload (which carries
-        // commodity codes + scope for feed sources; BC Bid rows fall back to Name).
-        var desc = row.RawJson is null ? null : (row.RawJson.Length > 8000 ? row.RawJson[..8000] : row.RawJson);
-        var newDisc = DisciplineClassifier.Classify(null, row.Name, desc);
+        // Discipline: classify from Name + the ingested Description (the real
+        // source text — present for BC Bid, Bonfire, CivicInfo, etc.), falling back
+        // to RawJson. Source-agnostic: no detail-page scrape needed.
+        var text = !string.IsNullOrWhiteSpace(row.Description) ? row.Description : row.RawJson;
+        if (text is { Length: > 8000 }) text = text[..8000];
+        var newDisc = DisciplineClassifier.Classify(null, row.Name, text);
         var discFill = row.Discipline == OpportunityDiscipline.Unknown && newDisc != OpportunityDiscipline.Unknown;
         if (discFill)
         {
@@ -210,4 +213,5 @@ static (string? Name, string? Email, string? Phone) ExtractContact(string key, s
 
 internal sealed record Row(
     long Id, string Name, OpportunityDiscipline Discipline, string OpportunityKey,
-    string? BuyerContactName, string? BuyerContactEmail, string? BuyerContactPhone, string? RawJson);
+    string? BuyerContactName, string? BuyerContactEmail, string? BuyerContactPhone,
+    string? RawJson, string? Description);
