@@ -12,7 +12,7 @@ using Quartz;
 namespace Kor.Opportunities.Worker.Jobs;
 
 /// <summary>
-/// Pursuit-lifecycle accountability (migration 282): owning a prime-target
+/// Pursuit-lifecycle accountability (migration 284): owning a prime-target
 /// play (MajorProjectsInventory.OwnerStaffId) takes it off the shared boards
 /// and the weekly attack sheet — so an owned-but-unworked play is invisible
 /// inventory. This job releases ownership after the configured window

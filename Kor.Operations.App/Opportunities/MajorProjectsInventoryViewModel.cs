@@ -62,7 +62,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         FilteredProjectsView.Filter = ProjectFilterPredicate;
     }
 
-    // Lifecycle view chips (migration 282). Active (default) hides removed
+    // Lifecycle view chips (migration 284). Active (default) hides removed
     // rows; owned rows stay visible with their owner badge. Removed shows the
     // "not for us" set with who/when/why — nothing is ever deleted.
     public const string LifecycleActive = "Active";
@@ -120,7 +120,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
         OnPropertyChanged(nameof(HasSelectedLifecycleNote));
     }
 
-    // Lifecycle affordances for the selected row (migration 282).
+    // Lifecycle affordances for the selected row (migration 284).
     public bool CanOwnSelected => Selected is { OwnerStaffId: null, DismissedAtUtc: null };
     public bool CanDismissSelected => Selected is { DismissedAtUtc: null };
     public bool CanReleaseSelected => Selected is { OwnerStaffId: not null };
@@ -448,7 +448,7 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
             return false;
         }
 
-        // Lifecycle view (migration 282). Active hides removed rows; owned rows
+        // Lifecycle view (migration 284). Active hides removed rows; owned rows
         // stay visible in Active (they're still real pipeline, just claimed).
         var lifecycleMatch = _lifecycleFilter switch
         {

@@ -54,7 +54,7 @@ public sealed class OpportunityRowView
     public string Name => Model.Name;
     public string BuyerName => Model.BuyerName;
 
-    /// <summary>Status text; a human "not for us" (migration 282) overrides the
+    /// <summary>Status text; a human "not for us" (migration 284) overrides the
     /// raw enum so admins see removed tenders as such wherever rows render.</summary>
     public string Status => Model.DismissedAtUtc is null ? Model.Status.ToString() : "Removed";
 

@@ -238,7 +238,7 @@ internal static class OpportunitiesModule
         // discipline as the rest of the schema.
         services.AddSingleton<ICrmEngagementStore>(_ => new SqlCrmEngagementStore(options.OpportunitiesDb));
         services.AddSingleton<IPursuitGrabStore>(_ => new SqlPursuitGrabStore(options.OpportunitiesDb));
-        // Pursuit lifecycle (migration 282): own / release / dismiss / restore,
+        // Pursuit lifecycle (migration 284): own / release / dismiss / restore,
         // audited transitions for projects (MPI) and tenders alike.
         services.AddSingleton<Kor.Opportunities.Data.MajorProjects.IPursuitLifecycleStore>(
             _ => new Kor.Opportunities.Data.MajorProjects.SqlPursuitLifecycleStore(options.OpportunitiesDb));

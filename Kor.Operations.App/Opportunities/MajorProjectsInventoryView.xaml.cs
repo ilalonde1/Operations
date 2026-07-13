@@ -124,7 +124,7 @@ public partial class MajorProjectsInventoryView : UserControl
         win.Show();
     }
 
-    // ---- Pursuit lifecycle (migration 282) ----------------------------------
+    // ---- Pursuit lifecycle (migration 284) ----------------------------------
 
     private async void OwnProject_Click(object sender, RoutedEventArgs e)
     {

@@ -2,7 +2,7 @@
    Apply with sqlcmd -I (QUOTED_IDENTIFIER ON — see migration 277's lesson). */
 
 /* =====================================================================
-   282 — Pursuit lifecycle: human ownership + "not for us" as first-class,
+   284 — Pursuit lifecycle: human ownership + "not for us" as first-class,
          auditable state; ONE actionable predicate for every surface.
    ---------------------------------------------------------------------
    Problem: MajorProjectsInventory rows (the weekly-attack-sheet / prime-

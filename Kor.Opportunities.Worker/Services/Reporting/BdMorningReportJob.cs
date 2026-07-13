@@ -100,7 +100,7 @@ public sealed class BdMorningReportJob : IJob
     private sealed record OwnerPursuitRow(string Owner, string Project, string Buyer, DateTimeOffset? Due, DateTimeOffset? LastTouch);
 
     /// <summary>An attack-sheet play the owner took (MajorProjectsInventory
-    /// ownership, migration 282) that is nearing the 14-day auto-release —
+    /// ownership, migration 284) that is nearing the 14-day auto-release —
     /// surfaced from day 10 so the reaper never surprises anyone.</summary>
     private sealed record OwnedPlayRow(string Owner, string Project, string Province, DateTimeOffset OwnedAt);
 

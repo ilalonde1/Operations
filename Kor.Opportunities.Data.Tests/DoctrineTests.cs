@@ -237,7 +237,7 @@ public sealed class DoctrineTests
     // ---- D11: actionable pools come from the lifecycle views -----------------
 
     /// <summary>
-    /// Migration 282 made "actionable" a single predicate
+    /// Migration 284 made "actionable" a single predicate
     /// (vw_ActionableProjects / vw_ActionableOpportunities). A Worker job that
     /// re-derives it inline (filtering DismissedAtUtc / un-owned / seat-filled
     /// itself) WILL drift from the view the day either changes — the exact

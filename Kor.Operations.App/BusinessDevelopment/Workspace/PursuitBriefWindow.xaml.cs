@@ -23,7 +23,7 @@ public partial class PursuitBriefWindow : Window
         DataContext = _vm;
     }
 
-    // ---- Pursuit lifecycle (migration 282) — the weekly attack sheet's
+    // ---- Pursuit lifecycle (migration 284) — the weekly attack sheet's
     // kor://mpi deep links land here, so Own it / Not for us live here too. ----
 
     private async void OwnPlay_Click(object sender, RoutedEventArgs e)

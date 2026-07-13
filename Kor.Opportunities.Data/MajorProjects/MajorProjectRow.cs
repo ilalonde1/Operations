@@ -54,7 +54,7 @@ public sealed record MajorProjectRow(
     string? ScheduleNotes,
     string? FootprintSource = null,
     string? FootprintRole = null,
-    // Pursuit lifecycle (migration 282): human ownership + "not for us".
+    // Pursuit lifecycle (migration 284): human ownership + "not for us".
     string? OwnerStaffId = null,
     DateTimeOffset? OwnedAtUtc = null,
     DateTimeOffset? DismissedAtUtc = null,

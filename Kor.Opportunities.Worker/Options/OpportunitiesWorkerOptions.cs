@@ -340,7 +340,7 @@ public sealed class OpportunitiesWorkerOptions
     /// EXCLUDED from the sheet (expired data is a trust killer). Default 45.</summary>
     public int WeeklyAttackSheetFreshDays { get; set; } = 45;
 
-    // --- 2026-07-13: Pursuit lifecycle (migration 282) ---
+    // --- 2026-07-13: Pursuit lifecycle (migration 284) ---
     // Owning a play parks it off the shared boards/sheet; the reaper releases
     // it after the window so nothing is parked silently. The per-owner digest
     // warns from day 10.

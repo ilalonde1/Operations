@@ -903,7 +903,7 @@ builder.Services.AddQuartz(q =>
            cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
   });
 
-  // Pursuit lifecycle (migration 282): release owned-but-unconverted plays
+  // Pursuit lifecycle (migration 284): release owned-but-unconverted plays
   // after the accountability window. 02:40 UTC — after intel retirement,
   // before the 06:00 morning report, so the digest reflects post-reap state.
   var mpiReaperKey = new JobKey("MpiOwnershipReaperJob");

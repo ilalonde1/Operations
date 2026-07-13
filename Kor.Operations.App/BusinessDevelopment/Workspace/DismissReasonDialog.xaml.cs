@@ -4,7 +4,7 @@ using System.Windows;
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
 /// <summary>
-/// Reason picker for the "Not for us" lifecycle action (migration 282). The
+/// Reason picker for the "Not for us" lifecycle action (migration 284). The
 /// reason is the audit trail — the dialog will not close affirmed without one.
 /// The row is never deleted; admins see it under the Removed view with
 /// who/when/why and can restore it.

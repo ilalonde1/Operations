@@ -70,7 +70,7 @@ public sealed record Opportunity
     /// <summary>Comma-separated reviewer staff IDs (matches the schema's nvarchar(500) bag).</summary>
     public string? ReviewerStaffIds { get; init; }
 
-    // Pursuit lifecycle (migration 282): a human "not for us" — distinct from
+    // Pursuit lifecycle (migration 284): a human "not for us" — distinct from
     // system retirement/expiry and never a delete. Set/cleared ONLY through
     // SqlPursuitLifecycleStore (audited); read here for board filtering.
     public DateTimeOffset? DismissedAtUtc { get; init; }

@@ -102,7 +102,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
         {
             // Reuse the tested list path (excludes closed Won/Lost), then keep
             // only the grabbable pool: still New, not yet owned, not dismissed
-            // ("not for us", migration 282 — client mirror of
+            // ("not for us", migration 284 — client mirror of
             // vw_ActionableOpportunities). Ranked by relevance (scored first,
             // highest score first), deadline as tiebreak.
             var all = await _opportunityStore.ListAsync(ct, includeClosed: false).ConfigureAwait(true);
@@ -198,7 +198,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
     }
 
     /// <summary>
-    /// "Not for us" (migration 282): audited dismissal with a reason. The row
+    /// "Not for us" (migration 284): audited dismissal with a reason. The row
     /// leaves the pool everywhere (Bazaar, weekly sheet, digests) but is never
     /// deleted — admins see it under Removed and can restore it.
     /// </summary>

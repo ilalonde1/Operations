@@ -22,7 +22,7 @@ public enum LifecycleOutcome
 /// Human lifecycle transitions for prime-target projects (MajorProjectsInventory)
 /// and tenders (Opportunities): own / release / dismiss ("not for us") / restore.
 /// Every transition is a single guarded transaction that also writes the shared
-/// audit stream (OpportunityAssignmentLog, MpiId column from migration 282) —
+/// audit stream (OpportunityAssignmentLog, MpiId column from migration 284) —
 /// the WHERE guard makes concurrent actions race-safe, mirroring
 /// <see cref="Crm.SqlPursuitGrabStore"/>. Dismissal is deliberately distinct
 /// from the system's RetiredAtUtc staleness reaper: a person said no, and the

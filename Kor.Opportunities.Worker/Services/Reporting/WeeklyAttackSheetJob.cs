@@ -155,7 +155,7 @@ ORDER BY l.AtUtc DESC;";
         // freshness guard is the trust rule: no source has seen the row within
         // the window -> it cannot appear on the sheet.
         // Lifecycle (retired / dismissed / owned / seat filled) lives in
-        // vw_ActionableProjects — the ONE actionable predicate (migration 282,
+        // vw_ActionableProjects — the ONE actionable predicate (migration 284,
         // doctrine D11). Freshness stays here: it is a per-surface knob.
         const string sql = @"
 SELECT TOP (@n)
