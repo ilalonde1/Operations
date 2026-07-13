@@ -143,8 +143,14 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         return baseResult with { Documents = docs, InterestedFirms = firms };
     }
 
-    private static string TabUrl(string detailUrl, string tabId)
-        => detailUrl + (detailUrl.Contains('?') ? "&" : "?") + "innerTabId=" + tabId;
+    /// <summary>Clicks the inner tab whose anchor controls <paramref name="tabBodyId"/>
+    /// (e.g. "docs-itemsAbstractTabBody") — the only action that fires the
+    /// tab-view's content AJAX. Caller is already on the detail page.</summary>
+    private static async Task ClickTabAsync(IPage page, string tabBodyId)
+    {
+        await page.Locator($"a[aria-controls='{tabBodyId}']").First
+            .ClickAsync(new LocatorClickOptions { Timeout = 15_000 }).ConfigureAwait(false);
+    }
 
     private async Task<IReadOnlyList<DetailDocument>> ReadDocumentsTabAsync(
         IPage page, string detailUrl, CancellationToken ct)
@@ -152,18 +158,18 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         ct.ThrowIfCancellationRequested();
         try
         {
-            // Load (not NetworkIdle): MERX keeps analytics connections open, so
-            // networkidle can time out on a fully-rendered page (seen live
-            // 2026-07-13). The tab body fills via AJAX — wait for its anchors.
-            await page.GotoAsync(TabUrl(detailUrl, "docs-items"), new PageGotoOptions
-            {
-                WaitUntil = WaitUntilState.Load,
-                Timeout = 45_000,
-            }).ConfigureAwait(false);
+            // Tab content only loads when the tab is CLICKED — the tab-view JS
+            // fires its AJAX on click; the ?innerTabId= URL param merely
+            // pre-selects the tab without loading it (verified live 2026-07-13:
+            // the full-page render contains neither the docs tables nor
+            // #documentRequesTable). Click like a user, then wait for the
+            // injected content inside #innerTabContent.
+            await ClickTabAsync(page, "docs-itemsAbstractTabBody").ConfigureAwait(false);
             try
             {
-                await page.WaitForSelectorAsync("#innerTabContent a[href]",
-                    new PageWaitForSelectorOptions { Timeout = 12_000 }).ConfigureAwait(false);
+                await page.WaitForSelectorAsync(
+                    "#innerTabContent table[id^='preview_tblSolDoc'] a[href], #innerTabContent a[href*='view-document']",
+                    new PageWaitForSelectorOptions { Timeout = 15_000 }).ConfigureAwait(false);
             }
             catch (TimeoutException) { /* tab may genuinely be empty — scrape what rendered */ }
             await page.WaitForTimeoutAsync(1500).ConfigureAwait(false);
@@ -217,16 +223,12 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         ct.ThrowIfCancellationRequested();
         try
         {
-            // Load + selector wait, not NetworkIdle — same reason as the docs tab.
-            await page.GotoAsync(TabUrl(detailUrl, "docs-request"), new PageGotoOptions
-            {
-                WaitUntil = WaitUntilState.Load,
-                Timeout = 45_000,
-            }).ConfigureAwait(false);
+            // Click-to-load, same as the docs tab (URL param does not fire the AJAX).
+            await ClickTabAsync(page, "docs-requestAbstractTabBody").ConfigureAwait(false);
             try
             {
                 await page.WaitForSelectorAsync("#documentRequesTable tr",
-                    new PageWaitForSelectorOptions { Timeout = 12_000 }).ConfigureAwait(false);
+                    new PageWaitForSelectorOptions { Timeout = 15_000 }).ConfigureAwait(false);
             }
             catch (TimeoutException) { /* list may be empty — scrape what rendered */ }
             await page.WaitForTimeoutAsync(1500).ConfigureAwait(false);
