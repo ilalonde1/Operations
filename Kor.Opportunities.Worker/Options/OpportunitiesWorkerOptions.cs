@@ -230,6 +230,16 @@ public sealed class OpportunitiesWorkerOptions
     public string? CanonicalLinkBackfillCronSchedule { get; set; }
     public int CanonicalLinkBackfillBatchSize { get; set; } = 500;
 
+    /// <summary>
+    /// Pass-2 (create) switch for the backfill wheel. Pass-1 is always link-only
+    /// (FindExistingAsync, cannot mint). With this on, orphans whose registry
+    /// entry declares a CreateMode are resolved with allowCreate — Live entries
+    /// mint live orgs, Archived entries mint born-archived (keep-cold). Default
+    /// OFF; enable via KOR_OPPORTUNITIES_CANONICALLINKBACKFILLCREATEENABLED once
+    /// the resurrect contract + shared guards are deployed (both landed 2026-07-11).
+    /// </summary>
+    public bool CanonicalLinkBackfillCreateEnabled { get; set; } = false;
+
     public bool DataHealthAuditEnabled { get; set; } = true;
     public string? DataHealthAuditCronSchedule { get; set; }
     public string DataHealthAuditOutputDir { get; set; } =

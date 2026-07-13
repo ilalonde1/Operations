@@ -9,12 +9,32 @@ using Microsoft.Data.SqlClient;
 namespace Kor.Opportunities.Data.Awards;
 
 /// <summary>
+/// How the backfill wheel's pass-2 may CREATE a canonical for an orphan name
+/// this column holds, when pass-1's read-only link finds nothing to link to.
+/// </summary>
+public enum CanonicalCreateMode
+{
+    /// <summary>Never create — link-only. For columns whose orphan residue is
+    /// dominated by resolve-failures/junk descriptors that ingest already tried.</summary>
+    Never = 0,
+
+    /// <summary>Create as a live org — real firms/buyers on live pursuits.</summary>
+    Live = 1,
+
+    /// <summary>Create born-archived (firehose keep-cold): commodity vendors we
+    /// want referenced-but-cold, never warming the working set.</summary>
+    Archived = 2,
+}
+
+/// <summary>
 /// One row of the canonical-column registry: a (table, name-column, FK-column)
 /// triple in the <c>opportunities</c> schema where a raw ingested organisation
 /// name is meant to resolve to a <c>CanonicalOrg</c>. <see cref="KindHint"/> is
-/// the org kind to assume if/when a create pass is enabled (unused by the
-/// read-only link pass). <see cref="HasRetiredAtUtc"/> flags tables that carry a
-/// soft-retire column so scans can skip retired rows.
+/// the org kind used when the create pass mints; <see cref="HasRetiredAtUtc"/>
+/// flags tables that carry a soft-retire column so scans skip retired rows;
+/// <see cref="CleanAsTeamName"/> routes project-team columns through the shared
+/// <c>TeamNameCleaner</c> before any resolve (its paren/segment semantics are
+/// wrong for buyer names like "Vancouver (City of)", so it is opt-in).
 /// </summary>
 public sealed record CanonicalColumnRef(
     string Schema,
@@ -23,7 +43,9 @@ public sealed record CanonicalColumnRef(
     string FkColumn,
     string KindHint,
     bool HasRetiredAtUtc,
-    string KeyColumn = "Id")
+    string KeyColumn = "Id",
+    CanonicalCreateMode CreateMode = CanonicalCreateMode.Never,
+    bool CleanAsTeamName = false)
 {
     /// <summary>Bracket-quoted <c>[schema].[table]</c> for use in SQL.</summary>
     public string QualifiedTable => $"[{Schema}].[{Table}]";
@@ -51,34 +73,40 @@ public static class CanonicalColumnRegistry
     {
         // Major Projects Inventory — the four project-team roles. SE/GC have no
         // other scheduled writer at all, so the wheel is their only link path.
-        new("opportunities", "MajorProjectsInventory", "ArchitectName",           "ArchitectCanonicalOrgId",           OrgKinds.Architect,         true),
-        new("opportunities", "MajorProjectsInventory", "StructuralEngineerName",   "StructuralEngineerCanonicalOrgId",  OrgKinds.Competitor,        true),
-        new("opportunities", "MajorProjectsInventory", "GeneralContractorName",    "GeneralContractorCanonicalOrgId",   OrgKinds.GeneralContractor, true),
-        new("opportunities", "MajorProjectsInventory", "ProponentName",            "ProponentCanonicalOrgId",           OrgKinds.Unknown,           true),
+        // Create LIVE: these are real firms on live pursuits (research-sourced).
+        new("opportunities", "MajorProjectsInventory", "ArchitectName",           "ArchitectCanonicalOrgId",           OrgKinds.Architect,         true, CreateMode: CanonicalCreateMode.Live, CleanAsTeamName: true),
+        new("opportunities", "MajorProjectsInventory", "StructuralEngineerName",   "StructuralEngineerCanonicalOrgId",  OrgKinds.Competitor,        true, CreateMode: CanonicalCreateMode.Live, CleanAsTeamName: true),
+        new("opportunities", "MajorProjectsInventory", "GeneralContractorName",    "GeneralContractorCanonicalOrgId",   OrgKinds.GeneralContractor, true, CreateMode: CanonicalCreateMode.Live, CleanAsTeamName: true),
+        new("opportunities", "MajorProjectsInventory", "ProponentName",            "ProponentCanonicalOrgId",           OrgKinds.Unknown,           true, CreateMode: CanonicalCreateMode.Live, CleanAsTeamName: true),
 
         // Tender / award / interest surfaces — buyer and firm names that a
         // provider miss (transient failure, denylist, name not yet in the graph)
         // leaves un-linked forever without a scheduled retry.
-        new("opportunities", "Opportunities",            "BuyerName",             "BuyerCanonicalOrgId",     OrgKinds.Buyer,   false),
+        // Buyers create LIVE (public buyers feed client KPIs); award/bid vendors
+        // create BORN-ARCHIVED (keep-cold commodity class); interested-firms
+        // NEVER create (residue = ingest resolve-failures/junk descriptors).
+        new("opportunities", "Opportunities",            "BuyerName",             "BuyerCanonicalOrgId",     OrgKinds.Buyer,   false, CreateMode: CanonicalCreateMode.Live),
         new("opportunities", "OpportunityInterestedFirms","RawFirmName",          "ResolvedCanonicalOrgId",  OrgKinds.Unknown, false),
-        new("opportunities", "OpportunityBids",           "BidderName",           "BidderCanonicalOrgId",    OrgKinds.Vendor,  false),
-        new("opportunities", "OpportunityAwards",         "AwardingOrganization", "AwardingCanonicalOrgId",  OrgKinds.Buyer,   false),
-        new("opportunities", "OpportunityAwards",         "AwardedToOrganization","AwardedToCanonicalOrgId", OrgKinds.Vendor,  false),
+        new("opportunities", "OpportunityBids",           "BidderName",           "BidderCanonicalOrgId",    OrgKinds.Vendor,  false, CreateMode: CanonicalCreateMode.Archived),
+        new("opportunities", "OpportunityAwards",         "AwardingOrganization", "AwardingCanonicalOrgId",  OrgKinds.Buyer,   false, CreateMode: CanonicalCreateMode.Live),
+        new("opportunities", "OpportunityAwards",         "AwardedToOrganization","AwardedToCanonicalOrgId", OrgKinds.Vendor,  false, CreateMode: CanonicalCreateMode.Archived),
 
-        // Building permits — three independent org roles per permit.
-        new("opportunities", "BuildingPermit", "ApplicantName",  "ApplicantCanonicalOrgId",  OrgKinds.Unknown,           false),
-        new("opportunities", "BuildingPermit", "ContractorName", "ContractorCanonicalOrgId", OrgKinds.GeneralContractor, false),
-        new("opportunities", "BuildingPermit", "OwnerName",      "OwnerCanonicalOrgId",      OrgKinds.Unknown,           false),
+        // Building permits — three independent org roles per permit; permit
+        // parties are commodity-class, keep-cold.
+        new("opportunities", "BuildingPermit", "ApplicantName",  "ApplicantCanonicalOrgId",  OrgKinds.Unknown,           false, CreateMode: CanonicalCreateMode.Archived),
+        new("opportunities", "BuildingPermit", "ContractorName", "ContractorCanonicalOrgId", OrgKinds.GeneralContractor, false, CreateMode: CanonicalCreateMode.Archived),
+        new("opportunities", "BuildingPermit", "OwnerName",      "OwnerCanonicalOrgId",      OrgKinds.Unknown,           false, CreateMode: CanonicalCreateMode.Archived),
 
         // KOR pursuits — the Deltek sync's resolve misses left these null forever
         // with no repair path (audit-v2 #6); the wheel now heals them weekly.
-        new("opportunities", "KorPursuits", "BuyerName",  "BuyerCanonicalOrgId",  OrgKinds.Buyer,      false),
-        new("opportunities", "KorPursuits", "LostToName", "LostToCanonicalOrgId", OrgKinds.Competitor, false),
+        new("opportunities", "KorPursuits", "BuyerName",  "BuyerCanonicalOrgId",  OrgKinds.Buyer,      false, CreateMode: CanonicalCreateMode.Live),
+        new("opportunities", "KorPursuits", "LostToName", "LostToCanonicalOrgId", OrgKinds.Competitor, false, CreateMode: CanonicalCreateMode.Live),
 
         // Historical archive — its org strings had NO canonical FK columns at all
         // until migration 280; the wheel links the ~9,884-row archive from here.
-        new("opportunities", "HistoricalOpportunities", "BuyerName",             "BuyerCanonicalOrgId",     OrgKinds.Buyer,  false),
-        new("opportunities", "HistoricalOpportunities", "AwardedToOrganization", "AwardedToCanonicalOrgId", OrgKinds.Vendor, false),
+        // Buyers live (client-KPI joins); historic awardees keep-cold.
+        new("opportunities", "HistoricalOpportunities", "BuyerName",             "BuyerCanonicalOrgId",     OrgKinds.Buyer,  false, CreateMode: CanonicalCreateMode.Live),
+        new("opportunities", "HistoricalOpportunities", "AwardedToOrganization", "AwardedToCanonicalOrgId", OrgKinds.Vendor, false, CreateMode: CanonicalCreateMode.Archived),
     };
 
     /// <summary>

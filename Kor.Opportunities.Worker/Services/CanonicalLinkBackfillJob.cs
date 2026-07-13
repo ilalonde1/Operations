@@ -23,12 +23,14 @@ namespace Kor.Opportunities.Worker.Services;
 /// declarative <see cref="CanonicalColumnRegistry"/>, so coverage is declared in
 /// exactly one place.
 ///
-/// Two hard safety guarantees, by construction:
-///   1. It never mints a canonical. Pass-1 uses
-///      <see cref="CanonicalOrgResolver.FindExistingAsync"/> only — a pure
-///      lookup that links to an existing canonical and writes no OrgAlias rows.
-///      The create ("pass-2") path is intentionally NOT implemented here; it
-///      waits on the retire/resurrect contract and the shared junk guards.
+/// Safety guarantees, by construction:
+///   1. Pass-1 never mints: <see cref="CanonicalOrgResolver.FindExistingAsync"/>
+///      is a pure lookup. Pass-2 (create) is OFF by default and per-column
+///      policy-gated via <see cref="CanonicalCreateMode"/>: Live entries mint
+///      live orgs, Archived entries mint born-archived (keep-cold doctrine),
+///      Never entries stay link-only. ResolveAsync carries the full guard stack
+///      (denylist, concat guard, resurrect/keep-cold contract) so junk names
+///      remain visible orphans instead of becoming organizations.
 ///   2. It never overwrites or nulls an existing link. Every write is a
 ///      fill-if-null guarded UPDATE that re-checks <c>FK IS NULL</c>, so a
 ///      concurrent writer's link is never clobbered.
@@ -70,25 +72,27 @@ internal sealed class CanonicalLinkBackfillJob : IJob
 
         var ct = context.CancellationToken;
         var perEntryCap = Math.Max(1, opt.CanonicalLinkBackfillBatchSize);
+        var createEnabled = opt.CanonicalLinkBackfillCreateEnabled;
 
-        int totalScanned = 0, totalLinked = 0;
+        int totalScanned = 0, totalLinked = 0, totalCreated = 0;
         var sections = new List<string>();
 
         foreach (var entry in CanonicalColumnRegistry.All)
         {
             ct.ThrowIfCancellationRequested();
-            var (scanned, linked) = await BackfillEntryAsync(connStr, entry, perEntryCap, ct).ConfigureAwait(false);
+            var (scanned, linked, created) = await BackfillEntryAsync(connStr, entry, perEntryCap, createEnabled, ct).ConfigureAwait(false);
             totalScanned += scanned;
             totalLinked += linked;
+            totalCreated += created;
             if (scanned > 0)
             {
-                sections.Add($"{entry.Label}: {linked}/{scanned}");
+                sections.Add($"{entry.Label}: {linked}+{created}c/{scanned}");
             }
         }
 
         var summary = totalScanned == 0
             ? "no name-set / FK-null rows; nothing to do"
-            : $"linked={totalLinked}; scanned={totalScanned}; stillOrphan={totalScanned - totalLinked} :: " + string.Join(" | ", sections);
+            : $"linked={totalLinked}; created={totalCreated}; scanned={totalScanned}; stillOrphan={totalScanned - totalLinked - totalCreated} :: " + string.Join(" | ", sections);
         _logger.LogInformation("{Job}: {Summary}", nameof(CanonicalLinkBackfillJob), summary);
         context.Result = summary;
     }
@@ -98,8 +102,8 @@ internal sealed class CanonicalLinkBackfillJob : IJob
     /// (name set, FK null, not retired) and links the ones the resolver can match
     /// to an existing canonical. Returns (scanned, linked).
     /// </summary>
-    private async Task<(int scanned, int linked)> BackfillEntryAsync(
-        string connStr, CanonicalColumnRef entry, int pageSize, CancellationToken ct)
+    private async Task<(int scanned, int linked, int created)> BackfillEntryAsync(
+        string connStr, CanonicalColumnRef entry, int pageSize, bool createEnabled, CancellationToken ct)
     {
         var retiredFilter = entry.HasRetiredAtUtc ? " AND [RetiredAtUtc] IS NULL" : string.Empty;
         // Keyset pagination by the primary key. A plain TOP(n) with no ORDER BY
@@ -122,7 +126,8 @@ internal sealed class CanonicalLinkBackfillJob : IJob
         var source = "CanonicalLinkBackfill:" + entry.Label;
 
         long lastKey = long.MinValue;
-        int scanned = 0, linked = 0;
+        int scanned = 0, linked = 0, created = 0;
+        var mayCreate = createEnabled && entry.CreateMode != CanonicalCreateMode.Never;
         // Defensive ceiling far above any real table (pageSize * this many pages);
         // a runaway loop can never spin here, but a healthy backlog is fully walked.
         const int maxPagesPerRun = 10_000;
@@ -160,9 +165,40 @@ internal sealed class CanonicalLinkBackfillJob : IJob
                 ct.ThrowIfCancellationRequested();
                 try
                 {
+                    // Team-name columns get the shared cleaner first — their orphan
+                    // names arrived via research banking that predates the guard.
+                    // Buyer-style names skip it (its paren/segment rules would
+                    // mangle "Vancouver (City of)").
+                    var name = entry.CleanAsTeamName ? TeamNameCleaner.Clean(row.Name) : row.Name;
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        continue;
+                    }
+
                     // PASS 1 — read-only resolve. Links to an existing canonical only;
                     // never creates one, never writes an OrgAlias row.
-                    var canonicalId = await _resolver.FindExistingAsync(row.Name, source, ct).ConfigureAwait(false);
+                    var canonicalId = await _resolver.FindExistingAsync(name, source, ct).ConfigureAwait(false);
+                    var wasCreate = false;
+
+                    // PASS 2 — flag-gated create, per the entry's declared policy.
+                    // ResolveAsync carries the full guard stack (denylist, concat
+                    // guard, resurrect/keep-cold contract): Live entries mint a live
+                    // org; Archived entries mint born-archived (referenced-but-cold,
+                    // per the firehose doctrine). Junk names return null and simply
+                    // remain orphans — visible in the audit, never minted.
+                    if (!canonicalId.HasValue && mayCreate)
+                    {
+                        canonicalId = await _resolver.ResolveAsync(
+                            name,
+                            entry.KindHint,
+                            source,
+                            ct,
+                            allowCreate: true,
+                            minConfidenceForCreate: 70,
+                            createArchived: entry.CreateMode == CanonicalCreateMode.Archived).ConfigureAwait(false);
+                        wasCreate = canonicalId.HasValue;
+                    }
+
                     if (!canonicalId.HasValue)
                     {
                         continue;
@@ -173,7 +209,7 @@ internal sealed class CanonicalLinkBackfillJob : IJob
                     update.Parameters.Add("@key", SqlDbType.BigInt).Value = row.Id;
                     if (await update.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0)
                     {
-                        linked++;
+                        if (wasCreate) { created++; } else { linked++; }
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -190,6 +226,6 @@ internal sealed class CanonicalLinkBackfillJob : IJob
             }
         }
 
-        return (scanned, linked);
+        return (scanned, linked, created);
     }
 }

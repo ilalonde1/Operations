@@ -68,6 +68,11 @@ internal static class Program
         new("MajorProjectsInventory", "GeneralContractorCanonicalOrgId"),
         new("OpportunityAwards", "AwardedToCanonicalOrgId"),
         new("OpportunityAwards", "AwardingCanonicalOrgId"),
+        // Migration 280 (2026-07-11): historical archive gained canonical FKs so
+        // the backfill wheel can link it. The tool's own fail-closed schema check
+        // caught their absence here on the very next run — working as designed.
+        new("HistoricalOpportunities", "BuyerCanonicalOrgId"),
+        new("HistoricalOpportunities", "AwardedToCanonicalOrgId"),
         new("Opportunities", "BuyerCanonicalOrgId"),
         new("KorPursuits", "BuyerCanonicalOrgId"),
         new("KorPursuits", "LostToCanonicalOrgId"),
