@@ -53,12 +53,18 @@ public sealed class OpportunityRowView
 
     public string Name => Model.Name;
     public string BuyerName => Model.BuyerName;
-    public string Status => Model.Status.ToString();
+
+    /// <summary>Status text; a human "not for us" (migration 282) overrides the
+    /// raw enum so admins see removed tenders as such wherever rows render.</summary>
+    public string Status => Model.DismissedAtUtc is null ? Model.Status.ToString() : "Removed";
 
     /// <summary>True when this opportunity is in the Bazaar's grabbable pool — still
-    /// New and not yet owned. Surfaced as a badge so RFPs shows where it can be claimed.</summary>
+    /// New, not yet owned, and not dismissed ("not for us"). Surfaced as a badge
+    /// so RFPs shows where it can be claimed.</summary>
     public bool IsAvailableInBazaar =>
-        Model.Status == OpportunityStatus.New && string.IsNullOrWhiteSpace(Model.OwnerStaffId);
+        Model.Status == OpportunityStatus.New
+        && string.IsNullOrWhiteSpace(Model.OwnerStaffId)
+        && Model.DismissedAtUtc is null;
 
     public string Discipline => Model.Discipline == OpportunityDiscipline.Unknown ? "" : Model.Discipline.ToString();
     public string Location => string.Join(", ", new[] { Model.ProjectCity, Model.ProjectProvince }.Where(s => !string.IsNullOrWhiteSpace(s)));

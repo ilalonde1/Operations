@@ -39,6 +39,17 @@
         <StackPanel Grid.Row="1" Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,0,18,8">
+            <Button Content="Own it"
+                    Padding="14,7"
+                    Margin="0,0,8,0"
+                    Style="{StaticResource Button.Primary}"
+                    Click="OwnPlay_Click"
+                    ToolTip="Claim this play. It leaves the shared boards and the weekly attack sheet; convert it to a pursuit within 14 days or it returns to the pool."/>
+            <Button Content="Not for us…"
+                    Padding="14,7"
+                    Margin="0,0,8,0"
+                    Click="DismissPlay_Click"
+                    ToolTip="Remove this project from the actionable pool with a reason. Admins can see and restore removed projects."/>
             <Button Content="Export PDF"
                     Padding="14,7"
                     Click="ExportPdf_Click"/>

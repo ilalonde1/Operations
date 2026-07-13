@@ -22,6 +22,10 @@
                     IsEnabled="{Binding CanGrab}"
                     Style="{StaticResource Button.Primary}"
                     ToolTip="Claim the selected opportunity — it leaves the Bazaar and becomes a Drafting pursuit you own."/>
+            <Button Content="Not for us…" Width="110" Margin="10,0,0,0"
+                    Click="DismissButton_Click"
+                    IsEnabled="{Binding CanGrab}"
+                    ToolTip="Remove the selected opportunity from the pool with a reason. Nothing is deleted — admins can see and restore removed items."/>
         </StackPanel>
 
         <Border Grid.Row="1" Style="{StaticResource Card}">

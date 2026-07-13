@@ -43,7 +43,8 @@ WonLostOutcome, OutcomeReason, WonProjectWbs1, AwardedValue,
 IsPrimeConsultantRfp, PrimeConfidence, PrimeDisciplineType, PrimeProjectSector, PrimeLikelyType,
 PrimeKorSectorMatch, PrimeKorLocationMatch, PrimeClassifiedAtUtc,
 CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy,
-RowVersion";
+RowVersion,
+DismissedAtUtc, DismissedBy, DismissedReason";
 
     private readonly string _connectionString;
 
@@ -654,6 +655,10 @@ WHERE Id = @id AND RowVersion = @rv;";
         UpdatedBy = r.GetString(49),
 
         RowVersion = (byte[])r.GetValue(50),
+
+        DismissedAtUtc = r.IsDBNull(51) ? null : r.GetDateTimeOffset(51),
+        DismissedBy = r.IsDBNull(52) ? null : r.GetString(52),
+        DismissedReason = r.IsDBNull(53) ? null : r.GetString(53),
     };
 
     private static Opportunity WithPrimeClassification(Opportunity opportunity)

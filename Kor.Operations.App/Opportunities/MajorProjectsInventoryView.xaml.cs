@@ -123,4 +123,77 @@ public partial class MajorProjectsInventoryView : UserControl
         };
         win.Show();
     }
+
+    // ---- Pursuit lifecycle (migration 282) ----------------------------------
+
+    private async void OwnProject_Click(object sender, RoutedEventArgs e)
+    {
+        var row = _vm.Selected;
+        if (row is null)
+        {
+            return;
+        }
+
+        var actor = ResolveActor();
+        var confirm = MessageBox.Show(
+            Window.GetWindow(this),
+            $"Own “{row.ProjectName}” as {actor}?\n\nIt leaves the shared boards and the weekly attack sheet. Convert it to a pursuit within 14 days or it returns to the pool (your morning digest will warn you first).",
+            "Own this play",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.OK)
+        {
+            return;
+        }
+
+        await _vm.OwnSelectedAsync(actor, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async void DismissProject_Click(object sender, RoutedEventArgs e)
+    {
+        var row = _vm.Selected;
+        if (row is null)
+        {
+            return;
+        }
+
+        var dialog = new BusinessDevelopment.Workspace.DismissReasonDialog(row.ProjectName)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        await _vm.DismissSelectedAsync(ResolveActor(), dialog.Reason, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async void ReleaseProject_Click(object sender, RoutedEventArgs e)
+    {
+        await _vm.ReleaseSelectedAsync(ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async void RestoreProject_Click(object sender, RoutedEventArgs e)
+    {
+        await _vm.RestoreSelectedAsync(ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+    }
+
+    /// <summary>Current actor identity for ownership/audit — same resolution
+    /// chain the Bazaar grab uses (signed-in UPN → override → Windows user).</summary>
+    private static string ResolveActor()
+    {
+        if (!string.IsNullOrWhiteSpace(global::Kor.Operations.OperationsApp.SignedInUserUpn))
+        {
+            return global::Kor.Operations.OperationsApp.SignedInUserUpn.Trim();
+        }
+
+        var overrideUpn = AppServices.Get<Options.UserOptions>().UserUpnOverride;
+        if (!string.IsNullOrWhiteSpace(overrideUpn))
+        {
+            return overrideUpn.Trim();
+        }
+
+        return Environment.UserName;
+    }
 }

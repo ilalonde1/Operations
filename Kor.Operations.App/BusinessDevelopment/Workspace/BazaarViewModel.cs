@@ -27,6 +27,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
 
     private readonly IOpportunityStore _opportunityStore;
     private readonly IPursuitGrabStore _grabStore;
+    private readonly Kor.Opportunities.Data.MajorProjects.IPursuitLifecycleStore _lifecycleStore;
 
     private OpportunityRowView? _selected;
     private string _statusMessage = "Ready.";
@@ -38,10 +39,14 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
     // read this reference instead of enumerating the live ObservableCollection.
     private OpportunityRowView[] _contextSnapshot = Array.Empty<OpportunityRowView>();
 
-    public BazaarViewModel(IOpportunityStore opportunityStore, IPursuitGrabStore grabStore)
+    public BazaarViewModel(
+        IOpportunityStore opportunityStore,
+        IPursuitGrabStore grabStore,
+        Kor.Opportunities.Data.MajorProjects.IPursuitLifecycleStore lifecycleStore)
     {
         _opportunityStore = opportunityStore ?? throw new ArgumentNullException(nameof(opportunityStore));
         _grabStore = grabStore ?? throw new ArgumentNullException(nameof(grabStore));
+        _lifecycleStore = lifecycleStore ?? throw new ArgumentNullException(nameof(lifecycleStore));
     }
 
     /// <summary>The un-claimed opportunity pool, ranked best-first.</summary>
@@ -96,11 +101,15 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
         try
         {
             // Reuse the tested list path (excludes closed Won/Lost), then keep
-            // only the grabbable pool: still New and not yet owned. Ranked by
-            // relevance (scored first, highest score first), deadline as tiebreak.
+            // only the grabbable pool: still New, not yet owned, not dismissed
+            // ("not for us", migration 282 — client mirror of
+            // vw_ActionableOpportunities). Ranked by relevance (scored first,
+            // highest score first), deadline as tiebreak.
             var all = await _opportunityStore.ListAsync(ct, includeClosed: false).ConfigureAwait(true);
             var grabbable = all
-                .Where(o => o.Status == OpportunityStatus.New && string.IsNullOrWhiteSpace(o.OwnerStaffId))
+                .Where(o => o.Status == OpportunityStatus.New
+                            && string.IsNullOrWhiteSpace(o.OwnerStaffId)
+                            && o.DismissedAtUtc is null)
                 .OrderByDescending(o => o.RelevanceScore.HasValue)
                 .ThenByDescending(o => o.RelevanceScore)
                 .ThenByDescending(o => o.SubmissionDeadlineUtc ?? DateTimeOffset.MinValue);
@@ -186,6 +195,34 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
             _isGrabbing = false;
             OnPropertyChanged(nameof(CanGrab));
         }
+    }
+
+    /// <summary>
+    /// "Not for us" (migration 282): audited dismissal with a reason. The row
+    /// leaves the pool everywhere (Bazaar, weekly sheet, digests) but is never
+    /// deleted — admins see it under Removed and can restore it.
+    /// </summary>
+    public async Task<bool> DismissAsync(OpportunityRowView row, string staffUpn, string reason, CancellationToken ct)
+    {
+        var outcome = await _lifecycleStore
+            .DismissOpportunityAsync(row.Id, staffUpn, reason, ct).ConfigureAwait(true);
+
+        if (outcome == Kor.Opportunities.Data.MajorProjects.LifecycleOutcome.Applied)
+        {
+            Grabbable.Remove(row);
+            if (ReferenceEquals(_selected, row))
+            {
+                Selected = null;
+            }
+            _contextSnapshot = Grabbable.ToArray();
+            StatusMessage = $"Removed “{row.Name}” — not for us. Admins can restore it from the Opportunities board.";
+            OnPropertyChanged(nameof(HasGrabbable));
+            OnPropertyChanged(nameof(Headline));
+            return true;
+        }
+
+        StatusMessage = $"“{row.Name}” changed under you (grabbed or already removed) — refresh.";
+        return false;
     }
 
     // ===== IAiContextProvider =====

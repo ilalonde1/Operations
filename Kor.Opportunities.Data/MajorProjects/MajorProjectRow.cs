@@ -53,7 +53,13 @@ public sealed record MajorProjectRow(
     string? KorPipelineTag,
     string? ScheduleNotes,
     string? FootprintSource = null,
-    string? FootprintRole = null)
+    string? FootprintRole = null,
+    // Pursuit lifecycle (migration 282): human ownership + "not for us".
+    string? OwnerStaffId = null,
+    DateTimeOffset? OwnedAtUtc = null,
+    DateTimeOffset? DismissedAtUtc = null,
+    string? DismissedBy = null,
+    string? DismissedReason = null)
 {
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
 

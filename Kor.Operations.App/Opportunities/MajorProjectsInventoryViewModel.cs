@@ -33,12 +33,14 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     private static readonly Brush StatusError = Freeze(new SolidColorBrush(Color.FromRgb(0xC1, 0x1E, 0x1E)));
 
     private readonly IMajorProjectsInventoryStore _store;
+    private readonly IPursuitLifecycleStore _lifecycleStore;
     private readonly ILogger<MajorProjectsInventoryViewModel> _logger;
     private MajorProjectRow? _selected;
     private string _searchText = string.Empty;
     private string _provinceFilter = AllFilter;
     private string _stageFilter = AllFilter;
     private string _sectorFilter = AllFilter;
+    private string _lifecycleFilter = LifecycleActive;
     private PipelineFunnel _funnelFilter = PipelineFunnel.None;
     private bool _indigenousOnly;
     private decimal? _minCost;
@@ -49,13 +51,37 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
 
     public MajorProjectsInventoryViewModel(
         IMajorProjectsInventoryStore store,
+        IPursuitLifecycleStore lifecycleStore,
         ILogger<MajorProjectsInventoryViewModel> logger)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _lifecycleStore = lifecycleStore ?? throw new ArgumentNullException(nameof(lifecycleStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         FilteredProjectsView = CollectionViewSource.GetDefaultView(Projects);
         FilteredProjectsView.Filter = ProjectFilterPredicate;
+    }
+
+    // Lifecycle view chips (migration 282). Active (default) hides removed
+    // rows; owned rows stay visible with their owner badge. Removed shows the
+    // "not for us" set with who/when/why — nothing is ever deleted.
+    public const string LifecycleActive = "Active";
+    public const string LifecycleOwned = "Owned";
+    public const string LifecycleRemoved = "Removed";
+
+    public IReadOnlyList<string> LifecycleFilterOptions { get; } =
+        new[] { LifecycleActive, LifecycleOwned, LifecycleRemoved, AllFilter };
+
+    public string LifecycleFilter
+    {
+        get => _lifecycleFilter;
+        set
+        {
+            if (SetField(ref _lifecycleFilter, string.IsNullOrWhiteSpace(value) ? LifecycleActive : value))
+            {
+                FilteredProjectsView.Refresh();
+            }
+        }
     }
 
     public ObservableCollection<MajorProjectRow> Projects { get; } = new();
@@ -79,7 +105,120 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
                 OnPropertyChanged(nameof(HasSelectedArchitectOrg));
                 OnPropertyChanged(nameof(NoSelectedProponentOrg));
                 OnPropertyChanged(nameof(NoSelectedArchitectOrg));
+                NotifyLifecycleChanged();
             }
+        }
+    }
+
+    private void NotifyLifecycleChanged()
+    {
+        OnPropertyChanged(nameof(CanOwnSelected));
+        OnPropertyChanged(nameof(CanDismissSelected));
+        OnPropertyChanged(nameof(CanReleaseSelected));
+        OnPropertyChanged(nameof(CanRestoreSelected));
+        OnPropertyChanged(nameof(SelectedLifecycleDisplay));
+        OnPropertyChanged(nameof(HasSelectedLifecycleNote));
+    }
+
+    // Lifecycle affordances for the selected row (migration 282).
+    public bool CanOwnSelected => Selected is { OwnerStaffId: null, DismissedAtUtc: null };
+    public bool CanDismissSelected => Selected is { DismissedAtUtc: null };
+    public bool CanReleaseSelected => Selected is { OwnerStaffId: not null };
+    public bool CanRestoreSelected => Selected is { DismissedAtUtc: not null };
+    public bool HasSelectedLifecycleNote => !string.IsNullOrWhiteSpace(SelectedLifecycleDisplay);
+
+    /// <summary>Owner / removed badge for the detail pane, e.g.
+    /// "Owned by ian since Jul 13" or "Removed by jim Jul 12 — wrong region".</summary>
+    public string SelectedLifecycleDisplay
+    {
+        get
+        {
+            if (Selected is null) return string.Empty;
+            if (Selected.DismissedAtUtc is { } d)
+            {
+                var by = ShortUpn(Selected.DismissedBy);
+                var reason = string.IsNullOrWhiteSpace(Selected.DismissedReason) ? "" : $" — {Selected.DismissedReason}";
+                return $"Removed by {by} {d.ToLocalTime():MMM d}{reason}";
+            }
+            if (Selected.OwnerStaffId is { } o)
+            {
+                var since = Selected.OwnedAtUtc?.ToLocalTime().ToString("MMM d") ?? "?";
+                return $"Owned by {ShortUpn(o)} since {since}";
+            }
+            return string.Empty;
+        }
+    }
+
+    private static string ShortUpn(string? upn)
+    {
+        if (string.IsNullOrWhiteSpace(upn)) return "?";
+        var at = upn.IndexOf('@');
+        return at > 0 ? upn[..at] : upn;
+    }
+
+    /// <summary>Own the selected play: it leaves the shared boards + weekly
+    /// sheet and enters the owner's digest. Auto-released after 14 days unless
+    /// converted to a pursuit (the digest warns from day 10).</summary>
+    public Task<bool> OwnSelectedAsync(string staffUpn, CancellationToken ct)
+        => ApplyLifecycleAsync(r => _lifecycleStore.OwnProjectAsync(r.Id, staffUpn, ct),
+            r => r with { OwnerStaffId = staffUpn, OwnedAtUtc = DateTimeOffset.UtcNow },
+            "Owned — it's yours now. Convert it to a pursuit within 14 days or it returns to the pool.");
+
+    public Task<bool> ReleaseSelectedAsync(string staffUpn, CancellationToken ct)
+        => ApplyLifecycleAsync(r => _lifecycleStore.ReleaseProjectAsync(r.Id, staffUpn, ct),
+            r => r with { OwnerStaffId = null, OwnedAtUtc = null },
+            "Released back to the shared pool.");
+
+    public Task<bool> DismissSelectedAsync(string staffUpn, string reason, CancellationToken ct)
+        => ApplyLifecycleAsync(r => _lifecycleStore.DismissProjectAsync(r.Id, staffUpn, reason, ct),
+            r => r with { DismissedAtUtc = DateTimeOffset.UtcNow, DismissedBy = staffUpn, DismissedReason = reason, OwnerStaffId = null, OwnedAtUtc = null },
+            "Removed — visible under the Removed view, restorable any time.");
+
+    public Task<bool> RestoreSelectedAsync(string staffUpn, CancellationToken ct)
+        => ApplyLifecycleAsync(r => _lifecycleStore.RestoreProjectAsync(r.Id, staffUpn, ct),
+            r => r with { DismissedAtUtc = null, DismissedBy = null, DismissedReason = null },
+            "Restored to the actionable pool.");
+
+    private void SetStatus(string message, bool isError)
+    {
+        StatusMessage = message;
+        StatusBrush = isError ? StatusError : StatusNeutral;
+    }
+
+    private async Task<bool> ApplyLifecycleAsync(
+        Func<MajorProjectRow, Task<LifecycleOutcome>> action,
+        Func<MajorProjectRow, MajorProjectRow> localUpdate,
+        string successMessage)
+    {
+        var row = Selected;
+        if (row is null) return false;
+
+        try
+        {
+            var outcome = await action(row).ConfigureAwait(true);
+            if (outcome != LifecycleOutcome.Applied)
+            {
+                SetStatus("That row changed under you (someone else acted first) — refresh to see its current state.", isError: true);
+                return false;
+            }
+
+            var updated = localUpdate(row);
+            var index = Projects.IndexOf(row);
+            if (index >= 0)
+            {
+                Projects[index] = updated;
+            }
+            Selected = updated;
+            FilteredProjectsView.Refresh();
+            SetStatus(successMessage, isError: false);
+            NotifyLifecycleChanged();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "MPI lifecycle action failed for {Id}", row.Id);
+            SetStatus($"Action failed: {ex.Message}", isError: true);
+            return false;
         }
     }
 
@@ -305,6 +444,20 @@ public sealed class MajorProjectsInventoryViewModel : ObservableObject, IAiConte
     private bool ProjectFilterPredicate(object obj)
     {
         if (obj is not MajorProjectRow row)
+        {
+            return false;
+        }
+
+        // Lifecycle view (migration 282). Active hides removed rows; owned rows
+        // stay visible in Active (they're still real pipeline, just claimed).
+        var lifecycleMatch = _lifecycleFilter switch
+        {
+            LifecycleOwned => row.OwnerStaffId is not null,
+            LifecycleRemoved => row.DismissedAtUtc is not null,
+            AllFilter => true,
+            _ => row.DismissedAtUtc is null,
+        };
+        if (!lifecycleMatch)
         {
             return false;
         }

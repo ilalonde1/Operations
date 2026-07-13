@@ -21,7 +21,8 @@ IndigenousInd, IndigenousNames, PublicFundingInd, ProvincialFunding, FederalFund
 ConstructionJobs, OperatingJobs, Latitude, Longitude, ProjectDescription, ProjectWebsite, SourceUrl,
 IssueYear, IssueQuarter, LastSeenAtUtc,
 StructuralEngineerName, StructuralEngineerCanonicalOrgId,
-GeneralContractorName, GeneralContractorCanonicalOrgId, KorPipelineTag, ScheduleNotes";
+GeneralContractorName, GeneralContractorCanonicalOrgId, KorPipelineTag, ScheduleNotes,
+OwnerStaffId, OwnedAtUtc, DismissedAtUtc, DismissedBy, DismissedReason";
 
     private readonly string _connectionString;
 
@@ -295,6 +296,11 @@ ORDER BY RegionName;";
         GeneralContractorCanonicalOrgId: r.IsDBNull(44) ? null : r.GetInt64(44),
         KorPipelineTag: r.IsDBNull(45) ? null : r.GetString(45),
         ScheduleNotes: r.IsDBNull(46) ? null : r.GetString(46),
-        FootprintSource: r.IsDBNull(47) ? null : r.GetString(47),
-        FootprintRole: r.IsDBNull(48) ? null : r.GetString(48));
+        OwnerStaffId: r.IsDBNull(47) ? null : r.GetString(47),
+        OwnedAtUtc: r.IsDBNull(48) ? null : r.GetDateTimeOffset(48),
+        DismissedAtUtc: r.IsDBNull(49) ? null : r.GetDateTimeOffset(49),
+        DismissedBy: r.IsDBNull(50) ? null : r.GetString(50),
+        DismissedReason: r.IsDBNull(51) ? null : r.GetString(51),
+        FootprintSource: r.IsDBNull(52) ? null : r.GetString(52),
+        FootprintRole: r.IsDBNull(53) ? null : r.GetString(53));
 }

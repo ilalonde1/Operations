@@ -39,6 +39,12 @@
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"
                          ToolTip="Searches project, proponent, architect, and municipality"/>
 
+                <TextBlock Text="View:" Margin="0,4,4,0"/>
+                <ComboBox Width="100" Margin="0,0,12,0"
+                          ItemsSource="{Binding LifecycleFilterOptions}"
+                          SelectedItem="{Binding LifecycleFilter}"
+                          ToolTip="Active hides removed projects. Owned shows claimed plays; Removed shows 'not for us' projects with who/when/why — nothing is deleted."/>
+
                 <TextBlock Text="Province:" Margin="0,4,4,0"/>
                 <ComboBox Width="100" Margin="0,0,12,0"
                           ItemsSource="{Binding ProvinceFilterOptions}"
@@ -142,7 +148,7 @@
                                    FontWeight="SemiBold"
                                    TextWrapping="Wrap"
                                    Margin="0,0,0,6"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                             <Border Style="{StaticResource Chip}" Background="{StaticResource CorporateBlue}">
                                 <TextBlock Text="{Binding Selected.Province}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
                             </Border>
@@ -150,6 +156,30 @@
                                     Visibility="{Binding Selected.IsIndigenous, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                                 <TextBlock Text="Indigenous" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
                             </Border>
+                        </StackPanel>
+
+                        <!-- Pursuit lifecycle (migration 282): one primary action, plain words. -->
+                        <TextBlock Text="{Binding SelectedLifecycleDisplay}"
+                                   FontStyle="Italic" Foreground="#8A5A00" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Visibility="{Binding HasSelectedLifecycleNote, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Button Content="Own it" Width="90" Margin="0,0,8,0"
+                                    Style="{StaticResource Button.Primary}"
+                                    Click="OwnProject_Click"
+                                    Visibility="{Binding CanOwnSelected, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                    ToolTip="Claim this play. It leaves the shared boards and the weekly attack sheet; convert it to a pursuit within 14 days or it returns to the pool."/>
+                            <Button Content="Not for us…" Width="100" Margin="0,0,8,0"
+                                    Click="DismissProject_Click"
+                                    Visibility="{Binding CanDismissSelected, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                    ToolTip="Remove this project from the actionable pool with a reason. Admins can see and restore removed projects."/>
+                            <Button Content="Release" Width="90" Margin="0,0,8,0"
+                                    Click="ReleaseProject_Click"
+                                    Visibility="{Binding CanReleaseSelected, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                    ToolTip="Give this play back to the shared pool."/>
+                            <Button Content="Restore" Width="90"
+                                    Click="RestoreProject_Click"
+                                    Visibility="{Binding CanRestoreSelected, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                    ToolTip="Undo the removal — the project returns to the actionable pool."/>
                         </StackPanel>
 
                         <Grid Margin="0,0,0,12">

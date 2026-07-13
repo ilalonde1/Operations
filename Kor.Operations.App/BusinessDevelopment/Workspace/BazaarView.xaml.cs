@@ -110,6 +110,30 @@ public partial class BazaarView : UserControl
         }
     }
 
+    private async void DismissButton_Click(object sender, RoutedEventArgs e)
+    {
+        var row = _vm.Selected;
+        if (row is null)
+        {
+            return;
+        }
+
+        var dialog = new DismissReasonDialog(row.Name) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await _vm.DismissAsync(row, ResolveActor(), dialog.Reason, CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "Remove failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     /// <summary>
     /// Plan 1.4 — intel-informed grab: double-click opens the buyer's intel
     /// dossier (reusing OrgDossierWindow, never re-rendering intel here) so the

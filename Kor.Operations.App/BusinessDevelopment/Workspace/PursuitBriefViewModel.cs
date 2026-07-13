@@ -138,10 +138,15 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
 
     public string SeatPriorityDisplay => Brief?.Architect.SeatPriority ?? "";
 
+    /// <summary>The MajorProjectsInventory id this brief was loaded for —
+    /// the lifecycle buttons (Own it / Not for us) act on it.</summary>
+    public long LoadedMpiId { get; private set; }
+
     public async Task LoadAsync(long mpiId, CancellationToken ct)
     {
         try
         {
+            LoadedMpiId = mpiId;
             StatusMessage = "Loading pursuit brief...";
             ClearDynamicDisplays();
             Brief = await _store.GetBriefForProjectAsync(mpiId, ct).ConfigureAwait(true);
