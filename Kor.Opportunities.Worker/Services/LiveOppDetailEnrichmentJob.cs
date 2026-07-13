@@ -36,17 +36,20 @@ internal sealed class LiveOppDetailEnrichmentJob : IJob
     private readonly ILogger<LiveOppDetailEnrichmentJob> _logger;
     private readonly IEnumerable<ILiveOppDetailExtractor> _extractors;
     private readonly PlaywrightBrowserPool _browserPool;
+    private readonly Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore _interestStore;
 
     public LiveOppDetailEnrichmentJob(
         IOptions<OpportunitiesWorkerOptions> options,
         ILogger<LiveOppDetailEnrichmentJob> logger,
         IEnumerable<ILiveOppDetailExtractor> extractors,
-        PlaywrightBrowserPool browserPool)
+        PlaywrightBrowserPool browserPool,
+        Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore interestStore)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _extractors = extractors ?? throw new ArgumentNullException(nameof(extractors));
         _browserPool = browserPool ?? throw new ArgumentNullException(nameof(browserPool));
+        _interestStore = interestStore ?? throw new ArgumentNullException(nameof(interestStore));
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -62,7 +65,7 @@ internal sealed class LiveOppDetailEnrichmentJob : IJob
         var batch = Math.Max(1, opt.LiveOppDetailEnrichmentBatchSize);
         var db = opt.OpportunitiesDb!;
 
-        int totalProcessed = 0, totalDiscipline = 0, totalContact = 0, totalDocs = 0, totalFail = 0;
+        int totalProcessed = 0, totalDiscipline = 0, totalContact = 0, totalDocs = 0, totalFirms = 0, totalFail = 0;
 
         foreach (var extractor in _extractors)
         {
@@ -104,6 +107,22 @@ internal sealed class LiveOppDetailEnrichmentJob : IJob
                 {
                     var (d, c, docs) = await PersistAsync(db, t, result, extractor.Name, ct).ConfigureAwait(false);
                     totalDiscipline += d; totalContact += c; totalDocs += docs;
+
+                    // Plan-holder / document-request firms (MERX DCC) go through
+                    // the interested-firm store — idempotent upsert, same rail
+                    // as APC interest and BcBid plan-takers.
+                    if (result?.InterestedFirms is { Count: > 0 } firms)
+                    {
+                        foreach (var firm in firms)
+                        {
+                            await _interestStore.UpsertAsync(
+                                t.Id, firm, resolvedCanonicalOrgId: null, resolvedKind: null,
+                                sourcePortal: extractor.Name, sourcePostingUrl: t.Url,
+                                expressedAtUtc: null, notes: "document-request list",
+                                rawJson: null, ct).ConfigureAwait(false);
+                            totalFirms++;
+                        }
+                    }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -113,7 +132,7 @@ internal sealed class LiveOppDetailEnrichmentJob : IJob
             }
         }
 
-        var summary = $"processed={totalProcessed}; disciplineSet={totalDiscipline}; contactSet={totalContact}; docs={totalDocs}; failures={totalFail}";
+        var summary = $"processed={totalProcessed}; disciplineSet={totalDiscipline}; contactSet={totalContact}; docs={totalDocs}; interestedFirms={totalFirms}; failures={totalFail}";
         _logger.LogInformation("{Job}: {Summary}", nameof(LiveOppDetailEnrichmentJob), summary);
         context.Result = summary;
     }

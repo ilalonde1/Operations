@@ -11,14 +11,18 @@ public sealed record DetailLink(string Text, string Href);
 public sealed record DetailDocument(string Name, string Url);
 
 /// <summary>Structured result of reading a live opportunity detail page. All
-/// fields optional — a page may expose some and not others.</summary>
+/// fields optional — a page may expose some and not others.
+/// <paramref name="InterestedFirms"/>: raw firm names from a plan-holder /
+/// document-request list (MERX DCC); the job persists them through
+/// IOpportunityInterestedFirmStore, never as fake documents.</summary>
 public sealed record LiveDetailResult(
     IReadOnlyList<string> CommodityCodes,
     string? Description,
     string? ContactName,
     string? ContactEmail,
     string? ContactPhone,
-    IReadOnlyList<DetailDocument> Documents);
+    IReadOnlyList<DetailDocument> Documents,
+    IReadOnlyList<string>? InterestedFirms = null);
 
 /// <summary>
 /// A per-portal detail-page reader. The generic LiveOppDetailEnrichmentJob owns

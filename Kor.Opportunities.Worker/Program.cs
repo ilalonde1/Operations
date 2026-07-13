@@ -637,6 +637,17 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
                     Password = options.BcBidPassword,
                 };
             });
+            // MERX DCC subscription login (2026-07-13) — unlocks documents +
+            // plan-holder tabs in the live-detail extractor. Empty = anonymous.
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.MerxCredentials>(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+                return new Kor.Opportunities.Data.Ingestion.Scraping.MerxCredentials
+                {
+                    Username = options.MerxUsername,
+                    Password = options.MerxPassword,
+                };
+            });
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidScraper>();
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.MerxDccScraper>();
             builder.Services.AddSingleton<IOpportunityProvider>(
