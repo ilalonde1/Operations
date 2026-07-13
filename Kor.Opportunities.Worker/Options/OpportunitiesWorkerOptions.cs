@@ -340,6 +340,25 @@ public sealed class OpportunitiesWorkerOptions
     /// EXCLUDED from the sheet (expired data is a trust killer). Default 45.</summary>
     public int WeeklyAttackSheetFreshDays { get; set; } = 45;
 
+    // --- 2026-07-13: Pursuit lifecycle (migration 282) ---
+    // Owning a play parks it off the shared boards/sheet; the reaper releases
+    // it after the window so nothing is parked silently. The per-owner digest
+    // warns from day 10.
+    public bool MpiOwnershipReaperEnabled { get; set; } = true;
+    public string? MpiOwnershipReaperCronSchedule { get; set; }
+    public int MpiOwnershipReapDays { get; set; } = 14;
+
+    /// <summary>MERX login (DCC Organization subscription, ~2026-07-13) for the
+    /// live-opportunity detail enricher — unlocks DCC tender documents and
+    /// plan-holder lists that are login-walled. Set via
+    /// KOR_OPPORTUNITIES_MERXUSERNAME on the host. Empty = anonymous extraction
+    /// (description + contact only), same graceful degradation as BcBid.</summary>
+    public string MerxUsername { get; init; } = "";
+
+    /// <summary>MERX password. Set via KOR_OPPORTUNITIES_MERXPASSWORD on the
+    /// host; same plaintext-machine-env exposure pattern as BcBidPassword.</summary>
+    public string MerxPassword { get; init; } = "";
+
     // Verified owner -> mailbox map for LEGACY first-name owners (D2's "small
     // hand-verified map"). Grabbed pursuits store the owner's email and resolve
     // WITHOUT this map; only the 75 legacy BD-tracking first-name owners need

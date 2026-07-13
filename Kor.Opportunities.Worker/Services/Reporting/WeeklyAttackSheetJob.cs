@@ -72,8 +72,9 @@ internal sealed class WeeklyAttackSheetJob : IJob
         var ct = context.CancellationToken;
         var plays = await LoadPlaysAsync(opt.OpportunitiesDb!, opt.WeeklyAttackSheetCount, opt.WeeklyAttackSheetFreshDays, ct).ConfigureAwait(false);
         var contacts = await LoadContactsAsync(opt.OpportunitiesDb!, plays.Select(p => p.ArchitectOrgId).Where(o => o > 0).Distinct().ToArray(), ct).ConfigureAwait(false);
+        var week = await LoadWeekActivityAsync(opt.OpportunitiesDb!, ct).ConfigureAwait(false);
 
-        var html = BuildHtml(plays, contacts);
+        var html = BuildHtml(plays, contacts, week);
         var pdf = TryRenderPdf(html);
 
         var recipient = string.IsNullOrWhiteSpace(opt.WeeklyAttackSheetRecipient)
@@ -110,12 +111,52 @@ internal sealed class WeeklyAttackSheetJob : IJob
 
     internal sealed record Contact(string Name, string Title, string Email, string EmailSource, string Linkedin);
 
+    /// <summary>Last-7-days lifecycle activity for the accountability footer:
+    /// "N owned (by whom), N removed" — the sheet is a pointer into the app,
+    /// and this line shows the pointer is being followed.</summary>
+    internal sealed record WeekActivity(IReadOnlyList<string> Owned, IReadOnlyList<string> Dismissed);
+
+    private static async Task<WeekActivity> LoadWeekActivityAsync(string connStr, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT l.Action, ISNULL(m.ProjectName, N'#' + CAST(l.MpiId AS nvarchar(20))), ISNULL(l.ToStaffId, ISNULL(l.ByStaffId, N'?'))
+FROM opportunities.OpportunityAssignmentLog l
+LEFT JOIN opportunities.MajorProjectsInventory m ON m.Id = l.MpiId
+WHERE l.MpiId IS NOT NULL
+  AND l.Action IN (N'MpiOwn', N'MpiDismiss')
+  AND l.AtUtc >= DATEADD(DAY, -7, SYSDATETIMEOFFSET())
+ORDER BY l.AtUtc DESC;";
+
+        var owned = new List<string>();
+        var dismissed = new List<string>();
+        await using var con = new SqlConnection(connStr);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = 30 };
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            var line = $"{r.GetString(1)} ({ShortUpn(r.GetString(2))})";
+            if (r.GetString(0) == "MpiOwn") owned.Add(line); else dismissed.Add(line);
+        }
+
+        return new WeekActivity(owned, dismissed);
+    }
+
+    private static string ShortUpn(string upn)
+    {
+        var at = upn.IndexOf('@');
+        return at > 0 ? upn[..at] : upn;
+    }
+
     private static async Task<List<Play>> LoadPlaysAsync(string connStr, int count, int freshDays, CancellationToken ct)
     {
         // Scoring mirrors the hand-built 2026-07-13 sheet: channel-known first,
         // then sector priority (health > education > civic), then value. The
         // freshness guard is the trust rule: no source has seen the row within
         // the window -> it cannot appear on the sheet.
+        // Lifecycle (retired / dismissed / owned / seat filled) lives in
+        // vw_ActionableProjects — the ONE actionable predicate (migration 282,
+        // doctrine D11). Freshness stays here: it is a per-surface knob.
         const string sql = @"
 SELECT TOP (@n)
     m.Id, ISNULL(m.ProjectName,''), ISNULL(m.MunicipalityName,''), ISNULL(m.Province,''),
@@ -129,12 +170,9 @@ SELECT TOP (@n)
      + CASE WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 100000000 THEN 3
             WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 25000000 THEN 2
             WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 5000000 THEN 1 ELSE 0 END) AS Score
-FROM opportunities.MajorProjectsInventory m
-WHERE m.RetiredAtUtc IS NULL
-  AND NULLIF(LTRIM(RTRIM(m.ArchitectName)),'') IS NOT NULL
+FROM opportunities.vw_ActionableProjects m
+WHERE NULLIF(LTRIM(RTRIM(m.ArchitectName)),'') IS NOT NULL
   AND NULLIF(LTRIM(RTRIM(m.StructuralEngineerName)),'') IS NULL
-  AND ISNULL(m.SeatStatus,'') <> 'filled'
-  AND ISNULL(m.SeatStatus,'') <> 'locked'
   AND COALESCE(m.LastVerifiedAtUtc, m.LastSeenAtUtc, m.UpdatedAtUtc) >= DATEADD(DAY, -@fresh, SYSDATETIMEOFFSET())
 ORDER BY Score DESC, ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) DESC, m.Id;";
 
@@ -186,7 +224,7 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
         return map;
     }
 
-    private static string BuildHtml(IReadOnlyList<Play> plays, Dictionary<long, List<Contact>> contacts)
+    private static string BuildHtml(IReadOnlyList<Play> plays, Dictionary<long, List<Contact>> contacts, WeekActivity week)
     {
         static string E(string? s) => WebUtility.HtmlEncode(s ?? "");
         var sb = new StringBuilder();
@@ -256,8 +294,21 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
             sb.Append("<div class=row><b>Contacts</b></div>").Append(who)
               .Append("<div class=play><b>THE PLAY</b> ").Append(E(playText)).Append("</div>")
               .Append("<div class=asof>row last verified/seen ").Append(p.LastSeen.ToString("yyyy-MM-dd")).Append(" · generated ")
-              .Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm")).Append("</div></div>");
+              .Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm"))
+              .Append(" · <a href=\"kor://mpi/").Append(p.Id).Append("\">open in app</a> — Own it / Not for us there</div></div>");
         }
+
+        // Accountability footer: proof the sheet is being worked. Owned plays
+        // drop off next week's sheet automatically (vw_ActionableProjects).
+        sb.Append("<h2>Last week&rsquo;s movement</h2><div class=sub>");
+        sb.Append(week.Owned.Count == 0
+            ? "No plays were taken this week."
+            : $"<b>{week.Owned.Count} taken:</b> " + E(string.Join(" · ", week.Owned.Take(10))) + (week.Owned.Count > 10 ? " …" : ""));
+        sb.Append("<br>");
+        sb.Append(week.Dismissed.Count == 0
+            ? "None removed."
+            : $"<b>{week.Dismissed.Count} removed (not for us):</b> " + E(string.Join(" · ", week.Dismissed.Take(10))) + (week.Dismissed.Count > 10 ? " …" : ""));
+        sb.Append("</div>");
 
         return sb.ToString();
     }

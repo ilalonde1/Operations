@@ -99,6 +99,11 @@ public sealed class BdMorningReportJob : IJob
 
     private sealed record OwnerPursuitRow(string Owner, string Project, string Buyer, DateTimeOffset? Due, DateTimeOffset? LastTouch);
 
+    /// <summary>An attack-sheet play the owner took (MajorProjectsInventory
+    /// ownership, migration 282) that is nearing the 14-day auto-release —
+    /// surfaced from day 10 so the reaper never surprises anyone.</summary>
+    private sealed record OwnedPlayRow(string Owner, string Project, string Province, DateTimeOffset OwnedAt);
+
     /// <summary>
     /// Send each owner of live pursuits their own digest: the pursuits they own
     /// that are closing soon (&lt;14d) or going cold. "Going cold" here means a
@@ -171,11 +176,38 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
             }
         }
 
+        // Owned attack-sheet plays nearing the 14-day auto-release (reaper
+        // warning window opens at day 10). Owner-scoped read of lifecycle
+        // state — NOT an actionable-pool derivation (that's vw_ActionableProjects).
+        var plays = new List<OwnedPlayRow>();
+        await using (var con = new SqlConnection(opt.OpportunitiesDb))
+        {
+            await con.OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = new SqlCommand(@"
+SELECT m.OwnerStaffId, m.ProjectName, ISNULL(m.Province, N''), m.OwnedAtUtc
+FROM opportunities.MajorProjectsInventory m
+WHERE m.OwnerStaffId IS NOT NULL
+  AND m.RetiredAtUtc IS NULL
+  AND m.OwnedAtUtc < DATEADD(DAY, -10, SYSDATETIMEOFFSET())
+ORDER BY m.OwnedAtUtc ASC;", con) { CommandTimeout = 60 };
+
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                plays.Add(new OwnedPlayRow(
+                    r.GetString(0),
+                    r.IsDBNull(1) ? "(unnamed)" : r.GetString(1),
+                    r.GetString(2),
+                    r.GetDateTimeOffset(3)));
+            }
+        }
+
         // Resolve every owner group to a mailbox, then MERGE by resolved
         // mailbox — a person who owns both legacy (first-name) and grabbed
         // (email) pursuits, or two aliases pointing at one address, must get ONE
         // complete digest, not two fragments each missing half the list.
         var byMailbox = new Dictionary<string, List<OwnerPursuitRow>>(StringComparer.OrdinalIgnoreCase);
+        var playsByMailbox = new Dictionary<string, List<OwnedPlayRow>>(StringComparer.OrdinalIgnoreCase);
         var unrouted = 0;
         foreach (var group in rows.GroupBy(x => x.Owner, StringComparer.OrdinalIgnoreCase))
         {
@@ -198,23 +230,47 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
             list.AddRange(group);
         }
 
+        foreach (var group in plays.GroupBy(x => x.Owner, StringComparer.OrdinalIgnoreCase))
+        {
+            var mailbox = await ResolveMailboxAsync(group.Key, ownerMap, ct).ConfigureAwait(false);
+            if (mailbox is null)
+            {
+                unrouted++;
+                _logger.LogInformation(
+                    "{Job}: play owner '{Owner}' has {Count} owned play(s) nearing auto-release but no mailbox; the reaper will log the release.",
+                    nameof(BdMorningReportJob), group.Key, group.Count());
+                continue;
+            }
+
+            if (!playsByMailbox.TryGetValue(mailbox, out var list))
+            {
+                list = new List<OwnedPlayRow>();
+                playsByMailbox[mailbox] = list;
+            }
+
+            list.AddRange(group);
+        }
+
         // Defensive cap: distinct owner mailboxes is bounded by staff count. A
         // count this high means OwnerStaffId got polluted (bad ingest/merge) —
         // abort rather than blast an unattended 6am mail-out to real inboxes.
         const int maxMailboxes = 25;
-        if (byMailbox.Count > maxMailboxes)
+        var allMailboxes = byMailbox.Keys.Union(playsByMailbox.Keys, StringComparer.OrdinalIgnoreCase).ToList();
+        if (allMailboxes.Count > maxMailboxes)
         {
             _logger.LogError(
                 "{Job}: per-owner pass aborted — {Count} distinct mailboxes exceeds cap {Cap}; check OwnerStaffId data quality.",
-                nameof(BdMorningReportJob), byMailbox.Count, maxMailboxes);
+                nameof(BdMorningReportJob), allMailboxes.Count, maxMailboxes);
             return;
         }
 
         var sent = 0;
         var failed = 0;
-        foreach (var (mailbox, list) in byMailbox)
+        foreach (var mailbox in allMailboxes)
         {
-            var html = BuildPerOwnerHtml(mailbox, list);
+            var list = byMailbox.TryGetValue(mailbox, out var l) ? l : new List<OwnerPursuitRow>();
+            var ownedPlays = playsByMailbox.TryGetValue(mailbox, out var p) ? p : new List<OwnedPlayRow>();
+            var html = BuildPerOwnerHtml(mailbox, list, ownedPlays);
             if (html is null)
             {
                 // Both tables came out empty (query/threshold drift). Don't
@@ -286,7 +342,7 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
         return null;
     }
 
-    private static string? BuildPerOwnerHtml(string owner, List<OwnerPursuitRow> rows)
+    private static string? BuildPerOwnerHtml(string owner, List<OwnerPursuitRow> rows, List<OwnedPlayRow> ownedPlays)
     {
         var now = DateTimeOffset.UtcNow;
         var closing = rows
@@ -302,7 +358,7 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
             .OrderBy(x => x.LastTouch)
             .ToList();
 
-        if (closing.Count == 0 && cold.Count == 0) return null;
+        if (closing.Count == 0 && cold.Count == 0 && ownedPlays.Count == 0) return null;
 
         var sb = new StringBuilder();
         sb.Append("<html><body style=\"font-family:Segoe UI,Arial,sans-serif;color:#1a1a1a;max-width:720px\">");
@@ -335,6 +391,22 @@ ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
                           $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;color:#C8102E\">{days}d cold</td></tr>");
             }
             sb.Append("</table>");
+        }
+
+        if (ownedPlays.Count > 0)
+        {
+            sb.Append("<h3>Plays you took, about to auto-release <span style=\"color:#666;font-weight:normal\">(released back to the pool at day 14)</span></h3>");
+            sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+            foreach (var play in ownedPlays)
+            {
+                var days = (int)Math.Floor((now - play.OwnedAt).TotalDays);
+                var left = Math.Max(0, 14 - days);
+                sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(play.Project)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(play.Province)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;color:#C8102E\">taken {days}d ago — {left}d left</td></tr>");
+            }
+            sb.Append("</table>");
+            sb.Append("<p style=\"color:#888;font-size:12px\">Start the pursuit (or mark it Not for us) in the app to keep it; do nothing and it returns to the shared pool.</p>");
         }
 
         sb.Append("<p style=\"color:#888;font-size:12px;margin-top:14px\">Open <b>Business Development &#8594; Pursuits</b> in the KOR app to work these. Staleness counts a logged call or a filed email as a touch.</p>");
@@ -415,8 +487,8 @@ ORDER BY o.SubmissionDeadlineUtc ASC;", con))
         await using (var cmd = new SqlCommand(@"
 SELECT TOP 15 m.ProjectName, COALESCE(m.Province, N'?'),
        COALESCE(m.EstimatedCostText, FORMAT(m.EstimatedCostCad, 'C0'), N'')
-FROM opportunities.MajorProjectsInventory m
-WHERE m.RetiredAtUtc IS NULL AND m.FirstSeenAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
+FROM opportunities.vw_ActionableProjects m
+WHERE m.FirstSeenAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
 ORDER BY m.EstimatedCostCad DESC;", con))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
@@ -428,8 +500,8 @@ ORDER BY m.EstimatedCostCad DESC;", con))
 
         int newMpiTotal;
         await using (var cmd = new SqlCommand(@"
-SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
-WHERE RetiredAtUtc IS NULL AND FirstSeenAtUtc >= DATEADD(hour, -24, sysdatetimeoffset());", con))
+SELECT COUNT(*) FROM opportunities.vw_ActionableProjects
+WHERE FirstSeenAtUtc >= DATEADD(hour, -24, sysdatetimeoffset());", con))
         {
             newMpiTotal = (int)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
         }

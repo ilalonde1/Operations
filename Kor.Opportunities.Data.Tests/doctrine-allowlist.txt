@@ -22,3 +22,6 @@ Kor.Opportunities.Worker/Program.cs|BdProjectResearchExecutorJob|research execut
 Kor.Opportunities.Worker/Program.cs|BdPersonResearchExecutorJob|research executor trio driven by BdResearchExecutorOptions, not operator cron
 Kor.Opportunities.Worker/Program.cs|BdStaffDirectorySyncJob|plan D2 sync; 05:15 fixed to precede the 6am morning report
 Kor.Opportunities.Worker/Program.cs|BdDeltekLinkDryRunJob|already in ScheduledJobDefinitions; name-substring guard
+
+# D11 — lifecycle-column touches that are NOT actionable-pool derivations:
+Kor.Opportunities.Worker/Services/DataRetirementJob.cs|AND OwnerStaffId IS NULL|protective guard: auto-expiry must never kill an OWNED pursuit — the opposite of deriving a pool

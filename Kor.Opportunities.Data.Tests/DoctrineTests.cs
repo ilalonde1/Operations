@@ -233,4 +233,61 @@ public sealed class DoctrineTests
     {
         Assert.Equal(firm, TeamNameCleaner.Clean(firm));
     }
+
+    // ---- D11: actionable pools come from the lifecycle views -----------------
+
+    /// <summary>
+    /// Migration 282 made "actionable" a single predicate
+    /// (vw_ActionableProjects / vw_ActionableOpportunities). A Worker job that
+    /// re-derives it inline (filtering DismissedAtUtc / un-owned / seat-filled
+    /// itself) WILL drift from the view the day either changes — the exact
+    /// failure class this lifecycle build exists to end. Transition stores and
+    /// the reaper legitimately touch lifecycle columns (guarded UPDATEs and
+    /// owner-scoped reads are not pool derivations) and are allowlisted.
+    /// </summary>
+    private static readonly string[] PoolDerivationTokens =
+    {
+        "DismissedAtUtc IS NULL",
+        "OwnerStaffId IS NULL",
+    };
+
+    private static readonly Regex SeatStatusExclusion =
+        new(@"SeatStatus\s*,\s*N?''\s*\)\s*(<>|NOT\s+IN)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    [Fact]
+    public void D11_WorkerJobs_UseLifecycleViews_NotInlinePredicates()
+    {
+        var workerRoot = Path.Combine(RepoRoot, "Kor.Opportunities.Worker");
+        var violations = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(workerRoot, "*.cs", SearchOption.AllDirectories)
+                     .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                              && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")))
+        {
+            var lines = File.ReadAllLines(file);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                var hit = PoolDerivationTokens.Any(t => line.Contains(t, StringComparison.OrdinalIgnoreCase))
+                          || SeatStatusExclusion.IsMatch(line);
+                if (!hit) continue;
+                if (IsAllowlisted(file, line)) continue;
+                violations.Add($"{Path.GetRelativePath(RepoRoot, file)}:{i + 1}: {line.Trim()}");
+            }
+        }
+
+        Assert.True(violations.Count == 0,
+            "Doctrine D11 (docs/BD-Doctrine.md): Worker jobs must read actionable pools from " +
+            "vw_ActionableProjects / vw_ActionableOpportunities, never re-derive lifecycle predicates inline. " +
+            "Fix or allowlist WITH A REASON in doctrine-allowlist.txt:\n" + string.Join('\n', violations));
+    }
+
+    [Theory]
+    [InlineData("Kor.Opportunities.Worker/Services/Reporting/WeeklyAttackSheetJob.cs", "vw_ActionableProjects")]
+    [InlineData("Kor.Opportunities.Worker/Services/Reporting/BdMorningReportJob.cs", "vw_ActionableProjects")]
+    public void D11_KnownConsumers_ReadTheView(string relativePath, string expectedView)
+    {
+        var path = Path.Combine(RepoRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        Assert.True(File.Exists(path), $"expected consumer missing: {relativePath}");
+        Assert.Contains(expectedView, File.ReadAllText(path), StringComparison.Ordinal);
+    }
 }

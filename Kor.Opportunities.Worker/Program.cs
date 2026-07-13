@@ -892,6 +892,22 @@ builder.Services.AddQuartz(q =>
            cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
   });
 
+  // Pursuit lifecycle (migration 282): release owned-but-unconverted plays
+  // after the accountability window. 02:40 UTC — after intel retirement,
+  // before the 06:00 morning report, so the digest reflects post-reap state.
+  var mpiReaperKey = new JobKey("MpiOwnershipReaperJob");
+  q.AddJob<Kor.Opportunities.Worker.Jobs.MpiOwnershipReaperJob>(opts => opts.WithIdentity(mpiReaperKey));
+
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["MpiOwnershipReaperCronSchedule"] ?? "0 40 2 * * ?";
+      t.ForJob(mpiReaperKey)
+       .WithIdentity("MpiOwnershipReaperTrigger")
+       .WithCronSchedule(
+           cron,
+           cb => cb.InTimeZone(TimeZoneInfo.Utc).WithMisfireHandlingInstructionFireAndProceed());
+  });
+
   // CRM plan 3.1 (2026-07-07): THE nightly CRM enrichment job — email-warmth
   // rollup per live-pursuit buyer (sections, never sibling jobs; plan
   // anti-feature 15). 03:45 UTC, after intel retirement (02:00) and the
