@@ -224,93 +224,149 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
         return map;
     }
 
+    // Punchy tight-grid layout (2026-07-13): small font, two-column cards,
+    // one-line play, contacts deduped by firm. Verified against the live sheet
+    // before deploy; keep this and the offline sample generator in sync.
     private static string BuildHtml(IReadOnlyList<Play> plays, Dictionary<long, List<Contact>> contacts, WeekActivity week)
     {
         static string E(string? s) => WebUtility.HtmlEncode(s ?? "");
         var sb = new StringBuilder();
-        sb.Append("<title>KOR Weekly Attack Sheet</title><style>")
-          .Append("body{font-family:system-ui,'Segoe UI',Arial;margin:34px;color:#17212B;font-size:12.5px}")
-          .Append("h1,h2{letter-spacing:-.02em;margin:0 0 2px}h2{margin-top:24px;border-bottom:2px solid #3F5364;padding-bottom:4px}")
-          .Append(".sub{color:#4B5963;margin-bottom:14px}")
-          .Append(".cl{border-collapse:collapse;width:100%;margin-bottom:8px}.cl th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6E7C86;border-bottom:2px solid #D2D9DE;padding:4px 8px 4px 0}.cl td{border-bottom:1px solid #E1E6EA;padding:6px 8px 6px 0;vertical-align:top}")
-          .Append(".card{border:1px solid #D2D9DE;border-left:4px solid #FF5B35;border-radius:8px;padding:11px 14px;margin-bottom:12px;page-break-inside:avoid}")
-          .Append(".hd{display:flex;justify-content:space-between;gap:10px;margin-bottom:5px}.pn{font-weight:700;font-size:14px}.meta{color:#6E7C86;font-size:11px;text-align:right}")
-          .Append(".row{margin:2px 0}.row b{display:inline-block;width:74px;color:#3F5364;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}")
-          .Append(".ct{margin:1px 0 1px 78px}.t{color:#6E7C86}.e{color:#2C5A7A;font-weight:600}")
-          .Append(".play{background:#FFF4F0;border-radius:6px;padding:7px 10px;margin-top:6px}.play b{color:#FF5B35;font-size:10.5px;letter-spacing:.05em;margin-right:6px}")
-          .Append(".asof{color:#8a969e;font-size:10px;margin-top:5px}.ch{font-weight:600}")
+        sb.Append("<title>KOR Attack Sheet</title><style>")
+          .Append("*{box-sizing:border-box}")
+          .Append("body{font-family:'Segoe UI',system-ui,Arial,sans-serif;color:#16202A;font-size:8.6px;line-height:1.32;margin:0}")
+          .Append(".top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2.5px solid #E1442A;padding-bottom:4px;margin-bottom:8px}")
+          .Append(".top h1{font-size:15px;font-weight:800;letter-spacing:-.02em;margin:0}.top h1 span{color:#E1442A}")
+          .Append(".top .sub{font-size:8px;color:#5B6B76;text-align:right;max-width:52%}")
+          .Append(".grid{column-count:2;column-gap:9px}")
+          .Append(".card{break-inside:avoid;border:.7px solid #D7DEE3;border-left:2.5px solid #E1442A;border-radius:4px;padding:5px 7px 4px;margin:0 0 7px;background:#fff}")
+          .Append(".hd{display:flex;align-items:baseline;gap:5px}.rk{font-weight:800;color:#E1442A;font-size:9px;min-width:13px}")
+          .Append(".pn{font-weight:700;font-size:10px;letter-spacing:-.01em;flex:1;line-height:1.15}")
+          .Append(".cost{font-weight:800;font-size:9px;color:#16202A;font-variant-numeric:tabular-nums;white-space:nowrap}")
+          .Append(".meta{color:#6E7C86;font-size:7.6px;text-transform:uppercase;letter-spacing:.04em;margin:1px 0 2px}")
+          .Append(".arch{font-size:8.8px;margin-bottom:2px}")
+          .Append(".chip{color:#fff;font-size:6.6px;font-weight:700;letter-spacing:.05em;padding:1px 5px;border-radius:999px;vertical-align:1px;margin-left:3px}")
+          .Append(".ctx{color:#3F5364;font-size:7.8px;margin:1px 0 3px}")
+          .Append(".play{background:#FCEDE9;border-radius:3px;padding:3px 6px;margin:2px 0 3px;font-size:8.4px}.play b{color:#C0331C}")
+          .Append(".who .c{font-size:8px;margin:1px 0}.who .ti{color:#6E7C86}")
+          .Append(".em{color:#1F6F8B;font-weight:700}.noem{color:#93A0A8;font-style:italic}.seealso{color:#8A97A0;font-style:italic;font-size:7.6px}")
+          .Append(".asof{color:#A7B1B8;font-size:6.8px;margin-top:2px}.asof a{color:#A7B1B8;text-decoration:none}")
+          .Append(".foot{border-top:1px solid #D7DEE3;margin-top:6px;padding-top:5px;font-size:8px;color:#5B6B76}.foot b{color:#16202A}")
           .Append("</style>");
 
-        sb.Append("<h1>KOR Weekly Attack Sheet <span style=\"color:#FF5B35\">— wk of ")
-          .Append(DateTime.Now.ToString("MMM d, yyyy")).Append("</span></h1>")
-          .Append("<div class=sub>The ").Append(plays.Count)
-          .Append(" most pressing open-structural-seat plays, regenerated from live data at send time. Seats confirmed filled and rows outside the freshness window are excluded automatically. Full target set lives in the app.</div>");
+        sb.Append("<div class=top><h1>KOR <span>Attack Sheet</span></h1><div class=sub>wk of ")
+          .Append(DateTime.Now.ToString("MMM d, yyyy")).Append(" &middot; ").Append(plays.Count)
+          .Append(" live open-SE-seat plays, best-first. Filled / stale / paused auto-excluded. Full set in the app.</div></div>");
 
-        // Call list (dedup people across plays).
-        sb.Append("<h2>This week&rsquo;s call list</h2><table class=cl><tr><th>Who</th><th>Firm</th><th>Reach</th><th>About</th></tr>");
-        var seen = new HashSet<string>();
-        foreach (var p in plays)
-        {
-            if (!contacts.TryGetValue(p.ArchitectOrgId, out var ppl)) continue;
-            foreach (var c in ppl)
-            {
-                var key = c.Name + "|" + p.Architect;
-                if (!seen.Add(key)) continue;
-                var about = string.Join(" · ", plays.Where(x => x.ArchitectOrgId == p.ArchitectOrgId).Take(3).Select(x => E(x.Name)));
-                var reach = !string.IsNullOrWhiteSpace(c.Email)
-                    ? $"<span class=e>{E(c.Email)}</span>"
-                    : (!string.IsNullOrWhiteSpace(c.Linkedin) ? "LinkedIn" : "firm main line");
-                sb.Append($"<tr><td><b>{E(c.Name)}</b><br><span class=t>{E(c.Title)}</span></td><td>{E(p.Architect)}</td><td>{reach}</td><td>{about}</td></tr>");
-            }
-        }
-
-        sb.Append("</table><h2>The plays</h2>");
-
+        sb.Append("<div class=grid>");
+        var seenOrg = new Dictionary<long, int>();
         var i = 0;
         foreach (var p in plays)
         {
             i++;
-            var playText = p.Channel switch
+            var (verb, tail) = PlayLine(p.Channel);
+            var (chipTxt, chipCol) = Chip(p.Channel);
+            var cost = CleanCost(p.CostText);
+            var loc = string.Join(", ", new[] { p.City, p.Prov }.Where(x => !string.IsNullOrWhiteSpace(x)));
+            var ctx = FirstSentence(p.Schedule, 150);
+
+            // Contacts deduped by firm: a firm's contacts print once; repeat
+            // plays for the same architect point back to save space.
+            string who;
+            if (p.ArchitectOrgId != 0 && seenOrg.TryGetValue(p.ArchitectOrgId, out var firstNo))
             {
-                "architect-subconsultant" => "Pitch the architect directly — they assemble the consultant team.",
-                "design-build" => "Get onto the design-build proponent team — pitch the builder, not the owner.",
-                "owner-direct" => "Owner procures the SE separately — watch their portal and pitch the capital-projects lead.",
-                _ => "Channel unconfirmed — open with the architect contact and qualify the procurement route.",
-            };
-            var who = contacts.TryGetValue(p.ArchitectOrgId, out var ppl) && ppl.Count > 0
-                ? string.Concat(ppl.Select(c =>
-                    $"<div class=ct><b>{E(c.Name)}</b> — {E(c.Title)}" +
-                    (string.IsNullOrWhiteSpace(c.Email) ? "" : $" · <span class=e>{E(c.Email)}</span> <span class=t>({E(c.EmailSource)})</span>") +
-                    (string.IsNullOrWhiteSpace(c.Linkedin) ? "" : $" · <a href=\"{c.Linkedin}\">LinkedIn</a>") + "</div>"))
-                : "<div class=ct><span class=t>no verified contact yet — firm main line</span></div>";
+                who = $"<div class=\"c seealso\">&#8627; same firm as play {firstNo} — contacts there</div>";
+            }
+            else
+            {
+                var ppl = contacts.TryGetValue(p.ArchitectOrgId, out var list) ? list : new List<Contact>();
+                var pick = ppl.Where(c => !string.IsNullOrWhiteSpace(c.Email)).Take(2).ToList();
+                if (pick.Count == 0) pick = ppl.Take(1).ToList();
+                if (pick.Count > 0)
+                {
+                    who = string.Concat(pick.Select(c =>
+                        "<div class=c><b>" + E(c.Name) + "</b> " +
+                        (string.IsNullOrWhiteSpace(c.Title) ? "" : "<span class=ti>" + E(c.Title) + "</span> ") +
+                        (string.IsNullOrWhiteSpace(c.Email) ? "<span class=noem>firm main line</span>" : "<span class=em>" + E(c.Email) + "</span>") +
+                        "</div>"));
+                    if (p.ArchitectOrgId != 0) seenOrg[p.ArchitectOrgId] = i;
+                }
+                else
+                {
+                    who = "<div class=\"c noem\">no verified contact yet — firm main line</div>";
+                }
+            }
 
-            sb.Append("<div class=card><div class=hd><span class=pn>").Append(i).Append(". ").Append(E(p.Name))
-              .Append("</span><span class=meta>").Append(E(p.City)).Append(", ").Append(E(p.Prov)).Append(" · ").Append(E(p.Sector));
-            if (!string.IsNullOrWhiteSpace(p.CostText)) sb.Append(" · ").Append(E(p.CostText));
-            sb.Append("</span></div>")
-              .Append("<div class=row><b>Architect</b> ").Append(E(p.Architect)).Append("</div>")
-              .Append("<div class=row><b>Channel</b> <span class=ch>").Append(E(p.Channel)).Append("</span></div>");
-            if (!string.IsNullOrWhiteSpace(p.Schedule)) sb.Append("<div class=row><b>Schedule</b> ").Append(E(p.Schedule)).Append("</div>");
-            sb.Append("<div class=row><b>Contacts</b></div>").Append(who)
-              .Append("<div class=play><b>THE PLAY</b> ").Append(E(playText)).Append("</div>")
-              .Append("<div class=asof>row last verified/seen ").Append(p.LastSeen.ToString("yyyy-MM-dd")).Append(" · generated ")
-              .Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm"))
-              .Append(" · <a href=\"kor://mpi/").Append(p.Id).Append("\">open in app</a> — Own it / Not for us there</div></div>");
+            sb.Append("<div class=card>")
+              .Append("<div class=hd><span class=rk>").Append(i).Append("</span><span class=pn>").Append(E(p.Name)).Append("</span>");
+            if (!string.IsNullOrWhiteSpace(cost)) sb.Append("<span class=cost>").Append(E(cost)).Append("</span>");
+            sb.Append("</div>")
+              .Append("<div class=meta>").Append(E(loc)).Append(string.IsNullOrWhiteSpace(p.Sector) ? "" : " &middot; " + E(p.Sector)).Append("</div>")
+              .Append("<div class=arch><b>").Append(E(p.Architect)).Append("</b> <span class=chip style=\"background:").Append(chipCol).Append("\">").Append(chipTxt).Append("</span></div>");
+            if (!string.IsNullOrWhiteSpace(ctx)) sb.Append("<div class=ctx>").Append(E(ctx)).Append("</div>");
+            sb.Append("<div class=play><b>").Append(verb).Append("</b> — ").Append(tail).Append("</div>")
+              .Append("<div class=who>").Append(who).Append("</div>")
+              .Append("<div class=asof>as of ").Append(p.LastSeen.ToString("yyyy-MM-dd"))
+              .Append(" &middot; <a href=\"kor://mpi/").Append(p.Id).Append("\">open in app</a></div>")
+              .Append("</div>");
         }
+        sb.Append("</div>");
 
-        // Accountability footer: proof the sheet is being worked. Owned plays
-        // drop off next week's sheet automatically (vw_ActionableProjects).
-        sb.Append("<h2>Last week&rsquo;s movement</h2><div class=sub>");
+        // Accountability footer: owned plays drop off next week automatically.
+        sb.Append("<div class=foot>");
         sb.Append(week.Owned.Count == 0
-            ? "No plays were taken this week."
+            ? "No plays taken last week."
             : $"<b>{week.Owned.Count} taken:</b> " + E(string.Join(" · ", week.Owned.Take(10))) + (week.Owned.Count > 10 ? " …" : ""));
-        sb.Append("<br>");
+        sb.Append(" &nbsp;|&nbsp; ");
         sb.Append(week.Dismissed.Count == 0
-            ? "None removed."
-            : $"<b>{week.Dismissed.Count} removed (not for us):</b> " + E(string.Join(" · ", week.Dismissed.Take(10))) + (week.Dismissed.Count > 10 ? " …" : ""));
+            ? "none removed."
+            : $"<b>{week.Dismissed.Count} removed:</b> " + E(string.Join(" · ", week.Dismissed.Take(10))) + (week.Dismissed.Count > 10 ? " …" : ""));
         sb.Append("</div>");
 
         return sb.ToString();
+    }
+
+    private static (string Verb, string Tail) PlayLine(string channel) => channel switch
+    {
+        "architect-subconsultant" => ("Pitch the architect", "attach before they lock the SE sub."),
+        "design-build" => ("Pitch the builder", "get on the design-build / GC team, not the owner."),
+        "owner-direct" => ("Pitch the owner", "reach the capital-projects lead — SE bought separately."),
+        "alliance-captive" => ("Watch early scopes", "alliance / P3 seat likely captive."),
+        _ => ("Qualify the route", "open with the architect, confirm how the SE is bought."),
+    };
+
+    private static (string Text, string Color) Chip(string channel) => channel switch
+    {
+        "architect-subconsultant" => ("ARCHITECT-SUB", "#2C6E8F"),
+        "design-build" => ("DESIGN-BUILD", "#8A5A00"),
+        "owner-direct" => ("OWNER-DIRECT", "#4B7B3F"),
+        "alliance-captive" => ("ALLIANCE", "#7A5C7B"),
+        _ => ("UNCONFIRMED", "#6E7C86"),
+    };
+
+    private static string CleanCost(string? c)
+    {
+        c ??= "";
+        var cur = (c.Contains("USD") || c.Contains("US$")) ? "US$" : "$";
+        var m = System.Text.RegularExpressions.Regex.Match(c, @"[\d,]{4,}(?:\.\d+)?");
+        if (m.Success && double.TryParse(m.Value.Replace(",", ""), out var val))
+        {
+            if (val >= 1e9) return cur + (val / 1e9).ToString("0.0") + "B";
+            if (val >= 1e6) return cur + (val / 1e6).ToString("0") + "M";
+        }
+        var mb = System.Text.RegularExpressions.Regex.Match(c, @"\$?\s*([\d.]+)\s*(?:billion|B)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (mb.Success && double.TryParse(mb.Groups[1].Value, out var vb)) return cur + vb.ToString("0.0") + "B";
+        var mm = System.Text.RegularExpressions.Regex.Match(c, @"\$?\s*([\d.]+)\s*(?:million|M)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (mm.Success && double.TryParse(mm.Groups[1].Value, out var vm)) return cur + vm.ToString("0") + "M";
+        return "";
+    }
+
+    private static string FirstSentence(string? s, int max)
+    {
+        s = (s ?? "").Trim();
+        if (s.Length == 0) return "";
+        var parts = System.Text.RegularExpressions.Regex.Split(s, @"(?<=[.;])\s");
+        var first = parts.Length > 0 && parts[0].Length > 0 ? parts[0] : s;
+        return first.Length > max ? first[..max] + "…" : first;
     }
 
     private byte[]? TryRenderPdf(string html)
