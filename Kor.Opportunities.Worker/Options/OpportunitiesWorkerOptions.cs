@@ -328,6 +328,18 @@ public sealed class OpportunitiesWorkerOptions
     // everyone, so nothing is lost while this is off or an owner is unrouted.
     public bool MorningReportPerOwnerEnabled { get; set; } = false;
 
+    // --- 2026-07-13: Weekly Attack Sheet (WeeklyAttackSheetJob) ---
+    // Monday 06:30 email to Ian with the ~25 most pressing open-structural-seat
+    // plays as a PDF, regenerated FRESH from the DB at send time (trust rule:
+    // never a stored artifact). Uses the MorningReport* Graph creds.
+    public bool WeeklyAttackSheetEnabled { get; set; } = true;
+    public string? WeeklyAttackSheetCronSchedule { get; set; }
+    public string WeeklyAttackSheetRecipient { get; set; } = "ilalonde@korstructural.com";
+    public int WeeklyAttackSheetCount { get; set; } = 25;
+    /// <summary>Rows not verified/seen by any source within this many days are
+    /// EXCLUDED from the sheet (expired data is a trust killer). Default 45.</summary>
+    public int WeeklyAttackSheetFreshDays { get; set; } = 45;
+
     // Verified owner -> mailbox map for LEGACY first-name owners (D2's "small
     // hand-verified map"). Grabbed pursuits store the owner's email and resolve
     // WITHOUT this map; only the 75 legacy BD-tracking first-name owners need

@@ -1242,6 +1242,19 @@ builder.Services.AddQuartz(q =>
                      .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
                 });
 
+                // 2026-07-13: Monday 06:30 Weekly Attack Sheet — ~25 most pressing
+                // open-structural-seat plays as a PDF, regenerated fresh at send time.
+                var weeklyAttackKey = new JobKey("WeeklyAttackSheetJob");
+                q.AddJob<Kor.Opportunities.Worker.Services.Reporting.WeeklyAttackSheetJob>(opts => opts.WithIdentity(weeklyAttackKey));
+
+                q.AddTrigger(t =>
+                {
+                    var cron = builder.Configuration["WeeklyAttackSheetCronSchedule"] ?? "0 30 6 ? * MON";
+                    t.ForJob(weeklyAttackKey)
+                     .WithIdentity("WeeklyAttackSheetTrigger")
+                     .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
+                });
+
                 q.AddTriggerListener<EnabledTriggerListener>(EverythingMatcher<TriggerKey>.AllTriggers());
                 q.AddJobListener<LastReportPathListener>(EverythingMatcher<JobKey>.AllJobs());
             });

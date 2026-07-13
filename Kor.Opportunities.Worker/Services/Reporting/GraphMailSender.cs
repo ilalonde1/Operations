@@ -27,6 +27,22 @@ public sealed class GraphMailSender
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    public Task SendHtmlAsync(
+        string tenantId,
+        string clientId,
+        string clientSecret,
+        string senderUpn,
+        string recipient,
+        string subject,
+        string htmlBody,
+        CancellationToken ct)
+        => SendHtmlAsync(tenantId, clientId, clientSecret, senderUpn, recipient, subject, htmlBody,
+            attachmentName: null, attachmentBytes: null, attachmentContentType: null, ct: ct);
+
+    /// <summary>
+    /// Same minimal sendMail with one optional file attachment (base64
+    /// fileAttachment per the Graph contract). Used by the weekly attack sheet.
+    /// </summary>
     public async Task SendHtmlAsync(
         string tenantId,
         string clientId,
@@ -35,6 +51,9 @@ public sealed class GraphMailSender
         string recipient,
         string subject,
         string htmlBody,
+        string? attachmentName,
+        byte[]? attachmentBytes,
+        string? attachmentContentType,
         CancellationToken ct)
     {
         var http = _httpFactory.CreateClient(nameof(GraphMailSender));
@@ -68,6 +87,23 @@ public sealed class GraphMailSender
             HttpMethod.Post,
             $"https://graph.microsoft.com/v1.0/users/{Uri.EscapeDataString(senderUpn)}/sendMail");
         mailReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        object[]? attachments = null;
+        if (attachmentBytes is { Length: > 0 } && !string.IsNullOrWhiteSpace(attachmentName))
+        {
+            attachments = new object[]
+            {
+                // Dictionary because the Graph discriminator key "@odata.type"
+                // is not a legal anonymous-type property name.
+                new System.Collections.Generic.Dictionary<string, object>
+                {
+                    ["@odata.type"] = "#microsoft.graph.fileAttachment",
+                    ["name"] = attachmentName!,
+                    ["contentType"] = attachmentContentType ?? "application/octet-stream",
+                    ["contentBytes"] = Convert.ToBase64String(attachmentBytes),
+                },
+            };
+        }
+
         mailReq.Content = JsonContent.Create(new
         {
             message = new
@@ -75,8 +111,12 @@ public sealed class GraphMailSender
                 subject,
                 body = new { contentType = "HTML", content = htmlBody },
                 toRecipients = new[] { new { emailAddress = new { address = recipient } } },
+                attachments,
             },
             saveToSentItems = false,
+        }, options: new JsonSerializerOptions
+        {
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
         });
 
         using var mailResp = await http.SendAsync(mailReq, ct).ConfigureAwait(false);
