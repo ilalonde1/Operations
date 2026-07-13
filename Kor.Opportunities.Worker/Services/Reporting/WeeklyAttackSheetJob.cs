@@ -107,7 +107,7 @@ internal sealed class WeeklyAttackSheetJob : IJob
     internal sealed record Play(
         long Id, string Name, string City, string Prov, string Sector, string Stage,
         string Architect, long ArchitectOrgId, string CostText, string Schedule,
-        string Channel, DateTimeOffset LastSeen, int Score);
+        string Channel, DateTimeOffset LastSeen, int Score, string Window);
 
     internal sealed record Contact(string Name, string Title, string Email, string EmailSource, string Linkedin);
 
@@ -169,12 +169,18 @@ SELECT TOP (@n)
             WHEN m.Sector LIKE '%ivic%' OR m.Sector LIKE '%nstitutional%' OR m.Sector LIKE '%ecreation%' THEN 1 ELSE 0 END
      + CASE WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 100000000 THEN 3
             WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 25000000 THEN 2
-            WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 5000000 THEN 1 ELSE 0 END) AS Score
+            WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 5000000 THEN 1 ELSE 0 END) AS Score,
+    ISNULL(m.SeatWindow, '') AS SeatWindow
 FROM opportunities.vw_ActionableProjects m
 WHERE NULLIF(LTRIM(RTRIM(m.ArchitectName)),'') IS NOT NULL
   AND NULLIF(LTRIM(RTRIM(m.StructuralEngineerName)),'') IS NULL
   AND COALESCE(m.LastVerifiedAtUtc, m.LastSeenAtUtc, m.UpdatedAtUtc) >= DATEADD(DAY, -@fresh, SYSDATETIMEOFFSET())
-ORDER BY Score DESC, ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) DESC, m.Id;";
+-- Urgency FIRST: a researched 'now — team forming' seat leads any distant one,
+-- then the channel/sector/value score, then dollar value. WindowRank:
+-- now=3 > 2026=2 > not-yet-researched(NULL)=1 > 2027+=0 (paused rows are
+-- already excluded via SeatStatus, so they never reach here).
+ORDER BY CASE m.SeatWindow WHEN 'now' THEN 3 WHEN '2026' THEN 2 WHEN '2027+' THEN 0 ELSE 1 END DESC,
+         Score DESC, ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) DESC, m.Id;";
 
         var plays = new List<Play>();
         await using var con = new SqlConnection(connStr);
@@ -188,7 +194,7 @@ ORDER BY Score DESC, ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) DESC
             plays.Add(new Play(
                 Convert.ToInt64(r.GetValue(0)), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), r.GetString(5),
                 r.GetString(6), Convert.ToInt64(r.GetValue(7)), r.GetString(8), r.GetString(9), r.GetString(10),
-                r.GetDateTimeOffset(11), Convert.ToInt32(r.GetValue(12))));
+                r.GetDateTimeOffset(11), Convert.ToInt32(r.GetValue(12)), r.GetString(13)));
         }
 
         return plays;
@@ -245,6 +251,8 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
           .Append(".meta{color:#6E7C86;font-size:7.6px;text-transform:uppercase;letter-spacing:.04em;margin:1px 0 2px}")
           .Append(".arch{font-size:8.8px;margin-bottom:2px}")
           .Append(".chip{color:#fff;font-size:6.6px;font-weight:700;letter-spacing:.05em;padding:1px 5px;border-radius:999px;vertical-align:1px;margin-left:3px}")
+          .Append(".now{background:#127A3E;color:#fff;font-size:6.6px;font-weight:800;letter-spacing:.06em;padding:1px 5px;border-radius:999px;margin-left:4px}")
+          .Append(".w26{background:#B26A00;color:#fff;font-size:6.6px;font-weight:700;letter-spacing:.06em;padding:1px 5px;border-radius:999px;margin-left:4px}")
           .Append(".ctx{color:#3F5364;font-size:7.8px;margin:1px 0 3px}")
           .Append(".play{background:#FCEDE9;border-radius:3px;padding:3px 6px;margin:2px 0 3px;font-size:8.4px}.play b{color:#C0331C}")
           .Append(".who .c{font-size:8px;margin:1px 0}.who .ti{color:#6E7C86}")
@@ -296,8 +304,16 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
                 }
             }
 
+            // Urgency flag: 'now — team forming' seats get a green NOW badge so
+            // they read at a glance; a 2026 seat gets a muted year badge.
+            var urgency = p.Window switch
+            {
+                "now" => "<span class=now>NOW</span>",
+                "2026" => "<span class=w26>2026</span>",
+                _ => "",
+            };
             sb.Append("<div class=card>")
-              .Append("<div class=hd><span class=rk>").Append(i).Append("</span><span class=pn>").Append(E(p.Name)).Append("</span>");
+              .Append("<div class=hd><span class=rk>").Append(i).Append("</span><span class=pn>").Append(E(p.Name)).Append(urgency).Append("</span>");
             if (!string.IsNullOrWhiteSpace(cost)) sb.Append("<span class=cost>").Append(E(cost)).Append("</span>");
             sb.Append("</div>")
               .Append("<div class=meta>").Append(E(loc)).Append(string.IsNullOrWhiteSpace(p.Sector) ? "" : " &middot; " + E(p.Sector)).Append("</div>")
