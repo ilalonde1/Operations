@@ -104,7 +104,7 @@ internal sealed class WeeklyAttackSheetJob : IJob
     }
 
     internal sealed record Play(
-        int Id, string Name, string City, string Prov, string Sector, string Stage,
+        long Id, string Name, string City, string Prov, string Sector, string Stage,
         string Architect, long ArchitectOrgId, string CostText, string Schedule,
         string Channel, DateTimeOffset LastSeen, int Score);
 
@@ -148,9 +148,9 @@ ORDER BY Score DESC, ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) DESC
         while (await r.ReadAsync(ct).ConfigureAwait(false))
         {
             plays.Add(new Play(
-                r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), r.GetString(5),
-                r.GetString(6), r.GetInt64(7), r.GetString(8), r.GetString(9), r.GetString(10),
-                r.GetDateTimeOffset(11), r.GetInt32(12)));
+                Convert.ToInt64(r.GetValue(0)), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), r.GetString(5),
+                r.GetString(6), Convert.ToInt64(r.GetValue(7)), r.GetString(8), r.GetString(9), r.GetString(10),
+                r.GetDateTimeOffset(11), Convert.ToInt32(r.GetValue(12))));
         }
 
         return plays;
