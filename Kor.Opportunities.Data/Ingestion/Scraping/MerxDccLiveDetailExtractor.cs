@@ -162,17 +162,19 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
             }).ConfigureAwait(false);
             try
             {
-                await page.WaitForSelectorAsync("#docs-itemsAbstractTabBody a[href]",
+                await page.WaitForSelectorAsync("#innerTabContent a[href]",
                     new PageWaitForSelectorOptions { Timeout = 12_000 }).ConfigureAwait(false);
             }
             catch (TimeoutException) { /* tab may genuinely be empty — scrape what rendered */ }
             await page.WaitForTimeoutAsync(1500).ConfigureAwait(false);
 
-            // Anchors inside the docs tab body (container id verified live);
-            // fall back to any file-looking link in main content if the tab
-            // container is renamed. Names come from the link text or the row.
+            // The tab AJAX injects its markup into #innerTabContent (verified
+            // via an authenticated fragment probe 2026-07-13; the docs live in
+            // preview_tblSolDocuments* tables inside it). Scoped there so page
+            // chrome ('Ordered Documents' nav etc.) can never leak in.
             var raw = await page.EvaluateAsync<string[][]>(@"() => {
-                const scope = document.querySelector('#docs-itemsAbstractTabBody') || document.body;
+                const scope = document.querySelector('#innerTabContent');
+                if (!scope) return [];
                 const seen = new Set();
                 const out = [];
                 for (const a of scope.querySelectorAll('a[href]')) {
@@ -223,23 +225,27 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
             }).ConfigureAwait(false);
             try
             {
-                await page.WaitForSelectorAsync("#docs-requestAbstractTabBody table tr",
+                await page.WaitForSelectorAsync("#documentRequesTable tr",
                     new PageWaitForSelectorOptions { Timeout = 12_000 }).ConfigureAwait(false);
             }
             catch (TimeoutException) { /* list may be empty — scrape what rendered */ }
             await page.WaitForTimeoutAsync(1500).ConfigureAwait(false);
 
-            // First table cell per row inside the request-list tab body =
-            // supplier name (first page only; count vs header logged so a
-            // paginated tail is never silently 'covered').
+            // The request list is EXACTLY #documentRequesTable (sic — MERX's
+            // own id, verified via authenticated fragment probe 2026-07-13;
+            // first column sorts by organizationName). Strictly scoped — the
+            // v1 body-fallback scraped form labels as 'firms' (junk purged).
+            // First page only; count vs header logged so a paginated tail is
+            // never silently 'covered'.
             var names = await page.EvaluateAsync<string[]>(@"() => {
-                const scope = document.querySelector('#docs-requestAbstractTabBody') || document.body;
+                const table = document.querySelector('#documentRequesTable');
+                if (!table) return [];
                 const out = [];
-                for (const tr of scope.querySelectorAll('table tr')) {
+                for (const tr of table.querySelectorAll('tbody tr')) {
                     const td = tr.querySelector('td');
                     if (!td) continue;
                     const name = (td.innerText || '').trim().replace(/\s+/g, ' ');
-                    if (name.length >= 3 && name.length <= 200) out.push(name);
+                    if (name.length >= 3 && name.length <= 200 && !/^no entries$/i.test(name)) out.push(name);
                 }
                 return out;
             }").ConfigureAwait(false);
