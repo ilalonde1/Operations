@@ -170,16 +170,21 @@ SELECT TOP (@n)
      + CASE WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 100000000 THEN 3
             WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 25000000 THEN 2
             WHEN ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) >= 5000000 THEN 1 ELSE 0 END) AS Score,
-    ISNULL(m.SeatWindow, '') AS SeatWindow
+    -- Timing is trusted ONLY if it was checked within the freshness window;
+    -- an aged 'now' reads as blank here so its badge/rank quietly decay
+    -- (SeatTimingRefreshJob re-checks the oldest before they get here).
+    CASE WHEN m.SeatWindowCheckedAtUtc >= DATEADD(DAY, -@fresh, SYSDATETIMEOFFSET())
+         THEN ISNULL(m.SeatWindow, '') ELSE '' END AS SeatWindow
 FROM opportunities.vw_ActionableProjects m
 WHERE NULLIF(LTRIM(RTRIM(m.ArchitectName)),'') IS NOT NULL
   AND NULLIF(LTRIM(RTRIM(m.StructuralEngineerName)),'') IS NULL
   AND COALESCE(m.LastVerifiedAtUtc, m.LastSeenAtUtc, m.UpdatedAtUtc) >= DATEADD(DAY, -@fresh, SYSDATETIMEOFFSET())
--- Urgency FIRST: a researched 'now — team forming' seat leads any distant one,
--- then the channel/sector/value score, then dollar value. WindowRank:
--- now=3 > 2026=2 > not-yet-researched(NULL)=1 > 2027+=0 (paused rows are
--- already excluded via SeatStatus, so they never reach here).
-ORDER BY CASE m.SeatWindow WHEN 'now' THEN 3 WHEN '2026' THEN 2 WHEN '2027+' THEN 0 ELSE 1 END DESC,
+-- Urgency FIRST: a freshly-checked 'now — team forming' seat leads any distant
+-- one, then channel/sector/value score, then dollar value. Stale-timing rows
+-- fall to the neutral middle (rank 1) until re-checked.
+ORDER BY CASE WHEN m.SeatWindowCheckedAtUtc >= DATEADD(DAY, -@fresh, SYSDATETIMEOFFSET())
+              THEN (CASE m.SeatWindow WHEN 'now' THEN 3 WHEN '2026' THEN 2 WHEN '2027+' THEN 0 ELSE 1 END)
+              ELSE 1 END DESC,
          Score DESC, ISNULL(m.ModeledCostCad, ISNULL(m.EstimatedCostCad,0)) DESC, m.Id;";
 
         var plays = new List<Play>();

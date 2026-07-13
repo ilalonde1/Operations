@@ -146,6 +146,9 @@ internal static class Program
             builder.Services
                 .AddOptions<BdPersonResearchExecutorOptions>()
                 .Bind(builder.Configuration.GetSection("BdPersonResearchExecutor"));
+            builder.Services
+                .AddOptions<SeatTimingRefreshOptions>()
+                .Bind(builder.Configuration.GetSection("SeatTimingRefresh"));
 
             // Stores take the connection string directly (rather than an Options type) so
             // Kor.Opportunities.Data stays free of any host-specific Options class.
@@ -1065,6 +1068,24 @@ builder.Services.AddQuartz(q =>
       var cron = builder.Configuration["BdProjectResearchExecutorCronSchedule"] ?? "0 30 7 * * ?";
       t.ForJob(bdProjectResearchExecutorKey)
        .WithIdentity("BdProjectResearchExecutorTrigger")
+       .WithCronSchedule(
+           cron,
+           cb => cb.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"))
+                   .WithMisfireHandlingInstructionFireAndProceed());
+  });
+
+  // Keeps the attack sheet's SE-seat timing honest — re-checks the oldest
+  // sheet-relevant plays past the staleness window (off by default; enabling
+  // spends on the Claude API). 08:15 Pacific, after the other research jobs.
+  var seatTimingRefreshKey = new JobKey("SeatTimingRefreshJob");
+  q.AddJob<Kor.Opportunities.Worker.Jobs.SeatTimingRefreshJob>(
+      opts => opts.WithIdentity(seatTimingRefreshKey));
+
+  q.AddTrigger(t =>
+  {
+      var cron = builder.Configuration["SeatTimingRefreshCronSchedule"] ?? "0 15 8 * * ?";
+      t.ForJob(seatTimingRefreshKey)
+       .WithIdentity("SeatTimingRefreshTrigger")
        .WithCronSchedule(
            cron,
            cb => cb.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"))

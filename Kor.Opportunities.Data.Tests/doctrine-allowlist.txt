@@ -19,6 +19,7 @@ Kor.Opportunities.Worker/Program.cs|IntelExtractionCatchUpJob|self-managing catc
 Kor.Opportunities.Worker/Program.cs|CrmEnrichmentJob|registered via its own options gate; sectioned nightly job (plan 3.1)
 Kor.Opportunities.Worker/Program.cs|BdResearchExecutorJob|research executor trio driven by BdResearchExecutorOptions, not operator cron
 Kor.Opportunities.Worker/Program.cs|BdProjectResearchExecutorJob|research executor trio driven by BdResearchExecutorOptions, not operator cron
+Kor.Opportunities.Worker/Program.cs|SeatTimingRefreshJob|self-managing seat-timing refresher driven by SeatTimingRefreshOptions.Enabled, not operator cron (same pattern as the research executors)
 Kor.Opportunities.Worker/Program.cs|BdPersonResearchExecutorJob|research executor trio driven by BdResearchExecutorOptions, not operator cron
 Kor.Opportunities.Worker/Program.cs|BdStaffDirectorySyncJob|plan D2 sync; 05:15 fixed to precede the 6am morning report
 Kor.Opportunities.Worker/Program.cs|BdDeltekLinkDryRunJob|already in ScheduledJobDefinitions; name-substring guard
