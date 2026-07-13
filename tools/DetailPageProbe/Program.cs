@@ -7,7 +7,16 @@ using Microsoft.Playwright;
 if (args.Length == 0) { Console.Error.WriteLine("usage: DetailPageProbe <url> [...]"); return 2; }
 
 using var pw = await Playwright.CreateAsync();
-await using var browser = await pw.Chromium.LaunchAsync(new() { Headless = true, Channel = "msedge" });
+var headed = Environment.GetEnvironmentVariable("PROBE_HEADED") == "1";
+var channel = Environment.GetEnvironmentVariable("PROBE_CHANNEL");   // "" => Chromium (pool default); "msedge" => Edge
+var launch = new BrowserTypeLaunchOptions
+{
+    Headless = !headed,
+    Args = new[] { "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage" },
+};
+if (!string.IsNullOrWhiteSpace(channel)) launch.Channel = channel;
+await using var browser = await pw.Chromium.LaunchAsync(launch);
+Console.Error.WriteLine($"[browser] channel={(string.IsNullOrWhiteSpace(channel) ? "chromium" : channel)} headed={headed}");
 await using var ctx = await browser.NewContextAsync(new()
 {
     ViewportSize = new() { Width = 1600, Height = 1200 },
@@ -19,8 +28,27 @@ foreach (var url in args)
     var page = await ctx.NewPageAsync();
     try
     {
-        await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.NetworkIdle, Timeout = 45_000 });
-        await page.WaitForTimeoutAsync(2500);
+        await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 45_000 });
+        // Cloudflare "Verify you are human" (Turnstile) — try to click the checkbox,
+        // then wait for the real page. Turnstile lives in a cross-origin iframe.
+        for (var i = 0; i < 30; i++)
+        {
+            var t = await page.TitleAsync();
+            var len = await page.EvaluateAsync<int>("() => (document.body?document.body.innerText:'').length");
+            if (!t.Contains("Just a moment", StringComparison.OrdinalIgnoreCase) && len > 500) { Console.Error.WriteLine($"[cf] cleared after {i}s"); break; }
+            if (i is 3 or 8 or 14)
+            {
+                try
+                {
+                    var fl = page.FrameLocator("iframe[src*='challenges.cloudflare.com'], iframe[title*='Cloudflare'], iframe[title*='challenge']");
+                    await fl.Locator("input[type='checkbox'], label").First.ClickAsync(new() { Timeout = 4000 });
+                    Console.Error.WriteLine("[cf] clicked turnstile checkbox");
+                }
+                catch (Exception cx) { Console.Error.WriteLine($"[cf] checkbox click failed: {cx.Message.Split('\n')[0]}"); }
+            }
+            await page.WaitForTimeoutAsync(1000);
+        }
+        await page.WaitForTimeoutAsync(1500);
         var json = await page.EvaluateAsync<string>(@"() => JSON.stringify({
             title: document.title,
             len: (document.body?document.body.innerText:'').length,
