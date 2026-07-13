@@ -152,11 +152,20 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         ct.ThrowIfCancellationRequested();
         try
         {
+            // Load (not NetworkIdle): MERX keeps analytics connections open, so
+            // networkidle can time out on a fully-rendered page (seen live
+            // 2026-07-13). The tab body fills via AJAX — wait for its anchors.
             await page.GotoAsync(TabUrl(detailUrl, "docs-items"), new PageGotoOptions
             {
-                WaitUntil = WaitUntilState.NetworkIdle,
+                WaitUntil = WaitUntilState.Load,
                 Timeout = 45_000,
             }).ConfigureAwait(false);
+            try
+            {
+                await page.WaitForSelectorAsync("#docs-itemsAbstractTabBody a[href]",
+                    new PageWaitForSelectorOptions { Timeout = 12_000 }).ConfigureAwait(false);
+            }
+            catch (TimeoutException) { /* tab may genuinely be empty — scrape what rendered */ }
             await page.WaitForTimeoutAsync(1500).ConfigureAwait(false);
 
             // Anchors inside the docs tab body (container id verified live);
@@ -206,11 +215,18 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         ct.ThrowIfCancellationRequested();
         try
         {
+            // Load + selector wait, not NetworkIdle — same reason as the docs tab.
             await page.GotoAsync(TabUrl(detailUrl, "docs-request"), new PageGotoOptions
             {
-                WaitUntil = WaitUntilState.NetworkIdle,
+                WaitUntil = WaitUntilState.Load,
                 Timeout = 45_000,
             }).ConfigureAwait(false);
+            try
+            {
+                await page.WaitForSelectorAsync("#docs-requestAbstractTabBody table tr",
+                    new PageWaitForSelectorOptions { Timeout = 12_000 }).ConfigureAwait(false);
+            }
+            catch (TimeoutException) { /* list may be empty — scrape what rendered */ }
             await page.WaitForTimeoutAsync(1500).ConfigureAwait(false);
 
             // First table cell per row inside the request-list tab body =
