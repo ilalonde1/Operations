@@ -138,33 +138,49 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         var baseResult = ParseDetail(text);
         if (!_loggedIn) return baseResult;
 
-        var docs = await ReadDocumentsTabAsync(page, detailUrl, ct).ConfigureAwait(false);
-        var firms = await ReadPlanHoldersTabAsync(page, detailUrl, ct).ConfigureAwait(false);
+        // Resolve BOTH tab AJAX endpoints from the detail page BEFORE leaving
+        // it (navigating to one tab page loses the other's anchor). A missing
+        // anchor = the solicitation has no such tab (APNs) — quiet skip.
+        var docsAjaxUrl = await GetTabAjaxUrlAsync(page, "docs-itemsAbstractTabBody").ConfigureAwait(false);
+        var requestAjaxUrl = await GetTabAjaxUrlAsync(page, "docs-requestAbstractTabBody").ConfigureAwait(false);
+
+        var docs = docsAjaxUrl is null
+            ? Array.Empty<DetailDocument>()
+            : await ReadDocumentsTabAsync(page, docsAjaxUrl, detailUrl, ct).ConfigureAwait(false);
+        var firms = requestAjaxUrl is null
+            ? Array.Empty<string>()
+            : await ReadPlanHoldersTabAsync(page, requestAjaxUrl, detailUrl, ct).ConfigureAwait(false);
         return baseResult with { Documents = docs, InterestedFirms = firms };
     }
 
-    /// <summary>Clicks the inner tab whose anchor controls <paramref name="tabBodyId"/>
-    /// (e.g. "docs-itemsAbstractTabBody") — the only action that fires the
-    /// tab-view's content AJAX. Caller is already on the detail page.</summary>
-    private static async Task ClickTabAsync(IPage page, string tabBodyId)
+    /// <summary>
+    /// The tab anchors carry data-ajax-url (e.g. /public/solicitations/&lt;internal
+    /// id&gt;/abstract/docs-request) — a page that renders the tab's content on
+    /// load. Navigating there directly is the ONLY reliable route: the
+    /// ?innerTabId= URL param never fires the content AJAX, and clicking races
+    /// the tab-view's JS binding (both verified live 2026-07-13). Null when the
+    /// tab doesn't exist on this solicitation (e.g. APNs).
+    /// </summary>
+    private static async Task<string?> GetTabAjaxUrlAsync(IPage page, string tabBodyId)
     {
-        await page.Locator($"a[aria-controls='{tabBodyId}']").First
-            .ClickAsync(new LocatorClickOptions { Timeout = 15_000 }).ConfigureAwait(false);
+        var anchor = page.Locator($"a[aria-controls='{tabBodyId}']").First;
+        if (await anchor.CountAsync().ConfigureAwait(false) == 0) return null;
+        var rel = await anchor.GetAttributeAsync("data-ajax-url").ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(rel)) return null;
+        return new Uri(new Uri("https://www.merx.com/"), rel).ToString();
     }
 
     private async Task<IReadOnlyList<DetailDocument>> ReadDocumentsTabAsync(
-        IPage page, string detailUrl, CancellationToken ct)
+        IPage page, string ajaxUrl, string detailUrl, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         try
         {
-            // Tab content only loads when the tab is CLICKED — the tab-view JS
-            // fires its AJAX on click; the ?innerTabId= URL param merely
-            // pre-selects the tab without loading it (verified live 2026-07-13:
-            // the full-page render contains neither the docs tables nor
-            // #documentRequesTable). Click like a user, then wait for the
-            // injected content inside #innerTabContent.
-            await ClickTabAsync(page, "docs-itemsAbstractTabBody").ConfigureAwait(false);
+            await page.GotoAsync(ajaxUrl, new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.Load,
+                Timeout = 45_000,
+            }).ConfigureAwait(false);
             try
             {
                 await page.WaitForSelectorAsync(
@@ -174,10 +190,9 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
             catch (TimeoutException) { /* tab may genuinely be empty — scrape what rendered */ }
             await page.WaitForTimeoutAsync(1500).ConfigureAwait(false);
 
-            // The tab AJAX injects its markup into #innerTabContent (verified
-            // via an authenticated fragment probe 2026-07-13; the docs live in
-            // preview_tblSolDocuments* tables inside it). Scoped there so page
-            // chrome ('Ordered Documents' nav etc.) can never leak in.
+            // The tab page's inline script injects its markup into
+            // #innerTabContent (docs live in preview_tblSolDocuments* tables).
+            // Scoped there so page chrome ('Ordered Documents' nav) can't leak in.
             var raw = await page.EvaluateAsync<string[][]>(@"() => {
                 const scope = document.querySelector('#innerTabContent');
                 if (!scope) return [];
@@ -218,13 +233,16 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
     }
 
     private async Task<IReadOnlyList<string>> ReadPlanHoldersTabAsync(
-        IPage page, string detailUrl, CancellationToken ct)
+        IPage page, string ajaxUrl, string detailUrl, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         try
         {
-            // Click-to-load, same as the docs tab (URL param does not fire the AJAX).
-            await ClickTabAsync(page, "docs-requestAbstractTabBody").ConfigureAwait(false);
+            await page.GotoAsync(ajaxUrl, new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.Load,
+                Timeout = 45_000,
+            }).ConfigureAwait(false);
             try
             {
                 await page.WaitForSelectorAsync("#documentRequesTable tr",
