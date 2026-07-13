@@ -176,53 +176,16 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         ct.ThrowIfCancellationRequested();
         try
         {
-            await page.GotoAsync(ajaxUrl, new PageGotoOptions
+            var fragment = await FetchFragmentAsync(page, ajaxUrl).ConfigureAwait(false);
+            var docs = ParseDocumentsFragment(fragment);
+            if (docs.Count >= MaxDocuments)
             {
-                WaitUntil = WaitUntilState.Load,
-                Timeout = 45_000,
-            }).ConfigureAwait(false);
-            try
-            {
-                await page.WaitForSelectorAsync(
-                    "#innerTabContent table[id^='preview_tblSolDoc'] a[href], #innerTabContent a[href*='view-document']",
-                    new PageWaitForSelectorOptions { Timeout = 15_000 }).ConfigureAwait(false);
+                _logger.LogWarning("MERX docs tab: capped at {Cap} links for {Url}", MaxDocuments, detailUrl);
             }
-            catch (TimeoutException) { /* tab may genuinely be empty — scrape what rendered */ }
-            await page.WaitForTimeoutAsync(1500).ConfigureAwait(false);
-
-            // The tab page's inline script injects its markup into
-            // #innerTabContent (docs live in preview_tblSolDocuments* tables).
-            // Scoped there so page chrome ('Ordered Documents' nav) can't leak in.
-            var raw = await page.EvaluateAsync<string[][]>(@"() => {
-                const scope = document.querySelector('#innerTabContent');
-                if (!scope) return [];
-                const seen = new Set();
-                const out = [];
-                for (const a of scope.querySelectorAll('a[href]')) {
-                    const href = a.href || '';
-                    if (!href || seen.has(href)) continue;
-                    const looksDoc = /download|document|attachment|\.pdf|\.zip|\.docx?|\.xlsx?|\.dwg/i.test(href);
-                    if (!looksDoc) continue;
-                    if (/innerTabId=|authentication|solicitations\/(open|awards)\b/i.test(href)) continue;
-                    seen.add(href);
-                    const name = (a.innerText || a.title || '').trim().replace(/\s+/g, ' ');
-                    out.push([name || 'document', href]);
-                }
-                return out;
-            }").ConfigureAwait(false);
-
-            var docs = raw
-                .Where(x => x.Length == 2 && !string.IsNullOrWhiteSpace(x[1]))
-                .Take(MaxDocuments)
-                .Select(x => new DetailDocument(x[0], x[1]))
-                .ToList();
-
-            if (raw.Length > MaxDocuments)
+            if (docs.Count > 0)
             {
-                _logger.LogWarning("MERX docs tab: {Total} links found, capped at {Cap} for {Url}",
-                    raw.Length, MaxDocuments, detailUrl);
+                _logger.LogInformation("MERX docs tab: {Count} documents for {Url}", docs.Count, detailUrl);
             }
-
             return docs;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -238,49 +201,12 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         ct.ThrowIfCancellationRequested();
         try
         {
-            await page.GotoAsync(ajaxUrl, new PageGotoOptions
-            {
-                WaitUntil = WaitUntilState.Load,
-                Timeout = 45_000,
-            }).ConfigureAwait(false);
-            try
-            {
-                await page.WaitForSelectorAsync("#documentRequesTable tr",
-                    new PageWaitForSelectorOptions { Timeout = 15_000 }).ConfigureAwait(false);
-            }
-            catch (TimeoutException) { /* list may be empty — scrape what rendered */ }
-            await page.WaitForTimeoutAsync(1500).ConfigureAwait(false);
-
-            // The request list is EXACTLY #documentRequesTable (sic — MERX's
-            // own id, verified via authenticated fragment probe 2026-07-13;
-            // first column sorts by organizationName). Strictly scoped — the
-            // v1 body-fallback scraped form labels as 'firms' (junk purged).
-            // First page only; count vs header logged so a paginated tail is
-            // never silently 'covered'.
-            var names = await page.EvaluateAsync<string[]>(@"() => {
-                const table = document.querySelector('#documentRequesTable');
-                if (!table) return [];
-                const out = [];
-                for (const tr of table.querySelectorAll('tbody tr')) {
-                    const td = tr.querySelector('td');
-                    if (!td) continue;
-                    const name = (td.innerText || '').trim().replace(/\s+/g, ' ');
-                    if (name.length >= 3 && name.length <= 200 && !/^no entries$/i.test(name)) out.push(name);
-                }
-                return out;
-            }").ConfigureAwait(false);
-
-            var firms = names
-                .Where(n => !string.IsNullOrWhiteSpace(n))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Take(MaxInterestedFirms)
-                .ToList();
-
+            var fragment = await FetchFragmentAsync(page, ajaxUrl).ConfigureAwait(false);
+            var firms = ParsePlanHoldersFragment(fragment);
             if (firms.Count > 0)
             {
                 _logger.LogInformation("MERX plan-holder tab: {Count} firms captured for {Url}", firms.Count, detailUrl);
             }
-
             return firms;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -289,6 +215,101 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
             return Array.Empty<string>();
         }
     }
+
+    /// <summary>Fetches the tab endpoint from INSIDE the logged-in page (same
+    /// cookies, same origin). The response is page chrome plus an inline
+    /// script `$("#innerTabContent").html('&lt;escaped markup&gt;')` — the content
+    /// exists only as that JS string literal, which is why neither URL
+    /// navigation nor tab clicks ever rendered it (three live iterations,
+    /// 2026-07-13). Decoding it is pure C# below — unit-testable, no DOM race.</summary>
+    private static Task<string> FetchFragmentAsync(IPage page, string ajaxUrl)
+        => page.EvaluateAsync<string>(
+            "async url => { const r = await fetch(url, { credentials: 'include' }); return await r.text(); }",
+            ajaxUrl);
+
+    private static readonly Regex InnerTabHtmlRx = new(
+        @"\$\(""#innerTabContent""\)\.html\('([\s\S]*?)'\);",
+        RegexOptions.Compiled);
+
+    private static readonly Regex DocAnchorRx = new(
+        @"<a[^>]+href=""(?<href>[^""]*(?:view-document|download)[^""]*)""[^>]*>(?<name>[^<]*)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex RequestTableRx = new(
+        @"id=""documentRequesTable""[\s\S]*?</table>",
+        RegexOptions.Compiled);
+
+    private static readonly Regex FirstCellRx = new(
+        @"<tr[^>]*>\s*<td[^>]*>(?<cell>[\s\S]*?)</td>",
+        RegexOptions.Compiled);
+
+    /// <summary>Decodes the JS single-quoted string literal MERX embeds the tab
+    /// markup in (<, \/, \', \n, \t, \\). Pure; unit-tested.</summary>
+    internal static string? DecodeInnerTabHtml(string fragment)
+    {
+        var m = InnerTabHtmlRx.Match(fragment ?? "");
+        if (!m.Success) return null;
+        var s = m.Groups[1].Value;
+        s = Regex.Replace(s, @"\\u([0-9a-fA-F]{4})", x =>
+            ((char)Convert.ToInt32(x.Groups[1].Value, 16)).ToString());
+        return s.Replace("\\/", "/").Replace("\\'", "'").Replace("\\n", "\n")
+                .Replace("\\t", "\t").Replace("\\\"", "\"").Replace("\\\\", "\\");
+    }
+
+    /// <summary>Pure fragment → document links. Only real file links
+    /// (view-document / download) survive; page chrome cannot leak in because
+    /// only the decoded tab markup is scanned.</summary>
+    internal static List<DetailDocument> ParseDocumentsFragment(string fragment)
+    {
+        var html = DecodeInnerTabHtml(fragment);
+        if (html is null) return new List<DetailDocument>();
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var docs = new List<DetailDocument>();
+        foreach (Match m in DocAnchorRx.Matches(html))
+        {
+            if (docs.Count >= MaxDocuments) break;
+            var href = WebUtilityDecode(m.Groups["href"].Value.Trim());
+            if (href.Length == 0 || !seen.Add(href)) continue;
+            var url = href.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? href
+                : new Uri(new Uri("https://www.merx.com/"), href).ToString();
+            var name = Regex.Replace(WebUtilityDecode(m.Groups["name"].Value), @"\s+", " ").Trim();
+            docs.Add(new DetailDocument(name.Length > 0 ? name : "document", url));
+        }
+
+        return docs;
+    }
+
+    /// <summary>Pure fragment → plan-holder org names, strictly from
+    /// #documentRequesTable (sic — MERX's own id; first column is
+    /// organizationName). First page only; the header count may be larger.</summary>
+    internal static List<string> ParsePlanHoldersFragment(string fragment)
+    {
+        var html = DecodeInnerTabHtml(fragment);
+        if (html is null) return new List<string>();
+
+        var table = RequestTableRx.Match(html);
+        if (!table.Success) return new List<string>();
+
+        var firms = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match m in FirstCellRx.Matches(table.Value))
+        {
+            if (firms.Count >= MaxInterestedFirms) break;
+            var name = Regex.Replace(
+                WebUtilityDecode(Regex.Replace(m.Groups["cell"].Value, "<[^>]+>", " ")),
+                @"\s+", " ").Trim();
+            if (name.Length < 3 || name.Length > 200) continue;
+            if (name.Equals("No entries", StringComparison.OrdinalIgnoreCase)) continue;
+            if (seen.Add(name)) firms.Add(name);
+        }
+
+        return firms;
+    }
+
+    private static string WebUtilityDecode(string s)
+        => System.Net.WebUtility.HtmlDecode(s ?? "");
 
     /// <summary>Pure DOM-text → fields. Unit-tested; no I/O.</summary>
     public static LiveDetailResult ParseDetail(string pageText)
