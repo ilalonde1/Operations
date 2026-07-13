@@ -11,4 +11,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Audit-v2 sweep: the pattern pass delegates to the ONE shared, guarded
+         ContactEnrichmentService instead of a local duplicate. -->
+    <ProjectReference Include="..\..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
+  </ItemGroup>
 </Project>
