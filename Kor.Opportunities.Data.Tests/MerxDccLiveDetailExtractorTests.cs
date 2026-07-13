@@ -91,16 +91,20 @@ Dates";
     // navigation nor tab clicks render it). These pin the decode + extraction,
     // escape shapes copied from the real authenticated fragment (0000324212).
 
+    // Escape shapes + the OrganizationName span and expandable detail row are
+    // copied from the real authenticated fragment (0000324212, 2026-07-13):
+    // the org name lives in <span class="mets-tree-table-node-OrganizationName">
+    // and each firm has a data-child-of detail row (Address/Contact/Phone) that
+    // must NOT be scraped as a firm.
     private const string RequestListFragment =
         "<html><body><script>var x=1;</script>" +
         "$(\"#innerTabContent\").html('\\u003Cdiv class=\\\"content-block\\\"\\u003E\\n" +
-        "\\u003Ctable id=\\\"documentRequesTable\\\" class=\\\"contentBlockTable basic mets-table\\\"\\u003E\\n" +
-        "\\u003Cthead\\u003E\\u003Ctr\\u003E\\u003Cth scope=\\\"col\\\"\\u003EOrganization\\u003C\\/th\\u003E\\u003C\\/tr\\u003E\\u003C\\/thead\\u003E" +
-        "\\u003Ctbody\\u003E" +
-        "\\u003Ctr\\u003E\\u003Ctd\\u003E Read Jones Christoffersen Ltd. \\u003C\\/td\\u003E\\u003Ctd\\u003EVictoria\\u003C\\/td\\u003E\\u003C\\/tr\\u003E" +
-        "\\u003Ctr\\u003E\\u003Ctd\\u003EStantec Architecture\\u0026nbsp;Ltd.\\u003C\\/td\\u003E\\u003Ctd\\u003EVancouver\\u003C\\/td\\u003E\\u003C\\/tr\\u003E" +
-        "\\u003Ctr\\u003E\\u003Ctd\\u003ERead Jones Christoffersen Ltd.\\u003C\\/td\\u003E\\u003Ctd\\u003EDup row\\u003C\\/td\\u003E\\u003C\\/tr\\u003E" +
-        "\\u003C\\/tbody\\u003E\\u003C\\/table\\u003E\\u003C\\/div\\u003E');" +
+        "\\u003Ctable id=\\\"documentRequesTable\\\"\\u003E\\n" +
+        "\\u003Ctr\\u003E\\u003Ctd\\u003E\\u003Cspan class=\\\"mets-tree-table-node-OrganizationName\\\"\\u003EJCK Engineering\\u003C\\/span\\u003E\\u003C\\/td\\u003E\\u003Ctd\\u003ERegina\\u003C\\/td\\u003E\\u003C\\/tr\\u003E" +
+        "\\u003Ctr id=\\\"expansion_1\\\" data-child-of=\\\"1\\\"\\u003E\\u003Ctd\\u003EAddress 2424 College Avenue Phone 306-585-6126 Email x\\u0040y.com\\u003C\\/td\\u003E\\u003C\\/tr\\u003E" +
+        "\\u003Ctr\\u003E\\u003Ctd\\u003E\\u003Cspan class=\\\"mets-tree-table-node-OrganizationName\\\"\\u003EGHD Limited\\u003C\\/span\\u003E\\u003C\\/td\\u003E\\u003Ctd\\u003EWaterloo\\u003C\\/td\\u003E\\u003C\\/tr\\u003E" +
+        "\\u003Ctr\\u003E\\u003Ctd\\u003E\\u003Cspan class=\\\"mets-tree-table-node-OrganizationName\\\"\\u003EJCK Engineering\\u003C\\/span\\u003E\\u003C\\/td\\u003E\\u003Ctd\\u003EDup\\u003C\\/td\\u003E\\u003C\\/tr\\u003E" +
+        "\\u003C\\/table\\u003E\\u003C\\/div\\u003E');" +
         "</body></html>";
 
     private const string DocsFragment =
@@ -123,13 +127,12 @@ Dates";
     }
 
     [Fact]
-    public void PlanHolders_ComeOnlyFromTheRequestTable_Deduped()
+    public void PlanHolders_ComeOnlyFromOrgNameSpans_ExpansionRowsIgnored_Deduped()
     {
         var firms = MerxDccLiveDetailExtractor.ParsePlanHoldersFragment(RequestListFragment);
-        Assert.Equal(2, firms.Count);
-        Assert.Contains("Read Jones Christoffersen Ltd.", firms);
-        // &nbsp; (&nbsp;) decodes to a NBSP then collapses to a space.
-        Assert.Contains(firms, f => f.StartsWith("Stantec Architecture", StringComparison.Ordinal));
+        Assert.Equal(new[] { "JCK Engineering", "GHD Limited" }, firms);
+        // The data-child-of detail row (Address/Phone/Email) is not a firm.
+        Assert.DoesNotContain(firms, f => f.Contains("Address", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

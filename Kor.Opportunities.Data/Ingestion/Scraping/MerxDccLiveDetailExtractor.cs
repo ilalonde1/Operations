@@ -36,7 +36,6 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         @"Contact Information\s+([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z.'\-]+){0,3}?)\s+((?:\+?1[-. ]?)?\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4})?\s*([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})",
         RegexOptions.Compiled | RegexOptions.Singleline);
 
-    private const string LoginUrl = "https://www.merx.com/public/authentication/login";
     private const int MaxDocuments = 60;
     private const int MaxInterestedFirms = 300;
 
@@ -67,44 +66,54 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
 
         try
         {
-            await page.GotoAsync(LoginUrl, new PageGotoOptions
+            // Land on the site so the login form (with its per-session _csrf
+            // token) is present and the POST is same-origin.
+            await page.GotoAsync("https://www.merx.com/", new PageGotoOptions
             {
-                WaitUntil = WaitUntilState.NetworkIdle,
+                WaitUntil = WaitUntilState.Load,
                 Timeout = 45_000,
             }).ConfigureAwait(false);
 
-            // Cookie banner steals clicks when present; reject non-essential.
-            try
+            // Session POST to the legacy endpoint — NOT the visible form submit
+            // (that hands off to idp.merx.com's SAML interstitial and strands
+            // there, the false-positive that made every prior run scrape
+            // anonymously). The endpoint REQUIRES the form's _csrf token, else
+            // 403; with it the session cookie is set directly (verified live
+            // 2026-07-13 → memberType "Supplier"). Sent both as a field and the
+            // X-CSRF-TOKEN header to satisfy either server check.
+            var csrf = await page.EvaluateAsync<string>(
+                "() => { const i = document.querySelector('#loginWindowForm input[name=_csrf]'); return i ? i.value : ''; }")
+                .ConfigureAwait(false);
+
+            await page.EvaluateAsync(@"async a => {
+                const body = new URLSearchParams();
+                body.set('j_username', a.u);
+                body.set('j_password', a.p);
+                if (a.csrf) body.set('_csrf', a.csrf);
+                const r = await fetch('https://www.merx.com/public/authentication/login',
+                    { method: 'POST', body, credentials: 'include',
+                      headers: { 'X-CSRF-TOKEN': a.csrf || '' } });
+                await r.text();
+            }", new { u = _credentials.Username, p = _credentials.Password, csrf }).ConfigureAwait(false);
+
+            // Verify against the REAL marker: the page's member payload.
+            await page.ReloadAsync(new PageReloadOptions
             {
-                var reject = page.GetByText("Reject all non-essential cookies").First;
-                if (await reject.IsVisibleAsync().ConfigureAwait(false))
-                {
-                    await reject.ClickAsync(new LocatorClickOptions { Timeout = 5_000 }).ConfigureAwait(false);
-                }
-            }
-            catch { /* banner absent — fine */ }
-
-            await page.Locator("input[name='j_username']:visible").First
-                .FillAsync(_credentials.Username, new LocatorFillOptions { Timeout = 15_000 }).ConfigureAwait(false);
-            await page.Locator("input[name='j_password']:visible").First
-                .FillAsync(_credentials.Password, new LocatorFillOptions { Timeout = 15_000 }).ConfigureAwait(false);
-            await page.Locator("button[type='submit']:visible").First
-                .ClickAsync(new LocatorClickOptions { Timeout = 15_000 }).ConfigureAwait(false);
-
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle,
-                new PageWaitForLoadStateOptions { Timeout = 30_000 }).ConfigureAwait(false);
-
-            // Signed-in chrome drops the login link (#loginLinkCustom).
+                WaitUntil = WaitUntilState.Load,
+                Timeout = 45_000,
+            }).ConfigureAwait(false);
             _loggedIn = await page.EvaluateAsync<bool>(
-                "() => !document.querySelector('#loginLinkCustom')").ConfigureAwait(false);
+                @"() => { const h = document.documentElement.outerHTML;
+                          return h.includes('memberType') && !h.includes('""memberType"":""Anonymous""'); }")
+                .ConfigureAwait(false);
 
             if (_loggedIn)
             {
-                _logger.LogInformation("MERX login OK for {User}", _credentials.Username);
+                _logger.LogInformation("MERX login OK for {User} (member session verified)", _credentials.Username);
             }
             else
             {
-                _logger.LogWarning("MERX login did not stick (login link still present) — continuing anonymous");
+                _logger.LogWarning("MERX login did not stick (member session still Anonymous) — continuing anonymous");
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -235,13 +244,12 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         @"<a[^>]+href=""(?<href>[^""]*(?:view-document|download)[^""]*)""[^>]*>(?<name>[^<]*)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private static readonly Regex RequestTableRx = new(
-        @"id=""documentRequesTable""[\s\S]*?</table>",
-        RegexOptions.Compiled);
-
-    private static readonly Regex FirstCellRx = new(
-        @"<tr[^>]*>\s*<td[^>]*>(?<cell>[\s\S]*?)</td>",
-        RegexOptions.Compiled);
+    // The org name sits in its own span; the expandable detail rows
+    // (data-child-of) carry Address/Contact/Phone/Email and must be ignored.
+    // Targeting the span directly is exact — no cell-text heuristics.
+    private static readonly Regex OrgNameRx = new(
+        @"mets-tree-table-node-OrganizationName""\s*>(?<name>[^<]*)<",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>Decodes the JS single-quoted string literal MERX embeds the tab
     /// markup in (<, \/, \', \n, \t, \\). Pure; unit-tested.</summary>
@@ -281,27 +289,23 @@ public sealed class MerxDccLiveDetailExtractor : ILiveOppDetailExtractor
         return docs;
     }
 
-    /// <summary>Pure fragment → plan-holder org names, strictly from
-    /// #documentRequesTable (sic — MERX's own id; first column is
-    /// organizationName). First page only; the header count may be larger.</summary>
+    /// <summary>Pure fragment → plan-holder org names, taken from the
+    /// OrganizationName span in #documentRequesTable (verified against the real
+    /// authenticated fragment 2026-07-13). The expandable Address/Contact/Phone
+    /// detail rows are ignored — only the name span matches. First page only;
+    /// the tab header count may be larger.</summary>
     internal static List<string> ParsePlanHoldersFragment(string fragment)
     {
         var html = DecodeInnerTabHtml(fragment);
         if (html is null) return new List<string>();
 
-        var table = RequestTableRx.Match(html);
-        if (!table.Success) return new List<string>();
-
         var firms = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (Match m in FirstCellRx.Matches(table.Value))
+        foreach (Match m in OrgNameRx.Matches(html))
         {
             if (firms.Count >= MaxInterestedFirms) break;
-            var name = Regex.Replace(
-                WebUtilityDecode(Regex.Replace(m.Groups["cell"].Value, "<[^>]+>", " ")),
-                @"\s+", " ").Trim();
-            if (name.Length < 3 || name.Length > 200) continue;
-            if (name.Equals("No entries", StringComparison.OrdinalIgnoreCase)) continue;
+            var name = Regex.Replace(WebUtilityDecode(m.Groups["name"].Value), @"\s+", " ").Trim();
+            if (name.Length < 2 || name.Length > 200) continue;
             if (seen.Add(name)) firms.Add(name);
         }
 
