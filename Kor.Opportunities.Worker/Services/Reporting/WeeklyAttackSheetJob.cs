@@ -103,7 +103,7 @@ internal sealed class WeeklyAttackSheetJob : IJob
             attachmentContentType: pdf is not null ? "application/pdf" : "text/html",
             ct: ct).ConfigureAwait(false);
 
-        var summary = $"sent {plays.Count} plays to {recipient} ({(pdf is not null ? "pdf" : "html-fallback")})";
+        var summary = $"sent {plays.Count} plays ({approaches.Count} call-pack blocks) to {recipient} ({(pdf is not null ? "pdf" : "html-fallback")})";
         _logger.LogInformation("{Job}: {Summary}", nameof(WeeklyAttackSheetJob), summary);
         context.Result = summary;
     }
