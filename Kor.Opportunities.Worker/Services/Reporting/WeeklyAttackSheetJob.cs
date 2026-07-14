@@ -326,8 +326,8 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
             if (!string.IsNullOrWhiteSpace(ctx)) sb.Append("<div class=ctx>").Append(E(ctx)).Append("</div>");
             sb.Append("<div class=play><b>").Append(verb).Append("</b> — ").Append(tail).Append("</div>")
               .Append("<div class=who>").Append(who).Append("</div>")
-              .Append("<div class=asof>as of ").Append(p.LastSeen.ToString("yyyy-MM-dd"))
-              .Append(" &middot; <a href=\"kor://mpi/").Append(p.Id).Append("\">open in app</a></div>")
+              .Append("<div class=asof><b style=\"color:#3F5364\">REF ").Append(p.Id).Append("</b> &middot; as of ").Append(p.LastSeen.ToString("yyyy-MM-dd"))
+              .Append(" &middot; <a href=\"kor://mpi/").Append(p.Id).Append("\">open dossier in app</a></div>")
               .Append("</div>");
         }
         sb.Append("</div>");
