@@ -41,15 +41,18 @@ internal sealed class WeeklyAttackSheetJob : IJob
     private readonly IOptions<OpportunitiesWorkerOptions> _options;
     private readonly ILogger<WeeklyAttackSheetJob> _logger;
     private readonly GraphMailSender _mail;
+    private readonly ApproachDraftService _approach;
 
     public WeeklyAttackSheetJob(
         IOptions<OpportunitiesWorkerOptions> options,
         ILogger<WeeklyAttackSheetJob> logger,
-        GraphMailSender mail)
+        GraphMailSender mail,
+        ApproachDraftService approach)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _mail = mail ?? throw new ArgumentNullException(nameof(mail));
+        _approach = approach ?? throw new ArgumentNullException(nameof(approach));
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -73,8 +76,9 @@ internal sealed class WeeklyAttackSheetJob : IJob
         var plays = await LoadPlaysAsync(opt.OpportunitiesDb!, opt.WeeklyAttackSheetCount, opt.WeeklyAttackSheetFreshDays, ct).ConfigureAwait(false);
         var contacts = await LoadContactsAsync(opt.OpportunitiesDb!, plays.Select(p => p.ArchitectOrgId).Where(o => o > 0).Distinct().ToArray(), ct).ConfigureAwait(false);
         var week = await LoadWeekActivityAsync(opt.OpportunitiesDb!, ct).ConfigureAwait(false);
+        var approaches = await GenerateApproachesAsync(plays, contacts, ct).ConfigureAwait(false);
 
-        var html = BuildHtml(plays, contacts, week);
+        var html = BuildHtml(plays, contacts, week, approaches);
         var pdf = TryRenderPdf(html);
 
         var recipient = string.IsNullOrWhiteSpace(opt.WeeklyAttackSheetRecipient)
@@ -235,10 +239,62 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
         return map;
     }
 
+    /// <summary>Drafts each play's Approach block (who to call / script / email)
+    /// concurrently (capped). Failures drop out silently — the Call Pack simply
+    /// skips that play; the sheet always sends.</summary>
+    private async Task<Dictionary<long, string>> GenerateApproachesAsync(
+        IReadOnlyList<Play> plays, Dictionary<long, List<Contact>> contacts, CancellationToken ct)
+    {
+        var result = new Dictionary<long, string>();
+        if (!_approach.IsConfigured)
+        {
+            _logger.LogWarning("{Job}: Anthropic key not configured — Call Pack omitted.", nameof(WeeklyAttackSheetJob));
+            return result;
+        }
+
+        using var gate = new SemaphoreSlim(5);
+        var tasks = plays.Select(async p =>
+        {
+            await gate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                var intel = BuildApproachIntel(p, contacts.TryGetValue(p.ArchitectOrgId, out var c) ? c : new List<Contact>());
+                var html = await _approach.DraftHtmlAsync(intel, ct).ConfigureAwait(false);
+                return (p.Id, html);
+            }
+            finally { gate.Release(); }
+        });
+
+        foreach (var (id, html) in await Task.WhenAll(tasks).ConfigureAwait(false))
+        {
+            if (!string.IsNullOrWhiteSpace(html)) result[id] = html!;
+        }
+
+        _logger.LogInformation("{Job}: drafted {Count}/{Total} approach blocks.", nameof(WeeklyAttackSheetJob), result.Count, plays.Count);
+        return result;
+    }
+
+    private static string BuildApproachIntel(Play p, List<Contact> contacts)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"PROJECT: {p.Name}");
+        sb.AppendLine($"Location: {p.City}, {p.Prov}; sector {p.Sector}; stage {p.Stage}; est. cost {p.CostText}");
+        sb.AppendLine($"Architect: {p.Architect}");
+        sb.AppendLine($"SE procurement channel: {p.Channel}");
+        if (!string.IsNullOrWhiteSpace(p.Schedule)) sb.AppendLine($"Schedule/status note: {p.Schedule}");
+        sb.AppendLine();
+        sb.AppendLine("KNOWN CONTACTS AT THE ARCHITECT (name / title / email):");
+        if (contacts.Count == 0) sb.AppendLine("- none on file (use the firm's main line)");
+        else foreach (var c in contacts) sb.AppendLine($"- {c.Name} / {c.Title} / {(string.IsNullOrWhiteSpace(c.Email) ? "no email" : c.Email)}");
+        sb.AppendLine();
+        sb.AppendLine("KOR is the structural engineer seeking this project's structural seat. Draft the approach.");
+        return sb.ToString();
+    }
+
     // Punchy tight-grid layout (2026-07-13): small font, two-column cards,
     // one-line play, contacts deduped by firm. Verified against the live sheet
     // before deploy; keep this and the offline sample generator in sync.
-    private static string BuildHtml(IReadOnlyList<Play> plays, Dictionary<long, List<Contact>> contacts, WeekActivity week)
+    private static string BuildHtml(IReadOnlyList<Play> plays, Dictionary<long, List<Contact>> contacts, WeekActivity week, Dictionary<long, string> approaches)
     {
         static string E(string? s) => WebUtility.HtmlEncode(s ?? "");
         var sb = new StringBuilder();
@@ -264,6 +320,17 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
           .Append(".em{color:#1F6F8B;font-weight:700}.noem{color:#93A0A8;font-style:italic}.seealso{color:#8A97A0;font-style:italic;font-size:7.6px}")
           .Append(".asof{color:#A7B1B8;font-size:6.8px;margin-top:2px}.asof a{color:#A7B1B8;text-decoration:none}")
           .Append(".foot{border-top:1px solid #D7DEE3;margin-top:6px;padding-top:5px;font-size:8px;color:#5B6B76}.foot b{color:#16202A}")
+          // Call Pack (per-play who-to-call / script / email)
+          .Append(".cp{border-top:2.5px solid #E1442A;margin-top:14px;padding-top:8px}")
+          .Append(".cph{font-size:13px;font-weight:800;letter-spacing:-.01em;margin-bottom:2px}")
+          .Append(".cpsub{font-size:8px;color:#5B6B76;margin-bottom:8px}")
+          .Append(".apcard{break-inside:avoid;border:.7px solid #D7DEE3;border-radius:5px;padding:8px 11px;margin:0 0 9px}")
+          .Append(".aphd{font-weight:700;font-size:10.5px;margin-bottom:1px}.aphd .rf{color:#E1442A;font-weight:800;margin-right:5px}")
+          .Append(".apmeta{color:#6E7C86;font-size:7.6px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}")
+          .Append(".aptitle{font-size:7.4px;font-weight:800;letter-spacing:.06em;color:#B0432E;margin:6px 0 2px}")
+          .Append(".apc{font-size:9px;margin:1px 0}.apo{font-size:9px;margin:2px 0}.appt{font-size:9px;margin:1px 0 1px 4px}")
+          .Append(".apmail{background:#F7F9FA;border-radius:4px;padding:6px 8px;font-size:9px;margin-top:2px;line-height:1.4}")
+          .Append(".apsub{margin-bottom:3px}")
           .Append("</style>");
 
         sb.Append("<div class=top><h1>KOR <span>Attack Sheet</span></h1><div class=sub>wk of ")
@@ -331,6 +398,29 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
               .Append("</div>");
         }
         sb.Append("</div>");
+
+        // ---- Call Pack: per-play who-to-call / script / draft email --------
+        // The summary above is for scanning; this is what you actually work
+        // from. One block per play that has a draft (drafted live at send).
+        var withApproach = plays.Where(p => approaches.ContainsKey(p.Id)).ToList();
+        if (withApproach.Count > 0)
+        {
+            sb.Append("<div class=cp><div class=cph>Call Pack</div>")
+              .Append("<div class=cpsub>Who to call, what to say, and a draft email for each play — drafted from the current intel at send time. Match by REF #.</div>");
+            var rank = 0;
+            foreach (var p in plays)
+            {
+                rank++;
+                if (!approaches.TryGetValue(p.Id, out var block)) continue;
+                var loc = string.Join(", ", new[] { p.City, p.Prov }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                sb.Append("<div class=apcard>")
+                  .Append("<div class=aphd><span class=rf>REF ").Append(p.Id).Append("</span>").Append(rank).Append(". ").Append(E(p.Name)).Append("</div>")
+                  .Append("<div class=apmeta>").Append(E(p.Architect)).Append(string.IsNullOrWhiteSpace(loc) ? "" : " &middot; " + E(loc)).Append(" &middot; ").Append(E(p.Channel)).Append("</div>")
+                  .Append(block)
+                  .Append("</div>");
+            }
+            sb.Append("</div>");
+        }
 
         // Accountability footer: owned plays drop off next week automatically.
         sb.Append("<div class=foot>");

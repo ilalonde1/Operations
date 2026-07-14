@@ -170,6 +170,7 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidHis
 builder.Services.AddSingleton<Kor.Opportunities.Data.HistoricalOpportunities.BcBidHistoricalDocumentDownloadService>();
 builder.Services.AddSingleton<BdResearchExecutorService>();
 builder.Services.AddSingleton<IResearchExecutorService, AnthropicResearchExecutorService>();
+builder.Services.AddSingleton<Kor.Opportunities.Worker.Services.Reporting.ApproachDraftService>();
 builder.Services.AddSingleton<IResearchPromptCatalog, FileSystemResearchPromptCatalog>();
 builder.Services.AddSingleton<IAwardProgramResearchPromptCatalog, FileSystemAwardProgramResearchPromptCatalog>();
 builder.Services.AddSingleton<Kor.Opportunities.Data.AwardPrograms.IAwardProgramStore>(sp =>
