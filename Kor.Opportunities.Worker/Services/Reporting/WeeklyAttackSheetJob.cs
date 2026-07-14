@@ -252,8 +252,11 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
             return result;
         }
 
+        // Restraint: only the top plays (the list is urgency-first, so these are
+        // the most pressing) get a full Call Pack — nobody works 25 in a week.
+        var topPlays = plays.Take(CallPackCount).ToList();
         using var gate = new SemaphoreSlim(5);
-        var tasks = plays.Select(async p =>
+        var tasks = topPlays.Select(async p =>
         {
             await gate.WaitAsync(ct).ConfigureAwait(false);
             try
@@ -270,9 +273,13 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
             if (!string.IsNullOrWhiteSpace(html)) result[id] = html!;
         }
 
-        _logger.LogInformation("{Job}: drafted {Count}/{Total} approach blocks.", nameof(WeeklyAttackSheetJob), result.Count, plays.Count);
+        _logger.LogInformation("{Job}: drafted {Count}/{Target} approach blocks.", nameof(WeeklyAttackSheetJob), result.Count, topPlays.Count);
         return result;
     }
+
+    /// <summary>How many of the top (most urgent) plays get a full Call Pack.
+    /// Keeps the brief short — the scan sheet still covers all plays.</summary>
+    private const int CallPackCount = 5;
 
     private static string BuildApproachIntel(Play p, List<Contact> contacts)
     {
@@ -405,8 +412,8 @@ ORDER BY a.CanonicalOrgId, CASE WHEN NULLIF(p.Email,'') IS NOT NULL THEN 0 ELSE 
         var withApproach = plays.Where(p => approaches.ContainsKey(p.Id)).ToList();
         if (withApproach.Count > 0)
         {
-            sb.Append("<div class=cp><div class=cph>Call Pack</div>")
-              .Append("<div class=cpsub>Who to call, what to say, and a draft email for each play — drafted from the current intel at send time. Match by REF #.</div>");
+            sb.Append("<div class=cp><div class=cph>Call Pack &mdash; this week&rsquo;s top ").Append(withApproach.Count).Append("</div>")
+              .Append("<div class=cpsub>Who to call, what to say, and a draft email for the most pressing plays — drafted from the current intel at send time. The rest are on the scan sheet above; open any in the app for its own pack. Match by REF #.</div>");
             var rank = 0;
             foreach (var p in plays)
             {
