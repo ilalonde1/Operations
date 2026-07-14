@@ -34,6 +34,12 @@
 
         <Border Grid.Row="0" Margin="0,0,0,8" Padding="10,6" Background="{StaticResource App.Background}" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
+                <TextBlock Text="REF #:" Margin="0,4,4,0" FontWeight="SemiBold"/>
+                <TextBox x:Name="RefBox" Width="80" Margin="0,0,4,0"
+                         KeyDown="RefBox_KeyDown"
+                         ToolTip="Type a REF # from the attack sheet and press Enter (or Open) to jump straight to that play's dossier."/>
+                <Button Content="Open dossier" Margin="0,0,16,0" Click="OpenRef_Click"/>
+
                 <TextBlock Text="Search:" Margin="0,4,8,0" FontWeight="SemiBold"/>
                 <TextBox Width="260" Margin="0,0,12,0"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=200}"

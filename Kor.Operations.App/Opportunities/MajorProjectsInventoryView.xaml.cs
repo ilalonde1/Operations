@@ -115,6 +115,49 @@ public partial class MajorProjectsInventoryView : UserControl
         }
     }
 
+    // REF # jump box: the attack sheet prints "REF <id>"; typing it here opens
+    // that play's Pursuit Brief dossier — the same target as the kor://mpi
+    // deep link, for when the sheet's link isn't clickable (printed / email).
+    private void RefBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
+        {
+            OpenRef();
+        }
+    }
+
+    private void OpenRef_Click(object sender, RoutedEventArgs e) => OpenRef();
+
+    private async void OpenRef()
+    {
+        var raw = RefBox.Text?.Trim();
+        if (!long.TryParse(raw, out var id) || id <= 0)
+        {
+            MessageBox.Show(Window.GetWindow(this), "Enter a numeric REF # from the attack sheet.",
+                "Open dossier", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            var vm = _services.GetRequiredService<BusinessDevelopment.Workspace.PursuitBriefViewModel>();
+            await vm.LoadAsync(id, CancellationToken.None).ConfigureAwait(true);
+            if (vm.Brief is null)
+            {
+                MessageBox.Show(Window.GetWindow(this), $"No active play found for REF # {id}.",
+                    "Open dossier", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            new BusinessDevelopment.Workspace.PursuitBriefWindow(vm) { Owner = Window.GetWindow(this) }.Show();
+            RefBox.Clear();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "Open dossier", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void OpenOrgDossier(long canonicalOrgId)
     {
         var win = new OrgDossierWindow(_services.GetRequiredService<OrgDossierViewModel>(), canonicalOrgId)
