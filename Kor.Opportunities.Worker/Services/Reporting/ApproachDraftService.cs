@@ -28,8 +28,16 @@ public sealed class ApproachDraftService
     private const string SystemPrompt =
         "You are KOR Structural's business-development strategist. KOR is a structural engineering firm " +
         "chasing the STRUCTURAL seat on projects. From the intel provided, write concrete, specific outreach " +
-        "content — no filler, no invented facts, no names or emails not in the intel. Return ONLY valid JSON, " +
-        "no prose, no code fences, matching exactly this shape:\n" +
+        "content — no filler, no invented facts, no names or emails not in the intel.\n" +
+        "TEMPORAL RULES (critical — getting this wrong destroys credibility with the prospect): the user " +
+        "message states TODAY'S DATE. Any date in the intel that is BEFORE today has already passed — NEVER " +
+        "describe a past milestone as upcoming, 'ahead of', or 'this week'. Do NOT state specific dates, " +
+        "deadlines, or 'ahead of the <month> application' in the outreach unless the intel clearly marks that " +
+        "milestone as still in the future relative to today. When unsure, use safe, general timeline language " +
+        "(e.g. 'as the team is being assembled', 'while the consultant roster is still forming') rather than a " +
+        "specific date. Do not name a year or month in the email or call script unless you are certain it is " +
+        "current or future.\n" +
+        "Return ONLY valid JSON, no prose, no code fences, matching exactly this shape:\n" +
         "{\"who\":[{\"name\":\"\",\"email\":\"\",\"why\":\"\"}],\"opener\":\"\",\"points\":[\"\"]," +
         "\"objections\":[{\"q\":\"\",\"a\":\"\"}],\"email_subject\":\"\",\"email_body\":\"\"}\n" +
         "who = up to 3 people to call first (prefer ones with an email), why = one line on their leverage. " +
@@ -58,13 +66,17 @@ public sealed class ApproachDraftService
         {
             using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
             using var client = new AnthropicClient(new APIAuthentication(apiKey), httpClient);
+            // Ground the model in the current date so it never phrases a past
+            // milestone from the intel as upcoming (the July-2026 "ahead of the
+            // March 2026 application" credibility bug).
+            var dated = $"TODAY'S DATE: {DateTime.Now:yyyy-MM-dd}.\n\n{intel}";
             var parameters = new MessageParameters
             {
                 Model = _options.Model,
                 MaxTokens = 2000,
                 Stream = false,
                 System = new List<SystemMessage> { new(SystemPrompt) },
-                Messages = new List<Message> { new(RoleType.User, intel) },
+                Messages = new List<Message> { new(RoleType.User, dated) },
             };
 
             var response = await client.Messages.GetClaudeMessageAsync(parameters, ct).ConfigureAwait(false);
