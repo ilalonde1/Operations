@@ -293,7 +293,16 @@ public sealed class AskService
             messages.Add(new { role = "user", content = traceSb.ToString() });
         }
 
-        messages.Add(new { role = "user", content = request.Question });
+        // Date-ground every question (the Emeryville lesson, 2026-07-13: a
+        // model that doesn't know today's date presents future-dated rows as
+        // past events and vice versa — the July-20 meeting edge was narrated
+        // as "already done" on July 17 by the un-grounded /ask). Same contract
+        // as ApproachDraftService: TODAY prefix, data dates judged against it.
+        messages.Add(new
+        {
+            role = "user",
+            content = $"TODAY'S DATE: {DateTime.Now:yyyy-MM-dd (dddd)}. Any date in query results after today is a FUTURE/planned event — never describe it as having already happened.\n\n{request.Question}"
+        });
 
         for (var iter = 0; iter < MaxToolIterations; iter++)
         {
@@ -770,6 +779,47 @@ opportunities.IntelPersonAffiliation
    StartDateApprox, EndDateApprox, Notes, ... lifecycle columns)
   - Many-to-many: a person can have multiple affiliations across orgs.
   - IsCurrent=0 means departed  look at Notes for "departed Nov 2023" etc.
+
+opportunities.IntelPersonRelation   (neural graph edges — added 2026-07-17)
+  (Id, FromPersonId FK->IntelPerson, ToPersonId FK->IntelPerson,
+   RelationType ('IntroducedBy'|'MetAt'|'ReportsTo'|'Colleague'|'WorkedWith'),
+   Context, EvidencedAtUtc, SourceRef, RetiredAtUtc)
+  - Person-to-person edges: who met whom, who introduced whom. KOR's own BD
+    principals are IntelPerson rows too (SourceProviderName='KorStaff'), so
+    'who can introduce us to X?' is a join, not a guess:
+    SELECT fp.DisplayName, r.RelationType, r.Context
+    FROM opportunities.IntelPersonRelation r
+    JOIN opportunities.IntelPerson fp ON fp.Id = r.FromPersonId
+    JOIN opportunities.IntelPerson tp ON tp.Id = r.ToPersonId
+    WHERE tp.DisplayName LIKE N'%<target>%' AND r.RetiredAtUtc IS NULL
+  - Direction matters for IntroducedBy (From introduced To to KOR) and
+    ReportsTo; MetAt/Colleague/WorkedWith read as symmetric.
+
+opportunities.OrgFact   (typed org facts — added 2026-07-17)
+  (Id, CanonicalOrgId FK, FactType, Body, SourceUrl, SourceRef, ObservedAtUtc,
+   Confidence ('High'|'Medium'|'Low'), SupersededByFactId, RetiredAtUtc)
+  - FactType: 'SelfPerformsStructural' (competitor signal — org has in-house
+    structural), 'WarmChannel' (live relationship route in), 'DeliveryModel'
+    (how they procure: DB/CM/IPD posture — decides whether a GC can pick KOR),
+    'CompetitorNote', 'DeltekLink' (tie to KOR's books), 'DuplicateOf',
+    'MarketFocus', 'RiskNote'.
+  - PREFER OrgFact over parsing CanonicalOrg.Notes prose — facts are typed,
+    dated, confidence-scored. Filter RetiredAtUtc IS NULL AND
+    SupersededByFactId IS NULL.
+
+opportunities.CrmTouchpoint + opportunities.vw_OrgWarmth   (added 2026-07-17)
+  CrmTouchpoint (Id, CanonicalOrgId FK, EngagementId FK nullable,
+   IntelPersonId FK nullable, Kind ('Meeting'|'Email'|'Call'|'Event'|'Note'),
+   OccurredAtUtc, Summary, KorStaff, RetiredAtUtc)
+  - Every real contact with an org. vw_OrgWarmth derives warmth from it:
+    (CanonicalOrgId, LastTouchUtc, Touches90d, Warmth 'Warm'<=30d /
+    'Cooling'<=90d / 'Cold'). Warmth questions: query the VIEW, never
+    hand-compute from Notes. Orgs absent from the view have no logged touches.
+
+opportunities.vw_CrmEngagementOwners   (added 2026-07-17)
+  (EngagementId, OwnerName, BdStaffId, CanonicalName)
+  - CrmEngagements.OwnerStaffId is a free-text first name; THIS view is the
+    canonical mapping to staff identity. Join through it for per-owner rollups.
 
 opportunities.IntelWork
   (Id, CanonicalOrgId, ProjectName, NormalizedProjectName, Role, YearApprox,
