@@ -63,7 +63,14 @@ public sealed class EnrichmentDispatcher
                     result = new EnrichmentResult(EnrichmentStatuses.Failed, ex.Message, null, null);
                 }
 
-                var ttl = result.Status == EnrichmentStatuses.Ok ? p.TtlOnSuccess : p.TtlOnFailure;
+                // NoData is an ANSWER ("this org isn't there"), not a failure —
+                // it earns the success TTL. The old ternary gave it TtlOnFailure,
+                // so ~5,500 no-match orgs re-checked every 7 days: 787 pointless
+                // BcRegistry lookups per DAY filling the morning report's failure
+                // section with noise (2026-07-18 mess audit).
+                var ttl = result.Status is EnrichmentStatuses.Ok or EnrichmentStatuses.NoData
+                    ? p.TtlOnSuccess
+                    : p.TtlOnFailure;
                 var nextRefresh = DateTimeOffset.UtcNow.Add(ttl);
                 await _tracking.RecordAttemptAsync(canonicalId, p.Name, result, nextRefresh, ct).ConfigureAwait(false);
 

@@ -63,7 +63,7 @@ public sealed class BdMorningReportJob : IJob
 
         try
         {
-            var html = await BuildHtmlAsync(opt.OpportunitiesDb, opt.BdResearchQueueDrainRoot, context.CancellationToken).ConfigureAwait(false);
+            var html = await BuildHtmlAsync(opt.OpportunitiesDb, context.CancellationToken).ConfigureAwait(false);
             await _mail.SendHtmlAsync(
                 opt.MorningReportTenantId,
                 opt.MorningReportClientId,
@@ -420,13 +420,15 @@ ORDER BY m.OwnedAtUtc ASC;", con) { CommandTimeout = 60 };
         return at > 0 ? owner[..at] : owner;
     }
 
-    private static async Task<string> BuildHtmlAsync(string cs, string queueDrainRoot, System.Threading.CancellationToken ct)
+    private static async Task<string> BuildHtmlAsync(string cs, System.Threading.CancellationToken ct)
     {
         await using var con = new SqlConnection(cs);
         await con.OpenAsync(ct).ConfigureAwait(false);
 
         var sb = new StringBuilder();
-        sb.Append("<html><body style=\"font-family:Segoe UI,Arial,sans-serif;color:#1a1a1a;max-width:720px\">");
+        // Explicit charset: DB text (em-dashes, quotes) rendered as mojibake in
+        // some mail clients without it (2026-07-18).
+        sb.Append("<html><head><meta charset=\"utf-8\"></head><body style=\"font-family:Segoe UI,Arial,sans-serif;color:#1a1a1a;max-width:720px\">");
         sb.Append("<h2 style=\"border-bottom:3px solid #C8102E;padding-bottom:6px\">KOR BD Morning Report</h2>");
         sb.Append($"<p style=\"color:#666\">Generated {DateTime.Now:yyyy-MM-dd HH:mm} from live KorOpportunitiesDb. Window: last 24 hours.</p>");
 
@@ -682,11 +684,14 @@ FROM Fresh WHERE V IS NOT NULL GROUP BY V ORDER BY N DESC;", con))
         }
 
         // --- Retirements -------------------------------------------------------
+        // Reason width 60 -> 140 (2026-07-18): 60 chopped hand-written reasons
+        // mid-sentence in the email ("Cancelled 2020 per Alberta Major Projects
+        // registry (verified" — reads like a bug, was a truncation).
         await AppendCountTableAsync(sb, con, "Retired (last 24h)", @"
-SELECT LEFT(COALESCE(RetiredReason, N'(no reason)'), 60) AS K, COUNT(*) AS N
+SELECT LEFT(COALESCE(RetiredReason, N'(no reason)'), 140) AS K, COUNT(*) AS N
 FROM opportunities.MajorProjectsInventory
 WHERE RetiredAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
-GROUP BY LEFT(COALESCE(RetiredReason, N'(no reason)'), 60) ORDER BY N DESC;", ct).ConfigureAwait(false);
+GROUP BY LEFT(COALESCE(RetiredReason, N'(no reason)'), 140) ORDER BY N DESC;", ct).ConfigureAwait(false);
 
         // --- Ingest activity ---------------------------------------------------
         await AppendCountTableAsync(sb, con, "Research ingested (last 24h)", @"
@@ -730,39 +735,61 @@ SELECT
      AND COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),'')) IS NOT NULL)),
  (SELECT COUNT(DISTINCT TRY_CAST(SUBSTRING(e.ProviderName,13,20) AS bigint)) FROM opportunities.CanonicalOrgEnrichment e
    WHERE e.ProviderName LIKE N'PersonBrief-%' AND e.ProviderName NOT LIKE N'PersonBriefHoning-%' AND e.Status = N'Ok' AND e.ResultJson IS NOT NULL),
- (SELECT COUNT(*) FROM opportunities.IntelAction WHERE RetiredAtUtc IS NULL AND Status = N'Open');", con))
+ (SELECT COUNT(*) FROM opportunities.IntelAction WHERE RetiredAtUtc IS NULL AND Status = N'Open'
+   AND CreatedAtUtc >= DATEADD(DAY, -90, sysdatetimeoffset())),
+ (SELECT COUNT(*) FROM opportunities.IntelAction WHERE RetiredAtUtc IS NULL AND Status = N'Open'
+   AND CreatedAtUtc < DATEADD(DAY, -90, sysdatetimeoffset()));", con))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
             await r.ReadAsync(ct).ConfigureAwait(false);
             var active = r.GetInt32(0);
             sb.Append("<h3>Coverage</h3><p>");
             sb.Append($"Projects: <b>{active}</b> active · briefed <b>{r.GetInt32(1)}</b> ({100 * r.GetInt32(1) / Math.Max(1, active)}%) · honed <b>{r.GetInt32(2)}</b> ({100 * r.GetInt32(2) / Math.Max(1, active)}%) · ");
-            sb.Append($"People briefed: <b>{r.GetInt32(3)}</b> · Open actions: <b>{r.GetInt32(4)}</b></p>");
+            // "Open actions: 21,853" read like an unactioned to-do backlog; it
+            // was one June research import. Fresh (<=90d) is the actionable
+            // signal; the rest is the durable reference library the briefs and
+            // org dossiers read (2026-07-18 mess audit — do NOT bulk-retire it,
+            // the app's brief generators consume these rows).
+            sb.Append($"People briefed: <b>{r.GetInt32(3)}</b> · Actions: fresh <b>{r.GetInt32(4)}</b> · reference library <b>{r.GetInt32(5)}</b></p>");
         }
 
         // --- Source health: DEAD-GREEN detection (audit-v2 #15) ----------------
         // The weekly sentinel wrote these verdicts to a server-local markdown
         // nobody opened — an 18-day source blackout once went unnoticed. The
-        // morning email is the channel that actually gets read. Flags enabled
-        // provider sources with no successful run inside 3x their crawl window
-        // (min 24h so fast sources don't false-alarm overnight).
+        // morning email is the channel that actually gets read.
+        // 2026-07-18 (mess audit): the fixed 3x-CrawlDelay threshold was
+        // cadence-blind — the six weekly Sunday sources (AB/BC/CA MPI feeds)
+        // were flagged DEAD every Saturday at 6.1d while perfectly healthy.
+        // Threshold is now derived from each source's OWN observed success
+        // cadence over 45 days (2x its average gap), floored at the old
+        // 3x-CrawlDelay/26h rule so fast sources still alarm quickly.
         await using (var cmd = new SqlCommand(@"
 SELECT s.Name,
        lastOk.LastSuccessAtUtc
 FROM opportunities.OpportunitySources s
 OUTER APPLY (
-    SELECT MAX(r.StartedAtUtc) AS LastSuccessAtUtc
+    SELECT MAX(r.StartedAtUtc)  AS LastSuccessAtUtc,
+           COUNT(*)             AS OkRuns45d,
+           MIN(r.StartedAtUtc)  AS FirstSuccess45d
     FROM opportunities.IngestionRuns r
     WHERE r.Success = 1
+      AND r.StartedAtUtc >= DATEADD(DAY, -45, SYSDATETIMEOFFSET())
       AND (r.ProviderName LIKE s.Name + N' (%' OR r.ProviderName LIKE N'Awards: ' + s.Name + N' (%')
 ) lastOk
+CROSS APPLY (
+    SELECT (SELECT MAX(v) FROM (VALUES
+              (CASE WHEN lastOk.OkRuns45d >= 3
+                    THEN 2 * (DATEDIFF(SECOND, lastOk.FirstSuccess45d, lastOk.LastSuccessAtUtc)
+                              / NULLIF(lastOk.OkRuns45d - 1, 0))
+                    ELSE 0 END),
+              (CASE WHEN s.CrawlDelaySeconds * 3 > 93600 THEN s.CrawlDelaySeconds * 3 ELSE 93600 END)
+            ) AS x(v)) AS ThresholdSeconds
+) cadence
 WHERE s.IsEnabled = 1
   AND s.CrawlDelaySeconds > 0
   AND s.SourceType NOT IN (0, 7, 99)
   AND (lastOk.LastSuccessAtUtc IS NULL
-       OR lastOk.LastSuccessAtUtc < DATEADD(SECOND,
-             -(CASE WHEN s.CrawlDelaySeconds * 3 > 86400 THEN s.CrawlDelaySeconds * 3 ELSE 86400 END),
-             SYSDATETIMEOFFSET()))
+       OR lastOk.LastSuccessAtUtc < DATEADD(SECOND, -cadence.ThresholdSeconds, SYSDATETIMEOFFSET()))
 ORDER BY lastOk.LastSuccessAtUtc;", con))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
@@ -792,113 +819,88 @@ ORDER BY lastOk.LastSuccessAtUtc;", con))
             }
         }
 
-        // --- Latest trigger report (server QueueDrain, 21:30 builder job) ------
-        await using (var cmd = new SqlCommand(@"
-SELECT TOP 1 RunAtUtc, PendingQueues, ReportText
-FROM opportunities.QueueRefreshReport ORDER BY RunAtUtc DESC;", con))
-        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        // --- Research pipeline (executor arm) ----------------------------------
+        // Replaced the drain-queues + summary-flags blocks (2026-07-18 mess
+        // audit): the file-based QueueDrain era ended Jun 21 — its refresh
+        // report froze and the email printed 27-day-old paste-into-Claude
+        // instructions every morning. This section reads the LIVE supply
+        // (BdResearchTriggers) and what the executor jobs actually did.
+        try
         {
-            sb.Append("<h3>Drain queues (last trigger run)</h3>");
-            if (await r.ReadAsync(ct).ConfigureAwait(false))
+            var pendingTriggers = 0;
+            await using (var cmd = new SqlCommand(
+                "SELECT COUNT(*) FROM opportunities.BdResearchTriggers WHERE Status = N'Pending';", con))
             {
-                // 2026-06-12: tightened 20h -> 10h after a dead trigger sat a
-                // full day inside the old window. The trigger fires nightly at
-                // 21:30; by the 6am email it is ~8.5h old, so >10h means last
-                // night's run did not happen.
-                var age = DateTimeOffset.UtcNow - r.GetDateTimeOffset(0).ToUniversalTime();
-                if (age > TimeSpan.FromHours(10))
-                {
-                    sb.Append($"<p style=\"color:#C8102E\"><b>STALE:</b> last trigger run was {age.TotalHours:N0}h ago — BdResearchQueueBuilderJob (21:30) did not run; check Worker JobRuns.</p>");
-                }
+                pendingTriggers = (int)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+            }
 
-                var pending = r.IsDBNull(1) ? "" : r.GetString(1);
-                sb.Append(string.IsNullOrWhiteSpace(pending)
-                    ? "<p>All kinds fresh — nothing to run.</p>"
-                    : $"<p>Queues with pending work: <b>{WebUtility.HtmlEncode(pending)}</b></p>");
-                sb.Append($"<pre style=\"background:#f6f6f6;padding:8px;font-size:12px;overflow:auto\">{WebUtility.HtmlEncode(r.GetString(2))}</pre>");
+            var executorLines = new List<string>();
+            await using (var cmd = new SqlCommand(@"
+SELECT j.JobName, CONVERT(varchar(16), j.StartedAtUtc, 120), ISNULL(j.Summary, N'')
+FROM opportunities.JobRuns j
+WHERE j.JobName IN (N'BdResearchExecutorJob', N'BdProjectResearchExecutorJob', N'BdPersonResearchExecutorJob')
+  AND j.StartedAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
+ORDER BY j.StartedAtUtc DESC;", con))
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    executorLines.Add($"{r.GetString(0)} @ {r.GetString(1)}Z — {r.GetString(2)}");
+                }
+            }
+
+            sb.Append("<h3>Research pipeline</h3>");
+            sb.Append($"<p>Triggers pending: <b>{pendingTriggers}</b></p>");
+            var allIdle = executorLines.TrueForAll(l => l.Contains("executed=0"));
+            if (executorLines.Count == 0 || (pendingTriggers == 0 && allIdle))
+            {
+                sb.Append("<p style=\"color:#666\">Supply idle — nothing queued. Research currently runs in-session (agent passes); queue-fed executors have no work.</p>");
             }
             else
             {
-                sb.Append("<p style=\"color:#C8102E\">No trigger report rows yet.</p>");
-            }
-        }
-
-        // --- Summary flags (new SUMMARY-*.txt correction lines) ----------------
-        // 2026-06-12 process fix: drain sessions file corrections (dups,
-        // rebrands, defunct firms, departures) in their SUMMARY files; until
-        // the m132/m133 harvest nobody read them. Surface every new summary's
-        // flag-pattern lines so nothing files itself silently again.
-        AppendSummaryFlags(sb, queueDrainRoot);
-
-        sb.Append("</body></html>");
-        return sb.ToString();
-    }
-
-    private static readonly System.Text.RegularExpressions.Regex FlagPattern = new(
-        @"duplicate|merge|rebrand|defunct|bankrupt|receivership|deceased|departed|data error|misclassif|reclassif|dismiss|wrong sector|wrong market|wrong discipline|retire",
-        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    private static void AppendSummaryFlags(StringBuilder sb, string queueDrainRoot)
-    {
-        const int maxLines = 60;
-        sb.Append("<h3>Summary flags (last 24h)</h3>");
-        try
-        {
-            if (!System.IO.Directory.Exists(queueDrainRoot))
-            {
-                sb.Append($"<p style=\"color:#C8102E\">QueueDrain root not found at {WebUtility.HtmlEncode(queueDrainRoot)}.</p>");
-                return;
-            }
-
-            var cutoff = DateTime.UtcNow.AddHours(-24);
-            var total = 0;
-            var anyFile = false;
-            foreach (var file in System.IO.Directory.EnumerateFiles(queueDrainRoot, "SUMMARY-*.txt", System.IO.SearchOption.AllDirectories))
-            {
-                if (System.IO.File.GetLastWriteTimeUtc(file) < cutoff) { continue; }
-
-                var flagged = new List<string>();
-                foreach (var line in System.IO.File.ReadLines(file))
-                {
-                    var trimmed = line.Trim();
-                    if (trimmed.Length > 0 && FlagPattern.IsMatch(trimmed))
-                    {
-                        flagged.Add(trimmed.Length > 160 ? trimmed[..160] + "…" : trimmed);
-                    }
-                }
-
-                if (flagged.Count == 0) { continue; }
-
-                anyFile = true;
-                var queue = System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(file)) ?? "");
-                sb.Append($"<p style=\"margin:6px 0 2px\"><b>{WebUtility.HtmlEncode(queue)}</b> / {WebUtility.HtmlEncode(System.IO.Path.GetFileName(file))} — {flagged.Count} flag line(s)</p>");
-                sb.Append("<pre style=\"background:#fff4f4;padding:6px;font-size:11px;overflow:auto;margin:0\">");
-                foreach (var line in flagged)
-                {
-                    if (total >= maxLines)
-                    {
-                        sb.Append("… (capped — read the file)\n");
-                        break;
-                    }
-
-                    sb.Append(WebUtility.HtmlEncode(line)).Append('\n');
-                    total++;
-                }
-
-                sb.Append("</pre>");
-                if (total >= maxLines) { break; }
-            }
-
-            if (!anyFile)
-            {
-                sb.Append("<p style=\"color:#666\">No new summaries with flag lines.</p>");
+                sb.Append("<ul>");
+                foreach (var line in executorLines) { sb.Append($"<li style=\"font-size:12px\">{WebUtility.HtmlEncode(line)}</li>"); }
+                sb.Append("</ul>");
             }
         }
         catch (Exception ex)
         {
-            // The flags section must never kill the email.
-            sb.Append($"<p style=\"color:#C8102E\">Flags harvest failed: {WebUtility.HtmlEncode(ex.GetType().Name)}: {WebUtility.HtmlEncode(ex.Message)}</p>");
+            sb.Append($"<p style=\"color:#C8102E\">Research-pipeline section failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
         }
+
+        // --- Paused / idle jobs ------------------------------------------------
+        // A disabled or paused job used to just vanish from the report (the
+        // dedup job sat disabled 20 days, the attack sheet paused — invisible
+        // both times). Derived from JobRuns history, no hardcoded names.
+        try
+        {
+            var idle = new List<string>();
+            await using (var cmd = new SqlCommand(@"
+SELECT j.JobName, DATEDIFF(DAY, MAX(j.StartedAtUtc), sysdatetimeoffset()) AS DaysIdle
+FROM opportunities.JobRuns j
+GROUP BY j.JobName
+HAVING MAX(j.StartedAtUtc) < DATEADD(DAY, -7, sysdatetimeoffset())
+ORDER BY 2 DESC;", con))
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    idle.Add($"{WebUtility.HtmlEncode(r.GetString(0))} ({r.GetInt32(1)}d)");
+                }
+            }
+
+            if (idle.Count > 0)
+            {
+                sb.Append($"<h3>Paused / idle jobs <span style=\"color:#666;font-weight:normal\">(no run in 7+ days)</span></h3><p style=\"color:#666\">{string.Join(" · ", idle)}</p>");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.Append($"<p style=\"color:#C8102E\">Idle-jobs section failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
+        }
+
+        sb.Append("</body></html>");
+        return sb.ToString();
     }
 
     private static async Task AppendCountTableAsync(StringBuilder sb, SqlConnection con, string title, string sql, System.Threading.CancellationToken ct)

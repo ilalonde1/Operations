@@ -1027,19 +1027,13 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
   });
 
-  var bdResearchQueueBuilderKey = new JobKey("BdResearchQueueBuilderJob");
-  q.AddJob<Kor.Opportunities.Worker.Services.BdResearchQueueBuilderJob>(opts => opts.WithIdentity(bdResearchQueueBuilderKey));
-
-  q.AddTrigger(t =>
-  {
-      // Default: 21:30 Pacific daily — the ported dev-box nightly-refresh
-      // cadence; batches are ready for the evening's drain sessions and the
-      // QueueRefreshReport row is fresh for the 6am morning email.
-      var cron = builder.Configuration["BdResearchQueueBuilderCronSchedule"] ?? "0 30 21 * * ?";
-      t.ForJob(bdResearchQueueBuilderKey)
-       .WithIdentity("BdResearchQueueBuilderTrigger")
-       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionFireAndProceed());
-  });
+  // BdResearchQueueBuilderJob UNSCHEDULED 2026-07-18 (mess audit): it fed the
+  // file-based QueueDrain era (paste-into-Claude drain sessions), which died
+  // Jun 21 — the job kept running nightly, building batches nobody drained,
+  // while its QueueRefreshReport row froze and the morning email printed
+  // 27-day-old instructions. Research supply is now the BdResearchTriggers
+  // table (executor jobs) + in-session agent research. The job class is kept
+  // for history; re-add this registration only with a deliberate revival plan.
 
   var bdResearchExecutorKey = new JobKey("BdResearchExecutorJob");
   q.AddJob<Kor.Opportunities.Worker.Jobs.BdResearchExecutorJob>(opts => opts.WithIdentity(bdResearchExecutorKey));
