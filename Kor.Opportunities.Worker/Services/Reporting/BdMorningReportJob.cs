@@ -430,6 +430,66 @@ ORDER BY m.OwnedAtUtc ASC;", con) { CommandTimeout = 60 };
         sb.Append("<h2 style=\"border-bottom:3px solid #C8102E;padding-bottom:6px\">KOR BD Morning Report</h2>");
         sb.Append($"<p style=\"color:#666\">Generated {DateTime.Now:yyyy-MM-dd HH:mm} from live KorOpportunitiesDb. Window: last 24 hours.</p>");
 
+        // --- Relationship actions due (Neural Gap Register G2, 2026-07-17) ----
+        // NextActionDueUtc/NextActionNote were write-only: the app could set a
+        // follow-up and nothing ever surfaced it (found when "Jim meets Elliot
+        // Wood Mon 10:00" would have reminded nobody). Overdue (14d back) +
+        // due-within-7d on OPEN engagements, oldest first, owner + contact
+        // named. Suppressed when zero; same per-section try/catch contract.
+        try
+        {
+            var actions = new List<(string Owner, string Org, string Contact, DateTimeOffset Due, string Note)>();
+            await using (var cmd = new SqlCommand(@"
+SELECT e.OwnerStaffId, ISNULL(co.DisplayName, N''), ISNULL(p.DisplayName, N''),
+       e.NextActionDueUtc, ISNULL(e.NextActionNote, N'')
+FROM opportunities.CrmEngagements e
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = e.BuyerCanonicalOrgId
+LEFT JOIN opportunities.IntelPerson p ON p.Id = e.ContactIntelPersonId
+WHERE e.Stage IN (1, 3)
+  AND e.ClosedAtUtc IS NULL
+  AND e.NextActionDueUtc IS NOT NULL
+  AND e.NextActionDueUtc >= DATEADD(DAY, -14, sysdatetimeoffset())
+  AND e.NextActionDueUtc < DATEADD(DAY, 7, sysdatetimeoffset())
+ORDER BY e.NextActionDueUtc ASC;", con))
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    actions.Add((
+                        r.IsDBNull(0) ? "(unowned)" : r.GetString(0),
+                        r.GetString(1),
+                        r.GetString(2),
+                        r.GetDateTimeOffset(3),
+                        r.GetString(4)));
+                }
+            }
+
+            if (actions.Count > 0)
+            {
+                sb.Append($"<h3>Relationship actions <span style=\"color:#666;font-weight:normal\">({actions.Count})</span></h3>");
+                sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+                foreach (var (aOwner, org, contact, due, note) in actions)
+                {
+                    var overdue = due < DateTimeOffset.UtcNow;
+                    var today = due.ToLocalTime().Date == DateTime.Now.Date;
+                    var whenStyle = overdue ? "color:#C8102E;font-weight:bold" : today ? "color:#1a1a1a;font-weight:bold" : "color:#1a1a1a";
+                    var whenText = overdue
+                        ? $"OVERDUE {due.ToLocalTime():MMM d}"
+                        : today ? $"TODAY {due.ToLocalTime():HH:mm}" : due.ToLocalTime().ToString("ddd MMM d HH:mm");
+                    var who = contact.Length > 0 ? $"{org} — {contact}" : org;
+                    sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(note)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(who)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(DisplayOwner(aOwner))}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;{whenStyle}\">{WebUtility.HtmlEncode(whenText)}</td></tr>");
+                }
+                sb.Append("</table>");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.Append($"<p style=\"color:#C8102E\">Relationship-actions section failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
+        }
+
         // --- Owned pursuits closing soon (CRM plan 2.1a, 2026-07-07) ----------
         // Anti-abandonment: a grabbed pursuit whose RFP deadline is inside 14
         // days gets top billing so it can't die silently. Suppressed when zero;
