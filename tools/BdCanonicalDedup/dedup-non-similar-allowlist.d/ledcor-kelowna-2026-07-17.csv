@@ -1,0 +1,7 @@
+LoserId,SurvivorId,Reason
+# "Ledcor Construction Limited (Vancouver)" (Unknown kind, 0 links) is the
+# same legal entity as canonical 69671 "Ledcor Construction" (GC, Deltek
+# CL00238) — full corporate name + city parenthetical; the fuzzy gate
+# rejects the parenthetical as designed. Ian-approved Ledcor-Kelowna
+# decomposition pass 2026-07-17.
+307226,69671
