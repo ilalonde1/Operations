@@ -69,14 +69,16 @@ Every .msg is read manually on request. The neural version: a BD-mailbox (or FIL
 
 ## Execution order
 
-| Rank | Gap | Size | Deploy | Why now |
+| Rank | Gap | Size | Deploy | Status |
 |---|---|---|---|---|
-| 1 | G2 next-action surfacing | S | Worker | Monday's meeting is invisible without it |
-| 2 | G1 contact on engagement | S | migration + Worker (UI next zip) | this week's pattern, twice |
-| 3 | G3 person edges + backfill | M | migration + decompose contract | the actual "neural" claim |
-| 4 | G5 touchpoints + warmth view | M | migration + Worker | makes Monday's debrief structured |
-| 5 | G4 OrgFact + backfill | M | migration + MCP prompt | makes `/ask` see what I bank |
-| 6 | G6 owner normalization | S | view only | hygiene |
-| 7 | G7 email ingest | L | — | deferred until 1–5 live |
+| 1 | G2 next-action surfacing | S | Worker | ✅ SHIPPED 2026-07-17 (Worker 1.0.9694.1123, commit 5b9535f7) |
+| 2 | G1 contact on engagement | S | mig 287 (UI next zip) | ✅ SHIPPED — 375→Elliot Wood backfilled |
+| 3 | G3 person edges + backfill | M | mig 288 | ✅ SHIPPED (commit 7da81ba1) — KOR staff as nodes, 4 edges |
+| 4 | G5 touchpoints + warmth view | M | mig 290 | ✅ SHIPPED — 6 touchpoints, vw_OrgWarmth |
+| 5 | G4 OrgFact + backfill | M | mig 289 + MCP prompt | ✅ SHIPPED — 11 typed facts; /ask taught |
+| 6 | G6 owner normalization | S | mig 291 view | ✅ SHIPPED — vw_CrmEngagementOwners |
+| 7 | G7 email ingest | L | — | 🅿 deferred (Ian's call) |
 
-Ranks 1–2 are build-ready tonight (Worker + two migrations, established deploy runbook). Ranks 3–5 are one focused session. The decompose-to-Brain closing pass (already binding) starts writing to the new structures the moment they exist.
+**Verification (2026-07-17):** all migrations applied live + re-run idempotent (counts stable: 4 edges / 11 facts / 6 touchpoints / 3 staff nodes). MCP 67/67, Worker doctrine 28/28. End-to-end `/ask` smoke: "who can introduce us to Elliot Wood?" answered by graph walk (Barry Murphy, IntroducedBy edge, with context); warmth read from vw_OrgWarmth (both Arcadis + Ledcor: Warm). The smoke test itself caught one more hole — `/ask` had **no date grounding** and narrated the future Jul-20 meeting as already-happened (the Emeryville bug class); fixed with a TODAY prefix in AskService, redeployed, re-verified ("that date is three days from now — a planned first sit-down, not a completed one").
+
+**Still open:** engagement contact-person picker in the app (rides Ian's next app zip); G7 decision.
