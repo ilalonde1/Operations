@@ -28,6 +28,19 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             return Save(wb);
         }
 
+        /// <summary>Change detection + the ΔAs grid sheet with areas pre-filled from MEASURED extents
+        /// (the takeoff's own plate areas). The grid sheet's lb are an extent-based ESTIMATE, kept on
+        /// their own sheet with editable orange areas — they never blend into the exact call-out delta.</summary>
+        public static byte[] BuildWithPricedGrids(RebarChangeResult r, RebarPricedResult priced, string projectName)
+        {
+            using var wb = new XLWorkbook();
+            BuildChangeSummary(wb, r, projectName);
+            BuildPricedChanges(wb, priced);
+            BuildChanges(wb, r);
+            BuildAudit(wb, r);
+            return Save(wb);
+        }
+
         /// <summary>The Cadillac: weight takeoff + change detection + basis + audit in one book.</summary>
         public static byte[] BuildFull(RebarChangeResult r, RebarWeightResult w, string projectName,
             RebarPricedResult? priced = null)

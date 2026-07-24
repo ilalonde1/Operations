@@ -638,6 +638,23 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
         ? "  vision: DISABLED (--deterministic) — 0 API calls, $0."
         : $"  vision: {PlanVisionClient.CacheMisses} fresh API call(s) SPENT, {PlanVisionClient.CacheHits} replayed from cache ({Path.Combine(args[2], ".vision-cache")}).");
 
+    // EXTENTS SIDECAR — the measured per-level slab plate areas, written beside the workbook so the
+    // rebar change tool can price intensity changes (ΔAs × area) from OUR measurement instead of
+    // leaving every area cell blank for a human. The fusion seam; see RebarExtents.
+    try
+    {
+        var extents = tkOut.Estimate.Plates
+            .Where(p => p.Plate.Element == TakeoffElementType.Slab && p.Plate.AreaSqFt > 0)
+            .GroupBy(p => p.Plate.Level)
+            .Select(g => new { label = g.Key, slabSqFtPerFloor = Math.Round(g.Max(p => p.Plate.AreaSqFt)) })
+            .ToList();
+        string extPath = args[3] + ".extents.json";
+        File.WriteAllText(extPath, System.Text.Json.JsonSerializer.Serialize(
+            new { levels = extents }, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"Extents sidecar (per-level slab areas for the rebar ΔAs pricer) -> {extPath}");
+    }
+    catch (Exception ex) { Console.Error.WriteLine($"  (extents sidecar skipped: {ex.Message})"); }
+
     Console.WriteLine($"\n(suspended-slab benchmark: 31044 Coronation = 20,208 cy net of the 4,287 mat)  ->  {args[3]}");
     return 0;
 }
@@ -2106,6 +2123,9 @@ if (args.Length >= 4 && args[0].Equals("rebar", StringComparison.OrdinalIgnoreCa
     string rname = args.Length > 4 ? args[4] : string.Empty;
     string rbl = args.Length > 5 ? args[5] : "Before";
     string ral = args.Length > 6 ? args[6] : "After";
+    // Optional extents sidecar (from vector-takeoff: <out>.xlsx.extents.json) — measured per-level slab
+    // areas that price ΔAs grid changes. Detected by .json so it can never collide with the CSV path.
+    string? extentsPath = args.Length == 8 && args[7].EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? args[7] : null;
     // Positioned-word pipeline (same as the overlay markup) so the ledger and the PDF tell one story.
     var rr = RebarChangeService.ComparePdfs(args[1], args[2], rbl, ral);
 
@@ -2165,6 +2185,24 @@ if (args.Length >= 4 && args[0].Equals("rebar", StringComparison.OrdinalIgnoreCa
         foreach (var c in priced.Changes)
             Console.WriteLine($"  {c.Sheet,-11} {c.Kind,-18} {(c.Before?.Display ?? "—"),-16} -> {(c.After?.Display ?? "—"),-16} ΔAs {c.DeltaAsKgPerM2,6:+0.00;-0.00} kg/m²" +
                 (c.DeltaLb.HasValue ? $"  = {c.DeltaLb,8:+#,##0;-#,##0} lb on {c.AreaM2:#,##0} m²" : "  (area needed)"));
+    }
+    else if (extentsPath is not null && File.Exists(extentsPath))
+    {
+        // FUSION: price ΔAs grid changes with the takeoff's own MEASURED plate areas (slab grids
+        // only — direct measurements). Estimate stays on its own sheet, areas stay orange-editable;
+        // the exact call-out delta below is untouched.
+        var extents = RebarExtents.FromJson(File.ReadAllText(extentsPath));
+        var sheetTitles = RebarCalloutExtractor.GroupTextBySheet(bPages)
+            .Select(x => (x.Sheet, x.Title))
+            .Union(RebarCalloutExtractor.GroupTextBySheet(aPages).Select(x => (x.Sheet, x.Title)))
+            .Distinct().ToList();
+        var slabAreas = RebarExtents.SlabAreasM2BySheet(sheetTitles, extents);
+        var priced = RebarGridPricer.Compare(bPages, aPages, slabAreas, null, rbl, ral);
+        File.WriteAllBytes(args[3], RebarChangeReportGenerator.BuildWithPricedGrids(rr, priced, rname));
+        Console.WriteLine($"Extent-based ΔAs ESTIMATE (slab grids × measured plate areas — separate from the exact call-out figure below):");
+        Console.WriteLine($"  {priced.PricedCount} grid change(s) priced -> {priced.TotalKnownDeltaKg * 2.20462:+#,##0;-#,##0;0} lb; {priced.UnpricedCount} still need an area (orange cells in the workbook).");
+        foreach (var c in priced.Changes.Where(c => c.DeltaLb.HasValue))
+            Console.WriteLine($"  {c.Sheet,-11} {c.Kind,-18} {(c.Before?.Display ?? "—"),-16} -> {(c.After?.Display ?? "—"),-16} ΔAs {c.DeltaAsKgPerM2,6:+0.00;-0.00} kg/m²  = {c.DeltaLb,8:+#,##0;-#,##0} lb on {c.AreaM2:#,##0} m² (measured)");
     }
     else
     {
