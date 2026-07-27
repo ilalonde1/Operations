@@ -62,6 +62,11 @@ public static class Program
             PnLGlTableNameLike = financialsSection["PnLGlTableNameLike"] ?? "",
             PnLIncomeGroupTypes = financialsSection["PnLIncomeGroupTypes"] ?? "",
             PnLExpenseGroupTypes = financialsSection["PnLExpenseGroupTypes"] ?? "",
+            CashAccountWhitelist = financialsSection["CashAccountWhitelist"] ?? "",
+            CashUsdAccounts = financialsSection["CashUsdAccounts"] ?? "",
+            CashUsdToCadRate = financialsSection["CashUsdToCadRate"] ?? "",
+            PnLOverheadRate = financialsSection["PnLOverheadRate"] ?? "",
+            FiscalYearStartMonth = financialsSection["FiscalYearStartMonth"] ?? "",
         };
         builder.Services.AddSingleton(deltekOdbcOptions);
         builder.Services.AddSingleton(financialsOptions);
