@@ -7,84 +7,57 @@ internal static partial class FinancialMetricDefinitions
 {
     private static void AddBillingManagerMetrics(Dictionary<string, FinancialMetricDefinition> d)
     {
-        // ── Billing Manager Report ────────────────────────────────────────────
         d["BM_Label"] = new FinancialMetricDefinition
         {
             Key = "BM_Label",
-            DisplayName = "Billing Manager / Project",
+            DisplayName = "Partner / Project",
             Description =
                 "WHAT:\n" +
-                "Rows are grouped by Billing Manager. Manager rows (bold, blue strip) can be expanded with the ▶ arrow to show individual projects assigned to that manager.\n\n" +
+                "Rows are grouped by partner. Partner rows can be expanded to show the projects that contributed invoiced revenue in the selected period.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Reveals which managers and projects are driving billings and where billing activity is concentrated.\n\n" +
+                "Matches Daler Singh's Financial Performance deck by showing which partners and projects drove billings.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Projects are assigned via the Billing Manager field in Deltek Vantagepoint. Projects with no manager appear under 'Unassigned'.",
-            Formula = ""
+                "LedgerAR invoiced revenue is grouped by PR.Principal, with project rows grouped by LedgerAR.WBS1 and PR.Name.",
+            Formula = "GROUP BY PR.Principal, LedgerAR.WBS1, PR.Name"
         };
         d["BM_Info"] = new FinancialMetricDefinition
         {
             Key = "BM_Info",
-            DisplayName = "Info (Phase / Principal)",
+            DisplayName = "Info",
             Description =
                 "WHAT:\n" +
-                "For project rows: the project's phase and billing principal. For manager rows: a summary of active project count.\n\n" +
+                "Partner rows show project count and active-month coverage for the selected year. Project rows are the expandable detail under each partner.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Provides project-stage and ownership context without requiring a drill-down.\n\n" +
+                "Separates partner-level production from the project-level invoices that make up the total.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Phase and principal are read directly from the Deltek project record. Active count is derived from projects with billing activity in the last 12 closed periods.",
-            Formula = ""
+                "Project count is the count of WBS1 groups under the partner. Active months count selected-year months with non-zero LedgerAR invoiced revenue.",
+            Formula = "COUNT(DISTINCT WBS1); COUNT(months where billed <> 0)"
         };
         d["BM_YoyDelta"] = new FinancialMetricDefinition
         {
             Key = "BM_YoyDelta",
-            DisplayName = "Year-over-Year Delta (YoY Δ)",
+            DisplayName = "Year-over-Year Delta (YoY)",
             Description =
                 "WHAT:\n" +
-                "Change in total billings between the most recent 12 closed periods and the 12 periods before that.\n\n" +
+                "Change in billings between the selected year and the prior year.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Quickly shows whether a manager or project is growing, flat, or declining in billing output year-over-year. Green = growth; red = decline.\n\n" +
+                "Shows whether each partner's invoiced revenue is up or down against the prior year.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "YoY Δ = (Last 12 periods billed) − (Prior 12 periods billed).",
-            Formula = "YoY Δ = SUM(Billed, last 12 periods) − SUM(Billed, prior 12 periods)"
+                "YoY = selected-year LedgerAR invoiced revenue minus prior-year LedgerAR invoiced revenue, using the active currency view.",
+            Formula = "YoY = SUM(CY LedgerAR invoiced revenue) - SUM(LY LedgerAR invoiced revenue)"
         };
         d["BM_12MoTotal"] = new FinancialMetricDefinition
         {
             Key = "BM_12MoTotal",
-            DisplayName = "12-Month Total Billings",
+            DisplayName = "Selected-Year Total Billings",
             Description =
                 "WHAT:\n" +
-                "Total fee billed across the last 12 closed accounting periods.\n\n" +
+                "Total invoiced revenue for the selected calendar year.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "The primary revenue production metric for the billing manager. Drives the billing bar chart and YoY comparison.\n\n" +
+                "This is the primary partner-production number from Daler's deck.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Sums PRSummaryMain.Billed for the 12 most recent closed periods, grouped by Billing Manager and project.",
-            Formula = "SUM(PRSummaryMain.Billed) for the last 12 closed periods"
-        };
-        d["BM_RemFee"] = new FinancialMetricDefinition
-        {
-            Key = "BM_RemFee",
-            DisplayName = "Remaining Fee",
-            Description =
-                "WHAT:\n" +
-                "Total contracted fee not yet billed across the manager's active projects.\n\n" +
-                "WHY IT MATTERS:\n" +
-                "Represents future billing runway. Negative values (shown in red) mean projects have billed beyond their contracted fee — an over-billing flag.\n\n" +
-                "HOW IT IS CALCULATED:\n" +
-                "Remaining Fee = Contracted Fee − Total Fee Billed to Date, summed across all projects under the manager.",
-            Formula = "Remaining Fee = SUM(Fee − FeeBilled)"
-        };
-        d["BM_PctFee"] = new FinancialMetricDefinition
-        {
-            Key = "BM_PctFee",
-            DisplayName = "% Fee Billed",
-            Description =
-                "WHAT:\n" +
-                "Portion of the total contracted fee that has been billed to date.\n\n" +
-                "WHY IT MATTERS:\n" +
-                "Measures billing progress relative to the contract. Values approaching or exceeding 100% flag over-billing risk.\n\n" +
-                "HOW IT IS CALCULATED:\n" +
-                "% Fee Billed = Total Fee Billed ÷ Contracted Fee. Colour: green ≥ 75%, amber 50–74%, red < 50% or > 100%.",
-            Formula = "% Fee Billed = SUM(FeeBilled) / SUM(Fee)"
+                "Sums LedgerAR.Amount with sign flipped for TransType='IN' and revenue account prefixes 4001, 4003, 4210, 4220, and 4240, grouped by PR.Principal. The combined grid converts USA rows using the selected year's USD/CAD rate.",
+            Formula = "SUM(-LedgerAR.Amount) WHERE TransType='IN' AND LEFT(Account,4) IN (4001,4003,4210,4220,4240)"
         };
         d["BM_Trend"] = new FinancialMetricDefinition
         {
@@ -92,12 +65,12 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "Billing Trend (Sparkline)",
             Description =
                 "WHAT:\n" +
-                "A mini line chart of monthly billings across the last 12 closed periods.\n\n" +
+                "A mini line chart of monthly invoiced revenue across the selected year.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Reveals billing momentum at a glance — whether billings are accelerating, decelerating, or erratic across the year.\n\n" +
+                "Reveals billing cadence and late-year/monthly concentration at a glance.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Plots PRSummaryMain.Billed by period for the last 12 closed periods. Line color matches the trend direction arrow.",
-            Formula = ""
+                "Plots monthly LedgerAR invoiced revenue for the active currency view. Line color follows the trend direction.",
+            Formula = "Monthly SUM(-LedgerAR.Amount) for selected year"
         };
         d["BM_TrendArrow"] = new FinancialMetricDefinition
         {
@@ -105,106 +78,155 @@ internal static partial class FinancialMetricDefinitions
             DisplayName = "Trend Direction",
             Description =
                 "WHAT:\n" +
-                "Arrow glyph summarising the direction of billing momentum across the last 12 months.\n\n" +
+                "Compact trend direction based on recent selected-year billings.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Single-character signal for whether billing output is trending up, flat, or down. Read alongside the sparkline for confirmation.\n\n" +
+                "Provides a quick signal for whether invoiced revenue is rising, flat, or falling.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Compares the average of the last 3 periods to the average of the prior 3 periods within the 12-month window.\n" +
-                "↑ green  = recent 3-period avg is > 5% above prior 3-period avg\n" +
-                "↓ red    = recent avg is > 5% below prior avg\n" +
-                "→ grey   = within ±5% (stable)",
-            Formula = ""
+                "Compares the average of the latest 3 active months to the prior 3 months in the selected year.",
+            Formula = "AVG(last 3 active months) compared with AVG(prior 3 months)"
         };
         d["BM_LastMo"] = new FinancialMetricDefinition
         {
             Key = "BM_LastMo",
-            DisplayName = "Last Closed Period Billings",
+            DisplayName = "Latest Active Month Billings",
             Description =
                 "WHAT:\n" +
-                "Fee billed in the most recently closed accounting period.\n\n" +
+                "Invoiced revenue in the latest selected-year month that has billing activity.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "The freshest billing signal. Useful for spotting managers or projects that went quiet in the latest period.\n\n" +
+                "Avoids showing future/current empty periods as the latest signal.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "PRSummaryMain.Billed for the single most recent closed period.",
-            Formula = "PRSummaryMain.Billed WHERE Period = MAX(closed periods)"
+                "Sums LedgerAR invoiced revenue for the latest selected-year period with non-zero billings.",
+            Formula = "SUM(-LedgerAR.Amount) WHERE Period = latest active selected-year period"
         };
         d["BM_2MoAgo"] = new FinancialMetricDefinition
         {
             Key = "BM_2MoAgo",
-            DisplayName = "Two Periods Ago Billings",
+            DisplayName = "Prior Active Month Billings",
             Description =
                 "WHAT:\n" +
-                "Fee billed in the accounting period immediately before the most recent closed period.\n\n" +
+                "Invoiced revenue in the selected-year month immediately before the latest active month.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Provides a quick month-over-month comparison so you can see whether the latest period is higher or lower than the one before it.\n\n" +
+                "Gives a direct month-over-month comparison against the latest billing month.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "PRSummaryMain.Billed for the second-most-recent closed period.",
-            Formula = "PRSummaryMain.Billed WHERE Period = MAX(closed periods) − 1"
+                "Sums LedgerAR invoiced revenue for the period immediately before the latest active selected-year period.",
+            Formula = "SUM(-LedgerAR.Amount) WHERE Period = prior active selected-year period"
         };
         d["BM_Streak"] = new FinancialMetricDefinition
         {
             Key = "BM_Streak",
-            DisplayName = "Active Billing Streak",
+            DisplayName = "Billing Streak",
             Description =
                 "WHAT:\n" +
-                "Number of consecutive closed periods (counting back from the most recent) in which this manager or project recorded any billings.\n\n" +
+                "Consecutive selected-year months with non-zero invoiced revenue, counting backward from the latest active month.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "A long streak signals sustained, uninterrupted billing cadence. A streak of 0 or 1 means the manager or project recently went quiet — a potential billing gap to investigate.\n\n" +
+                "Shows sustained billing cadence by partner or project.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Starting from the most recent closed period, counts consecutive periods with Billed > 0 and stops at the first period with zero billings.",
-            Formula = "COUNT consecutive periods FROM latest WHERE Billed > 0"
-        };
-        d["BM_AvgMo"] = new FinancialMetricDefinition
-        {
-            Key = "BM_AvgMo",
-            DisplayName = "Average Monthly Billings",
-            Description =
-                "WHAT:\n" +
-                "Average fee billed per month across all periods in which this manager or project recorded any billing activity.\n\n" +
-                "WHY IT MATTERS:\n" +
-                "A stable run-rate baseline unaffected by billing gaps. Useful for comparing recent period billings against the long-term average to spot acceleration or slowdown.\n\n" +
-                "HOW IT IS CALCULATED:\n" +
-                "Total billings across all active periods ÷ count of periods with Billed > 0.",
-            Formula = "SUM(Billed) / COUNT(periods WHERE Billed > 0)"
+                "Counts consecutive selected-year periods where LedgerAR invoiced revenue is non-zero.",
+            Formula = "COUNT consecutive periods FROM latest active period WHERE billed <> 0"
         };
         d["BM_12MoChart"] = new FinancialMetricDefinition
         {
             Key = "BM_12MoChart",
-            DisplayName = "12-Month Billings by Manager (Chart)",
+            DisplayName = "Billings by Partner Chart",
             Description =
                 "WHAT:\n" +
-                "Horizontal bar chart comparing the last 12 months of total billings across all billing managers.\n\n" +
+                "Horizontal bar chart comparing selected-year invoiced revenue by partner.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Shows relative billing contribution by manager at a glance. Bar length is proportional to each manager's share of the 12-month total.\n\n" +
+                "Shows relative partner contribution to firmwide billings.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Bar width = manager's 12-month billings ÷ highest manager total × 265 px. Colors match the 60-month chart legend for consistency.",
-            Formula = ""
+                "Bar width = partner selected-year billings divided by the highest partner total.",
+            Formula = "Bar width = partner total / MAX(partner total)"
         };
         d["BM_YoyChart"] = new FinancialMetricDefinition
         {
             Key = "BM_YoyChart",
-            DisplayName = "Year-over-Year Growth (Chart)",
+            DisplayName = "Year-over-Year Growth Chart",
             Description =
                 "WHAT:\n" +
-                "Diverging bar chart showing each manager's year-over-year billing change. Green bars extend right for growth; red bars extend left for decline.\n\n" +
+                "Diverging bar chart showing each partner's selected-year change versus the prior year.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Makes YoY performance comparison across managers immediate and visual, with clear directional signal.\n\n" +
+                "Makes partner-level growth and decline visible without sorting the grid.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "YoY Δ = (Last 12 periods) − (Prior 12 periods). Bar width = |YoY Δ| ÷ largest absolute delta across all managers × 85 px.",
-            Formula = "Bar width = |YoY Δ| / MAX(|all YoY Δ|) × 85 px"
+                "Bar width = absolute YoY delta divided by the largest absolute partner delta.",
+            Formula = "Bar width = |YoY| / MAX(|YoY|)"
         };
         d["BM_60MoChart"] = new FinancialMetricDefinition
         {
             Key = "BM_60MoChart",
-            DisplayName = "60-Month Billing History by Manager",
+            DisplayName = "60-Month Billing History by Partner",
             Description =
                 "WHAT:\n" +
-                "Stacked bar chart of the last 60 closed accounting periods of firmwide billings, color-coded by billing manager contribution.\n\n" +
+                "Stacked monthly billings for the five-year window ending in the selected year.\n\n" +
                 "WHY IT MATTERS:\n" +
-                "Reveals billing seasonality, long-term growth trends, and which managers drive production in each period. Hover any bar segment to see the manager name and billing amount for that period.\n\n" +
+                "Shows seasonality, long-term trend, and partner mix over time.\n\n" +
                 "HOW IT IS CALCULATED:\n" +
-                "Each bar = one accounting period. Bar height = period total ÷ highest single-period total × 80 px. Each color segment = one manager's contribution. Managers with < $0.004k in a period are omitted from that bar.",
-            Formula = "Bar height = period total / MAX(all period totals) × 80 px"
+                "Each segment is LedgerAR invoiced revenue grouped by PR.Principal for one accounting period, shown in CAD-equivalent for the combined view.",
+            Formula = "Monthly SUM(-LedgerAR.Amount) by PR.Principal"
+        };
+        d["BM_CombinedGrid"] = new FinancialMetricDefinition
+        {
+            Key = "BM_CombinedGrid",
+            DisplayName = "CAD+USD Combined Grid",
+            Description =
+                "WHAT:\n" +
+                "Partner billings with CAD source rows plus USA source rows converted to CAD-equivalent.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Matches the deck's consolidated firmwide view while preserving source-currency auditability in the separate tabs.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "CAD rows are unconverted. USA rows are multiplied by the selected year's USD/CAD rate from Financials.Billed.UsdToCadRateByYear, falling back to Financials.Billed.UsdToCadRate when absent.",
+            Formula = "CAD + (USA * year USD/CAD rate)"
+        };
+        d["BM_CadGrid"] = new FinancialMetricDefinition
+        {
+            Key = "BM_CadGrid",
+            DisplayName = "CAD Only Grid",
+            Description =
+                "WHAT:\n" +
+                "Partner billings for rows bucketed as CAD.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Shows the Canadian operating entity without FX conversion.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "Includes rows where PR.Org is not USA and sums LedgerAR invoiced revenue in source currency.",
+            Formula = "SUM(-LedgerAR.Amount) WHERE OrgBucket = CAD"
+        };
+        d["BM_UsdGrid"] = new FinancialMetricDefinition
+        {
+            Key = "BM_UsdGrid",
+            DisplayName = "USD Only Grid",
+            Description =
+                "WHAT:\n" +
+                "Partner billings for rows bucketed as USA.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Shows the USA source-currency billings before CAD conversion.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "Includes rows where PR.Org is USA and sums LedgerAR invoiced revenue in USD source currency.",
+            Formula = "SUM(-LedgerAR.Amount) WHERE OrgBucket = USA"
+        };
+        d["BM_YearSelector"] = new FinancialMetricDefinition
+        {
+            Key = "BM_YearSelector",
+            DisplayName = "Year Selector",
+            Description =
+                "WHAT:\n" +
+                "Selects the reporting year for the Partner Financials grids and YoY page.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "Daler's deck is year-based, not trailing-12 based.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "The selected year loads LedgerAR periods year*100+1 through year*100+12. The YoY page compares those months to the same months in the prior year.",
+            Formula = "Period BETWEEN YYYY01 AND YYYY12"
+        };
+        d["BM_FxProvisional"] = new FinancialMetricDefinition
+        {
+            Key = "BM_FxProvisional",
+            DisplayName = "FX Provisional Badge",
+            Description =
+                "WHAT:\n" +
+                "Warning that the selected year's USD/CAD rate is provisional or a fallback.\n\n" +
+                "WHY IT MATTERS:\n" +
+                "A provisional CAD-equivalent total should not be read as reconciled to Daler's final deck.\n\n" +
+                "HOW IT IS CALCULATED:\n" +
+                "Shown when OrgFx.ResolveUsdToCadRate returns IsProvisional=true for the selected year.",
+            Formula = "IsProvisional == true"
         };
     }
 }

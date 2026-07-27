@@ -50,7 +50,7 @@ internal static class FinancialsModule
         });
         services.AddTransient<ExecutiveSummaryService>();
         services.AddTransient<ExecutiveSummaryViewModel>();
-        services.AddTransient<BillingManagerReportViewModel>();
+        services.AddTransient<PartnerFinancialsViewModel>();
         services.AddTransient<FinancialsViewModel>();
 
         return services;

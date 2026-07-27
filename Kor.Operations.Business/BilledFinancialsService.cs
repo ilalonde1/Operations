@@ -193,6 +193,8 @@ SELECT
         NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
         NULLIF(LTRIM(RTRIM(COALESCE(pr.Principal, ''))), ''),
         '(unassigned)') AS PartnerDisplayName,
+    COALESCE(l.WBS1, '') AS Wbs1,
+    COALESCE(pr.Name, '') AS ProjectName,
     l.Period,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS OrgBucket,
     SUM(-l.Amount) AS Amount
@@ -209,6 +211,8 @@ GROUP BY
         NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
         NULLIF(LTRIM(RTRIM(COALESCE(pr.Principal, ''))), ''),
         '(unassigned)'),
+    COALESCE(l.WBS1, ''),
+    COALESCE(pr.Name, ''),
     l.Period,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END
 ORDER BY l.Period, OrgBucket, PartnerDisplayName;";
@@ -224,15 +228,17 @@ ORDER BY l.Period, OrgBucket, PartnerDisplayName;";
             while (r.Read())
             {
                 ct.ThrowIfCancellationRequested();
-                if (r.IsDBNull(2) || r.IsDBNull(4))
+                if (r.IsDBNull(4) || r.IsDBNull(6))
                     continue;
 
                 rows.Add(new PartnerBilledRevenueRow(
                     PartnerEmployeeId: Convert.ToString(r.GetValue(0), CultureInfo.InvariantCulture) ?? string.Empty,
                     PartnerDisplayName: Convert.ToString(r.GetValue(1), CultureInfo.InvariantCulture) ?? string.Empty,
-                    Period: Convert.ToInt32(r.GetValue(2), CultureInfo.InvariantCulture),
-                    OrgBucket: Convert.ToString(r.GetValue(3), CultureInfo.InvariantCulture) ?? string.Empty,
-                    Amount: Convert.ToDecimal(r.GetValue(4), CultureInfo.InvariantCulture)));
+                    Wbs1: Convert.ToString(r.GetValue(2), CultureInfo.InvariantCulture) ?? string.Empty,
+                    ProjectName: Convert.ToString(r.GetValue(3), CultureInfo.InvariantCulture) ?? string.Empty,
+                    Period: Convert.ToInt32(r.GetValue(4), CultureInfo.InvariantCulture),
+                    OrgBucket: Convert.ToString(r.GetValue(5), CultureInfo.InvariantCulture) ?? string.Empty,
+                    Amount: Convert.ToDecimal(r.GetValue(6), CultureInfo.InvariantCulture)));
             }
 
             return rows;
@@ -835,6 +841,8 @@ WHERE {CanonicalLedgerArRevenuePredicate("Account", "TransType", prefixes.Count)
         public sealed record PartnerBilledRevenueRow(
             string PartnerEmployeeId,
             string PartnerDisplayName,
+            string Wbs1,
+            string ProjectName,
             int Period,
             string OrgBucket,
             decimal Amount);

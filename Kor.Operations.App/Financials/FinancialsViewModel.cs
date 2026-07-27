@@ -29,7 +29,7 @@ namespace Kor.Operations.Financials
         internal DeltekOdbcOptions? _odbcOptions;
         internal FinancialsOptions? _financialsOptions;
         public ExecutiveSummaryViewModel ExecutiveSummary { get; }
-        public BillingManagerReportViewModel BillingManagerReport { get; }
+        public PartnerFinancialsViewModel PartnerFinancials { get; }
         private bool _isLoading;
         private bool _isExporting;
         private string _errorMessage = "";
@@ -448,14 +448,14 @@ namespace Kor.Operations.Financials
                 OnPropertyChanged(nameof(CommandCenterVisibility));
                 OnPropertyChanged(nameof(ExecutiveSummaryVisibility));
                 OnPropertyChanged(nameof(ProfitLossVisibility));
-                OnPropertyChanged(nameof(BillingManagerVisibility));
+                OnPropertyChanged(nameof(PartnerFinancialsVisibility));
                 OnPropertyChanged(nameof(ClientsVisibility));
                 OnPropertyChanged(nameof(ForecastVisibility));
                 OnPropertyChanged(nameof(NonScrollableVisibility));
                 OnPropertyChanged(nameof(IsCommandCenterSelected));
                 OnPropertyChanged(nameof(IsExecutiveSummarySelected));
                 OnPropertyChanged(nameof(IsProfitLossSelected));
-                OnPropertyChanged(nameof(IsBillingManagerSelected));
+                OnPropertyChanged(nameof(IsPartnerFinancialsSelected));
                 OnPropertyChanged(nameof(IsClientsSelected));
                 OnPropertyChanged(nameof(IsForecastSelected));
             }
@@ -464,13 +464,13 @@ namespace Kor.Operations.Financials
         public bool IsCommandCenterSelected => SectionIndex == 0;
         public bool IsExecutiveSummarySelected => SectionIndex == 1;
         public bool IsProfitLossSelected => SectionIndex == 2;
-        public bool IsBillingManagerSelected => SectionIndex == 3;
+        public bool IsPartnerFinancialsSelected => SectionIndex == 3;
         public bool IsClientsSelected => SectionIndex == 4;
         public bool IsForecastSelected => SectionIndex == 5;
         public Visibility CommandCenterVisibility => SectionIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ExecutiveSummaryVisibility => SectionIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ProfitLossVisibility => SectionIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility BillingManagerVisibility => SectionIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility PartnerFinancialsVisibility => SectionIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ClientsVisibility => SectionIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ForecastVisibility => SectionIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
         /// <summary>The outer ScrollViewer hides for sections that manage their own layout (Clients, Forecast).</summary>
@@ -572,14 +572,14 @@ namespace Kor.Operations.Financials
             FinancialsService svc,
             SqlFinancialPortfolioSnapshotStore portfolioStore,
             ExecutiveSummaryViewModel executiveSummary,
-            BillingManagerReportViewModel billingManagerReport,
+            PartnerFinancialsViewModel partnerFinancials,
             DeltekOdbcOptions odbcOptions,
             FinancialsOptions financialsOptions)
         {
             _svc = svc ?? throw new ArgumentNullException(nameof(svc));
             _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
             ExecutiveSummary = executiveSummary ?? throw new ArgumentNullException(nameof(executiveSummary));
-            BillingManagerReport = billingManagerReport ?? throw new ArgumentNullException(nameof(billingManagerReport));
+            PartnerFinancials = partnerFinancials ?? throw new ArgumentNullException(nameof(partnerFinancials));
             _odbcOptions = odbcOptions;
             _financialsOptions = financialsOptions;
             if (odbcOptions != null)
@@ -687,7 +687,7 @@ namespace Kor.Operations.Financials
                     existingUtilRows: UtilizationRows.ToArray(),
                     ct);
 
-                _ = BillingManagerReport.RefreshAsync(snap, ct);
+                _ = PartnerFinancials.RefreshAsync(ct);
 
                 OnPropertyChanged(nameof(LastRefreshedDisplay));
                 OnPropertyChanged(nameof(HasData));

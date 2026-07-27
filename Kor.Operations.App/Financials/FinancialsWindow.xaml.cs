@@ -202,7 +202,7 @@ namespace Kor.Operations.Financials
             win.Show();
         }
 
-        private void ShowBillingManagerReport_Click(object sender, RoutedEventArgs e)
+        private void ShowPartnerFinancials_Click(object sender, RoutedEventArgs e)
         {
             _vm.SectionIndex = 3;
         }

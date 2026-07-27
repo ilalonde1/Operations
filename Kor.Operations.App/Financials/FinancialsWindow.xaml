@@ -391,14 +391,14 @@
                         <Border Grid.Column="5" Width="1" Background="{StaticResource Panel.Border}"/>
 
                         <Button Grid.Column="6"
-                                Content="Billings by Manager"
+                                Content="Partner Financials"
                                 MinWidth="165"
-                                Click="ShowBillingManagerReport_Click">
+                                Click="ShowPartnerFinancials_Click">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource SectionTabButton}">
                                     <Setter Property="FontWeight" Value="Normal"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsBillingManagerSelected}" Value="True">
+                                        <DataTrigger Binding="{Binding IsPartnerFinancialsSelected}" Value="True">
                                             <Setter Property="FontWeight" Value="SemiBold"/>
                                             <Setter Property="Background" Value="#FFFFE0B2"/>
                                             <Setter Property="Foreground" Value="#FF8A4B00"/>
@@ -1546,8 +1546,8 @@
                         <Grid Visibility="{Binding ProfitLossVisibility}">
                             <fin:GlProfitLossView/>
                         </Grid>
-                        <Grid Visibility="{Binding BillingManagerVisibility}">
-                            <fin:BillingManagerReportView DataContext="{Binding BillingManagerReport}"/>
+                        <Grid Visibility="{Binding PartnerFinancialsVisibility}">
+                            <fin:PartnerFinancialsView DataContext="{Binding PartnerFinancials}"/>
                         </Grid>
                     </Grid>
                 </ScrollViewer>
