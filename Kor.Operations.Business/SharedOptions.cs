@@ -89,6 +89,12 @@ public sealed class FinancialsOptions
     /// </summary>
     public string BilledOtherIncomeAccountIncludes { get; init; } = "";
     public string BilledUsdToCadRate { get; init; } = "";
+
+    /// <summary>
+    /// Comma-separated year:rate list for reporting FX, e.g. "2024:~1.3698,2025:1.3985".
+    /// Prefix the rate with ~ when the value is provisional / unconfirmed.
+    /// </summary>
+    public string UsdToCadRateByYear { get; init; } = "";
     public string BilledDefaultOrg { get; init; } = "";
     public string CashAccountWhitelist { get; init; } = "";
     public string CashUsdToCadRate { get; init; } = "";

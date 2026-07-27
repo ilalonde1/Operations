@@ -88,6 +88,7 @@ internal static class CompositionHelpers
         BilledOtherIncomeAccountExcludes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledOtherIncomeAccountExcludes] ?? "",
         BilledOtherIncomeAccountIncludes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledOtherIncomeAccountIncludes] ?? "",
         BilledUsdToCadRate = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledUsdToCadRate] ?? "",
+        UsdToCadRateByYear = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledUsdToCadRateByYear] ?? "",
         BilledDefaultOrg = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledDefaultOrg] ?? "",
         CashAccountWhitelist = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashAccountWhitelist] ?? "",
         CashUsdToCadRate = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashUsdToCadRate] ?? "",

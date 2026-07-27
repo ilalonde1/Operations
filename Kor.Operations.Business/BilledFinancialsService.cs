@@ -154,6 +154,89 @@ namespace Kor.Operations.Financials
             }, ct).ConfigureAwait(false);
         }
 
+        public async Task<IReadOnlyList<PartnerBilledRevenueRow>> LoadPartnerBilledRevenueByPeriodAsync(
+            int minPeriod,
+            int maxPeriod,
+            CancellationToken ct)
+        {
+            return await Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+                using var cn = CreateConnection();
+                cn.Open();
+                return LoadPartnerBilledRevenueByPeriod(cn, minPeriod, maxPeriod, ct);
+            }, ct).ConfigureAwait(false);
+        }
+
+        public IReadOnlyList<PartnerBilledRevenueRow> LoadPartnerBilledRevenueByPeriod(
+            OdbcConnection cn,
+            int minPeriod,
+            int maxPeriod,
+            CancellationToken ct)
+        {
+            if (cn == null)
+                throw new ArgumentNullException(nameof(cn));
+            if (maxPeriod < minPeriod)
+                (minPeriod, maxPeriod) = (maxPeriod, minPeriod);
+
+            var revenueAccounts = ParseAccounts(_financialsOptions.BilledRevenueAccounts, DefaultRevenueAccounts);
+            var prefixes = ExtractAccountPrefixes(revenueAccounts);
+            if (prefixes.Count == 0)
+                return Array.Empty<PartnerBilledRevenueRow>();
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT
+    COALESCE(pr.Principal, '') AS PartnerEmployeeId,
+    COALESCE(
+        NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
+        NULLIF(LTRIM(RTRIM(COALESCE(pr.Principal, ''))), ''),
+        '(unassigned)') AS PartnerDisplayName,
+    l.Period,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS OrgBucket,
+    SUM(-l.Amount) AS Amount
+FROM [{_catalog}].dbo.LedgerAR l
+LEFT JOIN [{_catalog}].dbo.PR pr
+  ON pr.WBS1 = l.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+LEFT JOIN [{_catalog}].dbo.EMMain em
+  ON em.Employee = pr.Principal
+WHERE l.Period BETWEEN ? AND ?
+  AND {CanonicalLedgerArRevenuePredicate("l.Account", "l.TransType", prefixes.Count)}
+GROUP BY
+    COALESCE(pr.Principal, ''),
+    COALESCE(
+        NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
+        NULLIF(LTRIM(RTRIM(COALESCE(pr.Principal, ''))), ''),
+        '(unassigned)'),
+    l.Period,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END
+ORDER BY l.Period, OrgBucket, PartnerDisplayName;";
+
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = minPeriod });
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = maxPeriod });
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
+
+            var rows = new List<PartnerBilledRevenueRow>(256);
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                if (r.IsDBNull(2) || r.IsDBNull(4))
+                    continue;
+
+                rows.Add(new PartnerBilledRevenueRow(
+                    PartnerEmployeeId: Convert.ToString(r.GetValue(0), CultureInfo.InvariantCulture) ?? string.Empty,
+                    PartnerDisplayName: Convert.ToString(r.GetValue(1), CultureInfo.InvariantCulture) ?? string.Empty,
+                    Period: Convert.ToInt32(r.GetValue(2), CultureInfo.InvariantCulture),
+                    OrgBucket: Convert.ToString(r.GetValue(3), CultureInfo.InvariantCulture) ?? string.Empty,
+                    Amount: Convert.ToDecimal(r.GetValue(4), CultureInfo.InvariantCulture)));
+            }
+
+            return rows;
+        }
         private List<LedgerAmountRow> LoadRevenue(
             OdbcConnection cn,
             int minPeriod,
@@ -172,8 +255,7 @@ namespace Kor.Operations.Financials
 SELECT Account, Period, Org, SUM(-Amount) AS Amount
 FROM [{_catalog}].dbo.LedgerAR
 WHERE Period BETWEEN ? AND ?
-  AND TransType = 'IN'
-  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes.Count)})
+  AND {CanonicalLedgerArRevenuePredicate("Account", "TransType", prefixes.Count)}
   AND (? IS NULL OR Org = ?)
 GROUP BY Account, Period, Org;";
 
@@ -598,8 +680,7 @@ WHERE LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes
             cmd.CommandText = $@"
 SELECT MAX(Period)
 FROM [{_catalog}].dbo.LedgerAR
-WHERE TransType = 'IN'
-  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes.Count)})
+WHERE {CanonicalLedgerArRevenuePredicate("Account", "TransType", prefixes.Count)}
   AND (? IS NULL OR Org = ?);";
             foreach (var prefix in prefixes)
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
@@ -612,6 +693,8 @@ WHERE TransType = 'IN'
             return period > 0 ? period : null;
         }
 
+        private static string CanonicalLedgerArRevenuePredicate(string accountExpression, string transTypeExpression, int prefixCount)
+            => $"{transTypeExpression} = 'IN'\n  AND LEFT(LTRIM(RTRIM(COALESCE({accountExpression},''))), 4) IN ({MakePlaceholders(prefixCount)})";
         // Pull the leading 4-char account prefix off each configured value so the
         // SQL predicate stays format-agnostic. Drops any value that can't yield a
         // 4-char numeric prefix (e.g. a stray empty or whitespace entry).
@@ -748,6 +831,13 @@ WHERE TransType = 'IN'
         }
 
         private sealed record LedgerAmountRow(string Account, int Period, string Org, decimal Amount);
+
+        public sealed record PartnerBilledRevenueRow(
+            string PartnerEmployeeId,
+            string PartnerDisplayName,
+            int Period,
+            string OrgBucket,
+            decimal Amount);
 
         private sealed record AccountRange(string StartAccount, string EndAccount);
     }

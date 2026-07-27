@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 
 namespace Kor.Operations.Financials;
@@ -30,5 +31,48 @@ public static class OrgFx
                 return (double)v;
         }
         return fallback;
+    }
+
+    public static IReadOnlyDictionary<int, (double Rate, bool IsProvisional)> ParseUsdToCadRateTable(string? raw)
+    {
+        var result = new Dictionary<int, (double Rate, bool IsProvisional)>();
+        if (string.IsNullOrWhiteSpace(raw))
+            return result;
+
+        foreach (var entry in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var parts = entry.Split(':', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length != 2)
+                continue;
+            if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var year))
+                continue;
+
+            var rateRaw = parts[1].Trim();
+            var isProvisional = rateRaw.StartsWith("~", StringComparison.Ordinal);
+            if (isProvisional)
+                rateRaw = rateRaw.Substring(1).Trim();
+
+            if (decimal.TryParse(rateRaw, NumberStyles.Number, CultureInfo.InvariantCulture, out var rate) && rate > 0m)
+            {
+                result[year] = ((double)rate, isProvisional);
+                continue;
+            }
+
+            if (decimal.TryParse(rateRaw, NumberStyles.Number, CultureInfo.CurrentCulture, out rate) && rate > 0m)
+                result[year] = ((double)rate, isProvisional);
+        }
+
+        return result;
+    }
+
+    public static (double Rate, bool IsProvisional) ResolveUsdToCadRate(
+        IReadOnlyDictionary<int, (double Rate, bool IsProvisional)> table,
+        int year,
+        double fallback)
+    {
+        if (table != null && table.TryGetValue(year, out var value))
+            return value;
+
+        return (fallback, true);
     }
 }

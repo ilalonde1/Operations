@@ -57,6 +57,7 @@ public static class Program
             BilledOtherIncomeAccountExcludes = financialsSection["BilledOtherIncomeAccountExcludes"] ?? "",
             BilledOtherIncomeAccountIncludes = financialsSection["BilledOtherIncomeAccountIncludes"] ?? "",
             BilledUsdToCadRate = financialsSection["BilledUsdToCadRate"] ?? "",
+            UsdToCadRateByYear = financialsSection["UsdToCadRateByYear"] ?? "",
             BilledDefaultOrg = financialsSection["BilledDefaultOrg"] ?? "",
             PnLGlFlipSign = financialsSection["PnLGlFlipSign"] ?? "",
             PnLGlTableNameLike = financialsSection["PnLGlTableNameLike"] ?? "",

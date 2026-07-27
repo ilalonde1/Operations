@@ -29,6 +29,39 @@ public sealed class LoaderIntegrationTests
     private const double DefaultUsdToCadRate = 1.36;
 
     [Fact]
+    public void BilledFinancialsService_LoadPartnerBilledRevenueByPeriod_ReconcilesToDalerDeck()
+    {
+        using var cn = IntegrationFixture.OpenDeltekConnection();
+        var odbcOptions = new DeltekOdbcOptions
+        {
+            Dsn = Environment.GetEnvironmentVariable("DELTEK_DSN") ?? "Deltek",
+            User = Environment.GetEnvironmentVariable("DELTEK_USER") ?? string.Empty,
+            Password = Environment.GetEnvironmentVariable("DELTEK_PASSWORD") ?? string.Empty,
+            Catalog = ExecutiveSummaryLoaderSupport.Catalog,
+        };
+        var svc = new BilledFinancialsService(odbcOptions, new FinancialsOptions());
+
+        var rows = svc.LoadPartnerBilledRevenueByPeriod(cn, 202601, 202605, CancellationToken.None);
+        var totals = rows
+            .GroupBy(r => (r.Period, r.OrgBucket))
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.Amount));
+
+        Assert.Equal(446_467.11m, totals[(202601, "CAD")]);
+        Assert.Equal(53_517.50m, totals[(202601, "USA")]);
+        Assert.Equal(428_971.85m, totals[(202602, "CAD")]);
+        Assert.Equal(25_950.00m, totals[(202602, "USA")]);
+        Assert.Equal(380_897.49m, totals[(202603, "CAD")]);
+        Assert.Equal(57_073.20m, totals[(202603, "USA")]);
+        Assert.Equal(325_310.15m, totals[(202604, "CAD")]);
+        Assert.Equal(29_908.32m, totals[(202604, "USA")]);
+        Assert.Equal(299_013.25m, totals[(202605, "CAD")]);
+        Assert.Equal(10_000.00m, totals[(202605, "USA")]);
+
+        Assert.Equal(1_880_659.85m, rows.Where(r => r.OrgBucket == "CAD").Sum(r => r.Amount));
+        Assert.Equal(176_449.02m, rows.Where(r => r.OrgBucket == "USA").Sum(r => r.Amount));
+    }
+
+    [Fact]
     public async Task Schema_ValidateAsync_ReturnsKnownColumnSet()
     {
         using var cn = IntegrationFixture.OpenDeltekConnection();

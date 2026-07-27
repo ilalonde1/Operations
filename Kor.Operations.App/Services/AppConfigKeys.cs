@@ -21,6 +21,7 @@ namespace Kor.Operations.Services
         public const string FinancialsBilledOtherIncomeAccountExcludes = "Financials.Billed.OtherIncomeAccountExcludes";
         public const string FinancialsBilledOtherIncomeAccountIncludes = "Financials.Billed.OtherIncomeAccountIncludes";
         public const string FinancialsBilledUsdToCadRate = "Financials.Billed.UsdToCadRate";
+        public const string FinancialsBilledUsdToCadRateByYear = "Financials.Billed.UsdToCadRateByYear";
         public const string FinancialsBilledDefaultOrg = "Financials.Billed.DefaultOrg";
         public const string FinancialsCashAccountWhitelist = "Financials.Cash.AccountWhitelist";
         public const string FinancialsCashUsdToCadRate = "Financials.Cash.UsdToCadRate";
