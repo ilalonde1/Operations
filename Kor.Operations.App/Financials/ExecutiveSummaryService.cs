@@ -1079,14 +1079,15 @@ namespace Kor.Operations.Financials
                     var fx = OrgFx.IsUsaOrg(r?.Org) ? alertFxRate : 1.0;
                     var fee = (r?.TotalFee ?? 0.0) * fx;
                     var billed = (r?.FeeBilled ?? 0.0) * fx;
-                    var backlog = fee - billed;
+                    var unposted = (r?.UnpostedFeeBilled ?? 0.0) * fx;
+                    var backlog = fee - (billed + unposted);
                     return new KpiBacklogRow(
                         Wbs1: r?.Wbs1 ?? string.Empty,
                         ProjectName: r?.Name ?? string.Empty,
                         Pm: r?.Pm ?? string.Empty,
                         Fee: fee,
                         FeeBilled: billed,
-                        UnpostedFeeBilled: (r?.UnpostedFeeBilled ?? 0.0) * fx,
+                        UnpostedFeeBilled: unposted,
                         Backlog: backlog,
                         PercentBilled: r?.PercentBilled ?? 0.0);
                 })

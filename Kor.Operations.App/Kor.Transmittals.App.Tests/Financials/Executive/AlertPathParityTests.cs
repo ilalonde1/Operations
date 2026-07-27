@@ -6,6 +6,33 @@ namespace Kor.Operations.Tests.Financials.Executive;
 
 public sealed class AlertPathParityTests
 {
+    [Fact]
+    public void Backlog_AlertRows_IncludeUnpostedOverlayLikeKpiRows()
+    {
+        var rows = new List<AppFin.FinancialsProjectRow>
+        {
+            new() { Wbs1 = "P001", Name = "A", Pm = "PM", Fee = 100_000, FeeBilled = 40_000, UnpostedFeeBilled = 15_000, Org = "CAD", PercentBilled = 0.4 },
+            new() { Wbs1 = "P002", Name = "B", Pm = "PM", Fee = 200_000, FeeBilled = 100_000, UnpostedFeeBilled = 25_000, Org = "CAD", PercentBilled = 0.5 }
+        };
+        var snap = new AppFin.FinancialsSnapshot
+        {
+            RefreshedAt = new DateTimeOffset(2026, 5, 6, 9, 0, 0, TimeSpan.Zero),
+            Rows = rows,
+            UsdToCadRate = 1.36,
+            Headline = AppFin.FinancialsHeadlineCalculator.Compute(rows, 1.36)
+        };
+
+        var result = ExecutiveSummaryTestSupport.Build(snap);
+        var kpi = ExecutiveSummaryTestSupport.Kpi(result, "Backlog");
+        var alert = ExecutiveSummaryTestSupport.Alert(result, "Backlog Declining");
+
+        var kpiRowSum = kpi.BacklogRows!.Sum(r => r.Backlog);
+        var alertRowSum = alert.BacklogRows!.Sum(r => r.Backlog);
+
+        ExecutiveSummaryTestSupport.AssertClose(snap.Headline.TotalUnbilled, alertRowSum);
+        ExecutiveSummaryTestSupport.AssertClose(kpiRowSum, alertRowSum);
+    }
+
     [Theory]
     [InlineData(100.0)]
     [InlineData(-100.0)]
