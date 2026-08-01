@@ -1,0 +1,19 @@
+[
+  {
+    "platform": "bonfire",
+    "key": "CityOfVictoria",
+    "subdomain": "victoria",
+    "buyer": "City of Victoria",
+    "domain": "ca",
+    "province": "BC",
+    "region": "Vancouver Island"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Kelowna",
+    "subdomain": "kelowna",
+    "buyer": "City of Kelowna",
+    "province": "BC",
+    "region": "Okanagan"
+  }
+]

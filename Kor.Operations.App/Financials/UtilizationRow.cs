@@ -16,6 +16,8 @@ namespace Kor.Operations.Financials
         public double PercentEngUsed { get; private set; }
         public double Fee { get; private set; }
         public double PercentBilled { get; private set; }
+        public double PercentBilledWithUnposted { get; private set; }
+        public bool   HasUnpostedBilling { get; private set; }
         public string RiskStatus { get; private set; } = "Healthy";
         public string RiskColorName { get; private set; } = "Green";
         public string DeliveryConfidence { get; private set; } = "High Confidence";
@@ -42,7 +44,7 @@ namespace Kor.Operations.Financials
             var level =
                 dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
                 dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
-                dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
+                dc.Status == "Watch" ? DeliveryConfidenceLevel.Watch :
                 DeliveryConfidenceLevel.HighConfidence;
 
             return new UtilizationRow
@@ -55,9 +57,11 @@ namespace Kor.Operations.Financials
                 EngBudget = budget,
                 EngHours = hrs,
                 RemainingEngHours = remaining,
-                PercentEngUsed = budget == 0.0 ? 0.0 : (hrs / budget),
+                PercentEngUsed = System.Math.Abs(budget) > AnalyticsThresholds.RoundingDollarFloor ? (hrs / budget) : 0.0,
                 Fee = p?.TotalFee ?? 0.0,
                 PercentBilled = p?.PercentBilled ?? 0.0,
+                PercentBilledWithUnposted = p?.PercentBilledWithUnposted ?? 0.0,
+                HasUnpostedBilling = p?.HasUnpostedBilling ?? false,
                 RiskStatus = status,
                 RiskColorName = color,
                 DeliveryConfidence = dc.Status,

@@ -1,0 +1,48 @@
+public sealed class ThrowExRewrapBad
+{
+    public void RewrapTyped()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.IO.IOException ex)
+        {
+            System.Console.WriteLine("oops");
+            throw ex;
+        }
+    }
+
+    public void RewrapBare()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception ex)
+        {
+            throw ex;
+        }
+    }
+
+    public void PlainRethrow()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception)
+        {
+            throw;
+        }
+    }
+
+    public void ThrowNew()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception ex)
+        {
+            throw new System.InvalidOperationException("wrapped", ex);
+        }
+    }
+
+    public void ThrowInnerWrap()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.IO.IOException ex)
+        {
+            throw new System.IO.IOException(ex.Message, ex);
+        }
+    }
+}

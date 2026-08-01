@@ -20,7 +20,9 @@ internal static class CompositionHelpers
     private static UserOptions? _userOptions;
     private static FinancialsOptions? _financialsOptions;
     private static CompensationOptions? _compensationOptions;
+    private static OpportunitiesOptions? _opportunitiesOptions;
     private static WatchlistSyncOptions? _watchlistSyncOptions;
+    private static McpServerOptions? _mcpServerOptions;
     private static Serilog.Core.Logger? _serilogLogger;
 
     internal static GraphOptions GetGraphOptions() => _graphOptions ??= new GraphOptions
@@ -56,7 +58,8 @@ internal static class CompositionHelpers
     {
         ProjectsRoot = GetRequiredAppSetting(AppConfigKeys.ProjectsRoot),
         StandardDetailsFileStorageRootPath = ConfigurationManager.AppSettings[AppConfigKeys.StandardDetailsFileStorageRootPath] ?? "",
-        BrochureSharedProposalsRootPath = ConfigurationManager.AppSettings[AppConfigKeys.BrochureSharedProposalsRootPath] ?? ""
+        BrochureSharedProposalsRootPath = ConfigurationManager.AppSettings[AppConfigKeys.BrochureSharedProposalsRootPath] ?? "",
+        PursuitFilesRoot = ConfigurationManager.AppSettings[AppConfigKeys.PursuitFilesRoot] ?? ""
     };
 
     internal static UserOptions GetUserOptions() => _userOptions ??= new UserOptions
@@ -73,7 +76,23 @@ internal static class CompositionHelpers
         PnLEngRate = ConfigurationManager.AppSettings["Financials.PnL.EngRate"] ?? "",
         PnLDraftRate = ConfigurationManager.AppSettings["Financials.PnL.DraftRate"] ?? "",
         PnLOtherDirectRate = ConfigurationManager.AppSettings["Financials.PnL.OtherDirectRate"] ?? "",
-        PnLOverheadRate = ConfigurationManager.AppSettings["Financials.PnL.OverheadRate"] ?? ""
+        PnLOverheadRate = ConfigurationManager.AppSettings["Financials.PnL.OverheadRate"] ?? "",
+        PnLIncomeGroupTypes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsPnLIncomeGroupTypes] ?? "",
+        PnLExpenseGroupTypes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsPnLExpenseGroupTypes] ?? "",
+        PnLGlTableNameLike = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsPnLGlTableNameLike] ?? "",
+        BilledRevenueAccounts = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledRevenueAccounts] ?? "",
+        BilledExpenseAccountRanges = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledExpenseAccountRanges] ?? "",
+        BilledExpenseAccountExcludes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledExpenseAccountExcludes] ?? "",
+        BilledExpenseAccountIncludes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledExpenseAccountIncludes] ?? "",
+        BilledOtherIncomeAccountRanges = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledOtherIncomeAccountRanges] ?? "",
+        BilledOtherIncomeAccountExcludes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledOtherIncomeAccountExcludes] ?? "",
+        BilledOtherIncomeAccountIncludes = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledOtherIncomeAccountIncludes] ?? "",
+        BilledUsdToCadRate = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledUsdToCadRate] ?? "",
+        UsdToCadRateByYear = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledUsdToCadRateByYear] ?? "",
+        BilledDefaultOrg = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsBilledDefaultOrg] ?? "",
+        CashAccountWhitelist = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashAccountWhitelist] ?? "",
+        CashUsdToCadRate = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashUsdToCadRate] ?? "",
+        CashUsdAccounts = ConfigurationManager.AppSettings[AppConfigKeys.FinancialsCashUsdAccounts] ?? ""
     };
 
     internal static CompensationOptions GetCompensationOptions() => _compensationOptions ??= new CompensationOptions
@@ -87,11 +106,23 @@ internal static class CompositionHelpers
             : 0.10
     };
 
+    internal static OpportunitiesOptions GetOpportunitiesOptions() => _opportunitiesOptions ??= new OpportunitiesOptions
+    {
+        OpportunitiesDb = GetRequiredConnectionString(AppConfigKeys.ConnectionStrings.KorOpportunitiesDb)
+    };
+
     internal static WatchlistSyncOptions GetWatchlistSyncOptions() => _watchlistSyncOptions ??= new WatchlistSyncOptions
     {
         ServiceUrl = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncServiceUrl] ?? "",
         Username   = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncUsername] ?? "",
         Password   = ConfigurationManager.AppSettings[AppConfigKeys.WatchlistSyncPassword] ?? ""
+    };
+
+    internal static McpServerOptions GetMcpServerOptions() => _mcpServerOptions ??= new McpServerOptions
+    {
+        ServiceUrl = ConfigurationManager.AppSettings[AppConfigKeys.McpServerServiceUrl] ?? "",
+        Username   = ConfigurationManager.AppSettings[AppConfigKeys.McpServerUsername]   ?? "",
+        Password   = ConfigurationManager.AppSettings[AppConfigKeys.McpServerPassword]   ?? ""
     };
 
     internal static Serilog.Core.Logger GetSerilogLogger()
@@ -112,7 +143,7 @@ internal static class CompositionHelpers
             .WriteTo.File(
                 path: Path.Combine(logDirectory, "app-.log"),
                 rollingInterval: RollingInterval.Day,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{SanitizedExceptionMessage}{NewLine}{Exception}",
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj} {Properties:j}{NewLine}{SanitizedExceptionMessage}{NewLine}{Exception}",
                 retainedFileCountLimit: 30,
                 fileSizeLimitBytes: 10L * 1024 * 1024)
             .CreateLogger();

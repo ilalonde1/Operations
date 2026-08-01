@@ -44,7 +44,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int ColumnsExported,
             int FramesExported,
             int LoadsApplied,
-            int Skipped);
+            int Skipped,
+            int OpeningsCreated = 0);
 
         public sealed class ExportInput
         {
@@ -79,6 +80,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             /// <summary>When true, SAFE model is created in kip-in-F units; all coordinates/properties converted from the internal metric representation at the driver boundary.</summary>
             public bool IsImperial { get; init; }
             public string? SafeExePathOverride { get; init; }
+            /// <summary>
+            /// When true, the orchestrator runs <see cref="WallOpeningDetector"/>
+            /// against (Lines, LineSectionHints, Slabs) after slab/wall emission
+            /// and, for each detected opening, creates an area on the parent
+            /// slab and flags it as an opening via cAreaObj.SetOpening. Mirrors
+            /// the AUTO_GEN openings in the F2K path.
+            /// </summary>
+            public bool AutoGenerateOpeningsFromWalls { get; init; } = true;
         }
 
         public sealed record SafeInstall(int Version, string ExePath, string FolderName);

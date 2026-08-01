@@ -1,0 +1,110 @@
+<Window x:Class="Kor.Operations.EngineeringTools.RebarChange.RebarChangeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KOR — Rebar Takeoff &amp; Change Detection"
+        Width="1000" Height="760"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Rebar Takeoff &amp; Change Detection" FontSize="18" FontWeight="Bold" Foreground="#1F3864"/>
+        <TextBlock Grid.Row="1" Margin="0,2,0,12" Foreground="#595959" TextWrapping="Wrap"
+                   Text="Pick the structural PDF for two issues to get every rebar change by sheet (the manual call-up compare, automated). Optionally enter concrete volumes to also get a high-level rebar weight takeoff — type them, or fill from a Revit CSV."/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
+            <TextBlock Text="Project:" VerticalAlignment="Center"/>
+            <TextBox x:Name="ProjectNameBox" Width="320" Margin="6,0,0,0" Text="5350-5430 Heather Street (31065-01)"/>
+        </StackPanel>
+
+        <!-- Before PDF -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button Content="BEFORE issue PDF…" Width="150" Padding="8,4" Click="PickBefore_Click"/>
+            <TextBox x:Name="BeforeLabelBox" Width="170" Margin="8,0,0,0" Text="IFT Addendum (2025-10-07)"/>
+            <TextBlock x:Name="BeforeStatus" Text="(no PDF)" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#777"/>
+        </StackPanel>
+
+        <!-- After PDF -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,12">
+            <Button Content="AFTER issue PDF…" Width="150" Padding="8,4" Click="PickAfter_Click"/>
+            <TextBox x:Name="AfterLabelBox" Width="170" Margin="8,0,0,0" Text="IFC (2026-03-06)"/>
+            <TextBlock x:Name="AfterStatus" Text="(no PDF)" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#777"/>
+        </StackPanel>
+
+        <!-- Concrete volumes (optional, for weight) -->
+        <Border Grid.Row="5" BorderBrush="#D9D9D9" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,6"
+                           Text="Concrete volumes for weight (m³) — optional" FontWeight="SemiBold" Foreground="#1F3864"/>
+                <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Fill BEFORE from CSV…" Padding="6,2" Margin="0,0,6,0" Click="FillBeforeFromCsv_Click"/>
+                    <Button Content="Fill AFTER from CSV…" Padding="6,2" Click="FillAfterFromCsv_Click"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="Before (m³)" Margin="8,0" FontWeight="SemiBold"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="After (m³)" Margin="8,0" FontWeight="SemiBold"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Slab / floors" VerticalAlignment="Center"/>
+                <TextBox   Grid.Row="2" Grid.Column="1" x:Name="SlabBefore" Width="100" Margin="8,2"/>
+                <TextBox   Grid.Row="2" Grid.Column="2" x:Name="SlabAfter"  Width="100" Margin="8,2"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Wall" VerticalAlignment="Center"/>
+                <TextBox   Grid.Row="3" Grid.Column="1" x:Name="WallBefore" Width="100" Margin="8,2"/>
+                <TextBox   Grid.Row="3" Grid.Column="2" x:Name="WallAfter"  Width="100" Margin="8,2"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Column" VerticalAlignment="Center"/>
+                <TextBox   Grid.Row="4" Grid.Column="1" x:Name="ColBefore" Width="100" Margin="8,2"/>
+                <TextBox   Grid.Row="4" Grid.Column="2" x:Name="ColAfter"  Width="100" Margin="8,2"/>
+
+                <StackPanel Grid.Row="4" Grid.Column="3" Orientation="Vertical" Margin="14,0,0,0" VerticalAlignment="Bottom">
+                    <TextBlock Text="Foundation" FontWeight="Normal"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox x:Name="FdnBefore" Width="100" Margin="0,2,8,2"/>
+                        <TextBox x:Name="FdnAfter"  Width="100" Margin="0,2"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="0,0,0,12">
+            <Button x:Name="GenerateBtn" Content="Generate Report (.xlsx)" Padding="16,6" FontWeight="SemiBold" Click="Generate_Click"/>
+            <Button x:Name="OverlayBtn" Content="Visual Markup (PDF)" Padding="16,6" Margin="10,0,0,0" Click="GenerateOverlay_Click"/>
+            <TextBlock x:Name="ResultStatus" VerticalAlignment="Center" Margin="14,0,0,0" FontWeight="SemiBold"/>
+        </StackPanel>
+
+        <DataGrid x:Name="PreviewGrid" Grid.Row="7" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Sheet" Binding="{Binding Sheet}" Width="90"/>
+                <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="280"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="150"/>
+                <DataGridTextColumn Header="Before" Binding="{Binding BeforeCount}" Width="60"/>
+                <DataGridTextColumn Header="After" Binding="{Binding AfterCount}" Width="60"/>
+                <DataGridTextColumn Header="Net Δ" Binding="{Binding NetDelta}" Width="60"/>
+                <DataGridTextColumn Header="Key changes" Binding="{Binding ChangeText}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</Window>

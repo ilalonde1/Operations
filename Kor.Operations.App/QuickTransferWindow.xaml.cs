@@ -310,7 +310,7 @@ namespace Kor.Operations
                 StatusText.Text = "Error.";
                 MessageBox.Show(this,
                     "Quick transfer failed:\n\n" + ex.Message,
-                    "Quick Transfer",
+                    "Email Filer — Quick Transfer Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -592,7 +592,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     string.Join("\n", errors),
-                    "Missing information",
+                    "Email Filer — Missing Information",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return false;

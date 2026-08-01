@@ -1,0 +1,41 @@
+public sealed class SyncOverAsyncBad
+{
+    public void UnannotatedSingleLine()
+    {
+        var t = System.Threading.Tasks.Task.FromResult(1);
+        var r = t.GetAwaiter().GetResult();
+        System.Console.WriteLine(r);
+    }
+
+    public void UnannotatedMultilineFluent()
+    {
+        var r = System.Threading.Tasks.Task.FromResult(1)
+            .GetAwaiter()
+            .GetResult();
+        System.Console.WriteLine(r);
+    }
+
+    public void AnnotatedSameLine()
+    {
+        var t = System.Threading.Tasks.Task.FromResult(1);
+        var r = t.GetAwaiter().GetResult(); // sync-over-async OK: trivial test
+        System.Console.WriteLine(r);
+    }
+
+    public void AnnotatedPrecedingLine()
+    {
+        var t = System.Threading.Tasks.Task.FromResult(1);
+        // sync-over-async OK: trivial test
+        var r = t.GetAwaiter().GetResult();
+        System.Console.WriteLine(r);
+    }
+
+    public void AnnotatedMultilineFluent()
+    {
+        // sync-over-async OK: trivial test
+        var r = System.Threading.Tasks.Task.FromResult(1)
+            .GetAwaiter()
+            .GetResult();
+        System.Console.WriteLine(r);
+    }
+}

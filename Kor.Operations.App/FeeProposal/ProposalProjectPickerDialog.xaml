@@ -24,6 +24,7 @@
 
         <ListBox x:Name="ResultsList" Grid.Row="1"
                  SelectionMode="Single"
+                 Cursor="Hand"
                  MouseDoubleClick="ResultsList_MouseDoubleClick"
                  Background="{StaticResource Panel.Background}">
             <ListBox.ItemTemplate>

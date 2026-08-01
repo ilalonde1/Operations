@@ -1,0 +1,19 @@
+LoserId,SurvivorId,Reason
+70730,71330,Ron Hart Architect Ltd -> Ron Hart Architecture (same firm same principal)
+38968,69589,Musson Cattell Mackey Partnership Architects Designers Planners -> base canonical
+69915,70684,Mallen Gowing Berzins Architecture (MGBA) -> base canonical
+25129,69646,Francl Architecture Inc. -> Francl Architecture (same firm)
+70991,69351,Birmingham & Wood Architects & Planners -> Birmingham & Wood (same firm)
+38966,54571,KMBR Architects Planners Inc. -> KMBR Architects (same firm)
+70805,54565,Keystone Architecture and Planning -> Keystone Architecture (same firm)
+70086,70087,Workun Garrick description-variant duplicate
+70073,68878,Public Architecture and Communication -> PUBLIC Architecture (same firm)
+69269,69120,Kasian Architecture & Interiors -> Kasian Architecture (same firm)
+70664,70543,Kasian Architecture Interior Design and Planning (Victoria) -> base canonical (with Clendor)
+69269,70543,Kasian Architecture & Interiors -> Clendor canonical (NOTE: 2nd merge of 69269 may fail - acceptable)
+69120,70543,Kasian Architecture -> Clendor canonical
+70126,69865,DIALOG BC ... Inc. -> DIALOG BC ... (same firm)
+70689,12496,NORR Architects Planners Inc. -> NORR Architects Engineers Planners (Clendor)
+69110,68933,HDR | CEI Architecture Associates Inc. -> HDR | CEI Architecture (same firm)
+54865,142,Capital Region Housing Corporation (CRHC) -> base CRHC (Clendor)
+38938,147,Aquilini Investment Group / Aquilini Development -> Aquilini Investment Group (Clendor)

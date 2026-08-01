@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.Options;
 using Serilog;
 
 namespace Kor.Operations.Services;
@@ -27,39 +28,32 @@ internal delegate Task<string> AiToolDispatcher(string toolName, JsonElement inp
 internal sealed class AppAiService
 {
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(60) };
+    private static readonly HttpClient _mcpHttp = new() { Timeout = TimeSpan.FromMinutes(4) };
+
     private readonly string _apiKey;
     private readonly AppAiContextBuilder _contextBuilder;
+    private readonly McpServerOptions _mcp;
+    private readonly string _mcpAuthHeader;
 
-    private static readonly string SystemPromptBase =
-        "You are an analytics assistant for KOR Structural, a structural engineering firm in Vancouver, BC. " +
-        "You have access to the firm's complete project, employee, and financial performance data provided below.\n\n" +
-        "Your audience is firm principals and project managers who are NOT data analysts. " +
-        "Explain metrics, scores, and trends in plain, actionable language. Use specific names and numbers. " +
-        "Be concise but thorough — answer in 3-6 sentences unless the question needs more.\n\n" +
-        "You can compare employees, identify trends, flag concerns, rank projects, analyze clients, " +
-        "and make recommendations based on the data. " +
-        "If asked about something not in the data, say so clearly. Do NOT make up data or reference " +
-        "information outside of what's provided below.\n\n" +
-        "SCORING METHODOLOGY:\n" +
-        "Employee Productivity Score (0-100, maps to A+ through F):\n" +
-        "  Billable Rate (30%) — % of total hours on billable projects vs overhead/admin\n" +
-        "  Efficiency (40%) — Fee/Hr percentile rank vs all employees. 50 = median.\n" +
-        "  Project Health (30%) — % of hours on projects NOT over budget\n\n" +
-        "PM/DM Performance Score (0-100, maps to A+ through F):\n" +
-        "  Delivery Health (30%) — % of projects not over budget\n" +
-        "  Estimation Accuracy (30%) — Budget delta percentile rank\n" +
-        "  Revenue Efficiency (20%) — Fee/Hr percentile rank\n" +
-        "  AR Management (20%) — % of AR not 90+ days overdue\n\n" +
-        "Delivery Confidence (per project): Critical / At Risk / Watch / High Confidence\n" +
-        "Consistency: CV of hours across projects. Steady < 0.3, Variable < 0.6, Erratic ≥ 0.6\n" +
-        "Peer Comparison: Fee/Hr compared against employees working on same construction type\n\n";
+    internal bool IsConfigured => _mcp.IsConfigured || !string.IsNullOrWhiteSpace(_apiKey);
 
-    internal bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
-
-    internal AppAiService(string apiKey, AppAiContextBuilder contextBuilder)
+    internal AppAiService(string apiKey, AppAiContextBuilder contextBuilder, McpServerOptions mcp)
     {
         _apiKey = (apiKey ?? "").Trim();
+        // Phase 11e originally intended to delete AppAiContextBuilder and let
+        // Claude pull everything via tools. That intent broke when AI was asked
+        // about a KPI's methodology (Net Multiplier, 2026-05-10): the dictionary
+        // lives in C# Definitions.* files, not in any SQL table, so Claude
+        // couldn't pull it and made up its own formula instead. Batch 60
+        // resurrects the push path — every registered IAiContextProvider's
+        // BuildContext() is concatenated into the prompt on each Ask, so the
+        // Financial Metric Dictionary entries (post-Batch 58) actually reach
+        // Claude in KOR's voice. Tradeoff captured in Kor.Operations.Mcp.md.
         _contextBuilder = contextBuilder;
+        _mcp = mcp;
+        _mcpAuthHeader = _mcp.IsConfigured
+            ? "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_mcp.Username}:{_mcp.Password}"))
+            : "";
     }
 
     internal async Task<string> AskAsync(
@@ -68,73 +62,96 @@ internal sealed class AppAiService
         CancellationToken ct = default,
         string? systemPromptOverride = null)
     {
-        if (!IsConfigured) return "AI is not configured. Set the KOR_ANTHROPIC_KEY environment variable.";
         if (conversation.Count == 0) return "";
 
-        string systemPrompt;
-        if (systemPromptOverride is not null)
+        // The MCP gateway holds the system prompt + KOR rules. systemPromptOverride
+        // is ignored on this path; the server is canonical. Callers that need a
+        // custom system prompt should still be using AskWithToolsAsync (PdfToSafe).
+        if (!_mcp.IsConfigured)
         {
-            // Caller supplied a complete system prompt (context already embedded).
-            systemPrompt = systemPromptOverride;
-        }
-        else
-        {
-            var fullContext = _contextBuilder.BuildFullContext(localContext);
-            systemPrompt = SystemPromptBase + "FIRM DATA:\n" + fullContext;
+            return "AI is not configured. Set McpServer.ServiceUrl/Username/Password in App.config.";
         }
 
-        var messages = conversation.Select(m => new { role = m.Role, content = m.Content }).ToArray();
-
-        var requestBody = new
+        // Build the full context (every registered IAiContextProvider's
+        // BuildContext output concatenated, plus the caller's localContext
+        // as "CURRENTLY SELECTED") so Claude sees BOTH firm-wide methodology
+        // (KPI dictionary entries post-Batch 58) AND what the user is
+        // currently looking at.
+        //
+        // Multi-turn (Batch 65): the latest user message becomes `question`
+        // (with [CURRENTLY VIEWING] appended); every PRIOR turn is shipped
+        // as `history` so MCP can replay the conversation. The context block
+        // is appended ONLY to the latest user message — historical turns
+        // keep their original clean text so Claude sees the conversation
+        // shape, not a wall of repeated dashboards.
+        var lastUserIndex = -1;
+        for (int i = conversation.Count - 1; i >= 0; i--)
         {
-            model = "claude-sonnet-4-6",
-            max_tokens = 4096,
-            system = systemPrompt,
-            messages
-        };
-
-        for (int attempt = 0; attempt < 3; attempt++)
-        {
-            try
-            {
-                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
-                {
-                    Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-                };
-                request.Headers.Add("x-api-key", _apiKey);
-                request.Headers.Add("anthropic-version", "2023-06-01");
-
-                using var response = await _http.SendAsync(request, ct);
-
-                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                {
-                    var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(5 * (attempt + 1));
-                    await Task.Delay(retryAfter, ct);
-                    continue;
-                }
-
-                response.EnsureSuccessStatusCode();
-
-                var json = await response.Content.ReadAsStringAsync(ct);
-                using var doc = JsonDocument.Parse(json);
-                return doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
-            }
-            catch (OperationCanceledException)
-            {
-                return "";
-            }
-            catch (Exception ex)
-            {
-                if (attempt == 2)
-                {
-                    Log.Warning(ex, "AI request failed after 3 attempts.");
-                    return $"Unable to get AI response: {ex.Message}";
-                }
-                await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)), ct);
-            }
+            if (string.Equals(conversation[i].Role, "user", StringComparison.OrdinalIgnoreCase))
+            { lastUserIndex = i; break; }
         }
-        return "AI request failed after retries. Try again in a moment.";
+        if (lastUserIndex < 0 || string.IsNullOrWhiteSpace(conversation[lastUserIndex].Content))
+            return "";
+
+        var lastUserContent = conversation[lastUserIndex].Content;
+
+        string fullContext = _contextBuilder?.BuildFullContext(localContext) ?? (localContext ?? "");
+        var question = string.IsNullOrWhiteSpace(fullContext)
+            ? lastUserContent
+            : $"{lastUserContent}\n\n[CURRENTLY VIEWING]\n{fullContext}";
+
+        var history = new List<object>(lastUserIndex);
+        for (int i = 0; i < lastUserIndex; i++)
+        {
+            var (role, content) = conversation[i];
+            if (string.IsNullOrWhiteSpace(content)) continue;
+            history.Add(new { role, content });
+        }
+
+        var url = _mcp.ServiceUrl.TrimEnd('/') + "/ask";
+        var body = JsonSerializer.Serialize(history.Count > 0
+            ? (object)new { question, history }
+            : (object)new { question });
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json")
+            };
+            request.Headers.TryAddWithoutValidation("Authorization", _mcpAuthHeader);
+            var upn = global::Kor.Operations.OperationsApp.SignedInUserUpn;
+            if (!string.IsNullOrWhiteSpace(upn))
+            {
+                request.Headers.TryAddWithoutValidation("X-Kor-User-Upn", upn);
+            }
+
+            using var response = await _mcpHttp.SendAsync(request, ct).ConfigureAwait(false);
+            var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Log.Warning("MCP /ask returned {Status}: {Body}", (int)response.StatusCode, json);
+                return $"AI service returned HTTP {(int)response.StatusCode}. {Truncate(json, 500)}";
+            }
+
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            return root.TryGetProperty("answer", out var answerEl) ? (answerEl.GetString() ?? "") : "";
+        }
+        catch (OperationCanceledException)
+        {
+            return "";
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "MCP /ask request failed.");
+            return $"Unable to reach AI service: {ex.Message}";
+        }
     }
+
+    private static string Truncate(string s, int max)
+        => string.IsNullOrEmpty(s) ? "" : (s.Length > max ? s.Substring(0, max) : s);
 
     /// <summary>
     /// Tool-use conversation. Sends the conversation + tool definitions, executes any
@@ -206,48 +223,38 @@ internal sealed class AppAiService
             };
 
             JsonDocument? doc = null;
-            for (int attempt = 0; attempt < 3; attempt++)
+            try
             {
-                try
-                {
-                    using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+                using var response = await HttpRetryPolicy.SendAsync(
+                    _http,
+                    () =>
                     {
-                        Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-                    };
-                    request.Headers.Add("x-api-key", _apiKey);
-                    request.Headers.Add("anthropic-version", "2023-06-01");
+                        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+                        {
+                            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
+                        };
+                        request.Headers.Add("x-api-key", _apiKey);
+                        request.Headers.Add("anthropic-version", "2023-06-01");
+                        return request;
+                    },
+                    ct).ConfigureAwait(false);
 
-                    using var response = await _http.SendAsync(request, ct);
-
-                    if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                    {
-                        var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(5 * (attempt + 1));
-                        await Task.Delay(retryAfter, ct);
-                        continue;
-                    }
-
-                    response.EnsureSuccessStatusCode();
-                    var json = await response.Content.ReadAsStringAsync(ct);
-                    doc = JsonDocument.Parse(json);
-                    break;
-                }
-                catch (OperationCanceledException)
-                {
-                    return new AiToolsResult(accumulatedText.ToString(), toolCallsExecuted);
-                }
-                catch (Exception ex)
-                {
-                    if (attempt == 2)
-                    {
-                        Log.Warning(ex, "AI tool request failed after 3 attempts.");
-                        return new AiToolsResult(
-                            accumulatedText.Length > 0
-                                ? accumulatedText.ToString()
-                                : $"Unable to get AI response: {ex.Message}",
-                            toolCallsExecuted);
-                    }
-                    await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)), ct);
-                }
+                response.EnsureSuccessStatusCode();
+                var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                doc = JsonDocument.Parse(json);
+            }
+            catch (OperationCanceledException)
+            {
+                return new AiToolsResult(accumulatedText.ToString(), toolCallsExecuted);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "AI tool request failed after retries.");
+                return new AiToolsResult(
+                    accumulatedText.Length > 0
+                        ? accumulatedText.ToString()
+                        : $"Unable to get AI response: {ex.Message}",
+                    toolCallsExecuted);
             }
 
             if (doc is null)

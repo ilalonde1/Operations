@@ -29,16 +29,55 @@ namespace Kor.Operations.Financials
         public const int NonBillable = 80;
     }
 
+    internal static class FinancialsOverheadRate
+    {
+        // AEC-industry typical overhead multiplier on direct labor: 1.50-1.75.
+        // 1.65 is the midpoint and what KOR's accountant uses as the published
+        // firmwide rate. If Financials.PnL.OverheadRate is set in App.config,
+        // that value wins. This is a multiplier on direct labor, not margin.
+        internal const double Default = 1.65;
+
+        internal static double ParseOrDefault(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return Default;
+            if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && v >= 0.0)
+                return v;
+            if (double.TryParse(raw, NumberStyles.Float, CultureInfo.CurrentCulture, out v) && v >= 0.0)
+                return v;
+            return Default;
+        }
+    }
+
     public sealed class FinancialsService
     {
         private readonly object _cacheLock = new();
         private FinancialsSnapshot? _cache;
         private readonly DeltekOdbcOptions _odbcOptions;
+        private readonly FinancialsOptions _financialsOptions;
+        private readonly ActiveCollectionsInvoiceProvider? _activeCollectionsProvider;
 
-        public FinancialsService(DeltekOdbcOptions odbcOptions)
+        public FinancialsService(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
+            : this(odbcOptions, financialsOptions, activeCollectionsProvider: null)
+        {
+        }
+
+        public FinancialsService(
+            DeltekOdbcOptions odbcOptions,
+            FinancialsOptions financialsOptions,
+            ActiveCollectionsInvoiceProvider? activeCollectionsProvider)
         {
             _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+            _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+            // Phase 12-5b: optional. When wired, the Clients-view rollups split
+            // Outstanding into Regular vs InCollections; otherwise the new
+            // fields stay at zero and the legacy total carries through.
+            _activeCollectionsProvider = activeCollectionsProvider;
         }
+
+        // USD→CAD rate used to roll USA-org rows into firmwide CAD-equivalent KPIs.
+        // Reads Financials.Billed.UsdToCadRate (defaults to 1.36 — same as Cash + AR).
+        private double UsdToCadRate => OrgFx.ParseUsdToCadRate(_financialsOptions?.BilledUsdToCadRate);
 
         private bool? _cacheWatchlistOnly;
 
@@ -60,14 +99,66 @@ namespace Kor.Operations.Financials
             return snap;
         }
 
+        public async Task<DateTime?> GetMaxPostedPeriodAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
+            var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
+                              () => new Dictionary<string, string>());
+
+            return await Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct).ConfigureAwait(false);
+        }
+
         private async Task<FinancialsSnapshot> LoadSnapshotAsync(CancellationToken ct, bool watchlistOnly = true)
         {
             var refreshedAt = DateTimeOffset.Now;
 
             var dsn     = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
-            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
             var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "", _odbcOptions.Password ?? "",
                               () => new Dictionary<string, string>());
+            var overheadRate = FinancialsOverheadRate.ParseOrDefault(_financialsOptions.PnLOverheadRate);
+
+            // Phase 12-5b: kick off the active-collections-case lookup in
+            // parallel with the Deltek loads. Best-effort: any failure
+            // (provider unconfigured, MCP unreachable, slow ODBC for the
+            // invoice-level pass) degrades the Clients view to the legacy
+            // single Outstanding column without blocking anything else.
+            var inCollectionsTask = Task.Run<IReadOnlyDictionary<string, (double Total, double Aged90Plus)>?>(async () =>
+            {
+                if (_activeCollectionsProvider is null)
+                {
+                    return null;
+                }
+
+                IReadOnlySet<(string Wbs1, string Invoice)>? activeSet;
+                try
+                {
+                    activeSet = await _activeCollectionsProvider(ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.ForContext<FinancialsService>().Warning(ex, "Active collections invoice fetch failed; Clients view will not show split.");
+                    return null;
+                }
+
+                if (activeSet is null || activeSet.Count == 0)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    return LoadInCollectionsByWbs1Sync(factory, catalog, DateTime.Today, UsdToCadRate, activeSet, ct);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.ForContext<FinancialsService>().Warning(ex, "In-collections AR rollup failed; Clients view will not show split.");
+                    return null;
+                }
+            }, ct);
 
             // 1) Base project list + peer dataset — run in parallel (peer doesn't need wbs1List)
             var tBase = Task.Run(() => LoadBaseProjectsSync(factory, catalog, ct, watchlistOnly), ct);
@@ -90,9 +181,11 @@ namespace Kor.Operations.Financials
             {
                 // Even with zero active projects, load the lifetime client portfolio and revenue
                 // history so those tabs render historical data.
-                var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
-                var emptyHistoryTask = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
-                await Task.WhenAll(emptyRollupsTask, emptyHistoryTask).ConfigureAwait(false);
+                var emptyInCollections = await inCollectionsTask.ConfigureAwait(false);
+                var emptyRollupsTask = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, overheadRate, emptyInCollections, ct), ct);
+                var emptyHistoryTask = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
+                var emptyMaxPostedTask = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
+                await Task.WhenAll(emptyRollupsTask, emptyHistoryTask, emptyMaxPostedTask).ConfigureAwait(false);
                 return new FinancialsSnapshot
                 {
                     RefreshedAt = refreshedAt,
@@ -100,31 +193,41 @@ namespace Kor.Operations.Financials
                     Rows = new List<FinancialsProjectRow>(),
                     ClientRollups = emptyRollupsTask.Result,
                     RevenueHistory = emptyHistoryTask.Result,
+                    MaxPostedPeriod = emptyMaxPostedTask.Result,
                 };
             }
 
             // 2-10) All independent of each other — run on separate connections in parallel
             var t2  = Task.Run(() => LoadFeeBilledSync(factory, catalog, wbs1List, ct), ct);
+            var t2c = Task.Run(() => LoadUnpostedFeeBilledSync(factory, catalog, wbs1List, ct), ct);
             var t2b = Task.Run(() => LoadHourlyRevenueSync(factory, catalog, wbs1List, ct), ct);
             var t3  = Task.Run(() => LoadHoursByLaborSync(factory, catalog, wbs1List, ct), ct);
-            var t4  = Task.Run(() => LoadPrLaborSync(factory, catalog, wbs1List, ct), ct);
+            var t3b = Task.Run(() => LoadCostByLaborSync(factory, catalog, wbs1List, ct), ct);
             var t5  = Task.Run(() => LoadApSync(factory, catalog, wbs1List, ct), ct);
             var t6  = Task.Run(() => LoadInspectionCountsSync(factory, catalog, wbs1List, ct), ct);
             var t7  = Task.Run(() => LoadClientLookupSync(factory, catalog, wbs1List, ct), ct);
-            var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, ct), ct);
-            var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, ct), ct);
+            // Phase 12-5b: t8 depends on inCollectionsTask. We wait inline so
+            // LoadClientPortfolioSync gets the completed dictionary; the wait
+            // is amortized against the parallel Deltek loads we kicked off
+            // alongside it, so net wall-clock impact is minimal.
+            var inCollectionsByWbs1 = await inCollectionsTask.ConfigureAwait(false);
+            var t8  = Task.Run(() => LoadClientPortfolioSync(factory, catalog, UsdToCadRate, overheadRate, inCollectionsByWbs1, ct), ct);
+            var t9  = Task.Run(() => LoadRevenueHistorySync(factory, catalog, UsdToCadRate, ct), ct);
+            var t10 = Task.Run(() => LoadMaxPostedPeriodSync(factory, catalog, ct), ct);
 
-            await Task.WhenAll(t2, t2b, t3, t4, t5, t6, t7, t8, t9).ConfigureAwait(false);
+            await Task.WhenAll(t2, t2c, t2b, t3, t3b, t5, t6, t7, t8, t9, t10).ConfigureAwait(false);
 
             var feeBilledByWbs1    = t2.Result;
+            var unpostedFeeBilledByWbs1 = t2c.Result;
             var hourlyRevByWbs1    = t2b.Result;
             var hrsByWbs1AndLabor  = t3.Result;
-            var prLaborBudgetByKey = t4.Result;
+            var costByWbs1AndLabor = t3b.Result;
             var apByWbs1           = t5.Result;
             var inspectionsByWbs1  = t6.Result;
             var clientByWbs1       = t7.Result;
             var clientRollups      = t8.Result;
             var revenueHistory     = t9.Result;
+            var maxPostedPeriod    = t10.Result;
 
             // 6) Compute row KPIs and cache delivery confidence (preserves Excel semantics)
             var u1 = _odbcOptions.EngRate;
@@ -149,14 +252,18 @@ namespace Kor.Operations.Financials
                 var admin   = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.Admin);
                 var nonBill = GetHrs(hrsByWbs1AndLabor, p.Wbs1, LaborCodes.NonBillable);
 
-                var prLaborIdEng   = _odbcOptions.PrLaborIdEng;
-                var prLaborIdDraft = _odbcOptions.PrLaborIdDraft;
-                var engBudgetActual   = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm)  && lm.TryGetValue(prLaborIdEng,   out var eb) ? eb : 0.0;
-                var draftBudgetActual = prLaborBudgetByKey.TryGetValue(p.Wbs1, out var lm2) && lm2.TryGetValue(prLaborIdDraft, out var db) ? db : 0.0;
+                var engCost     = GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.Engineering)
+                                + GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.Checking);
+                var draftCost   = GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.Drafting);
+                var inspCost    = GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.Inspection);
+                var docPrepCost = GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.DocPrep);
+                var genCost     = GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.General);
+                var adminCost   = GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.Admin);
+                var nonBillCost = GetCost(costByWbs1AndLabor, p.Wbs1, LaborCodes.NonBillable);
 
                 // Budget modes:
                 //   Target Rate: Fee / TargetRate for ALL projects. Simple, predictable, driven by the Target slider.
-                //   Peer-Based:  1) Deltek actual  2) Peer median from similar closed projects  3) Formula fallback.
+                //   Peer-Based:  1) Peer median from similar closed projects  2) Formula fallback.
                 var peerCount = 0;
                 string budgetSource;
                 double engBudget, draftBudget;
@@ -166,12 +273,6 @@ namespace Kor.Operations.Financials
                     engBudget = CalcBudget(totalFee, _odbcOptions.EngRate, u3);
                     draftBudget = CalcBudget(totalFee, _odbcOptions.DraftRate, u3);
                     budgetSource = "Target Rate";
-                }
-                else if (engBudgetActual > 0 && draftBudgetActual > 0)
-                {
-                    engBudget = engBudgetActual;
-                    draftBudget = draftBudgetActual;
-                    budgetSource = "Deltek";
                 }
                 else
                 {
@@ -209,11 +310,13 @@ namespace Kor.Operations.Financials
                     ProjectCategory  = p.ProjectCategory,
                     DraftingType     = p.DraftingType,
                     IsOnHotlist      = p.IsOnHotlist,
+                    Org              = p.Org,
 
                     Gfa              = p.Gfa,
                     Fee              = p.Fee,
                     HourlyRevenue    = hourlyRev,
                     FeeBilled        = feeBilled,
+                    UnpostedFeeBilled = unpostedFeeBilledByWbs1.TryGetValue(p.Wbs1, out var ufb) ? ufb : 0.0,
                     SubconsultantCost = apByWbs1.TryGetValue(p.Wbs1, out var ap) ? ap : 0.0,
                     PercentBilled    = SafeDiv(feeBilled, totalFee),
 
@@ -224,16 +327,23 @@ namespace Kor.Operations.Financials
                     GenHrs    = gen,
                     AdminHrs  = admin,
                     NonBillHrs = nonBill,
+                    EngLaborCost     = engCost,
+                    DraftLaborCost   = draftCost,
+                    InspLaborCost    = inspCost,
+                    DocPrepLaborCost = docPrepCost,
+                    GenLaborCost     = genCost,
+                    AdminLaborCost   = adminCost,
+                    NonBillLaborCost = nonBillCost,
 
                     DraftBudget      = draftBudget,
                     EngBudget        = engBudget,
-                    DraftBudgetActual = draftBudgetActual,
-                    EngBudgetActual  = engBudgetActual,
                     DraftPercent     = SafeDiv(draft, draftBudget),
                     EngPercent       = SafeDiv(eng,   engBudget),
 
                     FeePerHours    = feeHoursDen > 0 ? (totalFee / feeHoursDen) : 0.0,
                     BilledPerHours = SafeDiv(feeBilled, billedHoursDen),
+                    BilledPerHoursWithUnposted = SafeDiv(feeBilled + (unpostedFeeBilledByWbs1.TryGetValue(p.Wbs1, out var ufb2) ? ufb2 : 0.0), billedHoursDen),
+                    OverheadRate = overheadRate,
                 };
                 row.BudgetPeerCount = peerCount;
                 row.BudgetSource = budgetSource;
@@ -252,8 +362,9 @@ namespace Kor.Operations.Financials
                 rows.Add(row);
             }
 
-            // 8) Compute headline KPIs (match Excel)
-            var headline = ComputeHeadline(rows);
+            // 8) Compute headline KPIs (match Excel) — USA rows roll into CAD-equivalent.
+            var fxRate = UsdToCadRate;
+            var headline = FinancialsHeadlineCalculator.Compute(rows, fxRate);
             return new FinancialsSnapshot
             {
                 RefreshedAt = refreshedAt,
@@ -261,6 +372,8 @@ namespace Kor.Operations.Financials
                 Rows = rows,
                 ClientRollups = clientRollups,
                 RevenueHistory = revenueHistory,
+                MaxPostedPeriod = maxPostedPeriod,
+                UsdToCadRate = fxRate,
             };
         }
 
@@ -295,7 +408,8 @@ SELECT
     em3.LastName AS BmLastName,
     pctf.CustConstructionType,
     pctf.CustProjectCategory,
-    pctf.CustDraftingType
+    pctf.CustDraftingType,
+    pr.Org
  FROM [{catalog}].dbo.PR pr
  LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
      ON pctf.WBS1 = pr.WBS1
@@ -309,10 +423,13 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
  WHERE
      (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
      AND UPPER(LTRIM(RTRIM(pr.Status))) IN ('A', 'ACTIVE')
+     AND pr.WBS1 NOT LIKE '[A-Z]%'
+     AND pr.WBS1 NOT LIKE '9[A-Z]%'
+     AND pr.WBS1 NOT LIKE '99%'
      {(watchlistOnly ? "AND UPPER(LTRIM(RTRIM(pctf.CustWatchlist))) IN ('Y', 'YES', 'TRUE', '1')" : "")}
  ORDER BY pr.WBS1;";
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -335,6 +452,7 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
                     Phase = GetTrimmed(r, 6), Gfa = GetDouble(r, 7), Fee = GetDouble(r, 8),
                     ConstructionType = GetTrimmed(r, 16), ProjectCategory = GetTrimmed(r, 17), DraftingType = GetTrimmed(r, 18),
                     IsOnHotlist = isHotlisted,
+                    Org = GetTrimmed(r, 19),
                 });
             }
             return projects;
@@ -347,17 +465,78 @@ LEFT JOIN [{catalog}].dbo.EMMain em3
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (fee billed).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 100))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
-SELECT WBS1, SUM(Revenue) AS FeeBilled
+SELECT WBS1, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) AS FeeBilled
 FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var wbs1 = GetTrimmed(r, 0);
+                    if (!string.IsNullOrWhiteSpace(wbs1))
+                        result[wbs1] = GetDouble(r, 1);
+                }
+            }
+            return result;
+        }
+
+        private static Dictionary<string, double> LoadUnpostedFeeBilledSync(
+            VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
+        {
+            var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (unposted fee billed).", ex); }
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
+            {
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                var phInv = MakeInListPlaceholders(chunk.Count);
+                var phPr  = MakeInListPlaceholders(chunk.Count);
+                // "Unposted billings" = invoices that have been issued but haven't yet
+                // rolled up to PRSummaryMain. The invoiced side MUST come from
+                // LedgerAR (TransType='IN', Daler's canonical 4001/4003/4210/4220/4240
+                // account list), NOT from AR.InvBalanceSourceCurrency: AR's open balance
+                // goes to 0 once an invoice is collected, so at KOR's ~3-month posting
+                // lag — where most invoices are paid before they post — using AR
+                // silently drops the bulk of legitimately unposted billings.
+                cmd.CommandText = $@"
+SELECT WBS1, SUM(UnpostedAmt) AS UnpostedFeeBilled
+FROM (
+    SELECT
+        invP.WBS1,
+        invP.Period,
+        invP.InvAmt - COALESCE(prP.PostedAmt, 0) AS UnpostedAmt
+    FROM (
+        SELECT WBS1, Period, SUM(-Amount) AS InvAmt
+        FROM [{catalog}].dbo.LedgerAR
+        WHERE WBS1 IN ({phInv})
+          AND TransType = 'IN'
+          AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ('4001', '4003', '4210', '4220', '4240')
+        GROUP BY WBS1, Period
+    ) invP
+    LEFT JOIN (
+        SELECT WBS1, Period,
+               SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS PostedAmt
+        FROM [{catalog}].dbo.PRSummaryMain
+        WHERE WBS1 IN ({phPr})
+        GROUP BY WBS1, Period
+    ) prP
+        ON prP.WBS1 = invP.WBS1 AND prP.Period = invP.Period
+    WHERE invP.InvAmt - COALESCE(prP.PostedAmt, 0) > 0
+) gap
+GROUP BY WBS1;";
+                AddInListParameters(cmd, chunk);
+                AddInListParameters(cmd, chunk);
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -377,12 +556,12 @@ GROUP BY WBS1;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (hourly revenue).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
-SELECT sm.WBS1, SUM(COALESCE(sm.Revenue, 0)) AS HourlyRevenue
+SELECT sm.WBS1, SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS HourlyRevenue
 FROM [{catalog}].dbo.PRSummaryMain sm
 INNER JOIN [{catalog}].dbo.PR pr
     ON pr.WBS1 = sm.WBS1 AND pr.WBS2 = sm.WBS2 AND pr.WBS3 = sm.WBS3
@@ -391,9 +570,9 @@ WHERE sm.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
   AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
   AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
 GROUP BY sm.WBS1
-HAVING SUM(COALESCE(sm.Revenue, 0)) > 0;";
+HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) > 0;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -413,17 +592,18 @@ HAVING SUM(COALESCE(sm.Revenue, 0)) > 0;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (hours by labor).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
-SELECT WBS1, LaborCode, SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0)) AS Hrs
+SELECT WBS1, LaborCode, SUM(COALESCE(RegHrs,0) + COALESCE(OvtHrs,0) + COALESCE(SpecialOvtHrs,0)) AS Hrs
 FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS1, LaborCode;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -438,34 +618,35 @@ GROUP BY WBS1, LaborCode;";
             return result;
         }
 
-        private static Dictionary<string, Dictionary<string, double>> LoadPrLaborSync(
+        private static Dictionary<(string Wbs1, int LaborCode), double> LoadCostByLaborSync(
             VpOdbcDsnFactory factory, string catalog, List<string> wbs1List, CancellationToken ct)
         {
-            var result = new Dictionary<string, Dictionary<string, double>>(StringComparer.OrdinalIgnoreCase);
+            var result = new Dictionary<(string, int), double>();
             using var cn = factory.Create();
             try { cn.Open(); }
-            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (PR labor).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (cost by labor).", ex); }
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
                 cmd.CommandText = $@"
-SELECT WBS1, LaborID, SUM(COALESCE(EstimateHrs,0)) AS BudgetHrs
-FROM [{catalog}].dbo.PRLabor
+SELECT WBS1, LaborCode,
+       SUM(COALESCE(RegAmt,0) + COALESCE(OvtAmt,0) + COALESCE(SpecialOvtAmt,0)) AS Cost
+FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
-GROUP BY WBS1, LaborID;";
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
+GROUP BY WBS1, LaborCode;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
                     ct.ThrowIfCancellationRequested();
-                    var wbs1    = GetTrimmed(r, 0);
-                    var laborId = GetTrimmed(r, 1);
-                    if (string.IsNullOrWhiteSpace(wbs1) || string.IsNullOrWhiteSpace(laborId)) continue;
-                    if (!result.TryGetValue(wbs1, out var inner))
-                        result[wbs1] = inner = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-                    inner[laborId] = GetDouble(r, 2);
+                    var wbs1 = GetTrimmed(r, 0);
+                    var laborObj = r.IsDBNull(1) ? null : r.GetValue(1);
+                    if (string.IsNullOrWhiteSpace(wbs1) || laborObj == null) continue;
+                    if (TryParseLaborCode(laborObj, out var laborCode))
+                        result[(wbs1, laborCode)] = GetDouble(r, 2);
                 }
             }
             return result;
@@ -478,7 +659,7 @@ GROUP BY WBS1, LaborID;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (AP).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -488,7 +669,7 @@ FROM [{catalog}].dbo.apDetail
 WHERE WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
 GROUP BY WBS1;";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -513,26 +694,39 @@ GROUP BY WBS1;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (clients).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
-                // Pick the most recent ClientID per WBS1 from AR, then resolve the display name from Clendor.
+                // Resolve each WBS1 to its client. Primary source is the most recent
+                // AR.ClientID for that project (live billing reality). Fallback is
+                // PR.ClientID — Deltek's project-header client linkage — so projects
+                // that have never been invoiced or whose AR rows lack ClientID still
+                // attribute correctly. Without the fallback ~2,146 projects with
+                // $10.4M of contract fee ended up bucketed as "(unknown)".
                 cmd.CommandText = $@"
-SELECT latest.WBS1, latest.ClientID, COALESCE(cc.Name, '') AS ClientName
-FROM (
+SELECT pr.WBS1,
+       COALESCE(latest.ClientID, NULLIF(LTRIM(RTRIM(pr.ClientID)), '')) AS ClientID,
+       COALESCE(cc.Name, '') AS ClientName
+FROM [{catalog}].dbo.PR pr
+LEFT JOIN (
     SELECT ar.WBS1, ar.ClientID,
+           -- Tie-breaker: when both dates are null for multiple AR rows on the
+           -- same WBS1, the picked client otherwise depends on storage order.
+           -- Adding Invoice DESC keeps the choice deterministic.
            ROW_NUMBER() OVER (PARTITION BY ar.WBS1
-                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC) AS rn
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC,
+                                       ar.Invoice DESC) AS rn
     FROM [{catalog}].dbo.AR ar
-    WHERE ar.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
-      AND ar.ClientID IS NOT NULL
+    WHERE ar.ClientID IS NOT NULL
       AND LTRIM(RTRIM(ar.ClientID)) <> ''
-) latest
-LEFT JOIN [{catalog}].dbo.Clendor cc ON cc.ClientID = latest.ClientID
-WHERE latest.rn = 1;";
+) latest ON latest.WBS1 = pr.WBS1 AND latest.rn = 1
+LEFT JOIN [{catalog}].dbo.Clendor cc
+    ON cc.ClientID = COALESCE(latest.ClientID, NULLIF(LTRIM(RTRIM(pr.ClientID)), ''))
+WHERE pr.WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+  AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '');";
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -553,8 +747,113 @@ WHERE latest.rn = 1;";
         /// distinct ClientID with lifetime fee, billed, AR aging, project list, and active-project
         /// breakdown. Projects whose AR records have no ClientID are bucketed as "(unknown)".
         /// </summary>
+        // Phase 12-5b: per-WBS1 dictionary of AR currently parked on a non-Resolved
+        // collections case. Built by joining Deltek's invoice-level AR rows
+        // against an Mcp-supplied (WBS1, InvoiceNumber) set in C# — Deltek and
+        // KorMcp live on different servers so the join can't happen in SQL.
+        // Empty/null active-case set → empty dictionary → caller leaves the new
+        // OutstandingInCollections fields at zero.
+        // Returns both the total in-collections balance AND the >90-day aged
+        // subset (using COALESCE(DueDate, InvoiceDate) the same way the rollup
+        // query does) so the headline tiles can split Active vs In-Collections
+        // for both Outstanding and Aged90+.
+        private static Dictionary<string, (double Total, double Aged90Plus)> LoadInCollectionsByWbs1Sync(
+            VpOdbcDsnFactory factory,
+            string catalog,
+            DateTime asOf,
+            double usdToCadRate,
+            IReadOnlySet<(string Wbs1, string Invoice)> activeCaseInvoices,
+            CancellationToken ct)
+        {
+            var result = new Dictionary<string, (double Total, double Aged90Plus)>(StringComparer.OrdinalIgnoreCase);
+            if (activeCaseInvoices.Count == 0)
+            {
+                return result;
+            }
+
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (in-collections AR lookup).", ex); }
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT
+    ar.WBS1,
+    COALESCE(ar.Invoice, '') AS Invoice,
+    COALESCE(ar.InvBalanceSourceCurrency, 0) AS InvBalance,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    ar.InvoiceDate,
+    ar.DueDate
+FROM [{catalog}].dbo.AR ar
+LEFT JOIN [{catalog}].dbo.PR pr
+  ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004";
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+            using var r = cmd.ExecuteReader();
+            // AR has one row per WBS sub-phase per invoice; InvBalanceSourceCurrency
+            // is replicated across those rows. Without deduping by (WBS1, Invoice)
+            // a 3-sub-phase invoice would contribute 3x its balance to the per-WBS1
+            // total, inflating the in-collections figure. Outer caller clamps at
+            // projectOutstanding (which is itself over-counted the same way) so the
+            // ratio looked right, but the raw dollars were wrong.
+            var seen = new HashSet<(string Wbs1, string Invoice)>();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                var wbs1 = GetTrimmed(r, 0);
+                var invoice = GetTrimmed(r, 1);
+                if (wbs1.Length == 0 || invoice.Length == 0)
+                {
+                    continue;
+                }
+
+                if (!activeCaseInvoices.Contains((wbs1, invoice)))
+                {
+                    continue;
+                }
+
+                if (!seen.Add((wbs1, invoice)))
+                {
+                    continue;
+                }
+
+                var bal = GetDouble(r, 2);
+                var bucket = GetTrimmed(r, 3);
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+                var contrib = bal * fx;
+
+                // Aged90+ is computed from COALESCE(DueDate, InvoiceDate) the
+                // same way the rollup's arSum.Aged90Plus is — keeps the two
+                // numbers reconcilable. DueDate is often NULL in KOR's data
+                // and InvoiceDate carries the age in that case.
+                var invoiceDate = r.IsDBNull(4) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(4), CultureInfo.InvariantCulture);
+                var dueDate     = r.IsDBNull(5) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(5), CultureInfo.InvariantCulture);
+                var ageBase = dueDate ?? invoiceDate;
+                var aged90Contrib = (ageBase is DateTime ab && (asOf - ab).TotalDays > 90) ? contrib : 0.0;
+
+                if (result.TryGetValue(wbs1, out var existing))
+                {
+                    result[wbs1] = (existing.Total + contrib, existing.Aged90Plus + aged90Contrib);
+                }
+                else
+                {
+                    result[wbs1] = (contrib, aged90Contrib);
+                }
+            }
+
+            return result;
+        }
+
         private static List<ClientRollupRow> LoadClientPortfolioSync(
-            VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+            VpOdbcDsnFactory factory, string catalog, double usdToCadRate, CancellationToken ct)
+            => LoadClientPortfolioSync(factory, catalog, usdToCadRate, FinancialsOverheadRate.Default, null, ct);
+
+        private static List<ClientRollupRow> LoadClientPortfolioSync(
+            VpOdbcDsnFactory factory, string catalog, double usdToCadRate, double overheadRate,
+            IReadOnlyDictionary<string, (double Total, double Aged90Plus)>? inCollectionsByWbs1,
+            CancellationToken ct)
         {
             var asOf = DateTime.Today;
             var groups = new Dictionary<string, ClientRollupRow>(StringComparer.OrdinalIgnoreCase);
@@ -577,22 +876,66 @@ SELECT
     pr.OpenDate,
     pr.CloseDate,
     ISNULL(billed.FeeBilled, 0) AS FeeBilled,
+    ISNULL(unposted.UnpostedFeeBilled, 0) AS UnpostedFeeBilled,
     ISNULL(arSum.Outstanding, 0) AS Outstanding,
     ISNULL(arSum.Aged90Plus, 0) AS Aged90Plus,
-    latest.ClientID,
+    COALESCE(latest.ClientID, NULLIF(LTRIM(RTRIM(pr.ClientID)), '')) AS ClientID,
     COALESCE(cc.Name, '') AS ClientName,
-    ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue
+    ISNULL(hourly.HourlyRevenue, 0) AS HourlyRevenue,
+    pr.Org,
+    -- Lifetime direct labor + subconsultant costs, rebuilt in Batch 63
+    -- against the verified Deltek schema (commit pending). Labor comes
+    -- from PRSummaryMain.LaborCost (verified column 19, decimal 19,4;
+    -- one row per WBS1+Period — sum gives lifetime). Sub comes from
+    -- apDetail.Amount with no Account filter, mirroring KOR's
+    -- established convention used by the per-project SubconsultantCost
+    -- on the Active grid (FinancialsService.LoadApSync, line 703).
+    -- Both stay in pr.Org currency so the existing FX factor in the C#
+    -- read loop (USA→CAD at UsdToCadRate) applies cleanly. Previously
+    -- (Batch 59) these were CAST(0 AS float) after the SpentLab/SpentCons
+    -- hallucination broke the window load — see git history fc3f770.
+    ISNULL(lifelab.LifetimeDirectLaborCost, 0)   AS LifetimeDirectLaborCost,
+    ISNULL(lifesub.LifetimeSubconsultantCost, 0) AS LifetimeSubconsultantCost
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
     ON pctf.WBS1 = pr.WBS1
    AND (pctf.WBS2 IS NULL OR LTRIM(RTRIM(pctf.WBS2)) = '')
 LEFT JOIN (
-    SELECT WBS1, SUM(Revenue) AS FeeBilled
+    SELECT WBS1, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) AS FeeBilled
     FROM [{catalog}].dbo.PRSummaryMain
     GROUP BY WBS1
 ) billed ON billed.WBS1 = pr.WBS1
 LEFT JOIN (
-    SELECT sm.WBS1, SUM(COALESCE(sm.Revenue, 0)) AS HourlyRevenue
+    -- Per-period unposted-billings reconciliation for client portfolio.
+    -- Per (WBS1, Period): unposted = MAX(0, LedgerAR_invoiced - PRSummaryMain_billed).
+    -- Invoiced side from LedgerAR (TransType='IN', Daler's canonical revenue accounts)
+    -- so paid-but-not-yet-posted invoices stay visible — see LoadUnpostedFeeBilledSync.
+    SELECT WBS1, SUM(UnpostedAmt) AS UnpostedFeeBilled
+    FROM (
+        SELECT
+            invP.WBS1,
+            invP.Period,
+            invP.InvAmt - COALESCE(prP.PostedAmt, 0) AS UnpostedAmt
+        FROM (
+            SELECT WBS1, Period, SUM(-Amount) AS InvAmt
+            FROM [{catalog}].dbo.LedgerAR
+            WHERE TransType = 'IN'
+              AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ('4001', '4003', '4210', '4220', '4240')
+            GROUP BY WBS1, Period
+        ) invP
+        LEFT JOIN (
+            SELECT WBS1, Period,
+                   SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue, 0) END) AS PostedAmt
+            FROM [{catalog}].dbo.PRSummaryMain
+            GROUP BY WBS1, Period
+        ) prP
+            ON prP.WBS1 = invP.WBS1 AND prP.Period = invP.Period
+        WHERE invP.InvAmt - COALESCE(prP.PostedAmt, 0) > 0
+    ) gap
+    GROUP BY WBS1
+) unposted ON unposted.WBS1 = pr.WBS1
+LEFT JOIN (
+    SELECT sm.WBS1, SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS HourlyRevenue
     FROM [{catalog}].dbo.PRSummaryMain sm
     INNER JOIN [{catalog}].dbo.PR prInner
         ON prInner.WBS1 = sm.WBS1 AND prInner.WBS2 = sm.WBS2 AND prInner.WBS3 = sm.WBS3
@@ -600,8 +943,29 @@ LEFT JOIN (
       AND prInner.WBS2 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS2)) <> ''
       AND prInner.WBS3 IS NOT NULL AND LTRIM(RTRIM(prInner.WBS3)) <> ''
     GROUP BY sm.WBS1
-    HAVING SUM(COALESCE(sm.Revenue, 0)) > 0
+    HAVING SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) > 0
 ) hourly ON hourly.WBS1 = pr.WBS1
+LEFT JOIN (
+    -- Lifetime labor at cost per WBS1. PRSummaryMain.LaborCost (verified
+    -- column 19) is Deltek's own per-period rollup of project labor cost;
+    -- summing across all Period rows gives the project's lifetime labor
+    -- cost in pr.Org currency (same convention as BilledFee/Revenue, so
+    -- the existing C# FX factor applies). Replaces the SpentLab/SpentCons
+    -- hallucination removed in Batch 59.
+    SELECT WBS1, SUM(COALESCE(LaborCost, 0)) AS LifetimeDirectLaborCost
+    FROM [{catalog}].dbo.PRSummaryMain
+    GROUP BY WBS1
+) lifelab ON lifelab.WBS1 = pr.WBS1
+LEFT JOIN (
+    -- Lifetime ""sub cost"" per WBS1 — KOR's established convention is
+    -- to sum apDetail.Amount with no Account filter (mirrors LoadApSync
+    -- at line 703 which feeds the Active-grid per-project
+    -- SubconsultantCost). Technically all-AP-on-project, but subs
+    -- dominate, so the rollup is a working proxy for sub cost.
+    SELECT WBS1, SUM(COALESCE(Amount, 0)) AS LifetimeSubconsultantCost
+    FROM [{catalog}].dbo.apDetail
+    GROUP BY WBS1
+) lifesub ON lifesub.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT WBS1,
         SUM(COALESCE(InvBalanceSourceCurrency, 0)) AS Outstanding,
@@ -612,13 +976,21 @@ LEFT JOIN (
 ) arSum ON arSum.WBS1 = pr.WBS1
 LEFT JOIN (
     SELECT ar.WBS1, ar.ClientID,
+           -- Tie-breaker on Invoice DESC: when both dates are null on multiple
+           -- AR rows for the same WBS1, the picked client otherwise depends on
+           -- storage order. Determinism keeps the Clients view stable run to run.
            ROW_NUMBER() OVER (PARTITION BY ar.WBS1
-                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC) AS rn
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC,
+                                       ar.Invoice DESC) AS rn
     FROM [{catalog}].dbo.AR ar
     WHERE ar.ClientID IS NOT NULL
       AND LTRIM(RTRIM(ar.ClientID)) <> ''
 ) latest ON latest.WBS1 = pr.WBS1 AND latest.rn = 1
-LEFT JOIN [{catalog}].dbo.Clendor cc ON cc.ClientID = latest.ClientID
+-- Client resolution: AR's most recent ClientID wins, fall back to PR.ClientID.
+-- Without the fallback ~2,146 projects with $10.4M of contract fee that are
+-- never-invoiced or have AR rows missing ClientID get bucketed as ""(unknown)"".
+LEFT JOIN [{catalog}].dbo.Clendor cc
+    ON cc.ClientID = COALESCE(latest.ClientID, NULLIF(LTRIM(RTRIM(pr.ClientID)), ''))
 WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
   AND pr.WBS1 NOT LIKE '[A-Z]%'
   AND pr.WBS1 NOT LIKE '9[A-Z]%'
@@ -626,7 +998,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = asOf });
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -640,8 +1012,28 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 
                 var openDate = r.IsDBNull(5) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(5), CultureInfo.InvariantCulture);
                 var closeDate = r.IsDBNull(6) ? (DateTime?)null : Convert.ToDateTime(r.GetValue(6), CultureInfo.InvariantCulture);
-                var clientId = GetTrimmed(r, 10);
-                var clientName = GetTrimmed(r, 11);
+                var clientId = GetTrimmed(r, 11);
+                var clientName = GetTrimmed(r, 12);
+                // FX-convert USA-org dollar fields so client rollups (LifetimeFee, LifetimeBilled,
+                // Outstanding, etc.) come out CAD-equivalent. Without this, the Clients tab silently
+                // mixes CAD + USD whenever a client has a USA-org project.
+                var fx = OrgFx.IsUsaOrg(GetTrimmed(r, 14)) ? usdToCadRate : 1.0;
+
+                var projectOutstanding = GetDouble(r, 9) * fx;
+                var projectOutstanding90Plus = GetDouble(r, 10) * fx;
+                // Phase 12-5b: pre-computed CAD-equivalent in-collections sum
+                // already incorporates per-Org FX, so look it up directly
+                // against the dictionary without re-applying fx here. Cap at
+                // the project's own Outstanding (and Aged90+ for the parallel
+                // bucket) so a stale Mcp record can't produce a negative
+                // OutstandingRegular / Outstanding90PlusRegular.
+                var inCollections = 0.0;
+                var inCollections90Plus = 0.0;
+                if (inCollectionsByWbs1 != null && inCollectionsByWbs1.TryGetValue(wbs1, out var icRaw))
+                {
+                    inCollections        = Math.Min(Math.Max(icRaw.Total,      0.0), Math.Max(projectOutstanding,        0.0));
+                    inCollections90Plus  = Math.Min(Math.Max(icRaw.Aged90Plus, 0.0), Math.Max(projectOutstanding90Plus,  0.0));
+                }
 
                 var project = new ClientProjectRow
                 {
@@ -652,18 +1044,24 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                     IsActive = isActive,
                     OpenDate = openDate,
                     CloseDate = closeDate,
-                    Fee = GetDouble(r, 4),
-                    FeeBilled = GetDouble(r, 7),
-                    Outstanding = GetDouble(r, 8),
-                    Outstanding90Plus = GetDouble(r, 9),
-                    HourlyRevenue = GetDouble(r, 12),
+                    Fee = GetDouble(r, 4) * fx,
+                    FeeBilled = GetDouble(r, 7) * fx,
+                    UnpostedFeeBilled = GetDouble(r, 8) * fx,
+                    Outstanding = projectOutstanding,
+                    Outstanding90Plus = projectOutstanding90Plus,
+                    OutstandingInCollections = inCollections,
+                    Outstanding90PlusInCollections = inCollections90Plus,
+                    HourlyRevenue = GetDouble(r, 13) * fx,
+                    DirectLaborCost = GetDouble(r, 15) * fx,
+                    SubconsultantCost = GetDouble(r, 16) * fx,
+                    OverheadRate = overheadRate,
                 };
 
                 var key = string.IsNullOrWhiteSpace(clientId) ? "" : clientId;
                 var display = string.IsNullOrWhiteSpace(clientName) ? "(unknown)" : clientName;
                 if (!groups.TryGetValue(key, out var roll))
                 {
-                    roll = new ClientRollupRow { ClientId = key, ClientName = display };
+                    roll = new ClientRollupRow { ClientId = key, ClientName = display, OverheadRate = overheadRate };
                     groups[key] = roll;
                 }
                 roll.Projects.Add(project);
@@ -671,8 +1069,13 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 if (isActive) roll.ActiveProjectCount++;
                 roll.LifetimeFee += project.TotalFee;
                 roll.LifetimeBilled += project.FeeBilled;
+                roll.LifetimeUnpostedBilled += project.UnpostedFeeBilled;
                 roll.Outstanding += project.Outstanding;
                 roll.Outstanding90Plus += project.Outstanding90Plus;
+                roll.OutstandingInCollections += project.OutstandingInCollections;
+                roll.Outstanding90PlusInCollections += project.Outstanding90PlusInCollections;
+                roll.LifetimeDirectLaborCost += project.DirectLaborCost;
+                roll.LifetimeSubconsultantCost += project.SubconsultantCost;
                 if (project.TotalFee > roll.LargestProjectFee) roll.LargestProjectFee = project.TotalFee;
 
                 // Tenure: earliest open date
@@ -711,7 +1114,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         /// Months with no entry are returned as zero so the forecast chart has a continuous timeline.
         /// </summary>
         private static List<RevenueMonthRow> LoadRevenueHistorySync(
-            VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+            VpOdbcDsnFactory factory, string catalog, double usdToCadRate, CancellationToken ct)
         {
             var monthlyTotals = new Dictionary<DateTime, double>();
             using var cn = factory.Create();
@@ -725,7 +1128,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 using var calCmd = cn.CreateCommand();
                 calCmd.CommandTimeout = SqlTimeouts.Batch;
                 calCmd.CommandText = $@"SELECT Period, StartDate FROM [{catalog}].dbo.CFGAcctngCalendarData;";
-                using var calReg = ct.Register(() => { try { calCmd.Cancel(); } catch { } });
+                using var calReg = ct.Register(() => { try { calCmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var cr = calCmd.ExecuteReader();
                 while (cr.Read())
                 {
@@ -740,23 +1143,33 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
                 // Calendar table missing or inaccessible — fall back to YYYYMM parsing only.
             }
 
-            // 2) Sum revenue by period across all projects.
+            // 2) Sum revenue by period and Org bucket across all projects, then FX-convert USA
+            //    rows to CAD-equivalent before adding to the period total. Without this, the
+            //    forecast trailing-12 / baseline / slope / seasonality all run on a CAD+USD mix.
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             cmd.CommandText = $@"
-SELECT Period, SUM(COALESCE(Revenue, 0)) AS Revenue
-FROM [{catalog}].dbo.PRSummaryMain
-GROUP BY Period;";
+SELECT
+    sm.Period,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS Revenue
+FROM [{catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{catalog}].dbo.PR pr
+  ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+GROUP BY sm.Period, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END;";
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
                 ct.ThrowIfCancellationRequested();
                 var period = GetTrimmed(r, 0);
                 if (string.IsNullOrEmpty(period)) continue;
-                var revenue = GetDouble(r, 1);
-                if (revenue == 0) continue;
+                var bucket = GetTrimmed(r, 1);
+                var rawRevenue = GetDouble(r, 2);
+                if (rawRevenue == 0) continue;
+                var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
+                var revenue = rawRevenue * fx;
 
                 DateTime monthStart;
                 if (calendar.TryGetValue(period, out var calMonth))
@@ -790,18 +1203,14 @@ GROUP BY Period;";
                 using var maxCmd = cn.CreateCommand();
                 maxCmd.CommandTimeout = SqlTimeouts.Batch;
                 maxCmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
-                using var maxReg = ct.Register(() => { try { maxCmd.Cancel(); } catch { } });
+                using var maxReg = ct.Register(() => { try { maxCmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 var maxPeriodObj = maxCmd.ExecuteScalar();
                 if (maxPeriodObj != null && maxPeriodObj != DBNull.Value)
                 {
                     var maxPeriod = Convert.ToString(maxPeriodObj, CultureInfo.InvariantCulture)?.Trim();
-                    if (!string.IsNullOrEmpty(maxPeriod)
-                        && maxPeriod.Length == 6
-                        && int.TryParse(maxPeriod.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture, out var year)
-                        && int.TryParse(maxPeriod.Substring(4, 2), NumberStyles.None, CultureInfo.InvariantCulture, out var month)
-                        && month >= 1 && month <= 12 && year >= 1990 && year <= 2100)
+                    if (TryParseDeltekPeriod(maxPeriod, out var parsedPeriod))
                     {
-                        endMonth = new DateTime(year, month, 1);
+                        endMonth = parsedPeriod;
                     }
                     else
                     {
@@ -841,6 +1250,41 @@ GROUP BY Period;";
             return result;
         }
 
+        private static DateTime? LoadMaxPostedPeriodSync(VpOdbcDsnFactory factory, string catalog, CancellationToken ct)
+        {
+            using var cn = factory.Create();
+            try { cn.Open(); }
+            catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (max posted period).", ex); }
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+            var maxPeriodObj = cmd.ExecuteScalar();
+            if (maxPeriodObj == null || maxPeriodObj == DBNull.Value)
+                return null;
+
+            var maxPeriod = Convert.ToString(maxPeriodObj, CultureInfo.InvariantCulture)?.Trim();
+            return TryParseDeltekPeriod(maxPeriod, out var parsedPeriod) ? parsedPeriod : null;
+        }
+
+        private static bool TryParseDeltekPeriod(string? period, out DateTime monthStart)
+        {
+            monthStart = default;
+            if (string.IsNullOrWhiteSpace(period) || period.Length != 6)
+                return false;
+
+            if (!int.TryParse(period.Substring(0, 4), NumberStyles.None, CultureInfo.InvariantCulture, out var year)
+                || !int.TryParse(period.Substring(4, 2), NumberStyles.None, CultureInfo.InvariantCulture, out var month)
+                || month < 1 || month > 12 || year < 1990 || year > 2100)
+            {
+                return false;
+            }
+
+            monthStart = new DateTime(year, month, 1);
+            return true;
+        }
+
         internal static FinancialsHeadlineKpis ComputeHeadline(List<FinancialsProjectRow> rows)
             => FinancialsHeadlineCalculator.Compute(rows);
 
@@ -853,7 +1297,7 @@ GROUP BY Period;";
             using var cn = factory.Create();
             try { cn.Open(); }
             catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (inspections).", ex); }
-            foreach (var chunk in Chunk(wbs1List, 80))
+            foreach (var chunk in Chunk(wbs1List, ExecutiveSummaryLoaderSupport.OdbcParameterChunkSize))
             {
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.Batch;
@@ -862,13 +1306,14 @@ SELECT WBS1,
     COUNT(*) AS TotalInspections,
     SUM(CASE WHEN TransDate >= ? AND TransDate < ? THEN 1 ELSE 0 END) AS LastMonthInspections
 FROM [{catalog}].dbo.tkDetail
-WHERE LaborCode = 40
+WHERE LaborCode = {LaborCodes.Inspection}
   AND WBS1 IN ({MakeInListPlaceholders(chunk.Count)})
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS1;";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Date, Value = monthStart });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Date, Value = monthEnd });
                 AddInListParameters(cmd, chunk);
-                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
                 {
@@ -897,6 +1342,9 @@ GROUP BY WBS1;";
 
 
         private static double GetHrs(Dictionary<(string Wbs1, int LaborCode), double> map, string wbs1, int laborCode)
+            => map.TryGetValue((wbs1, laborCode), out var v) ? v : 0.0;
+
+        private static double GetCost(Dictionary<(string Wbs1, int LaborCode), double> map, string wbs1, int laborCode)
             => map.TryGetValue((wbs1, laborCode), out var v) ? v : 0.0;
 
         private static string BuildPmDisplay(string pmId, string first, string last)
@@ -963,12 +1411,13 @@ LEFT JOIN [{catalog}].dbo.ProjectCustomTabFields pctf
    AND (pctf.WBS2 IS NULL OR LTRIM(RTRIM(pctf.WBS2)) = '')
 LEFT JOIN (
     SELECT WBS1,
-        SUM(CASE WHEN LaborCode IN ({LaborCodes.Engineering}, {LaborCodes.Checking}) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS EngHrs,
-        SUM(CASE WHEN LaborCode = {LaborCodes.Drafting} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0) ELSE 0 END) AS DraftHrs
+        SUM(CASE WHEN LaborCode IN ({LaborCodes.Engineering}, {LaborCodes.Checking}) THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS EngHrs,
+        SUM(CASE WHEN LaborCode = {LaborCodes.Drafting} THEN COALESCE(RegHrs,0)+COALESCE(OvtHrs,0)+COALESCE(SpecialOvtHrs,0) ELSE 0 END) AS DraftHrs
     FROM [{catalog}].dbo.tkDetail
     WHERE WBS1 NOT LIKE '[A-Z]%'
       AND WBS1 NOT LIKE '9[A-Z]%'
       AND WBS1 NOT LIKE '99%'
+      AND COALESCE(LineItemApprovalStatus,'') <> 'R'
     GROUP BY WBS1
 ) labor ON labor.WBS1 = pr.WBS1
 WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
@@ -979,7 +1428,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
   AND pr.WBS1 NOT LIKE '99%'
   AND (ISNULL(labor.EngHrs, 0) + ISNULL(labor.DraftHrs, 0)) >= 50";
 
-            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
@@ -1014,6 +1463,7 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
             public string ProjectCategory { get; set; } = "";
             public string DraftingType { get; set; } = "";
             public bool IsOnHotlist { get; set; }
+            public string Org { get; set; } = "";
         }
     }
 
@@ -1024,6 +1474,9 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public List<FinancialsProjectRow> Rows { get; set; } = new();
         public List<ClientRollupRow> ClientRollups { get; set; } = new();
         public List<RevenueMonthRow> RevenueHistory { get; set; } = new();
+        public DateTime? MaxPostedPeriod { get; set; }
+        // USD→CAD rate applied to USA-org rows when rolling into firmwide CAD-equivalent KPIs.
+        public double UsdToCadRate { get; set; } = 1.36;
     }
 
     /// <summary>
@@ -1059,9 +1512,47 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double HourlyRevenue { get; set; }
         public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; set; }
+        public double UnpostedFeeBilled { get; set; }
+        public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
-        public double PercentBilled => TotalFee > 0 ? FeeBilled / TotalFee : 0;
+        // Phase 12-5b: portion of Outstanding tied to invoices on a non-Resolved
+        // Mcp.CollectionsCase. Stays at 0 when MCP isn't configured / unreachable
+        // and Outstanding carries the legacy total; OutstandingRegular falls
+        // back to Outstanding in that case via the computed property.
+        public double OutstandingInCollections { get; set; }
+        public double OutstandingRegular => Outstanding - OutstandingInCollections;
+        // 2026-05 follow-up: Aged90+ split mirrors the Outstanding split so the
+        // headline tile can show "Active 90+" cleanly without re-deriving it
+        // from collections-tagged invoice ages downstream.
+        public double Outstanding90PlusInCollections { get; set; }
+        public double Outstanding90PlusRegular => Outstanding90Plus - Outstanding90PlusInCollections;
+        // Step 3: lifetime per-project profitability inputs (from PRSummaryMain
+        // SpentLab/SpentCons). FX-converted at read time so they aggregate
+        // cleanly into ClientRollupRow.LifetimeDirectLaborCost / LifetimeSubconsultantCost.
+        public double DirectLaborCost { get; set; }
+        public double SubconsultantCost { get; set; }
+        public double OverheadRate { get; set; } = FinancialsOverheadRate.Default;
+        public double AllocatedOverhead => DirectLaborCost * OverheadRate;
+        public double Multiplier => DirectLaborCost > AnalyticsThresholds.RoundingDollarFloor
+            ? FeeBilledWithUnposted / DirectLaborCost : 0.0;
+        public double ProfitDollars => FeeBilledWithUnposted - DirectLaborCost - SubconsultantCost - AllocatedOverhead;
+        public double Margin => Math.Abs(FeeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
+            ? ProfitDollars / FeeBilledWithUnposted : 0.0;
+        public string MultiplierTier =>
+            DirectLaborCost <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            Multiplier < 2.0 ? "Critical" :
+            Multiplier < 3.0 ? "AtRisk" :
+            "Healthy";
+        public string MarginTier =>
+            Math.Abs(FeeBilledWithUnposted) <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            Margin < 0.0 ? "Critical" :
+            Margin < 0.10 ? "AtRisk" :
+            "Healthy";
+        public double PercentBilled => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / TotalFee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / TotalFee : 0;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
+        public bool   HasCollectionsExposure => OutstandingInCollections > AnalyticsThresholds.RoundingDollarFloor;
     }
 
     /// <summary>
@@ -1076,14 +1567,50 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public int ActiveProjectCount { get; set; }
         public double LifetimeFee { get; set; }
         public double LifetimeBilled { get; set; }
+        public double LifetimeUnpostedBilled { get; set; }
+        public double LifetimeBilledWithUnposted => LifetimeBilled + LifetimeUnpostedBilled;
         public double Outstanding { get; set; }
         public double Outstanding90Plus { get; set; }
+        // Phase 12-5b: parallel split of Outstanding for the Clients view.
+        // Derived as the sum of project-level OutstandingInCollections during
+        // rollup; falls through to 0 when MCP isn't configured.
+        public double OutstandingInCollections { get; set; }
+        public double OutstandingRegular => Outstanding - OutstandingInCollections;
+        // 2026-05 follow-up: Aged90+ split.
+        public double Outstanding90PlusInCollections { get; set; }
+        public double Outstanding90PlusRegular => Outstanding90Plus - Outstanding90PlusInCollections;
+        public bool   HasCollectionsExposure => OutstandingInCollections > AnalyticsThresholds.RoundingDollarFloor;
+        // Step 3: lifetime profitability — sums of project-level direct labor
+        // and subconsultant costs across every project we ever did with this
+        // client. Multiplier reconciles with the firm-wide Net Multiplier on
+        // the Executive Summary at the client-portfolio level.
+        public double LifetimeDirectLaborCost { get; set; }
+        public double LifetimeSubconsultantCost { get; set; }
+        public double OverheadRate { get; set; } = FinancialsOverheadRate.Default;
+        public double LifetimeAllocatedOverhead => LifetimeDirectLaborCost * OverheadRate;
+        public double LifetimeMultiplier => LifetimeDirectLaborCost > AnalyticsThresholds.RoundingDollarFloor
+            ? LifetimeBilledWithUnposted / LifetimeDirectLaborCost : 0.0;
+        public double LifetimeProfitDollars => LifetimeBilledWithUnposted - LifetimeDirectLaborCost - LifetimeSubconsultantCost - LifetimeAllocatedOverhead;
+        public double LifetimeMargin => Math.Abs(LifetimeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
+            ? LifetimeProfitDollars / LifetimeBilledWithUnposted : 0.0;
+        public string LifetimeMultiplierTier =>
+            LifetimeDirectLaborCost <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            LifetimeMultiplier < 2.0 ? "Critical" :
+            LifetimeMultiplier < 3.0 ? "AtRisk" :
+            "Healthy";
+        public string LifetimeMarginTier =>
+            Math.Abs(LifetimeBilledWithUnposted) <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            LifetimeMargin < 0.0 ? "Critical" :
+            LifetimeMargin < 0.10 ? "AtRisk" :
+            "Healthy";
         public DateTime? FirstProjectDate { get; set; }
         public DateTime? LastActivityDate { get; set; }
         public double LargestProjectFee { get; set; }
         public List<ClientProjectRow> Projects { get; set; } = new();
 
-        public double PercentBilled => LifetimeFee > 0 ? LifetimeBilled / LifetimeFee : 0;
+        public double PercentBilled => Math.Abs(LifetimeFee) > AnalyticsThresholds.RoundingDollarFloor ? LifetimeBilled / LifetimeFee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(LifetimeFee) > AnalyticsThresholds.RoundingDollarFloor ? LifetimeBilledWithUnposted / LifetimeFee : 0;
+        public bool   HasUnpostedBilling => LifetimeUnpostedBilled > AnalyticsThresholds.RoundingDollarFloor;
         public double AvgFeePerProject => ProjectCount > 0 ? LifetimeFee / ProjectCount : 0;
         public bool IsRepeatClient => ProjectCount > 1;
         public double YearsAsClient => FirstProjectDate.HasValue
@@ -1123,14 +1650,21 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public string DraftingType { get; set; } = "";
         public string ClientId { get; set; } = "";
         public string ClientName { get; set; } = "";
+        // PR.Org bucket — "USA" rows are FX-converted to CAD-equivalent in firmwide rollups.
+        // Per-row dollar values displayed in the grid stay in source currency to match Deltek.
+        public string Org { get; set; } = "";
 
         public double Gfa { get; set; }
         public double Fee { get; set; }
         public double HourlyRevenue { get; set; }
         public double TotalFee => Fee + HourlyRevenue;
         public double FeeBilled { get; set; }
+        public double UnpostedFeeBilled { get; set; }
+        public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
         public double SubconsultantCost { get; set; }
         public double PercentBilled { get; set; }
+        public double PercentBilledWithUnposted => Math.Abs(TotalFee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / TotalFee : 0;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
 
         public double EngHrs { get; set; }
         public double DraftHrs { get; set; }
@@ -1139,15 +1673,93 @@ WHERE (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
         public double GenHrs { get; set; }
         public double AdminHrs { get; set; }
         public double NonBillHrs { get; set; }
+        public double EngLaborCost { get; set; }
+        public double DraftLaborCost { get; set; }
+        public double InspLaborCost { get; set; }
+        public double DocPrepLaborCost { get; set; }
+        public double GenLaborCost { get; set; }
+        public double AdminLaborCost { get; set; }
+        public double NonBillLaborCost { get; set; }
+
+        // ── Per-project profitability (derived; matches firm-wide Net Multiplier
+        //    convention so a row's Multiplier reconciles with the Exec Summary tile). ──
+
+        /// <summary>
+        /// Direct labor cost charged to this project — the sum of per-laborcode costs
+        /// for codes 10-60 (Eng, Draft, Inspection, DocPrep, General). Admin (70) and
+        /// NonBillable (80) are firm overhead and excluded; including them would make
+        /// per-project multipliers diverge from the firm-wide Net Multiplier definition.
+        /// </summary>
+        public double TotalDirectLaborCost => EngLaborCost + DraftLaborCost + InspLaborCost
+                                            + DocPrepLaborCost + GenLaborCost;
+
+        /// <summary>
+        /// Firm overhead multiplier on direct labor (e.g. 1.65 means $1.65
+        /// of overhead per $1 of direct labor). Set by the loader from
+        /// Financials.PnL.OverheadRate; defaults to 1.65 if unset.
+        /// </summary>
+        public double OverheadRate { get; set; } = FinancialsOverheadRate.Default;
+
+        /// <summary>
+        /// Overhead allocated to this project = TotalDirectLaborCost * OverheadRate.
+        /// This is the standard firmwide rate allocation used when no fair
+        /// per-project overhead measurement exists.
+        /// </summary>
+        public double AllocatedOverhead => TotalDirectLaborCost * OverheadRate;
+
+        /// <summary>
+        /// Project Multiplier = FeeBilledWithUnposted / TotalDirectLaborCost. Mirrors
+        /// the firm-wide Net Multiplier at the project level. Industry convention: ≥3.0
+        /// is healthy; ≤2.0 is bleeding. Returns 0 when DLC is below the rounding floor
+        /// (avoids spurious infinities on projects that haven't booked time yet).
+        /// </summary>
+        public double Multiplier => TotalDirectLaborCost > AnalyticsThresholds.RoundingDollarFloor
+            ? FeeBilledWithUnposted / TotalDirectLaborCost : 0.0;
+
+        /// <summary>
+        /// Project NET profit dollars = FeeBilledWithUnposted - TotalDirectLaborCost
+        /// - SubconsultantCost - AllocatedOverhead. Negative means the project
+        /// is losing money once overhead is allocated, even if pre-overhead
+        /// gross margin was positive.
+        /// </summary>
+        public double ProfitDollars => FeeBilledWithUnposted - TotalDirectLaborCost - SubconsultantCost - AllocatedOverhead;
+
+        /// <summary>
+        /// Project NET margin % = ProfitDollars / FeeBilledWithUnposted, where
+        /// ProfitDollars is overhead-inclusive. Industry-typical net margin:
+        /// 10% healthy, 0-10% mediocre, less than 0% loss.
+        /// </summary>
+        public double Margin => Math.Abs(FeeBilledWithUnposted) > AnalyticsThresholds.RoundingDollarFloor
+            ? ProfitDollars / FeeBilledWithUnposted : 0.0;
+
+        // ── Tier strings — drive the small inline badges on the project grid.
+        //    Kept as strings so XAML DataTriggers can match without converters.
+        //    Thresholds: industry-standard >=3.0 multiplier; margin tiers use
+        //    overhead-inclusive net margin convention.
+
+        /// <summary>"NoData" / "Critical" / "AtRisk" / "Healthy" — drives the Multiplier-cell badge.</summary>
+        public string MultiplierTier =>
+            TotalDirectLaborCost <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            Multiplier < 2.0 ? "Critical" :
+            Multiplier < 3.0 ? "AtRisk" :
+            "Healthy";
+
+        /// <summary>"NoData" / "Critical" / "AtRisk" / "Healthy" - drives the Margin-cell badge.
+        /// Thresholds reflect AEC industry net margin: 10% healthy, 0-10%
+        /// AtRisk, less than 0% Critical.</summary>
+        public string MarginTier =>
+            Math.Abs(FeeBilledWithUnposted) <= AnalyticsThresholds.RoundingDollarFloor ? "NoData" :
+            Margin < 0.0 ? "Critical" :
+            Margin < 0.10 ? "AtRisk" :
+            "Healthy";
 
         public double DraftBudget { get; set; }
         public double EngBudget { get; set; }
-        public double EngBudgetActual { get; set; }
-        public double DraftBudgetActual { get; set; }
         public double DraftPercent { get; set; }
         public double EngPercent { get; set; }
         public double FeePerHours { get; set; }
         public double BilledPerHours { get; set; }
+        public double BilledPerHoursWithUnposted { get; set; }
 
         /// <summary>
         /// Delivery confidence result computed once by <see cref="FinancialsService"/>.

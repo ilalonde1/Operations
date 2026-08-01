@@ -204,7 +204,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         reports.Add(new CompatibilityReport(install, true, Array.Empty<string>()));
                 }
                 catch (Exception ex) { reports.Add(new CompatibilityReport(install, false, new[] { ex.Message })); }
-                finally { try { ctx.Unload(); } catch { } }
+                finally { try { ctx.Unload(); } catch { /* best-effort: probe context may not be unloadable */ } }
             }
             return reports;
         }

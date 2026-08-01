@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Kor.Operations.Services;
 
 namespace Kor.Operations.Controls
@@ -20,6 +21,10 @@ namespace Kor.Operations.Controls
         private IReadOnlyList<AiTool>? _tools;
         private AiToolDispatcher? _toolDispatcher;
         private string? _systemPromptOverride;
+
+        // Last raw assistant response — kept so Copy hands the user the
+        // unrendered Markdown they actually saw, not a flattened TextBlock.Text.
+        private string _lastResponseText = "";
 
         public AiQueryPanel()
         {
@@ -67,7 +72,19 @@ namespace Kor.Operations.Controls
 
             AskBtn.IsEnabled = false;
             QuestionBox.Text = "";
-            ResponseText.Text = "Thinking...";
+
+            // Spinner + transient "Thinking..." placeholder. Spinner is the
+            // real activity signal during 8-17s /ask calls — the placeholder
+            // text just covers the empty stack until the first response token.
+            BusyBar.Visibility = Visibility.Visible;
+            ResponseStack.Children.Clear();
+            ResponseStack.Children.Add(new TextBlock
+            {
+                Text = "Thinking…",
+                FontStyle = FontStyles.Italic,
+                Foreground = (Brush)FindResource("Text.Secondary"),
+                FontSize = 11.5,
+            });
             ResponseContainer.Visibility = Visibility.Visible;
 
             try
@@ -98,16 +115,29 @@ namespace Kor.Operations.Controls
 
                 while (_history.Count > 12) _history.RemoveAt(0);
 
-                ResponseText.Text = response;
+                _lastResponseText = response ?? "";
+                RenderResponse(_lastResponseText);
             }
             catch (Exception ex)
             {
-                ResponseText.Text = $"Error: {ex.Message}";
+                _lastResponseText = $"Error: {ex.Message}";
+                RenderResponse(_lastResponseText);
             }
             finally
             {
                 AskBtn.IsEnabled = true;
+                BusyBar.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private void RenderResponse(string markdown)
+        {
+            MarkdownPresenter.Render(
+                markdown,
+                ResponseStack,
+                textBrush: (Brush)FindResource("Text.Primary"),
+                codeBackground: (Brush)FindResource("Surface.Subtle"),
+                codeBorder: (Brush)FindResource("Panel.Border"));
         }
 
         private string BuildSystemPromptForThisTurn()
@@ -122,7 +152,8 @@ namespace Kor.Operations.Controls
 
         private void CloseBtn_Click(object sender, RoutedEventArgs e)
         {
-            ResponseText.Text = "";
+            ResponseStack.Children.Clear();
+            _lastResponseText = "";
             ResponseContainer.Visibility = Visibility.Collapsed;
             _history.Clear();
             QuestionBox.Text = "";
@@ -130,8 +161,10 @@ namespace Kor.Operations.Controls
 
         private void CopyBtn_Click(object sender, RoutedEventArgs e)
         {
-            var text = ResponseText.Text;
-            if (string.IsNullOrWhiteSpace(text) || text == "Thinking...") return;
+            // Copy the original Markdown — what the user actually sees rendered
+            // — rather than reconstructing text from the rendered TextBlocks.
+            var text = _lastResponseText;
+            if (string.IsNullOrWhiteSpace(text)) return;
             try
             {
                 Clipboard.SetText(text);

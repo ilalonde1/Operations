@@ -63,10 +63,10 @@
 
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Card" Property="Background" Value="#FFFFF3E0"/>
-                                <Setter TargetName="Card" Property="BorderBrush" Value="#FFF5C48A"/>
+                                <Setter TargetName="Card" Property="Background" Value="#FFEFF6FF"/>
+                                <Setter TargetName="Card" Property="BorderBrush" Value="#FF93C5FD"/>
                                 <Setter TargetName="AccentStrip" Property="Opacity" Value="1"/>
-                                <Setter TargetName="AccentStrip" Property="Background" Value="#FFF59E0B"/>
+                                <Setter TargetName="AccentStrip" Property="Background" Value="#FF2563EB"/>
                                 <Setter TargetName="DetailsBadge" Property="Opacity" Value="1"/>
                                 <Setter Property="RenderTransform">
                                     <Setter.Value>
@@ -75,9 +75,9 @@
                                 </Setter>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="Card" Property="Background" Value="#FFFFF3E0"/>
-                                <Setter TargetName="Card" Property="BorderBrush" Value="#FFF5C48A"/>
-                                <Setter TargetName="AccentStrip" Property="Background" Value="#FFF59E0B"/>
+                                <Setter TargetName="Card" Property="Background" Value="#FFEFF6FF"/>
+                                <Setter TargetName="Card" Property="BorderBrush" Value="#FF93C5FD"/>
+                                <Setter TargetName="AccentStrip" Property="Background" Value="#FF2563EB"/>
                                 <Setter TargetName="AccentStrip" Property="Opacity" Value="1"/>
                                 <Setter TargetName="DetailsBadge" Property="Opacity" Value="1"/>
                             </Trigger>
@@ -102,14 +102,127 @@
             </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="2,0,2,8">
-            <DockPanel>
-                <TextBlock Text="Executive Summary" FontWeight="SemiBold" FontSize="18"/>
+            <DockPanel LastChildFill="False">
+                <TextBlock Text="Executive Summary" FontWeight="SemiBold" FontSize="18"
+                           VerticalAlignment="Center"/>
+                <Button DockPanel.Dock="Right"
+                        Content="Copy Summary"
+                        Height="26"
+                        MinWidth="110"
+                        FontSize="11"
+                        Click="CopySummaryBtn_Click"
+                        ToolTip="Copy a Markdown snapshot of the dashboard to the clipboard for email or Teams."/>
             </DockPanel>
             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                 <TextBlock Text="Last updated:" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
                 <TextBlock Text="{Binding LastUpdatedDisplay}" Margin="6,0,0,0" FontSize="11"/>
                 <TextBlock Text="{Binding StatusHint}" Margin="16,0,0,0" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                <TextBlock Text="{Binding ScopeEcho}" Margin="16,0,0,0"
+                           Foreground="{StaticResource Text.Secondary}" FontSize="11"
+                           Visibility="{Binding ScopeEchoVisibility}"/>
             </StackPanel>
+            <Border Background="#FFFEE2E2"
+                    BorderBrush="#FFB91C1C"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,6"
+                    Margin="0,8,0,0"
+                    Visibility="{Binding SchemaDriftVisibility}">
+                <TextBlock Text="{Binding SchemaDriftBanner}"
+                           Foreground="#FF7F1D1D"
+                           FontSize="12"
+                           TextWrapping="Wrap"/>
+            </Border>
+            <Border Background="#FFFEF3C7"
+                    BorderBrush="#FFD97706"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,6"
+                    Margin="0,8,0,0"
+                    Visibility="{Binding LoaderFailuresVisibility}">
+                <TextBlock Text="{Binding LoaderFailuresBanner}"
+                           Foreground="#FF92400E"
+                           FontSize="12"
+                           TextWrapping="Wrap"/>
+            </Border>
+            <Border BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,6"
+                    Margin="0,8,0,0"
+                    Visibility="{Binding DataFreshnessVisibility}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#FFFEF3C7"/>
+                        <Setter Property="BorderBrush" Value="#FFF59E0B"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DataFreshnessSeverity}" Value="Info">
+                                <Setter Property="Background" Value="#FFEFF6FF"/>
+                                <Setter Property="BorderBrush" Value="#FF93C5FD"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding DataFreshnessSeverity}" Value="Warning">
+                                <Setter Property="Background" Value="#FFFEF3C7"/>
+                                <Setter Property="BorderBrush" Value="#FFF59E0B"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding DataFreshnessBanner}"
+                           FontSize="12"
+                           TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#FF92400E"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DataFreshnessSeverity}" Value="Info">
+                                    <Setter Property="Foreground" Value="#FF1E40AF"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding DataFreshnessSeverity}" Value="Warning">
+                                    <Setter Property="Foreground" Value="#FF92400E"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Border>
+            <Border BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,6"
+                    Margin="0,8,0,0"
+                    Visibility="{Binding PostingLagVisibility}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#FFFEF3C7"/>
+                        <Setter Property="BorderBrush" Value="#FFF59E0B"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding PostingLagSeverity}" Value="Info">
+                                <Setter Property="Background" Value="#FFEFF6FF"/>
+                                <Setter Property="BorderBrush" Value="#FF93C5FD"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding PostingLagSeverity}" Value="Warning">
+                                <Setter Property="Background" Value="#FFFEF3C7"/>
+                                <Setter Property="BorderBrush" Value="#FFF59E0B"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding PostingLagBanner}"
+                           FontSize="12"
+                           TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#FF92400E"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PostingLagSeverity}" Value="Info">
+                                    <Setter Property="Foreground" Value="#FF1E40AF"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding PostingLagSeverity}" Value="Warning">
+                                    <Setter Property="Foreground" Value="#FF92400E"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Border>
         </StackPanel>
 
         <!-- KPI cards -->
@@ -123,8 +236,8 @@
                  <ItemsControl.ItemTemplate>
                      <DataTemplate>
                         <Button Style="{StaticResource MetricCardButton}"
-                                Width="286"
-                                Height="84"
+                                MinWidth="286"
+                                Height="98"
                                 Margin="4"
                                 VerticalAlignment="Top"
                                 Click="KpiCard_Click">
@@ -132,11 +245,41 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Text="{Binding Title}" Foreground="{StaticResource Text.Secondary}" FontSize="11" FontWeight="SemiBold"/>
+                                <DockPanel LastChildFill="True">
+                                    <Border DockPanel.Dock="Right"
+                                            Background="#FFE5E7EB"
+                                            BorderBrush="#FF9CA3AF"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="6,1"
+                                            Margin="8,0,0,0"
+                                            Visibility="{Binding ScopeBadgeVisibility}">
+                                        <TextBlock Text="{Binding ScopeBadgeText}"
+                                                   Foreground="#FF374151"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Title}" Foreground="{StaticResource Text.Secondary}" FontSize="11" FontWeight="SemiBold"/>
+                                </DockPanel>
 
-                                <TextBlock Grid.Row="1" Text="{Binding ValueText}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                <TextBlock Grid.Row="1" Text="{Binding ValueText}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding ValueText}"/>
+
+                                <!-- One-line headline footnote — populated by KPIs that have material
+                                     context worth showing without drill-in (e.g., AR Outstanding's
+                                     "of which $X in collections"). Hidden when InlineSubText is empty. -->
+                                <TextBlock Grid.Row="2"
+                                           Text="{Binding InlineSubText}"
+                                           Visibility="{Binding InlineSubTextVisibility}"
+                                           Foreground="{StaticResource Text.Secondary}"
+                                           FontSize="10.5"
+                                           Margin="0,2,0,0"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding InlineSubText}"/>
                             </Grid>
                         </Button>
                     </DataTemplate>
@@ -161,7 +304,7 @@
 
                     <StackPanel>
                         <TextBlock Text="Trends" FontWeight="SemiBold"/>
-                        <TextBlock Text="Small, quick-read trendlines (best-effort; cards stay independent)."
+                        <TextBlock Text="Recent revenue, billings, AR, and delivery movement."
                                    Foreground="{StaticResource Text.Secondary}"
                                    FontSize="11"
                                    Margin="0,2,0,0"/>
@@ -183,6 +326,19 @@
                                                            Foreground="{StaticResource Text.Secondary}"
                                                            FontSize="12"
                                                            VerticalAlignment="Center"/>
+                                                <Border DockPanel.Dock="Right"
+                                                        Background="#FFE5E7EB"
+                                                        BorderBrush="#FF9CA3AF"
+                                                        BorderThickness="1"
+                                                        CornerRadius="10"
+                                                        Padding="6,1"
+                                                        Margin="8,0,0,0"
+                                                        Visibility="{Binding ScopeBadgeVisibility}">
+                                                    <TextBlock Text="{Binding ScopeBadgeText}"
+                                                               Foreground="#FF374151"
+                                                               FontSize="10"
+                                                               FontWeight="SemiBold"/>
+                                                </Border>
                                                 <Border DockPanel.Dock="Right"
                                                         Background="#FFE8F5E9"
                                                         BorderBrush="#FF81C784"
@@ -233,7 +389,7 @@
 
                     <StackPanel>
                         <TextBlock Text="Alerts" FontWeight="SemiBold"/>
-                        <TextBlock Text="Deterministic rules computed locally from what we already load today."
+                        <TextBlock Text="Portfolio signals from current Deltek and project data."
                                    Foreground="{StaticResource Text.Secondary}"
                                    FontSize="11"
                                    Margin="0,2,0,0"/>

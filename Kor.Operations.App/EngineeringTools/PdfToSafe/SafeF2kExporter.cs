@@ -41,7 +41,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 elevationMm: 0,
                 ic,
                 settings.DropPanelThicknessMultiplier,
-                xLineHints);
+                xLineHints,
+                settings.AutoGenerateOpeningsFromWalls);
 
             var gridLines = StructuralGridGenerator.Generate(storyData.ColumnsForGrid);
 
@@ -82,7 +83,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     elevationMm: elevationMm,
                     ic,
                     settings.DropPanelThicknessMultiplier,
-                    xLineHints));
+                    xLineHints,
+                    settings.AutoGenerateOpeningsFromWalls));
             }
 
             var allColumns = System.Linq.Enumerable

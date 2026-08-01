@@ -1,0 +1,25 @@
+public sealed class LocaleSensitiveParseBad
+{
+    public void Bare()
+    {
+        var x = int.Parse("42");
+        var y = double.Parse("3.14");
+    }
+
+    public void WithInvariantCulture()
+    {
+        var x = int.Parse("42", System.Globalization.CultureInfo.InvariantCulture);
+        var y = double.Parse("3.14", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    public void WithCultureInfoArg()
+    {
+        var culture = System.Globalization.CultureInfo.GetCultureInfo("fr-CA");
+        var x = decimal.Parse("3,14", culture);
+    }
+
+    public void AnnotatedSameLine()
+    {
+        var x = int.Parse("42"); // locale OK: digit-only input
+    }
+}

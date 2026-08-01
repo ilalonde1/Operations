@@ -1,0 +1,16 @@
+LoserId,SurvivorId,Note
+73943,72042,CBE paren dup (buyers-deep #1; 72042 mpi=30 established survivor)
+70298,72044,Rocky View Schools paren dup (buyers-deep #2; 72044 mpi=8)
+72204,54957,BCIT dup (buyers-deep #3; 54957 mpi=25 established survivor)
+69439,70308,Saanich SD dup (buyers-deep #4; 70308 mpi=12 established survivor)
+71194,53255,Government of Alberta (Alberta Infrastructure) paren variant -> Alberta Infrastructure (mpi=82)
+3693,3690,Bremner E&C 'and' variant (honing-gcs b002: keep 3690)
+2974,2972,Baja Construction dup (honing-gcs b002: keep 2972)
+3921,3922,C. Chandler Contracting -> Celtic Construction (b002 same entity; 3922 renamed by m135)
+6890,6887,Emcee Construction dup (honing-gcs b002: keep 6887)
+16183,54928,STUART OLSON CONSTRUCTION -> Bird Construction Inc. (acquired 2020; honing-gcs b001)
+16185,54928,Stuart Olson Dominion Construction -> Bird Construction Inc. (worklist rebrand item)
+38955,54928,Stuart Olson Development -> Bird Construction Inc.
+70813,54928,Stuart Olson Inc. -> Bird Construction Inc.
+14565,14564,Roads West tender-text garble -> clean twin (worklist 14565 name quality)
+54085,18854,District Central Saanich (mis-kinded Developer dup) -> District of Central Saanich (Buyer)

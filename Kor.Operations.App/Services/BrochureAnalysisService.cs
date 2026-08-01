@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.Services;
 using Serilog;
 using Windows.Data.Pdf;
 using Windows.Storage;
@@ -121,14 +122,19 @@ namespace Kor.Operations.App.Services
             var json = JsonSerializer.Serialize(requestBody);
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
-                {
-                    Content = new StringContent(json, Encoding.UTF8, "application/json")
-                };
-                request.Headers.Add("x-api-key", _apiKey);
-                request.Headers.Add("anthropic-version", "2023-06-01");
-
-                using var response = await _httpClient.SendAsync(request, ct);
+                using var response = await HttpRetryPolicy.SendAsync(
+                    _httpClient,
+                    () =>
+                    {
+                        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+                        {
+                            Content = new StringContent(json, Encoding.UTF8, "application/json")
+                        };
+                        request.Headers.Add("x-api-key", _apiKey);
+                        request.Headers.Add("anthropic-version", "2023-06-01");
+                        return request;
+                    },
+                    ct).ConfigureAwait(false);
 
                 response.EnsureSuccessStatusCode();
                 var responseJson = await response.Content.ReadAsStringAsync(ct);

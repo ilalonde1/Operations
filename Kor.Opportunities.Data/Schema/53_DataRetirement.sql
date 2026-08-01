@@ -1,0 +1,72 @@
+/* Data freshness and retirement lifecycle for BD pipeline surfaces. */
+IF COL_LENGTH(N'opportunities.MajorProjectsInventory', N'RetiredAtUtc') IS NULL
+    ALTER TABLE opportunities.MajorProjectsInventory ADD RetiredAtUtc datetimeoffset NULL;
+GO
+
+IF COL_LENGTH(N'opportunities.MajorProjectsInventory', N'RetiredReason') IS NULL
+    ALTER TABLE opportunities.MajorProjectsInventory ADD RetiredReason nvarchar(200) NULL;
+GO
+
+IF COL_LENGTH(N'opportunities.MajorProjectsInventory', N'LastVerifiedAtUtc') IS NULL
+    ALTER TABLE opportunities.MajorProjectsInventory ADD LastVerifiedAtUtc datetimeoffset NULL;
+GO
+
+UPDATE opportunities.MajorProjectsInventory
+SET LastVerifiedAtUtc = COALESCE(LastVerifiedAtUtc, LastSeenAtUtc, UpdatedAtUtc)
+WHERE LastVerifiedAtUtc IS NULL;
+GO
+
+CREATE OR ALTER VIEW opportunities.PrimePipeline AS
+SELECT
+    CAST('Open RFP' AS nvarchar(20))            AS PipelineType,
+    CAST(o.Id AS nvarchar(40))                   AS SourceRef,
+    CAST(o.Name AS nvarchar(500))                AS ProjectName,
+    CAST(o.BuyerName AS nvarchar(500))           AS BuyerOrOwner,
+    CAST(o.PrimeProjectSector AS nvarchar(120))  AS Sector,
+    CAST(o.Status AS nvarchar(120))              AS Stage,
+    CAST(o.EstimatedValue AS decimal(18,2))      AS EstimatedValueCad,
+    CAST(o.ProjectProvince AS nvarchar(40))      AS Province,
+    CAST(o.ProjectCity AS nvarchar(200))         AS City,
+    CAST(NULL AS nvarchar(500))                  AS ArchitectName,
+    CAST(NULL AS nvarchar(1000))                 AS SourceUrl
+FROM opportunities.Opportunities o
+WHERE o.IsPrimeConsultantRfp = 1
+  AND o.Status NOT IN (6, 7)
+  AND (o.SubmissionDeadlineUtc IS NULL OR o.SubmissionDeadlineUtc >= SYSDATETIMEOFFSET())
+
+UNION ALL
+
+SELECT
+    CAST('Pipeline Project' AS nvarchar(20)),
+    CAST(m.Id AS nvarchar(40)),
+    CAST(m.ProjectName AS nvarchar(500)),
+    CAST(m.ProponentName AS nvarchar(500)),
+    CAST(m.Sector AS nvarchar(120)),
+    CAST(m.Stage AS nvarchar(120)),
+    CAST(m.EstimatedCostCad AS decimal(18,2)),
+    CAST(m.Province AS nvarchar(40)),
+    CAST(m.MunicipalityName AS nvarchar(200)),
+    CAST(m.ArchitectName AS nvarchar(500)),
+    CAST(m.SourceUrl AS nvarchar(1000))
+FROM opportunities.MajorProjectsInventory m
+WHERE m.Province IN ('BC','AB','CA','WA','OR')
+  AND m.RetiredAtUtc IS NULL
+  AND (
+        m.Sector LIKE '%school%' OR m.Sector LIKE '%hospital%' OR m.Sector LIKE '%health%'
+     OR m.Sector LIKE '%recreation%' OR m.Sector LIKE '%civic%' OR m.Sector LIKE '%cultural%'
+     OR m.Sector LIKE '%universit%' OR m.Sector LIKE '%college%' OR m.Sector LIKE '%library%'
+     OR m.Sector LIKE '%communit%' OR m.Sector LIKE '%education%' OR m.Sector LIKE '%housing%'
+     OR m.Sector LIKE '%institution%' OR m.Sector LIKE '%care%'
+     OR m.Sector IN ('Civic','Tourism / Recreation','Government','Mixed-use')
+      )
+  AND (m.Stage IS NULL OR NOT (
+        m.Stage LIKE '%complet%' OR m.Stage LIKE 'construction%' OR m.Stage LIKE '%under construction%'
+     OR m.Stage LIKE '%construction started%' OR m.Stage LIKE '%in construction%'
+     OR m.Stage LIKE '%construction phase%' OR m.Stage LIKE '%in-service%' OR m.Stage LIKE '%in service%'
+     OR m.Stage LIKE '%operating%' OR m.Stage LIKE '%occupancy%' OR m.Stage LIKE '%built%'
+     OR m.Stage LIKE '%in progress%' OR m.Stage LIKE '%underway%' OR m.Stage LIKE '%demolition%'
+      ));
+GO
+
+PRINT 'Migration 53: data retirement lifecycle fields and PrimePipeline retirement guard applied.';
+GO

@@ -4,7 +4,6 @@ using Kor.Operations.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -13,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Kor.Operations.App.Options;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace Kor.Operations
 {
@@ -80,7 +80,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"ContactPicker header init failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning(ex, "ContactPicker: header init failed.");
             }
             UpdatePagerState();
         }
@@ -95,7 +95,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Deltek name lookup failed: {ex.Message}");
+                Log.Warning(ex, "ContactPicker: Deltek name lookup failed.");
             }
             return sam.Replace('.', ' ').Replace('_', ' ');
         }
@@ -116,7 +116,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Avatar load skipped: {ex.GetType().Name}: {ex.Message}");
+                Log.Debug(ex, "ContactPicker: avatar load skipped.");
             }
         }
 

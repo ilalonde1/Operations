@@ -1,0 +1,524 @@
+<title>KOR Business Development — The Plain-English Handbook</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  @page { size: Letter; margin: 15mm 16mm 16mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    html { font-size: 15px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { padding: 20mm 16mm 12mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 16mm; }
+    .toc { position: static; max-height: none; padding: 8mm 0 2mm; break-after: page; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .table-wrap, table, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Business Development</p>
+    <h1>The Plain-English Handbook</h1>
+    <p class="hero__lede">The system does the digging — 100+ tender sources, every client's billing history, who we already know. Your job is to tell it the one thing only you know.</p>
+    <div class="hero__meta">
+      <span>No spreadsheets</span>
+      <span>No mandatory fields</span>
+      <span>One click to claim work</span>
+      <span>It chases you, not the reverse</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#idea">The big idea</a></li>
+      <li><a href="#open">Getting in</a></li>
+      <li><a href="#map">The map</a></li>
+      <li><a href="#lifecycle">How a pursuit lives</a></li>
+      <li><a href="#grab">Grab an opportunity</a></li>
+      <li><a href="#work">Work the pursuit</a></li>
+      <li><a href="#log">Log a call or meeting</a></li>
+      <li><a href="#close">Close it — Won or Lost</a></li>
+      <li><a href="#make">Make a proposal or brief</a></li>
+      <li><a href="#byhand">Enter one by hand</a></li>
+      <li><a href="#managers">For managers</a></li>
+      <li><a href="#auto">What happens without you</a></li>
+      <li><a href="#numbers">Reading the numbers</a></li>
+      <li><a href="#cheat">Cheat sheet</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="idea">
+      <p class="kicker">Start here</p>
+      <h2>The big idea, in three sentences</h2>
+      <p class="lede">Every firm's CRM dies the same way: it becomes a chore nobody does. This one is built to survive that, by asking almost nothing of you.</p>
+      <ul class="plain">
+        <li><strong>Capture is one decision.</strong> You supply the fact only you have — "I called Dave, we lost to Bush Bohlman." The system fills in the rest: when, who Dave is, which pursuit, the source, the region.</li>
+        <li><strong>The context is already there.</strong> Open a pursuit and you see the buyer's billing history, our past wins with them, how recently we've emailed them, and who else grabbed the plans — with zero typing.</li>
+        <li><strong>The system chases you.</strong> Deadlines and cold pursuits come to you in the morning email you already read. You don't go hunting a dashboard.</li>
+      </ul>
+      <div class="box box--dont">
+        <p class="box__label">✕ What you'll never be asked to do</p>
+        <p>Fill in a mandatory field. Build a pipeline. Score a lead by hand. BCC the CRM. Do "data hygiene." If a screen ever feels like busywork, you're probably on the wrong one — check <a href="#map" class="inline">the map</a>.</p>
+      </div>
+    </section>
+
+    <section id="open">
+      <p class="kicker">Step one</p>
+      <h2>Getting in</h2>
+      <p>Open the <strong>KOR Operations</strong> app (the one with the home screen of tiles). Click the <span class="btn">Business Development</span> tile — the rocket. That opens the <strong>Business Development Workspace</strong>, and everything in this handbook lives inside it.</p>
+      <div class="box box--screen">
+        <p class="box__label">▸ In the app you'll see</p>
+        <p>A dark slate header with your name and photo top-right, and a list of destinations down the left. That left list is your whole world — the next section explains each one.</p>
+      </div>
+    </section>
+
+    <section id="map">
+      <p class="kicker">Orientation</p>
+      <h2>The map — what each destination is for</h2>
+      <p>You mostly live in three of these: <strong>Grab Opportunities</strong> (find work), <strong>Pursuits</strong> (work it), and <strong>Pursuit Monitor</strong> (if you manage people). The rest are there when you want them.</p>
+      <dl class="map">
+        <div><dt>Dashboard</dt><dd>The at-a-glance home: priority actions and what's moving.</dd></div>
+        <div><dt>Grab Opportunities</dt><dd>The shop window of un-claimed tenders. Grab one to start working it.</dd></div>
+        <div><dt>Pursuits</dt><dd>The work you own. This is the CRM — calls, contacts, stages, outcomes.</dd></div>
+        <div><dt>Pursuit Monitor</dt><dd>Manager board: every owned pursuit, coldest first, with reassign.</dd></div>
+        <div><dt>RFPs</dt><dd>The full tender registry with filters. Enter one by hand here too.</dd></div>
+        <div><dt>Forward Pipeline</dt><dd>Big projects on the horizon, before they're tenders.</dd></div>
+        <div><dt>Relationships</dt><dd>The strategic-target deep dive — who to know, and why.</dd></div>
+        <div><dt>BD Scorecard</dt><dd>The honest scorecard of wins and where they came from.</dd></div>
+        <div><dt>BD Tracking</dt><dd>The legacy relationship spreadsheet, read-only.</dd></div>
+        <div><dt>Make a Brief</dt><dd>One-page write-ups on an org, region, person, or project.</dd></div>
+        <div><dt>Events</dt><dd>Industry events worth showing up to.</dd></div>
+        <div><dt>Market History</dt><dd>Who won what, historically — the competitor record.</dd></div>
+      </dl>
+    </section>
+
+    <section id="lifecycle">
+      <p class="kicker">The shape of the work</p>
+      <h2>How a pursuit lives</h2>
+      <p>Everything follows the same three beats. You touch it at the start and the end; the middle mostly runs itself.</p>
+      <div class="flow">
+        <div class="flow__step"><span class="flow__n">1</span><h4>Grab</h4><p>Claim a tender from <strong>Grab Opportunities</strong>. It becomes yours and turns into a Drafting pursuit.</p></div>
+        <div class="flow__step"><span class="flow__n">2</span><h4>Work</h4><p>Log the odd call, send a fee proposal, watch the context assemble itself.</p></div>
+        <div class="flow__step"><span class="flow__n">3</span><h4>Close</h4><p>Mark it Won or Lost. Capture the one thing only you know — who beat us, or which project it became.</p></div>
+      </div>
+      <p>A pursuit's <strong>stage</strong> is shown as a coloured pill, the same everywhere in the app:</p>
+      <div class="chip-row">
+        <span class="pill pill--draft">Drafting</span>
+        <span class="pill pill--sub">Submitted</span>
+        <span class="pill pill--won">Won</span>
+        <span class="pill pill--lost">Lost</span>
+      </div>
+    </section>
+
+    <section id="grab">
+      <p class="kicker">1 · Find work</p>
+      <h2>Grab an opportunity</h2>
+      <p>Go to <span class="btn">Grab Opportunities</span>. It's a ranked list of every open tender nobody at KOR has claimed — pulled automatically from BC Bid, CanadaBuys, SAM.gov and 100+ other feeds. The most relevant ones are up top, tagged <span class="pill pill--won">High</span> or <span class="pill pill--sub">Medium</span>.</p>
+      <h3>Before you claim — look first</h3>
+      <p><strong>Double-click a row</strong> to open the buyer's profile: who the key people are, our track record with them, live signals. It stops you claiming blind.</p>
+      <h3>Claim it</h3>
+      <p>Select the row and click <span class="btn">Grab selected</span>, confirm, and it's yours. It leaves the list, becomes a <span class="pill pill--draft">Drafting</span> pursuit you own, and the app drops you straight into it.</p>
+      <div class="box box--tip">
+        <p class="box__label">✓ Good to know</p>
+        <p>If two of you grab the same tender at once, only one wins and the other is told honestly — nobody ends up with a phantom claim.</p>
+      </div>
+    </section>
+
+    <section id="work">
+      <p class="kicker">2 · Work it</p>
+      <h2>Work the pursuit — what you get for free</h2>
+      <p>Open any pursuit in <span class="btn">Pursuits</span>. The left side is the list of everything you own; the right side is the detail. The list opens on your <em>live</em> work by default — click the coloured pills to filter, type in the search box, or hit <span class="btn">Mine</span> to see only yours.</p>
+      <div class="box box--screen">
+        <p class="box__label">▸ On the pursuit, with zero typing, you'll see</p>
+        <ul class="plain">
+          <li><strong>Deltek history</strong> — has this client paid us before, how much, how recently. The gold strip near the top.</li>
+          <li><strong>Email warmth</strong> — e.g. "Filed correspondence with @acme.com: last 12d ago · 9 in 90d · mostly j.smith@acme.com." Computed nightly from every filed email.</li>
+          <li><strong>Plan takers</strong> — who else pulled the plans on this RFP.</li>
+          <li><strong>History line</strong> — how it came to you and how long it's been sitting ("Grabbed by you · In Drafting 12d").</li>
+        </ul>
+      </div>
+      <h3>The buttons across the top</h3>
+      <p>Kept deliberately short — the two you'll use most, plus a <span class="btn">More ▾</span> menu for the rest:</p>
+      <ul class="plain">
+        <li><span class="btn">Edit…</span> — owner, fee, notes, stage.</li>
+        <li><span class="btn">Set stage</span> — move it forward (Drafting → Submitted → Won / Lost).</li>
+        <li><span class="btn">More ▾</span> — everything else, one click away: <strong>Buyer profile</strong> (the full dossier on this buyer), <strong>Project brief</strong> (a one-page PDF for a meeting or a go / no-go), <strong>Link to project</strong>, and start a <strong>Fee Proposal</strong> or <strong>Brochure</strong> pre-named for this pursuit.</li>
+      </ul>
+    </section>
+
+    <section id="log">
+      <p class="kicker">The one-minute job</p>
+      <h2>Log a call, meeting, or email</h2>
+      <p>This is the only regular typing the system asks of you, and it's built to take seconds. On the pursuit, in the <strong>Activity log</strong> row: pick the type (Call, Meeting, Email…), type a subject, press <kbd>Enter</kbd>. Done.</p>
+      <div class="box box--tip">
+        <p class="box__label">✓ Two shortcuts worth knowing</p>
+        <ul class="plain">
+          <li>Rang someone Friday, logging it Monday? Use the <strong>date picker</strong> — it records when it actually happened.</li>
+          <li>Point it at the <strong>contact</strong> it was with from the dropdown. Optional, but it makes the record richer.</li>
+        </ul>
+      </div>
+      <h3>Adding a contact</h3>
+      <p>Same detail panel, the <strong>Contacts</strong> box: name, role, email, phone, and tick <em>primary</em> if they're the main person. <span class="btn">Add</span>.</p>
+      <h3>Attach a file, email — anything</h3>
+      <p>Same detail panel, the <strong>Files</strong> box: <strong>drag files straight onto it</strong> — a PDF, a saved email, a drawing, a photo, even a video — or click <span class="btn">Browse…</span>. They're kept on the shared BD drive <em>with the pursuit</em>, so anyone working it can <span class="btn">Open</span> them and nothing important lives only on your laptop.</p>
+      <div class="box box--auto">
+        <p class="box__label">◇ You don't have to log everything</p>
+        <p>When you save a <strong>fee proposal</strong> from a pursuit, it logs itself as an activity. The system captures the big moments so you don't have to remember to.</p>
+      </div>
+    </section>
+
+    <section id="close">
+      <p class="kicker">3 · Close it</p>
+      <h2>Close it — Won or Lost</h2>
+      <p>Click <span class="btn">Set stage</span> and pick the outcome. This is the moment that matters most — it's when you know the one fact the system can't get anywhere else.</p>
+      <h3 style="color:var(--good)">Won</h3>
+      <p>Mark it <span class="pill pill--won">Won</span>, then use <span class="btn">Link to project…</span> (under <span class="btn">More ▾</span>) to tie it to the Deltek project it became. Pick from the client's projects, or just type the WBS1. This is what connects "we chased it" to "we're building it" — so every win is accounted for end to end.</p>
+      <h3 style="color:var(--ink-soft)">Lost</h3>
+      <p>Mark it <span class="pill pill--lost">Lost</span> and one small box appears: who beat us (start typing the firm), a one-line reason, and a <strong>Skip</strong> button that's one click. Nothing is mandatory — but the ten seconds it takes is the only time anyone will ever know who won it.</p>
+      <div class="box box--tip">
+        <p class="box__label">✓ It cleans up after you</p>
+        <p>Marking a pursuit Won or Lost stamps the close date and files the outcome automatically. Reopen it later and it clears cleanly — no stale "lost to X" hanging around on a live pursuit.</p>
+      </div>
+    </section>
+
+    <section id="make">
+      <p class="kicker">Deliverables</p>
+      <h2>Make a proposal, brochure, or brief</h2>
+      <ul class="plain">
+        <li><strong>Fee proposal / brochure</strong> — from a pursuit, open <span class="btn">More ▾</span> and pick <span class="btn">Fee Proposal…</span> or <span class="btn">Brochure…</span>. It opens pre-named for that pursuit; build it out in the usual builder.</li>
+        <li><strong>Project brief</strong> — <span class="btn">Project brief…</span> (under <span class="btn">More ▾</span>) produces a one-page PDF pulling the RFP, the buyer, and the market context together. Perfect before a call or a bid decision.</li>
+        <li><strong>Org / region / person / project brief</strong> — the <span class="btn">Make a Brief</span> destination, for when you want a write-up that isn't tied to a single tender.</li>
+      </ul>
+    </section>
+
+    <section id="byhand">
+      <p class="kicker">When it's not in the feed</p>
+      <h2>Enter an opportunity by hand</h2>
+      <p>Heard about something the feeds haven't caught? In <span class="btn">RFPs</span>, click <span class="btn">New</span>, fill in the name and buyer (the rest is optional), and <span class="btn">Save</span>.</p>
+      <div class="box box--screen">
+        <p class="box__label">▸ The system watches for duplicates</p>
+        <p>As you type, if it looks like something we already have, you'll see a quiet warning. On Save, it shows you the likely matches — tagged <span class="pill pill--cold">Likely</span> or <span class="pill pill--watch">Possible</span> — with three choices:</p>
+        <ul class="plain">
+          <li><span class="btn">Open the existing one</span> — it was already there; jump to it.</li>
+          <li><span class="btn">Save as new anyway</span> — genuinely different; create it.</li>
+          <li><span class="btn">Cancel</span> — go back to editing.</li>
+        </ul>
+        <p>It even catches ones that are already closed, so you don't re-enter a job we already won or lost. You're never blocked — it just makes sure you meant to.</p>
+      </div>
+    </section>
+
+    <section id="managers">
+      <p class="kicker">If you run the team</p>
+      <h2>For managers — Pursuit Monitor</h2>
+      <p>Go to <span class="btn">Pursuit Monitor</span> for one board of every owned, active pursuit — <strong>coldest first</strong>, so whatever's going stale floats to the top. Each row shows a staleness dot and how long it's sat in its current stage.</p>
+      <div class="chip-row">
+        <span class="pill pill--fresh">Fresh &lt;7d</span>
+        <span class="pill pill--watch">Watch 7–21d</span>
+        <span class="pill pill--cold">Cold 21d+</span>
+      </div>
+      <p style="margin-top:1rem">"Staleness" counts the most recent <em>real</em> touch — a logged call <strong>or</strong> a filed email — so a pursuit isn't marked cold just because nobody typed a note, when correspondence is actually flowing.</p>
+      <ul class="plain">
+        <li><strong>Double-click</strong> a row to open and manage that pursuit.</li>
+        <li><strong>Reassign</strong> hands it to someone else from the firm roster and emails them. It won't let you reassign a pursuit that's already closed.</li>
+      </ul>
+    </section>
+
+    <section id="auto">
+      <p class="kicker">While you sleep</p>
+      <h2>What happens without you</h2>
+      <div class="box box--auto">
+        <p class="box__label">◇ The morning email</p>
+        <p>Every morning a report lands in the inbox you already read. It opens with <strong>owned pursuits closing soon</strong> — anything with a deadline inside two weeks, red if it's under five days — so nothing dies quietly. Mondays it adds open rosters and pre-quals worth chasing.</p>
+      </div>
+      <ul class="plain">
+        <li><strong>New tenders</strong> arrive in <strong>Grab Opportunities</strong> around the clock, scored and matched to a buyer, with no one entering them.</li>
+        <li><strong>Email warmth</strong> refreshes every night from the filed-email record, so "how warm is this client" is always current on the pursuit.</li>
+        <li><strong>Fee proposals</strong> log themselves against the pursuit when you save them.</li>
+      </ul>
+    </section>
+
+    <section id="numbers">
+      <p class="kicker">Trust what you see</p>
+      <h2>Reading the numbers honestly</h2>
+      <p>The CRM will tell you it holds <strong>252 engagements</strong>, but it won't pretend that's a 100% win rate. 177 of those are <em>historical Deltek wins</em> imported to give you context — clearly labelled as backfill, with no owner and no matching losses.</p>
+      <p>So the win-rate line reads something like <em>"live: 0W / 0L · live win rate — (no live outcomes yet)"</em> and fills in for real only as pursuits you actually grab reach an outcome. The rule of the house: <strong>honest numbers or no numbers.</strong> If a figure would be misleading, the app says so instead of showing it.</p>
+    </section>
+
+    <section id="cheat">
+      <p class="kicker">Keep this handy</p>
+      <h2>Cheat sheet</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>I want to…</th><th>Do this</th></tr></thead>
+          <tbody>
+            <tr><td>Find new work</td><td><span class="path"><b>Grab Opportunities</b></span> → double-click to scout → <span class="btn">Grab selected</span></td></tr>
+            <tr><td>Log a call fast</td><td><span class="path"><b>Pursuits</b></span> → Activity log → type + subject + <kbd>Enter</kbd></td></tr>
+            <tr><td>Log something from last week</td><td>Same, but set the <strong>date picker</strong> first</td></tr>
+            <tr><td>Attach a file to a pursuit</td><td>Open the pursuit → <strong>drag it onto the Files box</strong>, or <span class="btn">Browse…</span></td></tr>
+            <tr><td>See if a client pays us</td><td>Open the pursuit → read the <strong>Deltek history</strong> strip</td></tr>
+            <tr><td>Know who beat us</td><td><span class="btn">Set stage</span> → Lost → fill the "lost to" box (or Skip)</td></tr>
+            <tr><td>Tie a win to a project</td><td><span class="btn">Set stage</span> → Won → <span class="btn">Link project…</span></td></tr>
+            <tr><td>Prep for a meeting</td><td><span class="btn">More ▾</span> → <span class="btn">Project brief…</span> on the pursuit</td></tr>
+            <tr><td>Find only my pursuits</td><td><span class="path"><b>Pursuits</b></span> → <span class="btn">Mine</span></td></tr>
+            <tr><td>See what's going cold</td><td><span class="path"><b>Pursuit Monitor</b></span> — it's coldest-first</td></tr>
+            <tr><td>Add a tender by hand</td><td><span class="path"><b>RFPs</b></span> → <span class="btn">New</span> (it'll warn on duplicates)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">✓ The one habit that matters</p>
+        <p>Grab the work you're chasing, and log the moment it closes. That's it. Everything else the system either does for you or can wait. The two events it's really watching for are your <strong>first grab</strong> and your <strong>first logged call</strong> — once those feel easy, the rest follows.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>KOR Structural — Business Development Workspace. Built into the KOR Operations app; nothing here needs a browser or a login beyond the app you already use.</p>
+      <p class="path">Lost? Almost everything starts from <b>Business Development</b> on the home screen, then <b>Grab Opportunities</b>, <b>Pursuits</b>, or <b>Pursuit Monitor</b>.</p>
+    </footer>
+  </main>
+</div>

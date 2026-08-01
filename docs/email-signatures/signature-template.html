@@ -1,0 +1,66 @@
+<!--
+  Kor Structural email signature — minimal template (2026-07, rev 2)
+  Matches the Fast+Epp reference (sig3): contact block first, small wordmark
+  below as the ONLY website link, then the fine-print row. No E (redundant on
+  an email) and no W text link (the logo covers it).
+
+  Tokens to fill per person:
+    {{NAME}}         e.g. John A. Markulin
+    {{CREDENTIALS}}  e.g. M.Eng., P.Eng., Struct. Eng., PE, SE   (blank = line omitted)
+    {{ROLE}}         e.g. MANAGING PRINCIPAL                     (blank = line omitted)
+    {{TITLE}}        e.g. Senior Structural Engineer             (orange; blank = line omitted)
+    {{DIRECT}}       e.g. 778.652.1900                           (blank = "D ..." segment omitted)
+    {{MOBILE}}       e.g. 604.618.2971                           (blank = "M ..." segment omitted)
+    {{EXT}}          e.g. 202                                    (blank = "(ext)" omitted)
+    {{EMAIL}}        e.g. jmarkulin@korstructural.com            (used only in the Send Me Files link)
+
+  Logo: BASE64 DATA URI ({{LOGO_B64}} token, injected by Generate-Signatures
+  from korlogo-small.png). This is how the fleet's own working sigs carried
+  their logo (verified in harvested originals): Word renders it at compose,
+  converts it to a cid: inline attachment at send (recipients always see it,
+  no web fetch), and it survives Outlook roaming-signature sync to OWA/mobile.
+  Local-file _files refs were sent as literal file:/// paths (broken for every
+  recipient); hosted URLs meant a web fetch per view. Data URI beats both.
+
+  Colours sampled from the brand logo PNG:
+    KOR orange  #F15D3A
+    Dark text   #373435
+    Slate body  #5A6771
+
+  Outlook-safe: single table, all styles inline, Calibri/Arial only.
+-->
+<table cellpadding="0" cellspacing="0" border="0" style="font-family: Calibri, Arial, sans-serif; color: #5A6771;">
+  <tr>
+    <td style="padding: 0 0 2px 0; font-size: 12pt; font-weight: bold; color: #373435;">{{NAME}}</td>
+  </tr>
+  <tr>
+    <td style="padding: 0 0 2px 0; font-size: 9pt; font-weight: bold; color: #373435;">{{CREDENTIALS}}</td>
+  </tr>
+  <tr>
+    <td style="padding: 0 0 2px 0; font-size: 9pt; font-weight: bold; color: #373435; letter-spacing: 0.5px;">{{ROLE}}</td>
+  </tr>
+  <tr>
+    <td style="padding: 0 0 6px 0; font-size: 9pt; font-weight: bold; color: #F15D3A;">{{TITLE}}</td>
+  </tr>
+  <tr>
+    <td style="padding: 0 0 2px 0; font-size: 8.5pt; color: #5A6771;">
+      D <span style="color: #F15D3A;">{{DIRECT}}</span>&nbsp;|&nbsp;M <span style="color: #F15D3A;">{{MOBILE}}</span>&nbsp;|&nbsp;O <span style="color: #F15D3A;">604.685.9533 ({{EXT}})</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding: 0 0 10px 0; font-size: 8.5pt; color: #5A6771;">Suite 501 &ndash; 510 Burrard Street, Vancouver, BC V6C 3A8</td>
+  </tr>
+  <tr>
+    <td style="padding: 0 0 4px 0;">
+      <a href="https://www.korstructural.com" style="text-decoration: none; border: none;"><img src="{{LOGO_B64}}" alt="Kor Structural" width="130" style="display: block; border: 0;"></a>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding: 0 0 6px 0; font-size: 8pt; font-weight: bold; color: #5A6771; letter-spacing: 0.5px;">VANCOUVER&nbsp;|&nbsp;OKANAGAN&nbsp;|&nbsp;VANCOUVER ISLAND&nbsp;|&nbsp;ALBERTA</td>
+  </tr>
+  <tr>
+    <td style="padding: 0; font-size: 8.5pt; color: #8A949C;">
+      <a href="https://tracking.korstructural.com/filedrop?to={{EMAIL}}" style="color: #F15D3A; text-decoration: underline; font-weight: bold;">Send Me Files</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="https://www.korstructural.com/email-disclaimer/" style="color: #5A6771; text-decoration: underline;">Email Disclaimer</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;EGBC PERMIT 1000378
+    </td>
+  </tr>
+</table>

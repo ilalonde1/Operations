@@ -1,0 +1,24 @@
+# Discovery-pass cleanup merges — survivors human-verified as the richer/cleaner record (2026-06-22).
+# Each loser is a dup/name-variant of the survivor; verified live + enrichment before approval.
+# LoserId,SurvivorId,Reason,Reviewer,ReviewedAt
+76499,75826,Aspect Engineering -> ASPECT Structural Engineers Canada,ilalonde,2026-06-22
+76236,75858,Bow Transit Connectors (DB team) -> Bow Transit Connectors,ilalonde,2026-06-22
+77207,77164,Carrier Johnson -> Carrier Johnson + Culture,ilalonde,2026-06-22
+76161,75878,MGBA Inc. -> MGBA,ilalonde,2026-06-22
+74028,74029,Penticton Indian Band duplicate,ilalonde,2026-06-22
+75737,77104,ZGF (attributed) -> ZGF Architects,ilalonde,2026-06-22
+75674,76639,Protostatix Englobe -> Protostatix Engineering Consultants,ilalonde,2026-06-22
+73999,74034,HDR | CEI -> HDR,ilalonde,2026-06-22
+75995,74034,HDR | CEI Associates -> HDR,ilalonde,2026-06-22
+76392,630,Cowichan Tribes (Khowutzun) -> Cowichan Tribes,ilalonde,2026-06-22
+77234,20,DBRDS (De Bartolo) -> DBRDS Design Studio,ilalonde,2026-06-22
+76473,8799,HCMA (feasibility) -> hcma architecture + design,ilalonde,2026-06-22
+76333,8799,HCMA (feasibility study only) -> hcma architecture + design,ilalonde,2026-06-22
+76280,33655,HOTSON -> Hotson Architecture Inc,ilalonde,2026-06-22
+77152,68635,LARGE Architecture (LRG) -> Large Architecture,ilalonde,2026-06-22
+75719,68635,LARGE Architecture (LRG/Large) -> Large Architecture,ilalonde,2026-06-22
+75712,68624,Morley Builders (incl Construction Co) -> Morley Builders,ilalonde,2026-06-22
+77572,68843,OHSU (Oregon Health) -> OHSU,ilalonde,2026-06-22
+73781,68843,Oregon Health (OHSU) -> OHSU,ilalonde,2026-06-22
+68729,68843,OHSU (Developer mis-kind) -> OHSU Buyer,ilalonde,2026-06-22
+77378,69767,Teeple (with Stantec) -> Teeple Architects,ilalonde,2026-06-22

@@ -79,6 +79,7 @@
                      MaxHeight="200"
                      Visibility="Collapsed"
                      SelectionChanged="ProjectsList_SelectionChanged"
+                     Cursor="Hand"
                      MouseDoubleClick="ProjectsList_MouseDoubleClick"
                      ScrollViewer.VerticalScrollBarVisibility="Auto">
                 <ListBox.ItemTemplate>

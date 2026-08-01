@@ -20,7 +20,7 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
                 DxfExporter.Export(geo, path, exSlabs, exLines, exCols);
                 return File.ReadAllText(path);
             }
-            finally { try { File.Delete(path); } catch { } }
+            finally { try { File.Delete(path); } catch { /* best-effort temp cleanup */ } }
         }
 
         private static ExtractedGeometry SimpleGeo()
@@ -136,7 +136,7 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
                 // Empty geometry → totalWeight=0 → returns early → no file
                 Assert.False(File.Exists(path));
             }
-            finally { try { File.Delete(path); } catch { } }
+            finally { try { File.Delete(path); } catch { /* best-effort temp cleanup */ } }
         }
 
         [Fact]

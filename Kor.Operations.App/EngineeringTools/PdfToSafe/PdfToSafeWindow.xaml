@@ -166,6 +166,14 @@
                                                 Padding="6,4"
                                                 FontSize="11"
                                                 Click="ReAnalyse_Click"/>
+                                        <Button x:Name="RerunVisionButton"
+                                                Content="Rerun AI"
+                                                Style="{StaticResource Button.Secondary}"
+                                                Padding="6,4"
+                                                FontSize="11"
+                                                Margin="6,0,0,0"
+                                                Click="RerunVision_Click"
+                                                ToolTip="Re-run the Claude vision auto-classify pass on the current page (e.g. after a page change)."/>
                                     </StackPanel>
                                     <StackPanel x:Name="DetectionSummaryPanel"
                                                 Orientation="Horizontal"
@@ -314,7 +322,7 @@
                         <TextBlock Text="Load a vector PDF exported from Revit or AutoCAD.&#x0a;Scale is auto-detected from PDF text.&#x0a;Scroll to zoom · right-drag to pan." FontSize="12" Foreground="{StaticResource Text.Secondary}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="320"/>
                     </StackPanel>
 
-                    <Grid x:Name="PreviewViewbox" Visibility="Collapsed" MouseWheel="PreviewContainer_MouseWheel" MouseDown="PreviewContainer_MouseDown" MouseMove="PreviewContainer_MouseMove" MouseUp="PreviewContainer_MouseUp" ClipToBounds="True">
+                    <Grid x:Name="PreviewViewbox" Visibility="Collapsed" Cursor="Hand" MouseWheel="PreviewContainer_MouseWheel" MouseDown="PreviewContainer_MouseDown" MouseMove="PreviewContainer_MouseMove" MouseUp="PreviewContainer_MouseUp" ClipToBounds="True">
                         <Canvas x:Name="PreviewCanvas" HorizontalAlignment="Left" VerticalAlignment="Top">
                             <Image x:Name="PreviewImage" Canvas.Left="0" Canvas.Top="0"/>
                         </Canvas>
@@ -332,6 +340,14 @@
                             <StackPanel x:Name="LegendLineRow" Orientation="Horizontal" Margin="0,0,0,5" Cursor="Hand" MouseDown="LegendLine_Click" ToolTip="Click to show/hide all linear elements">
                                 <Rectangle Width="14" Height="3" Fill="Cyan" VerticalAlignment="Center"/>
                                 <TextBlock Text="Linear element" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel x:Name="LegendWallRow" Orientation="Horizontal" Margin="0,0,0,5" ToolTip="Slab polygons routed to walls (auto-detected by size/aspect, or set explicitly as 'Wall'). Exported as wall frames, not slabs.">
+                                <Rectangle Width="14" Height="3" Fill="#DC2626" VerticalAlignment="Center"/>
+                                <TextBlock Text="Wall" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel x:Name="LegendOpeningRow" Orientation="Horizontal" Margin="0,0,0,5" ToolTip="Rectangular shaft openings auto-cut from the slab where 4 walls enclose a region (elevator / stair / mech). Cut at the wall centerline because walls export as beams.">
+                                <Rectangle Width="14" Height="10" Stroke="#C41E74" StrokeThickness="1.5" StrokeDashArray="2 1" Fill="#22C41E74" VerticalAlignment="Center"/>
+                                <TextBlock Text="Auto-cut opening" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="7,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                             <StackPanel x:Name="LegendColumnRow" Orientation="Horizontal" Cursor="Hand" MouseDown="LegendColumn_Click" ToolTip="Click to show/hide all columns">
                                 <Ellipse Width="10" Height="10" Fill="Yellow" Stroke="DarkGoldenrod" StrokeThickness="1" VerticalAlignment="Center"/>

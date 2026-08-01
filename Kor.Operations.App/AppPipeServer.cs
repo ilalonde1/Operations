@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
@@ -11,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace Kor.Operations
 {
@@ -30,11 +30,11 @@ namespace Kor.Operations
 
         public async Task StopAsync()
         {
-            try { _pipeCts?.Cancel(); } catch (Exception ex) { Debug.WriteLine($"[AppPipeServer] Cancellation failed: {ex.GetType().Name}: {ex.Message}"); }
+            try { _pipeCts?.Cancel(); } catch (Exception ex) { Log.Warning(ex, "AppPipeServer: cancellation failed."); }
 
             if (_pipeTask != null)
             {
-                try { await _pipeTask.ConfigureAwait(false); } catch (Exception ex) { Debug.WriteLine($"[AppPipeServer] Pipe task completion failed: {ex.GetType().Name}: {ex.Message}"); }
+                try { await _pipeTask.ConfigureAwait(false); } catch (Exception ex) { Log.Warning(ex, "AppPipeServer: pipe task completion failed on shutdown."); }
             }
 
             _pipeCts?.Dispose();
@@ -85,9 +85,27 @@ namespace Kor.Operations
                             .Where(File.Exists)
                             .ToList();
 
+                        var korLink = tokens.FirstOrDefault(t =>
+                            t.StartsWith("kor://", StringComparison.OrdinalIgnoreCase));
+
                         await Application.Current.Dispatcher.InvokeAsync(
                             () =>
                             {
+                                // kor:// deep link forwarded from a second instance
+                                // (a report PDF/email link clicked while the app is
+                                // already open): surface the app and open the target.
+                                if (korLink != null)
+                                {
+                                    if (Application.Current.MainWindow is { } main)
+                                    {
+                                        if (main.WindowState == WindowState.Minimized)
+                                            main.WindowState = WindowState.Normal;
+                                        main.Activate();
+                                    }
+
+                                    _ = KorDeepLink.OpenAsync(korLink);
+                                }
+
                                 if (emailSearchCmd)
                                 {
                                     var existing = Application.Current.Windows
@@ -128,7 +146,7 @@ namespace Kor.Operations
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[AppPipeServer] Pipe server loop failed: {ex.GetType().Name}: {ex.Message}");
+                    Log.Error(ex, "AppPipeServer: pipe server loop failed.");
                 }
             }
         }

@@ -333,4 +333,34 @@ public class F2kModelPrepTests
         // 6 unique points (8 vertices minus 2 shared on the common edge)
         Assert.Equal(6, story.PointOrder.Count);
     }
+
+    //  SnapWallSection
+
+    [Theory]
+    [InlineData(157, 1000, "W150x1000", 150, 1000)] // raw 157 → snap to 150
+    [InlineData(200, 1000, "W200x1000", 200, 1000)] // already on grid
+    [InlineData(220, 1000, "W200x1000", 200, 1000)] // 220 → 200
+    [InlineData(230, 1000, "W250x1000", 250, 1000)] // 230 → 250
+    [InlineData(952, 1000, "W950x1000", 950, 1000)] // KOR thick shear wall
+    [InlineData(100,  1000, "W150x1000", 150, 1000)] // below floor → clamped
+    [InlineData(1850, 1000, "W1850x1000", 1850, 1000)] // on grid (50mm)
+    public void SnapWallSection_RoundsTo50mmGridWith150mmFloor(
+        double rawW, double rawD, string expectedName, double expectedW, double expectedD)
+    {
+        var (name, w, d) = F2kModelPrep.SnapWallSection(rawW, rawD);
+        Assert.Equal(expectedName, name);
+        Assert.Equal(expectedW, w);
+        Assert.Equal(expectedD, d);
+    }
+
+    [Fact]
+    public void SnapWallSection_DefaultsDepthWhenInputZero()
+    {
+        // The reducer always supplies depth=1000, but guard against a 0 input
+        // (legacy callers or test scaffolding).
+        var (name, w, d) = F2kModelPrep.SnapWallSection(300, 0);
+        Assert.Equal("W300x1000", name);
+        Assert.Equal(300, w);
+        Assert.Equal(1000, d);
+    }
 }

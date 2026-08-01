@@ -14,6 +14,11 @@ using Kor.Operations.Financials;
 
 namespace Kor.Operations.PMTools
 {
+    // Round 38a: stays internal (its property types include internal helpers
+    // like BulkObservableCollection&lt;T&gt;, PmProjectRow, PmGroupViewModel —
+    // promoting the VM would cascade through all of them). The PM Tools window
+    // ctors take this type via internal-modifier ctors so DI in the same
+    // assembly resolves cleanly without leaking these internals.
     internal sealed class PmToolsViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
     {
         private readonly FinancialsService _svc;
@@ -51,8 +56,14 @@ namespace Kor.Operations.PMTools
         public int OverDraftBudgetCount { get; private set; }
         public int PortfolioCriticalCount { get; private set; }
         public int PortfolioAtRiskCount { get; private set; }
-        public int PortfolioStableCount { get; private set; }
+        public int PortfolioWatchCount { get; private set; }
         public int PortfolioHighConfidenceCount { get; private set; }
+
+        public double PortfolioCriticalPct { get; private set; }
+        public double PortfolioAtRiskPct { get; private set; }
+        public double PortfolioWatchPct { get; private set; }
+        public double PortfolioHighConfidencePct { get; private set; }
+        public double PortfolioRiskExposureFee { get; private set; }
 
         // BulkObservableCollection fires one Reset notification on ReplaceAll instead of N Add events
         public BulkObservableCollection<PmProjectRow>      ProjectRows       { get; } = new();
@@ -316,7 +327,7 @@ namespace Kor.Operations.PMTools
             DraftUtilizationView.Filter = DraftUtilizationFilter;
 
             // ProjectView: Critical/AtRisk first, then highest fee.
-            // DeliveryConfidenceLevel enum: Critical=0, AtRisk=1, Stable=2, HighConfidence=3 — so Ascending puts Critical first.
+            // DeliveryConfidenceLevel enum: Critical=0, AtRisk=1, Watch=2, HighConfidence=3 — so Ascending puts Critical first.
             ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.ConfidenceLevel), ListSortDirection.Ascending));
             ProjectView.SortDescriptions.Add(new SortDescription(nameof(PmProjectRow.Fee), ListSortDirection.Descending));
 
@@ -351,7 +362,10 @@ namespace Kor.Operations.PMTools
                 var snap = await _svc.GetSnapshotAsync(forceRefresh, ct, watchlistOnly: _showWatchlistOnly);
 
                 // ReplaceAll fires one Reset notification instead of N Add events (Fix 2)
-                ProjectRows.ReplaceAll(snap.Rows.Select(PmProjectRow.FromProject));
+                // Pass the snapshot's UsdToCadRate so PmTools rollups (PM groups, totals,
+                // remaining fee, sort order) are in CAD-equivalent dollars.
+                var fxRate = snap.UsdToCadRate;
+                ProjectRows.ReplaceAll(snap.Rows.Select(p => PmProjectRow.FromProject(p, fxRate)));
                 UtilizationRows.ReplaceAll(snap.Rows.Select(UtilizationRow.FromProject));
                 DraftUtilizationRows.ReplaceAll(snap.Rows.Select(DraftUtilizationRow.FromProject));
 
@@ -396,18 +410,24 @@ namespace Kor.Operations.PMTools
             var overDraftBudget  = 0;
             var critical         = 0;
             var atRisk           = 0;
-            var stable           = 0;
+            var watch            = 0;
             var highConfidence   = 0;
             var engRemaining     = 0.0;
             var draftRemaining   = 0.0;
             var feeRemaining     = 0.0;
+            var riskExposureFee  = 0.0;
 
             foreach (var r in ProjectRows)
             {
                 var cl = r.ConfidenceLevel;
-                if (cl == DeliveryConfidenceLevel.Critical)       { critical++;       atRiskOrCritical++; }
+                if (cl == DeliveryConfidenceLevel.Critical)
+                {
+                    critical++;
+                    atRiskOrCritical++;
+                    riskExposureFee += r.Fee;
+                }
                 else if (cl == DeliveryConfidenceLevel.AtRisk)    { atRisk++;         atRiskOrCritical++; }
-                else if (cl == DeliveryConfidenceLevel.Stable)    stable++;
+                else if (cl == DeliveryConfidenceLevel.Watch)    watch++;
                 else if (cl == DeliveryConfidenceLevel.HighConfidence) highConfidence++;
 
                 if (r.RemainingEngHours < 0) overEngBudget++;
@@ -418,7 +438,8 @@ namespace Kor.Operations.PMTools
                 feeRemaining   += r.FeeRemaining;
             }
 
-            TotalProjects            = ProjectRows.Count;
+            var total = ProjectRows.Count;
+            TotalProjects            = total;
             AtRiskOrCriticalCount    = atRiskOrCritical;
             TotalEngHoursRemaining   = engRemaining;
             TotalDraftHoursRemaining = draftRemaining;
@@ -427,8 +448,14 @@ namespace Kor.Operations.PMTools
             OverDraftBudgetCount     = overDraftBudget;
             PortfolioCriticalCount   = critical;
             PortfolioAtRiskCount     = atRisk;
-            PortfolioStableCount     = stable;
+            PortfolioWatchCount     = watch;
             PortfolioHighConfidenceCount = highConfidence;
+
+            PortfolioCriticalPct       = total > 0 ? (double)critical / total : 0.0;
+            PortfolioAtRiskPct         = total > 0 ? (double)atRisk / total : 0.0;
+            PortfolioWatchPct         = total > 0 ? (double)watch / total : 0.0;
+            PortfolioHighConfidencePct = total > 0 ? (double)highConfidence / total : 0.0;
+            PortfolioRiskExposureFee   = riskExposureFee;
 
             OnPropertyChanged(nameof(TotalProjects));
             OnPropertyChanged(nameof(AtRiskOrCriticalCount));
@@ -439,8 +466,13 @@ namespace Kor.Operations.PMTools
             OnPropertyChanged(nameof(OverDraftBudgetCount));
             OnPropertyChanged(nameof(PortfolioCriticalCount));
             OnPropertyChanged(nameof(PortfolioAtRiskCount));
-            OnPropertyChanged(nameof(PortfolioStableCount));
+            OnPropertyChanged(nameof(PortfolioWatchCount));
             OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
+            OnPropertyChanged(nameof(PortfolioCriticalPct));
+            OnPropertyChanged(nameof(PortfolioAtRiskPct));
+            OnPropertyChanged(nameof(PortfolioWatchPct));
+            OnPropertyChanged(nameof(PortfolioHighConfidencePct));
+            OnPropertyChanged(nameof(PortfolioRiskExposureFee));
             UpdateMyProjectsWarning();
         }
 
@@ -607,14 +639,23 @@ namespace Kor.Operations.PMTools
 
         string Services.IAiContextProvider.BuildContext()
         {
+            // Snapshot the BulkObservableCollection<T> properties once.
+            // AppAiContextBuilder runs BuildContext off-thread while
+            // PmTools refreshes mutate these on the UI thread; without the
+            // snapshot a refresh mid-Ask races prompt construction and the
+            // builder's try/catch silently drops this section (Batch 102
+            // audit pattern).
+            var projects = ProjectRows.ToArray();
+            var groups = PmGroups.ToArray();
+
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"Active Projects: {ProjectRows.Count}, At Risk/Critical: {AtRiskOrCriticalCount}");
+            sb.AppendLine($"Active Projects: {projects.Length}, At Risk/Critical: {AtRiskOrCriticalCount}");
             sb.AppendLine();
 
-            if (PmGroups.Count > 0)
+            if (groups.Length > 0)
             {
                 sb.AppendLine("--- PM WORKLOAD ---");
-                foreach (var g in PmGroups)
+                foreach (var g in groups)
                 {
                     sb.Append($"  {g.PmName} | {g.ProjectCount} projects | ${g.TotalFee:N0} | ");
                     sb.Append($"At Risk: {g.AtRiskOrCriticalCount} | ");
@@ -625,18 +666,47 @@ namespace Kor.Operations.PMTools
             }
 
             sb.AppendLine("--- ACTIVE PROJECT DETAIL ---");
-            foreach (var p in ProjectRows.Take(150))
+            foreach (var p in projects.Take(150))
             {
                 sb.Append($"  {p.Wbs1} {p.Name} | PM: {p.Pm} | DM: {p.DraftingManager} | ");
-                sb.Append($"Fee: ${p.Fee:N0} | Billed: {p.PercentBilledText} | ");
+                var pBilled = p.HasUnpostedBilling
+                    ? $"Billed: {p.PercentBilledText} posted, {p.PercentBilledWithUnpostedText} all-in (+${p.UnpostedFeeBilled:N0} unposted)"
+                    : $"Billed: {p.PercentBilledText}";
+                sb.Append($"Fee: ${p.Fee:N0} | {pBilled} | ");
                 sb.Append($"Eng: {p.EngHrs:N1}/{p.EngBudget:N1} ({p.EngPercentText}) | ");
                 sb.Append($"Risk: {p.DeliveryRisk}");
                 sb.AppendLine();
             }
 
+            // Methodology emission removed in Batch 92c — MCP tool descriptions
+            // + system prompt carry KOR PM methodology canonically (will be
+            // expanded for Arc 2 people/project tools).
             return sb.ToString();
         }
 
-        string Services.IAiContextProvider.BuildLocalContext() => "";
+        string Services.IAiContextProvider.BuildLocalContext()
+        {
+            // Filter state is the closest analog to "what row is the user
+            // looking at" for PmTools — the user narrows by phase /
+            // construction type / PM and asks questions about that slice
+            // ("are these on track?", "what's the utilization?"). Surface
+            // any non-default filter so AI's answer reflects the slice.
+            var sb = new System.Text.StringBuilder();
+            void Add(string label, string value)
+            {
+                if (!string.IsNullOrWhiteSpace(value)
+                    && !string.Equals(value, "All", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    sb.AppendLine($"  {label}: {value}");
+                }
+            }
+            Add("Phase", SelectedPhase);
+            Add("Construction type", SelectedConstructionType);
+            Add("Utilization view PM", SelectedUtilizationPm);
+            Add("Utilization view risk", SelectedUtilizationRisk);
+
+            if (sb.Length == 0) return "";
+            return "Active filters on PM Tools (user is asking about this slice):\n" + sb.ToString();
+        }
     }
 }

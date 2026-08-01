@@ -260,16 +260,20 @@
     <Content Include="logo.ico" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
     <PackageReference Include="MsgReader" Version="6.0.9" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Cronos" Version="0.10.0" />
     <PackageReference Include="HtmlSanitizer" Version="9.0.892" />
+    <PackageReference Include="Polly" Version="8.5.2" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.82.1" />
-    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.82.1" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.83.1" />
+    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.83.1" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
     <PackageReference Include="PdfPig" Version="0.1.9" />
     <PackageReference Include="netDxf.netstandard" Version="2.4.0" />
@@ -279,6 +283,9 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <!-- SqlTimeouts.cs is shared from Kor.Operations.Data via Compile Include rather than ProjectReference
+         because Kor.EmailSearch.Core uses the same trick to stay netstandard2.0-compatible (Data targets
+         net8.0-windows). Whenever a new Kor.Operations.* assembly needs SqlTimeouts, add the same line. -->
     <Compile Include="..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
   </ItemGroup>
   <!-- Exclude the in-repo test harness project from being compiled into the WPF app. -->
@@ -286,6 +293,8 @@
     <Compile Remove="Kor.Transmittals.App.Tests\**\*.cs" />
     <EmbeddedResource Remove="Kor.Transmittals.App.Tests\**\*" />
     <None Remove="Kor.Transmittals.App.Tests\**\*" />
+    <Page Remove="Kor.Transmittals.App.Tests\**\*.xaml" />
+    <Resource Remove="Kor.Transmittals.App.Tests\**\*.xaml" />
   </ItemGroup>
   <!-- Exclude the EngineeringTools test project from the WPF app compile. -->
   <ItemGroup>
@@ -296,10 +305,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Kor.EmailCommon\Kor.EmailCommon.csproj" />
     <ProjectReference Include="..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
+    <ProjectReference Include="..\Kor.Operations.EngineeringTools.Core\Kor.Operations.EngineeringTools.Core.csproj" />
+    <ProjectReference Include="..\Kor.Operations.Business\Kor.Operations.Business.csproj" />
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
     <ProjectReference Include="..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />
     <ProjectReference Include="..\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj" />
+    <ProjectReference Include="..\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj" />
+    <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- SAFE OAPI is invoked via pure reflection + late binding (see

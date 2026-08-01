@@ -1,0 +1,28 @@
+<Window x:Class="Kor.Operations.App.Opportunities.OpportunitiesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        Title="Opportunities (BD)"
+        Width="1400"
+        Height="780"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI"
+        Loaded="Window_Loaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="Opportunities (BD)"
+                            SubtitleText="Pipeline, scoring, and automated ingestion"
+                            AvatarDiameter="64"
+                            AvatarBorderThickness="2"/>
+
+        <ContentControl x:Name="ViewHost" Grid.Row="1"/>
+    </Grid>
+</Window>

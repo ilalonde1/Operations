@@ -100,6 +100,7 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             public int SetPointRestraint(string pointName, bool[] dof6)     => Record(nameof(SetPointRestraint), pointName, dof6);
             public int SetFrameInsertionPoint(string frameName, int cardinal)=> Record(nameof(SetFrameInsertionPoint), frameName, cardinal);
             public int SetAreaEdgeConstraint(string areaName, bool enabled) => Record(nameof(SetAreaEdgeConstraint), areaName, enabled);
+            public int SetAreaOpening(string areaName, bool opening) => Record(nameof(SetAreaOpening), areaName, opening);
             public int SetSlabModifiers(string propName, double membrane, double bending, double shear)
                                                                             => Record(nameof(SetSlabModifiers), propName, membrane, bending, shear);
             public int AddGridLines(IReadOnlyList<(string Label, bool IsAlongX, double Ordinate)> gridLines)
@@ -610,6 +611,7 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             public int SetPointRestraint(string n, bool[] d)         => 0;
             public int SetFrameInsertionPoint(string n, int c)       => 0;
             public int SetAreaEdgeConstraint(string n, bool e)       => 0;
+            public int SetAreaOpening(string n, bool o)              => 0;
             public int SetSlabModifiers(string n, double m, double b, double s) => 0;
             public int AddGridLines(IReadOnlyList<(string, bool, double)> g) => 0;
             public void Dispose() { }
@@ -667,10 +669,13 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             var colBotCall = pointCalls.First(c => Math.Abs((double)c.Args[0]! - 50.0) < 0.1 && (double)c.Args[2]! < 0);
             Assert.Equal(-3000.0 / 25.4, (double)colBotCall.Args[2]!, 2);
 
-            // Frame section: 254mm→250mm(Round10)→9.84in depth; 508mm→510mm(Round10)→20.08in width
+            // Frame section after SnapColumnSection (Batch 56 — replaces Round10
+            // with the 50 mm-grid snap helper for parity with F2K). Snaps to
+            // 50 mm increments with smaller-first canonicalisation:
+            //   raw (W=254, D=508) → snapped (W=250, D=500).
             var frameCall = driver.Calls.First(c => c.Method == nameof(FakeSafeOapiDriver.SetFrameRectangleProp));
-            double expectedDepth = Math.Round(508.0 / 10.0) * 10.0 / 25.4; // 510/25.4 = 20.08
-            double expectedWidth = Math.Round(254.0 / 10.0) * 10.0 / 25.4; // 250/25.4 = 9.84
+            double expectedDepth = 500.0 / 25.4; // ≈ 19.69 in
+            double expectedWidth = 250.0 / 25.4; // ≈ 9.84 in
             Assert.Equal(expectedDepth, (double)frameCall.Args[2]!, 2);
             Assert.Equal(expectedWidth, (double)frameCall.Args[3]!, 2);
         }

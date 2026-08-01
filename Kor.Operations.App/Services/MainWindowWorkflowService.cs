@@ -7,7 +7,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -19,6 +18,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace Kor.Operations.Services
 {
@@ -66,7 +66,7 @@ namespace Kor.Operations.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MainWindowWorkflowService] LoadUserPreferencesAsync failed for '{_userUpn}': {ex.GetType().Name}: {ex.Message}");
+                Log.Error(ex, "MainWindowWorkflowService.LoadUserPreferencesAsync failed for {Upn}.", _userUpn);
                 return null;
             }
         }
@@ -92,7 +92,7 @@ namespace Kor.Operations.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MainWindowWorkflowService] InitializeCurrentUser failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Error(ex, "MainWindowWorkflowService.InitializeCurrentUser failed.");
             }
 
             return GuessFromAppSettingsOrDefault();
@@ -289,7 +289,7 @@ namespace Kor.Operations.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MainWindowWorkflowService] LoadEmailTeamsFromDatabase failed for '{_userUpn}': {ex.GetType().Name}: {ex.Message}");
+                Log.Error(ex, "MainWindowWorkflowService.LoadEmailTeamsFromDatabase failed for {Upn}.", _userUpn);
             }
 
             return results;
@@ -426,7 +426,7 @@ namespace Kor.Operations.Services
                     c.Type == ClaimTypes.Upn || c.Type.EndsWith("/upn", StringComparison.OrdinalIgnoreCase))?.Value;
                 return string.IsNullOrWhiteSpace(upn) ? null : upn;
             }
-            catch (Exception ex) { Debug.WriteLine($"[MainWindowWorkflowService] TryGetEmailFromWindowsIdentity failed: {ex.GetType().Name}: {ex.Message}"); return null; }
+            catch (Exception ex) { Log.Debug(ex, "MainWindowWorkflowService.TryGetEmailFromWindowsIdentity failed."); return null; }
         }
 
         [SupportedOSPlatform("windows")]
@@ -444,7 +444,7 @@ namespace Kor.Operations.Services
                 }
                 return $"{user}@{domain}";
             }
-            catch (Exception ex) { Debug.WriteLine($"[MainWindowWorkflowService] TryGuessEmailFromWindows failed: {ex.GetType().Name}: {ex.Message}"); return null; }
+            catch (Exception ex) { Log.Debug(ex, "MainWindowWorkflowService.TryGuessEmailFromWindows failed."); return null; }
         }
 
         private static string SanitizeSegment(string s)

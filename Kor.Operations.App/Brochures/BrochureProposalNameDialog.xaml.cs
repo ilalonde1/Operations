@@ -24,7 +24,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "Enter a proposal name.",
-                    "Required",
+                    "Brochure Builder — Proposal Name Required",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;

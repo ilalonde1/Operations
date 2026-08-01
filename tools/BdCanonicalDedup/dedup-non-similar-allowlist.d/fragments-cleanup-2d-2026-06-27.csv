@@ -1,0 +1,8 @@
+# Fragment cleanup pass 2d — one more unambiguous same-company dup found during B10 honing sweep.
+# Stephenson Engineering ingested twice with differently-worded Salas O'Brien parenthetical, so the
+# aggressive key + similarity gate missed it. Same firm, same parent, both Competitor, 0 affiliations each.
+# Survivor 77694 predates the run window (created 2026-06-26 23:55). NOT merging the Equilibrium pair
+# (77718 BC mass-timber equilibrium-eq.com vs 77737 US equilibriumllc.com = genuinely two firms) or the
+# DIALOG / Englekirk / KNA base-dups (ambiguous — left flagged for Ian).
+# LoserId,SurvivorId,Reason
+77752,77694,Stephenson Engineering (a Salas O'Brien Company) -> Stephenson Engineering (a company of Salas O'Brien)

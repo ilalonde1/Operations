@@ -45,7 +45,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "Section Heading is required.",
-                    "Missing Information",
+                    "Brochure Builder — Missing Information",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -82,7 +82,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "A company overview block already exists",
-                    "Duplicate Block",
+                    "Brochure Builder — Duplicate Block",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -109,7 +109,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "A contact page already exists",
-                    "Duplicate Block",
+                    "Brochure Builder — Duplicate Block",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -141,7 +141,7 @@ namespace Kor.Operations.Brochures
             {
                 var confirm = MessageBox.Show(
                     "This block contains content. Remove it?",
-                    "Remove Block",
+                    "Brochure Builder — Remove Block",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
                 if (confirm != MessageBoxResult.Yes) return;

@@ -1,0 +1,226 @@
+[
+  {
+    "platform": "bonfire",
+    "key": "Kamloops",
+    "subdomain": "kamloops",
+    "buyer": "City of Kamloops",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Kelowna",
+    "subdomain": "kelowna",
+    "buyer": "City of Kelowna",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Victoria",
+    "subdomain": "victoria",
+    "buyer": "City of Victoria",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Saanich",
+    "subdomain": "saanich",
+    "buyer": "District of Saanich",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Mission",
+    "subdomain": "mission",
+    "buyer": "City of Mission",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Nelson",
+    "subdomain": "nelson",
+    "buyer": "City of Nelson",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "PrrdBc",
+    "subdomain": "prrd-bc",
+    "buyer": "Peace River Regional District",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Cvrd",
+    "subdomain": "cvrd",
+    "buyer": "Cowichan Valley Regional District",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Ubc",
+    "subdomain": "ubc",
+    "buyer": "UBC (University of British Columbia)",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Uvic",
+    "subdomain": "uvic",
+    "buyer": "University of Victoria (UVic)",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Bcit",
+    "subdomain": "bcit",
+    "buyer": "BCIT (BC Institute of Technology)",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Ufv",
+    "subdomain": "ufv",
+    "buyer": "University of the Fraser Valley (UFV)",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Fraserhealth",
+    "subdomain": "fraserhealth",
+    "buyer": "Fraser Health",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Hss",
+    "subdomain": "hss",
+    "buyer": "Health Shared Services BC",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Bctransit",
+    "subdomain": "bctransit",
+    "buyer": "BC Transit",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Icbc",
+    "subdomain": "icbc",
+    "buyer": "ICBC",
+    "province": "BC"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Nait",
+    "subdomain": "nait",
+    "buyer": "NAIT (Northern Alberta Institute of Technology)",
+    "province": "AB"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Ualberta",
+    "subdomain": "ualberta",
+    "buyer": "University of Alberta",
+    "province": "AB"
+  },
+  {
+    "platform": "bonfire",
+    "key": "CbeAb",
+    "subdomain": "cbe-ab",
+    "buyer": "Calgary Board of Education (CBE)",
+    "province": "AB"
+  },
+  {
+    "platform": "bonfire",
+    "key": "Epsb",
+    "subdomain": "epsb",
+    "buyer": "Edmonton Public School Board (EPSB)",
+    "province": "AB"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Nanaimo",
+    "subdomain": "nanaimo",
+    "buyer": "City of Nanaimo",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Comoxvalleyrd",
+    "subdomain": "comoxvalleyrd",
+    "buyer": "Comox Valley Regional District (CVRD)",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Campbellriver",
+    "subdomain": "campbellriver",
+    "buyer": "City of Campbell River",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Tol",
+    "subdomain": "tol",
+    "buyer": "Township of Langley",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Mapleridge",
+    "subdomain": "mapleridge",
+    "buyer": "City of Maple Ridge",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Coquitlam",
+    "subdomain": "coquitlam",
+    "buyer": "City of Coquitlam",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Squamish",
+    "subdomain": "squamish",
+    "buyer": "District of Squamish",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Surrey",
+    "subdomain": "surrey",
+    "buyer": "City of Surrey",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Abbotsford",
+    "subdomain": "abbotsford",
+    "buyer": "City of Abbotsford",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Rdco",
+    "subdomain": "rdco",
+    "buyer": "RDCO (Regional District of Central Okanagan)",
+    "province": "BC"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Rmwb",
+    "subdomain": "rmwb",
+    "buyer": "Regional Municipality of Wood Buffalo",
+    "province": "AB"
+  },
+  {
+    "platform": "bidsandtenders",
+    "key": "Cityofgp",
+    "subdomain": "cityofgp",
+    "buyer": "City of Grande Prairie",
+    "province": "AB"
+  }
+]

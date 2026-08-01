@@ -1,0 +1,391 @@
+<UserControl x:Class="Kor.Operations.App.Crm.CrmView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource App.Background}"
+             FontFamily="Mulish, Segoe UI"
+             Loaded="View_Loaded"
+             Unloaded="View_Unloaded">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <StackPanel.Resources>
+                <Style TargetType="Button" BasedOn="{StaticResource Button.ActionBar}"/>
+            </StackPanel.Resources>
+            <!-- Widths trimmed so the full toolbar fits the workspace's default
+                 1360px window (review nit — 'Set stage' clipped). -->
+            <!-- U2: core actions inline, everything else under "More" so the
+                 toolbar isn't a wall of equal buttons. No features removed. -->
+            <Button Content="Refresh" Width="80" Click="RefreshButton_Click"/>
+            <Button Content="Edit…" Width="80" Click="EditEngagementButton_Click"
+                    ToolTip="Edit the engagement (owner, fee, notes, stage)."/>
+            <Button Content="More  ▾" Width="90" Margin="0,0,16,0" Click="MoreActionsButton_Click"
+                    ToolTip="More actions for the selected pursuit.">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Buyer profile…" Click="BuyerIntelButton_Click"
+                                  IsEnabled="{Binding Selected.HasBuyerIntel, FallbackValue=False}"
+                                  ToolTip="Open the buyer's dossier — key people, signals, and KOR track record."/>
+                        <MenuItem Header="Project brief…" Click="OpportunityBriefButton_Click"
+                                  IsEnabled="{Binding Selected.HasOpportunity, FallbackValue=False}"
+                                  ToolTip="Generate the full per-pursuit brief PDF (RFP + buyer + market context)."/>
+                        <MenuItem Header="Link to project…" Click="LinkDeltekProjectButton_Click"
+                                  IsEnabled="{Binding Selected.IsWon, FallbackValue=False}"
+                                  ToolTip="Record which Deltek project this win became (WBS1)."/>
+                        <Separator/>
+                        <MenuItem Header="Fee Proposal…" Click="BuildFeeProposalButton_Click"
+                                  ToolTip="Open the Fee Proposal Builder pre-named for this engagement."/>
+                        <MenuItem Header="Brochure…" Click="BuildBrochureButton_Click"
+                                  ToolTip="Open the Sales Brochure Builder pre-named for this engagement."/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
+            <Separator Margin="0,4,16,4"/>
+
+            <Button x:Name="SetStageButton" Content="Set stage" Width="100"
+                    Click="SetStageButton_Click"
+                    ToolTip="Change the stage of the selected engagement.">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Drafting"  Click="StageMenuItem_Click" Tag="Drafting"/>
+                        <MenuItem Header="Submitted" Click="StageMenuItem_Click" Tag="Submitted"/>
+                        <MenuItem Header="Won"       Click="StageMenuItem_Click" Tag="Won"/>
+                        <MenuItem Header="Lost"      Click="StageMenuItem_Click" Tag="Lost"/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Vertical">
+            <!-- Pipeline-by-stage pills — CLICK-FILTERS (plan 1.1). The default
+                 view is live pursuits; Won/Lost pills reveal closed history.
+                 The active pill gets a dark ring. Search + Mine live on this
+                 row (the action toolbar clips at ≤1600px). -->
+            <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                <ToggleButton DockPanel.Dock="Right" Content="Mine" Width="70"
+                              IsChecked="{Binding MineOnly}"
+                              ToolTip="Show only pursuits you own."/>
+                <TextBox DockPanel.Dock="Right" Width="220" Margin="0,0,8,0" Padding="10,0"
+                         VerticalContentAlignment="Center"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Search key / project / buyer / owner (debounced)."/>
+            <ItemsControl DockPanel.Dock="Left" ItemsSource="{Binding StageSummary}"
+                          Visibility="{Binding HasStageSummary, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{Binding Brush}" CornerRadius="999" Padding="12,4" Margin="0,0,8,0"
+                                Cursor="Hand" MouseLeftButtonUp="StageChip_MouseUp"
+                                ToolTip="Click to filter the list to this stage; click again for the live view.">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                    <Setter Property="Opacity" Value="0.72"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="BorderThickness" Value="2"/>
+                                            <Setter Property="BorderBrush" Value="#1F2937"/>
+                                            <Setter Property="Opacity" Value="1"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Label}" Foreground="White" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBlock Text="{Binding Count}" Foreground="White" FontWeight="Bold" FontSize="12" Margin="7,0,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            </DockPanel>
+
+            <Border Margin="0,0,0,8" Padding="10,6"
+                    Background="#F4F8FB" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1"
+                    CornerRadius="3"
+                    Visibility="{Binding HasAnalytics, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                <StackPanel Orientation="Vertical">
+                    <TextBlock Text="{Binding AnalyticsHeadline}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding AnalyticsBuyerTypeSummary}"
+                               Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <Grid Grid.Row="2" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Engagements" Margin="0,0,0,8" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
+                    <DataGrid Grid.Row="1"
+                              x:Name="EngagementsGrid"
+                              AutoGenerateColumns="False"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              ItemsSource="{Binding Engagements}"
+                              SelectedItem="{Binding Selected}"
+                              SelectionChanged="EngagementsGrid_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Stage" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding StageBrush}" CornerRadius="999"
+                                                Margin="2" Padding="6,2" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding StageDisplay}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <!-- U1: Project is the identifier — give it a floor so it
+                                 never collapses; Buyer flexes; Key/Fee live in the
+                                 detail panel to keep the list scannable. -->
+                            <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}"        Width="2*" MinWidth="180"/>
+                            <DataGridTextColumn Header="Buyer"   Binding="{Binding Buyer}"              Width="*"  MinWidth="120"/>
+                            <DataGridTextColumn Header="Owner"   Binding="{Binding OwnerDisplay}"       Width="90"/>
+                            <DataGridTextColumn Header="Updated" Binding="{Binding UpdatedDisplay}"     Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          Background="{StaticResource Panel.Border}" ResizeBehavior="PreviousAndNext"/>
+
+            <Grid Grid.Column="2" Margin="8,0,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="2*"/>
+                    <RowDefinition Height="3*"/>
+                    <RowDefinition Height="2*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Contacts" Margin="0,0,0,8" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
+
+                        <Border Grid.Row="1" Margin="0,0,0,8" Padding="8,5"
+                                Background="#FFF7E6" BorderBrush="#E0C078" BorderThickness="1"
+                                CornerRadius="2"
+                                Visibility="{Binding HasDeltekContext,
+                                                     Converter={StaticResource BoolToVis},
+                                                     FallbackValue=Collapsed}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Orientation="Vertical">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Deltek history:"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,0,6,0"/>
+                                        <TextBlock Text="{Binding DeltekContextSummary}"
+                                                   TextWrapping="NoWrap"/>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Border Background="{StaticResource CorporateBlue}" CornerRadius="999"
+                                                Padding="6,2" Margin="0,0,6,0"
+                                                Visibility="{Binding DeltekContext.Company.PriorWork, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                            <TextBlock Text="Prior work" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                        </Border>
+                                        <Border Background="{StaticResource Risk.HighConfidence.Foreground}" CornerRadius="999"
+                                                Padding="6,2" Margin="0,0,6,0"
+                                                Visibility="{Binding DeltekContext.Company.Recommend, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                            <TextBlock Text="Recommended" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                        </Border>
+                                        <Border Background="#5C5470" CornerRadius="999"
+                                                Padding="6,2" Margin="0,0,6,0"
+                                                Visibility="{Binding DeltekContext.Company.GovernmentAgency, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                            <TextBlock Text="Government" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                        </Border>
+                                        <Border Background="{StaticResource Risk.Critical.Foreground}" CornerRadius="999"
+                                                Padding="6,2" Margin="0,0,6,0"
+                                                Visibility="{Binding DeltekContext.Company.Competitor, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                            <TextBlock Text="Competitor" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        Content="Details"
+                                        Width="80"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Click="ClientIntelligenceButton_Click"
+                                        ToolTip="Open the full Deltek client intelligence window."/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Plan 3.1 + 2.3: passive context lines — collapse when empty. -->
+                        <StackPanel Grid.Row="2" Orientation="Vertical">
+                        <TextBlock Text="{Binding WarmthSummary}" FontSize="11" Margin="0,0,0,6"
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"
+                                   Visibility="{Binding HasWarmth, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                   ToolTip="Nightly rollup of the filed-email corpus for this buyer's domain. Aggregates only — never bodies."/>
+                        <TextBlock Text="{Binding PlanTakersSummary}" FontSize="11" Margin="0,0,0,6"
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"
+                                   Visibility="{Binding HasPlanTakers, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                                   ToolTip="Firms that downloaded/expressed interest on this RFP (portal names as-published)."/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBox x:Name="ContactNameBox" Width="170" Margin="0,0,4,0"
+                                     ToolTip="Display name (required)"/>
+                            <TextBox x:Name="ContactRoleBox" Width="130" Margin="0,0,4,0"
+                                     ToolTip="Role / title"/>
+                            <TextBox x:Name="ContactEmailBox" Width="200" Margin="0,0,4,0"
+                                     ToolTip="Email"/>
+                            <TextBox x:Name="ContactPhoneBox" Width="100" Margin="0,0,4,0"
+                                     ToolTip="Phone"/>
+                            <CheckBox x:Name="ContactPrimaryCheck" Content="primary" Margin="0,4,8,0"/>
+                            <Button Content="Add" Width="60" Click="AddContactButton_Click"/>
+                            <Button Content="Remove" Width="70" Margin="4,0,0,0" Click="RemoveContactButton_Click"/>
+                        </StackPanel>
+                        </StackPanel>
+
+                        <DataGrid Grid.Row="3"
+                                  x:Name="ContactsGrid"
+                                  AutoGenerateColumns="False"
+                                  SelectionMode="Single"
+                                  IsReadOnly="True"
+                                  HeadersVisibility="Column"
+                                  ItemsSource="{Binding Contacts}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header=""        Binding="{Binding PrimaryDisplay}" Width="30"/>
+                                <DataGridTextColumn Header="Name"    Binding="{Binding DisplayName}"    Width="*"/>
+                                <DataGridTextColumn Header="Role"    Binding="{Binding Role}"           Width="140"/>
+                                <DataGridTextColumn Header="Email"   Binding="{Binding Email}"          Width="200"/>
+                                <DataGridTextColumn Header="Phone"   Binding="{Binding Phone}"          Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="1" Style="{StaticResource Card}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,8">
+                            <TextBlock Text="Activity log" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
+                            <!-- Plan 2.2a/2.2b: claim/reassign history + stage age (first
+                                 readers of the audit tables). Collapses when empty. -->
+                            <TextBlock Text="{Binding PursuitHistorySummary}" FontSize="11" Margin="0,4,0,0"
+                                       Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"
+                                       Visibility="{Binding HasPursuitHistory, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                        </StackPanel>
+
+                        <!-- Plan 1.2: one-decision logging — type + subject + Enter.
+                             Everything else (date, contact, notes) is optional. -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                            <ComboBox x:Name="ActivityTypeBox" Width="110" Margin="0,0,4,0"
+                                      ItemsSource="{Binding ActivityTypeOptions}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedIndex="0"/>
+                            <TextBox x:Name="ActivitySubjectBox" Width="220" Margin="0,0,4,0"
+                                     KeyDown="ActivitySubjectBox_KeyDown"
+                                     ToolTip="Subject (required). Press Enter to log."/>
+                            <DatePicker x:Name="ActivityDateBox" Width="110" Margin="0,0,4,0"
+                                        ToolTip="When it happened (optional — blank = now). Friday's call can be logged on Monday. Future dates are treated as now."/>
+                            <ComboBox x:Name="ActivityContactBox" Width="140" Margin="0,0,4,0"
+                                      ItemsSource="{Binding Contacts}" DisplayMemberPath="DisplayName"
+                                      ToolTip="Who it was with (optional — this engagement's contacts)."/>
+                            <TextBox x:Name="ActivityBodyBox" Width="220" Margin="0,0,4,0"
+                                     ToolTip="Notes (optional)"/>
+                            <Button Content="Log" Width="60" Click="LogActivityButton_Click"/>
+                        </StackPanel>
+
+                        <DataGrid Grid.Row="2"
+                                  x:Name="ActivitiesGrid"
+                                  AutoGenerateColumns="False"
+                                  SelectionMode="Single"
+                                  IsReadOnly="True"
+                                  HeadersVisibility="Column"
+                                  ItemsSource="{Binding Activities}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="When"     Binding="{Binding OccurredDisplay}" Width="130"/>
+                                <DataGridTextColumn Header="Type"     Binding="{Binding TypeDisplay}"     Width="90"/>
+                                <DataGridTextColumn Header="Subject"  Binding="{Binding Subject}"         Width="*"/>
+                                <DataGridTextColumn Header="By"       Binding="{Binding CreatedBy}"       Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <!-- Files (2026-07-08): drag onto the panel or Browse. Bytes go to
+                     the LAN share; the list indexes them. Hidden if no share set. -->
+                <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,8,0,0"
+                        AllowDrop="True" Drop="FilesPanel_Drop" DragOver="FilesPanel_DragOver"
+                        Visibility="{Binding FilesEnabled, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,6" LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left" Text="Files" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Brand.Primary.Brush}" VerticalAlignment="Center"/>
+                            <TextBlock DockPanel.Dock="Left" Text="  — drag files here, or" FontSize="11"
+                                       Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                            <Button DockPanel.Dock="Left" Content="Browse…" Width="80" Margin="6,0,0,0"
+                                    Click="BrowseFilesButton_Click"/>
+                            <Button DockPanel.Dock="Right" Content="Remove" Width="70" Margin="4,0,0,0"
+                                    Click="RemoveFileButton_Click"
+                                    ToolTip="Remove the selected file and delete it from the share."/>
+                            <Button DockPanel.Dock="Right" Content="Open" Width="60"
+                                    Click="OpenFileButton_Click"
+                                    ToolTip="Open the selected file."/>
+                        </DockPanel>
+                        <DataGrid Grid.Row="1" x:Name="FilesGrid"
+                                  AutoGenerateColumns="False" SelectionMode="Single" IsReadOnly="True"
+                                  HeadersVisibility="Column" ItemsSource="{Binding Files}"
+                                  AllowDrop="True" Drop="FilesPanel_Drop" DragOver="FilesPanel_DragOver"
+                                  MouseDoubleClick="FilesGrid_MouseDoubleClick">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name"  Binding="{Binding FileName}"          Width="*"/>
+                                <DataGridTextColumn Header="Type"  Binding="{Binding TypeDisplay}"       Width="90"/>
+                                <DataGridTextColumn Header="Size"  Binding="{Binding SizeDisplay}"       Width="80"/>
+                                <DataGridTextColumn Header="By"    Binding="{Binding UploadedByDisplay}" Width="110"/>
+                                <DataGridTextColumn Header="Added" Binding="{Binding UploadedDisplay}"   Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <Border Grid.Row="3" Padding="12,6" Background="{StaticResource App.Background}">
+            <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,108 @@
+LoserId,SurvivorId,Reason
+27884,169,Amacon Development -> Amacon Developments (Clendor)
+22178,69445,Aragon Properties Ltd. -> Aragon Properties (Clendor)
+25550,68994,Chard Development Ltd. -> Chard Development
+69687,68994,Chard Developments Ltd. -> Chard Development
+30253,69729,Coromandel Properties Ltd -> Coromandel Properties (Clendor)
+20074,69721,Engage Architecture Inc. -> Engage Architecture (Clendor)
+20174,69758,Leckie Studio Architecture & Design Inc. -> Leckie Studio Architecture + Design (Clendor)
+26963,69659,Marcon Developments Ltd. -> Marcon Developments (Clendor)
+25957,69122,Proscenium Architecture & Interiors Inc. -> Proscenium Architecture + Interiors
+24013,69682,Urban West Architecture Inc. -> Urban West Architecture (Clendor)
+29185,69660,Yamamoto Architecture Inc. -> Yamamoto Architecture (Clendor)
+69709,54464,Concord Pacific Group -> Concord Pacific Development Corp.
+8149,69614,Gibbs Gage Architects (original vendor) -> consolidated GGA canonical
+69146,38935,Weiler Smith Bowers (short) -> base canonical
+69313,38935,Weiler Smith Bowers Consulting Engineers -> base canonical
+69832,38926,Glotman Simpson (short) -> Glotman Simpson Consulting Engineers
+70019,69595,Jarvis Engineering Consultants -> Jarvis Engineering
+68991,54415,SD23 Central Okanagan Public Schools -> SD23
+69033,54415,SD23 Central Okanagan School District -> SD23
+71244,54415,Central Okanagan School District No. 23 -> SD23
+68847,54542,Chilliwack School District (SD33) -> SD33
+69827,54542,Chilliwack School District No. 33 -> SD33
+70048,54542,SD No. 33 (Chilliwack) -> SD33
+70473,68848,SD34 Abbotsford School District -> SD34 Abbotsford
+54586,68848,School District 34 -> SD34 Abbotsford
+70474,68849,SD35 Langley School District -> SD35 Langley
+54340,68849,School District 35 -> SD35 Langley
+69594,68849,SD No. 35 (Langley) -> SD35 Langley
+68850,53678,Surrey School District (SD36) -> School District 36
+70276,53678,SD No. 36 (Surrey Schools) -> School District 36
+69465,53678,SD No. 36 (Surrey) -> School District 36
+70475,53678,SD36 Surrey School District -> School District 36
+69071,69448,School District 37 Delta -> Delta School District (SD 37)
+70278,69448,SD No. 37 (Delta) -> Delta School District (SD 37)
+70466,68851,SD38 Richmond School District -> Richmond School District (SD38)
+54821,68851,School District 38 -> Richmond School District (SD38)
+69466,68851,SD No. 38 (Richmond) -> Richmond School District (SD38)
+70467,53840,SD39 Vancouver School Board -> School District 39
+70274,53840,SD No. 39 (Vancouver School Board) -> School District 39
+18904,53840,Board of Education SD No 39 (Vancouver) -> School District 39
+69300,53687,New Westminster School District (SD 40) -> SD40
+70476,53687,SD40 New Westminster School District -> SD40
+70279,53687,SD No. 40 (New Westminster) -> SD40
+70468,68853,SD41 Burnaby School District -> Burnaby School District
+69022,68853,SD No. 41 (Burnaby) -> Burnaby School District
+54435,68853,School District 41 -> Burnaby School District
+70469,69301,SD42 Maple Ridge-Pitt Meadows -> Maple Ridge-Pitt Meadows SD (SD 42)
+54416,69301,School District 42 -> Maple Ridge-Pitt Meadows
+69058,69301,Pitt Meadows School District No. 42 -> Maple Ridge-Pitt Meadows
+70277,69301,SD No. 42 (Maple Ridge - Pitt Meadows) -> Maple Ridge-Pitt Meadows
+69825,69301,Maple Ridge-Pitt Meadows School District No. 42 -> Maple Ridge-Pitt Meadows
+68854,53966,Coquitlam School District (SD43) -> School District 43
+70471,53966,SD43 Coquitlam School District -> School District 43
+69467,53966,SD No. 43 (Coquitlam) -> School District 43
+18905,53966,Board of Education SD No 43 (Coquitlam) -> School District 43
+54361,69299,School District 44 -> North Vancouver SD (SD 44)
+70275,69299,SD No. 44 (North Vancouver) -> North Vancouver SD (SD 44)
+70477,69571,SD45 West Vancouver School District -> West Vancouver SD (SD45)
+70055,69571,SD No. 45 (West Vancouver) -> West Vancouver SD (SD45)
+54981,69571,West Vancouver School District No. 45 -> West Vancouver SD (SD45)
+69082,69571,School District 45 West Vancouver -> West Vancouver SD (SD45)
+54863,70478,School District 47 -> SD47 Powell River
+69981,70478,qathet School District (SD47) -> SD47 Powell River
+70280,70478,SD No. 47 (Powell River) -> SD47 Powell River
+69064,70479,School District 48 (Sea to Sky) -> SD48 Sea to Sky
+70281,70479,SD No. 48 (Sea to Sky) -> SD48 Sea to Sky
+54684,70480,School District 50 -> SD50 Haida Gwaii
+18898,70480,SD 50 Haida Gwaii and Queen Charlotte -> SD50 Haida Gwaii
+54842,70470,School District 52 -> SD52 Prince Rupert
+69308,70470,Prince Rupert School District (SD 52) -> SD52 Prince Rupert
+70318,69569,SD No. 53 (Okanagan-Similkameen) -> SD53
+69303,69036,Greater Victoria School District (SD 61) -> SD61
+53968,69036,School District 61 (Greater Victoria) -> SD61
+69042,69036,SD No. 61 (Greater Victoria) -> SD61
+69075,68990,School District 62 Sooke -> SD62 Sooke
+69051,68990,Sooke School District No. 62 -> SD62 Sooke
+71264,68990,Sooke School District (SD 62) -> SD62 Sooke
+69459,68990,SD No. 62 (Sooke) -> SD62 Sooke
+69102,68990,SD 62 Sooke -> SD62 Sooke
+69494,70308,School District 63 Saanich -> SD63 Saanich
+69103,70308,SD 63 Saanich -> SD63 Saanich
+71238,70308,Saanich School District (SD 63) -> SD63 Saanich
+69460,70308,SD No. 63 (Saanich) -> SD63 Saanich
+70317,70790,SD No. 67 (Okanagan Skaha) -> SD67
+69989,70311,School District 69 (Qualicum) -> SD69 Qualicum
+54604,70481,School District 70 -> SD70 Pacific Rim
+70312,70481,SD70 Pacific Rim School District (Alberni) -> SD70 Pacific Rim
+69108,70481,SD 70 Alberni (Pacific Rim) -> SD70 Pacific Rim
+18899,69037,School District 71 Comox Valley -> SD71 Comox Valley
+54223,69037,School District 71 -> SD71 Comox Valley
+70313,69037,SD71 Comox Valley Schools -> SD71 Comox Valley
+69568,70314,School District 72 (Campbell River) -> SD72 Campbell River
+69106,70314,SD 72 Campbell River -> SD72 Campbell River
+69056,18900,Kamloops-Thompson School District No. 73 -> SD73 Kamloops-Thompson
+54584,18900,School District 73 -> SD73 Kamloops-Thompson
+69035,18900,SD73 Kamloops-Thompson School District -> SD73 Kamloops-Thompson
+54864,70472,School District 75 -> SD75 Mission
+69134,70482,School District 78 - Fraser-Cascade -> SD78 Fraser-Cascade
+70282,70482,SD No. 78 (Fraser-Cascade) -> SD78 Fraser-Cascade
+54638,69003,School District 79 -> SD79 Cowichan Valley
+69176,69003,School District 79 (Cowichan Valley) -> SD79 Cowichan Valley
+69107,69003,SD 79 Cowichan Valley -> SD79 Cowichan Valley
+70604,69177,SD83 North Okanagan-Shuswap -> SD83
+54797,69177,School District 83 -> SD83
+70777,69177,SD83 North Okanagan Columbia Shuswap -> SD83
+70483,53773,SD93 Conseil scolaire francophone -> SD93
+54850,53773,School District 93 (Conseil Scolaire) -> SD93

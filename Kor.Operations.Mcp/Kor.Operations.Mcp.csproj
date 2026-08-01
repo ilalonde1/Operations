@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kor.Operations.Mcp</RootNamespace>
+    <AssemblyName>Kor.Operations.Mcp</AssemblyName>
+    <!-- Web SDK derives RazorLangVersion from the TFM, but the net8.0-windows OS
+         suffix yields an empty value (RZ3600). Pin it explicitly; the project has
+         no Razor files, so any valid version satisfies the SDK. -->
+    <RazorLangVersion>8.0</RazorLangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);SA1402;SA1633</NoWarn>
+    <!-- Bump on every meaningful service-side change so the /health
+         endpoint and audit log let operators confirm a redeploy
+         actually picked up the new binary. -->
+    <Version>0.4.2</Version>
+    <!-- Skip copying Playwright's node driver (66 MB node.exe) — official
+         switch in Microsoft.Playwright.targets. The MCP never scrapes; see
+         the PackageReference exclusions below for the matching constraint. -->
+    <PlaywrightPlatform>none</PlaywrightPlatform>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.8" />
+    <PackageReference Include="Quartz" Version="3.13.1" />
+    <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.13.1" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.13.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
+    <ProjectReference Include="..\Kor.Operations.Business\Kor.Operations.Business.csproj" />
+    <!-- Arc 7 / BD-UI-Plan Phase C: BD tools surface the SAME IBdReportService
+         queries the WPF BD Reports dashboard uses (no drift by construction). -->
+    <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
+    <!-- Kor.Opportunities.Data transitively drags Playwright (77 MB incl.
+         node.exe) + Microsoft.Graph (41 MB) into the publish output. The MCP
+         only calls the BdReports namespace (SqlClient + System.Text.Json) —
+         scraper/Graph code paths never execute here, so their runtime assets
+         are excluded. CONSTRAINT: if the MCP ever starts calling a
+         Kor.Opportunities.Data service that scrapes (Playwright/AngleSharp)
+         or emails (Graph), delete the matching exclusion or it fails at
+         runtime with FileNotFoundException on the assembly. -->
+    <PackageReference Include="Microsoft.Playwright" Version="1.45.1" ExcludeAssets="runtime;native;contentFiles;buildTransitive" />
+    <PackageReference Include="Microsoft.Graph" Version="5.105.0" ExcludeAssets="runtime;native;contentFiles;buildTransitive" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.Production.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="install.ps1">
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+</Project>

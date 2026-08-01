@@ -31,6 +31,7 @@ public sealed class MetricDetailVm : ObservableObject
     private const int TrendPayerPageSize = 12;
     private readonly PaginatedGrid<KpiProjectDrilldownRow, ProjectDrilldownRowVm> _projectGrid;
     private readonly UnpagedGrid<KpiCashHistoryRow, CashHistoryRowVm> _cashHistoryGrid;
+    private readonly UnpagedGrid<KpiCashAccountRow, CashAccountRowVm> _cashAccountsGrid;
     private readonly PaginatedGrid<KpiArOutstandingRow, ArOutstandingRowVm> _arOutstandingGrid;
     private readonly PaginatedGrid<KpiArInvoiceRow, ArInvoiceRowVm> _arInvoiceGrid;
     private readonly PaginatedGrid<KpiWipUnbilledRow, WipUnbilledRowVm> _wipGrid;
@@ -62,7 +63,6 @@ public sealed class MetricDetailVm : ObservableObject
     public string TrendHint { get; }
     public string TrendStats { get; }
 
-    public string FooterHint { get; }
 
     public string TechnicalQueryText { get; }
     public Visibility TechnicalQueryVisibility { get; }
@@ -76,6 +76,9 @@ public sealed class MetricDetailVm : ObservableObject
     public ObservableCollection<CashHistoryRowVm> PagedCashHistoryRows => _cashHistoryGrid.PagedRows;
     public Visibility CashHistoryVisibility => _cashHistoryGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
     public string CashHistoryCountText => $"{_cashHistoryGrid.RowCount:N0} periods";
+    public ObservableCollection<CashAccountRowVm> PagedCashAccountRows => _cashAccountsGrid.PagedRows;
+    public Visibility CashAccountsVisibility => _cashAccountsGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
+    public string CashAccountsCountText => $"{_cashAccountsGrid.RowCount:N0} accounts";
     public ObservableCollection<ArOutstandingRowVm> PagedArOutstandingRows => _arOutstandingGrid.PagedRows;
     public Visibility ArOutstandingVisibility => _arOutstandingGrid.HasRows ? Visibility.Visible : Visibility.Collapsed;
     public string ArOutstandingCountText => $"{_arOutstandingGrid.RowCount:N0} projects";
@@ -121,7 +124,7 @@ public sealed class MetricDetailVm : ObservableObject
             var earned = _wipGrid.AllRows.Sum(r => r.Earned);
             var over = _wipGrid.AllRows.Sum(r => r.Overbilled);
             var net = _wipGrid.AllRows.Sum(r => r.Net);
-            var overCount = _wipGrid.AllRows.Count(r => r.Overbilled > 0.004);
+            var overCount = _wipGrid.AllRows.Count(r => r.Overbilled > AnalyticsThresholds.RoundingDollarFloor);
             var pctOver = _wipGrid.RowCount == 0 ? 0.0 : overCount / (double)_wipGrid.RowCount;
             return string.Format(
                 CultureInfo.CurrentCulture,
@@ -242,12 +245,12 @@ public sealed class MetricDetailVm : ObservableObject
         get
         {
             if (_trendPayerGrid.RowCount == 0) return string.Empty;
-            if (string.Equals(Title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Title, "Revenue (Earned) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase))
             {
                 var earned = _trendPayerGrid.AllRows.Sum(r => r.RevenueAmount);
                 var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
                 var gap = earned - billed;
-                var positiveGapCount = _trendPayerGrid.AllRows.Count(r => (r.RevenueAmount - r.BilledAmount) > 0.004);
+                var positiveGapCount = _trendPayerGrid.AllRows.Count(r => (r.RevenueAmount - r.BilledAmount) > AnalyticsThresholds.RoundingDollarFloor);
                 return string.Format(
                     CultureInfo.CurrentCulture,
                     "Earned {0:C0} | Invoiced {1:C0} | Unbilled gap {2:C0} | Positive gap projects {3:N0}",
@@ -257,12 +260,12 @@ public sealed class MetricDetailVm : ObservableObject
                     positiveGapCount);
             }
 
-            if (string.Equals(Title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Title, "Billings (Invoiced) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase))
             {
                 var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
                 var ar = _trendPayerGrid.AllRows.Sum(r => r.ArOutstandingAmount);
-                var arPct = Math.Abs(billed) <= 0.004 ? 0.0 : (ar / billed);
-                var highExposure = _trendPayerGrid.AllRows.Count(r => r.BilledAmount > 0.004 && (r.ArOutstandingAmount / r.BilledAmount) >= 0.5);
+                var arPct = Math.Abs(billed) <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (ar / billed);
+                var highExposure = _trendPayerGrid.AllRows.Count(r => r.BilledAmount > AnalyticsThresholds.RoundingDollarFloor && (r.ArOutstandingAmount / r.BilledAmount) >= AnalyticsThresholds.HighCollectionRiskRatio);
                 return string.Format(
                     CultureInfo.CurrentCulture,
                     "Invoiced {0:C0} | AR outstanding {1:C0} | AR/Invoiced {2:P1} | High exposure projects {3:N0}",
@@ -276,7 +279,7 @@ public sealed class MetricDetailVm : ObservableObject
             {
                 var ar = _trendPayerGrid.AllRows.Sum(r => r.ArOutstandingAmount);
                 var billed = _trendPayerGrid.AllRows.Sum(r => r.BilledAmount);
-                var arPct = Math.Abs(billed) <= 0.004 ? 0.0 : (ar / billed);
+                var arPct = Math.Abs(billed) <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : (ar / billed);
                 return string.Format(
                     CultureInfo.CurrentCulture,
                     "Outstanding AR {0:C0} | AR/Invoiced {1:P1}",
@@ -286,7 +289,7 @@ public sealed class MetricDetailVm : ObservableObject
 
             var total = _trendPayerGrid.AllRows.Sum(r => r.Amount);
             var top5 = _trendPayerGrid.AllRows.OrderByDescending(r => r.Amount).Take(5).Sum(r => r.Amount);
-            var top5Pct = Math.Abs(total) <= 0.004 ? 0.0 : top5 / Math.Abs(total);
+            var top5Pct = Math.Abs(total) <= AnalyticsThresholds.RoundingDollarFloor ? 0.0 : top5 / Math.Abs(total);
             return string.Format(CultureInfo.CurrentCulture, "Total {0:C0} | Top 5 concentration {1:P1}", total, top5Pct);
         }
     }
@@ -301,6 +304,7 @@ public sealed class MetricDetailVm : ObservableObject
         double[]? trendValues = null,
         IReadOnlyList<KpiProjectDrilldownRow>? projectDrilldownRows = null,
         IReadOnlyList<KpiCashHistoryRow>? cashHistoryRows = null,
+        IReadOnlyList<KpiCashAccountRow>? cashAccountRows = null,
         IReadOnlyList<KpiArOutstandingRow>? arOutstandingRows = null,
         IReadOnlyList<KpiArInvoiceRow>? arInvoiceRows = null,
         IReadOnlyList<KpiWipUnbilledRow>? wipUnbilledRows = null,
@@ -379,8 +383,6 @@ public sealed class MetricDetailVm : ObservableObject
         TechnicalQueryText = defAndQuery.TechnicalQueryText;
         TechnicalQueryVisibility = string.IsNullOrWhiteSpace(TechnicalQueryText) ? Visibility.Collapsed : Visibility.Visible;
 
-        FooterHint = "Tip: use Copy summary to paste into email/Teams.";
-
         _projectGrid = new PaginatedGrid<KpiProjectDrilldownRow, ProjectDrilldownRowVm>(
             ProjectPageSize,
             rows => rows,
@@ -390,7 +392,9 @@ public sealed class MetricDetailVm : ObservableObject
                 r.Pm,
                 r.OverByHours,
                 r.PercentEngUsed,
-                r.PercentBilled),
+                r.PercentBilled,
+                r.PercentBilledWithUnposted,
+                r.HasUnpostedBilling),
             OnPropertyChanged,
             () =>
             {
@@ -411,6 +415,19 @@ public sealed class MetricDetailVm : ObservableObject
                 OnPropertyChanged(nameof(CashHistoryCountText));
             },
             nameof(PagedCashHistoryRows));
+        _cashAccountsGrid = new UnpagedGrid<KpiCashAccountRow, CashAccountRowVm>(
+            rows => rows
+                .OrderBy(r => r.Company ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(r => r.Account ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(r => r.Org ?? string.Empty, StringComparer.OrdinalIgnoreCase),
+            r => new CashAccountRowVm(r.Company, r.Account, r.Org, r.Currency, r.Balance),
+            OnPropertyChanged,
+            () =>
+            {
+                OnPropertyChanged(nameof(CashAccountsVisibility));
+                OnPropertyChanged(nameof(CashAccountsCountText));
+            },
+            nameof(PagedCashAccountRows));
         _arOutstandingGrid = new PaginatedGrid<KpiArOutstandingRow, ArOutstandingRowVm>(
             ArPageSize,
             rows => rows.OrderByDescending(r => r.Aged90Plus).ThenByDescending(r => r.Total),
@@ -437,11 +454,14 @@ public sealed class MetricDetailVm : ObservableObject
             nameof(ArPageText));
         _arInvoiceGrid = new PaginatedGrid<KpiArInvoiceRow, ArInvoiceRowVm>(
             ArInvoicePageSize,
-            rows => rows.OrderByDescending(r => r.DaysPastDue).ThenByDescending(r => r.Balance),
+            rows => rows.OrderByDescending(r => r.DaysPastDue).ThenByDescending(r => Math.Abs(r.Balance)),
             r => new ArInvoiceRowVm(
                 r.Wbs1,
                 r.ProjectName,
                 r.Pm,
+                r.Invoice,
+                r.ClientId,
+                r.ClientName,
                 r.InvoiceDate,
                 r.DueDate,
                 r.DaysPastDue,
@@ -488,8 +508,11 @@ public sealed class MetricDetailVm : ObservableObject
                 r.Pm,
                 r.Fee,
                 r.FeeBilled,
+                r.UnpostedFeeBilled,
                 r.Backlog,
-                r.PercentBilled),
+                r.PercentBilled,
+                r.PercentBilledWithUnposted,
+                r.HasUnpostedBilling),
             OnPropertyChanged,
             () =>
             {
@@ -509,9 +532,12 @@ public sealed class MetricDetailVm : ObservableObject
                 r.ProjectName,
                 r.Pm,
                 r.FeeBilled,
+                r.UnpostedFeeBilled,
                 r.Fee,
                 r.PercentBilled,
-                r.ContributionPercent),
+                r.PercentBilledWithUnposted,
+                r.ContributionPercent,
+                r.HasUnpostedBilling),
             OnPropertyChanged,
             () =>
             {
@@ -595,17 +621,17 @@ public sealed class MetricDetailVm : ObservableObject
             TrendPayerPageSize,
             rows =>
             {
-                if (string.Equals(Title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(Title, "Revenue (Earned) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase))
                 {
                     return rows
                         .OrderByDescending(r => (r.RevenueAmount - r.BilledAmount))
                         .ThenByDescending(r => r.RevenueAmount);
                 }
 
-                if (string.Equals(Title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(Title, "Billings (Invoiced) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase))
                 {
                     return rows
-                        .OrderByDescending(r => r.BilledAmount > 0.004 ? (r.ArOutstandingAmount / r.BilledAmount) : 0.0)
+                        .OrderByDescending(r => r.BilledAmount > AnalyticsThresholds.RoundingDollarFloor ? (r.ArOutstandingAmount / r.BilledAmount) : 0.0)
                         .ThenByDescending(r => r.BilledAmount);
                 }
 
@@ -643,6 +669,7 @@ public sealed class MetricDetailVm : ObservableObject
 
         _projectGrid.Load(projectDrilldownRows ?? Array.Empty<KpiProjectDrilldownRow>());
         _cashHistoryGrid.Load(cashHistoryRows ?? Array.Empty<KpiCashHistoryRow>());
+        _cashAccountsGrid.Load(cashAccountRows ?? Array.Empty<KpiCashAccountRow>());
         _arOutstandingGrid.Load(arOutstandingRows ?? Array.Empty<KpiArOutstandingRow>());
         _arInvoiceGrid.Load(arInvoiceRows ?? Array.Empty<KpiArInvoiceRow>());
         _wipGrid.Load(wipUnbilledRows ?? Array.Empty<KpiWipUnbilledRow>());
@@ -702,6 +729,21 @@ public sealed class MetricDetailVm : ObservableObject
                     row.Cad,
                     row.Usa,
                     row.Bcc));
+            }
+        }
+        if (_cashAccountsGrid.RowCount > 0)
+        {
+            lines.Add("");
+            lines.Add("Cash accounts:");
+            foreach (var row in _cashAccountsGrid.AllRows)
+            {
+                lines.Add(string.Format(
+                    CultureInfo.CurrentCulture,
+                    "- {0} {1} ({2}): {3:C0}",
+                    row.Company,
+                    row.Account,
+                    row.Org,
+                    row.Balance));
             }
         }
         if (_trendPayerGrid.RowCount > 0)
@@ -791,8 +833,8 @@ public sealed class MetricDetailVm : ObservableObject
         if (kind != MetricKind.Trend || string.IsNullOrWhiteSpace(title))
             return false;
 
-        return string.Equals(title, "Revenue (Earned) (30/90 day)", StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(title, "Billings (Invoiced) (30/90 day)", StringComparison.OrdinalIgnoreCase) ||
+        return string.Equals(title, "Revenue (Earned) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(title, "Billings (Invoiced) (latest 1 / 3 periods)", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(title, "AR Outstanding (Recent Months)", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(title, "Delivery Risk (Critical Count)", StringComparison.OrdinalIgnoreCase);
     }
@@ -806,19 +848,22 @@ public sealed class MetricDetailVm : ObservableObject
         var key = (kind, normalizedTitle) switch
         {
             (MetricKind.Kpi, "Cash Position") => "Exec_CashPosition",
+            (MetricKind.Kpi, "Liquidity (Cash + AR)") => "Exec_Liquidity",
             (MetricKind.Kpi, "AR Outstanding") => "Exec_ArOutstanding",
             (MetricKind.Kpi, "AR > 60 Days") => "Exec_ArOver60",
             (MetricKind.Kpi, "WIP (Unbilled Earned)") => "Exec_WipUnbilled",
-            (MetricKind.Kpi, "WIP (Draft Invoices)") => "Exec_WipPreInvoice",
             (MetricKind.Kpi, "Backlog") => "Exec_Backlog",
             (MetricKind.Kpi, "Billings To Date") => "Exec_BillingsToDate",
-            (MetricKind.Kpi, "Budget Burn") => "Exec_BudgetBurn",
+            (MetricKind.Kpi, "Net Multiplier") => "Exec_NetMultiplier",
+            (MetricKind.Kpi, "Labor Margin (T12mo)") => "Exec_NetProfit",
+            (MetricKind.Kpi, "Net Income (T12mo)") => "Exec_GlNetIncome",
+            (MetricKind.Kpi, "Days Sales Outstanding") => "Exec_Dso",
             (MetricKind.Kpi, "Portfolio Delivery Risk") => "PortfolioDeliveryHealth",
             (MetricKind.Kpi, "Projects Over Budget") => "Exec_ProjectsOverBudget",
             (MetricKind.Kpi, "Utilization") => "Exec_Utilization30",
 
-            (MetricKind.Trend, "Revenue (Earned) (30/90 day)") => "Exec_Revenue3090",
-            (MetricKind.Trend, "Billings (Invoiced) (30/90 day)") => "Exec_Billed3090",
+            (MetricKind.Trend, "Revenue (Earned) (latest 1 / 3 periods)") => "Exec_Revenue3090",
+            (MetricKind.Trend, "Billings (Invoiced) (latest 1 / 3 periods)") => "Exec_Billed3090",
             (MetricKind.Trend, "AR Outstanding (Recent Months)") => "Exec_ArOutstandingRecent",
             (MetricKind.Trend, "Delivery Risk (Critical Count)") => "Exec_DeliveryRiskCriticalCount",
 

@@ -1,0 +1,890 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Data.Odbc;
+using System.Globalization;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Kor.Operations.App.Options;
+using Kor.Operations.Data;
+
+namespace Kor.Operations.Financials
+{
+    /// <summary>
+    /// Builds a billed P&amp;L directly from Vantagepoint sub-ledgers. When
+    /// <c>orgFilter</c> is null, rows from Org="USA" are converted to CAD
+    /// equivalent using <c>Financials.Billed.UsdToCadRate</c>; single-org
+    /// calls return the ledger currency for that org so the presenter can show
+    /// the CAD and USD views separately.
+    /// </summary>
+    public sealed class BilledFinancialsService
+    {
+        // Revenue accounts per Daler Singh's source-of-truth Crystal report
+        // (verbatim, 2026-05-05 transcript): "these are the four numbers for the
+        // revenue, 4001, 4003, 4210, 4220, 4240. So these are the four numbers,
+        // four sources of revenue, nothing else." (He says four; lists five.)
+        // 4240 holds legitimate contra-revenue entries (credit memos / billing
+        // adjustments stored as positive Amount in Deltek convention so SUM(-Amount)
+        // yields the negative value that appears on Daler's report). Earlier code
+        // excluded 4240 on a wrong "opposite sign convention" assumption — that
+        // made app totals overstate by the missed deduction.
+        // 4250 (Management & Administration) and 4260 (Intercompany Revenue) are
+        // NOT external client revenue. 4260 is internal CAD<->USA labor transfers
+        // (confirmed via Posting Chart of Accounts settings, 2026-05-06). Including
+        // them here was the dominant source of the ~$94k/Jan, ~$110k/Mar over-
+        // statement vs Daler's report. List now matches FirmHealthService and
+        // RevenueLoader after Batch 23.
+        // 4500 does not exist at KOR — earlier list incorrectly included it.
+        private static readonly string[] DefaultRevenueAccounts =
+        {
+            "4001.00", // Billed Fee Revenue
+            "4003.00", // Billed Labour Revenue
+            "4210.00", // Reimbursable Consultant Revenue
+            "4220.00", // Reimbursable Expense Revenue
+            "4240.00", // Add-On Revenue (contra-revenue, often negative)
+        };
+        private static readonly AccountRange[] DefaultExpenseRanges =
+        {
+            new("5000.00", "5999.99"),
+            new("6000.00", "6999.99"),
+            new("7000.00", "7999.99")
+        };
+        private static readonly AccountRange[] DefaultOtherIncomeRanges = { new("8000.00", "8999.99") };
+
+        // KOR-specific account reclassifications (Batch 73). Verified Feb 2026
+        // against the accountant's Income Statement + SSMS sub-ledger queries:
+        //   - 7290 has $111K in sub-ledger / $0 in GLSummary → Deltek suspense.
+        //   - 7970 is Realized/Unrealized G&L → non-operating, accountant
+        //     reports under Other Income / Other Charges.
+        //   - 8200 (Goodwill) + 8300 (Bank Charges) sit in 8xxx but the
+        //     accountant treats them as Operating Expenses.
+        // Each list is a set of 4-char Account prefixes (matching the existing
+        // `LEFT(LTRIM(RTRIM(Account)),4)` predicate used for the revenue list).
+        private static readonly string[] DefaultExpenseAccountExcludes = { "7290", "7970" };
+        private static readonly string[] DefaultExpenseAccountIncludes = { "8200", "8300" };
+        private static readonly string[] DefaultOtherIncomeAccountExcludes = { "8200", "8300" };
+        private static readonly string[] DefaultOtherIncomeAccountIncludes = { "7970" };
+
+        private readonly DeltekOdbcOptions _odbcOptions;
+        private readonly FinancialsOptions _financialsOptions;
+        private readonly string _catalog;
+
+        public BilledFinancialsService(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
+        {
+            _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+            _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+            _catalog = DeltekCatalogValidator.ResolveCatalog(odbcOptions.Catalog);
+        }
+
+        public async Task<BilledFinancialsResult> BuildAsync(
+            DateTime fromDate,
+            DateTime toDate,
+            string? orgFilter,
+            bool forceRefresh,
+            CancellationToken ct)
+        {
+            _ = forceRefresh;
+
+            return await Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+                var periods = BuildMonthPeriods(fromDate, toDate);
+                if (periods.Count == 0)
+                    throw new InvalidOperationException("No accounting periods found for the selected date range.");
+
+                var minPeriod = periods.Min();
+                var maxPeriod = periods.Max();
+                var org = NormalizeOrgFilter(orgFilter);
+                var revenueAccounts = ParseAccounts(_financialsOptions.BilledRevenueAccounts, DefaultRevenueAccounts);
+                var expenseRanges = ParseRanges(_financialsOptions.BilledExpenseAccountRanges, DefaultExpenseRanges);
+                var otherIncomeRanges = ParseRanges(_financialsOptions.BilledOtherIncomeAccountRanges, DefaultOtherIncomeRanges);
+                var expenseExcludes = ParseAccounts(_financialsOptions.BilledExpenseAccountExcludes, DefaultExpenseAccountExcludes);
+                var expenseIncludes = ParseAccounts(_financialsOptions.BilledExpenseAccountIncludes, DefaultExpenseAccountIncludes);
+                var otherIncomeExcludes = ParseAccounts(_financialsOptions.BilledOtherIncomeAccountExcludes, DefaultOtherIncomeAccountExcludes);
+                var otherIncomeIncludes = ParseAccounts(_financialsOptions.BilledOtherIncomeAccountIncludes, DefaultOtherIncomeAccountIncludes);
+                var usdToCadRate = (decimal)OrgFx.ParseUsdToCadRate(_financialsOptions.BilledUsdToCadRate);
+                var convertUsaToCad = org == null;
+
+                using var cn = CreateConnection();
+                cn.Open();
+
+                var revenueRows = LoadRevenue(cn, minPeriod, maxPeriod, org, revenueAccounts, ct);
+                var expenseRows = LoadLedgerRanges(cn, minPeriod, maxPeriod, org, expenseRanges, expenseIncludes, expenseExcludes, ct);
+                var otherIncomeRows = LoadLedgerRanges(cn, minPeriod, maxPeriod, org, otherIncomeRanges, otherIncomeIncludes, otherIncomeExcludes, ct);
+
+                var accountNames = LoadAccountNames(
+                    cn,
+                    revenueRows.Concat(expenseRows).Concat(otherIncomeRows).Select(r => r.Account),
+                    ct);
+
+                var lines = BuildLines(periods, revenueRows, expenseRows, otherIncomeRows, convertUsaToCad, usdToCadRate, accountNames);
+                var revenueTrend = TrendFor(lines, "Total Revenue", periods);
+                var expenseTrend = TrendFor(lines, "Total Expenses", periods);
+                var otherIncomeTrend = TrendFor(lines, "Total Other Income", periods);
+                var netTrend = revenueTrend
+                    .Select((v, i) => v + (i < otherIncomeTrend.Length ? otherIncomeTrend[i] : 0m) - (i < expenseTrend.Length ? expenseTrend[i] : 0m))
+                    .ToArray();
+                var trendLabels = TrendLabels(periods);
+                var maxBilledPeriod = LoadMaxBilledPeriod(cn, org, revenueAccounts, ct);
+                var reconciliationEndPeriod = maxBilledPeriod.HasValue
+                    ? Math.Min(maxPeriod, maxBilledPeriod.Value)
+                    : maxPeriod;
+                var reconciliation = LoadReconciliation(
+                    cn,
+                    org,
+                    revenueAccounts,
+                    minPeriod,
+                    reconciliationEndPeriod,
+                    convertUsaToCad,
+                    usdToCadRate,
+                    lines,
+                    ct);
+
+                return new BilledFinancialsResult(
+                    periods.ToArray(),
+                    periods.Select(PeriodColumnHeader).ToArray(),
+                    lines,
+                    netTrend,
+                    revenueTrend,
+                    expenseTrend,
+                    trendLabels,
+                    maxBilledPeriod,
+                    reconciliation);
+            }, ct).ConfigureAwait(false);
+        }
+
+        public async Task<IReadOnlyList<PartnerBilledRevenueRow>> LoadPartnerBilledRevenueByPeriodAsync(
+            int minPeriod,
+            int maxPeriod,
+            CancellationToken ct)
+        {
+            return await Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+                using var cn = CreateConnection();
+                cn.Open();
+                return LoadPartnerBilledRevenueByPeriod(cn, minPeriod, maxPeriod, ct);
+            }, ct).ConfigureAwait(false);
+        }
+
+        public IReadOnlyList<PartnerBilledRevenueRow> LoadPartnerBilledRevenueByPeriod(
+            OdbcConnection cn,
+            int minPeriod,
+            int maxPeriod,
+            CancellationToken ct)
+        {
+            if (cn == null)
+                throw new ArgumentNullException(nameof(cn));
+            if (maxPeriod < minPeriod)
+                (minPeriod, maxPeriod) = (maxPeriod, minPeriod);
+
+            var revenueAccounts = ParseAccounts(_financialsOptions.BilledRevenueAccounts, DefaultRevenueAccounts);
+            var prefixes = ExtractAccountPrefixes(revenueAccounts);
+            if (prefixes.Count == 0)
+                return Array.Empty<PartnerBilledRevenueRow>();
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT
+    COALESCE(pr.Principal, '') AS PartnerEmployeeId,
+    COALESCE(
+        NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
+        NULLIF(LTRIM(RTRIM(COALESCE(pr.Principal, ''))), ''),
+        '(unassigned)') AS PartnerDisplayName,
+    COALESCE(l.WBS1, '') AS Wbs1,
+    COALESCE(pr.Name, '') AS ProjectName,
+    l.Period,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS OrgBucket,
+    SUM(-l.Amount) AS Amount
+FROM [{_catalog}].dbo.LedgerAR l
+LEFT JOIN [{_catalog}].dbo.PR pr
+  ON pr.WBS1 = l.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+LEFT JOIN [{_catalog}].dbo.EMMain em
+  ON em.Employee = pr.Principal
+WHERE l.Period BETWEEN ? AND ?
+  AND {CanonicalLedgerArRevenuePredicate("l.Account", "l.TransType", prefixes.Count)}
+GROUP BY
+    COALESCE(pr.Principal, ''),
+    COALESCE(
+        NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
+        NULLIF(LTRIM(RTRIM(COALESCE(pr.Principal, ''))), ''),
+        '(unassigned)'),
+    COALESCE(l.WBS1, ''),
+    COALESCE(pr.Name, ''),
+    l.Period,
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END
+ORDER BY l.Period, OrgBucket, PartnerDisplayName;";
+
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = minPeriod });
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = maxPeriod });
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
+
+            var rows = new List<PartnerBilledRevenueRow>(256);
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                if (r.IsDBNull(4) || r.IsDBNull(6))
+                    continue;
+
+                rows.Add(new PartnerBilledRevenueRow(
+                    PartnerEmployeeId: Convert.ToString(r.GetValue(0), CultureInfo.InvariantCulture) ?? string.Empty,
+                    PartnerDisplayName: Convert.ToString(r.GetValue(1), CultureInfo.InvariantCulture) ?? string.Empty,
+                    Wbs1: Convert.ToString(r.GetValue(2), CultureInfo.InvariantCulture) ?? string.Empty,
+                    ProjectName: Convert.ToString(r.GetValue(3), CultureInfo.InvariantCulture) ?? string.Empty,
+                    Period: Convert.ToInt32(r.GetValue(4), CultureInfo.InvariantCulture),
+                    OrgBucket: Convert.ToString(r.GetValue(5), CultureInfo.InvariantCulture) ?? string.Empty,
+                    Amount: Convert.ToDecimal(r.GetValue(6), CultureInfo.InvariantCulture)));
+            }
+
+            return rows;
+        }
+        private List<LedgerAmountRow> LoadRevenue(
+            OdbcConnection cn,
+            int minPeriod,
+            int maxPeriod,
+            string? orgFilter,
+            IReadOnlyList<string> accounts,
+            CancellationToken ct)
+        {
+            var prefixes = ExtractAccountPrefixes(accounts);
+            if (prefixes.Count == 0)
+                return new List<LedgerAmountRow>();
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT Account, Period, Org, SUM(-Amount) AS Amount
+FROM [{_catalog}].dbo.LedgerAR
+WHERE Period BETWEEN ? AND ?
+  AND {CanonicalLedgerArRevenuePredicate("Account", "TransType", prefixes.Count)}
+  AND (? IS NULL OR Org = ?)
+GROUP BY Account, Period, Org;";
+
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = minPeriod });
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = maxPeriod });
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
+            AddNullableOrgParameters(cmd, orgFilter);
+
+            return ReadAmountRows(cmd, ct);
+        }
+
+        private List<LedgerAmountRow> LoadLedgerRanges(
+            OdbcConnection cn,
+            int minPeriod,
+            int maxPeriod,
+            string? orgFilter,
+            IReadOnlyList<AccountRange> ranges,
+            IReadOnlyList<string> includePrefixes,
+            IReadOnlyList<string> excludePrefixes,
+            CancellationToken ct)
+        {
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            var rangeWhere = string.Join(
+                "\n      OR ",
+                ranges.Select(_ => "(RIGHT(REPLICATE('0', 13) + Account, 13) BETWEEN RIGHT(REPLICATE('0', 13) + ?, 13) AND RIGHT(REPLICATE('0', 13) + ?, 13))"));
+
+            // Reclassification rules (Batch 73). Each call gets two extra
+            // 4-char prefix lists: `includePrefixes` adds accounts that
+            // would otherwise miss the bucket (e.g., 8200/8300 into
+            // Expenses), `excludePrefixes` removes accounts that fall in
+            // range but shouldn't be counted (e.g., 7290 Deltek suspense,
+            // 7970 G&L out of Expenses).
+            var includeClause = includePrefixes.Count > 0
+                ? $"\n      OR LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(includePrefixes.Count)})"
+                : string.Empty;
+            var excludeClause = excludePrefixes.Count > 0
+                ? $"\nAND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) NOT IN ({MakePlaceholders(excludePrefixes.Count)})"
+                : string.Empty;
+
+            cmd.CommandText = $@"
+SELECT Account, Period, Org, SUM(Amount) AS Amount
+FROM (
+    SELECT Account, Period, Org, Amount FROM [{_catalog}].dbo.LedgerAP   WHERE Period BETWEEN ? AND ?
+    UNION ALL
+    SELECT Account, Period, Org, Amount FROM [{_catalog}].dbo.LedgerEX   WHERE Period BETWEEN ? AND ?
+    UNION ALL
+    SELECT Account, Period, Org, Amount FROM [{_catalog}].dbo.LedgerMisc WHERE Period BETWEEN ? AND ?
+) x
+WHERE (
+      {rangeWhere}{includeClause}
+){excludeClause}
+AND (? IS NULL OR Org = ?)
+GROUP BY Account, Period, Org;";
+
+            for (var i = 0; i < 3; i++)
+            {
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = minPeriod });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = maxPeriod });
+            }
+
+            foreach (var range in ranges)
+            {
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = range.StartAccount });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = range.EndAccount });
+            }
+
+            foreach (var prefix in includePrefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
+
+            foreach (var prefix in excludePrefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
+
+            AddNullableOrgParameters(cmd, orgFilter);
+            return ReadAmountRows(cmd, ct);
+        }
+
+        private BilledPostedReconciliation LoadReconciliation(
+            OdbcConnection cn,
+            string? orgFilter,
+            IReadOnlyList<string> revenueAccounts,
+            int rangeStartPeriod,
+            int rangeEndPeriod,
+            bool convertUsaToCad,
+            decimal usdToCadRate,
+            IReadOnlyList<BilledLine> lines,
+            CancellationToken ct)
+        {
+            var billedRange = SumLineRange(lines, "Total Revenue", rangeStartPeriod, rangeEndPeriod);
+            var maxPostedPeriod = LoadMaxPostedPeriod(cn, orgFilter, ct);
+            var prefixes = ExtractAccountPrefixes(revenueAccounts);
+            if (prefixes.Count == 0)
+                return new BilledPostedReconciliation(billedRange, 0m, billedRange, maxPostedPeriod);
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT Account, Period, Org, SUM(-Amount) AS Amount
+FROM [{_catalog}].dbo.GLSummary
+WHERE Period BETWEEN ? AND ?
+  AND LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes.Count)})
+  AND (? IS NULL OR Org = ?)
+GROUP BY Account, Period, Org;";
+
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = rangeStartPeriod });
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = rangeEndPeriod });
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
+            AddNullableOrgParameters(cmd, orgFilter);
+
+            var posted = ReadAmountRows(cmd, ct).Sum(r => ApplyCurrency(r, convertUsaToCad, usdToCadRate));
+            return new BilledPostedReconciliation(billedRange, posted, billedRange - posted, maxPostedPeriod);
+        }
+
+        private static IReadOnlyList<BilledLine> BuildLines(
+            IReadOnlyList<int> periods,
+            IReadOnlyList<LedgerAmountRow> revenueRows,
+            IReadOnlyList<LedgerAmountRow> expenseRows,
+            IReadOnlyList<LedgerAmountRow> otherIncomeRows,
+            bool convertUsaToCad,
+            decimal usdToCadRate,
+            IReadOnlyDictionary<string, string> accountNames)
+        {
+            var lines = new List<BilledLine>();
+
+            AddDetailLines(lines, "Revenue", 0, revenueRows);
+            AddSectionTotal(lines, "Revenue", "Total Revenue", 0);
+
+            AddDetailLines(lines, "Expenses", 1, expenseRows);
+            AddSectionTotal(lines, "Expenses", "Total Expenses", 1);
+
+            AddDetailLines(lines, "Other Income", 2, otherIncomeRows);
+            AddSectionTotal(lines, "Other Income", "Total Other Income", 2);
+
+            var revenueTotal = FindAmounts(lines, "Total Revenue");
+            var expenseTotal = FindAmounts(lines, "Total Expenses");
+            var otherIncomeTotal = FindAmounts(lines, "Total Other Income");
+            lines.Add(new BilledLine("Summary", "Total Revenue", "GrandTotal", -1, 10, revenueTotal));
+            lines.Add(new BilledLine("Summary", "Total Expenses", "GrandTotal", -1, 20, expenseTotal));
+            lines.Add(new BilledLine("Summary", "Total Other Income", "GrandTotal", -1, 25, otherIncomeTotal));
+            lines.Add(new BilledLine("Summary", "Net Income", "GrandTotal", -1, 30, periods.ToDictionary(
+                p => p,
+                p => Get(revenueTotal, p) + Get(otherIncomeTotal, p) - Get(expenseTotal, p))));
+
+            return lines
+                .OrderBy(l => l.SectionSort)
+                .ThenBy(l => l.LineSort)
+                .ThenBy(l => l.LineItem, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            void AddDetailLines(List<BilledLine> target, string section, int sectionSort, IReadOnlyList<LedgerAmountRow> rows)
+            {
+                foreach (var group in rows.GroupBy(r => r.Account).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+                {
+                    var amounts = periods.ToDictionary(
+                        p => p,
+                        p => group.Where(r => r.Period == p).Sum(r => ApplyCurrency(r, convertUsaToCad, usdToCadRate)));
+                    target.Add(new BilledLine(section, FormatAccountLabel(group.Key, accountNames), "Detail", sectionSort, AccountSort(group.Key), amounts, group.Key));
+                }
+            }
+
+            void AddSectionTotal(List<BilledLine> target, string section, string lineItem, int sectionSort)
+            {
+                var detail = target
+                    .Where(l => string.Equals(l.Section, section, StringComparison.OrdinalIgnoreCase)
+                                && string.Equals(l.RowKind, "Detail", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                var amounts = periods.ToDictionary(p => p, p => detail.Sum(l => Get(l.AmountsByPeriod, p)));
+                target.Add(new BilledLine(section, lineItem, "SectionTotal", sectionSort, int.MaxValue - 10, amounts));
+            }
+        }
+
+        private static decimal[] TrendFor(IReadOnlyList<BilledLine> lines, string lineItem, IReadOnlyList<int> periods)
+        {
+            var amounts = FindAmounts(lines, lineItem);
+            var source = periods.Select(p => Get(amounts, p)).ToArray();
+            return source.Length <= 12 ? source : source.Skip(source.Length - 12).ToArray();
+        }
+
+        private static IReadOnlyDictionary<int, decimal> FindAmounts(IReadOnlyList<BilledLine> lines, string lineItem)
+            => lines.FirstOrDefault(l => string.Equals(l.LineItem, lineItem, StringComparison.OrdinalIgnoreCase))?.AmountsByPeriod
+               ?? new Dictionary<int, decimal>();
+
+        private static decimal SumLineRange(IReadOnlyList<BilledLine> lines, string lineItem, int startPeriod, int endPeriod)
+            => FindAmounts(lines, lineItem).Where(kvp => kvp.Key >= startPeriod && kvp.Key <= endPeriod).Sum(kvp => kvp.Value);
+
+        private static decimal ApplyCurrency(LedgerAmountRow row, bool convertUsaToCad, decimal usdToCadRate)
+            => convertUsaToCad && string.Equals(row.Org, "USA", StringComparison.OrdinalIgnoreCase)
+                ? row.Amount * usdToCadRate
+                : row.Amount;
+
+        private static decimal Get(IReadOnlyDictionary<int, decimal> amounts, int period)
+            => amounts.TryGetValue(period, out var value) ? value : 0m;
+
+        private List<LedgerAmountRow> ReadAmountRows(OdbcCommand cmd, CancellationToken ct)
+        {
+            var rows = new List<LedgerAmountRow>(256);
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                if (r.IsDBNull(0) || r.IsDBNull(1) || r.IsDBNull(3))
+                    continue;
+
+                rows.Add(new LedgerAmountRow(
+                    Account: Convert.ToString(r.GetValue(0), CultureInfo.InvariantCulture) ?? "",
+                    Period: Convert.ToInt32(r.GetValue(1), CultureInfo.InvariantCulture),
+                    Org: r.IsDBNull(2) ? "" : Convert.ToString(r.GetValue(2), CultureInfo.InvariantCulture) ?? "",
+                    Amount: Convert.ToDecimal(r.GetValue(3), CultureInfo.InvariantCulture)));
+            }
+
+            return rows;
+        }
+
+        // Sections must match the canonical strings produced by BilledFinancialsService
+        // ("Revenue", "Expenses", "Other Income"). When section == "Revenue", the drilldown
+        // restricts to LedgerAR + TransType='IN' so it ties out to LoadLedgerArInvoiced
+        // (which is what the Revenue total uses). Other sections still UNION AP/EX/Misc
+        // since their totals also union those ledgers via LoadLedgerRanges. Null/Unknown
+        // section keeps the legacy four-ledger union for back-compat.
+        public async Task<IReadOnlyList<BilledLedgerTransaction>> LoadLedgerTransactionsAsync(
+            string account,
+            int period,
+            string? orgFilter,
+            string? section,
+            CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(account))
+                return Array.Empty<BilledLedgerTransaction>();
+
+            return await Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+                using var cn = CreateConnection();
+                cn.Open();
+
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+
+                var whereOrg = string.IsNullOrWhiteSpace(orgFilter) ? "" : " AND l.Org = ? ";
+                var isRevenue = string.Equals(section?.Trim(), "Revenue", StringComparison.OrdinalIgnoreCase);
+
+                var sourceSql = isRevenue
+                    ? $@"
+    SELECT 'AR' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, -l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerAR l
+    WHERE l.Period = ? AND l.Account = ? AND l.TransType = 'IN' {whereOrg}"
+                    : $@"
+    SELECT 'AR' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, -l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerAR l
+    WHERE l.Period = ? AND l.Account = ? AND l.TransType = 'IN' {whereOrg}
+    UNION ALL
+    SELECT 'AP' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerAP l
+    WHERE l.Period = ? AND l.Account = ? {whereOrg}
+    UNION ALL
+    SELECT 'EX' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerEX l
+    WHERE l.Period = ? AND l.Account = ? {whereOrg}
+    UNION ALL
+    SELECT 'Misc' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate,
+           l.Desc1, l.Desc2, l.Amount, l.Amount AS SignedAmount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{_catalog}].dbo.LedgerMisc l
+    WHERE l.Period = ? AND l.Account = ? {whereOrg}";
+
+                cmd.CommandText = $@"
+SELECT
+    l.Source,
+    l.Period,
+    MAX(l.TransDate) AS TransDate,
+    COALESCE(NULLIF(l.Invoice, ''), NULLIF(l.Voucher, ''), NULLIF(l.RefNo, ''), '(none)') AS DocumentNo,
+    COALESCE(
+        NULLIF(cc.Name, ''),
+        NULLIF(cv.Name, ''),
+        NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
+        NULLIF(l.Vendor, ''),
+        NULLIF(l.Employee, ''),
+        '(unmapped)') AS Counterparty,
+    l.Account,
+    l.TransType,
+    MAX(COALESCE(NULLIF(l.Desc1, ''), NULLIF(l.Desc2, ''), '')) AS Description,
+    SUM(l.SignedAmount) AS Amount,
+    COUNT(*) AS EntryCount
+FROM
+({sourceSql}
+) l
+LEFT JOIN
+(
+    SELECT ar.Invoice, ar.WBS1, ar.ClientID,
+           -- Tie-breaker on ClientID DESC: when both dates are null on
+           -- multiple AR rows sharing the same (Invoice, WBS1), the picked
+           -- ClientID otherwise depends on storage order.
+           ROW_NUMBER() OVER (PARTITION BY ar.Invoice, ar.WBS1
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC,
+                                       ar.ClientID DESC) AS rn
+    FROM [{_catalog}].dbo.AR ar
+    WHERE ar.ClientID IS NOT NULL AND LTRIM(RTRIM(ar.ClientID)) <> ''
+) arx
+  ON arx.Invoice = l.Invoice AND arx.WBS1 = l.WBS1 AND arx.rn = 1
+LEFT JOIN [{_catalog}].dbo.Clendor cc ON cc.ClientID = arx.ClientID
+LEFT JOIN [{_catalog}].dbo.Clendor cv ON cv.Vendor = l.Vendor
+LEFT JOIN [{_catalog}].dbo.EMMain em ON em.Employee = l.Employee
+GROUP BY
+    l.Source, l.Period,
+    COALESCE(NULLIF(l.Invoice, ''), NULLIF(l.Voucher, ''), NULLIF(l.RefNo, ''), '(none)'),
+    COALESCE(
+        NULLIF(cc.Name, ''),
+        NULLIF(cv.Name, ''),
+        NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
+        NULLIF(l.Vendor, ''),
+        NULLIF(l.Employee, ''),
+        '(unmapped)'),
+    l.Account, l.TransType
+ORDER BY ABS(SUM(l.SignedAmount)) DESC, MAX(l.TransDate) DESC;";
+
+                // Revenue mode binds 1 (period, account [, org]) tuple; full mode binds 4.
+                var ledgerCount = isRevenue ? 1 : 4;
+                for (var i = 0; i < ledgerCount; i++)
+                {
+                    cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = period });
+                    cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = account.Trim() });
+                    if (!string.IsNullOrWhiteSpace(orgFilter))
+                        cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = orgFilter!.Trim() });
+                }
+
+                var rows = new List<BilledLedgerTransaction>(128);
+                using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    rows.Add(new BilledLedgerTransaction(
+                        Source: r.IsDBNull(0) ? "" : Convert.ToString(r.GetValue(0), CultureInfo.InvariantCulture) ?? "",
+                        Period: r.IsDBNull(1) ? period : Convert.ToInt32(r.GetValue(1), CultureInfo.InvariantCulture),
+                        TransDate: r.IsDBNull(2) ? null : Convert.ToDateTime(r.GetValue(2), CultureInfo.InvariantCulture),
+                        DocumentNo: r.IsDBNull(3) ? "" : Convert.ToString(r.GetValue(3), CultureInfo.InvariantCulture) ?? "",
+                        Counterparty: r.IsDBNull(4) ? "" : Convert.ToString(r.GetValue(4), CultureInfo.InvariantCulture) ?? "",
+                        Account: r.IsDBNull(5) ? "" : Convert.ToString(r.GetValue(5), CultureInfo.InvariantCulture) ?? "",
+                        TransType: r.IsDBNull(6) ? "" : Convert.ToString(r.GetValue(6), CultureInfo.InvariantCulture) ?? "",
+                        Description: r.IsDBNull(7) ? "" : Convert.ToString(r.GetValue(7), CultureInfo.InvariantCulture) ?? "",
+                        Amount: r.IsDBNull(8) ? 0m : Convert.ToDecimal(r.GetValue(8), CultureInfo.InvariantCulture),
+                        EntryCount: r.IsDBNull(9) ? 0 : Convert.ToInt32(r.GetValue(9), CultureInfo.InvariantCulture)));
+                }
+
+                return (IReadOnlyList<BilledLedgerTransaction>)rows;
+            }, ct).ConfigureAwait(false);
+        }
+
+        private Dictionary<string, string> LoadAccountNames(OdbcConnection cn, IEnumerable<string> accounts, CancellationToken ct)
+        {
+            var distinct = accounts
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .Select(a => a.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (distinct.Count == 0)
+                return result;
+            var prefixes = ExtractAccountPrefixes(distinct);
+            if (prefixes.Count == 0)
+                return result;
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT Account, Name
+FROM [{_catalog}].dbo.CA
+WHERE LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4) IN ({MakePlaceholders(prefixes.Count)});";
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
+
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                ct.ThrowIfCancellationRequested();
+                if (r.IsDBNull(0))
+                    continue;
+                var account = (Convert.ToString(r.GetValue(0), CultureInfo.InvariantCulture) ?? "").Trim();
+                var name = r.IsDBNull(1) ? "" : (Convert.ToString(r.GetValue(1), CultureInfo.InvariantCulture) ?? "").Trim();
+                var prefix = AccountPrefix4(account);
+                if (prefix.Length == 0 || result.ContainsKey(prefix))
+                    continue;
+                result[prefix] = name;
+            }
+            return result;
+        }
+
+        private static string FormatAccountLabel(string account, IReadOnlyDictionary<string, string> accountNames)
+        {
+            var prefix = AccountPrefix4(account);
+            if (prefix.Length > 0
+                && accountNames.TryGetValue(prefix, out var name)
+                && !string.IsNullOrWhiteSpace(name))
+                return $"{name} ({account})";
+            return account;
+        }
+
+        private int? LoadMaxBilledPeriod(OdbcConnection cn, string? orgFilter, IReadOnlyList<string> revenueAccounts, CancellationToken ct)
+        {
+            // Match accounts on a 4-char prefix instead of strict-equal IN list. KOR's
+            // catalog stores accounts as 'NNNN.00' (varchar), but other Deltek installs
+            // may store them as 'NNNN', with trailing whitespace, or zero-padded; the
+            // strict-IN form silently filters every row away under those formats and
+            // returns null for MaxBilledPeriod even though the data is present. Mirrors
+            // FirmHealthService / RevenueLoader's tolerant predicate so a config copied
+            // from a sibling install doesn't quietly null this out.
+            var prefixes = ExtractAccountPrefixes(revenueAccounts);
+            if (prefixes.Count == 0)
+                return null;
+
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT MAX(Period)
+FROM [{_catalog}].dbo.LedgerAR
+WHERE {CanonicalLedgerArRevenuePredicate("Account", "TransType", prefixes.Count)}
+  AND (? IS NULL OR Org = ?);";
+            foreach (var prefix in prefixes)
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = prefix });
+            AddNullableOrgParameters(cmd, orgFilter);
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            var value = cmd.ExecuteScalar();
+            if (value == null || value == DBNull.Value)
+                return null;
+            var period = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+            return period > 0 ? period : null;
+        }
+
+        private static string CanonicalLedgerArRevenuePredicate(string accountExpression, string transTypeExpression, int prefixCount)
+            => $"{transTypeExpression} = 'IN'\n  AND LEFT(LTRIM(RTRIM(COALESCE({accountExpression},''))), 4) IN ({MakePlaceholders(prefixCount)})";
+        // Pull the leading 4-char account prefix off each configured value so the
+        // SQL predicate stays format-agnostic. Drops any value that can't yield a
+        // 4-char numeric prefix (e.g. a stray empty or whitespace entry).
+        private static List<string> ExtractAccountPrefixes(IReadOnlyList<string> revenueAccounts)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var result = new List<string>(revenueAccounts.Count);
+            foreach (var raw in revenueAccounts)
+            {
+                var prefix = AccountPrefix4(raw);
+                if (prefix.Length == 0)
+                    continue;
+                if (seen.Add(prefix))
+                    result.Add(prefix);
+            }
+            return result;
+        }
+
+        private static string AccountPrefix4(string? account)
+        {
+            var trimmed = (account ?? string.Empty).Trim();
+            return trimmed.Length >= 4 ? trimmed.Substring(0, 4) : trimmed;
+        }
+
+        private int? LoadMaxPostedPeriod(OdbcConnection cn, string? orgFilter, CancellationToken ct)
+        {
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $"SELECT MAX(Period) FROM [{_catalog}].dbo.GLSummary WHERE (? IS NULL OR Org = ?);";
+            AddNullableOrgParameters(cmd, orgFilter);
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            var value = cmd.ExecuteScalar();
+            if (value == null || value == DBNull.Value)
+                return null;
+            var period = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+            return period > 0 ? period : null;
+        }
+
+        private OdbcConnection CreateConnection()
+        {
+            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var user = _odbcOptions.User ?? string.Empty;
+            var pwd = _odbcOptions.Password ?? string.Empty;
+            var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>());
+            return factory.Create();
+        }
+
+        private static void AddNullableOrgParameters(OdbcCommand cmd, string? orgFilter)
+        {
+            object value = string.IsNullOrWhiteSpace(orgFilter) ? DBNull.Value : orgFilter.Trim();
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = value });
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = value });
+        }
+
+        private static string? NormalizeOrgFilter(string? orgFilter)
+            => string.IsNullOrWhiteSpace(orgFilter) ? null : orgFilter.Trim();
+
+        private static List<int> BuildMonthPeriods(DateTime fromDate, DateTime toDate)
+        {
+            var start = new DateTime(fromDate.Year, fromDate.Month, 1);
+            var end = new DateTime(toDate.Year, toDate.Month, 1);
+            if (end < start)
+                (start, end) = (end, start);
+
+            var periods = new List<int>();
+            for (var current = start; current <= end; current = current.AddMonths(1))
+                periods.Add((current.Year * 100) + current.Month);
+            return periods;
+        }
+
+        private static string PeriodColumnHeader(int period)
+        {
+            var year = period / 100;
+            var month = period % 100;
+            if (month < 1 || month > 12)
+                return period.ToString(CultureInfo.InvariantCulture);
+            var date = new DateTime(year, month, 1);
+            return $"{date.ToString("MMM-yy", CultureInfo.InvariantCulture)} ({period})";
+        }
+
+        private static string[] TrendLabels(IReadOnlyList<int> periods)
+        {
+            var slice = periods.Count <= 12 ? periods : periods.Skip(periods.Count - 12).ToList();
+            return slice.Select(p =>
+            {
+                var year = p / 100;
+                var month = p % 100;
+                if (month < 1 || month > 12)
+                    return p.ToString(CultureInfo.InvariantCulture);
+                var date = new DateTime(year, month, 1);
+                return $"{date.ToString("MMM", CultureInfo.InvariantCulture)}\n{date.ToString("yy", CultureInfo.InvariantCulture)}";
+            }).ToArray();
+        }
+
+        private static decimal ReadDecimal(string raw, decimal fallback)
+        {
+            if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var value))
+                return value;
+            if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.CurrentCulture, out value))
+                return value;
+            return fallback;
+        }
+
+        private static IReadOnlyList<string> ParseAccounts(string raw, IReadOnlyList<string> fallback)
+        {
+            var accounts = (raw ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return accounts.Count == 0 ? fallback : accounts;
+        }
+
+        private static IReadOnlyList<AccountRange> ParseRanges(string raw, IReadOnlyList<AccountRange> fallback)
+        {
+            var ranges = new List<AccountRange>();
+            foreach (var part in (raw ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var pieces = part.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (pieces.Length == 2)
+                    ranges.Add(new AccountRange(pieces[0], pieces[1]));
+            }
+
+            return ranges.Count == 0 ? fallback : ranges;
+        }
+
+        private static string MakePlaceholders(int count)
+            => string.Join(", ", Enumerable.Repeat("?", count));
+
+        private static int AccountSort(string account)
+        {
+            var digits = new string((account ?? "").Where(char.IsDigit).ToArray());
+            return int.TryParse(digits, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : int.MaxValue;
+        }
+
+        private sealed record LedgerAmountRow(string Account, int Period, string Org, decimal Amount);
+
+        public sealed record PartnerBilledRevenueRow(
+            string PartnerEmployeeId,
+            string PartnerDisplayName,
+            string Wbs1,
+            string ProjectName,
+            int Period,
+            string OrgBucket,
+            decimal Amount);
+
+        private sealed record AccountRange(string StartAccount, string EndAccount);
+    }
+
+    public sealed record BilledFinancialsResult(
+        int[] Periods,
+        string[] PeriodColumnNames,
+        IReadOnlyList<BilledLine> Lines,
+        decimal[] NetIncomeTrendValues,
+        decimal[] RevenueTrendValues,
+        decimal[] ExpenseTrendValues,
+        string[] TrendLabels,
+        int? MaxBilledPeriod,
+        BilledPostedReconciliation Reconciliation);
+
+    public sealed record BilledLine(
+        string Section,
+        string LineItem,
+        string RowKind,
+        int SectionSort,
+        int LineSort,
+        IReadOnlyDictionary<int, decimal> AmountsByPeriod,
+        string? Account = null);
+
+    public sealed record BilledLedgerTransaction(
+        string Source,
+        int Period,
+        DateTime? TransDate,
+        string DocumentNo,
+        string Counterparty,
+        string Account,
+        string TransType,
+        string Description,
+        decimal Amount,
+        int EntryCount);
+
+    public sealed record BilledPostedReconciliation(
+        decimal BilledRangeCad,
+        decimal PostedRangeCad,
+        decimal DeltaCad,
+        int? MaxPostedPeriod);
+}

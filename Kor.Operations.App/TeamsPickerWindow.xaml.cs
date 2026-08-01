@@ -6,7 +6,6 @@ using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -15,6 +14,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Kor.Operations.App.Options;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace Kor.Operations
 {
@@ -136,7 +136,7 @@ namespace Kor.Operations
             if (!_authorizationService.IsAuthorized("TeamsPicker"))
             {
                 MessageBox.Show("You are not authorized to access the Teams Picker.",
-                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Application — Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 Close();
                 return;
             }
@@ -162,7 +162,7 @@ namespace Kor.Operations
             {
                 MessageBox.Show(this,
                     $"Could not load teams:\n{ex.Message}",
-                    "Teams",
+                    "Application — Load Teams Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -185,7 +185,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"TeamsPicker header init failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning(ex, "TeamsPicker: header init failed.");
             }
         }
 
@@ -199,7 +199,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Deltek name lookup failed: {ex.Message}");
+                Log.Warning(ex, "TeamsPicker: Deltek name lookup failed.");
             }
 
             // fallback from UPN
@@ -227,7 +227,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Avatar load skipped: {ex.GetType().Name}: {ex.Message}");
+                Log.Debug(ex, "TeamsPicker: avatar load skipped.");
             }
         }
 

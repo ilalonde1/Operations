@@ -21,20 +21,20 @@ public partial class CreateStandardDocumentWindow : Window
         var title = TitleBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(title))
         {
-            MessageBox.Show(this, "Title is required.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Title is required.", "Standard Details — Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         if (title.Length > TitleMaxLength)
         {
-            MessageBox.Show(this, $"Title cannot exceed {TitleMaxLength} characters.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, $"Title cannot exceed {TitleMaxLength} characters.", "Standard Details — Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         var description = string.IsNullOrWhiteSpace(DescriptionBox.Text) ? null : DescriptionBox.Text.Trim();
         if (description is not null && description.Length > DescriptionMaxLength)
         {
-            MessageBox.Show(this, $"Description cannot exceed {DescriptionMaxLength} characters.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, $"Description cannot exceed {DescriptionMaxLength} characters.", "Standard Details — Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

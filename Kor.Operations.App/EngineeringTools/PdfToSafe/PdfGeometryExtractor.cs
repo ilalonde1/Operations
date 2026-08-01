@@ -178,7 +178,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings,
             Dictionary<int, string>? slabTypeOverrides = null,
             Dictionary<int, string>? lineTypeOverrides = null,
-            Dictionary<int, string>? columnTypeOverrides = null)
+            Dictionary<int, string>? columnTypeOverrides = null,
+            double minOrphanSlabAreaMm2 = 2_000_000.0)
         {
             bool hasColorOverrides = colorSettings is not null && colorSettings.Count > 0;
             bool hasElementOverrides = (slabTypeOverrides?.Count ?? 0) > 0
@@ -209,31 +210,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return fallback;
             }
 
-            // Fast path: check if any override actually changes something
-            if (!hasElementOverrides)
-            {
-                bool anyColorChange = false;
-                foreach (var (color, cs) in colorSettings!)
-                {
-                    string type = cs.ElementType;
-                    // Types that, when matching the element's current bucket,
-                    // are a no-op. Wall always causes a change (not natively
-                    // classified), so never skip it here.
-                    if (string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase) && original.SlabColors.Contains(color)) continue;
-                    if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase) && original.LineColors.Contains(color)) continue;
-                    if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase) && original.ColumnColors.Contains(color)) continue;
-                    if (!string.Equals(type, "Slab",    StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Beam",    StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Column",  StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Wall",    StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    anyColorChange = true;
-                    break;
-                }
-                if (!anyColorChange) return original;
-            }
+            // Fast-path optimization was removed in Batch 45: it incorrectly
+            // assumed each color appears in exactly one bucket. In reality a
+            // single burgundy markup colour can simultaneously populate
+            // ColumnColors (small columns), SlabColors (large wall polygons),
+            // AND LineColors (perimeter outlines). With type=Column the old
+            // fast path saw burgundy in ColumnColors, skipped reclassification,
+            // and the wall-sized burgundy slab polygons were left in the slab
+            // bucket — where they got merged into the main perimeter by
+            // ProcessSlabs and effectively disappeared from the SAFE export.
+            // Slow path is O(slabs+lines+columns) over hundreds of items;
+            // the perf cost is negligible compared to the correctness gain.
 
             var result = new ExtractedGeometry
             {
@@ -385,8 +372,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // Treat it as its own slab polygon — SAFE auto-closes the
                     // last→first edge on import. Two-point orphans can't form a
                     // polygon, so they stay as beam-style lines.
+                    //
+                    // Area filter: pen-thickness artifacts and stray 3-point
+                    // polylines produce tiny triangle "slabs" (<2 m²) that pollute
+                    // the SAFE model with degenerate floor objects. Drop those
+                    // silently — they're never real balconies.
                     if (seg.Count >= 3 && PolygonProcessor.Distance(seg[0], seg[^1]) > 1.0)
                     {
+                        double segArea = PolygonProcessor.PolygonAreaMm2(seg);
+                        if (segArea < minOrphanSlabAreaMm2)
+                        {
+                            System.Diagnostics.Trace.TraceInformation(
+                                $"ReclassifyByColor: dropping orphan slab fragment color=#{color.R:X2}{color.G:X2}{color.B:X2} " +
+                                $"pts={seg.Count} area={segArea:F0}mm² (< {minOrphanSlabAreaMm2:F0}mm² threshold)");
+                            continue;
+                        }
                         result.Slabs.Add(seg);
                         result.SlabColors.Add(color);
                     }
@@ -417,19 +417,183 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         /// <summary>
-        /// Reduces a wall-shaped slab polygon to a 2-point centerline line
-        /// with an associated beam section hint, and invokes the supplied
-        /// <paramref name="addLine"/> callback with both.
+        /// Reduces a wall-shaped slab polygon to either:
+        ///   - 1 centerline line with a beam section hint (typical thin wall), OR
+        ///   - 4 centerline lines tracing the 4 sides of a shaft outline, when
+        ///     the polygon is detected to be a closed rectangular shaft footprint
+        ///     rather than a thick wall. Decomposing shafts here means
+        ///     WallOpeningDetector picks up the rectangle naturally and cuts
+        ///     the slab — without this, a 2.8m × 9.7m stair-core outline emits
+        ///     ONE "W2832x1000" beam (a 2.8m-thick wall, which doesn't exist
+        ///     in real construction) and the slab spans through the void.
+        /// Invokes the supplied <paramref name="addLine"/> callback for each
+        /// emitted centerline.
         /// </summary>
         private static void AddLineFromWallReduction(
             List<(double X, double Y)> polygon,
             (byte R, byte G, byte B) color,
             Action<List<(double X, double Y)>, (byte R, byte G, byte B), (double WidthMm, double DepthMm)?> addLine)
         {
+            if (IsShaftOutlinePolygon(polygon))
+            {
+                EmitShaftWallCenterlines(polygon, color, addLine);
+                return;
+            }
             var (start, end, wallThicknessMm, sectionDepthMm) =
                 PolygonProcessor.ReducePolygonToWallCenterline(polygon);
             var centerline = new List<(double X, double Y)> { start, end };
             addLine(centerline, color, (wallThicknessMm, sectionDepthMm));
+        }
+
+        /// <summary>
+        /// Heuristic: is this a closed rectangular shaft outline (engineer drew
+        /// the shaft footprint as a single closed polygon) rather than a real
+        /// wall polygon? Real concrete walls in KOR practice are long and thin
+        /// (aspect 5:1+, thickness ≤ ~500mm). A "wall" reduction that produces
+        /// a 1-3m thick section is almost certainly a shaft outline.
+        ///
+        /// Criteria (all must hold to declare shaft):
+        ///   - Minor bbox dim ≥ 1000mm (real walls rarely exceed 1m thickness)
+        ///   - Minor/major aspect ratio ≥ 0.15 (real walls are 7:1+ elongated;
+        ///     calibrated from the reference KOR drawing where a 1.85m × 9.74m
+        ///     shaft outline at aspect 0.19 was being misclassified as a wall
+        ///     while a true 0.95m × 9.73m thick shear wall at aspect 0.098
+        ///     correctly stays a wall)
+        ///   - One of:
+        ///     a) Polygon fills ≥ 85% of bbox (engineer traced a 4-vertex filled
+        ///        rectangle around the shaft footprint), OR
+        ///     b) Polygon fills 15–85% of bbox AND has ≥ 6 vertices AND its
+        ///        edges cover ≥ 3 of the 4 bbox sides (engineer traced a
+        ///        C-shape, U-shape, or frame outline). The side-coverage check
+        ///        is critical: it distinguishes shaft outlines (which wrap
+        ///        around 3-4 sides of the bbox) from L-shape building corners
+        ///        (which only cover 2 adjacent sides) even when fill ratios
+        ///        overlap.
+        /// </summary>
+        private static bool IsShaftOutlinePolygon(List<(double X, double Y)> polygon)
+        {
+            if (polygon is null || polygon.Count < 3) return false;
+
+            double minX = polygon[0].X, maxX = polygon[0].X;
+            double minY = polygon[0].Y, maxY = polygon[0].Y;
+            for (int i = 1; i < polygon.Count; i++)
+            {
+                if (polygon[i].X < minX) minX = polygon[i].X;
+                if (polygon[i].X > maxX) maxX = polygon[i].X;
+                if (polygon[i].Y < minY) minY = polygon[i].Y;
+                if (polygon[i].Y > maxY) maxY = polygon[i].Y;
+            }
+            double bboxW = maxX - minX;
+            double bboxH = maxY - minY;
+            double minorDim = Math.Min(bboxW, bboxH);
+            double majorDim = Math.Max(bboxW, bboxH);
+
+            if (minorDim < 1000.0) return false;
+            if (majorDim <= 0) return false;
+            if (minorDim / majorDim < 0.15) return false;
+
+            double polyArea = PolygonProcessor.PolygonAreaMm2(polygon);
+            double bboxArea = bboxW * bboxH;
+            if (bboxArea <= 0) return false;
+            double fillRatio = polyArea / bboxArea;
+
+            // Branch A: filled rectangle outline.
+            if (fillRatio >= 0.85) return true;
+
+            // Branch B: bracket / C / U / frame outline. Vertex floor of 6
+            // OR side-coverage ≥ 3 separates these from L-shape building
+            // corners (2 sides covered, similar fill).
+            if (fillRatio >= 0.15 && polygon.Count >= 6
+                && CountCoveredBboxSides(polygon, minX, maxX, minY, maxY) >= 3)
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Counts how many of the 4 bbox sides the polygon's edges substantially
+        /// cover (≥ 50% of the side's length, edges within 100 mm of the side).
+        /// A frame outline covers all 4 sides; a C-shape covers 3 (one side
+        /// open); an L-shape covers 2 (the two outer arms). Threshold 100 mm
+        /// is tight enough to reject the inner perimeter of an L-shape (where
+        /// the inset is typically 200+ mm) but lenient enough for floating-
+        /// point or extraction noise on a true bbox-aligned edge.
+        /// </summary>
+        private static int CountCoveredBboxSides(
+            List<(double X, double Y)> polygon,
+            double minX, double maxX, double minY, double maxY)
+        {
+            const double NearSideToleranceMm = 100.0;
+            const double MinSideCoverageFraction = 0.5;
+
+            double bboxW = maxX - minX;
+            double bboxH = maxY - minY;
+            double bottomCov = 0, topCov = 0, leftCov = 0, rightCov = 0;
+
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var p1 = polygon[i];
+                var p2 = polygon[(i + 1) % polygon.Count];
+
+                bool bothNearBottom = Math.Abs(p1.Y - minY) < NearSideToleranceMm
+                                   && Math.Abs(p2.Y - minY) < NearSideToleranceMm;
+                bool bothNearTop    = Math.Abs(p1.Y - maxY) < NearSideToleranceMm
+                                   && Math.Abs(p2.Y - maxY) < NearSideToleranceMm;
+                bool bothNearLeft   = Math.Abs(p1.X - minX) < NearSideToleranceMm
+                                   && Math.Abs(p2.X - minX) < NearSideToleranceMm;
+                bool bothNearRight  = Math.Abs(p1.X - maxX) < NearSideToleranceMm
+                                   && Math.Abs(p2.X - maxX) < NearSideToleranceMm;
+
+                if (bothNearBottom) bottomCov += Math.Abs(p2.X - p1.X);
+                if (bothNearTop)    topCov    += Math.Abs(p2.X - p1.X);
+                if (bothNearLeft)   leftCov   += Math.Abs(p2.Y - p1.Y);
+                if (bothNearRight)  rightCov  += Math.Abs(p2.Y - p1.Y);
+            }
+
+            int covered = 0;
+            if (bottomCov >= bboxW * MinSideCoverageFraction) covered++;
+            if (topCov    >= bboxW * MinSideCoverageFraction) covered++;
+            if (leftCov   >= bboxH * MinSideCoverageFraction) covered++;
+            if (rightCov  >= bboxH * MinSideCoverageFraction) covered++;
+            return covered;
+        }
+
+        /// <summary>
+        /// For a detected shaft-outline polygon, emit 4 centerline segments —
+        /// one per side of the bbox — each tagged with a 300mm-thick wall
+        /// section hint. WallOpeningDetector then matches these 4 lines as a
+        /// closed rectangle and cuts the parent slab. Uses 300mm because that
+        /// matches KOR's typical shear-wall thickness and produces a "W300x1000"
+        /// section in SAFE that the engineer can adjust per their detailing.
+        /// </summary>
+        private static void EmitShaftWallCenterlines(
+            List<(double X, double Y)> polygon,
+            (byte R, byte G, byte B) color,
+            Action<List<(double X, double Y)>, (byte R, byte G, byte B), (double WidthMm, double DepthMm)?> addLine)
+        {
+            const double DefaultShaftWallThicknessMm = 300.0;
+            const double DefaultWallDepthMm = 1000.0;
+            double half = DefaultShaftWallThicknessMm / 2.0;
+
+            double minX = polygon[0].X, maxX = polygon[0].X;
+            double minY = polygon[0].Y, maxY = polygon[0].Y;
+            for (int i = 1; i < polygon.Count; i++)
+            {
+                if (polygon[i].X < minX) minX = polygon[i].X;
+                if (polygon[i].X > maxX) maxX = polygon[i].X;
+                if (polygon[i].Y < minY) minY = polygon[i].Y;
+                if (polygon[i].Y > maxY) maxY = polygon[i].Y;
+            }
+
+            var hint = ((double WidthMm, double DepthMm)?)
+                (DefaultShaftWallThicknessMm, DefaultWallDepthMm);
+
+            // Each centerline sits half-wall-thickness inward from the bbox edge
+            // so the wall beam runs through the actual centre of the concrete wall.
+            addLine(new List<(double X, double Y)> { (minX, minY + half), (maxX, minY + half) }, color, hint);
+            addLine(new List<(double X, double Y)> { (minX, maxY - half), (maxX, maxY - half) }, color, hint);
+            addLine(new List<(double X, double Y)> { (minX + half, minY), (minX + half, maxY) }, color, hint);
+            addLine(new List<(double X, double Y)> { (maxX - half, minY), (maxX - half, maxY) }, color, hint);
         }
 
         /// <summary>

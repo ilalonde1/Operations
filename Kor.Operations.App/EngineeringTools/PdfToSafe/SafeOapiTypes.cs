@@ -136,6 +136,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             CheckMethod(cPropArea!,   "SetModifiers",        2, issuesLocal);
             CheckMethod(cFrame!,      "SetInsertionPoint_1",9, issuesLocal);
             CheckMethod(cArea!,       "SetEdgeConstraint",  3, issuesLocal);
+            CheckMethod(cArea!,       "SetOpening",         3, issuesLocal);
 
             CheckProperty(cOAPI!,      "SapModel",     issuesLocal);
             CheckProperty(cSapModel!,  "File",         issuesLocal);

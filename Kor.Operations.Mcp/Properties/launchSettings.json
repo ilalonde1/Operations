@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Kor.Operations.Mcp": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:54284;http://localhost:54285"
+    }
+  }
+}

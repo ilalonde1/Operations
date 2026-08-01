@@ -1,0 +1,169 @@
+<UserControl x:Class="Kor.Operations.App.BusinessDevelopment.Workspace.RelationshipsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource App.Background}"
+             Loaded="RelationshipsView_Loaded"
+             Unloaded="RelationshipsView_Unloaded">
+    <UserControl.Resources>
+        <!-- Small "Kind" pill rendered to the left of each org name. Slate
+             default; semantic overrides for Architect / Competitor / Client /
+             KorClient so the user can scan kinds at a glance. -->
+        <Style x:Key="KindChip" TargetType="Border">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="6,1"/>
+            <Setter Property="Margin" Value="0,1,8,1"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="{StaticResource Text.Secondary}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Kind}" Value="Architect">
+                    <Setter Property="Background" Value="{StaticResource CorporateBlue}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Competitor">
+                    <Setter Property="Background" Value="{StaticResource Risk.Critical.Foreground}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="KorClient">
+                    <Setter Property="Background" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Client">
+                    <Setter Property="Background" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Developer">
+                    <Setter Property="Background" Value="{StaticResource Brand.Accent.Brush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="GeneralContractor">
+                    <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Buyer">
+                    <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="14">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="340"/>
+            <ColumnDefinition Width="12"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="Organizations"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource Brand.Primary.Brush}"
+                           Margin="0,0,0,8"/>
+
+                <TextBox x:Name="SearchBox"
+                         Grid.Row="1"
+                         Padding="8,5"
+                         Margin="0,0,0,8"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         TextChanged="SearchBox_TextChanged"
+                         ToolTip="Search organizations by display name"/>
+
+                <ComboBox x:Name="KindCombo"
+                          Grid.Row="2"
+                          Margin="0,0,0,8"
+                          SelectedIndex="0"
+                          SelectionChanged="KindCombo_SelectionChanged">
+                    <ComboBoxItem Content="All kinds"/>
+                    <ComboBoxItem Content="Architect"/>
+                    <ComboBoxItem Content="Competitor"/>
+                    <ComboBoxItem Content="GC"/>
+                    <ComboBoxItem Content="Developer"/>
+                    <ComboBoxItem Content="Buyer"/>
+                    <ComboBoxItem Content="KorClient"/>
+                </ComboBox>
+
+                <CheckBox Grid.Row="3"
+                          x:Name="ShowAllCheck"
+                          Content="Show all canonical orgs (incl. zero-relationship)"
+                          Margin="0,0,0,8"
+                          IsChecked="{Binding ShowAll}"
+                          Checked="ShowAllCheck_Changed"
+                          Unchecked="ShowAllCheck_Changed"
+                          ToolTip="Off (default): only orgs with at least one KOR relationship signal — Clendor client, research dossier, linked MPI project, linked Opportunity, award, or pursuit. On: full canonical-org universe."/>
+
+                <TextBlock Grid.Row="4"
+                           Text="{Binding CountDisplay}"
+                           FontSize="11"
+                           Foreground="{StaticResource Text.Secondary}"
+                           Margin="0,0,0,6"/>
+
+                <ListBox x:Name="OrgList"
+                         Grid.Row="5"
+                         ItemsSource="{Binding Orgs}"
+                         SelectedItem="{Binding SelectedOrg}"
+                         SelectionChanged="OrgList_SelectionChanged"
+                         BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="Padding" Value="2,4"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#EDEEF1"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,2,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Style="{StaticResource KindChip}">
+                                    <TextBlock Text="{Binding Kind}"
+                                               Foreground="White"
+                                               FontSize="9"
+                                               FontWeight="SemiBold"
+                                               Typography.Capitals="AllSmallCaps"/>
+                                </Border>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding DisplayName}"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <Button x:Name="GenerateOrgBriefButton"
+                        Grid.Row="6"
+                        Content="Generate Brief"
+                        Margin="0,10,0,0"
+                        Height="32"
+                        Style="{StaticResource Button.ActionBarPrimary}"
+                        Click="GenerateOrgBriefButton_Click"
+                        ToolTip="Generate a one-page PDF brief for the selected organization (saved to Desktop). Right-click to export as Word.">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Export as PDF (default)" Click="GenerateOrgBriefButton_Click"/>
+                            <MenuItem Header="Export as Word (.docx)" Click="GenerateOrgBriefAsWord_Click"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
+            </Grid>
+        </Border>
+
+        <ContentControl x:Name="DossierHost" Grid.Column="2"/>
+    </Grid>
+</UserControl>

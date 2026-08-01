@@ -40,7 +40,7 @@ namespace Kor.Operations.PMTools
             var (projectRows, weekRows) = await Task.Run(() =>
             {
                 var dsn     = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
-                var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
                 var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "",
                     _odbcOptions.Password ?? "", () => new Dictionary<string, string>());
 
@@ -81,7 +81,7 @@ namespace Kor.Operations.PMTools
 
         private List<ProjectDetailRow> LoadProjectRows(OdbcConnection cn, DateTime startDate)
         {
-            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.CommandText = $@"
@@ -90,7 +90,7 @@ SELECT
     pr.Name,
     pctf.CustProjectPhase,
     SUM(COALESCE(t.RegHrs,0)) AS RegHrs,
-    SUM(COALESCE(t.OvtHrs,0)) AS OvtHrs
+    SUM(COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS OvtHrs
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.PR pr
        ON pr.WBS1 = t.WBS1
@@ -102,8 +102,9 @@ LEFT JOIN (
 ) pctf ON pctf.WBS1 = t.WBS1
 WHERE t.Employee = ?
   AND t.TransDate >= ?
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.WBS1, pr.Name, pctf.CustProjectPhase
-ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
+ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0))) DESC";
 
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar,  Value = _staff.EmployeeId });
             cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.DateTime, Value = startDate });
@@ -140,17 +141,18 @@ ORDER BY (SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0))) DESC";
 
         private List<WeekDetailRow> LoadWeekRows(OdbcConnection cn, DateTime startDate)
         {
-            var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
+            var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.UiFacing;
             cmd.CommandText = $@"
 SELECT
     t.TransDate,
     SUM(COALESCE(t.RegHrs,0)) AS RegHrs,
-    SUM(COALESCE(t.OvtHrs,0)) AS OvtHrs
+    SUM(COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS OvtHrs
 FROM [{catalog}].dbo.tkDetail t
 WHERE t.Employee = ?
   AND t.TransDate >= ?
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.TransDate
 ORDER BY t.TransDate";
 

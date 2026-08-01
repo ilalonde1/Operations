@@ -1,0 +1,30 @@
+LoserId,SurvivorId,Reason
+14181,69014,Read Jones Christophersen Ltd (typo) -> RJC Engineers
+22872,69014,DBA: Read Jones Christoffsen (typo) -> RJC Engineers
+31572,69014,Zoe Athans DBA: RJC ltd -> RJC Engineers
+35731,69014,jason guldin DBA: Jguldin@rjc.ca -> RJC Engineers
+37165,69014,John Kay DBA: RJC Engineering -> RJC Engineers
+63109,69014,Read Jones Christoffersent Ltd (typo) -> RJC Engineers
+63215,69014,Read Jones Christofferson Ltd. (typo) -> RJC Engineers
+71130,69014,Read Jones Christoffersen Ltd. (formal name) -> RJC Engineers (152 projects)
+65025,38926,GLOTMAN SIMPSON CONSULTING (all caps) -> Glotman Simpson Consulting Engineers
+71184,7017,Entuitive (Prime Consultant and Structural Engineer) -> Entuitive Corporation
+69147,65803,ASPECT Structural Engineers Canada Ltd. -> ASPECT STRUCTURAL ENGINEERS (34 projects)
+70630,65803,Aspect Engineering -> ASPECT Structural Engineers
+70695,69332,WHM Wicke Herfst Maver Consultants Ltd -> WHM Structural Engineers
+70966,69332,WHM Structural Engineers (Wicke Herfst Maver Consulting Inc.) -> WHM Structural Engineers
+69936,69326,StructureCraft (engineer-builder role on early phases) -> StructureCraft
+18483,71127,Williams engineering (lowercase) -> Williams Engineering Canada
+18485,71127,WILLIAMS ENGINEERING CANADA INC. Portfolio 6 (all caps) -> Williams Engineering Canada
+18486,71127,Williams Engineering Canada Inc. successful proposal -> Williams Engineering Canada
+68616,68746,Thornton Tomasetti (Los Angeles office) -> Thornton Tomasetti
+38929,68742,Magnusson Klemencic Associates -> MKA canonical
+70106,38927,KPFF (short) -> KPFF Consulting Engineers
+2664,60360,Arup Canada Inc -> Arup
+2665,60360,Arup Canada Inc. (Arup) -> Arup
+68682,60360,Arup (Seattle office) -> Arup
+68611,38924,Englekirk Structural Engineers (now part of WSP) -> Englekirk Structural Engineers
+68750,38928,Krahn Group of Companies (incl. Krahn Engineering Ltd.) -> Krahn Engineering Ltd.
+13847,71157,Protostatix Engineering Consultants Inc. (Structural Engineering) -> Protostatix Engineering Consultants Inc.
+68751,71157,Protostatix Engineering Consultants (a division of Englobe) -> Protostatix
+71180,71157,Protostatix Engineering Consultants Inc. (a division of Englobe) -> Protostatix

@@ -9,6 +9,7 @@ using System.Windows.Media;
 using Kor.Operations.App.Options;
 using Kor.Operations.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace Kor.Operations.StandardDetails;
 
@@ -40,7 +41,7 @@ public partial class StandardDetailsWindow : Window
     private async void StandardDetailsWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try { await HeaderLoader.ApplyAsync(HeaderBar); }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"HeaderLoader failed: {ex.Message}"); }
+        catch (Exception ex) { Log.Warning(ex, "Standard Details: header loader failed."); }
 
         var connectionString = Kor.Operations.Services.AppServices.Get<DatabaseOptions>().KorTransmittalsDb;
         if (!string.IsNullOrWhiteSpace(connectionString))
@@ -74,7 +75,7 @@ public partial class StandardDetailsWindow : Window
     {
         if (allowed) return true;
         SetActivityMessage(message, BannerTone.Warning);
-        MessageBox.Show(this, dialogMessage ?? message, caption, MessageBoxButton.OK, icon);
+        MessageBox.Show(this, dialogMessage ?? message, $"Standard Details — {caption}", MessageBoxButton.OK, icon);
         return false;
     }
 

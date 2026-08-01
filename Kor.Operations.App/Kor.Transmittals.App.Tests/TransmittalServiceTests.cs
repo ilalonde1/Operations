@@ -100,7 +100,11 @@ public sealed class TransmittalServiceTests
         Assert.Equal("/Projects/24001", header.SharePointFolderPath);
         Assert.StartsWith("https://redirect.example/t/", header.InternalLink);
         Assert.Equal(header.InternalLink, header.ExternalLink);
-        Assert.Contains("Click here to view the files", header.Remarks);
+        // Branded body (KorEmailTemplate): styled "View files" button replaces the
+        // old bare "Click here" link, and the recipient list is rendered in-body.
+        Assert.DoesNotContain("Click here to view the files", header.Remarks);
+        Assert.Contains("View files", header.Remarks);
+        Assert.Contains("recipient@example.com", header.Remarks);
         Assert.Contains("recipient@example.com", result.AllRecipients);
         Assert.Equal(@"C:\Temp\cover.pdf", result.CoverLocalPath);
 

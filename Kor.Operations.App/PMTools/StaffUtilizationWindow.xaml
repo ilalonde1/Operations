@@ -243,6 +243,45 @@
                         </DataGridTextColumn.Header>
                     </DataGridTextColumn>
 
+                    <!-- 12-Wk Labor Cost -->
+                    <DataGridTextColumn Binding="{Binding TwelveWkLaborCost, StringFormat={}{0:C0}}" Width="120">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="12-Wk Labor Cost" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_LaborCost}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- 12-Wk Overtime Cost -->
+                    <DataGridTextColumn Binding="{Binding TwelveWkOvertimeCost, StringFormat={}{0:C0}}" Width="120">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="12-Wk OT Cost" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_OvertimeCost}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
+                    <!-- Cost / Billable Hr -->
+                    <DataGridTextColumn Binding="{Binding CostPerBillableHr, StringFormat={}{0:C0}}" Width="120">
+                        <DataGridTextColumn.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Cost / Bill Hr" Style="{StaticResource ColHeader}"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="5,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=StaffUtil_CostPerBillableHr}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                        </DataGridTextColumn.Header>
+                    </DataGridTextColumn>
+
                     <!-- Billable % -->
                     <DataGridTextColumn Binding="{Binding BillablePct, StringFormat={}{0:P0}}" Width="100">
                         <DataGridTextColumn.Header>

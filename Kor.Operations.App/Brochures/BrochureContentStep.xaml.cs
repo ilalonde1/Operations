@@ -74,11 +74,8 @@ namespace Kor.Operations.Brochures
             if (vm.SelectedBlock?.Section is null)
                 return;
 
-            if (vm.EditProjectCommand.CanExecute(project))
-            {
-                vm.EditProjectCommand.Execute(project);
-                UpdateProjectEditorVisibility(showForm: true);
-            }
+            vm.EditProject(project);
+            UpdateProjectEditorVisibility(showForm: true);
         }
 
         private void NewProject_Click(object sender, RoutedEventArgs e)
@@ -111,7 +108,7 @@ namespace Kor.Operations.Brochures
 
             if (e.Source is Button btn && btn.DataContext is BrochurePerson person)
             {
-                vm.BeginEditPersonCommand.Execute(person);
+                vm.BeginEditPerson(person);
                 PersonForm.Visibility = Visibility.Visible;
             }
         }

@@ -47,6 +47,9 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
         public List<RestraintDef> Restraints { get; } = new();
         public List<LoadPatternDef> LoadPatterns { get; } = new();
 
+        /// <summary>Names of areas flagged as openings via SetAreaOpening(true).</summary>
+        public HashSet<string> Openings { get; } = new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>Pre-populated pattern names that NewBlank creates (SAFE default).</summary>
         public HashSet<string> PreExistingPatterns { get; } = new(StringComparer.OrdinalIgnoreCase) { "DEAD", "LIVE" };
 
@@ -224,6 +227,14 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             return 0;
         }
 
+        public int SetAreaOpening(string areaName, bool opening)
+        {
+            if (!Areas.Any(a => a.Name == areaName)) return 1;
+            if (opening) Openings.Add(areaName);
+            else Openings.Remove(areaName);
+            return 0;
+        }
+
         public List<(string Label, bool IsAlongX, double Ordinate)> GridLines { get; } = new();
 
         public int AddGridLines(IReadOnlyList<(string Label, bool IsAlongX, double Ordinate)> gridLines)
@@ -249,7 +260,7 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
 
             sb.AppendLine($"MergeTol: {MergeTolMm} mm");
             sb.AppendLine($"Points: {Points.Count}");
-            sb.AppendLine($"Areas: {Areas.Count}");
+            sb.AppendLine($"Areas: {Areas.Count} (openings: {Openings.Count})");
             sb.AppendLine($"Frames: {Frames.Count}");
             sb.AppendLine($"Materials: {Materials.Count}");
             sb.AppendLine($"SlabProps: {SlabProps.Count}");
@@ -284,7 +295,8 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
                     var p = Points.FirstOrDefault(pt => pt.Name == n);
                     return p is not null ? $"({p.X:F1},{p.Y:F1})" : n;
                 });
-                sb.AppendLine($"  {a.Name}: prop={a.PropName} vertices={a.PointNames.Count} [{string.Join(" ", pts)}]");
+                string kind = Openings.Contains(a.Name) ? " [OPENING]" : "";
+                sb.AppendLine($"  {a.Name}: prop={a.PropName} vertices={a.PointNames.Count} [{string.Join(" ", pts)}]{kind}");
             }
 
             sb.AppendLine("--- Area Loads ---");

@@ -9,12 +9,14 @@ public sealed class DeliveryConfidenceCalculatorTests
     // ── Critical ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Compute_WhenHoursSpentExceedsBudget_ReturnsCritical()
+    public void Compute_WhenBurnSeverelyOutpacesBilling_ReturnsCritical()
     {
+        // pctHoursSpent = 110%, pctFeeBilled = 50% → gap = 60% > 50% (Critical threshold).
+        // Hours over budget alone is not Critical anymore — it's the gap that fires.
         var row = new FinancialsProjectRow
         {
             Fee = 100_000, FeeBilled = 50_000,
-            EngBudget = 100, EngHrs = 110,  // over
+            EngBudget = 100, EngHrs = 110,
             DraftBudget = 0,
         };
 
@@ -25,19 +27,41 @@ public sealed class DeliveryConfidenceCalculatorTests
     }
 
     [Fact]
-    public void Compute_WhenFeeBilledExceedsFee_ReturnsCritical()
+    public void Compute_WhenFeeBilledExceedsFee_ButHoursMatchExtras_DoesNotReturnCritical()
     {
+        // pctHoursSpent = 110%, pctFeeBilled = 110% → gap = 0% (extras billed for extras worked).
+        // Old rule (absolute feeBilled > fee) would have flagged Critical; new rule recognizes
+        // the firm is being paid for the additional work and stays out of Critical.
         var row = new FinancialsProjectRow
         {
-            Fee = 100_000, FeeBilled = 110_000,  // over
+            Fee = 100_000, FeeBilled = 110_000,
+            EngBudget = 100, EngHrs = 110,
+            DraftBudget = 0,
+        };
+
+        var result = DeliveryConfidenceCalculator.Compute(row);
+
+        Assert.NotEqual("Critical", result.Status);
+        Assert.NotEqual("Red", result.ColorName);
+    }
+
+    [Fact]
+    public void Compute_WhenFeeBilledExceedsFee_AndHoursWithinBudget_DoesNotReturnCritical()
+    {
+        // pctHoursSpent = 12.5%, pctFeeBilled = 110% → gap = -97.5% (front-loaded billing).
+        // Common pattern: retainer paid up front, work hasn't ramped yet. Old rule was naive
+        // (Critical whenever feeBilled > fee); new rule treats this as healthy/early-stage.
+        var row = new FinancialsProjectRow
+        {
+            Fee = 100_000, FeeBilled = 110_000,
             EngBudget = 200, EngHrs = 50,
             DraftBudget = 200,
         };
 
         var result = DeliveryConfidenceCalculator.Compute(row);
 
-        Assert.Equal("Critical", result.Status);
-        Assert.Equal("Red", result.ColorName);
+        Assert.NotEqual("Critical", result.Status);
+        Assert.NotEqual("Red", result.ColorName);
     }
 
     // ── At Risk ───────────────────────────────────────────────────────────────

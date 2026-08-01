@@ -52,8 +52,16 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             Dictionary<int, string>? columnOverrides = null)
         {
             var mi = _tExtractor.GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .First(m => m.Name == "ReclassifyByColor" && m.GetParameters().Length == 5);
-            return mi.Invoke(null, new object?[] { original, colorSettings, slabOverrides, lineOverrides, columnOverrides })!;
+                .First(m => m.Name == "ReclassifyByColor");
+            var paras = mi.GetParameters();
+            var args = new object?[paras.Length];
+            args[0] = original;
+            args[1] = colorSettings;
+            args[2] = slabOverrides;
+            args[3] = lineOverrides;
+            args[4] = columnOverrides;
+            for (int i = 5; i < paras.Length; i++) args[i] = paras[i].DefaultValue;
+            return mi.Invoke(null, args)!;
         }
 
         private static void AddSlab(object geo, List<(double, double)> pts, (byte, byte, byte) color)
@@ -198,6 +206,10 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             // that don't connect to the outline's chain. Pre-fix, those spurs
             // became "orphan beams" and never made it to result.Slabs.
             // Post-fix, each ≥3-point orphan is its own mini-slab polygon.
+            //
+            // Geometry uses 4 m × 3 m balcony stubs (6 m² each — above the
+            // 2 m² noise-filter threshold added in Batch 52a). The real Regent
+            // spurs were 4–5 m²; the test mirrors that scale.
             var geo = NewExtracted();
             var red = ((byte)255, (byte)0, (byte)0);
 
@@ -206,12 +218,12 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             {
                 (0, 0), (10000, 0), (10000, 10000), (0, 10000), (0, 0)
             }, red);
-            // Four isolated 3-point "balcony" polylines that share no vertices
-            // with the perimeter (simulates PDF-extracted spurs).
-            AddLine(geo, new() { (12000, 2000), (13000, 2000), (13000, 3000) }, red);
-            AddLine(geo, new() { (12000, 5000), (13000, 5000), (13000, 6000) }, red);
-            AddLine(geo, new() { (-3000, 2000), (-3000, 3000), (-2000, 3000) }, red);
-            AddLine(geo, new() { (-3000, 5000), (-3000, 6000), (-2000, 6000) }, red);
+            // Four isolated 3-point "balcony" polylines (4 m × 3 m = 6 m² each)
+            // that share no vertices with the perimeter.
+            AddLine(geo, new() { (12000, 2000), (16000, 2000), (16000, 5000) }, red);
+            AddLine(geo, new() { (12000, 6000), (16000, 6000), (16000, 9000) }, red);
+            AddLine(geo, new() { (-6000, 2000), (-6000, 5000), (-2000, 5000) }, red);
+            AddLine(geo, new() { (-6000, 6000), (-6000, 9000), (-2000, 9000) }, red);
 
             var settings = NewColorSettingsDict();
             settings[red] = NewSettings("Slab");

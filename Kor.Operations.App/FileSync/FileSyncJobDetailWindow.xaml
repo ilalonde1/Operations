@@ -1,0 +1,224 @@
+<Window x:Class="Kor.Operations.App.FileSync.FileSyncJobDetailWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fs="clr-namespace:Kor.Operations.App.FileSync"
+        Title="Job Detail"
+        Width="1100"
+        Height="720"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <fs:JobStatusToBrushConverter x:Key="StatusToBrush"/>
+        <fs:JobStatusToTextConverter x:Key="StatusToText"/>
+        <fs:TimeSpanToHumanConverter x:Key="HumanTime"/>
+        <fs:BoolToOnOffConverter x:Key="BoolToOnOff"/>
+        <fs:CronToHumanConverter x:Key="CronHuman"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="{Binding Job.JobName}" FontSize="20" FontWeight="Bold"/>
+            <TextBlock Text="  -  " FontSize="20" Foreground="{StaticResource Text.Secondary}"/>
+            <TextBlock Text="{Binding Job.DisplayName}" FontSize="20" Foreground="{StaticResource Text.Secondary}"/>
+        </StackPanel>
+
+        <!-- Job summary card -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Mode" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Job.Mode}" Margin="0,0,12,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Enabled" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Job.Enabled, Converter={StaticResource BoolToOnOff}}" Margin="0,0,12,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="Schedule" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="5"
+                           Text="{Binding Job.CronExpression, Converter={StaticResource CronHuman}}"
+                           ToolTipService.ToolTip="{Binding Job.CronExpression, FallbackValue='manual fire only'}"
+                           Margin="0,0,0,4"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Last run" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,12,4">
+                    <Border CornerRadius="9" Padding="8,2" Margin="0,0,8,0"
+                            Background="{Binding Job.LastRunStatus, Converter={StaticResource StatusToBrush}}">
+                        <TextBlock Text="{Binding Job.LastRunStatus, Converter={StaticResource StatusToText}}"
+                                   Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                    </Border>
+                    <TextBlock Text="{Binding Job.SinceLastRun, Converter={StaticResource HumanTime}}"/>
+                </StackPanel>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="Next fire" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                <TextBlock Grid.Row="1" Grid.Column="3"
+                           Text="{Binding Job.UntilNextFire, Converter={StaticResource HumanTime}, ConverterParameter=future}"
+                           Margin="0,0,12,4"/>
+                <TextBlock Grid.Row="1" Grid.Column="4" Text="Last config change" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                <TextBlock Grid.Row="1" Grid.Column="5" Text="{Binding Job.LastConfigChangedAt, StringFormat='yyyy-MM-dd HH:mm'}" Margin="0,0,0,4"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Notes" FontWeight="SemiBold" Margin="0,0,12,0" VerticalAlignment="Top"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5"
+                           Text="{Binding Job.Notes, FallbackValue=''}"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource Text.Secondary}"/>
+            </Grid>
+        </Border>
+
+        <!-- Tabs: Runs | Knobs -->
+        <TabControl Grid.Row="2" Background="Transparent" BorderThickness="0">
+            <TabItem Header="Runs">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="3*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="2*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Style="{StaticResource Card}" Padding="12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Recent runs (last 30)" FontWeight="SemiBold" FontSize="14"/>
+                            <DataGrid Grid.Row="1"
+                                      x:Name="RunsGrid"
+                                      ItemsSource="{Binding Runs}"
+                                      SelectedItem="{Binding SelectedRun, Mode=TwoWay}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="Horizontal"
+                                      Margin="0,8,0,0"
+                                      MouseDoubleClick="RunsGrid_MouseDoubleClick"
+                                      ToolTip="Double-click a run to open the log viewer scoped to that run's host and time window.">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Run #"     Binding="{Binding RunId}"           Width="70"/>
+                                    <DataGridTemplateColumn Header="Status" Width="100" SortMemberPath="Status">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Left"
+                                                        Background="{Binding Status, Converter={StaticResource StatusToBrush}}">
+                                                    <TextBlock Text="{Binding Status}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Started"   Binding="{Binding StartedAt, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="155"/>
+                                    <DataGridTextColumn Header="Duration"  Binding="{Binding Duration, StringFormat='hh\\:mm\\:ss'}"          Width="80"/>
+                                    <DataGridTextColumn Header="Mode"      Binding="{Binding Mode}"            Width="70"/>
+                                    <DataGridTextColumn Header="Source"    Binding="{Binding TriggerSource}"   Width="80"/>
+                                    <DataGridTextColumn Header="By"        Binding="{Binding TriggeredBy}"     Width="200"/>
+                                    <DataGridTextColumn Header="Host"      Binding="{Binding HostName}"        Width="110"/>
+                                    <DataGridTextColumn Header="Summary"   Binding="{Binding Summary}"         Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+
+                    <GridSplitter Grid.Row="1" Height="4" HorizontalAlignment="Stretch" Background="Transparent"/>
+
+                    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="12" Margin="0,4,0,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Selected run" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock Grid.Row="1" Margin="0,4,0,4" TextWrapping="Wrap">
+                                <Run Text="Summary: "/>
+                                <Run Text="{Binding SelectedRun.Summary, FallbackValue='(none)'}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                                <TextBox Text="{Binding SelectedRun.ErrorStack, FallbackValue='(no error)', Mode=OneWay}"
+                                         IsReadOnly="True"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         FontFamily="Cascadia Mono, Consolas"
+                                         FontSize="11"
+                                         TextWrapping="NoWrap"/>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Knobs">
+                <Border Style="{StaticResource Card}" Padding="12" Margin="0,8,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" FontSize="14" FontWeight="SemiBold">
+                            Per-job knobs
+                            <Run Foreground="{StaticResource Text.Secondary}" FontWeight="Normal" FontSize="12"
+                                 Text="-- edit a value to save; row delete + Save deletes the knob"/>
+                        </TextBlock>
+                        <DataGrid Grid.Row="1"
+                                  x:Name="KnobsGrid"
+                                  ItemsSource="{Binding Knobs}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="True"
+                                  CanUserDeleteRows="True"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  Margin="0,8,0,0"
+                                  RowEditEnding="KnobsGrid_RowEditEnding">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Knob name"  Binding="{Binding KnobName, UpdateSourceTrigger=PropertyChanged}"  Width="220"/>
+                                <DataGridTextColumn Header="Value"      Binding="{Binding KnobValue, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" Width="*"/>
+                                <DataGridTextColumn Header="Updated at" Binding="{Binding UpdatedAt, StringFormat='yyyy-MM-dd HH:mm'}" Width="140" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Updated by" Binding="{Binding UpdatedBy}"  Width="200" IsReadOnly="True"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Content="Delete selected knob" x:Name="DeleteKnobBtn" Click="DeleteKnobBtn_Click" Padding="14,4"/>
+                            <TextBlock Margin="12,4,0,0"
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       Text="Tip: knob values are read by the runner each time the job fires; no service restart needed."/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </TabItem>
+        </TabControl>
+
+        <!-- Action bar -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+            <Button Content="Refresh"          x:Name="RefreshBtn" Click="RefreshBtn_Click"           Padding="14,4" Margin="0,0,8,0"/>
+            <Button Content="View log tail"     x:Name="ViewLogsBtn" Click="ViewLogsBtn_Click"         Padding="14,4" Margin="0,0,8,0"/>
+            <Button Content="Open log folder"   x:Name="OpenLogsBtn" Click="OpenLogsBtn_Click"         Padding="14,4" Margin="0,0,8,0"/>
+            <Button Content="Open shadow folder" x:Name="OpenShadowBtn" Click="OpenShadowBtn_Click"     Padding="14,4" Margin="0,0,8,0"/>
+            <Button Content="Toggle mode"       x:Name="ToggleModeBtn" Click="ToggleModeBtn_Click"     Padding="14,4" Margin="0,0,8,0"/>
+            <Button Content="Manual fire"       x:Name="ManualFireBtn" Click="ManualFireBtn_Click"     Padding="14,4"
+                    Visibility="{Binding Job.IsManualFireable, Converter={StaticResource BoolToVis}}"
+                    ToolTip="Watcher manual fire requires an encoded WatcherArgs payload; hidden here."/>
+        </StackPanel>
+
+        <!-- Status bar -->
+        <Border Grid.Row="4" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6" Margin="0,8,0,0">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}"/>
+        </Border>
+    </Grid>
+</Window>

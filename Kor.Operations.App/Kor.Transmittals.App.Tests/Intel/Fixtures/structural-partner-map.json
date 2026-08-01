@@ -1,0 +1,149 @@
+﻿{
+    "orgName": "JWDA Inc.",
+    "market": "San Diego",
+    "structuralPartnerStatus": "preferred",
+    "recurringStructuralPartners": [
+      {
+        "firm": "KOR Structural",
+        "projectEvidence": [],
+        "sectors": []
+      },
+      {
+        "firm": "DCI Engineers",
+        "projectEvidence": [],
+        "sectors": []
+      },
+      {
+        "firm": "VCA Structural",
+        "projectEvidence": [],
+        "sectors": []
+      }
+    ],
+    "korDisplacementRead": "KOR is already JWDA's go-to structural partner on high-rise residential work in San Diego — proactively engaging on Accolade Campanile and the pipeline of upcoming towers before DCI Engineers or VCA Structural are retained would consolidate KOR's position across all JWDA project types.",
+    "korPriority": "high",
+    "sourceUrls": [
+      "https://www.jwdainc.com",
+      "https://www.jwdainc.com/profile",
+      "https://www.jwdainc.com/news",
+      "https://www.korstructural.com/project/the-lindley/",
+      "https://www.korstructural.com/project/1401-union-street-simone/",
+      "https://www.korstructural.com/project/800-broadway/",
+      "https://www.korstructural.com/project/6th-olive/",
+      "https://www.greystar.com/business/about-greystar/newsroom/greystar-breaks-ground-on-accolade-campanile-at-san-diego-state-university"
+    ],
+    "hqCity": "San Diego, CA",
+    "sectors": [
+      "Multifamily Residential",
+      "Mixed-Use",
+      "Affordable Housing",
+      "Student Housing",
+      "Hospitality",
+      "Urban Design"
+    ],
+    "keyPeople": [
+      {
+        "name": "Joseph Wong",
+        "title": "Founder & President, FAIA, NCARB"
+      },
+      {
+        "name": "Matthew Geaman",
+        "title": "Managing Principal, AIA, NCARB, LEED AP"
+      },
+      {
+        "name": "Vivian Tria",
+        "title": "Associate Principal, RA"
+      },
+      {
+        "name": "Bert Shear",
+        "title": "Senior Associate Principal, RA"
+      }
+    ],
+    "recentProjects": [
+      {
+        "name": "The Lindley",
+        "city": "San Diego, CA",
+        "sector": "Mixed-Use Residential",
+        "completionYear": 2024,
+        "sourceUrl": "https://www.jwdainc.com/projects/the-lindley"
+      },
+      {
+        "name": "Harrington Heights Affordable Housing",
+        "city": "San Diego, CA",
+        "sector": "Affordable Housing",
+        "completionYear": 2025,
+        "sourceUrl": "https://www.jwdainc.com/projects/harrington-heights-affordable-housing"
+      },
+      {
+        "name": "800 Broadway",
+        "city": "San Diego, CA",
+        "sector": "Multifamily Residential",
+        "completionYear": 2023,
+        "sourceUrl": "https://www.korstructural.com/project/800-broadway/"
+      },
+      {
+        "name": "Weingart Tower 1A",
+        "city": "Los Angeles, CA",
+        "sector": "Supportive Housing",
+        "completionYear": null,
+        "sourceUrl": "https://www.jwdainc.com/post/weingart-tower-team-honored-by-aia-los-angeles-as-2025-building-team-of-the-year"
+      },
+      {
+        "name": "Accolade Campanile",
+        "city": "San Diego, CA",
+        "sector": "Student Housing",
+        "completionYear": 2028,
+        "sourceUrl": "https://www.jwdainc.com/projects/accolade-campanile"
+      }
+    ],
+    "newsHeadlines": [
+      {
+        "title": "The Lindley Wins Best Amenities at Multi-Housing News Excellence Awards",
+        "url": "https://www.jwdainc.com/post/the-lindley-wins-best-amenities-at-multi-housing-news-excellence-awards",
+        "publishedDate": "2025-12-11",
+        "summary": "JWDA's 37-story mixed-use Lindley tower in San Diego's Little Italy won the Gold Award for Best Amenities at the 2025 Multi-Housing News Excellence Awards."
+      },
+      {
+        "title": "Weingart Tower Team Honored by AIA Los Angeles as 2025 Building Team of the Year",
+        "url": "https://www.jwdainc.com/post/weingart-tower-team-honored-by-aia-los-angeles-as-2025-building-team-of-the-year",
+        "publishedDate": "2025-10-24",
+        "summary": "The JWDA-led project team for Weingart Tower 1A, a permanent supportive housing adaptive-reuse project in LA, was named AIA Los Angeles's 2025 Building Team of the Year."
+      },
+      {
+        "title": "Harrington Heights Celebrates Grand Opening",
+        "url": "https://www.jwdainc.com/post/harrington-heights-celebrates-grand-opening",
+        "publishedDate": "2025-10-09",
+        "summary": "JWDA's 15-story, 273-unit affordable housing tower in San Diego's East Village officially opened, with nearly 100% of units designated affordable."
+      },
+      {
+        "title": "JWDA Breaks Ground on Accolade Campanile at SDSU",
+        "url": "https://www.jwdainc.com/post/jwda-breaks-ground-on-accolade-campanile-at-san-diego-state-university",
+        "publishedDate": "2025-11-14",
+        "summary": "JWDA broke ground on Accolade Campanile, a six-story 310-unit student housing community at SDSU, slated for completion June 2028."
+      },
+      {
+        "title": "Matthew Geaman Named on 2024 Leaders of Influence List",
+        "url": "https://www.jwdainc.com/post/celebrating-excellence-matthew-geaman-named-on-2024-s-leaders-of-influence-list",
+        "publishedDate": "2024-12-02",
+        "summary": "JWDA Managing Principal Matthew Geaman was recognized by the San Diego Business Journal on its 2024 Leaders of Influence list in Architecture & Design."
+      }
+    ],
+    "inHouseStructuralPEng": false,
+    "korEngagementHistory": {
+      "knownEngagement": true,
+      "lastKorProjectName": "The Lindley",
+      "tone": "warm"
+    },
+    "leadershipChanges": [
+      {
+        "date": "2024-12",
+        "what": "Matthew Geaman named to San Diego Business Journal's 2024 Leaders of Influence list in Architecture & Design."
+      },
+      {
+        "date": "2025-12",
+        "what": "Matthew Geaman launched Tideline Construction, a San Diego-based general contracting firm, as a side venture outside JWDA."
+      }
+    ],
+    "website": "https://www.jwdainc.com",
+    "researchedAt": "2026-06-01",
+    "researchedBy": "claude-sonnet"
+  }

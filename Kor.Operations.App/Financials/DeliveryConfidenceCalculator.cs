@@ -20,16 +20,9 @@ namespace Kor.Operations.Financials
             p ??= new FinancialsProjectRow();
 
             var fee = p.TotalFee;
-            var feeBilled = p.FeeBilled;
+            var feeBilled = p.FeeBilled + p.UnpostedFeeBilled;
 
-            var hoursSpent =
-                p.EngHrs +
-                p.DraftHrs +
-                p.InspHrs +
-                p.DocPrepHrs +
-                p.GenHrs +
-                p.AdminHrs +
-                p.NonBillHrs;
+            var hoursSpent = p.EngHrs + p.DraftHrs;
 
             var hoursBudgeted = p.DraftBudget + p.EngBudget;
             var remainingEng = p.EngBudget - p.EngHrs;
@@ -40,12 +33,15 @@ namespace Kor.Operations.Financials
             var gap = pctHoursSpent - pctFeeBilled;
             var watchThreshold = AnalyticsThresholds.WatchRemainingFraction * hoursBudgeted;
 
-            if (feeBilled > fee || hoursSpent > hoursBudgeted)
+            // Critical / At Risk are both gap-based: hours outpacing billings is the
+            // economic signal, not crossing absolute Fee or Budget thresholds. Going
+            // over Fee with matching extras billed is healthy (extras get billed for
+            // out-of-scope work); going over Budget with billings keeping pace is
+            // healthy too. What matters is whether work is being done without being
+            // billed for it.
+            if (gap > AnalyticsThresholds.DeliveryCriticalGapThreshold)
             {
-                var summary = feeBilled > fee
-                    ? "Fee billed exceeds fee."
-                    : "Hours spent exceeds budgeted hours.";
-
+                var summary = $"Hours used ({pctHoursSpent:P0}) running far ahead of billings ({pctFeeBilled:P0}) — risk of going over budget without recovering fee.";
                 return new Result
                 {
                     Status = "Critical",
@@ -55,9 +51,9 @@ namespace Kor.Operations.Financials
                 };
             }
 
-            if (pctHoursSpent > (pctFeeBilled + AnalyticsThresholds.DeliveryGapThreshold))
+            if (gap > AnalyticsThresholds.DeliveryGapThreshold)
             {
-                var summary = $"Hours spent {pctHoursSpent:P0} vs billed {pctFeeBilled:P0} (gap {gap:P0}).";
+                var summary = $"Hours used ({pctHoursSpent:P0}) pulling ahead of billings ({pctFeeBilled:P0}) — keep an eye on this one.";
                 return new Result
                 {
                     Status = "At Risk",
@@ -69,7 +65,7 @@ namespace Kor.Operations.Financials
 
             if (remainingEng < watchThreshold)
             {
-                var summary = $"Remaining engineering hours {remainingEng:N0} below {watchThreshold:N0} (15% of budget).";
+                var summary = $"Engineering hours running low ({remainingEng:N0} left) — limited room for change orders, RFIs, or late engineering asks.";
                 return new Result
                 {
                     Status = "Watch",
@@ -83,7 +79,7 @@ namespace Kor.Operations.Financials
             {
                 Status = "High Confidence",
                 ColorName = "Green",
-                Summary = "On track based on current hours and billing.",
+                Summary = "On track — hours and billings are in step.",
                 Tooltip = BuildTooltip(fee, feeBilled, pctFeeBilled, hoursSpent, hoursBudgeted, pctHoursSpent, remainingEng, watchThreshold, gap)
             };
         }

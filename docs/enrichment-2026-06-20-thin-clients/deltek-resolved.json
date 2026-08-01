@@ -1,0 +1,94 @@
+{
+  "_note": "Resolved from KOR's own Deltek Vantagepoint CRM (CL/PR/Contacts via DELTEK_VP linked server) 2026-06-20. These are KOR-verified clients/contacts - highest confidence. co.lab (29920) omitted: no Deltek project or contact.",
+  "orgs": [
+    {
+      "orgId": 230, "displayName": "BDK Development Corporation", "identityConfirmed": true,
+      "website": "https://www.bdkdevcorp.com",
+      "profileNote": "Vancouver developer in the Plaza of Nations group. KOR project: 144 West 21st St, North Vancouver (2023). Tel 604-682-0777.",
+      "people": [
+        { "name": "Daisen Gee-Wing", "title": "Principal", "email": "daisen@bdkdevcorp.com", "emailSource": "Deltek", "emailConfidence": 90, "note": "KOR client contact (Deltek). Also bdk@plazaofnations.com; tel 604-682-0777 x240." }
+      ]
+    },
+    {
+      "orgId": 192, "displayName": "OctoberNine Capital Inc.", "identityConfirmed": true,
+      "website": "https://frame.properties",
+      "profileNote": "Vancouver west-side residential developer; trades as / affiliated with Frame Properties. KOR projects at 2720-2730 West 16th Ave, Vancouver (2023-2025).",
+      "people": [
+        { "name": "Alexander Ray", "title": null, "email": "alex@frame.properties", "emailSource": "Deltek", "emailConfidence": 90, "note": "KOR client contact (Deltek), Frame Properties." },
+        { "name": "Hassan Sayed", "title": null, "email": "Hassan@frame.properties", "emailSource": "Deltek", "emailConfidence": 90, "note": "KOR client contact (Deltek), Frame Properties. Tel 604-710-3627." }
+      ]
+    },
+    {
+      "orgId": 132, "displayName": "Guildford Surrey Developments Ltd.", "identityConfirmed": true,
+      "website": "https://townside.ca",
+      "profileNote": "Surrey land-assembly developer (Guildford), affiliated with Townside Developments. KOR project: 14518-14558 106 Ave land assembly, Surrey (2024).",
+      "people": [
+        { "name": "Jashin Jhand", "title": null, "email": "jashin@townside.ca", "emailSource": "Deltek", "emailConfidence": 90, "note": "KOR client contact (Deltek), Townside Developments. Also jashinjhand@gmail.com." }
+      ]
+    },
+    {
+      "orgId": 6, "displayName": "Turn Group", "identityConfirmed": true,
+      "website": "https://turngroup.ca",
+      "profileNote": "Real-estate developer (Calgary HQ, area code 587; also Ottawa pursuits). KOR pursuit: 299 Carling Ave, Ottawa (2026).",
+      "people": [
+        { "name": "Leo Jorduela", "title": null, "email": "LJorduela@turngroup.ca", "emailSource": "Deltek", "emailConfidence": 90, "note": "KOR client contact (Deltek). Tel 587-328-6303." }
+      ]
+    },
+    {
+      "orgId": 18059, "displayName": "Warren Construction", "identityConfirmed": true,
+      "website": "https://warrenconstruction.ca",
+      "profileNote": "Commercial/restaurant fit-out general contractor (Calgary, area code 403). KOR project: Popeyes Louisiana Kitchen, Park Royal Mall, West Vancouver (2022).",
+      "people": [
+        { "name": "Chris Warren", "title": "Principal", "email": "chris@warrenconstruction.ca", "emailSource": "Deltek", "emailConfidence": 90, "note": "KOR client contact (Deltek). Tel 403-899-1661." }
+      ]
+    },
+    {
+      "orgId": 37977, "displayName": "JFO Construction Inc.", "identityConfirmed": true,
+      "website": "https://jfoconstruction.ca",
+      "profileNote": "BC general contractor (principal Jeff Owen; JFO = his initials). KOR projects: Arris tower rooftop catwalk, Calgary (2023); 10828 144th St, Surrey.",
+      "people": [
+        { "name": "Jeff Owen", "title": "President", "email": "jeff@jfoconstruction.ca", "emailSource": "Deltek", "emailConfidence": 95, "note": "KOR client contact (Deltek). Tel 778-926-4191." }
+      ]
+    },
+    {
+      "orgId": 22291, "displayName": "RBC Holdings Ltd", "identityConfirmed": true,
+      "website": null,
+      "profileNote": "Private Vancouver developer (Pabla family) - NOT Royal Bank. KOR project: 4112 Heather St, Vancouver (Cambie corridor; formerly 692 West King Edward).",
+      "people": [
+        { "name": "R. Pabla", "title": "Principal", "email": "r.pabla@hotmail.com", "emailSource": "Deltek", "emailConfidence": 50, "note": "KOR client AP/principal contact (Deltek). Pabla family. Also jspabla62@hotmail.com." }
+      ]
+    },
+    {
+      "orgId": 127, "displayName": "Coast Development", "identityConfirmed": true,
+      "website": "https://coastdevelop.com",
+      "profileNote": "Developer. KOR pursued 38140 Third Ave, Squamish BC (2024, LOST). KOR-recorded site coastdevelop.com - confirm BC arm vs Ontario projects shown on that domain.",
+      "people": [
+        { "name": "Adam Overing", "title": null, "email": "ao@coastdevelop.com", "emailSource": "Deltek", "emailConfidence": 80, "note": "KOR client contact (Deltek). Tel 929-895-1776." }
+      ]
+    },
+    {
+      "orgId": 75123, "displayName": "Nexus, A Nexus of Relationships Ltd.", "identityConfirmed": true,
+      "website": null,
+      "profileNote": "Surrey commercial developer. KOR pursuit: 9572 120th St, Surrey commercial development (2026). Deltek contact routed via DF Architecture (project architect).",
+      "people": [
+        { "name": "Awtar (Aman) Madan", "title": "Contact via DF Architecture", "email": "aman@dfarchitecture.ca", "emailSource": "Deltek", "emailConfidence": 55, "note": "KOR contact (Deltek) - project architect at DF Architecture; may not be Nexus staff." }
+      ]
+    },
+    {
+      "orgId": 212, "displayName": "Yushi Investments Inc.", "identityConfirmed": true,
+      "website": null,
+      "profileNote": "Private BC (Vancouver Island) investment/development company; low public profile. KOR projects: 570 Bezanton Way, Colwood BC (foundation/hydro redesign, 2023-2024).",
+      "people": [
+        { "name": "Jordan Mills", "title": null, "email": "tr3jordy@gmail.com", "emailSource": "Deltek", "emailConfidence": 55, "note": "KOR client contact (Deltek), Yushi Investments. Tel 250-216-4519 (Vancouver Island)." }
+      ]
+    },
+    {
+      "orgId": 27247, "displayName": "Quadrangle Architects Ltd.", "identityConfirmed": true,
+      "website": "https://www.quadrangle.ca",
+      "profileNote": "Toronto architecture firm (now BDP Quadrangle), area code 416 - not a BC firm. KOR has a contact relationship; no won project.",
+      "people": [
+        { "name": "Dorna Ghorashi", "title": null, "email": "DGhorashi@quadrangle.ca", "emailSource": "Deltek", "emailConfidence": 85, "note": "KOR contact (Deltek), Quadrangle Toronto office. Tel 416-598-1240." }
+      ]
+    }
+  ]
+}

@@ -14,7 +14,6 @@ namespace Kor.Operations.Brochures
     public sealed partial class BrochureBuilderViewModel
     {
         public ICommand AddPersonToBlockCommand { get; private set; } = null!;
-        public ICommand BeginEditPersonCommand { get; private set; } = null!;
         public ICommand CancelPersonEditCommand { get; private set; } = null!;
         public ICommand RemovePersonCommand { get; private set; } = null!;
         public ICommand MovePersonUpCommand { get; private set; } = null!;
@@ -23,13 +22,12 @@ namespace Kor.Operations.Brochures
         public ICommand FillPersonFromRosterCommand { get; private set; } = null!;
 
         [MemberNotNull(
-            nameof(AddPersonToBlockCommand), nameof(BeginEditPersonCommand), nameof(CancelPersonEditCommand),
+            nameof(AddPersonToBlockCommand), nameof(CancelPersonEditCommand),
             nameof(RemovePersonCommand), nameof(MovePersonUpCommand), nameof(MovePersonDownCommand), nameof(PickPersonPhotoCommand),
             nameof(FillPersonFromRosterCommand))]
         private void InitPersonnelCommands()
         {
             AddPersonToBlockCommand = new RelayCommand(ExecAddPersonToBlock);
-            BeginEditPersonCommand = new RelayCommand(ExecBeginEditPerson);
             CancelPersonEditCommand = new RelayCommand(ExecCancelPersonEdit);
             RemovePersonCommand = new RelayCommand(ExecRemovePerson);
             MovePersonUpCommand = new RelayCommand(ExecMovePersonUp,
@@ -48,7 +46,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "Name is required.",
-                    "Missing Information",
+                    "Brochure Builder — Missing Information",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -80,7 +78,7 @@ namespace Kor.Operations.Brochures
             IsEditingPerson = false;
         }
 
-        private void ExecBeginEditPerson(object? parameter)
+        public void BeginEditPerson(object? parameter)
         {
             if (parameter is not BrochurePerson person) return;
             Person.PersonName = person.Name;

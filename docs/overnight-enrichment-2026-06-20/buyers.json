@@ -1,0 +1,564 @@
+{
+  "category": "buyers",
+  "generatedAt": "2026-06-20",
+  "orgs": [
+    {
+      "orgId": 54977,
+      "orgName": "Interior Health",
+      "domain": "interiorhealth.ca",
+      "people": [
+        {
+          "name": "Lorne Sisley",
+          "title": "Vice President, Infrastructure and Support Services",
+          "email": "lorne.sisley@interiorhealth.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/lornesisley/",
+          "note": "Top executive over all Capital Planning & Projects, Facilities Management & Operations. Responsible for $100M+ annual capital construction and $2B+ current project portfolio. ZoomInfo confirms l***@interiorhealth.ca pattern. Joined IH 2003; led P3 projects at Kelowna General/Vernon Jubilee."
+        },
+        {
+          "name": "Domenico Lepri",
+          "title": "Director, Major Capital Projects - Capital Planning & Projects",
+          "email": "domenico.lepri@interiorhealth.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://ca.linkedin.com/in/domenicolepri",
+          "note": "AScT designation. 23+ years senior leader in capital project delivery. Oversees Long-Term Care redevelopments, Cariboo Memorial Hospital Redevelopment, Kamloops Cancer Centre, Royal Inland Hospital Phase 2. ZoomInfo confirms d***@interiorhealth.ca."
+        },
+        {
+          "name": "Brian Miller",
+          "title": "Director, Capital Planning and Procurement",
+          "email": "brian.miller@interiorhealth.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/brian-miller-b37a8362/",
+          "note": "Key procurement decision-maker for consultant RFPs. ZoomInfo confirms b***@interiorhealth.ca. BSc UBC Okanagan. Career: Project Manager -> Manager Capital Planning -> Director."
+        },
+        {
+          "name": "Bradley Mackendrick",
+          "title": "Senior Project Manager, Major Capital Projects",
+          "email": "bradley.mackendrick@interiorhealth.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "Named on Cariboo Memorial Hospital Redevelopment engagement team as Senior Project Manager. Active project contact for the $366.5M Williams Lake redevelopment. ZoomInfo confirms b***@interiorhealth.ca."
+        },
+        {
+          "name": "Elyse Kavanagh",
+          "title": "Project Manager, Major Capital Projects",
+          "email": "elyse.kavanagh@interiorhealth.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/elysekavanagh/",
+          "note": "Licensed architect (Professional Master of Architecture, UBC). Manages full project lifecycle on major capital projects. ZoomInfo confirms e***@interiorhealth.ca. Prior experience: BC Housing, Ministry of Education."
+        },
+        {
+          "name": "Martin Karlsson",
+          "title": "Project Manager, Capital Planning and Projects",
+          "email": "martin.karlsson@interiorhealth.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "Project manager in Capital Planning & Projects stream. ZoomInfo confirms m***@interiorhealth.ca. Based in Kelowna."
+        }
+      ],
+      "firmNotes": "PROCUREMENT: Interior Health posts consultant opportunities above $75,000 on BC Bid (bcbid.gov.bc.ca) and Bids and Tenders (interiorhealth.bidsandtenders.ca). Below $75K = minimum 3 quotes; below $25K = direct award. General procurement inbox: IHCPPProcurementTeam@interiorhealth.ca. P3 procurement (major projects) done via Infrastructure BC. No separate SE-specific pre-qual list found; broad consultant pre-qual program applies. ACTIVE PIPELINE: (1) Kamloops Cancer Centre at Royal Inland Hospital - $386M, under construction, completion ~2028; (2) Royal Inland Hospital Patient Care Tower - $490M Phase 2, completion end-2026; (3) Cariboo Memorial Hospital Redevelopment (Williams Lake) - $366.5M, Phase 1 complete early 2027, Phase 2 2029; (4) Dr. F.W. Green Memorial Home Redevelopment (Cranbrook) - $232M, design phase, Phase 1 2027/Phase 2 2029; (5) East Kootenay Regional Hospital Oncology & Renal Redevelopment (Cranbrook) - $58.9M, procurement phase, complete 2029; (6) Kootenay Boundary Regional Hospital MRI Redevelopment (Trail) - $35.86M, design phase; (7) Kelowna General Hospital Pharmacy Expansion - $8.2M. Total active portfolio exceeds $1.5B. KOR approach: target Brian Miller (procurement pre-qual) and Domenico Lepri/Bradley Mackendrick (specific project pursuits)."
+    },
+    {
+      "orgId": 76021,
+      "orgName": "BC Ministry of Transportation and Transit",
+      "domain": "gov.bc.ca",
+      "people": [
+        {
+          "name": "Heather Wood",
+          "title": "Deputy Minister, Transportation and Transit",
+          "email": "DeputyMinister.Transportation@gov.bc.ca",
+          "emailSource": "WebSearch",
+          "emailConfidence": 95,
+          "linkedin": null,
+          "note": "Top civil servant for the ministry. Replaced Kaye Krishna in early 2025 following MoTI restructure. Phone: 250-387-3198. Not a direct procurement decision-maker but governs all capital priorities."
+        },
+        {
+          "name": "Kevin Volk",
+          "title": "Assistant Deputy Minister, Integrated Transportation and Infrastructure Services Division",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": "https://www.linkedin.com/in/kevin-volk-p-eng-505913140/",
+          "note": "P.Eng. ADM responsible for major projects and infrastructure delivery. 127 lobbying contacts registered against him on BC Lobbying Registry 2024-2026. Key decision-maker for capital engineering procurement. Pattern email kevin.volk@gov.bc.ca (confidence 55 if applied)."
+        },
+        {
+          "name": "Kevin Richter",
+          "title": "Associate Deputy Minister, Infrastructure",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": null,
+          "note": "Appointed ADM Infrastructure in 2025 restructure. Pattern email kevin.richter@gov.bc.ca (confidence 55 if applied). Oversees infrastructure capital delivery side."
+        },
+        {
+          "name": "Mike Farnworth",
+          "title": "Minister of Transportation and Transit",
+          "email": "TT.Minister@gov.bc.ca",
+          "emailSource": "WebSearch",
+          "emailConfidence": 95,
+          "linkedin": null,
+          "note": "Minister since 2025 restructure. Phone: 250-387-1978. Ministerial-level; not a direct SE procurement contact."
+        },
+        {
+          "name": "Jemay Zheng",
+          "title": "Senior Geometric Standards Engineer",
+          "email": "Jemay.Zheng@gov.bc.ca",
+          "emailSource": "WebSearch",
+          "emailConfidence": 90,
+          "linkedin": null,
+          "note": "Listed on e-RISP Consultant Registry page as contact for engineering and policy questions. First-line technical contact for consultant qualification inquiries."
+        },
+        {
+          "name": "RISP Administrator",
+          "title": "e-RISP Program Administrator",
+          "email": "risp.administrator@gov.bc.ca",
+          "emailSource": "WebSearch",
+          "emailConfidence": 95,
+          "linkedin": null,
+          "note": "Generic program inbox for e-RISP registry administration (available 8am-4pm Mon-Fri). Primary intake for structural/bridge engineering consultant registration for contracts under $1M."
+        },
+        {
+          "name": "HQ Contracting",
+          "title": "Ministry Contracting Office (Professional Services)",
+          "email": "HQContracting@gov.bc.ca",
+          "emailSource": "WebSearch",
+          "emailConfidence": 95,
+          "linkedin": null,
+          "note": "Generic contracting inbox for professional advisory services and highway/bridge construction procurement. Phone: 250-387-1411."
+        }
+      ],
+      "firmNotes": "PROCUREMENT: Two-tier system. Under $1M: e-RISP (electronic Registration, Identification, Selection and Performance evaluation) - pre-qualified consultant registry; firms register at gov.bc.ca; risp.administrator@gov.bc.ca is the intake. Over $1M: open competition on BC Bid (bcbid.gov.bc.ca). Selection from e-RISP registry is qualifications-weighted. Entry point for KOR is e-RISP registration in bridge/structural engineering categories. CAPITAL PIPELINE: Surrey-Langley SkyTrain extension (16km Expo Line); Highway 99 Tunnel Program (eight-lane immersed tube replacement, planning); Broadway Subway Project; Highway 1 Kamloops-to-Alberta four-laning; Fraser Valley Highway 1 Corridor Improvement; Highway 1 Colquitz River Bridges Widening + seismic retrofit (Victoria); Kicking Horse Canyon Phase 4; 190km+ road resurfacing programs annually; BC Seismic Retrofit Program for bridges ongoing. Ministry restructure in early 2025 split MoTI into Transportation and Transit + separate Infrastructure ministry. Strategy: register in e-RISP; target Kevin Volk (ADM, P.Eng.) as senior technical capital decision-maker; Jemay Zheng as technical gatekeeper."
+    },
+    {
+      "orgId": 54415,
+      "orgName": "SD23 Central Okanagan School District",
+      "domain": "sd23.bc.ca",
+      "people": [
+        {
+          "name": "Michael McLellan",
+          "title": "Assistant Secretary Treasurer, Operations and Corporate Services",
+          "email": "michael.mclellan@sd23.bc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "Top facilities/operations executive. Oversees all capital projects, maintenance, purchasing, and transportation. Phone: (250) 870-5150 ext 4277."
+        },
+        {
+          "name": "Stuart Kamstra",
+          "title": "Assistant Director, Planning and Capital Projects",
+          "email": "stuart.kamstra@sd23.bc.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 55,
+          "linkedin": "https://www.zoominfo.com/p/Stuart-Kamstra/2403986819",
+          "note": "Primary capital projects contact. ZoomInfo lists s***@sd23.bc.ca, pattern confirmed as stuart.kamstra@sd23.bc.ca. Leads all school design/construction/seismic project management. Phone: (250) 870-5150 ext 6958. KEY CONTACT for SE services."
+        },
+        {
+          "name": "David Widdis",
+          "title": "Planning Manager",
+          "email": "david.widdis@sd23.bc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "Capital plan submissions, site selection, and long-range facility planning. Phone: (250) 870-5150 ext 8221."
+        },
+        {
+          "name": "Jason Stubbs",
+          "title": "Project Manager",
+          "email": "jason.stubbs@sd23.bc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "Project Manager under Planning and Capital Projects team. Day-to-day construction/renovation project oversight. Phone: (250) 870-5150 ext 5541."
+        },
+        {
+          "name": "Josh Currie",
+          "title": "Assistant Director, Operations and Maintenance",
+          "email": "josh.currie@sd23.bc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "Runs day-to-day building operations and maintenance. Phone: (250) 870-5150 ext 6958."
+        },
+        {
+          "name": "Deepak Shahi",
+          "title": "Purchasing Manager",
+          "email": "deepak.shahi@sd23.bc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "Runs all procurement for the district including professional services RFPs. Phone: (250) 870-5152 ext 5717."
+        },
+        {
+          "name": "Delta Carmichael",
+          "title": "Secretary-Treasurer and CFO",
+          "email": "delta.carmichael@sd23.bc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "CFO. Signs off on major capital budgets. Phone: (250) 860-8888."
+        }
+      ],
+      "firmNotes": "PROCUREMENT: Mixed model. Large capital projects ($50M+) go through Infrastructure BC as program manager with formal RFQ/RFP design-build process. Mid-tier projects tendered via MERX (confirmed: RFP 24-016) and BC Bid. On design-build contracts, SE is engaged by the GC/design-build contractor (Clark Builders hired Fast + Epp for George Pringle), NOT directly by SD23. KOR must be on GC shortlists or pre-qualified at district level via Stuart Kamstra / Deepak Shahi. General email: operations@sd23.bc.ca. ACTIVE PIPELINE: (1) George Pringle Secondary School, West Kelowna - $105M provincial, 1,200 seats, design-build, Clark Builders + Fast+Epp, open Sep 2027 (SE AWARDED - not available); (2) Hudson Road Elementary addition - $23M, 265 seats; (3) Ecole Dr Knox Middle School - 12-classroom addition, 300 seats; (4) North Glenmore Elementary - 5 prefab classrooms; (5) University area land purchase ($15M) for future school. Five-Year Capital Plan 2027-2032 published. SEISMIC: No active seismic mitigation program - Okanagan is lower seismic hazard zone. No SMP/SPIR projects found for SD23. BUDGET: $162M+ committed in current cycle."
+    },
+    {
+      "orgId": 68837,
+      "orgName": "Edmonton Catholic Schools ECSD",
+      "domain": "ecsd.net",
+      "people": [
+        {
+          "name": "Peter (Panagiotis) Farmakis",
+          "title": "Chief Facilities and Technology Officer, P.Eng, M.Eng, EMBA",
+          "email": "panagiotis.farmakis@ecsd.net",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/pfarmakis/",
+          "note": "Top decision-maker for all capital construction, maintenance, and technology. P.Eng with 25+ years experience; previously Red Deer Public Schools and Dept of National Defence. Hunter verification=valid 2026-06-20. Primary target for SE relationship."
+        },
+        {
+          "name": "Amy Nunez",
+          "title": "Director, Facility Services",
+          "email": "amy.nunez@ecsd.net",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/amy-nunez-cpa-ca-b9497272",
+          "note": "Oversees the 7 Facility Services sub-departments including Facility Infrastructure (Capital Projects and Maintenance). CPA CA. Hunter verification=valid 2026-06-20, sourced from LinkedIn."
+        },
+        {
+          "name": "John Fiacco",
+          "title": "Superintendent of Educational Planning",
+          "email": "john.fiacco@ecsd.net",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/john-fiacco-0584146b",
+          "note": "Leads Educational Planning and Transportation Services. Drives school growth/demographics analysis that generates capital project need. Hunter verification=valid 2026-06-20."
+        },
+        {
+          "name": "Sandra Palazzo",
+          "title": "Board Chair",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": null,
+          "note": "Board Chair who approves capital plans publicly. Governance voice for capital priorities. Not a technical decision-maker."
+        }
+      ],
+      "firmNotes": "PROCUREMENT: ECSD issues competitive open-bid tenders via MERX and CanadaBuys for capital maintenance, renovations, and consulting services. NEW school construction is delivered through Alberta Infrastructure (province manages design/construction procurement; ECSD is the client). KOR must pursue Alberta Infrastructure consultant prequalification lists OR engage architects already on ECSD/Alberta Infrastructure approved teams. Confirmed past structural RFP: C-006-24 Structural Engineering Services for Stairs and Stairwell Renovation at 16 Schools (open competitive). ACTIVE PIPELINE: St. Carlo Acutis Catholic HS opens Sept 2026 (1,330 students, Aman Builders/ACI Architects); St. Nicholas EJH Rundle Heights opens Sept 2027 (Delnor/BR2); St. Sophia EJH Cavanagh Fall 2028 (Concept Bird/Workun Garrick BR2); multiple Fall 2028 openings. 2026-2029 CAPITAL PLAN: 6 fully-funded Year-1 projects including 3 new HS (Lewis Farms, Meadows, Windermere), NW integrated solution, 118 Ave-West replacement. 2027-2030 PLAN adds 6 more. ECSD at 100% utilization - massive multi-year construction wave. No seismic retrofit program - Alberta has no provincial seismic program comparable to BC SMP. Alberta budget 2026 confirmed new ECSD funding."
+    },
+    {
+      "orgId": 68838,
+      "orgName": "Kaiser Permanente",
+      "domain": "kp.org",
+      "people": [
+        {
+          "name": "Sunil Shah",
+          "title": "Vice President, Facilities Strategy, Planning and Design, National Facility Services",
+          "email": "sunil.shah@kp.org",
+          "emailSource": "WebSearch",
+          "emailConfidence": 72,
+          "linkedin": "https://www.linkedin.com/in/sunil-shah-85209735",
+          "note": "Based in Anaheim CA (Southern California). 34+ years hospital design/program management; 30 years at KP. Primary contact for A/E procurement and the Alliance Program. Top target for KOR. Email surfaced via RocketReach/ContactOut and consistent with confirmed Hunter first.last pattern."
+        },
+        {
+          "name": "Don Orndoff",
+          "title": "Senior Vice President, National Facilities Services",
+          "email": "d.orndoff@kp.org",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/don-orndoff-20067793/",
+          "note": "Ultimate NFS executive. $3B annual capital program, 78M sqft portfolio, 1000+ facilities. Wiza/RocketReach show d***@kp.org masking suggesting initial.last format. Use Sunil Shah as primary entry point."
+        },
+        {
+          "name": "Christine Malcolm",
+          "title": "Senior Vice President, Hospital Strategy and National Facilities",
+          "email": "christine.malcolm@kp.org",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "Oversees strategy, planning, design, real estate, facilities ops, project ops, program management, and finance for NFS. Hunter first.last pattern applied."
+        },
+        {
+          "name": "Rame Hemstreet",
+          "title": "Vice President, Operations and Chief Sustainable Resources Officer, National Facilities Services",
+          "email": "rame.hemstreet@kp.org",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/rame-hemstreet-a9409bb/",
+          "note": "Oversees $4B annual NFS budget and multibillion-dollar capital acquisition program. Coordinates construction procurement across 1000+ facilities."
+        },
+        {
+          "name": "Raymond Lota",
+          "title": "Director of Construction Management, National Facilities Services",
+          "email": "raymond.lota@kp.org",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/raymondlota",
+          "note": "DBIA, LCI-CPC certified. 20+ years healthcare architecture and GC experience. Managed Tustin Ranch MOB (SoCal, $20M TI). Key Southern California delivery contact."
+        },
+        {
+          "name": "John Kouletsis",
+          "title": "Director, Strategy, Planning and Design",
+          "email": "john.kouletsis@kp.org",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "Named Alliance Program manager. Manages pre-qualified A/E/GC firm network. KP constraint: Alliance Partners where KP work = no more than 30% of firm revenue. Entry point for A/E prequalification discussions."
+        }
+      ],
+      "firmNotes": "PROCUREMENT: Kaiser Permanente procures SE services via its Alliance Program - a curated network of pre-qualified A/E/GC firms. Firms are NOT selected per-project via open RFP; must first earn Alliance Partner status. KP caps reliance: KP work should be no more than 30% of any firm revenue. Procurement runs through SMARTsupply (Coupa platform); register at supplier.kp.org. SE is typically bundled with architect of record or design-build team. KOR strategy: team with an Alliance-member architect OR apply for Alliance Partner status via John Kouletsis or Sunil Shah. ACTIVE SOCAL CAPITAL PROJECTS: (1) Murrieta Medical Campus - 254-bed, 824,500 sqft greenfield campus, early planning, $1.7B+ Riverside County investment includes $124.8M second MOB; (2) West LA Tower Replacement (HMC Architects); (3) East LA Telford Medical Office Building (Taylor and Associates); (4) Ontario MOB (WWCOT); (5) Harbor City South Bay ED Expansion $18M+; (6) Covina Medical Facility $60M MOB. 16 hospitals across Southern California, 100+ active construction projects statewide. BUDGET: $3B/year national capital program. HCAI/OSHPD: All CA hospital construction subject to HCAI seismic review under SB 1953. KP pursues LEED certifications (San Marcos = LEED Platinum). STRATEGIC NOTE: KOR beachhead via The Lindley/JWDA in San Diego positions well. Murrieta greenfield campus = highest-probability SE sub opportunity."
+    },
+    {
+      "orgId": 68846,
+      "orgName": "County of San Diego",
+      "domain": "sdcounty.ca.gov",
+      "people": [
+        {
+          "name": "Marisa Barrie",
+          "title": "Director of Public Works, PE",
+          "email": "marisa.barrie@sdcounty.ca.gov",
+          "emailSource": "WebSearch",
+          "emailConfidence": 90,
+          "linkedin": "https://www.linkedin.com/in/marisa-barrie-72950329a/",
+          "note": "Joined March 2025. Former Director of Public Works at US Army Garrison Stuttgart. Oversees county roads, traffic engineering, private development construction, and county airports. Signs RFPs per confirmed document signature block."
+        },
+        {
+          "name": "Samir Nuhaily",
+          "title": "Deputy Director, Engineering Division - Department of Public Works",
+          "email": "samirm.nuhaily@sdcounty.ca.gov",
+          "emailSource": "WebSearch",
+          "emailConfidence": 85,
+          "linkedin": "https://www.linkedin.com/in/samir-nuhaily-pe-5837922a5/",
+          "note": "35+ years engineering and construction experience. Licensed Civil and Traffic Engineer in CA. Oversees Master Planning of Capital Projects. Email uses middle initial per CEQA filing documents. Phone: 858-694-3087."
+        },
+        {
+          "name": "Marko Medved",
+          "title": "Director, Department of General Services, PE, CEM",
+          "email": "marko.medved@sdcounty.ca.gov",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/marko-medved-pe-cem-3116b48/",
+          "note": "Nearly 10 years as DGS Director. Leads 450 professionals. Oversees all county facility planning, design, and construction. County named 2025 California Owner of the Year (ENR West). 70 LEED-certified buildings, 11 Zero Net Energy buildings."
+        },
+        {
+          "name": "Scott Christman",
+          "title": "Deputy Director, Capital Construction - Department of General Services",
+          "email": "scott.christman@sdcounty.ca.gov",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/scott-christman-335249123/",
+          "note": "Manages day-to-day capital construction delivery under General Services. Phone: 858-414-6014. Speaks at preconstruction industry conferences."
+        },
+        {
+          "name": "Allen Hunsberger",
+          "title": "Assistant Director, Purchasing and Contracting",
+          "email": "allen.hunsberger@sdcounty.ca.gov",
+          "emailSource": "WebSearch",
+          "emailConfidence": 85,
+          "linkedin": "https://www.linkedin.com/in/allen-hunsberger/",
+          "note": "Assistant Director of Purchasing & Contracting. Phone: (858) 505-6388. Key contact for vendor registration, bid process, and general procurement. County procurement portal: BuyNet (buynet.sdcounty.ca.gov)."
+        }
+      ],
+      "firmNotes": "PROCUREMENT: San Diego County procures A/E and structural engineering services under Board of Supervisors Policy F-40, which uses Qualification-Based Selection (QBS) consistent with California Government Code. Solicitations posted on BuyNet (buynet.sdcounty.ca.gov). SE is NOT procured via low-bid; firms compete on qualifications and technical approach. County also uses CM-at-risk and design-build alternative delivery. General procurement contact: cosd_procurement@sdcounty.ca.gov, (858) 505-6367. CAPITAL PIPELINE: Board of Supervisors approved 2026-2031 Capital Plan on March 3, 2026. Projects span new construction and renovation of county facilities: Live Well Centers, libraries (Casa de Oro Library spring 2026), sheriff stations, animal shelters, probation facilities, fire stations, public health labs. DPW manages roads ($71.3M resurfacing), airports ($28.4M), wastewater ($67.5M). County Administration Center Major Systems Renovation ongoing through 2026 including seismic elements. 70+ LEED-certified buildings, 11 Zero Net Energy buildings under active renovation program. KOR angle: structural SE sub on architect-led teams pursuing county RFQs on BuyNet."
+    },
+    {
+      "orgId": 18919,
+      "orgName": "Vancouver Community College",
+      "domain": "vcc.ca",
+      "people": [
+        {
+          "name": "Ian Humphreys",
+          "title": "Vice President, Administration and International Development",
+          "email": "ihumphreys@vcc.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 98,
+          "linkedin": "https://www.linkedin.com/in/ian-humphreys-38218411",
+          "note": "Executive responsible for Facilities Management, Environment, Safety and Security, and International Education. Key sponsor of the $291.3M CCEAI capital project. Executive owner of all facilities/capital decisions."
+        },
+        {
+          "name": "Ross McPherson",
+          "title": "Associate Director, Facilities Management",
+          "email": "rmcpherson@vcc.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/ross-mcpherson-36930a49",
+          "note": "LEED AP O+M, SFP, PMP. Has held Planning Director (Interim), Facilities Management Manager, and Building Services Management Manager roles at VCC. Day-to-day facilities and capital project lead. Best direct contact for SE services."
+        },
+        {
+          "name": "Trevor Maddern",
+          "title": "Director, Procurement",
+          "email": "tmaddern@vcc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/trevor-maddern-81097a108",
+          "note": "Leads all procurement at VCC. Former BC Public Service procurement/contract management background. Controls RFP/RFQ issuance for engineering and construction services."
+        },
+        {
+          "name": "Florentina Vasilescu",
+          "title": "Associate Director, Procurement",
+          "email": "fvasilescu@vcc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://ca.linkedin.com/in/florentina-vasilescu-002740b9",
+          "note": "Reports to Trevor Maddern. ZoomInfo confirms f***@vcc.ca pattern. Likely handles day-to-day RFP/RFQ administration."
+        },
+        {
+          "name": "Shanez Hirji",
+          "title": "Procurement Manager",
+          "email": "shirji@vcc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/shanez-hirji-81746939",
+          "note": "Procurement Manager under Trevor Maddern. Direct contact for supplier queries and RFQ submissions."
+        },
+        {
+          "name": "Jamie Choi",
+          "title": "Executive Director, Financial Services and CFO",
+          "email": "jchoi@vcc.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": null,
+          "note": "CFO provides leadership on capital and infrastructure planning. ZoomInfo confirms j***@vcc.ca. Relevant for capital budget approvals."
+        }
+      ],
+      "firmNotes": "PROCUREMENT: VCC runs independent procurement (not Shared Services BC). Open opportunities posted on Bonfire portal (vcc.bonfirehub.ca) and BC Bid (Notice of Intent required per policy). Uses ITT, NRFP, RFP, RFQ, ITQ, RFSO formats. 2023 RFQ established a Qualified Supplier List for general contractors. Procurement Policy 130 mandates competitive processes. ACTIVE CAPITAL PROJECTS: (1) Centre for Clean Energy and Automotive Innovation (CCEAI) - $291.3M total ($271.3M Province funded). SE = RJC Engineers (sub to Stantec Architecture). GC = Bird Construction. Superstructure underway June 2025-December 2026; substantial completion December 2027. SE AWARDED - not available. (2) East Broadway Campus Master Plan Redevelopment - long-range 6-phase plan for full campus rebuild including residential; in early public consultation (Spring 2026); future phases will require SE services. SEISMIC: No standalone seismic program for VCC (post-secondary not under BC K-12 SMP). VCC is a challenger opportunity for future phases of Broadway campus redevelopment and any Downtown campus renewal."
+    },
+    {
+      "orgId": 76921,
+      "orgName": "UC Berkeley",
+      "domain": "berkeley.edu",
+      "people": [
+        {
+          "name": "John Arvin",
+          "title": "Associate Vice Chancellor, Capital Strategies",
+          "email": "johnarvin@berkeley.edu",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/john-arvin-22182b60",
+          "note": "Top decision-maker for all campus capital projects. Oversees planning, design, real estate, construction, and development services. Appointed February 2019. 20+ years real estate and infrastructure background. Hunter domain pattern is {first}{last}."
+        },
+        {
+          "name": "Wendy Hillis",
+          "title": "Assistant Vice Chancellor and Campus Architect, Capital Strategies",
+          "email": "wendyhillis@berkeley.edu",
+          "emailSource": "WebSearch",
+          "emailConfidence": 90,
+          "linkedin": "https://www.linkedin.com/in/wendy-hillis-aia-6292255/",
+          "note": "AIA-licensed Campus Architect leading Physical and Environmental Planning. Chairs the Design Review Committee (DRC) which reviews all capital project designs. Key contact for design professional engagements. Email confirmed via January 2026 City of Berkeley correspondence letter."
+        },
+        {
+          "name": "Todd Henry",
+          "title": "Director, Capital Planning",
+          "email": "tthenry@berkeley.edu",
+          "emailSource": "WebSearch",
+          "emailConfidence": 92,
+          "linkedin": "https://www.linkedin.com/in/tthenry/",
+          "note": "Contact for Capital Planning Committee (CPC). Handles new project intake via Unifier system. Email confirmed on Capital Strategies committees page and corroborated by ZoomInfo."
+        },
+        {
+          "name": "Domenico Caramagno",
+          "title": "Director of Facilities and Capital Projects, College of Computing, Data Science, and Society",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": null,
+          "note": "College-level facilities and capital projects director at CDSS. Relevant for SE work associated with CDSS building portfolio. Secondary procurement contact."
+        },
+        {
+          "name": "Jaime Santoyo",
+          "title": "Director, Facilities Maintenance and Operations",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": "https://www.linkedin.com/in/jaimesantoyo5/",
+          "note": "Oversees Facilities Services maintenance and operations campus-wide. Relevant for deferred maintenance and seismic retrofit work. ZoomInfo shows partial j***@berkeley.edu with no full confirmation."
+        },
+        {
+          "name": "Russell Chung",
+          "title": "Chief Procurement Officer, Supply Chain Management",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": null,
+          "note": "Campus CPO overseeing all procurement. RFQ/bid operations flow through contractadmin-cp@berkeley.edu rather than directly to Chung."
+        }
+      ],
+      "firmNotes": "PROCUREMENT: UC Berkeley procures structural engineering and design professional services through competitive RFQ process managed by Capital Strategies (contractadmin-cp@berkeley.edu). UC Berkeley does NOT maintain a prequalified or pre-approved bidder list. Consultants respond to project-specific RFQs posted on Capital Strategies website and via BuildingConnected. Firms wanting visibility must submit the UC Annual Announcement form and Consultant and Design Professional Business Information Form. The Design Review Committee (DRC), chaired by Campus Architect Wendy Hillis, reviews all capital project designs. ACTIVE CAPITAL PROJECTS (under construction 2026): Bakar Labs for Energy and Materials (Innovation Zone, Fall 2025-Summer 2028); Bancroft-Fulton Student Housing (1,625 beds, construction start January 2026, Executive Design Professional: KieranTimberlake); Berkeley Clean Energy Campus ($136.8M+, multi-phase, mid-2026 through late 2029); Undergraduate Academic Building ($136.8M, mass timber, state-funded); Moffitt Library Floors 1-3 Renovation; Heathcock Hall; multiple others. OPEN RFQs (mid-2026): RSSP Emeryville Intersection Structural Repairs (prequalification due July 15, 2026 - ACTIVE SE OPPORTUNITY); 1925 Courtyard Connection (due July 14, 2026); Davidson and Stern Halls Elevator Refurbishment. SEISMIC: UC complies with UC Seismic Safety Policy (UCOP RD4.3); ASCE 41-23 is evaluation standard for projects beginning May 2025+. Non-Structural Seismic Bracing (Q-Brace) program active. Not subject to OSHPD; state academic buildings fall under DSA. Incumbent SE: BBH Engineers (won Structural Engineering Excellence Award for Bakar Labs). BUDGET: Individual projects range from $10M to $136M+; Clean Energy Campus is multi-hundred-million. KOR entry: register via UC Annual Announcement + monitor Capital Strategies RFQ board. Active opportunity: RSSP Emeryville Structural Repairs prequalification due July 15, 2026."
+    },
+    {
+      "orgId": 18867,
+      "orgName": "Government of Alberta [Infrastructure]",
+      "domain": "gov.ab.ca",
+      "people": [
+        {
+          "name": "Darren Hedley",
+          "title": "Deputy Minister, Infrastructure",
+          "email": "darren.hedley@gov.ab.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 98,
+          "linkedin": null,
+          "note": "Appointed DM Infrastructure June 2026 per Alberta Deputy Ministers Council. Previously Associate/Acting DM Health. Top decision-maker for capital delivery. CPA, CMA."
+        },
+        {
+          "name": "Maria Stumpf",
+          "title": "Director, Architecture and Delivery Services",
+          "email": "maria.stumpf@gov.ab.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 96,
+          "linkedin": null,
+          "note": "Directly relevant to SE consultant engagement for capital delivery projects. Verified June 16, 2026."
+        },
+        {
+          "name": "Audrey Poulin",
+          "title": "Director, Procurement Services",
+          "email": "audrey.poulin@gov.ab.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": null,
+          "note": "Key gatekeeper for SE service RFPs posted to Alberta Purchasing Connection. Handles procurements over $75K."
+        },
+        {
+          "name": "Michele Hague",
+          "title": "Director, Procurement Standards and Engagement",
+          "email": "michele.hague@gov.ab.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 96,
+          "linkedin": null,
+          "note": "Sets policies and standards for how SE/AE services are procured. Counterpart to Audrey Poulin on the policy side."
+        },
+        {
+          "name": "Tracy Hayden",
+          "title": "Executive Director, Realty Services",
+          "email": "tracy.hayden@gov.ab.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 98,
+          "linkedin": null,
+          "note": "Oversees government-owned facility portfolio. Real estate and facilities mandate intersects with structural assessment, seismic, and capital renewal projects. Verified June 20, 2026."
+        },
+        {
+          "name": "Martin Long",
+          "title": "Minister of Infrastructure",
+          "email": null,
+          "emailSource": null,
+          "emailConfidence": 0,
+          "linkedin": null,
+          "note": "Sworn in February 27, 2025. Ministerial mandate includes $28.3B 2026-29 capital plan. No direct email publicly available."
+        },
+        {
+          "name": "Infrastructure Procurement Office",
+          "title": "General Procurement Inbox",
+          "email": "infrastructure.procurement@gov.ab.ca",
+          "emailSource": "WebSearch",
+          "emailConfidence": 99,
+          "linkedin": null,
+          "note": "Official procurement contact published on alberta.ca vendor opportunities page. Address: 3rd floor, 6950 113 Street NW, Edmonton AB T6H 5V7."
+        }
+      ],
+      "firmNotes": "PROCUREMENT: Alberta Infrastructure uses Alberta Purchasing Connection (APC) exclusively. Below $75K: limited-vendor invite or Standing Offer Source Lists (pre-qualified rosters established via public RFQ). At or above $75K: single-stage public RFP on APC, or two-stage RFQ (prequalification) then RFP. No QBS mandate, no direct-select above $75K. Procurement inbox: infrastructure.procurement@gov.ab.ca; 3rd floor, 6950 113 Street NW, Edmonton T6H 5V7. ACTIVE PIPELINE ($28.3B 2026-29 total): Schools - $3.3B committed; 90 new schools + 24 modernizations/replacements; 82 projects underway; bridging consultant RFPs active (AB-2025-06031 covers Palisades/Oxford + Silver Berry Edmonton schools). Health - Red Deer Regional Hospital Centre (new patient tower, active construction); Stollery Childrens Hospital Edmonton ($20M early planning); 53 health projects underway; Alberta Surgical Initiative (31 projects). Government Facilities - Red Deer Justice Centre ($203M, opened Q1 2025); Lakeview + Calgary Recovery Communities; 20 facility projects underway; 212 CMR + 516 health-facility CMR projects. Capital Maintenance and Renewal - $4.2B allocated 2026-27, up $454M from Budget 2025. SE-relevant: schools, hospitals, courthouses, provincial buildings, water management (McGregor Reservoir, Springbank Off-stream Reservoir). KOR approach: register on Alberta Purchasing Connection as vendor; monitor for SE/bridging-consultant RFPs; primary contacts Audrey Poulin (procurement) and Maria Stumpf (architecture/delivery) under DM Darren Hedley."
+    }
+  ]
+}

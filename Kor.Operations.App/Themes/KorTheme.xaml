@@ -20,17 +20,26 @@
     <SolidColorBrush x:Key="Brand.Accent.Brush"    Color="#FF5B35"/>
     <!-- Kor orange -->
 
+    <!-- ===== Delivery health (semantic risk palette) =====
+         Hex values copied verbatim from the inline literals already
+         scattered across PMTools/Financials/etc. so the visual rendering
+         is unchanged when later batches convert hardcoded refs over.
+         Foreground = solid dot / icon color; Background = light fill
+         used for bar segments and badges. -->
+    <SolidColorBrush x:Key="Risk.Critical.Foreground"        Color="#B91C1C"/>
+    <SolidColorBrush x:Key="Risk.Critical.Background"        Color="#FEE2E2"/>
+    <SolidColorBrush x:Key="Risk.AtRisk.Foreground"          Color="#A16207"/>
+    <SolidColorBrush x:Key="Risk.AtRisk.Background"          Color="#FEF3C7"/>
+    <SolidColorBrush x:Key="Risk.Watch.Foreground"           Color="#6B7280"/>
+    <SolidColorBrush x:Key="Risk.Watch.Background"           Color="#E5E7EB"/>
+    <SolidColorBrush x:Key="Risk.HighConfidence.Foreground"  Color="#166534"/>
+    <SolidColorBrush x:Key="Risk.HighConfidence.Background"  Color="#DCFCE7"/>
+
     <!-- ===== Additional aliases some windows expect ===== -->
     <SolidColorBrush x:Key="Surface.Subtle"        Color="#F6F8FA"/>
     <!-- same as App.Background -->
     <SolidColorBrush x:Key="Text.Emphasis"         Color="#3F5364"/>
     <!-- same as Text.Primary -->
-
-    <!-- ===== Legacy aliases to stop resource-not-found errors ===== -->
-    <SolidColorBrush x:Key="KorBg"                 Color="#F6F8FA"/>
-    <SolidColorBrush x:Key="KorNavy"               Color="#3F5364"/>
-    <SolidColorBrush x:Key="KorBorder"             Color="#DDDDDD"/>
-    <SolidColorBrush x:Key="KorMuted"              Color="#6B7280"/>
 
     <!-- ===== Card style (used by ContactPicker, Dashboard, EmailSearch) ===== -->
     <Style x:Key="Card" TargetType="Border">
@@ -70,9 +79,21 @@
     <!-- ✅ Best-practice: make Secondary the implicit default for all Buttons -->
     <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}" />
 
-    <!-- Legacy aliases to match older keys -->
-    <Style x:Key="KorPrimaryButton"   TargetType="Button" BasedOn="{StaticResource Button.Primary}"/>
-    <Style x:Key="KorSecondaryButton" TargetType="Button" BasedOn="{StaticResource Button.Secondary}"/>
+    <!-- Action bar button: compact Secondary look for action ribbons (Refresh, Edit, Set stage, etc.).
+         Apply via StackPanel.Resources to skin every button inside one strip. -->
+    <Style x:Key="Button.ActionBar" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Padding"   Value="10,4"/>
+        <Setter Property="Margin"    Value="0,0,8,0"/>
+    </Style>
+
+    <!-- Action bar Primary: same compact size, Primary fill. Use for the killer action
+         in a ribbon (New, Generate Brief). Don't pile up more than one per strip. -->
+    <Style x:Key="Button.ActionBarPrimary" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Padding"   Value="10,4"/>
+        <Setter Property="Margin"    Value="0,0,8,0"/>
+    </Style>
 
     <!-- ===== Inputs ===== -->
 
@@ -85,7 +106,13 @@
         <Setter Property="Foreground"                 Value="{StaticResource Text.Primary}"/>
         <Setter Property="BorderBrush"                Value="#D1D5DB"/>
         <Setter Property="BorderThickness"            Value="1"/>
-        <Setter Property="VerticalContentAlignment"   Value="Top"/>
+        <!-- R88 fix: was "Top". With the modern rounded border + small Padding
+             the top of the text was clipped against the border, making typed
+             characters appear as faint dots at the box's top edge. "Center"
+             matches the placeholder TextBlock convention used across the app
+             and is the correct default for a single-line input. Recurring
+             "I can't see what I typed" bug across the BD/Forms screens. -->
+        <Setter Property="VerticalContentAlignment"   Value="Center"/>
         <Setter Property="SnapsToDevicePixels"        Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -242,10 +269,6 @@
             </Setter.Value>
         </Setter>
     </Style>
-
-    <!-- Legacy keyed aliases (kept for any existing explicit references) -->
-    <Style x:Key="KorTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}"/>
-    <Style x:Key="KorComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}"/>
 
     <!-- ===== Form layout helpers ===== -->
 

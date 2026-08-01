@@ -66,6 +66,7 @@
                                 <Border Background="White" BorderBrush="#CBD5E1" BorderThickness="1"
                                         MaxHeight="250">
                                     <ListBox x:Name="ProjectList" FontSize="12"
+                                             Cursor="Hand"
                                              MouseLeftButtonUp="ProjectList_MouseUp"
                                              PreviewKeyDown="ProjectList_PreviewKeyDown"
                                              BorderThickness="0"/>

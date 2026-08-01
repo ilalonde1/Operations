@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
@@ -12,6 +11,7 @@ using Kor.Operations.App.Options;
 using Kor.Operations.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.Services;
+using Serilog;
 namespace Kor.Operations
 {
     /// <summary>
@@ -37,6 +37,18 @@ namespace Kor.Operations
         /// - Safe to call multiple times / from multiple windows; underlying lookups are cached and coalesced.
         /// </summary>
         public static async Task ApplyAsync(KorHeader header, string? overrideEmail = null, string? fallbackSam = null)
+        {
+            try
+            {
+                await ApplyCoreAsync(header, overrideEmail, fallbackSam).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "HeaderLoader failed.");
+            }
+        }
+
+        private static async Task ApplyCoreAsync(KorHeader header, string? overrideEmail, string? fallbackSam)
         {
             if (header == null) return;
 
@@ -75,7 +87,7 @@ namespace Kor.Operations
         {
             if (Interlocked.Exchange(ref _initialized, 1) == 1) return;
             try { Directory.CreateDirectory(_cacheRoot); }
-            catch (Exception ex) { Debug.WriteLine($"[HeaderLoader] EnsureCacheFolders failed: {ex.GetType().Name}: {ex.Message}"); }
+            catch (Exception ex) { Log.Warning(ex, "HeaderLoader: ensure cache folders failed."); }
         }
 
         // ---------- Display Name ----------
@@ -93,7 +105,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HeaderLoader] Name lookup failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning(ex, "HeaderLoader: name lookup failed.");
             }
             return PrettifySam(sam);
         }
@@ -124,7 +136,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HeaderLoader] Avatar lookup failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Debug(ex, "HeaderLoader: avatar lookup failed.");
             }
 
             // 3) If we had an expired cached file, still return it (better than nothing)
@@ -159,7 +171,7 @@ namespace Kor.Operations
                 bmp.Freeze();
                 return bmp;
             }
-            catch (Exception ex) { Debug.WriteLine($"[HeaderLoader] TryLoadDiskAvatar failed for '{path}': {ex.GetType().Name}: {ex.Message}"); return null; }
+            catch (Exception ex) { Log.Debug(ex, "HeaderLoader: try load disk avatar failed for {Path}.", path); return null; }
         }
 
         private static void SaveAvatarToDisk(string path, BitmapImage bmp)
@@ -180,7 +192,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[HeaderLoader] SaveAvatarToDisk failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Debug(ex, "HeaderLoader: save avatar to disk failed.");
             }
         }
 
@@ -189,7 +201,7 @@ namespace Kor.Operations
         private static async Task<T?> Safe<T>(Task<T> t)
         {
             try { return await t.ConfigureAwait(false); }
-            catch (Exception ex) { Debug.WriteLine($"[HeaderLoader] Safe task wrapper failed: {ex.GetType().Name}: {ex.Message}"); return default; }
+            catch (Exception ex) { Log.Debug(ex, "HeaderLoader: safe task wrapper failed."); return default; }
         }
     }
 }

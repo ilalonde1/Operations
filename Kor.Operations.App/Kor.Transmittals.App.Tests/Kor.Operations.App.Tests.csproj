@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>
@@ -12,13 +13,13 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
-    <PackageReference Include="Microsoft.Graph" Version="5.103.0" />
-    <PackageReference Include="Microsoft.Kiota.Abstractions" Version="1.21.1" />
-    <PackageReference Include="Microsoft.Kiota.Serialization.Json" Version="1.21.1" />
+    <PackageReference Include="Microsoft.Graph" Version="5.105.0" />
+    <PackageReference Include="Microsoft.Kiota.Abstractions" Version="1.22.0" />
+    <PackageReference Include="Microsoft.Kiota.Serialization.Json" Version="1.22.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="MsgReader" Version="6.0.9" />
     <PackageReference Include="Moq" Version="4.20.72" />
-    <PackageReference Include="Polly" Version="8.5.2" />
+    <PackageReference Include="Polly" Version="8.6.6" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
@@ -31,26 +32,73 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Kor.Operations.App.csproj" />
     <ProjectReference Include="..\..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
+    <ProjectReference Include="..\..\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj" />
+    <ProjectReference Include="..\..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
+    <ProjectReference Include="..\..\Kor.Opportunities.Worker\Kor.Opportunities.Worker.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
     <ProjectReference Include="..\..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />
+    <ProjectReference Include="..\..\Kor.Operations.Mcp\Kor.Operations.Mcp.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\Financials\DeliveryConfidenceCalculator.cs" Link="Financials\DeliveryConfidenceCalculator.cs" />
-    <Compile Include="..\Services\ITransmittalService.cs" Link="Services\ITransmittalService.cs" />
-    <Compile Include="..\Services\IUploadOrchestrator.cs" Link="Services\IUploadOrchestrator.cs" />
-    <Compile Include="..\Services\TransmittalService.cs" Link="Services\TransmittalService.cs" />
-    <Compile Include="..\..\Kor.Operations.Data\SqlTimeouts.cs" Link="SqlTimeouts.cs" />
-    <Compile Include="..\Financials\DeliveryConfidenceLevel.cs" Link="Financials\DeliveryConfidenceLevel.cs" />
-    <Compile Include="..\Financials\CfoMetrics\*.cs" Link="Financials\CfoMetrics\%(Filename)%(Extension)" />
-    <Compile Include="..\Shared\PeerBudgetEstimator.cs" Link="Shared\PeerBudgetEstimator.cs" />
-    <Compile Include="..\Financials\FinancialsHeadlineCalculator.cs" Link="Financials\FinancialsHeadlineCalculator.cs" />
-    <Compile Include="..\Financials\AnalyticsThresholds.cs" Link="Financials\AnalyticsThresholds.cs" />
-  </ItemGroup>
-  <ItemGroup>
+    <!-- Fixture XAMLs are inert data for the analyzer tests — NOT WPF Pages.
+         Remove the default UseWPF Page/ApplicationDefinition globs for them first,
+         then re-include as Content so they copy to bin/. -->
+    <Page Remove="Fixtures\**\*.xaml" />
+    <ApplicationDefinition Remove="Fixtures\**\*.xaml" />
+    <Resource Remove="Fixtures\**\*.xaml" />
+    <Content Include="Fixtures\AsyncVoidBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\DuplicateResourceKey_FileA.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\DuplicateResourceKey_FileB.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\EmptyCatchBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\ForwardRefBad.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\LocaleSensitiveParseBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\MissingBindingPropertyBad.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\SilentBroadCatchBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\SyncOverAsyncBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\ThrowExRewrapBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\UnknownKeyBad.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\UnusedAppResourceKeyBad.xaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\UnusedVmPropertyBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\UnusedPrivateMethodBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Fixtures\UnusedPrivateTypeBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Update="TestData\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Intel\Fixtures\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 </Project>

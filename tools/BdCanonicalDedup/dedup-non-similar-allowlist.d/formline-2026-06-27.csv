@@ -1,0 +1,5 @@
+# Formline word-variant dup created while verifying the Phase 2 name-based seat importer:
+# payload said "Formline Architecture" but canonical is "Formline Architecture + Urbanism" (69095);
+# the "+ Urbanism" word makes the fuzzy keys differ so the resolver minted 77922. Same firm.
+# LoserId,SurvivorId,Reason
+77922,69095,Formline Architecture -> Formline Architecture + Urbanism

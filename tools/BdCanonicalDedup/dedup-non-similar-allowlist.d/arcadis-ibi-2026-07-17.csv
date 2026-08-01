@@ -1,0 +1,8 @@
+LoserId,SurvivorId,Reason
+# Arcadis completed its acquisition of IBI Group in September 2022
+# (arcadis.com news release, verified 2026-07-15 during the Arcadis
+# relationship dossier). "IBI Group" and "Arcadis" fragments are the same
+# firm as canonical 153 "Arcadis IBI Group" (Deltek CL00483, arcadis.com).
+# Ian approved this targeted merge 2026-07-17.
+271533,153
+271542,153

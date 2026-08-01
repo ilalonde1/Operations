@@ -1,0 +1,51 @@
+LoserId,SurvivorId,Reason
+68856,459,University of British Columbia (UBC) -> base canonical
+70290,459,University of British Columbia (UBC Vancouver) -> base canonical
+70337,459,University of British Columbia (Vancouver campus) -> base canonical
+69057,459,University of BC -> base canonical
+69592,69457,University of British Columbia Okanagan -> UBC Okanagan canonical
+69666,771,Simon Fraser University (SFU) -> base canonical
+68852,53840,Vancouver School Board (SD39) -> School District 39 base
+70875,53840,Vancouver School Board (School District 39) -> SD 39 base
+69297,53840,Vancouver School District (SD 39) -> SD 39 base
+69024,53840,Vancouver School Board (no SD#) -> SD 39 base
+69824,53840,Vancouver School District No. 39 (Vancouver School Board) -> SD 39 base
+851,69034,School District 68 Nanaimo-Ladysmith (851) -> SD68 canonical
+54609,69034,School District 68 (no name suffix) -> SD68 canonical
+69043,69034,School District No. 68 (Nanaimo-Ladysmith) -> SD68 canonical
+69053,69034,Nanaimo-Ladysmith School District No. 68 -> SD68 canonical
+69202,69034,Nanaimo-Ladysmith Public Schools (SD No. 68) -> SD68 canonical
+69306,69034,Nanaimo-Ladysmith Public Schools (SD 68) -> SD68 canonical
+69307,69034,Nanaimo-Ladysmith School District (SD 68) -> SD68 canonical
+70310,69034,SD68 Nanaimo-Ladysmith Public Schools -> SD68 canonical
+70716,69034,SD68 Nanaimo-Ladysmith -> SD68 canonical
+18823,54957,British Columbia Institute of Technology -> BCIT canonical
+38915,54957,BCIT -> BCIT canonical
+68992,18920,Vancouver Island University (VIU) -> VIU canonical
+70249,68781,Calgary Catholic School District (CSSD typo) -> CCSD canonical
+69048,68782,Edmonton Public School Board (EPSB) -> EPSB canonical
+288,68837,Edmonton Catholic Separate School Division -> ECSD canonical
+71158,68837,Edmonton Catholic Schools -> ECSD canonical
+356,18885,Provincial Health Services Authority (Incl. BCCSS) -> PHSA canonical
+70304,18885,Provincial Health Services Authority (PHSA) - on behalf -> PHSA canonical
+70305,18885,Provincial Health Services Authority (PHSA) - Supply Chain -> PHSA canonical
+363,68841,Metro Vancouver Regional District -> Metro Vancouver canonical
+69126,68841,Metro Vancouver Regional District (MVRD) -> Metro Vancouver canonical
+70285,68841,Metro Vancouver (MVRD) -> Metro Vancouver canonical
+69468,68841,Metro Vancouver (Greater Vancouver Regional District) -> Metro Vancouver canonical
+53667,39,Townline Group -> Townline Group of Companies (Clendor)
+54786,43,Strand Developments -> Strand Development Corp. (Clendor)
+68770,53589,Brookfield Residential Properties Inc. -> Brookfield Residential
+53663,188,Northwest Development -> Northwest Developments Ltd. (Clendor)
+53855,159,Bastion Developments -> Bastion Development Corporation (Clendor)
+53812,125,Ledingham McAllister Communities Ltd. -> Ledingham McAllister Properties Ltd. (Clendor)
+70307,476,Alberta Health Services (AHS) -> AHS canonical
+70327,241,Alberta Transportation and Economic Corridors (Government of Alberta) -> AB Transportation canonical
+70251,241,Alberta Transportation and Economic Corridors (TEC) -> AB Transportation canonical
+70264,50613,PSPC - Structural Inspection -> PSPC canonical
+70267,50613,PSPC -> PSPC canonical
+70268,50613,PSPC - Pacific Region -> PSPC canonical
+70776,69275,Nanaimo Association for Community Living -> NACL canonical
+70540,69275,Nanaimo Association of Community Living (NACL) -> NACL canonical
+69325,69425,Ronald McDonald House British Columbia & Yukon -> RMH BC&Y canonical
+69284,69425,Ronald McDonald House BC -> RMH BC&Y canonical

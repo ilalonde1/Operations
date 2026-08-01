@@ -293,15 +293,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return new Point(x, y);
             }
 
+            // Capture colour settings ONCE so each shape's stroke can reflect its
+            // predicted post-reclassification type rather than its raw bucket.
+            // A burgundy slab polygon flagged as "Column" but too elongated to be
+            // a real column will be auto-routed to wall reduction by
+            // PdfGeometryExtractor.ReclassifyByColor — the user should see that
+            // route in the default preview, not just after clicking "Preview
+            // export."
+            var overlayColourSettings = BuildSlabColorSettings();
+
             for (int i = 0; i < _extractedGeometry.Slabs.Count; i++)
             {
                 bool excluded = _excl.IsSlabExcluded(i, _extractedGeometry.SlabColors);
                 string? overrideType = _excl.SlabTypeOverrides.TryGetValue(i, out var sov) ? sov : null;
                 bool isIgnore = overrideType is not null && string.Equals(overrideType, "Ignore", StringComparison.OrdinalIgnoreCase);
 
+                string predictedType = PredictSlabExportType(i, _extractedGeometry, overlayColourSettings, overrideType);
+
                 Brush stroke = (excluded || isIgnore) ? Brushes.White
-                    : overrideType switch
+                    : predictedType switch
                     {
+                        "Wall"   => new SolidColorBrush(Color.FromRgb(220, 38, 38)), // matches wallBrush in DrawExportPreview
                         "Column" => Brushes.Yellow,
                         "Beam"   => Brushes.Cyan,
                         _        => Brushes.LimeGreen
@@ -333,9 +345,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 string? overrideType = _excl.LineTypeOverrides.TryGetValue(i, out var lov) ? lov : null;
                 bool isIgnore = overrideType is not null && string.Equals(overrideType, "Ignore", StringComparison.OrdinalIgnoreCase);
 
+                // Predict the post-reclassification type so when the AI (or the
+                // user) sets a colour's type to Slab / Wall / Column / Beam,
+                // the line stroke immediately reflects what the exporter will
+                // produce — no need to click "Preview export".
+                string predictedLineType = PredictLineExportType(i, _extractedGeometry, overlayColourSettings, overrideType);
+
                 Brush stroke = (excluded || isIgnore) ? Brushes.White
-                    : overrideType switch
+                    : predictedLineType switch
                     {
+                        "Wall"   => new SolidColorBrush(Color.FromRgb(220, 38, 38)),
                         "Slab"   => Brushes.LimeGreen,
                         "Column" => Brushes.Yellow,
                         _        => Brushes.Cyan
@@ -400,6 +419,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PreviewCanvas.Children.Add(dot);
             }
 
+            // Auto-cut openings preview + suspicious-section warnings — same
+            // detector + inputs the F2K writer uses, rendered on top so the
+            // engineer can sanity-check before export. Catches phantom-shaft
+            // regressions early instead of discovering them in SAFE.
+            var diag = RenderDiagnosticsOverlay(overlayColourSettings, ToCanvas);
+            int openingCount = diag.OpeningCount;
+
             bool hasContent = _extractedGeometry.Slabs.Count > 0 || _extractedGeometry.Lines.Count > 0 || _extractedGeometry.Columns.Count > 0;
             PreviewLegend.Visibility = hasContent ? Visibility.Visible : Visibility.Collapsed;
 
@@ -409,6 +435,166 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 LegendLineRow.Opacity = Enumerable.Range(0, _extractedGeometry.Lines.Count).All(i => _excl.IsLineExcluded(i, _extractedGeometry.LineColors)) ? 0.35 : 1.0;
             if (_extractedGeometry.Columns.Count > 0)
                 LegendColumnRow.Opacity = Enumerable.Range(0, _extractedGeometry.Columns.Count).All(i => _excl.IsColumnExcluded(i, _extractedGeometry.ColumnColors)) ? 0.35 : 1.0;
+            LegendOpeningRow.Visibility = openingCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private readonly record struct OverlayDiagnostics(int OpeningCount, int WarningCount);
+
+        /// <summary>
+        /// Runs the auto-opening detector AND inline section-sanity checks on
+        /// the reclassified geometry, then renders both:
+        ///   - Each detected opening as a magenta dashed X-marked rectangle
+        ///     (universal "this is a hole" plan-view symbol).
+        ///   - Each suspicious wall (section > 800 mm thick) or column
+        ///     (max dim > 1500 mm) as an orange "⚠" badge at its midpoint.
+        /// Returns counts so the caller can wire legend visibility and
+        /// summary text without re-running the detection pass.
+        /// </summary>
+        private OverlayDiagnostics RenderDiagnosticsOverlay(
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings> colorSettings,
+            Func<double, double, Point> toCanvas)
+        {
+            if (_extractedGeometry is null) return new OverlayDiagnostics(0, 0);
+
+            ExtractedGeometry reclassified;
+            try
+            {
+                reclassified = PdfGeometryExtractor.ReclassifyByColor(
+                    _extractedGeometry, colorSettings,
+                    _excl.SlabTypeOverrides.Count > 0 ? _excl.SlabTypeOverrides : null,
+                    _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
+                    _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
+            }
+            catch
+            {
+                return new OverlayDiagnostics(0, 0);
+            }
+
+            int openingCount = RenderOpenings(reclassified, toCanvas);
+            int warningCount = RenderSectionWarnings(reclassified, toCanvas);
+            return new OverlayDiagnostics(openingCount, warningCount);
+        }
+
+        private int RenderOpenings(ExtractedGeometry reclassified, Func<double, double, Point> toCanvas)
+        {
+            var openings = WallOpeningDetector.DetectRectangularOpenings(
+                reclassified.Lines,
+                reclassified.LineSectionHints,
+                reclassified.Slabs);
+            if (openings.Count == 0) return 0;
+
+            var openingStroke = new SolidColorBrush(Color.FromRgb(196, 30, 116));
+            var openingFill   = new SolidColorBrush(Color.FromArgb(34, 196, 30, 116));
+            var dash = new DoubleCollection { 4, 2 };
+
+            foreach (var (_, polygon) in openings)
+            {
+                var canvasPts = new PointCollection(polygon.Select(p => toCanvas(p.X, p.Y)));
+                var rect = new System.Windows.Shapes.Polygon
+                {
+                    Stroke = openingStroke,
+                    Fill   = openingFill,
+                    StrokeThickness = 2.0,
+                    StrokeDashArray = dash,
+                    Points = canvasPts,
+                    IsHitTestVisible = false
+                };
+                Canvas.SetZIndex(rect, 4);
+                PreviewCanvas.Children.Add(rect);
+
+                if (canvasPts.Count == 4)
+                {
+                    var diag1 = new Line
+                    {
+                        X1 = canvasPts[0].X, Y1 = canvasPts[0].Y,
+                        X2 = canvasPts[2].X, Y2 = canvasPts[2].Y,
+                        Stroke = openingStroke,
+                        StrokeThickness = 1.0,
+                        StrokeDashArray = dash,
+                        IsHitTestVisible = false
+                    };
+                    var diag2 = new Line
+                    {
+                        X1 = canvasPts[1].X, Y1 = canvasPts[1].Y,
+                        X2 = canvasPts[3].X, Y2 = canvasPts[3].Y,
+                        Stroke = openingStroke,
+                        StrokeThickness = 1.0,
+                        StrokeDashArray = dash,
+                        IsHitTestVisible = false
+                    };
+                    Canvas.SetZIndex(diag1, 4);
+                    Canvas.SetZIndex(diag2, 4);
+                    PreviewCanvas.Children.Add(diag1);
+                    PreviewCanvas.Children.Add(diag2);
+                }
+            }
+            return openings.Count;
+        }
+
+        private int RenderSectionWarnings(ExtractedGeometry reclassified, Func<double, double, Point> toCanvas)
+        {
+            const double wallThicknessWarnMm = 800.0;
+            const double columnDimWarnMm = 1500.0;
+            int warnings = 0;
+
+            var warnBrush = new SolidColorBrush(Color.FromRgb(217, 119, 6));    // amber-600
+            var warnFill  = new SolidColorBrush(Color.FromArgb(64, 251, 191, 36));
+
+            for (int i = 0; i < reclassified.Lines.Count; i++)
+            {
+                if (i >= reclassified.LineSectionHints.Count) break;
+                var hint = reclassified.LineSectionHints[i];
+                if (!hint.HasValue || hint.Value.WidthMm <= wallThicknessWarnMm) continue;
+                var pts = reclassified.Lines[i];
+                if (pts.Count < 2) continue;
+                double midXmm = (pts[0].X + pts[^1].X) / 2.0;
+                double midYmm = (pts[0].Y + pts[^1].Y) / 2.0;
+                AddWarningBadge(toCanvas(midXmm, midYmm), warnBrush, warnFill,
+                    tooltip: $"Wall section {hint.Value.WidthMm:F0} mm thick — unusual; may be a missed shaft outline. Right-click to override type.");
+                warnings++;
+            }
+
+            for (int i = 0; i < reclassified.Columns.Count; i++)
+            {
+                if (i >= reclassified.ColumnSizes.Count) break;
+                var (w, d) = reclassified.ColumnSizes[i];
+                if (Math.Max(w, d) <= columnDimWarnMm) continue;
+                var (cxMm, cyMm) = reclassified.Columns[i];
+                AddWarningBadge(toCanvas(cxMm, cyMm), warnBrush, warnFill,
+                    tooltip: $"Column {w:F0}×{d:F0} mm — unusually large; may be a wall stub. Right-click to override type.");
+                warnings++;
+            }
+            return warnings;
+        }
+
+        private void AddWarningBadge(Point center, Brush stroke, Brush fill, string tooltip)
+        {
+            var dot = new Ellipse
+            {
+                Width = 14, Height = 14,
+                Fill = fill,
+                Stroke = stroke,
+                StrokeThickness = 1.5,
+                ToolTip = tooltip,
+                IsHitTestVisible = true
+            };
+            Canvas.SetLeft(dot, center.X - 7);
+            Canvas.SetTop(dot, center.Y - 7);
+            Canvas.SetZIndex(dot, 6);
+            PreviewCanvas.Children.Add(dot);
+
+            var glyph = new TextBlock
+            {
+                Text = "!",
+                FontSize = 11,
+                FontWeight = FontWeights.Bold,
+                Foreground = stroke,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(glyph, center.X - 2.5);
+            Canvas.SetTop(glyph, center.Y - 8);
+            Canvas.SetZIndex(glyph, 6);
+            PreviewCanvas.Children.Add(glyph);
         }
 
         /// <summary>
@@ -505,8 +691,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 string? sectionLabel = null;
                 if (isWall)
                 {
+                    // Match the snapped section name F2kModelPrep emits, so the
+                    // preview label and the SAFE model agree.
                     var (w, d) = hint!.Value;
-                    sectionLabel = $"W{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                    (sectionLabel, _, _) = F2kModelPrep.SnapWallSection(w, d);
                 }
                 else if (i < annRes.LineSectionMm.Length && annRes.LineSectionMm[i].HasValue)
                 {
@@ -555,13 +743,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 PreviewCanvas.Children.Add(rect);
 
                 var centerCanvas = ToCanvas(x, y);
-                var label = BuildSectionLabel(
-                    $"C{(int)Math.Round(w)}x{(int)Math.Round(d)}", labelBrush);
+                // Match the section name that the .f2k writer will emit so
+                // the preview label and the SAFE model agree (Batch 44b).
+                var (snappedSecName, _, _) = F2kModelPrep.SnapColumnSection(w, d);
+                var label = BuildSectionLabel(snappedSecName, labelBrush);
                 Canvas.SetLeft(label, centerCanvas.X + rectW / 2.0 + 2);
                 Canvas.SetTop(label, centerCanvas.Y - 8);
                 Canvas.SetZIndex(label, 5);
                 PreviewCanvas.Children.Add(label);
             }
+
+            // Auto-cut openings + warnings — same detector + validator path
+            // the F2K writer takes, so the preview shows what'll get cut and
+            // which sections are suspicious.
+            var diag = RenderDiagnosticsOverlay(colorSettings, ToCanvas);
+            int openingCount = diag.OpeningCount;
+            int warningCount = diag.WarningCount;
 
             // Summary counts overlay (top-left of the canvas).
             var summary = new Border
@@ -576,11 +773,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < reclassified.LineSectionHints.Count; i++)
                 if (reclassified.LineSectionHints[i].HasValue) wallCount++;
             int plainLineCount = reclassified.Lines.Count - wallCount;
+            string openingSuffix = openingCount > 0 ? $" · {openingCount} opening(s)" : string.Empty;
+            string warningSuffix = warningCount > 0 ? $" · ⚠ {warningCount} warning(s)" : string.Empty;
             summary.Child = new TextBlock
             {
                 Text = $"Export preview:  {reclassified.Slabs.Count} slab(s) · " +
                        $"{reclassified.Columns.Count} column(s) · " +
-                       $"{wallCount} wall(s) · {plainLineCount} line(s)",
+                       $"{wallCount} wall(s) · {plainLineCount} line(s){openingSuffix}{warningSuffix}",
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(15, 23, 42))
@@ -889,6 +1088,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
+        private async void RerunVision_Click(object sender, RoutedEventArgs e)
+        {
+            // Manual rerun for the auto-vision pass. Closes Gap #2 from the
+            // 2026-05-09 PdfToSafe testing pass: the auto-pass currently
+            // fires once on PDF load; switching pages or wanting a second
+            // try previously had no entry point. The gates inside
+            // TryVisionAutoClassifyAsync now surface a banner if anything
+            // prevents the run (Batch 42), so this button can be a thin
+            // pass-through without its own validation.
+            try
+            {
+                await TryVisionAutoClassifyAsync().ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Manual vision rerun failed.");
+                SetStatus($"Vision rerun failed: {ex.Message}", "#FFEBEE", "#C62828");
+            }
+        }
+
         private (double slabMin, double lineMin, bool excludeGridLines) ReadThresholds() => (1000.0, 200.0, false);
 
         private void BuildColorSwatches(ExtractedGeometry geo)
@@ -945,7 +1164,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         ? _firmDefaults.DefaultSlabThicknessMm
                         : PdfToSafeConstants.DefaultThicknessMm,
                     SdlKPa = _firmDefaults.DefaultSdlKPa,
-                    LiveKPa = _firmDefaults.DefaultLiveKPa,
+                    // Occupancy-aware default — Residential 1.92 kPa, Office 2.4,
+                    // Retail/Assembly 4.8 — falls back to DefaultLiveKPa for
+                    // custom occupancies. AI auto-vision can override per-colour
+                    // via set_color_properties.
+                    LiveKPa = _firmDefaults.GetOccupancyLiveKPa(),
                     Included = !IsExcludedType(defaultType)
                 });
             }
@@ -979,6 +1202,70 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var row in _slabPropsRows)
                 if (!row.Included || IsExcludedType(row.ElementType))
                     _excl.Colors.Add(row.Color);
+        }
+
+        /// <summary>
+        /// Predicts what bucket a raw slab will land in once
+        /// <see cref="PdfGeometryExtractor.ReclassifyByColor"/> runs at export
+        /// time. Lets the default overlay stroke a burgundy "Column" polygon
+        /// in WALL red when it'll be auto-routed to wall reduction (e.g. an
+        /// elevator core C-shape) — so the user sees what the exporter does
+        /// without having to click "Preview export". MIRROR of the slab
+        /// branch of ReclassifyByColor; keep in sync when that changes.
+        /// </summary>
+        private static string PredictSlabExportType(
+            int slabIdx,
+            ExtractedGeometry geo,
+            IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings> colorSettings,
+            string? overrideType)
+        {
+            if (!string.IsNullOrWhiteSpace(overrideType))
+                return overrideType!;
+
+            var color = slabIdx < geo.SlabColors.Count ? geo.SlabColors[slabIdx] : ((byte)0, (byte)0, (byte)0);
+            if (colorSettings is null || !colorSettings.TryGetValue(color, out var cs))
+                return "Slab";
+
+            string type = cs.ElementType;
+            if (!string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
+                return type;
+
+            // Column-guardrail check: a slab polygon too big or too elongated
+            // to be a real column gets routed to wall reduction.
+            var pts = geo.Slabs[slabIdx];
+            if (pts is null || pts.Count == 0) return type;
+            double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
+            double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
+            double w = maxX - minX, d = maxY - minY;
+            double minDim = Math.Min(w, d), maxDim = Math.Max(w, d);
+            const double columnMaxSideMm = 2000.0;
+            const double columnMaxAspect = 2.5;
+            bool columnSectionIsSane =
+                maxDim <= columnMaxSideMm &&
+                (minDim <= 0 || maxDim <= columnMaxAspect * minDim);
+            return columnSectionIsSane ? "Column" : "Wall";
+        }
+
+        /// <summary>
+        /// Mirror of the lines branch of <see cref="PdfGeometryExtractor.ReclassifyByColor"/>
+        /// for stroke-colour prediction in the default overlay. Lines themselves
+        /// are not size-reduced, so this is simpler than the slab predictor —
+        /// the colour setting (or per-element override) dictates the bucket
+        /// directly: Slab lines are chained into a slab polygon, Column lines
+        /// collapse to a point, others stay as linear elements.
+        /// </summary>
+        private static string PredictLineExportType(
+            int lineIdx,
+            ExtractedGeometry geo,
+            IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings> colorSettings,
+            string? overrideType)
+        {
+            if (!string.IsNullOrWhiteSpace(overrideType))
+                return overrideType!;
+            var color = lineIdx < geo.LineColors.Count ? geo.LineColors[lineIdx] : ((byte)0, (byte)0, (byte)0);
+            if (colorSettings is null || !colorSettings.TryGetValue(color, out var cs))
+                return "Beam";
+            return cs.ElementType;
         }
 
         private string GetElementType((byte R, byte G, byte B) color)
@@ -1185,7 +1472,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 // Resolve text annotations (e.g., "S-250", "B300x600", "C500x500"
                 // labels near elements) → per-element thickness/section overrides.
-                var annRes = AnnotationResolver.Resolve(reclassified);
+                // Then layer AI-supplied vision overrides on top — vision wins
+                // when both have a value for the same element index.
+                var annRes = AnnotationOverrideMerger.Merge(
+                    AnnotationResolver.Resolve(reclassified),
+                    _excl.SlabThicknessOverridesMm,
+                    _excl.ColumnSectionOverridesMm,
+                    _excl.LineSectionOverridesMm);
 
                 // Apply user-level exclusions per object kind, carrying
                 // annotation arrays in parallel.
@@ -1277,11 +1570,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     DestFdbPath        = destFdb,
                     IsImperial         = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
                     SafeExePathOverride = overridePath,
+                    AutoGenerateOpeningsFromWalls = settings.AutoGenerateOpeningsFromWalls,
                 };
                 var result = await SafeApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
 
                 if (result.Success)
+                {
+                    // Mirror F2K path: write the summary sidecar so engineers
+                    // get the same pre-launch view regardless of which export
+                    // button they pressed.
+                    WriteOapiSummarySidecar(destFdb, keptGeo, validation);
                     SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                }
                 else
                     SetStatus("SAFE export failed — " + result.Message, "#FDECEA", "#B71C1C");
             }
@@ -1293,6 +1593,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 SafeApiExportButton.IsEnabled = true;
                 LoadPdfButton.IsEnabled = true;
+            }
+        }
+
+        /// <summary>
+        /// OAPI exporters (SAFE / ETABS / SAP2000) drop the same .summary.txt
+        /// sidecar next to their .fdb / .edb / .sdb output. Best-effort —
+        /// failure trace-logged but never throws.
+        /// </summary>
+        private void WriteOapiSummarySidecar(string outputPath, ExtractedGeometry filtered, ValidationResult validation)
+        {
+            try
+            {
+                var summary = ComputeExportSummary(filtered);
+                var openings = WallOpeningDetector.DetectRectangularOpenings(
+                    filtered.Lines, filtered.LineSectionHints, filtered.Slabs);
+                ExportSummaryReport.WriteSidecar(
+                    outputPath, _loadedFilePath, filtered,
+                    new ExportSummaryReport.SummaryCounts(summary.SlabCount, summary.WallCount, summary.ColumnCount, summary.OpeningCount),
+                    validation, openings);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Summary sidecar write failed for OAPI export at {Path}", outputPath);
             }
         }
 
@@ -1353,8 +1676,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
 
-                // Resolve text annotations (same as SAFE path).
-                var annResE = AnnotationResolver.Resolve(reclassified);
+                // Resolve text annotations (same as SAFE path), then layer AI overrides.
+                var annResE = AnnotationOverrideMerger.Merge(
+                    AnnotationResolver.Resolve(reclassified),
+                    _excl.SlabThicknessOverridesMm,
+                    _excl.ColumnSectionOverridesMm,
+                    _excl.LineSectionOverridesMm);
 
                 var exColorsE = _excl.Colors.Count > 0 ? _excl.Colors : null;
                 var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>();
@@ -1399,19 +1726,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     return;
                 }
 
-                // Pre-flight validation (same as SAFE path).
-                {
-                    var vGeo = new ExtractedGeometry { IsVectorPdf = true };
-                    foreach (var s in keptSlabs) vGeo.Slabs.Add(s.ToList());
-                    foreach (var c in keptSlabColors) vGeo.SlabColors.Add(c);
-                    foreach (var c in keptColumns) { vGeo.Columns.Add(c); vGeo.ColumnColors.Add((0,0,0)); }
-                    foreach (var (w, d) in keptColumnSz) vGeo.ColumnSizes.Add((w, d));
-                    foreach (var l in keptLines) vGeo.Lines.Add(l.ToList());
-                    foreach (var h in keptHints) vGeo.LineSectionHints.Add(h);
-                    var settingsE = BuildDefaultExportSettings();
-                    var validation = ExportValidator.Validate(vGeo, colorSettings, settingsE);
-                    if (validation.HasErrors) { SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B"); return; }
-                }
+                // Pre-flight validation (same as SAFE path). Geometry and
+                // validation hoisted so the post-export sidecar can reuse them.
+                var vGeoE = new ExtractedGeometry { IsVectorPdf = true };
+                foreach (var s in keptSlabs) vGeoE.Slabs.Add(s.ToList());
+                foreach (var c in keptSlabColors) vGeoE.SlabColors.Add(c);
+                foreach (var c in keptColumns) { vGeoE.Columns.Add(c); vGeoE.ColumnColors.Add((0,0,0)); }
+                foreach (var (w, d) in keptColumnSz) vGeoE.ColumnSizes.Add((w, d));
+                foreach (var l in keptLines) vGeoE.Lines.Add(l.ToList());
+                foreach (var h in keptHints) vGeoE.LineSectionHints.Add(h);
+                var validationE = ExportValidator.Validate(vGeoE, colorSettings, BuildDefaultExportSettings());
+                if (validationE.HasErrors) { SetStatus(FormatValidationReport(validationE), "#FEE2E2", "#991B1B"); return; }
 
                 var esE = BuildDefaultExportSettings();
                 var input = new SafeApiExporter.ExportInput
@@ -1439,11 +1764,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     DestFdbPath        = destEdb,
                     IsImperial         = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
                     SafeExePathOverride = string.IsNullOrWhiteSpace(_firmDefaults.EtabsExePath) ? null : _firmDefaults.EtabsExePath,
+                    AutoGenerateOpeningsFromWalls = esE.AutoGenerateOpeningsFromWalls,
                 };
                 var result = await EtabsApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
 
                 if (result.Success)
+                {
+                    WriteOapiSummarySidecar(destEdb, vGeoE, validationE);
                     SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                }
                 else
                     SetStatus("ETABS export failed — " + result.Message, "#FDECEA", "#B71C1C");
             }
@@ -1487,8 +1816,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     _excl.LineTypeOverrides.Count > 0 ? _excl.LineTypeOverrides : null,
                     _excl.ColumnTypeOverrides.Count > 0 ? _excl.ColumnTypeOverrides : null);
 
-                // Resolve text annotations (same as SAFE/ETABS path).
-                var annResS = AnnotationResolver.Resolve(reclassified);
+                // Resolve text annotations (same as SAFE/ETABS path), then layer AI overrides.
+                var annResS = AnnotationOverrideMerger.Merge(
+                    AnnotationResolver.Resolve(reclassified),
+                    _excl.SlabThicknessOverridesMm,
+                    _excl.ColumnSectionOverridesMm,
+                    _excl.LineSectionOverridesMm);
 
                 var exColorsS = _excl.Colors.Count > 0 ? _excl.Colors : null;
                 var keptSlabs = new List<IReadOnlyList<(double X, double Y)>>(); var keptSlabColors = new List<(byte R, byte G, byte B)>(); var keptSlabThick = new List<double?>();
@@ -1500,19 +1833,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 if (keptSlabs.Count == 0 && keptColumns.Count == 0 && keptLines.Count == 0) { SetStatus("Nothing to export.", "#FFF3E0", "#E65100"); return; }
 
-                // Pre-flight validation (same as SAFE/ETABS path).
-                {
-                    var vGeo = new ExtractedGeometry { IsVectorPdf = true };
-                    foreach (var s in keptSlabs) vGeo.Slabs.Add(s.ToList());
-                    foreach (var c in keptSlabColors) vGeo.SlabColors.Add(c);
-                    foreach (var c in keptColumns) { vGeo.Columns.Add(c); vGeo.ColumnColors.Add((0,0,0)); }
-                    foreach (var (w, d) in keptColumnSz) vGeo.ColumnSizes.Add((w, d));
-                    foreach (var l in keptLines) vGeo.Lines.Add(l.ToList());
-                    foreach (var h in keptHints) vGeo.LineSectionHints.Add(h);
-                    var settingsS = BuildDefaultExportSettings();
-                    var validation = ExportValidator.Validate(vGeo, colorSettings, settingsS);
-                    if (validation.HasErrors) { SetStatus(FormatValidationReport(validation), "#FEE2E2", "#991B1B"); return; }
-                }
+                // Pre-flight validation (same as SAFE/ETABS path). Geometry and
+                // validation hoisted so the post-export sidecar can reuse them.
+                var vGeoS = new ExtractedGeometry { IsVectorPdf = true };
+                foreach (var s in keptSlabs) vGeoS.Slabs.Add(s.ToList());
+                foreach (var c in keptSlabColors) vGeoS.SlabColors.Add(c);
+                foreach (var c in keptColumns) { vGeoS.Columns.Add(c); vGeoS.ColumnColors.Add((0,0,0)); }
+                foreach (var (w, d) in keptColumnSz) vGeoS.ColumnSizes.Add((w, d));
+                foreach (var l in keptLines) vGeoS.Lines.Add(l.ToList());
+                foreach (var h in keptHints) vGeoS.LineSectionHints.Add(h);
+                var validationS = ExportValidator.Validate(vGeoS, colorSettings, BuildDefaultExportSettings());
+                if (validationS.HasErrors) { SetStatus(FormatValidationReport(validationS), "#FEE2E2", "#991B1B"); return; }
 
                 var esS = BuildDefaultExportSettings();
                 var input = new SafeApiExporter.ExportInput
@@ -1534,9 +1865,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     ColumnHeightMm = 3000.0, DestFdbPath = dest,
                     IsImperial = string.Equals(_firmDefaults.UnitSystem, "Imperial", StringComparison.OrdinalIgnoreCase),
                     SafeExePathOverride = string.IsNullOrWhiteSpace(_firmDefaults.Sap2000ExePath) ? null : _firmDefaults.Sap2000ExePath,
+                    AutoGenerateOpeningsFromWalls = esS.AutoGenerateOpeningsFromWalls,
                 };
                 var result = await Sap2000ApiExporter.ExportFullModelAsync(input).ConfigureAwait(true);
-                if (result.Success) SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                if (result.Success)
+                {
+                    WriteOapiSummarySidecar(dest, vGeoS, validationS);
+                    SetStatus(result.Message, "#E8F5E9", "#2E7D32");
+                }
                 else SetStatus("SAP2000 export failed — " + result.Message, "#FDECEA", "#B71C1C");
             }
             catch (Exception ex) { SetStatus($"SAP2000 export crashed — {ex.GetType().Name}: {ex.Message}", "#FDECEA", "#B71C1C"); }
@@ -1639,7 +1975,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         colorSettings,
                         settings);
                 }).ConfigureAwait(true);
-                SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
+                var filteredForReport = BuildFilteredGeometryForValidation(reclassified);
+                var summary = ComputeExportSummary(filteredForReport);
+                var openingsForReport = WallOpeningDetector.DetectRectangularOpenings(
+                    filteredForReport.Lines, filteredForReport.LineSectionHints, filteredForReport.Slabs);
+                ExportSummaryReport.WriteSidecar(
+                    outputPath, _loadedFilePath, filteredForReport,
+                    new ExportSummaryReport.SummaryCounts(summary.SlabCount, summary.WallCount, summary.ColumnCount, summary.OpeningCount),
+                    validation, openingsForReport);
+                SetStatus(BuildExportStatus(outputPath, validation, summary), "#E8F5E9", "#2E7D32");
                 return "";
             }
             catch (Exception ex)
@@ -1667,9 +2011,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         private static string BuildExportStatus(string outputPath, ValidationResult r)
+            => BuildExportStatus(outputPath, r, summary: null);
+
+        /// <summary>
+        /// Builds the post-export status banner. When <paramref name="summary"/>
+        /// is supplied the banner leads with model counts (slabs / walls /
+        /// columns / openings) so the engineer sees what was emitted without
+        /// opening the .f2k file.
+        /// </summary>
+        private static string BuildExportStatus(
+            string outputPath,
+            ValidationResult r,
+            ExportSummary? summary)
         {
             var sb = new System.Text.StringBuilder();
             sb.Append("Exported: ").Append(System.IO.Path.GetFileName(outputPath));
+            if (summary is not null)
+            {
+                sb.AppendLine().Append("  ").Append(summary.SlabCount).Append(" slab(s) · ")
+                  .Append(summary.WallCount).Append(" wall(s) · ")
+                  .Append(summary.ColumnCount).Append(" column(s)");
+                if (summary.OpeningCount > 0)
+                    sb.Append(" · ").Append(summary.OpeningCount).Append(" auto-cut opening(s)");
+            }
             if (r.WarningCount > 0)
             {
                 sb.AppendLine().Append(r.WarningCount).AppendLine(" warning(s):");
@@ -1677,6 +2041,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     sb.Append("  ⚠ ").AppendLine(issue.Message);
             }
             return sb.ToString().TrimEnd();
+        }
+
+        private sealed record ExportSummary(int SlabCount, int WallCount, int ColumnCount, int OpeningCount);
+
+        /// <summary>
+        /// Builds the count summary used by <see cref="BuildExportStatus(string, ValidationResult, ExportSummary?)"/>.
+        /// Uses the same reclassified geometry the F2K writer just consumed,
+        /// so the numbers match what's actually in the file.
+        /// </summary>
+        private static ExportSummary ComputeExportSummary(ExtractedGeometry reclassified)
+        {
+            int walls = 0;
+            for (int i = 0; i < reclassified.LineSectionHints.Count; i++)
+                if (reclassified.LineSectionHints[i].HasValue) walls++;
+            int openings = WallOpeningDetector.DetectRectangularOpenings(
+                reclassified.Lines, reclassified.LineSectionHints, reclassified.Slabs).Count;
+            return new ExportSummary(
+                SlabCount: reclassified.Slabs.Count,
+                WallCount: walls,
+                ColumnCount: reclassified.Columns.Count,
+                OpeningCount: openings);
         }
 
         internal async Task<string> DoExportE2kAsync(string outputPath)
@@ -1735,7 +2120,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     EtabsE2kExporter.Export(outputPath, filtered, colorSettings, settings);
                 }).ConfigureAwait(true);
-                SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
+                var summary = ComputeExportSummary(filtered);
+                var openings = WallOpeningDetector.DetectRectangularOpenings(
+                    filtered.Lines, filtered.LineSectionHints, filtered.Slabs);
+                ExportSummaryReport.WriteSidecar(
+                    outputPath, _loadedFilePath, filtered,
+                    new ExportSummaryReport.SummaryCounts(summary.SlabCount, summary.WallCount, summary.ColumnCount, summary.OpeningCount),
+                    validation, openings);
+                SetStatus(BuildExportStatus(outputPath, validation, summary), "#E8F5E9", "#2E7D32");
                 return "";
             }
             catch (Exception ex)

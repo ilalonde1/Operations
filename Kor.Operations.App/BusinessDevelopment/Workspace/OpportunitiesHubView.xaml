@@ -1,0 +1,43 @@
+<UserControl x:Class="Kor.Operations.App.BusinessDevelopment.Workspace.OpportunitiesHubView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="SegBtn" TargetType="Button">
+            <Setter Property="Padding" Value="18,6"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style x:Key="SegBtnActive" TargetType="Button" BasedOn="{StaticResource SegBtn}">
+            <Setter Property="Background" Value="{StaticResource Brand.Primary.Brush}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <Border CornerRadius="8" BorderThickness="1"
+                    BorderBrush="{StaticResource Panel.Border}"
+                    Background="{StaticResource App.Background}">
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="ToGrabBtn" Content="To grab" Click="ToGrab_Click"
+                            ToolTip="Un-claimed opportunities ranked by fit — grab one to start a pursuit."/>
+                    <Button x:Name="AllBtn" Content="All tenders" Click="All_Click"
+                            ToolTip="Every open tender in the registry, filterable."/>
+                </StackPanel>
+            </Border>
+            <TextBlock x:Name="ModeHint" VerticalAlignment="Center" Margin="14,0,0,0"
+                       Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+        </StackPanel>
+
+        <ContentControl Grid.Row="1" x:Name="Host"/>
+    </Grid>
+</UserControl>

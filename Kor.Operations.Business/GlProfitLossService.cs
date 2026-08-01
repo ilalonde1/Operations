@@ -1,0 +1,908 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Odbc;
+using System.Globalization;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Kor.Operations.App.Options;
+using Kor.Operations.Data;
+namespace Kor.Operations.Financials
+{
+    public sealed class GlProfitLossService
+    {
+        private static readonly HashSet<short> DefaultIncomeGroupTypes = new() { 4, 8 };
+        private static readonly HashSet<short> DefaultExpenseGroupTypes = new() { 5, 6, 7 };
+
+        private readonly DeltekOdbcOptions _odbcOptions;
+        private readonly FinancialsOptions _financialsOptions;
+        private readonly string _catalog;
+
+        public GlProfitLossService(DeltekOdbcOptions odbcOptions, FinancialsOptions financialsOptions)
+        {
+            _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+            _financialsOptions = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+            _catalog = DeltekCatalogValidator.ResolveCatalog(odbcOptions.Catalog);
+        }
+
+        public async Task<IReadOnlyList<GlTableInfo>> GetTablesAsync(CancellationToken cancelToken)
+        {
+            return await Task.Run(() =>
+            {
+                cancelToken.ThrowIfCancellationRequested();
+                var catalog = _catalog;
+                using var cn = CreateConnection();
+                cn.Open();
+
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+                var tableNameLike = string.IsNullOrWhiteSpace(_financialsOptions.PnLGlTableNameLike)
+                    ? "%Income Statement%"
+                    : _financialsOptions.PnLGlTableNameLike;
+                cmd.CommandText = $"SELECT TableNo, TableName, FilterOrg, FilterCode FROM [{catalog}].dbo.GLTable WHERE TableName LIKE ? ORDER BY TableNo;";
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = tableNameLike });
+
+                using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                var list = new List<GlTableInfo>();
+                while (r.Read())
+                {
+                    cancelToken.ThrowIfCancellationRequested();
+                    list.Add(new GlTableInfo
+                    {
+                        TableNo = r.IsDBNull(0) ? (short)0 : r.GetInt16(0),
+                        TableName = r.IsDBNull(1) ? "" : r.GetString(1),
+                        FilterOrg = r.IsDBNull(2) ? "" : r.GetString(2),
+                        FilterCode = r.IsDBNull(3) ? "" : r.GetString(3),
+                    });
+                }
+
+                return (IReadOnlyList<GlTableInfo>)list;
+            }, cancelToken).ConfigureAwait(false);
+        }
+
+        public sealed record BuildResult(
+            DataTable Table,
+            int[] Periods,
+            string[] PeriodColumnNames,
+            decimal[] NetIncomeTrendValues,
+            decimal[] RevenueTrendValues,
+            decimal[] ExpenseTrendValues,
+            string[] TrendLabels,
+            int? MaxPostedPeriod);
+
+        public sealed record LedgerTransactionDrilldownRow(
+            string Source,
+            int Period,
+            DateTime? TransDate,
+            string DocumentNo,
+            string Counterparty,
+            string Account,
+            string TransType,
+            string Description,
+            decimal Amount,
+            int EntryCount);
+
+        public async Task<BuildResult> BuildProfitLossAsync(
+            short tableNo,
+            DateTime fromDate,
+            DateTime toDate,
+            string? orgFilter,
+            bool flipSign,
+            bool forceRefresh,
+            CancellationToken cancelToken)
+        {
+            // forceRefresh currently unused; kept to align with UI and future caching.
+            _ = forceRefresh;
+
+            return await Task.Run(() =>
+            {
+                cancelToken.ThrowIfCancellationRequested();
+                var catalog = _catalog;
+
+                using var cn = CreateConnection();
+                cn.Open();
+
+                var periods = BuildMonthPeriods(fromDate, toDate);
+                if (periods.Count == 0)
+                    throw new InvalidOperationException("No accounting periods found for the selected date range.");
+
+                var minP = periods.Min();
+                var maxP = periods.Max();
+                // Resolve the max posted GL period first so the empty-range error can
+                // tell the user where data does exist instead of the bare "no data found"
+                // (the next operator would otherwise have to guess the post lag).
+                var maxPostedPeriod = LoadMaxGlPeriodSync(cn, catalog, orgFilter, cancelToken);
+                if (!HasAnyGlSummaryInRange(cn, minP, maxP, orgFilter, catalog, cancelToken))
+                {
+                    var hint = maxPostedPeriod.HasValue
+                        ? string.Format(
+                            CultureInfo.InvariantCulture,
+                            " GL is posted through {0:0000}-{1:00}; pick a To-date that includes that period or earlier.",
+                            maxPostedPeriod.Value / 100,
+                            maxPostedPeriod.Value % 100)
+                        : string.Empty;
+                    throw new InvalidOperationException(
+                        "No GL summary data found for the selected date range." + hint);
+                }
+
+                var periodColumnNames = periods.Select(PeriodColumnHeader).ToArray();
+
+                // Load parent groups (sections) and detail groups (line items) for the selected GL table.
+                var sections = LoadSections(cn, tableNo, catalog, cancelToken);
+                var lines = LoadLineGroups(cn, tableNo, catalog, cancelToken);
+
+                // Aggregate amounts per (GLGroup, Period) for the table, filtered by org if provided.
+                // When org filter is blank we consolidate USA-org rows to CAD using the configured FX rate.
+                var convertUsaToCad = string.IsNullOrWhiteSpace(orgFilter);
+                var usdToCadRate = (decimal)OrgFx.ParseUsdToCadRate(_financialsOptions.BilledUsdToCadRate);
+                var amounts = LoadAmountsByGroupAndPeriod(catalog, cn, tableNo, minP, maxP, orgFilter, flipSign, convertUsaToCad, usdToCadRate, cancelToken);
+
+                // Build output table.
+                var dt = new DataTable("PnL");
+                dt.Columns.Add("Section", typeof(string));
+                dt.Columns.Add("LineItem", typeof(string));
+                dt.Columns.Add("RowKind", typeof(string));           // Detail, SectionTotal, GrandTotal
+                dt.Columns.Add("LineGroupCode", typeof(short));
+                dt.Columns.Add("SectionSort", typeof(int));
+                dt.Columns.Add("SectionGroupType", typeof(short));
+                dt.Columns.Add("LineSort", typeof(int));
+                dt.Columns.Add("IsAllZero", typeof(bool));
+
+                foreach (var col in periodColumnNames)
+                    dt.Columns.Add(col, typeof(decimal));
+
+                // Executive columns
+                dt.Columns.Add("Current", typeof(decimal));
+                dt.Columns.Add("Prior", typeof(decimal));
+                dt.Columns.Add("MoM", typeof(decimal));
+                dt.Columns.Add("MoMPct", typeof(decimal));
+                dt.Columns.Add("YTD", typeof(decimal));
+                dt.Columns.Add("TTM", typeof(decimal));
+                dt.Columns.Add("PctOfRevenue", typeof(decimal));
+
+                // Map periods to columns by index.
+                var colByPeriod = new Dictionary<int, string>();
+                for (var i = 0; i < periods.Count; i++)
+                    colByPeriod[periods[i]] = periodColumnNames[i];
+
+                // If we have section mappings, use them; otherwise, just list all line groups as one section.
+                if (sections.Count > 0)
+                {
+                    foreach (var sec in sections.OrderBy(s => s.SortOrder).ThenBy(s => s.Description))
+                    {
+                        var secLines = lines.Where(l => l.ParentSectionId == sec.Code).OrderBy(l => l.SortOrder).ThenBy(l => l.Description).ToList();
+                        if (secLines.Count == 0)
+                            continue;
+
+                        foreach (var line in secLines)
+                            AddLine(dt, sec.Description, sec.SortOrder, sec.GroupType, line.Description, line.SortOrder, line.Code, colByPeriod, amounts);
+                    }
+                }
+                else
+                {
+                    foreach (var line in lines.OrderBy(l => l.SortOrder).ThenBy(l => l.Description))
+                        AddLine(dt, "P&L", 0, (short)0, line.Description, line.SortOrder, line.Code, colByPeriod, amounts);
+                }
+
+                AddSectionTotals(dt, periodColumnNames);
+                AddGrandTotals(
+                    dt,
+                    periodColumnNames,
+                    ParseGroupTypeSet(_financialsOptions.PnLIncomeGroupTypes, DefaultIncomeGroupTypes),
+                    ParseGroupTypeSet(_financialsOptions.PnLExpenseGroupTypes, DefaultExpenseGroupTypes));
+                ComputeExecutiveColumns(dt, periods.ToArray(), periodColumnNames, maxPostedPeriod);
+
+                 var netTrend = GetTrend(dt, "Net Income", periodColumnNames);
+                 var revTrend = GetTrend(dt, "Total Revenue", periodColumnNames).Select(Math.Abs).ToArray();
+                 var expTrend = GetTrend(dt, "Total Expenses", periodColumnNames).Select(Math.Abs).ToArray();
+                 var trendLabels = GetTrendLabels(periods);
+
+                 return new BuildResult(dt, periods.ToArray(), periodColumnNames, netTrend, revTrend, expTrend, trendLabels, maxPostedPeriod);
+             }, cancelToken).ConfigureAwait(false);
+         }
+
+        private static int ToPeriod(DateTime d) => (d.Year * 100) + d.Month;
+
+        private static void AddLine(
+            DataTable dt,
+            string section,
+            int sectionSort,
+            short sectionGroupType,
+            string lineItem,
+            int lineSort,
+            short glGroup,
+            Dictionary<int, string> colByPeriod,
+            Dictionary<(short GlGroup, int Period), decimal> amounts)
+        {
+            var row = dt.NewRow();
+            row["Section"] = section;
+            row["LineItem"] = lineItem;
+            row["RowKind"] = "Detail";
+            row["LineGroupCode"] = glGroup;
+            row["SectionSort"] = sectionSort;
+            row["SectionGroupType"] = sectionGroupType;
+            row["LineSort"] = lineSort;
+
+            foreach (var kvp in colByPeriod)
+            {
+                var period = kvp.Key;
+                var col = kvp.Value;
+                row[col] = amounts.TryGetValue((glGroup, period), out var a) ? a : 0m;
+            }
+
+            dt.Rows.Add(row);
+        }
+
+        private static void AddSectionTotals(DataTable dt, string[] periodColumnNames)
+        {
+            var sections = dt.Rows.Cast<DataRow>()
+                .Where(r => string.Equals(Convert.ToString(r["RowKind"]), "Detail", StringComparison.OrdinalIgnoreCase))
+                .GroupBy(r => new
+                {
+                    Section = Convert.ToString(r["Section"]) ?? "",
+                    Sort = r["SectionSort"] is int i ? i : 0
+                })
+                .OrderBy(g => g.Key.Sort)
+                .ThenBy(g => g.Key.Section, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var g in sections)
+            {
+                var tr = dt.NewRow();
+                tr["Section"] = g.Key.Section;
+                tr["LineItem"] = "Total";
+                tr["RowKind"] = "SectionTotal";
+                tr["LineGroupCode"] = DBNull.Value;
+                tr["SectionSort"] = g.Key.Sort;
+                tr["SectionGroupType"] = g.FirstOrDefault()?["SectionGroupType"] is short gt ? gt : (short)0;
+                tr["LineSort"] = int.MaxValue - 10;
+
+                foreach (var col in periodColumnNames)
+                {
+                    var sum = 0m;
+                    foreach (var r in g)
+                        sum += r[col] is decimal d ? d : 0m;
+                    tr[col] = sum;
+                }
+
+                dt.Rows.Add(tr);
+            }
+        }
+
+        private static void AddGrandTotals(
+            DataTable dt,
+            string[] periodColumnNames,
+            HashSet<short> incomeGroupTypes,
+            HashSet<short> expenseGroupTypes)
+        {
+            static short GtOf(DataRow r) => r["SectionGroupType"] is short s ? s : (short)0;
+
+            var detailRows = dt.Rows.Cast<DataRow>()
+                .Where(r => string.Equals(Convert.ToString(r["RowKind"]), "Detail", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            var incomeRows = detailRows.Where(r => incomeGroupTypes.Contains(GtOf(r))).ToList();
+            var expenseRows = detailRows.Where(r => expenseGroupTypes.Contains(GtOf(r))).ToList();
+
+            AddGrand("Total Revenue", incomeRows);
+            AddGrand("Total Expenses", expenseRows);
+            AddGrand("Net Income", incomeRows.Concat(expenseRows).ToList());
+
+            void AddGrand(string lineItem, List<DataRow> src)
+            {
+                var r = dt.NewRow();
+                r["Section"] = "Summary";
+                r["LineItem"] = lineItem;
+                r["RowKind"] = "GrandTotal";
+                r["LineGroupCode"] = DBNull.Value;
+                // Keep Summary at the top for exec-first scanning.
+                r["SectionSort"] = -1;
+                r["LineSort"] = lineItem switch
+                {
+                    "Total Revenue" => int.MaxValue - 100,
+                    "Total Expenses" => int.MaxValue - 99,
+                    _ => int.MaxValue - 98
+                };
+
+                foreach (var col in periodColumnNames)
+                {
+                    var sum = 0m;
+                    foreach (var rr in src)
+                        sum += rr[col] is decimal d ? d : 0m;
+                    r[col] = sum;
+                }
+
+                dt.Rows.Add(r);
+            }
+        }
+
+        private void ComputeExecutiveColumns(DataTable dt, int[] periods, string[] periodColumnNames, int? maxPostedPeriod)
+        {
+            if (periods.Length == 0)
+                return;
+
+            var curIdx = periods.Length - 1;
+            if (maxPostedPeriod.HasValue)
+            {
+                var clampedIdx = Array.FindLastIndex(periods, p => p <= maxPostedPeriod.Value);
+                if (clampedIdx >= 0)
+                    curIdx = clampedIdx;
+            }
+            var priorIdx = curIdx >= 1 ? curIdx - 1 : -1;
+
+            var curCol = periodColumnNames[curIdx];
+            var priorCol = priorIdx >= 0 ? periodColumnNames[priorIdx] : null;
+
+            // Revenue denominator uses grand total "Total Revenue" current period.
+            var revenueCurrent = 0m;
+            foreach (DataRow r in dt.Rows)
+            {
+                if (!string.Equals(Convert.ToString(r["RowKind"]), "GrandTotal", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!string.Equals(Convert.ToString(r["LineItem"]), "Total Revenue", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                revenueCurrent = r[curCol] is decimal d ? d : 0m;
+                break;
+            }
+
+            var fyStartMonth = ReadInt("Financials.PnL.FiscalYearStartMonth", 1);
+            fyStartMonth = Math.Clamp(fyStartMonth, 1, 12);
+
+            var curFy = FiscalYear(periods[curIdx], fyStartMonth);
+            var ytdIdx = periods
+                .Select((p, idx) => new { p, idx })
+                .Where(x => FiscalYear(x.p, fyStartMonth) == curFy && x.idx <= curIdx)
+                .Select(x => x.idx)
+                .ToList();
+
+            var ttmStart = Math.Max(0, periods.Length - 12);
+            var ttmIdx = Enumerable.Range(ttmStart, periods.Length - ttmStart).ToList();
+
+            foreach (DataRow r in dt.Rows)
+            {
+                var cur = r[curCol] is decimal cd ? cd : 0m;
+                var prior = (priorCol != null && r[priorCol] is decimal pd) ? pd : 0m;
+                var mom = cur - prior;
+
+                r["Current"] = cur;
+                r["Prior"] = prior;
+                r["MoM"] = mom;
+
+                if (prior != 0m)
+                    r["MoMPct"] = mom / prior;
+
+                r["YTD"] = Sum(r, ytdIdx);
+                r["TTM"] = Sum(r, ttmIdx);
+
+                if (revenueCurrent != 0m)
+                    r["PctOfRevenue"] = cur / revenueCurrent;
+
+                r["IsAllZero"] = IsAllZero(r);
+            }
+
+            decimal Sum(DataRow row, List<int> idxs)
+            {
+                var s = 0m;
+                foreach (var i in idxs)
+                {
+                    var col = periodColumnNames[i];
+                    s += row[col] is decimal d ? d : 0m;
+                }
+                return s;
+            }
+
+            bool IsAllZero(DataRow row)
+            {
+                foreach (var col in periodColumnNames)
+                {
+                    if (row[col] is decimal d && d != 0m)
+                        return false;
+                }
+                return true;
+            }
+        }
+
+        private static decimal[] GetTrend(DataTable dt, string lineItem, string[] periodColumnNames)
+        {
+            var row = dt.Rows.Cast<DataRow>()
+                .FirstOrDefault(r =>
+                    string.Equals(Convert.ToString(r["RowKind"]), "GrandTotal", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(Convert.ToString(r["LineItem"]), lineItem, StringComparison.OrdinalIgnoreCase));
+
+            if (row == null)
+                return Array.Empty<decimal>();
+
+            var values = periodColumnNames.Select(c => row[c] is decimal d ? d : 0m).ToArray();
+            if (values.Length <= 12)
+                return values;
+            return values.Skip(values.Length - 12).ToArray();
+        }
+
+        private static string[] GetTrendLabels(List<int> periods)
+        {
+            if (periods == null || periods.Count == 0)
+                return Array.Empty<string>();
+
+            var slice = (periods.Count <= 12) ? periods : periods.Skip(periods.Count - 12).ToList();
+            return slice.Select(PeriodChartLabel).ToArray();
+        }
+
+        private static int FiscalYear(int yyyymm, int fyStartMonth)
+        {
+            var year = yyyymm / 100;
+            var month = yyyymm % 100;
+            return month >= fyStartMonth ? year : year - 1;
+        }
+
+        private int ReadInt(string key, int @default)
+        {
+            var raw = key == "Financials.PnL.FiscalYearStartMonth"
+                ? _financialsOptions.FiscalYearStartMonth
+                : null;
+            if (string.IsNullOrWhiteSpace(raw))
+                return @default;
+            if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v))
+                return v;
+            if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.CurrentCulture, out v))
+                return v;
+            return @default;
+        }
+
+        private static List<int> BuildMonthPeriods(DateTime fromDate, DateTime toDate)
+        {
+            var a = new DateTime(fromDate.Year, fromDate.Month, 1);
+            var b = new DateTime(toDate.Year, toDate.Month, 1);
+            if (b < a) (a, b) = (b, a);
+
+            var list = new List<int>();
+            var cur = a;
+            while (cur <= b)
+            {
+                list.Add(ToPeriod(cur));
+                cur = cur.AddMonths(1);
+            }
+
+            return list;
+        }
+
+        private static bool HasAnyGlSummaryInRange(OdbcConnection cn, int minPeriod, int maxPeriod, string? orgFilter, string catalog, CancellationToken cancelToken)
+        {
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+
+            var whereOrg = "";
+            if (!string.IsNullOrWhiteSpace(orgFilter))
+                whereOrg = " AND Org = ? ";
+
+            cmd.CommandText = $@"
+SELECT TOP 1 Period
+FROM [{catalog}].dbo.GLSummary
+WHERE Period >= ? AND Period <= ?
+{whereOrg};";
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = minPeriod });
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = maxPeriod });
+            if (!string.IsNullOrWhiteSpace(orgFilter))
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = orgFilter.Trim() });
+
+            using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                cancelToken.ThrowIfCancellationRequested();
+                return !r.IsDBNull(0);
+            }
+
+            return false;
+        }
+
+        private static int? LoadMaxGlPeriodSync(OdbcConnection cn, string catalog, string? orgFilter, CancellationToken ct)
+        {
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            var whereOrg = string.IsNullOrWhiteSpace(orgFilter) ? "" : " WHERE Org = ?";
+            cmd.CommandText = $"SELECT MAX(Period) FROM [{catalog}].dbo.GLSummary{whereOrg};";
+            if (!string.IsNullOrWhiteSpace(orgFilter))
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = orgFilter.Trim() });
+            using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+            var v = cmd.ExecuteScalar();
+            if (v == null || v == DBNull.Value) return null;
+            var raw = Convert.ToInt32(v, CultureInfo.InvariantCulture);
+            return raw > 0 ? raw : (int?)null;
+        }
+
+        private static string PeriodColumnHeader(int period)
+        {
+            // Prefer deterministic labels. CFGPostControl dates appear inconsistent in this environment.
+            var y = period / 100;
+            var m = period % 100;
+            if (m < 1 || m > 12) return period.ToString(CultureInfo.InvariantCulture);
+            var d = new DateTime(y, m, 1);
+            return $"{d.ToString("MMM-yy", CultureInfo.InvariantCulture)} ({period})";
+        }
+
+        private static string PeriodChartLabel(int period)
+        {
+            var y = period / 100;
+            var m = period % 100;
+            if (m < 1 || m > 12) return period.ToString(CultureInfo.InvariantCulture);
+            var d = new DateTime(y, m, 1);
+            // Two-line label reads cleanly under narrow bars.
+            return $"{d.ToString("MMM", CultureInfo.InvariantCulture)}\n{d.ToString("yy", CultureInfo.InvariantCulture)}";
+        }
+
+        private sealed class SectionDef
+        {
+            public short Code { get; init; }
+            public string Description { get; init; } = "";
+            public short SortOrder { get; init; }
+            public short GroupType { get; init; }
+        }
+
+        private sealed class LineDef
+        {
+            public short Code { get; init; }
+            public string Description { get; init; } = "";
+            public short SortOrder { get; init; }
+            public short? ParentSectionId { get; init; }
+        }
+
+        private static List<SectionDef> LoadSections(OdbcConnection cn, short tableNo, string catalog, CancellationToken cancelToken)
+        {
+            // Sections come from GLParentHeading/GLParentGroup.
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT h.GLGroup, pg.Description, h.SortOrder, pg.GroupType
+FROM [{catalog}].dbo.GLParentHeading h
+JOIN [{catalog}].dbo.GLParentGroup pg
+  ON pg.Code = h.GLGroup
+WHERE h.TableNo = ?
+ORDER BY h.SortOrder;";
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = tableNo });
+
+            using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            var list = new List<SectionDef>();
+            while (r.Read())
+            {
+                cancelToken.ThrowIfCancellationRequested();
+                list.Add(new SectionDef
+                {
+                    Code = r.IsDBNull(0) ? (short)0 : r.GetInt16(0),
+                    Description = r.IsDBNull(1) ? "" : r.GetString(1),
+                    SortOrder = r.IsDBNull(2) ? (short)0 : r.GetInt16(2),
+                    GroupType = r.IsDBNull(3) ? (short)0 : r.GetInt16(3),
+                });
+            }
+
+            return list;
+        }
+
+        private static List<LineDef> LoadLineGroups(OdbcConnection cn, short tableNo, string catalog, CancellationToken cancelToken)
+        {
+            // Line items come from GLParentDetail (child group IDs) and GLGroup/GLGroupHeading.
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+            cmd.CommandText = $@"
+SELECT d.DetailGroupID AS ChildGroupId,
+       g.Description,
+       COALESCE(gh.SortOrder, 0) AS SortOrder,
+       d.GLGroup AS ParentSectionId
+FROM [{catalog}].dbo.GLParentDetail d
+JOIN [{catalog}].dbo.GLGroup g
+  ON g.Code = d.DetailGroupID
+LEFT JOIN [{catalog}].dbo.GLGroupHeading gh
+  ON gh.TableNo = d.TableNo AND gh.GLGroup = d.DetailGroupID
+WHERE d.TableNo = ?
+ORDER BY ParentSectionId, SortOrder, g.Description;";
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = tableNo });
+
+            using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
+            var list = new List<LineDef>();
+            using (var r = cmd.ExecuteReader())
+            {
+                while (r.Read())
+                {
+                    cancelToken.ThrowIfCancellationRequested();
+                    list.Add(new LineDef
+                    {
+                        Code = r.IsDBNull(0) ? (short)0 : r.GetInt16(0),
+                        Description = r.IsDBNull(1) ? "" : r.GetString(1),
+                        SortOrder = r.IsDBNull(2) ? (short)0 : Convert.ToInt16(r.GetValue(2), CultureInfo.InvariantCulture),
+                        ParentSectionId = r.IsDBNull(3) ? null : (short?)r.GetInt16(3),
+                    });
+                }
+            }
+
+            // If no parent detail exists for this table, fall back to all groups in GLGroupHeading for the table.
+            if (list.Count == 0)
+            {
+                cmd.Parameters.Clear();
+                cmd.CommandText = $@"
+SELECT gh.GLGroup, g.Description, gh.SortOrder
+FROM [{catalog}].dbo.GLGroupHeading gh
+JOIN [{catalog}].dbo.GLGroup g
+  ON g.Code = gh.GLGroup
+WHERE gh.TableNo = ?
+ORDER BY gh.SortOrder, g.Description;";
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = tableNo });
+
+                using (var r2 = cmd.ExecuteReader())
+                {
+                    while (r2.Read())
+                    {
+                        cancelToken.ThrowIfCancellationRequested();
+                        list.Add(new LineDef
+                        {
+                            Code = r2.IsDBNull(0) ? (short)0 : r2.GetInt16(0),
+                            Description = r2.IsDBNull(1) ? "" : r2.GetString(1),
+                            SortOrder = r2.IsDBNull(2) ? (short)0 : r2.GetInt16(2),
+                            ParentSectionId = null
+                        });
+                    }
+                }
+            }
+
+            return list;
+        }
+
+        private static Dictionary<(short GlGroup, int Period), decimal> LoadAmountsByGroupAndPeriod(
+            string catalog,
+            OdbcConnection cn,
+            short tableNo,
+            int minPeriod,
+            int maxPeriod,
+            string? orgFilter,
+            bool flipSign,
+            bool convertUsaToCad,
+            decimal usdToCadRate,
+            CancellationToken cancelToken)
+        {
+            // Join GLGroupDetail ranges to GLSummary and roll up per group + period.
+            // Org is included in the GROUP BY so we can FX-convert USA rows to CAD before
+            // collapsing to (GLGroup, Period). Without this, a USD amount and a CAD amount
+            // get summed as if they were the same currency.
+            using var cmd = cn.CreateCommand();
+            cmd.CommandTimeout = SqlTimeouts.Batch;
+
+            var whereOrg = "";
+            if (!string.IsNullOrWhiteSpace(orgFilter))
+                whereOrg = " AND s.Org = ? ";
+
+            // Normalize accounts for BETWEEN comparisons (lexical safety).
+            cmd.CommandText = $@"
+SELECT gd.GLGroup,
+       s.Period,
+       s.Org,
+       SUM(s.Amount) AS Amount
+FROM [{catalog}].dbo.GLSummary s
+JOIN [{catalog}].dbo.GLGroupDetail gd
+  ON gd.TableNo = ?
+ AND RIGHT(REPLICATE('0', 13) + s.Account, 13) >= RIGHT(REPLICATE('0', 13) + gd.StartAccount, 13)
+ AND RIGHT(REPLICATE('0', 13) + s.Account, 13) <= RIGHT(REPLICATE('0', 13) + gd.EndAccount, 13)
+WHERE s.Period >= ? AND s.Period <= ?
+{whereOrg}
+GROUP BY gd.GLGroup, s.Period, s.Org;";
+
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = tableNo });
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = minPeriod });
+            cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = maxPeriod });
+            if (!string.IsNullOrWhiteSpace(orgFilter))
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = orgFilter.Trim() });
+
+            using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
+            using var r = cmd.ExecuteReader();
+            var dict = new Dictionary<(short, int), decimal>();
+            while (r.Read())
+            {
+                cancelToken.ThrowIfCancellationRequested();
+
+                if (r.IsDBNull(0) || r.IsDBNull(1) || r.IsDBNull(3))
+                    continue;
+
+                var group = r.GetInt16(0);
+                var period = Convert.ToInt32(r.GetValue(1), CultureInfo.InvariantCulture);
+                var org = r.IsDBNull(2) ? "" : (Convert.ToString(r.GetValue(2), CultureInfo.InvariantCulture) ?? "").Trim();
+                var amt = Convert.ToDecimal(r.GetValue(3), CultureInfo.InvariantCulture);
+
+                if (convertUsaToCad && string.Equals(org, "USA", StringComparison.OrdinalIgnoreCase))
+                    amt *= usdToCadRate;
+
+                if (flipSign)
+                    amt = -amt;
+
+                dict[(group, period)] = (dict.TryGetValue((group, period), out var prev) ? prev : 0m) + amt;
+            }
+
+            return dict;
+        }
+
+        private static decimal ReadDecimalOption(string? raw, decimal fallback)
+        {
+            if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var value))
+                return value;
+            if (decimal.TryParse(raw, NumberStyles.Number, CultureInfo.CurrentCulture, out value))
+                return value;
+            return fallback;
+        }
+
+        private static HashSet<short> ParseGroupTypeSet(string raw, HashSet<short> fallback)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return new HashSet<short>(fallback);
+            var set = new HashSet<short>();
+            foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (short.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v))
+                    set.Add(v);
+            }
+            return set.Count == 0 ? new HashSet<short>(fallback) : set;
+        }
+
+        private OdbcConnection CreateConnection()
+        {
+            var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
+            var user = _odbcOptions.User ?? string.Empty;
+            var pwd = _odbcOptions.Password ?? string.Empty;
+            var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new Dictionary<string, string>());
+            return factory.Create();
+        }
+
+        public async Task<IReadOnlyList<LedgerTransactionDrilldownRow>> LoadLineItemTransactionsAsync(
+            short tableNo,
+            short glGroup,
+            int period,
+            string? orgFilter,
+            bool flipSign,
+            CancellationToken cancelToken)
+        {
+            return await Task.Run(() =>
+            {
+                cancelToken.ThrowIfCancellationRequested();
+                var catalog = _catalog;
+                using var cn = CreateConnection();
+                cn.Open();
+
+                using var cmd = cn.CreateCommand();
+                cmd.CommandTimeout = SqlTimeouts.Batch;
+
+                var whereOrg = string.IsNullOrWhiteSpace(orgFilter) ? "" : " AND l.Org = ? ";
+                var convertUsaToCad = string.IsNullOrWhiteSpace(orgFilter);
+                var usdToCadRate = (decimal)OrgFx.ParseUsdToCadRate(_financialsOptions.BilledUsdToCadRate);
+                cmd.CommandText = $@"
+SELECT
+    l.Source,
+    l.Period,
+    MAX(l.TransDate) AS TransDate,
+    COALESCE(NULLIF(l.Invoice, ''), NULLIF(l.Voucher, ''), NULLIF(l.RefNo, ''), '(none)') AS DocumentNo,
+    COALESCE(
+        NULLIF(cc.Name, ''),
+        NULLIF(cv.Name, ''),
+        NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
+        NULLIF(l.Vendor, ''),
+        NULLIF(l.Employee, ''),
+        '(unmapped)') AS Counterparty,
+    l.Account,
+    l.Org,
+    l.TransType,
+    MAX(COALESCE(NULLIF(l.Desc1, ''), NULLIF(l.Desc2, ''), '')) AS Description,
+    SUM(l.Amount) AS Amount,
+    COUNT(*) AS EntryCount
+FROM
+(
+    SELECT 'AR' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate, l.Desc1, l.Desc2, l.Amount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{catalog}].dbo.LedgerAR l
+    WHERE l.Period = ? {whereOrg}
+    UNION ALL
+    SELECT 'AP' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate, l.Desc1, l.Desc2, l.Amount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{catalog}].dbo.LedgerAP l
+    WHERE l.Period = ? {whereOrg}
+    UNION ALL
+    SELECT 'EX' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate, l.Desc1, l.Desc2, l.Amount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{catalog}].dbo.LedgerEX l
+    WHERE l.Period = ? {whereOrg}
+    UNION ALL
+    SELECT 'Misc' AS Source, l.Period, l.WBS1, l.Account, l.Org, l.TransType, l.RefNo, l.TransDate, l.Desc1, l.Desc2, l.Amount, l.Invoice, l.Voucher, l.Employee, l.Vendor
+    FROM [{catalog}].dbo.LedgerMisc l
+    WHERE l.Period = ? {whereOrg}
+) l
+LEFT JOIN
+(
+    SELECT ar.Invoice, ar.WBS1, ar.ClientID,
+           -- Tie-breaker on ClientID DESC: when both dates are null on
+           -- multiple AR rows sharing the same (Invoice, WBS1), the picked
+           -- ClientID otherwise depends on storage order.
+           ROW_NUMBER() OVER (PARTITION BY ar.Invoice, ar.WBS1
+                              ORDER BY COALESCE(ar.InvoiceDate, ar.DueDate) DESC,
+                                       ar.ClientID DESC) AS rn
+    FROM [{catalog}].dbo.AR ar
+    WHERE ar.ClientID IS NOT NULL
+      AND LTRIM(RTRIM(ar.ClientID)) <> ''
+) arx
+  ON arx.Invoice = l.Invoice
+ AND arx.WBS1 = l.WBS1
+ AND arx.rn = 1
+LEFT JOIN [{catalog}].dbo.Clendor cc
+  ON cc.ClientID = arx.ClientID
+LEFT JOIN [{catalog}].dbo.Clendor cv
+  ON cv.Vendor = l.Vendor
+LEFT JOIN [{catalog}].dbo.EMMain em
+  ON em.Employee = l.Employee
+WHERE EXISTS
+(
+    SELECT 1
+    FROM [{catalog}].dbo.GLGroupDetail gd
+    WHERE gd.TableNo = ?
+      AND gd.GLGroup = ?
+      AND RIGHT(REPLICATE('0', 13) + l.Account, 13) >= RIGHT(REPLICATE('0', 13) + gd.StartAccount, 13)
+      AND RIGHT(REPLICATE('0', 13) + l.Account, 13) <= RIGHT(REPLICATE('0', 13) + gd.EndAccount, 13)
+)
+GROUP BY
+    l.Source,
+    l.Period,
+    COALESCE(NULLIF(l.Invoice, ''), NULLIF(l.Voucher, ''), NULLIF(l.RefNo, ''), '(none)'),
+    COALESCE(
+        NULLIF(cc.Name, ''),
+        NULLIF(cv.Name, ''),
+        NULLIF(LTRIM(RTRIM(COALESCE(em.FirstName, '') + ' ' + COALESCE(em.LastName, ''))), ''),
+        NULLIF(l.Vendor, ''),
+        NULLIF(l.Employee, ''),
+        '(unmapped)'),
+    l.Account,
+    l.Org,
+    l.TransType
+ORDER BY ABS(SUM(l.Amount)) DESC, MAX(l.TransDate) DESC;";
+
+                for (var i = 0; i < 4; i++)
+                {
+                    cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.Int, Value = period });
+                    if (!string.IsNullOrWhiteSpace(orgFilter))
+                        cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = orgFilter!.Trim() });
+                }
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = tableNo });
+                cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.SmallInt, Value = glGroup });
+
+                var rows = new List<LedgerTransactionDrilldownRow>(256);
+                using var reg = cancelToken.Register(() => { try { cmd.Cancel(); } catch { } });
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    cancelToken.ThrowIfCancellationRequested();
+
+                    var rowOrg = r.IsDBNull(6) ? "" : (Convert.ToString(r.GetValue(6), CultureInfo.InvariantCulture) ?? "").Trim();
+                    var amount = r.IsDBNull(9) ? 0m : Convert.ToDecimal(r.GetValue(9), CultureInfo.InvariantCulture);
+                    if (convertUsaToCad && string.Equals(rowOrg, "USA", StringComparison.OrdinalIgnoreCase))
+                        amount *= usdToCadRate;
+                    if (flipSign)
+                        amount = -amount;
+
+                    rows.Add(new LedgerTransactionDrilldownRow(
+                        Source: r.IsDBNull(0) ? "" : Convert.ToString(r.GetValue(0), CultureInfo.InvariantCulture) ?? "",
+                        Period: r.IsDBNull(1) ? period : Convert.ToInt32(r.GetValue(1), CultureInfo.InvariantCulture),
+                        TransDate: r.IsDBNull(2) ? null : Convert.ToDateTime(r.GetValue(2), CultureInfo.InvariantCulture),
+                        DocumentNo: r.IsDBNull(3) ? "" : Convert.ToString(r.GetValue(3), CultureInfo.InvariantCulture) ?? "",
+                        Counterparty: r.IsDBNull(4) ? "" : Convert.ToString(r.GetValue(4), CultureInfo.InvariantCulture) ?? "",
+                        Account: r.IsDBNull(5) ? "" : Convert.ToString(r.GetValue(5), CultureInfo.InvariantCulture) ?? "",
+                        TransType: r.IsDBNull(7) ? "" : Convert.ToString(r.GetValue(7), CultureInfo.InvariantCulture) ?? "",
+                        Description: r.IsDBNull(8) ? "" : Convert.ToString(r.GetValue(8), CultureInfo.InvariantCulture) ?? "",
+                        Amount: amount,
+                        EntryCount: r.IsDBNull(10) ? 0 : Convert.ToInt32(r.GetValue(10), CultureInfo.InvariantCulture)));
+                }
+
+                return (IReadOnlyList<LedgerTransactionDrilldownRow>)rows;
+            }, cancelToken).ConfigureAwait(false);
+        }
+    }
+
+    public sealed class GlTableInfo
+    {
+        public short TableNo { get; init; }
+        public string TableName { get; init; } = "";
+        public string FilterOrg { get; init; } = "";
+        public string FilterCode { get; init; } = "";
+
+        public string Display => $"{TableNo} - {TableName}";
+    }
+}

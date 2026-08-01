@@ -46,7 +46,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "Section Heading is required.",
-                    "Missing Information",
+                    "Brochure Builder — Missing Information",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -84,7 +84,7 @@ namespace Kor.Operations.Brochures
             {
                 MessageBox.Show(
                     "Section Heading is required.",
-                    "Missing Information",
+                    "Brochure Builder — Missing Information",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;

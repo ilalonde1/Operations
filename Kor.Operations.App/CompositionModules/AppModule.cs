@@ -2,9 +2,11 @@
 using System;
 using Kor.Operations.App.PMTools;
 using Kor.Operations.App.FeeProposal;
+using Kor.Operations.App.FileSync;
 using Kor.Operations.App.Email;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
+using Kor.Operations.App.Views;
 using Kor.Operations.Core;
 using Kor.Operations.Core.Services;
 using Kor.Operations.Data;
@@ -57,6 +59,8 @@ internal static class AppModule
         services.AddSingleton(userOptions);
         var watchlistSyncOptions = CompositionHelpers.GetWatchlistSyncOptions();
         services.AddSingleton(watchlistSyncOptions);
+        var mcpServerOptions = CompositionHelpers.GetMcpServerOptions();
+        services.AddSingleton(mcpServerOptions);
         services.AddSingleton(sp => new Kor.Operations.Financials.WatchlistSyncClient(watchlistSyncOptions));
         services.AddSingleton(new BrochureAnalysisService(anthropicApiKey));
         services.AddTransient<IUploadOrchestrator, UploadOrchestrator>();
@@ -85,15 +89,49 @@ internal static class AppModule
 
         services.AddTransient<BrochureBuilderViewModel>();
         services.AddTransient<FeeProposalBuilderViewModel>();
-        services.AddTransient(sp => new WorkloadMeetingPanelViewModel(
+        // Round 38a: promoted to Singleton so the upcoming PM Tools window split
+        // (Workload Meeting + PM Capacity & Risk) can share one VM across both
+        // windows — the per-row priority ComboBox in the capacity window writes
+        // through this VM, and the meeting window subscribes to the same
+        // instance's PropertyChanged so the priority badges stay live without a
+        // refresh. DI container disposes the VM on app shutdown (it implements
+        // IDisposable); individual window Close() flushes pending notes but
+        // does NOT dispose.
+        services.AddSingleton(sp => new WorkloadMeetingPanelViewModel(
             sp.GetRequiredService<IWorkloadMeetingStore>(),
             userUpn,
             sp.GetRequiredService<ILogger<WorkloadMeetingPanelViewModel>>()));
+        // Round 38a: PmToolsViewModel used to be constructed inline in
+        // PmToolsWindow's ctor. Moved here as a Singleton for the same
+        // window-split reason — both new windows hold the same instance.
+        services.AddSingleton(sp =>
+        {
+            var vm = new PMTools.PmToolsViewModel(sp.GetRequiredService<FinancialsService>());
+            var odbc = sp.GetService<DeltekOdbcOptions>();
+            vm.EngRate = odbc?.EngRate ?? 474;
+            vm.DraftRate = odbc?.DraftRate ?? 655;
+            vm.TargetBilling = odbc?.TargetBillingRate ?? 185;
+            return vm;
+        });
         services.AddSingleton<AppAiContextBuilder>();
         services.AddSingleton<FirmContextProvider>();
         services.AddSingleton(sp => new AppAiService(
             anthropicApiKey,
-            sp.GetRequiredService<AppAiContextBuilder>()));
+            sp.GetRequiredService<AppAiContextBuilder>(),
+            mcpServerOptions));
+        services.AddSingleton(sp => new MondayBriefingClient(mcpServerOptions));
+        services.AddSingleton<MondayBriefingExporter>();
+        services.AddSingleton<MondayBriefingDocxExporter>();
+        services.AddTransient<MondayBriefingViewModel>();
+        services.AddTransient<MondayBriefingWindow>();
+        services.AddSingleton(sp => new CooCardClient(mcpServerOptions));
+        services.AddTransient<CooCardViewModel>();
+        services.AddTransient<CooCardWindow>();
+        services.AddSingleton(sp => new CollectionsClient(mcpServerOptions));
+        services.AddTransient<CollectionsViewModel>();
+        services.AddTransient<CollectionsWindow>();
+        services.AddTransient<CollectionsCaseViewModel>();
+        services.AddTransient<CollectionsCaseWindow>();
         services.AddSingleton<EmailSubjectExtractor>();
         services.AddSingleton<ProjectFolderCatalogService>();
         services.AddSingleton<FavoriteProjectsService>();
@@ -122,10 +160,44 @@ internal static class AppModule
             sp.GetRequiredService<ILogger<EmailFilePickerWindow>>()));
         services.AddTransient<GeneralToolsWindow>();
         services.AddTransient<BrochureBuilderWindow>();
-        services.AddTransient<PMTools.PmToolsWindow>();
+        // Round 38c: the legacy PmToolsWindow is decommissioned. The chooser
+        // routes to one of two dedicated windows below, both backed by the
+        // singleton VMs registered above.
+        //
+        // Round 47 (PM Tools crash fix): both PM child windows have internal
+        // ctors (Round 38a kept them internal to dodge CS0051 cascades from
+        // the internal PmToolsViewModel and its internal property types like
+        // BulkObservableCollection<T>, PmProjectRow, PmGroupViewModel,
+        // UtilizationRow, DraftUtilizationRow). Microsoft.Extensions.DI's
+        // CallSiteFactory only considers PUBLIC constructors when no factory
+        // is supplied — so a bare `AddTransient<T>()` registration of either
+        // window throws "A suitable constructor for type 'T' could not be
+        // located" at GetRequiredService<T>() time. Explicit factory lambdas
+        // are the idiomatic workaround: they call the internal ctor from
+        // inside the same assembly (where C# accessibility allows it) and
+        // hand DI back a fully-constructed instance.
+        services.AddTransient<PMTools.PmToolsChooserWindow>();
+        // Round 48: WorkloadMeetingWindow now also hosts the KPI strip,
+        // Portfolio Health bar, and PM Groups grid (moved from PmCapacityWindow).
+        // Ctor signature matches the pre-split PmToolsWindow exactly:
+        // (PmToolsViewModel, WorkloadMeetingPanelViewModel, DeltekOdbcOptions).
+        services.AddTransient<PMTools.WorkloadMeetingWindow>(sp => new PMTools.WorkloadMeetingWindow(
+            sp.GetRequiredService<PMTools.PmToolsViewModel>(),
+            sp.GetRequiredService<WorkloadMeetingPanelViewModel>(),
+            sp.GetRequiredService<DeltekOdbcOptions>()));
+        // Round 48: PmCapacityWindow no longer takes WorkloadMeetingPanelViewModel.
+        // The window is now Eng/Draft Capacity Risk tabs only — meeting board +
+        // PM Groups moved to WorkloadMeetingWindow per Ian's design intent.
+        services.AddTransient<PMTools.PmCapacityWindow>(sp => new PMTools.PmCapacityWindow(
+            sp.GetRequiredService<PMTools.PmToolsViewModel>(),
+            sp.GetRequiredService<DeltekOdbcOptions>()));
         services.AddTransient<EngineeringTools.EngineeringToolsWindow>(sp =>
             new EngineeringTools.EngineeringToolsWindow(sp));
         services.AddTransient<EngineeringTools.PdfToSafe.PdfToSafeWindow>();
+        services.AddTransient<EngineeringTools.StructuralTakeoff.StructuralQuantityTakeoffWindow>();
+        // Superseded by StructuralQuantityTakeoffWindow; kept registered until the consolidated tool is field-verified.
+        services.AddTransient<EngineeringTools.QuantityTakeoff.QuantityTakeoffWindow>();
+        services.AddTransient<EngineeringTools.RebarChange.RebarChangeWindow>();
         services.AddTransient<FeeProposalBuilderWindow>();
         services.AddTransient<Func<GeneralToolsWindow>>(sp => () => sp.GetRequiredService<GeneralToolsWindow>());
         services.AddTransient<Func<BrochureBuilderWindow>>(sp => () => sp.GetRequiredService<BrochureBuilderWindow>());
@@ -135,6 +207,14 @@ internal static class AppModule
         services.AddTransient<TeamsPickerWindow>();
         services.AddTransient<InboundUploadRunner>();
         services.AddTransient<QuickTransferRunner>();
+
+        services.AddSingleton(sp => new FileSyncControlPlaneReader(databaseOptions.KorTransmittalsDb));
+        services.AddTransient<FileSyncCommandCenterViewModel>();
+        services.AddTransient<FileSyncCommandCenterWindow>();
+
+        // The legacy BusinessDevelopmentWindow hub was retired 2026-07-07 with
+        // CrmWindow (fix F6): it had no remaining callers (BdWorkspaceWindow is
+        // the BD front door) and its CRM button reached the divergent twin.
 
         return services;
     }

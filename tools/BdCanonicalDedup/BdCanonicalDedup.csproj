@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kor.BdCanonicalDedup</RootNamespace>
+    <AssemblyName>BdCanonicalDedup</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj" />
+    <ProjectReference Include="..\..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.8" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Round 42: source-controlled allowlist of (LoserId,SurvivorId) pairs that
+         legitimately bypass the Round-37 fuzzy-name similarity gate. Used for
+         historical-rename merges (e.g. BMZ -> KOR Structural Ltd.) where the
+         names cannot be reconciled by any normalization. -->
+    <Content Include="dedup-non-similar-allowlist.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="dedup-non-similar-allowlist.d\*.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,50 @@
+public sealed class EmptyCatchBad
+{
+    public void RealCatch()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception ex)
+        {
+            System.Console.WriteLine(ex.Message);
+        }
+    }
+
+    public void EmptyCatch()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch { }
+    }
+
+    public void EmptyCatchWithType()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.IO.IOException) { }
+    }
+
+    public void CommentedCatch()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.Exception)
+        {
+            // Intentionally ignored: file may not exist yet.
+        }
+    }
+
+    public void OperationCancelledTypedCatch()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.OperationCanceledException) { }
+    }
+
+    public void TaskCancelledTypedCatch()
+    {
+        try { System.Threading.Tasks.Task.CompletedTask.Wait(); }
+        catch (System.Threading.Tasks.TaskCanceledException) { }
+    }
+
+    public void OperationCancelledTypedCatchNamed()
+    {
+        try { System.IO.File.ReadAllText("x"); }
+        catch (System.OperationCanceledException ex) { }
+    }
+}

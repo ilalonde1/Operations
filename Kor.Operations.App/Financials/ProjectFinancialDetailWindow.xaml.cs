@@ -52,7 +52,7 @@ namespace Kor.Operations.Financials
             try
             {
                 var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
-                var catalog = string.IsNullOrWhiteSpace(options.Catalog) ? "C0000052267P_1_KOR00000000" : options.Catalog;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(options.Catalog);
                 var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
                 var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
                     () => new System.Collections.Generic.Dictionary<string, string>());
@@ -60,7 +60,7 @@ namespace Kor.Operations.Financials
                 // Raw data collectors
                 var prRows = new System.Collections.Generic.List<(string Wbs2, string Wbs3, string ChargeType, string RevMethod, double Fee, string Name)>();
                 double parentFee = 0;
-                var revLookup = new System.Collections.Generic.Dictionary<(string, string), (double Rev, double BilledFee)>();
+                var revLookup = new System.Collections.Generic.Dictionary<(string, string), double>();
                 var hrsLookup = new System.Collections.Generic.Dictionary<(string, string), double>();
 
                 using var cn = factory.Create();
@@ -112,7 +112,8 @@ WHERE WBS1 = ? AND (WBS2 IS NULL OR LTRIM(RTRIM(WBS2)) = '')";
                     cmd3.CommandTimeout = 30;
                     cmd3.CommandText = $@"
 SELECT COALESCE(WBS2,''), COALESCE(WBS3,''),
-       SUM(COALESCE(Revenue,0)), SUM(COALESCE(BilledFee,0)), SUM(COALESCE(BilledTaxes,0))
+       SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE COALESCE(Revenue,0) END) AS EffectiveRevenue,
+       SUM(COALESCE(BilledTaxes,0))
 FROM [{catalog}].dbo.PRSummaryMain
 WHERE WBS1 = ?
 GROUP BY WBS2, WBS3
@@ -124,8 +125,7 @@ ORDER BY WBS2, WBS3";
                         var wbs2 = r3.GetString(0).Trim();
                         var wbs3 = r3.GetString(1).Trim();
                         var rev = Convert.ToDouble(r3.GetValue(2));
-                        var billed = Convert.ToDouble(r3.GetValue(3));
-                        revLookup[(wbs2, wbs3)] = (rev, billed);
+                        revLookup[(wbs2, wbs3)] = rev;
                     }
                 }
 
@@ -135,9 +135,10 @@ ORDER BY WBS2, WBS3";
                     cmd4.CommandTimeout = 30;
                     cmd4.CommandText = $@"
 SELECT COALESCE(WBS2,''), COALESCE(WBS3,''),
-       SUM(COALESCE(RegHrs,0)), SUM(COALESCE(OvtHrs,0))
+       SUM(COALESCE(RegHrs,0)), SUM(COALESCE(OvtHrs,0)), SUM(COALESCE(SpecialOvtHrs,0))
 FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 = ?
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 GROUP BY WBS2, WBS3
 ORDER BY WBS2, WBS3";
                     cmd4.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
@@ -148,7 +149,8 @@ ORDER BY WBS2, WBS3";
                         var wbs3 = r4.GetString(1).Trim();
                         var reg = Convert.ToDouble(r4.GetValue(2));
                         var ovt = Convert.ToDouble(r4.GetValue(3));
-                        var total = reg + ovt;
+                        var specialOvt = Convert.ToDouble(r4.GetValue(4));
+                        var total = reg + ovt + specialOvt;
                         hrsLookup[(wbs2, wbs3)] = total;
                     }
                 }
@@ -184,7 +186,7 @@ ORDER BY WBS2, WBS3";
                     else if (isExtra && row.Fee == 0)
                     {
                         revLookup.TryGetValue((row.Wbs2, row.Wbs3), out var rv);
-                        if (rv.Rev > 0)
+                        if (rv > 0)
                         {
                             // Hourly extra — actual revenue billed
                             hourlyExtras.Add(new FeeBreakdownRow
@@ -192,7 +194,7 @@ ORDER BY WBS2, WBS3";
                                 Wbs2 = row.Wbs2,
                                 Wbs3 = row.Wbs3,
                                 Name = row.Name,
-                                Revenue = rv.Rev,
+                                Revenue = rv,
                                 Hours = rowHrs,
                             });
                         }
@@ -339,7 +341,7 @@ ORDER BY WBS2, WBS3";
             try
             {
                 var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
-                var catalog = string.IsNullOrWhiteSpace(options.Catalog) ? "C0000052267P_1_KOR00000000" : options.Catalog;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(options.Catalog);
                 var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
                 var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
                     () => new System.Collections.Generic.Dictionary<string, string>());
@@ -353,15 +355,16 @@ ORDER BY WBS2, WBS3";
 SELECT tk.Employee,
        COALESCE(em.FirstName,'') + ' ' + COALESCE(em.LastName,'') AS EmployeeName,
        tk.Category,
-       SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) AS TotalHrs,
+       SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0) + COALESCE(tk.SpecialOvtHrs,0)) AS TotalHrs,
        MIN(tk.TransDate) AS FirstEntry,
        MAX(tk.TransDate) AS LastEntry
 FROM [{catalog}].dbo.tkDetail tk
 LEFT JOIN [{catalog}].dbo.EMMain em ON em.Employee = tk.Employee
 WHERE tk.WBS1 = ? AND tk.WBS2 = ? AND tk.WBS3 = ?
+  AND COALESCE(tk.LineItemApprovalStatus,'') <> 'R'
 GROUP BY tk.Employee, COALESCE(em.FirstName,'') + ' ' + COALESCE(em.LastName,''), tk.Category
-HAVING SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) > 0
-ORDER BY SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) DESC";
+HAVING SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0) + COALESCE(tk.SpecialOvtHrs,0)) > 0
+ORDER BY SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0) + COALESCE(tk.SpecialOvtHrs,0)) DESC";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = row.Wbs2 });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = row.Wbs3 });
@@ -429,7 +432,7 @@ ORDER BY SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) DESC";
             try
             {
                 var options = Kor.Operations.Services.AppServices.Get<DeltekOdbcOptions>();
-                var catalog = string.IsNullOrWhiteSpace(options.Catalog) ? "C0000052267P_1_KOR00000000" : options.Catalog;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(options.Catalog);
                 var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
                 var factory = new VpOdbcDsnFactory(dsn, options.User ?? "", options.Password ?? "",
                     () => new System.Collections.Generic.Dictionary<string, string>());
@@ -440,9 +443,10 @@ ORDER BY SUM(COALESCE(tk.RegHrs,0) + COALESCE(tk.OvtHrs,0)) DESC";
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = 30;
                 cmd.CommandText = $@"
-SELECT TransDate, Category, RegHrs, OvtHrs, TransComment
+SELECT TransDate, Category, RegHrs, OvtHrs, SpecialOvtHrs, TransComment
 FROM [{catalog}].dbo.tkDetail
 WHERE WBS1 = ? AND WBS2 = ? AND WBS3 = ? AND Employee = ? AND Category = ?
+  AND COALESCE(LineItemApprovalStatus,'') <> 'R'
 ORDER BY TransDate";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = _wbs1 });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = feeRow.Wbs2 });
@@ -450,19 +454,20 @@ ORDER BY TransDate";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = empRow.EmployeeCode });
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.NVarChar, Value = empRow.Category });
 
-                var rawEntries = new System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, string? Comment)>();
+                var rawEntries = new System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, double SpecialOvt, string? Comment)>();
                 using var r = await Task.Run(() => cmd.ExecuteReader());
                 while (r.Read())
                 {
                     var date = r.GetDateTime(0);
                     var reg = Convert.ToDouble(r.GetValue(2));
                     var ovt = Convert.ToDouble(r.GetValue(3));
-                    var comment = r.IsDBNull(4) ? null : r.GetString(4).Trim();
-                    rawEntries.Add((date, reg, ovt, string.IsNullOrWhiteSpace(comment) ? null : comment));
+                    var specialOvt = Convert.ToDouble(r.GetValue(4));
+                    var comment = r.IsDBNull(5) ? null : r.GetString(5).Trim();
+                    rawEntries.Add((date, reg, ovt, specialOvt, string.IsNullOrWhiteSpace(comment) ? null : comment));
                 }
 
                 // Group by month
-                var grouped = new System.Collections.Generic.SortedDictionary<(int Year, int Month), System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, string? Comment)>>();
+                var grouped = new System.Collections.Generic.SortedDictionary<(int Year, int Month), System.Collections.Generic.List<(DateTime Date, double Reg, double Ovt, double SpecialOvt, string? Comment)>>();
                 foreach (var entry in rawEntries)
                 {
                     var key = (entry.Date.Year, entry.Date.Month);
@@ -477,13 +482,13 @@ ORDER BY TransDate";
                     double monthTotal = 0;
                     foreach (var d in kvp.Value)
                     {
-                        var total = d.Reg + d.Ovt;
+                        var total = d.Reg + d.Ovt + d.SpecialOvt;
                         monthTotal += total;
                         days.Add(new TimesheetDayEntry
                         {
                             Date = d.Date,
                             Hours = total,
-                            OvtHrs = d.Ovt,
+                            OvtHrs = d.Ovt + d.SpecialOvt,
                             Comment = d.Comment,
                         });
                     }
@@ -522,6 +527,7 @@ ORDER BY TransDate";
                 var dsn = string.IsNullOrWhiteSpace(options.Dsn) ? "Deltek" : options.Dsn;
                 var user = options.User ?? string.Empty;
                 var pwd = options.Password ?? string.Empty;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(options.Catalog);
                 var factory = new VpOdbcDsnFactory(dsn, user, pwd, () => new System.Collections.Generic.Dictionary<string, string>());
 
                 using var cn = factory.Create();
@@ -532,13 +538,14 @@ ORDER BY TransDate";
 #endif
                 using var cmd = cn.CreateCommand();
                 cmd.CommandTimeout = SqlTimeouts.UiFacing;
-                cmd.CommandText = @"
+                cmd.CommandText = $@"
 SELECT 
     e.FirstName + ' ' + e.LastName AS EmployeeName,
-    SUM(t.RegHrs + t.OvtHrs) AS TotalHours
-FROM dbo.tkDetail t
-LEFT JOIN dbo.EMMain e ON t.Employee = e.Employee
+    SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS TotalHours
+FROM [{catalog}].dbo.tkDetail t
+LEFT JOIN [{catalog}].dbo.EMMain e ON t.Employee = e.Employee
 WHERE t.WBS1 = ?
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY e.FirstName, e.LastName
 ORDER BY TotalHours DESC";
                 cmd.Parameters.Add(new OdbcParameter { OdbcType = OdbcType.VarChar, Value = _wbs1 });
@@ -623,8 +630,20 @@ ORDER BY TotalHours DESC";
             public double FixedFee { get; }
             public double Fee { get; }
             public double FeeBilled { get; }
+            public double UnpostedFeeBilled { get; }
+            public double FeeBilledWithUnposted { get; }
             public double SubconsultantCost { get; }
             public double PercentBilled { get; }
+            public double PercentBilledWithUnposted { get; }
+            public bool   HasUnpostedBilling { get; }
+            // Pass-throughs to FinancialsProjectRow's derived profitability props
+            // so the detail window stat panels can bind without reaching across
+            // the VM boundary. Tier strings drive the badge dot DataTriggers.
+            public double Multiplier { get; }
+            public double Margin { get; }
+            public double ProfitDollars { get; }
+            public string MultiplierTier { get; }
+            public string MarginTier { get; }
 
             public double HoursSpent { get; }
             public double HoursBudgeted { get; }
@@ -658,8 +677,17 @@ ORDER BY TotalHours DESC";
                 FixedFee = p?.Fee ?? 0.0;
                 Fee = p?.TotalFee ?? 0.0;
                 FeeBilled = p?.FeeBilled ?? 0.0;
+                UnpostedFeeBilled = p?.UnpostedFeeBilled ?? 0.0;
+                FeeBilledWithUnposted = p?.FeeBilledWithUnposted ?? 0.0;
                 SubconsultantCost = p?.SubconsultantCost ?? 0.0;
                 PercentBilled = p?.PercentBilled ?? SafeDiv(FeeBilled, Fee);
+                PercentBilledWithUnposted = p?.PercentBilledWithUnposted ?? SafeDiv(FeeBilledWithUnposted, Fee);
+                HasUnpostedBilling = p?.HasUnpostedBilling ?? false;
+                Multiplier      = p?.Multiplier      ?? 0.0;
+                Margin          = p?.Margin          ?? 0.0;
+                ProfitDollars   = p?.ProfitDollars   ?? 0.0;
+                MultiplierTier  = p?.MultiplierTier  ?? "NoData";
+                MarginTier      = p?.MarginTier      ?? "NoData";
 
                 var eng = p?.EngHrs ?? 0.0;
                 var draft = p?.DraftHrs ?? 0.0;
@@ -674,7 +702,7 @@ ORDER BY TotalHours DESC";
                 HoursRemaining = HoursBudgeted - HoursSpent;
                 PercentHoursSpent = SafeDiv(HoursSpent, HoursBudgeted);
 
-                BacklogDollars = Fee - FeeBilled;
+                BacklogDollars = Fee - FeeBilledWithUnposted;
                 BacklogPercent = SafeDiv(BacklogDollars, Fee);
 
                 AddDiscipline("Eng", eng, HoursSpent);
@@ -686,9 +714,9 @@ ORDER BY TotalHours DESC";
                 AddDiscipline("Admin", admin, HoursSpent);
                 AddDiscipline("NonBill", nonBill, HoursSpent);
 
-                BurnRiskVisibility = PercentHoursSpent > PercentBilled ? Visibility.Visible : Visibility.Collapsed;
+                BurnRiskVisibility = PercentHoursSpent > PercentBilledWithUnposted ? Visibility.Visible : Visibility.Collapsed;
                 OverBudgetVisibility = HoursRemaining < 0 ? Visibility.Visible : Visibility.Collapsed;
-                OverbilledVisibility = FeeBilled > Fee ? Visibility.Visible : Visibility.Collapsed;
+                OverbilledVisibility = FeeBilledWithUnposted > Fee ? Visibility.Visible : Visibility.Collapsed;
                 SubconsultantCostVisibility = SubconsultantCost > 0 ? Visibility.Visible : Visibility.Collapsed;
 
                 var dc = DeliveryConfidenceCalculator.Compute(p);
@@ -698,7 +726,7 @@ ORDER BY TotalHours DESC";
                 ConfidenceLevel =
                     dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
                     dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
-                    dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
+                    dc.Status == "Watch" ? DeliveryConfidenceLevel.Watch :
                     DeliveryConfidenceLevel.HighConfidence;
 
                 BuildRiskDrivers(p!, HoursSpent, HoursBudgeted, HoursRemaining, BacklogDollars);
@@ -817,7 +845,7 @@ ORDER BY TotalHours DESC";
                     {
                         DeliveryConfidenceLevel.Critical => "Critical",
                         DeliveryConfidenceLevel.AtRisk => "At Risk",
-                        DeliveryConfidenceLevel.Stable => "Watch",
+                        DeliveryConfidenceLevel.Watch => "Watch",
                         DeliveryConfidenceLevel.HighConfidence => "High Confidence",
                         _ => "Unknown"
                     };

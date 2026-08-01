@@ -1,0 +1,265 @@
+{
+  "category": "competitors",
+  "orgs": [
+    {
+      "orgId": 75868,
+      "orgName": "Bush, Bohlman & Partners",
+      "domain": "bushbohlman.com",
+      "people": [
+        {
+          "name": "Clint Low",
+          "title": "Managing Partner (P.Eng., Struct.Eng., MIStructE, FEC)",
+          "email": "clow@bushbohlman.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 93,
+          "linkedin": "",
+          "note": "30+ year principal; Lieutenant Governor Award 2013; healthcare + education focus; founding-generation leader, likely near succession horizon"
+        },
+        {
+          "name": "Tim White",
+          "title": "Managing Partner (Ph.D., P.Eng.)",
+          "email": "twhite@bushbohlman.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 94,
+          "linkedin": "https://www.linkedin.com/in/tim-white-ph-d-p-eng-1a1a636/",
+          "note": "Canada-leading seismic retrofit expert; leads EGBC Technical Review Board; authored BC School Seismic Retrofit Guidelines. THE incumbent expert on seismic school work - key threat to KOR."
+        },
+        {
+          "name": "Mark Anderson",
+          "title": "Partner (P.Eng., Struct.Eng., MIStructE)",
+          "email": "manderson@bushbohlman.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 95,
+          "linkedin": "https://www.linkedin.com/in/bushbohlmanmarkanderson/",
+          "note": "Wood/mass timber specialist, 15 years at firm. Surrey Memorial Hospital atrium. Healthcare + commercial focus."
+        },
+        {
+          "name": "Brett Halicki",
+          "title": "Partner (P.Eng.)",
+          "email": "bhalicki@bushbohlman.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 98,
+          "linkedin": "https://www.linkedin.com/in/brett-halicki-77578015/",
+          "note": "Lakehead BEng + BCIT Diploma. Healthcare + schools + civic. Led Whitehorse Hospital ED prefabricated design."
+        },
+        {
+          "name": "Mike Mariotto",
+          "title": "Partner (P.Eng., Struct.Eng., S.E., LEED AP)",
+          "email": "mmariotto@bushbohlman.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 96,
+          "linkedin": "https://www.linkedin.com/in/mike-mariotto-85021266/",
+          "note": "25 years experience. Commercial + residential + institutional. Holds US S.E. credential - signals CA/cross-border work capability."
+        },
+        {
+          "name": "Trevor Whitney",
+          "title": "Partner (P.Eng., Struct.Eng.)",
+          "email": "twhitney@bushbohlman.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 94,
+          "linkedin": "https://www.linkedin.com/in/trevor-whitney-a25b6219b/",
+          "note": "UBC BASc. Led YVR CORE structural team (largest YVR project since 1990s). Steel + seismic + critical facilities. CSA S16 committee member."
+        }
+      ],
+      "firmNotes": "Bush, Bohlman & Partners LLP. Founded 1976 (~50 yrs). Staff ~31 (third-party estimate; not disclosed). Single office: Suite 1550, 1500 W Georgia St, Vancouver BC V6G 2Z6. Phone 604-688-9861, info@bushbohlman.com. Email pattern {f}{last}@bushbohlman.com (Hunter-confirmed). Sectors: healthcare (dominant - Surrey Memorial, Royal Columbian, Cowichan District, Whitehorse Hospital), K-12 seismic retrofits, higher ed (UBC, Emily Carr), civic/cultural (Science World retrofit), transportation (YVR CORE, Pier D), mass timber, P3/design-build, modular. Recent wins 2024-2026: Cowichan District Hospital Replacement (Gold 2026 Touchstone Award, 2027 opening); New Surrey Hospital + BC Cancer Centre (under construction); Royal Columbian Jim Pattison Acute Care Tower (substantial completion Jun 2025); Science World seismic/carbon retrofit (active Sep 2025); SD36 Surrey Resource & Education Centre (mass timber hybrid).",
+      "vulnerabilities": "Succession risk: Clint Low 30+ yr principal late-career; firm reputation concentrated in Low + White. Single-office (Vancouver only) - no Interior/Island presence. Healthcare monoculture - pipeline highly exposed to BC health capital freeze or P3 slowdown; KOR's developer-resi + heritage + seismic mix is more resilient. Staff cap ~31 - cannot absorb multiple concurrent large P3 healthcare projects without bandwidth stress (Surrey + Royal Columbian + Cowichan all active simultaneously); KOR could position as overflow sub or via architects who find BB&P stretched. CAUTION: Tim White IS the gatekeeper for K-12 seismic school program (co-authors guidelines, EGBC review board) - KOR should not compete head-on; target private-sector seismic (heritage/commercial) instead. Mike Mariotto's US S.E. credential signals possible CA expansion - monitor since KOR also pursuing CA. Mark Anderson mass-timber specialty overlaps a KOR growth lane."
+    },
+    {
+      "orgId": 70635,
+      "orgName": "HDR [structural/engineering arm]",
+      "domain": "hdrinc.com",
+      "people": [
+        {
+          "name": "Matthieu Grady",
+          "title": "Design Principal, Western Canada (Architecture - not structural)",
+          "email": "matthieu.grady@hdrinc.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/matthieugrady",
+          "note": "23+ yrs architecture. Leads Western Canadian design studios. Not a structural engineer."
+        },
+        {
+          "name": "Matthew D. Emerson",
+          "title": "Education & Science Sector Principal (Architect AIBC)",
+          "email": "matthew.emerson@hdrinc.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "https://www.linkedin.com/in/emerson1899",
+          "note": "Education/science facilities focus, Vancouver-based. Architecture, not structural. Sector-entry contact."
+        },
+        {
+          "name": "Kim Gosteli",
+          "title": "National Director, Business Development, Canada",
+          "email": "kim.gosteli@hdrinc.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Canada-wide BD lead. Key pursuit/teaming contact for HDR structural-sub teaming."
+        },
+        {
+          "name": "Som Bose",
+          "title": "Principal Planner",
+          "email": "som.bose@hdrinc.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Vancouver office. Planning discipline, not structural."
+        }
+      ],
+      "firmNotes": "HDR Inc - global multidisciplinary firm. BC office: 601 West Hastings St, Suite 1500, Vancouver BC V6B 1M8, (604) 622-5300; additional BC locations Victoria + Penticton. Vancouver office originated from 2015 acquisition of CEI Architecture (~70 staff, founded 1996); rebranded HDR by 2019. Email pattern firstname.lastname@hdrinc.com (Hunter-confirmed across 30 contacts, but ZERO structural/Vancouver-flagged among them). CRITICAL FINDING: HDR's BC presence is an ARCHITECTURE practice, not a structural engineering bench - no named BC structural engineers surfaced in any public source. Building Engineering Services unit (Canada, 2021) advertises structural/MEP/civil but BC roles are architecture-led. Sectors in BC: healthcare (dominant), education/science, transportation, water/wastewater, civic. Recent BC wins: New St. Paul's Hospital Vancouver ($2.18B, HDR+Stantec as ARCHITECT; structural = RJC + MKA, NOT HDR; opening ~2026); Richmond Hospital Redevelopment / Yurkovich Family Pavilion (CDN $1.96B, awarded 2025-02-26, HDR architect with Graham Design Builders alliance, structural subs not yet public, construction ~2026).",
+      "vulnerabilities": "HDR is a TEAMING TARGET, not a structural competitor, in BC. No BC structural depth - both major confirmed hospital wins had structural awarded to third parties (RJC, MKA). KOR can pursue the structural-sub slot on HDR-led BC healthcare/civic/education projects. Richmond Hospital ($1.96B) is in alliance-development phase now (2025-2026) - structural subconsultant selection likely still open/early; pursue via Graham (Richard Ellis-Smith, EVP Buildings Canada) and HDR BD lead Kim Gosteli. Seismic is an HDR BC weakness - global team advertises seismic but no confirmed BC seismic structural track record; KOR's heritage seismic rehab directly differentiates. KOR cannot win prime AOR on these but structural sub is the right target - HDR needs a BC-credentialed seismic SE, which KOR has. Entry contacts: Kim Gosteli (BD), Matthew Emerson (Education sector), Graham partnership team."
+    },
+    {
+      "orgId": 76499,
+      "orgName": "Aspect Engineering",
+      "domain": "aspectengineers.com",
+      "people": [
+        {
+          "name": "Adam Gerber",
+          "title": "CEO, Principal (P.Eng., M.A.Sc., M.B.A., CPHC)",
+          "email": "adam@aspectengineers.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 98,
+          "linkedin": "https://ca.linkedin.com/in/adam-gerber-p-eng-mba-masc-a9052790",
+          "note": "Founding member. UBC MASc Structural/Earthquake Eng 2016. Timber-concrete composite + vibration specialist. IMTC speaker. Principal since 2018."
+        },
+        {
+          "name": "Mehrdad Jahangiri",
+          "title": "Founding Principal / Partner (P.Eng., Dipl. Ing. Germany)",
+          "email": "mehrdad@aspectengineers.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "https://ca.linkedin.com/in/mehrdad-jahangiri-ba519a45",
+          "note": "23+ yrs intl (Canada/US/Germany). Led Tallwood 1 (12-storey EMTC, first in Canada). Concrete/steel/mass timber. Former ACC Engineering."
+        },
+        {
+          "name": "Bernhard Gafner",
+          "title": "Founding Principal (Dipl. Ing. Timber Eng, Biel Switzerland)",
+          "email": "bernhard@aspectengineers.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "https://www.linkedin.com/in/bernhard-gafner-a369a544/",
+          "note": "Heads Bern office (ASPECT Structural Engineers AG, Board President). Gives firm European mass timber supply-chain access. CTBUH member."
+        },
+        {
+          "name": "Andrew Chad",
+          "title": "Senior Structural Engineer (formerly Founding Principal)",
+          "email": "andrew@aspectengineers.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "https://aspectengineers.com/portfolio/andrew-chad/",
+          "note": "Co-founder, 18+ yrs. Architectural/specialty structures + timber. Portfolio page 404'd - may have stepped back from principal role."
+        },
+        {
+          "name": "Ilana Danzig",
+          "title": "Managing Principal, Vancouver (P.Eng. inferred)",
+          "email": "ilana@aspectengineers.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 99,
+          "linkedin": "",
+          "note": "Day-to-day Vancouver office lead. Key operational contact for Vancouver BD/delivery; not a founder."
+        },
+        {
+          "name": "Gina Sheppard",
+          "title": "COO, Founding Principal (non-P.Eng technical lead)",
+          "email": "gina@aspectengineers.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 85,
+          "linkedin": "",
+          "note": "Kwantlen grad. BIM/coordination specialist, 15+ yrs. ZoomInfo confirms g***@aspectengineers.com. Oversees large commercial/residential."
+        },
+        {
+          "name": "Amir Shahrokhi",
+          "title": "Associate Principal, Director of Innovation",
+          "email": "amir@aspectengineers.com",
+          "emailSource": "Hunter",
+          "emailConfidence": 97,
+          "linkedin": "",
+          "note": "Joined Aug 2024 from SHoP Architects. Architect background, drives fabrication/innovation pipeline."
+        },
+        {
+          "name": "James Cranford",
+          "title": "Managing Principal, Toronto (P.Eng. inferred)",
+          "email": "james@aspectengineers.com",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Toronto office lead. Not in Hunter results - pattern inferred only."
+        }
+      ],
+      "firmNotes": "ASPECT Structural Engineers (CRM 'Aspect Engineering'). Founded 2016, spun out of ACC Engineering by Chad/Jahangiri/Gafner/Sheppard + Gerber. DATA-QUALITY FLAG: CRM staff ~2 is badly stale - actual headcount is 62 (LinkedIn-verified), ~25% growth in 2024. Offices: Vancouver HQ (101-190 West 3rd Ave W; 604-762-7844; hello@aspectengineers.com), Toronto, and Bern Switzerland. Email pattern firstname@aspectengineers.com (Hunter-confirmed; duplicate first-names use firstname.lastname). Sectors: MASS TIMBER (flagship - CLT/glulam/NLT/DLT/TCC), residential (custom homes, MURBs, affordable housing), commercial/office, institutional (post-secondary, schools, Indigenous community), healthcare, sports/rec, architecturally expressive structures, PassiveHouse. Recent wins 2024-2026: 2025 Wood Design & Building Awards (4 projects incl Adams Lake Health & Wellness Centre, Kin Park Pavilion, Google Borregas LEED Platinum Sunnyvale CA); Canada Top 100 SME Employers 2024+2025; Capilano U Fulmer Family Centre; David Rubenstein Treehouse at Harvard; modular timber housing w/ Perkins&Will (May 2026); IMTC Portland 2026 presenter; Tallwood 1 12-storey EMTC (first in Canada).",
+      "vulnerabilities": "NOT a capacity-stretched micro-firm - this is a well-organized 62-person, 3-office, award-winning mid-size competitor with a 3-person marketing team. Real KOR angles are lane-differentiation, not capacity: (1) Extreme mass-timber concentration - brand/awards/BD almost entirely timber; KOR can position material-agnostic on developer-resi + heritage. (2) NO seismic retrofit / heritage / post-disaster presence - KOR's heritage+seismic lane is entirely uncontested by ASPECT. (3) No bread-and-butter wood-frame MURB developer-resi depth (showcases are high-end custom + competitions); KOR has deeper mid-market developer relationships. (4) Architect-dependent BD model (Perkins&Will, SHoP) - same sub-to-architect channel as KOR; KOR must be earlier on shared architect relationships. (5) Rapid 25% growth + active hiring strains QA/senior oversight (10 EITs/juniors on team page) - acquisition target for clients burned by under-supervised work. (6) Founder succession unsettled (Vancouver run by non-founder Danzig; Chad page 404; Gerber conference-circuit not Vancouver-present; Sheppard non-P.Eng) - key-person risk in Jahangiri/Chad/Gerber. (7) Google Borregas shows CA ambition but no CA-licensed SE on staff - same challenger position as KOR (neither is BC-to-CA incumbent; that is Glotman Simpson). RECOMMEND: update CRM staff count + firm record."
+    },
+    {
+      "orgId": 70653,
+      "orgName": "Sorensen Trilogy Engineering Ltd",
+      "domain": "westshoreeng.ca",
+      "people": [
+        {
+          "name": "Brian Lange",
+          "title": "Principal / Senior Structural Engineer, Victoria (P.Eng., B.ASc. Waterloo)",
+          "email": "brian@westshoreeng.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 67,
+          "linkedin": "https://ca.linkedin.com/in/brian-lange-33757841",
+          "note": "Only confirmed P.Eng remaining - de facto technical lead, stamps drawings. 21+ yrs, EGBC school-seismic cert. Named defendant in Centurion SCC litigation. LinkedIn confirms stayed through rebrand. (Hunter listed last name 'Peng' - data error.)"
+        },
+        {
+          "name": "Khanh Tran",
+          "title": "Partner / Principal Manager, Nanaimo (P.Eng. inferred)",
+          "email": "khanh@westshoreeng.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 67,
+          "linkedin": "",
+          "note": "20+ yrs, seismic retrofit. Prepared Danbrook One remediation drawings ~Jun 2020; named in Centurion litigation. P.Eng status inferred not confirmed."
+        },
+        {
+          "name": "Ted Sorensen",
+          "title": "Founder / Senior Structural Designer (NOT P.Eng - EGBC cancelled Jan 2023)",
+          "email": "ted@westshoreeng.ca",
+          "emailSource": "Hunter",
+          "emailConfidence": 67,
+          "linkedin": "",
+          "note": "CRITICAL: EGBC registration cancelled effective Jan 2023 over Danbrook One/RidgeView failures; admitted unprofessional conduct + incompetence on 11-storey concrete seismic design. Now 'Designer' - cannot stamp. Defendant in $45M+ Centurion suit + WestUrban suit."
+        },
+        {
+          "name": "Brian McClure",
+          "title": "Former Engineer (DEPARTED - license revoked)",
+          "email": "",
+          "emailSource": "Unknown",
+          "emailConfidence": 0,
+          "linkedin": "",
+          "note": "EGBC registration cancelled 2022, fined $57,000, banned min 2 yrs. Led Danbrook One + WestUrban engineering; admitted incompetence. No longer with firm."
+        },
+        {
+          "name": "Paul Tobin",
+          "title": "Senior Structural Technologist (non-P.Eng)",
+          "email": "paul@westshoreeng.ca",
+          "emailSource": "PatternInferred",
+          "emailConfidence": 55,
+          "linkedin": "",
+          "note": "Drafting/detailing. ex-ISL Engineering. ZoomInfo partial match p***@sorensentrilogy.ca."
+        },
+        {
+          "name": "Dan Fell",
+          "title": "Former staff (DEPARTED - now at CV Engineering Ltd)",
+          "email": "",
+          "emailSource": "Unknown",
+          "emailConfidence": 0,
+          "linkedin": "https://ca.linkedin.com/in/dan-fell-04758360",
+          "note": "Left the firm; current employer CV Engineering Ltd (formerly JD Structural Consulting)."
+        }
+      ],
+      "firmNotes": "REBRANDED: Sorensen Trilogy Engineering Ltd is now Westshore Structural Engineering Ltd (WSE), westshoreeng.ca - same principals/offices/phone (250-585-1360, mail@westshoreeng.ca). New domain first crawled Aug 2025; rebrand most likely triggered by Sorensen's Jan 2023 EGBC discipline. CRM org name + domain should be updated. Email pattern {first}@westshoreeng.ca (Hunter-confirmed). Offices: Nanaimo HQ (Unit C-5107 Somerset Dr V9T 2K5), Victoria/Langford (215-737 Goldstream Ave V9B 2X4), Courtenay (201B-2435 Mansfield Dr - old branding, current status unconfirmed). Staff ~5-10 (LinkedIn 5; hiring a Structural Technologist Oct 2025). Est revenue ~$3.3M. Vancouver Island focus, BC-wide. Sectors: multi-family + single-family residential, commercial/retail, heavy timber, institutional (schools/healthcare/civic), infrastructure (Site C Bridge), seismic assessment/retrofit, building condition assessments. Confirmed projects: Site C Bridge, Peatt Commons, Village Walk West, Quality Foods, Pacific Station, Portsmouth Professional Center.",
+      "vulnerabilities": "MOST EXPLOITABLE TARGET ON LIST. (1) CRITICAL - founder Ted Sorensen EGBC-cancelled (Jan 2023), cannot stamp; firm depends entirely on Brian Lange (only confirmed P.Eng) for stamp coverage - single-P.Eng bottleneck; if Lange leaves the firm cannot practice. (2) Two public negligence suits: Centurion $45M+ (Danbrook One 11-storey concrete, BC CoA reversed dismissal Jan 2024, SCC leave filed, open late 2025) + WestUrban (Nanaimo Arbutus 59-unit + Campbell River Watermark 51-unit, undersized footings). Rebrand appears designed to distance from Sorensen Trilogy name - architects Googling old name find discipline + lawsuits. (3) Recruiting technologists not engineers - P.Eng capacity thin. (4) Danbrook failure was specifically seismic/core design - directly undermines WSE credibility in seismic, the exact sector overlapping KOR's heritage/seismic lane. KOR ANGLE: build a Vancouver Island (Nanaimo/Victoria/Comox) architect target list; lead BD with KOR's clean EGBC record, P.Eng depth, and unblemished seismic track record vs WSE's litigation baggage and stamp fragility."
+    },
+    {
+      "orgId": 15548,
+      "orgName": "SMP Engineering",
+      "domain": "",
+      "people": [],
+      "firmNotes": "DATA-QUALITY FINDING - NOT A STRUCTURAL COMPETITOR. KOR's OWN enrichment pipeline already caught this on 2026-06-11 and suppressed enrichment 2026-06-12 (migration m132, reason: 'allied-discipline (non-structural) - was misclassified Competitor; teaming-partner taxonomy TBD'). The entity (smpeng.com) is the Calgary-based SMP Engineering ELECTRICAL consulting firm: HQ 403-1240 Kensington Rd NW Calgary AB; offices Calgary/Edmonton/Lethbridge + Vancouver (400-601 West Broadway, Vancouver BC V5Z 4C2); founded 1972; ~100+ staff (LinkedIn 101-200). Discipline = ELECTRICAL only (life safety/fire alarm, power, communications, security, lighting, LEED, solar/PV, BIM) - NO structural, NO seismic. Sample leadership: Susan Walsh (CEO), Alim Peerani (Partner MBA/CPA/CGA), Brad Fair (Partner C.E.T.). BC Registry: GP FM0657088, business# 808536593, registered 2015-04-01 (consistent with the Calgary firm's BC branch partnership). All 5 KOR opportunities linked to org 15548 are Alberta-government electrical/MEP RFPs - zero BC structural work. Contradicts every original CRM attribute (structural/seismic/BC/~2 staff). The 'SMP seismic schools' framing is an acronym collision with BC's Ministry of Education Seismic Mitigation Program (a government funding program, not a firm). Hunter returned 0 results across 8 domain variants tried; email pattern firstnamelastname@smpeng.com inferred only, no contact Hunter-confirmed - no emails fabricated.",
+      "vulnerabilities": "No structural competitor to assess - SMP is a potential MEP (electrical) TEAMING PARTNER / sub-consultant on joint teams where KOR provides structural, not a rival. RECOMMEND: confirm KOR CRM orgId 15548 Kind is corrected from Competitor to TeamingPartner/allied-discipline (m132 already suppressed enrichment; re-enable once teaming-partner taxonomy field ships). No principals, emails, or projects fabricated."
+    }
+  ]
+}

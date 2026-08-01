@@ -1,0 +1,355 @@
+53252|Japan Canada Oil Sands Limited (JACOS)|EnergyJV
+53253|North West Upgrading Inc.|EnergyJV
+53254|Fort Hills Energy Corp.|EnergyJV
+53263|ENMAX Energy Corp.|EnergyJV
+53266|Hillwood Investment Properties|CoDevJV
+53267|Groupe Germain Hospitalite|CoDevJV
+53270|WAM Development Group|CoDevJV
+53301|Calgary Urban Equities|CoDevJV
+53311|Bosa Development|CoDevJV
+53318|FRAM Building Group|CoDevJV
+53342|Alberta Environment|CoDevJV
+53349|Alberta Sustainable Resource Development|FunderOperator
+53361|Devon NEC Corp.|EnergyJV
+53369|Embassy BOSA|CoDevJV
+53373|Northern Biodiesel Limited Partnership|EnergyJV
+53380|Smoky Lake Foundation|FunderOperator
+53393|Imperial Oil|EnergyJV
+53411|Metropia|CoDevJV
+53415|Marriott International|CoDevJV
+53421|Town of Barrhead|CityDeveloper
+53422|Katz Group|CoDevJV
+53428|First Capital Realty|CoDevJV
+53431|Century Casinos|CoDevJV
+53434|WamDevelopment Group|CoDevJV
+53442|Artists Urban Village|CoDevJV
+53445|Alberta Cancer Foundation|FunderOperator
+53446|Morguard Investments Ltd.|CoDevJV
+53448|Silverbirch Hotels and Resorts|CoDevJV
+53456|Tennis Alberta|CoDevJV
+53475|CNRL|EnergyJV
+53476|TransAlta|EnergyJV
+53484|Calgary Exhibition and Stampede|CoDevJV
+53490|Christenson Communities|CoDevJV
+53495|Alberta Wind Energy Corp.|EnergyJV
+53499|Telus|CoDevJV
+53511|The Torgan Group|CoDevJV
+53519|Batistella Developments|CoDevJV
+53533|Decidedly Jazz Danceworks|CoDevJV
+53538|Parkland Foundation|CoDevJV
+53561|Grosvenor|CoDevJV
+53588|ATCO Energy Solutions|EnergyJV
+53623|Keyera Corp.|EnergyJV
+53637|Strathcona County|CityDeveloper
+53643|Calgary Stampede|CoDevJV
+53649|Primco Holdings|CoDevJV
+54601|Wall Financial Group|CityDeveloper
+54915|Concert Properties|CoDevJV
+55033|AgeCare|FunderOperator
+55092|Cadillac Fairview|CoDevJV
+55098|SCDC|CityDeveloper
+55107|JTA Development Consultants|CoDevJV
+55113|Five Mile Holdings|CoDevJV
+55114|W5 Arbutus Holdings|CoDevJV
+55118|The Bloom Group|CoDevJV
+55119|Alexander Manor Holdings|CoDevJV
+55120|JTA Development Consultants|CoDevJV
+68714|Seattle Center|CityDeveloper
+68718|PAE|ArchitectJV
+68727|OMA|ArchitectJV
+68729|OHSU|CoDevJV
+68731|Wright Runstad & Company|CoDevJV
+68735|UW Medicine|HealthOwner
+68737|Pickard Chilton|ArchitectJV
+68785|Calgary Sports & Entertainment Corp|CityDeveloper
+68789|Katz Group|CityDeveloper
+68798|Cenovus|EnergyJV
+68800|Westbank|CoDevJV
+68803|ICE District|CoDevJV
+68806|City of Calgary|CityDeveloper
+68807|NAIT|FunderOperator
+69025|District of New Hazelton|CityDeveloper
+69032|Fraser Health|HealthOwner
+69230|Royal BC Museum|FunderOperator
+69234|Perkins&Will|ArchitectJV
+69251|James KM Cheng Architects|ArchitectJV
+69259|Great Gulf|CoDevJV
+69260|Perkins&Will|ArchitectJV
+69267|Ministry of Technology Innovation and Citizens' Services|FunderOperator
+69355|Songhees Nation|FirstNation
+69365|OKIB Group of Companies|FirstNation
+69366|Penticton Indian Band Development Corporation|FirstNation
+69368|Splatsin Development Corporation|FirstNation
+69372|Kanaka Bar Indian Band|FirstNation
+69383|Lilwat Business Group|FirstNation
+69384|Lilwat Business Group|FirstNation
+69385|Skidegate Band Council|FirstNation
+69389|Haisla Nation|FirstNation
+69390|Gitxaala Nation|FirstNation
+69583|TKA+D Architecture & Design|ArchitectJV
+69896|Pheidias Project Management|CoDevJV
+69971|Merrick Architecture|ArchitectJV
+69990|City of Duncan|CityDeveloper
+69991|School District 71 (Comox Valley)|CoDevJV
+70026|Eyamethr Health Society|FirstNation
+70067|Summit Community Services Society|CoDevJV
+70069|BC Children's Hospital|HealthOwner
+70072|Community Land Trust|CoDevJV
+70333|Peninsula Recreation Commission|CityDeveloper
+70486|Taholah School District|FirstNation
+70589|Plavetic|CoDevJV
+70615|SmartCentres REIT|CoDevJV
+70617|Boss Developments|CoDevJV
+70619|Ho Goon Holdings Inc|CoDevJV
+70633|Royal BC Museum|FunderOperator
+70649|Frame Properties|CoDevJV
+70651|McLash Development Ltd|CoDevJV
+70672|EIDOS Architecture|ArchitectJV
+70674|Townline|CoDevJV
+70676|Townline Housing|CoDevJV
+70687|Weytk Communities Inc|CoDevJV
+70688|Luxuira Developments|CoDevJV
+70768|Greater Victoria Coalition to End Homelessness|FunderOperator
+70807|Jawl Properties|CoDevJV
+70883|Vancouver School Board|CityDeveloper
+70886|UBC|CoDevJV
+70896|James K.M. Cheng Architects Inc.|ArchitectJV
+70911|Westbank Corp.|CoDevJV
+70915|Nchkay Development Corporation|FirstNation
+70923|James Cheng Architects|ArchitectJV
+70935|Reliance Properties|CoDevJV
+70946|Bensen Manufacturing|CoDevJV
+70957|Morphosis Architects|ArchitectJV
+70974|Moriyama Teshima Architects|ArchitectJV
+70977|Community Land Trust Foundation of BC|CoDevJV
+70979|Community Land Trust|CoDevJV
+71003|MCC Legacy Trust|CoDevJV
+71006|Beedie Group|CoDevJV
+71010|Tomo Spaces|CoDevJV
+71031|TKA+D Architecture + Design|ArchitectJV
+71042|Strand Development|CoDevJV
+71056|Shared Services BC|CityDeveloper
+71116|Perkins+Will|ArchitectJV
+71140|Pangman Development Corporation|CoDevJV
+71181|ONE Properties|CoDevJV
+71192|K-Days|CoDevJV
+71196|Francis Winspear Centre for Music|CoDevJV
+71463|Chernoff Thompson Architects|ArchitectJV
+71476|Parkin Architects Ltd.|ArchitectJV
+71480|IBI Group|ArchitectJV
+71483|HCMA Architecture + Design|ArchitectJV
+71485|Diamond Schmitt|ArchitectJV
+71500|Teeple Architects|ArchitectJV
+71501|Gibbs Gage Architects|ArchitectJV
+71502|KPMB Architects|ArchitectJV
+72186|ZGF Architects|ArchitectJV
+72253|Catalyst Community Developments|FunderOperator
+72410|Interior Health Authority|HealthOwner
+72437|Covenant Health|FunderOperator
+74102|S2 Architecture|ArchitectJV
+74103|Stantec Architecture|ArchitectJV
+74104|hcma architecture + design|ArchitectJV
+74115|Architecture49|ArchitectJV
+74161|Calgary Municipal Land Corporation|CityDeveloper
+74164|Katz Group|CityDeveloper
+74166|Alberta Health Services|HealthOwner
+74168|Calgary Public Library|CityDeveloper
+74169|City of Calgary|CityDeveloper
+74177|City of Edmonton|CityDeveloper
+74333|Cenovus Energy Inc.|EnergyJV
+74337|City of Calgary|CityDeveloper
+74338|Katz Group of Companies|CityDeveloper
+74341|City of Calgary|CityDeveloper
+74342|Regional Municipality of Wood Buffalo|CityDeveloper
+74343|City of Edmonton|CityDeveloper
+74344|City of Edmonton|CityDeveloper
+74345|Lamb Development Corp.|CoDevJV
+74346|City of Medicine Hat|CityDeveloper
+74347|Covenant Health|FunderOperator
+74351|City of Medicine Hat|CityDeveloper
+74354|Grosvenor Canada|CoDevJV
+74357|City of Spruce Grove|CityDeveloper
+74360|City of Spruce Grove|CityDeveloper
+74362|MD of Greenview|CityDeveloper
+75508|Island Health|HealthOwner
+75509|Island Health|HealthOwner
+75510|Interior Health|HealthOwner
+75513|UVic|CoDevJV
+75514|District of Saanich|CityDeveloper
+75515|City of Nanaimo|FunderOperator
+75516|City of Nanaimo|CityDeveloper
+75517|Troika Developments|CityDeveloper
+75518|City of Kelowna|CityDeveloper
+75567|Hariri Pontarini Architects|ArchitectJV
+75592|Hariri Pontarini Architects|ArchitectJV
+75594|JTA Development Consultants|CoDevJV
+75740|Conseil scolaire francophone (SD 93)|CoDevJV
+75749|Chard Development Ltd.|FunderOperator
+75760|Stantec|ArchitectJV
+75761|Stantec|ArchitectJV
+75810|Pacific National Exhibition (PNE)|CityDeveloper
+75845|Capital Region Housing Corporation|FunderOperator
+75846|Aboriginal Coalition to End Homelessness|FunderOperator
+75847|District of Saanich|FunderOperator
+75848|Snuneymuxw First Nation|FunderOperator
+75849|Island Health|FunderOperator
+75850|Interior Health|FunderOperator
+75851|Housing Okanagan Foundation|CityDeveloper
+75862|Merrick Architecture|ArchitectJV
+75865|Kerkhoff Construction|CoDevJV
+75870|Brenhill Developments Ltd.|CityDeveloper
+75872|IBI Group|ArchitectJV
+75879|Calgary Municipal Land Corporation|CityDeveloper
+75889|Fraser Health|HealthOwner
+75890|Parkin Architects|ArchitectJV
+75894|Proscenium Architecture + Interiors|ArchitectJV
+75900|Happy Harvest Inc.|CoDevJV
+75904|More Than a Roof Housing Society|FunderOperator
+75905|Stryke Group|CoDevJV
+75923|Khowutzun Development LLP|FirstNation
+75924|Petroglyph Development Group|FirstNation
+75925|Tsuma-as Housing Society|FirstNation
+75926|Tseshaht First Nation|FirstNation
+75927|Tseshaht First Nation|FirstNation
+75929|Ntityix Development Corporation|FirstNation
+75931|Mount Paul Apartments Kamloops 2024 Ltd.|FirstNation
+75932|Scwenwen Economic Development Corporation|FirstNation
+75933|Nlakapamux Nation Tribal Council|FirstNation
+75934|Nchkay Development Corporation|FirstNation
+75935|Revery Architecture|ArchitectJV
+75936|Nchkay Development Corporation|FirstNation
+75937|Nchkay Development Corporation|FirstNation
+75938|Hiyam ta Skwxwu7mesh Housing Society|FirstNation
+75939|Musqueam Capital Corporation|FirstNation
+75940|GBL Architects|ArchitectJV
+75941|Takaya Developments Ltd.|FirstNation
+75942|Nakazdli Development Corp|FirstNation
+76015|Providence Health Care|HealthOwner
+76022|City of Vancouver|CityDeveloper
+76037|Saanich Public Library|CityDeveloper
+76038|Interior Health|HealthOwner
+76167|Okanagan Metis & Aboriginal Housing Society|FunderOperator
+76168|Architecture49|ArchitectJV
+76170|District Group|CoDevJV
+76172|CMHA Kelowna|FunderOperator
+76173|CMHA Central Okanagan|FunderOperator
+76178|City of Vancouver|CityDeveloper
+76179|Dialog|ArchitectJV
+76185|Interior Health|HealthOwner
+76187|Parkin Architects|ArchitectJV
+76188|Island Health|HealthOwner
+76190|Eagle Valley Senior Citizens Housing Society|FunderOperator
+76192|Local Practice Architecture + Design|ArchitectJV
+76201|Olson Kundig|ArchitectJV
+76203|MA+HG Architects|ArchitectJV
+76204|City of Vancouver|CityDeveloper
+76208|City of Burnaby|CityDeveloper
+76209|HDR Architecture Associates|ArchitectJV
+76212|Fraser Health Authority|HealthOwner
+76213|Westbank Corp|CoDevJV
+76214|Okanagan College|CoDevJV
+76217|City of Penticton|CityDeveloper
+76218|EDGAR Development|FunderOperator
+76220|Parkin Architects Western Ltd.|ArchitectJV
+76224|Municipality of North Cowichan|FunderOperator
+76226|BC Ministry of Transportation & Infrastructure|FunderOperator
+76227|GBL Architects|ArchitectJV
+76229|Proscenium Architecture + Interiors|ArchitectJV
+76230|Ryder Architecture|ArchitectJV
+76231|VAHA|FunderOperator
+76237|Francl Architecture|ArchitectJV
+76248|Parkin Architects|ArchitectJV
+76339|Thinkspace|ArchitectJV
+76343|Island Health|HealthOwner
+76344|M'akola Housing Society|FunderOperator
+76349|Thompson-Nicola Regional District|CityDeveloper
+76351|Interior Health|HealthOwner
+76352|Interior Health|HealthOwner
+76353|Interior Health|FunderOperator
+76354|Tsilhqotin National Government|FirstNation
+76355|City of Cranbrook|CityDeveloper
+76356|Canadian Mental Health Association Kamloops|FunderOperator
+76360|Michael Green Architecture|ArchitectJV
+76364|Alberni-Clayoquot Regional District|CityDeveloper
+76366|City of Courtenay|CityDeveloper
+76369|Snuneymuxw First Nation Youth and Family Society|FunderOperator
+76370|Tseshaht First Nation|FirstNation
+76371|Lookout Housing and Health Society|FunderOperator
+76372|Patrick R. Stewart Architect|ArchitectJV
+76376|City of Vancouver|CityDeveloper
+76377|Vancouver Public Library|CityDeveloper
+76378|DA Architects + Planners|ArchitectJV
+76380|Kwantlen Polytechnic University|CoDevJV
+76382|City of Abbotsford|FunderOperator
+76383|Ron Hart Architecture|ArchitectJV
+76384|Ann Davis Transition Society|FunderOperator
+76385|New Vista Society|FunderOperator
+76386|HDR|ArchitectJV
+76388|Port Moody Public Library|CityDeveloper
+76389|City of Langford|CityDeveloper
+76390|SFU ChildCare Society|CoDevJV
+76391|Providence Living|HealthOwner
+76475|Turning Points Collaborative Society|FunderOperator
+76476|Lu'ma Native Housing Society|FunderOperator
+76477|Parkdale Place Housing Society|FunderOperator
+76478|Lower Similkameen Community Services Society|FunderOperator
+76479|South Skaha Housing Society|FunderOperator
+76480|Canadian Mental Health Association Shuswap Revelstoke|FunderOperator
+76481|M'akola Housing Society|FunderOperator
+76482|Gorge View Society|FunderOperator
+76483|Luther Court Society|FunderOperator
+76484|Woodgrove Senior Citizens Housing Society|FunderOperator
+76487|Teeple Architects|ArchitectJV
+76488|M'akola Housing Society|FunderOperator
+76491|CMHA Vernon|FunderOperator
+76492|A Way Home Kamloops|FunderOperator
+76493|Municipality of North Cowichan|CityDeveloper
+76495|Parkin Architects|ArchitectJV
+76497|Royal Roads University|CoDevJV
+76505|Anthem Properties|CoDevJV
+76509|National Society of Hope|FunderOperator
+76525|Merrick Architecture|ArchitectJV
+76527|HDR Architecture Associates Inc.|ArchitectJV
+76528|Diamond Schmitt Architects|ArchitectJV
+76531|Diamond Schmitt Architects|ArchitectJV
+76532|Diamond Schmitt Architects|ArchitectJV
+76544|Carscadden Stokes McDonald Architects Inc.|ArchitectJV
+76545|Oxford Properties Group|CoDevJV
+76548|Westbank Corp|FunderOperator
+76549|Henriquez Partners Architects|ArchitectJV
+76550|DYS Architecture|ArchitectJV
+76551|B+H Architects|ArchitectJV
+76552|Transca Development|CoDevJV
+76553|Westbank Corp.|CoDevJV
+76559|Simon Fraser University|CoDevJV
+76562|Stantec Architecture|ArchitectJV
+76563|Principle Architecture|ArchitectJV
+76568|Intracorp|CoDevJV
+76570|Architecture49|ArchitectJV
+76572|Grosvenor Americas|CityDeveloper
+76573|IBI Group|ArchitectJV
+76574|JUNK|Junk
+76580|RainCity Housing and Support Society|FunderOperator
+76584|Hines|CoDevJV
+76585|DLR Group|ArchitectJV
+76586|IBI Group Architects|ArchitectJV
+76589|Henriquez Partners Architects|ArchitectJV
+76590|KPMB Architects|ArchitectJV
+76591|City of Mission|FunderOperator
+76592|City of Burnaby|CityDeveloper
+76594|Teeple Architects|ArchitectJV
+76597|Cotter Architects|ArchitectJV
+76599|Acton Ostry Architects|ArchitectJV
+76603|Benchmark|CoDevJV
+76606|Grant Connell Tennis|CityDeveloper
+76608|hcma architecture + design|ArchitectJV
+76609|Teeple Architects|ArchitectJV
+76610|Iredale Architecture|ArchitectJV
+76611|Blue Sky Properties|CoDevJV
+76615|HCMA Architecture + Design|ArchitectJV
+76617|BC Ministry of Transportation|FunderOperator
+76618|TransLink|CoDevJV
+76619|Francl Architecture|ArchitectJV
+76621|Fort Edmonton Management Company|CityDeveloper
+76624|CapitalCare|FunderOperator
+76644|K&H Developments|CoDevJV

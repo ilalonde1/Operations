@@ -1,0 +1,928 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
+using Kor.Opportunities.Data.Crm;
+using Kor.Opportunities.Worker.Options;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Quartz;
+
+namespace Kor.Opportunities.Worker.Services.Reporting;
+
+/// <summary>
+/// Daily 6am "quick eye on the whole system" email (Ian, 2026-06-11):
+/// new opportunities, verdict movement, retirements, per-pipeline ingest
+/// activity, failures, coverage tickers, the latest nightly trigger report
+/// (pending drain queues) via opportunities.QueueRefreshReport, and the
+/// summary-flags harvest over new QueueDrain SUMMARY files.
+/// Read-only against KorOpportunitiesDb; sends via the FileSync Graph app.
+/// </summary>
+[DisallowConcurrentExecution]
+public sealed class BdMorningReportJob : IJob
+{
+    private readonly IOptions<OpportunitiesWorkerOptions> _options;
+    private readonly GraphMailSender _mail;
+    private readonly IBdStaffDirectory _staff;
+    private readonly ILogger<BdMorningReportJob> _logger;
+
+    public BdMorningReportJob(
+        IOptions<OpportunitiesWorkerOptions> options,
+        GraphMailSender mail,
+        IBdStaffDirectory staff,
+        ILogger<BdMorningReportJob> logger)
+    {
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _mail = mail ?? throw new ArgumentNullException(nameof(mail));
+        _staff = staff ?? throw new ArgumentNullException(nameof(staff));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task Execute(IJobExecutionContext context)
+    {
+        var opt = _options.Value;
+        if (!opt.MorningReportEnabled)
+        {
+            _logger.LogDebug("{Job} skipped: disabled.", nameof(BdMorningReportJob));
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(opt.MorningReportTenantId)
+            || string.IsNullOrWhiteSpace(opt.MorningReportClientId)
+            || string.IsNullOrWhiteSpace(opt.MorningReportClientSecret))
+        {
+            _logger.LogWarning(
+                "{Job} skipped: Graph credentials missing (KOR_OPPORTUNITIES_MORNINGREPORT* env vars).",
+                nameof(BdMorningReportJob));
+            return;
+        }
+
+        try
+        {
+            var html = await BuildHtmlAsync(opt.OpportunitiesDb, context.CancellationToken).ConfigureAwait(false);
+            await _mail.SendHtmlAsync(
+                opt.MorningReportTenantId,
+                opt.MorningReportClientId,
+                opt.MorningReportClientSecret,
+                opt.MorningReportSenderUpn,
+                opt.MorningReportRecipient,
+                $"KOR BD Morning Report — {DateTime.Now:ddd MMM d}",
+                html,
+                context.CancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // Quartz must not retry-spin a broken mail config; log and wait
+            // for tomorrow's fire.
+            _logger.LogError(ex, "{Job} failed.", nameof(BdMorningReportJob));
+        }
+
+        // Per-owner digest (plan D6) — each owner ALSO gets their own focused
+        // email. Dormant until enabled; isolated from the manager report above
+        // so a per-owner hiccup never breaks the main send.
+        if (opt.MorningReportPerOwnerEnabled)
+        {
+            try
+            {
+                await SendPerOwnerDigestsAsync(opt, context.CancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "{Job}: per-owner digest pass failed.", nameof(BdMorningReportJob));
+            }
+        }
+    }
+
+    private sealed record OwnerPursuitRow(string Owner, string Project, string Buyer, DateTimeOffset? Due, DateTimeOffset? LastTouch);
+
+    /// <summary>An attack-sheet play the owner took (MajorProjectsInventory
+    /// ownership, migration 284) that is nearing the 14-day auto-release —
+    /// surfaced from day 10 so the reaper never surprises anyone.</summary>
+    private sealed record OwnedPlayRow(string Owner, string Project, string Province, DateTimeOffset OwnedAt);
+
+    /// <summary>
+    /// Send each owner of live pursuits their own digest: the pursuits they own
+    /// that are closing soon (&lt;14d) or going cold. "Going cold" here means a
+    /// pursuit that was ACTUALLY WORKED — it has a logged activity or a filed
+    /// email — and that last real touch went quiet 21–90 days ago (recently
+    /// cooling). A pursuit that was never touched (e.g. an ingested BD-Tracking
+    /// backlog row) is NOT "cold" — it never started; and one last touched &gt;90d
+    /// ago is not "going cold" either — it is long dead (a retire-stale-pursuits
+    /// job, not a daily nudge). Both are excluded rather than flooding day-one
+    /// inboxes. Rows with no real project name are skipped too. This is stricter than the Overwatch board's fused staleness
+    /// (which floors at OpenedAtUtc); the personal nudge holds a higher signal
+    /// bar. Trade-off: a grabbed-but-never-touched pursuit won't nudge here — the
+    /// manager report and the Overwatch board still surface it.
+    /// Owners are resolved to a mailbox by: an email-shaped owner is used
+    /// directly (grabbed pursuits); a legacy first-name owner via the directory /
+    /// verified map; anything else is left to the manager report (never guessed).
+    /// One send per owner; a single failure never stops the rest.
+    /// </summary>
+    private async Task SendPerOwnerDigestsAsync(OpportunitiesWorkerOptions opt, System.Threading.CancellationToken ct)
+    {
+        var ownerMap = ParseOwnerEmailMap(opt.MorningReportOwnerEmailMap);
+
+        var rows = new List<OwnerPursuitRow>();
+        await using (var con = new SqlConnection(opt.OpportunitiesDb))
+        {
+            await con.OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = new SqlCommand(@"
+SELECT e.OwnerStaffId,
+       COALESCE(o.Name, e.PotentialProjects, N'(unnamed)') AS Project,
+       COALESCE(o.BuyerName, N'')                          AS Buyer,
+       o.SubmissionDeadlineUtc                             AS Due,
+       -- last REAL touch = newest of a logged activity or a filed email.
+       -- Deliberately NOT floored at OpenedAtUtc: a never-touched pursuit has
+       -- no real touch, so it is not 'going cold' — this keeps the ingested
+       -- BD-Tracking backlog out of the personal digest.
+       (SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc)) AS t(v)) AS LastTouch
+FROM opportunities.CrmEngagements e
+LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+LEFT JOIN opportunities.CrmBuyerEmailWarmth w ON w.CanonicalOrgId = e.BuyerCanonicalOrgId
+OUTER APPLY (
+    SELECT MAX(a.OccurredAtUtc) AS LastActivityUtc
+    FROM opportunities.CrmActivities a WHERE a.EngagementId = e.Id
+) la
+WHERE e.Stage IN (1, 3) AND e.OwnerStaffId IS NOT NULL
+  -- Only pursuits with a real name — a nameless '(unnamed)' row can't be
+  -- acted on from an email.
+  AND (NULLIF(LTRIM(RTRIM(o.Name)), N'') IS NOT NULL
+    OR NULLIF(LTRIM(RTRIM(e.PotentialProjects)), N'') IS NOT NULL)
+  AND (
+    (o.SubmissionDeadlineUtc IS NOT NULL
+       AND o.SubmissionDeadlineUtc >= SYSDATETIMEOFFSET()
+       AND o.SubmissionDeadlineUtc <  DATEADD(DAY, 14, SYSDATETIMEOFFSET()))
+    OR ((SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc)) AS t(v))
+           < DATEADD(DAY, -21, SYSDATETIMEOFFSET())
+        AND (SELECT MAX(v) FROM (VALUES (la.LastActivityUtc), (w.LastTouchUtc)) AS t(v))
+           >= DATEADD(DAY, -90, SYSDATETIMEOFFSET()))
+  )
+ORDER BY e.OwnerStaffId ASC, o.SubmissionDeadlineUtc ASC;", con)
+            { CommandTimeout = 120 };
+
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                rows.Add(new OwnerPursuitRow(
+                    r.GetString(0),
+                    r.GetString(1),
+                    r.IsDBNull(2) ? "" : r.GetString(2),
+                    r.IsDBNull(3) ? null : r.GetDateTimeOffset(3),
+                    r.IsDBNull(4) ? (DateTimeOffset?)null : r.GetDateTimeOffset(4)));
+            }
+        }
+
+        // Owned attack-sheet plays nearing the 14-day auto-release (reaper
+        // warning window opens at day 10). Owner-scoped read of lifecycle
+        // state — NOT an actionable-pool derivation (that's vw_ActionableProjects).
+        var plays = new List<OwnedPlayRow>();
+        await using (var con = new SqlConnection(opt.OpportunitiesDb))
+        {
+            await con.OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = new SqlCommand(@"
+SELECT m.OwnerStaffId, m.ProjectName, ISNULL(m.Province, N''), m.OwnedAtUtc
+FROM opportunities.MajorProjectsInventory m
+WHERE m.OwnerStaffId IS NOT NULL
+  AND m.RetiredAtUtc IS NULL
+  AND m.OwnedAtUtc < DATEADD(DAY, -10, SYSDATETIMEOFFSET())
+ORDER BY m.OwnedAtUtc ASC;", con) { CommandTimeout = 60 };
+
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                plays.Add(new OwnedPlayRow(
+                    r.GetString(0),
+                    r.IsDBNull(1) ? "(unnamed)" : r.GetString(1),
+                    r.GetString(2),
+                    r.GetDateTimeOffset(3)));
+            }
+        }
+
+        // Resolve every owner group to a mailbox, then MERGE by resolved
+        // mailbox — a person who owns both legacy (first-name) and grabbed
+        // (email) pursuits, or two aliases pointing at one address, must get ONE
+        // complete digest, not two fragments each missing half the list.
+        var byMailbox = new Dictionary<string, List<OwnerPursuitRow>>(StringComparer.OrdinalIgnoreCase);
+        var playsByMailbox = new Dictionary<string, List<OwnedPlayRow>>(StringComparer.OrdinalIgnoreCase);
+        var unrouted = 0;
+        foreach (var group in rows.GroupBy(x => x.Owner, StringComparer.OrdinalIgnoreCase))
+        {
+            var mailbox = await ResolveMailboxAsync(group.Key, ownerMap, ct).ConfigureAwait(false);
+            if (mailbox is null)
+            {
+                unrouted++;
+                _logger.LogInformation(
+                    "{Job}: owner '{Owner}' has {Count} pursuit(s) needing attention but no mailbox (not an email, not in the map); left to the manager report.",
+                    nameof(BdMorningReportJob), group.Key, group.Count());
+                continue;
+            }
+
+            if (!byMailbox.TryGetValue(mailbox, out var list))
+            {
+                list = new List<OwnerPursuitRow>();
+                byMailbox[mailbox] = list;
+            }
+
+            list.AddRange(group);
+        }
+
+        foreach (var group in plays.GroupBy(x => x.Owner, StringComparer.OrdinalIgnoreCase))
+        {
+            var mailbox = await ResolveMailboxAsync(group.Key, ownerMap, ct).ConfigureAwait(false);
+            if (mailbox is null)
+            {
+                unrouted++;
+                _logger.LogInformation(
+                    "{Job}: play owner '{Owner}' has {Count} owned play(s) nearing auto-release but no mailbox; the reaper will log the release.",
+                    nameof(BdMorningReportJob), group.Key, group.Count());
+                continue;
+            }
+
+            if (!playsByMailbox.TryGetValue(mailbox, out var list))
+            {
+                list = new List<OwnedPlayRow>();
+                playsByMailbox[mailbox] = list;
+            }
+
+            list.AddRange(group);
+        }
+
+        // Defensive cap: distinct owner mailboxes is bounded by staff count. A
+        // count this high means OwnerStaffId got polluted (bad ingest/merge) —
+        // abort rather than blast an unattended 6am mail-out to real inboxes.
+        const int maxMailboxes = 25;
+        var allMailboxes = byMailbox.Keys.Union(playsByMailbox.Keys, StringComparer.OrdinalIgnoreCase).ToList();
+        if (allMailboxes.Count > maxMailboxes)
+        {
+            _logger.LogError(
+                "{Job}: per-owner pass aborted — {Count} distinct mailboxes exceeds cap {Cap}; check OwnerStaffId data quality.",
+                nameof(BdMorningReportJob), allMailboxes.Count, maxMailboxes);
+            return;
+        }
+
+        var sent = 0;
+        var failed = 0;
+        foreach (var mailbox in allMailboxes)
+        {
+            var list = byMailbox.TryGetValue(mailbox, out var l) ? l : new List<OwnerPursuitRow>();
+            var ownedPlays = playsByMailbox.TryGetValue(mailbox, out var p) ? p : new List<OwnedPlayRow>();
+            var html = BuildPerOwnerHtml(mailbox, list, ownedPlays);
+            if (html is null)
+            {
+                // Both tables came out empty (query/threshold drift). Don't
+                // send a blank "your pursuits need attention" email.
+                continue;
+            }
+
+            try
+            {
+                await _mail.SendHtmlAsync(
+                    opt.MorningReportTenantId, opt.MorningReportClientId, opt.MorningReportClientSecret,
+                    opt.MorningReportSenderUpn, mailbox,
+                    $"Your KOR pursuits need attention — {DateTime.Now:ddd MMM d}",
+                    html, ct).ConfigureAwait(false);
+                sent++;
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                _logger.LogWarning(ex, "{Job}: per-owner send to {Mailbox} failed.", nameof(BdMorningReportJob), mailbox);
+            }
+        }
+
+        _logger.LogInformation(
+            "{Job}: per-owner digests sent={Sent}, failed={Failed}, unrouted={Unrouted}.",
+            nameof(BdMorningReportJob), sent, failed, unrouted);
+    }
+
+    private static Dictionary<string, string> ParseOwnerEmailMap(string? raw)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(raw)) return map;
+        foreach (var pair in raw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var eq = pair.IndexOf('=');
+            if (eq <= 0) continue;
+            var name = pair[..eq].Trim();
+            var email = pair[(eq + 1)..].Trim();
+            if (name.Length > 0 && email.Contains('@'))
+            {
+                map[name] = email;
+            }
+        }
+
+        return map;
+    }
+
+    /// <summary>
+    /// Resolve a pursuit owner to a mailbox, in precedence order:
+    /// (1) the hand-verified config override (MorningReportOwnerEmailMap),
+    /// (2) the Deltek-synced BD staff directory (self-routing emails + bridged
+    /// legacy first names), (3) an email-shaped owner self-routing even before
+    /// the first directory sync. Anything else is unrouted (never guessed).
+    /// </summary>
+    private async Task<string?> ResolveMailboxAsync(
+        string owner, IReadOnlyDictionary<string, string> map, System.Threading.CancellationToken ct)
+    {
+        var o = owner.Trim();
+        if (map.TryGetValue(o, out var mapped) && !string.IsNullOrWhiteSpace(mapped)) return mapped;
+
+        var dir = await _staff.ResolveMailboxAsync(o, ct).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(dir)) return dir;
+
+        // Self-route a UPN/email owner ONLY when the directory has no row for it
+        // yet (pre-first-sync). If a row exists but resolved to null, that's an
+        // intentional suppression (IsActive=0) or a pending mailbox — honor it
+        // rather than blast a possibly-dead address.
+        if (o.Contains('@') && !await _staff.IsKnownAsync(o, ct).ConfigureAwait(false)) return o;
+        return null;
+    }
+
+    private static string? BuildPerOwnerHtml(string owner, List<OwnerPursuitRow> rows, List<OwnedPlayRow> ownedPlays)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var closing = rows
+            .Where(x => x.Due is { } d && d >= now && d < now.AddDays(14))
+            .OrderBy(x => x.Due)
+            .ToList();
+        // Cold = a real touch that went quiet 21–90 days ago ("recently cooling").
+        // The 90-day floor keeps ancient dead pursuits (an imported meeting from
+        // last year) out of a daily nudge — those are a retire-stale-pursuits
+        // job, not a personal reminder.
+        var cold = rows
+            .Where(x => x.LastTouch is { } t && t < now.AddDays(-21) && t >= now.AddDays(-90))
+            .OrderBy(x => x.LastTouch)
+            .ToList();
+
+        if (closing.Count == 0 && cold.Count == 0 && ownedPlays.Count == 0) return null;
+
+        var sb = new StringBuilder();
+        sb.Append("<html><body style=\"font-family:Segoe UI,Arial,sans-serif;color:#1a1a1a;max-width:720px\">");
+        sb.Append("<h2 style=\"border-bottom:3px solid #C8102E;padding-bottom:6px\">Your pursuits</h2>");
+        sb.Append($"<p style=\"color:#666\">{WebUtility.HtmlEncode(DisplayOwner(owner))} — {DateTime.Now:yyyy-MM-dd}. What needs a nudge today.</p>");
+
+        if (closing.Count > 0)
+        {
+            sb.Append("<h3>Closing soon</h3><table style=\"border-collapse:collapse;width:100%\">");
+            foreach (var row in closing)
+            {
+                var days = (int)Math.Floor(((row.Due!.Value) - now).TotalDays);
+                var style = days < 5 ? "color:#C8102E;font-weight:bold" : "color:#1a1a1a";
+                sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(row.Project)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(row.Buyer)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;{style}\">due {row.Due!.Value.ToLocalTime():MMM d} ({days}d)</td></tr>");
+            }
+            sb.Append("</table>");
+        }
+
+        if (cold.Count > 0)
+        {
+            sb.Append("<h3>Going cold <span style=\"color:#666;font-weight:normal\">(worked, then quiet 21–90 days)</span></h3>");
+            sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+            foreach (var row in cold)
+            {
+                var days = (int)Math.Floor((now - row.LastTouch!.Value).TotalDays);
+                sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(row.Project)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(row.Buyer)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;color:#C8102E\">{days}d cold</td></tr>");
+            }
+            sb.Append("</table>");
+        }
+
+        if (ownedPlays.Count > 0)
+        {
+            sb.Append("<h3>Plays you took, about to auto-release <span style=\"color:#666;font-weight:normal\">(released back to the pool at day 14)</span></h3>");
+            sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+            foreach (var play in ownedPlays)
+            {
+                var days = (int)Math.Floor((now - play.OwnedAt).TotalDays);
+                var left = Math.Max(0, 14 - days);
+                sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(play.Project)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(play.Province)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;color:#C8102E\">taken {days}d ago — {left}d left</td></tr>");
+            }
+            sb.Append("</table>");
+            sb.Append("<p style=\"color:#888;font-size:12px\">Start the pursuit (or mark it Not for us) in the app to keep it; do nothing and it returns to the shared pool.</p>");
+        }
+
+        sb.Append("<p style=\"color:#888;font-size:12px;margin-top:14px\">Open <b>Business Development &#8594; Pursuits</b> in the KOR app to work these. Staleness counts a logged call or a filed email as a touch.</p>");
+        sb.Append("</body></html>");
+        return sb.ToString();
+    }
+
+    private static string DisplayOwner(string owner)
+    {
+        var at = owner.IndexOf('@');
+        return at > 0 ? owner[..at] : owner;
+    }
+
+    private static async Task<string> BuildHtmlAsync(string cs, System.Threading.CancellationToken ct)
+    {
+        await using var con = new SqlConnection(cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+
+        var sb = new StringBuilder();
+        // Explicit charset: DB text (em-dashes, quotes) rendered as mojibake in
+        // some mail clients without it (2026-07-18).
+        sb.Append("<html><head><meta charset=\"utf-8\"></head><body style=\"font-family:Segoe UI,Arial,sans-serif;color:#1a1a1a;max-width:720px\">");
+        sb.Append("<h2 style=\"border-bottom:3px solid #C8102E;padding-bottom:6px\">KOR BD Morning Report</h2>");
+        sb.Append($"<p style=\"color:#666\">Generated {DateTime.Now:yyyy-MM-dd HH:mm} from live KorOpportunitiesDb. Window: last 24 hours.</p>");
+
+        // --- Relationship actions due (Neural Gap Register G2, 2026-07-17) ----
+        // NextActionDueUtc/NextActionNote were write-only: the app could set a
+        // follow-up and nothing ever surfaced it (found when "Jim meets Elliot
+        // Wood Mon 10:00" would have reminded nobody). Overdue (14d back) +
+        // due-within-7d on OPEN engagements, oldest first, owner + contact
+        // named. Suppressed when zero; same per-section try/catch contract.
+        try
+        {
+            var actions = new List<(string Owner, string Org, string Contact, DateTimeOffset Due, string Note)>();
+            await using (var cmd = new SqlCommand(@"
+SELECT e.OwnerStaffId, ISNULL(co.DisplayName, N''), ISNULL(p.DisplayName, N''),
+       e.NextActionDueUtc, ISNULL(e.NextActionNote, N'')
+FROM opportunities.CrmEngagements e
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = e.BuyerCanonicalOrgId
+LEFT JOIN opportunities.IntelPerson p ON p.Id = e.ContactIntelPersonId
+WHERE e.Stage IN (1, 3)
+  AND e.ClosedAtUtc IS NULL
+  AND e.NextActionDueUtc IS NOT NULL
+  AND e.NextActionDueUtc >= DATEADD(DAY, -14, sysdatetimeoffset())
+  AND e.NextActionDueUtc < DATEADD(DAY, 7, sysdatetimeoffset())
+ORDER BY e.NextActionDueUtc ASC;", con))
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    actions.Add((
+                        r.IsDBNull(0) ? "(unowned)" : r.GetString(0),
+                        r.GetString(1),
+                        r.GetString(2),
+                        r.GetDateTimeOffset(3),
+                        r.GetString(4)));
+                }
+            }
+
+            if (actions.Count > 0)
+            {
+                sb.Append($"<h3>Relationship actions <span style=\"color:#666;font-weight:normal\">({actions.Count})</span></h3>");
+                sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+                foreach (var (aOwner, org, contact, due, note) in actions)
+                {
+                    var overdue = due < DateTimeOffset.UtcNow;
+                    var today = due.ToLocalTime().Date == DateTime.Now.Date;
+                    var whenStyle = overdue ? "color:#C8102E;font-weight:bold" : today ? "color:#1a1a1a;font-weight:bold" : "color:#1a1a1a";
+                    var whenText = overdue
+                        ? $"OVERDUE {due.ToLocalTime():MMM d}"
+                        : today ? $"TODAY {due.ToLocalTime():HH:mm}" : due.ToLocalTime().ToString("ddd MMM d HH:mm");
+                    var who = contact.Length > 0 ? $"{org} — {contact}" : org;
+                    sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(note)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(who)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(DisplayOwner(aOwner))}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;{whenStyle}\">{WebUtility.HtmlEncode(whenText)}</td></tr>");
+                }
+                sb.Append("</table>");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.Append($"<p style=\"color:#C8102E\">Relationship-actions section failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
+        }
+
+        // --- Owned pursuits closing soon (CRM plan 2.1a, 2026-07-07) ----------
+        // Anti-abandonment: a grabbed pursuit whose RFP deadline is inside 14
+        // days gets top billing so it can't die silently. Suppressed when zero;
+        // per-section try/catch so a CRM hiccup never kills the whole report.
+        try
+        {
+            var closing = new List<(string Owner, string Project, string Buyer, DateTimeOffset Due)>();
+            await using (var cmd = new SqlCommand(@"
+SELECT e.OwnerStaffId, o.Name, o.BuyerName, o.SubmissionDeadlineUtc
+FROM opportunities.CrmEngagements e
+JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+WHERE e.Stage IN (1, 3)
+  AND o.SubmissionDeadlineUtc IS NOT NULL
+  AND o.SubmissionDeadlineUtc >= sysdatetimeoffset()
+  AND o.SubmissionDeadlineUtc < DATEADD(DAY, 14, sysdatetimeoffset())
+ORDER BY o.SubmissionDeadlineUtc ASC;", con))
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    closing.Add((
+                        r.IsDBNull(0) ? "(unowned)" : r.GetString(0),
+                        r.IsDBNull(1) ? "(unnamed)" : r.GetString(1),
+                        r.IsDBNull(2) ? "" : r.GetString(2),
+                        r.GetDateTimeOffset(3)));
+                }
+            }
+
+            if (closing.Count > 0)
+            {
+                sb.Append($"<h3>Owned pursuits closing soon <span style=\"color:#666;font-weight:normal\">({closing.Count})</span></h3>");
+                sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+                foreach (var (pOwner, project, buyer, due) in closing)
+                {
+                    // Floor once and use it for BOTH threshold and display, so
+                    // the same "5d" can't render red in one row and plain in
+                    // another (review nit).
+                    var days = (int)Math.Floor((due - DateTimeOffset.UtcNow).TotalDays);
+                    var dueStyle = days < 5 ? "color:#C8102E;font-weight:bold" : "color:#1a1a1a";
+                    sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(project)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(buyer)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(pOwner)}</td>" +
+                              $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;{dueStyle}\">due {due.ToLocalTime():MMM d} ({days}d)</td></tr>");
+                }
+                sb.Append("</table>");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.Append($"<p style=\"color:#C8102E\">Owned-pursuits section failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
+        }
+
+        // --- New opportunities -------------------------------------------------
+        var newMpis = new List<(string Name, string Province, string Cost)>();
+        await using (var cmd = new SqlCommand(@"
+SELECT TOP 15 m.ProjectName, COALESCE(m.Province, N'?'),
+       COALESCE(m.EstimatedCostText, FORMAT(m.EstimatedCostCad, 'C0'), N'')
+FROM opportunities.vw_ActionableProjects m
+WHERE m.FirstSeenAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
+ORDER BY m.EstimatedCostCad DESC;", con))
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                newMpis.Add((r.GetString(0), r.GetString(1), r.GetString(2)));
+            }
+        }
+
+        int newMpiTotal;
+        await using (var cmd = new SqlCommand(@"
+SELECT COUNT(*) FROM opportunities.vw_ActionableProjects
+WHERE FirstSeenAtUtc >= DATEADD(hour, -24, sysdatetimeoffset());", con))
+        {
+            newMpiTotal = (int)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+        }
+
+        sb.Append($"<h3>New opportunities <span style=\"color:#666;font-weight:normal\">({newMpiTotal})</span></h3>");
+        if (newMpiTotal == 0) { sb.Append("<p style=\"color:#666\">None in the last 24h.</p>"); }
+        else
+        {
+            sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+            foreach (var (name, prov, cost) in newMpis)
+            {
+                sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(name)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(prov)}</td>" +
+                          $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right\">{WebUtility.HtmlEncode(cost)}</td></tr>");
+            }
+            sb.Append("</table>");
+            if (newMpiTotal > newMpis.Count) { sb.Append($"<p style=\"color:#666\">…and {newMpiTotal - newMpis.Count} more.</p>"); }
+        }
+
+        // --- Public roster & pre-qual watch (Mondays only) ---------------------
+        // 2026-07-06 (Ian): weekly digest of open consultant rosters / pre-qual
+        // lists relevant to KOR (structural/buildings) + health-authority RFPQs,
+        // so nothing in the BC Bid feed sits unactioned. Rides the daily email.
+        if (DateTime.Now.DayOfWeek == DayOfWeek.Monday)
+        {
+            sb.Append("<h3>Public roster &amp; pre-qual watch <span style=\"color:#666;font-weight:normal\">(open)</span></h3>");
+            try
+            {
+                var rosterRows = new List<(string Buyer, string Name, DateTimeOffset? Due, string? Url)>();
+                await using (var cmd = new SqlCommand(@"
+SELECT o.BuyerName, o.Name, o.SubmissionDeadlineUtc,
+       (SELECT TOP 1 ob.Url FROM opportunities.OpportunityObservations ob WHERE ob.OpportunityId = o.Id AND ob.IsActive = 1) AS Url
+FROM opportunities.Opportunities o
+WHERE o.SubmissionDeadlineUtc >= sysdatetimeoffset()
+  AND ( UPPER(o.Name) LIKE N'%PRE-QUAL%' OR UPPER(o.Name) LIKE N'%PREQUAL%' OR UPPER(o.Name) LIKE N'%RFPQ%' OR UPPER(o.Name) LIKE N'%RFSQ%'
+     OR UPPER(o.Name) LIKE N'%ROSTER%' OR UPPER(o.Name) LIKE N'%STANDING%' OR UPPER(o.Name) LIKE N'%QUALIFIED SUPPLIER%'
+     OR UPPER(o.Name) LIKE N'%MULTI-USE%' OR UPPER(o.Name) LIKE N'%ON-CALL%' OR UPPER(o.Name) LIKE N'%AS AND WHEN%' )
+  AND ( UPPER(o.Name) LIKE N'%ENGINEER%' OR UPPER(o.Name) LIKE N'%CONSULT%' OR UPPER(o.Name) LIKE N'%STRUCTURAL%'
+     OR UPPER(o.Name) LIKE N'%ARCHITECT%' OR UPPER(o.Name) LIKE N'%BUILDING%' OR UPPER(o.Name) LIKE N'%FACILIT%'
+     OR UPPER(o.Name) LIKE N'%PROFESSIONAL%' OR UPPER(o.BuyerName) LIKE N'%HEALTH%' )
+  AND UPPER(o.Name) NOT LIKE N'%CONTRACTOR%' AND UPPER(o.Name) NOT LIKE N'%EQUIPMENT%' AND UPPER(o.Name) NOT LIKE N'%FURNITURE%'
+  AND UPPER(o.Name) NOT LIKE N'%FENCE%' AND UPPER(o.Name) NOT LIKE N'%FOREST%' AND UPPER(o.Name) NOT LIKE N'%PAINTING%'
+  AND UPPER(o.Name) NOT LIKE N'%WAYFINDING%' AND UPPER(o.Name) NOT LIKE N'%TRAIL%' AND UPPER(o.Name) NOT LIKE N'%PATHWAY%'
+  AND UPPER(o.Name) NOT LIKE N'%I.T.%' AND UPPER(o.Name) NOT LIKE N'%CONTRACTING%' AND UPPER(o.Name) NOT LIKE N'%TRANSPORTATION%'
+ORDER BY o.SubmissionDeadlineUtc ASC;", con))
+                await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+                {
+                    while (await r.ReadAsync(ct).ConfigureAwait(false))
+                    {
+                        rosterRows.Add((
+                            r.IsDBNull(0) ? "" : r.GetString(0),
+                            r.IsDBNull(1) ? "" : r.GetString(1),
+                            r.IsDBNull(2) ? (DateTimeOffset?)null : r.GetDateTimeOffset(2),
+                            r.IsDBNull(3) ? null : r.GetString(3)));
+                    }
+                }
+
+                if (rosterRows.Count == 0) { sb.Append("<p style=\"color:#666\">None open.</p>"); }
+                else
+                {
+                    sb.Append("<table style=\"border-collapse:collapse;width:100%\">");
+                    foreach (var (buyer, name, due, url) in rosterRows)
+                    {
+                        var soon = due.HasValue && due.Value.ToUniversalTime() <= DateTimeOffset.UtcNow.AddDays(14);
+                        var dueTxt = due.HasValue ? due.Value.ToString("yyyy-MM-dd") : "—";
+                        var nameHtml = string.IsNullOrWhiteSpace(url)
+                            ? WebUtility.HtmlEncode(name)
+                            : $"<a href=\"{WebUtility.HtmlEncode(url)}\">{WebUtility.HtmlEncode(name)}</a>";
+                        var dueStyle = soon ? "color:#C8102E;font-weight:bold" : "color:#666";
+                        sb.Append($"<tr><td style=\"padding:3px 8px;border-bottom:1px solid #eee;color:#666\">{WebUtility.HtmlEncode(buyer)}</td>" +
+                                  $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee\">{nameHtml}</td>" +
+                                  $"<td style=\"padding:3px 8px;border-bottom:1px solid #eee;text-align:right;{dueStyle}\">{WebUtility.HtmlEncode(dueTxt)}</td></tr>");
+                    }
+                    sb.Append("</table>");
+                }
+            }
+            catch (Exception ex)
+            {
+                sb.Append($"<p style=\"color:#C8102E\">Roster watch failed: {WebUtility.HtmlEncode(ex.GetType().Name)}: {WebUtility.HtmlEncode(ex.Message)}</p>");
+            }
+        }
+
+        // --- Verdict movement --------------------------------------------------
+        sb.Append("<h3>Verdict movement</h3>");
+        var pursueRows = new List<string>();
+        var verdictCounts = new List<(string V, int N)>();
+        await using (var cmd = new SqlCommand(@"
+WITH Fresh AS (
+  SELECT m.ProjectName,
+         COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),'')) AS V
+  FROM opportunities.MajorProjectEnrichment e
+  JOIN opportunities.MajorProjectsInventory m ON m.Id = e.MajorProjectsInventoryId
+  WHERE e.ProviderName = N'ProjectBriefHoning'
+    AND e.LastRefreshAtUtc >= DATEADD(hour, -24, sysdatetimeoffset()))
+SELECT V, COUNT(*) AS N,
+       STRING_AGG(CAST(CASE WHEN V IN (N'PURSUE', N'PURSUE_URGENT') THEN ProjectName END AS nvarchar(max)), N'; ') AS Names
+FROM Fresh WHERE V IS NOT NULL GROUP BY V ORDER BY N DESC;", con))
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var v = r.GetString(0);
+                verdictCounts.Add((v, r.GetInt32(1)));
+                if (!r.IsDBNull(2) && (v == "PURSUE" || v == "PURSUE_URGENT"))
+                {
+                    pursueRows.Add($"<b>{v}</b>: {WebUtility.HtmlEncode(r.GetString(2))}");
+                }
+            }
+        }
+
+        if (verdictCounts.Count == 0) { sb.Append("<p style=\"color:#666\">No verdicts in the last 24h.</p>"); }
+        else
+        {
+            sb.Append("<p>");
+            sb.Append(string.Join(" · ", verdictCounts.ConvertAll(x => $"{x.V} <b>{x.N}</b>")));
+            sb.Append("</p>");
+            foreach (var line in pursueRows) { sb.Append($"<p style=\"margin:2px 0\">{line}</p>"); }
+        }
+
+        // --- Retirements -------------------------------------------------------
+        // Reason width 60 -> 140 (2026-07-18): 60 chopped hand-written reasons
+        // mid-sentence in the email ("Cancelled 2020 per Alberta Major Projects
+        // registry (verified" — reads like a bug, was a truncation).
+        await AppendCountTableAsync(sb, con, "Retired (last 24h)", @"
+SELECT LEFT(COALESCE(RetiredReason, N'(no reason)'), 140) AS K, COUNT(*) AS N
+FROM opportunities.MajorProjectsInventory
+WHERE RetiredAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
+GROUP BY LEFT(COALESCE(RetiredReason, N'(no reason)'), 140) ORDER BY N DESC;", ct).ConfigureAwait(false);
+
+        // --- Ingest activity ---------------------------------------------------
+        await AppendCountTableAsync(sb, con, "Research ingested (last 24h)", @"
+SELECT K, SUM(N) AS N FROM (
+  SELECT CASE e.ProviderName WHEN N'ProjectBrief' THEN N'Project briefs' ELSE N'Project honing' END AS K, COUNT(*) AS N
+  FROM opportunities.MajorProjectEnrichment e
+  WHERE e.LastRefreshAtUtc >= DATEADD(hour, -24, sysdatetimeoffset()) AND e.ProviderName IN (N'ProjectBrief', N'ProjectBriefHoning')
+  GROUP BY e.ProviderName
+  UNION ALL
+  SELECT CASE WHEN e.ProviderName = N'FirmNarrative' THEN N'Org briefs'
+              WHEN e.ProviderName = N'FirmNarrativeHoning' THEN N'Org honing'
+              WHEN e.ProviderName LIKE N'PersonBriefHoning-%' THEN N'People honing'
+              ELSE N'People briefs' END, COUNT(*)
+  FROM opportunities.CanonicalOrgEnrichment e
+  WHERE e.LastRefreshAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
+    AND (e.ProviderName IN (N'FirmNarrative', N'FirmNarrativeHoning') OR e.ProviderName LIKE N'PersonBrief%')
+  GROUP BY CASE WHEN e.ProviderName = N'FirmNarrative' THEN N'Org briefs'
+                WHEN e.ProviderName = N'FirmNarrativeHoning' THEN N'Org honing'
+                WHEN e.ProviderName LIKE N'PersonBriefHoning-%' THEN N'People honing'
+                ELSE N'People briefs' END
+) x GROUP BY K ORDER BY N DESC;", ct).ConfigureAwait(false);
+
+        // --- Failures ----------------------------------------------------------
+        await AppendCountTableAsync(sb, con, "Failures / non-Ok enrichment (last 24h)", @"
+SELECT K, SUM(N) AS N FROM (
+  SELECT N'Project: ' + e.Status AS K, COUNT(*) AS N FROM opportunities.MajorProjectEnrichment e
+  WHERE e.UpdatedAtUtc >= DATEADD(hour, -24, sysdatetimeoffset()) AND e.Status <> N'Ok' GROUP BY e.Status
+  UNION ALL
+  SELECT N'Org/People: ' + e.Status, COUNT(*) FROM opportunities.CanonicalOrgEnrichment e
+  WHERE e.UpdatedAtUtc >= DATEADD(hour, -24, sysdatetimeoffset()) AND e.Status <> N'Ok' GROUP BY e.Status
+) x GROUP BY K ORDER BY N DESC;", ct).ConfigureAwait(false);
+
+        // --- Coverage tickers --------------------------------------------------
+        await using (var cmd = new SqlCommand(@"
+SELECT
+ (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory WHERE RetiredAtUtc IS NULL),
+ (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m WHERE m.RetiredAtUtc IS NULL
+   AND EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment e WHERE e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBrief' AND e.ResultJson IS NOT NULL)),
+ (SELECT COUNT(*) FROM opportunities.MajorProjectsInventory m WHERE m.RetiredAtUtc IS NULL
+   AND EXISTS (SELECT 1 FROM opportunities.MajorProjectEnrichment e WHERE e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
+     AND COALESCE(NULLIF(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),''), NULLIF(JSON_VALUE(e.ResultJson,'$.verdict'),'')) IS NOT NULL)),
+ (SELECT COUNT(DISTINCT TRY_CAST(SUBSTRING(e.ProviderName,13,20) AS bigint)) FROM opportunities.CanonicalOrgEnrichment e
+   WHERE e.ProviderName LIKE N'PersonBrief-%' AND e.ProviderName NOT LIKE N'PersonBriefHoning-%' AND e.Status = N'Ok' AND e.ResultJson IS NOT NULL),
+ (SELECT COUNT(*) FROM opportunities.IntelAction WHERE RetiredAtUtc IS NULL AND Status = N'Open'
+   AND CreatedAtUtc >= DATEADD(DAY, -90, sysdatetimeoffset())),
+ (SELECT COUNT(*) FROM opportunities.IntelAction WHERE RetiredAtUtc IS NULL AND Status = N'Open'
+   AND CreatedAtUtc < DATEADD(DAY, -90, sysdatetimeoffset()));", con))
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            await r.ReadAsync(ct).ConfigureAwait(false);
+            var active = r.GetInt32(0);
+            sb.Append("<h3>Coverage</h3><p>");
+            sb.Append($"Projects: <b>{active}</b> active · briefed <b>{r.GetInt32(1)}</b> ({100 * r.GetInt32(1) / Math.Max(1, active)}%) · honed <b>{r.GetInt32(2)}</b> ({100 * r.GetInt32(2) / Math.Max(1, active)}%) · ");
+            // "Open actions: 21,853" read like an unactioned to-do backlog; it
+            // was one June research import. Fresh (<=90d) is the actionable
+            // signal; the rest is the durable reference library the briefs and
+            // org dossiers read (2026-07-18 mess audit — do NOT bulk-retire it,
+            // the app's brief generators consume these rows).
+            sb.Append($"People briefed: <b>{r.GetInt32(3)}</b> · Actions: fresh <b>{r.GetInt32(4)}</b> · reference library <b>{r.GetInt32(5)}</b></p>");
+        }
+
+        // --- Source health: DEAD-GREEN detection (audit-v2 #15) ----------------
+        // The weekly sentinel wrote these verdicts to a server-local markdown
+        // nobody opened — an 18-day source blackout once went unnoticed. The
+        // morning email is the channel that actually gets read.
+        // 2026-07-18 (mess audit): the fixed 3x-CrawlDelay threshold was
+        // cadence-blind — the six weekly Sunday sources (AB/BC/CA MPI feeds)
+        // were flagged DEAD every Saturday at 6.1d while perfectly healthy.
+        // Threshold is now derived from each source's OWN observed success
+        // cadence over 45 days (2x its average gap), floored at the old
+        // 3x-CrawlDelay/26h rule so fast sources still alarm quickly.
+        await using (var cmd = new SqlCommand(@"
+SELECT s.Name,
+       lastOk.LastSuccessAtUtc
+FROM opportunities.OpportunitySources s
+OUTER APPLY (
+    SELECT MAX(r.StartedAtUtc)  AS LastSuccessAtUtc,
+           COUNT(*)             AS OkRuns45d,
+           MIN(r.StartedAtUtc)  AS FirstSuccess45d
+    FROM opportunities.IngestionRuns r
+    WHERE r.Success = 1
+      AND r.StartedAtUtc >= DATEADD(DAY, -45, SYSDATETIMEOFFSET())
+      AND (r.ProviderName LIKE s.Name + N' (%' OR r.ProviderName LIKE N'Awards: ' + s.Name + N' (%')
+) lastOk
+CROSS APPLY (
+    SELECT (SELECT MAX(v) FROM (VALUES
+              (CASE WHEN lastOk.OkRuns45d >= 3
+                    THEN 2 * (DATEDIFF(SECOND, lastOk.FirstSuccess45d, lastOk.LastSuccessAtUtc)
+                              / NULLIF(lastOk.OkRuns45d - 1, 0))
+                    ELSE 0 END),
+              (CASE WHEN s.CrawlDelaySeconds * 3 > 93600 THEN s.CrawlDelaySeconds * 3 ELSE 93600 END)
+            ) AS x(v)) AS ThresholdSeconds
+) cadence
+WHERE s.IsEnabled = 1
+  AND s.CrawlDelaySeconds > 0
+  AND s.SourceType NOT IN (0, 7, 99)
+  AND (lastOk.LastSuccessAtUtc IS NULL
+       OR lastOk.LastSuccessAtUtc < DATEADD(SECOND, -cadence.ThresholdSeconds, SYSDATETIMEOFFSET()))
+ORDER BY lastOk.LastSuccessAtUtc;", con))
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            var stale = new List<string>();
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var name = r.GetString(0);
+                var last = r.IsDBNull(1) ? (DateTimeOffset?)null : r.GetDateTimeOffset(1);
+                stale.Add(last is null
+                    ? $"<b>{WebUtility.HtmlEncode(name)}</b> — never produced a successful run"
+                    : $"<b>{WebUtility.HtmlEncode(name)}</b> — last success {(DateTimeOffset.UtcNow - last.Value.ToUniversalTime()).TotalDays:N1}d ago");
+            }
+
+            sb.Append("<h3>Source health</h3>");
+            if (stale.Count == 0)
+            {
+                sb.Append("<p>All enabled sources ran successfully within their windows.</p>");
+            }
+            else
+            {
+                sb.Append($"<p style=\"color:#C8102E\"><b>DEAD-GREEN:</b> {stale.Count} enabled source(s) with no recent successful run:</p><ul>");
+                foreach (var line in stale)
+                {
+                    sb.Append($"<li>{line}</li>");
+                }
+                sb.Append("</ul>");
+            }
+        }
+
+        // --- Research pipeline (executor arm) ----------------------------------
+        // Replaced the drain-queues + summary-flags blocks (2026-07-18 mess
+        // audit): the file-based QueueDrain era ended Jun 21 — its refresh
+        // report froze and the email printed 27-day-old paste-into-Claude
+        // instructions every morning. This section reads the LIVE supply
+        // (BdResearchTriggers) and what the executor jobs actually did.
+        try
+        {
+            var pendingTriggers = 0;
+            await using (var cmd = new SqlCommand(
+                "SELECT COUNT(*) FROM opportunities.BdResearchTriggers WHERE Status = N'Pending';", con))
+            {
+                pendingTriggers = (int)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+            }
+
+            var executorLines = new List<string>();
+            await using (var cmd = new SqlCommand(@"
+SELECT j.JobName, CONVERT(varchar(16), j.StartedAtUtc, 120), ISNULL(j.Summary, N'')
+FROM opportunities.JobRuns j
+WHERE j.JobName IN (N'BdResearchExecutorJob', N'BdProjectResearchExecutorJob', N'BdPersonResearchExecutorJob')
+  AND j.StartedAtUtc >= DATEADD(hour, -24, sysdatetimeoffset())
+ORDER BY j.StartedAtUtc DESC;", con))
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    executorLines.Add($"{r.GetString(0)} @ {r.GetString(1)}Z — {r.GetString(2)}");
+                }
+            }
+
+            sb.Append("<h3>Research pipeline</h3>");
+            sb.Append($"<p>Triggers pending: <b>{pendingTriggers}</b></p>");
+            var allIdle = executorLines.TrueForAll(l => l.Contains("executed=0"));
+            if (executorLines.Count == 0 || (pendingTriggers == 0 && allIdle))
+            {
+                sb.Append("<p style=\"color:#666\">Supply idle — nothing queued. Research currently runs in-session (agent passes); queue-fed executors have no work.</p>");
+            }
+            else
+            {
+                sb.Append("<ul>");
+                foreach (var line in executorLines) { sb.Append($"<li style=\"font-size:12px\">{WebUtility.HtmlEncode(line)}</li>"); }
+                sb.Append("</ul>");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.Append($"<p style=\"color:#C8102E\">Research-pipeline section failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
+        }
+
+        // --- Paused / idle jobs ------------------------------------------------
+        // A disabled or paused job used to just vanish from the report (the
+        // dedup job sat disabled 20 days, the attack sheet paused — invisible
+        // both times). Derived from JobRuns history, no hardcoded names.
+        try
+        {
+            var idle = new List<string>();
+            await using (var cmd = new SqlCommand(@"
+SELECT j.JobName, DATEDIFF(DAY, MAX(j.StartedAtUtc), sysdatetimeoffset()) AS DaysIdle
+FROM opportunities.JobRuns j
+GROUP BY j.JobName
+HAVING MAX(j.StartedAtUtc) < DATEADD(DAY, -7, sysdatetimeoffset())
+ORDER BY 2 DESC;", con))
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    idle.Add($"{WebUtility.HtmlEncode(r.GetString(0))} ({r.GetInt32(1)}d)");
+                }
+            }
+
+            if (idle.Count > 0)
+            {
+                sb.Append($"<h3>Paused / idle jobs <span style=\"color:#666;font-weight:normal\">(no run in 7+ days)</span></h3><p style=\"color:#666\">{string.Join(" · ", idle)}</p>");
+            }
+        }
+        catch (Exception ex)
+        {
+            sb.Append($"<p style=\"color:#C8102E\">Idle-jobs section failed: {WebUtility.HtmlEncode(ex.Message)}</p>");
+        }
+
+        sb.Append("</body></html>");
+        return sb.ToString();
+    }
+
+    private static async Task AppendCountTableAsync(StringBuilder sb, SqlConnection con, string title, string sql, System.Threading.CancellationToken ct)
+    {
+        var rows = new List<(string K, int N)>();
+        await using (var cmd = new SqlCommand(sql, con))
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                rows.Add((r.GetString(0), r.GetInt32(1)));
+            }
+        }
+
+        sb.Append($"<h3>{WebUtility.HtmlEncode(title)}</h3>");
+        if (rows.Count == 0) { sb.Append("<p style=\"color:#666\">None.</p>"); return; }
+        sb.Append("<table style=\"border-collapse:collapse\">");
+        foreach (var (k, n) in rows)
+        {
+            sb.Append($"<tr><td style=\"padding:2px 12px 2px 0;border-bottom:1px solid #eee\">{WebUtility.HtmlEncode(k)}</td>" +
+                      $"<td style=\"padding:2px 0;border-bottom:1px solid #eee;text-align:right\"><b>{n}</b></td></tr>");
+        }
+        sb.Append("</table>");
+    }
+}

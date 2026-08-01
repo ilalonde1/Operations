@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 using Kor.Operations.PMTools;
 using Kor.Operations.Shared;
 using Microsoft.Data.SqlClient;
@@ -21,17 +22,20 @@ public sealed class CompensationService
     private readonly DeltekOdbcOptions _opts;
     private readonly CompensationOptions _compOpts;
     private readonly DatabaseOptions _dbOpts;
+    private readonly double _usdToCadRate;
     private readonly ILogger<CompensationService>? _log;
 
     public CompensationService(
         DeltekOdbcOptions opts,
         CompensationOptions compOpts,
         DatabaseOptions dbOpts,
+        FinancialsOptions financialsOpts,
         ILogger<CompensationService>? log = null)
     {
         _opts = opts ?? throw new ArgumentNullException(nameof(opts));
         _compOpts = compOpts ?? throw new ArgumentNullException(nameof(compOpts));
         _dbOpts = dbOpts ?? throw new ArgumentNullException(nameof(dbOpts));
+        _usdToCadRate = OrgFx.ParseUsdToCadRate(financialsOpts?.BilledUsdToCadRate);
         _log = log;
     }
 
@@ -116,7 +120,7 @@ public sealed class CompensationService
     private List<EmployeeCompensationRow> LoadActiveEmployeesSync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
 
@@ -140,7 +144,7 @@ LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = e.Employee
 WHERE UPPER(COALESCE(ec.Status, 'A')) = 'A'
 ORDER BY e.LastName, e.FirstName";
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
@@ -168,7 +172,7 @@ ORDER BY e.LastName, e.FirstName";
     private Dictionary<string, EmployeeAggregates> LoadHoursTrailing12MoSync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
         var (startDate, endDateInclusive, _, _) = GetTrailing12MoWindow();
@@ -179,41 +183,82 @@ ORDER BY e.LastName, e.FirstName";
         cn.Open();
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
+        // Dollar columns (LaborCost, OvtCost, TmRevenue, FixedFeeBillExt,
+        // FixedFeeBillExtAllocatable) are denominated in the project's
+        // currency. Join PR for the master row's Org and FX-convert USA-org
+        // dollars to CAD-equivalent so per-employee aggregates and the
+        // firm-wide compensation pool size off a single currency. Hours
+        // columns are currency-agnostic and stay raw.
+        var fxRate = _usdToCadRate;
         cmd.CommandText = $@"
 SELECT
     t.Employee,
     SUM(COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS TotalHrs,
-    SUM(CASE WHEN t.LaborCode NOT IN (70, 80)
+    SUM(CASE WHEN t.LaborCode NOT IN ({LaborCodes.Admin}, {LaborCodes.NonBillable})
               AND t.WBS1 NOT LIKE '[A-Z]%'
               AND t.WBS1 NOT LIKE '9[A-Z]%'
               AND t.WBS1 NOT LIKE '99%'
              THEN COALESCE(t.RegHrs,0)+COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0) ELSE 0 END) AS BillableHrs,
     SUM(COALESCE(t.OvtHrs,0)+COALESCE(t.SpecialOvtHrs,0)) AS OvtHrs,
-    SUM(COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) AS LaborCost,
-    SUM(COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) AS OvtCost,
+    SUM(
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+             THEN (COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) * ?
+             ELSE  COALESCE(t.RegAmt,0)+COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)
+        END
+    ) AS LaborCost,
+    SUM(
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+             THEN (COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)) * ?
+             ELSE  COALESCE(t.OvtAmt,0)+COALESCE(t.SpecialOvtAmt,0)
+        END
+    ) AS OvtCost,
     SUM(CASE WHEN COALESCE(pr.Fee, -1) = 0
               AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
               AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
-             THEN COALESCE(t.BillExt, 0) ELSE 0 END) AS TmRevenue,
+             THEN
+               CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+                    THEN COALESCE(t.BillExt, 0) * ?
+                    ELSE COALESCE(t.BillExt, 0)
+               END
+             ELSE 0 END) AS TmRevenue,
     SUM(CASE WHEN COALESCE(pr.Fee, 0) > 0
-             THEN COALESCE(t.BillExt, 0) ELSE 0 END) AS FixedFeeBillExt,
+             THEN
+               CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+                    THEN COALESCE(t.BillExt, 0) * ?
+                    ELSE COALESCE(t.BillExt, 0)
+               END
+             ELSE 0 END) AS FixedFeeBillExt,
     SUM(CASE WHEN COALESCE(pr.Fee, 0) > 0
               AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
               AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
-             THEN COALESCE(t.BillExt, 0) ELSE 0 END) AS FixedFeeBillExtAllocatable
+             THEN
+               CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+                    THEN COALESCE(t.BillExt, 0) * ?
+                    ELSE COALESCE(t.BillExt, 0)
+               END
+             ELSE 0 END) AS FixedFeeBillExtAllocatable
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
 LEFT JOIN [{catalog}].dbo.PR pr
        ON pr.WBS1 = t.WBS1 AND pr.WBS2 = t.WBS2 AND pr.WBS3 = t.WBS3
+LEFT JOIN [{catalog}].dbo.PR prMaster
+       ON prMaster.WBS1 = t.WBS1
+      AND (prMaster.WBS2 IS NULL OR LTRIM(RTRIM(prMaster.WBS2)) = '')
 WHERE t.Employee IS NOT NULL
   AND t.TransDate IS NOT NULL
   AND t.TransDate >= ? AND t.TransDate < ?
   AND UPPER(COALESCE(ec.Status, 'A')) = 'A'
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.Employee";
+        // Rate parameters in CASE-FX expression order (LaborCost, OvtCost,
+        // TmRevenue, FixedFeeBillExt, FixedFeeBillExtAllocatable), then date
+        // window. Order matters — ODBC binds positionally.
+        for (var i = 0; i < 5; i++)
+            cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Double, Value = fxRate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = startDate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = endExclusive });
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
@@ -239,33 +284,52 @@ GROUP BY t.Employee";
     private double LoadFirmRevenueTrailing12MoSync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
         var (_, _, startPeriod, endPeriod) = GetTrailing12MoWindow();
 
+        // PRSummaryMain.BilledFee/Revenue are denominated in the project's currency;
+        // bucket by pr.Org so USA-org rows can be FX-converted to CAD-equivalent
+        // before summing into the firmwide compensation pool. Without this the
+        // pool sized off mixed CAD+USD totals.
         using var cn = factory.Create();
         cn.Open();
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
         cmd.CommandText = $@"
-SELECT COALESCE(SUM(Revenue), 0)
-FROM [{catalog}].dbo.PRSummaryMain
-WHERE Period >= ? AND Period <= ?";
+SELECT
+    CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+    COALESCE(SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE sm.Revenue END), 0) AS Amount
+FROM [{catalog}].dbo.PRSummaryMain sm
+LEFT JOIN [{catalog}].dbo.PR pr
+       ON pr.WBS1 = sm.WBS1
+      AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+WHERE sm.Period >= ? AND sm.Period <= ?
+GROUP BY CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END";
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Int, Value = startPeriod });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Int, Value = endPeriod });
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
-        var value = cmd.ExecuteScalar();
-        return value is null || value == DBNull.Value
-            ? 0.0
-            : Convert.ToDouble(value, CultureInfo.InvariantCulture);
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+        using var r = cmd.ExecuteReader();
+        var cadTotal = 0.0;
+        var usaTotal = 0.0;
+        while (r.Read())
+        {
+            var bucket = GetTrimmed(r, 0);
+            var amt = GetDouble(r, 1);
+            if (string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase))
+                usaTotal += amt;
+            else
+                cadTotal += amt;
+        }
+        return cadTotal + (usaTotal * _usdToCadRate);
     }
 
     private Dictionary<(string Wbs1, string Wbs2, string Wbs3), double> LoadFixedFeeWbs3RatiosSync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
 
@@ -283,20 +347,21 @@ SELECT
     COALESCE(td.LaborBillExt, 0) AS LaborBillExt
 FROM [{catalog}].dbo.PR pr
 LEFT JOIN (
-    SELECT WBS1, WBS2, WBS3, SUM(Revenue) AS RecognizedRevenue
+    SELECT WBS1, WBS2, WBS3, SUM(CASE WHEN BilledFee <> 0 THEN BilledFee ELSE Revenue END) AS RecognizedRevenue
     FROM [{catalog}].dbo.PRSummaryMain
     GROUP BY WBS1, WBS2, WBS3
 ) sm ON sm.WBS1 = pr.WBS1 AND sm.WBS2 = pr.WBS2 AND sm.WBS3 = pr.WBS3
 LEFT JOIN (
     SELECT WBS1, WBS2, WBS3, SUM(BillExt) AS LaborBillExt
     FROM [{catalog}].dbo.tkDetail
+    WHERE COALESCE(LineItemApprovalStatus,'') <> 'R'
     GROUP BY WBS1, WBS2, WBS3
 ) td ON td.WBS1 = pr.WBS1 AND td.WBS2 = pr.WBS2 AND td.WBS3 = pr.WBS3
 WHERE COALESCE(pr.Fee, 0) > 0
   AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
   AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''";
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
@@ -309,7 +374,7 @@ WHERE COALESCE(pr.Fee, 0) > 0
 
             var revenue = GetDouble(r, 3);
             var billExt = GetDouble(r, 4);
-            result[(wbs1, wbs2, wbs3)] = billExt > 0 ? revenue / billExt : 1.0;
+            result[(wbs1, wbs2, wbs3)] = Math.Abs(billExt) > AnalyticsThresholds.RoundingDollarFloor ? revenue / billExt : 1.0;
         }
 
         return result;
@@ -318,7 +383,7 @@ WHERE COALESCE(pr.Fee, 0) > 0
     private List<(string EmployeeId, string Wbs1, string Wbs2, string Wbs3, double BillExt)> LoadPersonFixedFeeBillExtByWbs3Sync(CancellationToken ct)
     {
         var dsn = string.IsNullOrWhiteSpace(_opts.Dsn) ? "Deltek" : _opts.Dsn;
-        var catalog = string.IsNullOrWhiteSpace(_opts.Catalog) ? "C0000052267P_1_KOR00000000" : _opts.Catalog;
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_opts.Catalog);
         var factory = new VpOdbcDsnFactory(dsn, _opts.User ?? "", _opts.Password ?? "",
             () => new Dictionary<string, string>());
         var (startDate, endDateInclusive, _, _) = GetTrailing12MoWindow();
@@ -329,17 +394,30 @@ WHERE COALESCE(pr.Fee, 0) > 0
         cn.Open();
         using var cmd = cn.CreateCommand();
         cmd.CommandTimeout = SqlTimeouts.Batch;
+        // BillExt is denominated in the project's currency. Join PR at the master
+        // row for Org and FX-convert USA-org rows so per-employee allocations
+        // sum in CAD-equivalent (downstream multiplies by a currency-neutral
+        // ratio and aggregates across WBS3, which can span Orgs).
+        var fxRate = _usdToCadRate;
         cmd.CommandText = $@"
 SELECT
     t.Employee,
     t.WBS1,
     t.WBS2,
     t.WBS3,
-    SUM(COALESCE(t.BillExt, 0)) AS BillExt
+    SUM(
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(prMaster.Org,'')))) = 'USA'
+             THEN COALESCE(t.BillExt, 0) * ?
+             ELSE COALESCE(t.BillExt, 0)
+        END
+    ) AS BillExt
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.EMCompany ec ON ec.Employee = t.Employee
 LEFT JOIN [{catalog}].dbo.PR pr
        ON pr.WBS1 = t.WBS1 AND pr.WBS2 = t.WBS2 AND pr.WBS3 = t.WBS3
+LEFT JOIN [{catalog}].dbo.PR prMaster
+       ON prMaster.WBS1 = t.WBS1
+      AND (prMaster.WBS2 IS NULL OR LTRIM(RTRIM(prMaster.WBS2)) = '')
 WHERE t.Employee IS NOT NULL
   AND t.TransDate IS NOT NULL
   AND t.TransDate >= ? AND t.TransDate < ?
@@ -347,11 +425,13 @@ WHERE t.Employee IS NOT NULL
   AND COALESCE(pr.Fee, 0) > 0
   AND pr.WBS2 IS NOT NULL AND LTRIM(RTRIM(pr.WBS2)) <> ''
   AND pr.WBS3 IS NOT NULL AND LTRIM(RTRIM(pr.WBS3)) <> ''
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.Employee, t.WBS1, t.WBS2, t.WBS3";
+        cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.Double, Value = fxRate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = startDate });
         cmd.Parameters.Add(new System.Data.Odbc.OdbcParameter { OdbcType = System.Data.Odbc.OdbcType.DateTime, Value = endExclusive });
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
@@ -395,7 +475,7 @@ WHERE rn = 1;", cn)
             CommandTimeout = 15
         };
 
-        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { } });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {

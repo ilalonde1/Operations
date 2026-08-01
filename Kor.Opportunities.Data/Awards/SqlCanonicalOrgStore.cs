@@ -1,0 +1,868 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Threading;
+using System.Threading.Tasks;
+using Kor.Opportunities.Core.Models;
+using Microsoft.Data.SqlClient;
+
+namespace Kor.Opportunities.Data.Awards;
+
+public sealed class SqlCanonicalOrgStore : ICanonicalOrgStore
+{
+    private const int CommandTimeoutSeconds = 30;
+    private readonly string _connectionString;
+
+    public SqlCanonicalOrgStore(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new ArgumentException("Connection string is required.", nameof(connectionString));
+        _connectionString = connectionString;
+    }
+
+    public async Task<(long Id, bool Created)> UpsertCanonicalOrgAsync(
+        string kind,
+        string displayName,
+        string? clendorClientId,
+        string? website,
+        string? notes,
+        CancellationToken ct)
+    {
+        var fuzzyNormalizedName = CanonicalOrgResolver.NormalizeForFuzzyMatch(displayName);
+        var websiteDomain = CanonicalOrgResolver.ExtractWebsiteDomain(website);
+        var allowFuzzySurvivorAttach = !CanonicalOrgResolver.IsGenericNameDenied(NormalizeName(displayName))
+            && !CanonicalOrgResolver.IsGenericNameDenied(fuzzyNormalizedName);
+
+        const string sql = @"
+SET XACT_ABORT ON;
+
+DECLARE @existingId bigint;
+DECLARE @created bit = 0;
+DECLARE @normalizedName nvarchar(300) = CAST(LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+    @name,
+    ' ',''), '.',''), ',',''), '''',''), '-',''), '&',''), '/',''), '(',''), ')',''), '+',''))
+    AS nvarchar(300));
+
+BEGIN TRAN;
+
+SELECT TOP (1) @existingId = Id
+FROM opportunities.CanonicalOrg WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+WHERE RetiredAtUtc IS NULL
+  AND ((@clendor IS NOT NULL AND ClendorClientId = @clendor)
+   OR (@clendor IS NULL AND ClendorClientId IS NULL AND NormalizedName = @normalizedName))
+ORDER BY
+    CASE WHEN Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
+    CASE WHEN ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+    Id;
+
+-- Fuzzy fallback (closes the dup-minting front door): when the strict
+-- NormalizedName / Clendor match found nothing, match on FuzzyNormalizedName
+-- so legal suffix variants resolve to the deterministic live survivor instead
+-- of minting a new row that BdCanonicalDedup must later merge away. This only
+-- applies to non-short fuzzy keys; short keys keep create-new behavior.
+IF @existingId IS NULL AND @allowFuzzy = 1 AND @fuzzy IS NOT NULL AND LEN(@fuzzy) >= 8
+BEGIN
+    SELECT TOP (1) @existingId = co.Id
+    FROM opportunities.CanonicalOrg co WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+    OUTER APPLY (
+        SELECT COUNT_BIG(*) AS AffiliationCount
+        FROM opportunities.IntelPersonAffiliation ipa
+        WHERE ipa.CanonicalOrgId = co.Id
+    ) ipa
+    OUTER APPLY (
+        SELECT COUNT_BIG(*) AS EnrichmentCount
+        FROM opportunities.CanonicalOrgEnrichment e
+        WHERE e.CanonicalOrgId = co.Id
+    ) enr
+    WHERE co.FuzzyNormalizedName = @fuzzy
+      AND co.RetiredAtUtc IS NULL
+    ORDER BY
+        CASE WHEN co.Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
+        CASE WHEN co.ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+        CONVERT(bigint, ipa.AffiliationCount) + CONVERT(bigint, enr.EnrichmentCount) DESC,
+        co.Id;
+END
+
+IF @existingId IS NULL
+BEGIN
+    INSERT INTO opportunities.CanonicalOrg
+        (Kind, DisplayName, FuzzyNormalizedName, ClendorClientId, Website, WebsiteDomain, Notes)
+    VALUES
+        (@kind, @name, @fuzzy, @clendor, @website, @websiteDomain, @notes);
+
+    SET @existingId = CONVERT(bigint, SCOPE_IDENTITY());
+    SET @created = 1;
+END
+ELSE
+BEGIN
+    UPDATE opportunities.CanonicalOrg
+    SET Kind = CASE
+            WHEN @kind IS NULL THEN Kind
+            WHEN CASE @kind
+                    WHEN 'KorClient' THEN 0
+                    WHEN 'KorStructural' THEN 0
+                    WHEN 'Competitor' THEN 1
+                    WHEN 'Developer' THEN 2
+                    WHEN 'Architect' THEN 3
+                    WHEN 'GC' THEN 4
+                    WHEN 'Subcontractor' THEN 5
+                    WHEN 'Buyer' THEN 6
+                    WHEN 'Vendor' THEN 7
+                    ELSE 8
+                 END
+                 < CASE Kind
+                    WHEN 'KorClient' THEN 0
+                    WHEN 'KorStructural' THEN 0
+                    WHEN 'Competitor' THEN 1
+                    WHEN 'Developer' THEN 2
+                    WHEN 'Architect' THEN 3
+                    WHEN 'GC' THEN 4
+                    WHEN 'Subcontractor' THEN 5
+                    WHEN 'Buyer' THEN 6
+                    WHEN 'Vendor' THEN 7
+                    ELSE 8
+                   END
+            THEN @kind
+            ELSE Kind
+        END,
+        -- Frozen self-anchors (KorStructural/KorClient) keep their curated DisplayName;
+        -- a research record naming a variant must not rename KOR's own identity row.
+        DisplayName = CASE WHEN Kind IN (N'KorStructural', N'KorClient') THEN DisplayName ELSE @name END,
+        FuzzyNormalizedName = @fuzzy,
+        Website = COALESCE(Website, @website),
+        WebsiteDomain = COALESCE(WebsiteDomain, @websiteDomain),
+        Notes = COALESCE(Notes, @notes),
+        UpdatedAtUtc = sysdatetimeoffset()
+    WHERE Id = @existingId;
+END;
+
+COMMIT TRAN;
+
+SELECT @existingId AS Id, @created AS Created;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = (object?)kind ?? DBNull.Value;
+        cmd.Parameters.Add("@name", SqlDbType.NVarChar, 300).Value = displayName;
+        cmd.Parameters.Add("@fuzzy", SqlDbType.NVarChar, 300).Value = string.IsNullOrEmpty(fuzzyNormalizedName)
+            ? (object)DBNull.Value
+            : fuzzyNormalizedName;
+        cmd.Parameters.Add("@allowFuzzy", SqlDbType.Bit).Value = allowFuzzySurvivorAttach;
+        cmd.Parameters.Add("@clendor", SqlDbType.VarChar, 32).Value = (object?)clendorClientId ?? DBNull.Value;
+        cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = (object?)website ?? DBNull.Value;
+        cmd.Parameters.Add("@websiteDomain", SqlDbType.NVarChar, 255).Value = string.IsNullOrWhiteSpace(websiteDomain) ? (object)DBNull.Value : websiteDomain;
+        cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)notes ?? DBNull.Value;
+
+        try
+        {
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                throw new InvalidOperationException("UpsertCanonicalOrgAsync returned no row.");
+            }
+
+            return (reader.GetInt64(0), reader.GetBoolean(1));
+        }
+        catch (SqlException ex) when (IsDuplicateKey(ex))
+        {
+            // A concurrent writer won the insert race — the org exists, we did not create it.
+            if (clendorClientId is not null)
+            {
+                var existing = await GetCanonicalOrgByClendorIdAsync(clendorClientId, ct).ConfigureAwait(false);
+                if (existing is not null)
+                {
+                    return (existing.Id, false);
+                }
+            }
+            else
+            {
+                var id = await FindByNormalizedNameAsync(NormalizeName(displayName), ct).ConfigureAwait(false);
+                if (id.HasValue)
+                {
+                    return (id.Value, false);
+                }
+            }
+
+            throw;
+        }
+    }
+
+    public async Task<CanonicalOrgRow?> GetCanonicalOrgAsync(long id, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
+       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc, RetiredAtUtc
+FROM   opportunities.CanonicalOrg
+WHERE  Id = @id;";
+        return await ReadSingleOrgAsync(sql, new[] { ("@id", (object)id, SqlDbType.BigInt, 0) }, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<CanonicalOrgRow>> SearchCanonicalOrgsAsync(
+        string? query,
+        string? kind,
+        int take,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP (@take) Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
+       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc, RetiredAtUtc
+FROM   opportunities.CanonicalOrg
+WHERE  RetiredAtUtc IS NULL
+   AND (@q IS NULL OR DisplayName LIKE '%' + @q + '%' ESCAPE '\')
+   AND (@kind IS NULL OR Kind = @kind)
+   AND (@kind IS NOT NULL OR Kind NOT IN ('Vendor','Unknown'))
+ORDER BY DisplayName;";
+
+        return await RunSearchAsync(sql, query, kind, take, ct).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<CanonicalOrgRow>> SearchCanonicalOrgsWithRelationshipsAsync(
+        string? query,
+        string? kind,
+        int take,
+        CancellationToken ct)
+    {
+        // Filter to orgs the firm actually has a relationship with. Each EXISTS
+        // hits an existing filtered/covering index on the FK column (see
+        // schema 22_OpportunityCanonicalLinks.sql, 38_MajorProjectsInventory.sql,
+        // 20_KorPursuits.sql) so the OR doesn't fan out into a table scan.
+        const string sql = @"
+SELECT TOP (@take) co.Id, co.Kind, co.DisplayName, co.ClendorClientId, co.Website, co.Notes, co.CreatedAtUtc, co.UpdatedAtUtc,
+       ISNULL(co.KorProjectsCount, 0) AS KorProjectsCount, co.LastKorProjectAtUtc, co.RetiredAtUtc
+FROM   opportunities.CanonicalOrg co
+WHERE  co.RetiredAtUtc IS NULL
+   AND (@q IS NULL OR co.DisplayName LIKE '%' + @q + '%' ESCAPE '\')
+   AND (@kind IS NULL OR co.Kind = @kind)
+   AND (@kind IS NOT NULL OR co.Kind NOT IN ('Vendor','Unknown'))
+   AND (co.ClendorClientId IS NOT NULL
+     OR EXISTS (SELECT 1 FROM opportunities.CanonicalOrgEnrichment e WHERE e.CanonicalOrgId = co.Id)
+     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.ProponentCanonicalOrgId = co.Id AND mp.RetiredAtUtc IS NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.ArchitectCanonicalOrgId = co.Id AND mp.RetiredAtUtc IS NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.StructuralEngineerCanonicalOrgId = co.Id AND mp.RetiredAtUtc IS NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.MajorProjectsInventory mp WHERE mp.GeneralContractorCanonicalOrgId = co.Id AND mp.RetiredAtUtc IS NULL)
+     OR EXISTS (SELECT 1 FROM opportunities.Opportunities o WHERE o.BuyerCanonicalOrgId = co.Id)
+     OR EXISTS (SELECT 1 FROM opportunities.OpportunityAwards a WHERE a.AwardingCanonicalOrgId = co.Id OR a.AwardedToCanonicalOrgId = co.Id)
+     OR EXISTS (SELECT 1 FROM opportunities.KorPursuits p WHERE p.BuyerCanonicalOrgId = co.Id OR p.LostToCanonicalOrgId = co.Id))
+ORDER BY co.DisplayName;";
+
+        return await RunSearchAsync(sql, query, kind, take, ct).ConfigureAwait(false);
+    }
+
+    private async Task<IReadOnlyList<CanonicalOrgRow>> RunSearchAsync(
+        string sql,
+        string? query,
+        string? kind,
+        int take,
+        CancellationToken ct)
+    {
+        var safeTake = Math.Clamp(take, 1, 2000);
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@q", SqlDbType.NVarChar, 300).Value = string.IsNullOrWhiteSpace(query)
+            ? (object)DBNull.Value
+            : EscapeLikeQuery(query.Trim());
+        cmd.Parameters.Add("@kind", SqlDbType.NVarChar, 40).Value = string.IsNullOrWhiteSpace(kind)
+            ? (object)DBNull.Value
+            : kind.Trim();
+        cmd.Parameters.Add("@take", SqlDbType.Int).Value = safeTake;
+
+        var list = new List<CanonicalOrgRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            list.Add(MapOrg(r));
+        }
+
+        return list;
+    }
+
+    public async Task<CanonicalOrgRow?> GetCanonicalOrgByClendorIdAsync(string clendorClientId, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP 1 Id, Kind, DisplayName, ClendorClientId, Website, Notes, CreatedAtUtc, UpdatedAtUtc,
+       ISNULL(KorProjectsCount, 0) AS KorProjectsCount, LastKorProjectAtUtc, RetiredAtUtc
+FROM   opportunities.CanonicalOrg
+WHERE  ClendorClientId = @cl;";
+        return await ReadSingleOrgAsync(sql, new[] { ("@cl", (object)clendorClientId, SqlDbType.VarChar, 32) }, ct)
+            .ConfigureAwait(false);
+    }
+
+    public async Task RecordBcRegistrySnapshotAsync(long canonicalOrgId, BcRegistrySnapshot s, CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE opportunities.CanonicalOrg
+SET    BcRegistryTopicId           = @topic,
+       BcRegistryLegalName         = @legal,
+       BcRegistryEntityType        = @entity,
+       BcRegistryStatus            = @status,
+       BcRegistryIncorporationDate = @incorp,
+       BcRegistryJurisdiction      = @juris,
+       BcRegistryBusinessNumber    = @bn,
+       BcRegistryRegisteredOffice  = @office,
+       BcRegistryLastCheckedAtUtc  = sysdatetimeoffset(),
+       UpdatedAtUtc                = sysdatetimeoffset()
+WHERE  Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        cmd.Parameters.Add("@topic", SqlDbType.NVarChar, 50).Value = (object?)s.TopicId ?? DBNull.Value;
+        cmd.Parameters.Add("@legal", SqlDbType.NVarChar, 300).Value = (object?)s.LegalName ?? DBNull.Value;
+        cmd.Parameters.Add("@entity", SqlDbType.NVarChar, 50).Value = (object?)s.EntityType ?? DBNull.Value;
+        cmd.Parameters.Add("@status", SqlDbType.NVarChar, 40).Value = (object?)s.Status ?? DBNull.Value;
+        cmd.Parameters.Add("@incorp", SqlDbType.Date).Value = s.IncorporationDate.HasValue
+            ? (object)s.IncorporationDate.Value
+            : DBNull.Value;
+        cmd.Parameters.Add("@juris", SqlDbType.NVarChar, 50).Value = (object?)s.Jurisdiction ?? DBNull.Value;
+        cmd.Parameters.Add("@bn", SqlDbType.NVarChar, 20).Value = (object?)s.BusinessNumber ?? DBNull.Value;
+        cmd.Parameters.Add("@office", SqlDbType.NVarChar, 500).Value = (object?)s.RegisteredOffice ?? DBNull.Value;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<(string DisplayName, string Kind)?> GetNameAndKindAsync(long canonicalOrgId, CancellationToken ct)
+    {
+        const string sql = "SELECT DisplayName, Kind FROM opportunities.CanonicalOrg WHERE Id = @id;";
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        return (r.GetString(0), r.GetString(1));
+    }
+
+    public async Task<bool> UnretireAsync(long canonicalOrgId, string reason, CancellationToken ct)
+    {
+        // BD-Audit-2026-06-09 M8: the resurrect reason used to be discarded
+        // (`_ = reason;`) — the only audit trail was a log line. Persist it
+        // into Notes alongside the original RetiredReason so the data itself
+        // records why a retired org came back.
+        const string sql = @"
+DECLARE @unretired table (Id bigint, WasRetired datetimeoffset(7));
+
+UPDATE opportunities.CanonicalOrg
+SET RetiredAtUtc = NULL,
+    RetiredReason = NULL,
+    Notes = COALESCE(Notes + NCHAR(13) + NCHAR(10), N'')
+            + N'[Unretired ' + CONVERT(nvarchar(33), sysdatetimeoffset(), 127) + N': ' + COALESCE(@reason, N'(unspecified)')
+            + N'; was retired: ' + COALESCE(RetiredReason, N'(no reason)') + N']'
+OUTPUT INSERTED.Id, DELETED.RetiredAtUtc INTO @unretired
+WHERE Id = @id AND RetiredAtUtc IS NOT NULL;
+
+SELECT Id, WasRetired FROM @unretired;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        cmd.Parameters.Add("@reason", SqlDbType.NVarChar, 500).Value = (object?)reason ?? DBNull.Value;
+
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        return await r.ReadAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task MarkRetiredOnIntakeAsync(long canonicalOrgId, string reason, CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE opportunities.CanonicalOrg
+SET RetiredAtUtc = sysdatetimeoffset(),
+    RetiredReason = @reason,
+    UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        cmd.Parameters.Add("@reason", SqlDbType.NVarChar, 500).Value = reason;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    private static bool IsDuplicateKey(SqlException ex)
+        => ex.Errors.Cast<SqlError>().Any(e => e.Number is 2601 or 2627);
+
+    private static string NormalizeName(string name)
+        => name.Trim().ToLowerInvariant()
+            .Replace(" ", "", StringComparison.Ordinal)
+            .Replace(".", "", StringComparison.Ordinal)
+            .Replace(",", "", StringComparison.Ordinal)
+            .Replace("'", "", StringComparison.Ordinal)
+            .Replace("-", "", StringComparison.Ordinal)
+            .Replace("&", "", StringComparison.Ordinal)
+            .Replace("/", "", StringComparison.Ordinal)
+            .Replace("(", "", StringComparison.Ordinal)
+            .Replace(")", "", StringComparison.Ordinal)
+            .Replace("+", "", StringComparison.Ordinal);
+
+    public async Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(normalizedName)) return null;
+
+        const string sql = @"
+SELECT TOP 1 Id FROM opportunities.CanonicalOrg
+WHERE NormalizedName = @norm
+  AND RetiredAtUtc IS NULL
+ORDER BY
+    CASE WHEN Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
+    CASE WHEN ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+    Id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@norm", SqlDbType.NVarChar, 300).Value = normalizedName;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        if (v is null || v is DBNull) return null;
+        return Convert.ToInt64(v);
+    }
+
+    public async Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(fuzzyKey) || fuzzyKey.Length < 8) return null;
+
+        const string sql = @"
+SELECT TOP 1 co.Id
+FROM opportunities.CanonicalOrg co
+OUTER APPLY (
+    SELECT COUNT_BIG(*) AS AffiliationCount
+    FROM opportunities.IntelPersonAffiliation ipa
+    WHERE ipa.CanonicalOrgId = co.Id
+) ipa
+OUTER APPLY (
+    SELECT COUNT_BIG(*) AS EnrichmentCount
+    FROM opportunities.CanonicalOrgEnrichment e
+    WHERE e.CanonicalOrgId = co.Id
+) enr
+WHERE co.FuzzyNormalizedName = @key
+  AND co.RetiredAtUtc IS NULL
+ORDER BY
+    CASE WHEN co.Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
+    CASE WHEN co.ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+    CONVERT(bigint, ipa.AffiliationCount) + CONVERT(bigint, enr.EnrichmentCount) DESC,
+    co.Id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@key", SqlDbType.NVarChar, 300).Value = fuzzyKey;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
+    public async Task<long?> FindByWebsiteDomainAsync(string domain, CancellationToken ct)
+    {
+        if (CanonicalOrgResolver.IsGenericWebsiteDomainDenied(domain)) return null;
+
+        const string sql = @"
+SELECT TOP 1 co.Id
+FROM opportunities.CanonicalOrg co
+OUTER APPLY (
+    SELECT COUNT_BIG(*) AS AffiliationCount
+    FROM opportunities.IntelPersonAffiliation ipa
+    WHERE ipa.CanonicalOrgId = co.Id
+) ipa
+OUTER APPLY (
+    SELECT COUNT_BIG(*) AS EnrichmentCount
+    FROM opportunities.CanonicalOrgEnrichment e
+    WHERE e.CanonicalOrgId = co.Id
+) enr
+WHERE co.WebsiteDomain = @domain
+  AND co.RetiredAtUtc IS NULL
+ORDER BY
+    CASE WHEN co.Kind IN (N'KorStructural', N'KorClient') THEN 0 ELSE 1 END,
+    CASE WHEN co.ClendorClientId IS NOT NULL THEN 0 ELSE 1 END,
+    CONVERT(bigint, ipa.AffiliationCount) + CONVERT(bigint, enr.EnrichmentCount) DESC,
+    co.Id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@domain", SqlDbType.NVarChar, 255).Value = domain.Trim().ToLowerInvariant();
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
+    public async Task<long?> ResolveCanonicalOrgMergeAsync(long canonicalOrgId, CancellationToken ct)
+    {
+        const string sql = @"
+WITH chain AS (
+    SELECT @id AS Cur, 0 AS Depth
+    UNION ALL
+    SELECT m.MergedIntoCanonicalOrgId, c.Depth + 1
+    FROM chain c
+    JOIN opportunities.CanonicalOrgMerge m ON m.MergedFromCanonicalOrgId = c.Cur
+    WHERE c.Depth < 16
+)
+SELECT TOP 1 co.Id
+FROM chain c
+JOIN opportunities.CanonicalOrg co ON co.Id = c.Cur AND co.RetiredAtUtc IS NULL
+ORDER BY c.Depth DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
+    public async Task<long?> FindMergedSurvivorByAliasAsync(string rawName, string source, CancellationToken ct)
+    {
+        const string sql = @"
+WITH seeds AS (
+    SELECT a.CanonicalOrgId AS SeedId, a.Id AS AliasId
+    FROM opportunities.OrgAlias a
+    JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId AND co.RetiredAtUtc IS NOT NULL
+    WHERE a.RawName = @raw AND a.Source = @src
+), chain AS (
+    SELECT SeedId, AliasId, SeedId AS Cur, 0 AS Depth
+    FROM seeds
+    UNION ALL
+    SELECT c.SeedId, c.AliasId, m.MergedIntoCanonicalOrgId, c.Depth + 1
+    FROM chain c
+    JOIN opportunities.CanonicalOrgMerge m ON m.MergedFromCanonicalOrgId = c.Cur
+    WHERE c.Depth < 16
+)
+SELECT TOP 1 co.Id
+FROM chain c
+JOIN opportunities.CanonicalOrg co ON co.Id = c.Cur AND co.RetiredAtUtc IS NULL
+ORDER BY c.AliasId, c.Depth DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@raw", SqlDbType.NVarChar, 300).Value = rawName;
+        cmd.Parameters.Add("@src", SqlDbType.NVarChar, 80).Value = source;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
+    public async Task<long?> FindMergedSurvivorByNormalizedNameAsync(string normalizedName, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(normalizedName)) return null;
+
+        const string sql = @"
+WITH seeds AS (
+    SELECT co.Id AS SeedId
+    FROM opportunities.CanonicalOrg co
+    WHERE co.NormalizedName = @norm
+      AND co.RetiredAtUtc IS NOT NULL
+), chain AS (
+    SELECT SeedId, SeedId AS Cur, 0 AS Depth
+    FROM seeds
+    UNION ALL
+    SELECT c.SeedId, m.MergedIntoCanonicalOrgId, c.Depth + 1
+    FROM chain c
+    JOIN opportunities.CanonicalOrgMerge m ON m.MergedFromCanonicalOrgId = c.Cur
+    WHERE c.Depth < 16
+)
+SELECT TOP 1 co.Id
+FROM chain c
+JOIN opportunities.CanonicalOrg co ON co.Id = c.Cur AND co.RetiredAtUtc IS NULL
+ORDER BY c.SeedId, c.Depth DESC;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@norm", SqlDbType.NVarChar, 300).Value = normalizedName;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? null : Convert.ToInt64(v);
+    }
+
+    public async Task<int> CountRetiredMatchesAsync(
+        string rawName,
+        string source,
+        string normalizedName,
+        string fuzzyKey,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT COUNT_BIG(*)
+FROM (
+    SELECT co.Id
+    FROM opportunities.CanonicalOrg co
+    WHERE @norm <> N'' AND co.NormalizedName = @norm AND co.RetiredAtUtc IS NOT NULL
+    UNION
+    SELECT co.Id
+    FROM opportunities.CanonicalOrg co
+    WHERE @fuzzy <> N'' AND co.FuzzyNormalizedName = @fuzzy AND co.RetiredAtUtc IS NOT NULL
+    UNION
+    SELECT co.Id
+    FROM opportunities.OrgAlias a
+    JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+    WHERE a.RawName = @raw AND a.Source = @src AND co.RetiredAtUtc IS NOT NULL
+) retired;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@raw", SqlDbType.NVarChar, 300).Value = rawName;
+        cmd.Parameters.Add("@src", SqlDbType.NVarChar, 80).Value = source;
+        cmd.Parameters.Add("@norm", SqlDbType.NVarChar, 300).Value = normalizedName;
+        cmd.Parameters.Add("@fuzzy", SqlDbType.NVarChar, 300).Value = fuzzyKey;
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return v is null or DBNull ? 0 : Convert.ToInt32(v);
+    }
+
+    public async Task<(long Id, bool InactivityArchived)?> FindResurrectableRetiredAsync(string normalizedName, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(normalizedName)) return null;
+
+        // Any retired org that is NOT a dedup loser may be REUSED on a new reference
+        // — never a merge loser (reusing that undoes the merge and re-creates the
+        // duplicate the dedup pass carefully removed). Whether the row may also be
+        // RESURRECTED is the caller's call, driven by InactivityArchived: only
+        // dormancy-archived rows (born-archived on intake / low-value auto-archive)
+        // come back to life; curation retirees (procurement noise, junk purges) are
+        // reused cold so they neither resurrect nor mint a live twin. Require
+        // exactly one strict-normalized-name match; ambiguity falls through to create.
+        const string sql = @"
+SELECT co.Id,
+       CASE WHEN co.RetiredReason LIKE N'Born-archived%'
+              OR co.RetiredReason LIKE N'Low-value auto-archive%'
+            THEN 1 ELSE 0 END AS InactivityArchived
+FROM opportunities.CanonicalOrg co
+WHERE co.NormalizedName = @norm
+  AND co.RetiredAtUtc IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM opportunities.CanonicalOrgMerge m
+      WHERE m.MergedFromCanonicalOrgId = co.Id);";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@norm", SqlDbType.NVarChar, 300).Value = normalizedName;
+
+        (long, bool)? found = null;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            found = (r.GetInt64(0), r.GetInt32(1) == 1);
+            // A second eligible row means the name is ambiguous — do not reuse.
+            if (await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        }
+        return found;
+    }
+
+    public async Task PromoteCanonicalOrgWebsiteNotesAsync(
+        long canonicalOrgId,
+        string? website,
+        string? notes,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(website) && string.IsNullOrWhiteSpace(notes)) return;
+
+        var websiteDomain = CanonicalOrgResolver.ExtractWebsiteDomain(website);
+
+        const string sql = @"
+UPDATE opportunities.CanonicalOrg
+SET Website = COALESCE(Website, @website),
+    WebsiteDomain = COALESCE(WebsiteDomain, @websiteDomain),
+    Notes = COALESCE(Notes, @notes),
+    UpdatedAtUtc = CASE
+        WHEN (Website IS NULL AND @website IS NOT NULL)
+          OR (WebsiteDomain IS NULL AND @websiteDomain IS NOT NULL)
+          OR (Notes IS NULL AND @notes IS NOT NULL)
+        THEN sysdatetimeoffset()
+        ELSE UpdatedAtUtc
+    END
+WHERE Id = @id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = canonicalOrgId;
+        cmd.Parameters.Add("@website", SqlDbType.NVarChar, 500).Value = string.IsNullOrWhiteSpace(website)
+            ? (object)DBNull.Value
+            : website;
+        cmd.Parameters.Add("@websiteDomain", SqlDbType.NVarChar, 255).Value = string.IsNullOrWhiteSpace(websiteDomain)
+            ? (object)DBNull.Value
+            : websiteDomain;
+        cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = string.IsNullOrWhiteSpace(notes)
+            ? (object)DBNull.Value
+            : notes;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+    public async Task<long> UpsertAliasAsync(
+        string rawName,
+        string source,
+        long? canonicalOrgId,
+        int confidence,
+        string? classifiedBy,
+        string? notes,
+        CancellationToken ct)
+    {
+        const string sql = @"
+MERGE opportunities.OrgAlias WITH (HOLDLOCK) AS t
+USING (SELECT @raw AS RawName, @src AS Source) AS s
+   ON t.RawName = s.RawName AND t.Source = s.Source
+-- Re-classify only when there is a new canonical AND the existing row is not
+-- human-verified AND the incoming confidence does not DOWNGRADE the existing.
+-- Prevents an automated re-resolution from silently reverting a manual correction
+-- or lowering a high-confidence link (audit: alias-clobber). A single WHEN MATCHED
+-- with per-column CASE guards — SQL Server forbids two WHEN MATCHED UPDATE clauses.
+WHEN MATCHED THEN UPDATE SET
+    CanonicalOrgId = CASE WHEN @canon IS NOT NULL AND ISNULL(t.ClassifiedBy, N'') <> N'manual' AND @conf >= t.Confidence
+                         THEN @canon ELSE t.CanonicalOrgId END,
+    Confidence = CASE WHEN @canon IS NOT NULL AND ISNULL(t.ClassifiedBy, N'') <> N'manual' AND @conf >= t.Confidence
+                     THEN @conf ELSE t.Confidence END,
+    ClassifiedBy = CASE WHEN @canon IS NOT NULL AND ISNULL(t.ClassifiedBy, N'') <> N'manual' AND @conf >= t.Confidence
+                       THEN COALESCE(@by, t.ClassifiedBy) ELSE t.ClassifiedBy END,
+    ClassifiedAtUtc = CASE WHEN @canon IS NOT NULL AND ISNULL(t.ClassifiedBy, N'') <> N'manual' AND @conf >= t.Confidence
+                          THEN sysdatetimeoffset() ELSE t.ClassifiedAtUtc END,
+    Notes = COALESCE(@notes, t.Notes)
+WHEN NOT MATCHED THEN INSERT
+    (RawName, Source, CanonicalOrgId, Confidence, ClassifiedBy, ClassifiedAtUtc, Notes)
+    VALUES (@raw, @src, @canon, @conf, @by,
+            CASE WHEN @canon IS NOT NULL THEN sysdatetimeoffset() ELSE NULL END,
+            @notes)
+OUTPUT INSERTED.Id;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@raw", SqlDbType.NVarChar, 300).Value = rawName;
+        cmd.Parameters.Add("@src", SqlDbType.NVarChar, 80).Value = source;
+        cmd.Parameters.Add("@canon", SqlDbType.BigInt).Value = canonicalOrgId.HasValue
+            ? (object)canonicalOrgId.Value
+            : DBNull.Value;
+        cmd.Parameters.Add("@conf", SqlDbType.Int).Value = confidence;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 50).Value = (object?)classifiedBy ?? DBNull.Value;
+        cmd.Parameters.Add("@notes", SqlDbType.NVarChar, -1).Value = (object?)notes ?? DBNull.Value;
+
+        var v = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return Convert.ToInt64(v);
+    }
+
+    public async Task<OrgAliasRow?> LookupAliasAsync(string rawName, string source, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP 1 a.Id, a.CanonicalOrgId, a.RawName, a.Source, a.Confidence, a.ClassifiedBy, a.ClassifiedAtUtc, a.Notes, a.CreatedAtUtc
+FROM   opportunities.OrgAlias a
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId
+WHERE  a.RawName = @raw AND a.Source = @src
+  AND (a.CanonicalOrgId IS NULL OR co.RetiredAtUtc IS NULL);";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@raw", SqlDbType.NVarChar, 300).Value = rawName;
+        cmd.Parameters.Add("@src", SqlDbType.NVarChar, 80).Value = source;
+
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        return MapAlias(r);
+    }
+
+    public async Task<IReadOnlyList<OrgAliasRow>> ListUnclassifiedAsync(
+        string? source,
+        int batchSize,
+        CancellationToken ct)
+    {
+        var sql = @"
+SELECT TOP (@batch) Id, CanonicalOrgId, RawName, Source, Confidence, ClassifiedBy, ClassifiedAtUtc, Notes, CreatedAtUtc
+FROM   opportunities.OrgAlias
+WHERE  CanonicalOrgId IS NULL "
+            + (string.IsNullOrWhiteSpace(source) ? "" : " AND Source = @src ")
+            + " ORDER BY CreatedAtUtc;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@batch", SqlDbType.Int).Value = batchSize;
+        if (!string.IsNullOrWhiteSpace(source))
+            cmd.Parameters.Add("@src", SqlDbType.NVarChar, 80).Value = source;
+
+        var list = new List<OrgAliasRow>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            list.Add(MapAlias(r));
+        }
+
+        return list;
+    }
+
+    public async Task<(int Total, int Classified, int Unclassified)> GetAliasCountsAsync(CancellationToken ct)
+    {
+        const string sql = @"
+SELECT
+    COUNT(*) AS Total,
+    SUM(CASE WHEN CanonicalOrgId IS NOT NULL THEN 1 ELSE 0 END) AS Classified,
+    SUM(CASE WHEN CanonicalOrgId IS NULL THEN 1 ELSE 0 END) AS Unclassified
+FROM opportunities.OrgAlias;";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return (0, 0, 0);
+        return (
+            r.IsDBNull(0) ? 0 : r.GetInt32(0),
+            r.IsDBNull(1) ? 0 : r.GetInt32(1),
+            r.IsDBNull(2) ? 0 : r.GetInt32(2));
+    }
+
+    private async Task<CanonicalOrgRow?> ReadSingleOrgAsync(
+        string sql,
+        IReadOnlyList<(string Name, object Value, SqlDbType Type, int Size)> args,
+        CancellationToken ct)
+    {
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        foreach (var (name, value, type, size) in args)
+        {
+            if (size > 0)
+            {
+                cmd.Parameters.Add(name, type, size).Value = value;
+            }
+            else
+            {
+                cmd.Parameters.Add(name, type).Value = value;
+            }
+        }
+
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+        return MapOrg(r);
+    }
+
+    private static CanonicalOrgRow MapOrg(SqlDataReader r)
+        => new(
+            r.GetInt64(0),
+            r.GetString(1),
+            r.GetString(2),
+            r.IsDBNull(3) ? null : r.GetString(3),
+            r.IsDBNull(4) ? null : r.GetString(4),
+            r.IsDBNull(5) ? null : r.GetString(5),
+            r.GetDateTimeOffset(6),
+            r.GetDateTimeOffset(7),
+            r.GetInt32(8),
+            r.IsDBNull(9) ? null : new DateTimeOffset(r.GetDateTime(9), TimeSpan.Zero),
+            r.IsDBNull(10) ? null : r.GetDateTimeOffset(10));
+
+    private static string EscapeLikeQuery(string query)
+        => query
+            .Replace(@"\", @"\\", StringComparison.Ordinal)
+            .Replace("%", @"\%", StringComparison.Ordinal)
+            .Replace("_", @"\_", StringComparison.Ordinal)
+            .Replace("[", @"\[", StringComparison.Ordinal);
+
+    private static OrgAliasRow MapAlias(SqlDataReader r)
+        => new(
+            r.GetInt64(0),
+            r.IsDBNull(1) ? (long?)null : r.GetInt64(1),
+            r.GetString(2),
+            r.GetString(3),
+            r.GetInt32(4),
+            r.IsDBNull(5) ? null : r.GetString(5),
+            r.IsDBNull(6) ? (DateTimeOffset?)null : r.GetDateTimeOffset(6),
+            r.IsDBNull(7) ? null : r.GetString(7),
+            r.GetDateTimeOffset(8));
+}

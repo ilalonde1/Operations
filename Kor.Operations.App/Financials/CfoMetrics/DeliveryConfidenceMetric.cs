@@ -16,7 +16,7 @@ namespace Kor.Operations.Financials.CfoMetrics
             "HOW IT IS CALCULATED:\n" +
             "Maps the Delivery Confidence level to a score: High Confidence=0, Watch=1, At Risk=2, Critical=3.";
 
-        public string Formula => "HighConfidence=0; Stable/Watch=1; AtRisk=2; Critical=3";
+        public string Formula => "HighConfidence=0; Watch=1; AtRisk=2; Critical=3";
 
         public decimal ComputeValue(ProjectData data)
         {
@@ -24,7 +24,7 @@ namespace Kor.Operations.Financials.CfoMetrics
             return data.DeliveryConfidenceLevel switch
             {
                 DeliveryConfidenceLevel.HighConfidence => 0m,
-                DeliveryConfidenceLevel.Stable => 1m,
+                DeliveryConfidenceLevel.Watch => 1m,
                 DeliveryConfidenceLevel.AtRisk => 2m,
                 DeliveryConfidenceLevel.Critical => 3m,
                 _ => 0m

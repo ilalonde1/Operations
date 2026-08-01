@@ -1,0 +1,55 @@
+<Window x:Class="Kor.Operations.App.Opportunities.OrgDossierWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        xmlns:appControls="clr-namespace:Kor.Operations.App.Controls"
+        Title="Org Dossier"
+        Width="1280"
+        Height="820"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI"
+        Loaded="Window_Loaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <controls:KorHeader x:Name="HeaderBar"
+                            Grid.Row="0"
+                            Margin="2,0,2,8"
+                            HeaderText="Organization"
+                            SubtitleText="Dossier"
+                            AvatarDiameter="96"
+                            AvatarBorderThickness="2"/>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,12,8" VerticalAlignment="Center">
+            <TextBlock Text="Jump to:"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource Text.Secondary}"
+                       Margin="0,0,6,0"/>
+            <appControls:OrgSearchTypeahead x:Name="JumpToOrg"
+                                            Width="320"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,12,0"/>
+
+            <Button x:Name="GenerateOrgBriefButton"
+                    Content="Generate Brief"
+                    Width="140"
+                    Click="GenerateOrgBriefButton_Click"
+                    ToolTip="Generate a one-page PDF brief on this organization (saved to Desktop). Right-click to export as Word.">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Export as PDF (default)" Click="GenerateOrgBriefButton_Click"/>
+                        <MenuItem Header="Export as Word (.docx)" Click="GenerateOrgBriefAsWord_Click"/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
+        </StackPanel>
+
+        <ContentControl x:Name="ViewHost" Grid.Row="2"/>
+    </Grid>
+</Window>

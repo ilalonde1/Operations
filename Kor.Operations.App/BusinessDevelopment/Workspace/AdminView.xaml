@@ -1,0 +1,258 @@
+<UserControl x:Class="Kor.Operations.App.BusinessDevelopment.Workspace.AdminView"
+             x:Name="AdminViewRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+             Background="{StaticResource App.Background}"
+             Loaded="AdminView_Loaded"
+             Unloaded="AdminView_Unloaded">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <CollectionViewSource x:Key="ScheduledJobsGrouped"
+                              Source="{Binding ScheduledJobs}">
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="Category"/>
+            </CollectionViewSource.GroupDescriptions>
+            <CollectionViewSource.SortDescriptions>
+                <scm:SortDescription PropertyName="Category"/>
+                <scm:SortDescription PropertyName="JobName"/>
+            </CollectionViewSource.SortDescriptions>
+        </CollectionViewSource>
+    </UserControl.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Padding="10,6" Margin="0,0,0,6">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="#E8E8E8"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ServiceStatusKind}" Value="Healthy">
+                            <Setter Property="Background" Value="#DFF0D8"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding ServiceStatusKind}" Value="Idle">
+                            <Setter Property="Background" Value="#FCF8E3"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding ServiceStatusKind}" Value="Stale">
+                            <Setter Property="Background" Value="#F2DEDE"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="{Binding ServiceStatusLine}" FontWeight="SemiBold"/>
+        </Border>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Sources &amp; Schedules" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                <DataGrid Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          ItemsSource="{Binding Sources}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="220"/>
+                        <DataGridTextColumn Header="Type" Binding="{Binding SourceType}" Width="130"/>
+                        <DataGridTextColumn Header="Delay (s)" Binding="{Binding CrawlDelaySeconds}" Width="90"/>
+                        <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding IsEnabled, Mode=OneWay}" Width="80"/>
+                        <DataGridTextColumn Header="Base URL" Binding="{Binding BaseUrl}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Scheduled Jobs" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                <DataGrid Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          ItemsSource="{Binding Source={StaticResource ScheduledJobsGrouped}}">
+                    <DataGrid.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}"
+                                               FontWeight="Bold"
+                                               FontSize="13"
+                                               Background="#F0F0F0"
+                                               Padding="6,3"/>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </DataGrid.GroupStyle>
+                        <DataGrid.Columns>
+                        <DataGridTextColumn Header="Job" Binding="{Binding JobName}" Width="240" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Cron" Binding="{Binding CronSchedule}" Width="150" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Next fire" Binding="{Binding NextFireDisplay}" Width="110" IsReadOnly="True"/>
+                        <DataGridTemplateColumn Header="Enabled" Width="70">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              HorizontalAlignment="Center"
+                                              Command="{Binding DataContext.ToggleEnabledCommand, ElementName=AdminViewRoot}"
+                                              CommandParameter="{Binding}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Last run" Binding="{Binding LastRun}" Width="130" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Result" Binding="{Binding Result}" Width="*" IsReadOnly="True"/>
+                        <DataGridTemplateColumn Header="Actions" Width="220">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Run Now"
+                                                Margin="0,0,4,0"
+                                                Padding="6,2"
+                                                Command="{Binding DataContext.RunNowCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="Queues this job to run within ~15s"/>
+                                        <Button Content="History"
+                                                Margin="0,0,4,0"
+                                                Padding="6,2"
+                                                Command="{Binding DataContext.ViewHistoryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="Last 20 runs of this job"/>
+                                        <Button Content="Open Report"
+                                                Padding="6,2"
+                                                Visibility="{Binding HasReportPath, Converter={StaticResource BoolToVis}}"
+                                                Command="{Binding DataContext.OpenReportCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="{Binding LastReportPath}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12" Margin="0,0,12,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Recent Ingestion Runs" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                    <DataGrid Grid.Row="1"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              ItemsSource="{Binding RecentRuns}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Provider" Binding="{Binding ProviderName}" Width="190"/>
+                            <DataGridTextColumn Header="Started" Binding="{Binding Started}" Width="120"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="80"/>
+                            <DataGridTextColumn Header="Inserted" Binding="{Binding InsertedCount}" Width="75"/>
+                            <DataGridTextColumn Header="Dupes" Binding="{Binding DuplicateCount}" Width="65"/>
+                            <DataGridTextColumn Header="Skipped" Binding="{Binding SkippedCount}" Width="75"/>
+                            <DataGridTextColumn Header="Failed" Binding="{Binding FailedCount}" Width="65"/>
+                            <DataGridTextColumn Header="Duration" Binding="{Binding Duration}" Width="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Data Health" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                    <DataGrid Grid.Row="1"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              ItemsSource="{Binding Health}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="110"/>
+                            <DataGridTextColumn Header="Label" Binding="{Binding Label}" Width="*"/>
+                            <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="90"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="4" Style="{StaticResource Card}" Padding="12" Margin="0,12,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Bare BD Targets (high-MPI canonicals lacking website / enrichment)"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"/>
+
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding BareBdTargets}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          MaxHeight="260">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="90"/>
+                        <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="70"/>
+                        <DataGridTextColumn Header="Display name" Binding="{Binding DisplayName}" Width="*"/>
+                        <DataGridTextColumn Header="MPI refs" Binding="{Binding MpiRefs}" Width="90"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="5"
+                   Text="{Binding StatusMessage}"
+                   Margin="0,10,0,0"
+                   Foreground="{StaticResource Text.Secondary}"
+                   FontSize="12"/>
+    </Grid>
+</UserControl>

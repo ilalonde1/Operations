@@ -28,6 +28,7 @@ namespace Kor.Operations.Financials
                 trendValues: null,
                 projectDrilldownRows: kpi.ProjectDrilldownRows,
                 cashHistoryRows: kpi.CashHistoryRows,
+                cashAccountRows: kpi.CashAccountRows,
                 arOutstandingRows: kpi.ArOutstandingRows,
                 arInvoiceRows: kpi.ArInvoiceRows,
                 wipUnbilledRows: kpi.WipUnbilledRows,
@@ -63,6 +64,31 @@ namespace Kor.Operations.Financials
                 Owner = owner
             };
             dlg.ShowDialog();
+        }
+
+        private void CopySummaryBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not ExecutiveSummaryViewModel vm) return;
+            try
+            {
+                var md = vm.BuildMarkdownSummary();
+                Clipboard.SetText(md);
+                MessageBox.Show(
+                    Window.GetWindow(this),
+                    "Executive Summary copied to clipboard as Markdown.",
+                    "Financials — Copy Summary",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.Show(
+                    Window.GetWindow(this),
+                    $"Could not copy to clipboard: {ex.Message}",
+                    "Financials — Copy Summary",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
 
         private void AlertCard_Click(object sender, RoutedEventArgs e)

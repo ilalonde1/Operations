@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
+using Kor.Operations.Financials;
 using static Kor.Operations.Data.DataReaderHelpers;
 
 namespace Kor.Operations.PMTools
@@ -40,7 +41,7 @@ namespace Kor.Operations.PMTools
             _allDayData = await Task.Run(() =>
             {
                 var dsn = string.IsNullOrWhiteSpace(_odbcOptions.Dsn) ? "Deltek" : _odbcOptions.Dsn;
-                var catalog = string.IsNullOrWhiteSpace(_odbcOptions.Catalog) ? "C0000052267P_1_KOR00000000" : _odbcOptions.Catalog;
+                var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
                 var factory = new VpOdbcDsnFactory(dsn, _odbcOptions.User ?? "",
                     _odbcOptions.Password ?? "", () => new Dictionary<string, string>());
 
@@ -51,13 +52,14 @@ namespace Kor.Operations.PMTools
                 cmd.CommandTimeout = SqlTimeouts.UiFacing;
                 cmd.CommandText = $@"
 SELECT t.TransDate, t.WBS1, pr.Name,
-       SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0)) AS TotalHrs
+       SUM(COALESCE(t.RegHrs,0)) + SUM(COALESCE(t.OvtHrs,0)) + SUM(COALESCE(t.SpecialOvtHrs,0)) AS TotalHrs
 FROM [{catalog}].dbo.tkDetail t
 LEFT JOIN [{catalog}].dbo.PR pr
        ON pr.WBS1 = t.WBS1
       AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
 WHERE t.Employee = ?
   AND t.TransDate >= ?
+  AND COALESCE(t.LineItemApprovalStatus,'') <> 'R'
 GROUP BY t.TransDate, t.WBS1, pr.Name
 ORDER BY t.TransDate";
 

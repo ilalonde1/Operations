@@ -2,13 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Data.SqlClient;
 using Microsoft.Win32;
+using Serilog;
 
 namespace Kor.Operations.StandardDetails;
 
@@ -28,17 +28,17 @@ public partial class StandardDetailsWindow
         if (result.PermissionDenied)
         {
             SetActivityMessage("Group setup skipped due to SQL permissions. Records/revisions remain available.", BannerTone.Warning);
-            Debug.WriteLine("Group schema bootstrap skipped due to SQL permission.");
+            Log.Warning("Standard Details: group schema bootstrap skipped (SQL permission).");
         }
         else if (result.SchemaMismatch)
         {
             SetActivityMessage("Group features unavailable due to database schema mismatch.", BannerTone.Warning);
-            Debug.WriteLine("Group features unavailable due to database schema mismatch.");
+            Log.Warning("Standard Details: group features unavailable (database schema mismatch).");
         }
         else
         {
             SetActivityMessage("Grouping is disabled until DB schema is installed by an administrator.", BannerTone.Warning);
-            Debug.WriteLine("Group schema not present. Runtime schema creation is disabled.");
+            Log.Warning("Standard Details: group schema not present; runtime creation disabled.");
         }
     }
 
@@ -68,7 +68,7 @@ public partial class StandardDetailsWindow
             _groupSchemaAvailable = false;
             _selectedGroupId = null;
             SetActivityMessage("Grouping disabled because required DB objects are missing.", BannerTone.Warning);
-            Debug.WriteLine($"Group schema missing while loading groups: {ex.Message}");
+            Log.Warning(ex, "Standard Details: group schema missing while loading groups.");
             await LoadGroupsUiAsync();
             return;
         }
@@ -188,7 +188,7 @@ public partial class StandardDetailsWindow
     {
         if (_repo == null)
         {
-            MessageBox.Show(this, "Missing connection string 'KorTransmittalsDb' in App.config", "Configuration", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, "Missing connection string 'KorTransmittalsDb' in App.config", "Standard Details — Configuration", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
@@ -205,7 +205,7 @@ public partial class StandardDetailsWindow
             _groupSchemaAvailable = false;
             _selectedGroupId = null;
             SetActivityMessage("Grouping disabled because required DB objects are missing.", BannerTone.Warning);
-            Debug.WriteLine($"Group schema missing while loading documents: {ex.Message}");
+            Log.Warning(ex, "Standard Details: group schema missing while loading documents.");
             await LoadGroupsUiAsync();
             await LoadDocumentsUiAsync();
             return;
@@ -346,7 +346,7 @@ public partial class StandardDetailsWindow
     private async void AddSubgroup_Click(object sender, RoutedEventArgs e)
     {
         if (!EnsureGroupFeatureAvailable() || !EnsureCanManageGroupAction("manage groups")) return;
-        if (GroupsTree.SelectedItem is not GroupNode selected || selected.GroupId is null) { MessageBox.Show(this, "Select a parent group first.", "Add Subgroup", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (GroupsTree.SelectedItem is not GroupNode selected || selected.GroupId is null) { MessageBox.Show(this, "Select a parent group first.", "Standard Details — Add Subgroup", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         var dlg = new GroupEditWindow("Add Subgroup", $"Create a subgroup under '{selected.Name}'.") { Owner = this };
         if (dlg.ShowDialog() != true || _repo == null) return;
         await _repo.AddSubgroupAsync(selected.GroupId.Value, dlg.GroupName, _actorUserId); await LoadGroupsUiAsync();
@@ -355,7 +355,7 @@ public partial class StandardDetailsWindow
     private async void RenameGroup_Click(object sender, RoutedEventArgs e)
     {
         if (!EnsureGroupFeatureAvailable() || !EnsureCanManageGroupAction("rename groups")) return;
-        if (GroupsTree.SelectedItem is not GroupNode selected || selected.GroupId is null) { MessageBox.Show(this, "Select a group to rename.", "Rename Group", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (GroupsTree.SelectedItem is not GroupNode selected || selected.GroupId is null) { MessageBox.Show(this, "Select a group to rename.", "Standard Details — Rename Group", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         var dlg = new GroupEditWindow("Rename Group", "Update group name.", selected.Name) { Owner = this };
         if (dlg.ShowDialog() != true || _repo == null) return;
         await _repo.RenameGroupAsync(selected.GroupId.Value, dlg.GroupName, _actorUserId); await LoadGroupsUiAsync(); await LoadDocumentsUiAsync();
@@ -364,20 +364,20 @@ public partial class StandardDetailsWindow
     private async void RemoveGroup_Click(object sender, RoutedEventArgs e)
     {
         if (!EnsureGroupFeatureAvailable() || !EnsureCanManageGroupAction("remove groups")) return;
-        if (GroupsTree.SelectedItem is not GroupNode selected || selected.GroupId is null) { MessageBox.Show(this, "Select a group to remove.", "Remove Group", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (GroupsTree.SelectedItem is not GroupNode selected || selected.GroupId is null) { MessageBox.Show(this, "Select a group to remove.", "Standard Details — Remove Group", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         if (_repo == null) return;
-        if (await _repo.GetActiveChildGroupCountAsync(selected.GroupId.Value) > 0) { MessageBox.Show(this, "This group has subgroups. Remove or move subgroups first.", "Remove Group", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-        if (await _repo.GetDocumentCountForGroupAsync(selected.GroupId.Value) > 0) { MessageBox.Show(this, "This group has document records. Reassign or ungroup records before removing.", "Remove Group", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-        if (MessageBox.Show(this, $"Remove group '{selected.Name}'?", "Confirm Remove", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (await _repo.GetActiveChildGroupCountAsync(selected.GroupId.Value) > 0) { MessageBox.Show(this, "This group has subgroups. Remove or move subgroups first.", "Standard Details — Remove Group", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (await _repo.GetDocumentCountForGroupAsync(selected.GroupId.Value) > 0) { MessageBox.Show(this, "This group has document records. Reassign or ungroup records before removing.", "Standard Details — Remove Group", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (MessageBox.Show(this, $"Remove group '{selected.Name}'?", "Standard Details — Confirm Remove", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         await _repo.RemoveGroupAsync(selected.GroupId.Value); _selectedGroupId = null; await LoadGroupsUiAsync(); await LoadDocumentsUiAsync();
     }
 
     private async void AssignRecordToGroup_Click(object sender, RoutedEventArgs e)
     {
         if (!EnsureGroupFeatureAvailable() || !EnsureCanContribute("assign records to groups")) return;
-        if (DocumentsGrid.SelectedItem is not DocumentRow doc) { SetActivityMessage("Choose a document record first, then assign it to a group.", BannerTone.Info); MessageBox.Show(this, "Select a document record first.", "Assign Record", MessageBoxButton.OK, MessageBoxImage.Information); return; }
-        if (GroupsTree.SelectedItem is not GroupNode selectedGroup) { MessageBox.Show(this, "Select a target group first. Choose 'All Records' to ungroup the record.", "Assign Record", MessageBoxButton.OK, MessageBoxImage.Information); return; }
-        if (selectedGroup.GroupId is null && !string.Equals(selectedGroup.Name, "All Records", StringComparison.OrdinalIgnoreCase)) { MessageBox.Show(this, "Select a specific group. To remove a group assignment, select 'All Records'.", "Assign Record", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (DocumentsGrid.SelectedItem is not DocumentRow doc) { SetActivityMessage("Choose a document record first, then assign it to a group.", BannerTone.Info); MessageBox.Show(this, "Select a document record first.", "Standard Details — Assign Record", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (GroupsTree.SelectedItem is not GroupNode selectedGroup) { MessageBox.Show(this, "Select a target group first. Choose 'All Records' to ungroup the record.", "Standard Details — Assign Record", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (selectedGroup.GroupId is null && !string.Equals(selectedGroup.Name, "All Records", StringComparison.OrdinalIgnoreCase)) { MessageBox.Show(this, "Select a specific group. To remove a group assignment, select 'All Records'.", "Standard Details — Assign Record", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         if (_repo == null) return;
         await _repo.AssignRecordToGroupAsync(doc.DocumentId, selectedGroup.GroupId, _actorUserId); await LoadDocumentsUiAsync();
         SetActivityMessage(selectedGroup.GroupId.HasValue ? $"Record '{doc.Title}' assigned to group '{selectedGroup.Name}'." : $"Record '{doc.Title}' moved to Ungrouped.", BannerTone.Success);
@@ -389,27 +389,27 @@ public partial class StandardDetailsWindow
         var dlg = new CreateStandardDocumentWindow { Owner = this };
         if (dlg.ShowDialog() != true) return;
         try { if (_repo == null) return; await _repo.CreateDocumentAsync(dlg.DocumentTitle, dlg.DocumentDescription, _groupSchemaAvailable, _selectedGroupId, _actorUserId); await LoadDocumentsUiAsync(); SetActivityMessage($"Created record '{dlg.DocumentTitle}'.", BannerTone.Success); }
-        catch (Exception ex) { SetActivityMessage("Could not create the record. Please review the error and try again.", BannerTone.Error); MessageBox.Show(this, ex.Message, "Create Record Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex) { SetActivityMessage("Could not create the record. Please review the error and try again.", BannerTone.Error); MessageBox.Show(this, ex.Message, "Standard Details — Create Record Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private async void UploadVersion_Click(object sender, RoutedEventArgs e)
     {
         if (!EnsureCanContribute("upload versions")) return;
-        if (DocumentsGrid.SelectedItem is not DocumentRow doc) { SetActivityMessage("Choose a document record first, then upload a revision file.", BannerTone.Info); MessageBox.Show(this, "Select a document record first.", "Add Revision", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (DocumentsGrid.SelectedItem is not DocumentRow doc) { SetActivityMessage("Choose a document record first, then upload a revision file.", BannerTone.Info); MessageBox.Show(this, "Select a document record first.", "Standard Details — Add Revision", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         var picker = new OpenFileDialog { Title = "Select version file", Filter = "Allowed files (*.pdf;*.dwg;*.docx)|*.pdf;*.dwg;*.docx" };
         if (picker.ShowDialog(this) != true) return;
         var ext = System.IO.Path.GetExtension(picker.FileName).ToLowerInvariant();
-        if (ext != ".pdf" && ext != ".dwg" && ext != ".docx") { SetActivityMessage("Upload blocked: only PDF, DWG, and DOCX files are supported.", BannerTone.Warning); MessageBox.Show(this, "Only PDF, DWG, DOCX are allowed.", "Add Revision", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (ext != ".pdf" && ext != ".dwg" && ext != ".docx") { SetActivityMessage("Upload blocked: only PDF, DWG, and DOCX files are supported.", BannerTone.Warning); MessageBox.Show(this, "Only PDF, DWG, DOCX are allowed.", "Standard Details — Add Revision", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
         try { if (_repo == null || _fileStore == null) return; var nextVersion = await _repo.UploadVersionAsync(doc.DocumentId, doc.Title, picker.FileName, ext, _fileStore, _actorUserId); await LoadVersionsUiAsync(doc.DocumentId); SetActivityMessage($"Uploaded revision v{nextVersion} for '{doc.Title}'.", BannerTone.Success); }
-        catch (Exception ex) { SetActivityMessage("Upload failed. The file was not added.", BannerTone.Error); MessageBox.Show(this, ex.Message, "Add Revision Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex) { SetActivityMessage("Upload failed. The file was not added.", BannerTone.Error); MessageBox.Show(this, ex.Message, "Standard Details — Add Revision Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void OpenFile_Click(object sender, RoutedEventArgs e)
     {
-        if (VersionsGrid.SelectedItem is not VersionRow version) { SetActivityMessage("Select a revision to open its file.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Open File", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (VersionsGrid.SelectedItem is not VersionRow version) { SetActivityMessage("Select a revision to open its file.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Standard Details — Open File", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         if (_fileStore == null) return;
         var result = _fileStore.OpenVersionFile(version.StoragePath, version.Status, version.StatusText);
-        if (result.FileMissing) { SetActivityMessage("File could not be opened because it is missing from storage.", BannerTone.Warning); MessageBox.Show(this, "File not found in storage.", "Open File", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (result.FileMissing) { SetActivityMessage("File could not be opened because it is missing from storage.", BannerTone.Warning); MessageBox.Show(this, "File not found in storage.", "Standard Details — Open File", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
         SetActivityMessage(string.IsNullOrWhiteSpace(result.Note) ? $"Opened file '{version.OriginalFileName}'." : result.Note, string.IsNullOrWhiteSpace(result.Note) ? BannerTone.Success : BannerTone.Warning);
     }
 
@@ -421,19 +421,19 @@ public partial class StandardDetailsWindow
     private async void DeleteRecord_Click(object sender, RoutedEventArgs e)
     {
         if (!EnsureCanContribute("delete document records")) return;
-        if (DocumentsGrid.SelectedItem is not DocumentRow doc) { SetActivityMessage("Select a document record first.", BannerTone.Info); MessageBox.Show(this, "Select a document record first.", "Delete Record", MessageBoxButton.OK, MessageBoxImage.Information); return; }
-        if (MessageBox.Show(this, $"Delete record '{doc.Title}' and all associated revisions?\n\nThis cannot be undone.", "Delete Record", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        if (MessageBox.Show(this, "Final confirmation: this will permanently remove record metadata, revision history, and approval/publication history.", "Confirm Permanent Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (DocumentsGrid.SelectedItem is not DocumentRow doc) { SetActivityMessage("Select a document record first.", BannerTone.Info); MessageBox.Show(this, "Select a document record first.", "Standard Details — Delete Record", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (MessageBox.Show(this, $"Delete record '{doc.Title}' and all associated revisions?\n\nThis cannot be undone.", "Standard Details — Delete Record", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(this, "Final confirmation: this will permanently remove record metadata, revision history, and approval/publication history.", "Standard Details — Confirm Permanent Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         StandardDetailsDeleteResult result;
         try { if (_repo == null) return; result = await _repo.DeleteRecordAsync(doc.DocumentId, doc.Title, _actorUserId); }
-        catch (Exception ex) { SetActivityMessage("Delete failed. No changes were committed.", BannerTone.Error); MessageBox.Show(this, ex.Message, "Delete Record Failed", MessageBoxButton.OK, MessageBoxImage.Error); return; }
-        if (result.EntityMissing) { SetActivityMessage("Selected record no longer exists. Refreshing list.", BannerTone.Warning); MessageBox.Show(this, "Selected record no longer exists.", "Delete Record", MessageBoxButton.OK, MessageBoxImage.Warning); await LoadDocumentsUiAsync(); return; }
+        catch (Exception ex) { SetActivityMessage("Delete failed. No changes were committed.", BannerTone.Error); MessageBox.Show(this, ex.Message, "Standard Details — Delete Record Failed", MessageBoxButton.OK, MessageBoxImage.Error); return; }
+        if (result.EntityMissing) { SetActivityMessage("Selected record no longer exists. Refreshing list.", BannerTone.Warning); MessageBox.Show(this, "Selected record no longer exists.", "Standard Details — Delete Record", MessageBoxButton.OK, MessageBoxImage.Warning); await LoadDocumentsUiAsync(); return; }
         _fileStore?.DeleteFiles(result.DeletedStoragePaths); await LoadDocumentsUiAsync(); VersionsGrid.ItemsSource = null; SetActivityMessage($"Record '{doc.Title}' was deleted.", BannerTone.Success);
     }
 
     private async Task SubmitSelectedVersionAsync(byte expected, byte next, bool writeAudit)
     {
-        if (VersionsGrid.SelectedItem is not VersionRow v) { SetActivityMessage("Select a revision first.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Status", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (VersionsGrid.SelectedItem is not VersionRow v) { SetActivityMessage("Select a revision first.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Standard Details — Status", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         if (_repo == null) return;
         var result = await _repo.UpdateStatusAsync(v.DocumentVersionId, v.DocumentId, v.RowVersion, _actorUserId, expected, next, writeAudit);
         if (result.RowsAffected == 0) { await HandleStateChangeFailureAsync(v.DocumentId, result, expected, "Status", "Selected version is not in the expected state for this action.", "This action is not available for the selected revision status."); return; }
@@ -442,7 +442,7 @@ public partial class StandardDetailsWindow
 
     private async Task DecideSelectedVersionAsync(byte targetStatus, int decision)
     {
-        if (VersionsGrid.SelectedItem is not VersionRow v) { SetActivityMessage("Select a revision first.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Approval", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (VersionsGrid.SelectedItem is not VersionRow v) { SetActivityMessage("Select a revision first.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Standard Details — Approval", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         if (_repo == null) return;
         var result = await _repo.DecideAsync(v.DocumentVersionId, v.DocumentId, v.RowVersion, _actorUserId, targetStatus, decision);
         if (result.RowsAffected == 0) { await HandleStateChangeFailureAsync(v.DocumentId, result, StatusSubmitted, "Approval", "Approve/Reject requires Submitted status.", "Approve/Reject is only available when status is Submitted."); return; }
@@ -451,7 +451,7 @@ public partial class StandardDetailsWindow
 
     private async Task PublishSelectedVersionAsync()
     {
-        if (VersionsGrid.SelectedItem is not VersionRow v) { SetActivityMessage("Select a revision first.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Publish", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (VersionsGrid.SelectedItem is not VersionRow v) { SetActivityMessage("Select a revision first.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Standard Details — Publish", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         if (_repo == null) return;
         try
         {
@@ -462,7 +462,7 @@ public partial class StandardDetailsWindow
         catch (SqlException ex)
         {
             SetActivityMessage("Publish failed. Try refreshing and publishing again.", BannerTone.Error);
-            MessageBox.Show(this, ex.Message, "Publish Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Standard Details — Publish Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -471,17 +471,17 @@ public partial class StandardDetailsWindow
         if (result.EntityMissing)
         {
             SetActivityMessage("Selected revision no longer exists. Refreshing list.", BannerTone.Warning);
-            MessageBox.Show(this, "Selected revision no longer exists.", caption, MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Selected revision no longer exists.", $"Standard Details — {caption}", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         else if (result.CurrentStatus != expectedStatus)
         {
             SetActivityMessage(bannerMessage, BannerTone.Warning);
-            MessageBox.Show(this, wrongStateMessage, caption, MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, wrongStateMessage, $"Standard Details — {caption}", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         else
         {
             SetActivityMessage("Revision changed by another user. Refresh and retry.", BannerTone.Warning);
-            MessageBox.Show(this, "Revision was updated by another user. Reload and try again.", "Concurrency Conflict", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Revision was updated by another user. Reload and try again.", "Standard Details — Concurrency Conflict", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         await LoadVersionsUiAsync(documentId);

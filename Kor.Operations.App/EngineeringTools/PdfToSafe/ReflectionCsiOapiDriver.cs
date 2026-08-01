@@ -195,6 +195,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return _types.Call<int>(_areaObj!, _types.CAreaObj, "SetEdgeConstraint", args);
         }
 
+        public int SetAreaOpening(string areaName, bool opening)
+        {
+            RequireSubsystems();
+            var args = new object?[] { areaName, opening, _types.ItemTypeObjects };
+            return _types.Call<int>(_areaObj!, _types.CAreaObj, "SetOpening", args);
+        }
+
         public int AddGridLines(IReadOnlyList<(string Label, bool IsAlongX, double Ordinate)> gridLines)
         {
             if (gridLines.Count == 0) return 0;
@@ -246,7 +253,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ReleaseField(ref _sapModel);
             if (!_exited && _csi is not null)
             {
-                try { _types.Call<int>(_csi, _types.COAPI, "ApplicationExit", false); } catch { }
+                try { _types.Call<int>(_csi, _types.COAPI, "ApplicationExit", false); } catch { /* best-effort COM cleanup during driver disposal */ }
                 _exited = true;
             }
             ReleaseField(ref _csi);
@@ -271,7 +278,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private static void ReleaseField(ref object? field)
         {
             if (field is null) return;
-            try { if (Marshal.IsComObject(field)) Marshal.FinalReleaseComObject(field); } catch { }
+            try { if (Marshal.IsComObject(field)) Marshal.FinalReleaseComObject(field); } catch { /* best-effort COM cleanup during driver disposal */ }
             field = null;
         }
     }

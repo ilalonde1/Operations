@@ -301,6 +301,25 @@ namespace Kor.Operations.Brochures
                 ? $"Sales Brochure Builder  {ProposalName} *"
                 : $"Sales Brochure Builder  {ProposalName}";
 
+        /// <summary>
+        /// Starts a brand-new brochure pre-filled with a name derived from the
+        /// BD context (typically <c>"{OpportunityKey} — {ProjectName}"</c>).
+        /// Used by the CRM "Build Brochure" handoff so the user lands in the
+        /// builder with the brochure already named, not an empty document.
+        /// Mirrors <see cref="FeeProposal.FeeProposalBuilderViewModel"/>'s
+        /// <c>StartFromOpportunity</c>.
+        /// </summary>
+        public void StartFromOpportunity(string brochureName)
+        {
+            ExecNewProposal(null);
+            if (!string.IsNullOrWhiteSpace(brochureName))
+            {
+                ProposalName = brochureName.Trim();
+                Cover.CoverTitle = brochureName.Trim();
+                SetDirty();
+            }
+        }
+
         // ── Collection change handlers ────────────────────────────────────────
         private void Blocks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {

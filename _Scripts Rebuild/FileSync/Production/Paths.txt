@@ -1,0 +1,35 @@
+. "C:\Ian\FileSync\Production\_SYNC_SSI.ps1"
+
+. "C:\Ian\FileSync\Production\_SYNC_RFI.ps1"
+
+. "C:\Ian\FileSync\Production\_SYNC_Photos.ps1"
+
+. "C:\Ian\FileSync\Production\_SYNC_Stickfiles.ps1"
+
+. "C:\Ian\FileSync\Production\watcher.ps1"
+
+. "C:\Ian\FileSync\Maint\_DELETE_SharepointFolders.ps1"
+
+. "C:\Ian\FileSync\Maint\delete_folder_to_fileserver.ps1"
+
+. "C:\Ian\FileSync\Production\Move_Reports_To_EOR.ps1"
+
+-ExecutionPolicy Bypass -File "C:\Ian\FileSync\Production\RenameReportsUploads.ps1"
+
+. "C:\Ian\FileSync\Production\RenameReportsUploads.ps1"
+
+.\Sync-SingleRFI.ps1 -GivenPath "E:\NetworkShares\Projects\Projects\03 Residential\31136-03 (Atkins Avenue Port Coquitlam Review)\04 Construction Admin\03 RFI (Request for Info)\Sent to Inspectors"
+
+
+& "C:\Ian\FileSync\Production\Move_Reports_To_EOR.ps1" -WhatIf
+
+& "C:\_APPS\FileSync\Production\Move_Reports_To_ToSend.ps1" -WhatIf
+
+
+
+. "C:\Ian\FileSync\Maint\foldersize.ps1"
+
+. "C:\Ian\FileSync\Production\RenameReportsUploads.ps1"
+
+& "C:\_APPS\Concrete Test Reports\File-ConcreteTestReports.ps1"
+

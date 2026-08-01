@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,6 +18,7 @@ using System.Windows.Shapes;
 using ClosedXML.Excel;
 using Kor.Operations.App.Options;
 using Kor.Operations.Core;
+using Kor.Operations.Services;
 using Microsoft.Win32;
 
 namespace Kor.Operations.Financials
@@ -79,6 +81,10 @@ namespace Kor.Operations.Financials
             ViewModel.FromDate = startOfRange;
             ViewModel.ToDate = endOfPrevMonth;
             ViewModel.FlipSign = ViewModel.ReadFlipSignDefault();
+            // Match the Billed P&L initial Org filter so the two P&L tabs default
+            // to the same Daler-aligned view (CAD by default at KOR; user can pick
+            // "" or "USA" via the in-app dropdown when intentionally needed).
+            ViewModel.OrgFilter = (_financialsOptions.BilledDefaultOrg ?? "").Trim();
 
             await LoadTablesAsync().ConfigureAwait(true);
             await RefreshAsync(forceRefresh: false).ConfigureAwait(true);
@@ -148,12 +154,33 @@ namespace Kor.Operations.Financials
             }
             catch (Exception ex)
             {
+                // Clear all stale data on failure so the error banner doesn't appear
+                // alongside the previous load's tile values + grid (which would
+                // misrepresent that the displayed numbers belong to the user's
+                // current date/org filter).
+                ClearStaleData();
                 ViewModel.SetError($"Unable to load GL P&L.\n{ex.Message}");
             }
             finally
             {
                 ViewModel.CanRefresh = true;
             }
+        }
+
+        private void ClearStaleData()
+        {
+            _lastResult = null;
+            _lastNetTrend = Array.Empty<decimal>();
+            _lastRevenueTrend = Array.Empty<decimal>();
+            _lastExpenseTrend = Array.Empty<decimal>();
+            _lastTrendLabels = Array.Empty<string>();
+
+            ViewModel.ClearSummary();
+
+            _pnlGrid.Columns.Clear();
+            _pnlGrid.ItemsSource = null;
+
+            RenderCharts();
         }
 
         public void RenderCharts()
@@ -211,16 +238,16 @@ namespace Kor.Operations.Financials
                 var path = sfd.FileName;
                 await Task.Run(() => ExportToExcel(path, export, fromDisplay, toDisplay, tableDisplay, org)).ConfigureAwait(true);
                 if (owner != null)
-                    MessageBox.Show(owner, "Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(owner, "Export completed.", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
                 else
-                    MessageBox.Show("Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("Export completed.", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 if (owner != null)
-                    MessageBox.Show(owner, $"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(owner, $"Export failed:\n{ex.Message}", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
                 else
-                    MessageBox.Show($"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Export failed:\n{ex.Message}", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -765,7 +792,7 @@ namespace Kor.Operations.Financials
         }
     }
 
-    internal sealed class GlProfitLossViewModel : ObservableObject
+    internal sealed class GlProfitLossViewModel : ObservableObject, IAiContextProvider
     {
         private readonly FinancialsOptions _financialsOptions;
         private DateTime? _fromDate;
@@ -784,6 +811,7 @@ namespace Kor.Operations.Financials
         private string _summaryNet = "";
         private string _summaryMargin = "";
         private PointCollection _netTrendPoints = new();
+        private GlProfitLossService.BuildResult? _lastResult;
 
         public GlProfitLossViewModel(FinancialsOptions financialsOptions)
         {
@@ -876,6 +904,27 @@ namespace Kor.Operations.Financials
             private set { _summaryMargin = value ?? ""; OnPropertyChanged(); }
         }
 
+        public int? MaxPostedPeriod { get; private set; }
+
+        public string PostingLagBanner
+        {
+            get
+            {
+                if (!MaxPostedPeriod.HasValue) return "";
+                var p = MaxPostedPeriod.Value;
+                var year = p / 100;
+                var month = p % 100;
+                if (month < 1 || month > 12 || year < 1990 || year > 2100) return "";
+                var postedMonth = new DateTime(year, month, 1);
+                var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                var lag = (currentMonth.Year - postedMonth.Year) * 12 + currentMonth.Month - postedMonth.Month;
+                if (lag <= 1) return "";
+                return $"GL posted through {postedMonth.ToString("MMM yyyy", CultureInfo.CurrentCulture)} — months after that have no posted data yet.";
+            }
+        }
+
+        public Visibility PostingLagVisibility => string.IsNullOrEmpty(PostingLagBanner) ? Visibility.Collapsed : Visibility.Visible;
+
         public PointCollection NetTrendPoints
         {
             get => _netTrendPoints;
@@ -886,6 +935,14 @@ namespace Kor.Operations.Financials
         {
             ErrorMessage = "";
             ErrorVisibility = Visibility.Collapsed;
+        }
+
+        public void ClearSummary()
+        {
+            SummaryRevenue = "";
+            SummaryExpenses = "";
+            SummaryNet = "";
+            SummaryMargin = "";
         }
 
         public void SetError(string message)
@@ -910,11 +967,13 @@ namespace Kor.Operations.Financials
 
         public void ApplySummary(GlProfitLossService.BuildResult result)
         {
+            _lastResult = result;
             var table = result.Table;
-            if (!table.Columns.Contains("Current"))
+            var periodColumns = result.PeriodColumnNames ?? Array.Empty<string>();
+            if (periodColumns.Length == 0)
                 return;
 
-            decimal GetRowValue(string lineItem)
+            decimal SumRowRange(string lineItem)
             {
                 foreach (DataRow r in table.Rows)
                 {
@@ -922,20 +981,102 @@ namespace Kor.Operations.Financials
                         continue;
                     if (!string.Equals(Convert.ToString(r["RowKind"]), "GrandTotal", StringComparison.OrdinalIgnoreCase))
                         continue;
-                    return r["Current"] is decimal d ? d : 0m;
+                    decimal sum = 0m;
+                    foreach (var col in periodColumns)
+                    {
+                        if (table.Columns.Contains(col) && r[col] is decimal d)
+                            sum += d;
+                    }
+                    return sum;
                 }
                 return 0m;
             }
 
-            var revenue = GetRowValue("Total Revenue");
-            var expenses = GetRowValue("Total Expenses");
-            var net = GetRowValue("Net Income");
-            var margin = revenue == 0m ? (decimal?)null : (net / Math.Abs(revenue));
+            var revenue = SumRowRange("Total Revenue");
+            var expenses = SumRowRange("Total Expenses");
+            var net = SumRowRange("Net Income");
+            // Signed division: keeps margin sign correct whether FlipSign is on or off
+            // (revenue and net pick up the same sign convention so the ratio is stable).
+            var margin = Math.Abs(revenue) > 0.01m ? (decimal?)(net / revenue) : null;
 
             SummaryRevenue = Math.Abs(revenue).ToString("C0", CultureInfo.CurrentCulture);
             SummaryExpenses = Math.Abs(expenses).ToString("C0", CultureInfo.CurrentCulture);
             SummaryNet = net.ToString("C0", CultureInfo.CurrentCulture);
             SummaryMargin = margin.HasValue ? margin.Value.ToString("P1", CultureInfo.CurrentCulture) : "";
+            MaxPostedPeriod = result.MaxPostedPeriod;
+            OnPropertyChanged(nameof(MaxPostedPeriod));
+            OnPropertyChanged(nameof(PostingLagBanner));
+            OnPropertyChanged(nameof(PostingLagVisibility));
+        }
+
+        string IAiContextProvider.ProviderName => "Financials (Posted GL P&L)";
+
+        bool IAiContextProvider.HasData => _lastResult != null;
+
+        string IAiContextProvider.BuildContext()
+        {
+            var result = _lastResult;
+            if (result == null)
+                return "";
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"Range: {FromDate:yyyy-MM-dd} to {ToDate:yyyy-MM-dd}; Org: {(string.IsNullOrWhiteSpace(OrgFilter) ? "all" : OrgFilter)}.");
+            sb.AppendLine($"Revenue (range): {SummaryRevenue}; Expenses (range): {SummaryExpenses}; Net (range): {SummaryNet}; Margin: {SummaryMargin}.");
+            if (result.MaxPostedPeriod.HasValue)
+                sb.AppendLine($"Max posted GL period: {result.MaxPostedPeriod.Value}.");
+            if (!string.IsNullOrWhiteSpace(PostingLagBanner))
+                sb.AppendLine(PostingLagBanner);
+
+            // Trend series (Batch 67). Same on-screen sparklines the user sees
+            // — surfacing them in context lets AI answer "did GL net flip
+            // negative in any month?" or "is posted revenue trending up?"
+            // from the displayed data instead of writing a wide GLSummary
+            // query the prompt should already know is slow. Trend arrays
+            // live on the result; the Presenter caches them as _lastNetTrend
+            // etc. on a sibling class but we read from the result here.
+            AppendTrendBlock(sb, "Net trend", result.NetIncomeTrendValues, result.TrendLabels);
+            AppendTrendBlock(sb, "Revenue trend", result.RevenueTrendValues, result.TrendLabels);
+            AppendTrendBlock(sb, "Expense trend", result.ExpenseTrendValues, result.TrendLabels);
+
+            // BuildContext stays scope-only: current filters, displayed totals,
+            // posting status, and on-screen trend arrays.
+            return sb.ToString();
+        }
+
+        string IAiContextProvider.BuildLocalContext() => ((IAiContextProvider)this).BuildContext();
+
+        private static void AppendTrendBlock(StringBuilder sb, string label, IReadOnlyList<decimal>? values, IReadOnlyList<string>? periodLabels)
+        {
+            if (values == null || values.Count < 2) return;
+            sb.Append(label);
+            sb.Append(" (oldest → newest): ");
+            for (int i = 0; i < values.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                if (periodLabels != null && i < periodLabels.Count && !string.IsNullOrWhiteSpace(periodLabels[i]))
+                {
+                    sb.Append(periodLabels[i]);
+                    sb.Append('=');
+                }
+                sb.Append(values[i].ToString("0", System.Globalization.CultureInfo.InvariantCulture));
+            }
+
+            var first = values[0];
+            var last = values[values.Count - 1];
+            if (Math.Abs(first) > 1e-9m)
+            {
+                var deltaPct = (double)((last - first) / Math.Abs(first)) * 100.0;
+                var direction = deltaPct > 2.0 ? "rising"
+                    : deltaPct < -2.0 ? "falling"
+                    : "flat";
+                sb.Append(" (Δ ");
+                if (deltaPct >= 0) sb.Append('+');
+                sb.Append(deltaPct.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append("% start→end; direction: ");
+                sb.Append(direction);
+                sb.Append(')');
+            }
+            sb.AppendLine();
         }
 
     }

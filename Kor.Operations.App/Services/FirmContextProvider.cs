@@ -44,7 +44,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
                 }
             }
 
-            // IAiContextProvider is synchronous, so this provider must bridge to the
+            // sync-over-async OK: IAiContextProvider contract is synchronous; bridges to
             // cached async FinancialsService call here.
             summary = GetFirmBaselineSummaryAsync(CancellationToken.None).GetAwaiter().GetResult();
 
@@ -108,7 +108,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
                 .Take(12)
                 .OrderBy(month => month.MonthStart)
                 .ToList();
-            var firmTrailing12MonthRevenue = trailing12Months.Sum(month => Convert.ToDecimal(month.Revenue));
+            var firmTrailing12MonthPostedFeeBilled = trailing12Months.Sum(month => Convert.ToDecimal(month.Revenue));
             var monthsCoveredInTrailing12 = trailing12Months.Count;
             var topPmsByActiveLoad = snapshot.Rows
                 .Where(row => !string.IsNullOrWhiteSpace(row.Pm))
@@ -153,7 +153,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
                 topClients,
                 firmAr90PlusTotal,
                 topArClients,
-                firmTrailing12MonthRevenue,
+                firmTrailing12MonthPostedFeeBilled,
                 monthsCoveredInTrailing12,
                 firmBlendedFeePerHr,
                 firmTotalHoursSpent,
@@ -183,7 +183,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
            string.Join("\n", summary.TopArClients.Select((client, index)
                => $"{index + 1}. {client.ClientName}  ${client.Ar90Plus:N0} ({client.ActiveProjectCount} active, last {(client.LastActivity.HasValue ? client.LastActivity.Value.ToString("yyyy-MM") : "n/a")})")) +
            "\n\n" +
-           $"Trailing 12-month revenue recognized (firm): ${summary.FirmTrailing12MonthRevenue:N0} over {summary.MonthsCoveredInTrailing12} months" +
+           $"Trailing 12-month posted fee billed (firm): ${summary.FirmTrailing12MonthPostedFeeBilled:N0} over {summary.MonthsCoveredInTrailing12} months (posted only — unposted invoicing not included; KOR runs Deltek Revenue Generation OFF so the underlying field is BilledFee, not recognized revenue)" +
            "\n\n" +
            $"Firm blended Fee/Hr (active portfolio, includes $0-fee projects): ${summary.FirmBlendedFeePerHr:N2}/hr across {summary.FirmTotalHoursSpent:N0} hours spent" +
            "\n\nTop 5 PMs by active project load:\n" +
@@ -191,7 +191,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
                => $"{index + 1}. {line.Pm}  {line.ActiveProjectCount} projects, ${line.TotalActiveFee:N0} active fee")) +
            "\n\n" +
            $"Active projects over computed budget (>{AnalyticsThresholds.OverBudgetFactor:N2} eng or draft hrs / budget): {summary.OverComputedBudgetActiveCount:N0}\n" +
-           "Note: budget denominator is sourced per-project from Deltek actual, peer-median, or formula/target-rate fallback. See breakdown below.\n\n" +
+           "Note: budget denominator is sourced per-project from peer-median, formula, or target-rate fallback. See breakdown below.\n\n" +
            "Active projects by budget source:\n" +
            BuildBudgetSourceLines(summary.ActiveProjectsByBudgetSource);
 
@@ -205,7 +205,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
 
     private static string BuildBudgetSourceLines(IReadOnlyDictionary<string, int> breakdown)
     {
-        var preferredOrder = new[] { "Deltek", "Peers", "Formula", "Target Rate", "Unknown" };
+        var preferredOrder = new[] { "Peers", "Formula", "Target Rate", "Unknown" };
         var lines = new List<string>();
         foreach (var key in preferredOrder)
         {
@@ -226,7 +226,7 @@ internal sealed class FirmContextProvider : IAiContextProvider
         IReadOnlyList<TopClientLine> TopClients,
         decimal FirmAr90PlusTotal,
         IReadOnlyList<TopArLine> TopArClients,
-        decimal FirmTrailing12MonthRevenue,
+        decimal FirmTrailing12MonthPostedFeeBilled,
         int MonthsCoveredInTrailing12,
         decimal FirmBlendedFeePerHr,
         double FirmTotalHoursSpent,

@@ -128,6 +128,46 @@
                     </StackPanel>
                 </Button>
 
+                <!-- Monday Briefing -->
+                <Button x:Name="MondayBriefingCard" Style="{StaticResource HomeCardButton}"
+                        Click="OpenMondayBriefing_Click"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#FFE7E0"/>
+                            <TextBlock Text="🧭" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Monday Briefing" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="Action items + strategic synthesis. Updated weekly."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
+                <!-- COO Card — Ian-only proactive insights tile. Visibility gated
+                     to ilalonde@korstructural.com via ApplyCardSecurity, same
+                     pattern as MondayBriefingCard above. -->
+                <Button x:Name="CooCardCard" Style="{StaticResource HomeCardButton}"
+                        Click="OpenCooCard_Click"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#FEF3C7"/>
+                            <TextBlock Text="🎯" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="COO Card" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                        <TextBlock Text="The 5 things that should have your attention this week. AI-ranked from brief + alerts."
+                                   Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
                 <!-- My Preferences -->
                 <Button x:Name="PreferencesCard" Style="{StaticResource HomeCardButton}" Click="OpenPreferences_Click">
                     <StackPanel>
@@ -259,6 +299,78 @@
                             </Grid>
                             <TextBlock Text="Engineering Tools" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
                             <TextBlock Text="PDF to DXF conversion and other engineering utilities."
+                                       Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                            <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                    Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                                <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </ContentControl>
+
+                <ContentControl x:Name="FileSyncCommandCenterTileHost">
+                    <Button Style="{StaticResource HomeCardButton}" Click="OpenFileSyncCommandCenter_Click">
+                        <StackPanel>
+                            <Grid>
+                                <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                                <TextBlock Text="🛰" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <TextBlock Text="FileSync Command Center" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <TextBlock Text="Live status, manual fire, and per-job knobs for the FileSync service."
+                                       Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                            <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                    Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                                <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </ContentControl>
+
+                <ContentControl x:Name="OpportunitiesTileHost">
+                    <Button Style="{StaticResource HomeCardButton}" Click="OpenOpportunities_Click">
+                        <StackPanel>
+                            <Grid>
+                                <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                                <TextBlock Text="🎯" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <TextBlock Text="Opportunities (BD)" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <TextBlock Text="Track the pursuit pipeline: identify, qualify, propose, win."
+                                       Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                            <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                    Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                                <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </ContentControl>
+
+                <ContentControl x:Name="BdReportsTileHost">
+                    <Button Style="{StaticResource HomeCardButton}" Click="OpenBdReports_Click">
+                        <StackPanel>
+                            <Grid>
+                                <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                                <TextBlock Text="📊" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <TextBlock Text="BD Reports" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <TextBlock Text="Pursuit dashboard and on-demand sector reports from live honing verdicts."
+                                       Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
+                            <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
+                                    Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">
+                                <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </ContentControl>
+
+                <ContentControl x:Name="BusinessDevelopmentTileHost">
+                    <Button Style="{StaticResource HomeCardButton}" Click="OpenBusinessDevelopment_Click">
+                        <StackPanel>
+                            <Grid>
+                                <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                                <TextBlock Text="🚀" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <TextBlock Text="Business Development" FontSize="15" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <TextBlock Text="One stop for opportunities, CRM, fee proposals, and brochures."
                                        Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
                             <Border Background="{StaticResource Brand.Primary.Brush}" CornerRadius="999"
                                     Margin="0,10,0,0" Padding="6,3,6,3" HorizontalAlignment="Left">

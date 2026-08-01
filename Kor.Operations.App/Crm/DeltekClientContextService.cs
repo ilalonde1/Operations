@@ -1,0 +1,642 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Odbc;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Kor.Operations.App.Options;
+using Kor.Operations.Data;
+using Kor.Operations.Financials;
+using Serilog;
+
+namespace Kor.Operations.App.Crm;
+
+/// <summary>
+/// Rich roll-up of a Deltek client's history with KOR - used by the CRM
+/// engagement detail panel and the AI context. Pulled from Deltek over ODBC
+/// using the same DSN/catalog as <c>FinancialsService</c>.
+/// </summary>
+public sealed record DeltekClientIntelligence
+{
+    // Original 6 fields - preserved verbatim for binding compatibility.
+    public string ClientId { get; init; } = "";
+    public string ClientName { get; init; } = "";
+    public int ProjectCount { get; init; }
+    public decimal LifetimeFee { get; init; }
+    public DateTime? LatestProjectStart { get; init; }
+    public string? LatestProjectName { get; init; }
+
+    // New: company-level facts pulled from Clendor.
+    public DeltekCompanyFacts? Company { get; init; }
+
+    // New: all KOR projects for this client, OpenDate DESC.
+    public IReadOnlyList<DeltekProjectSummary> Projects { get; init; } = Array.Empty<DeltekProjectSummary>();
+
+    // Top 200 direct + via-project contacts at this client.
+    public IReadOnlyList<DeltekContactSummary> Contacts { get; init; } = Array.Empty<DeltekContactSummary>();
+
+    // New: AR rollup - total outstanding + 90+ aging.
+    public DeltekArSummary? Ar { get; init; }
+
+    // New: top 10 Deltek Activity rows tied to this client, StartDate DESC.
+    public IReadOnlyList<DeltekActivitySummary> RecentActivity { get; init; } = Array.Empty<DeltekActivitySummary>();
+
+    // True when one of the section queries hit a permission error
+    // (table inaccessible). The panel can show a soft warning instead
+    // of pretending the absence is "no data".
+    public bool HasDegradedSections { get; init; }
+}
+
+public sealed record DeltekCompanyFacts(
+    string ClientId,
+    string? Type,
+    string? Status,
+    string? Specialty,
+    string? Market,
+    string? Memo,
+    string? ParentId,
+    string? Website,
+    bool PriorWork,
+    bool Recommend,
+    bool GovernmentAgency,
+    bool Competitor,
+    int? Employees,
+    decimal? AnnualRevenue);
+
+public sealed record DeltekProjectSummary(
+    string Wbs1,
+    string Name,
+    DateTime? OpenDate,
+    string? Status,
+    decimal Fee,
+    decimal FeeBilled);
+
+public sealed record DeltekContactSummary(
+    string ContactId,
+    string FirstName,
+    string LastName,
+    string? Title,
+    string? Email,
+    string? Phone,
+    string? CellPhone,
+    bool IsPrimary,
+    string? Rating,
+    string SourceFlag,
+    string? DirectClientId,
+    int? ProjectAppearanceCount,
+    int? MostRecentProjectYear);
+
+public sealed record DeltekArSummary(
+    decimal TotalOutstanding,
+    decimal Outstanding90Plus,
+    int OpenInvoiceCount);
+
+public sealed record DeltekActivitySummary(
+    string ActivityId,
+    string? Type,
+    string? Subject,
+    DateTime? StartDate,
+    string? Employee,
+    string? Wbs1);
+
+public interface IDeltekClientContextService
+{
+    /// <summary>Returns null if the client id is blank or no projects link to it.</summary>
+    Task<DeltekClientIntelligence?> LoadAsync(string? deltekClientId, CancellationToken ct);
+}
+
+internal sealed class DeltekClientContextService : IDeltekClientContextService
+{
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan NullCacheTtl = TimeSpan.FromSeconds(60);
+    private const int MaxCacheEntries = 200;
+
+    private readonly VpOdbcDsnFactory _factory;
+    private readonly DeltekOdbcOptions _odbcOptions;
+    private readonly double _usdToCadRate;
+    private readonly object _cacheGate = new();
+    private readonly Dictionary<string, (DeltekClientIntelligence? Value, DateTime ExpiresUtc, DateTime InsertedUtc)> _cache
+        = new(StringComparer.OrdinalIgnoreCase);
+
+    public DeltekClientContextService(VpOdbcDsnFactory factory, DeltekOdbcOptions odbcOptions, FinancialsOptions? financialsOptions = null)
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        _odbcOptions = odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions));
+        // USA-org client work is stored in USD; FX-convert via this rate so client
+        // lifetime/billed/AR sums are CAD-equivalent for clients spanning multiple orgs.
+        _usdToCadRate = OrgFx.ParseUsdToCadRate(financialsOptions?.BilledUsdToCadRate);
+    }
+
+    public Task<DeltekClientIntelligence?> LoadAsync(string? deltekClientId, CancellationToken ct)
+    {
+        var trimmed = deltekClientId?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return Task.FromResult<DeltekClientIntelligence?>(null);
+        }
+
+        lock (_cacheGate)
+        {
+            if (_cache.TryGetValue(trimmed, out var hit) && DateTime.UtcNow < hit.ExpiresUtc)
+            {
+                return Task.FromResult(hit.Value);
+            }
+        }
+
+        // Run the ODBC roll-up on a thread-pool thread - VpOdbcDsnFactory.Create()
+        // returns an OdbcConnection which is sync-only. Pattern matches the rest
+        // of FinancialsService (sync work wrapped in Task.Run for the UI).
+        return Task.Run<DeltekClientIntelligence?>(() =>
+        {
+            var loaded = LoadSync(trimmed, ct);
+            lock (_cacheGate)
+            {
+                var now = DateTime.UtcNow;
+                _cache[trimmed] = (loaded, now + (loaded is null ? NullCacheTtl : CacheTtl), now);
+                EvictOldestEntriesIfNeeded();
+            }
+
+            return loaded;
+        }, ct);
+    }
+
+    private void EvictOldestEntriesIfNeeded()
+    {
+        if (_cache.Count <= MaxCacheEntries)
+            return;
+
+        var removeCount = Math.Max(1, MaxCacheEntries / 4);
+        foreach (var key in _cache
+                     .OrderBy(kvp => kvp.Value.InsertedUtc)
+                     .Take(removeCount)
+                     .Select(kvp => kvp.Key)
+                     .ToList())
+        {
+            _cache.Remove(key);
+        }
+    }
+
+    private DeltekClientIntelligence? LoadSync(string clientId, CancellationToken ct)
+    {
+        var catalog = DeltekCatalogValidator.ResolveCatalog(_odbcOptions.Catalog);
+
+        using var cn = _factory.Create();
+        try { cn.Open(); }
+        catch (OdbcException ex) { throw new InvalidOperationException("ODBC connection failed (DeltekClientIntelligence).", ex); }
+
+        var company = LoadCompanyFacts(cn, catalog, clientId, ct, out var clientName);
+        if (company is null)
+        {
+            return null;
+        }
+
+        var (projectCount, lifetimeFee, latestStart) = LoadProjectAggregate(cn, catalog, clientId, ct);
+
+        var degraded = false;
+        var projects = Array.Empty<DeltekProjectSummary>() as IReadOnlyList<DeltekProjectSummary>;
+        var contacts = Array.Empty<DeltekContactSummary>() as IReadOnlyList<DeltekContactSummary>;
+        DeltekArSummary? ar = null;
+        var recentActivity = Array.Empty<DeltekActivitySummary>() as IReadOnlyList<DeltekActivitySummary>;
+
+        try
+        {
+            projects = LoadProjects(cn, catalog, clientId, ct);
+        }
+        catch (OdbcException ex)
+        {
+            degraded = true;
+            Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "projects");
+        }
+
+        try
+        {
+            contacts = LoadContacts(cn, catalog, clientId, ct);
+        }
+        catch (OdbcException ex)
+        {
+            degraded = true;
+            Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "contacts");
+        }
+
+        try
+        {
+            ar = LoadArSummary(cn, catalog, clientId, ct);
+        }
+        catch (OdbcException ex)
+        {
+            degraded = true;
+            Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "ar");
+        }
+
+        try
+        {
+            recentActivity = LoadRecentActivity(cn, catalog, clientId, ct);
+        }
+        catch (OdbcException ex)
+        {
+            degraded = true;
+            Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "activity");
+        }
+
+        return new DeltekClientIntelligence
+        {
+            ClientId = clientId,
+            ClientName = clientName,
+            ProjectCount = projectCount,
+            LifetimeFee = lifetimeFee,
+            LatestProjectStart = latestStart,
+            LatestProjectName = projects.FirstOrDefault(p => latestStart.HasValue && p.OpenDate.HasValue && p.OpenDate.Value == latestStart.Value)?.Name,
+            Company = company,
+            Projects = projects,
+            Contacts = contacts,
+            Ar = ar,
+            RecentActivity = recentActivity,
+            HasDegradedSections = degraded,
+        };
+    }
+
+    private static DeltekCompanyFacts? LoadCompanyFacts(
+        OdbcConnection cn,
+        string catalog,
+        string clientId,
+        CancellationToken ct,
+        out string clientName)
+    {
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = $@"
+SELECT ClientID, Name, Type, Status, Specialty, Market, Memo,
+       ParentID, WebSite, PriorWork, Recommend, GovernmentAgency,
+       Competitor, Employees, AnnualRevenue
+FROM [{catalog}].dbo.Clendor
+WHERE ClientID = ?";
+        cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+        try
+        {
+            using var r = cmd.ExecuteReader();
+            if (!r.Read())
+            {
+                clientName = string.Empty;
+                return null;
+            }
+
+            clientName = GetString(r, 1) ?? clientId;
+            return new DeltekCompanyFacts(
+                ClientId: GetString(r, 0) ?? clientId,
+                Type: GetString(r, 2),
+                Status: GetString(r, 3),
+                Specialty: GetString(r, 4),
+                Market: GetString(r, 5),
+                Memo: GetString(r, 6),
+                ParentId: GetString(r, 7),
+                Website: GetString(r, 8),
+                PriorWork: IsYes(r, 9),
+                Recommend: IsYes(r, 10),
+                GovernmentAgency: IsYes(r, 11),
+                Competitor: IsYes(r, 12),
+                Employees: GetInt(r, 13),
+                AnnualRevenue: GetDecimal(r, 14));
+        }
+        catch (OdbcException ex)
+        {
+            throw new InvalidOperationException("ODBC query failed (Deltek client company facts).", ex);
+        }
+    }
+
+    private (int ProjectCount, decimal LifetimeFee, DateTime? LatestStart) LoadProjectAggregate(
+        OdbcConnection cn,
+        string catalog,
+        string clientId,
+        CancellationToken ct)
+    {
+        // Bucket the LifetimeFee sum by Org so USA-org rows can be FX-converted to CAD-equiv
+        // before being added to the headline. Filtered to the master row (WBS2 blank).
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = $@"
+WITH ClientWbs AS (
+    SELECT DISTINCT ar.WBS1
+    FROM [{catalog}].dbo.AR ar
+    WHERE ar.ClientID = ?
+      AND LTRIM(RTRIM(ISNULL(ar.WBS1, ''))) <> ''
+)
+SELECT
+    COUNT(DISTINCT pr.WBS1)                                                   AS ProjectCount,
+    ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA'
+                    THEN COALESCE(pr.Fee, 0) ELSE 0 END), 0)                  AS UsaFee,
+    ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) <> 'USA'
+                    THEN COALESCE(pr.Fee, 0) ELSE 0 END), 0)                  AS CadFee,
+    MAX(pr.OpenDate)                                                          AS LatestStart
+FROM ClientWbs cw
+INNER JOIN [{catalog}].dbo.PR pr ON pr.WBS1 = cw.WBS1
+WHERE pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '';";
+        cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+        using var r = cmd.ExecuteReader();
+        if (!r.Read())
+        {
+            return (0, 0m, null);
+        }
+
+        var usaFee = GetDecimal(r, 1) ?? 0m;
+        var cadFee = GetDecimal(r, 2) ?? 0m;
+        var lifetimeFee = cadFee + (usaFee * (decimal)_usdToCadRate);
+
+        return (
+            ProjectCount: r.IsDBNull(0) ? 0 : Convert.ToInt32(r.GetValue(0)),
+            LifetimeFee: lifetimeFee,
+            LatestStart: GetDate(r, 3));
+    }
+
+    private IReadOnlyList<DeltekProjectSummary> LoadProjects(
+        OdbcConnection cn,
+        string catalog,
+        string clientId,
+        CancellationToken ct)
+    {
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = $@"
+WITH ClientWbs AS (
+    SELECT DISTINCT ar.WBS1
+    FROM [{catalog}].dbo.AR ar
+    WHERE ar.ClientID = ?
+      AND LTRIM(RTRIM(ISNULL(ar.WBS1, ''))) <> ''
+),
+ProjectBilling AS (
+    SELECT sm.WBS1,
+           SUM(CASE WHEN sm.BilledFee <> 0 THEN sm.BilledFee ELSE COALESCE(sm.Revenue, 0) END) AS FeeBilled
+    FROM [{catalog}].dbo.PRSummaryMain sm
+    WHERE sm.WBS2 IS NULL OR LTRIM(RTRIM(sm.WBS2)) = ''
+    GROUP BY sm.WBS1
+)
+-- Returns ALL of the client's master projects so the lifetime fee tile reconciles
+-- to Σ(visible rows). Previous TOP 50 cap silently truncated high-repeat clients.
+SELECT pr.WBS1, pr.Name, pr.OpenDate, pr.Status, pr.Fee,
+       COALESCE(pb.FeeBilled, 0) AS FeeBilled,
+       pr.Org
+FROM ClientWbs cw
+INNER JOIN [{catalog}].dbo.PR pr ON pr.WBS1 = cw.WBS1
+LEFT JOIN ProjectBilling pb ON pb.WBS1 = pr.WBS1
+WHERE pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = ''
+ORDER BY pr.OpenDate DESC;";
+        cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+        using var r = cmd.ExecuteReader();
+        var rows = new List<DeltekProjectSummary>();
+        var rate = (decimal)_usdToCadRate;
+        while (r.Read())
+        {
+            ct.ThrowIfCancellationRequested();
+            var org = GetString(r, 6);
+            var fx = OrgFx.IsUsaOrg(org) ? rate : 1m;
+            rows.Add(new DeltekProjectSummary(
+                Wbs1: GetString(r, 0) ?? "",
+                Name: GetString(r, 1) ?? "",
+                OpenDate: GetDate(r, 2),
+                Status: GetString(r, 3),
+                Fee: (GetDecimal(r, 4) ?? 0m) * fx,
+                FeeBilled: (GetDecimal(r, 5) ?? 0m) * fx));
+        }
+
+        return rows;
+    }
+
+    private static IReadOnlyList<DeltekContactSummary> LoadContacts(
+        OdbcConnection cn,
+        string catalog,
+        string clientId,
+        CancellationToken ct)
+    {
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = $@"
+WITH ContactsForClient AS (
+    SELECT
+        c.ContactID,
+        c.FirstName,
+        c.LastName,
+        c.Title,
+        c.EMail,
+        c.Phone,
+        c.CellPhone,
+        c.PrimaryInd,
+        c.Rating,
+        CAST(NULL AS varchar(32)) AS DirectClientID,
+        CAST('Direct' AS varchar(16)) AS SourceFlag,
+        CAST(NULL AS int) AS ProjectAppearanceCount,
+        CAST(NULL AS int) AS MostRecentProjectYear
+    FROM [{catalog}].dbo.Contacts c
+    WHERE c.ClientID = ?
+      AND (c.ContactStatus IS NULL OR c.ContactStatus IN ('A', 'Active'))
+
+    UNION ALL
+
+    SELECT
+        c.ContactID,
+        c.FirstName,
+        c.LastName,
+        c.Title,
+        c.EMail,
+        c.Phone,
+        c.CellPhone,
+        c.PrimaryInd,
+        c.Rating,
+        c.ClientID AS DirectClientID,
+        CAST('ViaProject' AS varchar(16)) AS SourceFlag,
+        proj.ProjectAppearanceCount,
+        proj.MostRecentProjectYear
+    FROM [{catalog}].dbo.Contacts c
+    JOIN (
+        SELECT
+            pca.ContactID,
+            COUNT(*) AS ProjectAppearanceCount,
+            MAX(YEAR(pr.OpenDate)) AS MostRecentProjectYear
+        FROM [{catalog}].dbo.PRContactAssoc pca
+        JOIN [{catalog}].dbo.PR pr
+          ON pr.WBS1 = pca.WBS1
+         AND pr.WBS2 = ' '
+         AND pr.WBS3 = ' '
+        WHERE pr.ClientID = ?
+          AND pr.ChargeType = 'R'
+        GROUP BY pca.ContactID
+    ) proj ON proj.ContactID = c.ContactID
+    WHERE (c.ContactStatus IS NULL OR c.ContactStatus IN ('A', 'Active'))
+      AND (c.ClientID IS NULL OR c.ClientID <> ?)
+)
+SELECT TOP 200
+    ContactID,
+    FirstName,
+    LastName,
+    Title,
+    EMail,
+    Phone,
+    CellPhone,
+    PrimaryInd,
+    Rating,
+    DirectClientID,
+    SourceFlag,
+    ProjectAppearanceCount,
+    MostRecentProjectYear
+FROM ContactsForClient
+ORDER BY
+    CASE WHEN SourceFlag = 'Direct' THEN 0 ELSE 1 END,
+    PrimaryInd DESC,
+    ISNULL(MostRecentProjectYear, 0) DESC,
+    LastName,
+    FirstName;";
+        cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
+        cmd.Parameters.Add(new OdbcParameter("@id2", OdbcType.NVarChar, 32) { Value = clientId });
+        cmd.Parameters.Add(new OdbcParameter("@id3", OdbcType.NVarChar, 32) { Value = clientId });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+        using var r = cmd.ExecuteReader();
+        var rows = new List<DeltekContactSummary>();
+        while (r.Read())
+        {
+            ct.ThrowIfCancellationRequested();
+            rows.Add(new DeltekContactSummary(
+                ContactId: GetString(r, 0) ?? "",
+                FirstName: GetString(r, 1) ?? "",
+                LastName: GetString(r, 2) ?? "",
+                Title: GetString(r, 3),
+                Email: GetString(r, 4),
+                Phone: GetString(r, 5),
+                CellPhone: GetString(r, 6),
+                IsPrimary: IsYes(r, 7),
+                Rating: GetString(r, 8),
+                SourceFlag: GetString(r, 10) ?? "Direct",
+                DirectClientId: GetString(r, 9),
+                ProjectAppearanceCount: GetInt(r, 11),
+                MostRecentProjectYear: GetInt(r, 12)));
+        }
+
+        return rows;
+    }
+
+    private DeltekArSummary? LoadArSummary(
+        OdbcConnection cn,
+        string catalog,
+        string clientId,
+        CancellationToken ct)
+    {
+        // Bucket by PR.Org so USA-org invoices (stored in USD) can be FX-converted to
+        // CAD-equivalent before being aggregated into the client's outstanding/90+ tile.
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = $@"
+SELECT
+    Bucket,
+    SUM(Outstanding)        AS Outstanding,
+    SUM(Outstanding90Plus)  AS Outstanding90Plus,
+    SUM(InvoiceCount)       AS InvoiceCount
+FROM (
+    SELECT
+        CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
+        COALESCE(ar.InvBalanceSourceCurrency,0) AS Outstanding,
+        CASE WHEN DATEDIFF(day, COALESCE(ar.DueDate, ar.InvoiceDate), CAST(GETDATE() AS date)) > 90
+             THEN COALESCE(ar.InvBalanceSourceCurrency,0) ELSE 0 END AS Outstanding90Plus,
+        1 AS InvoiceCount
+    FROM [{catalog}].dbo.AR ar
+    LEFT JOIN [{catalog}].dbo.PR pr
+      ON pr.WBS1 = ar.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
+    WHERE ar.ClientID = ?
+      AND ABS(COALESCE(ar.InvBalanceSourceCurrency, 0)) > 0.004
+) x
+GROUP BY Bucket;";
+        cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+        using var r = cmd.ExecuteReader();
+
+        var rate = (decimal)_usdToCadRate;
+        decimal totalOutstanding = 0m;
+        decimal totalOutstanding90 = 0m;
+        var totalInvoiceCount = 0;
+        var anyRow = false;
+        while (r.Read())
+        {
+            anyRow = true;
+            var bucket = GetString(r, 0) ?? string.Empty;
+            var outstanding = GetDecimal(r, 1) ?? 0m;
+            var over90 = GetDecimal(r, 2) ?? 0m;
+            var count = r.IsDBNull(3) ? 0 : Convert.ToInt32(r.GetValue(3));
+            var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? rate : 1m;
+            totalOutstanding += outstanding * fx;
+            totalOutstanding90 += over90 * fx;
+            totalInvoiceCount += count;
+        }
+        if (!anyRow) return null;
+
+        return new DeltekArSummary(
+            TotalOutstanding: totalOutstanding,
+            Outstanding90Plus: totalOutstanding90,
+            OpenInvoiceCount: totalInvoiceCount);
+    }
+
+    private static IReadOnlyList<DeltekActivitySummary> LoadRecentActivity(
+        OdbcConnection cn,
+        string catalog,
+        string clientId,
+        CancellationToken ct)
+    {
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = $@"
+SELECT TOP 10 ActivityID, Type, Subject, StartDate, Employee, WBS1
+FROM [{catalog}].dbo.Activity
+WHERE ClientID = ?
+ORDER BY StartDate DESC, CreateDate DESC;";
+        cmd.Parameters.Add(new OdbcParameter("@id", OdbcType.NVarChar, 32) { Value = clientId });
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+        using var r = cmd.ExecuteReader();
+        var rows = new List<DeltekActivitySummary>();
+        while (r.Read())
+        {
+            ct.ThrowIfCancellationRequested();
+            rows.Add(new DeltekActivitySummary(
+                ActivityId: GetString(r, 0) ?? "",
+                Type: GetString(r, 1),
+                Subject: GetString(r, 2),
+                StartDate: GetDate(r, 3),
+                Employee: GetString(r, 4),
+                Wbs1: GetString(r, 5)));
+        }
+
+        return rows;
+    }
+
+    private static string? GetString(IDataRecord r, int i)
+    {
+        if (r.IsDBNull(i)) return null;
+        return Convert.ToString(r.GetValue(i))?.Trim();
+    }
+
+    private static DateTime? GetDate(IDataRecord r, int i)
+    {
+        if (r.IsDBNull(i)) return null;
+        return Convert.ToDateTime(r.GetValue(i));
+    }
+
+    private static decimal? GetDecimal(IDataRecord r, int i)
+    {
+        if (r.IsDBNull(i)) return null;
+        return Convert.ToDecimal(r.GetValue(i));
+    }
+
+    private static int? GetInt(IDataRecord r, int i)
+    {
+        if (r.IsDBNull(i)) return null;
+        return Convert.ToInt32(r.GetValue(i));
+    }
+
+    private static bool IsYes(IDataRecord r, int i)
+    {
+        var value = GetString(r, i);
+        return string.Equals(value, "Y", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "YES", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "TRUE", StringComparison.OrdinalIgnoreCase)
+            || value == "1";
+    }
+}

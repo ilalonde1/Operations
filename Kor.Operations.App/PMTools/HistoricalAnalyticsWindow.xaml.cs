@@ -14,7 +14,8 @@ namespace Kor.Operations.PMTools
 
         public HistoricalAnalyticsWindow(DeltekOdbcOptions odbcOptions)
         {
-            _svc = new HistoricalAnalyticsService(odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions)));
+            var financialsOptions = Kor.Operations.Services.AppServices.GetOptional<FinancialsOptions>();
+            _svc = new HistoricalAnalyticsService(odbcOptions ?? throw new ArgumentNullException(nameof(odbcOptions)), financialsOptions);
             InitializeComponent();
             DataContext = _vm;
             _vm.SetOptions(odbcOptions);
@@ -109,9 +110,9 @@ namespace Kor.Operations.PMTools
             UpdateDetailVisibility();
         }
 
-        private void EmployeeGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        private async void EmployeeGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            _vm.SetEmployeeSummaryDetail(EmployeeGrid.SelectedItem as EmployeeSummaryRow);
+            await _vm.SetEmployeeSummaryDetail(EmployeeGrid.SelectedItem as EmployeeSummaryRow);
             _vm.SelectedRow = null;
             UpdateDetailVisibility();
         }
@@ -140,6 +141,12 @@ namespace Kor.Operations.PMTools
         private void HelpBtn_Click(object sender, RoutedEventArgs e)
             => new HistoricalAnalyticsHelpWindow { Owner = this }.Show();
         private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
+
+        protected override void OnClosed(EventArgs e)
+        {
+            Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
+            base.OnClosed(e);
+        }
 
     }
 }

@@ -1,0 +1,226 @@
+<Window x:Class="Kor.Operations.App.Views.CooCardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:ClassModifier="internal"
+        Title="COO Card"
+        Width="980" Height="780"
+        ResizeMode="CanResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Severity badge palette aligned with the Mcp.Alert severity scheme. -->
+        <Style x:Key="SeverityBadge" TargetType="Border">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="#64748B"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding severity}" Value="High">
+                    <Setter Property="Background" Value="#C62828"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding severity}" Value="Medium">
+                    <Setter Property="Background" Value="#EA580C"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding severity}" Value="Low">
+                    <Setter Property="Background" Value="#475569"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="RankBadge" TargetType="Border">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="{DynamicResource Brand.Primary.Brush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource Panel.Background}"
+                BorderBrush="{DynamicResource Panel.Border}"
+                BorderThickness="0,0,0,1"
+                Padding="16,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{Binding Header}"
+                               FontSize="16" FontWeight="SemiBold"
+                               Foreground="{DynamicResource Text.Primary}"/>
+                    <TextBlock Text="The 5 things this week the AI thinks should have your attention. Synthesised from the Strategic Brief + active alerts. Acknowledge to clear; regenerate to rerun the synthesis."
+                               FontSize="11"
+                               Foreground="{DynamicResource Text.Secondary}"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding LastUpdated}"
+                               FontSize="10"
+                               Foreground="{DynamicResource Text.Secondary}"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                    <Button Content="Regenerate"
+                            Command="{Binding RegenerateCommand}"
+                            Style="{StaticResource Button.Secondary}"
+                            Padding="10,4"
+                            Margin="0,0,8,0"
+                            ToolTip="Re-run the AI synthesis on the latest brief + alerts. Replaces the current week's card."/>
+                    <Button Content="Refresh"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource Button.Primary}"
+                            Padding="10,4"
+                            ToolTip="Reload the saved COO Card from the server."/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ProgressBar DockPanel.Dock="Top"
+                     Height="2"
+                     IsIndeterminate="True"
+                     Visibility="{Binding BusyVisibility}"
+                     Foreground="{DynamicResource Brand.Accent.Brush}"
+                     Background="Transparent"
+                     BorderThickness="0"/>
+
+        <Border DockPanel.Dock="Top"
+                Visibility="{Binding ErrorVisibility}"
+                Background="#FEE2E2"
+                BorderBrush="#FCA5A5"
+                BorderThickness="0,0,0,1"
+                Padding="16,8">
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="#991B1B"
+                       TextWrapping="Wrap"
+                       FontSize="12"/>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
+            <StackPanel>
+                <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource Panel.Background}"
+                                    BorderBrush="{DynamicResource Panel.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="14,12"
+                                    Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{StaticResource RankBadge}" Margin="0,0,12,0">
+                                        <TextBlock Text="{Binding rank}"
+                                                   Foreground="White"
+                                                   FontWeight="Bold"
+                                                   FontSize="14"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding headline}"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Text.Primary}"
+                                                       TextWrapping="Wrap"/>
+                                            <Border Grid.Column="1" Style="{StaticResource SeverityBadge}" Margin="8,0,0,0">
+                                                <TextBlock Text="{Binding severity}"
+                                                           Foreground="White"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="10"/>
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Text="{Binding body}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource Text.Primary}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,6,0,0"/>
+                                        <Border Background="#FFF7ED"
+                                                BorderBrush="#FED7AA"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10,6"
+                                                Margin="0,8,0,0"
+                                                Visibility="{Binding recommendation, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                                            <StackPanel>
+                                                <TextBlock Text="ACTION"
+                                                           FontSize="9"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#9A3412"/>
+                                                <TextBlock Text="{Binding recommendation}"
+                                                           FontSize="12"
+                                                           Foreground="#9A3412"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <TextBlock Text="{Binding sourceTags, StringFormat=Sources: {0}}"
+                                                   FontSize="10"
+                                                   Foreground="{DynamicResource Text.Secondary}"
+                                                   FontStyle="Italic"
+                                                   Margin="0,8,0,0"
+                                                   Visibility="{Binding sourceTags, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="2"
+                                            Content="Acknowledge"
+                                            Command="{Binding DataContext.AcknowledgeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource Button.Secondary}"
+                                            Padding="10,4"
+                                            Margin="12,0,0,0"
+                                            VerticalAlignment="Top"
+                                            ToolTip="Mark this item as handled. Removes it from the card; doesn't delete the underlying alert or brief data."/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Empty state — visible when Items is empty. The Header text already
+                     surfaces the "no card yet" message; this gives the user breathing
+                     room and an explicit next step. -->
+                <Border Background="{DynamicResource Panel.Background}"
+                        BorderBrush="{DynamicResource Panel.Border}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="20,16"
+                        Margin="0,0,0,10"
+                        Visibility="{Binding Items.Count, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed, ConverterParameter=Inverse}">
+                    <StackPanel>
+                        <TextBlock Text="Nothing on the card."
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Text.Primary}"/>
+                        <TextBlock TextWrapping="Wrap"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource Text.Secondary}"
+                                   Margin="0,6,0,0">
+                            Either you've acknowledged everything for the week (good week), or the synthesis hasn't run yet. Click <Run FontWeight="SemiBold">Regenerate</Run> to build a fresh card from the latest brief + alerts.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

@@ -1,0 +1,33 @@
+﻿{
+    "id": 207,
+    "displayName": "Anthem Properties Group Ltd.",
+    "kind": "KorClient",
+    "website": "https://www.anthemproperties.com",
+    "hqCity": "Vancouver, BC",
+    "sectors": [
+      "Residential",
+      "Commercial",
+      "Rental",
+      "Mixed-Use"
+    ],
+    "offices": [
+      "Vancouver, BC"
+    ],
+    "keyPeople": [
+      {
+        "name": "Eric Carlson",
+        "title": "Founder & CEO"
+      }
+    ],
+    "notableProjects": [
+      "Citizen by Anthem (Burnaby, 66-storey mixed-use)",
+      "Coquitlam rental community with BGO"
+    ],
+    "korRelevance": "Existing KOR structural engineering client. Major BC/Western Canada developer founded 1991 with $6B+ in developed projects, 14,600 homes across residential and commercial sectors.",
+    "dataIssues": [],
+    "sourceUrls": [
+      "https://anthemproperties.com/",
+      "https://anthemproperties.com/our-people/"
+    ],
+    "suggestedKind": null
+  }

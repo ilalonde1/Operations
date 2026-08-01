@@ -1,66 +1,110 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Serilog;
 
 namespace Kor.Operations.Services;
 
 internal sealed class AppAiContextBuilder
 {
-    private readonly List<IAiContextProvider> _providers = new();
+    // Ref-counted by provider instance. The same singleton VM can be registered
+    // by more than one open window (e.g. PmToolsViewModel is shared by
+    // WorkloadMeetingWindow + PmCapacityWindow); it must survive in the prompt
+    // until the LAST holder unregisters. Before ref-counting, Register deduped
+    // by name but Unregister removed by reference, so closing the first window
+    // stripped the provider out from under the still-open second one.
+    private sealed class Registration
+    {
+        public IAiContextProvider Provider;
+        public int Count;
+        public Registration(IAiContextProvider provider) { Provider = provider; Count = 1; }
+    }
+
+    private readonly List<Registration> _providers = new();
+    private readonly object _gate = new();
 
     internal void Register(IAiContextProvider provider)
     {
-        _providers.RemoveAll(p => p.ProviderName == provider.ProviderName);
-        _providers.Add(provider);
+        lock (_gate)
+        {
+            var existing = _providers.FirstOrDefault(r => r.Provider.ProviderName == provider.ProviderName);
+            if (existing is null)
+            {
+                _providers.Add(new Registration(provider));
+            }
+            else if (ReferenceEquals(existing.Provider, provider))
+            {
+                // Same instance held by another window — bump the ref-count.
+                existing.Count++;
+            }
+            else
+            {
+                // Different instance, same name — a reopened window's fresh VM
+                // supersedes the stale one (original by-name dedup contract).
+                existing.Provider = provider;
+                existing.Count = 1;
+            }
+        }
     }
 
     internal void Unregister(IAiContextProvider provider)
     {
-        _providers.Remove(provider);
+        lock (_gate)
+        {
+            // Match by reference: only the instance that registered decrements,
+            // and a stale instance already superseded by a same-named one is a
+            // no-op (won't evict the live provider).
+            var existing = _providers.FirstOrDefault(r => ReferenceEquals(r.Provider, provider));
+            if (existing is null) return;
+            if (--existing.Count <= 0)
+                _providers.Remove(existing);
+        }
     }
 
-    private static readonly string[] DefaultProviderNames =
-    {
-        "Historical Analytics",
-        "Financials (Active Projects)",
-        "PM Tools (Active Delivery)",
-    };
-
     /// <summary>
-    /// Builds the full AI context. <paramref name="expectedProviderNames"/> lets the
-    /// caller control which providers appear in the "DATA NOT YET LOADED" advisory.
-    /// When null, the default firm-wide provider list is used (backward compatible).
-    /// Pass an empty array to suppress the advisory entirely.
+    /// Concatenates every registered provider's <see cref="IAiContextProvider.BuildContext"/>
+    /// output into the prompt suffix sent to Claude. Providers with HasData=false
+    /// are skipped; a provider that throws during BuildContext is logged + skipped
+    /// so one bad VM cannot blank out the AI bar firm-wide.
     /// </summary>
-    internal string BuildFullContext(
-        string? localContext = null,
-        IReadOnlyList<string>? expectedProviderNames = null)
+    /// <remarks>
+    /// Restored in Batch 60 (commit pending) after Phase 11e left the AI bar
+    /// blind on the Financials window — the builder existed but
+    /// <see cref="AppAiService"/> discarded it, and FinancialsViewModel's
+    /// BuildLocalContext returned "". See Kor.Operations.Mcp.md for the
+    /// architecture decision (push context vs pull via tools).
+    /// </remarks>
+    internal string BuildFullContext(string? localContext = null)
     {
         var sb = new StringBuilder();
 
-        var loaded = _providers.Where(p => p.HasData).ToList();
-        foreach (var provider in loaded)
-        {
-            sb.AppendLine($"=== {provider.ProviderName.ToUpperInvariant()} ===");
-            sb.AppendLine(provider.BuildContext());
-            sb.AppendLine();
-        }
+        IAiContextProvider[] snapshot;
+        lock (_gate) { snapshot = _providers.Select(r => r.Provider).ToArray(); }
 
-        var expected = expectedProviderNames ?? DefaultProviderNames;
-        if (expected.Count > 0)
+        foreach (var provider in snapshot)
         {
-            var loadedNames = loaded.Select(p => p.ProviderName).ToHashSet();
-            var missing = expected.Where(n => !loadedNames.Contains(n)).ToList();
-            if (missing.Count > 0)
+            bool hasData;
+            try { hasData = provider.HasData; }
+            catch (Exception ex)
             {
-                sb.AppendLine("=== DATA NOT YET LOADED ===");
-                sb.AppendLine("The following data sources are available but haven't been opened yet this session.");
-                sb.AppendLine("If the user asks about data you don't have, tell them which window to open.");
-                foreach (var m in missing)
-                    sb.AppendLine($"  - {m} (open the {m.Split('(')[0].Trim()} window to load)");
-                sb.AppendLine();
+                Log.Warning(ex, "AppAiContextBuilder: provider {Provider} threw on HasData; skipping.", provider.ProviderName);
+                continue;
             }
+            if (!hasData) continue;
+
+            string body;
+            try { body = provider.BuildContext() ?? ""; }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "AppAiContextBuilder: provider {Provider} threw in BuildContext; skipping.", provider.ProviderName);
+                continue;
+            }
+
+            sb.AppendLine($"=== {provider.ProviderName.ToUpperInvariant()} ===");
+            sb.AppendLine(body);
+            sb.AppendLine();
         }
 
         if (!string.IsNullOrWhiteSpace(localContext))

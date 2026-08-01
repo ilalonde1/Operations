@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.ComponentModel;
 using Kor.Operations.Financials;
 
@@ -7,6 +8,8 @@ namespace Kor.Operations.PMTools
     public sealed class PmProjectRow : INotifyPropertyChanged
     {
         private int _meetingPriority;
+        private string _meetingNotes = "";
+        private bool _hasMeetingRow;
 
         public string Wbs1 { get; private set; } = "";
         public string Name { get; private set; } = "";
@@ -19,9 +22,14 @@ namespace Kor.Operations.PMTools
         public double Gfa { get; private set; }
         public double Fee { get; private set; }
         public double FeeBilled { get; private set; }
-        public double FeeRemaining => Fee - FeeBilled;
-        public double PercentBilled => Fee == 0 ? 0 : FeeBilled / Fee;
-        public string PercentBilledText => Fee == 0 ? "—" : PercentBilled.ToString("P0");
+        public double UnpostedFeeBilled { get; private set; }
+        public double FeeBilledWithUnposted => FeeBilled + UnpostedFeeBilled;
+        public double FeeRemaining => Fee - FeeBilledWithUnposted;
+        public double PercentBilled => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilled / Fee : 0;
+        public double PercentBilledWithUnposted => Math.Abs(Fee) > AnalyticsThresholds.RoundingDollarFloor ? FeeBilledWithUnposted / Fee : 0;
+        public bool   HasUnpostedBilling => UnpostedFeeBilled > 0.004;
+        public string PercentBilledText => Math.Abs(Fee) <= AnalyticsThresholds.RoundingDollarFloor ? "—" : PercentBilled.ToString("P0");
+        public string PercentBilledWithUnpostedText => Math.Abs(Fee) <= AnalyticsThresholds.RoundingDollarFloor ? "—" : PercentBilledWithUnposted.ToString("P0");
         public string PercentBilledBarColor => PercentBilled switch
         {
             >= 0.95 => "#DC2626",
@@ -29,7 +37,15 @@ namespace Kor.Operations.PMTools
             >= 0.50 => "#16A34A",
             _ => "#6B7280",
         };
+        public string PercentBilledWithUnpostedBarColor => PercentBilledWithUnposted switch
+        {
+            >= 0.95 => "#DC2626",
+            >= 0.85 => "#EA580C",
+            >= 0.50 => "#16A34A",
+            _ => "#6B7280",
+        };
         public double PercentBilledBarValue => System.Math.Min(1.0, System.Math.Max(0.0, PercentBilled));
+        public double PercentBilledWithUnpostedBarValue => System.Math.Min(1.0, System.Math.Max(0.0, PercentBilledWithUnposted));
 
         public string EngPercentText => EngBudget == 0 ? "—" : EngPercent.ToString("P0");
         public string EngPercentBarColor => EngPercent switch
@@ -68,12 +84,8 @@ namespace Kor.Operations.PMTools
 
         public string EngBudgetDisplay => IsEngBudgetEstimated ? $"{EngBudget:N1} *" : $"{EngBudget:N1}";
         public string DraftBudgetDisplay => IsDraftBudgetEstimated ? $"{DraftBudget:N1} *" : $"{DraftBudget:N1}";
-        public string EngBudgetTooltip => IsEngBudgetEstimated
-            ? $"Estimated — no budget in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}"
-            : "Actual budget from Deltek PRLabor.";
-        public string DraftBudgetTooltip => IsDraftBudgetEstimated
-            ? $"Estimated — no budget in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}"
-            : "Actual budget from Deltek PRLabor.";
+        public string EngBudgetTooltip => $"Estimated — KOR does not budget hours in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}";
+        public string DraftBudgetTooltip => $"Estimated — KOR does not budget hours in Deltek. {(BudgetPeerCount >= 3 ? $"Peer-based: median of {BudgetPeerCount} similar projects." : "Formula fallback (<3 peers found).")}";
 
         public double InspHrs { get; private set; }
         public int TotalInspections { get; private set; }
@@ -82,6 +94,7 @@ namespace Kor.Operations.PMTools
         public int BudgetPeerCount { get; private set; }
         public double FeePerHours { get; private set; }
         public double BilledPerHours { get; private set; }
+        public double BilledPerHoursWithUnposted { get; private set; }
 
         public string DeliveryRisk { get; private set; } = "High Confidence";
         public string DeliveryRiskTooltip { get; private set; } = "";
@@ -100,9 +113,46 @@ namespace Kor.Operations.PMTools
             }
         }
 
+        // Round 52: meeting notes surfaced directly in the PM Groups grid via
+        // a row-details editor. Synced from the meeting VM's CurrentProjects in
+        // SyncMeetingPrioritiesToRows (same channel as MeetingPriority); user
+        // edits write back through WorkloadMeetingPanelViewModel's debounce.
+        public string MeetingNotes
+        {
+            get => _meetingNotes;
+            set
+            {
+                var v = value ?? "";
+                if (_meetingNotes == v) return;
+                _meetingNotes = v;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MeetingNotes)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasMeetingNotes)));
+            }
+        }
+
+        public bool HasMeetingNotes => !string.IsNullOrWhiteSpace(_meetingNotes);
+
+        // Round 52f (review finding 5): true only once the meeting's
+        // WorkloadMeetingProjects row actually exists in CurrentProjects — set
+        // exclusively by SyncMeetingPrioritiesToRows. MeetingPriority is
+        // written optimistically by the ComboBox binding BEFORE the upsert
+        // round-trips, so gating the notes editor on it let users type into a
+        // row whose store UPDATE would hit nothing; those keystrokes were
+        // dropped and then visibly wiped by the post-upsert sync.
+        public bool HasMeetingRow
+        {
+            get => _hasMeetingRow;
+            set
+            {
+                if (_hasMeetingRow == value) return;
+                _hasMeetingRow = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasMeetingRow)));
+            }
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public static PmProjectRow FromProject(FinancialsProjectRow p)
+        public static PmProjectRow FromProject(FinancialsProjectRow p, double usdToCadRate)
         {
             var engRemaining = p.EngBudget - p.EngHrs;
             var draftRemaining = p.DraftBudget - p.DraftHrs;
@@ -110,8 +160,11 @@ namespace Kor.Operations.PMTools
             var level =
                 dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
                 dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
-                dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
+                dc.Status == "Watch" ? DeliveryConfidenceLevel.Watch :
                 DeliveryConfidenceLevel.HighConfidence;
+
+            // FX-convert dollar fields for USA-org rows so PmTools rollups don't mix CAD+USD.
+            var fx = OrgFx.IsUsaOrg(p.Org) ? usdToCadRate : 1.0;
 
             return new PmProjectRow
             {
@@ -125,24 +178,26 @@ namespace Kor.Operations.PMTools
                 ProjectCategory = (p.ProjectCategory ?? "").Trim(),
                 DraftingType = (p.DraftingType ?? "").Trim(),
                 Gfa = p.Gfa,
-                Fee = p.TotalFee,
-                FeeBilled = p.FeeBilled,
+                Fee = p.TotalFee * fx,
+                FeeBilled = p.FeeBilled * fx,
+                UnpostedFeeBilled = p.UnpostedFeeBilled * fx,
                 EngBudget = p.EngBudget,
                 EngHrs = p.EngHrs,
                 RemainingEngHours = engRemaining,
                 EngPercent = p.EngBudget == 0 ? 0 : p.EngHrs / p.EngBudget,
-                IsEngBudgetEstimated = p.EngBudgetActual <= 0,
+                IsEngBudgetEstimated = true,
                 DraftBudget = p.DraftBudget,
                 DraftHrs = p.DraftHrs,
                 RemainingDraftHours = draftRemaining,
                 DraftPercent = p.DraftBudget == 0 ? 0 : p.DraftHrs / p.DraftBudget,
-                IsDraftBudgetEstimated = p.DraftBudgetActual <= 0,
+                IsDraftBudgetEstimated = true,
                 BudgetPeerCount = p.BudgetPeerCount,
                 InspHrs = p.InspHrs,
                 TotalInspections = p.TotalInspections,
                 LastMonthInspections = p.LastMonthInspections,
                 FeePerHours = p.FeePerHours,
                 BilledPerHours = p.BilledPerHours,
+                BilledPerHoursWithUnposted = p.BilledPerHoursWithUnposted,
                 DeliveryRisk = dc.Status,
                 DeliveryRiskTooltip = dc.Tooltip,
                 ConfidenceLevel = level,

@@ -51,7 +51,7 @@ public sealed class BrochureProjectVm : ObservableObject
         {
             MessageBox.Show(
                 "Project name is required.",
-                "Validation",
+                "Brochure Builder — Validation",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
             return false;
@@ -61,7 +61,7 @@ public sealed class BrochureProjectVm : ObservableObject
         {
             MessageBox.Show(
                 "Project description is required.",
-                "Validation",
+                "Brochure Builder — Validation",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
             return false;

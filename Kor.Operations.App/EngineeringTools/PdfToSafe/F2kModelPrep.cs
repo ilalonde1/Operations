@@ -23,6 +23,53 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
     internal static class F2kModelPrep
     {
+        /// <summary>
+        /// Snaps measured column dimensions to the nearest 50 mm nominal
+        /// size and canonicalises orientation so columns drawn at the same
+        /// nominal size collapse to a single named section regardless of
+        /// rotation. A measured 368 × 952 mm pen-thickness rectangle and
+        /// a 952 × 368 column rotated 90° both become "C350x950" with
+        /// (W=350, D=950) — the engineer sees one section in SAFE instead
+        /// of eight near-duplicate custom rectangles.
+        ///
+        /// Snap increment is 50 mm because that's the nominal grid for
+        /// concrete column sizing in BC residential / mid-rise practice.
+        /// Minimum 200 mm to avoid pen-thickness artifacts producing tiny
+        /// fictitious sections.
+        /// </summary>
+        internal static (string Name, double W, double D) SnapColumnSection(double rawW, double rawD)
+        {
+            const double SnapMm = 50.0;
+            const double MinMm = 200.0;
+            double snapped(double v) => Math.Max(MinMm, Math.Round(v / SnapMm) * SnapMm);
+            var w = snapped(rawW);
+            var d = snapped(rawD);
+            if (w > d) (w, d) = (d, w);
+            return ($"C{(int)w}x{(int)d}", w, d);
+        }
+
+        /// <summary>
+        /// Snaps a wall's centerline section to engineer-friendly increments.
+        /// <see cref="PolygonProcessor.ReducePolygonToWallCenterline"/> returns the
+        /// polygon's *minor bbox dim* as the wall thickness, which gives values like
+        /// 157 / 952 / 1850 mm — none of which are real wall thicknesses.
+        /// Snapping to 50 mm with a 150 mm floor produces clean section names
+        /// (W150x1000, W200x1000, …) and collapses near-duplicate polygons (157,
+        /// 161, 152 mm) into a single section in SAFE's section browser.
+        ///
+        /// W is the wall thickness (minor bbox dim of the source polygon).
+        /// D is the analytical wall depth (=1000 mm from the reducer); preserved
+        /// as-is because changing it would shift the engineer's stiffness assumption.
+        /// </summary>
+        internal static (string Name, double W, double D) SnapWallSection(double rawW, double rawD)
+        {
+            const double SnapMm = 50.0;
+            const double MinThicknessMm = 150.0;
+            double snapped = Math.Max(MinThicknessMm, Math.Round(rawW / SnapMm) * SnapMm);
+            double depth   = rawD > 0 ? rawD : 1000.0;
+            return ($"W{(int)snapped}x{(int)Math.Round(depth)}", snapped, depth);
+        }
+
         internal static (double Cx, double Cy) ComputeCentroid(
             IEnumerable<ExtractedGeometry> geometries)
         {
@@ -159,7 +206,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double elevationMm,
             CultureInfo ic,
             double dropPanelThicknessMultiplier = 1.5,
-            IReadOnlyList<(double WidthMm, double DepthMm)?>? xLineSectionHints = null)
+            IReadOnlyList<(double WidthMm, double DepthMm)?>? xLineSectionHints = null,
+            bool autoGenerateOpeningsFromWalls = false)
         {
             (xSlabs, xSlabColors) = PolygonProcessor.ProcessSlabs(xSlabs, xSlabColors);
 
@@ -286,10 +334,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     // No text-annotation match, but the reclassifier provided an
                     // explicit section hint (e.g. Wall from a slab polygon's bbox).
-                    // Prefix "W" so these are visually distinguishable from text-
-                    // derived beam sections in the SAFE model browser.
+                    // Snap to a 50 mm grid so SAFE shows clean section names
+                    // (W200x1000 not W157x1000) and near-duplicates collapse.
                     var (w, d) = xLineSectionHints[li]!.Value;
-                    secName = $"W{(int)Math.Round(w)}x{(int)Math.Round(d)}";
+                    (secName, _, _) = SnapWallSection(w, d);
                 }
 
                 for (int i = 0; i < pts.Count - 1; i++)
@@ -318,8 +366,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else
                     (w, d) = (500, 500);
 
-                string secName = $"C{(int)Math.Round(w)}x{(int)Math.Round(d)}";
-                xColumnSections.Add((secName, w, d));
+                var (secName, snappedW, snappedD) = SnapColumnSection(w, d);
+                xColumnSections.Add((secName, snappedW, snappedD));
             }
 
             // Deduplicate columns that mapped to the same point (coincident after rounding)
@@ -341,6 +389,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var names = pts.Select(p => Pt(p.X, p.Y)).ToList();
                 string openingId = idPrefix == "" ? $"O{++oIdx}" : $"{idPrefix}O{++oIdx}";
                 openingRows.Add((openingId, parentId, names));
+            }
+
+            if (autoGenerateOpeningsFromWalls
+                && xLineSectionHints is not null
+                && xLines.Count > 0
+                && xSlabs.Count > 0)
+            {
+                var wallOpenings = WallOpeningDetector.DetectRectangularOpenings(
+                    xLines, xLineSectionHints, xSlabs);
+                foreach (var (parentSlabIdx, polygon) in wallOpenings)
+                {
+                    if (!slabIndexToAreaId.TryGetValue(parentSlabIdx, out string? parentId)) continue;
+                    var names = polygon.Select(p => Pt(p.X, p.Y)).ToList();
+                    string openingId = idPrefix == "" ? $"O{++oIdx}" : $"{idPrefix}O{++oIdx}";
+                    openingRows.Add((openingId, parentId, names));
+                }
             }
 
             return new F2kStoryData(

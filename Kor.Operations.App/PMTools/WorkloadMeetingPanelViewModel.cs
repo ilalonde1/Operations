@@ -37,9 +37,10 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
     private string? _pendingNotesValue;
     private string _activityText = string.Empty;
     private string? _meetingError;
-    private bool _isMeetingPanelExpanded = false;
-    private string _sortColumn = "Priority";
-    private bool _sortAscending = true;
+    // Round 52i: default ON — Jim opens straight into the simple meeting view
+    // (priority, notes, % billed, risk); "Show $ Detail" reveals the full grid.
+    private bool _isMeetingMode = true;
+    private bool _suppressProjectNotesRelay;
     private readonly ConcurrentDictionary<string, int> _projectNotesVersions = new(StringComparer.OrdinalIgnoreCase);
 
     public WorkloadMeetingPanelViewModel(
@@ -55,15 +56,25 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         Meetings = new ObservableCollection<WorkloadMeeting>();
         CurrentProjects = new ObservableCollection<WorkloadMeetingProject>();
         NewMeetingCommand = new AsyncRelayCommand(_ => NewMeetingAsync());
-        SetPriorityCommand = new AsyncRelayCommand(ExecuteSetPriorityAsync);
         SaveMeetingCommand = new AsyncRelayCommand(_ => SaveMeetingAsync());
-        ToggleMeetingPanelCommand = new AsyncRelayCommand(_ => { IsMeetingPanelExpanded = !IsMeetingPanelExpanded; return Task.CompletedTask; });
-        SortCommand = new AsyncRelayCommand(p => { ExecuteSort(p); return Task.CompletedTask; });
+        ToggleMeetingModeCommand = new AsyncRelayCommand(_ => { IsMeetingMode = !IsMeetingMode; return Task.CompletedTask; });
         PriorityProjects = new ObservableCollection<WorkloadMeetingProjectRow>();
         PriorityProjects.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasPriorityProjects));
+        // Round 52: chips summarize the selected meeting's priorities (P1 ×3 …).
+        // CurrentProjects is only ever mutated on the dispatcher, so one hook
+        // covers every rebuild path (load, selection change, upsert refresh).
+        CurrentProjects.CollectionChanged += (_, _) => RebuildPriorityChips();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>Round 52f (review finding 4): raised on the UI thread whenever
+    /// a project's meeting notes change through ANY surface (board, grid
+    /// editor, orphan panel) so the window can mirror the text onto the
+    /// matching grid row — without it, board edits never reached
+    /// PmProjectRow.MeetingNotes and a later grid edit overwrote the newer
+    /// board text. Args: (wbs1, notes).</summary>
+    public event Action<string, string>? ProjectNotesUpdated;
 
     public ObservableCollection<WorkloadMeeting> Meetings { get; }
 
@@ -110,7 +121,11 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
             OnPropertyChanged();
 
-            if (_suppressMeetingNotesSave || SelectedMeeting == null)
+            // Round 52k (review): VM-layer read-only guard, matching the
+            // per-project notes paths. Past meetings are read-only; the UI
+            // disables this TextBox, but don't rely on IsEnabled alone — never
+            // schedule a save for a meeting that isn't the current one.
+            if (_suppressMeetingNotesSave || SelectedMeeting == null || !IsCurrentMeeting)
             {
                 return;
             }
@@ -125,6 +140,24 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
     public bool HasPriorityProjects => PriorityProjects.Count > 0;
 
+    /// <summary>Round 52: per-priority counts for the toolbar chips (P1 ×3 …),
+    /// rebuilt whenever CurrentProjects changes. Clicking a chip jumps the
+    /// window's PM grids to the first row at that priority.</summary>
+    public ObservableCollection<WorkloadMeetingPriorityChip> PriorityChips { get; } = new();
+
+    private void RebuildPriorityChips()
+    {
+        PriorityChips.Clear();
+        foreach (var chip in CurrentProjects
+                     .Where(p => p.Priority >= 1 && p.Priority <= 5)
+                     .GroupBy(p => p.Priority)
+                     .OrderBy(g => g.Key)
+                     .Select(g => new WorkloadMeetingPriorityChip { Priority = g.Key, Count = g.Count() }))
+        {
+            PriorityChips.Add(chip);
+        }
+    }
+
     public void SetPriorityProjectRows(System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> rows)
     {
         foreach (var existing in PriorityProjects)
@@ -137,6 +170,70 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             row.NotesChanged += OnProjectNotesChanged;
             PriorityProjects.Add(row);
         }
+    }
+
+    /// <summary>
+    /// Round 39b (T2.001): project <see cref="CurrentProjects"/> into the
+    /// <see cref="PriorityProjects"/> grid. Owned by the VM so the meeting
+    /// window shows priorities even when it is opened in isolation (without
+    /// PmCapacityWindow). The optional <paramref name="enrich"/> lookup lets
+    /// the capacity window inject ProjectName / PmName from its own
+    /// PmToolsViewModel rows.
+    ///
+    /// Round 40 (R4-T2.001): when no enricher is supplied, preserve any
+    /// existing enriched ProjectName / PmName already on PriorityProjects
+    /// instead of falling back to the Wbs1 number. This matters after a
+    /// successful priority save: <see cref="UpsertPriorityFromUiAsync"/>
+    /// rebuilds CurrentProjects, the capacity window's CollectionChanged
+    /// handler fires during the rebuild and enriches via its lookup, and
+    /// THEN the VM calls this method with no enricher. Without the preserve
+    /// step that final call clobbered the enriched names back to Wbs1.
+    /// </summary>
+    public void RefreshPriorityProjects(Func<string, (string? Name, string? Pm)>? enrich = null)
+    {
+        // Snapshot existing enrichment (Wbs1 -> ProjectName/PmName) when we're
+        // running without an enricher, so we keep what the capacity window
+        // already wrote.
+        var preserved = enrich is null
+            ? PriorityProjects.ToDictionary(p => p.Wbs1, p => (p.ProjectName, p.PmName), StringComparer.OrdinalIgnoreCase)
+            : null;
+
+        var projected = CurrentProjects.Select(p =>
+        {
+            string? name = null;
+            string? pm = null;
+            if (enrich is not null)
+            {
+                var hit = enrich(p.Wbs1);
+                name = hit.Name;
+                pm = hit.Pm;
+            }
+            else if (preserved is not null && preserved.TryGetValue(p.Wbs1, out var prior))
+            {
+                // Treat "ProjectName == Wbs1" as un-enriched so we don't lock
+                // in the fallback name forever.
+                if (!string.IsNullOrWhiteSpace(prior.ProjectName)
+                    && !string.Equals(prior.ProjectName, p.Wbs1, StringComparison.OrdinalIgnoreCase))
+                {
+                    name = prior.ProjectName;
+                }
+                if (!string.IsNullOrWhiteSpace(prior.PmName))
+                {
+                    pm = prior.PmName;
+                }
+            }
+
+            return new WorkloadMeetingProjectRow
+            {
+                MeetingId = p.MeetingId,
+                Wbs1 = p.Wbs1,
+                Priority = p.Priority,
+                Notes = p.Notes ?? string.Empty,
+                ProjectName = !string.IsNullOrWhiteSpace(name) ? name! : p.Wbs1,
+                PmName = pm ?? string.Empty,
+            };
+        });
+        SetPriorityProjectRows(projected);
     }
 
     public bool IsBusy
@@ -187,36 +284,63 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
     public ICommand NewMeetingCommand { get; }
 
-    public ICommand SetPriorityCommand { get; }
     public ICommand SaveMeetingCommand { get; }
-    public ICommand ToggleMeetingPanelCommand { get; }
-    public ICommand SortCommand { get; }
 
-    public bool IsMeetingPanelExpanded
+    /// <summary>
+    /// Round 52: Meeting Mode reshapes the PM Groups grid for running the
+    /// meeting in the room \u2014 deep-dive financial columns hide, PM groups
+    /// auto-expand. The window owns the visual reactions; this is just the
+    /// switch (lives here so the grid's column bindings, the toolbar button,
+    /// and the window code-behind all observe one source of truth).
+    /// </summary>
+    public bool IsMeetingMode
     {
-        get => _isMeetingPanelExpanded;
+        get => _isMeetingMode;
         private set
         {
-            if (_isMeetingPanelExpanded == value) return;
-            _isMeetingPanelExpanded = value;
+            if (_isMeetingMode == value) return;
+            _isMeetingMode = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(MeetingPanelToggleLabel));
+            OnPropertyChanged(nameof(MeetingModeToggleLabel));
         }
     }
 
-    public string MeetingPanelToggleLabel => _isMeetingPanelExpanded ? "\u25bc  Workload Board" : "\u25b6  Workload Board";
+    // In Meeting Mode (the simple default) the button offers the escape to
+    // financials; out of it, the button offers the way back to the simple view.
+    public string MeetingModeToggleLabel => _isMeetingMode ? "Show $ Detail" : "\u2190 Meeting View";
 
-    public string PrioritySortHeader => "Priority" + (_sortColumn == "Priority" ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
-    public string ProjectSortHeader  => "Project"  + (_sortColumn == "Project"  ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
-    public string PmSortHeader       => "PM"       + (_sortColumn == "PM"       ? (_sortAscending ? " \u25b2" : " \u25bc") : "");
+    public ICommand ToggleMeetingModeCommand { get; }
 
-    public async Task UpsertPriorityFromUiAsync(string wbs1, int priority)
+    /// <summary>
+    /// Round 39b (T2.002): now returns whether the priority was persisted.
+    /// The capacity window uses this to revert <c>MeetingPriority</c> on the
+    /// affected row when the store rejects the change \u2014 without it the row
+    /// kept showing the new priority while the database had the old one.
+    /// </summary>
+    public async Task<bool> UpsertPriorityFromUiAsync(string wbs1, int priority)
     {
         var selection = SelectedMeeting;
-        if (selection == null || string.IsNullOrWhiteSpace(wbs1)) return;
+        // Round 52k (review): VM-layer read-only guard. The caller
+        // (PriorityComboBox_SelectionChanged) already checks IsCurrentMeeting,
+        // but priority writes were the one path gated only in the UI while
+        // notes were gated in the VM — close the asymmetry so no future caller
+        // can persist a priority into a past meeting.
+        if (selection == null || !IsCurrentMeeting || string.IsNullOrWhiteSpace(wbs1)) return false;
+
+        // Round 52j (review finding 3): unsetting priority (0) DELETEs the
+        // WorkloadMeetingProjects row, and notes live ON that row. Any note the
+        // user typed in the last 600ms is still in the per-Wbs1 debounce queue;
+        // if it fired it would UPDATE zero rows — a silent no-op that misleads
+        // the user into thinking the note saved. Invalidate that pending save
+        // now (bump the version so the queued closure drops itself), which
+        // matches the store semantics: no priority row ⇒ no note.
+        if (priority == 0)
+            _projectNotesVersions.AddOrUpdate(wbs1, 1, (_, v) => v + 1);
+
         // Snapshot the current meeting selection generation so we can detect if the user switched meetings
         // while our async work was in flight.
         var genAtStart = System.Threading.Interlocked.Read(ref _meetingSelectionGeneration);
+        var ok = false;
         await RunBusyAsync(async () =>
         {
             ActivityText = "Saving\u2026";
@@ -226,12 +350,35 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                 await _store.UpsertProjectPriorityAsync(selection.Id, wbs1, priority, notes: null).ConfigureAwait(false);
                 var projects = await _store.GetProjectsForMeetingAsync(selection.Id).ConfigureAwait(false);
                 // Drop stale refresh if the user switched meetings after our save began.
-                if (System.Threading.Interlocked.Read(ref _meetingSelectionGeneration) != genAtStart) return;
+                if (System.Threading.Interlocked.Read(ref _meetingSelectionGeneration) != genAtStart)
+                {
+                    ok = true; // the save itself succeeded; only the local refresh was dropped
+                    return;
+                }
                 await _dispatcher.InvokeAsync(() =>
                 {
+                    // Round 52f (review finding 1): a notes edit younger than
+                    // the 600ms debounce exists only in memory — this DB
+                    // re-read would clobber it in the UI, and the close-flush
+                    // would then persist the stale text over the debounced
+                    // save (permanent loss). Every edit path updates
+                    // CurrentProjects.Notes synchronously, so in-memory is
+                    // never older than the DB for this client; overlay it.
+                    var inMemoryNotes = CurrentProjects.ToDictionary(p => p.Wbs1, p => p.Notes, StringComparer.OrdinalIgnoreCase);
                     CurrentProjects.Clear();
-                    foreach (var project in projects) CurrentProjects.Add(project);
+                    foreach (var project in projects)
+                    {
+                        if (inMemoryNotes.TryGetValue(project.Wbs1, out var liveNotes))
+                            project.Notes = liveNotes;
+                        CurrentProjects.Add(project);
+                    }
+                    // Round 39b (T2.001): own the projection so the meeting
+                    // window shows priorities without help from the capacity
+                    // window. Basic enrichment only; the capacity window will
+                    // overwrite with ProjectName/PmName when it's open.
+                    RefreshPriorityProjects();
                 });
+                ok = true;
             }
             catch (Exception ex)
             {
@@ -240,6 +387,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             }
         }).ConfigureAwait(false);
         ActivityText = string.Empty;
+        return ok;
     }
 
     public async Task LoadAsync()
@@ -362,33 +510,6 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         ActivityText = string.Empty;
     }
 
-    private async Task ExecuteSetPriorityAsync(object? parameter)
-    {
-        var selection = SelectedMeeting;
-        if (selection == null)
-        {
-            return;
-        }
-
-        if (!TryGetPriorityParameter(parameter, out var wbs1, out var priority))
-        {
-            _logger.LogWarning("Invalid SetPriorityCommand parameter for workload meeting.");
-            return;
-        }
-
-        try
-        {
-            await UpsertPriorityFromUiAsync(wbs1, priority).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Failed to update workload priority for meeting {MeetingId} and WBS1 {Wbs1}.",
-                selection.Id,
-                wbs1);
-        }
-    }
 
     private void ScheduleMeetingNotesSave(Guid meetingId, string notes)
     {
@@ -503,10 +624,53 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
     private void OnProjectNotesChanged(WorkloadMeetingProjectRow row)
     {
+        if (_suppressProjectNotesRelay) return;
         if (!IsCurrentMeeting) return;
 
-        var meetingId = row.MeetingId;
-        var wbs1 = row.Wbs1;
+        ScheduleProjectNotesSave(row.MeetingId, row.Wbs1, row.Notes);
+    }
+
+    /// <summary>
+    /// Round 52: write path for the PM Groups grid's row-details notes editor.
+    /// Routes through the same per-Wbs1 debounce as the meeting board, and
+    /// mirrors the text into the matching board row so both surfaces show the
+    /// same note while the window is open. Only projects that already have a
+    /// WorkloadMeetingProjects row (i.e. a priority) can carry notes — the
+    /// store's SaveProjectNotesAsync is an UPDATE and would silently hit zero
+    /// rows otherwise; the grid disables the editor for unprioritized rows.
+    /// </summary>
+    public void QueueProjectNotesSaveFromUi(string wbs1, string notes)
+    {
+        var selection = SelectedMeeting;
+        if (selection == null || !IsCurrentMeeting || string.IsNullOrWhiteSpace(wbs1)) return;
+
+        var hasMeetingRow = CurrentProjects.Any(p => string.Equals(p.Wbs1, wbs1, StringComparison.OrdinalIgnoreCase));
+        if (!hasMeetingRow) return;
+
+        var boardRow = PriorityProjects.FirstOrDefault(p => string.Equals(p.Wbs1, wbs1, StringComparison.OrdinalIgnoreCase));
+        if (boardRow != null)
+        {
+            // Suppress the board row's NotesChanged relay — it would schedule a
+            // duplicate save of the same value through OnProjectNotesChanged.
+            _suppressProjectNotesRelay = true;
+            try { boardRow.Notes = notes ?? string.Empty; }
+            finally { _suppressProjectNotesRelay = false; }
+        }
+
+        ScheduleProjectNotesSave(selection.Id, wbs1, notes ?? string.Empty);
+    }
+
+    private void ScheduleProjectNotesSave(Guid meetingId, string wbs1, string notes)
+    {
+        // Keep the canonical in-memory copy fresh so any board-row rebuild
+        // (SyncMeetingPrioritiesToRows / RefreshPriorityProjects re-project
+        // from CurrentProjects) carries the latest text instead of the last
+        // DB read. Caller is always on the UI thread (TextBox/row setters).
+        var current = CurrentProjects.FirstOrDefault(p => string.Equals(p.Wbs1, wbs1, StringComparison.OrdinalIgnoreCase));
+        if (current != null) current.Notes = notes;
+
+        ProjectNotesUpdated?.Invoke(wbs1, notes);
+
         var version = _projectNotesVersions.AddOrUpdate(wbs1, 1, (_, v) => v + 1);
 
         _ = Task.Run(async () =>
@@ -514,7 +678,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             try
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(600), _disposeCts.Token).ConfigureAwait(false);
-                if (!_projectNotesVersions.TryGetValue(wbs1, out var current) || current != version) return;
+                if (!_projectNotesVersions.TryGetValue(wbs1, out var currentVersion) || currentVersion != version) return;
                 // Guard against saving to a deleted meeting (debounce timer can fire after deletion).
                 // Meetings is a UI-thread ObservableCollection — read via dispatcher.
                 var meetingExists = await _dispatcher.InvokeAsync(() => Meetings.Any(m => m.Id == meetingId));
@@ -523,7 +687,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                     _logger.LogWarning("Skipping project notes save — meeting {MeetingId} no longer exists.", meetingId);
                     return;
                 }
-                await _store.SaveProjectNotesAsync(meetingId, wbs1, row.Notes, _disposeCts.Token).ConfigureAwait(false);
+                await _store.SaveProjectNotesAsync(meetingId, wbs1, notes, _disposeCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
@@ -534,57 +698,33 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         });
     }
 
-    private void ExecuteSort(object? parameter)
-    {
-        var column = parameter as string ?? "Priority";
-        if (_sortColumn == column)
-            _sortAscending = !_sortAscending;
-        else
-        {
-            _sortColumn = column;
-            _sortAscending = true;
-        }
-        OnPropertyChanged(nameof(PrioritySortHeader));
-        OnPropertyChanged(nameof(ProjectSortHeader));
-        OnPropertyChanged(nameof(PmSortHeader));
-
-        var sorted = ApplySortOrder(PriorityProjects.ToList()).ToList();
-        for (int i = 0; i < sorted.Count; i++)
-        {
-            var currentIndex = PriorityProjects.IndexOf(sorted[i]);
-            if (currentIndex != i)
-                PriorityProjects.Move(currentIndex, i);
-        }
-    }
-
-    private System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> ApplySortOrder(
+    // Round 52h: the board's interactive sort headers were removed with the
+    // board. The priority rows (now feeding the orphan panel + export) keep a
+    // stable, sensible order: priority first, then project name.
+    private static System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> ApplySortOrder(
         System.Collections.Generic.IEnumerable<WorkloadMeetingProjectRow> rows)
-    {
-        return _sortColumn switch
-        {
-            "Project" => _sortAscending
-                ? rows.OrderBy(r => r.ProjectName).ThenBy(r => r.Wbs1)
-                : rows.OrderByDescending(r => r.ProjectName).ThenBy(r => r.Wbs1),
-            "PM" => _sortAscending
-                ? rows.OrderBy(r => r.PmName).ThenBy(r => r.Priority).ThenBy(r => r.ProjectName)
-                : rows.OrderByDescending(r => r.PmName).ThenBy(r => r.Priority).ThenBy(r => r.ProjectName),
-            _ => _sortAscending
-                ? rows.OrderBy(r => r.Priority).ThenBy(r => r.ProjectName)
-                : rows.OrderByDescending(r => r.Priority).ThenBy(r => r.ProjectName),
-        };
-    }
+        => rows.OrderBy(r => r.Priority).ThenBy(r => r.ProjectName);
 
     public async Task ForceSaveAllAsync(CancellationToken ct = default)
     {
-        var selection = SelectedMeeting;
-        if (selection == null || !IsCurrentMeeting) return;
+        // Round 52k (review): capture the selected meeting AND its priority rows
+        // in ONE UI-thread hop. SelectedMeeting and PriorityProjects are both
+        // mutated only on the dispatcher, so a single Invoke gives a consistent
+        // pair. The previous code read selection first, then rows after an
+        // await — a meeting switch in between (e.g. a window reopened against
+        // this shared singleton VM while a prior close-flush was still running)
+        // could pair one meeting's id with another meeting's rows and write
+        // notes into the wrong meeting.
+        var (selectionId, rows) = await _dispatcher.InvokeAsync<(Guid, List<WorkloadMeetingProjectRow>?)>(() =>
+            SelectedMeeting != null && IsCurrentMeeting
+                ? (SelectedMeeting.Id, PriorityProjects.ToList())
+                : (Guid.Empty, null));
 
-        await FlushPendingNotesSaveAsync(selection.Id).ConfigureAwait(false);
+        if (rows is null) return;
 
-        List<WorkloadMeetingProjectRow> rows = new();
-        await _dispatcher.InvokeAsync(() => rows = PriorityProjects.ToList());
+        await FlushPendingNotesSaveAsync(selectionId).ConfigureAwait(false);
         foreach (var row in rows)
-            await _store.SaveProjectNotesAsync(selection.Id, row.Wbs1, row.Notes, ct).ConfigureAwait(false);
+            await _store.SaveProjectNotesAsync(selectionId, row.Wbs1, row.Notes, ct).ConfigureAwait(false);
     }
 
     public async Task DeleteMeetingAsync()
@@ -675,6 +815,12 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                     CurrentProjects.Add(project);
                 }
 
+                // Round 39b (T2.001): refresh PriorityProjects so the meeting
+                // window has data on first open without the capacity window's
+                // sync handler. Basic projection; capacity window enriches if
+                // it's also open.
+                RefreshPriorityProjects();
+
                 MeetingNotes = meeting?.Notes ?? string.Empty;
                 OnPropertyChanged(nameof(IsCurrentMeeting));
                 OnPropertyChanged(nameof(IsViewingPastMeeting));
@@ -713,27 +859,6 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         });
     }
 
-    private bool TryGetPriorityParameter(object? parameter, out string wbs1, out int priority)
-    {
-        switch (parameter)
-        {
-            case ValueTuple<string, int> tuple:
-                wbs1 = tuple.Item1;
-                priority = tuple.Item2;
-                return !string.IsNullOrWhiteSpace(wbs1);
-
-            case Tuple<string, int> tuple:
-                wbs1 = tuple.Item1;
-                priority = tuple.Item2;
-                return !string.IsNullOrWhiteSpace(wbs1);
-
-            default:
-                wbs1 = string.Empty;
-                priority = 0;
-                return false;
-        }
-    }
-
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
@@ -742,4 +867,23 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         _disposeCts.Cancel();
         _disposeCts.Dispose();
     }
+}
+
+/// <summary>
+/// Round 52: one toolbar chip — "P2 ×4" in the priority colour. Colours match
+/// WorkloadMeetingProjectRow.PriorityBrush / PmToolsExportService.PriorityBg.
+/// </summary>
+public sealed class WorkloadMeetingPriorityChip
+{
+    public int Priority { get; init; }
+    public int Count { get; init; }
+    public string Label => $"P{Priority} ×{Count}";
+    public string ColorHex => Priority switch
+    {
+        1 => "#DC2626",
+        2 => "#EA580C",
+        3 => "#D97706",
+        4 => "#2563EB",
+        _ => "#6B7280",
+    };
 }

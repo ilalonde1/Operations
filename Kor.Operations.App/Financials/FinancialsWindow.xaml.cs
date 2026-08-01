@@ -20,6 +20,7 @@ using ClosedXML.Excel;
 using Kor.Operations.Core;
 using Kor.Operations.Data;
 using Kor.Operations.App.Options;
+using Kor.Operations.App.Views;
 namespace Kor.Operations.Financials
 {
     public partial class FinancialsWindow : Window
@@ -33,8 +34,13 @@ namespace Kor.Operations.Financials
             InitializeComponent();
             DataContext = _vm;
 
+#if DEBUG
+            DumpDeltekSchemaMenuItem.Visibility = Visibility.Visible;
+#endif
+
             var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
             contextBuilder.Register(_vm);
+            contextBuilder.Register(_vm.ExecutiveSummary);
             var aiService = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiService>();
             AiPanel.Initialize(aiService, _vm);
         }
@@ -116,7 +122,7 @@ namespace Kor.Operations.Financials
                 MessageBox.Show(
                     this,
                     $"Deltek schema dump completed.\n\nFolder:\n{result.OutputDirectory}\n\nTables: {result.TableCount:N0}\nColumns: {result.ColumnCount:N0}",
-                    "Deltek Schema Dump",
+                    "Financials — Deltek Schema Dump",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -125,7 +131,7 @@ namespace Kor.Operations.Financials
                 MessageBox.Show(
                     this,
                     $"Deltek schema dump failed.\n\n{ex.Message}",
-                    "Deltek Schema Dump",
+                    "Financials — Deltek Schema Dump",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -141,6 +147,7 @@ namespace Kor.Operations.Financials
         private void ShowExecutiveSummary_Click(object sender, RoutedEventArgs e)
         {
             _vm.SectionIndex = 1;
+            _vm.ExecutiveSummary.SetScope(_vm.IsWatchlistOnly ? "Watchlist" : "All Active", _vm.Rows.Count);
             _ = _vm.ExecutiveSummary.RefreshAsync(
                 forceRefresh: false,
                 existingSnapshot: null,
@@ -165,7 +172,7 @@ namespace Kor.Operations.Financials
 
             var counts = new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
                 Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioStableCount + _vm.PortfolioAtRiskCount,
+                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
                 Critical: _vm.PortfolioCriticalCount);
 
             var win = new ProjectFinancialDetailWindow(row.Project, counts) { Owner = this };
@@ -188,14 +195,14 @@ namespace Kor.Operations.Financials
 
             var counts = new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
                 Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioStableCount + _vm.PortfolioAtRiskCount,
+                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
                 Critical: _vm.PortfolioCriticalCount);
 
             var win = new ProjectFinancialDetailWindow(row.Project, counts) { Owner = this };
             win.Show();
         }
 
-        private void ShowBillingManagerReport_Click(object sender, RoutedEventArgs e)
+        private void ShowPartnerFinancials_Click(object sender, RoutedEventArgs e)
         {
             _vm.SectionIndex = 3;
         }
@@ -213,10 +220,44 @@ namespace Kor.Operations.Financials
         // Sensitive-data launchers relocated from PM Tools. Each opens a standalone window
         // with Financials as Owner so focus returns cleanly on close.
         private void StaffUtilizationBtn_Click(object sender, RoutedEventArgs e)
-            => new Kor.Operations.PMTools.StaffUtilizationWindow(_vm._odbcOptions!) { Owner = this }.Show();
+            => new Kor.Operations.PMTools.StaffUtilizationWindow(_vm._odbcOptions!, _vm._financialsOptions!) { Owner = this }.Show();
 
         private void HistoricalAnalyticsBtn_Click(object sender, RoutedEventArgs e)
             => new Kor.Operations.PMTools.HistoricalAnalyticsWindow(_vm._odbcOptions!) { Owner = this }.Show();
+
+        private void CollectionsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var win = Kor.Operations.Services.AppServices.Get<CollectionsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private async void OpenClientCollectionsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (_vm.SelectedClient is null) return;
+            var clientId = _vm.SelectedClient.ClientId;
+            if (string.IsNullOrWhiteSpace(clientId)) return;
+
+            // If the client already has an active case, open it for editing;
+            // otherwise the case window opens in new-case mode for that client.
+            long? caseId = null;
+            try
+            {
+                var client = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.CollectionsClient>();
+                var actives = await client.GetActiveAsync(default).ConfigureAwait(true);
+                var existing = actives.FirstOrDefault(c => string.Equals(c.clientID, clientId, StringComparison.Ordinal));
+                caseId = existing?.id;
+            }
+            catch
+            {
+                // Fall through to new-case mode if the lookup fails — user can still open a case.
+            }
+
+            var caseWin = Kor.Operations.Services.AppServices.Get<CollectionsCaseWindow>();
+            caseWin.Initialize(clientId, _vm.SelectedClient.ClientName, caseId);
+            caseWin.Owner = this;
+            caseWin.ShowDialog();
+        }
 
         private void ShowEngineeringCapacityRisk_Click(object sender, RoutedEventArgs e)
         {
@@ -405,11 +446,11 @@ namespace Kor.Operations.Financials
                     wb.SaveAs(path);
                 }).ConfigureAwait(true);
 
-                MessageBox.Show(this, "Export completed.", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "Export completed.", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "Export to Excel", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"Export failed:\n{ex.Message}", "Financials — Export To Excel", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -441,7 +482,7 @@ namespace Kor.Operations.Financials
 
             var counts = new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
                 Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioStableCount + _vm.PortfolioAtRiskCount,
+                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
                 Critical: _vm.PortfolioCriticalCount);
 
             var win = new ProjectFinancialDetailWindow(row, counts) { Owner = this };
@@ -450,6 +491,9 @@ namespace Kor.Operations.Financials
 
         private void Window_Closing(object? sender, CancelEventArgs e)
         {
+            var contextBuilder = Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>();
+            contextBuilder.Unregister(_vm);
+            contextBuilder.Unregister(_vm.ExecutiveSummary);
             _cts?.Cancel();
         }
 
@@ -476,7 +520,7 @@ namespace Kor.Operations.Financials
                 row.IsOnHotlist = previousState;
                 MessageBox.Show(this,
                     $"Watchlist sync service is unavailable:\n{ex.Message}",
-                    "Hotlist",
+                    "Financials — Watchlist Sync Unavailable",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -487,7 +531,7 @@ namespace Kor.Operations.Financials
                 row.IsOnHotlist = previousState;
                 MessageBox.Show(this,
                     "Watchlist sync is not configured in App.config (WatchlistSync.ServiceUrl / Username / Password).",
-                    "Hotlist",
+                    "Financials — Watchlist Sync Not Configured",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -518,7 +562,7 @@ namespace Kor.Operations.Financials
                     row.HotlistSyncError = result.ErrorMessage ?? "Deltek rejected the change.";
                     MessageBox.Show(this,
                         $"Failed to update Hotlist on {row.Wbs1}:\n\n{row.HotlistSyncError}",
-                        "Hotlist sync failed",
+                        "Financials — Hotlist Sync Failed",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                 }
@@ -541,894 +585,10 @@ namespace Kor.Operations.Financials
                 row.HotlistSyncError = ex.Message;
                 MessageBox.Show(this,
                     $"Failed to update Hotlist on {row.Wbs1}:\n\n{ex.Message}",
-                    "Hotlist sync failed",
+                    "Financials — Hotlist Sync Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
-        }
-    }
-
-    public sealed class FinancialsViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
-    {
-        private readonly FinancialsService _svc;
-        private readonly SqlFinancialPortfolioSnapshotStore _portfolioStore;
-        internal DeltekOdbcOptions? _odbcOptions;
-        public ExecutiveSummaryViewModel ExecutiveSummary { get; }
-        public BillingManagerReportViewModel BillingManagerReport { get; }
-        private bool _isLoading;
-        private bool _isExporting;
-        private string _errorMessage = "";
-        private DateTimeOffset? _lastRefreshed;
-        private FinancialsHeadlineKpis _headline = new();
-        private int _sectionIndex;
-        private string _selectedUtilizationPm = "All";
-        private string _selectedUtilizationRisk = "All";
-        private string _utilizationSearchText = "";
-        private int _capacityRiskViewIndex;
-        private bool _showWatchlistOnly = true;
-        private double _engRate = 474;
-        private double _draftRate = 655;
-        private double _targetBilling = 185;
-        private bool _useTargetRateBudget;
-
-        public ObservableCollection<FinancialsProjectRow> Rows { get; } = new();
-        public ObservableCollection<UtilizationRow> UtilizationRows { get; } = new();
-        public ObservableCollection<DraftUtilizationRow> DraftUtilizationRows { get; } = new();
-        public ObservableCollection<ClientRollupRow> ClientRows { get; } = new();
-        public ICollectionView ClientView { get; }
-        private string _clientSearchText = "";
-        private ClientRollupRow? _selectedClient;
-        public string ClientSearchText
-        {
-            get => _clientSearchText;
-            set { if (SetField(ref _clientSearchText, value)) { ClientView.Refresh(); OnPropertyChanged(nameof(ClientCountDisplay)); } }
-        }
-        public ClientRollupRow? SelectedClient
-        {
-            get => _selectedClient;
-            set { if (SetField(ref _selectedClient, value)) OnPropertyChanged(nameof(SelectedClientHasValue)); }
-        }
-        public bool SelectedClientHasValue => _selectedClient != null;
-        public string ClientCountDisplay
-        {
-            get
-            {
-                var visible = ClientView?.Cast<object>().Count() ?? 0;
-                return $"{visible:N0} clients";
-            }
-        }
-
-        // ── Portfolio-level KPIs (computed from full ClientRows, not the filtered view) ──
-        public int ClientsTotalCount => ClientRows.Count;
-        public int ClientsRepeatCount => ClientRows.Count(c => c.IsRepeatClient);
-        public double ClientsRepeatPercent => ClientsTotalCount > 0
-            ? (double)ClientsRepeatCount / ClientsTotalCount : 0;
-        public double ClientsLifetimeFee => ClientRows.Sum(c => c.LifetimeFee);
-        public double ClientsLifetimeBilled => ClientRows.Sum(c => c.LifetimeBilled);
-        public double ClientsOutstanding => ClientRows.Sum(c => c.Outstanding);
-        public double ClientsOutstanding90Plus => ClientRows.Sum(c => c.Outstanding90Plus);
-        public int ClientsAtRiskCount => ClientRows.Count(c => c.HasArRisk);
-        public int ClientsColdCount => ClientRows.Count(c => c.IsCold);
-        public string TopClientName
-        {
-            get
-            {
-                var top = ClientRows
-                    .Where(c => !string.IsNullOrEmpty(c.ClientName) && c.ClientName != "(unknown)")
-                    .OrderByDescending(c => c.LifetimeFee)
-                    .FirstOrDefault();
-                return top?.ClientName ?? "—";
-            }
-        }
-        public double TopClientFee
-        {
-            get
-            {
-                var top = ClientRows
-                    .Where(c => !string.IsNullOrEmpty(c.ClientName) && c.ClientName != "(unknown)")
-                    .OrderByDescending(c => c.LifetimeFee)
-                    .FirstOrDefault();
-                return top?.LifetimeFee ?? 0;
-            }
-        }
-        public double TopClientPercentOfTotal => ClientsLifetimeFee > 0
-            ? TopClientFee / ClientsLifetimeFee : 0;
-
-        // ── Revenue Forecast section ──
-        public ObservableCollection<RevenueMonthRow> ForecastTimeline { get; } = new();
-        public double ForecastTrailing12 { get; private set; }
-        public double ForecastTrailing3 { get; private set; }
-        public double ForecastBacklog { get; private set; }
-        public double ForecastNext3 { get; private set; }
-        public double ForecastNext6 { get; private set; }
-        public double ForecastNext12 { get; private set; }
-        public double ForecastMonthsOfBacklog { get; private set; }
-        public double ForecastChartMaxValue { get; private set; }
-        public string ForecastBaselineDisplay { get; private set; } = "—";
-
-        /// <summary>
-        /// Recompute the forecast timeline (24 months actual + 12 months projected).
-        /// Model:
-        ///   1. Detect partial months — recent months with revenue &lt; 40% of historical median are
-        ///      treated as still-being-posted (typical 60-90 day Deltek billing lag) and excluded
-        ///      from baseline/trend/seasonal computation. Still shown in the chart with visual
-        ///      distinction.
-        ///   2. Baseline = (3 × trailing_6mo_avg + 1 × trailing_12mo_avg) / 4 of COMPLETE months only.
-        ///   3. Trend slope = linear regression on the last 12 complete months — growth/decline.
-        ///   4. Seasonal index = each calendar month's historical avg ÷ overall avg, damped 50%
-        ///      toward 1.0; requires at least 2 observations or defaults to 1.0.
-        ///   5. forecast[i] = (baseline + slope × i) × seasonal_index[calendar_month]. NO backlog
-        ///      cap — the headline forecast assumes the firm continues to win new work at historical
-        ///      pace. The "Months of Runway" KPI is the separate no-new-wins warning.
-        /// </summary>
-        private void RecomputeForecast(IReadOnlyList<RevenueMonthRow> history, IReadOnlyList<FinancialsProjectRow> activeRows)
-        {
-            ForecastTimeline.Clear();
-
-            if (history == null || history.Count == 0)
-            {
-                ForecastTrailing12 = 0;
-                ForecastTrailing3 = 0;
-                ForecastBacklog = 0;
-                ForecastNext3 = 0;
-                ForecastNext6 = 0;
-                ForecastNext12 = 0;
-                ForecastMonthsOfBacklog = 0;
-                ForecastChartMaxValue = 0;
-                ForecastBaselineDisplay = "—";
-                NotifyForecastProperties();
-                return;
-            }
-
-            // 1) Detect partial months in the trailing window.
-            //    Reference median uses non-zero months OLDER than the most recent 4 (skip the
-            //    potentially-partial recent window so partials don't drag the reference down).
-            var ordered = history.OrderBy(h => h.MonthStart).ToList();
-            var n = ordered.Count;
-            var stableWindow = ordered
-                .Take(Math.Max(0, n - 4))
-                .Where(m => m.Revenue > 0)
-                .Select(m => m.Revenue)
-                .OrderBy(v => v)
-                .ToList();
-            var refMedian = stableWindow.Count > 0
-                ? stableWindow[stableWindow.Count / 2]
-                : 0;
-
-            // Walk backward from the end. Mark months as partial until we hit a complete month.
-            // Only check up to 4 months back — older partials are unlikely.
-            if (refMedian > 0)
-            {
-                var partialThreshold = refMedian * 0.40;
-                for (int i = n - 1; i >= Math.Max(0, n - 4); i--)
-                {
-                    if (ordered[i].Revenue < partialThreshold)
-                        ordered[i].IsPartial = true;
-                    else
-                        break;
-                }
-            }
-
-            // 2) Add historical actuals to the timeline (preserves IsPartial flags).
-            foreach (var m in ordered)
-                ForecastTimeline.Add(m);
-
-            // 3) Use only COMPLETE months for all baseline/trend/seasonal computation.
-            var completeMonths = ordered.Where(m => !m.IsPartial).ToList();
-            if (completeMonths.Count == 0)
-            {
-                ForecastTrailing12 = 0;
-                ForecastTrailing3 = 0;
-                ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.TotalFee - r.FeeBilled)) ?? 0;
-                ForecastNext3 = 0;
-                ForecastNext6 = 0;
-                ForecastNext12 = 0;
-                ForecastMonthsOfBacklog = 0;
-                ForecastChartMaxValue = ForecastTimeline.Count > 0 ? ForecastTimeline.Max(m => m.Revenue) : 0;
-                ForecastBaselineDisplay = "(insufficient complete history)";
-                NotifyForecastProperties();
-                return;
-            }
-
-            var trailing12Months = completeMonths.TakeLast(12).ToList();
-            var trailing6Months = completeMonths.TakeLast(6).ToList();
-            var trailing3Months = completeMonths.TakeLast(3).ToList();
-
-            ForecastTrailing12 = trailing12Months.Sum(m => m.Revenue);
-            ForecastTrailing3 = trailing3Months.Sum(m => m.Revenue);
-            var trailing6Avg = trailing6Months.Count > 0 ? trailing6Months.Average(m => m.Revenue) : 0;
-            var trailing12Avg = trailing12Months.Count > 0 ? trailing12Months.Average(m => m.Revenue) : 0;
-
-            // 4) Backlog = unbilled fee on active projects.
-            ForecastBacklog = activeRows?.Sum(r => Math.Max(0, r.TotalFee - r.FeeBilled)) ?? 0;
-
-            // 5) Blended baseline weighted toward recent pace.
-            var baseline = (3.0 * trailing6Avg + 1.0 * trailing12Avg) / 4.0;
-
-            // 6) Trend slope: linear regression on trailing 12 complete months. Clamped to
-            //    ±15% of baseline so a noisy window can't blow up the projection.
-            var slope = 0.0;
-            if (trailing12Months.Count >= 6)
-            {
-                var nn = trailing12Months.Count;
-                var xMean = (nn - 1) / 2.0;
-                var yMean = trailing12Months.Average(m => m.Revenue);
-                double num = 0, den = 0;
-                for (int i = 0; i < nn; i++)
-                {
-                    var x = i - xMean;
-                    var y = trailing12Months[i].Revenue - yMean;
-                    num += x * y;
-                    den += x * x;
-                }
-                slope = den > 0 ? num / den : 0;
-                var maxSlope = Math.Abs(baseline) * 0.15;
-                slope = Math.Max(-maxSlope, Math.Min(maxSlope, slope));
-            }
-
-            // 7) Seasonal index per calendar month from COMPLETE months only.
-            var seasonalIndex = new double[13];
-            for (int i = 0; i < 13; i++) seasonalIndex[i] = 1.0;
-            var nonZeroComplete = completeMonths.Where(m => m.Revenue > 0).ToList();
-            if (nonZeroComplete.Count >= 6)
-            {
-                var overallAvg = nonZeroComplete.Average(m => m.Revenue);
-                if (overallAvg > 0)
-                {
-                    for (int month = 1; month <= 12; month++)
-                    {
-                        var sameMonth = nonZeroComplete.Where(m => m.MonthStart.Month == month).ToList();
-                        if (sameMonth.Count >= 2)
-                        {
-                            var monthAvg = sameMonth.Average(m => m.Revenue);
-                            var rawIdx = monthAvg / overallAvg;
-                            seasonalIndex[month] = 0.5 + 0.5 * rawIdx; // damp 50% toward 1.0
-                        }
-                    }
-                }
-            }
-
-            ForecastBaselineDisplay = baseline > 0
-                ? (slope != 0 ? $"{baseline:C0}/mo · trend {(slope >= 0 ? "+" : "")}{slope:C0}/mo"
-                              : $"{baseline:C0}/mo")
-                : "—";
-
-            // 8) Project 12 months forward starting from the month AFTER the most recent
-            //    actual month in the chart (whether complete or partial). NO backlog cap —
-            //    headline forecast assumes steady-state new business.
-            var lastActualMonth = ordered[n - 1].MonthStart;
-            ForecastNext3 = 0;
-            ForecastNext6 = 0;
-            ForecastNext12 = 0;
-
-            for (int i = 1; i <= 12; i++)
-            {
-                var monthStart = lastActualMonth.AddMonths(i);
-                var trended = baseline + slope * i;
-                var seasonal = seasonalIndex[monthStart.Month];
-                var projected = Math.Max(0, trended * seasonal);
-
-                ForecastTimeline.Add(new RevenueMonthRow
-                {
-                    MonthStart = monthStart,
-                    Revenue = projected,
-                    IsActual = false,
-                });
-                if (i <= 3) ForecastNext3 += projected;
-                if (i <= 6) ForecastNext6 += projected;
-                ForecastNext12 += projected;
-            }
-
-            // Months-of-runway: backlog ÷ baseline. Independent "no-new-wins" warning.
-            ForecastMonthsOfBacklog = baseline > 0 ? ForecastBacklog / baseline : 0;
-
-            ForecastChartMaxValue = ForecastTimeline.Count > 0
-                ? ForecastTimeline.Max(m => m.Revenue)
-                : 0;
-
-            NotifyForecastProperties();
-        }
-
-        private void NotifyForecastProperties()
-        {
-            OnPropertyChanged(nameof(ForecastTrailing12));
-            OnPropertyChanged(nameof(ForecastTrailing3));
-            OnPropertyChanged(nameof(ForecastBacklog));
-            OnPropertyChanged(nameof(ForecastNext3));
-            OnPropertyChanged(nameof(ForecastNext6));
-            OnPropertyChanged(nameof(ForecastNext12));
-            OnPropertyChanged(nameof(ForecastMonthsOfBacklog));
-            OnPropertyChanged(nameof(ForecastChartMaxValue));
-            OnPropertyChanged(nameof(ForecastBaselineDisplay));
-        }
-        public ObservableCollection<PortfolioTrendPoint> PortfolioTrend { get; } = new();
-        public ObservableCollection<string> UtilizationPmOptions { get; } = new();
-        public ObservableCollection<string> UtilizationRiskOptions { get; } = new() { "All", "Over budget", "At risk", "Healthy" };
-        public ICollectionView UtilizationView { get; }
-        public ICollectionView DraftUtilizationView { get; }
-
-        public bool ShowWatchlistOnly
-        {
-            get => _showWatchlistOnly;
-            set { if (SetField(ref _showWatchlistOnly, value)) { OnPropertyChanged(nameof(IsWatchlistOnly)); OnPropertyChanged(nameof(IsAllActive)); } }
-        }
-        public bool IsWatchlistOnly => _showWatchlistOnly;
-        public bool IsAllActive => !_showWatchlistOnly;
-
-        public double EngRate { get => _engRate; set { if (SetField(ref _engRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
-        public double DraftRate { get => _draftRate; set { if (SetField(ref _draftRate, value)) OnPropertyChanged(nameof(CombinedRate)); } }
-        public double CombinedRate => (_engRate > 0 && _draftRate > 0) ? Math.Round(1.0 / (1.0 / _engRate + 1.0 / _draftRate), 0) : 0;
-        public double TargetBilling { get => _targetBilling; set => SetField(ref _targetBilling, value); }
-        public bool IsPeerBudgetMode { get => !_useTargetRateBudget; set { if (value) { _useTargetRateBudget = false; OnPropertyChanged(); OnPropertyChanged(nameof(IsTargetRateBudgetMode)); } } }
-        public bool IsTargetRateBudgetMode { get => _useTargetRateBudget; set { if (value) { _useTargetRateBudget = true; OnPropertyChanged(); OnPropertyChanged(nameof(IsPeerBudgetMode)); } } }
-        public Visibility BudgetModePillVisibility => Rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-
-        public FinancialsHeadlineKpis Headline
-        {
-            get => _headline;
-            private set { _headline = value; OnPropertyChanged(); }
-        }
-
-        public string ErrorMessage
-        {
-            get => _errorMessage;
-            private set
-            {
-                _errorMessage = value ?? "";
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(ErrorVisibility));
-            }
-        }
-
-        public Visibility ErrorVisibility => string.IsNullOrWhiteSpace(ErrorMessage) ? Visibility.Collapsed : Visibility.Visible;
-
-        public bool HasData => Rows.Count > 0;
-
-        public int SectionIndex
-        {
-            get => _sectionIndex;
-            set
-            {
-                var v = value < 0 ? 0 : (value > 5 ? 5 : value);
-                if (_sectionIndex == v) return;
-                _sectionIndex = v;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(CommandCenterVisibility));
-                OnPropertyChanged(nameof(ExecutiveSummaryVisibility));
-                OnPropertyChanged(nameof(ProfitLossVisibility));
-                OnPropertyChanged(nameof(BillingManagerVisibility));
-                OnPropertyChanged(nameof(ClientsVisibility));
-                OnPropertyChanged(nameof(ForecastVisibility));
-                OnPropertyChanged(nameof(NonScrollableVisibility));
-                OnPropertyChanged(nameof(IsCommandCenterSelected));
-                OnPropertyChanged(nameof(IsExecutiveSummarySelected));
-                OnPropertyChanged(nameof(IsProfitLossSelected));
-                OnPropertyChanged(nameof(IsBillingManagerSelected));
-                OnPropertyChanged(nameof(IsClientsSelected));
-                OnPropertyChanged(nameof(IsForecastSelected));
-            }
-        }
-
-        public bool IsCommandCenterSelected => SectionIndex == 0;
-        public bool IsExecutiveSummarySelected => SectionIndex == 1;
-        public bool IsProfitLossSelected => SectionIndex == 2;
-        public bool IsBillingManagerSelected => SectionIndex == 3;
-        public bool IsClientsSelected => SectionIndex == 4;
-        public bool IsForecastSelected => SectionIndex == 5;
-        public Visibility CommandCenterVisibility => SectionIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility ExecutiveSummaryVisibility => SectionIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility ProfitLossVisibility => SectionIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility BillingManagerVisibility => SectionIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility ClientsVisibility => SectionIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility ForecastVisibility => SectionIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
-        /// <summary>The outer ScrollViewer hides for sections that manage their own layout (Clients, Forecast).</summary>
-        public Visibility NonScrollableVisibility => (SectionIndex == 4 || SectionIndex == 5) ? Visibility.Collapsed : Visibility.Visible;
-        // Backward-compat alias for the old binding name on the ScrollViewer
-        public Visibility NonClientsVisibility => NonScrollableVisibility;
-
-        public bool CanRefresh => !_isLoading;
-
-        public bool CanExportUtilization =>
-            !_isLoading &&
-            !_isExporting &&
-            (IsEngineeringCapacitySelected ? UtilizationRows.Count > 0 : DraftUtilizationRows.Count > 0);
-
-        public int CapacityRiskViewIndex
-        {
-            get => _capacityRiskViewIndex;
-            set
-            {
-                var v = value < 0 ? 0 : (value > 1 ? 1 : value);
-                if (_capacityRiskViewIndex == v) return;
-                _capacityRiskViewIndex = v;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(IsEngineeringCapacitySelected));
-                OnPropertyChanged(nameof(IsDraftingCapacitySelected));
-                OnPropertyChanged(nameof(CapacityRiskTitle));
-                OnPropertyChanged(nameof(CapacityRiskSubtitle));
-                OnPropertyChanged(nameof(CanExportUtilization));
-            }
-        }
-
-        public bool IsEngineeringCapacitySelected => CapacityRiskViewIndex == 0;
-        public bool IsDraftingCapacitySelected => CapacityRiskViewIndex == 1;
-        public string CapacityRiskTitle => IsEngineeringCapacitySelected ? "Engineering Capacity Risk" : "Drafting Capacity Risk";
-        public string CapacityRiskSubtitle =>
-            IsEngineeringCapacitySelected
-                ? "Highlights projects consuming engineering hours faster than planned."
-                : "Highlights projects consuming drafting hours faster than planned.";
-
-        public string SelectedUtilizationPm
-        {
-            get => _selectedUtilizationPm;
-            set
-            {
-                _selectedUtilizationPm = value ?? "All";
-                OnPropertyChanged();
-                UtilizationView.Refresh();
-                DraftUtilizationView.Refresh();
-            }
-        }
-
-        public string SelectedUtilizationRisk
-        {
-            get => _selectedUtilizationRisk;
-            set
-            {
-                _selectedUtilizationRisk = value ?? "All";
-                OnPropertyChanged();
-                UtilizationView.Refresh();
-                DraftUtilizationView.Refresh();
-            }
-        }
-
-        public string UtilizationSearchText
-        {
-            get => _utilizationSearchText;
-            set
-            {
-                _utilizationSearchText = value ?? "";
-                OnPropertyChanged();
-                UtilizationView.Refresh();
-                DraftUtilizationView.Refresh();
-            }
-        }
-
-        public string LastRefreshedDisplay =>
-            _lastRefreshed.HasValue
-                ? _lastRefreshed.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
-                : "Not yet";
-
-        public string StatusHint => _isLoading ? $"Loading... Refresh may take time ({DisplayTerms.Hours}/{DisplayTerms.FeeBilled})." : "";
-
-        public Visibility PortfolioVisibility => UtilizationRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-
-        public int PortfolioCriticalCount { get; private set; }
-        public int PortfolioAtRiskCount { get; private set; }
-        public int PortfolioStableCount { get; private set; }
-        public int PortfolioHighConfidenceCount { get; private set; }
-
-        public double PortfolioCriticalPct { get; private set; }
-        public double PortfolioAtRiskPct { get; private set; }
-        public double PortfolioStablePct { get; private set; }
-        public double PortfolioHighConfidencePct { get; private set; }
-
-        public double PortfolioRiskExposureFee { get; private set; }
-
-        public FinancialsViewModel(
-            FinancialsService svc,
-            SqlFinancialPortfolioSnapshotStore portfolioStore,
-            ExecutiveSummaryViewModel executiveSummary,
-            BillingManagerReportViewModel billingManagerReport,
-            DeltekOdbcOptions odbcOptions)
-        {
-            _svc = svc ?? throw new ArgumentNullException(nameof(svc));
-            _portfolioStore = portfolioStore ?? throw new ArgumentNullException(nameof(portfolioStore));
-            ExecutiveSummary = executiveSummary ?? throw new ArgumentNullException(nameof(executiveSummary));
-            BillingManagerReport = billingManagerReport ?? throw new ArgumentNullException(nameof(billingManagerReport));
-            _odbcOptions = odbcOptions;
-            if (odbcOptions != null)
-            {
-                _engRate = odbcOptions.EngRate;
-                _draftRate = odbcOptions.DraftRate;
-                _targetBilling = odbcOptions.TargetBillingRate > 0 ? odbcOptions.TargetBillingRate : 185;
-            }
-            UtilizationView = CollectionViewSource.GetDefaultView(UtilizationRows);
-            UtilizationView.Filter = UtilizationFilter;
-            DraftUtilizationView = CollectionViewSource.GetDefaultView(DraftUtilizationRows);
-            DraftUtilizationView.Filter = DraftUtilizationFilter;
-            ClientView = CollectionViewSource.GetDefaultView(ClientRows);
-            ClientView.Filter = ClientFilter;
-            UtilizationPmOptions.Add("All");
-        }
-
-        private bool ClientFilter(object item)
-        {
-            if (item is not ClientRollupRow row) return false;
-            var q = (_clientSearchText ?? "").Trim();
-            if (q.Length == 0) return true;
-            return row.ClientName.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
-                || row.ClientId.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
-        }
-
-        internal void SetExporting(bool exporting)
-        {
-            _isExporting = exporting;
-            OnPropertyChanged(nameof(CanExportUtilization));
-        }
-
-        public async Task RefreshAsync(bool forceRefresh, CancellationToken ct)
-        {
-            if (_isLoading)
-                return;
-
-            _isLoading = true;
-            ErrorMessage = "";
-            OnPropertyChanged(nameof(CanRefresh));
-            OnPropertyChanged(nameof(StatusHint));
-            OnPropertyChanged(nameof(CanExportUtilization));
-
-            try
-            {
-                var snap = await _svc.GetSnapshotAsync(forceRefresh, ct, watchlistOnly: _showWatchlistOnly);
-
-                Rows.Clear();
-                foreach (var r in snap.Rows)
-                    Rows.Add(r);
-
-                Headline = snap.Headline;
-                OnPropertyChanged(nameof(BudgetModePillVisibility));
-                _lastRefreshed = snap.RefreshedAt;
-
-                UtilizationRows.Clear();
-                foreach (var r in snap.Rows)
-                    UtilizationRows.Add(UtilizationRow.FromProject(r));
-                DraftUtilizationRows.Clear();
-                foreach (var r in snap.Rows)
-                    DraftUtilizationRows.Add(DraftUtilizationRow.FromProject(r));
-
-                ClientRows.Clear();
-                foreach (var c in snap.ClientRollups)
-                    ClientRows.Add(c);
-                ClientView.Refresh();
-                RecomputeForecast(snap.RevenueHistory, snap.Rows);
-                OnPropertyChanged(nameof(ClientCountDisplay));
-                OnPropertyChanged(nameof(ClientsTotalCount));
-                OnPropertyChanged(nameof(ClientsRepeatCount));
-                OnPropertyChanged(nameof(ClientsRepeatPercent));
-                OnPropertyChanged(nameof(ClientsLifetimeFee));
-                OnPropertyChanged(nameof(ClientsLifetimeBilled));
-                OnPropertyChanged(nameof(ClientsOutstanding));
-                OnPropertyChanged(nameof(ClientsOutstanding90Plus));
-                OnPropertyChanged(nameof(ClientsAtRiskCount));
-                OnPropertyChanged(nameof(ClientsColdCount));
-                OnPropertyChanged(nameof(TopClientName));
-                OnPropertyChanged(nameof(TopClientFee));
-                OnPropertyChanged(nameof(TopClientPercentOfTotal));
-
-                RecalcPortfolio();
-                await PersistSnapshotAndLoadTrendAsync(ct);
-                BuildUtilizationPmOptions(snap.Rows);
-                UtilizationView.Refresh();
-                DraftUtilizationView.Refresh();
-                OnPropertyChanged(nameof(CanExportUtilization));
-
-                await ExecutiveSummary.RefreshAsync(
-                    forceRefresh,
-                    existingSnapshot: snap,
-                    existingTrend: PortfolioTrend.ToArray(),
-                    existingUtilRows: UtilizationRows.ToArray(),
-                    ct);
-
-                _ = BillingManagerReport.RefreshAsync(snap, ct);
-
-                OnPropertyChanged(nameof(LastRefreshedDisplay));
-                OnPropertyChanged(nameof(HasData));
-                OnPropertyChanged(nameof(PortfolioVisibility));
-            }
-            catch (OperationCanceledException)
-            {
-                // No-op: keep existing snapshot displayed.
-            }
-            catch (Exception ex)
-            {
-                ErrorMessage =
-                    "Unable to load financial data from Deltek. " +
-                    "The window remains responsive; try Refresh.\n\n" +
-                    $"{ex.GetType().Name}: {ex.Message}";
-
-                // Executive Summary should still render per-card "Data unavailable" instead of hard-failing.
-                try
-                {
-                    await ExecutiveSummary.RefreshAsync(
-                        forceRefresh: false,
-                        existingSnapshot: null,
-                        existingTrend: PortfolioTrend.ToArray(),
-                        existingUtilRows: UtilizationRows.ToArray(),
-                        ct);
-                }
-                catch
-                {
-                    // ignore
-                }
-            }
-            finally
-            {
-                _isLoading = false;
-                OnPropertyChanged(nameof(CanRefresh));
-                OnPropertyChanged(nameof(StatusHint));
-                OnPropertyChanged(nameof(CanExportUtilization));
-            }
-        }
-
-        private void RecalcPortfolio()
-        {
-            var total = UtilizationRows.Count;
-            if (total <= 0)
-            {
-                PortfolioCriticalCount = 0;
-                PortfolioAtRiskCount = 0;
-                PortfolioStableCount = 0;
-                PortfolioHighConfidenceCount = 0;
-
-                PortfolioCriticalPct = 0.0;
-                PortfolioAtRiskPct = 0.0;
-                PortfolioStablePct = 0.0;
-                PortfolioHighConfidencePct = 0.0;
-                PortfolioRiskExposureFee = 0.0;
-
-                OnPropertyChanged(nameof(PortfolioCriticalCount));
-                OnPropertyChanged(nameof(PortfolioAtRiskCount));
-                OnPropertyChanged(nameof(PortfolioStableCount));
-                OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
-                OnPropertyChanged(nameof(PortfolioCriticalPct));
-                OnPropertyChanged(nameof(PortfolioAtRiskPct));
-                OnPropertyChanged(nameof(PortfolioStablePct));
-                OnPropertyChanged(nameof(PortfolioHighConfidencePct));
-                OnPropertyChanged(nameof(PortfolioRiskExposureFee));
-                return;
-            }
-
-            var critical = 0;
-            var atRisk = 0;
-            var stable = 0;
-            var high = 0;
-            var riskExposureFee = 0.0;
-
-            foreach (var r in UtilizationRows)
-            {
-                switch (r.ConfidenceLevel)
-                {
-                    case DeliveryConfidenceLevel.Critical:
-                        critical++;
-                        riskExposureFee += r.Fee;
-                        break;
-                    case DeliveryConfidenceLevel.AtRisk:
-                        atRisk++;
-                        break;
-                    case DeliveryConfidenceLevel.Stable:
-                        stable++;
-                        break;
-                    default:
-                        high++;
-                        break;
-                }
-            }
-
-            PortfolioCriticalCount = critical;
-            PortfolioAtRiskCount = atRisk;
-            PortfolioStableCount = stable;
-            PortfolioHighConfidenceCount = high;
-
-            PortfolioCriticalPct = (double)critical / total;
-            PortfolioAtRiskPct = (double)atRisk / total;
-            PortfolioStablePct = (double)stable / total;
-            PortfolioHighConfidencePct = (double)high / total;
-            PortfolioRiskExposureFee = riskExposureFee;
-
-            OnPropertyChanged(nameof(PortfolioCriticalCount));
-            OnPropertyChanged(nameof(PortfolioAtRiskCount));
-            OnPropertyChanged(nameof(PortfolioStableCount));
-            OnPropertyChanged(nameof(PortfolioHighConfidenceCount));
-            OnPropertyChanged(nameof(PortfolioCriticalPct));
-            OnPropertyChanged(nameof(PortfolioAtRiskPct));
-            OnPropertyChanged(nameof(PortfolioStablePct));
-            OnPropertyChanged(nameof(PortfolioHighConfidencePct));
-            OnPropertyChanged(nameof(PortfolioRiskExposureFee));
-        }
-
-        private async Task PersistSnapshotAndLoadTrendAsync(CancellationToken ct)
-        {
-            if (UtilizationRows.Count <= 0)
-            {
-                PortfolioTrend.Clear();
-                return;
-            }
-
-            try
-            {
-                await _portfolioStore.EnsureSchemaAsync(ct);
-
-                var total = UtilizationRows.Count;
-                var critical = PortfolioCriticalCount;
-
-                // Trend buckets are 3-wide. Match the on-screen 4-bucket portfolio health:
-                // Healthy = High Confidence + Stable, Watch = At Risk, Critical = Critical.
-                var healthy = PortfolioHighConfidenceCount + PortfolioStableCount;
-                var watch = PortfolioAtRiskCount;
-
-                await _portfolioStore.TryInsertSnapshotAsync(DateTime.Today, healthy, watch, critical, total, ct);
-
-                var start = DateTime.Today.AddDays(-7 * 12);
-                var rows = await _portfolioStore.LoadSnapshotsAsync(start, ct);
-
-                // Weekly rollup: show last snapshot per week for the last 12 weeks.
-                var weekly = rows
-                    .GroupBy(s =>
-                    {
-                        var d = s.SnapshotDate.Date;
-                        var weekStart = d.AddDays(-(((int)d.DayOfWeek + 6) % 7)); // Monday
-                        return weekStart;
-                    })
-                    .OrderBy(g => g.Key)
-                    .Select(g => g.OrderBy(x => x.SnapshotDate).Last())
-                    .TakeLast(12)
-                    .ToList();
-
-                PortfolioTrend.Clear();
-                foreach (var s in weekly)
-                {
-                    PortfolioTrend.Add(new PortfolioTrendPoint(
-                        s.SnapshotDate,
-                        s.HealthyCount,
-                        s.WatchCount,
-                        s.CriticalCount,
-                        s.TotalProjects));
-                }
-            }
-            catch
-            {
-                // Non-fatal: Financials data can still be displayed without persistence/trend.
-                PortfolioTrend.Clear();
-            }
-        }
-
-        private bool UtilizationFilter(object obj)
-        {
-            if (obj is not UtilizationRow r) return false;
-            return MatchesUtilizationFilters(r.Pm, r.RiskStatus, r.ProjectName, r.Wbs1);
-        }
-
-        private bool DraftUtilizationFilter(object obj)
-        {
-            if (obj is not DraftUtilizationRow r) return false;
-            return MatchesUtilizationFilters(r.Pm, r.RiskStatus, r.ProjectName, r.Wbs1);
-        }
-
-        private bool MatchesUtilizationFilters(string pmValue, string riskValue, string projectName, string wbs1)
-        {
-            var pm = SelectedUtilizationPm;
-            if (!string.IsNullOrWhiteSpace(pm) && !pm.Equals("All", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!string.Equals(pmValue ?? "", pm, StringComparison.OrdinalIgnoreCase))
-                    return false;
-            }
-
-            var risk = SelectedUtilizationRisk;
-            if (!string.IsNullOrWhiteSpace(risk) && !risk.Equals("All", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!string.Equals(riskValue ?? "", risk, StringComparison.OrdinalIgnoreCase))
-                    return false;
-            }
-
-            var q = (UtilizationSearchText ?? "").Trim();
-            if (q.Length > 0)
-            {
-                if ((projectName ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0 &&
-                    (wbs1 ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0)
-                    return false;
-            }
-
-            return true;
-        }
-
-        private void BuildUtilizationPmOptions(List<FinancialsProjectRow> rows)
-        {
-            var keep = SelectedUtilizationPm;
-
-            var pms = rows
-                .Select(r => (r.Pm ?? "").Trim())
-                .Where(s => s.Length > 0)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            UtilizationPmOptions.Clear();
-            UtilizationPmOptions.Add("All");
-            foreach (var pm in pms)
-                UtilizationPmOptions.Add(pm);
-
-            if (string.IsNullOrWhiteSpace(keep) || !UtilizationPmOptions.Contains(keep))
-                SelectedUtilizationPm = "All";
-            else
-                SelectedUtilizationPm = keep;
-        }
-
-        // ── IAiContextProvider ──────────────────────────────────────────
-
-        string Services.IAiContextProvider.ProviderName => "Financials (Active Projects)";
-        bool Services.IAiContextProvider.HasData => Rows.Count > 0;
-
-        string Services.IAiContextProvider.BuildContext()
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"Active Portfolio: {Rows.Count} projects, Total Fee: ${_headline.TotalFees:N0}, " +
-                $"Billed: ${_headline.TotalFeeBilled:N0} ({_headline.PercentFeeUnbilled:P0} unbilled), " +
-                $"Hours Spent: {_headline.HoursSpent:N0}/{_headline.HoursBudgeted:N0} ({_headline.PercentHoursSpent:P0})");
-            sb.AppendLine($"Total Outstanding AR: ${ClientsOutstanding:N0}");
-            sb.AppendLine($"Total 90+ AR: ${ClientsOutstanding90Plus:N0}");
-            sb.AppendLine($"Delivery Confidence: {PortfolioHighConfidencePct:P0} Healthy, {PortfolioStablePct:P0} Watch, " +
-                $"{PortfolioAtRiskPct:P0} At Risk, {PortfolioCriticalPct:P0} Critical");
-            sb.AppendLine($"Risk Exposure Fee: ${PortfolioRiskExposureFee:N0}");
-            sb.AppendLine();
-
-            foreach (var r in Rows.Take(200))
-            {
-                sb.Append($"  {r.Wbs1} {r.Name} | PM: {r.Pm} | DM: {r.DraftingManager} | ");
-                sb.Append($"Fee: ${r.TotalFee:N0} | Billed: {r.PercentBilled:P0} | ");
-                sb.Append($"Eng: {r.EngHrs:N0}/{r.EngBudget:N0} ({r.EngPercent:P0}) | ");
-                sb.Append($"Draft: {r.DraftHrs:N0}/{r.DraftBudget:N0} ({r.DraftPercent:P0})");
-                if (r.IsOnHotlist) sb.Append(" [HOTLIST]");
-                sb.AppendLine();
-            }
-
-            if (ClientRows.Count > 0)
-            {
-                sb.AppendLine();
-                sb.AppendLine("--- CLIENT SUMMARY ---");
-                foreach (var c in ClientRows.Take(30))
-                {
-                    var flags = "";
-                    if (c.IsCold) flags += " [COLD]";
-                    if (c.HasArRisk) flags += " [AR-RISK]";
-                    if (c.IsRepeatClient) flags += " [REPEAT]";
-                    var lastActivity = c.LastActivityDate.HasValue ? c.LastActivityDate.Value.ToString("yyyy-MM") : "n/a";
-                    sb.AppendLine($"  {c.ClientName} | {c.ProjectCount} proj | ${c.LifetimeFee:N0} lifetime | " +
-                        $"{c.ActiveProjectCount} active | last {lastActivity} | Out ${c.Outstanding:N0} | " +
-                        $"90+ ${c.Outstanding90Plus:N0} | Tenure {c.YearsAsClient:N1}yr{flags}");
-                }
-            }
-
-            return sb.ToString();
-        }
-
-        string Services.IAiContextProvider.BuildLocalContext()
-        {
-            return "";
-        }
-    }
-
-    public sealed class PortfolioTrendPoint
-    {
-        public DateTime SnapshotDate { get; }
-        public string DateLabel { get; }
-        public int HealthyCount { get; }
-        public int WatchCount { get; }
-        public int CriticalCount { get; }
-        public int TotalProjects { get; }
-
-        public string HealthyTooltip => $"{HealthyCount} projects - Healthy";
-        public string WatchTooltip => $"{WatchCount} projects - Watch";
-        public string CriticalTooltip => $"{CriticalCount} projects - Critical";
-
-        public PortfolioTrendPoint(DateTime snapshotDate, int healthy, int watch, int critical, int total)
-        {
-            SnapshotDate = snapshotDate.Date;
-            DateLabel = snapshotDate.ToString("MM-dd");
-            HealthyCount = healthy;
-            WatchCount = watch;
-            CriticalCount = critical;
-            TotalProjects = total;
         }
     }
 }

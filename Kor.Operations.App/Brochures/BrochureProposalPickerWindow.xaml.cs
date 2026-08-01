@@ -35,7 +35,7 @@ namespace Kor.Operations.Brochures
             {
                 System.Windows.MessageBox.Show(
                     $"Failed to load proposals: {ex.Message}",
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Brochure Builder — Load Proposals Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             finally { LoadingOverlay.Hide(); }
         }
@@ -84,7 +84,7 @@ namespace Kor.Operations.Brochures
             {
                 System.Windows.MessageBox.Show(
                     $"Failed to open proposal: {ex.Message}",
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Brochure Builder — Open Proposal Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
                 UpdateButtons();
             }
             finally { LoadingOverlay.Hide(); }
@@ -116,7 +116,7 @@ namespace Kor.Operations.Brochures
             {
                 System.Windows.MessageBox.Show(
                     $"Failed to clone proposal: {ex.Message}",
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Brochure Builder — Clone Proposal Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
                 UpdateButtons();
             }
             finally { LoadingOverlay.Hide(); }
@@ -129,7 +129,7 @@ namespace Kor.Operations.Brochures
 
             var result = MessageBox.Show(
                 $"Delete \"{proposal.Name}\"? This cannot be undone.",
-                "Confirm Delete",
+                "Brochure Builder — Confirm Delete",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
@@ -146,7 +146,7 @@ namespace Kor.Operations.Brochures
             {
                 System.Windows.MessageBox.Show(
                     $"Failed to delete proposal: {ex.Message}",
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Brochure Builder — Delete Proposal Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             finally { LoadingOverlay.Hide(); }
         }

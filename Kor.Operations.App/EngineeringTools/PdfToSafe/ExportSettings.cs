@@ -12,6 +12,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     }
 
     /// <summary>
+    /// Boundary condition emitted at every column-below joint in the SAFE
+    /// model. The previous behaviour was to fully-fix all column joints,
+    /// which is only correct at a foundation level — at a typical floor it
+    /// makes the columns analytically rigid against the slab they support
+    /// and produces meaningless results.
+    ///
+    /// Defaults to <see cref="Pinned"/>: translations restrained, rotations
+    /// free — the standard convention for a single typical-floor slab
+    /// model where the column extends above and below the modelled floor.
+    /// </summary>
+    public enum ColumnBaseRestraintOption
+    {
+        /// <summary>No restraint table emitted; columns float (rare; useful
+        /// when the engineer plans to add custom supports in SAFE).</summary>
+        None,
+        /// <summary>UX/UY/UZ = Yes, RX/RY/RZ = No. Standard typical-floor model.</summary>
+        Pinned,
+        /// <summary>UX/UY/UZ/RX/RY/RZ = Yes. Foundation / ground-floor model only.</summary>
+        Fixed
+    }
+
+    /// <summary>
     /// Model-level export configuration. Drives design code, rebar table,
     /// load cases, mesh, and design strip generation written into the F2K file.
     /// </summary>
@@ -72,5 +94,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// Default 1.0.
         /// </summary>
         public double SlabShearModifier { get; set; } = 1.0;
+
+        /// <summary>
+        /// Restraint applied to column-below joints. Defaults to Pinned —
+        /// correct for a single typical-floor slab model. Use Fixed only
+        /// for foundation-level models. See <see cref="ColumnBaseRestraintOption"/>.
+        /// </summary>
+        public ColumnBaseRestraintOption ColumnBaseRestraint { get; set; } = ColumnBaseRestraintOption.Pinned;
+
+        /// <summary>
+        /// When true, the writer auto-generates FLOOR OBJECT OPENINGS for
+        /// rectangular shafts formed by 2 horizontal + 2 vertical wall
+        /// segments enclosing a slab region (typical elevator / stair / mech
+        /// shafts). Without this, SAFE analyzes the slab as continuous
+        /// through the shaft, producing meaningless deflection / rebar
+        /// results inside the core. Default on — turning off is rare and
+        /// only useful when the engineer wants to inspect the raw extracted
+        /// geometry before openings are cut.
+        /// </summary>
+        public bool AutoGenerateOpeningsFromWalls { get; set; } = true;
     }
 }

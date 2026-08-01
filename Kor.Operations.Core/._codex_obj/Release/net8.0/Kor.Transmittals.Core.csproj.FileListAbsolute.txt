@@ -1,4 +1,0 @@
-C:\VIsual Studio Projects\Transmittals\Kor.Transmittals.Core\._codex_obj\Release\net8.0\Kor.Transmittals.Core.GeneratedMSBuildEditorConfig.editorconfig
-C:\VIsual Studio Projects\Transmittals\Kor.Transmittals.Core\._codex_obj\Release\net8.0\Kor.Transmittals.Core.AssemblyInfoInputs.cache
-C:\VIsual Studio Projects\Transmittals\Kor.Transmittals.Core\._codex_obj\Release\net8.0\Kor.Transmittals.Core.AssemblyInfo.cs
-C:\VIsual Studio Projects\Transmittals\Kor.Transmittals.Core\._codex_obj\Release\net8.0\Kor.Transmittals.Core.csproj.CoreCompileInputs.cache

@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -10,10 +9,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Kor.Operations.Core;
 using Kor.Operations.App.Options;
 using Kor.Operations.App.Services;
+using Kor.Operations.App.Views;
 using Kor.Operations.Services; // HeaderLoader
 using Kor.Operations.StandardDetails;
 using Kor.Operations.Brochures;
 using Kor.Operations.Compensation;
+using Serilog;
 
 namespace Kor.Operations
 {
@@ -21,7 +22,10 @@ namespace Kor.Operations
     {
         private readonly IServiceProvider _services;
         private readonly Func<BrochureBuilderWindow> _brochureBuilderWindowFactory;
-        private PMTools.PmToolsWindow? _pmToolsWindow;
+        // Round 38a: the legacy PmToolsWindow is being split into Workload
+        // Meeting + PM Capacity & Risk. The Home card now opens a chooser; the
+        // chooser owns the per-window lifecycle.
+        private PMTools.PmToolsChooserWindow? _pmToolsChooserWindow;
 
         public HomeWindow(IServiceProvider services, Func<BrochureBuilderWindow> brochureBuilderWindowFactory)
         {
@@ -47,7 +51,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"HeaderLoader failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning(ex, "HomeWindow: header loader failed.");
             }
 
             ApplyCardSecurity();
@@ -75,7 +79,7 @@ namespace Kor.Operations
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Auto email search launch failed: {ex.GetType().Name}: {ex.Message}");
+                Log.Warning(ex, "HomeWindow: auto email search launch failed.");
             }
         }
 
@@ -108,7 +112,7 @@ namespace Kor.Operations
             if (!authorizationService.IsAuthorized("Preferences"))
             {
                 MessageBox.Show("You are not authorized to access Preferences.",
-                    "Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Application — Access Denied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -134,14 +138,14 @@ namespace Kor.Operations
 
         private void OpenPMTools_Click(object sender, RoutedEventArgs e)
         {
-            if (_pmToolsWindow is { IsLoaded: true })
+            if (_pmToolsChooserWindow is { IsLoaded: true })
             {
-                _pmToolsWindow.Activate();
+                _pmToolsChooserWindow.Activate();
                 return;
             }
-            _pmToolsWindow = _services.GetRequiredService<PMTools.PmToolsWindow>();
-            _pmToolsWindow.Owner = this;
-            _pmToolsWindow.Show();
+            _pmToolsChooserWindow = _services.GetRequiredService<PMTools.PmToolsChooserWindow>();
+            _pmToolsChooserWindow.Owner = this;
+            _pmToolsChooserWindow.Show();
         }
 
         private void OpenStandardDetails_Click(object sender, RoutedEventArgs e)
@@ -167,6 +171,48 @@ namespace Kor.Operations
         private void OpenEngineeringTools_Click(object sender, RoutedEventArgs e)
         {
             var win = _services.GetRequiredService<EngineeringTools.EngineeringToolsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private void OpenFileSyncCommandCenter_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.FileSync.FileSyncCommandCenterWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private void OpenOpportunities_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.Opportunities.OpportunitiesWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private void OpenBdReports_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.BusinessDevelopment.Reports.BdReportsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private void OpenBusinessDevelopment_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.BusinessDevelopment.Workspace.BdWorkspaceWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private void OpenMondayBriefing_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<MondayBriefingWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
+        private void OpenCooCard_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<CooCardWindow>();
             win.Owner = this;
             win.Show();
         }
@@ -207,6 +253,43 @@ namespace Kor.Operations
                 var canSeeEngineeringTools = SecurityGroupAccess.IsUserInGroup(KnownRoles.EngineeringTools, userIdentity);
                 EngineeringToolsTileHost.Visibility = canSeeEngineeringTools ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeeFileSyncCommandCenter = SecurityGroupAccess.IsUserInGroup(KnownRoles.FileSyncCommandCenter, userIdentity);
+                FileSyncCommandCenterTileHost.Visibility = canSeeFileSyncCommandCenter ? Visibility.Visible : Visibility.Collapsed;
+
+                var canSeeBriefing = string.Equals(
+                    global::Kor.Operations.OperationsApp.SignedInUserUpn,
+                    "ilalonde@korstructural.com",
+                    StringComparison.OrdinalIgnoreCase);
+                MondayBriefingCard.Visibility = canSeeBriefing ? Visibility.Visible : Visibility.Collapsed;
+                // COO Card uses the same Ian-only gate as Monday Briefing.
+                // Per project_ai_coo_card_scope.md: Ian is the gatekeeper of
+                // firm-wide proactive insights, not a firm-wide dashboard.
+                CooCardCard.Visibility = canSeeBriefing ? Visibility.Visible : Visibility.Collapsed;
+
+                var canSeeOpportunities = SecurityGroupAccess.IsUserInGroup(KnownRoles.Opportunities, userIdentity);
+                var canSeeBd = SecurityGroupAccess.IsUserInGroup(KnownRoles.BusinessDevelopment, userIdentity);
+                BusinessDevelopmentTileHost.Visibility = canSeeBd ? Visibility.Visible : Visibility.Collapsed;
+                // BD Reports shares the BD gate — pursuit intel is partner/BD-lead
+                // material, not firm-wide.
+                BdReportsTileHost.Visibility = canSeeBd ? Visibility.Visible : Visibility.Collapsed;
+
+                // BD bundles Opportunities + FeeProposal + Brochure. When the BD tile
+                // is visible we hide the three sub-tiles from the Home grid so the
+                // BD card is the single entry point — keeps Home uncluttered.
+                if (canSeeBd)
+                {
+                    OpportunitiesTileHost.Visibility = Visibility.Collapsed;
+                    GeneralToolsCard.Visibility = Visibility.Collapsed;
+                    FeeProposalBuilderCard.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    // 2026-07-09 IA consolidation: the "Opportunities (BD)" tile was a
+                    // literal duplicate of the workspace's Opportunities surface. It no
+                    // longer appears on Home — opportunities live in the BD workspace.
+                    OpportunitiesTileHost.Visibility = Visibility.Collapsed;
+                }
+
                 RebuildHomeCardsLayout();
             }
             catch
@@ -218,6 +301,12 @@ namespace Kor.Operations
                 GeneralToolsCard.Visibility = Visibility.Visible;
                 FeeProposalBuilderCard.Visibility = Visibility.Visible;
                 EngineeringToolsTileHost.Visibility = Visibility.Visible;
+                FileSyncCommandCenterTileHost.Visibility = Visibility.Collapsed;
+                MondayBriefingCard.Visibility = Visibility.Collapsed;
+                CooCardCard.Visibility = Visibility.Collapsed;
+                OpportunitiesTileHost.Visibility = Visibility.Collapsed;
+                BusinessDevelopmentTileHost.Visibility = Visibility.Collapsed;
+                BdReportsTileHost.Visibility = Visibility.Collapsed;
                 RebuildHomeCardsLayout();
             }
         }
@@ -233,13 +322,19 @@ namespace Kor.Operations
                 SearchEmailsCard,
                 SearchTransmittalsCard,
                 CreateTransmittalCard,
+                CooCardCard,
+                MondayBriefingCard,
                 FinancialsTileHost,
                 CompensationTileHost,
                 PmToolsTileHost,
                 StandardDetailsTileHost,
+                BusinessDevelopmentTileHost,
+                BdReportsTileHost,
                 GeneralToolsCard,
                 FeeProposalBuilderCard,
+                OpportunitiesTileHost,
                 EngineeringToolsTileHost,
+                FileSyncCommandCenterTileHost,
                 PreferencesCard
             };
 

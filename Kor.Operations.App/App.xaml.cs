@@ -52,7 +52,7 @@ namespace Kor.Operations
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KOR_ODBC_USER", EnvironmentVariableTarget.Machine)) ||
                 string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("KOR_ODBC_PASSWORD", EnvironmentVariableTarget.Machine)))
             {
-                MessageBox.Show("This application is missing required system configuration and cannot start.\r\nPlease contact IT support.", "Application Not Configured", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("This application is missing required system configuration and cannot start.\r\nPlease contact IT support.", "Application — Application Not Configured", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
                 return;
             }
@@ -62,6 +62,9 @@ namespace Kor.Operations
             EnvironmentSecretOverrides.Apply();
             QuestPDF.Settings.License =
                 QuestPDF.Infrastructure.LicenseType.Community;
+            // Register the kor:// scheme so report links (kor://mpi/<id>) open the
+            // app from an exported PDF/email, not just inside the report preview.
+            KorUriScheme.EnsureRegistered();
             _services = AppCompositionRoot.BuildServiceProvider();
             Kor.Operations.Services.AppServices.Initialize(_services);
             _services.GetRequiredService<AppAiContextBuilder>().Register(_services.GetRequiredService<FirmContextProvider>());
@@ -82,7 +85,7 @@ namespace Kor.Operations
 
                 MessageBox.Show(
                     "Sign-in failed during Microsoft Graph initialization. The application will now close.\r\n\r\nPlease try again or contact IT support if the problem persists.",
-                    "Sign-In Failed",
+                    "Application — Sign-In Failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
 
@@ -117,13 +120,37 @@ namespace Kor.Operations
 
             MainWindow = startupWindow;
             startupWindow.Show();
+
+            // kor:// deep link on cold launch (a report PDF/email link opened the
+            // app) — open the target once the main window is up.
+            var coldLink = KorUriScheme.FindLink(args);
+            if (coldLink is not null)
+            {
+                _ = KorDeepLink.OpenAsync(coldLink);
+            }
+
             base.OnStartup(e);
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
-            try { _pipeServer?.StopAsync().GetAwaiter().GetResult(); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Pipe server stop failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message); }
+            try { _pipeServer?.StopAsync().GetAwaiter().GetResult(); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Pipe server stop failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message); } // sync-over-async OK: app shutdown; UI message pump tearing down
             try { _guard?.Dispose(); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Single-instance guard dispose failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message); }
+
+            // Round 39c (T2.003): dispose the DI root so Singleton IDisposables
+            // (WorkloadMeetingPanelViewModel cancels _disposeCts; Serilog provider
+            // flushes; ODBC handles release; etc.) run their disposers. Without
+            // this, those background CTSs keep running until the process exits,
+            // and any in-flight notes flush silently aborts.
+            try
+            {
+                (_services as IDisposable)?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<OperationsApp>().Warning(ex, "DI service provider dispose failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
+            }
+
             base.OnExit(e);
         }
 

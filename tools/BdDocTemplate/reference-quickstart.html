@@ -1,0 +1,157 @@
+<title>KOR BD — Quick Start</title>
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F;
+    --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --crit:#C0392B;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87;
+      --line:#29323B; --line-strong:#38434E; --slate:#7E97AC; --slate-deep:#C4D3DF;
+      --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="light"] { --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --line-strong:#D3D2CE;
+    --slate:#3F5364; --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B; --line-strong:#38434E;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:11pt; line-height:1.4; -webkit-font-smoothing:antialiased; }
+  .page { max-width: 8.1in; margin: 0 auto; padding: 0 0 .3in; }
+
+  .top { background: linear-gradient(180deg,var(--slate-deep),var(--slate));
+    color:#EAF0F5; border-bottom:2.5px solid var(--accent);
+    padding: 15px 22px; display:flex; align-items:baseline; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+  .top h1 { margin:0; font-size:19pt; font-weight:700; letter-spacing:-.01em; color:#fff; }
+  .top .ey { font-family:var(--mono); font-size:7.5pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top p { margin:.15rem 0 0; font-size:10pt; color:#CBD8E2; max-width:32rem; }
+
+  .body { padding: 16px 22px 0; }
+  h2 { font-family:var(--mono); font-size:8pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin: 0 0 .5rem; font-weight:700; }
+
+  /* lifecycle */
+  .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:.55rem; margin:0 0 16px; }
+  .step { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.6rem .7rem;
+    border-left:3px solid var(--accent); }
+  .step .n { font-family:var(--mono); font-weight:700; color:var(--accent-ink); font-size:8.5pt; }
+  .step h3 { margin:.1rem 0 .2rem; font-size:11pt; }
+  .step p { margin:0; font-size:9pt; color:var(--ink-soft); line-height:1.35; }
+
+  /* cheat table */
+  table { border-collapse:collapse; width:100%; font-size:10pt; margin-bottom:16px; }
+  td { padding:.34rem .5rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr td:first-child { font-weight:650; white-space:nowrap; width:11.2rem; color:var(--ink); }
+  tr:nth-child(even) { background:var(--surface-2); }
+
+  .btn { font-family:var(--mono); font-size:8.6pt; background:var(--slate); color:#fff;
+    border-radius:5px; padding:.05em .4em; white-space:nowrap; }
+  :root[data-theme="dark"] .btn { color:#0f141a; }
+  :root[data-theme="light"] .btn { color:#fff; }
+  kbd { font-family:var(--mono); font-size:8.6pt; background:var(--surface); border:1px solid var(--line-strong);
+    border-bottom-width:2px; border-radius:5px; padding:.02em .38em; color:var(--ink); }
+  .path b { color:var(--accent-ink); font-family:var(--mono); font-size:9pt; }
+
+  /* bottom strip */
+  .strip { display:grid; grid-template-columns: 1.15fr 1fr 1.15fr; gap:.7rem; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.7rem .8rem; }
+  .card.accent { border-left:3px solid var(--good); background: color-mix(in srgb, var(--good) 8%, var(--surface)); }
+  .card p { margin:.25rem 0 0; font-size:9pt; color:var(--ink-soft); line-height:1.4; }
+  .card .lead { color:var(--ink); font-weight:600; font-size:9.5pt; }
+  .live { display:flex; flex-direction:column; gap:.28rem; margin-top:.3rem; }
+  .live div { font-size:9pt; }
+  .live b { font-family:var(--mono); font-size:8.6pt; color:var(--accent-ink); }
+
+  .pills { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.35rem; }
+  .pill { display:inline-flex; font-family:var(--mono); font-size:7.6pt; font-weight:600;
+    padding:.14em .5em; border-radius:999px; color:#fff; }
+  .pill--won{background:#228B22} .pill--sub{background:#E5A800} .pill--draft{background:#609BD1}
+  .pill--lost{background:#808080} .pill--fresh{background:#228B22} .pill--watch{background:#E5A800} .pill--cold{background:#C11E1E}
+  .keyrow { display:flex; align-items:center; gap:.4rem; font-size:8.6pt; color:var(--ink-soft); margin-top:.3rem; }
+
+  .foot { padding: 12px 22px 0; font-size:8pt; color:var(--ink-faint); font-family:var(--mono); }
+
+  @page { size: Letter; margin: 12mm 13mm; }
+  @media print {
+    :root { --ground:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F3F1;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --line-strong:#D3D2CE;
+      --slate:#3F5364; --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    .btn { color:#fff !important; }
+    .flow, .step, table, tr, .strip, .card { break-inside:avoid; }
+  }
+</style>
+
+<div class="page">
+  <div class="top">
+    <div>
+      <div class="ey">KOR Structural · Business Development</div>
+      <h1>Quick Start</h1>
+      <p>The system does the digging. You grab the work and log the moment it closes — that's the whole job.</p>
+    </div>
+    <div class="pills" style="align-self:center">
+      <span class="pill pill--draft">Drafting</span>
+      <span class="pill pill--sub">Submitted</span>
+      <span class="pill pill--won">Won</span>
+      <span class="pill pill--lost">Lost</span>
+    </div>
+  </div>
+
+  <div class="body">
+    <h2>How a pursuit lives</h2>
+    <div class="flow">
+      <div class="step"><span class="n">1 · GRAB</span><h3>Claim it</h3><p><span class="btn">Grab Opportunities</span> → double-click to scout the buyer → <span class="btn">Grab&nbsp;selected</span>. It becomes your Drafting pursuit.</p></div>
+      <div class="step"><span class="n">2 · WORK</span><h3>Nudge it along</h3><p>Log the odd call, send a fee proposal. The buyer's history, warmth and plan-takers are already on the screen.</p></div>
+      <div class="step"><span class="n">3 · CLOSE</span><h3>Call the outcome</h3><p><span class="btn">Set&nbsp;stage</span> → Won (link the project) or Lost (who beat us). The one thing only you know.</p></div>
+    </div>
+
+    <h2>Cheat sheet — I want to…</h2>
+    <table>
+      <tr><td>Find new work</td><td><span class="path"><b>Grab Opportunities</b></span> → double-click to scout → <span class="btn">Grab selected</span></td></tr>
+      <tr><td>Log a call fast</td><td><span class="path"><b>Pursuits</b></span> → Activity log → type + subject + <kbd>Enter</kbd></td></tr>
+      <tr><td>Log last week's call</td><td>Same — set the <b style="color:var(--ink)">date picker</b> first</td></tr>
+      <tr><td>Attach a file</td><td>Open the pursuit → <b style="color:var(--ink)">drag it onto the Files box</b> (or <span class="btn">Browse…</span>)</td></tr>
+      <tr><td>See if a client pays us</td><td>Open the pursuit → read the <b style="color:var(--ink)">Deltek history</b> strip</td></tr>
+      <tr><td>Record who beat us</td><td><span class="btn">Set stage</span> → Lost → fill "lost to" (or <b style="color:var(--ink)">Skip</b>)</td></tr>
+      <tr><td>Tie a win to a project</td><td><span class="btn">Set stage</span> → Won → <span class="btn">More ▾</span> → <span class="btn">Link to project…</span></td></tr>
+      <tr><td>Prep for a meeting</td><td><span class="btn">More ▾</span> → <span class="btn">Project brief…</span> (one-page PDF)</td></tr>
+      <tr><td>See only my pursuits</td><td><span class="path"><b>Pursuits</b></span> → <span class="btn">Mine</span></td></tr>
+      <tr><td>See what's going cold</td><td><span class="path"><b>Pursuit Monitor</b></span> — it's coldest-first</td></tr>
+      <tr><td>Add a tender by hand</td><td><span class="path"><b>RFPs</b></span> → <span class="btn">New</span> (it warns you on duplicates)</td></tr>
+    </table>
+
+    <div class="strip">
+      <div class="card">
+        <h2 style="margin-bottom:.2rem">Where you live</h2>
+        <div class="live">
+          <div><b>Grab Opportunities</b> — find &amp; claim work</div>
+          <div><b>Pursuits</b> — work it (the CRM)</div>
+          <div><b>Pursuit Monitor</b> — manage, if you lead</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:.2rem">Colour key</h2>
+        <div class="keyrow"><span class="pill pill--fresh">Fresh</span> under 7 days</div>
+        <div class="keyrow"><span class="pill pill--watch">Watch</span> 7–21 days</div>
+        <div class="keyrow"><span class="pill pill--cold">Cold</span> 21 days+</div>
+        <p style="margin-top:.4rem">A call <b style="color:var(--ink)">or</b> a filed email counts as a touch.</p>
+      </div>
+      <div class="card accent">
+        <h2 style="margin-bottom:.2rem; color:var(--good)">The one habit</h2>
+        <p class="lead">Grab what you're chasing. Log the moment it closes.</p>
+        <p>That's it. Everything else the system does for you — deadlines and cold pursuits come to you in the morning email.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">KOR Operations · Home → Business Development · nothing to install</div>
+</div>

@@ -34,7 +34,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (input.Slabs.Count == 0 && input.Columns.Count == 0 && input.Lines.Count == 0)
                 return Failed("Nothing to export (no slabs, columns, or lines).");
 
-            int slabsExported = 0, columnsExported = 0, framesExported = 0, loadsApplied = 0, skipped = 0;
+            int slabsExported = 0, columnsExported = 0, framesExported = 0, loadsApplied = 0, skipped = 0, openingsCreated = 0;
+            // ParentSlabIdx → SAFE area name, populated as each slab area is
+            // created so the post-emission opening pass can resolve which
+            // parent prop to reuse for the cut-out area.
+            var slabIndexToAreaName = new Dictionary<int, string>();
+            var slabIndexToProp     = new Dictionary<int, string>();
             try
             {
                 int ret;
@@ -112,24 +117,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
 
                 // ── Frame sections: per unique column W×D and per wall W×D ──
+                // Use the same snap helpers the F2K writer uses so OAPI and
+                // F2K exports produce identical section names for the same
+                // drawing. SnapColumnSection also canonicalises orientation
+                // (smaller-first) so a 952×368 column and a 368×952 column
+                // collapse to one C350x950 section instead of two near-dups.
                 string defaultMat = NormalizeName(input.DefaultGradeCode);
                 var frameSecsSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var (w, depth) in input.ColumnSizes)
                 {
-                    double rw = Round10(w), rd = Round10(depth);
-                    string name = FrameSectionName("C", rw, rd);
+                    var (name, snapW, snapD) = F2kModelPrep.SnapColumnSection(w, depth);
                     if (!frameSecsSeen.Add(name)) continue;
-                    double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
+                    double dOut = imp ? snapD * MmToIn : snapD, wOut = imp ? snapW * MmToIn : snapW;
                     ret = driver.SetFrameRectangleProp(name, defaultMat, dOut, wOut);
                     if (ret != 0) return Fail($"PropFrame.SetRectangle({name}) returned {ret}.");
                 }
                 foreach (var hint in input.LineSectionHints)
                 {
                     if (hint is null) continue;
-                    double rw = Round10(hint.Value.WidthMm), rd = Round10(hint.Value.DepthMm);
-                    string name = FrameSectionName("B", rw, rd);
+                    var (_, snapW, snapD) = F2kModelPrep.SnapWallSection(hint.Value.WidthMm, hint.Value.DepthMm);
+                    string name = FrameSectionName("B", snapW, snapD);
                     if (!frameSecsSeen.Add(name)) continue;
-                    double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
+                    double dOut = imp ? snapD * MmToIn : snapD, wOut = imp ? snapW * MmToIn : snapW;
                     ret = driver.SetFrameRectangleProp(name, defaultMat, dOut, wOut);
                     if (ret != 0) return Fail($"PropFrame.SetRectangle({name}) returned {ret}.");
                 }
@@ -137,16 +146,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 // ── Annotation-derived frame sections ─────────────────────
                 // Text annotations (e.g., "B300x600", "C500x500") can
                 // override the bbox/hint-derived sections. Pre-create any
-                // unique sections found in annotations.
+                // unique sections found in annotations. Annotations are
+                // engineer-authored so the values are usually clean already;
+                // still pass through the snap to guarantee SAFE shows clean
+                // section names (e.g. "C405x800" → "C400x800").
                 if (input.AnnotatedColumnSections is not null)
                 {
                     foreach (var ann in input.AnnotatedColumnSections)
                     {
                         if (ann is null) continue;
-                        double rw = Round10(ann.Value.WidthMm), rd = Round10(ann.Value.DepthMm);
-                        string name = FrameSectionName("C", rw, rd);
+                        var (name, snapW, snapD) = F2kModelPrep.SnapColumnSection(ann.Value.WidthMm, ann.Value.DepthMm);
                         if (!frameSecsSeen.Add(name)) continue;
-                        double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
+                        double dOut = imp ? snapD * MmToIn : snapD, wOut = imp ? snapW * MmToIn : snapW;
                         ret = driver.SetFrameRectangleProp(name, defaultMat, dOut, wOut);
                         if (ret != 0) return Fail($"PropFrame.SetRectangle({name}) returned {ret}.");
                     }
@@ -156,10 +167,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     foreach (var ann in input.AnnotatedLineSections)
                     {
                         if (ann is null) continue;
-                        double rw = Round10(ann.Value.WidthMm), rd = Round10(ann.Value.DepthMm);
-                        string name = FrameSectionName("B", rw, rd);
+                        var (_, snapW, snapD) = F2kModelPrep.SnapWallSection(ann.Value.WidthMm, ann.Value.DepthMm);
+                        string name = FrameSectionName("B", snapW, snapD);
                         if (!frameSecsSeen.Add(name)) continue;
-                        double dOut = imp ? rd * MmToIn : rd, wOut = imp ? rw * MmToIn : rw;
+                        double dOut = imp ? snapD * MmToIn : snapD, wOut = imp ? snapW * MmToIn : snapW;
                         ret = driver.SetFrameRectangleProp(name, defaultMat, dOut, wOut);
                         if (ret != 0) return Fail($"PropFrame.SetRectangle({name}) returned {ret}.");
                     }
@@ -211,6 +222,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     int rArea = driver.AddArea(ptNames, propName, out string areaName);
                     if (rArea != 0) { skipped++; continue; }
                     slabsExported++;
+                    slabIndexToAreaName[i] = areaName;
+                    slabIndexToProp[i]     = propName;
 
                     // Auto edge constraint: ensures SAFE's mesher connects any
                     // frame node (column top, wall end) that lands on or near
@@ -282,7 +295,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             int rDp = driver.AddArea(dpPtNames, dropProp, out string dpAreaName);
                             if (rDp != 0) continue;
                             slabsExported++;
-                            try { driver.SetAreaEdgeConstraint(dpAreaName, true); } catch { }
+                            try { driver.SetAreaEdgeConstraint(dpAreaName, true); } catch { /* optional SAFE decoration; export still succeeds without it */ }
 
                             // Apply same loads as parent slab.
                             double loadScaleDp = imp ? KpaToKipPerIn2 : 1e-3;
@@ -304,9 +317,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // Annotation-derived section takes priority over bbox.
                     var annCol = (input.AnnotatedColumnSections is not null && i < input.AnnotatedColumnSections.Count)
                         ? input.AnnotatedColumnSections[i] : null;
-                    double w     = Round10(annCol?.WidthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].WidthMm : 400.0));
-                    double depth = Round10(annCol?.DepthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].DepthMm : 400.0));
-                    string sec = FrameSectionName("C", w, depth);
+                    double rawW = annCol?.WidthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].WidthMm : 400.0);
+                    double rawD = annCol?.DepthMm ?? (i < input.ColumnSizes.Count ? input.ColumnSizes[i].DepthMm : 400.0);
+                    var (sec, w, depth) = F2kModelPrep.SnapColumnSection(rawW, rawD);
 
                     if (frameSecsSeen.Add(sec))
                     {
@@ -348,9 +361,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var annLine = (input.AnnotatedLineSections is not null && i < input.AnnotatedLineSections.Count)
                         ? input.AnnotatedLineSections[i] : null;
                     var hint = i < input.LineSectionHints.Count ? input.LineSectionHints[i] : null;
-                    double w     = Round10(annLine?.WidthMm ?? hint?.WidthMm ?? 0);
-                    double depth = Round10(annLine?.DepthMm ?? hint?.DepthMm ?? input.DefaultWallDepthMm);
-                    if (w <= 0) w = depth;
+                    double rawW = annLine?.WidthMm ?? hint?.WidthMm ?? 0;
+                    double rawD = annLine?.DepthMm ?? hint?.DepthMm ?? input.DefaultWallDepthMm;
+                    if (rawW <= 0) rawW = rawD;
+                    var (_, w, depth) = F2kModelPrep.SnapWallSection(rawW, rawD);
                     string sec = FrameSectionName("B", w, depth);
                     if (frameSecsSeen.Add(sec))
                     {
@@ -370,6 +384,53 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         int rF = driver.AddFrame(a, b, sec, out _);
                         if (rF != 0) { skipped++; continue; }
                         framesExported++;
+                    }
+                }
+
+                // ── Auto-cut openings from wall rectangles ────────────────
+                // Mirrors the F2K AUTO_GEN openings path. WallOpeningDetector
+                // finds 2H+2V wall rectangles wholly inside a slab, returns
+                // (parentSlabIdx, polygon). For each: AddArea with the parent
+                // slab's prop, then flag it as an opening via SetOpening so
+                // SAFE/ETABS/SAP excludes its footprint during meshing.
+                if (input.AutoGenerateOpeningsFromWalls && input.Lines.Count > 0 && input.Slabs.Count > 0)
+                {
+                    // WallOpeningDetector takes IReadOnlyList<List<...>>;
+                    // ExportInput surfaces IReadOnlyList<IReadOnlyList<...>>.
+                    // Materialise once per export — opening count is tiny.
+                    var linesForDetect = input.Lines.Select(l => l.ToList()).ToList();
+                    var slabsForDetect = input.Slabs.Select(s => s.ToList()).ToList();
+                    List<(int ParentSlabIdx, List<(double X, double Y)> Polygon)> openings;
+                    try
+                    {
+                        openings = WallOpeningDetector.DetectRectangularOpenings(
+                            linesForDetect, input.LineSectionHints, slabsForDetect);
+                    }
+                    catch { openings = new(); }
+
+                    double lsOpen = imp ? MmToIn : 1.0;
+                    foreach (var (parentSlabIdx, polygon) in openings)
+                    {
+                        if (!slabIndexToAreaName.ContainsKey(parentSlabIdx)) continue;
+                        if (!slabIndexToProp.TryGetValue(parentSlabIdx, out string? openingProp)) continue;
+                        var poly = DeduplicateConsecutive(polygon);
+                        if (poly.Count < 3) continue;
+
+                        var ptNames = new string[poly.Count];
+                        bool ptFailed = false;
+                        for (int j = 0; j < poly.Count; j++)
+                        {
+                            int rP = driver.AddPoint(poly[j].X * lsOpen, poly[j].Y * lsOpen, 0.0, out string ptName);
+                            if (rP != 0) { ptFailed = true; break; }
+                            ptNames[j] = ptName;
+                        }
+                        if (ptFailed) continue;
+
+                        int rArea = driver.AddArea(ptNames, openingProp, out string openAreaName);
+                        if (rArea != 0) continue;
+                        int rOpen = driver.SetAreaOpening(openAreaName, true);
+                        if (rOpen != 0) continue;
+                        openingsCreated++;
                     }
                 }
 
@@ -401,9 +462,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 return new SafeApiExporter.ExportResult(true,
                     $"Exported {slabsExported} slab(s), {columnsExported} column(s), {framesExported} wall/beam frame(s), {loadsApplied} area load(s)"
+                    + (openingsCreated > 0 ? $", {openingsCreated} auto-cut opening(s)" : "")
                     + (skipped > 0 ? $", skipped {skipped}" : "")
                     + $" → {input.DestFdbPath}.",
-                    input.DestFdbPath, slabsExported, columnsExported, framesExported, loadsApplied, skipped);
+                    input.DestFdbPath, slabsExported, columnsExported, framesExported, loadsApplied, skipped, openingsCreated);
             }
             catch (COMException cex)
             {
@@ -419,7 +481,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             SafeApiExporter.ExportResult Fail(string reason)
-                => new SafeApiExporter.ExportResult(false, reason, null, slabsExported, columnsExported, framesExported, loadsApplied, skipped);
+                => new SafeApiExporter.ExportResult(false, reason, null, slabsExported, columnsExported, framesExported, loadsApplied, skipped, openingsCreated);
         }
 
         private static SafeApiExporter.ExportResult Failed(string message)

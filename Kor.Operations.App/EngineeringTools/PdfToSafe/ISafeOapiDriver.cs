@@ -65,6 +65,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <summary>Enables auto edge constraints on an area so SAFE auto-connects frame nodes to the slab mesh during analysis.</summary>
         int SetAreaEdgeConstraint(string areaName, bool enabled);
 
+        /// <summary>
+        /// Flags an existing area as an opening (a hole cut out of the parent
+        /// slab). The area must already be defined via <see cref="AddArea"/>;
+        /// SAFE/ETABS/SAP2000 then exclude its footprint from the parent slab
+        /// during meshing instead of treating it as a discrete floor area.
+        /// </summary>
+        int SetAreaOpening(string areaName, bool opening);
+
         /// <summary>Sets the 8 stiffness modifiers on a slab property: f11, f22, f12, m11, m22, m12, v13, v23.</summary>
         int SetSlabModifiers(string propName, double membrane, double bending, double shear);
 

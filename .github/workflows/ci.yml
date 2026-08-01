@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  build-and-test:
+    name: Build + Test (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    env:
+      DOTNET_NOLOGO: 1
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      # Resolver / canonical-org intake invariants (dup-minting + retired-match
+      # guards). Runs first and independently so the front-door standardization
+      # is enforced on every push regardless of other test projects.
+      - name: Build resolver test project
+        run: dotnet build Kor.Opportunities.Data.Tests/Kor.Opportunities.Data.Tests.csproj --configuration Debug --nologo -v:m
+
+      - name: Run resolver tests
+        run: dotnet test Kor.Opportunities.Data.Tests/Kor.Opportunities.Data.Tests.csproj --no-build --configuration Debug --nologo --filter "Category!=Integration" --logger "trx;LogFileName=resolver-results.trx" --logger "console;verbosity=normal"
+
+      # Build the test project — its ProjectReference pulls in the main app,
+      # so this exercises the full production compile too. Fails fast if
+      # production code or test project is broken.
+      - name: Build test project (pulls in main app)
+        run: dotnet build Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj --configuration Debug --nologo -v:m
+
+      # Reconciliation + parity tests for Executive Summary land here. These
+      # cover the math/scope invariants the financials sprint locked in.
+      # Excludes the Integration trait so this job stays hermetic — Integration
+      # tests need a real Deltek ODBC connection and run separately.
+      - name: Run unit tests
+        run: dotnet test Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj --no-build --configuration Debug --nologo --filter "Category!=Integration" --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=normal"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/TestResults/*.trx'
+          retention-days: 14

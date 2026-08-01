@@ -24,12 +24,33 @@ internal static class FinancialsModule
             return new VpOdbcDsnFactory(dsn, deltekOdbcOptions.User, deltekOdbcOptions.Password, () => new Dictionary<string, string>());
         });
         services.AddTransient<GlProfitLossService>();
-        services.AddTransient<FinancialsService>();
-        services.AddTransient<ProfitLossReportService>();
-        services.AddTransient<ExecutiveSummaryDeltekLoader>();
+        services.AddTransient<BilledFinancialsService>();
+        services.AddTransient(sp => new FinancialsService(
+            sp.GetRequiredService<DeltekOdbcOptions>(),
+            sp.GetRequiredService<FinancialsOptions>(),
+            // Same delegate used by ExecutiveSummaryService — provider is
+            // registered below, both consumers reuse the closure.
+            sp.GetService<ActiveCollectionsInvoiceProvider>()));
+        services.AddTransient(sp => new ExecutiveSummaryDeltekLoader(sp.GetRequiredService<DeltekOdbcOptions>(), sp.GetRequiredService<FinancialsOptions>()));
+        // Phase 12-5a: bridge ExecutiveSummaryService → CollectionsClient via
+        // a delegate so the public service stays decoupled from the internal
+        // client type. When MCP isn't configured, GetActiveCaseInvoicesAsync
+        // returns an empty list and the tile degrades silently.
+        services.AddTransient<ActiveCollectionsInvoiceProvider>(sp => async ct =>
+        {
+            var client = sp.GetService<CollectionsClient>();
+            if (client is null || !client.IsConfigured)
+            {
+                return null;
+            }
+
+            var rows = await client.GetActiveCaseInvoicesAsync(ct).ConfigureAwait(false);
+            return new HashSet<(string Wbs1, string Invoice)>(
+                rows.Select(r => ((r.wbS1 ?? string.Empty).Trim(), (r.invoiceNumber ?? string.Empty).Trim())));
+        });
         services.AddTransient<ExecutiveSummaryService>();
         services.AddTransient<ExecutiveSummaryViewModel>();
-        services.AddTransient<BillingManagerReportViewModel>();
+        services.AddTransient<PartnerFinancialsViewModel>();
         services.AddTransient<FinancialsViewModel>();
 
         return services;

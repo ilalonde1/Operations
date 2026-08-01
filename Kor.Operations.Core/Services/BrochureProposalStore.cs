@@ -15,7 +15,6 @@ namespace Kor.Operations.Core.Services
 {
     public sealed class BrochureProposalStore : IBrochureProposalStore
     {
-        private readonly ILogger _logger;
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
@@ -33,6 +32,7 @@ namespace Kor.Operations.Core.Services
             "KorOperations",
             "proposals");
 
+        private readonly ILogger _logger;
         private readonly string _proposalsFolder;
 
         public BrochureProposalStore()

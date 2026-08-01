@@ -97,7 +97,7 @@ namespace Kor.Operations.Financials.CfoMetrics
             var level =
                 dc.Status == "Critical" ? DeliveryConfidenceLevel.Critical :
                 dc.Status == "At Risk" ? DeliveryConfidenceLevel.AtRisk :
-                dc.Status == "Watch" ? DeliveryConfidenceLevel.Stable :
+                dc.Status == "Watch" ? DeliveryConfidenceLevel.Watch :
                 DeliveryConfidenceLevel.HighConfidence;
 
             return new ProjectData(

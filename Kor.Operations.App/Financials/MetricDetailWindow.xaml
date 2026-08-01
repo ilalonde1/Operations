@@ -226,9 +226,9 @@
                                                 </Style>
                                             </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
-                                        <DataGridTextColumn Header="Billed" Binding="{Binding PercentBilledText}" Width="85">
+                                        <DataGridTextColumn Header="Billed" Binding="{Binding PercentBilledWithUnpostedText}" Width="85">
                                             <DataGridTextColumn.ElementStyle>
-                                                <Style TargetType="TextBlock">
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
                                                     <Setter Property="TextAlignment" Value="Right"/>
                                                 </Style>
                                             </DataGridTextColumn.ElementStyle>
@@ -255,6 +255,76 @@
                                             IsEnabled="{Binding CanGoToNextProjectPage}"
                                             Click="NextProjectPage_Click"/>
                                 </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Cash Accounts Included"
+                                   FontWeight="SemiBold"
+                                   Margin="0,14,0,6"
+                                   Visibility="{Binding CashAccountsVisibility}"/>
+
+                        <Border BorderBrush="{StaticResource Panel.Border}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="8"
+                                Visibility="{Binding CashAccountsVisibility}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel>
+                                    <TextBlock Text="{Binding CashAccountsCountText}"
+                                               Foreground="{StaticResource Text.Secondary}"
+                                               FontSize="11"/>
+                                </DockPanel>
+
+                                <DataGrid Grid.Row="1"
+                                          ItemsSource="{Binding PagedCashAccountRows}"
+                                          Margin="0,8,0,0"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          CanUserResizeRows="False"
+                                          CanUserReorderColumns="False"
+                                          CanUserSortColumns="True"
+                                          HeadersVisibility="Column"
+                                          RowHeaderWidth="0"
+                                          GridLinesVisibility="Horizontal"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          AlternationCount="2"
+                                          RowBackground="#FFFFFFFF"
+                                          AlternatingRowBackground="#FFF8FAFC"
+                                          BorderBrush="{StaticResource Panel.Border}"
+                                          BorderThickness="1"
+                                          MinHeight="120">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="DataGridCell">
+                                            <Setter Property="Padding" Value="8,4"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Company" Binding="{Binding Company}" Width="110"/>
+                                        <DataGridTextColumn Header="Account" Binding="{Binding Account}" Width="120"/>
+                                        <DataGridTextColumn Header="Org" Binding="{Binding Org}" Width="110"/>
+                                        <DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="70"/>
+                                        <DataGridTextColumn Header="Balance" Binding="{Binding BalanceText}" Width="130">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
                             </Grid>
                         </Border>
 
@@ -522,6 +592,8 @@
                                             <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
                                             <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
                                             <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
+                                            <DataGridTextColumn Header="Invoice #" Binding="{Binding Invoice}" Width="100"/>
+                                            <DataGridTextColumn Header="Client" Binding="{Binding ClientDisplay}" Width="180"/>
                                             <DataGridTextColumn Header="Invoice Date" Binding="{Binding InvoiceDateText}" Width="95"/>
                                             <DataGridTextColumn Header="Due Date" Binding="{Binding DueDateText}" Width="95"/>
                                             <DataGridTextColumn Header="DPD" Binding="{Binding DaysPastDueText}" Width="65">
@@ -732,14 +804,22 @@
                                         <DataGridTextColumn Header="Fee" Binding="{Binding FeeText}" Width="105">
                                             <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
-                                        <DataGridTextColumn Header="Billed" Binding="{Binding BilledText}" Width="105">
-                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        <DataGridTextColumn Header="Billed" Binding="{Binding BilledWithUnpostedText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
                                         <DataGridTextColumn Header="Backlog" Binding="{Binding BacklogText}" Width="105">
                                             <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
-                                        <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledText}" Width="85">
-                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnpostedText}" Width="85">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
@@ -832,14 +912,22 @@
                                         <DataGridTextColumn Header="Project" Binding="{Binding Wbs1}" Width="100"/>
                                         <DataGridTextColumn Header="Name" Binding="{Binding ProjectName}" Width="*"/>
                                         <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="140"/>
-                                        <DataGridTextColumn Header="Fee Billed" Binding="{Binding FeeBilledText}" Width="105">
-                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        <DataGridTextColumn Header="Fee Billed" Binding="{Binding FeeBilledWithUnpostedText}" Width="105">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
                                         <DataGridTextColumn Header="Fee" Binding="{Binding FeeText}" Width="105">
                                             <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
-                                        <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledText}" Width="85">
-                                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
+                                        <DataGridTextColumn Header="% Billed" Binding="{Binding PercentBilledWithUnpostedText}" Width="85">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
+                                                    <Setter Property="TextAlignment" Value="Right"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
                                         </DataGridTextColumn>
                                         <DataGridTextColumn Header="% Total Billed" Binding="{Binding ContributionText}" Width="95">
                                             <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextAlignment" Value="Right"/></Style></DataGridTextColumn.ElementStyle>
@@ -1304,7 +1392,7 @@
                 </ScrollViewer>
 
                 <TextBlock Grid.Row="2"
-                           Text="{Binding FooterHint}"
+                           Text="Tip: use Copy summary to paste into email/Teams."
                            Foreground="{StaticResource Text.Secondary}"
                            FontSize="11"
                            Margin="0,10,0,0"/>

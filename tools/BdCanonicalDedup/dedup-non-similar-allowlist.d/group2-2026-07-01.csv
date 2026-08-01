@@ -1,0 +1,5 @@
+# Group2 word-variant dup found while assembling the Edmonton trip pack (2026-07-01).
+# 8538 "Group2 Architecture Interior Design Ltd." = survivor (27 enr / 18 aff / 11 MPI, domain group2.ca);
+# 71945 "Group2" = thin variant (4/4/1) with same people. Fuzzy keys differ (short name), resolver can't auto-attach.
+# LoserId,SurvivorId,Reason
+71945,8538,Group2 -> Group2 Architecture Interior Design Ltd.

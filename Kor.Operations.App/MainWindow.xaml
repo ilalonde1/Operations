@@ -175,6 +175,7 @@
                                                      VirtualizingStackPanel.IsVirtualizing="True"
                                                      VirtualizingStackPanel.VirtualizationMode="Recycling"
                                                      ScrollViewer.CanContentScroll="True"
+                                                     Cursor="Hand"
                                                      PreviewKeyDown="SuggestionsList_PreviewKeyDown"
                                                      MouseDoubleClick="SuggestionsList_MouseDoubleClick"
                                                      MinWidth="420"/>
@@ -242,6 +243,7 @@
                                         <ListBox x:Name="ToSuggestionsList"
                                                  Width="{Binding ElementName=ToBox, Path=ActualWidth}"
                                                  DisplayMemberPath="Display"
+                                                 Cursor="Hand"
                                                  MouseDoubleClick="ToSuggestionsList_MouseDoubleClick"
                                                  PreviewKeyDown="ToSuggestionsList_PreviewKeyDown"/>
                                     </Border>
@@ -296,6 +298,7 @@
                                         <ListBox x:Name="CcSuggestionsList"
                                                  Width="{Binding ElementName=CcBox, Path=ActualWidth}"
                                                  DisplayMemberPath="Display"
+                                                 Cursor="Hand"
                                                  MouseDoubleClick="CcSuggestionsList_MouseDoubleClick"
                                                  PreviewKeyDown="CcSuggestionsList_PreviewKeyDown"/>
                                     </Border>

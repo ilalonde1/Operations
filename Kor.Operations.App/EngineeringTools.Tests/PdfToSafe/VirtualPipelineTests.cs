@@ -504,15 +504,19 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
             var result = ExportOrchestrator.Run(driver, input);
             Assert.True(result.Success, result.Message);
 
-            // EVERY exported slab must have BOTH SDL and LIVE loads.
-            foreach (var area in driver.Areas)
+            // EVERY exported slab must have BOTH SDL and LIVE loads. Skip
+            // opening areas — auto-cut openings are flagged via SetAreaOpening
+            // and should NOT carry uniform area loads (SAFE treats the opening
+            // footprint as a hole in the parent slab).
+            var slabAreas = driver.Areas.Where(a => !driver.Openings.Contains(a.Name)).ToList();
+            foreach (var area in slabAreas)
             {
                 var loads = driver.AreaLoads.Where(l => l.AreaName == area.Name).ToList();
                 Assert.Contains(loads, l => l.PatternName == "SDL");
                 Assert.Contains(loads, l => l.PatternName == "LIVE");
             }
-            // Total loads = slabs × 2.
-            Assert.Equal(driver.Areas.Count * 2, driver.AreaLoads.Count);
+            // Total loads = non-opening slabs × 2.
+            Assert.Equal(slabAreas.Count * 2, driver.AreaLoads.Count);
         }
 
         [Fact]
@@ -571,6 +575,82 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
                 double len = Math.Sqrt(Math.Pow(s.X - e.X, 2) + Math.Pow(s.Y - e.Y, 2));
                 Assert.True(len > 10.0, $"Wall frame {f.Name} is degenerate: length {len:F1} mm");
             }
+        }
+
+        [Fact]
+        public void RegentFloor_AutoOpenings_FlaggedAsOpeningsAndUnloaded()
+        {
+            // The OAPI opening path (Batch 57): WallOpeningDetector finds shaft
+            // rectangles, each is emitted as a SAFE area on the parent slab's
+            // prop, then flagged via cAreaObj.SetOpening. The result must be:
+            //  (a) at least one opening area exists,
+            //  (b) every opening is flagged via SetAreaOpening,
+            //  (c) openings carry NO area loads (SAFE excludes the footprint).
+            string pdfPath = FixturePath("regent_typ_floor.pdf");
+            var geo = PdfGeometryExtractor.Extract(pdfPath, scaleDenominator: 100);
+
+            var burgundy = ((byte)0x80, (byte)0x00, (byte)0x00);
+            var red      = ((byte)0xF0, (byte)0x00, (byte)0x00);
+            var colorSettings = new Dictionary<(byte R, byte G, byte B), SlabColorSettings>
+            {
+                [burgundy] = new SlabColorSettings { ElementType = "Wall", GradeCode = "C30", ThicknessMm = 250 },
+                [red]      = new SlabColorSettings { ElementType = "Slab", GradeCode = "C30", ThicknessMm = 250, SdlKPa = 1.5, LiveKPa = 1.9 },
+            };
+            var reclassified = PdfGeometryExtractor.ReclassifyByColor(geo, colorSettings);
+
+            var driver = new VirtualSafeDriver();
+            var input = BuildInput(reclassified, colorSettings);
+            var result = ExportOrchestrator.Run(driver, input);
+            Assert.True(result.Success, result.Message);
+
+            Assert.True(result.OpeningsCreated >= 1,
+                $"Expected ≥1 auto-cut opening on Regent (shaft cores), got {result.OpeningsCreated}");
+            Assert.Equal(result.OpeningsCreated, driver.Openings.Count);
+            foreach (var openingName in driver.Openings)
+            {
+                Assert.Contains(driver.Areas, a => a.Name == openingName);
+                Assert.DoesNotContain(driver.AreaLoads, l => l.AreaName == openingName);
+            }
+        }
+
+        [Fact]
+        public void RegentFloor_OpeningsSuppressed_WhenAutoGenerateFlagOff()
+        {
+            // Flipping AutoGenerateOpeningsFromWalls=false must suppress the
+            // WallOpeningDetector pass — engineer can still punch openings
+            // manually in SAFE without us second-guessing.
+            string pdfPath = FixturePath("regent_typ_floor.pdf");
+            var geo = PdfGeometryExtractor.Extract(pdfPath, scaleDenominator: 100);
+            var burgundy = ((byte)0x80, (byte)0x00, (byte)0x00);
+            var red      = ((byte)0xF0, (byte)0x00, (byte)0x00);
+            var colorSettings = new Dictionary<(byte R, byte G, byte B), SlabColorSettings>
+            {
+                [burgundy] = new SlabColorSettings { ElementType = "Wall", GradeCode = "C30", ThicknessMm = 250 },
+                [red]      = new SlabColorSettings { ElementType = "Slab", GradeCode = "C30", ThicknessMm = 250, SdlKPa = 1.5, LiveKPa = 1.9 },
+            };
+            var reclassified = PdfGeometryExtractor.ReclassifyByColor(geo, colorSettings);
+
+            var driver = new VirtualSafeDriver();
+            var baseInput = BuildInput(reclassified, colorSettings);
+            var inputNoOpenings = new SafeApiExporter.ExportInput
+            {
+                Slabs = baseInput.Slabs, SlabColors = baseInput.SlabColors,
+                Columns = baseInput.Columns, ColumnSizes = baseInput.ColumnSizes,
+                Lines = baseInput.Lines, LineSectionHints = baseInput.LineSectionHints,
+                ColorSettings = baseInput.ColorSettings,
+                DefaultGradeCode = baseInput.DefaultGradeCode,
+                DesignCode = baseInput.DesignCode,
+                DefaultThicknessMm = baseInput.DefaultThicknessMm,
+                DefaultWallDepthMm = baseInput.DefaultWallDepthMm,
+                ColumnHeightMm = baseInput.ColumnHeightMm,
+                DestFdbPath = baseInput.DestFdbPath,
+                IsImperial = baseInput.IsImperial,
+                AutoGenerateOpeningsFromWalls = false,
+            };
+            var result = ExportOrchestrator.Run(driver, inputNoOpenings);
+            Assert.True(result.Success, result.Message);
+            Assert.Equal(0, result.OpeningsCreated);
+            Assert.Empty(driver.Openings);
         }
 
         [Fact]

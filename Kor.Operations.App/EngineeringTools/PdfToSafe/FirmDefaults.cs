@@ -27,6 +27,50 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         // ── Mesh ─────────────────────────────────────────────────────────
         public double DefaultMeshSizeMm  { get; set; } = 500;
 
+        // ── Design automation ────────────────────────────────────────────
+        /// <summary>
+        /// When true, the .f2k writer emits an auto-generated DESIGN STRIPS
+        /// table covering the slab in two orthogonal directions at
+        /// <see cref="DefaultStripSpacingMm"/> intervals. SAFE needs design
+        /// strips to produce reinforcement results; auto-generation gets the
+        /// engineer to a usable starting point without manual strip placement.
+        /// They can still adjust strip widths and orientation post-import.
+        /// </summary>
+        public bool DefaultAutoGenerateStrips { get; set; } = true;
+        public double DefaultStripSpacingMm  { get; set; } = 1800;
+        /// <summary>True → Strip A along X (Strip B along Y). KOR convention.</summary>
+        public bool DefaultStripAAlongX { get; set; } = true;
+
+        /// <summary>
+        /// Auto-cut FLOOR OBJECT OPENINGS where 4 wall segments enclose a
+        /// rectangular shaft inside a slab (elevator / stair / mech cores).
+        /// Default true — without openings, SAFE analyses the slab as
+        /// continuous through the shaft and produces nonsense rebar +
+        /// deflection results inside the core. Engineers can always disable
+        /// before export if they want to inspect raw geometry first.
+        /// </summary>
+        public bool DefaultAutoGenerateOpeningsFromWalls { get; set; } = true;
+
+        /// <summary>
+        /// When true, after the auto-vision pass finishes the WPF will fire
+        /// the F2K export to a file next to the source PDF. Saves the
+        /// engineer the click but writes to disk — leave OFF for users who
+        /// want to review before export. The export still surfaces a status
+        /// banner with success/skipped counts.
+        /// </summary>
+        public bool AutoExportAfterClassify { get; set; } = false;
+
+        /// <summary>
+        /// Occupancy preset that drives the default LIVE load applied to each
+        /// new slab colour row. "Residential" → 1.92 kPa (NBC residential
+        /// suite); "Office" → 2.4 kPa; "Retail" → 4.8 kPa; "Custom" →
+        /// fall back to <see cref="DefaultLiveKPa"/>. When unset, the AI
+        /// auto-vision pass can infer occupancy from the drawing and set
+        /// this via set_color_properties — but no inference fires if the
+        /// engineer has explicitly set it.
+        /// </summary>
+        public string DefaultOccupancy { get; set; } = "Residential";
+
         // ── Stiffness modifiers (CSA A23.3-19 Cl. 6.6.3.4 cracked = 0.25) ─
         public double DefaultSlabMembraneModifier { get; set; } = 1.0;
         public double DefaultSlabBendingModifier  { get; set; } = 1.0;
@@ -124,6 +168,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (DefaultSlabMembraneModifier > 0) target.SlabMembraneModifier = DefaultSlabMembraneModifier;
             if (DefaultSlabBendingModifier  > 0) target.SlabBendingModifier  = DefaultSlabBendingModifier;
             if (DefaultSlabShearModifier    > 0) target.SlabShearModifier    = DefaultSlabShearModifier;
+
+            // Design-strip automation: writer reads these from ExportSettings.
+            target.AutoGenerateStrips = DefaultAutoGenerateStrips;
+            if (DefaultStripSpacingMm > 0) target.StripSpacingMm = DefaultStripSpacingMm;
+            target.StripAAlongX = DefaultStripAAlongX;
+
+            target.AutoGenerateOpeningsFromWalls = DefaultAutoGenerateOpeningsFromWalls;
         }
+
+        /// <summary>
+        /// Resolves the live load (kPa) corresponding to <see cref="DefaultOccupancy"/>
+        /// per NBC's typical-occupancy table. Used as the seed for new slab
+        /// colour rows when no per-row value is set.
+        /// </summary>
+        public double GetOccupancyLiveKPa() =>
+            DefaultOccupancy switch
+            {
+                "Residential" => 1.92,
+                "Office"      => 2.40,
+                "Retail"      => 4.80,
+                "Assembly"    => 4.80,
+                _             => DefaultLiveKPa > 0 ? DefaultLiveKPa : 1.92,
+            };
     }
 }

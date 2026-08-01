@@ -1,0 +1,65 @@
+<Window x:Class="Kor.Operations.App.BusinessDevelopment.Briefs.RegionBriefDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Generate Region Brief"
+        Width="460"
+        SizeToContent="Height"
+        MinHeight="340"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Province / state" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <ComboBox x:Name="ProvinceCombo" Grid.Row="1" Margin="0,0,0,12" Height="28">
+            <ComboBoxItem Content="BC" IsSelected="True"/>
+            <ComboBoxItem Content="AB"/>
+            <ComboBoxItem Content="CA"/>
+            <ComboBoxItem Content="WA"/>
+            <ComboBoxItem Content="OR"/>
+        </ComboBox>
+
+        <TextBlock Grid.Row="2" Text="City or region (optional — splits on '/', ',', ';', '&amp;')" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <!-- Round 57c: drop all local overrides on the TextBox. Themes/
+             KorTheme.xaml has a global TextBox style (MinHeight=28,
+             Padding=8,5, FontSize=13, custom border + focus template).
+             The fight between the local Height/Padding/VAlign and the
+             theme's ScrollViewer-based PART_ContentHost is what was
+             clipping typed entries. Trust the theme. -->
+        <TextBox x:Name="CityBox" Grid.Row="3" Margin="0,0,0,12"/>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Format:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
+            <ComboBox x:Name="FormatCombo" Width="180" Height="28" SelectedIndex="0">
+                <ComboBoxItem Content="PDF (recommended)"/>
+                <ComboBoxItem Content="Word (.docx)"/>
+            </ComboBox>
+        </StackPanel>
+
+        <TextBlock x:Name="StatusText" Grid.Row="5" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="GenerateButton"
+                    Content="Generate"
+                    Width="110"
+                    Click="GenerateButton_Click"
+                    Background="{StaticResource Brand.Primary.Brush}"
+                    Foreground="White"/>
+            <Button x:Name="CloseButton"
+                    Content="Close"
+                    Width="80"
+                    Margin="8,0,0,0"
+                    Click="CloseButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

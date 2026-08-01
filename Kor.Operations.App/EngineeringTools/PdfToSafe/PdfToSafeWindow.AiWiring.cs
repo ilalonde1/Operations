@@ -127,12 +127,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     string result = toolName switch
                     {
-                        PdfToSafeAiTools.SetColorType       => HandleSetColorType(input),
-                        PdfToSafeAiTools.SetColorProperties => HandleSetColorProperties(input),
-                        PdfToSafeAiTools.SetElementType     => HandleSetElementType(input),
-                        PdfToSafeAiTools.SetElementExcluded => HandleSetElementExcluded(input),
-                        PdfToSafeAiTools.ClearAllOverrides  => HandleClearAllOverrides(input),
-                        PdfToSafeAiTools.SetExportSettings  => HandleSetExportSettings(input),
+                        PdfToSafeAiTools.SetColorType            => HandleSetColorType(input),
+                        PdfToSafeAiTools.SetColorProperties      => HandleSetColorProperties(input),
+                        PdfToSafeAiTools.SetElementType          => HandleSetElementType(input),
+                        PdfToSafeAiTools.SetElementExcluded      => HandleSetElementExcluded(input),
+                        PdfToSafeAiTools.SetSlabThicknessAtIndex => HandleSetSlabThicknessAtIndex(input),
+                        PdfToSafeAiTools.SetColumnSectionAtIndex => HandleSetColumnSectionAtIndex(input),
+                        PdfToSafeAiTools.SetLineSectionAtIndex   => HandleSetLineSectionAtIndex(input),
+                        PdfToSafeAiTools.ClearAllOverrides       => HandleClearAllOverrides(input),
+                        PdfToSafeAiTools.SetExportSettings       => HandleSetExportSettings(input),
                         _ => $"Tool '{toolName}' is recognised but not yet wired in this build."
                     };
                     tcs.SetResult(result);
@@ -338,6 +341,65 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return $"{kind}[{index}] is now {(excluded.Value ? "excluded" : "included")}.";
         }
 
+        // Vision-pass per-element section/thickness writers. Values land in the
+        // GeometryExclusionState dictionaries and outrank text-annotation matches
+        // when the AnnotationOverrideMerger runs at export time.
+        private string HandleSetSlabThicknessAtIndex(JsonElement input)
+        {
+            var index = TryGetInt(input, "index");
+            var thicknessMm = TryGetDouble(input, "thicknessMm");
+            if (index is null || index < 0) return "Missing or invalid index.";
+            if (thicknessMm is null) return "Missing thicknessMm.";
+            if (thicknessMm < 50 || thicknessMm > 2000)
+                return $"thicknessMm {thicknessMm} out of range; must be 50–2000.";
+
+            var count = _extractedGeometry?.Slabs.Count ?? 0;
+            if (index >= count)
+                return $"Index {index} out of range for slab (only {count} item(s) available).";
+
+            _excl.SlabThicknessOverridesMm[index.Value] = thicknessMm.Value;
+            DrawOverlay();
+            return $"Set slab[{index}] thickness override to {thicknessMm:0} mm.";
+        }
+
+        private string HandleSetColumnSectionAtIndex(JsonElement input)
+        {
+            var index = TryGetInt(input, "index");
+            var widthMm = TryGetDouble(input, "widthMm");
+            var depthMm = TryGetDouble(input, "depthMm");
+            if (index is null || index < 0) return "Missing or invalid index.";
+            if (widthMm is null || depthMm is null) return "Missing widthMm or depthMm.";
+            if (widthMm < 50 || widthMm > 5000 || depthMm < 50 || depthMm > 5000)
+                return $"Section {widthMm}x{depthMm} mm out of range; each dim must be 50–5000.";
+
+            var count = _extractedGeometry?.Columns.Count ?? 0;
+            if (index >= count)
+                return $"Index {index} out of range for column (only {count} item(s) available).";
+
+            _excl.ColumnSectionOverridesMm[index.Value] = (widthMm.Value, depthMm.Value);
+            DrawOverlay();
+            return $"Set column[{index}] section override to {widthMm:0}x{depthMm:0} mm.";
+        }
+
+        private string HandleSetLineSectionAtIndex(JsonElement input)
+        {
+            var index = TryGetInt(input, "index");
+            var widthMm = TryGetDouble(input, "widthMm");
+            var depthMm = TryGetDouble(input, "depthMm");
+            if (index is null || index < 0) return "Missing or invalid index.";
+            if (widthMm is null || depthMm is null) return "Missing widthMm or depthMm.";
+            if (widthMm < 50 || widthMm > 5000 || depthMm < 50 || depthMm > 5000)
+                return $"Section {widthMm}x{depthMm} mm out of range; each dim must be 50–5000.";
+
+            var count = _extractedGeometry?.Lines.Count ?? 0;
+            if (index >= count)
+                return $"Index {index} out of range for line (only {count} item(s) available).";
+
+            _excl.LineSectionOverridesMm[index.Value] = (widthMm.Value, depthMm.Value);
+            DrawOverlay();
+            return $"Set line[{index}] section override to {widthMm:0}x{depthMm:0} mm.";
+        }
+
         private string HandleClearAllOverrides(JsonElement _)
         {
             _excl.Clear();
@@ -440,28 +502,186 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         // ── Vision auto-classification on PDF load ─────────────────────────
 
-        private const string VisionSeedInstruction =
-            "You are looking at a rendered Bluebeam-marked-up structural PDF. " +
-            "The user just opened it and the extractor has classified every shape " +
-            "into Slabs / Lines / Columns and assigned each colour a default type " +
-            "via set_color_type (see CURRENT STATE). Review the rendering and the " +
-            "extraction summary, then call set_color_type / set_element_type / " +
-            "set_color_properties tools to correct any obvious misclassifications. " +
-            "Do NOT call any export tool — leave that to the user. " +
-            "End with one short sentence summarising what you adjusted (or 'No changes " +
-            "— extraction looks correct.' if nothing needed changing).";
+        private const string VisionSeedInstruction = @"
+You are looking at a rendered, marked-up structural PDF — typically a slab/floor
+plan with optional schedule tables and per-element callouts. The geometry
+extractor has already classified every shape into Slabs / Lines / Columns and
+listed each one with index, centroid, colour, and any text-annotation match in
+CURRENT STATE.
+
+KOR DRAWING CONVENTIONS (read these before doing anything)
+- Burgundy / dark-red shapes are STRUCTURAL ENGINEER MARKUPS, almost always
+  added by KOR's senior partners (especially JM) on top of the architect's plan.
+  Burgundy is the highest-priority colour to get right. It is a MIX of walls
+  AND columns — never assume a single type for the whole burgundy bucket.
+
+  Use ABSOLUTE SIZE to disambiguate (NOT aspect ratio — KOR uses rectangular
+  concrete columns at 4:1 aspect routinely, e.g. 354x915 mm / 14""x36"" is
+  a textbook column, not a wall):
+
+    * BOTH dims <= 1500 mm  → Column (regardless of aspect ratio).
+      Examples that ARE columns: 354x915, 601x1015, 601x1524, 915x354,
+      400x400, 600x600.
+    * EITHER dim >= 2500 mm → Wall.
+      Examples: 1006x6313, 2955x9332, 350x4500.
+    * In the 1500-2500 mm grey zone, defer to the geometry extractor's bucket:
+      already in Column bucket → leave as Column; already in Slab bucket and
+      shape is elongated → reclassify to Wall.
+
+  Critical rule: do NOT blanket-reclassify every shape in the Column bucket as
+  Wall. The extractor already split Slab/Line/Column by size for a reason —
+  trust it for the small shapes. Vision's job is to fix CLEAR misses (e.g. a
+  clearly long wall stuck in the Column bucket) and to identify CORE / SHAFT
+  walls, NOT to second-guess every column the extractor found.
+
+  Walls in KOR's slab plans are typically: stair / elevator cores (long
+  rectangular polygons forming closed shafts), or shear walls (long polygons
+  >= 3000 mm). Anything smaller and rectangular is almost certainly a column.
+
+- Hatched / patterned grey is concrete fill on the architectural plan; usually
+  not structural for KOR's purposes — set those colours to 'Ignore'.
+- Blue, green, and other bright colours on the architectural plan are usually
+  arch elements (furniture, dimensions, partition walls) — 'Ignore' unless the
+  context says otherwise.
+
+Your job has TWO parts. Do them in order.
+
+PART 1 — Type review (broad-brush, color-level)
+Quickly scan the rendering and CURRENT STATE for obvious type misclassifications:
+- A burgundy elongated polygon classified as 'Slab' is almost always a Wall.
+- A small square shape at a beam intersection is a Column, not a Slab.
+- Drop panels are LOCAL thickenings of the slab around column heads — they are
+  NOT 'Ignore'. They get extracted as separate slab polygons and are picked up
+  automatically by the exporter when their bbox overlaps a column. Leave them
+  in the Slab bucket so the drop-panel detector can match them.
+- Balconies and architectural inset shapes that the engineer did NOT mark in
+  burgundy should be 'Ignore'.
+Use set_color_type for blanket fixes (every shape of one colour), set_element_type
+for one-offs, set_color_properties for default thickness/grade per colour.
+
+PER-ELEMENT WALL EXPLICITNESS — when burgundy contains BOTH columns and wall-
+shaped polygons (typical at KOR with interior cores), be explicit: for each
+wall-shaped burgundy SLAB polygon (indices in CURRENT STATE), call
+set_element_type(kind='slab', index=N, type='Wall'). This makes the user's
+visual preview match the export immediately rather than relying on the
+implicit column-guardrail. Skip when burgundy is already set to 'Wall' at the
+colour level — explicit per-element overrides are only needed when the colour
+default is Column or Slab and you want individual polygons routed to walls.
+
+OCCUPANCY-AWARE LIVE LOAD — if the drawing clearly shows the occupancy
+(residential layouts with bedrooms/bathrooms, office open-plan, retail/lobby,
+assembly hall), set the slab colour's live load via set_color_properties:
+- Residential: liveKPa=1.92  (NBC residential suites)
+- Office:      liveKPa=2.40  (NBC office occupancy)
+- Retail / Assembly / Lobby: liveKPa=4.80  (NBC assembly)
+- Balcony only: liveKPa=4.80
+Default if unclear: leave the seeded value alone (FirmDefaults already loaded
+the firm's preferred occupancy default).
+
+PART 2 — Schedule / callout extraction (precise, per-element)
+Look for SCHEDULE TABLES (column schedule, beam schedule, slab schedule, footing
+schedule) AND per-element callouts (e.g., 'C1 600x600', 'S2 250 thk', 'B101
+300x600'). If neither is present, skip Part 2.
+
+If found, walk this loop:
+  A. Read each schedule row: mark number → section dimensions or thickness.
+  B. Find the mark callout on the plan (usually inside a circle/hexagon/rectangle
+     adjacent to the element it labels).
+  C. Cross-reference the callout's image location to CURRENT STATE's element
+     list. Match by KIND (round marks like 'C1' → Column bucket, slab marks
+     'S1' → Slab bucket, beam/wall marks 'B101' → Line bucket) AND by
+     proximity of the callout to the element's centroid in CURRENT STATE.
+  D. Emit one tool call per high-confidence match:
+       set_slab_thickness_at_index(index, thicknessMm, confidence, source)
+       set_column_section_at_index(index, widthMm, depthMm, confidence, source)
+       set_line_section_at_index(index, widthMm, depthMm, confidence, source)
+     Use 'source' to record provenance, e.g. 'schedule mark C1 row 3' or
+     'callout near grid B/3'.
+
+CONFIDENCE — only emit a per-element call when you are reasonably sure:
+- 0.95+: the mark is clearly visible AND CURRENT STATE has exactly one element
+  near that location with the right kind.
+- 0.7-0.9: the mapping is reasonable but the area has 2-3 candidate elements;
+  pick the closest centroid and tag confidence 0.75.
+- below 0.7: SKIP THE CALL. Better to miss than misattribute. Note in your
+  closing summary how many rows you skipped and why.
+
+UNITS — convert imperial to metric (1 in = 25.4 mm). Range guards: slab
+thickness 50-2000 mm; section dims 50-5000 mm. Out-of-range values almost
+always mean a misread — skip rather than emit.
+
+DO NOT call any export tool. Close with one short sentence:
+'Applied N per-element values from the <schedule type>; M low-confidence rows
+skipped. Type adjustments: <count or none>.'
+";
 
         private bool _visionAutoRunning;
 
         private async Task TryVisionAutoClassifyAsync()
         {
-            // Guardrails — run only once at a time and only when we have
-            // something to analyse and a configured AI service.
+            // Guardrails — each gate emits a status message so the user
+            // knows WHY vision skipped rather than seeing a silent no-op
+            // (the most-reported PdfToSafe UX paper-cut from the
+            // 2026-05-09 testing pass). Concurrent-run guard is the only
+            // legitimately-silent gate — the in-flight run is already
+            // showing its own status.
             if (_visionAutoRunning) return;
-            if (!_aiBarInitialized || _appAiService is null || !_appAiService.IsConfigured) return;
-            if (_extractedGeometry is null || !_extractedGeometry.IsVectorPdf) return;
-            if (_renderedBitmap is null) return;
-            if (_slabPropsRows.Count == 0) return;
+
+            if (!_aiBarInitialized)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: AI bar not yet initialised.");
+                SetStatus("Vision skipped: AI bar not yet initialised — try again in a moment.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (_appAiService is null)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: AI service unavailable.");
+                SetStatus("Vision skipped: AI service is unavailable.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (!_appAiService.IsConfigured)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: AI is not configured.");
+                SetStatus("Vision skipped: AI is not configured. Check Settings → AI to enable Claude vision.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (_extractedGeometry is null)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: no extracted geometry.");
+                SetStatus("Vision skipped: no geometry was extracted from the PDF — load a vector plan first.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (!_extractedGeometry.IsVectorPdf)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: PDF is raster/scanned, not vector.");
+                SetStatus("Vision skipped: this PDF is raster/scanned. The geometry-matching pass needs a vector PDF.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (_renderedBitmap is null)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: no rendered bitmap available.");
+                SetStatus("Vision skipped: no page image was rendered yet — re-load the page.",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
+
+            if (_slabPropsRows.Count == 0)
+            {
+                _logger.LogInformation("Vision auto-classify skipped: no slab/line/column rows on this page.");
+                SetStatus("Vision skipped: no structural geometry detected on this page (looks like a notes or schedule-only sheet — schedule extraction isn't wired up yet).",
+                    "#FFF3E0", "#E65100");
+                return;
+            }
 
             _visionAutoRunning = true;
             try
@@ -538,6 +758,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _logger.LogInformation(
                     "Vision auto-classify complete: {Calls} tool call(s).",
                     result.ToolCallsExecuted);
+
+                // Auto-export to F2K when the firm default is on. Path is
+                // derived from the source PDF — `{pdf}_SAFE.f2k` next to the
+                // PDF — so engineers never have to pick a file. If the flag
+                // is off (default), preserve existing review-then-export
+                // behaviour. Wrapped in try so a writer failure surfaces in
+                // the status banner but doesn't bubble into the classify
+                // exception handler.
+                if (_firmDefaults.AutoExportAfterClassify
+                    && !string.IsNullOrWhiteSpace(_loadedFilePath)
+                    && result.ToolCallsExecuted > 0)
+                {
+                    try
+                    {
+                        string srcDir = Path.GetDirectoryName(_loadedFilePath!) ?? "";
+                        string baseName = Path.GetFileNameWithoutExtension(_loadedFilePath!);
+                        string destF2k = Path.Combine(srcDir, baseName + "_SAFE.f2k");
+                        await DoExportF2kAsync(destF2k).ConfigureAwait(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Auto-export after vision classify failed.");
+                        await Dispatcher.InvokeAsync(() =>
+                            SetStatus($"Auto-export skipped: {ex.GetType().Name}: {ex.Message}",
+                                "#FFF3E0", "#E65100"));
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -609,6 +856,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return string.IsNullOrEmpty(error)
                 ? $"Exported to {fullPath}{suffix}."
                 : $"Export failed: {error}";
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                AppServices.GetOptional<AppAiContextBuilder>()?.Unregister(this);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to unregister PdfToSafe AI context provider on close.");
+            }
+            base.OnClosed(e);
         }
     }
 }

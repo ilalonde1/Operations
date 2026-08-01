@@ -32,6 +32,8 @@ namespace Kor.Operations.App
             !_isExecuting &&
             (_canExecute == null || _canExecute(parameter));
 
+        // async-void OK: ICommand.Execute contract is void; this class is the
+        // designated async bridge for command bindings.
         public async void Execute(object? parameter)
         {
             if (!CanExecute(parameter))

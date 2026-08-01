@@ -370,11 +370,19 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Billed" Binding="{Binding PercentBilled, StringFormat='\{0:P0\}'}" Width="50">
-                        <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                            <Setter Property="ToolTip" Value="% of fee billed to date (Revenue ÷ Fee)"/></Style>
+                    <DataGridTextColumn Header="Billed"
+                                        Binding="{Binding PercentBilledWithUnposted, StringFormat='\{0:P0\}'}"
+                                        Width="50">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                <Setter Property="ToolTip" Value="% of fee billed to date. Includes invoices issued but not yet posted to Deltek (italic + amber when this is the case)."/>
+                            </Style>
                         </DataGridTextColumn.HeaderStyle>
-                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
+                                <Setter Property="TextAlignment" Value="Right"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Eng%" Binding="{Binding EngPct, StringFormat='\{0:P0\}'}" Width="46">
                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
@@ -459,9 +467,13 @@
                                         ToolTipService.ToolTip="Sum of all project fees managed by this PM">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55"
+                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilledWithUnposted, StringFormat='\{0:P0\}'}" Width="55"
                                         ToolTipService.ToolTip="Weighted % of fee billed across this PM's projects">
-                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
+                                <Setter Property="TextAlignment" Value="Right"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65"
                                         ToolTipService.ToolTip="Total engineering hours across all projects">
@@ -525,9 +537,13 @@
                                         ToolTipService.ToolTip="Sum of all project fees for this drafting manager">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilled, StringFormat='\{0:P0\}'}" Width="55"
+                    <DataGridTextColumn Header="Billed" Binding="{Binding WeightedPctBilledWithUnposted, StringFormat='\{0:P0\}'}" Width="55"
                                         ToolTipService.ToolTip="Weighted % of fee billed">
-                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
+                                <Setter Property="TextAlignment" Value="Right"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Eng" Binding="{Binding TotalEngHrs, StringFormat='\{0:N0\}'}" Width="65"
                                         ToolTipService.ToolTip="Total engineering hours">
@@ -1040,8 +1056,18 @@
                                 </Grid.RowDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Total Fee" Style="{StaticResource MetricLabel}" ToolTip="Total project fee (fixed contract + hourly extras revenue)."/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TotalFee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="% Billed" Style="{StaticResource MetricLabel}" ToolTip="How much of the fee has been invoiced. Revenue ÷ Fee."/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PercentBilled, StringFormat='\{0:P0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="% Billed" Style="{StaticResource MetricLabel}" ToolTip="How much of the fee has been invoiced. Includes invoices issued but not yet posted to Deltek (italic + amber when unposted billings are folded in)."/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PercentBilledWithUnposted, StringFormat='\{0:P0\}', Mode=OneWay}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource UnpostedBillingCellStyle}">
+                                            <Setter Property="FontSize" Value="13"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                                            <Setter Property="Margin" Value="0,2"/>
+                                            <Setter Property="TextAlignment" Value="Right"/>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Subconsultant Cost" Style="{StaticResource MetricLabel}" ToolTip="Money paid to outside firms (geotechnical, mechanical, envelope, etc.) on this project. From Deltek accounts payable."/>
                                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SubCost, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
                                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Subconsultant %" Style="{StaticResource MetricLabel}" ToolTip="What % of the project fee went to outside firms. High % means less revenue stays in-house."/>
@@ -1277,6 +1303,19 @@
                                 </DataGrid.Columns>
                             </DataGrid>
 
+                            <!-- Unposted-billings warning (Deltek period-close lag) -->
+                            <Border Background="#FFFEF3C7" BorderBrush="#FFF59E0B" BorderThickness="1"
+                                    CornerRadius="4" Padding="8,6" Margin="0,8,0,0"
+                                    Visibility="{Binding HasUnpostedBilling, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Foreground="#FF92400E" FontSize="11" TextWrapping="Wrap">
+                                    <Run Text=" Includes "/>
+                                    <Run Text="{Binding UnpostedFeeBilled, StringFormat='\{0:C0\}', Mode=OneWay}" FontWeight="SemiBold"/>
+                                    <Run Text=" in unposted billings  invoices have been issued but the corresponding period has not yet closed in Deltek. Posted figure used for Margin / Cost calculations remains "/>
+                                    <Run Text="{Binding FeeBilled, StringFormat='\{0:C0\}', Mode=OneWay}" FontWeight="SemiBold"/>
+                                    <Run Text="."/>
+                                </TextBlock>
+                            </Border>
+
                             <!-- ── REVENUE TIMELINE ── -->
                             <Border Style="{StaticResource SectionBorder}" BorderBrush="#0891B2" Margin="0,8,0,6">
                                 <TextBlock Text="REVENUE TIMELINE" Style="{StaticResource SectionHeader}"/>
@@ -1302,8 +1341,8 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Period" Binding="{Binding Period}" Width="70"
                                                         ToolTipService.ToolTip="Accounting period (YYYYMM format)"/>
-                                    <DataGridTextColumn Header="Revenue" Binding="{Binding Revenue, StringFormat='$\{0:#,##0\}'}" Width="*"
-                                                        ToolTipService.ToolTip="Revenue earned/recognized in this period">
+                                    <DataGridTextColumn Header="Fee Billed" Binding="{Binding Revenue, StringFormat='$\{0:#,##0\}'}" Width="*"
+                                                        ToolTipService.ToolTip="Fee billed in this period">
                                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
                                     <DataGridTextColumn Header="Billed" Binding="{Binding Billed, StringFormat='$\{0:#,##0\}'}" Width="*"

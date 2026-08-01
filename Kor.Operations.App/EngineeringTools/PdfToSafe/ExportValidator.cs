@@ -186,6 +186,71 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
+            // ── Rule 8: Suspicious wall thickness ───────────────────────
+            // Real concrete walls run 100–500 mm thick; even chunky shear
+            // walls rarely exceed 1 m. A "wall" section > 800 mm wide is
+            // almost always a shaft outline drawn as a single polygon that
+            // the shaft-decomposition heuristic missed (e.g. aspect just
+            // under the threshold) — emits as an absurdly thick frame
+            // section in SAFE. Flag for engineer review.
+            const double wallThicknessWarnMm = 800.0;
+            for (int i = 0; i < reclassified.Lines.Count; i++)
+            {
+                if (i >= reclassified.LineSectionHints.Count) break;
+                var hint = reclassified.LineSectionHints[i];
+                if (!hint.HasValue) continue;
+                if (hint.Value.WidthMm > wallThicknessWarnMm)
+                {
+                    issues.Add(new ValidationIssue(
+                        ValidationSeverity.Warning,
+                        "wall-suspicious-thickness",
+                        $"Wall [{i}] section {hint.Value.WidthMm:F0} mm thick — unusual for a real wall; may be a shaft outline mis-detected as a single wall.",
+                        "line", i));
+                }
+            }
+
+            // ── Rule 10: Three-vertex slab is a degenerate triangle ─────
+            // Slabs chain-assembled from open polylines (balcony stubs,
+            // slab-edge fragments) often emerge with only 3 vertices. They
+            // might be legitimate balcony bump-outs OR pen-thickness /
+            // extraction artifacts that scraped past the 2 m² noise filter.
+            // Surface so the engineer can verify or exclude in the UI.
+            for (int i = 0; i < reclassified.Slabs.Count; i++)
+            {
+                var pts = reclassified.Slabs[i];
+                if (pts is null || pts.Count != 3) continue;
+                var centroid = PolygonProcessor.Centroid(pts);
+                double area = PolygonProcessor.PolygonAreaMm2(pts);
+                issues.Add(new ValidationIssue(
+                    ValidationSeverity.Warning,
+                    "slab-triangle",
+                    $"Slab [{i}] at ({centroid.X:F0},{centroid.Y:F0}) has only 3 vertices ({area / 1_000_000.0:F1} m²) — likely a balcony stub or extraction fragment. Verify or exclude before export.",
+                    "slab", i));
+            }
+
+            // ── Rule 9: Suspicious column dimension ─────────────────────
+            // Reclassify's column-guardrail already routes anything > 2 m
+            // to wall reduction, but a column right at the boundary (e.g.
+            // 1.5–2 m) is still likely a wall stub. Surface as a warning so
+            // the engineer can override the type if it really should be a
+            // wall.
+            const double columnDimWarnMm = 1500.0;
+            for (int i = 0; i < reclassified.Columns.Count; i++)
+            {
+                if (i >= reclassified.ColumnSizes.Count) break;
+                var (w, d) = reclassified.ColumnSizes[i];
+                double maxDim = Math.Max(w, d);
+                if (maxDim > columnDimWarnMm)
+                {
+                    var pt = reclassified.Columns[i];
+                    issues.Add(new ValidationIssue(
+                        ValidationSeverity.Warning,
+                        "column-suspicious-size",
+                        $"Column [{i}] at ({pt.X:F0}, {pt.Y:F0}) is {w:F0}×{d:F0} mm — unusually large; may be a wall stub.",
+                        "column", i));
+                }
+            }
+
             return new ValidationResult(issues);
         }
     }

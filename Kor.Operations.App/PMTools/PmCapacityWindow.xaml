@@ -1,0 +1,756 @@
+<Window x:Class="Kor.Operations.PMTools.PmCapacityWindow"
+        x:ClassModifier="internal"
+        x:Name="RootWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Kor.Operations.Controls"
+        xmlns:fin="clr-namespace:Kor.Operations.Financials"
+        xmlns:bus="clr-namespace:Kor.Operations.Financials;assembly=Kor.Operations.Business"
+        xmlns:converters="clr-namespace:Kor.Operations.Converters"
+        Title="KOR NewerForma - PM Capacity &amp; Risk"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource App.Background}"
+        Width="1650"
+        MinWidth="1400"
+        Height="900"
+        SizeToContent="Manual"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing"
+        ToolTipService.InitialShowDelay="200">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <converters:IsPositiveConverter x:Key="IsPositiveConverter"/>
+        <fin:PercentToWidthConverter x:Key="PctToWidth"/>
+        <fin:PercentToStarGridLengthConverter x:Key="PctToStar"/>
+        <fin:StringToBrushConverter x:Key="StringToBrush"/>
+        <Style x:Key="InfoIconBorder" TargetType="Border">
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Opacity" Value="0.9"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="200"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+        </Style>
+        <Style x:Key="InfoIconText" TargetType="TextBlock">
+            <Setter Property="Text" Value="i"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="SectionTabButton" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#FF334155"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="16,6"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FFF8FAFC"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#FFF1F5F9"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Button.Accent" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+            <Setter Property="Background" Value="#EFF6FF"/>
+            <Setter Property="BorderBrush" Value="#93C5FD"/>
+            <Setter Property="Foreground" Value="#1D4ED8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#DBEAFE"/>
+                    <Setter Property="BorderBrush" Value="#60A5FA"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#BFDBFE"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Button.Danger" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+            <Setter Property="Background" Value="#FEE2E2"/>
+            <Setter Property="BorderBrush" Value="#FCA5A5"/>
+            <Setter Property="Foreground" Value="#DC2626"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FECACA"/>
+                    <Setter Property="BorderBrush" Value="#F87171"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#FCA5A5"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SortHeaderButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#374151"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PhaseFilterButton" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+            <Setter Property="MinWidth" Value="52"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Panel.Border}"/>
+        </Style>
+        <Style x:Key="RiskCell" TargetType="TextBlock">
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0" Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Margin="2,0,2,8">
+            <controls:KorHeader x:Name="HeaderBar"
+                                HeaderText="PM Capacity &amp; Risk"
+                                SubtitleText="Portfolio delivery health and per-discipline (engineering / drafting) capacity risk."
+                                AvatarDiameter="96"
+                                AvatarBorderThickness="2"/>
+        </StackPanel>
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Last refreshed:" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding LastRefreshedDisplay}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding StalenessWarning}"
+                               Margin="10,0,0,0"
+                               Foreground="#F59E0B"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding IsDataStale, Converter={StaticResource BoolToVisibility}}"/>
+                    <TextBlock Text="{Binding StatusHint}" Margin="16,0,0,0" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="KPI Dictionary"
+                        MinWidth="130"
+                        Height="32"
+                        Margin="8,0,0,0"
+                        Style="{StaticResource Button.Secondary}"
+                        Click="KpiDictionaryBtn_Click"/>
+                <Button Grid.Column="2"
+                        Content="Refresh"
+                        Width="96"
+                        Height="32"
+                        Margin="8,0,0,0"
+                        Click="RefreshBtn_Click"
+                        IsEnabled="{Binding CanRefresh}"/>
+                <Button Grid.Column="3"
+                        Content="Close"
+                        Width="84"
+                        Height="32"
+                        Margin="8,0,0,0"
+                        Style="{StaticResource Button.Secondary}"
+                        Click="CloseBtn_Click"/>
+            </Grid>
+        </Border>
+        <Border Grid.Row="2"
+                Background="#FFFDE8E8"
+                BorderBrush="#FFCC5C5C"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="10"
+                Margin="0,0,0,8"
+                Visibility="{Binding ErrorVisibility}">
+            <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap"/>
+        </Border>
+        <Border Grid.Row="3"
+                Background="#FFFEF3C7"
+                BorderBrush="#FFF59E0B"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="10"
+                Margin="0,0,0,8"
+                Visibility="{Binding MyProjectsWarningVisibility}">
+            <TextBlock Text="{Binding MyProjectsWarning}" TextWrapping="Wrap"/>
+        </Border>
+        <Grid Grid.Row="4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+            <Border Grid.Row="0" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,24,0">
+                        <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_ActiveProjects}" Cursor="Hand">
+                            <TextBlock Text="Active Projects" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                <TextBlock Style="{StaticResource InfoIconText}"/>
+                            </Border>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding TotalProjects}" FontWeight="SemiBold" FontSize="18"/>
+                            <Border CornerRadius="8" Padding="8,2,8,2" Margin="10,4,0,0"
+                                    VerticalAlignment="Center" Background="#DBEAFE"
+                                    ToolTip="Budgets are based on peer median — how long similar completed projects actually took. To switch to target-rate budgets, use the Financials window.">
+                                <TextBlock Text="Peer Median" FontSize="9" FontWeight="SemiBold" Foreground="#1D4ED8"/>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="0,0,24,0">
+                        <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_EngHoursRemaining}" Cursor="Hand">
+                            <TextBlock Text="Eng Hours Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                <TextBlock Style="{StaticResource InfoIconText}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding TotalEngHoursRemaining, StringFormat={}{0:N0}}" FontWeight="SemiBold" FontSize="18"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Margin="0,0,24,0">
+                        <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_DraftHoursRemaining}" Cursor="Hand">
+                            <TextBlock Text="Draft Hours Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                <TextBlock Style="{StaticResource InfoIconText}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding TotalDraftHoursRemaining, StringFormat={}{0:N0}}" FontWeight="SemiBold" FontSize="18"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_OverEngBudget}" Cursor="Hand">
+                            <TextBlock Text="Over Eng Budget" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                <TextBlock Style="{StaticResource InfoIconText}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock FontWeight="SemiBold" FontSize="18">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{Binding OverEngBudgetCount}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding OverEngBudgetCount, Converter={StaticResource IsPositiveConverter}}" Value="True">
+                                            <Setter Property="Foreground" Value="#B91C1C"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="5" Margin="24,0,0,0">
+                        <StackPanel Orientation="Horizontal" ToolTip="Number of active projects where drafting hours spent exceed the estimated drafting budget." Cursor="Hand">
+                            <TextBlock Text="Over Draft Budget" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                <TextBlock Style="{StaticResource InfoIconText}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock FontWeight="SemiBold" FontSize="18">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{Binding OverDraftBudgetCount}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding OverDraftBudgetCount, Converter={StaticResource IsPositiveConverter}}" Value="True">
+                                            <Setter Property="Foreground" Value="#B91C1C"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="6" Margin="24,0,0,0">
+                        <StackPanel Orientation="Horizontal" ToolTip="{fin:FinancialMetricTooltip Key=PmTools_FeeRemaining}" Cursor="Hand">
+                            <TextBlock Text="Fee Remaining" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <Border Style="{StaticResource InfoIconBorder}" Margin="6,0,0,0">
+                                <TextBlock Style="{StaticResource InfoIconText}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding TotalFeeRemaining, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="18"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="7" VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <TextBlock Text="Search" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                        <TextBox Width="220" MinHeight="32" VerticalContentAlignment="Center" Text="{Binding ProjectSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Portfolio Delivery Health (mirrors Financials → Overview bar so the same calculator
+                 surfaces the same numbers in both windows). -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Portfolio Delivery Health" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Border Style="{StaticResource InfoIconBorder}"
+                                        Margin="8,0,0,0"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=PortfolioDeliveryHealth}">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="Shows how many projects are financially stable versus trending toward risk."
+                                       Foreground="{StaticResource Text.Secondary}"
+                                       FontSize="11"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="18,0,0,0" VerticalAlignment="Top">
+                            <StackPanel Orientation="Horizontal" Cursor="Hand"
+                                        ToolTip="{fin:FinancialMetricTooltip Key=PortfolioRiskExposure}">
+                                <TextBlock Text="Portfolio Risk Exposure" Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Center"/>
+                                <Border Style="{StaticResource InfoIconBorder}" Margin="8,0,0,0">
+                                    <TextBlock Style="{StaticResource InfoIconText}"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding PortfolioRiskExposureFee, StringFormat={}{0:C0}}" FontWeight="SemiBold" FontSize="16"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="1" Height="26">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="{Binding PortfolioCriticalPct, Converter={StaticResource PctToStar}}"/>
+                            <ColumnDefinition Width="{Binding PortfolioAtRiskPct, Converter={StaticResource PctToStar}}"/>
+                            <ColumnDefinition Width="{Binding PortfolioWatchPct, Converter={StaticResource PctToStar}}"/>
+                            <ColumnDefinition Width="{Binding PortfolioHighConfidencePct, Converter={StaticResource PctToStar}}"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="{StaticResource Risk.Critical.Background}" CornerRadius="6,0,0,6"
+                                ToolTip="{Binding PortfolioCriticalCount, StringFormat={}{0} projects - Critical}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Ellipse Width="10" Height="10" Fill="{StaticResource Risk.Critical.Foreground}" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding PortfolioCriticalCount}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Background="{StaticResource Risk.AtRisk.Background}"
+                                ToolTip="{Binding PortfolioAtRiskCount, StringFormat={}{0} projects - At Risk}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Ellipse Width="10" Height="10" Fill="{StaticResource Risk.AtRisk.Foreground}" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding PortfolioAtRiskCount}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Background="{StaticResource Risk.Watch.Background}"
+                                ToolTip="{Binding PortfolioWatchCount, StringFormat={}{0} projects - Watch}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Ellipse Width="10" Height="10" Fill="{StaticResource Risk.Watch.Foreground}" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding PortfolioWatchCount}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="3" Background="{StaticResource Risk.HighConfidence.Background}" CornerRadius="0,6,6,0"
+                                ToolTip="{Binding PortfolioHighConfidenceCount, StringFormat={}{0} projects - High Confidence}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Ellipse Width="10" Height="10" Fill="{StaticResource Risk.HighConfidence.Foreground}" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding PortfolioHighConfidenceCount}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="{Binding CapacityRiskTitle}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding CapacityRiskSubtitle}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <Border Grid.Column="1" Background="#FFFFFFFF" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="8" VerticalAlignment="Top">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="1"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="Engineering" MinWidth="130" Click="ShowEngineeringCapacityRisk_Click">
+                                    <Button.Style><Style TargetType="Button" BasedOn="{StaticResource SectionTabButton}"><Setter Property="FontWeight" Value="Normal"/><Style.Triggers><DataTrigger Binding="{Binding IsEngineeringCapacitySelected}" Value="True"><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                                </Button>
+                                <Border Grid.Column="1" Width="1" Background="{StaticResource Panel.Border}"/>
+                                <Button Grid.Column="2" Content="Drafting" MinWidth="110" Click="ShowDraftingCapacityRisk_Click">
+                                    <Button.Style><Style TargetType="Button" BasedOn="{StaticResource SectionTabButton}"><Setter Property="FontWeight" Value="Normal"/><Style.Triggers><DataTrigger Binding="{Binding IsDraftingCapacitySelected}" Value="True"><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Background" Value="#FFFFE0B2"/><Setter Property="Foreground" Value="#FF8A4B00"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                    <Grid Grid.Row="1" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                            <TextBlock Text="PM" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <ComboBox Width="210" MinHeight="32" ItemsSource="{Binding UtilizationPmOptions}" SelectedItem="{Binding SelectedUtilizationPm}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="0,0,14,0">
+                            <TextBlock Text="Risk" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <ComboBox Width="160" MinHeight="32" ItemsSource="{Binding UtilizationRiskOptions}" SelectedItem="{Binding SelectedUtilizationRisk}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Margin="0,0,14,0">
+                            <TextBlock Text="Search" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
+                            <TextBox Width="280" MinHeight="32" VerticalContentAlignment="Center" Text="{Binding UtilizationSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4" VerticalAlignment="Bottom">
+                            <Button Content="Export to Excel" Height="32" MinWidth="140" Click="ExportUtilizationBtn_Click" IsEnabled="{Binding CanExportUtilization}"/>
+                        </StackPanel>
+                    </Grid>
+                    <Grid Grid.Row="2">
+                        <DataGrid x:Name="UtilizationGrid"
+                                  MaxHeight="400"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  CanUserSortColumns="True"
+                                  HeadersVisibility="Column"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  EnableRowVirtualization="True"
+                                  EnableColumnVirtualization="True"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True"
+                                  RowHeight="28"
+                                  ItemsSource="{Binding UtilizationView}"
+                                  MouseDoubleClick="UtilizationGrid_MouseDoubleClick">
+                            <DataGrid.Style>
+                                <Style TargetType="DataGrid">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEngineeringCapacitySelected}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Style>
+                            <DataGrid.Resources>
+                                <SolidColorBrush x:Key="Util.Row.Red" Color="#FEE2E2"/>
+                                <SolidColorBrush x:Key="Util.Row.Amber" Color="#FEF3C7"/>
+                                <SolidColorBrush x:Key="Util.Row.Green" Color="#DCFCE7"/>
+                            </DataGrid.Resources>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="Over budget">
+                                            <Setter Property="Background" Value="{StaticResource Util.Row.Red}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="At risk">
+                                            <Setter Property="Background" Value="{StaticResource Util.Row.Amber}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="Healthy">
+                                            <Setter Property="Background" Value="{StaticResource Util.Row.Green}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"/>
+                                <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
+                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"/>
+                                <DataGridTextColumn Header="Eng Budget" Binding="{Binding EngBudget, StringFormat={}{0:N1}}" Width="110">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngBudget}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Eng Hours" Binding="{Binding EngHours, StringFormat={}{0:N1}}" Width="110">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngHrs}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Remaining Eng Hours" Binding="{Binding RemainingEngHours, StringFormat={}{0:N1}}" Width="120">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngRemaining}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Engineering Budget Used (%)" Binding="{Binding PercentEngUsed, StringFormat={}{0:P1}}" Width="100">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_EngPercent}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTemplateColumn Header="Delivery Risk" Width="150" SortMemberPath="ConfidenceLevel">
+                                    <DataGridTemplateColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DeliveryRisk}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTemplateColumn.HeaderStyle>
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding DeliveryConfidenceTooltip}">
+                                                <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Critical}">
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.AtRisk}">
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Watch}">
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.Watch.Foreground}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding ConfidenceDisplay}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Critical}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.AtRisk}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.AtRisk.Foreground}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Watch}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.Watch.Foreground}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <DataGrid x:Name="DraftUtilizationGrid"
+                                  MaxHeight="400"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  CanUserSortColumns="True"
+                                  HeadersVisibility="Column"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  EnableRowVirtualization="True"
+                                  EnableColumnVirtualization="True"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True"
+                                  RowHeight="28"
+                                  ItemsSource="{Binding DraftUtilizationView}"
+                                  MouseDoubleClick="DraftUtilizationGrid_MouseDoubleClick">
+                            <DataGrid.Style>
+                                <Style TargetType="DataGrid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDraftingCapacitySelected}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Style>
+                            <DataGrid.Resources>
+                                <SolidColorBrush x:Key="DraftUtil.Row.Red" Color="#FEE2E2"/>
+                                <SolidColorBrush x:Key="DraftUtil.Row.Amber" Color="#FEF3C7"/>
+                                <SolidColorBrush x:Key="DraftUtil.Row.Green" Color="#DCFCE7"/>
+                            </DataGrid.Resources>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="Over budget">
+                                            <Setter Property="Background" Value="{StaticResource DraftUtil.Row.Red}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="At risk">
+                                            <Setter Property="Background" Value="{StaticResource DraftUtil.Row.Amber}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskStatus}" Value="Healthy">
+                                            <Setter Property="Background" Value="{StaticResource DraftUtil.Row.Green}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="260"/>
+                                <DataGridTextColumn Header="PM" Binding="{Binding Pm}" Width="160"/>
+                                <DataGridTextColumn Header="Phase" Binding="{Binding Phase}" Width="110"/>
+                                <DataGridTextColumn Header="Draft Budget" Binding="{Binding DraftBudget, StringFormat={}{0:N1}}" Width="110">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftBudget}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Draft Hours" Binding="{Binding DraftHours, StringFormat={}{0:N1}}" Width="110">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftHrs}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Remaining Draft Hours" Binding="{Binding RemainingDraftHours, StringFormat={}{0:N1}}" Width="120">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftRemaining}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Drafting Budget Used (%)" Binding="{Binding PercentDraftUsed, StringFormat={}{0:P1}}" Width="100">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DraftPercent}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
+                                <DataGridTemplateColumn Header="Delivery Risk" Width="150" SortMemberPath="ConfidenceLevel">
+                                    <DataGridTemplateColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                            <Setter Property="ToolTip" Value="{fin:FinancialMetricTooltip Key=PmTools_DeliveryRisk}"/>
+                                            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+                                        </Style>
+                                    </DataGridTemplateColumn.HeaderStyle>
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding DeliveryConfidenceTooltip}">
+                                                <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Critical}">
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.AtRisk}">
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.AtRisk.Foreground}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Watch}">
+                                                                    <Setter Property="Fill" Value="{StaticResource Risk.Watch.Foreground}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding ConfidenceDisplay}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource Risk.HighConfidence.Foreground}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Critical}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.Critical.Foreground}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.AtRisk}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.AtRisk.Foreground}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ConfidenceLevel}" Value="{x:Static bus:DeliveryConfidenceLevel.Watch}">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Risk.Watch.Foreground}"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </Border>
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+    <controls:AiQueryPanel x:Name="AiPanel" Grid.Row="1"/>
+    </Grid>
+</Window>

@@ -44,6 +44,7 @@ Thumbs.db
 
 # Local config
 appsettings.Development.json
+appsettings.smoke.json
 
 # Publish output
 publish/
@@ -67,3 +68,42 @@ _obj_calendarcheck/
 
 # Engineering tools Claude config
 Kor.Operations.App/EngineeringTools/.claude/
+
+# Local-only env-var setup scripts (contain client secret + SQL password)
+set-filesync-env*.ps1
+
+# Codex-era scratch build outputs (untracked 2026-06-10, m-cleanup)
+._codex_obj/
+.codex_builds/
+obj2/
+
+# === Working-tree hygiene (2026-06-30) ===
+# Per-machine agent settings
+.claude/settings.local.json
+# Office temp lock files
+~$*
+# Scratch ingest / drain / pipeline output dirs
+_drain36/
+_propdrain/
+_vchingest/
+/output/
+# External reference codebooks (not KOR work product) + extraction scratch
+docs/A23.3-14*.pdf
+docs/CSA A23.3*.pdf
+docs/a233-14-equation-extract/
+docs/a233-14-equation-extract.zip
+docs/csa-a233-equation-extract/
+# Scratch app screenshots / timing captures (underscore-prefixed)
+docs/_*.png
+docs/_*.html
+# Regenerated machine-produced tool outputs
+tools/BdCanonicalDedup/output/dedupe-plan.csv
+tools/BdCanonicalDedup/output/allowlist-validation-report.csv
+tools/BdCanonicalDedup/output/rejected-pairs.csv
+tools/BdCanonicalDedup/output/ca-warm/
+tools/BdIntelExtract/output/extract-report.csv
+tools/BdTrackingImport/outputs/crosslink-uncertain.csv
+tools/BdTrackingImport/outputs/reconciliation.csv
+tools/BdDeltekLink/ca-deltek-2026-06-18/
+# Disposable doc backups
+docs/*-backup.docx

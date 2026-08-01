@@ -23,7 +23,7 @@ public partial class GroupEditWindow : Window
         var name = GroupNameBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            MessageBox.Show(this, "Group name is required.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "Group name is required.", "Standard Details — Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

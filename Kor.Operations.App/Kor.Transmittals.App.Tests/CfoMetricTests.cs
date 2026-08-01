@@ -13,7 +13,7 @@ public sealed class CfoMetricTests
         var metric = new DeliveryConfidenceMetric();
 
         Assert.Equal(0m, metric.ComputeValue(ProjectData.Create(deliveryConfidenceLevel: DeliveryConfidenceLevel.HighConfidence)));
-        Assert.Equal(1m, metric.ComputeValue(ProjectData.Create(deliveryConfidenceLevel: DeliveryConfidenceLevel.Stable)));
+        Assert.Equal(1m, metric.ComputeValue(ProjectData.Create(deliveryConfidenceLevel: DeliveryConfidenceLevel.Watch)));
         Assert.Equal(2m, metric.ComputeValue(ProjectData.Create(deliveryConfidenceLevel: DeliveryConfidenceLevel.AtRisk)));
         Assert.Equal(3m, metric.ComputeValue(ProjectData.Create(deliveryConfidenceLevel: DeliveryConfidenceLevel.Critical)));
     }

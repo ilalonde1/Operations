@@ -6,10 +6,17 @@ namespace Kor.Operations.Financials;
 
 internal static class FinancialsHeadlineCalculator
 {
+    // No-arg overload preserved for callers/tests that don't carry an FX rate.
     internal static FinancialsHeadlineKpis Compute(List<FinancialsProjectRow> rows)
+        => Compute(rows, usdToCadRate: 1.0);
+
+    // FX-aware: USA-org rows are converted to CAD-equivalent before summing into firmwide KPIs.
+    // GFA, hours, and budgets are currency-agnostic and roll up unchanged.
+    internal static FinancialsHeadlineKpis Compute(List<FinancialsProjectRow> rows, double usdToCadRate)
     {
         var totalFees = 0.0;
         var totalFeeBilled = 0.0;
+        var totalUnpostedFeeBilled = 0.0;
         var totalGfa = 0.0;
         var hoursSpent = 0.0;
         var hoursBudgeted = 0.0;
@@ -18,19 +25,26 @@ internal static class FinancialsHeadlineCalculator
 
         foreach (var r in rows)
         {
-            totalFees += r.TotalFee;
-            totalFeeBilled += r.FeeBilled;
+            var fx = OrgFx.IsUsaOrg(r.Org) ? usdToCadRate : 1.0;
+            totalFees += r.TotalFee * fx;
+            totalFeeBilled += r.FeeBilled * fx;
+            totalUnpostedFeeBilled += r.UnpostedFeeBilled * fx;
             totalGfa += r.Gfa;
             hoursSpent += r.EngHrs + r.DraftHrs;
             hoursBudgeted += r.DraftBudget + r.EngBudget;
             if (r.Gfa > 0)
             {
-                feeWhereGfa += r.TotalFee;
+                feeWhereGfa += r.TotalFee * fx;
                 gfaWhereGfa += r.Gfa;
             }
         }
 
-        var totalUnbilled = totalFees - totalFeeBilled;
+        // Backlog reflects current invoicing state, not just posted state.
+        // PRSummaryMain.BilledFee lags by ~3 months (period close); UnpostedFeeBilled
+        // is the LedgerAR overlay capturing invoices already cut but not yet rolled
+        // up. Using posted-only would inflate "unbilled fee" by the unposted overlay
+        // amount and make Backlog read artificially high during normal close lag.
+        var totalUnbilled = totalFees - (totalFeeBilled + totalUnpostedFeeBilled);
         var percentFeeUnbilled = SafeDiv(totalUnbilled, totalFees);
         var avgFeePerFt2 = gfaWhereGfa > 0 ? (feeWhereGfa / gfaWhereGfa) : 0.0;
         var hoursRemaining = hoursBudgeted - hoursSpent;
@@ -42,6 +56,7 @@ internal static class FinancialsHeadlineCalculator
             Projects = rows.Count,
             TotalFees = totalFees,
             TotalFeeBilled = totalFeeBilled,
+            TotalUnpostedFeeBilled = totalUnpostedFeeBilled,
             TotalGfa = totalGfa,
             HoursSpent = hoursSpent,
             HoursBudgeted = hoursBudgeted,
@@ -60,6 +75,9 @@ public sealed class FinancialsHeadlineKpis
     public int Projects { get; set; }
     public double TotalFees { get; set; }
     public double TotalFeeBilled { get; set; }
+    public double TotalUnpostedFeeBilled { get; set; }
+    public double TotalFeeBilledWithUnposted => TotalFeeBilled + TotalUnpostedFeeBilled;
+    public bool   HasUnpostedBilling => TotalUnpostedFeeBilled > AnalyticsThresholds.RoundingDollarFloor;
     public double TotalGfa { get; set; }
     public double HoursSpent { get; set; }
     public double HoursBudgeted { get; set; }

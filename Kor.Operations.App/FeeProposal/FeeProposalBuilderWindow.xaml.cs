@@ -39,7 +39,44 @@ namespace Kor.Operations.App.FeeProposal
 
         private async void FeeProposalBuilderWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            await _vm.InitializeAsync();
+            if (!_aiRegistered)
+            {
+                Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Register(_vm);
+                _aiRegistered = true;
+            }
+
+            try
+            {
+                await _vm.InitializeAsync();
+            }
+            catch (Exception ex)
+            {
+                // async void Loaded: an unhandled throw here crashes the app. Degrade
+                // to an empty library/staff list and tell the user why.
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "Fee proposal builder initialization failed.");
+                MessageBox.Show(this, $"The proposal library could not be loaded:\n{ex.Message}",
+                    "Fee Proposal — Load Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private bool _aiRegistered;
+        private bool _closeAfterSave;
+
+        /// <summary>Guarded save: returns true on success, shows the error (instead of
+        /// crashing the app via async-void) on failure.</summary>
+        private async Task<bool> TrySaveAsync(string caption)
+        {
+            try
+            {
+                await _vm.SaveProposalAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "Proposal save failed.");
+                MessageBox.Show(this, $"Save failed:\n{ex.Message}", caption, MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
         }
 
         private void BlockList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -59,7 +96,7 @@ namespace Kor.Operations.App.FeeProposal
             {
                 var result = MessageBox.Show(
                     "You have unsaved changes. Discard and create a new proposal?",
-                    "Unsaved Changes",
+                    "Fee Proposal — Unsaved Changes",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
                 if (result != MessageBoxResult.Yes)
@@ -81,8 +118,10 @@ namespace Kor.Operations.App.FeeProposal
 
         private async void SaveProposal_Click(object sender, RoutedEventArgs e)
         {
-            await _vm.SaveProposalAsync();
-            MessageBox.Show(this, "Proposal saved.", "Save Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (await TrySaveAsync("Fee Proposal — Save Proposal"))
+            {
+                MessageBox.Show(this, "Proposal saved.", "Fee Proposal — Save Proposal", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
         private async void SaveProposalAs_Click(object sender, RoutedEventArgs e)
@@ -91,15 +130,32 @@ namespace Kor.Operations.App.FeeProposal
             if (dlg.ShowDialog() != true)
                 return;
 
-            await _vm.SaveProposalAsAsync(dlg.ProposalName);
-            MessageBox.Show(this, $"Saved as \"{dlg.ProposalName}\".", "Save As", MessageBoxButton.OK, MessageBoxImage.Information);
+            try
+            {
+                await _vm.SaveProposalAsAsync(dlg.ProposalName);
+                MessageBox.Show(this, $"Saved as \"{dlg.ProposalName}\".", "Fee Proposal — Save As", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "Proposal save-as failed.");
+                MessageBox.Show(this, $"Save failed:\n{ex.Message}", "Fee Proposal — Save As", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async void ManageStaff_Click(object sender, RoutedEventArgs e)
         {
             var win = new StaffManagement.ProposalStaffWindow(_staffStore) { Owner = this };
             win.ShowDialog();
-            await _vm.ReloadStaffAsync();
+            try
+            {
+                await _vm.ReloadStaffAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "Staff reload failed.");
+                MessageBox.Show(this, $"Staff list could not be reloaded:\n{ex.Message}",
+                    "Fee Proposal — Staff", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async Task DoGeneratePreviewAsync()
@@ -122,7 +178,7 @@ namespace Kor.Operations.App.FeeProposal
             catch (Exception ex)
             {
                 Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "Preview generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
-                MessageBox.Show($"Preview failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Preview failed:\n{ex.Message}", "Fee Proposal — Preview Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -147,7 +203,8 @@ namespace Kor.Operations.App.FeeProposal
                 return;
 
             var staff = _vm.StaffMembers.ToList();
-            await _vm.SaveProposalAsync();
+            if (!await TrySaveAsync("Fee Proposal — PDF Generation Failed"))
+                return;
 
             try
             {
@@ -159,7 +216,7 @@ namespace Kor.Operations.App.FeeProposal
             catch (Exception ex)
             {
                 Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "PDF generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
-                MessageBox.Show($"PDF generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"PDF generation failed:\n{ex.Message}", "Fee Proposal — PDF Generation Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -175,7 +232,8 @@ namespace Kor.Operations.App.FeeProposal
                 return;
 
             var staff = _vm.StaffMembers.ToList();
-            await _vm.SaveProposalAsync();
+            if (!await TrySaveAsync("Fee Proposal — DOCX Generation Failed"))
+                return;
 
             try
             {
@@ -187,7 +245,7 @@ namespace Kor.Operations.App.FeeProposal
             catch (Exception ex)
             {
                 Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "DOCX generation failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
-                MessageBox.Show($"DOCX generation failed:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"DOCX generation failed:\n{ex.Message}", "Fee Proposal — DOCX Generation Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -238,7 +296,7 @@ namespace Kor.Operations.App.FeeProposal
 
             var result = MessageBox.Show(
                 $"Remove \"{vm.TemplateName}\" block?",
-                "Confirm Remove",
+                "Fee Proposal — Confirm Remove",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
             if (result == MessageBoxResult.Yes)
@@ -254,14 +312,23 @@ namespace Kor.Operations.App.FeeProposal
             if (dlg.ShowDialog() != true)
                 return;
 
-            if (await _vm.SaveAsTemplateAsync(vm, dlg.ProposalName))
+            try
             {
-                MessageBox.Show(
-                    this,
-                    $"Saved \"{dlg.ProposalName}\" to library.",
-                    "Template Saved",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                if (await _vm.SaveAsTemplateAsync(vm, dlg.ProposalName))
+                {
+                    MessageBox.Show(
+                        this,
+                        $"Saved \"{dlg.ProposalName}\" to library.",
+                        "Fee Proposal — Template Saved",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<FeeProposalBuilderWindow>().Error(ex, "Save-as-template failed.");
+                MessageBox.Show(this, $"Template save failed:\n{ex.Message}",
+                    "Fee Proposal — Template Save Failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -328,23 +395,77 @@ namespace Kor.Operations.App.FeeProposal
             _ => BuildEmptyEditor(),
         };
 
+        private bool _saveBeforeCloseInFlight;
+
         protected override async void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            if (_vm.IsDirty)
+            // A close attempt while the save-before-close is still running must
+            // not re-prompt (choosing "No" there could close the dirty window
+            // under the in-flight save). Block until the save resolves.
+            if (_saveBeforeCloseInFlight)
+            {
+                e.Cancel = true;
+                base.OnClosing(e);
+                return;
+            }
+
+            if (_vm.IsDirty && !_closeAfterSave)
             {
                 var result = MessageBox.Show(
                     "You have unsaved changes. Save before closing?",
-                    "Unsaved Changes",
+                    "Fee Proposal — Unsaved Changes",
                     MessageBoxButton.YesNoCancel,
                     MessageBoxImage.Warning);
 
-                if (result == MessageBoxResult.Yes)
-                    await _vm.SaveProposalAsync();
-                else if (result == MessageBoxResult.Cancel)
+                if (result == MessageBoxResult.Cancel)
+                {
                     e.Cancel = true;
+                    base.OnClosing(e);
+                    return;
+                }
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // async void OnClosing: after the first await, WPF proceeds with
+                    // the close regardless of what happens to the save. Cancel the
+                    // close first, save, and only re-close once the save committed —
+                    // otherwise a failed save silently loses the proposal.
+                    e.Cancel = true;
+                    base.OnClosing(e);
+                    _saveBeforeCloseInFlight = true;
+                    try
+                    {
+                        if (await TrySaveAsync("Fee Proposal — Save Before Close"))
+                        {
+                            _closeAfterSave = true;
+                        }
+                    }
+                    finally
+                    {
+                        _saveBeforeCloseInFlight = false;
+                    }
+
+                    if (_closeAfterSave)
+                    {
+                        Close();
+                    }
+
+                    return;
+                }
             }
 
             base.OnClosing(e);
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            if (_aiRegistered)
+            {
+                Kor.Operations.Services.AppServices.Get<Kor.Operations.Services.AppAiContextBuilder>().Unregister(_vm);
+                _aiRegistered = false;
+            }
+
+            base.OnClosed(e);
         }
 
         protected override async void OnKeyDown(System.Windows.Input.KeyEventArgs e)
@@ -352,7 +473,7 @@ namespace Kor.Operations.App.FeeProposal
             if (e.Key == System.Windows.Input.Key.S &&
                 (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
             {
-                await _vm.SaveProposalAsync();
+                await TrySaveAsync("Fee Proposal — Save Proposal");
                 e.Handled = true;
             }
             base.OnKeyDown(e);

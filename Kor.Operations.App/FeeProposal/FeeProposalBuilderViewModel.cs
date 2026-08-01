@@ -19,8 +19,32 @@ using FeeProposalModel = Kor.Operations.Core.Models.Proposal.FeeProposal;
 
 namespace Kor.Operations.App.FeeProposal
 {
-    public sealed class FeeProposalBuilderViewModel : ObservableObject
+    public sealed class FeeProposalBuilderViewModel : ObservableObject, Kor.Operations.Services.IAiContextProvider
     {
+        public const string Provider = "Fee Proposal Builder (BD)";
+
+        // ===== IAiContextProvider =====
+        // Scalars/computed strings only (same posture as the Events/Admin providers);
+        // BuildContext runs on the ask path, which today executes on the dispatcher.
+
+        public string ProviderName => Provider;
+
+        public bool HasData => Blocks.Count > 0 || !string.IsNullOrWhiteSpace(DocumentName);
+
+        public string BuildContext()
+        {
+            var dirty = IsDirty ? " (unsaved changes)" : string.Empty;
+            return $"Fee proposal being built: \"{DocumentName}\"{dirty}. {BlockSummaryText}";
+        }
+
+        public string BuildLocalContext()
+        {
+            var selected = SelectedBlock;
+            return selected is null
+                ? string.Empty
+                : $"Selected proposal block: {selected.Block.BlockType} (\"{selected.TemplateName}\").";
+        }
+
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
@@ -34,16 +58,13 @@ namespace Kor.Operations.App.FeeProposal
         private FeeProposalModel _proposal = new();
         private FeeProposalBlockViewModel? _selectedBlock;
         private string _documentName = "Untitled Proposal";
-        private string? _selectedBlockTypeName;
         private bool _isDirty;
         private bool _isGenerating;
         private int _currentStep = 1;
 
         public ObservableCollection<FeeProposalBlockViewModel> Blocks { get; } = new();
         public ObservableCollection<ProposalStaffMember> StaffMembers { get; } = new();
-        public ObservableCollection<ProposalBlockTemplate> LibraryTemplates { get; } = new();
         public ObservableCollection<ProposalLibraryCategoryViewModel> LibraryCategories { get; } = new();
-        public ObservableCollection<string> BlockTypeNames { get; } = new();
         public ObservableCollection<BitmapSource> PreviewPages { get; } = new();
         public FeeProposalModel CurrentProposal => _proposal;
         public ICommand? GeneratePreviewCommand { get; internal set; }
@@ -148,16 +169,6 @@ namespace Kor.Operations.App.FeeProposal
             }
         }
 
-        public string? SelectedBlockTypeName
-        {
-            get => _selectedBlockTypeName;
-            set
-            {
-                _selectedBlockTypeName = value;
-                OnPropertyChanged();
-            }
-        }
-
         public FeeProposalBuilderViewModel(
             IFeeProposalStore proposalStore,
             IProposalBlockLibraryStore libraryStore,
@@ -167,13 +178,6 @@ namespace Kor.Operations.App.FeeProposal
             _libraryStore = libraryStore;
             _staffStore = staffStore;
 
-            foreach (var name in Enum.GetNames<ProposalBlockType>())
-            {
-                if (name == nameof(ProposalBlockType.PageBreak))
-                    continue;
-                BlockTypeNames.Add(name);
-            }
-
             Blocks.CollectionChanged += (_, _) =>
             {
                 OnPropertyChanged(nameof(CanGenerate));
@@ -181,7 +185,6 @@ namespace Kor.Operations.App.FeeProposal
                 OnPropertyChanged(nameof(BlockSummaryText));
                 IsDirty = true;
             };
-            SelectedBlockTypeName = BlockTypeNames.FirstOrDefault();
         }
 
         public async Task InitializeAsync(CancellationToken ct = default)
@@ -192,13 +195,9 @@ namespace Kor.Operations.App.FeeProposal
 
         public async Task RefreshLibraryAsync(CancellationToken ct = default)
         {
-            LibraryTemplates.Clear();
             LibraryCategories.Clear();
 
             var templates = await _libraryStore.LoadAllAsync(ct);
-
-            foreach (var t in templates)
-                LibraryTemplates.Add(t);
 
             foreach (var group in templates
                          .GroupBy(t => string.IsNullOrWhiteSpace(t.Category) ? "Uncategorized" : t.Category)
@@ -234,14 +233,14 @@ namespace Kor.Operations.App.FeeProposal
                 catch (Exception ex)
                 {
                     Log.ForContext<FeeProposalBuilderViewModel>().Error(ex, "Failed to deserialize template '{TemplateName}'. Skipping.", template.Name);
-                    System.Windows.MessageBox.Show($"Could not load template \"{template.Name}\".\n\nIt may be corrupted. Try removing and re-adding it from the library.", "Template Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    System.Windows.MessageBox.Show($"Could not load template \"{template.Name}\".\n\nIt may be corrupted. Try removing and re-adding it from the library.", "Fee Proposal — Template Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                     return;
                 }
             }
             catch (Exception ex)
             {
                 Log.ForContext<FeeProposalBuilderViewModel>().Error(ex, "Failed to insert proposal block template. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
-                MessageBox.Show($"Template insert failed:\n{ex.Message}", "Template Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Template insert failed:\n{ex.Message}", "Fee Proposal — Template Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -344,12 +343,34 @@ namespace Kor.Operations.App.FeeProposal
             _ = CoverBlockVm;
         }
 
+        /// <summary>
+        /// Starts a brand-new proposal pre-filled with a descriptive name
+        /// derived from the BD context (typically <c>"{OpportunityKey} — {ProjectName}"</c>).
+        /// Used by the CRM "Build Fee Proposal" handoff so the user lands in
+        /// the builder with the proposal already named, not "Untitled Proposal".
+        /// </summary>
+        public void StartFromOpportunity(string proposalName)
+        {
+            NewProposal();
+            if (!string.IsNullOrWhiteSpace(proposalName))
+            {
+                DocumentName = proposalName.Trim();
+                IsDirty = true;
+            }
+        }
+
+        /// <summary>Raised after a proposal is persisted, carrying its id. When the
+        /// builder was launched from a pursuit, the CRM uses this to link the proposal
+        /// to the pursuit's opportunity and advance the pursuit's stage.</summary>
+        public event EventHandler<string>? ProposalSaved;
+
         public async Task SaveProposalAsync(CancellationToken ct = default)
         {
             _proposal.Name = DocumentName;
             _proposal.Blocks = Blocks.Select(b => b.Block).ToList();
             await _proposalStore.SaveAsync(_proposal, ct);
             IsDirty = false;
+            ProposalSaved?.Invoke(this, _proposal.Id);
         }
 
         public async Task SaveProposalAsAsync(string newName, CancellationToken ct = default)
@@ -363,6 +384,7 @@ namespace Kor.Operations.App.FeeProposal
             _proposal = clone;
             DocumentName = newName;
             IsDirty = false;
+            ProposalSaved?.Invoke(this, _proposal.Id);
         }
 
         public void OpenProposal(FeeProposalModel proposal)

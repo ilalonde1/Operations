@@ -12,46 +12,247 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Kor.Operations.App.Options;
-using Microsoft.Extensions.DependencyInjection;
+using Kor.Operations.Services;
 using Serilog;
 
 namespace Kor.Operations.Financials
 {
     public partial class GlProfitLossView : UserControl
     {
+        private readonly BilledFinancialsPresenter _billedPresenter;
         private readonly GlProfitLossPresenter _presenter;
+        private readonly GlProfitLossPresenter _sideBySidePostedPresenter;
+        private bool _initialized;
+        private bool _billedInitialized;
+        private bool _postedInitialized;
+        private bool _sideBySideInitialized;
+        private PnlViewMode _currentMode = PnlViewMode.Billed;
 
         public GlProfitLossView()
             : this(
                 Kor.Operations.Services.AppServices.Get<GlProfitLossService>(),
+                Kor.Operations.Services.AppServices.Get<BilledFinancialsService>(),
                 Kor.Operations.Services.AppServices.Get<FinancialsOptions>())
         {
         }
 
-        public GlProfitLossView(GlProfitLossService glProfitLossService, FinancialsOptions financialsOptions)
+        public GlProfitLossView(
+            GlProfitLossService glProfitLossService,
+            BilledFinancialsService billedFinancialsService,
+            FinancialsOptions financialsOptions)
         {
             InitializeComponent();
-            _presenter = new GlProfitLossPresenter(
-                this,
-                glProfitLossService ?? throw new ArgumentNullException(nameof(glProfitLossService)),
-                financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions)),
+            var options = financialsOptions ?? throw new ArgumentNullException(nameof(financialsOptions));
+
+            _billedPresenter = new BilledFinancialsPresenter(
+                billedFinancialsService ?? throw new ArgumentNullException(nameof(billedFinancialsService)),
+                options,
                 PnLGrid,
                 NetTrendCanvas,
                 NetTrendLine,
                 RevExpCanvas,
                 NetTrendLabelGrid,
                 RevExpLabelGrid);
-            DataContext = _presenter.ViewModel;
+
+            _presenter = new GlProfitLossPresenter(
+                this,
+                glProfitLossService ?? throw new ArgumentNullException(nameof(glProfitLossService)),
+                options,
+                PnLGrid,
+                NetTrendCanvas,
+                NetTrendLine,
+                RevExpCanvas,
+                NetTrendLabelGrid,
+                RevExpLabelGrid);
+
+            _sideBySidePostedPresenter = new GlProfitLossPresenter(
+                this,
+                glProfitLossService,
+                options,
+                PostedPnLGrid,
+                NetTrendCanvas,
+                NetTrendLine,
+                RevExpCanvas,
+                NetTrendLabelGrid,
+                RevExpLabelGrid);
+
+            DataContext = _billedPresenter.ViewModel;
+
+            AppServices.GetOptional<AppAiContextBuilder>()?.Register(_billedPresenter.ViewModel);
+            AppServices.GetOptional<AppAiContextBuilder>()?.Register(_presenter.ViewModel);
+            Unloaded += (_, _) =>
+            {
+                var builder = AppServices.GetOptional<AppAiContextBuilder>();
+                builder?.Unregister(_billedPresenter.ViewModel);
+                builder?.Unregister(_presenter.ViewModel);
+            };
         }
+
+        private bool IsPostedMode => PostedViewRadio.IsChecked == true;
+
+        private bool IsSideBySideMode => SideBySideViewRadio.IsChecked == true;
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            await _presenter.InitializeAsync().ConfigureAwait(true);
+            await _billedPresenter.InitializeAsync().ConfigureAwait(true);
+            _billedInitialized = true;
+            _initialized = true;
+            BilledViewRadio.IsChecked = true;
+            _currentMode = PnlViewMode.Billed;
+            ApplyViewMode();
+        }
+
+        private async void ViewMode_Checked(object sender, RoutedEventArgs e)
+        {
+            if (!_initialized)
+                return;
+
+            var nextMode = GetSelectedMode();
+            await EnsureModeInitializedAsync(nextMode).ConfigureAwait(true);
+            CopyFilters(_currentMode, nextMode);
+            _currentMode = nextMode;
+            ApplyViewMode();
+            await RefreshActiveAsync(forceRefresh: false).ConfigureAwait(true);
+        }
+
+        private void ApplyViewMode()
+        {
+            if (IsPostedMode)
+            {
+                DataContext = _presenter.ViewModel;
+                BilledExpander.Header = "Posted GL P&L (GLSummary)";
+                BilledExpander.IsExpanded = true;
+                BilledExpander.Visibility = Visibility.Visible;
+                PostedExpander.Visibility = Visibility.Collapsed;
+                // TableFilterPanel stays hidden — the presenter auto-picks the best Income
+                // Statement table; users shouldn't see GLTable internals in the toolbar.
+                FlipSignCheckBox.Visibility = Visibility.Visible;
+                ReconciliationPanel.Visibility = Visibility.Collapsed;
+                PostedLagPanel.Visibility = _presenter.ViewModel.PostingLagVisibility;
+                PnLGrid.MouseDoubleClick -= BilledPnLGrid_MouseDoubleClick;
+                PnLGrid.MouseDoubleClick -= PnLGrid_MouseDoubleClick;
+                PnLGrid.MouseDoubleClick += PnLGrid_MouseDoubleClick;
+                _presenter.RenderCharts();
+                return;
+            }
+
+            DataContext = _billedPresenter.ViewModel;
+            BilledExpander.Header = "Billed P&L (LedgerAR)";
+            BilledExpander.Visibility = Visibility.Visible;
+            BilledExpander.IsExpanded = !IsSideBySideMode;
+            PostedExpander.Visibility = IsSideBySideMode ? Visibility.Visible : Visibility.Collapsed;
+            PostedExpander.IsExpanded = false;
+            FlipSignCheckBox.Visibility = Visibility.Collapsed;
+            ReconciliationPanel.Visibility = _billedPresenter.ViewModel.ReconciliationVisibility;
+            PostedLagPanel.Visibility = Visibility.Collapsed;
+            PnLGrid.MouseDoubleClick -= PnLGrid_MouseDoubleClick;
+            PnLGrid.MouseDoubleClick -= BilledPnLGrid_MouseDoubleClick;
+            PnLGrid.MouseDoubleClick += BilledPnLGrid_MouseDoubleClick;
+            _billedPresenter.RenderCharts();
+        }
+
+        private void SyncFiltersFromActive()
+        {
+            if (IsPostedMode)
+            {
+                _billedPresenter.ViewModel.FromDate = _presenter.ViewModel.FromDate;
+                _billedPresenter.ViewModel.ToDate = _presenter.ViewModel.ToDate;
+                _billedPresenter.ViewModel.OrgFilter = _presenter.ViewModel.OrgFilter;
+                _billedPresenter.ViewModel.HideZeroRows = _presenter.ViewModel.HideZeroRows;
+                _sideBySidePostedPresenter.ViewModel.FromDate = _presenter.ViewModel.FromDate;
+                _sideBySidePostedPresenter.ViewModel.ToDate = _presenter.ViewModel.ToDate;
+                _sideBySidePostedPresenter.ViewModel.OrgFilter = _presenter.ViewModel.OrgFilter;
+                _sideBySidePostedPresenter.ViewModel.HideZeroRows = _presenter.ViewModel.HideZeroRows;
+                return;
+            }
+
+            _presenter.ViewModel.FromDate = _billedPresenter.ViewModel.FromDate;
+            _presenter.ViewModel.ToDate = _billedPresenter.ViewModel.ToDate;
+            _presenter.ViewModel.OrgFilter = _billedPresenter.ViewModel.OrgFilter;
+            _presenter.ViewModel.HideZeroRows = _billedPresenter.ViewModel.HideZeroRows;
+            _sideBySidePostedPresenter.ViewModel.FromDate = _billedPresenter.ViewModel.FromDate;
+            _sideBySidePostedPresenter.ViewModel.ToDate = _billedPresenter.ViewModel.ToDate;
+            _sideBySidePostedPresenter.ViewModel.OrgFilter = _billedPresenter.ViewModel.OrgFilter;
+            _sideBySidePostedPresenter.ViewModel.HideZeroRows = _billedPresenter.ViewModel.HideZeroRows;
+        }
+
+        private void CopyFilters(PnlViewMode fromMode, PnlViewMode toMode)
+        {
+            if (fromMode == toMode)
+                return;
+
+            if (fromMode == PnlViewMode.Posted && toMode != PnlViewMode.Posted)
+            {
+                _billedPresenter.ViewModel.FromDate = _presenter.ViewModel.FromDate;
+                _billedPresenter.ViewModel.ToDate = _presenter.ViewModel.ToDate;
+                _billedPresenter.ViewModel.OrgFilter = _presenter.ViewModel.OrgFilter;
+                _billedPresenter.ViewModel.HideZeroRows = _presenter.ViewModel.HideZeroRows;
+                return;
+            }
+
+            if (fromMode != PnlViewMode.Posted && toMode == PnlViewMode.Posted)
+            {
+                _presenter.ViewModel.FromDate = _billedPresenter.ViewModel.FromDate;
+                _presenter.ViewModel.ToDate = _billedPresenter.ViewModel.ToDate;
+                _presenter.ViewModel.OrgFilter = _billedPresenter.ViewModel.OrgFilter;
+                _presenter.ViewModel.HideZeroRows = _billedPresenter.ViewModel.HideZeroRows;
+            }
+        }
+
+        private PnlViewMode GetSelectedMode()
+        {
+            if (PostedViewRadio.IsChecked == true)
+                return PnlViewMode.Posted;
+            if (SideBySideViewRadio.IsChecked == true)
+                return PnlViewMode.SideBySide;
+            return PnlViewMode.Billed;
+        }
+
+        private async Task RefreshActiveAsync(bool forceRefresh)
+        {
+            await EnsureModeInitializedAsync(_currentMode).ConfigureAwait(true);
+            SyncFiltersFromActive();
+            if (IsPostedMode)
+            {
+                await _presenter.RefreshAsync(forceRefresh).ConfigureAwait(true);
+            }
+            else if (IsSideBySideMode)
+            {
+                await _billedPresenter.RefreshAsync(forceRefresh).ConfigureAwait(true);
+                await _sideBySidePostedPresenter.RefreshAsync(forceRefresh).ConfigureAwait(true);
+            }
+            else
+            {
+                await _billedPresenter.RefreshAsync(forceRefresh).ConfigureAwait(true);
+            }
+
+            ApplyViewMode();
+        }
+
+        private async Task EnsureModeInitializedAsync(PnlViewMode mode)
+        {
+            if (!_billedInitialized)
+            {
+                await _billedPresenter.InitializeAsync().ConfigureAwait(true);
+                _billedInitialized = true;
+            }
+
+            if (mode == PnlViewMode.Posted && !_postedInitialized)
+            {
+                await _presenter.InitializeAsync().ConfigureAwait(true);
+                _postedInitialized = true;
+            }
+
+            if (mode == PnlViewMode.SideBySide && !_sideBySideInitialized)
+            {
+                await _sideBySidePostedPresenter.InitializeAsync().ConfigureAwait(true);
+                _sideBySideInitialized = true;
+            }
         }
 
         private async void RefreshBtn_Click(object sender, RoutedEventArgs e)
         {
-            await _presenter.RefreshAsync(forceRefresh: true).ConfigureAwait(true);
+            await RefreshActiveAsync(forceRefresh: true).ConfigureAwait(true);
         }
 
         private void MetricDictionaryBtn_Click(object sender, RoutedEventArgs e)
@@ -61,19 +262,200 @@ namespace Kor.Operations.Financials
                 var win = new FinancialMetricDictionaryWindow { Owner = Window.GetWindow(this) };
                 win.ShowDialog();
             }
-            catch
+            catch (Exception ex)
             {
-                // Non-critical: ignore if window cannot be created for any reason.
+                Log.Warning(ex, "Failed to open Financial metric dictionary.");
             }
         }
 
-        private void NetTrendCanvas_SizeChanged(object sender, SizeChangedEventArgs e) => _presenter.RenderCharts();
+        private void NetTrendCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (IsPostedMode)
+                _presenter.RenderCharts();
+            else
+                _billedPresenter.RenderCharts();
+        }
 
-        private void RevExpCanvas_SizeChanged(object sender, SizeChangedEventArgs e) => _presenter.RenderCharts();
+        private void RevExpCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (IsPostedMode)
+                _presenter.RenderCharts();
+            else
+                _billedPresenter.RenderCharts();
+        }
 
         private async void ExportBtn_Click(object sender, RoutedEventArgs e)
         {
-            await _presenter.ExportAsync(Window.GetWindow(this)).ConfigureAwait(true);
+            if (IsPostedMode)
+            {
+                await _presenter.ExportAsync(Window.GetWindow(this)).ConfigureAwait(true);
+                return;
+            }
+
+            if (IsSideBySideMode)
+            {
+                await _sideBySidePostedPresenter.ExportAsync(Window.GetWindow(this)).ConfigureAwait(true);
+                return;
+            }
+
+            await _billedPresenter.ExportAsync(Window.GetWindow(this)).ConfigureAwait(true);
+        }
+
+        private enum PnlViewMode
+        {
+            Billed,
+            Posted,
+            SideBySide
+        }
+
+        private void BilledPnLGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (PnLGrid.SelectedItem is not DataRowView rowView)
+                return;
+            if (!IsDataGridRowDoubleClick(e))
+                return;
+
+            var row = rowView.Row;
+            var rowKind = Convert.ToString(row["RowKind"]) ?? string.Empty;
+            if (!string.Equals(rowKind, "Detail", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var account = row.Table.Columns.Contains("Account") && row["Account"] is string a
+                ? a
+                : string.Empty;
+            if (string.IsNullOrWhiteSpace(account))
+                return;
+
+            var lineItem = Convert.ToString(row["LineItem"]) ?? string.Empty;
+            // Section ("Revenue" / "Expenses" / "Other Income") restricts the drilldown
+            // to the same ledger sources the section's total uses, so Σ rows ties out.
+            var section = row.Table.Columns.Contains("Section")
+                ? Convert.ToString(row["Section"]) ?? string.Empty
+                : string.Empty;
+            var result = _billedPresenter.CurrentResult;
+            if (result == null || result.PeriodColumnNames == null || result.PeriodColumnNames.Length == 0)
+                return;
+
+            var periods = new List<BilledPeriodRow>(result.PeriodColumnNames.Length);
+            for (var i = 0; i < result.PeriodColumnNames.Length; i++)
+            {
+                var col = result.PeriodColumnNames[i];
+                var period = i < result.Periods.Length ? result.Periods[i] : 0;
+                var amount = ReadDecimal(row, col);
+                periods.Add(new BilledPeriodRow(account, col, period, amount));
+            }
+
+            var rangeTotal = periods.Sum(p => p.AmountRaw);
+            var title = $"{lineItem} - Period Breakdown";
+            var subtitle = $"Range total {rangeTotal:C0} | Double-click a month to see invoices/transactions";
+            ShowDrilldownWindow(
+                title,
+                subtitle,
+                periods,
+                onRowDoubleClick: pr => _ = ExecuteBilledDrilldownAsync(lineItem, section, pr));
+        }
+
+        private async Task ExecuteBilledDrilldownAsync(string lineItem, string section, BilledPeriodRow periodRow)
+        {
+            if (periodRow.PeriodInt <= 0 || string.IsNullOrWhiteSpace(periodRow.Account))
+                return;
+
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                var service = AppServices.Get<BilledFinancialsService>();
+                var orgFilter = string.IsNullOrWhiteSpace(_billedPresenter.ViewModel.OrgFilter)
+                    ? null
+                    : _billedPresenter.ViewModel.OrgFilter.Trim();
+                var detail = await service.LoadLedgerTransactionsAsync(
+                    periodRow.Account,
+                    periodRow.PeriodInt,
+                    orgFilter,
+                    section,
+                    CancellationToken.None).ConfigureAwait(true);
+
+                if (detail == null || detail.Count == 0)
+                {
+                    MessageBox.Show(
+                        Window.GetWindow(this) ?? Application.Current?.MainWindow,
+                        "No supporting transactions were found for this account and period.",
+                        "Financials — Billed P&L Drilldown",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                var rows = detail
+                    .Select(d => new BilledLedgerDisplayRow(d))
+                    .ToList();
+                var total = detail.Sum(d => d.Amount);
+                var title = $"{lineItem} - {periodRow.PeriodLabel}";
+                var subtitle = $"{detail.Count:N0} grouped entries | Total {total:C0}";
+                ShowDrilldownWindow(title, subtitle, rows);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    Window.GetWindow(this) ?? Application.Current?.MainWindow,
+                    $"Unable to load supporting transactions.\n{ex.Message}",
+                    "Financials — Billed P&L Drilldown",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        private sealed class BilledPeriodRow
+        {
+            [Browsable(false)]
+            public string Account { get; }
+            public string Period { get; }
+            public string Amount { get; }
+            [Browsable(false)]
+            public string PeriodLabel { get; }
+            [Browsable(false)]
+            public int PeriodInt { get; }
+            [Browsable(false)]
+            public decimal AmountRaw { get; }
+
+            public BilledPeriodRow(string account, string periodLabel, int period, decimal amount)
+            {
+                Account = account ?? string.Empty;
+                PeriodLabel = periodLabel ?? string.Empty;
+                PeriodInt = period;
+                AmountRaw = amount;
+                Period = periodLabel ?? string.Empty;
+                Amount = amount.ToString("C0", CultureInfo.CurrentCulture);
+            }
+        }
+
+        private sealed class BilledLedgerDisplayRow
+        {
+            public string Source { get; }
+            public string Date { get; }
+            public string DocumentNo { get; }
+            public string Counterparty { get; }
+            public string Account { get; }
+            public string Description { get; }
+            public string Amount { get; }
+            public int Entries { get; }
+
+            public BilledLedgerDisplayRow(BilledLedgerTransaction t)
+            {
+                Source = t.Source ?? "";
+                Date = t.TransDate.HasValue
+                    ? t.TransDate.Value.ToString("yyyy-MM-dd", CultureInfo.CurrentCulture)
+                    : "";
+                DocumentNo = t.DocumentNo ?? "";
+                Counterparty = t.Counterparty ?? "";
+                Account = t.Account ?? "";
+                Description = t.Description ?? "";
+                Amount = t.Amount.ToString("C0", CultureInfo.CurrentCulture);
+                Entries = t.EntryCount;
+            }
         }
 
         private void PnLGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -307,7 +689,7 @@ namespace Kor.Operations.Financials
                     MessageBox.Show(
                         Window.GetWindow(this) ?? Application.Current?.MainWindow,
                         "No supporting transaction rows were found for this line item and period.",
-                        "P&L Drilldown",
+                        "Financials — P&L Drilldown",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                     return;
@@ -323,7 +705,7 @@ namespace Kor.Operations.Financials
                 MessageBox.Show(
                     Window.GetWindow(this) ?? Application.Current?.MainWindow,
                     $"Unable to load supporting transaction rows.\n{ex.Message}",
-                    "P&L Drilldown",
+                    "Financials — P&L Drilldown",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }

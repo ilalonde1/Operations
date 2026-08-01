@@ -1,0 +1,2776 @@
+LoserId,SurvivorId,Reason
+# Round 42 (2026-05-30): BMZ -> KOR Structural Ltd. (id 38918).
+# Per saved memory reference_kor_bmz_rename: KOR was "Bryson Markulin Zickmantel"
+# before the 2021 rebrand. The fuzzy-name gate added in the Round 37 audit
+# (post-Abbotsford-SD -> Alterra-Power-Corp incident) correctly rejects these
+# pairs because the names are not similar in any normalization. This allowlist
+# is the curated escape hatch for legitimate historical-rename pairs.
+69930,38918
+69934,38918
+70675,38918
+# Round 90 (2026-06-05): AHS canonical sprawl. The fuzzy gate (which strips
+# corporate suffixes + canonicalizes civic forms but NOT parentheticals or
+# slash-joined alternates) correctly flags these as not-similar. Curated
+# allowlist for legitimate AHS-variant merges per the audit performed today.
+72342,476
+68831,476
+72471,476
+72343,476
+72432,476
+72045,476
+73919,72389
+70948,38918
+71123,38918
+# 2026-06-01: Clendor-share dedup pairs. Each row pair shares the same
+# Deltek Clendor.ClientID (verified by the same ClendorClientId column on
+# both rows), which is a stronger truth-source than fuzzy name match.
+# Names differ via typo / acronym-prefix / paren-suffix / "The" / "LLP".
+69674,163
+69642,69589
+69780,69589
+69864,69589
+69943,69589
+69771,38969
+70156,68912
+71279,69014
+70781,69214
+71258,69214
+# 2026-06-01: Alberta-Market ingest follow-up. firms/<slug>/profile.json
+# entries created new canonicals with parenthetical/suffix-divergent names
+# that the project resolver had already matched to base canonicals.
+71278,68918
+71281,69014
+71285,68919
+71292,54934
+71294,3
+# Round 2 (same names, importer non-idempotent — investigate later):
+71297,69014
+71301,68919
+71308,54934
+71310,3
+# Modular Housing Pipeline ingest 2026-06-02 follow-up
+71319,69775
+71327,69775
+# Big-ingest 2026-06-02: parenthetical First Nations variants from modular-followup
+71345,71316
+71346,71320
+71347,71338
+23408,69695
+26991,70657
+25575,69724
+19573,71094
+31561,71098
+35104,69214
+20235,69750
+27015,68973
+19739,70667
+20040,69781
+22444,68974
+35842,71314
+27238,69655
+30476,71022
+37293,70956
+20348,71025
+23870,69431
+25823,69175
+26697,70932
+31468,70100
+22101,69024
+24107,69014
+20547,69153
+27824,69917
+34977,70926
+24652,71035
+19401,69547
+25921,69553
+36700,69546
+71271,7414
+34954,71357
+# DBA followup merges across non-Unknown kinds 2026-06-02
+19080,69692
+21662,69649
+21942,69123
+22011,69094
+22793,69644
+24272,69589
+25248,70097
+27454,70098
+27972,69742
+30873,69250
+31847,69760
+32815,69725
+32833,69756
+32929,69668
+34546,69680
+34582,69127
+35354,70099
+54889,53679
+54956,53679
+70250,53679
+54752,53679
+54277,880
+54959,54979
+740,54979
+54639,54979
+69454,54979
+18880,54976
+69455,18917
+472,53678
+54606,53968
+69672,69075
+18894,54340
+69477,54415
+69133,54542
+54194,69071
+18895,54821
+70247,54821
+69178,53840
+18896,53687
+69080,54416
+69179,53966
+68940,54361
+54434,854
+69072,54197
+54871,18897
+54683,69065
+70730,71330
+38968,69589
+69915,70684
+25129,69646
+70991,69351
+38966,54571
+70805,54565
+70086,70087
+70073,68878
+69269,69120
+70664,70543
+69269,70543
+69120,70543
+70126,69865
+70689,12496
+69110,68933
+54865,142
+38938,147
+68856,459
+70290,459
+70337,459
+69057,459
+69592,69457
+69666,771
+68852,53840
+70875,53840
+69297,53840
+69024,53840
+69824,53840
+851,69034
+54609,69034
+69043,69034
+69053,69034
+69202,69034
+69306,69034
+69307,69034
+70310,69034
+70716,69034
+18823,54957
+38915,54957
+68992,18920
+70249,68781
+69048,68782
+288,68837
+71158,68837
+356,18885
+70304,18885
+70305,18885
+363,68841
+69126,68841
+70285,68841
+69468,68841
+53667,39
+54786,43
+68770,53589
+53663,188
+53855,159
+53812,125
+70307,476
+70327,241
+70251,241
+70264,50613
+70267,50613
+70268,50613
+70776,69275
+70540,69275
+69325,69425
+69284,69425
+54432,99
+55083,150
+54751,172
+54114,53281
+54209,38936
+37375,54672
+53412,53302
+30288,31894
+35654,35653
+71360,69614
+71361,68756
+71363,68791
+27884,169
+22178,69445
+25550,68994
+69687,68994
+30253,69729
+20074,69721
+20174,69758
+26963,69659
+25957,69122
+24013,69682
+29185,69660
+69709,54464
+8149,69614
+69146,38935
+69313,38935
+69832,38926
+70019,69595
+68991,54415
+69033,54415
+71244,54415
+68847,54542
+69827,54542
+70048,54542
+70473,68848
+54586,68848
+70474,68849
+54340,68849
+69594,68849
+68850,53678
+70276,53678
+69465,53678
+70475,53678
+69071,69448
+70278,69448
+70466,68851
+54821,68851
+69466,68851
+70467,53840
+70274,53840
+18904,53840
+69300,53687
+70476,53687
+70279,53687
+70468,68853
+69022,68853
+54435,68853
+70469,69301
+54416,69301
+69058,69301
+70277,69301
+69825,69301
+68854,53966
+70471,53966
+69467,53966
+18905,53966
+54361,69299
+70275,69299
+70477,69571
+70055,69571
+54981,69571
+69082,69571
+54863,70478
+69981,70478
+70280,70478
+69064,70479
+70281,70479
+54684,70480
+18898,70480
+54842,70470
+69308,70470
+70318,69569
+69303,69036
+53968,69036
+69042,69036
+69075,68990
+69051,68990
+71264,68990
+69459,68990
+69102,68990
+69494,70308
+69103,70308
+71238,70308
+69460,70308
+70317,70790
+69989,70311
+54604,70481
+70312,70481
+69108,70481
+18899,69037
+54223,69037
+70313,69037
+69568,70314
+69106,70314
+69056,18900
+54584,18900
+69035,18900
+54864,70472
+69134,70482
+70282,70482
+54638,69003
+69176,69003
+69107,69003
+70604,69177
+54797,69177
+70777,69177
+70483,53773
+54850,53773
+38942,66
+38941,66
+54465,66
+69917,66
+54933,66
+70993,66
+69463,69114
+70547,69114
+70037,69529
+11515,69529
+11516,69529
+11517,69529
+11518,69529
+11520,69529
+11521,69529
+11522,69529
+11523,69529
+11525,69529
+59771,69529
+63710,69529
+65179,69529
+14181,69014
+22872,69014
+31572,69014
+35731,69014
+37165,69014
+63109,69014
+63215,69014
+71130,69014
+65025,38926
+71184,7017
+69147,65803
+70630,65803
+70695,69332
+70966,69332
+69936,69326
+18483,71127
+18485,71127
+18486,71127
+68616,68746
+38929,68742
+70106,38927
+2664,60360
+2665,60360
+68682,60360
+68611,38924
+68750,38928
+13847,71157
+68751,71157
+71180,71157
+69907,38971
+69956,38971
+54221,29895
+69125,38975
+69938,38975
+54278,69646
+54658,69646
+69582,38974
+54463,38974
+71053,38974
+69656,153
+70936,153
+68978,54571
+70136,54571
+68926,54753
+71259,54753
+69165,69760
+69231,69760
+8541,8538
+54665,7
+71026,4
+70584,70
+69630,68919
+69633,68919
+69791,68913
+55013,55056
+55015,54190
+55036,55058
+55038,17644
+55099,55056
+68730,68705
+68796,69765
+68808,1
+68812,14910
+68815,8799
+68817,69767
+68819,2579
+68864,38975
+68866,68972
+68870,54753
+68881,1
+68895,38960
+68896,69765
+68899,55056
+68901,69768
+69220,69767
+69229,68972
+69233,14871
+69236,8799
+69241,69020
+69242,69094
+69256,54753
+69264,69781
+69287,69768
+69310,68972
+69311,71252
+69338,2579
+69380,54190
+69424,69282
+69427,69214
+69430,38975
+69585,38960
+69604,8799
+69661,55064
+69831,54190
+69833,2579
+69836,69646
+69839,54190
+69848,38975
+69851,68972
+69852,68972
+69867,29895
+69869,68972
+69870,68972
+69872,68972
+69883,68972
+69894,71250
+69897,68913
+69898,69094
+69900,69123
+69905,38975
+69906,69721
+69918,69095
+69919,38959
+69933,69589
+69959,55056
+69965,69121
+70027,69760
+70052,85
+70059,71330
+70077,69781
+70079,69781
+70081,69121
+70089,68972
+70090,8799
+70127,69781
+70129,69781
+70163,68977
+70538,54753
+70542,69767
+70577,68972
+70580,68972
+70797,68969
+70802,69094
+70810,54753
+70817,54753
+70890,69164
+70894,70715
+70900,29895
+70901,69123
+70922,54190
+70928,54233
+70933,68631
+70940,38975
+70952,69646
+70964,68972
+70971,38970
+70975,69282
+70976,69282
+70989,38959
+71011,55108
+71017,68931
+71028,29895
+71029,69765
+71037,68917
+71047,69767
+71055,54237
+71057,38960
+71088,8799
+71089,69767
+71091,69122
+71092,55056
+71111,8799
+71119,69646
+71139,1
+71141,55056
+71148,69282
+71156,68762
+71160,68762
+71163,69164
+71182,69768
+71220,68762
+68784,38934
+68786,6154
+68788,6154
+68792,6154
+68830,6154
+68869,70635
+69235,38934
+69262,70635
+69340,70635
+69573,70635
+69889,70635
+69939,38934
+69953,70635
+69963,38934
+69978,38934
+70062,70635
+70092,6154
+70235,70635
+70808,70635
+70938,70635
+70953,38934
+70972,70635
+53286,53287
+53326,53119
+53327,53280
+53336,53119
+53346,894
+53350,53280
+53353,53280
+53363,53315
+53404,53315
+53482,304
+53577,304
+53814,53834
+53998,69680
+54405,18838
+54597,691
+54640,71314
+54657,54211
+54704,69696
+54709,880
+54720,771
+54737,69680
+54745,69433
+54879,55106
+54880,70056
+55023,53989
+55024,53989
+55043,69363
+55045,55044
+68791,476
+68793,612
+68795,53119
+68816,703
+69004,54979
+69005,54979
+69006,54977
+69010,902
+69011,69357
+69030,54977
+69031,54977
+69181,18863
+69182,69357
+69183,54979
+69184,54977
+69271,399
+69296,69609
+69317,69443
+69331,69431
+69356,69357
+69370,69369
+69371,69369
+69381,71268
+69572,18917
+69576,54979
+69579,771
+69586,691
+69587,771
+69590,18919
+69599,54979
+69610,53119
+69793,439
+69794,18826
+69983,54979
+69995,69999
+70006,874
+70010,54977
+70011,54977
+70014,18828
+70032,69098
+70034,326
+70054,18869
+70058,772
+70065,54211
+70068,771
+70252,69085
+70258,880
+70306,880
+70340,70016
+70344,69999
+70345,70040
+70346,54826
+70347,69998
+70484,399
+70545,69999
+70558,53802
+70561,69988
+70572,18832
+70579,54979
+70586,54372
+70699,69433
+70704,54977
+70726,69988
+70939,880
+70949,771
+70951,69680
+70981,691
+70988,399
+71033,441
+71064,71066
+71079,54007
+71117,69680
+71118,69680
+71124,275
+71136,476
+71215,71201
+71326,399
+71328,69999
+54248,153
+55115,4771
+69280,153
+69770,153
+69789,153
+69929,153
+69931,4771
+70046,23640
+70063,19306
+70165,16944
+70917,2953
+70955,19306
+71023,153
+71454,68742
+71455,69014
+54857,71250
+28587,28281
+379,812
+522,812
+571,812
+701,812
+732,812
+887,812
+54655,54058
+54851,71381
+69009,18863
+53580,53303
+53899,399
+53914,71381
+53993,69680
+54032,18917
+54111,53901
+54120,18833
+54141,459
+54212,54634
+54888,54007
+68783,69609
+69584,399
+70012,54977
+70025,394
+70050,399
+70051,399
+70064,18833
+70070,54976
+70885,399
+71036,691
+71401,54977
+69600,18863
+69606,53119
+70095,771
+70269,71381
+71421,69999
+71422,476
+71423,612
+71424,69609
+71425,53280
+55027,40313
+69379,54985
+54355,28498
+54876,38939
+69012,158
+69040,38939
+69364,54992
+69374,54983
+71329,38939
+54016,53999
+54377,38939
+54402,38939
+54403,38939
+54636,38939
+54653,38939
+54654,43875
+54705,38939
+54714,38939
+54715,38939
+54716,38939
+54717,38939
+54776,38939
+54778,38939
+54779,38939
+54830,38939
+54877,38939
+54878,38939
+54881,38939
+55025,54990
+55040,55005
+68787,53581
+69008,18916
+69013,158
+69029,22079
+69041,38939
+69060,38939
+69180,38939
+69185,158
+69252,70544
+69352,38939
+69358,55001
+69359,66236
+69360,66236
+69373,59575
+69394,69412
+70013,57258
+70017,38939
+70035,38939
+70038,38939
+70042,66236
+70044,38939
+70060,38939
+70061,38939
+70338,38939
+70339,38939
+70341,38939
+70342,38939
+70343,38939
+70551,38939
+70554,38939
+70556,38939
+70568,38939
+70570,38939
+70595,54735
+70683,40313
+70780,38939
+70887,38939
+70895,38950
+70899,38939
+70914,21489
+70924,54506
+70929,21489
+70969,70097
+70990,38939
+70992,38939
+71000,38939
+71016,68778
+71153,5472
+71331,38939
+69397,55001
+69596,38939
+69598,38939
+69788,53900
+70330,47044
+71420,38939
+71459,8799
+71369,54571
+71461,69589
+70116,940
+67978,940
+68006,940
+54768,26929
+# 2026-06-02 Round 60b: Fast+Epp truncation / narrative-noise variants -> 7345
+# - "Fast" (truncated), "FAST & EPP STRUCTURAL ENGINEERS INC" (Deltek vendor name),
+#   parenthetical narrative variants where Fast+Epp is the only firm referenced.
+# - Composites that mention a 2nd firm (Hatch, WSP) are EXCLUDED from this merge
+#   (Ids 69834, 71262) - those need a separate MPI-row decomposition pass.
+69016,7345
+70384,7345
+69840,7345
+69837,7345
+# 2026-06-02 Round 60b: HDR-acquired CEI Architecture cleanup -> survivor 70635 "HDR".
+# - Pre-acquisition independent "CEI Architecture" (id 4552) STAYS as a separate
+#   canonical so projects from that era keep their attribution.
+# - Post-acquisition / hdrinc.com-domain variants merge into HDR.
+# - Composites that name a 2nd firm (HOK, Parkin) are excluded from this merge
+#   (Ids 54291, 69924) - separate decomposition pass needed.
+70679,70635
+68933,70635
+69028,70635
+69920,70635
+# Stage-leaked variant: "Shortlisted" status word in the canonical's DisplayName.
+# Same firm as the pre-acquisition CEI Architecture (id 4552, MPI=5).
+4553,4552
+# 2026-06-02 Round 60c: Phase-2 backfill surfaced 4 same-website duplicates.
+# Each pair shares an identical Website URL - strongest possible signal.
+# 53747 "Port Metro Vancouver" -> 54058 "Vancouver Fraser Port Authority"
+#   (Port Metro Vancouver was the public brand until 2014-15; VFPA is the legal entity)
+53747,54058
+# 53784 "Bosa Developments" -> 69677 "Bosa Development" (Nat Bosa's firm; Surrey)
+# Survivor 69677 will be reclassified Developer post-merge (currently mis-tagged Buyer).
+53784,69677
+# 53699 "Wall Group of Companies" -> 69250 "Wall Financial Corporation"
+#   (69250 is the legal name; 53699 is the trade-brand variant)
+53699,69250
+# 70097 "Intracorp" -> 53705 "Intracorp Developments"
+70097,53705
+# 2026-06-02 Round 60d: displacement-brief import name-resolution created
+# 25 new architect canonicals. 16 of them fold cleanly into pre-existing
+# canonicals (same firm, different name punctuation/branch/legal-form/typo).
+# 10 are true composites left for Phase 3 decomposition.
+71467,38974
+71462,2579
+71478,38934
+71474,17
+71477,38960
+71475,68913
+71484,54674
+71479,70635
+71481,69703
+71470,153
+71473,70543
+71472,69109
+71471,38969
+71469,54571
+71468,69688
+# dHK / deHoog & Kierulf cluster (all share dhk.ca; survivor=54246 legal name)
+70800,54246
+61,54246
+69170,54246
+69171,54246
+# 2026-06-02 Phase 3 Composite Decomposition: Revery/Kasian composites → Revery Architecture Inc. (38974)
+# 55019 "Revery Architecture (design); Kasian (architect of record)" is a Bucket-B composite;
+# Revery is the design lead, Kasian is AOR. Names don't fuzzy-match so gate bypass required.
+55019,38974
+# 2026-06-02 Phase 3 Session 2: 3XN composites → new standalone 3XN canonical (71487)
+# 3XN is a Danish design architect; Ryder Architecture is the local Vancouver AOR on UBC Lower Mall Phase 1.
+# Composite names "3XN with Ryder Architecture" / "3XN GXN with Ryder Architecture" / "3XN (design architect)..."
+# don't fuzzy-match the standalone "3XN" canonical. UBC Lower Mall MPI rows (3070, 3956) repointed before merge.
+68877,71487
+70078,71487
+69921,71487
+# 2026-06-03 Round 60g: Project-Teams ingest follow-up. The 87 MPI backfills
+# created 16 new canonicals via name-resolution; 10 fold cleanly. For Yellowridge
+# (69893) and Urban One (69942) the EXISTING canonical carried parenthetical
+# intake-bug names; the new clean-named canonical survives. The remaining 6
+# composites (KPMB/Stantec, Gibbs Gage/Diamond Schmitt, Teeple/Stantec, Ledcor/
+# Balfour Beatty, Bow Transit Connectors, WSP/McElhanney) are Phase 3 fodder.
+69893,71504
+69942,71503
+71499,20517
+71498,70973
+71497,71495
+71496,69671
+71492,7017
+71491,38920
+71490,38934
+71505,18657
+# 2026-06-03 Phase 3 Session 3: Revery/Kasian variant composites → Revery Architecture Inc. (38974)
+# Three remaining composite variants of the 55019 pattern (decomposed Session 1).
+# Revery is design lead; Kasian is AOR. Names don't fuzzy-match standalone "Revery Architecture Inc."
+# MPI repoints: MpiId=1294 (Arch 69885→38974), MpiId=4871 (Arch 69375→38974). 69846 was MPI=0.
+69846,38974
+69885,38974
+69375,38974
+# 2026-06-03 Phase 3 Session 3: Squamish Nation composite variants → Squamish Nation canonical (71489)
+# All three are Nation-subsidiary composites (housing arm Hiy̓ám̓ ta Sḵwx̱wú7mesh / dev arm Nch'ḵay̓).
+# MPI repoints: MpiId=4873 (Prop 69377→71489), MpiId=4874 (Prop 69378→71489). 71418 was MPI=0.
+69377,71489
+69378,71489
+71418,71489
+# 2026-06-03 Phase 3 Session 3: BC Transit reverse composite → BC Transit canonical (71488)
+# 54823 "BC Transit / BC Ministry of Transportation and Infrastructure" is the reverse-name
+# variant of 54369 (decomposed Session 2). BC Transit is the operational transit authority. MPI=0.
+54823,71488
+# 2026-06-03 Round 60h: Deltek Bridge sweep linked 252 canonicals to Clendor. 11 Clendor
+# collisions surfaced (same ClendorClientId = same firm verified by KOR's ERP — stronger
+# than fuzzy name match per the Round 14c pattern). 7 merges below; 4 composite-name
+# canonicals (71466, 71485, 71480, 71476, 69234) left for Phase 3 decomposition.
+68615,38931
+38962,69123
+69607,2579
+38965,153
+69737,69589
+71137,6154
+69111,38934
+# 2026-06-03 Round 61a: APC InterestedFirms backfill created a new "Kor Structural"
+# Competitor canonical (71524) when KOR self-registered on AB-2026-04147. Merge
+# into KOR's own canonical 38918 (KorStructural kind). The dedup tool's BestKind
+# logic preserves the KorStructural Kind on the survivor.
+71524,38918
+# 2026-06-03 Architect-Pipelines Session 2 follow-up: Formline Architecture (55057,
+# older shorter name) and Formline Architecture + Urbanism (69095, current name).
+# Same Indigenous architecture firm — they expanded to add Urbanism practice. The
+# VAG win was credited to "Formline Architecture + Urbanism" so 69095 is the
+# survivor. Fuzzy match rejects because the "+ Urbanism" suffix differs.
+55057,69095
+# 2026-06-04 Phase 3 Session 4: Concert-Bird Partners dup merge (71221 → 71162)
+# Both are the same AB P3 Schools Bundle 2 JV entity. 71221 is the verbose legal-name form
+# ("Bird Design-Build Construction Inc. / Wright Construction Western Inc." with "Inc.") vs
+# 71162 shorter form ("Bird Design-Build / Wright Construction Western"). MPI rows repointed
+# to Bird Construction Inc. (54928) before this merge. 71162 is the survivor (higher-MPI original).
+71221,71162
+# 2026-06-04 Bare-Orgs Session 5: NCL - Northern Contracting Limited dup merge.
+# 43889 "NCL – Northern Contracting Limited" (en-dash form, survivor) and 51859
+# "NCL - NORTHERN CONTRACTING LIMITED" (hyphen + upper) are the same Sydney Mines NS
+# GC (835 Main Street, owner Sheldon Marinelli, ncltd.ca). Same address, owner, and
+# website confirmed during Sonnet verify pass. Fuzzy match rejects on the en-dash
+# vs hyphen difference.
+51859,43889
+# 2026-06-04 BdDeltekLink review-cleanup: KOR-side dedup pairs surfaced where two
+# canonicals fuzzy-matched the same Deltek client at confidence >= 0.95. Each is
+# a typo or singular/plural variant of the same firm. Survivors are the canonicals
+# already carrying the Deltek ClendorClientId; losers are duplicates the dedup tool
+# couldn't auto-merge because of the spelling difference. Fuzzy gate rejects on
+# Mackay/Mackey, Dembeck/Dembek, Sawchuck/Sawchuk, Developments/Development-Corp.
+54472,69589
+54558,69704
+70778,69217
+53867,69730
+# 2026-06-04 Round 76 spot-check: Calgary Board of Education (CBE) paren-suffix
+# variant. 68780 "Calgary Board of Education (CBE)" and 72042 "Calgary Board of
+# Education" are the same school district (CBE is the standard public acronym).
+# Both have 14 MPI Proponent rows and 0 KorProjects. Fuzzy gate rejects because
+# the (CBE) suffix survives bracket-strip as "cbe". 72042 (cleaner name) survives.
+68780,72042
+# 2026-06-12 m126 org-name-repair ingest: 85 collision pairs parked by
+# BdQueueDrainIngest --kind org-name-repair (name-repair-merge-pairs.csv).
+# Loser = m126-suppressed garbled-name org; survivor = the active canonical
+# whose NormalizedName equals the drain-verified corrected name (mechanical
+# SQL lookup at park time, not LLM-chosen). All 85 pairs bulk-verified
+# against CanonicalOrg before this append: loser active + m126-suppressed,
+# survivor active, no 38918 involvement. Fuzzy gate rejects on the
+# parenthetical/branch/acronym noise the campaign exists to remove.
+10534,10110
+11320,11319
+13299,13298
+13507,13508
+13802,13801
+17627,17626
+18435,18434
+38958,53834
+48860,44289
+543,53394
+54925,22795
+54935,38946
+54960,18869
+54980,54978
+54994,69740
+55077,691
+55086,216
+55103,38936
+68617,70103
+68626,54946
+68648,73795
+68709,74229
+68765,74150
+68769,53610
+68776,53507
+68777,74157
+68779,38948
+68857,65743
+68860,74225
+68981,52771
+69135,68931
+69362,53842
+69395,69186
+69396,54997
+69668,54758
+69768,70154
+69847,70916
+69868,12699
+69996,70606
+70031,54015
+70272,18890
+70324,843
+70336,69578
+71384,18920
+71634,11507
+72105,22083
+72214,72266
+72276,20402
+72293,6154
+72317,18917
+72324,18917
+72405,72193
+72468,18865
+72469,5472
+73721,73748
+73732,68732
+73735,68685
+73746,68687
+73747,68912
+73749,68713
+73750,68689
+73751,68908
+73752,68644
+73753,73727
+73754,68638
+73755,68705
+73756,68681
+73757,68698
+73758,68695
+73759,38975
+73760,73740
+73762,68681
+73763,68712
+73764,68698
+73765,68892
+73766,38967
+73768,38975
+73769,68710
+74021,627
+74022,68939
+74066,68835
+74072,74071
+74128,68747
+74145,72113
+8278,8277
+# 2026-06-12 m134 verify-flags merge pairs (verify-flags QueueDrain campaign,
+# per-item web evidence in outputs/verify-N.json; every pair re-verified against
+# live CanonicalOrg + FK link counts before this append — see
+# output/verify-flags-pairs-2026-06-12.csv for per-pair notes). Includes the
+# James Cheng survivor FLIP (54297->69676: link counts overruled the drain's
+# lower-id-survives guess) and the McIntosh Perry -> Egis Canada consolidation
+# (74130 renamed by m134 before this run).
+53516,38947
+9217,153
+46917,50504
+4851,4856
+54297,69676
+30665,19491
+11041,66594
+8315,8314
+74133,68749
+11225,11222
+11533,74130
+11534,74130
+71169,68740
+# 2026-06-12 m135 worklist pairs: buyers-deep b001 dup flags (6), honing-gcs
+# b002 CRM-housekeeping merges (4), Stuart Olson -> Bird consolidation (4,
+# all zero-link; Bird acquired Stuart Olson 2020, brand retired), Roads West
+# garble twin, Central Saanich mis-kinded dup. All pairs DB-verified
+# (loser+survivor active, survivors by link count / established-survivor
+# precedent). Per-pair notes in output/worklist-pairs-2026-06-12.csv.
+73943,72042
+70298,72044
+72204,54957
+69439,70308
+72346,71225
+71194,53255
+3693,3690
+2974,2972
+3921,3922
+6890,6887
+16183,54928
+16185,54928
+38955,54928
+70813,54928
+14565,14564
+54085,18854
+# 2026-06-12 closing planner cycle (reviewed): planner proposed 18 groups; 2
+# rejected in review as false fuzzy collapses (74300 Continuum Partners LLC
+# != Continuum Architecture; 74272 Fox Corporation != Fox Architecture) and
+# the egiscanada group direction FLIPPED (6768 vendor row loses to curated
+# 74130). These three rows are planner-grouped same-entity pairs the stricter
+# pairs-gate rejects on brand-word differences:
+69367,69703
+72113,11697
+72280,38934
+# Firm-family consolidation 2026-06-12 (Dossier Completeness Engine step 1).
+# High-confidence office-variant pairs from family-plan-2026-06-12.csv,
+# reviewed and approved by Ian (High tier only). Names differ by office /
+# legal-suffix / legacy-brand qualifiers the fuzzy gate cannot reconcile.
+698,53119,family-2026-06-12 city of calgary
+70300,53119,family-2026-06-12 city of calgary
+68821,53255,family-2026-06-12 alberta infrastructure
+68822,53255,family-2026-06-12 alberta infrastructure
+18653,18657,family-2026-06-12 wsp canada
+578,354,family-2026-06-12 city of red deer
+53401,324,family-2026-06-12 university of calgary
+53315,671,family-2026-06-12 city of medicine hat
+72047,575,family-2026-06-12 calgary housing
+70303,575,family-2026-06-12 calgary housing
+68636,69688,family-2026-06-12 perkins will
+73712,69688,family-2026-06-12 perkins will
+73778,69688,family-2026-06-12 perkins will
+50834,2711,family-2026-06-12 associated engineering
+2712,2711,family-2026-06-12 associated engineering
+72295,2711,family-2026-06-12 associated engineering
+71514,6154,family-2026-06-12 dialog
+68790,6154,family-2026-06-12 dialog
+74165,6154,family-2026-06-12 dialog
+72268,153,family-2026-06-12 arcadis ibi
+70039,38939,family-2026-06-12 bc housing
+69293,69932,family-2026-06-12 mgba
+72795,70543,family-2026-06-12 kasian architecture interior design
+72269,70543,family-2026-06-12 kasian architecture interior design
+70697,68974,family-2026-06-12 wa architects
+53400,852,family-2026-06-12 northern alberta institute of technology
+12813,69968,family-2026-06-12 omicron architecture
+23402,22641,family-2026-06-12 peter rose
+71208,340,family-2026-06-12 red deer polytechnic
+72146,399,family-2026-06-12 city of vancouver
+72148,399,family-2026-06-12 city of vancouver
+72271,1,family-2026-06-12 gec architecture
+73930,1,family-2026-06-12 gec architecture
+348,596,family-2026-06-12 bc timber sales branch
+68629,70108,family-2026-06-12 ac martin
+71128,388,family-2026-06-12 civida
+72309,691,family-2026-06-12 city of burnaby
+72283,69724,family-2026-06-12 cornerstone architecture
+74174,14910,family-2026-06-12 sahuri partners
+70574,4708,family-2026-06-12 chandos construction
+70537,68977,family-2026-06-12 studiohub architects
+69328,4856,family-2026-06-12 cima
+46886,46645,family-2026-06-12 don saywell
+10624,69625,family-2026-06-12 lafarge canada
+72267,69589,family-2026-06-12 musson cattell mackey
+70602,158,family-2026-06-12 city of kelowna
+54934,11319,family-2026-06-12 maple reinders
+71082,11319,family-2026-06-12 maple reinders
+11323,11319,family-2026-06-12 maple reinders
+71466,54190,family-2026-06-12 gbl architects
+71261,54753,family-2026-06-12 diamond schmitt
+72098,8129,family-2026-06-12 gga architecture
+68758,8129,family-2026-06-12 gga architecture
+72152,394,family-2026-06-12 city of richmond
+69429,74016,family-2026-06-12 faction architecture
+18913,69680,family-2026-06-12 translink
+22529,69214,family-2026-06-12 johnston davidson
+69986,69756,family-2026-06-12 low hammond rowe
+3223,68976,family-2026-06-12 berry architecture
+72202,38956,family-2026-06-12 ubc properties trust
+68841,23987,family-2026-06-12 metro vancouver
+72321,72158,family-2026-06-12 city of maple ridge
+72336,703,family-2026-06-12 edmonton public library
+72440,4922,family-2026-06-12 clark builders
+72445,4922,family-2026-06-12 clark builders
+72082,18867,family-2026-06-12 government of alberta
+72439,18867,family-2026-06-12 government of alberta
+69997,69164,family-2026-06-12 shape architecture
+70944,771,family-2026-06-12 simon fraser university
+48775,47805,family-2026-06-12 joneljim concrete
+2366,2364,family-2026-06-12 amron construction
+69914,68746,family-2026-06-12 thornton tomasetti
+54058,38952,family-2026-06-12 vancouver fraser port authority
+73931,14871,family-2026-06-12 s2 architecture
+70888,71004,family-2026-06-12 axiom builders
+23927,78,family-2026-06-12 montage development
+71027,20517,family-2026-06-12 pcl constructors westcoast
+72266,38974,family-2026-06-12 revery architecture
+72149,38974,family-2026-06-12 revery architecture
+10525,10528,family-2026-06-12 krawford construction
+10526,10528,family-2026-06-12 krawford construction
+75026,72211,family-2026-06-12 provincial health services authority
+71535,68919,family-2026-06-12 reimagine architects
+23357,71067,family-2026-06-12 jta development
+72244,207,family-2026-06-12 anthem properties
+9490,9379,family-2026-06-12 in line
+73987,18454,family-2026-06-12 wilco contractors south west
+72166,68879,family-2026-06-12 station one
+69892,68879,family-2026-06-12 station one
+70703,69109,family-2026-06-12 thinkspace architecture planning interior design
+44642,20545,family-2026-06-12 ratio architecture interior design
+72327,18838,family-2026-06-12 city of surrey
+73887,69614,family-2026-06-12 gibbs gage
+74159,68781,family-2026-06-12 calgary catholic school district
+71132,16018,family-2026-06-12 start architecture
+18404,18405,family-2026-06-12 whissell contracting
+18408,18405,family-2026-06-12 whissell contracting
+18409,18405,family-2026-06-12 whissell contracting
+69609,53614,family-2026-06-12 calgary municipal land
+71359,71330,family-2026-06-12 ron hart
+31123,19650,family-2026-06-12 on side restoration services
+2194,2196,family-2026-06-12 alpha construction
+71509,2555,family-2026-06-12 arc studio
+74186,68742,family-2026-06-12 magnusson klemencic
+72254,71250,family-2026-06-12 integra architecture
+27056,18771,family-2026-06-12 zeidler architecture
+11124,11123,family-2026-06-12 luxton construction
+69966,54454,family-2026-06-12 wensley architecture
+68921,7843,family-2026-06-12 fwba architects
+73992,68912,family-2026-06-12 miller hull
+48317,53946,family-2026-06-12 osoyoos indian band
+54993,53946,family-2026-06-12 osoyoos indian band
+18495,20819,family-2026-06-12 willow spring
+18496,20819,family-2026-06-12 willow spring
+72320,886,family-2026-06-12 city of delta
+2973,2972,family-2026-06-12 baja construction
+73799,89,family-2026-06-12 darwin properties
+2218,2217,family-2026-06-12 alps construction
+74178,69767,family-2026-06-12 teeple architects
+2772,2773,family-2026-06-12 atkinson construction
+70729,69001,family-2026-06-12 macdonald hagarty
+70036,69001,family-2026-06-12 macdonald hagarty
+70331,69320,family-2026-06-12 mcfarland marceau
+4914,4917,family-2026-06-12 ckb construction
+70784,166,family-2026-06-12 live edge okanagan
+71503,15,family-2026-06-12 urban one
+13300,13298,family-2026-06-12 pemco construction
+10744,10745,family-2026-06-12 lavergne construction
+8249,8248,family-2026-06-12 goldbar contractors
+4454,4456,family-2026-06-12 castle rock
+71205,12863,family-2026-06-12 onpa architects
+12864,12863,family-2026-06-12 onpa architects
+21326,167,family-2026-06-12 onni contracting
+71376,72169,family-2026-06-12 kmbr architects planners
+71930,16346,family-2026-06-12 svemy construction
+4158,56841,family-2026-06-12 canadian development
+6111,6112,family-2026-06-12 devitt forand
+6113,6112,family-2026-06-12 devitt forand
+69047,54541,family-2026-06-12 comox valley regional district
+73929,46132,family-2026-06-12 norr architects
+72097,525,family-2026-06-12 lethbridge college
+53468,53370,family-2026-06-12 carlisle group
+18054,18051,family-2026-06-12 ward bros
+18050,18051,family-2026-06-12 ward bros
+71572,9672,family-2026-06-12 interworks contracting
+54948,68622,family-2026-06-12 hensel phelps
+69974,68829,family-2026-06-12 giannone petricone
+11332,16853,family-2026-06-12 marc boutin architectural
+16852,16853,family-2026-06-12 marc boutin architectural
+10906,10905,family-2026-06-12 lex3 engineering
+67440,69258,family-2026-06-12 adamson associates
+71823,7409,family-2026-06-12 fillmore construction management
+22462,70926,family-2026-06-12 itc construction
+53626,3202,family-2026-06-12 bentall kennedy
+47177,46591,family-2026-06-12 wade general
+69946,69243,family-2026-06-12 bjarke ingels group dialog
+55048,54118,family-2026-06-12 canada lands
+17023,17025,family-2026-06-12 timcon construction
+17024,17025,family-2026-06-12 timcon construction
+15091,54932,family-2026-06-12 scott construction
+54266,54330,family-2026-06-12 hulbert group
+54329,54330,family-2026-06-12 hulbert group
+69458,18819,family-2026-06-12 bc institute of technology
+12029,71883,family-2026-06-12 most engineering
+71527,71176,family-2026-06-12 lemay
+72170,72164,family-2026-06-12 thinkspace architecture planning and interior design
+72128,5472,family-2026-06-12 covenant health
+54998,69186,family-2026-06-12 khowutzun development
+54525,18908,family-2026-06-12 thompson rivers university
+25601,9025,family-2026-06-12 holaco construction
+71620,17626,family-2026-06-12 unsurpassable construction
+15719,15718,family-2026-06-12 southwest design
+71013,69446,family-2026-06-12 rwa group
+23806,172,family-2026-06-12 square nine
+14204,14205,family-2026-06-12 reco construction
+1964,1963,family-2026-06-12 akron engineering consultant s
+71211,72112,family-2026-06-12 hsea architecture
+15192,15191,family-2026-06-12 sena constructors
+54157,18920,family-2026-06-12 vancouver island university
+68296,42674,family-2026-06-12 bennett s construction supplies
+42377,336,family-2026-06-12 three hills
+47607,47047,family-2026-06-12 leighton contracting
+72235,72190,family-2026-06-12 hdr architecture
+72209,72190,family-2026-06-12 hdr architecture
+70746,69993,family-2026-06-12 jm architecture
+51042,44414,family-2026-06-12 construction polaris
+42666,44414,family-2026-06-12 construction polaris
+69890,69862,family-2026-06-12 civitas urban design
+73928,71323,family-2026-06-12 walterfedy architecture
+6598,6596,family-2026-06-12 eba engineering
+6599,6596,family-2026-06-12 eba engineering
+6600,6596,family-2026-06-12 eba engineering
+47172,47900,family-2026-06-12 emmons and mitchell
+69909,55100,family-2026-06-12 tien sher
+69910,69987,family-2026-06-12 stantec
+69581,69987,family-2026-06-12 stantec
+69923,69987,family-2026-06-12 stantec
+74229,73739,family-2026-06-12 trammell crow
+53390,53597,family-2026-06-12 yorkton group
+49411,6911,family-2026-06-12 emil anderson
+3845,3848,family-2026-06-12 bunt associates
+3846,3848,family-2026-06-12 bunt associates
+54860,69804,family-2026-06-12 qualex landmark
+49153,51062,family-2026-06-12 penn co
+74175,11288,family-2026-06-12 manasc isaac
+73783,68834,family-2026-06-12 city of portland
+12563,12562,family-2026-06-12 northern road
+68842,73733,family-2026-06-12 multnomah county
+75165,54949,family-2026-06-12 whiting turner
+36310,25097,family-2026-06-12 pacific preferred
+48268,46649,family-2026-06-12 smart electrical
+71581,3510,family-2026-06-12 boald construction management
+3511,3510,family-2026-06-12 boald construction management
+24875,54824,family-2026-06-12 canada west
+9140,9142,family-2026-06-12 hukalo oberg
+53962,21199,family-2026-06-12 pci group
+18607,18606,family-2026-06-12 works of
+10642,10643,family-2026-06-12 lafrentz road marking a division of canadian road
+10644,10643,family-2026-06-12 lafrentz road marking a division of canadian road
+23279,23277,family-2026-06-12 hi beam
+41065,50960,family-2026-06-12 hipperson construction
+46662,3301,family-2026-06-12 bighorn construction
+32189,26800,family-2026-06-12 pr pomeroy restoration
+13978,13979,family-2026-06-12 questic contracting
+70325,53730,family-2026-06-12 bc ferries
+17284,17283,family-2026-06-12 tribuild contracting
+49132,69740,family-2026-06-12 penticton indian band
+20976,20678,family-2026-06-12 edyu group
+5907,5906,family-2026-06-12 dcl construction services
+13544,13545,family-2026-06-12 porscon construction
+71521,9684,family-2026-06-12 introba canada
+63935,9684,family-2026-06-12 introba canada
+73761,73729,family-2026-06-12 king county housing authority
+64055,49990,family-2026-06-12 fidelity engineering
+7650,7651,family-2026-06-12 formula contractors
+53780,18868,family-2026-06-12 greater vancouver regional district
+40737,40764,family-2026-06-12 brook construction
+9503,9504,family-2026-06-12 innovative civil
+15128,15129,family-2026-06-12 seasonal impact
+71150,2636,family-2026-06-12 arrow engineering
+14715,14717,family-2026-06-12 rossco s tree service
+14716,14717,family-2026-06-12 rossco s tree service
+1908,1909,family-2026-06-12 ags mechanical
+18851,71350,family-2026-06-12 department of national defence
+71417,71316,family-2026-06-12 heiltsuk nation
+51188,46545,family-2026-06-12 magellan engineering
+11247,11246,family-2026-06-12 mainline construction
+68809,70296,family-2026-06-12 nait
+36785,55065,family-2026-06-12 keltic development
+71104,24837,family-2026-06-12 formwerks boutique
+5684,5685,family-2026-06-12 cutting edge
+10829,10828,family-2026-06-12 leeville construction
+14622,71206,family-2026-06-12 rockliff pierzchajlo kroman
+70571,71236,family-2026-06-12 highstreet ventures
+70271,18907,family-2026-06-12 thompson nicola regional district
+51458,46568,family-2026-06-12 ben wiebe
+9056,9055,family-2026-06-12 hopkins construction
+12204,12205,family-2026-06-12 nac constructors
+8562,8560,family-2026-06-12 gs holdings
+55011,55044,family-2026-06-12 williams lake first nation
+71419,71338,family-2026-06-12 nanoose first nation
+34059,28876,family-2026-06-12 zas architects
+11652,11651,family-2026-06-12 mega technical holdings
+31894,24612,family-2026-06-12 ultra west estates
+5394,5393,family-2026-06-12 cormode dickson
+5395,5393,family-2026-06-12 cormode dickson
+5396,5393,family-2026-06-12 cormode dickson
+2922,2921,family-2026-06-12 aztec renovations refit
+6733,6732,family-2026-06-12 edon properties
+74096,73782,family-2026-06-12 vancouver school board
+19538,29110,family-2026-06-12 polis mccm
+11126,51856,family-2026-06-12 lydale construction
+11127,51856,family-2026-06-12 lydale construction
+53292,72382,family-2026-06-12 telus world of science
+51668,44063,family-2026-06-12 maher s
+7368,47033,family-2026-06-12 federation construction services
+10123,10121,family-2026-06-12 k shaw sons
+10124,10121,family-2026-06-12 k shaw sons
+69476,70257,family-2026-06-12 regional district of central kootenay
+10061,10062,family-2026-06-12 jones lang lasalle real estate services
+10063,10062,family-2026-06-12 jones lang lasalle real estate services
+70882,21276,family-2026-06-12 companion construction
+21810,20680,family-2026-06-12 604 deconstruction
+8118,8119,family-2026-06-12 getkate construction
+31131,55049,family-2026-06-12 property development
+33838,54309,family-2026-06-12 water street
+69830,69622,family-2026-06-12 snohetta dialog
+4635,4634,family-2026-06-12 cervus contractors equipment
+16129,16128,family-2026-06-12 stony valley
+71009,69335,family-2026-06-12 fraser region aboriginal friendship centre association
+71742,15272,family-2026-06-12 shanghai construction
+69744,54995,family-2026-06-12 sun rivers
+71273,70321,family-2026-06-12 alberni clayoquot regional district
+74118,68818,family-2026-06-12 saucier perrotte
+58849,60821,family-2026-06-12 insights learning and
+10325,71604,family-2026-06-12 kiewit construction services
+13422,13421,family-2026-06-12 pillar contracting
+7006,7005,family-2026-06-12 enterprise holdings
+70821,69276,family-2026-06-12 pgh consulting services
+32683,70906,family-2026-06-12 sdae development
+15834,15833,family-2026-06-12 sprague rosser
+71794,44325,family-2026-06-12 infracon construction
+4780,4779,family-2026-06-12 chief construction
+8284,8283,family-2026-06-12 good brothers
+55026,54991,family-2026-06-12 kwikwetlem first nation
+18632,18634,family-2026-06-12 wrd borger
+11569,11570,family-2026-06-12 mcnally contracting
+69316,69444,family-2026-06-12 allied reit
+889,18871,family-2026-06-12 legislative assembly
+43838,50747,family-2026-06-12 tech construction
+15195,15194,family-2026-06-12 sena solid waste holdings
+69843,71445,family-2026-06-12 pwl partnership
+7879,7862,family-2026-06-12 g w cox
+7880,7862,family-2026-06-12 g w cox
+67962,67852,family-2026-06-12 mcrobie architects interior
+7205,7204,family-2026-06-12 evi holdings
+68794,69295,family-2026-06-12 sn hetta dialog
+18184,18183,family-2026-06-12 wesbridge construction
+9960,9959,family-2026-06-12 jesco electrical
+70782,54522,family-2026-06-12 vancouver resource society
+18177,18175,family-2026-06-12 wells construction division of lafarge
+51935,6830,family-2026-06-12 elite construction
+22258,54734,family-2026-06-12 molnar group
+71605,10640,family-2026-06-12 laforce construction
+51738,29433,family-2026-06-12 circle square
+72224,17746,family-2026-06-12 various
+72262,17746,family-2026-06-12 various
+18318,18319,family-2026-06-12 western recreation
+54283,53885,family-2026-06-12 western bioenergy
+32206,32204,family-2026-06-12 abaca landscaping
+17532,17531,family-2026-06-12 uniglobe construction management
+54738,70564,family-2026-06-12 stober group
+46260,45837,family-2026-06-12 w a p fernando
+14387,71755,family-2026-06-12 revive construction
+47291,41242,family-2026-06-12 hybrid construction
+63159,49242,family-2026-06-12 dew engineering and
+18250,18249,family-2026-06-12 westcan acs
+9448,9447,family-2026-06-12 information engineering
+51595,71967,family-2026-06-12 true north
+10770,10769,family-2026-06-12 le roux road
+53950,69810,family-2026-06-12 orca west
+71695,17725,family-2026-06-12 van rooyen
+72222,30386,family-2026-06-12 darwin construction
+11303,11301,family-2026-06-12 manshield construction
+10233,10232,family-2026-06-12 keegan holdings
+13627,13626,family-2026-06-12 prairie view holdings
+71905,70562,family-2026-06-12 unitech construction management
+72183,72180,family-2026-06-12 not separately identified
+72423,72180,family-2026-06-12 not separately identified
+# Medium/Low tier 2026-06-12 (Dossier Completeness step 1b): 36 pairs individually
+# reviewed (15 rejected: BCTS branches, Boffo CLENDOR, cross-discipline +
+# thin-evidence biznum conflicts). Reviewed by Claude, tier approved by Ian.
+75042,18657,family-ml-2026-06-12 wsp canada
+16769,354,family-ml-2026-06-12 city of red deer
+54294,69688,family-ml-2026-06-12 perkins will
+75040,69688,family-ml-2026-06-12 perkins will
+73932,70543,family-ml-2026-06-12 kasian architecture interior design
+47999,46645,family-ml-2026-06-12 don saywell
+10621,69625,family-ml-2026-06-12 lafarge canada
+10622,69625,family-ml-2026-06-12 lafarge canada
+10623,69625,family-ml-2026-06-12 lafarge canada
+70015,68976,family-ml-2026-06-12 berry architecture
+64475,771,family-ml-2026-06-12 simon fraser university
+2368,2364,family-ml-2026-06-12 amron construction
+68294,38952,family-ml-2026-06-12 vancouver fraser port authority
+2195,2196,family-ml-2026-06-12 alpha construction
+20604,70973,family-ml-2026-06-12 haebler construction
+24162,70973,family-ml-2026-06-12 haebler construction
+28637,15,family-ml-2026-06-12 urban one
+10746,10745,family-ml-2026-06-12 lavergne construction
+20977,143,family-ml-2026-06-12 ulmus development
+6110,6112,family-ml-2026-06-12 devitt forand
+18052,18051,family-ml-2026-06-12 ward bros
+71199,16853,family-ml-2026-06-12 marc boutin architectural
+32227,70926,family-ml-2026-06-12 itc construction
+47994,46591,family-ml-2026-06-12 wade general
+36438,54932,family-ml-2026-06-12 scott construction
+15720,15718,family-ml-2026-06-12 southwest design
+48708,47900,family-ml-2026-06-12 emmons and mitchell
+53918,55100,family-ml-2026-06-12 tien sher
+23827,19756,family-ml-2026-06-12 lewis vancouver
+38331,25097,family-ml-2026-06-12 pacific preferred
+15127,15129,family-ml-2026-06-12 seasonal impact
+44348,54068,family-ml-2026-06-12 mahoe properties
+33132,15173,family-ml-2026-06-12 seko construction
+55078,30792,family-ml-2026-06-12 pacific reach
+17628,29632,family-ml-2026-06-12 upa construction
+72247,28694,family-ml-2026-06-12 beedie living
+# 2026-06-15: Calgary Roman Catholic Separate School District (id=249) -> Calgary Catholic School District (CCSD, id=68781)
+# Legal entity name vs operating brand; same school district. Fuzzy gate rejects on "roman catholic separate" vs "catholic school district (ccsd)".
+249,68781
+# 2026-06-14 org-name-repair collision pairs. Both orgs verified active (loser+survivor)
+# before this append. Fuzzy gate rejects because the loser carries acronym-prefix noise
+# that the repair campaign exists to remove.
+# 572 "Infrastructure" -> 54978 "Infrastructure BC": truncated name, same entity.
+572,54978
+# 70296 "NAIT (Northern Alberta Institute of Technology)" -> 852 "Northern Alberta
+# Institute of Technology": NAIT prefix throws fuzzy gate; same post-secondary institution.
+70296,852
+# 2026-06-16 Report-critical cluster dedup (migration-147 companion). Five real
+# entities fragmented across canonical rows, splitting their project counts in
+# every BD report. Survivors chosen by ref-count + canonical name + official
+# website + Deltek (Clendor) linkage (only Glotman 38926 carries a Clendor id,
+# so it MUST survive). All losers DB-verified: active, no frozen-kind, refs
+# repointed by the tool. West Van (SD45) / North Van (SD44) / joint VSB rows
+# (76029, 70883) deliberately EXCLUDED — distinct entities. Fuzzy gate rejects
+# on paren-suffix / "Board" vs "District No." / acronym variants.
+# Glotman Simpson -> 38926 (Clendor CL00573)
+# NOTE: 69901 and 69853 EXCLUDED — they are composites naming a 2nd/3rd firm
+# (69901 "...; RJC Engineers..."; 69853 "...; Stantec...; Fast+Epp...") and are
+# deferred to composite-decomposition per the Fast+Epp/HDR precedent above.
+75857,38926
+75665,38926
+74927,38926
+# WHM Structural Engineers (Wicke Herfst Maver) -> 69332
+76565,69332
+76507,69332
+75978,69332
+75877,69332
+# Vancouver School Board / SD39 -> 76162 (renamed canonical by migration 147)
+75535,76162
+75880,76162
+75657,76162
+76536,76162
+73782,76162
+76434,76162
+76030,76162
+23243,76162
+75970,76162
+31755,76162
+# West Vancouver School District SD45 -> 69571 (sd45.bc.ca)
+76222,69571
+75663,69571
+54971,69571
+# North Vancouver School District SD44 -> 75852
+54970,75852
+# 2026-06-16 second pass — report-visible owner dups surfaced when refreshing the
+# Lower Mainland owner ranking on the deduped data. Same-entity splits; survivors
+# by ref-count + website + Clendor. Joint "Fraser Health / X" rows excluded.
+# Richmond School District (SD38) -> 68851 (sd38.bc.ca)
+76163,68851
+54966,68851
+# Fraser Health Authority -> 880
+75661,880
+# 2026-06-16 systematic BC school-district dedup (sd-dedup-2026-06-16.csv). Each BC
+# district (SDxx) was fragmented across 3-8 name variants (SDxx prefix / No. xx /
+# (SD xx) / School District NN (Name) / School Board / Public Schools). Survivor =
+# max active refs (SD39->76162 VSB established survivor; verified no loser is also a
+# survivor). US/Oregon + AB districts + joints + the Comparator/Template row excluded.
+# Fuzzy gate rejects on the SDxx/No.xx/parenthetical noise; this is the audit record.
+36285,76162
+53840,76162
+53966,76180
+54542,75752
+54616,75751
+54968,76171
+54972,69036
+59699,70481
+68849,54963
+68853,76171
+69489,70045
+71383,54415
+71452,70314
+72135,70478
+73711,76162
+73845,69034
+73965,76180
+74004,68990
+74005,70308
+74006,70311
+74009,70314
+74010,69003
+74050,70479
+74083,69034
+75024,54964
+75108,54963
+75519,69034
+75520,18900
+75533,75752
+75534,54964
+75536,76180
+75658,76180
+75739,68990
+75741,69034
+75742,69037
+75743,54415
+75744,18900
+75747,69301
+75750,70002
+75753,76162
+75754,76171
+75755,75852
+75756,70478
+75757,70470
+75758,54415
+75759,53773
+75802,69003
+75806,76171
+75812,69036
+75813,70481
+75814,69037
+75815,70790
+75818,76180
+75819,53687
+75820,68851
+75821,69571
+75822,54965
+75823,68848
+75854,69037
+75855,69036
+75856,69177
+75881,53687
+75883,69036
+75884,68990
+75885,69003
+75886,69034
+75887,69034
+75888,70470
+75911,18900
+75920,70308
+75921,54965
+75960,68990
+75961,70308
+75962,70314
+75963,69003
+75965,54415
+75966,54964
+75967,68851
+75968,76180
+75971,69301
+75972,68848
+75973,75752
+76031,54963
+76090,69037
+76166,68848
+76174,54963
+76182,69034
+76189,54964
+76191,53773
+76193,53773
+76194,69301
+76197,53687
+76221,69034
+76341,69037
+76342,70478
+76345,54415
+76346,54415
+76348,75751
+76357,69301
+76361,70311
+76362,53773
+76374,75752
+76375,53773
+76381,69571
+76417,68851
+76435,75852
+76436,54964
+76437,69301
+76438,54965
+76439,53687
+76440,70478
+76441,70479
+76442,70482
+76457,69034
+76458,70481
+76459,69037
+76460,70790
+76461,69569
+76489,75964
+76498,69177
+76518,69177
+76522,54415
+# 2026-06-16 institutional/firm long-tail dedup (institutional-dedup-2026-06-16.csv):
+# suffix/parenthetical/acronym/office variants across all regions (UBC/UVic/Island
+# Health/RJC/Fast+Epp/Herold/Equilibrium/universities/colleges/health authorities/
+# developers). Survivor = max active refs, Clendor-linked preferred (KorClient rows
+# preserved as survivors). Stantec eng/arch/consulting kept as distinct entities;
+# only bare-Stantec editorial variants folded into Stantec Inc. 260 pairs, no chains.
+76128,69683
+75783,68756
+75717,70108
+75796,38960
+75836,38960
+75521,476
+75700,476
+75591,50
+2274,72435
+75693,207
+76127,207
+75680,153
+75696,53610
+72110,2953
+76401,2953
+76111,69704
+75650,38939
+75651,43875
+75975,53679
+76119,205
+75480,54928
+75601,54928
+76215,54928
+76152,71099
+25155,75573
+69806,75573
+76092,69677
+75576,38943
+3616,903
+74051,54957
+75827,75868
+38920,75868
+76612,69719
+75522,72042
+75701,68781
+76418,68781
+76453,575
+76036,69207
+70255,142
+76083,142
+75604,4708
+76414,4708
+76523,75841
+68969,75841
+75585,7
+76268,54553
+75577,691
+76452,53119
+4889,53280
+76445,58
+76252,4922
+75484,4922
+72007,76373
+76463,54541
+76106,38946
+75608,38946
+75580,38946
+75505,49
+75835,85
+76661,54740
+75586,89
+76084,24
+76524,73997
+75839,73997
+75840,73997
+75472,73997
+69860,6154
+75875,6154
+75991,6154
+75645,6154
+76244,6154
+76286,6154
+76321,69865
+76216,54753
+75992,69123
+70043,69123
+76632,68837
+76629,68782
+76303,22257
+76640,75664
+75873,38925
+75494,7345
+76241,7345
+76540,69646
+75789,7843
+75579,54190
+75644,54190
+75506,1
+75718,68631
+75791,68631
+76331,68631
+75681,8129
+76051,69614
+76278,69232
+76411,69232
+75485,68986
+76040,68986
+76546,69629
+76132,69629
+76365,8799
+75809,72190
+75542,71316
+76500,68998
+75682,72071
+75722,68644
+75910,71250
+75786,75930
+72272,75930
+75528,54979
+75486,54979
+75572,69676
+75683,70543
+76638,70543
+76232,70543
+75497,48505
+76323,54571
+75471,72169
+75478,72169
+75654,18869
+76116,200
+76534,69671
+76413,69671
+76113,75582
+76205,69756
+69001,76512
+75729,68647
+75730,68742
+75666,68742
+76368,75649
+69529,75649
+75673,75649
+76470,69320
+76542,69320
+75843,69094
+76653,11697
+76444,23987
+75969,23987
+75529,23987
+75976,69746
+75837,69322
+75495,68913
+55017,55014
+75597,69589
+76200,69589
+76302,69589
+70241,76515
+75544,71338
+76598,76183
+75531,852
+76588,4
+75898,38969
+75732,38949
+76616,38950
+76016,68865
+76176,68865
+75656,75662
+75589,70919
+75603,13243
+75715,13243
+76243,13243
+76250,20517
+34673,55121
+75620,69740
+76004,75793
+75684,75793
+75720,75793
+75571,53665
+28,75574
+76581,69122
+75532,72211
+76454,72211
+76455,72211
+530,72211
+680,72211
+76223,76159
+68915,76159
+76510,76159
+76402,38972
+70261,42656
+76107,69694
+76464,54015
+75598,157
+75647,38974
+75861,38974
+76596,38974
+76299,69014
+75667,69014
+75824,69014
+75830,69014
+75831,69014
+75493,69014
+76451,72044
+75686,14871
+76328,38933
+68984,76516
+75833,69164
+76120,69164
+76541,69164
+76064,69631
+75537,771
+75659,771
+75829,70606
+76330,68872
+76155,69730
+76186,75558
+70904,75558
+70005,75558
+69984,75558
+69608,75558
+75473,75558
+75030,15944
+76506,15944
+75507,68879
+76175,68879
+76593,43
+76296,69326
+76103,42
+76118,54674
+145,75595
+16770,354
+76122,69696
+75491,18908
+75708,68746
+75669,68746
+75985,68897
+75780,69680
+75816,75490
+76433,75490
+62038,763
+17617,763
+75538,459
+76164,459
+76474,459
+75660,459
+75540,74225
+74905,68861
+76300,15
+75959,18918
+38952,75853
+75489,18920
+72263,17746
+75584,12
+75781,75642
+75590,60
+76112,225
+76062,69660
+76010,38975
+75474,38975
+76211,38975
+76297,38975
+75922,38934
+76006,38934
+75668,38934
+69473,38934
+69972,38934
+69976,38934
+69941,38934
+69987,38934
+72455,38934
+76340,38934
+# 2026-06-17 CA warm-client dedup (ca-warm-dedup-2026-06-17.csv). The California metro
+# research ingest created duplicate canonicals of KOR's existing Deltek-linked warm
+# clients. Survivors carry the ClendorClientId + KorProjectsCount (verified via DB);
+# losers are KPC=0 research dupes. Fuzzy gate rejects on acronym/paren/legal-suffix
+# differences (JWDA=Joseph Wong Design Associates; DBRDS=De Bartolo+Rimanic; LLC suffix;
+# Corp vs Group; "+ SDSU" project-context noise). Each verified same-entity 2026-06-17.
+76793,48,ca-warm jwda (joseph wong design associates = jwda)
+76659,48,ca-warm jwda architects = jwda
+76813,77,ca-warm mirka investments = mirka investments llc
+76099,220,ca-warm intergulf development corp = group
+53492,220,ca-warm intergulf/cidex = intergulf development group
+76789,20,ca-warm de bartolo+rimanic = dbrds
+76831,20,ca-warm dbrds variant
+76863,20,ca-warm dbrds variant (aor note)
+76941,20,ca-warm dbrds (wrong "design by reference" expansion)
+76819,64,ca-warm avalonbay+sdsu = avalonbay communities
+# CA org-graph clean (2026-06-18): research-dup fragments -> Deltek/most-linked survivors. Verified same-firm name variants.
+76944,70108,AC Martin (A.C. Martin Partners) -> AC Martin
+76784,68610,Degenkolb Engineers - San Diego -> Degenkolb Engineers
+75704,38924,Englekirk (now part of WSP) -> Englekirk Structural Engineers
+76794,68631,Gensler - San Diego -> Gensler
+76737,68631,Gensler Architects -> Gensler
+75705,68613,John A. Martin & Associates Inc (JAMA) -> JAMA survivor
+75199,68613,John A. Martin and Associates -> JAMA survivor
+76888,75180,Solomon Cordwell Buenz (SCB) -> SCB
+# Round (2026-06-18): CA funnel verified-same-firm brand variants.
+70737,55110,Greystar == Greystar Real Estate Partners (same firm; brand short form)
+75793,69688,Perkins&Will == Perkins + Will Architects (same firm; brand vs legal)
+76946,75736,Trammell Crow Company == Trammell Crow Company (TCC) (acronym)
+# Round (2026-06-18b): CA fragment families — verified same firm (branch/acronym/plural variants).
+75707,38931,Nabih Youssef Associates (NYA) == Nabih Youssef Associates (acronym)
+76785,38933,Saiful Bouquet — San Diego == HQ (branch office)
+76787,38923,DCI Engineers — San Diego == DCI Engineers (branch office)
+76079,7,Chris Dikeakos Architect == Chris Dikeakos Architects Inc. (singular/legal)
+76802,69677,Bosa Development — San Diego == Bosa Development (branch)
+76134,69677,Bosa Developments == Bosa Development (plural variant)
+# Round (2026-06-18c): CA JV-string decomposition -> lead entity (verified).
+76822,68778,Hines / Affinius Capital JV -> Hines (lead developer)
+76933,76903,Tishman Speyer / SF Giants -> Tishman Speyer (lead developer)
+76928,68654,BRIDGE Housing / The Unity Council -> BRIDGE Housing Corporation (lead)
+76906,68654,Bridge Housing == BRIDGE Housing Corporation (dup)
+76932,76905,Strada / Trammell Crow JV -> Strada Investment Group (lead)
+76874,76872,SMUD / SKK Developments -> SKK Developments (developer)
+76873,76858,DGS / State Excess Sites Program -> DGS
+76936,76935,San Jose State University / CSU -> San Jose State University
+76818,68637,Steinberg Hart / Studio Gang team -> Steinberg Hart (lead AOR)
+76820,75736,Port of SD / Trammell Crow JV -> Trammell Crow Company (TCC)
+76866,76871,UC Davis / Wexford / GMH -> Wexford Science + Technology (dup of renamed 76871)
+# Round (2026-06-19): ITC Construction Group legal-entity variants -> canonical (CL00209). ITC Systems (9796) excluded = different company.
+48001,70926,ITC == ITC Construction Group (bare variant)
+27601,70926,ITC BC Builders Inc == ITC Construction Group
+25923,70926,ITC BC Residential Projects Inc == ITC Construction Group
+29776,70926,ITC Commercial BC Inc == ITC Construction Group
+24570,70926,ITC Projects Inc == ITC Construction Group
+31489,70926,ITC Special Projects Ltd == ITC Construction Group
+# Round (2026-06-19): A-G fuzzy-family bare variants -> Deltek canonical (verified same entity).
+76095,38936,Adera Developments == Adera Development Corporation
+28361,169,Amacon Development (Robson) SPE == Amacon
+76686,169,Amacon Development Corp == Amacon
+75581,207,Anthem Properties == Anthem Properties Group Ltd
+53898,69802,Appia Developments == Appia Development
+74179,2579,Architecture49 (stations sub) == Architecture49 Inc
+36813,176,Axomm Construction == Axomm Construction & Project Management
+76133,159,Bastion Developments == Bastion Development Corporation
+74732,54928,Bird Construction GP == Bird Construction Inc
+76184,54928,Bird Construction Group == Bird Construction Inc
+76623,54928,Bird Construction Company == Bird Construction Inc
+75909,76575,Birmingham & Wood == Birmingham & Wood Architects & Planners
+75312,4708,Chandos Construction LP == Chandos Construction Ltd
+74363,54464,Concord Pacific == Concord Pacific Development Corp
+75863,54464,Concord Pacific Group == Concord Pacific Development Corp
+76057,49,Cressey Development Corp == Cressey Development Group
+75867,54375,D'Ambrosio Architecture == D'Ambrosio Architecture + Urbanism
+70847,51,Duke Management == Duke Management c/o Holar
+75866,119,Edgar Developments == Edgar Development
+75993,69646,Francl Architecture (repeated) == Francl Architecture
+76717,69646,Francl Architecture (newline junk) == Francl Architecture
+74975,69232,Graham Construction & Engineering GP == Graham Construction
+75019,69232,Graham Construction And == Graham Construction
+75500,69232,Graham Construction & Engineering Inc == Graham Construction
+76539,69232,Graham Construction & Engineering CM@Risk == Graham Construction
+76409,202,Greystar Development == Greystar Development West LLC
+76804,55110,Greystar Real Estate Partners SD == Greystar Real Estate Partners
+72326,521,District of North Vancouver Engineering == District of North Vancouver
+# Round (2026-06-19): H-Z fuzzy-family bare variants -> Deltek canonical (hand-verified same entity).
+76543,68983,H-Z family bare variant (verified)
+75912,29895,H-Z family bare variant (verified)
+76104,99,H-Z family bare variant (verified)
+23782,70543,H-Z family bare variant (verified)
+75553,70543,H-Z family bare variant (verified)
+76695,211,H-Z family bare variant (verified)
+54868,186,H-Z family bare variant (verified)
+25809,54571,H-Z family bare variant (verified)
+72169,54571,H-Z family bare variant (verified)
+75582,125,H-Z family bare variant (verified)
+76085,125,H-Z family bare variant (verified)
+76688,125,H-Z family bare variant (verified)
+70840,52,H-Z family bare variant (verified)
+76279,70684,H-Z family bare variant (verified)
+76682,69750,H-Z family bare variant (verified)
+75476,17,H-Z family bare variant (verified)
+75952,54985,H-Z family bare variant (verified)
+76003,69589,H-Z family bare variant (verified)
+76254,69589,H-Z family bare variant (verified)
+76547,69589,H-Z family bare variant (verified)
+76725,69589,H-Z family bare variant (verified)
+76641,71134,H-Z family bare variant (verified)
+76564,69312,H-Z family bare variant (verified)
+46132,12496,H-Z family bare variant (verified)
+75893,12496,H-Z family bare variant (verified)
+76183,12496,H-Z family bare variant (verified)
+76521,70681,H-Z family bare variant (verified)
+76054,38950,H-Z family bare variant (verified)
+76094,53,H-Z family bare variant (verified)
+75016,53665,H-Z family bare variant (verified)
+27391,34554,H-Z family bare variant (verified)
+31330,69804,H-Z family bare variant (verified)
+76684,69804,H-Z family bare variant (verified)
+76571,69665,H-Z family bare variant (verified)
+76056,38973,H-Z family bare variant (verified)
+76526,190,H-Z family bare variant (verified)
+76556,16,H-Z family bare variant (verified)
+75583,150,H-Z family bare variant (verified)
+53763,10,H-Z family bare variant (verified)
+76494,69217,H-Z family bare variant (verified)
+76228,69631,H-Z family bare variant (verified)
+76679,69730,H-Z family bare variant (verified)
+76395,68879,H-Z family bare variant (verified)
+76070,43,H-Z family bare variant (verified)
+54792,71109,H-Z family bare variant (verified)
+76708,42,H-Z family bare variant (verified)
+30799,75595,H-Z family bare variant (verified)
+40907,20869,H-Z family bare variant (verified)
+19719,19717,H-Z family bare variant (verified)
+21582,19717,H-Z family bare variant (verified)
+76701,69696,H-Z family bare variant (verified)
+72164,69109,H-Z family bare variant (verified)
+75511,69109,H-Z family bare variant (verified)
+75795,69109,H-Z family bare variant (verified)
+76511,69109,H-Z family bare variant (verified)
+76942,68746,H-Z family bare variant (verified)
+76503,69807,H-Z family bare variant (verified)
+20099,221,H-Z family bare variant (verified)
+23545,221,H-Z family bare variant (verified)
+27091,221,H-Z family bare variant (verified)
+76537,54947,H-Z family bare variant (verified)
+76800,54947,H-Z family bare variant (verified)
+76845,54947,H-Z family bare variant (verified)
+25960,37793,H-Z family bare variant (verified)
+76169,69121,H-Z family bare variant (verified)
+18918,18917,H-Z family bare variant (verified)
+72328,18917,H-Z family bare variant (verified)
+18997,133,H-Z family bare variant (verified)
+26556,133,H-Z family bare variant (verified)
+31676,133,H-Z family bare variant (verified)
+33239,133,H-Z family bare variant (verified)
+34526,133,H-Z family bare variant (verified)
+36090,133,H-Z family bare variant (verified)
+37356,133,H-Z family bare variant (verified)
+37583,133,H-Z family bare variant (verified)
+37737,133,H-Z family bare variant (verified)
+76080,191,H-Z family bare variant (verified)
+76177,191,H-Z family bare variant (verified)
+73674,54936,H-Z family bare variant (verified)
+75825,38935,H-Z family bare variant (verified)
+75895,38935,H-Z family bare variant (verified)
+76513,38,H-Z family bare variant (verified)
+76694,55102,H-Z family bare variant (verified)
+# Round (2026-06-19): JV-string decomposition -> lead operator canonical (agent-classified, verified rule).
+53270,53569,JV-string -> lead operator (classified)
+53311,69677,JV-string -> lead operator (classified)
+53318,7723,JV-string -> lead operator (classified)
+53415,73785,JV-string -> lead operator (classified)
+53421,541,JV-string -> lead operator (classified)
+53422,53581,JV-string -> lead operator (classified)
+53434,53569,JV-string -> lead operator (classified)
+53446,23209,JV-string -> lead operator (classified)
+53476,17225,JV-string -> lead operator (classified)
+53484,53498,JV-string -> lead operator (classified)
+53499,16617,JV-string -> lead operator (classified)
+53561,55066,JV-string -> lead operator (classified)
+53637,328,JV-string -> lead operator (classified)
+53643,72376,JV-string -> lead operator (classified)
+54915,38946,JV-string -> lead operator (classified)
+55092,70099,JV-string -> lead operator (classified)
+68731,68713,JV-string -> lead operator (classified)
+68789,53581,JV-string -> lead operator (classified)
+68800,75642,JV-string -> lead operator (classified)
+68803,68805,JV-string -> lead operator (classified)
+68806,53119,JV-string -> lead operator (classified)
+69355,74011,JV-string -> lead operator (classified)
+69365,69401,JV-string -> lead operator (classified)
+69366,69740,JV-string -> lead operator (classified)
+69368,69402,JV-string -> lead operator (classified)
+69390,59399,JV-string -> lead operator (classified)
+69896,54159,JV-string -> lead operator (classified)
+69971,69094,JV-string -> lead operator (classified)
+70807,75504,JV-string -> lead operator (classified)
+70896,69676,JV-string -> lead operator (classified)
+70923,76011,JV-string -> lead operator (classified)
+70974,66443,JV-string -> lead operator (classified)
+71006,76110,JV-string -> lead operator (classified)
+71181,38948,JV-string -> lead operator (classified)
+71463,4771,JV-string -> lead operator (classified)
+71480,75055,JV-string -> lead operator (classified)
+71483,8799,JV-string -> lead operator (classified)
+71485,75896,JV-string -> lead operator (classified)
+71500,69767,JV-string -> lead operator (classified)
+71502,69765,JV-string -> lead operator (classified)
+72186,38975,JV-string -> lead operator (classified)
+72410,75066,JV-string -> lead operator (classified)
+72437,5472,JV-string -> lead operator (classified)
+74102,14871,JV-string -> lead operator (classified)
+74104,8799,JV-string -> lead operator (classified)
+74164,53581,JV-string -> lead operator (classified)
+74166,476,JV-string -> lead operator (classified)
+74168,612,JV-string -> lead operator (classified)
+74169,53119,JV-string -> lead operator (classified)
+74177,53280,JV-string -> lead operator (classified)
+74333,53287,JV-string -> lead operator (classified)
+74337,53119,JV-string -> lead operator (classified)
+74341,53119,JV-string -> lead operator (classified)
+74342,894,JV-string -> lead operator (classified)
+74343,53280,JV-string -> lead operator (classified)
+74344,53280,JV-string -> lead operator (classified)
+74345,53352,JV-string -> lead operator (classified)
+74347,5472,JV-string -> lead operator (classified)
+74357,304,JV-string -> lead operator (classified)
+74360,304,JV-string -> lead operator (classified)
+74362,53303,JV-string -> lead operator (classified)
+75508,54979,JV-string -> lead operator (classified)
+75509,54979,JV-string -> lead operator (classified)
+75510,54977,JV-string -> lead operator (classified)
+75514,18863,JV-string -> lead operator (classified)
+75515,902,JV-string -> lead operator (classified)
+75516,902,JV-string -> lead operator (classified)
+75517,54033,JV-string -> lead operator (classified)
+75518,158,JV-string -> lead operator (classified)
+75567,55056,JV-string -> lead operator (classified)
+75592,55056,JV-string -> lead operator (classified)
+75845,142,JV-string -> lead operator (classified)
+75847,18863,JV-string -> lead operator (classified)
+75848,69357,JV-string -> lead operator (classified)
+75849,54979,JV-string -> lead operator (classified)
+75850,54977,JV-string -> lead operator (classified)
+75862,69094,JV-string -> lead operator (classified)
+75865,70544,JV-string -> lead operator (classified)
+75872,75055,JV-string -> lead operator (classified)
+75890,68972,JV-string -> lead operator (classified)
+75894,69122,JV-string -> lead operator (classified)
+75900,69443,JV-string -> lead operator (classified)
+75904,69431,JV-string -> lead operator (classified)
+75905,71506,JV-string -> lead operator (classified)
+75924,54997,JV-string -> lead operator (classified)
+75925,55001,JV-string -> lead operator (classified)
+75926,66236,JV-string -> lead operator (classified)
+75927,66236,JV-string -> lead operator (classified)
+75929,54992,JV-string -> lead operator (classified)
+75933,59575,JV-string -> lead operator (classified)
+75939,54985,JV-string -> lead operator (classified)
+75940,54190,JV-string -> lead operator (classified)
+75941,54986,JV-string -> lead operator (classified)
+75942,69412,JV-string -> lead operator (classified)
+76015,69127,JV-string -> lead operator (classified)
+76022,399,JV-string -> lead operator (classified)
+76038,54977,JV-string -> lead operator (classified)
+76170,54735,JV-string -> lead operator (classified)
+76178,399,JV-string -> lead operator (classified)
+76179,6154,JV-string -> lead operator (classified)
+76185,54977,JV-string -> lead operator (classified)
+76187,68972,JV-string -> lead operator (classified)
+76188,54979,JV-string -> lead operator (classified)
+76192,68917,JV-string -> lead operator (classified)
+76201,38970,JV-string -> lead operator (classified)
+76203,55108,JV-string -> lead operator (classified)
+76204,399,JV-string -> lead operator (classified)
+76208,691,JV-string -> lead operator (classified)
+76209,72190,JV-string -> lead operator (classified)
+76212,880,JV-string -> lead operator (classified)
+76214,53802,JV-string -> lead operator (classified)
+76217,18832,JV-string -> lead operator (classified)
+76218,119,JV-string -> lead operator (classified)
+76224,75811,JV-string -> lead operator (classified)
+76227,54190,JV-string -> lead operator (classified)
+76229,69122,JV-string -> lead operator (classified)
+76230,69781,JV-string -> lead operator (classified)
+76231,22377,JV-string -> lead operator (classified)
+76237,69646,JV-string -> lead operator (classified)
+76248,68972,JV-string -> lead operator (classified)
+76339,16944,JV-string -> lead operator (classified)
+76343,54979,JV-string -> lead operator (classified)
+76344,69999,JV-string -> lead operator (classified)
+76349,18907,JV-string -> lead operator (classified)
+76351,54977,JV-string -> lead operator (classified)
+76352,54977,JV-string -> lead operator (classified)
+76353,54977,JV-string -> lead operator (classified)
+76354,57258,JV-string -> lead operator (classified)
+76355,18828,JV-string -> lead operator (classified)
+76360,69760,JV-string -> lead operator (classified)
+76366,326,JV-string -> lead operator (classified)
+76370,66236,JV-string -> lead operator (classified)
+76371,11072,JV-string -> lead operator (classified)
+76372,23640,JV-string -> lead operator (classified)
+76376,399,JV-string -> lead operator (classified)
+76377,36400,JV-string -> lead operator (classified)
+76378,85,JV-string -> lead operator (classified)
+76380,18869,JV-string -> lead operator (classified)
+76382,772,JV-string -> lead operator (classified)
+76383,71330,JV-string -> lead operator (classified)
+76386,70635,JV-string -> lead operator (classified)
+76389,54211,JV-string -> lead operator (classified)
+76477,70016,JV-string -> lead operator (classified)
+76481,69999,JV-string -> lead operator (classified)
+76482,70040,JV-string -> lead operator (classified)
+76483,54826,JV-string -> lead operator (classified)
+76484,69998,JV-string -> lead operator (classified)
+76487,69767,JV-string -> lead operator (classified)
+76488,69999,JV-string -> lead operator (classified)
+76493,75811,JV-string -> lead operator (classified)
+76495,68972,JV-string -> lead operator (classified)
+76497,54372,JV-string -> lead operator (classified)
+76509,69433,JV-string -> lead operator (classified)
+76525,69094,JV-string -> lead operator (classified)
+76528,54753,JV-string -> lead operator (classified)
+76531,54753,JV-string -> lead operator (classified)
+76532,54753,JV-string -> lead operator (classified)
+76545,38950,JV-string -> lead operator (classified)
+76549,29895,JV-string -> lead operator (classified)
+76550,69123,JV-string -> lead operator (classified)
+76551,2953,JV-string -> lead operator (classified)
+76552,54506,JV-string -> lead operator (classified)
+76559,771,JV-string -> lead operator (classified)
+76563,19306,JV-string -> lead operator (classified)
+76568,75575,JV-string -> lead operator (classified)
+76572,70878,JV-string -> lead operator (classified)
+76573,75055,JV-string -> lead operator (classified)
+76584,68778,JV-string -> lead operator (classified)
+76585,68931,JV-string -> lead operator (classified)
+76586,75864,JV-string -> lead operator (classified)
+76589,29895,JV-string -> lead operator (classified)
+76590,69765,JV-string -> lead operator (classified)
+76591,75025,JV-string -> lead operator (classified)
+76592,691,JV-string -> lead operator (classified)
+76594,69767,JV-string -> lead operator (classified)
+76597,54237,JV-string -> lead operator (classified)
+76603,71066,JV-string -> lead operator (classified)
+76608,8799,JV-string -> lead operator (classified)
+76609,69767,JV-string -> lead operator (classified)
+76615,8799,JV-string -> lead operator (classified)
+76618,69680,JV-string -> lead operator (classified)
+76619,69646,JV-string -> lead operator (classified)
+76621,275,JV-string -> lead operator (classified)
+76644,71201,JV-string -> lead operator (classified)
+76168,74115,JV-string -> lead operator (classified)
+76570,74115,JV-string -> lead operator (classified)
+75879,74161,JV-string -> lead operator (classified)
+74351,74346,JV-string -> lead operator (classified)
+70979,70072,JV-string -> lead operator (classified)
+75889,69032,JV-string -> lead operator (classified)
+55120,55107,JV-string -> lead operator (classified)
+75594,55107,JV-string -> lead operator (classified)
+69384,69383,JV-string -> lead operator (classified)
+75934,70915,JV-string -> lead operator (classified)
+75936,70915,JV-string -> lead operator (classified)
+75937,70915,JV-string -> lead operator (classified)
+69260,69234,JV-string -> lead operator (classified)
+71116,69234,JV-string -> lead operator (classified)
+70633,69230,JV-string -> lead operator (classified)
+75761,75760,JV-string -> lead operator (classified)
+76562,74103,JV-string -> lead operator (classified)
+71031,69583,JV-string -> lead operator (classified)
+76213,70911,JV-string -> lead operator (classified)
+76548,70911,JV-string -> lead operator (classified)
+76553,70911,JV-string -> lead operator (classified)
+76651,53665,Empty stray 'Pinnacle Development' -> Pinnacle International (id 53665, Deltek CL00333)
+70836,28093,Empty stray 'Purpose Driven' -> Purpose Driven Development (id 28093, Deltek client)
+76165,18657,WSP naming-variant -> WSP Canada Inc.
+75979,18657,WSP (Structural Group) -> WSP Canada Inc.
+76496,18657,WSP Canada -> WSP Canada Inc.
+76347,18657,WSP Engineering -> WSP Canada Inc.
+75860,18657,WSP Group -> WSP Canada Inc.
+75671,18657,WSP in Canada -> WSP Canada Inc.
+4097,74150,CANA Construction -> CANA Group of Companies
+69928,74150,CANA Group -> CANA Group of Companies
+4113,74150,CANA Utilities (junk name) -> CANA Group of Companies
+70174,69199,Farmer Construction Projects -> Farmer Construction Ltd
+70803,69199,JV-string Farmer/Campbell -> Farmer Construction Ltd (lead)
+76649,76635,Concert-Bird Partners dup -> survivor
+76311,76635,Bird/Wright (same Alberta P3 schools JV) -> Concert-Bird Partners
+5232,76635,Concert Bird Partners Consortium -> Concert-Bird Partners
+69855,69014,JV-string RJC/MKA -> RJC Engineers (lead)
+69947,38926,JV-string BuroHappold/Glotman(EOR) -> Glotman Simpson (EOR lead)
+71040,64926,JV-string Ausenco/Associated -> Ausenco (lead)
+71262,7345,JV-string Fast+Epp/WSP -> Fast + Epp (lead)
+76337,18657,JV-string WSP/McElhanney -> WSP Canada Inc (lead)
+69881,74150,JV-string CANA/Mortenson -> CANA Group of Companies (lead)
+69884,74195,JV-string VanMaren/Styline/DJimmerson -> Van Maren Group (lead)
+75999,55064,JYOM/GBL JV-string (empty) -> Jyom Architecture
+1556,1557,family-dedup name-variant (wave1)
+1558,1557,family-dedup name-variant (wave1)
+47928,66204,family-dedup name-variant (wave1)
+61646,66204,family-dedup name-variant (wave1)
+76599,38960,family-dedup name-variant (wave1)
+75565,38960,family-dedup name-variant (wave1)
+75986,38960,family-dedup name-variant (wave1)
+75710,68620,family-dedup name-variant (wave1)
+75612,68620,family-dedup name-variant (wave1)
+2051,2050,family-dedup name-variant (wave1)
+2053,2050,family-dedup name-variant (wave1)
+48091,2364,family-dedup name-variant (wave1)
+48356,2364,family-dedup name-variant (wave1)
+2420,2419,family-dedup name-variant (wave1)
+2418,2419,family-dedup name-variant (wave1)
+2921,2923,family-dedup name-variant (wave1)
+2924,2923,family-dedup name-variant (wave1)
+3036,3035,family-dedup name-variant (wave1)
+66214,3035,family-dedup name-variant (wave1)
+3510,3508,family-dedup name-variant (wave1)
+3512,3508,family-dedup name-variant (wave1)
+75175,75564,family-dedup name-variant (wave1)
+75726,75564,family-dedup name-variant (wave1)
+70148,75564,family-dedup name-variant (wave1)
+75688,68762,family-dedup name-variant (wave1)
+75785,68762,family-dedup name-variant (wave1)
+3692,3690,family-dedup name-variant (wave1)
+49400,3690,family-dedup name-variant (wave1)
+76620,74184,family-dedup name-variant (wave1)
+76294,74184,family-dedup name-variant (wave1)
+48433,43094,family-dedup name-variant (wave1)
+48510,43094,family-dedup name-variant (wave1)
+76358,4771,family-dedup name-variant (wave1)
+69773,4771,family-dedup name-variant (wave1)
+25127,32498,family-dedup name-variant (wave1)
+20067,32498,family-dedup name-variant (wave1)
+317,72068,family-dedup name-variant (wave1)
+70299,72068,family-dedup name-variant (wave1)
+76899,54950,family-dedup name-variant (wave1)
+76799,54950,family-dedup name-variant (wave1)
+47052,47270,family-dedup name-variant (wave1)
+46732,47270,family-dedup name-variant (wave1)
+46844,47270,family-dedup name-variant (wave1)
+48630,5909,family-dedup name-variant (wave1)
+47498,5909,family-dedup name-variant (wave1)
+76415,76633,family-dedup name-variant (wave1)
+70243,76633,family-dedup name-variant (wave1)
+76535,70884,family-dedup name-variant (wave1)
+6141,70884,family-dedup name-variant (wave1)
+6145,70884,family-dedup name-variant (wave1)
+75896,54753,family-dedup name-variant (wave1)
+71465,54753,family-dedup name-variant (wave1)
+75794,54753,family-dedup name-variant (wave1)
+76420,241,family-dedup name-variant (wave1)
+76468,241,family-dedup name-variant (wave1)
+76150,53876,family-dedup name-variant (wave1)
+55047,53876,family-dedup name-variant (wave1)
+37859,53876,family-dedup name-variant (wave1)
+76058,53876,family-dedup name-variant (wave1)
+54867,142,family-dedup name-variant (wave1)
+63782,46699,family-dedup name-variant (wave2)
+63893,46699,family-dedup name-variant (wave2)
+64024,46699,family-dedup name-variant (wave2)
+76317,75801,family-dedup name-variant (wave2)
+75479,75801,family-dedup name-variant (wave2)
+75915,75903,family-dedup name-variant (wave2)
+74016,75903,family-dedup name-variant (wave2)
+46989,47033,family-dedup name-variant (wave2)
+48081,47033,family-dedup name-variant (wave2)
+24992,19405,family-dedup name-variant (wave2)
+26781,19405,family-dedup name-variant (wave2)
+7407,7409,family-dedup name-variant (wave2)
+7411,7409,family-dedup name-variant (wave2)
+7776,7775,family-dedup name-variant (wave2)
+53680,53625,family-dedup name-variant (wave2)
+54208,53625,family-dedup name-variant (wave2)
+75624,54190,family-dedup name-variant (wave2)
+76233,54190,family-dedup name-variant (wave2)
+74172,1,family-dedup name-variant (wave2)
+75561,1,family-dedup name-variant (wave2)
+63310,47147,family-dedup name-variant (wave2)
+49036,47147,family-dedup name-variant (wave2)
+47230,47147,family-dedup name-variant (wave2)
+31983,8323,family-dedup name-variant (wave2)
+8324,8323,family-dedup name-variant (wave2)
+68820,8538,family-dedup name-variant (wave2)
+75983,8538,family-dedup name-variant (wave2)
+75784,8538,family-dedup name-variant (wave2)
+8544,8538,family-dedup name-variant (wave2)
+69612,8538,family-dedup name-variant (wave2)
+76199,8538,family-dedup name-variant (wave2)
+75623,55056,family-dedup name-variant (wave2)
+76309,55056,family-dedup name-variant (wave2)
+75512,8799,family-dedup name-variant (wave2)
+76472,8799,family-dedup name-variant (wave2)
+75554,72190,family-dedup name-variant (wave2)
+76527,72190,family-dedup name-variant (wave2)
+75996,72190,family-dedup name-variant (wave2)
+75981,72190,family-dedup name-variant (wave2)
+75616,68622,family-dedup name-variant (wave2)
+76798,68622,family-dedup name-variant (wave2)
+76846,68622,family-dedup name-variant (wave2)
+54282,54300,family-dedup name-variant (wave2)
+76255,54300,family-dedup name-variant (wave2)
+75864,75055,family-dedup name-variant (wave2)
+76088,75055,family-dedup name-variant (wave2)
+76557,75055,family-dedup name-variant (wave2)
+76289,75055,family-dedup name-variant (wave2)
+75998,75055,family-dedup name-variant (wave2)
+69214,24218,family-dedup name-variant (wave2)
+76519,24218,family-dedup name-variant (wave2)
+75913,24218,family-dedup name-variant (wave2)
+10064,10062,family-dedup name-variant (wave2)
+10065,10062,family-dedup name-variant (wave2)
+50796,10062,family-dedup name-variant (wave2)
+75923,69186,family-dedup name-variant (wave2)
+55035,69186,family-dedup name-variant (wave2)
+75621,69186,family-dedup name-variant (wave2)
+75943,69186,family-dedup name-variant (wave2)
+10309,10311,family-dedup name-variant (wave2)
+10310,10311,family-dedup name-variant (wave2)
+10312,10311,family-dedup name-variant (wave2)
+76781,38927,family-dedup name-variant (wave2)
+76823,38927,family-dedup name-variant (wave2)
+10545,10548,family-dedup name-variant (wave2)
+10546,10548,family-dedup name-variant (wave2)
+10549,10548,family-dedup name-variant (wave2)
+10788,10790,family-dedup name-variant (wave2)
+10789,10790,family-dedup name-variant (wave2)
+10791,10790,family-dedup name-variant (wave2)
+68766,69671,family-dedup name-variant (wave2)
+75692,69671,family-dedup name-variant (wave2)
+74153,69671,family-dedup name-variant (wave2)
+75805,69671,family-dedup name-variant (wave2)
+11076,11075,family-dedup name-variant (wave2)
+11077,11075,family-dedup name-variant (wave2)
+73964,68782,family-dedup name-variant (wave2)
+469,72334,family-dedup name-variant (wave2)
+53332,784,family-dedup name-variant (wave2)
+69032,880,family-dedup name-variant (wave2)
+75066,54977,family-dedup name-variant (wave2)
+76129,54979,family-dedup name-variant (wave2)
+9852,9851,family-dedup name-variant (wave2)
+52777,9851,family-dedup name-variant (wave2)
+54192,69251,family-dedup name-variant (wave2)
+76295,69251,family-dedup name-variant (wave2)
+76412,11319,family-dedup name-variant (wave3)
+75607,11319,family-dedup name-variant (wave3)
+76900,54943,family-dedup name-variant (wave3)
+76844,54943,family-dedup name-variant (wave3)
+76689,70621,family-dedup name-variant (wave3)
+76301,70621,family-dedup name-variant (wave3)
+11574,11573,family-dedup name-variant (wave3)
+11575,11573,family-dedup name-variant (wave3)
+11576,11573,family-dedup name-variant (wave3)
+75568,76157,family-dedup name-variant (wave3)
+75876,76157,family-dedup name-variant (wave3)
+49807,12004,family-dedup name-variant (wave3)
+12006,12004,family-dedup name-variant (wave3)
+55012,54982,family-dedup name-variant (wave3)
+55014,54982,family-dedup name-variant (wave3)
+76206,69275,family-dedup name-variant (wave3)
+76486,69275,family-dedup name-variant (wave3)
+47376,70041,family-dedup name-variant (wave3)
+76154,70041,family-dedup name-variant (wave3)
+76731,75619,family-dedup name-variant (wave3)
+76131,75619,family-dedup name-variant (wave3)
+76697,70734,family-dedup name-variant (wave3)
+68865,68972,family-dedup name-variant (wave3)
+75552,68972,family-dedup name-variant (wave3)
+76220,68972,family-dedup name-variant (wave3)
+71476,68972,family-dedup name-variant (wave3)
+76020,68972,family-dedup name-variant (wave3)
+76260,68972,family-dedup name-variant (wave3)
+76265,68972,family-dedup name-variant (wave3)
+55121,44,family-dedup name-variant (wave3)
+26176,44,family-dedup name-variant (wave3)
+70811,13243,family-dedup name-variant (wave3)
+76943,13243,family-dedup name-variant (wave3)
+68627,13243,family-dedup name-variant (wave3)
+75617,13243,family-dedup name-variant (wave3)
+20517,13243,family-dedup name-variant (wave3)
+75501,13243,family-dedup name-variant (wave3)
+47293,13243,family-dedup name-variant (wave3)
+51886,13243,family-dedup name-variant (wave3)
+76305,13243,family-dedup name-variant (wave3)
+55029,69740,family-dedup name-variant (wave3)
+76738,69740,family-dedup name-variant (wave3)
+54252,54159,family-dedup name-variant (wave3)
+76274,54159,family-dedup name-variant (wave3)
+54568,53701,family-dedup name-variant (wave3)
+54706,53701,family-dedup name-variant (wave3)
+54798,53701,family-dedup name-variant (wave3)
+40240,48219,family-dedup name-variant (wave3)
+47223,48219,family-dedup name-variant (wave3)
+47661,48219,family-dedup name-variant (wave3)
+333,69127,family-dedup name-variant (wave3)
+76159,38972,family-dedup name-variant (wave3)
+75559,38972,family-dedup name-variant (wave3)
+76393,38972,family-dedup name-variant (wave3)
+901,71225,family-dedup name-variant (wave3)
+290,72070,family-dedup name-variant (wave3)
+53306,340,family-dedup name-variant (wave3)
+68919,75560,family-dedup name-variant (wave3)
+75685,75560,family-dedup name-variant (wave3)
+76643,75560,family-dedup name-variant (wave3)
+53894,157,family-dedup name-variant (wave3)
+70935,157,family-dedup name-variant (wave3)
+63193,42463,family-dedup name-variant (wave3)
+47777,42463,family-dedup name-variant (wave3)
+75935,38974,family-dedup name-variant (wave3)
+76245,38974,family-dedup name-variant (wave3)
+72101,14453,family-dedup name-variant (wave3)
+49784,14453,family-dedup name-variant (wave3)
+71206,14619,family-dedup name-variant (wave3)
+14621,14619,family-dedup name-variant (wave3)
+372,72044,family-dedup name-variant (wave3)
+48413,40996,family-dedup name-variant (wave3)
+48571,40996,family-dedup name-variant (wave3)
+75874,69425,family-dedup name-variant (wave3)
+75902,69425,family-dedup name-variant (wave3)
+71610,14787,family-dedup name-variant (wave3)
+14788,14787,family-dedup name-variant (wave3)
+14789,14787,family-dedup name-variant (wave3)
+14791,14787,family-dedup name-variant (wave3)
+71482,69781,family-dedup name-variant (wave3)
+76396,69781,family-dedup name-variant (wave3)
+76398,69781,family-dedup name-variant (wave3)
+76319,69781,family-dedup name-variant (wave3)
+75790,14910,family-dedup name-variant (wave3)
+76005,14910,family-dedup name-variant (wave3)
+69140,69141,family-dedup name-variant (wave3)
+76807,74068,family-dedup name-variant (wave3)
+69139,74060,family-dedup name-variant (wave3)
+76811,74060,family-dedup name-variant (wave3)
+68900,68818,family-dedup name-variant (wave3)
+76310,68818,family-dedup name-variant (wave3)
+15243,15241,family-dedup name-variant (wave3)
+15244,15241,family-dedup name-variant (wave3)
+51063,15370,family-dedup name-variant (wave3)
+75166,68706,family-dedup name-variant (wave4)
+75611,68706,family-dedup name-variant (wave4)
+73779,76886,family-dedup name-variant (wave4)
+76329,76886,family-dedup name-variant (wave4)
+77047,15690,family-dedup name-variant (wave4)
+15688,15687,family-dedup name-variant (wave4)
+15689,15687,family-dedup name-variant (wave4)
+16057,16056,family-dedup name-variant (wave4)
+75675,16056,family-dedup name-variant (wave4)
+76529,76520,family-dedup name-variant (wave4)
+75600,76520,family-dedup name-variant (wave4)
+75779,76520,family-dedup name-variant (wave4)
+76709,54674,family-dedup name-variant (wave4)
+75982,54674,family-dedup name-variant (wave4)
+76485,68977,family-dedup name-variant (wave4)
+76338,68977,family-dedup name-variant (wave4)
+75632,54995,family-dedup name-variant (wave4)
+76147,54995,family-dedup name-variant (wave4)
+55031,54995,family-dedup name-variant (wave4)
+16316,16318,family-dedup name-variant (wave4)
+16319,16318,family-dedup name-variant (wave4)
+76007,69767,family-dedup name-variant (wave4)
+76008,69767,family-dedup name-variant (wave4)
+76334,75570,family-dedup name-variant (wave4)
+76797,75570,family-dedup name-variant (wave4)
+52574,49523,family-dedup name-variant (wave4)
+51342,49523,family-dedup name-variant (wave4)
+71958,16986,family-dedup name-variant (wave4)
+16987,16986,family-dedup name-variant (wave4)
+16988,16986,family-dedup name-variant (wave4)
+69583,68897,family-dedup name-variant (wave4)
+76399,68897,family-dedup name-variant (wave4)
+28496,22432,family-dedup name-variant (wave4)
+22430,22432,family-dedup name-variant (wave4)
+36635,15,family-dedup name-variant (wave4)
+37255,15,family-dedup name-variant (wave4)
+17951,17948,family-dedup name-variant (wave4)
+71597,17948,family-dedup name-variant (wave4)
+76561,68747,family-dedup name-variant (wave4)
+75670,68747,family-dedup name-variant (wave4)
+18173,18172,family-dedup name-variant (wave4)
+18174,18172,family-dedup name-variant (wave4)
+18175,18172,family-dedup name-variant (wave4)
+18448,18446,family-dedup name-variant (wave4)
+18449,18446,family-dedup name-variant (wave4)
+75639,55044,family-dedup name-variant (wave4)
+75622,55044,family-dedup name-variant (wave4)
+75807,115,family-dedup name-variant (wave4)
+76269,115,family-dedup name-variant (wave4)
+76865,38975,family-dedup name-variant (wave4)
+75551,38975,family-dedup name-variant (wave4)
+76867,38975,family-dedup name-variant (wave4)
+76275,38975,family-dedup name-variant (wave4)
+76288,54931,family-dedup name-variant (wave4)
+75825,38935,family-dedup name-variant (wave4)
+75895,38935,family-dedup name-variant (wave4)
+73674,54936,family-dedup name-variant (wave4)
+35726,22443,family-dedup name-variant (wave5)
+22441,22443,family-dedup name-variant (wave5)
+33095,20350,family-dedup name-variant (wave5)
+32756,20350,family-dedup name-variant (wave5)
+76504,4552,family-dedup name-variant (wave5)
+54291,4552,family-dedup name-variant (wave5)
+6363,6362,family-dedup name-variant (wave5)
+6364,6362,family-dedup name-variant (wave5)
+54373,69756,family-dedup name-variant (wave5)
+54679,69756,family-dedup name-variant (wave5)
+15420,15419,family-dedup name-variant (wave5)
+50818,15419,family-dedup name-variant (wave5)
+75892,6154,major-competitor family-dedup (wave6)
+69865,6154,major-competitor family-dedup (wave6)
+76320,6154,major-competitor family-dedup (wave6)
+76318,6154,major-competitor family-dedup (wave6)
+76324,6154,major-competitor family-dedup (wave6)
+72809,6154,major-competitor family-dedup (wave6)
+76625,6154,major-competitor family-dedup (wave6)
+75041,6154,major-competitor family-dedup (wave6)
+74163,6154,major-competitor family-dedup (wave6)
+74167,6154,major-competitor family-dedup (wave6)
+69876,6154,major-competitor family-dedup (wave6)
+74182,6154,major-competitor family-dedup (wave6)
+76035,6154,major-competitor family-dedup (wave6)
+76041,6154,major-competitor family-dedup (wave6)
+74129,153,major-competitor family-dedup (wave6)
+75906,153,major-competitor family-dedup (wave6)
+76919,153,major-competitor family-dedup (wave6)
+2559,153,major-competitor family-dedup (wave6)
+42183,153,major-competitor family-dedup (wave6)
+75055,153,major-competitor family-dedup (wave6)
+25733,70543,major-competitor family-dedup (wave6)
+71126,70543,major-competitor family-dedup (wave6)
+76093,70543,major-competitor family-dedup (wave6)
+72109,70543,major-competitor family-dedup (wave6)
+69234,69688,major-competitor family-dedup (wave6)
+76945,69688,major-competitor family-dedup (wave6)
+76277,69688,major-competitor family-dedup (wave6)
+76307,69688,major-competitor family-dedup (wave6)
+74033,69688,major-competitor family-dedup (wave6)
+75558,38934,major-competitor family-dedup (wave6)
+15944,38934,major-competitor family-dedup (wave6)
+69000,38934,major-competitor family-dedup (wave6)
+74103,38934,major-competitor family-dedup (wave6)
+75760,38934,major-competitor family-dedup (wave6)
+70941,38934,major-competitor family-dedup (wave6)
+76312,38934,major-competitor family-dedup (wave6)
+76298,38934,major-competitor family-dedup (wave6)
+76839,38934,major-competitor family-dedup (wave6)
+76261,1818,competitor family-dedup (wave7)
+76242,1818,competitor family-dedup (wave7)
+75980,1818,competitor family-dedup (wave7)
+68091,1818,competitor family-dedup (wave7)
+2711,76560,competitor family-dedup (wave7)
+70795,75868,competitor family-dedup (wave7)
+75808,22257,competitor family-dedup (wave7)
+75801,22257,competitor family-dedup (wave7)
+76247,22257,competitor family-dedup (wave7)
+76253,22257,competitor family-dedup (wave7)
+76259,22257,competitor family-dedup (wave7)
+76287,22257,competitor family-dedup (wave7)
+69019,69204,competitor family-dedup (wave7)
+76642,6972,competitor family-dedup (wave7)
+7017,75664,competitor family-dedup (wave7)
+76264,75664,competitor family-dedup (wave7)
+8361,69232,competitor family-dedup (wave7)
+75602,69232,competitor family-dedup (wave7)
+# 2026-06-19 BD meeting cross-reference cleanup. Three same-entity dups the
+# fuzzy gate rejects on "The"-prefix / paren-suffix / diacritic differences.
+# Verified before append: each loser+survivor active, 0 pursuits/Deltek lost,
+# survivor is the richer/correctly-kinded row (Nch'kay 54983 has 9 enrich + 6
+# affiliations vs loser's 2/0). Lark dev-arm (53694) and GC-arm (72260) kept
+# SEPARATE; only the stray Unknown rows fold in.
+55097,53694,lark group -> the lark group (developer arm)
+27243,72260,lark projects ltd -> lark projects ltd bc-housing (gc arm)
+70915,54983,nchkay -> nch'kay development corporation (diacritic variant)
+# 2026-06-19 BD-audit C1 prep: tracking-import bare org dups -> rich canonical.
+# Verified same entity: #70831 "RBI group" (kp=0, Unknown, 1 alias) is the
+# BdTrackingImport bare variant of #14 "RBI Group of Companies" (KorClient,
+# Deltek, kp=6, 12 affiliations). Fuzzy gate rejects on the "of companies" tail.
+70831,14,rbi group -> rbi group of companies (tracking bare-variant)
+75897,8799,hcma fragment -> hcma architecture + design
+75556,38975,ZGF fragment -> ZGF Architects
+75803,7345,Fast fragment -> Fast + Epp
+54300,6154,Hotson Bakker (defunct ~2009) -> DIALOG (per overnight research; Joost Bakker now DIALOG)
+# 2026-06-20 CRD canonical dup. Same entity: #74001 "Capital Regional District
+# (CRD)" (0 opps, parenthetical) folds into #323 "Capital Regional District"
+# (8 BcBid opps, 4 MPIs, clean legal name). Gate rejects on the "(CRD)" tail.
+74001,323,capital regional district (crd) -> capital regional district
+76910,55110,Greystar (empty stray) -> Greystar Real Estate Partners
+202,55110,Greystar Development West LLC -> Greystar Real Estate Partners (same company, brand consolidation)
+76505,207,Anthem Properties (thin dup) -> Anthem Properties Group Ltd (rich KorClient)
+70883,76162,prefix-match same-company fragment (wave8)
+71501,69614,prefix-match same-company fragment (wave8)
+76647,15089,prefix-match same-company fragment (wave8)
+76746,71101,prefix-match same-company fragment (wave8)
+75646,69095,prefix-match same-company fragment (wave8)
+75734,54939,prefix-match same-company fragment (wave8)
+76130,69739,prefix-match same-company fragment (wave8)
+69478,531,prefix-match same-company fragment (wave8)
+76001,74037,prefix-match same-company fragment (wave8)
+68735,68862,prefix-match same-company fragment (wave8)
+73825,695,prefix-match same-company fragment (wave8)
+76894,54944,prefix-match same-company fragment (wave8)
+76904,74260,prefix-match same-company fragment (wave8)
+610,376,prefix-match same-company fragment (wave8)
+6885,6887,prefix-match same-company fragment (wave8)
+50462,44026,prefix-match same-company fragment (wave8)
+66354,12107,prefix-match same-company fragment (wave8)
+75984,54330,prefix-match same-company fragment (wave8)
+76501,69154,prefix-match same-company fragment (wave8)
+# 2026-06-20: Concord typo/truncation dups surfaced during senior review.
+# 70830 "Concord Pacifid" is an empty-phantom misspelling of "Concord Pacific"
+# (survivor 54464 "Concord Pacific Development Corp.", Deltek-linked, 5 KOR proj /
+# 34 MPI roles). 42241 "...LT" is a truncation dup of 42085 "...LTD" (Concord
+# Excavating & Contracting; both thin GC). Fuzzy gate rejects on pacific/pacifid
+# and lt/ltd spelling. Concordia University / Concord Green / Concord Security
+# are distinct and deliberately excluded.
+70830,54464,concord pacifid typo -> concord pacific
+42241,42085,concord excavating LT truncation -> LTD
+# 2026-06-20 De Cotiis decompose: Amacon Construction-arm typo dup. #32439
+# "Amacon Constuction Ltd." (misspelled, Vendor, 0 affil) -> #71060 "Amacon
+# Construction" (GC, 7 affil). Gate rejects on the constuction/construction typo.
+32439,71060,amacon constuction(typo) -> amacon construction
+# 2026-06-20 De Cotiis decompose: Onni org tidy.
+# #76124 "ONNI Developments" (no Deltek, 0 affil) -> #38949 "Onni Group"
+#   (onni.com, 13 affil) - same firm, brand variant.
+76124,38949,onni developments -> onni group (brand variant)
+# JV-string decompose: #53779 "Mosaic Homes Ltd/Onni Developments/Conwest Group"
+#   (3-firm composite, 1 MPI) -> lead operator #69746 "Mosaic Homes" (first-named).
+#   Repoints the 1 MPI proponent; retires the composite. Per lead-operator convention.
+53779,69746,jv-string mosaic/onni/conwest -> mosaic homes (lead operator)
+# 2026-06-24 overnight-enrichment CRM cleanup. Survivors verified by link-count + established prior survivors already in this allowlist (153 Arcadis-IBI, 38974 Revery, 2579 Arch49, 71487 standalone 3XN per Round60 Phase-3). Names differ by paren/JV-suffix the fuzzy gate rejects.
+76055,38974,2026-06-24 bing thom -> revery
+24822,153,2026-06-24 ibi -> arcadis ibi group
+77333,153,2026-06-24 ibi -> arcadis ibi group
+75557,71487,2026-06-24 3xn composite -> standalone 3xn
+76285,71487,2026-06-24 3xn composite -> standalone 3xn
+76397,71487,2026-06-24 3xn composite -> standalone 3xn
+75989,2579,2026-06-24 arch49 composite -> architecture49 inc
+77380,2579,2026-06-24 arch49 composite -> architecture49 inc
+# 2026-06-24 constituent-firm dedup (surfaced during composite decomposition). Survivors = established/richest canonical. Fuzzy gate rejects on suffix/paren/brand differences.
+74037,69589,2026-06-24 MCM Architects -> Musson Cattell Mackey Partnership
+71367,69589,2026-06-24 MCM side-firm -> Musson Cattell Mackey Partnership
+77323,6154,2026-06-24 DIALOG Design -> DIALOG
+69987,38934,2026-06-24 Stantec -> Stantec Inc
+# 2026-06-24 MCM family consolidation (acronym variants, fuzzy gate misses MCM/MCMP vs Musson Cattell Mackey)
+26926,69589,2026-06-24 MCM Partnership -> Musson Cattell Mackey Partnership
+70621,69589,2026-06-24 MCMP Architects -> Musson Cattell Mackey Partnership
+76002,69589,2026-06-24 MCMP Architecture -> Musson Cattell Mackey Partnership
