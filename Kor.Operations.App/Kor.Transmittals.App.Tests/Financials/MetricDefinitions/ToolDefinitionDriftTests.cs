@@ -106,8 +106,8 @@ public sealed class ToolDefinitionDriftTests
             new[] { "PRSummaryMain.Billed" }),
 
         // ── WIP (WipTool) ──
-        // Two paths: (a) Revenue Generation ON → use PRSummaryMain.Unbilled
-        // directly; (b) OFF (KOR's config) → proxy via Billed - Revenue.
+        // Two paths: (a) Revenue Generation ON at KOR → use PRSummaryMain.Unbilled
+        // directly; (b) OFF → proxy via Revenue - Billed.
         // Both sides must keep the Unbilled column name and the Overbilled
         // term so the contract-asset/liability split stays explicit.
         new("Exec_WipUnbilled", "WipTool.cs",

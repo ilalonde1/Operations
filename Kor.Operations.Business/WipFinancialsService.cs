@@ -16,7 +16,7 @@ namespace Kor.Operations.Financials
     /// <summary>
     /// Canonical WIP snapshot service. Auto-detects whether Deltek Revenue
     /// Generation populates PRSummaryMain.Unbilled and falls back to the
-    /// Billed-Revenue proxy when it does not.
+    /// Revenue - Billed proxy when it does not.
     /// </summary>
     public sealed class WipFinancialsService
     {
@@ -68,9 +68,9 @@ namespace Kor.Operations.Financials
             //   1. The Unbilled column itself has data - that IS the WIP signal, no
             //      proxy needed. Sign-agnostic check.
             //   2. As a fallback, recent Revenue magnitude is >= 1% of Billed.
-            //      Math.Abs is required because PRSummaryMain.Revenue is stored with
-            //      Deltek's credit-side sign convention (negative = recognized);
-            //      a signed comparison would always fail at catalogs like KOR's.
+            //      KOR stores both Revenue and Billed as positive values, and Deltek's
+            //      Unbilled column agrees in sign with Revenue - Billed. Math.Abs stays
+            //      here so detection also works for catalogs that store credits negative.
             var revenueGenerationDetected = unbilledColumnHasAny || DetectRevenueGeneration(cn, ct);
             if (!revenueGenerationDetected)
             {
@@ -98,7 +98,7 @@ namespace Kor.Operations.Financials
             var wipUnbilledNet = wipProjectRows.Sum(r => r.Net);
 
             (double Earned, double Overbilled, double Net) firmWip;
-            try { firmWip = LoadFirmwideWipProxyBalance(cn, asOfPeriod, usdToCadRate, ct); }
+            try { firmWip = LoadFirmwideWipBalance(cn, asOfPeriod, useUnbilledAsOf: unbilledColumnHasAny, usdToCadRate, ct); }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to load firmwide WIP balances in {Loader} for Period={Period}.", nameof(WipFinancialsService), asOfPeriod);
@@ -194,13 +194,12 @@ WHERE Period IN ({MakeInListPlaceholders(recentPeriods.Count)});";
 
             var recentRevenue = GetDouble(r, 0);
             var recentBilled = GetDouble(r, 1);
-            // Math.Abs handles the credit-side storage convention (Revenue stored
-            // as -Amount). A signed comparison reads negative values as "no
-            // revenue" and incorrectly suppresses the WIP card.
+            // KOR stores Revenue and Billed as positive values. Math.Abs keeps this
+            // detection tolerant of catalogs that store recognized revenue as a credit.
             return recentBilled > 0.0 && Math.Abs(recentRevenue) > 0.01 * recentBilled;
         }
 
-        private (double Earned, double Overbilled, double Net) LoadFirmwideWipProxyBalance(OdbcConnection cn, string asOfPeriod, double usdToCadRate, CancellationToken ct)
+        private (double Earned, double Overbilled, double Net) LoadFirmwideWipBalance(OdbcConnection cn, string asOfPeriod, bool useUnbilledAsOf, double usdToCadRate, CancellationToken ct)
         {
             var period = (asOfPeriod ?? string.Empty).Trim();
             if (period.Length != 6 || !period.All(char.IsDigit))
@@ -213,19 +212,23 @@ WHERE Period IN ({MakeInListPlaceholders(recentPeriods.Count)});";
                     return (0.0, 0.0, 0.0);
             }
 
+            var netExpression = useUnbilledAsOf
+                ? "COALESCE(sm.Unbilled,0)"
+                : "COALESCE(sm.Revenue,0) - COALESCE(sm.Billed,0)";
+
             using var cmd = cn.CreateCommand();
             cmd.CommandTimeout = SqlTimeouts.Batch;
             // Per-project Net (source currency), bucketed by master-project Org. Earned vs
             // Overbilled split happens after FX conversion so a USA project's sign in CAD
-            // matches its sign in USD (FX is positive multiplier). Net is computed as
-            // Billed - Revenue (sign-flipped from raw storage) so positive=earned-not-billed
-            // and negative=overbilled - matches Deltek's credit-side sign convention on
-            // PRSummaryMain.Revenue.
+            // matches its sign in USD (FX is positive multiplier). KOR convention is:
+            // positive Net = earned-not-invoiced, negative Net = overbilled. When Deltek
+            // populates Unbilled, that column already has the correct sign; otherwise the
+            // proxy is Revenue - Billed because KOR stores both columns as positive values.
             cmd.CommandText = $@"
 SELECT
     sm.WBS1,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(COALESCE(sm.Billed,0) - COALESCE(sm.Revenue,0)) AS Net
+    SUM({netExpression}) AS Net
 FROM [{_catalog}].dbo.PRSummaryMain sm
 LEFT JOIN [{_catalog}].dbo.PR pr
   ON pr.WBS1 = sm.WBS1 AND (pr.WBS2 IS NULL OR LTRIM(RTRIM(pr.WBS2)) = '')
@@ -242,10 +245,10 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
                 var bucket = GetTrimmed(r, 1);
                 var rawNet = GetDouble(r, 2);
                 var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
-                var nNet = rawNet * fx;
-                if (nNet > 0) earned += nNet;
-                else if (nNet < 0) overbilled += -nNet;
-                net += nNet;
+                var split = SplitWipNet(rawNet * fx);
+                earned += split.Earned;
+                overbilled += split.Overbilled;
+                net += split.Net;
             }
             return (earned, overbilled, net);
         }
@@ -280,17 +283,17 @@ GROUP BY sm.WBS1, CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THE
                     : string.Empty;
 
                 // Both branches join PR for Org so the per-project Net can be FX-converted
-                // to CAD-equivalent before being split into earned/overbilled. PRSummaryMain
-                // stores Revenue and Unbilled with Deltek's credit-side sign convention
-                // (negative = recognized revenue), so both branches flip the sign here so
-                // downstream code reads positive=earned and negative=overbilled cleanly.
+                // to CAD-equivalent before being split into earned/overbilled. KOR convention
+                // is positive=earned-not-invoiced and negative=overbilled. When Unbilled is
+                // populated it already has that sign; otherwise the proxy is Revenue - Billed
+                // because KOR stores both columns as positive values.
                 if (useUnbilledAsOf)
                 {
                     cmd.CommandText = $@"
 SELECT
     sm.WBS1,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(-COALESCE(sm.Unbilled,0)) AS Net,
+    SUM(COALESCE(sm.Unbilled,0)) AS Net,
     MAX(COALESCE(pr.Name,'')) AS ProjectName,
     MAX(COALESCE(pr.ClientID,'')) AS ClientID,
     MAX(COALESCE(cc.Name,'')) AS ClientName,
@@ -315,7 +318,7 @@ WHERE sm.Period <= ?
 SELECT
     sm.WBS1,
     CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pr.Org,'')))) = 'USA' THEN 'USA' ELSE 'CAD' END AS Bucket,
-    SUM(COALESCE(sm.Billed,0) - COALESCE(sm.Revenue,0)) AS Net,
+    SUM(COALESCE(sm.Revenue,0) - COALESCE(sm.Billed,0)) AS Net,
     MAX(COALESCE(pr.Name,'')) AS ProjectName,
     MAX(COALESCE(pr.ClientID,'')) AS ClientID,
     MAX(COALESCE(cc.Name,'')) AS ClientName,
@@ -351,15 +354,13 @@ WHERE sm.Period <= ?
                     var pmLast = GetTrimmed(r, 8);
                     var pm = BuildEmployeeDisplay(projMgr, pmFirst, pmLast);
                     var fx = string.Equals(bucket, "USA", StringComparison.OrdinalIgnoreCase) ? usdToCadRate : 1.0;
-                    var net = rawNet * fx;
-                    var earned = Math.Max(net, 0.0);
-                    var over = Math.Max(-net, 0.0);
+                    var split = SplitWipNet(rawNet * fx);
 
                     rows[w] = new WipProjectBreakdownRow(
                         Wbs1: w,
-                        Earned: earned,
-                        Overbilled: over,
-                        Net: net,
+                        Earned: split.Earned,
+                        Overbilled: split.Overbilled,
+                        Net: split.Net,
                         Period: period,
                         ProjectName: projectName,
                         ClientId: clientId,
@@ -374,6 +375,9 @@ WHERE sm.Period <= ?
                 .ThenByDescending(x => x.Earned)
                 .ToList();
         }
+
+        public static (double Earned, double Overbilled, double Net) SplitWipNet(double net)
+            => (Math.Max(net, 0.0), Math.Max(-net, 0.0), net);
 
         private OdbcConnection CreateConnection()
         {

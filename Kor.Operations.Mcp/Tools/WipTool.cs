@@ -13,9 +13,9 @@ namespace Kor.Operations.Mcp.Tools;
 /// WipFinancialsService (same code path as the WPF WIP tile + watchlist):
 /// firmwide Earned / Overbilled / Net at the latest posted period, plus
 /// per-project drilldown. Auto-detects whether Deltek Revenue Generation
-/// is configured (Unbilled column populated) and falls back to the
-/// (Billed - Revenue) proxy when it isn't. KOR has RG OFF, so the proxy
-/// path is what runs in production.
+/// is configured. KOR has PRSummaryMain.Unbilled populated, so the Revenue
+/// Generation path is what runs in production. If Unbilled is absent, the
+/// service falls back to the Revenue - Billed proxy.
 /// </summary>
 [McpServerToolType]
 public sealed class WipTool
@@ -38,9 +38,9 @@ public sealed class WipTool
         "per-project drilldown (50 max) WITH resolved project name + client name + PM, sorted by " +
         "Overbilled desc then Earned desc. Wraps WipFinancialsService (same code path as the WPF " +
         "WIP tile). Auto-detects whether Deltek Revenue Generation is on (uses PRSummaryMain.Unbilled " +
-        "directly) or off (proxies via Billed - Revenue per period). KOR runs with Revenue Generation " +
-        "OFF so the proxy path is what produces these numbers. Surface clientName, NEVER the raw " +
-        "clientId code, in narrative output.")]
+        "directly) or off (proxies via Revenue - Billed). KOR has Revenue Generation ON for this " +
+        "purpose because PRSummaryMain.Unbilled is populated. Positive Net = earned-not-invoiced; " +
+        "negative Net = overbilled. Surface clientName, NEVER the raw clientId code, in narrative output.")]
     public async Task<string> GetWipAsync(CancellationToken cancellationToken)
     {
         var sw = Stopwatch.StartNew();
@@ -81,12 +81,12 @@ public sealed class WipTool
                 methodology =
                     "Canonical KOR WIP per WipFinancialsService. " +
                     "Two paths auto-selected: (a) if PRSummaryMain.Unbilled column is populated " +
-                    "(Deltek Revenue Generation = ON), use SUM(-COALESCE(Unbilled,0)) cumulative " +
-                    "<= asOfPeriod. (b) if not populated (Revenue Generation = OFF, KOR's current " +
-                    "config), proxy via SUM(Billed - Revenue) cumulative <= asOfPeriod. Both bucket " +
+                    "(Deltek Revenue Generation = ON, KOR's current config), use SUM(COALESCE(Unbilled,0)) " +
+                    "cumulative <= asOfPeriod. (b) if not populated (Revenue Generation = OFF), " +
+                    "proxy via SUM(Revenue - Billed) cumulative <= asOfPeriod. Both bucket " +
                     "by joined pr.Org (USA -> CAD at Financials.Billed.UsdToCadRate). Sign convention: " +
-                    "positive Net = earned-not-billed; negative Net = overbilled. Firmwide totals are " +
-                    "independent of the per-project drilldown (separate SQL roll-up, sums tie out). " +
+                    "positive Net = earned-not-invoiced; negative Net = overbilled. Firmwide totals and " +
+                    "the per-project drilldown use the same branch and sums tie out. " +
                     "Per-project drilldown JOINs PR for project name, EMMain for PM, Clendor for client name - " +
                     "surface clientName not the raw clientId.",
                 durationMs = (int)sw.ElapsedMilliseconds,
