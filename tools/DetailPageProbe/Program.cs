@@ -58,6 +58,29 @@ foreach (var url in args)
         Console.WriteLine($"\n=================== {url} ===================");
         Console.WriteLine($"landed: {page.Url}");
         Console.WriteLine(json.Length > 6000 ? json[..6000] : json);
+
+        // Optional: click tabs (semicolon-separated in PROBE_CLICK), dump each.
+        var clicks = Environment.GetEnvironmentVariable("PROBE_CLICK");
+        if (!string.IsNullOrWhiteSpace(clicks))
+        {
+            foreach (var label in clicks.Split(';', StringSplitOptions.RemoveEmptyEntries))
+            {
+                try
+                {
+                    var sel = label.Trim();
+                    var loc = sel.Contains('[') ? page.Locator(sel) : page.GetByText(sel, new() { Exact = false });
+                    await loc.First.ClickAsync(new() { Timeout = 8000 });
+                    await page.WaitForTimeoutAsync(4000);
+                    var tj = await page.EvaluateAsync<string>(@"() => JSON.stringify({
+                        text: (document.body?document.body.innerText:'').substring(0,2200),
+                        allLinks: Array.from(document.querySelectorAll('a[href]')).map(a=>({t:(a.innerText||'').trim().substring(0,60),h:a.href})).filter(l=>l.h && !/merx\.com\/(public|dcc\/solicitations\/open-bids)/.test(l.h)).slice(0,40)
+                    })");
+                    Console.WriteLine($"\n----- after click '{sel}' -----");
+                    Console.WriteLine(tj.Length > 3500 ? tj[..3500] : tj);
+                }
+                catch (Exception cx) { Console.WriteLine($"click '{label}' failed: {cx.Message.Split('\n')[0]}"); }
+            }
+        }
     }
     catch (Exception ex) { Console.WriteLine($"ERR {url}: {ex.Message}"); }
     finally { await page.CloseAsync(); }
