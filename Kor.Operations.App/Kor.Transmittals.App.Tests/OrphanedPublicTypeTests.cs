@@ -109,6 +109,77 @@ public sealed class OrphanedPublicTypeTests
         }
     }
 
+    /// <summary>
+    /// Shared libraries whose public surface should have a consumer somewhere in the repo.
+    /// Excludes tools/ — each probe CLI is its own entry point, so unreferenced public
+    /// types there are expected, not rot.
+    /// </summary>
+    private static readonly string[] SharedLibraryRoots =
+    [
+        "Kor.Operations.Business",
+        "Kor.Operations.Core",
+        "Kor.Operations.Data",
+        "Kor.Operations.Graph",
+        "Kor.Operations.Rendering",
+        "Kor.Opportunities.Core",
+        "Kor.Opportunities.Data",
+        "Kor.Opportunities.Worker",
+        "Kor.EmailCommon",
+        "Kor.EmailSearch.Core",
+        "Kor.Operations.EngineeringTools.Core"
+    ];
+
+    /// <summary>
+    /// Types with no consumer today that are deliberately kept. Each entry needs a reason —
+    /// if you cannot write one, delete the type instead of listing it here.
+    /// </summary>
+    private static readonly Dictionary<string, string> KnownKeptTypes = new(StringComparer.Ordinal)
+    {
+        // QuantityTakeoff persistence and pure-math layers, built ahead of their consumer
+        // per docs/architecture/Kor.Operations.QuantityTakeoff.plan.md and AGENTS.md.
+        ["SqlTakeoffSnapshotStore"] = "QuantityTakeoff scaffolding — see the architecture plan",
+        ["VolumeCalculator"] = "QuantityTakeoff pure math — named in AGENTS.md",
+    };
+
+    [Fact]
+    public void All_public_types_in_shared_libraries_have_a_production_consumer()
+    {
+        var repoRoot = XamlStaticResourceOrderTests.GetRepoRoot();
+
+        // One pass over every production source in the repo, tools/ included: a Business
+        // type used only by a probe CLI is still alive. Test sources are excluded — tests
+        // keeping a dead subsystem compiling is the failure mode being hunted.
+        var identifierFiles = BuildRepoIdentifierIndex(repoRoot);
+
+        var offences = new List<string>();
+        foreach (var libraryRoot in SharedLibraryRoots)
+        {
+            var root = Path.Combine(repoRoot, libraryRoot);
+            if (!Directory.Exists(root))
+            {
+                continue;
+            }
+
+            foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+                         .Where(p => !IsBuildOutput(p) && !IsTestSource(p))
+                         .OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+            {
+                offences.AddRange(FindOrphansInSharedLibrary(file, identifierFiles));
+            }
+        }
+
+        if (offences.Count > 0)
+        {
+            Assert.Fail(
+                $"Found {offences.Count} public type(s) in the shared libraries with no consumer:\n"
+                + string.Join(Environment.NewLine, offences.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+                + "\n\nEach is a CANDIDATE, not a confirmed deletion. Check DI registration, SQL,"
+                + "\nconfig and the VSTO EmailFilerv2 project (which dotnet build cannot compile)"
+                + "\nbefore removing. If a type is genuinely kept, add it to KnownKeptTypes with a"
+                + "\nreason you can defend.");
+        }
+    }
+
     [Fact]
     public void Analyzer_flags_orphaned_public_type_against_synthetic_class()
     {
@@ -215,6 +286,102 @@ public sealed class OrphanedPublicTypeTests
         }
 
         return offences;
+    }
+
+    /// <summary>
+    /// Every identifier in every production source in the repo, mapped to the set of files
+    /// containing it. Built once — the app-scoped detector re-tokenizes the corpus per file,
+    /// which is fine for one project and quadratic across the whole repo.
+    /// </summary>
+    private static Dictionary<string, HashSet<string>> BuildRepoIdentifierIndex(string repoRoot)
+    {
+        var index = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var identifierRegex = new Regex(@"\b[A-Za-z_]\w*\b", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        foreach (var path in Directory.EnumerateFiles(repoRoot, "*.*", SearchOption.AllDirectories))
+        {
+            var extension = Path.GetExtension(path);
+            var isSource = extension.Equals(".cs", StringComparison.OrdinalIgnoreCase)
+                        || extension.Equals(".xaml", StringComparison.OrdinalIgnoreCase);
+            if (!isSource || IsBuildOutput(path) || IsTestSource(path))
+            {
+                continue;
+            }
+
+            var fullPath = Path.GetFullPath(path);
+            foreach (Match match in identifierRegex.Matches(File.ReadAllText(fullPath)))
+            {
+                if (!index.TryGetValue(match.Value, out var files))
+                {
+                    files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    index[match.Value] = files;
+                }
+
+                files.Add(fullPath);
+            }
+        }
+
+        return index;
+    }
+
+    private static IReadOnlyList<string> FindOrphansInSharedLibrary(
+        string sourceFile,
+        Dictionary<string, HashSet<string>> identifierFiles)
+    {
+        var source = File.ReadAllText(sourceFile);
+        var lines = SplitLines(source);
+        var fullPath = Path.GetFullPath(sourceFile);
+        var offences = new List<string>();
+
+        foreach (Match match in PublicTypeRegex.Matches(source))
+        {
+            var typeName = match.Groups["name"].Value.Trim();
+            var modifiers = match.Groups["modifiers"].Value;
+            var line = GetLineNumber(source, match.Index);
+
+            if (modifiers.Contains("partial", StringComparison.Ordinal)
+                || ReservedTypeNames.Contains(typeName)
+                || KnownKeptTypes.ContainsKey(typeName)
+                || HasSkippedAttributeAbove(lines, line)
+                || DerivesFromRuntimeResolvedType(lines, line))
+            {
+                continue;
+            }
+
+            // Extension-method containers are invoked through the extended type, so the
+            // class name legitimately never appears at a call site.
+            if (modifiers.Contains("static", StringComparison.Ordinal)
+                && source.Contains("(this ", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var referencingFiles = identifierFiles.TryGetValue(typeName, out var files)
+                ? files
+                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (referencingFiles.Any(f => !string.Equals(f, fullPath, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            if (CountRealLocalUses(source, typeName) > 0)
+            {
+                continue;
+            }
+
+            offences.Add(
+                $"{Path.GetFileName(sourceFile)}({line}): public type '{typeName}' — no reference in any production source");
+        }
+
+        return offences;
+    }
+
+    private static bool IsBuildOutput(string path)
+    {
+        var separator = Path.DirectorySeparatorChar;
+        var normalized = Path.GetFullPath(path);
+        return normalized.Contains($"{separator}bin{separator}", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains($"{separator}obj{separator}", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
