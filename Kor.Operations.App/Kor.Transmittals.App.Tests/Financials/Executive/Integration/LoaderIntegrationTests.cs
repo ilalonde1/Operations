@@ -20,8 +20,9 @@ namespace Kor.Operations.Tests.Financials.Executive.Integration;
 /// the live ODBC connection. Tagged Category=Integration so the hermetic CI
 /// run skips them; engineers run them manually after changes touching SQL.
 ///
-/// Required env vars: DELTEK_DSN, DELTEK_USER, DELTEK_PASSWORD.
-/// Optional: DELTEK_CATALOG.
+/// Credentials come from <see cref="IntegrationFixture"/>: DELTEK_DSN /
+/// DELTEK_USER / DELTEK_PASSWORD if set, otherwise the machine-level
+/// KOR_ODBC_USER / KOR_ODBC_PASSWORD against DSN <c>Deltek</c>.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class LoaderIntegrationTests
@@ -32,14 +33,7 @@ public sealed class LoaderIntegrationTests
     public void BilledFinancialsService_LoadPartnerBilledRevenueByPeriod_ReconcilesToDalerDeck()
     {
         using var cn = IntegrationFixture.OpenDeltekConnection();
-        var odbcOptions = new DeltekOdbcOptions
-        {
-            Dsn = Environment.GetEnvironmentVariable("DELTEK_DSN") ?? "Deltek",
-            User = Environment.GetEnvironmentVariable("DELTEK_USER") ?? string.Empty,
-            Password = Environment.GetEnvironmentVariable("DELTEK_PASSWORD") ?? string.Empty,
-            Catalog = ExecutiveSummaryLoaderSupport.Catalog,
-        };
-        var svc = new BilledFinancialsService(odbcOptions, new FinancialsOptions());
+        var svc = new BilledFinancialsService(IntegrationFixture.Options(), new FinancialsOptions());
 
         var rows = svc.LoadPartnerBilledRevenueByPeriod(cn, 202601, 202605, CancellationToken.None);
         var totals = rows
