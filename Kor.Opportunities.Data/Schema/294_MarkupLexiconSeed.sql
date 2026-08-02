@@ -23,7 +23,6 @@
 */
 SET NOCOUNT ON;
 
-DECLARE @src NVARCHAR(150) = N'KOR.Drafter lexicon build 2026-08-01';
 
 /* ---- E1 · kevinw · bare member mark · REPLAY-VERIFIED (the only draftable one) ---- */
 IF NOT EXISTS (SELECT 1 FROM markup.Lexicon WHERE Engineer='kevinw' AND Pattern=N'^[A-Z]{1,3}\d{1,3}[A-Z]?( [A-Z.]{2,6})?$')
@@ -33,13 +32,13 @@ BEGIN
             N'Member mark. Designate the member at the leader target with this tag. The SLOT is vocabulary; the VALUE is job-scoped and resolves against that job''s schedule.',
             'VERIFY', 'replay-verified',
             N'ADD vs VERIFY cannot be distinguished by presence alone — the replay proved the tag is present on the marked sheet, not whether it was added or confirmed.',
-            64, 13, @src);
+            64, 13, N'KOR.Drafter lexicon build 2026-08-01');
 
     DECLARE @e1 UNIQUEIDENTIFIER = (SELECT Id FROM markup.Lexicon WHERE Engineer='kevinw' AND Pattern=N'^[A-Z]{1,3}\d{1,3}[A-Z]?( [A-Z.]{2,6})?$');
     INSERT INTO markup.LexiconHistory (LexiconId, FromConfidence, ToConfidence, Basis, ChangedBy)
     VALUES (@e1, 'unverified', 'replay-verified',
             N'Sherwood 31207-01, 32-minute markup-to-save gap. B23 F.B. on S2.13 (60 matches), SB1 on S2.08 (14), SB2 (6), SC1 (1) — 11 of 11 present on the sheet each was marked on, 0 absent.',
-            @src);
+            N'KOR.Drafter lexicon build 2026-08-01');
 END;
 GO
 
@@ -51,7 +50,7 @@ BEGIN
             N'Design-review question. Jim surfaces gaps rather than dictating fixes.',
             'REFER', 'engineer-confirmed',
             N'NEVER promote to draftable. A low automation rate here is correct behaviour, not a gap to close.',
-            22, 4, @src);
+            22, 4, N'KOR.Drafter lexicon build 2026-08-01');
 END;
 GO
 
@@ -63,7 +62,7 @@ BEGIN
             N'Place that member tag at the leader target.',
             'ADD', 'unverified',
             N'Untested against an issued model. The explicit verb makes it less ambiguous than E1 — this is the pattern worth quoting to others.',
-            68, 5, @src);
+            68, 5, N'KOR.Drafter lexicon build 2026-08-01');
 END;
 GO
 
@@ -75,7 +74,7 @@ BEGIN
             N'A decision, usually with a detail reference and often an explicit fallback condition.',
             'VERIFY', 'unverified',
             N'The fallback clause must be preserved, not discarded — it is the part that prevents a return query.',
-            0, 3, @src);
+            0, 3, N'KOR.Drafter lexicon build 2026-08-01');
 END;
 GO
 
@@ -87,7 +86,7 @@ BEGIN
             N'A specification for the member at the leader target. The verb is absent.',
             'REFER', 'unverified',
             N'Add-a-note versus change-the-member cannot be determined from the mark. Refer.',
-            0, 3, @src);
+            0, 3, N'KOR.Drafter lexicon build 2026-08-01');
 END;
 GO
 
@@ -99,7 +98,7 @@ BEGIN
             N'Points at a standard detail.',
             'REFER', 'unverified',
             N'Whether to APPLY the detail or merely cite it is unstated.',
-            0, 3, @src);
+            0, 3, N'KOR.Drafter lexicon build 2026-08-01');
 END;
 GO
 
@@ -111,7 +110,7 @@ BEGIN
             N'Describes existing framing at the leader target — survey information, not a change.',
             'NO-ACTION', 'unverified',
             N'Recording this as NO-ACTION prevents it being mistaken for an instruction to add framing.',
-            0, 3, @src);
+            0, 3, N'KOR.Drafter lexicon build 2026-08-01');
 END;
 GO
 
@@ -123,7 +122,7 @@ BEGIN
             N'Hold-down or shear-wall designation at the leader target.',
             'VERIFY', 'unverified',
             N'Same ADD-vs-VERIFY ambiguity as E1.',
-            0, 3, @src);
+            0, 3, N'KOR.Drafter lexicon build 2026-08-01');
 END;
 GO
 
@@ -134,3 +133,4 @@ FROM markup.Lexicon WHERE RetiredAtUtc IS NULL ORDER BY Confidence DESC, Enginee
 SELECT 'DRAFTABLE (everything else is refer-only)' AS Gate, Engineer, Pattern, ActionType
 FROM markup.vw_LexiconDraftable;
 GO
+
