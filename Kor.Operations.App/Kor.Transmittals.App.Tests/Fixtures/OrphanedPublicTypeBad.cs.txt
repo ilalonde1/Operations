@@ -1,0 +1,45 @@
+#nullable enable
+using System;
+using System.Globalization;
+using System.Windows.Data;
+
+namespace Kor.Operations.App.Fixtures;
+
+// Named by other production code — alive.
+public sealed class ProductionlyUsedType
+{
+    public int Value { get; set; }
+}
+
+// Named only by the test project — an orphan kept compiling by its own tests.
+public sealed class TestOnlyType
+{
+    public int Value { get; set; }
+}
+
+// Named by nobody at all.
+public sealed class TotallyOrphanedType
+{
+    public int Value { get; set; }
+}
+
+// Reached by the XAML markup engine, never by a C# call site.
+public sealed class XamlBoundConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => value;
+}
+
+// Constructed by a serializer, so no call site exists.
+[Serializable]
+public sealed class SerializedDto
+{
+    public string Name { get; set; } = "";
+}
+
+// Code-behind half of a XAML file — the generated partial supplies the rest.
+public partial class SomeWindowCodeBehind
+{
+    public string Title { get; set; } = "";
+}

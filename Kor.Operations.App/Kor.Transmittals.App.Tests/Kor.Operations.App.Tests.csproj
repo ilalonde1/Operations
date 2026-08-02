@@ -94,6 +94,9 @@
     <Content Include="Fixtures\UnusedPrivateTypeBad.cs.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Fixtures\OrphanedPublicTypeBad.cs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Update="TestData\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
