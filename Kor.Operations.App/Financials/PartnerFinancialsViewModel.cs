@@ -329,7 +329,6 @@ namespace Kor.Operations.Financials
                 _selectedYear = next;
                 ResolveFx();
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(SelectedYearLabel));
                 OnPropertyChanged(nameof(IsFxProvisional));
                 OnPropertyChanged(nameof(FxTooltip));
                 _ = RefreshAsync(CancellationToken.None);
@@ -350,7 +349,6 @@ namespace Kor.Operations.Financials
 
         public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
         public string StatusHint => IsLoading ? "Loading..." : "";
-        public string SelectedYearLabel => SelectedYear.ToString(CultureInfo.InvariantCulture);
         public bool IsFxProvisional => _isFxProvisional;
         public string FxBadgeText => $"FX provisional";
         public string FxTooltip => $"USD billings are converted at {_resolvedUsdToCadRate:N6} CAD per USD for {SelectedYear}.";
@@ -361,7 +359,9 @@ namespace Kor.Operations.Financials
         public string TwoMoAgoPeriodLabel { get; private set; } = "";
         public double YoyLastYearTotal => YoyRows.Sum(r => r.LastYear);
         public double YoyCurrentYearTotal => YoyRows.Sum(r => r.CurrentYear);
-        public double YoyDifferenceTotal => YoyCurrentYearTotal - YoyLastYearTotal;
+        // Internal helper only — the bound surface is YoyDifferenceTotalText. Kept private so
+        // UnusedViewModelPropertyTests doesn't read an unbound public property as dead code.
+        private double YoyDifferenceTotal => YoyCurrentYearTotal - YoyLastYearTotal;
         public string YoyDifferenceTotalText => $"{(YoyDifferenceTotal >= 0 ? "+" : "-")}{Math.Abs(YoyDifferenceTotal).ToString("C0", CultureInfo.CurrentCulture)}";
 
         public async Task RefreshAsync(CancellationToken ct)
@@ -577,7 +577,6 @@ namespace Kor.Operations.Financials
             }
             OnPropertyChanged(nameof(YoyLastYearTotal));
             OnPropertyChanged(nameof(YoyCurrentYearTotal));
-            OnPropertyChanged(nameof(YoyDifferenceTotal));
             OnPropertyChanged(nameof(YoyDifferenceTotalText));
         }
 
