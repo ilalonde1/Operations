@@ -162,22 +162,6 @@ namespace Kor.Operations.Core
     }
 
     /// <summary>
-    /// Represents a note associated with a PDF bookmark.
-    /// </summary>
-    public sealed class BookmarkNote
-    {
-        /// <summary>
-        /// Gets or sets the bookmark label.
-        /// </summary>
-        public string Bookmark { get; set; } = "";
-
-        /// <summary>
-        /// Gets or sets the note text for the bookmark.
-        /// </summary>
-        public string? Note { get; set; }
-    }
-
-    /// <summary>
     /// Represents a file included in a transmittal.
     /// </summary>
     public sealed class TransmittalFile

@@ -93,41 +93,11 @@ public sealed class IntelExtractorTests
         Assert.Equal("OwnershipMnA", result.Signals[2].SignalType);
     }
 
-    [Fact]
-    public void FirmNarrativeExtractor_threeParagraphs_yieldThreeNarrativesPlusAction()
-    {
-        using var doc = LoadFixture("firmnarrative-sfu.json");
-        var ctx = new IntelExtractionContext(99, 1, "FirmNarrative", doc, DateTimeOffset.UtcNow);
-
-        var result = new FirmNarrativeExtractor().Extract(ctx);
-
-        Assert.Contains(result.Narratives, n => n.NarrativeType == "Current");
-        Assert.Contains(result.Narratives, n => n.NarrativeType == "History");
-        Assert.Contains(result.Narratives, n => n.NarrativeType == "Action");
-        Assert.Contains(result.Actions, a => a.ActionType == "PursuitAngle");
-    }
-
-    [Fact]
-    public void FirmNarrativeExtractor_lowConfidence_yieldsLow()
-    {
-        using var doc = JsonDocument.Parse("{\"paragraphCurrent\":\"text\",\"overallConfidence\":0.45}");
-
-        var result = new FirmNarrativeExtractor().Extract(new IntelExtractionContext(1, 1, "FirmNarrative", doc, DateTimeOffset.UtcNow));
-
-        Assert.All(result.Narratives, n => Assert.Equal(IntelConfidence.Low, n.Confidence));
-        Assert.All(result.Actions, a => Assert.Equal(IntelConfidence.Low, a.Confidence));
-    }
-
-    [Fact]
-    public void FirmNarrativeExtractor_dataDependenciesPresent_yieldsLow()
-    {
-        using var doc = JsonDocument.Parse("{\"paragraphCurrent\":\"text\",\"overallConfidence\":0.9,\"dataDependencies\":[\"needs verification\"]}");
-
-        var result = new FirmNarrativeExtractor().Extract(new IntelExtractionContext(1, 1, "FirmNarrative", doc, DateTimeOffset.UtcNow));
-
-        Assert.All(result.Narratives, n => Assert.Equal(IntelConfidence.Low, n.Confidence));
-        Assert.All(result.Actions, a => Assert.Equal(IntelConfidence.Low, a.Confidence));
-    }
+    // The "FirmNarrative" provider is served by CanonicalSchemaExtractor("FirmNarrative")
+    // (IntelExtractorBootstrap) against the canonical decisionMakers/signals/actions/
+    // narratives schema that AnthropicResearchExecutorService now emits. The old
+    // paragraphCurrent/History/Action extractor and its three tests were deleted with it;
+    // the canonical shape is covered by the CanonicalSchemaExtractor tests below.
 
     [Fact]
     public void CanonicalSchemaExtractor_pacnw_emitsAllBuckets()
