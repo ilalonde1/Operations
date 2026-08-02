@@ -8,7 +8,6 @@ using System.Windows;
 using Kor.Operations.App.Options;
 using Kor.Operations.Data;
 using static Kor.Operations.Core.MathHelpers;
-using Kor.Operations.Financials.CfoMetrics;
 using Microsoft.Extensions.DependencyInjection;
 namespace Kor.Operations.Financials
 {
@@ -16,23 +15,16 @@ namespace Kor.Operations.Financials
     {
         private readonly string _wbs1;
         private readonly double _projectHoursSpent;
-        private readonly PortfolioHealthCounts? _portfolioCounts;
         private bool _teamLoaded;
         private bool _teamLoading;
         private bool _feeBreakdownExpanded;
         private readonly ObservableCollection<TeamMemberHoursRow> _teamRows = new();
 
         public ProjectFinancialDetailWindow(FinancialsProjectRow project)
-            : this(project, portfolioCounts: null)
-        {
-        }
-
-        public ProjectFinancialDetailWindow(FinancialsProjectRow project, PortfolioHealthCounts? portfolioCounts)
         {
             project ??= new FinancialsProjectRow();
             InitializeComponent();
             _wbs1 = (project.Wbs1 ?? string.Empty).Trim();
-            _portfolioCounts = portfolioCounts;
             _projectHoursSpent =
                 (project.EngHrs) +
                 (project.DraftHrs) +
@@ -43,7 +35,7 @@ namespace Kor.Operations.Financials
                 (project.NonBillHrs);
 
             TeamBreakdownGrid.ItemsSource = _teamRows;
-            DataContext = new ProjectFinancialDetailVm(project, _portfolioCounts);
+            DataContext = new ProjectFinancialDetailVm(project);
             _ = LoadFeeElementsAsync();
         }
 
@@ -664,7 +656,7 @@ ORDER BY TotalHours DESC";
             public ObservableCollection<DisciplineRow> Disciplines { get; } = new();
 
 
-            public ProjectFinancialDetailVm(FinancialsProjectRow p, PortfolioHealthCounts? portfolioCounts)
+            public ProjectFinancialDetailVm(FinancialsProjectRow p)
             {
                 p ??= new FinancialsProjectRow();
                 ProjectName = (p?.Name ?? string.Empty).Trim();
@@ -803,70 +795,6 @@ ORDER BY TotalHours DESC";
             public string EmployeeName { get; set; } = "";
             public double TotalHours { get; set; }
             public double PercentOfProject { get; set; }
-        }
-
-        internal sealed class CfoMetricDisplayRow
-        {
-            public string Name { get; init; } = "";
-            public string ValueDisplay { get; init; } = "";
-            public string Tooltip { get; init; } = "";
-
-            public static CfoMetricDisplayRow FromMetric(ICfoMetric m, decimal value, ProjectData ctx)
-            {
-                var display = FormatValue(m, value, ctx);
-                var formula = GetFormulaIfPresent(m);
-                var tip = string.IsNullOrWhiteSpace(formula) ? m.Description : $"{m.Description}\n\nFORMULA:\n{formula}";
-
-                return new CfoMetricDisplayRow
-                {
-                    Name = m.Name,
-                    ValueDisplay = display,
-                    Tooltip = tip
-                };
-            }
-
-            private static string GetFormulaIfPresent(ICfoMetric m)
-            {
-                return m switch
-                {
-                    DeliveryConfidenceMetric x => x.Formula,
-                    PercentHoursSpentMetric x => x.Formula,
-                    BudgetBurnRateMetric x => x.Formula,
-                    PortfolioHealthCountsMetric x => x.Formula,
-                    _ => ""
-                };
-            }
-
-            private static string FormatValue(ICfoMetric m, decimal value, ProjectData ctx)
-            {
-                if (m is DeliveryConfidenceMetric)
-                {
-                    var label = ctx.DeliveryConfidenceLevel switch
-                    {
-                        DeliveryConfidenceLevel.Critical => "Critical",
-                        DeliveryConfidenceLevel.AtRisk => "At Risk",
-                        DeliveryConfidenceLevel.Watch => "Watch",
-                        DeliveryConfidenceLevel.HighConfidence => "High Confidence",
-                        _ => "Unknown"
-                    };
-                    return $"{label} ({value.ToString("0", CultureInfo.CurrentCulture)})";
-                }
-
-                if (m is PercentHoursSpentMetric)
-                    return value.ToString("P1", CultureInfo.CurrentCulture);
-
-                if (m is BudgetBurnRateMetric)
-                    return value == 0m ? "0.00x" : value.ToString("0.00x", CultureInfo.CurrentCulture);
-
-                if (m is PortfolioHealthCountsMetric)
-                {
-                    if (ctx.PortfolioCounts == null)
-                        return "N/A";
-                    return value.ToString("N0", CultureInfo.CurrentCulture);
-                }
-
-                return value.ToString(CultureInfo.CurrentCulture);
-            }
         }
     }
 

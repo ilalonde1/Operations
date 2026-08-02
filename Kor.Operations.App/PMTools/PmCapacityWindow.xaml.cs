@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System;
 using System.ComponentModel;
 using System.Linq;
@@ -88,8 +88,7 @@ namespace Kor.Operations.PMTools
         {
             if (UtilizationGrid.SelectedItem is not UtilizationRow row || !IsDataGridRowDoubleClick(e))
                 return;
-            var counts = BuildPortfolioCounts();
-            var win = new Financials.ProjectFinancialDetailWindow(row.Project, counts) { Owner = this };
+            var win = new Financials.ProjectFinancialDetailWindow(row.Project) { Owner = this };
             win.Show();
         }
 
@@ -97,8 +96,7 @@ namespace Kor.Operations.PMTools
         {
             if (DraftUtilizationGrid.SelectedItem is not DraftUtilizationRow row || !IsDataGridRowDoubleClick(e))
                 return;
-            var counts = BuildPortfolioCounts();
-            var win = new Financials.ProjectFinancialDetailWindow(row.Project, counts) { Owner = this };
+            var win = new Financials.ProjectFinancialDetailWindow(row.Project) { Owner = this };
             win.Show();
         }
 
@@ -144,15 +142,6 @@ namespace Kor.Operations.PMTools
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
-        }
-
-        private Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts BuildPortfolioCounts()
-        {
-            // Match FinancialsWindow's definition explicitly: Watch = Watch + AtRisk.
-            return new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
-                Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
-                Critical: _vm.PortfolioCriticalCount);
         }
 
         private static bool IsDataGridRowDoubleClick(MouseButtonEventArgs e)

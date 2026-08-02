@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -170,12 +170,7 @@ namespace Kor.Operations.Financials
                     return;
             }
 
-            var counts = new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
-                Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
-                Critical: _vm.PortfolioCriticalCount);
-
-            var win = new ProjectFinancialDetailWindow(row.Project, counts) { Owner = this };
+            var win = new ProjectFinancialDetailWindow(row.Project) { Owner = this };
             win.Show();
         }
 
@@ -193,12 +188,7 @@ namespace Kor.Operations.Financials
                     return;
             }
 
-            var counts = new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
-                Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
-                Critical: _vm.PortfolioCriticalCount);
-
-            var win = new ProjectFinancialDetailWindow(row.Project, counts) { Owner = this };
+            var win = new ProjectFinancialDetailWindow(row.Project) { Owner = this };
             win.Show();
         }
 
@@ -480,12 +470,7 @@ namespace Kor.Operations.Financials
                     return;
             }
 
-            var counts = new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
-                Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
-                Critical: _vm.PortfolioCriticalCount);
-
-            var win = new ProjectFinancialDetailWindow(row, counts) { Owner = this };
+            var win = new ProjectFinancialDetailWindow(row) { Owner = this };
             win.Show();
         }
 

@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -168,8 +168,7 @@ public partial class MetricDetailWindow : Window
             if (project == null)
                 return;
 
-            var counts = BuildPortfolioHealthCounts(snapshot.Rows);
-            var win = new ProjectFinancialDetailWindow(project, counts) { Owner = this };
+            var win = new ProjectFinancialDetailWindow(project) { Owner = this };
             win.Show();
         }
         catch
@@ -201,33 +200,4 @@ public partial class MetricDetailWindow : Window
         return ((string?)prop.GetValue(selectedItem) ?? string.Empty).Trim();
     }
 
-    private static CfoMetrics.PortfolioHealthCounts BuildPortfolioHealthCounts(IEnumerable<FinancialsProjectRow> rows)
-    {
-        var critical = 0;
-        var watch = 0;
-        var healthy = 0;
-
-        foreach (var row in rows)
-        {
-            var util = UtilizationRow.FromProject(row);
-            switch (util.ConfidenceLevel)
-            {
-                case DeliveryConfidenceLevel.Critical:
-                    critical++;
-                    break;
-                case DeliveryConfidenceLevel.AtRisk:
-                case DeliveryConfidenceLevel.Watch:
-                    watch++;
-                    break;
-                default:
-                    healthy++;
-                    break;
-            }
-        }
-
-        return new CfoMetrics.PortfolioHealthCounts(
-            Healthy: healthy,
-            Watch: watch,
-            Critical: critical);
-    }
 }

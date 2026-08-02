@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System;
 using System.ComponentModel;
 using System.Linq;
@@ -217,8 +217,7 @@ namespace Kor.Operations.PMTools
             if (GetClickedCell(e)?.Column.DisplayIndex is 0 or 1 or 2)
                 return;
 
-            var counts = BuildPortfolioCounts();
-            var win = new Financials.ProjectFinancialDetailWindow(row.Source, counts) { Owner = this };
+            var win = new Financials.ProjectFinancialDetailWindow(row.Source) { Owner = this };
             win.Show();
         }
 
@@ -617,15 +616,6 @@ namespace Kor.Operations.PMTools
             if (sender is not TextBox tb || tb.DataContext is not PmProjectRow row) return;
             if (!_meetingPanel.IsCurrentMeeting || _meetingPanel.SelectedMeeting == null) return;
             _meetingPanel.QueueProjectNotesSaveFromUi(row.Wbs1, tb.Text);
-        }
-
-        private Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts BuildPortfolioCounts()
-        {
-            // Match FinancialsWindow's definition explicitly: Watch = Watch + AtRisk.
-            return new Kor.Operations.Financials.CfoMetrics.PortfolioHealthCounts(
-                Healthy: _vm.PortfolioHighConfidenceCount,
-                Watch: _vm.PortfolioWatchCount + _vm.PortfolioAtRiskCount,
-                Critical: _vm.PortfolioCriticalCount);
         }
 
         private static bool IsDataGridRowDoubleClick(MouseButtonEventArgs e)
