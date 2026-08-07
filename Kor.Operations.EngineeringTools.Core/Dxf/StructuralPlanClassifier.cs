@@ -119,6 +119,24 @@ public static class StructuralPlanClassifier
 
             var built = (isWall || isColumn ? wallBuilder : slabBuilder).Build(group);
 
+            // A wall enclosure is broken by its own doorway, so its outline never closes — but it
+            // still traces the faces of real walls. Decompose those chains as well rather than
+            // discarding the enclosure with the door.
+            int recovered = 0;
+            if (isWall)
+            {
+                foreach (var chain in built.OpenChains)
+                {
+                    if (chain.Count < 4) continue;
+                    var asLoop = new PlanLoop(layer, chain, closedExactly: false);
+                    var panels = WallOutlineDecomposer.Decompose(asLoop, options);
+                    if (panels.Count == 0) continue;
+
+                    result.Walls.AddRange(panels);
+                    recovered += panels.Count;
+                }
+            }
+
             if (built.OpenChains.Count > 0)
             {
                 double openLength = built.OpenChains.Sum(c =>
@@ -127,8 +145,9 @@ public static class StructuralPlanClassifier
                     for (int i = 0; i < c.Count - 1; i++) total += c[i].DistanceTo(c[i + 1]);
                     return total;
                 });
-                result.Flags.Add(
-                    $"{layer}: {built.OpenChains.Count} outline(s) would not close ({openLength:0} units of edge ignored).");
+                result.Flags.Add(recovered > 0
+                    ? $"{layer}: {built.OpenChains.Count} outline(s) would not close; {recovered} wall panel(s) read from them anyway ({openLength:0} units of edge)."
+                    : $"{layer}: {built.OpenChains.Count} outline(s) would not close ({openLength:0} units of edge ignored).");
             }
 
             foreach (var loop in built.Loops)
