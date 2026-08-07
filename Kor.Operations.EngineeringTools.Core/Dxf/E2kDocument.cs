@@ -101,6 +101,11 @@ public sealed class E2kDocument
     {
         var parsed = new List<(string Name, double Height)>();
 
+        // The base storey carries an explicit elevation rather than a height, and it is not
+        // always zero — 31168 sets its base at -12000in. Starting from zero would put every
+        // point in the model 1,000ft above where the building actually is.
+        double baseElevation = 0;
+
         foreach (string raw in LinesOf("STORIES"))
         {
             string line = raw.Trim();
@@ -111,6 +116,16 @@ public sealed class E2kDocument
             if (firstQuote < 0 || lastQuote < 0) continue;
 
             string name = line.Substring(firstQuote + 1, lastQuote - firstQuote - 1);
+
+            int e = line.IndexOf("ELEV", StringComparison.OrdinalIgnoreCase);
+            if (e >= 0)
+            {
+                string tail = line[(e + "ELEV".Length)..].Trim();
+                string token = new(tail.TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
+                if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out double elev))
+                    baseElevation = elev;
+                continue;   // a storey given an elevation is the datum, not a storey of its own
+            }
 
             double height = 0;
             int h = line.IndexOf("HEIGHT", StringComparison.OrdinalIgnoreCase);
@@ -126,7 +141,7 @@ public sealed class E2kDocument
 
         // Listed top-down: walking the reversed list accumulates elevation from the base.
         var result = new List<StoryLevel>();
-        double elevation = 0;
+        double elevation = baseElevation;
         for (int i = parsed.Count - 1; i >= 0; i--)
         {
             var (name, height) = parsed[i];

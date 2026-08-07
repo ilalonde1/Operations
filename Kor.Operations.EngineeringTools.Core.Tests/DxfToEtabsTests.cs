@@ -292,6 +292,27 @@ public class E2kDocumentTests
     };
 
     [Fact]
+    public void ElevationsStartAtTheBaseStoreysOwnDatum()
+    {
+        // 31168 puts its base 1000ft below origin. Ignoring that lifted every point in the
+        // model by exactly that much.
+        string[] withDatum =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 2\"  HEIGHT 120",
+            "  STORY \"LEVEL 1\"  HEIGHT 144",
+            "  STORY \"Base\"  ELEV -12000",
+            "",
+        };
+
+        var stories = E2kDocument.Parse(withDatum).ReadStories();
+
+        Assert.Equal(2, stories.Count);
+        Assert.Equal(-12000 + 144, stories.Single(s => s.Name == "LEVEL 1").Elevation, 3);
+        Assert.Equal(-12000 + 144 + 120, stories.Single(s => s.Name == "LEVEL 2").Elevation, 3);
+    }
+
+    [Fact]
     public void AccumulatesStoreyElevationsFromTheBaseUpward()
     {
         var stories = E2kDocument.Parse(Reference).ReadStories();
