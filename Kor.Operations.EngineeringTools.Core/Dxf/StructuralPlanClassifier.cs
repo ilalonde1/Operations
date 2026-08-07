@@ -46,6 +46,13 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public double MinSlabArea { get; init; } = 7200.0;
 
+    /// <summary>
+    /// Largest dash gap to close when rebuilding a dashed line. Measured on KOR's exports:
+    /// hidden edges dash at a constant 11", while genuine interruptions in a slab boundary
+    /// run 18" and wider.
+    /// </summary>
+    public double DashJoinGap { get; init; } = 14.0;
+
     public double JoinTolerance { get; init; } = 0.05;
     public double BridgeTolerance { get; init; } = 6.0;
 
@@ -63,6 +70,20 @@ public sealed record PlanClassificationOptions
 /// <summary>Turns the raw segments of one plan into the structural members it depicts.</summary>
 public static class StructuralPlanClassifier
 {
+    internal const string RoleWall = "walls";
+    internal const string RoleColumn = "columns";
+    internal const string RoleSlab = "slab edges";
+
+    private static string? RoleOf(string layer, PlanClassificationOptions options)
+    {
+        // Columns first: a layer may satisfy more than one pattern, and the column
+        // convention (JBP_V_COL) is the most specific.
+        if (PlanClassificationOptions.Matches(layer, options.ColumnLayerPatterns)) return RoleColumn;
+        if (PlanClassificationOptions.Matches(layer, options.WallLayerPatterns)) return RoleWall;
+        if (PlanClassificationOptions.Matches(layer, options.SlabLayerPatterns)) return RoleSlab;
+        return null;
+    }
+
     public static PlanGeometrySet Classify(IEnumerable<DxfSegment> segments, PlanClassificationOptions? options = null)
     {
         options ??= new PlanClassificationOptions();
@@ -70,17 +91,21 @@ public static class StructuralPlanClassifier
         var slabBuilder = new PlanLoopBuilder(options.JoinTolerance, options.BridgeTolerance);
         var wallBuilder = new PlanLoopBuilder(options.JoinTolerance, options.WallBridgeTolerance);
 
-        var byLayer = segments.GroupBy(s => s.Layer);
+        // Group by what a layer is for, not by its name. Revit splits one outline across
+        // JBP_C_SLABEDG, -1 and -2 as it exports, so a plate boundary only closes when the
+        // related layers are stitched together.
+        var byRole = DashedLineJoiner.Join(segments, options.DashJoinGap)
+            .Select(s => (Segment: s, Role: RoleOf(s.Layer, options)))
+            .Where(x => x.Role is not null)
+            .GroupBy(x => x.Role!, x => x.Segment);
 
         var slabCandidates = new List<PlanLoop>();
 
-        foreach (var group in byLayer)
+        foreach (var group in byRole)
         {
             string layer = group.Key;
-            bool isWall = PlanClassificationOptions.Matches(layer, options.WallLayerPatterns);
-            bool isColumn = PlanClassificationOptions.Matches(layer, options.ColumnLayerPatterns);
-            bool isSlab = PlanClassificationOptions.Matches(layer, options.SlabLayerPatterns);
-            if (!isWall && !isColumn && !isSlab) continue;
+            bool isWall = layer == RoleWall;
+            bool isColumn = layer == RoleColumn;
 
             var built = (isWall || isColumn ? wallBuilder : slabBuilder).Build(group);
 

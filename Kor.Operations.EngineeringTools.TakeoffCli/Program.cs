@@ -96,6 +96,33 @@ if (args.Length >= 1 && args[0].Equals("dxf-render", StringComparison.OrdinalIgn
         }
     }
 
+    // Overlay what the classifier actually extracted, so anything in the drawing that the
+    // model does not carry is visible as bare linework rather than having to be inferred.
+    if (args.Any(a => a.Equals("--overlay", StringComparison.OrdinalIgnoreCase)))
+    {
+        var extracted = StructuralPlanClassifier.Classify(DxfPlanReader.ReadSegments(args[1]), renderOptions);
+
+        foreach (var wall in extracted.Walls)
+        {
+            var (ax, ay) = Map(wall.Start);
+            var (bx, by) = Map(wall.End);
+            int steps = (int)Math.Max(Math.Abs(bx - ax), Math.Abs(by - ay)) + 1;
+            for (int s = 0; s <= steps; s++)
+            {
+                double f = steps == 0 ? 0 : (double)s / steps;
+                Plot((int)Math.Round(ax + (bx - ax) * f), (int)Math.Round(ay + (by - ay) * f), new Rgba32(0, 170, 60), 2);
+            }
+        }
+
+        foreach (var column in extracted.Columns)
+        {
+            var (px, py) = Map(column.Center);
+            Plot((int)Math.Round(px), (int)Math.Round(py), new Rgba32(255, 140, 0), 4);
+        }
+
+        Console.WriteLine($"overlay: {extracted.Walls.Count} wall axes (green), {extracted.Columns.Count} columns (orange), {extracted.Slabs.Count} slabs");
+    }
+
     image.Save(args[2]);
     Console.WriteLine($"{args[2]}  ({width}x{height})  segments drawn: {renderSegments.Count}");
     foreach (var g in renderSegments.GroupBy(s => s.Layer).OrderByDescending(g => g.Count()))
@@ -124,6 +151,32 @@ if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIg
         var built = new PlanLoopBuilder(inspectOptions.JoinTolerance, inspectOptions.BridgeTolerance).Build(layerGroup);
         Console.WriteLine($"{layerGroup.Key,-24} segs {layerGroup.Count(),4}   closed loops {built.Loops.Count,3}   open {built.OpenChains.Count,3}");
 
+        // How far is each loose end from the nearest other loose end? The measured answer to
+        // whether an outline fails on tolerance or on something else entirely.
+        if (built.OpenChains.Count > 0)
+        {
+            var ends = built.OpenChains.SelectMany(c => new[] { c[0], c[^1] }).ToList();
+            var nearest = new List<double>();
+            for (int a = 0; a < ends.Count; a++)
+            {
+                double best = double.MaxValue;
+                for (int b = 0; b < ends.Count; b++)
+                {
+                    if (a / 2 == b / 2) continue;   // the other end of the same chain does not count
+                    double dist = ends[a].DistanceTo(ends[b]);
+                    if (dist < best) best = dist;
+                }
+                if (best < double.MaxValue) nearest.Add(best);
+            }
+            nearest.Sort();
+            if (nearest.Count > 0)
+            {
+                string Bucket(double limit) => $"{nearest.Count(v => v <= limit)}/{nearest.Count}";
+                Console.WriteLine($"    loose ends {nearest.Count,3}   gap median {nearest[nearest.Count / 2],7:0.00}  max {nearest[^1],8:0.0}   " +
+                    $"<=0.1 {Bucket(0.1)}  <=1 {Bucket(1)}  <=6 {Bucket(6)}  <=24 {Bucket(24)}");
+            }
+        }
+
         if (!wallDetail || !PlanClassificationOptions.Matches(layerGroup.Key, inspectOptions.WallLayerPatterns)) continue;
 
         foreach (var loop in built.Loops.OrderByDescending(l => l.Area))
@@ -138,10 +191,36 @@ if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIg
                 Console.WriteLine($"        {p.Length,7:0.0} long x {p.Thickness,5:0.0} thick");
         }
 
-        foreach (var chain in built.OpenChains)
+        // How far is each loose end from the nearest other loose end? That is the measured
+        // answer to whether these outlines fail on tolerance or on something else.
+        if (built.OpenChains.Count > 0)
+        {
+            var ends = built.OpenChains.SelectMany(c => new[] { c[0], c[^1] }).ToList();
+            var nearest = new List<double>();
+            for (int a = 0; a < ends.Count; a++)
+            {
+                double best = double.MaxValue;
+                for (int b = 0; b < ends.Count; b++)
+                {
+                    if (a / 2 == b / 2) continue;   // ignore the other end of the same chain
+                    double dist = ends[a].DistanceTo(ends[b]);
+                    if (dist < best) best = dist;
+                }
+                if (best < double.MaxValue) nearest.Add(best);
+            }
+            nearest.Sort();
+            if (nearest.Count > 0)
+            {
+                string Bucket(double limit) => $"{nearest.Count(d => d <= limit)}/{nearest.Count}";
+                Console.WriteLine($"    loose ends: {nearest.Count}   nearest-neighbour gap: " +
+                    $"median {nearest[nearest.Count / 2]:0.00}, max {nearest[^1]:0.0}   " +
+                    $"within 0.1={Bucket(0.1)} 1={Bucket(1)} 6={Bucket(6)} 24={Bucket(24)}");
+            }
+        }
+
+        foreach (var chain in built.OpenChains.Take(3))
         {
             Console.WriteLine($"    OPEN chain: {chain.Count} pts, gap {chain[0].DistanceTo(chain[^1]):0.0}");
-            Console.WriteLine("        pts " + string.Join(" ", chain.Select(p => $"({p.X:0},{p.Y:0})")));
         }
     }
     return 0;
@@ -193,6 +272,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     (double X, double Y)? offset = null;
     bool includeFloors = true;
     double bridgeTolerance = new PlanClassificationOptions().BridgeTolerance;
+    double joinTolerance = new PlanClassificationOptions().JoinTolerance;
 
     for (int i = 4; i < args.Length; i++)
     {
@@ -204,6 +284,11 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
                  double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double bt))
         {
             bridgeTolerance = bt;
+        }
+        else if (flag.Equals("--join", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length &&
+                 double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double jt))
+        {
+            joinTolerance = jt;
         }
         else if (flag.Equals("--offset", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
         {
@@ -225,7 +310,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         OutputE2k = args[3],
         BuildingTag = building,
         Offset = offset,
-        Classification = new PlanClassificationOptions { BridgeTolerance = bridgeTolerance },
+        Classification = new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance },
         Compose = new ComposeOptions { IncludeFloors = includeFloors },
     });
 
