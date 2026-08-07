@@ -34,6 +34,75 @@ if (args.Length >= 1 && args[0].Equals("pdf-readable", StringComparison.OrdinalI
     return verdict.Readable ? 0 : 3;
 }
 
+// RENDER a plan's structural layers to an image, so what the drawing contains can be seen
+// rather than inferred. Walls red, columns blue, slab edges grey.
+// Usage: takeoff dxf-render <plan.dxf> <out.png> [--size 1800]
+if (args.Length >= 1 && args[0].Equals("dxf-render", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff dxf-render <plan.dxf> <out.png> [--size 1800]"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
+
+    int size = 1800;
+    for (int i = 3; i < args.Length - 1; i++)
+        if (args[i].Equals("--size", StringComparison.OrdinalIgnoreCase)) int.TryParse(args[i + 1], out size);
+
+    var renderOptions = new PlanClassificationOptions();
+    var renderSegments = DxfPlanReader.ReadSegments(args[1])
+        .Where(s => PlanClassificationOptions.Matches(s.Layer, renderOptions.WallLayerPatterns)
+                 || PlanClassificationOptions.Matches(s.Layer, renderOptions.ColumnLayerPatterns)
+                 || PlanClassificationOptions.Matches(s.Layer, renderOptions.SlabLayerPatterns))
+        .ToList();
+
+    if (renderSegments.Count == 0) { Console.Error.WriteLine("No structural layers in this drawing."); return 3; }
+
+    double minX = renderSegments.Min(s => Math.Min(s.Start.X, s.End.X));
+    double maxX = renderSegments.Max(s => Math.Max(s.Start.X, s.End.X));
+    double minY = renderSegments.Min(s => Math.Min(s.Start.Y, s.End.Y));
+    double maxY = renderSegments.Max(s => Math.Max(s.Start.Y, s.End.Y));
+
+    double scale = (size - 40) / Math.Max(maxX - minX, maxY - minY);
+    int width = (int)((maxX - minX) * scale) + 40;
+    int height = (int)((maxY - minY) * scale) + 40;
+
+    using var image = new Image<Rgba32>(width, height, new Rgba32(255, 255, 255));
+    (double X, double Y) Map(DxfPoint p) => ((p.X - minX) * scale + 20, height - 20 - (p.Y - minY) * scale);
+
+    void Plot(int x, int y, Rgba32 colour, int weight)
+    {
+        for (int dx = -weight; dx <= weight; dx++)
+            for (int dy = -weight; dy <= weight; dy++)
+            {
+                int px = x + dx, py = y + dy;
+                if (px >= 0 && py >= 0 && px < width && py < height) image[px, py] = colour;
+            }
+    }
+
+    foreach (var seg in renderSegments)
+    {
+        bool isWallLayer = PlanClassificationOptions.Matches(seg.Layer, renderOptions.WallLayerPatterns);
+        bool isColumnLayer = PlanClassificationOptions.Matches(seg.Layer, renderOptions.ColumnLayerPatterns);
+        var colour = isWallLayer ? new Rgba32(200, 30, 40)
+                   : isColumnLayer ? new Rgba32(30, 70, 200)
+                   : new Rgba32(180, 180, 180);
+        int weight = isWallLayer || isColumnLayer ? 1 : 0;
+
+        var (x0, y0) = Map(seg.Start);
+        var (x1, y1) = Map(seg.End);
+        int steps = (int)Math.Max(Math.Abs(x1 - x0), Math.Abs(y1 - y0)) + 1;
+        for (int s = 0; s <= steps; s++)
+        {
+            double f = steps == 0 ? 0 : (double)s / steps;
+            Plot((int)Math.Round(x0 + (x1 - x0) * f), (int)Math.Round(y0 + (y1 - y0) * f), colour, weight);
+        }
+    }
+
+    image.Save(args[2]);
+    Console.WriteLine($"{args[2]}  ({width}x{height})  segments drawn: {renderSegments.Count}");
+    foreach (var g in renderSegments.GroupBy(s => s.Layer).OrderByDescending(g => g.Count()))
+        Console.WriteLine($"  {g.Key,-24} {g.Count()}");
+    return 0;
+}
+
 // INSPECT one plan: what does this drawing actually give the model? Lists the layers, the
 // outlines that closed, and every member read out of them with its dimensions.
 // Usage: takeoff dxf-inspect <plan.dxf> [--walls]
