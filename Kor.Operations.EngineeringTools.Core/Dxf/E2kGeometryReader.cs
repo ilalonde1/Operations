@@ -105,19 +105,91 @@ public sealed record GeometryAgreement(
     double MedianWallDistance, double MaxWallDistance,
     int WallsWithin12in, int WallsWithin36in,
     (double MinX, double MaxX, double MinY, double MaxY) ReferenceExtents,
-    (double MinX, double MaxX, double MinY, double MaxY) CandidateExtents);
+    (double MinX, double MaxX, double MinY, double MaxY) CandidateExtents)
+{
+    /// <summary>Nearest generated column to each reference column, in inches.</summary>
+    public double MedianColumnDistance { get; init; } = double.NaN;
+
+    public int ColumnsWithin6in { get; init; }
+}
 
 /// <summary>
 /// Measures how closely one model's geometry reproduces another's on a given storey.
 /// Used to prove that geometry built from drawings lands where the imported model
 /// already says the building is, rather than trusting a visual check.
 /// </summary>
+public sealed record AlignmentResult(double OffsetX, double OffsetY, int Inliers, int ReferencePoints, double MedianResidual);
+
+/// <summary>
+/// Finds the translation that best places one model's geometry onto another's.
+///
+/// Every pairing of a reference column with a generated one implies a translation; the
+/// true one is implied by many pairs at once, so the offsets are quantised and voted on
+/// and the most supported wins. Anchoring on columns rather than bounding boxes means a
+/// drawing that covers part of a site still lands correctly.
+/// </summary>
+public static class E2kGeometryAligner
+{
+    public static AlignmentResult Solve(
+        E2kModelGeometry reference, E2kModelGeometry candidate,
+        string? candidatePrefix = null, double bucketInches = 2.0, double inlierInches = 6.0)
+    {
+        var refPoints = reference.Columns.Select(c => c.At).ToList();
+        var candPoints = candidate.Columns
+            .Where(c => candidatePrefix is null || c.Name.StartsWith(candidatePrefix, StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.At)
+            .ToList();
+
+        if (refPoints.Count == 0 || candPoints.Count == 0)
+            return new AlignmentResult(0, 0, 0, refPoints.Count, double.NaN);
+
+        var votes = new Dictionary<(long, long), int>();
+        foreach (var r in refPoints)
+            foreach (var c in candPoints)
+            {
+                var key = ((long)Math.Round((r.X - c.X) / bucketInches), (long)Math.Round((r.Y - c.Y) / bucketInches));
+                votes[key] = votes.GetValueOrDefault(key) + 1;
+            }
+
+        var best = votes.OrderByDescending(v => v.Value).First();
+        double offsetX = best.Key.Item1 * bucketInches;
+        double offsetY = best.Key.Item2 * bucketInches;
+
+        var residuals = new List<double>();
+        int inliers = 0;
+        foreach (var r in refPoints)
+        {
+            double closest = double.MaxValue;
+            foreach (var c in candPoints)
+            {
+                double dx = r.X - (c.X + offsetX), dy = r.Y - (c.Y + offsetY);
+                double d = Math.Sqrt(dx * dx + dy * dy);
+                if (d < closest) closest = d;
+            }
+            residuals.Add(closest);
+            if (closest <= inlierInches) inliers++;
+        }
+
+        residuals.Sort();
+        return new AlignmentResult(offsetX, offsetY, inliers, refPoints.Count, residuals[residuals.Count / 2]);
+    }
+}
+
 public static class E2kGeometryComparer
 {
-    public static GeometryAgreement Compare(E2kModelGeometry reference, E2kModelGeometry candidate, string story)
+    /// <param name="candidatePrefix">
+    /// Only objects whose name starts with this are treated as the candidate's own. The
+    /// generated model is the reference with geometry added, so without this the reference's
+    /// objects would be compared against themselves and always agree perfectly.
+    /// </param>
+    public static GeometryAgreement Compare(
+        E2kModelGeometry reference, E2kModelGeometry candidate, string story, string? candidatePrefix = null)
     {
         var refWalls = reference.Walls.Where(w => Same(w.Story, story)).ToList();
-        var candWalls = candidate.Walls.Where(w => Same(w.Story, story)).ToList();
+        var candWalls = candidate.Walls
+            .Where(w => Same(w.Story, story))
+            .Where(w => candidatePrefix is null || w.Name.StartsWith(candidatePrefix, StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
         var distances = new List<double>();
         foreach (var r in refWalls)
@@ -135,14 +207,36 @@ public static class E2kGeometryComparer
         double median = distances.Count == 0 ? double.NaN : distances[distances.Count / 2];
         double max = distances.Count == 0 ? double.NaN : distances[^1];
 
+        var refColumns = reference.Columns.Where(c => Same(c.Story, story)).ToList();
+        var candColumns = candidate.Columns
+            .Where(c => Same(c.Story, story))
+            .Where(c => candidatePrefix is null || c.Name.StartsWith(candidatePrefix, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var columnDistances = new List<double>();
+        foreach (var r in refColumns)
+        {
+            double best = double.MaxValue;
+            foreach (var c in candColumns)
+            {
+                double d = r.At.DistanceTo(c.At);
+                if (d < best) best = d;
+            }
+            if (best < double.MaxValue) columnDistances.Add(best);
+        }
+        columnDistances.Sort();
+
         return new GeometryAgreement(
             story,
             refWalls.Count, candWalls.Count,
-            reference.Columns.Count(c => Same(c.Story, story)),
-            candidate.Columns.Count(c => Same(c.Story, story)),
+            refColumns.Count, candColumns.Count,
             median, max,
             distances.Count(d => d <= 12), distances.Count(d => d <= 36),
-            Extents(refWalls), Extents(candWalls));
+            Extents(refWalls), Extents(candWalls))
+        {
+            MedianColumnDistance = columnDistances.Count == 0 ? double.NaN : columnDistances[columnDistances.Count / 2],
+            ColumnsWithin6in = columnDistances.Count(d => d <= 6),
+        };
     }
 
     private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
