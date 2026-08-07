@@ -16,6 +16,12 @@ public sealed record DxfToEtabsRequest
     public string? BuildingTag { get; init; }
 
     /// <summary>
+    /// Cut the model down to one tower: its storeys and the shared podium ones, with the other
+    /// towers' storeys removed so none of them stands empty.
+    /// </summary>
+    public string? TowerOnly { get; init; }
+
+    /// <summary>
     /// Translation applied to drawing coordinates. Defaults to none: the CAD export and the
     /// model both come out of the same Revit project, so the drawings already sit in the
     /// model's coordinate system — on 31168 the core walls land on grid lines 15 and 16 to
@@ -54,6 +60,13 @@ public static class DxfToEtabsService
     public static DxfToEtabsReport Run(DxfToEtabsRequest request)
     {
         var doc = E2kDocument.Load(request.ReferenceE2k);
+
+        // A model of one tower carries only that tower's storeys. On a site model the others stand
+        // empty, which is what the engineer saw: "some levels don't exist, they're blank."
+        var droppedStoreys = request.TowerOnly is null
+            ? Array.Empty<string>()
+            : doc.KeepOnlyTower(request.TowerOnly).ToArray();
+
         var stories = doc.ReadStories();
         if (stories.Count == 0)
             throw new InvalidOperationException("The reference model lists no storeys.");
@@ -116,6 +129,20 @@ public static class DxfToEtabsService
 
         var composeOptions = request.Compose with { OffsetX = offset.X, OffsetY = offset.Y };
         var summary = E2kGeometryComposer.Compose(doc, placements, composeOptions);
+
+        if (droppedStoreys.Length > 0)
+        {
+            // The reference's own members on the towers we removed would otherwise point at
+            // storeys that no longer exist.
+            int orphaned = doc.DropAssignsForMissingStoreys();
+            summary = summary with
+            {
+                Flags = summary.Flags.Append(
+                    $"Tower {request.TowerOnly} only: {droppedStoreys.Length} storey(s) belonging to other towers " +
+                    $"were removed from the storey list, along with {orphaned} assign(s) that stood on them. " +
+                    $"Removed: {string.Join(", ", droppedStoreys.Take(8))}{(droppedStoreys.Length > 8 ? ", …" : "")}.").ToList(),
+            };
+        }
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(request.OutputE2k))!);
         doc.Save(request.OutputE2k);

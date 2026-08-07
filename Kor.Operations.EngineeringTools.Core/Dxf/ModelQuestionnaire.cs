@@ -118,12 +118,13 @@ public static class ModelQuestionnaire
             { Decided = true },
 
         new ModelQuestion("M1", "Storey framework",
-            "YOUR ANSWER: \"Tower B model should only include tower B storeys\". NOT DONE YET — the model is " +
-            "still built on the site storey list, which is why levels look blank. Do you want Tower B split out " +
-            "as its own file, or the site model with the empty storeys removed?",
-            "Still the site model's storeys. This is the largest thing outstanding from your feedback.",
-            "It is why levels appear empty, and it decides how results are reported.",
-            "31168's reference holds 60 storeys across towers A, B and C plus the shared podium."),
+            "YOUR ANSWER: \"Tower B model should only include tower B storeys\" — done, as a second file. " +
+            "It still carries the shared podium, where the drawings show both towers on one sheet. Do you want " +
+            "tower B cut out of the podium levels too, or is the shared podium what you want?",
+            "31168-TOWER-B-FROM-DRAWINGS.e2k: storeys belonging to towers A and C removed, 60 down to 45, of " +
+            "which 43 carry geometry. Elevations are unchanged and the base now sits at 73.9ft instead of -1000ft.",
+            "It is why levels appeared blank, and it decides how results are reported.",
+            "Blank levels fall from 4 to 2 — a 1.7\"-tall transition storey and the parapet."),
     };
 
     public static void Write(string path, DxfToEtabsReport report, PlanClassificationOptions options, string projectName)

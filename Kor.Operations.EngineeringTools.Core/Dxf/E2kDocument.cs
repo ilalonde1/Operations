@@ -226,6 +226,75 @@ public sealed class E2kDocument
             ? char.ToUpperInvariant(name[0]).ToString()
             : string.Empty;
 
+    /// <summary>
+    /// Cuts the storey list down to one tower's, and rewrites it so ETABS reads the same elevations.
+    ///
+    /// A site model keeps every tower on one storey list, so a model of tower B carries tower A's
+    /// and C's storeys too and they stand empty. That was the engineer's first complaint — "some
+    /// levels don't exist, they're blank" — and her answer to what she wants instead: "Tower B model
+    /// should only include tower B storeys".
+    ///
+    /// Storeys belonging to another tower are dropped; the tower's own and the shared podium ones
+    /// are kept. HEIGHT is recomputed from the gaps that remain, so every retained storey stays at
+    /// the elevation it had and the building neither grows nor shrinks.
+    /// </summary>
+    /// <returns>The storeys removed, for reporting.</returns>
+    public IReadOnlyList<string> KeepOnlyTower(string tower)
+    {
+        var section = Find("STORIES");
+        if (section is null) return Array.Empty<string>();
+
+        string keep = tower.Trim().ToUpperInvariant();
+        var stories = ReadStories().OrderBy(s => s.Elevation).ToList();
+        if (stories.Count == 0) return Array.Empty<string>();
+
+        var dropped = stories
+            .Where(s => BuildingTagOf(s.Name) is var t && t.Length > 0 && t != keep)
+            .Select(s => s.Name)
+            .ToList();
+        if (dropped.Count == 0) return dropped;
+
+        var retained = stories.Where(s => !dropped.Contains(s.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (retained.Count == 0) return Array.Empty<string>();
+
+        // ETABS lists storeys from the top down, each with the height of the storey below it.
+        var rebuilt = new List<string>();
+        double baseElevation = retained[0].ElevationBelow;
+        for (int i = retained.Count - 1; i >= 0; i--)
+        {
+            double below = i == 0 ? baseElevation : retained[i - 1].Elevation;
+            rebuilt.Add($"  STORY \"{retained[i].Name}\"  HEIGHT {(retained[i].Elevation - below).ToString("0.####", CultureInfo.InvariantCulture)}");
+        }
+        rebuilt.Add($"  STORY \"Base\"  ELEV {baseElevation.ToString("0.####", CultureInfo.InvariantCulture)}");
+        rebuilt.Add(string.Empty);
+
+        section.Lines.Clear();
+        section.Lines.AddRange(rebuilt);
+        return dropped;
+    }
+
+    /// <summary>Drops every assign that names a storey the model no longer has.</summary>
+    public int DropAssignsForMissingStoreys()
+    {
+        var known = new HashSet<string>(ReadStories().Select(s => s.Name), StringComparer.OrdinalIgnoreCase);
+        int removed = 0;
+
+        foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS", "POINT ASSIGNS" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            removed += section.Lines.RemoveAll(line =>
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    line.Trim(), @"^\w+ASSIGN\s+""[^""]+""\s+""([^""]+)""");
+                return m.Success && !known.Contains(m.Groups[1].Value);
+            });
+        }
+
+        return removed;
+    }
+
     /// <summary>Names already used for points/areas/lines, so generated names never collide.</summary>
     public HashSet<string> ExistingObjectNames()
     {

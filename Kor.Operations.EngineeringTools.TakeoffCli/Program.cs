@@ -277,6 +277,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     if (!File.Exists(args[2])) { Console.Error.WriteLine($"Reference .e2k not found '{args[2]}'."); return 2; }
 
     string? building = null;
+    string? towerOnly = null;
     string? reportPath = null;
     string? questionsPath = null;
     (double X, double Y)? offset = null;
@@ -289,6 +290,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     {
         string flag = args[i];
         if (flag.Equals("--bldg", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) building = args[++i];
+        else if (flag.Equals("--tower", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) towerOnly = args[++i];
         else if (flag.Equals("--report", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) reportPath = args[++i];
         else if (flag.Equals("--questions", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) questionsPath = args[++i];
         else if (flag.Equals("--no-floors", StringComparison.OrdinalIgnoreCase)) includeFloors = false;
@@ -326,6 +328,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         ReferenceE2k = args[2],
         OutputE2k = args[3],
         BuildingTag = building,
+        TowerOnly = towerOnly,
         Offset = offset,
         Classification = new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance, ExtendLimit = extendLimit },
         Compose = new ComposeOptions { IncludeFloors = includeFloors },

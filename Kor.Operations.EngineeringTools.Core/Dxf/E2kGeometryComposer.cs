@@ -111,7 +111,8 @@ public static class E2kGeometryComposer
         var pierNames = new Dictionary<(long, long, long, long), string>();
         var spandrelNames = new Dictionary<(long, long, long, long), string>();
         var placedSpandrels = new HashSet<(long, long, long, long, string)>();
-        int beamCounter = 0;
+        var placedOpenings = new HashSet<(long, long, string)>();
+        int beamCounter = 0, openingCounter = 0;
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
 
         // The model's whole storey stack, lowest first. A site model interleaves its towers here,
@@ -359,6 +360,31 @@ public static class E2kGeometryComposer
                 areaAssigns.Add(
                     $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"" +
                     $"{diaphragmAssign}  CARDINALPOINT \"MIDDLE\"");
+            }
+
+            // Shafts and stair openings, cut out of the plate rather than left for the engineer.
+            // ETABS models an opening as an area carrying no section, which is how her own 31138
+            // model does it — 42 of them, drawn by hand.
+            foreach (var opening in placement.Geometry.Openings)
+            {
+                var names = opening.Points
+                    .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
+                    .Distinct()
+                    .ToList();
+                if (names.Count < 3) continue;
+
+                var centre = opening.Centroid();
+                var key = ((long)Math.Round((centre.X + options.OffsetX) * 100),
+                           (long)Math.Round((centre.Y + options.OffsetY) * 100), story.Name);
+                if (!placedOpenings.Add(key)) continue;
+
+                string name = NextName("O", ref openingCounter);
+                string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
+                string offsets = string.Join("  ", names.Select(_ => "0"));
+                areaLines.Add($"  AREA \"{name}\"  AREA  {names.Count}  {joints}  {offsets}");
+                areaAssigns.Add(
+                    $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"None\"  OBJMESHTYPE \"DEFAULT\"  " +
+                    "CARDINALPOINT \"MIDDLE\"");
             }
 
             foreach (string flag in placement.Geometry.Flags)
