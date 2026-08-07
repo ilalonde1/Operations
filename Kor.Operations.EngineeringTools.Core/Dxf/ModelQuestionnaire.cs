@@ -9,7 +9,15 @@ public sealed record ModelQuestion(
     string Question,
     string WhatWeDid,
     string WhyItMatters,
-    string Evidence);
+    string Evidence)
+{
+    /// <summary>
+    /// True where the answer follows from engineering rather than preference, so it has been
+    /// taken rather than asked. Still listed — an engineer disagreeing with one of these is
+    /// worth more than one answering eight open questions.
+    /// </summary>
+    public bool Decided { get; init; }
+}
 
 /// <summary>
 /// Writes the open questions from a run to a spreadsheet an engineer can answer in a column.
@@ -25,10 +33,11 @@ public static class ModelQuestionnaire
     public static IReadOnlyList<ModelQuestion> StandingQuestions(PlanClassificationOptions options) => new[]
     {
         new ModelQuestion("W1", "Wall vs pier",
-            "When a concrete outline is short and stubby rather than a thin ribbon, should it be a wall pier or a column?",
-            $"Treated as a column when the outline fills more than {options.PierFillRatio:P0} of its bounding box and is less than 4x as long as it is wide.",
-            "Piers modelled as columns carry no in-plane shear, which changes how the core resists earthquake.",
-            "31168 B-LEVEL 30 has two L-shaped core elements read this way."),
+            "A stubby element on the wall layer — pier or column?",
+            $"Modelled as a wall panel on its long axis, up to {options.MaxPierThickness:0}\" thick. Only stockier outlines fall through to columns.",
+            "A pier modelled as a column carries no in-plane shear and the core comes out softer than it is.",
+            "70 elements on 31168 read this way; they are drawn on the wall layer, so they are lateral.")
+            { Decided = true },
 
         new ModelQuestion("W2", "Thick walls",
             $"Walls thicker than {options.UnusualWallThickness:0}\" are flagged. Are the thick ones real, or should a maximum be set?",
@@ -61,10 +70,18 @@ public static class ModelQuestionnaire
             "31138 carries five different SDL values on L01 alone (5 to 145 psf), so no single value fits a storey."),
 
         new ModelQuestion("D1", "Diaphragms",
-            "No diaphragm is assigned to any generated plate. Rigid, semi-rigid, or per storey?",
-            "None assigned.",
-            "Diaphragm choice changes how lateral load distributes to the walls.",
-            "Left deliberately: assigning one diaphragm across storeys produced a warning in ETABS."),
+            "Rigid, semi-rigid, or none?",
+            "A rigid diaphragm per storey, assigned to every generated plate.",
+            "Modal results are not meaningful without one, and a concrete plate behaves as a rigid diaphragm.",
+            "One per storey rather than one shared: a single diaphragm across elevations makes ETABS warn.")
+            { Decided = true },
+
+        new ModelQuestion("W4", "Thick wall ceiling",
+            "Walls are modelled up to 36\" and piers to 48\". Are those the right ceilings for this building?",
+            "36\" for a wall read from paired faces, 48\" for a pier drawn whole.",
+            "Too low and real walls are dropped; too high and a face paired across a junction becomes a wall.",
+            "31168's own Revit sections include 36\" walls, so thick is not automatically wrong.")
+            { Decided = true },
 
         new ModelQuestion("M1", "Storey framework",
             "31168 is built on the site model's storeys (B-LEVEL 27 up, shared storeys below). Your lost model was Tower B alone, L01-L40. Which do you want?",
@@ -91,10 +108,12 @@ public static class ModelQuestionnaire
         sheet.Cell(1, 1).Value = $"{projectName} — questions for the engineer";
         sheet.Cell(1, 1).Style.Font.Bold = true;
         sheet.Cell(1, 1).Style.Font.FontSize = 13;
-        sheet.Cell(2, 1).Value = "Answer in column F. Anything answered here becomes a rule the tool applies from then on.";
+        sheet.Cell(2, 1).Value =
+            "Rows marked DECIDED follow from engineering and have been applied — say so only if you disagree. " +
+            "Rows marked OPEN need you. Either way, an answer becomes a rule the tool applies from then on.";
         sheet.Cell(2, 1).Style.Font.Italic = true;
 
-        string[] headers = { "Ref", "Topic", "Question", "What the tool did", "Why it matters", "YOUR ANSWER", "Notes" };
+        string[] headers = { "Ref", "Status", "Topic", "Question", "What the tool did", "Why it matters", "YOUR ANSWER", "Evidence" };
         for (int c = 0; c < headers.Length; c++)
         {
             var cell = sheet.Cell(4, c + 1);
@@ -105,26 +124,31 @@ public static class ModelQuestionnaire
         }
 
         int row = 5;
-        foreach (var q in StandingQuestions(options))
+        foreach (var q in StandingQuestions(options).OrderBy(q => q.Decided ? 1 : 0).ThenBy(q => q.Code))
         {
             sheet.Cell(row, 1).Value = q.Code;
-            sheet.Cell(row, 2).Value = q.Topic;
-            sheet.Cell(row, 3).Value = q.Question;
-            sheet.Cell(row, 4).Value = q.WhatWeDid;
-            sheet.Cell(row, 5).Value = q.WhyItMatters;
-            sheet.Cell(row, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
-            sheet.Cell(row, 7).Value = q.Evidence;
+            sheet.Cell(row, 2).Value = q.Decided ? "DECIDED" : "OPEN";
+            sheet.Cell(row, 2).Style.Font.Bold = true;
+            sheet.Cell(row, 2).Style.Font.FontColor = q.Decided ? XLColor.FromArgb(60, 110, 60) : XLColor.FromArgb(150, 90, 0);
+            sheet.Cell(row, 3).Value = q.Topic;
+            sheet.Cell(row, 4).Value = q.Question;
+            sheet.Cell(row, 5).Value = q.WhatWeDid;
+            sheet.Cell(row, 6).Value = q.WhyItMatters;
+            sheet.Cell(row, 7).Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
+            sheet.Cell(row, 8).Value = q.Evidence;
             row++;
         }
 
-        sheet.Columns(1, 2).Width = 14;
-        sheet.Column(3).Width = 52;
+        sheet.Column(1).Width = 7;
+        sheet.Column(2).Width = 11;
+        sheet.Column(3).Width = 18;
         sheet.Column(4).Width = 46;
-        sheet.Column(5).Width = 44;
-        sheet.Column(6).Width = 34;
-        sheet.Column(7).Width = 40;
-        sheet.Range(5, 3, row - 1, 7).Style.Alignment.WrapText = true;
-        sheet.Range(5, 1, row - 1, 7).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+        sheet.Column(5).Width = 46;
+        sheet.Column(6).Width = 44;
+        sheet.Column(7).Width = 34;
+        sheet.Column(8).Width = 40;
+        sheet.Range(5, 4, row - 1, 8).Style.Alignment.WrapText = true;
+        sheet.Range(5, 1, row - 1, 8).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
         sheet.SheetView.FreezeRows(4);
     }
 

@@ -72,6 +72,7 @@ public static class E2kGeometryComposer
         var newWallProps = new SortedDictionary<double, string>();
         var newSlabProps = new SortedDictionary<double, string>();
         var reusedSections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var diaphragms = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // What the model already contains, so nothing is modelled twice.
         var existing = options.SkipMembersAlreadyModelled
@@ -228,12 +229,15 @@ public static class E2kGeometryComposer
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  FLOOR  {names.Count}  {joints}  {offsets}");
 
-                // No diaphragm is assigned. Naming one here would tie every storey's floors
-                // into a single rigid diaphragm spanning elevations, and which diaphragm a
-                // floor belongs to is the engineer's call in any case.
+                // A concrete floor plate acts as a rigid diaphragm, and modal analysis is not
+                // meaningful without one. Each storey gets its own: a single diaphragm shared
+                // across storeys would tie joints at different elevations, which ETABS warns about.
+                string diaphragm = DiaphragmFor(story.Name, prefix);
+                diaphragms.Add(diaphragm);
+
                 areaAssigns.Add(
                     $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"  " +
-                    "CARDINALPOINT \"MIDDLE\"");
+                    $"DIAPH \"{diaphragm}\"  CARDINALPOINT \"MIDDLE\"");
             }
 
             foreach (string flag in placement.Geometry.Flags)
@@ -250,6 +254,9 @@ public static class E2kGeometryComposer
         string columnMaterial = doc.FindConcreteMaterial("Column") ?? material;
         var framePropLines = frameProps.Select(kv =>
             $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Rectangular\"  D {Trim(kv.Key.D)} B {Trim(kv.Key.W)}").ToList();
+
+        if (diaphragms.Count > 0)
+            doc.Append("DIAPHRAGM NAMES", diaphragms.Select(d => $"  DIAPHRAGM \"{d}\"    TYPE RIGID"));
 
         if (pointLines.Count > 0) doc.Append("POINT COORDINATES", pointLines);
         if (areaLines.Count > 0) doc.Append("AREA CONNECTIVITIES", areaLines);
@@ -269,6 +276,14 @@ public static class E2kGeometryComposer
             wallCounter, colCounter, floorCounter, pointCounter,
             placements.Select(p => p.Story.Name).Distinct().Count(),
             sections, flags);
+    }
+
+    /// <summary>A diaphragm name for one storey, kept short and legible in ETABS.</summary>
+    private static string DiaphragmFor(string storyName, string prefix)
+    {
+        var cleaned = new string(storyName.Where(c => char.IsLetterOrDigit(c)).ToArray());
+        if (cleaned.Length > 12) cleaned = cleaned[^12..];
+        return $"{prefix}D-{cleaned}";
     }
 
     /// <summary>Shortest distance from a point to a line segment.</summary>

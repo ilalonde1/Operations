@@ -40,6 +40,13 @@ public sealed record PlanClassificationOptions
     public double UnusualWallThickness { get; init; } = 24.0;
 
     /// <summary>
+    /// A pier drawn whole on the wall layer may be stockier than a wall run — a boundary element
+    /// at the end of a core wall is routinely 40" or more — so it is allowed more thickness than
+    /// a paired wall face before being called a column.
+    /// </summary>
+    public double MaxPierThickness { get; init; } = 48.0;
+
+    /// <summary>
     /// Rings smaller than this on a slab layer are noise, not slabs or openings.
     /// 7,200 in² is 50 ft² — below a plate worth modelling, and the size at which
     /// interrupted slab edges start closing into meaningless slivers.
@@ -212,10 +219,18 @@ public static class StructuralPlanClassifier
             return;
         }
 
-        // Solid footprint rather than a ribbon of faces: a pier, kept whole.
+        // Solid footprint rather than a ribbon of faces: a pier. It is drawn on the wall layer and
+        // belongs to the lateral system, so it stays a wall panel on its long axis — modelled as a
+        // column it would carry no in-plane shear and the core would be softer than it is.
         double boxArea = box.Length * box.Thickness;
         if (boxArea > 0 && loop.Area / boxArea >= options.PierFillRatio && box.Aspect < 4.0)
         {
+            if (box.Thickness <= options.MaxPierThickness && box.Length >= options.MinWallLength)
+            {
+                result.Walls.Add(new WallAxis(box.AxisStart, box.AxisEnd, box.Thickness, loop.Layer));
+                return;
+            }
+
             if (box.Thickness >= options.MinColumnSize && box.Length <= options.MaxColumnSize)
             {
                 result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box)));

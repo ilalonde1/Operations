@@ -25,13 +25,13 @@ public class LiveProjectBaselineTests
         "31168 YMCA Langara",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31168-reference.e2k",
-        Storeys: 60, Walls: 827, Columns: 2488, Floors: 128);
+        Storeys: 60, Walls: 897, Columns: 2418, Floors: 128);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",
         $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\_DXF-plans-for-rebuild",
         $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models\31138-reference-from-Andrea-gravity.e2k",
-        Storeys: 19, Walls: 96, Columns: 142, Floors: 14);
+        Storeys: 19, Walls: 98, Columns: 118, Floors: 14);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;
@@ -108,6 +108,47 @@ public class LiveProjectBaselineTests
 
         Assert.True(unplaced.Count == 0,
             $"{name}: sheets carrying geometry but landing nowhere: {string.Join(", ", unplaced)}");
+    }
+
+    [Theory]
+    [MemberData(nameof(Projects))]
+    public void GeneratedGeometryStandsInsideTheBuilding(string name)
+    {
+        var baseline = For(name);
+        if (!Directory.Exists(baseline.DxfFolder) || !File.Exists(baseline.Reference)) return;
+
+        string output = Path.Combine(Path.GetTempPath(), $"kor-height-{Guid.NewGuid():N}.e2k");
+        try
+        {
+            DxfToEtabsService.Run(new DxfToEtabsRequest
+            {
+                DxfFolder = baseline.DxfFolder,
+                ReferenceE2k = baseline.Reference,
+                OutputE2k = output,
+            });
+
+            var stories = E2kDocument.Load(baseline.Reference).ReadStories();
+            double top = stories.Max(s => s.Elevation);
+            double bottom = stories.Min(s => s.ElevationBelow);
+
+            // Every generated joint must lie between the base and the roof. Getting the storey
+            // datum wrong put an entire model a thousand feet above the building, and counts
+            // alone never noticed — nothing moved except the coordinates.
+            var zs = File.ReadLines(output)
+                .Select(l => System.Text.RegularExpressions.Regex.Match(l, @"^\s+POINT\s+""K\w+""\s+\S+\s+\S+\s+(\S+)"))
+                .Where(m => m.Success)
+                .Select(m => double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture))
+                .ToList();
+
+            if (zs.Count == 0) return;
+
+            Assert.True(zs.Min() >= bottom - 1, $"{name}: lowest joint {zs.Min():0} is below the base {bottom:0}.");
+            Assert.True(zs.Max() <= top + 1, $"{name}: highest joint {zs.Max():0} is above the roof {top:0}.");
+        }
+        finally
+        {
+            if (File.Exists(output)) File.Delete(output);
+        }
     }
 
     [Fact]
