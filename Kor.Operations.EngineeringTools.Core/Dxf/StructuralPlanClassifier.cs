@@ -22,6 +22,16 @@ public sealed record PlanClassificationOptions
     public double MinColumnSize { get; init; } = 6.0;
     public double MaxColumnSize { get; init; } = 96.0;
 
+    /// <summary>
+    /// A wall outline is a thin ribbon tracing faces, so it fills little of its bounding
+    /// box. A footprint that fills most of its box is solid concrete — a pier — and must
+    /// not be sliced into panels.
+    /// </summary>
+    public double PierFillRatio { get; init; } = 0.6;
+
+    /// <summary>Walls thicker than this are reported for checking; they are unusual above a podium.</summary>
+    public double UnusualWallThickness { get; init; } = 24.0;
+
     /// <summary>Rings smaller than this on a slab layer are noise, not slabs or openings.</summary>
     public double MinSlabArea { get; init; } = 400.0;
 
@@ -129,10 +139,25 @@ public static class StructuralPlanClassifier
             return;
         }
 
+        // Solid footprint rather than a ribbon of faces: a pier, kept whole.
+        double boxArea = box.Length * box.Thickness;
+        if (boxArea > 0 && loop.Area / boxArea >= options.PierFillRatio && box.Aspect < 4.0)
+        {
+            if (box.Thickness >= options.MinColumnSize && box.Length <= options.MaxColumnSize)
+            {
+                result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box)));
+                return;
+            }
+        }
+
         var panels = WallOutlineDecomposer.Decompose(loop, options);
         if (panels.Count > 0)
         {
             result.Walls.AddRange(panels);
+            foreach (var panel in panels.Where(p => p.Thickness > options.UnusualWallThickness))
+                result.Flags.Add(
+                    $"{loop.Layer}: wall {panel.Length:0}\" long modelled at {panel.Thickness:0}\" thick — " +
+                    "unusually thick, confirm against the drawing.");
             return;
         }
 

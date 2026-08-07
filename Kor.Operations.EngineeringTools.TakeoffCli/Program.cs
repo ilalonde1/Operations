@@ -34,6 +34,68 @@ if (args.Length >= 1 && args[0].Equals("pdf-readable", StringComparison.OrdinalI
     return verdict.Readable ? 0 : 3;
 }
 
+// INSPECT one plan: what does this drawing actually give the model? Lists the layers, the
+// outlines that closed, and every member read out of them with its dimensions.
+// Usage: takeoff dxf-inspect <plan.dxf> [--walls]
+if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls]"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
+
+    bool wallDetail = args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase));
+    var inspectOptions = new PlanClassificationOptions();
+    var inspectSegments = DxfPlanReader.ReadSegments(args[1]);
+
+    Console.WriteLine($"{Path.GetFileName(args[1])}");
+    Console.WriteLine($"segments: {inspectSegments.Count}");
+    Console.WriteLine();
+
+    foreach (var layerGroup in inspectSegments.GroupBy(s => s.Layer).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+    {
+        var built = new PlanLoopBuilder(inspectOptions.JoinTolerance, inspectOptions.BridgeTolerance).Build(layerGroup);
+        Console.WriteLine($"{layerGroup.Key,-24} segs {layerGroup.Count(),4}   closed loops {built.Loops.Count,3}   open {built.OpenChains.Count,3}");
+
+        if (!wallDetail || !PlanClassificationOptions.Matches(layerGroup.Key, inspectOptions.WallLayerPatterns)) continue;
+
+        foreach (var loop in built.Loops.OrderByDescending(l => l.Area))
+        {
+            var lb = LoopGeometry.MinAreaBox(loop.Points);
+            var panels = WallOutlineDecomposer.Decompose(loop, inspectOptions);
+            Console.WriteLine($"    loop: {loop.Points.Count,3} vertices, box {lb.Length:0}x{lb.Thickness:0}, area {loop.Area:0} -> {panels.Count} panel(s)");
+            foreach (var p in panels.OrderByDescending(p => p.Length).Take(12))
+                Console.WriteLine($"        {p.Length,7:0.0} long x {p.Thickness,5:0.0} thick");
+        }
+    }
+    return 0;
+}
+
+// VERIFY a generated model against a trusted one: how closely does the geometry built from
+// drawings reproduce what the imported model already says is there, storey by storey.
+// Usage: takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [<story> ...]
+if (args.Length >= 1 && args[0].Equals("e2k-compare", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [<story> ...]"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
+    if (!File.Exists(args[2])) { Console.Error.WriteLine($"Not found '{args[2]}'."); return 2; }
+
+    var refGeom = E2kGeometryReader.Read(E2kDocument.Load(args[1]));
+    var candGeom = E2kGeometryReader.Read(E2kDocument.Load(args[2]));
+
+    for (int i = 3; i < args.Length; i++)
+    {
+        var agree = E2kGeometryComparer.Compare(refGeom, candGeom, args[i]);
+        Console.WriteLine($"storey            : {agree.Story}");
+        Console.WriteLine($"  walls           : reference {agree.ReferenceWalls}, generated {agree.CandidateWalls}");
+        Console.WriteLine($"  columns         : reference {agree.ReferenceColumns}, generated {agree.CandidateColumns}");
+        Console.WriteLine($"  ref extents     : X {agree.ReferenceExtents.MinX:0}..{agree.ReferenceExtents.MaxX:0}   Y {agree.ReferenceExtents.MinY:0}..{agree.ReferenceExtents.MaxY:0}");
+        Console.WriteLine($"  gen extents     : X {agree.CandidateExtents.MinX:0}..{agree.CandidateExtents.MaxX:0}   Y {agree.CandidateExtents.MinY:0}..{agree.CandidateExtents.MaxY:0}");
+        Console.WriteLine($"  nearest match   : median {agree.MedianWallDistance:0.0} in, worst {agree.MaxWallDistance:0.0} in");
+        Console.WriteLine($"  agreement       : {agree.WallsWithin12in}/{agree.ReferenceWalls} within 12in, {agree.WallsWithin36in}/{agree.ReferenceWalls} within 36in");
+        Console.WriteLine();
+    }
+    return 0;
+}
+
 // DXF -> ETABS — build a model from drafting's concrete-outline plan exports. Walls, columns and slabs are
 // read off the structural layers, each sheet is placed on every storey its title covers, and the result is
 // merged into an .e2k ETABS itself exported (so storeys, grids and materials stay ETABS's own).

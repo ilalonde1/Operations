@@ -69,19 +69,34 @@ public static class WallOutlineDecomposer
                 double overlap = t1 - t0;
                 if (overlap < options.MinWallLength) continue;
 
+                // Concrete, or a void? The material between two faces of one wall lies inside
+                // the outline; the gap between walls on opposite sides of a shaft lies outside.
+                // Without this, a stair core reads as one 36"-thick wall spanning the opening.
+                double side = Math.Sign(d1 + d2) >= 0 ? 1.0 : -1.0;
+                double midT = (t0 + t1) / 2.0, midOffset = separation / 2.0 * side;
+                var probe = new DxfPoint(
+                    ai.X + ux * midT + nx * midOffset,
+                    ai.Y + uy * midT + ny * midOffset);
+                if (!LoopGeometry.PointInPolygon(probe, pts)) continue;
+
                 // Prefer the longest shared face; break ties on the thinner pairing.
-                if (overlap > bestOverlap || (Math.Abs(overlap - bestOverlap) < 1e-6 && separation < bestDistance))
+                // Prefer the closest opposite face: across a wall junction several faces
+                // overlap, and the true partner is the nearest one, not the longest.
+                if (bestJ < 0 || separation < bestDistance - 1e-6 ||
+                    (Math.Abs(separation - bestDistance) < 1e-6 && overlap > bestOverlap))
                 {
                     bestJ = j;
                     bestOverlap = overlap;
                     bestDistance = separation;
                     bestT0 = t0;
                     bestT1 = t1;
-                    bestSide = Math.Sign(d1 + d2) >= 0 ? 1.0 : -1.0;
+                    bestSide = side;
                 }
             }
 
-            if (bestJ < 0) continue;
+            // The leftover end faces of a wall will happily pair with each other and yield a
+            // 13"-long, 30"-thick sliver. A panel has to be longer than it is thick to be a wall.
+            if (bestJ < 0 || bestOverlap < bestDistance * options.MinWallAspect) continue;
 
             double half = bestDistance / 2.0 * bestSide;
             var start = new DxfPoint(ai.X + ux * bestT0 + nx * half, ai.Y + uy * bestT0 + ny * half);
