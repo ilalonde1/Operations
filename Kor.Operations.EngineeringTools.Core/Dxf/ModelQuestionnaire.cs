@@ -98,11 +98,12 @@ public static class ModelQuestionnaire
             "31138: standalone rings measured 52-68 sq ft against a real tower floor of 9,666."),
 
         new ModelQuestion("S2", "Slab openings",
-            "Shafts and stair openings are found but not yet cut out of the plates. You said you can cut them — " +
-            "worth the tool doing it, or leave it?",
-            "Detected and reported; the plate is left whole.",
+            "DONE — you said you could cut these yourself, but they are on your green list, so the tool now does it.",
+            "Shafts and stair openings are cut out of the plates as areas carrying no section, which is how your " +
+            "own 31138 model does it. 46 cut on 31168.",
             "An uncut plate overstates floor area, mass and diaphragm stiffness at the core.",
-            "Inner rings inside a slab outline are identified on every storey."),
+            "Your 31138 model carries 42 openings drawn by hand, each an AREA with SECTION \"None\".")
+            { Decided = true },
 
         new ModelQuestion("Y1", "Yours, not the tool's",
             "YOUR SCOPE: loads and load assignment, diaphragms, stiffness modifiers, section properties.",
