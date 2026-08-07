@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using Kor.Operations.EngineeringTools.RebarChange;
 using SixLabors.ImageSharp;
@@ -31,6 +32,61 @@ if (args.Length >= 1 && args[0].Equals("pdf-readable", StringComparison.OrdinalI
     Console.WriteLine($"  pages: {verdict.PagesInRange}   text pages: {verdict.TextPages}   image-only pages: {verdict.ImageOnlyPages}   median words/text page: {verdict.MedianWordsPerTextPage}");
     Console.WriteLine($"  {verdict.Reason}");
     return verdict.Readable ? 0 : 3;
+}
+
+// DXF -> ETABS — build a model from drafting's concrete-outline plan exports. Walls, columns and slabs are
+// read off the structural layers, each sheet is placed on every storey its title covers, and the result is
+// merged into an .e2k ETABS itself exported (so storeys, grids and materials stay ETABS's own).
+// Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]
+if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 4)
+    {
+        Console.Error.WriteLine("Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]");
+        return 1;
+    }
+    if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"DXF folder not found '{args[1]}'."); return 2; }
+    if (!File.Exists(args[2])) { Console.Error.WriteLine($"Reference .e2k not found '{args[2]}'."); return 2; }
+
+    string? building = null;
+    string? reportPath = null;
+    (double X, double Y)? offset = null;
+    bool includeFloors = true;
+
+    for (int i = 4; i < args.Length; i++)
+    {
+        string flag = args[i];
+        if (flag.Equals("--bldg", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) building = args[++i];
+        else if (flag.Equals("--report", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) reportPath = args[++i];
+        else if (flag.Equals("--no-floors", StringComparison.OrdinalIgnoreCase)) includeFloors = false;
+        else if (flag.Equals("--offset", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+        {
+            var parts = args[++i].Split(',', StringSplitOptions.TrimEntries);
+            if (parts.Length == 2 &&
+                double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double ox) &&
+                double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double oy))
+            {
+                offset = (ox, oy);
+            }
+            else { Console.Error.WriteLine("--offset expects <x>,<y> in inches."); return 1; }
+        }
+    }
+
+    var dxfReport = DxfToEtabsService.Run(new DxfToEtabsRequest
+    {
+        DxfFolder = args[1],
+        ReferenceE2k = args[2],
+        OutputE2k = args[3],
+        BuildingTag = building,
+        Offset = offset,
+        Compose = new ComposeOptions { IncludeFloors = includeFloors },
+    });
+
+    string text = DxfToEtabsService.FormatReport(dxfReport);
+    Console.WriteLine(text);
+    if (reportPath is not null) File.WriteAllText(reportPath, text);
+
+    return dxfReport.Summary.Walls + dxfReport.Summary.Columns > 0 ? 0 : 3;
 }
 
 // MODEL takeoff — read concrete quantities straight from a structural Revit/IFC export (the source that
