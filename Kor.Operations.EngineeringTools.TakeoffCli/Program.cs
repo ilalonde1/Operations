@@ -282,6 +282,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     bool includeFloors = true;
     double bridgeTolerance = new PlanClassificationOptions().BridgeTolerance;
     double joinTolerance = new PlanClassificationOptions().JoinTolerance;
+    double extendLimit = new PlanClassificationOptions().ExtendLimit;
 
     for (int i = 4; i < args.Length; i++)
     {
@@ -298,6 +299,11 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
                  double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double jt))
         {
             joinTolerance = jt;
+        }
+        else if (flag.Equals("--extend", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length &&
+                 double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double ex))
+        {
+            extendLimit = ex;
         }
         else if (flag.Equals("--offset", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
         {
@@ -319,7 +325,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         OutputE2k = args[3],
         BuildingTag = building,
         Offset = offset,
-        Classification = new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance },
+        Classification = new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance, ExtendLimit = extendLimit },
         Compose = new ComposeOptions { IncludeFloors = includeFloors },
     });
 
@@ -2784,3 +2790,4 @@ sealed class PlateConfig
     public bool ScaleConfirmed { get; set; } = true;
     public double? RebarLbPerCyOverride { get; set; }
 }
+

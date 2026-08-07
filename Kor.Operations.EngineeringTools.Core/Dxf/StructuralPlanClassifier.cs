@@ -53,6 +53,16 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public double DashJoinGap { get; init; } = 14.0;
 
+    /// <summary>
+    /// How far an interrupted edge may be carried along its own direction to reach the corner
+    /// it was cut at. Off by default, on the evidence: extending was expected to recover slab
+    /// plates and does not. On 31138 it left floors at 14 (13 at longer reaches) while walls
+    /// fell from 232 to 217 at 48", and to 118 at 240" — the gaps in a slab edge are real
+    /// breaks at openings and level changes, not cut corners, so extending invents corners and
+    /// merges outlines that were never one.
+    /// </summary>
+    public double ExtendLimit { get; init; }
+
     public double JoinTolerance { get; init; } = 0.05;
     public double BridgeTolerance { get; init; } = 6.0;
 
@@ -88,8 +98,8 @@ public static class StructuralPlanClassifier
     {
         options ??= new PlanClassificationOptions();
         var result = new PlanGeometrySet();
-        var slabBuilder = new PlanLoopBuilder(options.JoinTolerance, options.BridgeTolerance);
-        var wallBuilder = new PlanLoopBuilder(options.JoinTolerance, options.WallBridgeTolerance);
+        var slabBuilder = new PlanLoopBuilder(options.JoinTolerance, options.BridgeTolerance, options.ExtendLimit);
+        var wallBuilder = new PlanLoopBuilder(options.JoinTolerance, options.WallBridgeTolerance, options.ExtendLimit);
 
         // Group by what a layer is for, not by its name. Revit splits one outline across
         // JBP_C_SLABEDG, -1 and -2 as it exports, so a plate boundary only closes when the

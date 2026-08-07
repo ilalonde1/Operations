@@ -152,6 +152,72 @@ public sealed class PlanLoopBuilder
     }
 
     /// <summary>
+    /// Joins two outlines that were cut apart at a corner.
+    ///
+    /// Where another element crosses a slab edge, the export stops one run short of the corner
+    /// and starts the next run past it, leaving a gap far too wide to bridge by distance — but
+    /// both runs still point at the corner. Carrying each forward along its own direction finds
+    /// it, which reconstructs the outline as drawn instead of cutting the corner off.
+    /// </summary>
+    private bool TryJoinByExtending(List<DxfPoint> a, List<DxfPoint> b, out List<DxfPoint>? joined)
+    {
+        joined = null;
+        if (a.Count < 2 || b.Count < 2) return false;
+
+        // Try every pairing of the two chains' ends, orienting each so that a's tail meets b's head.
+        for (int orientation = 0; orientation < 4; orientation++)
+        {
+            var first = orientation is 0 or 1 ? a : Reversed(a);
+            var second = orientation is 0 or 2 ? b : Reversed(b);
+
+            var corner = RayIntersection(first[^2], first[^1], second[1], second[0]);
+            if (corner is null) continue;
+
+            var result = new List<DxfPoint>(first) { corner.Value };
+            result.AddRange(second);
+            joined = result;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static List<DxfPoint> Reversed(List<DxfPoint> points)
+    {
+        var copy = new List<DxfPoint>(points);
+        copy.Reverse();
+        return copy;
+    }
+
+    /// <summary>
+    /// Where the ray leaving <paramref name="tailFrom"/>→<paramref name="tailTo"/> meets the ray
+    /// arriving at <paramref name="headTo"/> from <paramref name="headFrom"/>. Null when they are
+    /// parallel, when the meeting point lies behind either run, or when either must reach further
+    /// than the extend limit — a cut outline is a short reach, not a projection across the plate.
+    /// </summary>
+    private DxfPoint? RayIntersection(DxfPoint tailFrom, DxfPoint tailTo, DxfPoint headFrom, DxfPoint headTo)
+    {
+        double r1x = tailTo.X - tailFrom.X, r1y = tailTo.Y - tailFrom.Y;
+        double r2x = headTo.X - headFrom.X, r2y = headTo.Y - headFrom.Y;
+
+        double denominator = r1x * r2y - r1y * r2x;
+        if (Math.Abs(denominator) < 1e-9) return null;
+
+        double dx = headTo.X - tailTo.X, dy = headTo.Y - tailTo.Y;
+        double s = (dx * r2y - dy * r2x) / denominator;
+        if (s < 0) return null;   // the corner would be behind the tail run
+
+        var corner = new DxfPoint(tailTo.X + r1x * s, tailTo.Y + r1y * s);
+
+        // The head run must also reach forward to the corner, not away from it.
+        double towards = (corner.X - headTo.X) * -r2x + (corner.Y - headTo.Y) * -r2y;
+        if (towards < 0) return null;
+
+        double reach = Math.Max(tailTo.DistanceTo(corner), headTo.DistanceTo(corner));
+        return reach <= _extendLimit ? corner : null;
+    }
+
+    /// <summary>
     /// Where the chain's two end runs would meet if each carried on. Returns null when they
     /// are parallel, when the corner sits behind either run, or when it lies improbably far
     /// out — an interrupted outline is a short reach, not a projection across the plate.
@@ -209,6 +275,7 @@ public sealed class PlanLoopBuilder
                     else if (a[^1].DistanceTo(b[^1]) <= _bridgeTolerance) { b.Reverse(); a.AddRange(b); }
                     else if (a[0].DistanceTo(b[^1]) <= _bridgeTolerance) { b.AddRange(a); work[i] = b; }
                     else if (a[0].DistanceTo(b[0]) <= _bridgeTolerance) { a.Reverse(); a.AddRange(b); }
+                    else if (TryJoinByExtending(a, b, out var joined)) { work[i] = joined!; }
                     else continue;
 
                     work.RemoveAt(j);
