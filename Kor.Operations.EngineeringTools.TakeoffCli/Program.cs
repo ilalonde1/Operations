@@ -278,6 +278,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
 
     string? building = null;
     string? reportPath = null;
+    string? questionsPath = null;
     (double X, double Y)? offset = null;
     bool includeFloors = true;
     double bridgeTolerance = new PlanClassificationOptions().BridgeTolerance;
@@ -289,6 +290,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         string flag = args[i];
         if (flag.Equals("--bldg", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) building = args[++i];
         else if (flag.Equals("--report", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) reportPath = args[++i];
+        else if (flag.Equals("--questions", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) questionsPath = args[++i];
         else if (flag.Equals("--no-floors", StringComparison.OrdinalIgnoreCase)) includeFloors = false;
         else if (flag.Equals("--bridge", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length &&
                  double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double bt))
@@ -332,6 +334,15 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     string text = DxfToEtabsService.FormatReport(dxfReport);
     Console.WriteLine(text);
     if (reportPath is not null) File.WriteAllText(reportPath, text);
+
+    if (questionsPath is not null)
+    {
+        ModelQuestionnaire.Write(
+            questionsPath, dxfReport,
+            new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance, ExtendLimit = extendLimit },
+            Path.GetFileNameWithoutExtension(args[3]));
+        Console.WriteLine($"questions for the engineer: {questionsPath}");
+    }
 
     return dxfReport.Summary.Walls + dxfReport.Summary.Columns > 0 ? 0 : 3;
 }
@@ -2790,4 +2801,5 @@ sealed class PlateConfig
     public bool ScaleConfirmed { get; set; } = true;
     public double? RebarLbPerCyOverride { get; set; }
 }
+
 
