@@ -41,6 +41,15 @@ counts, then two sections that matter more than the totals:
   that could not be resolved into wall panels. These are locations to look at, not
   errors; nothing is invented to cover them.
 
+## Tuning slab closure
+
+`--bridge <inches>` sets how far apart two ends of a slab outline may be and still be
+joined (default 6"). Widening it recovers plates whose edges are interrupted at doors
+and step-downs; on 31168, 6" produced 148 floors and 18" produced 450. More is not
+automatically better — a tolerance wide enough to leap a corridor will invent a plate —
+so the default stays conservative and the knob is there to be used deliberately, with
+the resulting shapes checked.
+
 ## Limits, stated plainly
 
 - **Slab edges are the weak input.** Drafting interrupts them wherever other linework

@@ -104,8 +104,13 @@ public sealed record WallAxis(DxfPoint Start, DxfPoint End, double Thickness, st
     public double Length => Start.DistanceTo(End);
 }
 
-/// <summary>A column footprint reduced to a location and a size.</summary>
-public sealed record ColumnFootprint(DxfPoint Center, double Width, double Depth, string Layer);
+/// <summary>
+/// A column footprint reduced to a location, a size and how it is turned.
+/// <paramref name="Depth"/> is the long face and <paramref name="Width"/> the short one;
+/// <paramref name="AxisAngleDegrees"/> is the bearing of the long face from global X.
+/// </summary>
+public sealed record ColumnFootprint(
+    DxfPoint Center, double Width, double Depth, string Layer, double AxisAngleDegrees = 0);
 
 /// <summary>Everything one drawing contributes to the model.</summary>
 public sealed class PlanGeometrySet

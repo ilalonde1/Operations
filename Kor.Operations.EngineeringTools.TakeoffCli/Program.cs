@@ -52,6 +52,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     string? reportPath = null;
     (double X, double Y)? offset = null;
     bool includeFloors = true;
+    double bridgeTolerance = new PlanClassificationOptions().BridgeTolerance;
 
     for (int i = 4; i < args.Length; i++)
     {
@@ -59,6 +60,11 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         if (flag.Equals("--bldg", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) building = args[++i];
         else if (flag.Equals("--report", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) reportPath = args[++i];
         else if (flag.Equals("--no-floors", StringComparison.OrdinalIgnoreCase)) includeFloors = false;
+        else if (flag.Equals("--bridge", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length &&
+                 double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double bt))
+        {
+            bridgeTolerance = bt;
+        }
         else if (flag.Equals("--offset", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
         {
             var parts = args[++i].Split(',', StringSplitOptions.TrimEntries);
@@ -79,6 +85,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         OutputE2k = args[3],
         BuildingTag = building,
         Offset = offset,
+        Classification = new PlanClassificationOptions { BridgeTolerance = bridgeTolerance },
         Compose = new ComposeOptions { IncludeFloors = includeFloors },
     });
 

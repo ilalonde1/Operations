@@ -91,11 +91,25 @@ public static class StructuralPlanClassifier
     private static void AddColumn(PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options)
     {
         var box = LoopGeometry.MinAreaBox(loop.Points);
-        double w = Math.Max(box.Length, box.Thickness);
-        double d = Math.Min(box.Length, box.Thickness);
+        double longSide = Math.Max(box.Length, box.Thickness);
+        double shortSide = Math.Min(box.Length, box.Thickness);
 
-        if (d < options.MinColumnSize || w > options.MaxColumnSize) return;
-        result.Columns.Add(new ColumnFootprint(loop.Centroid(), w, d, loop.Layer));
+        if (shortSide < options.MinColumnSize || longSide > options.MaxColumnSize) return;
+        result.Columns.Add(new ColumnFootprint(loop.Centroid(), shortSide, longSide, loop.Layer, AxisAngle(box)));
+    }
+
+    /// <summary>Bearing of the footprint's long face from global X, in degrees.</summary>
+    private static double AxisAngle(OrientedBox box)
+    {
+        double dx = box.AxisEnd.X - box.AxisStart.X;
+        double dy = box.AxisEnd.Y - box.AxisStart.Y;
+        if (Math.Abs(dx) < 1e-9 && Math.Abs(dy) < 1e-9) return 0;
+
+        double degrees = Math.Atan2(dy, dx) * 180.0 / Math.PI;
+        // A rectangle reads the same turned by half a turn; keep it in [0,180).
+        while (degrees < 0) degrees += 180.0;
+        while (degrees >= 180.0) degrees -= 180.0;
+        return degrees;
     }
 
     private static void AddWallOrColumn(PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options)
@@ -127,7 +141,7 @@ public static class StructuralPlanClassifier
             box.Thickness >= options.MinColumnSize &&
             box.Length <= options.MaxColumnSize)
         {
-            result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Length, box.Thickness, loop.Layer));
+            result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box)));
             return;
         }
 

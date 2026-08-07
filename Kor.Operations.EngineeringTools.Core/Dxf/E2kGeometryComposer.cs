@@ -54,6 +54,8 @@ public static class E2kGeometryComposer
         var frameProps = new SortedDictionary<(double W, double D), string>();
 
         var pointNames = new Dictionary<(long, long, long), string>();
+        var placedColumns = new HashSet<(long, long, string)>();
+        var placedWalls = new HashSet<(long, long, long, long, string)>();
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
 
         string NextName(string kind, ref int counter)
@@ -97,6 +99,11 @@ public static class E2kGeometryComposer
                 double x1 = wall.Start.X + options.OffsetX, y1 = wall.Start.Y + options.OffsetY;
                 double x2 = wall.End.X + options.OffsetX, y2 = wall.End.Y + options.OffsetY;
 
+                // Same panel from two overlapping sheets must not be modelled twice.
+                var ends = new[] { ((long)Math.Round(x1 * 100), (long)Math.Round(y1 * 100)), ((long)Math.Round(x2 * 100), (long)Math.Round(y2 * 100)) }
+                    .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
+                if (!placedWalls.Add((ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2, story.Name))) continue;
+
                 string p1 = PointAt(x1, y1, zBottom);
                 string p2 = PointAt(x2, y2, zBottom);
                 string p3 = PointAt(x2, y2, zTop);
@@ -119,13 +126,23 @@ public static class E2kGeometryComposer
                 }
 
                 double x = column.Center.X + options.OffsetX, y = column.Center.Y + options.OffsetY;
+
+                // One column per location per storey: sheets overlap, and duplicated
+                // members would otherwise double the stiffness at that point.
+                var stack = ((long)Math.Round(x * 100), (long)Math.Round(y * 100), story.Name);
+                if (!placedColumns.Add(stack)) continue;
+
                 string bottom = PointAt(x, y, zBottom);
                 string top = PointAt(x, y, zTop);
+
+                // ETABS measures ANG from local axis 2, which lies along global Y for an
+                // unrotated column; the section's D is its long face.
+                double angle = Normalise(column.AxisAngleDegrees - 90.0);
 
                 string name = NextName("C", ref colCounter);
                 lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{bottom}\"  \"{top}\"  0");
                 lineAssigns.Add(
-                    $"  LINEASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{sectionName}\"  ANG 0 MINNUMSTA 3 " +
+                    $"  LINEASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
                     "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
             }
 
@@ -155,9 +172,13 @@ public static class E2kGeometryComposer
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  FLOOR  {names.Count}  {joints}  {offsets}");
+
+                // No diaphragm is assigned. Naming one here would tie every storey's floors
+                // into a single rigid diaphragm spanning elevations, and which diaphragm a
+                // floor belongs to is the engineer's call in any case.
                 areaAssigns.Add(
                     $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"  " +
-                    "DIAPH \"D1\"  CARDINALPOINT \"MIDDLE\"");
+                    "CARDINALPOINT \"MIDDLE\"");
             }
 
             foreach (string flag in placement.Geometry.Flags)
@@ -185,6 +206,13 @@ public static class E2kGeometryComposer
             wallCounter, colCounter, floorCounter, pointCounter,
             placements.Select(p => p.Story.Name).Distinct().Count(),
             sections, flags);
+    }
+
+    private static double Normalise(double degrees)
+    {
+        while (degrees < 0) degrees += 360.0;
+        while (degrees >= 360.0) degrees -= 360.0;
+        return degrees;
     }
 
     private static double SnapHalfInch(double value) => Math.Round(value * 2.0, MidpointRounding.AwayFromZero) / 2.0;
