@@ -226,10 +226,6 @@ public static class StructuralPlanClassifier
             var connected = WallNetwork.Connect(result.Walls);
             result.Walls.Clear();
             result.Walls.AddRange(connected);
-
-            // Where the wall stops for a doorway, a header spans it and ties the piers together.
-            result.WallOpenings.AddRange(
-                WallNetwork.FindOpenings(result.Walls, options.MinOpeningSpan, options.MaxOpeningSpan));
         }
 
         // A short element standing on its own is a column; a short face joined to other walls is
@@ -239,8 +235,11 @@ public static class StructuralPlanClassifier
         var ends = result.Walls.SelectMany(w => new[] { w.Start, w.End }).ToList();
         bool Joined(DxfPoint p) => ends.Count(q => q.DistanceTo(p) < 0.01) > 1;
 
+        // Same half-inch of slack as the rectangle test above: a wall drawn at exactly 48" measures
+        // a fraction under it after the export, and must not change from a wall into a column for
+        // a tenth of an inch of drafting drift.
         var stubs = result.Walls
-            .Where(w => w.Length < options.MinWallLength && !Joined(w.Start) && !Joined(w.End))
+            .Where(w => w.Length < options.MinWallLength - 0.5 && !Joined(w.Start) && !Joined(w.End))
             .ToList();
 
         foreach (var stub in stubs)
@@ -257,6 +256,13 @@ public static class StructuralPlanClassifier
             result.Flags.Add(
                 $"{stubs.Count} element(s) under {options.MinWallLength:0}\" long and joined to no other wall " +
                 "were modelled as columns. Short faces that form part of a core stay walls.");
+
+        // Openings are found last, once the walls are the walls. Found any earlier, a header could
+        // span to a panel that the rule above then turned into a column, leaving the header
+        // attached to nothing at one end — three of them on 31138.
+        if (options.ConnectWalls && result.Walls.Count > 1)
+            result.WallOpenings.AddRange(
+                WallNetwork.FindOpenings(result.Walls, options.MinOpeningSpan, options.MaxOpeningSpan));
 
         return result;
     }
@@ -399,10 +405,15 @@ public static class StructuralPlanClassifier
         // of a group of walls (a core, an L or a U) and has to be split face by face.
         bool simpleRectangle = loop.Points.Count == 4 && box.Aspect >= options.MinWallAspect;
 
+        // Half an inch of slack on the length, for the same reason thickness carries some: a wall
+        // drawn at exactly the minimum measures a fraction under it after the CAD export, and 29
+        // real 48"-long walls on 31138 were failing a 48" test at 47.9.
+        const double LengthSlack = 0.5;
+
         if (simpleRectangle &&
             box.Thickness >= options.MinWallThickness &&
             box.Thickness <= options.MaxWallThickness &&
-            box.Length >= options.MinWallLength)
+            box.Length >= options.MinWallLength - LengthSlack)
         {
             result.Walls.Add(new WallAxis(box.AxisStart, box.AxisEnd, box.Thickness, loop.Layer));
             return;
@@ -444,10 +455,12 @@ public static class StructuralPlanClassifier
             return;
         }
 
-        // Nothing paired up: a stubby footprint is a pier, anything larger is unreadable.
-        if (box.Aspect < options.MinWallAspect &&
-            box.Thickness >= options.MinColumnSize &&
-            box.Length <= options.MaxColumnSize)
+        // Nothing paired up. A footprint small enough to be a member becomes a column rather than
+        // being discarded — an element too short to be a wall and too slender to be a stubby one
+        // used to satisfy no branch at all and vanish without ever being modelled: 29 of them on
+        // 31138 and 8 on 31168, gone silently. Anything that is concrete on a structural layer is
+        // worth carrying, and the engineer's rule already says a short element is a column.
+        if (box.Thickness >= options.MinColumnSize && box.Length <= options.MaxColumnSize)
         {
             result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box)));
             return;

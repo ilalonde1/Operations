@@ -427,9 +427,12 @@ public static class E2kGeometryComposer
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  AREA  {names.Count}  {joints}  {offsets}");
-                areaAssigns.Add(
-                    $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"None\"  OBJMESHTYPE \"DEFAULT\"  " +
-                    "CARDINALPOINT \"MIDDLE\"");
+
+                // OPENING "Yes" on its own, with no section — the way ETABS marks an opening, and
+                // the way every model on the share does it. Her 31138 carries 220 of these against
+                // 74 written the other way with a null section, and none of those 74 carry the
+                // attribute, so the two are alternatives and this is the one in common use.
+                areaAssigns.Add($"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  OPENING \"Yes\"");
             }
 
             foreach (string flag in placement.Geometry.Flags)
