@@ -74,8 +74,8 @@ public static class DxfToEtabsService
             var sheet = PlanSheetNaming.Parse(file);
 
             if (request.BuildingTag is not null &&
-                sheet.BuildingTag is not null &&
-                !string.Equals(sheet.BuildingTag, request.BuildingTag, StringComparison.OrdinalIgnoreCase))
+                sheet.BuildingTags.Count > 0 &&
+                !sheet.BuildingTags.Contains(request.BuildingTag, StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }

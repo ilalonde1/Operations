@@ -13,6 +13,9 @@ public sealed record PlanSheetInfo(
     /// <summary>Parkade levels the sheet covers, numbered in their own sequence (P1, P2 …).</summary>
     public IReadOnlyList<int> ParkadeLevels { get; init; } = Array.Empty<int>();
 
+    /// <summary>Every building the sheet serves; a plan titled "BLDG A&amp;B" serves both.</summary>
+    public IReadOnlyList<string> BuildingTags { get; init; } = Array.Empty<string>();
+
     public bool HasPlacement => Levels.Count > 0 || ParkadeLevels.Count > 0;
 }
 
@@ -25,7 +28,8 @@ public sealed record PlanSheetInfo(
 /// </summary>
 public static partial class PlanSheetNaming
 {
-    [GeneratedRegex(@"BLDG\s*([A-Z])", RegexOptions.IgnoreCase)]
+    /// <summary>One sheet can serve several buildings — "BLDG A&amp;B", "BLDG A &amp; B".</summary>
+    [GeneratedRegex(@"BLDG\s*([A-Z](?:\s*&\s*[A-Z])*)", RegexOptions.IgnoreCase)]
     private static partial Regex BuildingRegex();
 
     /// <summary>Storey-prefixed sheet names such as "A-LEVEL 28" name their building directly.</summary>
@@ -45,11 +49,18 @@ public static partial class PlanSheetNaming
     public static PlanSheetInfo Parse(string fileName)
     {
         string name = Path.GetFileNameWithoutExtension(fileName);
-        string? building = BuildingRegex().Match(name) is { Success: true } b
-            ? b.Groups[1].Value.ToUpperInvariant()
-            : PrefixBuildingRegex().Match(name) is { Success: true } p
-                ? p.Groups[1].Value.ToUpperInvariant()
-                : null;
+        var buildings = new List<string>();
+        if (BuildingRegex().Match(name) is { Success: true } b)
+        {
+            foreach (char c in b.Groups[1].Value.ToUpperInvariant())
+                if (char.IsLetter(c)) buildings.Add(c.ToString());
+        }
+        else if (PrefixBuildingRegex().Match(name) is { Success: true } p)
+        {
+            buildings.Add(p.Groups[1].Value.ToUpperInvariant());
+        }
+
+        string? building = buildings.Count > 0 ? buildings[0] : null;
 
         bool isRoof = name.Contains("ROOF", StringComparison.OrdinalIgnoreCase);
 
@@ -89,6 +100,7 @@ public static partial class PlanSheetNaming
             CleanLabel(name))
         {
             ParkadeLevels = parkade,
+            BuildingTags = buildings,
         };
     }
 
@@ -121,7 +133,8 @@ public static partial class PlanSheetNaming
 
         foreach (string story in storyNames)
         {
-            if (sheet.BuildingTag is not null && !StoryBelongsToBuilding(story, sheet.BuildingTag)) continue;
+            if (sheet.BuildingTags.Count > 0 &&
+                !sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(story, tag))) continue;
 
             var parkadeInStory = ParkadeLevelRegex().Match(story);
             if (parkadeInStory.Success)
@@ -139,9 +152,27 @@ public static partial class PlanSheetNaming
             if (sheet.Levels.Contains(storyLevel)) matches.Add(story);
         }
 
+        // A building tag only narrows the choice where the model actually separates buildings.
+        // Lower storeys are often shared and unprefixed, so a sheet titled "BLDG A&B" covering
+        // levels 15-26 must still land on plain "LEVEL 15" and up.
+        if (matches.Count == 0 && sheet.BuildingTags.Count > 0)
+        {
+            foreach (string story in storyNames)
+            {
+                var level = SingleLevelRegex().Match(story);
+                if (level.Success && sheet.Levels.Contains(int.Parse(level.Groups[1].Value)))
+                    matches.Add(story);
+            }
+
+            var shared = matches
+                .Where(m => m.TrimStart().StartsWith("LEVEL", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            return shared.Count > 0 ? shared : matches;
+        }
+
         // An untagged sheet in a multi-building model belongs to the unprefixed storeys
         // if any exist — otherwise it would be copied onto every tower at that level.
-        if (sheet.BuildingTag is null)
+        if (sheet.BuildingTags.Count == 0)
         {
             var unprefixed = matches
                 .Where(m => m.TrimStart().StartsWith("LEVEL", StringComparison.OrdinalIgnoreCase))
