@@ -282,7 +282,7 @@ public static class StructuralPlanClassifier
 
                 // Feed the decomposer both faces at once; it pairs each outer edge with the inner
                 // edge facing it, exactly as it does for a wall drawn as a single ribbon.
-                var ribbon = new PlanLoop(outer.Layer, outer.Points.Concat(inner.Points.Reverse()).ToList(), closedExactly: false);
+                var ribbon = new PlanLoop(outer.Layer, Keyhole(outer.Points, inner.Points), closedExactly: false);
                 var panels = WallOutlineDecomposer.Decompose(ribbon, options);
                 if (panels.Count == 0) continue;
 
@@ -294,6 +294,33 @@ public static class StructuralPlanClassifier
         }
 
         return remaining.Where(l => !consumed.Contains(l)).ToList();
+    }
+
+    /// <summary>
+    /// Joins an outer ring to the ring inside it as one outline, cut open along the shortest bridge
+    /// between them and traced back along the same bridge.
+    ///
+    /// The decomposer decides whether the material between two faces is concrete by probing whether
+    /// the midpoint lies inside the outline, so the outline has to enclose the band and nothing
+    /// else. Simply listing one ring after the other leaves a slit wherever the two lists happen to
+    /// start, and a face crossing that slit probes as void and is dropped: on 31168's parkade,
+    /// three sides of the perimeter wall came through and the west one did not.
+    /// </summary>
+    private static List<DxfPoint> Keyhole(IReadOnlyList<DxfPoint> outer, IReadOnlyList<DxfPoint> inner)
+    {
+        int bestOuter = 0, bestInner = 0;
+        double best = double.MaxValue;
+        for (int i = 0; i < outer.Count; i++)
+        for (int j = 0; j < inner.Count; j++)
+        {
+            double d = outer[i].DistanceTo(inner[j]);
+            if (d < best) { best = d; bestOuter = i; bestInner = j; }
+        }
+
+        var points = new List<DxfPoint>();
+        for (int k = 0; k <= outer.Count; k++) points.Add(outer[(bestOuter + k) % outer.Count]);
+        for (int k = 0; k <= inner.Count; k++) points.Add(inner[((bestInner - k) % inner.Count + inner.Count) % inner.Count]);
+        return points;
     }
 
     private static double Perimeter(PlanLoop loop)

@@ -33,11 +33,20 @@ public static class ModelQuestionnaire
     public static IReadOnlyList<ModelQuestion> StandingQuestions(PlanClassificationOptions options) => new[]
     {
         new ModelQuestion("H1", "Header depth",
-            $"Headers are now generated over openings. They are {options.SpandrelDepth:0}\" deep — what depth do you want?",
+            $"Headers are generated {options.SpandrelDepth:0}\" deep. That is the shallowest beam depth your own " +
+            "31138 model uses, so it should be a sane default — change it only if you want something else.",
             $"A spandrel beam spanning each opening, {options.SpandrelDepth:0}\" deep and the wall's thickness wide, " +
             "labelled so the same opening is one spandrel up the building.",
             "The header couples the piers either side of an opening; its depth drives how much.",
-            "31168: openings measured as one cluster of gaps between 36\" and 48\" in a wall run."),
+            "Your 31138 model uses 24\", 26\", 28\", 29\", 30\", 32\", 33\" and 36\" deep beams; 30783 uses 24\" upward too."),
+
+        new ModelQuestion("P1", "Perimeter basement wall",
+            "FIXED. The below-grade perimeter wall is now read on all four sides, including the angled west one.",
+            "Walls drawn as two concentric rings are paired and read as the one wall they are. The west wall was " +
+            "dropped because the two rings were joined without a proper bridge, so its midpoint probed as void.",
+            "It was the whole below-grade lateral system: \"the basement walls are missing\".",
+            "31168 P2: the west wall now reads 2,806\" long at 88.1 degrees, alongside the north, south and east.")
+            { Decided = true },
 
         new ModelQuestion("A1", "Short faces in a core",
             "An element under 48\" long is now a column, as you asked. Inside a core, a short wall face " +
@@ -46,12 +55,6 @@ public static class ModelQuestionnaire
             "A short core face carries in-plane shear as a wall; as a column it carries none.",
             "31138: 45 panels moved from wall to column under this rule."),
 
-        new ModelQuestion("P1", "Perimeter basement wall",
-            "The below-grade perimeter wall is now read on three sides. The angled west wall is still " +
-            "missed — is that wall drawn differently, or is a slanted face just harder?",
-            "Walls drawn as two concentric rings are paired and read as one wall.",
-            "It was the whole below-grade lateral system: \"the basement walls are missing\".",
-            "31168 P1/P2/P3: parkade walls went from 36-45 per level to 41-48."),
 
         new ModelQuestion("W1", "Wall vs column",
             "YOUR RULE: \"less than 48 in length should be a column\".",
