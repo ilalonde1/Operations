@@ -322,6 +322,97 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void ATowerStoreyStandsOnItsOwnTowersFloorNotOnTheOneAnInchBelow()
+    {
+        // 31168's upper levels, to scale: three towers share one storey list, so every distinct
+        // floor elevation across the site becomes a storey. Tower B's 34th floor sits 2" above
+        // tower A's, which makes "B-LEVEL 34" a 2"-tall storey. Reading that HEIGHT as a wall
+        // height gave tower B two-inch wafers hanging a storey above the floor below — 78 of
+        // 31168's 897 panels. Towers A and B interleave at 4.67ft and 5.0ft here, so no gap
+        // threshold can tell a real storey from a duplicate floor; only the name can.
+        string[] siteModel =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"B-LEVEL 34\"  HEIGHT 2",
+            "  STORY \"A-LEVEL 34\"  HEIGHT 120",
+            "  STORY \"B-LEVEL 33\"  HEIGHT 37",
+            "  STORY \"A-LEVEL 33\"  HEIGHT 114",
+            "  STORY \"B-LEVEL 32\"  HEIGHT 5",
+            "  STORY \"A-LEVEL 32\"  HEIGHT 76",
+            "  STORY \"LEVEL 31\"  HEIGHT 116",
+            "  STORY \"Base\"  ELEV 0",
+            "",
+        };
+
+        var stories = E2kDocument.Parse(siteModel).ReadStories();
+        double Span(string name) => stories.Single(s => s.Name == name).Elevation
+                                  - stories.Single(s => s.Name == name).ElevationBelow;
+
+        // B34 stands on B33, 10.2ft below — not on A34, two inches below.
+        Assert.Equal(stories.Single(s => s.Name == "B-LEVEL 33").Elevation,
+                     stories.Single(s => s.Name == "B-LEVEL 34").ElevationBelow, 3);
+        Assert.Equal(122, Span("B-LEVEL 34"), 3);
+
+        // A34 likewise stands on A33, not on the B storey between them.
+        Assert.Equal(stories.Single(s => s.Name == "A-LEVEL 33").Elevation,
+                     stories.Single(s => s.Name == "A-LEVEL 34").ElevationBelow, 3);
+        Assert.Equal(157, Span("A-LEVEL 34"), 3);
+
+        // A tower's lowest storey has no earlier storey of its own, so it stands on the shared
+        // podium below — stepping past the other tower's storey five inches under it.
+        Assert.Equal(116, stories.Single(s => s.Name == "B-LEVEL 32").ElevationBelow, 3);
+
+        // No storey in a site model may come out shorter than a wall could be.
+        foreach (var storey in stories)
+            Assert.True(storey.Elevation - storey.ElevationBelow >= 60,
+                $"{storey.Name} spans {storey.Elevation - storey.ElevationBelow:0}in — a wafer, not a storey.");
+    }
+
+    [Fact]
+    public void ASingleBuildingModelStillMeasuresStoreysFromTheFloorBelow()
+    {
+        // The tower rule must not disturb a model whose storeys are simply stacked.
+        string[] plain =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"L03\"  HEIGHT 120",
+            "  STORY \"L02\"  HEIGHT 120",
+            "  STORY \"L01\"  HEIGHT 144",
+            "  STORY \"Base\"  ELEV 0",
+            "",
+        };
+
+        var stories = E2kDocument.Parse(plain).ReadStories();
+        Assert.Equal(144, stories.Single(s => s.Name == "L01").Elevation, 3);
+        Assert.Equal(0, stories.Single(s => s.Name == "L01").ElevationBelow, 3);
+        Assert.Equal(264, stories.Single(s => s.Name == "L02").Elevation, 3);
+        Assert.Equal(144, stories.Single(s => s.Name == "L02").ElevationBelow, 3);
+    }
+
+    [Fact]
+    public void ASmallRingStandingOnItsOwnIsNotAFloorPlate()
+    {
+        // Slab-edge linework closes into little rings that are not floors. Left in, each one
+        // draws in ETABS as a scrap of slab hanging in space: 7 of 31138's 14 plates were
+        // 52-68 sq ft, against a real tower floor of 9,666.
+        static IEnumerable<DxfSegment> Rect(double x0, double y0, double x1, double y1)
+        {
+            var c = new[] { new DxfPoint(x0, y0), new DxfPoint(x1, y0), new DxfPoint(x1, y1), new DxfPoint(x0, y1) };
+            for (int i = 0; i < 4; i++)
+                yield return new DxfSegment("JBP_C_SLABEDG", c[i], c[(i + 1) % 4]);
+        }
+
+        var scrap = Rect(0, 0, 120, 120);            // 100 sq ft — a ring, but not a floor
+        var floor = Rect(500, 500, 1340, 1340);      // 4,900 sq ft
+
+        var set = StructuralPlanClassifier.Classify(scrap.Concat(floor));
+
+        Assert.Single(set.Slabs);
+        Assert.True(set.Slabs[0].Area > 100000, "the plate kept should be the real floor.");
+        Assert.Contains(set.Flags, f => f.Contains("too small for a floor plate", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void AccumulatesStoreyElevationsFromTheBaseUpward()
     {
         var stories = E2kDocument.Parse(Reference).ReadStories();
@@ -374,9 +465,18 @@ public class E2kDocumentTests
         var lines = doc.LinesOf("LINE CONNECTIVITIES");
         Assert.Contains(lines, l => l.Contains("COLUMN") && l.Contains("KC1"));
 
-        // The wall must span this storey: bottom edge at 144, top at 264.
+        // Joints carry plan position only — ETABS takes elevation from the storey assigned, and a
+        // number in the third slot is read as an offset from it, not as an elevation.
         var points = doc.LinesOf("POINT COORDINATES");
-        Assert.Contains(points, l => l.TrimEnd().EndsWith(" 144"));
-        Assert.Contains(points, l => l.TrimEnd().EndsWith(" 264"));
+        var mine = points.Where(l => l.Contains("\"KP")).ToList();
+        Assert.NotEmpty(mine);
+        Assert.All(mine, l => Assert.Equal(4, l.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).Length));
+
+        // The wall is two plan joints repeated, and it is assigned to the storey it stands on.
+        Assert.Contains(areas, l => l.Contains("KW1") && l.TrimEnd().EndsWith("1  1  0  0"));
+        Assert.Contains(doc.LinesOf("AREA ASSIGNS"), l => l.Contains("KW1") && l.Contains("LEVEL 3"));
+
+        // A column is one plan joint, rising a storey.
+        Assert.Contains(lines, l => l.Contains("KC1") && l.TrimEnd().EndsWith("1"));
     }
 }

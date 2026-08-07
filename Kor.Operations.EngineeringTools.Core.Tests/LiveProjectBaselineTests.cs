@@ -25,13 +25,13 @@ public class LiveProjectBaselineTests
         "31168 YMCA Langara",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31168-reference.e2k",
-        Storeys: 60, Walls: 897, Columns: 2418, Floors: 128);
+        Storeys: 60, Walls: 897, Columns: 2418, Floors: 124);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",
         $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\_DXF-plans-for-rebuild",
         $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models\31138-reference-from-Andrea-gravity.e2k",
-        Storeys: 19, Walls: 98, Columns: 118, Floors: 14);
+        Storeys: 19, Walls: 98, Columns: 118, Floors: 7);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;
@@ -127,23 +127,35 @@ public class LiveProjectBaselineTests
                 OutputE2k = output,
             });
 
-            var stories = E2kDocument.Load(baseline.Reference).ReadStories();
-            double top = stories.Max(s => s.Elevation);
-            double bottom = stories.Min(s => s.ElevationBelow);
+            var doc = E2kDocument.Load(output);
+            var stories = doc.ReadStories();
+            var known = new HashSet<string>(stories.Select(s => s.Name), StringComparer.OrdinalIgnoreCase);
 
-            // Every generated joint must lie between the base and the roof. Getting the storey
-            // datum wrong put an entire model a thousand feet above the building, and counts
-            // alone never noticed — nothing moved except the coordinates.
-            var zs = File.ReadLines(output)
-                .Select(l => System.Text.RegularExpressions.Regex.Match(l, @"^\s+POINT\s+""K\w+""\s+\S+\s+\S+\s+(\S+)"))
-                .Where(m => m.Success)
-                .Select(m => double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture))
+            // Every generated member must land on a storey the model actually has. Elevation comes
+            // from that storey, so an unknown one is a member ETABS places nowhere — the failure
+            // that put a whole model a thousand feet above the building, which counts never noticed.
+            var geometry = E2kGeometryReader.Read(doc);
+            var strays = geometry.Walls.Select(w => (w.Name, w.Story))
+                .Concat(geometry.Columns.Select(c => (c.Name, c.Story)))
+                .Where(m => m.Name.StartsWith("K", StringComparison.OrdinalIgnoreCase))
+                .Where(m => !known.Contains(m.Story))
+                .Select(m => $"{m.Name}->{m.Story}")
+                .Distinct()
+                .Take(5)
                 .ToList();
 
-            if (zs.Count == 0) return;
+            Assert.True(strays.Count == 0,
+                $"{name}: generated members assigned to storeys the model has no record of: {string.Join(", ", strays)}");
 
-            Assert.True(zs.Min() >= bottom - 1, $"{name}: lowest joint {zs.Min():0} is below the base {bottom:0}.");
-            Assert.True(zs.Max() <= top + 1, $"{name}: highest joint {zs.Max():0} is above the roof {top:0}.");
+            // And joints carry plan position only; an elevation written there is read as an offset.
+            var withElevation = File.ReadLines(output)
+                .Where(l => System.Text.RegularExpressions.Regex.IsMatch(l, @"^\s+POINT\s+""K\w+""\s+\S+\s+\S+\s+\S+"))
+                .Take(3)
+                .ToList();
+
+            Assert.True(withElevation.Count == 0,
+                $"{name}: generated joints carry a third coordinate, which ETABS reads as a storey " +
+                $"offset: {string.Join(" | ", withElevation)}");
         }
         finally
         {

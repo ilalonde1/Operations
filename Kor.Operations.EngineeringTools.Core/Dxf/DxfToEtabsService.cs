@@ -216,10 +216,23 @@ public static class DxfToEtabsService
 
         if (report.Summary.Flags.Count > 0)
         {
+            // Flags about the model as a whole — storeys left without a plate, members already in
+            // the engineer's model — are the ones worth acting on, and there are only a handful.
+            // Listed with the per-sheet flags they fell off the end of a 766-line truncation.
+            var wholeModel = report.Summary.Flags.Where(f => !f.Contains(".dxf:", StringComparison.OrdinalIgnoreCase)).ToList();
+            var perSheet = report.Summary.Flags.Where(f => f.Contains(".dxf:", StringComparison.OrdinalIgnoreCase)).ToList();
+
+            if (wholeModel.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("About the model as a whole:");
+                foreach (string f in wholeModel) sb.AppendLine("  - " + f);
+            }
+
             sb.AppendLine();
-            sb.AppendLine($"Flags ({report.Summary.Flags.Count}) — outlines that needed judgement:");
-            foreach (string f in report.Summary.Flags.Take(40)) sb.AppendLine("  - " + f);
-            if (report.Summary.Flags.Count > 40) sb.AppendLine($"  ... and {report.Summary.Flags.Count - 40} more");
+            sb.AppendLine($"Flags ({perSheet.Count}) — outlines that needed judgement:");
+            foreach (string f in perSheet.Take(40)) sb.AppendLine("  - " + f);
+            if (perSheet.Count > 40) sb.AppendLine($"  ... and {perSheet.Count - 40} more");
         }
 
         return sb.ToString();

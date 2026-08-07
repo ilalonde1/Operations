@@ -86,10 +86,16 @@ public static class E2kGeometryComposer
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
         int skippedColumns = 0, skippedWalls = 0;
 
-        var pointNames = new Dictionary<(long, long, long), string>();
+        var pointNames = new Dictionary<(long, long), string>();
         var placedColumns = new HashSet<(long, long, string)>();
         var placedWalls = new HashSet<(long, long, long, long, string)>();
+        var storeysWithMembers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var storeysWithPlates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
+
+        // The model's whole storey stack, lowest first. A site model interleaves its towers here,
+        // so one tower's wall crosses more than one of these; see StoreysSpannedBy.
+        var allStories = doc.ReadStories().OrderBy(s => s.Elevation).ToList();
 
         string NextName(string kind, ref int counter)
         {
@@ -99,10 +105,15 @@ public static class E2kGeometryComposer
             return name;
         }
 
-        string PointAt(double x, double y, double z)
+        /// A joint is a plan position only. ETABS takes elevation from the storey an object is
+        /// assigned to, not from its points — the third number on a POINT line is an offset from
+        /// that storey, and writing an absolute elevation there throws the member hundreds of feet
+        /// off the storey it belongs to. Andrea's own model writes 1,098 of its 1,156 points as
+        /// bare X and Y for exactly this reason.
+        string PointAt(double x, double y)
         {
             // Quantise to 1/1000 inch so shared corners collapse to one joint.
-            var key = ((long)Math.Round(x * 1000), (long)Math.Round(y * 1000), (long)Math.Round(z * 1000));
+            var key = ((long)Math.Round(x * 1000), (long)Math.Round(y * 1000));
             if (pointNames.TryGetValue(key, out string? existing)) return existing;
 
             string name;
@@ -110,15 +121,32 @@ public static class E2kGeometryComposer
             used.Add(name);
             pointNames[key] = name;
 
-            pointLines.Add($"  POINT \"{name}\"  {F(x)} {F(y)} {F(z)}");
+            pointLines.Add($"  POINT \"{name}\"  {F(x)} {F(y)}");
             return name;
+        }
+
+        /// <summary>
+        /// Every storey a member on this storey passes through, bottom-up.
+        ///
+        /// ETABS builds a wall or column between consecutive storeys of its own global list. In a
+        /// site model that list holds a storey for each tower's floor, so tower B's level-34 wall —
+        /// which runs from B-LEVEL 33 up to B-LEVEL 34 — crosses A-LEVEL 34 on the way. Assigning
+        /// it only to B-LEVEL 34 builds it between A-LEVEL 34 and B-LEVEL 34: a two-inch wafer
+        /// hanging a storey above its floor. Assigning it to both builds one continuous wall.
+        /// ETABS supports this directly — an object carries an assign line per storey.
+        /// </summary>
+        List<string> StoreysSpannedBy(StoryLevel story)
+        {
+            var spanned = allStories
+                .Where(s => s.Elevation > story.ElevationBelow + 0.01 && s.Elevation <= story.Elevation + 0.01)
+                .Select(s => s.Name)
+                .ToList();
+            return spanned.Count > 0 ? spanned : new List<string> { story.Name };
         }
 
         foreach (var placement in placements)
         {
             var story = placement.Story;
-            double zTop = story.Elevation;
-            double zBottom = story.ElevationBelow;
 
             foreach (var wall in placement.Geometry.Walls)
             {
@@ -151,16 +179,18 @@ public static class E2kGeometryComposer
                     continue;
                 }
 
-                string p1 = PointAt(x1, y1, zBottom);
-                string p2 = PointAt(x2, y2, zBottom);
-                string p3 = PointAt(x2, y2, zTop);
-                string p4 = PointAt(x1, y1, zTop);
+                string pa = PointAt(x1, y1);
+                string pb = PointAt(x2, y2);
 
+                // A panel is its two plan points repeated: the pair at the storey above the one it
+                // is assigned to (offset 1) and the same pair at that storey (offset 0).
                 string name = NextName("W", ref wallCounter);
-                areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{p1}\"  \"{p2}\"  \"{p3}\"  \"{p4}\"  0  0  0  0");
-                areaAssigns.Add(
-                    $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"  " +
-                    "ADDRESTRAINT \"Yes\"  CARDINALPOINT \"MIDDLE\"");
+                areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{pa}\"  \"{pb}\"  \"{pb}\"  \"{pa}\"  1  1  0  0");
+                storeysWithMembers.Add(story.Name);
+                foreach (string on in StoreysSpannedBy(story))
+                    areaAssigns.Add(
+                        $"  AREAASSIGN  \"{name}\"  \"{on}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"  " +
+                        "ADDRESTRAINT \"Yes\"  CARDINALPOINT \"MIDDLE\"");
             }
 
             foreach (var column in placement.Geometry.Columns)
@@ -186,18 +216,20 @@ public static class E2kGeometryComposer
                     continue;
                 }
 
-                string bottom = PointAt(x, y, zBottom);
-                string top = PointAt(x, y, zTop);
+                string at = PointAt(x, y);
 
                 // ETABS measures ANG from local axis 2, which lies along global Y for an
                 // unrotated column; the section's D is its long face.
                 double angle = Normalise(column.AxisAngleDegrees - 90.0);
 
+                // A column is one plan point, rising one storey from the storey it is assigned to.
                 string name = NextName("C", ref colCounter);
-                lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{bottom}\"  \"{top}\"  0");
-                lineAssigns.Add(
-                    $"  LINEASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
-                    "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
+                lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{at}\"  \"{at}\"  1");
+                storeysWithMembers.Add(story.Name);
+                foreach (string on in StoreysSpannedBy(story))
+                    lineAssigns.Add(
+                        $"  LINEASSIGN  \"{name}\"  \"{on}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
+                        "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
             }
 
             if (!options.IncludeFloors) continue;
@@ -214,7 +246,7 @@ public static class E2kGeometryComposer
                 }
 
                 var names = slab.Points
-                    .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY, zTop))
+                    .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
                     .Distinct()
                     .ToList();
 
@@ -225,6 +257,7 @@ public static class E2kGeometryComposer
                 }
 
                 string name = NextName("F", ref floorCounter);
+                storeysWithPlates.Add(story.Name);
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  FLOOR  {names.Count}  {joints}  {offsets}");
@@ -270,6 +303,17 @@ public static class E2kGeometryComposer
         if (skippedWalls > 0 || skippedColumns > 0)
             flags.Add($"{skippedWalls} wall(s) and {skippedColumns} column(s) were already modelled at those " +
                       "locations and were not added again.");
+
+        // A storey with walls and columns but no plate is the one thing that still reads as wrong
+        // in a 3D view: members standing with nothing spanning between them. It happens where a
+        // drawing's slab edges will not close — the parkade levels on 31168 — and it is worth
+        // naming, because the storey has no diaphragm until a plate is drawn there.
+        var plateless = storeysWithMembers.Where(s => !storeysWithPlates.Contains(s)).ToList();
+        if (plateless.Count > 0)
+            flags.Add(
+                $"{plateless.Count} storey(s) carry walls or columns but no floor plate, because their slab " +
+                $"edges would not close: {string.Join(", ", plateless)}. Those storeys have no diaphragm " +
+                "until a plate is added.");
 
         var sections = wallProps.Values.Concat(slabProps.Values).Concat(frameProps.Values).ToList();
         return new ComposeSummary(

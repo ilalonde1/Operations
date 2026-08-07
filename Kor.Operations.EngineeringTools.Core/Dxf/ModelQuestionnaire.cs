@@ -51,11 +51,14 @@ public static class ModelQuestionnaire
             "A door in a shear wall is a real reduction in stiffness and is usually modelled as an opening.",
             "31138 L10: a 46.6\" break in the stair enclosure outline."),
 
-        new ModelQuestion("S1", "Slab plates",
-            "Slab edges break where other linework crosses. Which storeys most need floor plates, and is a partial plate worse than none?",
-            $"Rings smaller than {options.MinSlabArea / 144:0} sq ft are discarded; outlines that will not close are dropped and reported.",
-            "Plates carry diaphragm action and mass; a wrong outline is worse than a missing one.",
-            "31168: 128 plates over 60 storeys. 31138: 14 over 19."),
+        new ModelQuestion("S1", "Storeys with no plate",
+            "The parkade levels have walls and columns but no floor plate, because their slab edges will not close. " +
+            "Do you want plates approximated there, or will you draw them?",
+            $"Left out. A ring must reach {options.MinPlateArea / 144:0} sq ft to be modelled as a plate; " +
+            "smaller standalone rings are slab-edge linework and were drawing as scraps of floor hanging in space.",
+            "A storey without a plate has no diaphragm, and in a 3D view its members look unsupported.",
+            "31168: 124 plates over 60 storeys, but LEVEL P1/P2/P3 and LEVEL 1 MEZZ carry members and no plate. " +
+            "31138: standalone rings measured 52-68 sq ft against a real tower floor of 9,666."),
 
         new ModelQuestion("S2", "Openings",
             "Shafts and stair openings are found but not cut out of the plates. Should they be cut?",
@@ -206,6 +209,7 @@ public static class ModelQuestionnaire
         if (flag.Contains("unusually thick", StringComparison.OrdinalIgnoreCase)) return "Wall thicker than 24\" — confirm";
         if (flag.Contains("could not be resolved", StringComparison.OrdinalIgnoreCase)) return "Outline not readable as walls";
         if (flag.Contains("already modelled", StringComparison.OrdinalIgnoreCase)) return "Member you already have — not duplicated";
+        if (flag.Contains("no floor plate", StringComparison.OrdinalIgnoreCase)) return "Storey has members but no plate — no diaphragm there";
         if (flag.Contains("collapsed", StringComparison.OrdinalIgnoreCase)) return "Slab outline collapsed — skipped";
         return "Other";
     }

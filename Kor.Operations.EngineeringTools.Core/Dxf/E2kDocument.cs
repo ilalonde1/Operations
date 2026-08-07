@@ -103,11 +103,7 @@ public sealed class E2kDocument
 
         double baseElevation = 0;
 
-        // No storey is taller than this. ETABS parks a model's base far below the structure and
-        // absorbs the distance into the lowest storey's height — on 31168 the base reads -12000
-        // and LEVEL P3 reads 13366, a storey 1,113ft tall. Honouring the base without capping the
-        // storey turns the lowest walls into 1,100ft spikes; ignoring the base lifts the whole
-        // model 1,000ft. Both are needed.
+        // No real storey is taller than this; see FloorUnder for why a cap is needed at all.
         const double maxPlausibleStoreyHeight = 480.0;
 
         foreach (string raw in LinesOf("STORIES"))
@@ -144,25 +140,91 @@ public sealed class E2kDocument
         }
 
         // Listed top-down: walking the reversed list accumulates elevation from the base.
-        var result = new List<StoryLevel>();
+        var stack = new List<(string Name, double Elevation, double Height)>();
         double elevation = baseElevation;
         for (int i = parsed.Count - 1; i >= 0; i--)
         {
             var (name, height) = parsed[i];
             elevation += height;
-
-            // A storey taller than any real one is the base gap, not a storey: keep its top, but
-            // give it a believable bottom so its members are walls rather than 1,000ft spikes.
-            double below = height > maxPlausibleStoreyHeight
-                ? elevation - maxPlausibleStoreyHeight
-                : elevation - height;
-
-            result.Add(new StoryLevel(name, elevation, below));
+            stack.Add((name, elevation, height));
         }
+
+        var result = new List<StoryLevel>();
+        for (int i = 0; i < stack.Count; i++)
+            result.Add(new StoryLevel(stack[i].Name, stack[i].Elevation, FloorUnder(stack, i, maxPlausibleStoreyHeight)));
 
         result.Reverse();
         return result;
     }
+
+    /// <summary>
+    /// The elevation a member on this storey stands on — which is not, in a site model, its own
+    /// storey top minus its own HEIGHT.
+    ///
+    /// ETABS keeps one global storey list, so a site with several towers gets a storey for every
+    /// distinct floor elevation across all of them. Where tower B's 34th floor sits 2" above
+    /// tower A's, the export contains a storey named "B-LEVEL 34" that is 2" tall. Reading that
+    /// HEIGHT as a wall height makes tower B's walls two-inch wafers hanging a full storey above
+    /// the floor below — on 31168 that was 78 of 897 panels, and it is what the model looked like.
+    ///
+    /// A tower's walls stand on that tower's previous floor, so the leading tag in the storey name
+    /// is what resolves it. The towers here interleave at 4.67ft and 5.0ft, so no gap threshold can
+    /// separate a real storey from a duplicate-floor sliver; only the name can.
+    /// </summary>
+    private static double FloorUnder(
+        IReadOnlyList<(string Name, double Elevation, double Height)> stack, int index, double maxHeight)
+    {
+        var (name, top, height) = stack[index];
+        string tag = BuildingTagOf(name);
+
+        // A tower's own previous floor, where it has one within a storey's reach. A tower that
+        // only separates from the site part-way up has no earlier storey of its own down at the
+        // podium: 31168's tower B is named B-LEVEL 27 and above, and shares LEVEL 26 and below.
+        // Taking B-LEVEL 1 as B-LEVEL 27's floor reached 271ft down, and clamping that to the
+        // 40ft cap still spread one wall across five storeys.
+        if (tag.Length > 0)
+        {
+            for (int i = index - 1; i >= 0; i--)
+                if (BuildingTagOf(stack[i].Name) == tag)
+                    return top - stack[i].Elevation <= maxHeight
+                        ? stack[i].Elevation
+                        : NearestFloorBelow(stack, index, top, maxHeight);
+        }
+
+        double floor = NearestFloorBelow(stack, index, top, maxHeight);
+        if (!double.IsNaN(floor)) return floor;
+
+        // Nothing below: the base storey. ETABS parks a model's base far under the structure and
+        // absorbs the distance into the lowest storey — on 31168 the base reads -12000 and LEVEL P3
+        // reads 13366, a storey 1,113ft tall. Honouring the base without capping that storey turns
+        // the lowest walls into 1,100ft spikes; ignoring it lifts the whole model 1,000ft up.
+        return top - Math.Min(height, maxHeight);
+    }
+
+    /// <summary>
+    /// The nearest floor under this storey, stepping past the near-coincident storeys the other
+    /// towers place at the same floor — C-LEVEL 3 sits 5" above LEVEL 3, and taking that as its
+    /// height made tower C's lowest walls half a foot tall. NaN when there is nothing below.
+    /// </summary>
+    private static double NearestFloorBelow(
+        IReadOnlyList<(string Name, double Elevation, double Height)> stack, int index, double top, double maxHeight)
+    {
+        const double duplicateFloorTolerance = 12.0;
+        for (int i = index - 1; i >= 0; i--)
+            if (top - stack[i].Elevation > duplicateFloorTolerance)
+                return Math.Max(stack[i].Elevation, top - maxHeight);
+        return double.NaN;
+    }
+
+    /// <summary>
+    /// The tower a site-model storey belongs to — "B-LEVEL 34" is tower B. Empty for a storey
+    /// shared by the site ("LEVEL 5", "LEVEL P1") and for any single-building model, where every
+    /// storey is shared and the ordinary floor-below rule applies.
+    /// </summary>
+    private static string BuildingTagOf(string name)
+        => name.Length > 2 && char.IsLetter(name[0]) && name[1] == '-'
+            ? char.ToUpperInvariant(name[0]).ToString()
+            : string.Empty;
 
     /// <summary>Names already used for points/areas/lines, so generated names never collide.</summary>
     public HashSet<string> ExistingObjectNames()

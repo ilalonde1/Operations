@@ -54,6 +54,18 @@ public sealed record PlanClassificationOptions
     public double MinSlabArea { get; init; } = 7200.0;
 
     /// <summary>
+    /// Area a ring must reach to be modelled as a floor plate. Higher than <see cref="MinSlabArea"/>,
+    /// which only decides whether a ring is worth keeping at all: a small ring inside a plate is a
+    /// real opening, but a small ring standing on its own is slab-edge linework that happened to
+    /// close, and in ETABS it draws as a scrap of floor hanging in space.
+    ///
+    /// Measured on both projects, the two populations do not overlap: standalone rings come out at
+    /// 52-115 sq ft, real plates at 915 sq ft and up (31138's tower floor is 9,666). 400 sq ft sits
+    /// in the empty middle with margin on both sides.
+    /// </summary>
+    public double MinPlateArea { get; init; } = 57600.0;
+
+    /// <summary>
     /// Largest dash gap to close when rebuilding a dashed line. Measured on KOR's exports:
     /// hidden edges dash at a constant 11", while genuine interruptions in a slab boundary
     /// run 18" and wider.
@@ -174,7 +186,7 @@ public static class StructuralPlanClassifier
             }
         }
 
-        SplitSlabsAndOpenings(result, slabCandidates);
+        SplitSlabsAndOpenings(result, slabCandidates, options);
         return result;
     }
 
@@ -264,7 +276,7 @@ public static class StructuralPlanClassifier
     }
 
     /// <summary>Largest rings are slabs; rings sitting inside one of them are openings.</summary>
-    private static void SplitSlabsAndOpenings(PlanGeometrySet result, List<PlanLoop> candidates)
+    private static void SplitSlabsAndOpenings(PlanGeometrySet result, List<PlanLoop> candidates, PlanClassificationOptions options)
     {
         var ordered = candidates.OrderByDescending(l => l.Area).ToList();
         var slabs = new List<PlanLoop>();
@@ -277,6 +289,13 @@ public static class StructuralPlanClassifier
             else slabs.Add(loop);
         }
 
-        result.Slabs.AddRange(slabs);
+        // A ring too small to be a floor and not inside one is linework, not structure. Modelling
+        // it puts a scrap of slab in mid-air with nothing under it.
+        foreach (var scrap in slabs.Where(s => s.Area < options.MinPlateArea))
+            result.Flags.Add(
+                $"{scrap.Layer}: closed ring of {scrap.Area / 144:0} sq ft on its own — too small for a " +
+                "floor plate and not inside one, so it is linework rather than slab; not modelled.");
+
+        result.Slabs.AddRange(slabs.Where(s => s.Area >= options.MinPlateArea));
     }
 }
