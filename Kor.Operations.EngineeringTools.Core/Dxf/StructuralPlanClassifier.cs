@@ -19,6 +19,13 @@ public sealed record PlanClassificationOptions
     /// <summary>Below this the footprint is a column, not a wall, however it was drawn.</summary>
     public double MinWallAspect { get; init; } = 2.0;
 
+    /// <summary>
+    /// Aspect required of a panel cut out of a ribbon. Lower than <see cref="MinWallAspect"/>
+    /// because the end faces of each wall are consumed with their wall, so a short panel here
+    /// is a genuine pier rather than a leftover sliver.
+    /// </summary>
+    public double MinPanelAspect { get; init; } = 1.2;
+
     public double MinColumnSize { get; init; } = 6.0;
     public double MaxColumnSize { get; init; } = 96.0;
 
@@ -42,6 +49,13 @@ public sealed record PlanClassificationOptions
     public double JoinTolerance { get; init; } = 0.05;
     public double BridgeTolerance { get; init; } = 6.0;
 
+    /// <summary>
+    /// Closure allowance for wall outlines, which are broken by door and opening symbols —
+    /// a wider, well-defined gap than the incidental crossings that interrupt slab edges,
+    /// and safe to close because a wall outline is short and its shape is unambiguous.
+    /// </summary>
+    public double WallBridgeTolerance { get; init; } = 12.0;
+
     public static bool Matches(string layer, IReadOnlyList<string> patterns)
         => patterns.Any(p => layer.Contains(p, StringComparison.OrdinalIgnoreCase));
 }
@@ -53,7 +67,8 @@ public static class StructuralPlanClassifier
     {
         options ??= new PlanClassificationOptions();
         var result = new PlanGeometrySet();
-        var builder = new PlanLoopBuilder(options.JoinTolerance, options.BridgeTolerance);
+        var slabBuilder = new PlanLoopBuilder(options.JoinTolerance, options.BridgeTolerance);
+        var wallBuilder = new PlanLoopBuilder(options.JoinTolerance, options.WallBridgeTolerance);
 
         var byLayer = segments.GroupBy(s => s.Layer);
 
@@ -67,7 +82,7 @@ public static class StructuralPlanClassifier
             bool isSlab = PlanClassificationOptions.Matches(layer, options.SlabLayerPatterns);
             if (!isWall && !isColumn && !isSlab) continue;
 
-            var built = builder.Build(group);
+            var built = (isWall || isColumn ? wallBuilder : slabBuilder).Build(group);
 
             if (built.OpenChains.Count > 0)
             {

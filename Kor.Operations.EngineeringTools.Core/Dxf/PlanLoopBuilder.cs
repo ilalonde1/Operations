@@ -13,13 +13,16 @@ public sealed class PlanLoopBuilder
 {
     private readonly double _joinTolerance;
     private readonly double _bridgeTolerance;
+    private readonly double _extendLimit;
 
     /// <param name="joinTolerance">Endpoints closer than this are the same node (drawing units).</param>
     /// <param name="bridgeTolerance">How far apart two chain ends may be and still be joined.</param>
-    public PlanLoopBuilder(double joinTolerance = 0.05, double bridgeTolerance = 6.0)
+    /// <param name="extendLimit">How far an interrupted edge may be carried forward to its corner.</param>
+    public PlanLoopBuilder(double joinTolerance = 0.05, double bridgeTolerance = 6.0, double extendLimit = 48.0)
     {
         _joinTolerance = joinTolerance;
         _bridgeTolerance = bridgeTolerance;
+        _extendLimit = extendLimit;
     }
 
     public sealed record Result(IReadOnlyList<PlanLoop> Loops, IReadOnlyList<IReadOnlyList<DxfPoint>> OpenChains);
@@ -148,6 +151,36 @@ public sealed class PlanLoopBuilder
         return best;
     }
 
+    /// <summary>
+    /// Where the chain's two end runs would meet if each carried on. Returns null when they
+    /// are parallel, when the corner sits behind either run, or when it lies improbably far
+    /// out — an interrupted outline is a short reach, not a projection across the plate.
+    /// </summary>
+    private DxfPoint? ExtendToIntersection(IReadOnlyList<DxfPoint> chain)
+    {
+        var tailFrom = chain[^2];
+        var tailTo = chain[^1];
+        var headFrom = chain[1];
+        var headTo = chain[0];
+
+        double r1x = tailTo.X - tailFrom.X, r1y = tailTo.Y - tailFrom.Y;
+        double r2x = headTo.X - headFrom.X, r2y = headTo.Y - headFrom.Y;
+
+        double denominator = r1x * r2y - r1y * r2x;
+        if (Math.Abs(denominator) < 1e-9) return null;
+
+        double dx = headTo.X - tailTo.X, dy = headTo.Y - tailTo.Y;
+        double s = (dx * r2y - dy * r2x) / denominator;
+        double t = (dx * r1y - dy * r1x) / denominator;
+
+        // Both runs must reach forward to the corner, not backwards along themselves.
+        if (s < 0 || t > 0) return null;
+
+        var corner = new DxfPoint(tailTo.X + r1x * s, tailTo.Y + r1y * s);
+        double reach = Math.Max(tailTo.DistanceTo(corner), headTo.DistanceTo(corner));
+        return reach <= _extendLimit ? corner : null;
+    }
+
     private static DxfPoint Direction(DxfPoint from, DxfPoint to)
     {
         double dx = to.X - from.X, dy = to.Y - from.Y;
@@ -187,9 +220,21 @@ public sealed class PlanLoopBuilder
         var open = new List<IReadOnlyList<DxfPoint>>();
         foreach (var chain in work)
         {
-            if (chain.Count >= 4 && chain[0].DistanceTo(chain[^1]) <= _bridgeTolerance)
+            var candidate = chain;
+
+            // A chain whose ends run past each other closes where those runs cross. Drafting
+            // interrupts an outline at a junction, so the two ends still point at their true
+            // corner even though their endpoints are far apart — extending finds it, whereas
+            // joining by distance would cut the corner off.
+            if (candidate.Count >= 4 && candidate[0].DistanceTo(candidate[^1]) > _joinTolerance)
             {
-                var pts = LoopGeometry.Simplify(chain, _joinTolerance);
+                var corner = ExtendToIntersection(candidate);
+                if (corner is not null) candidate = new List<DxfPoint>(candidate) { corner.Value };
+            }
+
+            if (candidate.Count >= 4 && candidate[0].DistanceTo(candidate[^1]) <= _bridgeTolerance)
+            {
+                var pts = LoopGeometry.Simplify(candidate, _joinTolerance);
                 if (pts.Count >= 3)
                 {
                     loops.Add(new PlanLoop(layer, pts, closedExactly: false));

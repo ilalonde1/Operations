@@ -147,6 +147,36 @@ public class WallOutlineDecomposerTests
     }
 
     [Fact]
+    public void ARealCoreOutlineYieldsEveryWallInIt()
+    {
+        // Verbatim from 31168 B-LEVEL 30: a channel core — a 14" wall 398" long with a
+        // 36" leg rising at each end. All three must come through.
+        var walls = WallOutlineDecomposer.Decompose(
+            Loop((1500, 3091), (1500, 3195), (1464, 3195), (1464, 3077),
+                 (1862, 3077), (1862, 3195), (1826, 3195), (1826, 3091)),
+            new PlanClassificationOptions());
+
+        Assert.Equal(3, walls.Count);
+        Assert.Single(walls, w => Math.Abs(w.Thickness - 14) < 0.5);
+        Assert.Equal(2, walls.Count(w => Math.Abs(w.Thickness - 36) < 0.5));
+    }
+
+    [Fact]
+    public void TheSameCoreAtItsRealCoordinatesYieldsEveryWall()
+    {
+        // Full precision, exactly as the DXF stores it. The right-hand leg's faces carry a
+        // sub-picometre drift off vertical that rounded coordinates hide.
+        var walls = WallOutlineDecomposer.Decompose(
+            Loop((1500.050070113553, 3091.001012129015), (1500.050070113553, 3194.75101212908),
+                 (1464.050070113553, 3194.75101212908), (1464.050070113553, 3077.001012129038),
+                 (1862.050070113528, 3077.001012129034), (1862.050070113529, 3194.751012129078),
+                 (1826.050070113529, 3194.751012129078), (1826.050070113528, 3091.001012128999)),
+            new PlanClassificationOptions());
+
+        Assert.Equal(3, walls.Count);
+    }
+
+    [Fact]
     public void FacesFurtherApartThanAWallCouldBeAreNotPaired()
     {
         var walls = WallOutlineDecomposer.Decompose(

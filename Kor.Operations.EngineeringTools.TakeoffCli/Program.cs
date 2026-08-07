@@ -61,9 +61,18 @@ if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIg
         {
             var lb = LoopGeometry.MinAreaBox(loop.Points);
             var panels = WallOutlineDecomposer.Decompose(loop, inspectOptions);
-            Console.WriteLine($"    loop: {loop.Points.Count,3} vertices, box {lb.Length:0}x{lb.Thickness:0}, area {loop.Area:0} -> {panels.Count} panel(s)");
+            var copy = WallOutlineDecomposer.Decompose(
+                new PlanLoop(loop.Layer, loop.Points.ToList(), true), inspectOptions);
+            Console.WriteLine($"    loop: {loop.Points.Count,3} vertices, box {lb.Length:0}x{lb.Thickness:0}, area {loop.Area:0} -> {panels.Count} panel(s) [exact={loop.ClosedExactly}, copy={copy.Count}]");
+            Console.WriteLine("        pts " + string.Join(" ", loop.Points.Select(p => $"({p.X:R},{p.Y:R})")));
             foreach (var p in panels.OrderByDescending(p => p.Length).Take(12))
                 Console.WriteLine($"        {p.Length,7:0.0} long x {p.Thickness,5:0.0} thick");
+        }
+
+        foreach (var chain in built.OpenChains)
+        {
+            Console.WriteLine($"    OPEN chain: {chain.Count} pts, gap {chain[0].DistanceTo(chain[^1]):0.0}");
+            Console.WriteLine("        pts " + string.Join(" ", chain.Select(p => $"({p.X:0},{p.Y:0})")));
         }
     }
     return 0;

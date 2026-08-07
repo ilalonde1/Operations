@@ -14,6 +14,13 @@ public static class WallOutlineDecomposer
     /// <summary>How parallel two faces must be before they can be opposite sides of one wall.</summary>
     private const double ParallelDot = 0.985;
 
+    /// <summary>
+    /// Slack on the thickness limits. Coordinates carry drift from the CAD export, so a wall
+    /// drawn at exactly the maximum measures a fraction over it — without this, walls on the
+    /// limit are kept or discarded according to rounding noise.
+    /// </summary>
+    private const double ThicknessSlack = 0.01;
+
     public static IReadOnlyList<WallAxis> Decompose(PlanLoop loop, PlanClassificationOptions options)
     {
         var pts = loop.Points;
@@ -57,7 +64,8 @@ public static class WallOutlineDecomposer
                 if (Math.Sign(d1) != Math.Sign(d2) && Math.Abs(d1) > 1e-6 && Math.Abs(d2) > 1e-6) continue;
 
                 double separation = (Math.Abs(d1) + Math.Abs(d2)) / 2.0;
-                if (separation < options.MinWallThickness || separation > options.MaxWallThickness) continue;
+                if (separation < options.MinWallThickness - ThicknessSlack ||
+                    separation > options.MaxWallThickness + ThicknessSlack) continue;
 
                 // Overlap of the two faces along edge i's direction.
                 double ta0 = 0, ta1 = lengthI;
@@ -94,9 +102,7 @@ public static class WallOutlineDecomposer
                 }
             }
 
-            // The leftover end faces of a wall will happily pair with each other and yield a
-            // 13"-long, 30"-thick sliver. A panel has to be longer than it is thick to be a wall.
-            if (bestJ < 0 || bestOverlap < bestDistance * options.MinWallAspect) continue;
+            if (bestJ < 0 || bestOverlap < bestDistance * options.MinPanelAspect) continue;
 
             double half = bestDistance / 2.0 * bestSide;
             var start = new DxfPoint(ai.X + ux * bestT0 + nx * half, ai.Y + uy * bestT0 + ny * half);
@@ -105,8 +111,43 @@ public static class WallOutlineDecomposer
             walls.Add(new WallAxis(start, end, bestDistance, loop.Layer));
             used[i] = true;
             used[bestJ] = true;
+
+            // Consume the short faces that cap this wall's ends. Left unused they pair with
+            // each other and produce a sliver as wide as the wall is thick, which is what
+            // forced the aspect rule to be strict enough to also reject real piers.
+            ConsumeEndFaces(edges, used, ai, ux, uy, nx, ny, bestT0, bestT1, bestDistance * bestSide);
         }
 
         return walls;
+    }
+
+    /// <summary>
+    /// Marks the edges that close the ends of a wall just paired, so they cannot be read as
+    /// faces of some other member. An end face runs across the wall: both its endpoints sit
+    /// within the band between the two faces, at one end of the wall's run.
+    /// </summary>
+    private static void ConsumeEndFaces(
+        IReadOnlyList<(DxfPoint A, DxfPoint B)> edges, bool[] used,
+        DxfPoint origin, double ux, double uy, double nx, double ny,
+        double t0, double t1, double signedThickness)
+    {
+        const double slack = 1.0;
+        double vLow = Math.Min(0, signedThickness) - slack;
+        double vHigh = Math.Max(0, signedThickness) + slack;
+
+        for (int k = 0; k < edges.Count; k++)
+        {
+            if (used[k]) continue;
+
+            bool inside = true;
+            foreach (var p in new[] { edges[k].A, edges[k].B })
+            {
+                double t = (p.X - origin.X) * ux + (p.Y - origin.Y) * uy;
+                double v = (p.X - origin.X) * nx + (p.Y - origin.Y) * ny;
+                if (t < t0 - slack || t > t1 + slack || v < vLow || v > vHigh) { inside = false; break; }
+            }
+
+            if (inside) used[k] = true;
+        }
     }
 }
