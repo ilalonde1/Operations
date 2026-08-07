@@ -105,6 +105,17 @@ public sealed record WallAxis(DxfPoint Start, DxfPoint End, double Thickness, st
 }
 
 /// <summary>
+/// A doorway or window in a wall run: the gap between two wall ends that are in line with each
+/// other. The wall stops either side of it and a header spans over it — the engineer's rule, and
+/// the reason a gap must not be closed up: "the wall should stop at the opening. A header
+/// (spandrel) may be over the opening."
+/// </summary>
+public sealed record WallOpening(DxfPoint Start, DxfPoint End, double Thickness, string Layer)
+{
+    public double Span => Start.DistanceTo(End);
+}
+
+/// <summary>
 /// A column footprint reduced to a location, a size and how it is turned.
 /// <paramref name="Depth"/> is the long face and <paramref name="Width"/> the short one;
 /// <paramref name="AxisAngleDegrees"/> is the bearing of the long face from global X.
@@ -123,6 +134,9 @@ public sealed class PlanGeometrySet
 
     /// <summary>Rings fully inside a slab ring — shafts, stair openings.</summary>
     public List<PlanLoop> Openings { get; } = new();
+
+    /// <summary>Doorways found between wall ends, each of which wants a header over it.</summary>
+    public List<WallOpening> WallOpenings { get; } = new();
 
     /// <summary>Human-readable notes about anything that could not be resolved cleanly.</summary>
     public List<string> Flags { get; } = new();

@@ -390,6 +390,90 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void WallsMeetingAtACornerShareAJoint()
+    {
+        // Read straight off a drawing, each wall's centreline stops half the other wall's thickness
+        // short of the corner, so an L is two panels with a gap between them and no connection.
+        // "We can't have a wall go from here to here and then another one from here to here."
+        var walls = new[]
+        {
+            new WallAxis(new DxfPoint(0, 6), new DxfPoint(114, 6), 12, "JBP_V-WALL"),    // stops 6" short
+            new WallAxis(new DxfPoint(114, 12), new DxfPoint(114, 120), 12, "JBP_V-WALL"),
+        };
+
+        var joined = WallNetwork.Connect(walls);
+
+        var ends = joined.SelectMany(w => new[] { w.Start, w.End }).ToList();
+        Assert.Contains(ends, p => ends.Count(q => q.DistanceTo(p) < 1e-6) >= 2);
+
+        var (connected, total) = WallNetwork.CountConnectedEnds(joined);
+        Assert.Equal(2, connected);
+        Assert.Equal(4, total);
+    }
+
+    [Fact]
+    public void AWallRunningIntoAnotherSplitsItSoTheTeeHasAJoint()
+    {
+        var walls = new[]
+        {
+            new WallAxis(new DxfPoint(0, 0), new DxfPoint(240, 0), 12, "JBP_V-WALL"),
+            new WallAxis(new DxfPoint(120, 0), new DxfPoint(120, 96), 12, "JBP_V-WALL"),
+        };
+
+        var joined = WallNetwork.Connect(walls);
+
+        // The through wall is cut at the junction, so three members meet there: its two halves and
+        // the stem running into it. Before this the stem simply stopped against an unbroken wall
+        // and shared nothing with it.
+        Assert.Equal(3, joined.Count);
+        Assert.Equal(3, joined.Count(w => w.Start.DistanceTo(new DxfPoint(120, 0)) < 1e-6
+                                       || w.End.DistanceTo(new DxfPoint(120, 0)) < 1e-6));
+    }
+
+    [Fact]
+    public void ADoorwayIsFoundAsAnOpeningRatherThanClosedUp()
+    {
+        // The engineer's rule: the wall stops at the opening, and a header spans over it. The gap
+        // must not be closed — on 31168 these measure 36-48", one tight cluster, nothing below 18".
+        var walls = new[]
+        {
+            new WallAxis(new DxfPoint(0, 0), new DxfPoint(100, 0), 12, "JBP_V-WALL"),
+            new WallAxis(new DxfPoint(142, 0), new DxfPoint(260, 0), 12, "JBP_V-WALL"),
+        };
+
+        var openings = WallNetwork.FindOpenings(walls, 24, 72);
+
+        var opening = Assert.Single(openings);
+        Assert.Equal(42, opening.Span, 3);
+
+        // ...and the walls either side are left where they are.
+        var joined = WallNetwork.Connect(walls);
+        Assert.Equal(2, joined.Count);
+        Assert.All(joined, w => Assert.True(w.Length > 90));
+    }
+
+    [Fact]
+    public void AWallDrawnAsTwoConcentricRingsIsOneWallNotTwoEnormousOnes()
+    {
+        // A basement perimeter wall: drafting closes the outer face and the inner face separately.
+        // Taken singly each is a building-sized rectangle and both were discarded, which is why
+        // "below grade, the basement walls are missing".
+        static IEnumerable<DxfSegment> Ring(double x0, double y0, double x1, double y1)
+        {
+            var c = new[] { new DxfPoint(x0, y0), new DxfPoint(x1, y0), new DxfPoint(x1, y1), new DxfPoint(x0, y1) };
+            for (int i = 0; i < 4; i++) yield return new DxfSegment("JBP_B_WALL", c[i], c[(i + 1) % 4]);
+        }
+
+        var set = StructuralPlanClassifier.Classify(
+            Ring(0, 0, 1200, 900).Concat(Ring(12, 12, 1188, 888)));   // 12" band
+
+        Assert.NotEmpty(set.Walls);
+        Assert.All(set.Walls, w => Assert.Equal(12, w.Thickness, 1));
+        Assert.True(set.Walls.Sum(w => w.Length) > 3000,
+            $"the perimeter should come through as wall, got {set.Walls.Sum(w => w.Length):0}\" of it.");
+    }
+
+    [Fact]
     public void ASmallRingStandingOnItsOwnIsNotAFloorPlate()
     {
         // Slab-edge linework closes into little rings that are not floors. Left in, each one

@@ -32,24 +32,58 @@ public static class ModelQuestionnaire
     /// <summary>Questions that apply to any drawing set, with what the tool currently assumes.</summary>
     public static IReadOnlyList<ModelQuestion> StandingQuestions(PlanClassificationOptions options) => new[]
     {
-        new ModelQuestion("W1", "Wall vs pier",
-            "A stubby element on the wall layer — pier or column?",
-            $"Modelled as a wall panel on its long axis, up to {options.MaxPierThickness:0}\" thick. Only stockier outlines fall through to columns.",
-            "A pier modelled as a column carries no in-plane shear and the core comes out softer than it is.",
-            "70 elements on 31168 read this way; they are drawn on the wall layer, so they are lateral.")
+        new ModelQuestion("H1", "Header depth",
+            $"Headers are now generated over openings. They are {options.SpandrelDepth:0}\" deep — what depth do you want?",
+            $"A spandrel beam spanning each opening, {options.SpandrelDepth:0}\" deep and the wall's thickness wide, " +
+            "labelled so the same opening is one spandrel up the building.",
+            "The header couples the piers either side of an opening; its depth drives how much.",
+            "31168: openings measured as one cluster of gaps between 36\" and 48\" in a wall run."),
+
+        new ModelQuestion("A1", "Short faces in a core",
+            "An element under 48\" long is now a column, as you asked. Inside a core, a short wall face " +
+            "between two returns also falls under that — do you want those kept as walls?",
+            "Applied literally: anything under 48\" long becomes a column. The count is in the report.",
+            "A short core face carries in-plane shear as a wall; as a column it carries none.",
+            "31138: 45 panels moved from wall to column under this rule."),
+
+        new ModelQuestion("P1", "Perimeter basement wall",
+            "The below-grade perimeter wall is now read on three sides. The angled west wall is still " +
+            "missed — is that wall drawn differently, or is a slanted face just harder?",
+            "Walls drawn as two concentric rings are paired and read as one wall.",
+            "It was the whole below-grade lateral system: \"the basement walls are missing\".",
+            "31168 P1/P2/P3: parkade walls went from 36-45 per level to 41-48."),
+
+        new ModelQuestion("W1", "Wall vs column",
+            "YOUR RULE: \"less than 48 in length should be a column\".",
+            $"Applied. Anything under {options.MinWallLength:0}\" long on plan is now a column, whatever layer it is drawn on.",
+            "A pier modelled as a column carries no in-plane shear; a column modelled as a wall is too stiff.",
+            "31138: 45 panels moved from wall to column. See A1 — this also catches short faces inside a core.")
             { Decided = true },
 
         new ModelQuestion("W2", "Thick walls",
-            $"Walls thicker than {options.UnusualWallThickness:0}\" are flagged. Are the thick ones real, or should a maximum be set?",
-            $"Anything between {options.MinWallThickness:0}\" and {options.MaxWallThickness:0}\" is modelled; thicker outlines are reported and skipped.",
-            "A face paired across a junction reads thicker than the wall is, and overstates stiffness.",
-            "31168's Revit sections include real 36\" walls, so thick is not automatically wrong."),
+            "YOUR RULE: \"some walls are thicker than 24\"\".",
+            "Applied. The \"unusually thick, confirm\" flag is gone — it produced 615 notes on 31168 asking you " +
+            $"to confirm something that is simply true. Walls up to {options.MaxWallThickness:0}\" are modelled without comment.",
+            "A flag that is always wrong trains the reader to skip the whole list.",
+            "31168's Revit sections carry real 36\" walls.")
+            { Decided = true },
 
-        new ModelQuestion("W3", "Doorways",
-            "A wall enclosure is drawn with a gap where its door is. Should the wall be modelled through the opening, or stop either side of it?",
-            "Modelled straight through: the enclosure is read as continuous wall.",
-            "A door in a shear wall is a real reduction in stiffness and is usually modelled as an opening.",
-            "31138 L10: a 46.6\" break in the stair enclosure outline."),
+        new ModelQuestion("W3", "Doorways and headers",
+            "YOUR RULE: \"the wall should stop at the opening. A header (spandrel) may be over the opening\".",
+            "Applied, both halves. Openings are found between in-line wall ends and left open; a spandrel beam " +
+            "is generated across each one and labelled.",
+            "Without a header the piers either side of an opening are tied together by nothing.",
+            "31168: gaps in a wall run measure as one cluster between 36\" and 48\", nothing below 18\" — those are doors.")
+            { Decided = true },
+
+        new ModelQuestion("C1", "Wall connectivity",
+            "YOUR POINT: \"we can't have a wall go from here to here and then another one from here to here. " +
+            "We need a connection\" — and \"this line is not aligned with this one\".",
+            "Walls now form a network: centrelines meeting at a corner are carried out to where they cross and " +
+            "share a joint, and a wall running into another splits it so the T has a joint on both members.",
+            "A wall in ETABS is a shell; two walls only carry force between them where they share a joint.",
+            "31168: half of all wall ends now share a joint with another member. Before, none did.")
+            { Decided = true },
 
         new ModelQuestion("S1", "Storeys with no plate",
             "The parkade levels have walls and columns but no floor plate, because their slab edges will not close. " +
@@ -60,37 +94,36 @@ public static class ModelQuestionnaire
             "31168: 124 plates over 60 storeys, but LEVEL P1/P2/P3 and LEVEL 1 MEZZ carry members and no plate. " +
             "31138: standalone rings measured 52-68 sq ft against a real tower floor of 9,666."),
 
-        new ModelQuestion("S2", "Openings",
-            "Shafts and stair openings are found but not cut out of the plates. Should they be cut?",
+        new ModelQuestion("S2", "Slab openings",
+            "Shafts and stair openings are found but not yet cut out of the plates. You said you can cut them — " +
+            "worth the tool doing it, or leave it?",
             "Detected and reported; the plate is left whole.",
             "An uncut plate overstates floor area, mass and diaphragm stiffness at the core.",
             "Inner rings inside a slab outline are identified on every storey."),
 
-        new ModelQuestion("L1", "Superimposed loads",
-            "Superimposed dead and live loads are not applied to generated plates. What values belong where?",
-            "None applied. Load patterns, load cases, mass source and true self-weight are set up and ready.",
-            "SDL and live load drive gravity design and seismic mass; they cannot be read from a structural outline.",
-            "31138 carries five different SDL values on L01 alone (5 to 145 psf), so no single value fits a storey."),
-
-        new ModelQuestion("D1", "Diaphragms",
-            "Rigid, semi-rigid, or none?",
-            "A rigid diaphragm per storey, assigned to every generated plate.",
-            "Modal results are not meaningful without one, and a concrete plate behaves as a rigid diaphragm.",
-            "One per storey rather than one shared: a single diaphragm across elevations makes ETABS warn.")
+        new ModelQuestion("Y1", "Yours, not the tool's",
+            "YOUR SCOPE: loads and load assignment, diaphragms, stiffness modifiers, section properties.",
+            "Removed from the tool. It no longer assigns diaphragms — the geometry arrives without them, so " +
+            "there is nothing to undo. No loads are applied. Sections carry nominal thickness only.",
+            "These are the judgement half of the work; you said you want to keep them, and they are quick.",
+            "Green list: columns, walls, slabs, openings, grid lines, storey elevations. Yellow list: these.")
             { Decided = true },
 
-        new ModelQuestion("W4", "Thick wall ceiling",
-            "Walls are modelled up to 36\" and piers to 48\". Are those the right ceilings for this building?",
-            "36\" for a wall read from paired faces, 48\" for a pier drawn whole.",
-            "Too low and real walls are dropped; too high and a face paired across a junction becomes a wall.",
-            "31168's own Revit sections include 36\" walls, so thick is not automatically wrong.")
+        new ModelQuestion("W4", "Pier labels",
+            "YOUR RULE: \"all walls should be assigned a pier label\".",
+            "Applied. Every generated wall carries one, and walls at the same plan position on different storeys " +
+            "share a label, so a pier is one element up the building.",
+            "Without a shared label the forces come out panel by panel and are no use to design from.",
+            "31168: 113 pier labels across 910 wall panels — that ratio is the walls stacking, which is right.")
             { Decided = true },
 
         new ModelQuestion("M1", "Storey framework",
-            "31168 is built on the site model's storeys (B-LEVEL 27 up, shared storeys below). Your lost model was Tower B alone, L01-L40. Which do you want?",
-            "Site model storeys, because that is the reference ETABS exported.",
-            "The frame decides how results are reported and how the model is compared with the old one.",
-            "Recovered from the pier-force export of the lost model."),
+            "YOUR ANSWER: \"Tower B model should only include tower B storeys\". NOT DONE YET — the model is " +
+            "still built on the site storey list, which is why levels look blank. Do you want Tower B split out " +
+            "as its own file, or the site model with the empty storeys removed?",
+            "Still the site model's storeys. This is the largest thing outstanding from your feedback.",
+            "It is why levels appear empty, and it decides how results are reported.",
+            "31168's reference holds 60 storeys across towers A, B and C plus the shared podium."),
     };
 
     public static void Write(string path, DxfToEtabsReport report, PlanClassificationOptions options, string projectName)

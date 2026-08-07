@@ -14,7 +14,29 @@ public sealed record PlanClassificationOptions
 
     public double MinWallThickness { get; init; } = 4.0;
     public double MaxWallThickness { get; init; } = 36.0;
-    public double MinWallLength { get; init; } = 12.0;
+
+    /// <summary>
+    /// Shorter than this on plan and the element is a column, not a wall — the engineer's rule,
+    /// given as the answer to W1: "less than 48 in length should be a column".
+    /// </summary>
+    public double MinWallLength { get; init; } = 48.0;
+
+    /// <summary>
+    /// Join wall centrelines so that panels meeting at a corner or a T share a joint. Off only for
+    /// tests that need to see what the decomposer produced before the network was built.
+    /// </summary>
+    public bool ConnectWalls { get; init; } = true;
+
+    /// <summary>
+    /// Narrowest and widest gap between in-line wall ends that counts as an opening wanting a
+    /// header over it. Measured on 31168: one cluster of 142 gaps between 36" and 48", nothing
+    /// below 18", and a separate group past 120" that is different walls rather than an opening.
+    /// </summary>
+    public double MinOpeningSpan { get; init; } = 24.0;
+    public double MaxOpeningSpan { get; init; } = 72.0;
+
+    /// <summary>Depth of a generated header. Nominal — the engineer sets section properties.</summary>
+    public double SpandrelDepth { get; init; } = 24.0;
 
     /// <summary>Below this the footprint is a column, not a wall, however it was drawn.</summary>
     public double MinWallAspect { get; init; } = 2.0;
@@ -169,7 +191,12 @@ public static class StructuralPlanClassifier
                     : $"{layer}: {built.OpenChains.Count} outline(s) would not close ({openLength:0} units of edge ignored).");
             }
 
-            foreach (var loop in built.Loops)
+            // A wall drawn as two separate rings — its outer face and its inner face — is one wall,
+            // not two enormous ones. Pair them before anything looks at them singly.
+            var loops = built.Loops.ToList();
+            if (isWall) loops = PairConcentricWallRings(result, loops, options);
+
+            foreach (var loop in loops)
             {
                 if (isColumn)
                 {
@@ -187,7 +214,94 @@ public static class StructuralPlanClassifier
         }
 
         SplitSlabsAndOpenings(result, slabCandidates, options);
+
+        // A wall shorter than the engineer's minimum is a column however it was drawn. The count is
+        // reported: this is her rule applied literally, and a short face inside a core is the case
+        // where she may want it back as a wall.
+        var stubs = result.Walls.Where(w => w.Length < options.MinWallLength).ToList();
+        if (stubs.Count > 0)
+            result.Flags.Add(
+                $"{stubs.Count} wall panel(s) under {options.MinWallLength:0}\" long were modelled as columns, " +
+                "per the rule that an element shorter than that is a column rather than a wall.");
+        foreach (var stub in stubs)
+        {
+            result.Walls.Remove(stub);
+            var middle = new DxfPoint((stub.Start.X + stub.End.X) / 2.0, (stub.Start.Y + stub.End.Y) / 2.0);
+            double bearing = Math.Atan2(stub.End.Y - stub.Start.Y, stub.End.X - stub.Start.X) * 180.0 / Math.PI;
+            while (bearing < 0) bearing += 180.0;
+            while (bearing >= 180.0) bearing -= 180.0;
+            result.Columns.Add(new ColumnFootprint(middle, stub.Thickness, stub.Length, stub.Layer, bearing));
+        }
+
+        // Walls only carry force between them where they share a joint, so the centrelines are
+        // joined into a network before anything downstream sees them.
+        if (options.ConnectWalls && result.Walls.Count > 1)
+        {
+            var connected = WallNetwork.Connect(result.Walls);
+            result.Walls.Clear();
+            result.Walls.AddRange(connected);
+
+            // Where the wall stops for a doorway, a header spans it and ties the piers together.
+            result.WallOpenings.AddRange(
+                WallNetwork.FindOpenings(result.Walls, options.MinOpeningSpan, options.MaxOpeningSpan));
+        }
+
         return result;
+    }
+
+    /// <summary>
+    /// Finds walls drawn as a ring inside a ring and reads each pair as the one wall it is.
+    ///
+    /// A basement retaining wall runs the whole perimeter, and drafting closes its outer face and
+    /// its inner face as two separate outlines rather than one ribbon. Taken singly each is a
+    /// building-sized rectangle: 130ft "thick", far past any wall, so both were discarded and the
+    /// perimeter wall never reached the model. On 31168's parkade that was every below-grade wall —
+    /// the engineer's first observation was "below grade, the basement walls are missing".
+    ///
+    /// The test is the band between the two rings. Its width is the area they differ by spread over
+    /// their average perimeter, and a pair only counts as a wall when that width is a wall's.
+    /// </summary>
+    private static List<PlanLoop> PairConcentricWallRings(
+        PlanGeometrySet result, List<PlanLoop> loops, PlanClassificationOptions options)
+    {
+        var remaining = loops.OrderByDescending(l => l.Area).ToList();
+        var consumed = new HashSet<PlanLoop>();
+
+        foreach (var outer in remaining)
+        {
+            if (consumed.Contains(outer)) continue;
+
+            foreach (var inner in remaining)
+            {
+                if (ReferenceEquals(inner, outer) || consumed.Contains(inner)) continue;
+                if (inner.Area >= outer.Area) continue;
+                if (!LoopGeometry.PointInPolygon(inner.Centroid(), outer.Points)) continue;
+
+                double band = (outer.Area - inner.Area) / ((Perimeter(outer) + Perimeter(inner)) / 2.0);
+                if (band < options.MinWallThickness || band > options.MaxWallThickness) continue;
+
+                // Feed the decomposer both faces at once; it pairs each outer edge with the inner
+                // edge facing it, exactly as it does for a wall drawn as a single ribbon.
+                var ribbon = new PlanLoop(outer.Layer, outer.Points.Concat(inner.Points.Reverse()).ToList(), closedExactly: false);
+                var panels = WallOutlineDecomposer.Decompose(ribbon, options);
+                if (panels.Count == 0) continue;
+
+                result.Walls.AddRange(panels);
+                consumed.Add(outer);
+                consumed.Add(inner);
+                break;
+            }
+        }
+
+        return remaining.Where(l => !consumed.Contains(l)).ToList();
+    }
+
+    private static double Perimeter(PlanLoop loop)
+    {
+        double total = 0;
+        for (int i = 0; i < loop.Points.Count; i++)
+            total += loop.Points[i].DistanceTo(loop.Points[(i + 1) % loop.Points.Count]);
+        return total;
     }
 
     private static void AddColumn(PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options)
@@ -253,11 +367,10 @@ public static class StructuralPlanClassifier
         var panels = WallOutlineDecomposer.Decompose(loop, options);
         if (panels.Count > 0)
         {
+            // Thickness is no longer flagged. It produced 615 notes on 31168 asking the engineer to
+            // confirm walls over 24", and the answer was that they are real: "some walls are
+            // thicker than 24"". A flag every reader learns to ignore is worse than no flag.
             result.Walls.AddRange(panels);
-            foreach (var panel in panels.Where(p => p.Thickness > options.UnusualWallThickness))
-                result.Flags.Add(
-                    $"{loop.Layer}: wall {panel.Length:0}\" long modelled at {panel.Thickness:0}\" thick — " +
-                    "unusually thick, confirm against the drawing.");
             return;
         }
 

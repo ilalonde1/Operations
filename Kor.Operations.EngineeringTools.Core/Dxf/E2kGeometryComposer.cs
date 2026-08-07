@@ -27,6 +27,23 @@ public sealed record ComposeOptions
     public bool IncludeFloors { get; init; } = true;
 
     /// <summary>
+    /// Give every generated wall a pier label — the engineer's answer to W4, "all walls should be
+    /// assigned a pier label". Walls at the same plan position on different storeys share a label,
+    /// which is what makes a pier one element up the building and gives wall forces to design from.
+    /// </summary>
+    public bool AssignPierLabels { get; init; } = true;
+
+    /// <summary>
+    /// Assign a rigid diaphragm to generated plates. Off: the engineer assigns diaphragms herself
+    /// along with loads, stiffness modifiers and section properties, and a diaphragm arriving with
+    /// the geometry is one more thing to undo.
+    /// </summary>
+    public bool AssignDiaphragms { get; init; }
+
+    /// <summary>Depth of a generated header over an opening. Nominal — section properties are the engineer's.</summary>
+    public double SpandrelDepth { get; init; } = 24.0;
+
+    /// <summary>
     /// Skip a member the model already has at that place on that storey. The output is the
     /// reference model with geometry added, so without this an engineer's own walls and columns
     /// are duplicated by ours — doubling stiffness and self-weight exactly where they overlap.
@@ -91,6 +108,10 @@ public static class E2kGeometryComposer
         var placedWalls = new HashSet<(long, long, long, long, string)>();
         var storeysWithMembers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         var storeysWithPlates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var pierNames = new Dictionary<(long, long, long, long), string>();
+        var spandrelNames = new Dictionary<(long, long, long, long), string>();
+        var placedSpandrels = new HashSet<(long, long, long, long, string)>();
+        int beamCounter = 0;
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
 
         // The model's whole storey stack, lowest first. A site model interleaves its towers here,
@@ -123,6 +144,37 @@ public static class E2kGeometryComposer
 
             pointLines.Add($"  POINT \"{name}\"  {F(x)} {F(y)}");
             return name;
+        }
+
+        /// <summary>
+        /// A pier label for the wall at this plan position, shared by the same wall on every storey.
+        ///
+        /// A pier is one element up the building, so the label has to be the same on each storey or
+        /// the forces come out per-panel and are no use to design from. Positions are rounded to
+        /// 6" before matching, which is inside the drift between one storey's drafting and the next
+        /// but well under the distance to a different wall.
+        /// </summary>
+        string PierFor(double x1, double y1, double x2, double y2)
+        {
+            static long Q(double v) => (long)Math.Round(v / 6.0);
+            var ends = new[] { (Q(x1), Q(y1)), (Q(x2), Q(y2)) }.OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
+            var key = (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
+
+            if (!pierNames.TryGetValue(key, out string? pier))
+                pierNames[key] = pier = $"{prefix}PIER{pierNames.Count + 1}";
+            return pier;
+        }
+
+        /// <summary>A spandrel label for the header at this opening, shared up the building.</summary>
+        string SpandrelFor(double x1, double y1, double x2, double y2)
+        {
+            static long Q(double v) => (long)Math.Round(v / 6.0);
+            var ends = new[] { (Q(x1), Q(y1)), (Q(x2), Q(y2)) }.OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
+            var key = (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
+
+            if (!spandrelNames.TryGetValue(key, out string? spandrel))
+                spandrelNames[key] = spandrel = $"{prefix}SPAN{spandrelNames.Count + 1}";
+            return spandrel;
         }
 
         /// <summary>
@@ -187,9 +239,11 @@ public static class E2kGeometryComposer
                 string name = NextName("W", ref wallCounter);
                 areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{pa}\"  \"{pb}\"  \"{pb}\"  \"{pa}\"  1  1  0  0");
                 storeysWithMembers.Add(story.Name);
+
+                string pier = options.AssignPierLabels ? $"  PIER  \"{PierFor(x1, y1, x2, y2)}\"" : string.Empty;
                 foreach (string on in StoreysSpannedBy(story))
                     areaAssigns.Add(
-                        $"  AREAASSIGN  \"{name}\"  \"{on}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"  " +
+                        $"  AREAASSIGN  \"{name}\"  \"{on}\"  SECTION \"{propName}\"{pier}  OBJMESHTYPE \"DEFAULT\"  " +
                         "ADDRESTRAINT \"Yes\"  CARDINALPOINT \"MIDDLE\"");
             }
 
@@ -232,6 +286,36 @@ public static class E2kGeometryComposer
                         "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
             }
 
+            // Headers over the doorways in a wall run. The engineer asked for these directly —
+            // "there are no headers" — and without them the piers either side of an opening are
+            // joined by nothing, which is why so many wall ends stand free.
+            foreach (var opening in placement.Geometry.WallOpenings)
+            {
+                double w = SnapInch(opening.Thickness);
+                double d = SnapInch(options.SpandrelDepth);
+                if (!frameProps.TryGetValue((w, d), out string? beamSection))
+                    frameProps[(w, d)] = beamSection = $"KOR-SP{Trim(w)}x{Trim(d)}";
+
+                double sx = opening.Start.X + options.OffsetX, sy = opening.Start.Y + options.OffsetY;
+                double ex = opening.End.X + options.OffsetX, ey = opening.End.Y + options.OffsetY;
+
+                var ends = new[] { ((long)Math.Round(sx * 100), (long)Math.Round(sy * 100)),
+                                   ((long)Math.Round(ex * 100), (long)Math.Round(ey * 100)) }
+                    .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
+                if (!placedSpandrels.Add((ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2, story.Name))) continue;
+
+                string ps = PointAt(sx, sy);
+                string pe = PointAt(ex, ey);
+                if (ps == pe) continue;
+
+                string spandrel = SpandrelFor(sx, sy, ex, ey);
+                string name = NextName("B", ref beamCounter);
+                lineLines.Add($"  LINE  \"{name}\"  BEAM  \"{ps}\"  \"{pe}\"  0");
+                lineAssigns.Add(
+                    $"  LINEASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{beamSection}\"  SPANDREL  \"{spandrel}\"  " +
+                    "CARDINALPT 8  AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
+            }
+
             if (!options.IncludeFloors) continue;
 
             foreach (var slab in placement.Geometry.Slabs)
@@ -262,15 +346,19 @@ public static class E2kGeometryComposer
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  FLOOR  {names.Count}  {joints}  {offsets}");
 
-                // A concrete floor plate acts as a rigid diaphragm, and modal analysis is not
-                // meaningful without one. Each storey gets its own: a single diaphragm shared
-                // across storeys would tie joints at different elevations, which ETABS warns about.
-                string diaphragm = DiaphragmFor(story.Name, prefix);
-                diaphragms.Add(diaphragm);
+                string diaphragmAssign = string.Empty;
+                if (options.AssignDiaphragms)
+                {
+                    // One per storey rather than one shared: a single diaphragm across elevations
+                    // ties joints at different heights, which ETABS warns about.
+                    string diaphragm = DiaphragmFor(story.Name, prefix);
+                    diaphragms.Add(diaphragm);
+                    diaphragmAssign = $"  DIAPH \"{diaphragm}\"";
+                }
 
                 areaAssigns.Add(
-                    $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"  " +
-                    $"DIAPH \"{diaphragm}\"  CARDINALPOINT \"MIDDLE\"");
+                    $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"" +
+                    $"{diaphragmAssign}  CARDINALPOINT \"MIDDLE\"");
             }
 
             foreach (string flag in placement.Geometry.Flags)
@@ -290,6 +378,12 @@ public static class E2kGeometryComposer
 
         if (diaphragms.Count > 0)
             doc.Append("DIAPHRAGM NAMES", diaphragms.Select(d => $"  DIAPHRAGM \"{d}\"    TYPE RIGID"));
+
+        // A pier or spandrel label an assign refers to must be declared, or ETABS drops it on import.
+        var labels = pierNames.Values.OrderBy(p => p, StringComparer.Ordinal).Select(p => $"  PIERNAME  \"{p}\"")
+            .Concat(spandrelNames.Values.OrderBy(s => s, StringComparer.Ordinal).Select(s => $"  SPANDRELNAME  \"{s}\""))
+            .ToList();
+        if (labels.Count > 0) doc.Append("PIER/SPANDREL NAMES", labels);
 
         if (pointLines.Count > 0) doc.Append("POINT COORDINATES", pointLines);
         if (areaLines.Count > 0) doc.Append("AREA CONNECTIVITIES", areaLines);
