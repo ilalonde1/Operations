@@ -25,7 +25,7 @@ public class LiveProjectBaselineTests
         "31168 YMCA Langara",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31168-reference.e2k",
-        Storeys: 60, Walls: 918, Columns: 2422, Floors: 124);
+        Storeys: 60, Walls: 918, Columns: 2422, Floors: 78);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",
@@ -147,15 +147,21 @@ public class LiveProjectBaselineTests
             Assert.True(strays.Count == 0,
                 $"{name}: generated members assigned to storeys the model has no record of: {string.Join(", ", strays)}");
 
-            // And joints carry plan position only; an elevation written there is read as an offset.
-            var withElevation = File.ReadLines(output)
-                .Where(l => System.Text.RegularExpressions.Regex.IsMatch(l, @"^\s+POINT\s+""K\w+""\s+\S+\s+\S+\s+\S+"))
-                .Take(3)
+            // A joint's third number is an offset from its storey, not an elevation. A header needs
+            // a small one — it stands only over its opening — but anything approaching a building
+            // height means an elevation has been written there, which is what once threw the whole
+            // model a thousand feet off its storeys.
+            var offsets = File.ReadLines(output)
+                .Select(l => System.Text.RegularExpressions.Regex.Match(l, @"^\s+POINT\s+""K\w+""\s+\S+\s+\S+\s+(\S+)"))
+                .Where(m => m.Success)
+                .Select(m => double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture))
                 .ToList();
 
-            Assert.True(withElevation.Count == 0,
-                $"{name}: generated joints carry a third coordinate, which ETABS reads as a storey " +
-                $"offset: {string.Join(" | ", withElevation)}");
+            var elevations = offsets.Where(z => Math.Abs(z) > 120).Take(3).ToList();
+            Assert.True(elevations.Count == 0,
+                $"{name}: {elevations.Count} generated joint(s) carry a third value too large to be a " +
+                $"storey offset ({string.Join(", ", elevations.Select(z => $"{z:0}"))}) — that slot is an " +
+                "offset, and an elevation there places the member nowhere near its storey.");
         }
         finally
         {

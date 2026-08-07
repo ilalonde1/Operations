@@ -40,7 +40,8 @@ public class ModelPlausibilityTests
     private sealed record Rendered(
         IReadOnlyList<double> WallHeights,
         IReadOnlyList<double> PlateAreas,
-        IReadOnlyList<double> ColumnHeights);
+        IReadOnlyList<double> ColumnHeights,
+        IReadOnlyList<double> SpandrelDepths);
 
     private static Rendered? BuildOrSkip(Project project)
     {
@@ -91,12 +92,25 @@ public class ModelPlausibilityTests
             return known.Max(n => stories[n].Elevation) - known.Min(n => globalFloor[n]);
         }
 
+        // Spandrels are wall panels too, but a header over a door is meant to be shallow — it is
+        // sized as the storey height less the opening height. Only full-height walls are held to
+        // the storey-height rules.
         var wallHeights = geometry.Walls
-            .Where(w => w.Name.StartsWith("K", StringComparison.OrdinalIgnoreCase))
+            .Where(w => w.Name.StartsWith("KW", StringComparison.OrdinalIgnoreCase))
             .GroupBy(w => w.Name, StringComparer.OrdinalIgnoreCase)
             .Select(g => SpanOf(g.Select(w => w.Story)))
             .Where(h => !double.IsNaN(h))
             .ToList();
+
+        // Every header must be deep enough to be a beam and shallow enough not to be a wall. The
+        // depth is carried as a joint offset, which is how ETABS defines a partial-height panel.
+        var spandrelDepths = new List<double>();
+        foreach (string raw in doc.LinesOf("POINT COORDINATES"))
+        {
+            var m = Regex.Match(raw.Trim(), @"^POINT\s+""K\w+""\s+\S+\s+\S+\s+(\S+)");
+            if (m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double z))
+                spandrelDepths.Add(z);
+        }
 
         var columnHeights = geometry.Columns
             .Where(c => c.Name.StartsWith("K", StringComparison.OrdinalIgnoreCase))
@@ -138,7 +152,25 @@ public class ModelPlausibilityTests
             plateAreas.Add(Math.Abs(sum / 2));
         }
 
-        return new Rendered(wallHeights, plateAreas, columnHeights);
+        return new Rendered(wallHeights, plateAreas, columnHeights, spandrelDepths);
+    }
+
+    /// <summary>
+    /// A header must be deep enough to act as one and shallow enough not to be a wall. Its depth
+    /// is the storey height less the opening height — the engineer's rule — and on a double-height
+    /// storey that arithmetic produced a 396" header before it was bounded.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Projects))]
+    public void EveryHeaderIsHeaderSized(string name)
+    {
+        var model = BuildOrSkip(For(name));
+        if (model is null || model.SpandrelDepths.Count == 0) return;
+
+        var wrong = model.SpandrelDepths.Where(d => d < 12 || d > 72).ToList();
+        if (wrong.Count == 0) return;
+        Assert.Fail($"{name}: {wrong.Count} header(s) outside 12-72in, extremes " +
+                    $"{wrong.Min():0} and {wrong.Max():0}in.");
     }
 
     /// <summary>

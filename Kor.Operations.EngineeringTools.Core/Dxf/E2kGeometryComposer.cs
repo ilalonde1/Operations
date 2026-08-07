@@ -40,8 +40,12 @@ public sealed record ComposeOptions
     /// </summary>
     public bool AssignDiaphragms { get; init; }
 
-    /// <summary>Depth of a generated header over an opening. Nominal — section properties are the engineer's.</summary>
-    public double SpandrelDepth { get; init; } = 24.0;
+    /// <summary>
+    /// Height of a doorway, used to size the header over it: the engineer's rule for a spandrel's
+    /// depth is the storey height less the opening height. 84" is a standard door; a plan cannot
+    /// say, so this is the one number in that rule that is assumed rather than measured.
+    /// </summary>
+    public double OpeningHeight { get; init; } = 84.0;
 
     /// <summary>
     /// Skip a member the model already has at that place on that storey. The output is the
@@ -103,7 +107,8 @@ public static class E2kGeometryComposer
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
         int skippedColumns = 0, skippedWalls = 0;
 
-        var pointNames = new Dictionary<(long, long), string>();
+        var pointNames = new Dictionary<(long, long, long), string>();
+        var placedSlabs = new HashSet<(long, long, string)>();
         var placedColumns = new HashSet<(long, long, string)>();
         var placedWalls = new HashSet<(long, long, long, long, string)>();
         var storeysWithMembers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -112,7 +117,7 @@ public static class E2kGeometryComposer
         var spandrelNames = new Dictionary<(long, long, long, long), string>();
         var placedSpandrels = new HashSet<(long, long, long, long, string)>();
         var placedOpenings = new HashSet<(long, long, string)>();
-        int beamCounter = 0, openingCounter = 0;
+        int spandrelCounter = 0, openingCounter = 0;
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
 
         // The model's whole storey stack, lowest first. A site model interleaves its towers here,
@@ -132,10 +137,13 @@ public static class E2kGeometryComposer
         /// that storey, and writing an absolute elevation there throws the member hundreds of feet
         /// off the storey it belongs to. Andrea's own model writes 1,098 of its 1,156 points as
         /// bare X and Y for exactly this reason.
-        string PointAt(double x, double y)
+        /// A joint raised above its storey by <paramref name="zOffset"/>. Zero writes a plain plan
+        /// joint; anything else writes the third value, which is the one thing that number is for —
+        /// a member that does not run the full height of its storey, such as a header.
+        string PointAt(double x, double y, double zOffset = 0)
         {
             // Quantise to 1/1000 inch so shared corners collapse to one joint.
-            var key = ((long)Math.Round(x * 1000), (long)Math.Round(y * 1000));
+            var key = ((long)Math.Round(x * 1000), (long)Math.Round(y * 1000), (long)Math.Round(zOffset * 1000));
             if (pointNames.TryGetValue(key, out string? existing)) return existing;
 
             string name;
@@ -143,7 +151,9 @@ public static class E2kGeometryComposer
             used.Add(name);
             pointNames[key] = name;
 
-            pointLines.Add($"  POINT \"{name}\"  {F(x)} {F(y)}");
+            pointLines.Add(Math.Abs(zOffset) < 1e-9
+                ? $"  POINT \"{name}\"  {F(x)} {F(y)}"
+                : $"  POINT \"{name}\"  {F(x)} {F(y)} {F(zOffset)}");
             return name;
         }
 
@@ -288,33 +298,52 @@ public static class E2kGeometryComposer
             }
 
             // Headers over the doorways in a wall run. The engineer asked for these directly —
-            // "there are no headers" — and without them the piers either side of an opening are
-            // joined by nothing, which is why so many wall ends stand free.
+            // "there are no headers" — and told us how they are modelled: "we don't model them as
+            // line elements, we model them as shells. Since they're not the whole height of the
+            // floor, they're just above the opening, in ETABS they're called spandrels."
+            //
+            // So a header is a wall panel, not a beam, standing only over the opening. Its depth is
+            // the storey height less the opening height, which is her rule for it, and it is built
+            // the way both reference models build one: a PANEL whose four joints sit at the storey
+            // (flags 0 0 0 0) with two of them raised by the panel's depth.
+            // Depth is the storey height less the opening height, held between the shallowest and
+            // deepest spandrels KOR's own models use (24" on 30783, 60" on 31138). Without the
+            // ceiling a double-height storey produced a 396"-deep header, which is a wall.
+            double storeyHeight = story.Elevation - story.ElevationBelow;
+            double spandrelDepth = SnapInch(Math.Clamp(storeyHeight - options.OpeningHeight, 24.0, 60.0));
+
             foreach (var opening in placement.Geometry.WallOpenings)
             {
-                double w = SnapInch(opening.Thickness);
-                double d = SnapInch(options.SpandrelDepth);
-                if (!frameProps.TryGetValue((w, d), out string? beamSection))
-                    frameProps[(w, d)] = beamSection = $"KOR-SP{Trim(w)}x{Trim(d)}";
+                double thickness = SnapHalfInch(opening.Thickness);
+                if (!wallProps.TryGetValue(thickness, out string? headerSection))
+                {
+                    headerSection = doc.FindShellProperty("Wall", thickness);
+                    if (headerSection is not null) reusedSections.Add(headerSection);
+                    else newWallProps[thickness] = headerSection = $"KOR-W{Trim(thickness)}";
+                    wallProps[thickness] = headerSection;
+                }
 
                 double sx = opening.Start.X + options.OffsetX, sy = opening.Start.Y + options.OffsetY;
                 double ex = opening.End.X + options.OffsetX, ey = opening.End.Y + options.OffsetY;
 
-                var ends = new[] { ((long)Math.Round(sx * 100), (long)Math.Round(sy * 100)),
+                var span = new[] { ((long)Math.Round(sx * 100), (long)Math.Round(sy * 100)),
                                    ((long)Math.Round(ex * 100), (long)Math.Round(ey * 100)) }
                     .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
-                if (!placedSpandrels.Add((ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2, story.Name))) continue;
+                if (!placedSpandrels.Add((span[0].Item1, span[0].Item2, span[1].Item1, span[1].Item2, story.Name))) continue;
 
-                string ps = PointAt(sx, sy);
-                string pe = PointAt(ex, ey);
-                if (ps == pe) continue;
+                string lowA = PointAt(sx, sy);
+                string lowB = PointAt(ex, ey);
+                if (lowA == lowB) continue;
+                string highA = PointAt(sx, sy, spandrelDepth);
+                string highB = PointAt(ex, ey, spandrelDepth);
 
                 string spandrel = SpandrelFor(sx, sy, ex, ey);
-                string name = NextName("B", ref beamCounter);
-                lineLines.Add($"  LINE  \"{name}\"  BEAM  \"{ps}\"  \"{pe}\"  0");
-                lineAssigns.Add(
-                    $"  LINEASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{beamSection}\"  SPANDREL  \"{spandrel}\"  " +
-                    "CARDINALPT 8  AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
+                string name = NextName("S", ref spandrelCounter);
+                areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{highA}\"  \"{highB}\"  \"{lowB}\"  \"{lowA}\"  0  0  0  0");
+                foreach (string on in StoreysSpannedBy(story))
+                    areaAssigns.Add(
+                        $"  AREAASSIGN  \"{name}\"  \"{on}\"  SECTION \"{headerSection}\"  SPANDREL  \"{spandrel}\"  " +
+                        "OBJMESHTYPE \"DEFAULT\"  CARDINALPOINT \"MIDDLE\"");
             }
 
             if (!options.IncludeFloors) continue;
@@ -340,6 +369,15 @@ public static class E2kGeometryComposer
                     flags.Add($"{placement.SourceSheet}: a slab outline collapsed to fewer than three joints and was skipped.");
                     continue;
                 }
+
+                // One plate per place per storey. Drafting issues both a range sheet (L4-L14) and a
+                // sheet for the individual level, so the same floor arrives twice and was modelled
+                // twice — "every floor we have two slabs on top of each other". Walls and columns
+                // were already deduplicated; plates were not.
+                var middle = slab.Centroid();
+                var where = ((long)Math.Round((middle.X + options.OffsetX) / 12.0),
+                             (long)Math.Round((middle.Y + options.OffsetY) / 12.0), story.Name);
+                if (!placedSlabs.Add(where)) continue;
 
                 string name = NextName("F", ref floorCounter);
                 storeysWithPlates.Add(story.Name);

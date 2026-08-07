@@ -215,24 +215,6 @@ public static class StructuralPlanClassifier
 
         SplitSlabsAndOpenings(result, slabCandidates, options);
 
-        // A wall shorter than the engineer's minimum is a column however it was drawn. The count is
-        // reported: this is her rule applied literally, and a short face inside a core is the case
-        // where she may want it back as a wall.
-        var stubs = result.Walls.Where(w => w.Length < options.MinWallLength).ToList();
-        if (stubs.Count > 0)
-            result.Flags.Add(
-                $"{stubs.Count} wall panel(s) under {options.MinWallLength:0}\" long were modelled as columns, " +
-                "per the rule that an element shorter than that is a column rather than a wall.");
-        foreach (var stub in stubs)
-        {
-            result.Walls.Remove(stub);
-            var middle = new DxfPoint((stub.Start.X + stub.End.X) / 2.0, (stub.Start.Y + stub.End.Y) / 2.0);
-            double bearing = Math.Atan2(stub.End.Y - stub.Start.Y, stub.End.X - stub.Start.X) * 180.0 / Math.PI;
-            while (bearing < 0) bearing += 180.0;
-            while (bearing >= 180.0) bearing -= 180.0;
-            result.Columns.Add(new ColumnFootprint(middle, stub.Thickness, stub.Length, stub.Layer, bearing));
-        }
-
         // Walls only carry force between them where they share a joint, so the centrelines are
         // joined into a network before anything downstream sees them.
         if (options.ConnectWalls && result.Walls.Count > 1)
@@ -245,6 +227,32 @@ public static class StructuralPlanClassifier
             result.WallOpenings.AddRange(
                 WallNetwork.FindOpenings(result.Walls, options.MinOpeningSpan, options.MaxOpeningSpan));
         }
+
+        // A short element standing on its own is a column; a short face joined to other walls is
+        // part of a core and stays a wall. The engineer's rule was "less than 48 in length should
+        // be a column", and when that also caught the short faces inside a core her answer was
+        // "this should be a wall" — so what decides it is connection, not length alone.
+        var ends = result.Walls.SelectMany(w => new[] { w.Start, w.End }).ToList();
+        bool Joined(DxfPoint p) => ends.Count(q => q.DistanceTo(p) < 0.01) > 1;
+
+        var stubs = result.Walls
+            .Where(w => w.Length < options.MinWallLength && !Joined(w.Start) && !Joined(w.End))
+            .ToList();
+
+        foreach (var stub in stubs)
+        {
+            result.Walls.Remove(stub);
+            var middle = new DxfPoint((stub.Start.X + stub.End.X) / 2.0, (stub.Start.Y + stub.End.Y) / 2.0);
+            double bearing = Math.Atan2(stub.End.Y - stub.Start.Y, stub.End.X - stub.Start.X) * 180.0 / Math.PI;
+            while (bearing < 0) bearing += 180.0;
+            while (bearing >= 180.0) bearing -= 180.0;
+            result.Columns.Add(new ColumnFootprint(middle, stub.Thickness, stub.Length, stub.Layer, bearing));
+        }
+
+        if (stubs.Count > 0)
+            result.Flags.Add(
+                $"{stubs.Count} element(s) under {options.MinWallLength:0}\" long and joined to no other wall " +
+                "were modelled as columns. Short faces that form part of a core stay walls.");
 
         return result;
     }
