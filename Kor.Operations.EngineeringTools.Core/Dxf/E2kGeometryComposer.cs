@@ -10,8 +10,12 @@ public sealed record ComposeOptions
     /// <summary>Material for generated walls, slabs and columns. Falls back to any concrete in the model.</summary>
     public string? MaterialContains { get; init; }
 
-    /// <summary>Thickness for generated floor areas when the drawing does not state one (inches).</summary>
-    public double DefaultSlabThickness { get; init; } = 8.0;
+    /// <summary>
+    /// Thickness for generated floor areas when the drawing does not state one (inches).
+    /// 12" is the typical floor on 31168 per the project's own Revit sections; the model
+    /// defines no 8" floor at all, so the old default understated every plate.
+    /// </summary>
+    public double DefaultSlabThickness { get; init; } = 12.0;
 
     /// <summary>Prefix for every generated object, so KOR-made geometry is filterable in ETABS.</summary>
     public string NamePrefix { get; init; } = "K";
@@ -53,6 +57,12 @@ public static class E2kGeometryComposer
         var slabProps = new SortedDictionary<double, string>();
         var frameProps = new SortedDictionary<(double W, double D), string>();
 
+        // Sections that already existed are reused, not redefined; only genuinely new
+        // thicknesses need a section writing.
+        var newWallProps = new SortedDictionary<double, string>();
+        var newSlabProps = new SortedDictionary<double, string>();
+        var reusedSections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         var pointNames = new Dictionary<(long, long, long), string>();
         var placedColumns = new HashSet<(long, long, string)>();
         var placedWalls = new HashSet<(long, long, long, long, string)>();
@@ -92,7 +102,11 @@ public static class E2kGeometryComposer
                 double thickness = SnapHalfInch(wall.Thickness);
                 if (!wallProps.TryGetValue(thickness, out string? propName))
                 {
-                    propName = $"KOR-W{Trim(thickness)}";
+                    // Prefer a section the project already defines at this thickness: it carries
+                    // the real concrete mix and a name the engineer will recognise.
+                    propName = doc.FindShellProperty("Wall", thickness);
+                    if (propName is not null) reusedSections.Add(propName);
+                    else newWallProps[thickness] = propName = $"KOR-W{Trim(thickness)}";
                     wallProps[thickness] = propName;
                 }
 
@@ -153,7 +167,9 @@ public static class E2kGeometryComposer
                 double thickness = options.DefaultSlabThickness;
                 if (!slabProps.TryGetValue(thickness, out string? propName))
                 {
-                    propName = $"KOR-S{Trim(thickness)}";
+                    propName = doc.FindShellProperty("Slab", thickness);
+                    if (propName is not null) reusedSections.Add(propName);
+                    else newSlabProps[thickness] = propName = $"KOR-S{Trim(thickness)}";
                     slabProps[thickness] = propName;
                 }
 
@@ -185,12 +201,16 @@ public static class E2kGeometryComposer
                 flags.Add($"{placement.SourceSheet}: {flag}");
         }
 
-        var wallPropLines = wallProps.Select(kv =>
-            $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Wall\"  MATERIAL \"{material}\"  MODELINGTYPE \"ShellThin\"  WALLTHICKNESS {Trim(kv.Key)}").ToList();
-        var slabPropLines = slabProps.Select(kv =>
-            $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Slab\"  MATERIAL \"{material}\"  MODELINGTYPE \"ShellThin\"  SLABTYPE \"Slab\"  SLABTHICKNESS {Trim(kv.Key)}").ToList();
+        string wallMaterial = doc.FindConcreteMaterial("Wall") ?? material;
+        string slabMaterial = doc.FindConcreteMaterial("Floor") ?? material;
+
+        var wallPropLines = newWallProps.Select(kv =>
+            $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Wall\"  MATERIAL \"{wallMaterial}\"  MODELINGTYPE \"ShellThin\"  WALLTHICKNESS {Trim(kv.Key)}").ToList();
+        var slabPropLines = newSlabProps.Select(kv =>
+            $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Slab\"  MATERIAL \"{slabMaterial}\"  MODELINGTYPE \"ShellThin\"  SLABTYPE \"Slab\"  SLABTHICKNESS {Trim(kv.Key)}").ToList();
+        string columnMaterial = doc.FindConcreteMaterial("Column") ?? material;
         var framePropLines = frameProps.Select(kv =>
-            $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{material}\"  SHAPE \"Concrete Rectangular\"  D {Trim(kv.Key.D)} B {Trim(kv.Key.W)}").ToList();
+            $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Rectangular\"  D {Trim(kv.Key.D)} B {Trim(kv.Key.W)}").ToList();
 
         if (pointLines.Count > 0) doc.Append("POINT COORDINATES", pointLines);
         if (areaLines.Count > 0) doc.Append("AREA CONNECTIVITIES", areaLines);

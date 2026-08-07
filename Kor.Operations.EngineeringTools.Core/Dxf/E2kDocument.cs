@@ -162,6 +162,45 @@ public sealed class E2kDocument
         return names;
     }
 
+    /// <summary>
+    /// An existing wall or slab section of the given thickness, if the model already defines one.
+    /// Reusing the project's own sections means generated members carry the real concrete mix and
+    /// a name the engineer recognises, instead of a new section with a borrowed material.
+    /// </summary>
+    /// <param name="propType">"Wall" or "Slab".</param>
+    public string? FindShellProperty(string propType, double thickness, double tolerance = 0.25)
+    {
+        var matches = new List<string>();
+
+        foreach (string raw in LinesOf(propType.Equals("Wall", StringComparison.OrdinalIgnoreCase)
+                     ? "WALL PROPERTIES" : "SLAB PROPERTIES"))
+        {
+            string line = raw.Trim();
+            if (!line.StartsWith("SHELLPROP", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!line.Contains($"PROPTYPE  \"{propType}\"", StringComparison.OrdinalIgnoreCase)) continue;
+
+            int t = line.IndexOf(propType.Equals("Wall", StringComparison.OrdinalIgnoreCase)
+                ? "WALLTHICKNESS" : "SLABTHICKNESS", StringComparison.OrdinalIgnoreCase);
+            if (t < 0) continue;
+
+            string tail = line[(t + "WALLTHICKNESS".Length)..].Trim();
+            string token = new(tail.TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
+            if (!double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out double found)) continue;
+            if (Math.Abs(found - thickness) > tolerance) continue;
+
+            int a = line.IndexOf('"');
+            int b = a < 0 ? -1 : line.IndexOf('"', a + 1);
+            if (a >= 0 && b > a) matches.Add(line.Substring(a + 1, b - a - 1));
+        }
+
+        // Sections imported from Revit carry the project's own concrete; ETABS's template
+        // sections (Wall1, Slab1) carry its default 4000 psi and must not be preferred.
+        return matches.FirstOrDefault(m => m.StartsWith("Rvt-", StringComparison.OrdinalIgnoreCase))
+            ?? matches.FirstOrDefault(m => !m.Equals("Wall1", StringComparison.OrdinalIgnoreCase)
+                                        && !m.Equals("Slab1", StringComparison.OrdinalIgnoreCase)
+                                        && !m.Equals("Plank1", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>A concrete material defined in the model, preferring one that reads like a wall mix.</summary>
     public string? FindConcreteMaterial(string? preferredContains = null)
     {
@@ -174,15 +213,40 @@ public sealed class E2kDocument
 
             int a = line.IndexOf('"');
             int b = a < 0 ? -1 : line.IndexOf('"', a + 1);
-            if (a >= 0 && b > a) concrete.Add(line.Substring(a + 1, b - a - 1));
+            // A material is declared over several lines (type, moduli, strength), so the
+            // same name arrives more than once.
+            if (a >= 0 && b > a)
+            {
+                string name = line.Substring(a + 1, b - a - 1);
+                if (!concrete.Contains(name, StringComparer.OrdinalIgnoreCase)) concrete.Add(name);
+            }
         }
 
         if (concrete.Count == 0) return null;
+
         if (preferredContains is not null)
         {
-            var match = concrete.FirstOrDefault(m => m.Contains(preferredContains, StringComparison.OrdinalIgnoreCase));
-            if (match is not null) return match;
+            var candidates = concrete
+                .Where(m => m.Contains(preferredContains, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            // Several mixes can serve one element type — 45 and 65 MPa walls, say. Pick the one
+            // the model actually uses most, rather than whichever is declared first.
+            if (candidates.Count > 1)
+            {
+                var usage = candidates.ToDictionary(c => c, _ => 0, StringComparer.OrdinalIgnoreCase);
+                foreach (string header in new[] { "WALL PROPERTIES", "SLAB PROPERTIES", "FRAME SECTIONS" })
+                    foreach (string raw in LinesOf(header))
+                        foreach (string candidate in candidates)
+                            if (raw.Contains($"\"{candidate}\"", StringComparison.OrdinalIgnoreCase))
+                                usage[candidate]++;
+
+                return usage.OrderByDescending(u => u.Value).First().Key;
+            }
+
+            if (candidates.Count == 1) return candidates[0];
         }
+
         return concrete.FirstOrDefault(m => m.Contains("Wall", StringComparison.OrdinalIgnoreCase)) ?? concrete[0];
     }
 }
