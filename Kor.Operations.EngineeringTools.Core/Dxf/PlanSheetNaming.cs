@@ -16,7 +16,10 @@ public sealed record PlanSheetInfo(
     /// <summary>Every building the sheet serves; a plan titled "BLDG A&amp;B" serves both.</summary>
     public IReadOnlyList<string> BuildingTags { get; init; } = Array.Empty<string>();
 
-    public bool HasPlacement => Levels.Count > 0 || ParkadeLevels.Count > 0;
+    /// <summary>A foundation plan: the lowest slab, named by its job rather than by a level.</summary>
+    public bool IsFoundation { get; init; }
+
+    public bool HasPlacement => Levels.Count > 0 || ParkadeLevels.Count > 0 || IsRoof || IsFoundation;
 }
 
 /// <summary>
@@ -45,6 +48,15 @@ public static partial class PlanSheetNaming
     /// <summary>Parkade levels are numbered separately: "LEVEL P2" is not level 2.</summary>
     [GeneratedRegex(@"L(?:EVEL)?\s*P\s*(\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex ParkadeLevelRegex();
+
+    /// <summary>
+    /// A parkade storey as a model names one. Drafting titles a sheet "LEVEL P2", but a model may
+    /// call the storey just "P2" — 31138 does, and because the sheet pattern demanded the word
+    /// LEVEL, every below-grade sheet in that project matched no storey and was dropped. The whole
+    /// parkade went missing for want of a prefix.
+    /// </summary>
+    [GeneratedRegex(@"^\s*(?:L(?:EVEL)?\s*)?P\s*(\d+)\s*$", RegexOptions.IgnoreCase)]
+    private static partial Regex ParkadeStoryRegex();
 
     public static PlanSheetInfo Parse(string fileName)
     {
@@ -99,6 +111,7 @@ public static partial class PlanSheetNaming
             isRoof,
             CleanLabel(name))
         {
+            IsFoundation = name.Contains("FOUNDATION", StringComparison.OrdinalIgnoreCase),
             ParkadeLevels = parkade,
             BuildingTags = buildings,
         };
@@ -127,16 +140,38 @@ public static partial class PlanSheetNaming
     /// level number, and on the building letter when the sheet names one — so a
     /// "BLDG B" plan never lands on Tower A's storeys.
     /// </summary>
+    /// <param name="storyNames">The model's storeys, highest first.</param>
     public static IReadOnlyList<string> MatchStories(PlanSheetInfo sheet, IEnumerable<string> storyNames)
     {
+        var stories = storyNames.ToList();
         var matches = new List<string>();
 
-        foreach (string story in storyNames)
+        // A roof or foundation plan carries no level number, so it matched nothing and was dropped
+        // — the roof and the lowest slab of a building, missing because of how the sheet is titled.
+        // Both name their place in the building instead: the roof is the storey called one, or
+        // failing that the topmost; the foundation is the lowest.
+        if (sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0)
+        {
+            var eligible = stories
+                .Where(s => sheet.BuildingTags.Count == 0 || sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(s, tag)))
+                .ToList();
+            if (eligible.Count == 0) eligible = stories;
+
+            if (sheet.IsRoof)
+            {
+                var named = eligible.Where(s => s.Contains("ROOF", StringComparison.OrdinalIgnoreCase)).ToList();
+                return named.Count > 0 ? named : eligible.Take(1).ToList();
+            }
+
+            if (sheet.IsFoundation) return eligible.Count > 0 ? eligible.TakeLast(1).ToList() : matches;
+        }
+
+        foreach (string story in stories)
         {
             if (sheet.BuildingTags.Count > 0 &&
                 !sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(story, tag))) continue;
 
-            var parkadeInStory = ParkadeLevelRegex().Match(story);
+            var parkadeInStory = ParkadeStoryRegex().Match(story);
             if (parkadeInStory.Success)
             {
                 if (sheet.ParkadeLevels.Contains(int.Parse(parkadeInStory.Groups[1].Value))) matches.Add(story);

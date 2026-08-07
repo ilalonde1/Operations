@@ -25,13 +25,13 @@ public class LiveProjectBaselineTests
         "31168 YMCA Langara",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31168-reference.e2k",
-        Storeys: 60, Walls: 918, Columns: 2418, Floors: 78);
+        Storeys: 61, Walls: 918, Columns: 2418, Floors: 79);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",
         $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\_DXF-plans-for-rebuild",
         $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models\31138-reference-from-Andrea-gravity.e2k",
-        Storeys: 19, Walls: 55, Columns: 147, Floors: 7);
+        Storeys: 23, Walls: 61, Columns: 147, Floors: 8);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;
