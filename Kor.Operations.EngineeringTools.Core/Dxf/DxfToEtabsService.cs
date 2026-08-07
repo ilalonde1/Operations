@@ -15,8 +15,16 @@ public sealed record DxfToEtabsRequest
     /// <summary>Restrict to one building's sheets, e.g. "B" for a "BLDG B" tower.</summary>
     public string? BuildingTag { get; init; }
 
-    /// <summary>When null, the drawings are centred on the model's grid extents.</summary>
+    /// <summary>
+    /// Translation applied to drawing coordinates. Defaults to none: the CAD export and the
+    /// model both come out of the same Revit project, so the drawings already sit in the
+    /// model's coordinate system — on 31168 the core walls land on grid lines 15 and 16 to
+    /// within 0.05". Set <see cref="CentreOnGrid"/> only for a drawing that does not share it.
+    /// </summary>
     public (double X, double Y)? Offset { get; init; }
+
+    /// <summary>Fall back to centring the drawings on the model's grid extents.</summary>
+    public bool CentreOnGrid { get; init; }
 
     public PlanClassificationOptions Classification { get; init; } = new();
     public ComposeOptions Compose { get; init; } = new();
@@ -97,7 +105,8 @@ public static class DxfToEtabsService
             parsed.Add((sheet, geometry, matched));
         }
 
-        var offset = request.Offset ?? AutoOffset(doc, parsed.Select(p => p.Geometry));
+        var offset = request.Offset
+            ?? (request.CentreOnGrid ? AutoOffset(doc, parsed.Select(p => p.Geometry)) : (0.0, 0.0));
 
         var placements = new List<StoryPlacement>();
         foreach (var (sheet, geometry, matched) in parsed)

@@ -177,6 +177,26 @@ public class WallOutlineDecomposerTests
     }
 
     [Fact]
+    public void CoreWallFacesLandOnTheirGridLines()
+    {
+        // 31168 B-LEVEL 30: the core straddles grids 15 and 16, which the ETABS model places
+        // at x = 1500 and 1826. The drawing's faces sit at 1500.05 and 1826.05, so the export
+        // already shares the model's coordinate system and must not be shifted onto it.
+        var walls = WallOutlineDecomposer.Decompose(
+            Loop((1500.05, 3091.001), (1500.05, 3194.751), (1464.05, 3194.751), (1464.05, 3077.001),
+                 (1862.05, 3077.001), (1862.05, 3194.751), (1826.05, 3194.751), (1826.05, 3091.001)),
+            new PlanClassificationOptions());
+
+        var faces = walls.SelectMany(w => new[] { w.Start.X, w.End.X })
+            .Concat(walls.Select(w => w.Start.X + w.Thickness / 2))
+            .Concat(walls.Select(w => w.Start.X - w.Thickness / 2))
+            .ToList();
+
+        foreach (double grid in new[] { 1500.0, 1826.0 })
+            Assert.Contains(faces, f => Math.Abs(f - grid) <= 1.0);
+    }
+
+    [Fact]
     public void FacesFurtherApartThanAWallCouldBeAreNotPaired()
     {
         var walls = WallOutlineDecomposer.Decompose(
