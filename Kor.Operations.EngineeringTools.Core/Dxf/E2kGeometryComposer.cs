@@ -25,6 +25,16 @@ public sealed record ComposeOptions
     public double OffsetY { get; init; }
 
     public bool IncludeFloors { get; init; } = true;
+
+    /// <summary>
+    /// Skip a member the model already has at that place on that storey. The output is the
+    /// reference model with geometry added, so without this an engineer's own walls and columns
+    /// are duplicated by ours — doubling stiffness and self-weight exactly where they overlap.
+    /// </summary>
+    public bool SkipMembersAlreadyModelled { get; init; } = true;
+
+    /// <summary>How close a generated member must be to an existing one to count as the same (inches).</summary>
+    public double AlreadyModelledTolerance { get; init; } = 6.0;
 }
 
 public sealed record ComposeSummary(
@@ -62,6 +72,18 @@ public static class E2kGeometryComposer
         var newWallProps = new SortedDictionary<double, string>();
         var newSlabProps = new SortedDictionary<double, string>();
         var reusedSections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // What the model already contains, so nothing is modelled twice.
+        var existing = options.SkipMembersAlreadyModelled
+            ? E2kGeometryReader.Read(doc)
+            : new E2kModelGeometry();
+        var existingColumns = existing.Columns
+            .GroupBy(c => c.Story, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Select(c => c.At).ToList(), StringComparer.OrdinalIgnoreCase);
+        var existingWalls = existing.Walls
+            .GroupBy(w => w.Story, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        int skippedColumns = 0, skippedWalls = 0;
 
         var pointNames = new Dictionary<(long, long, long), string>();
         var placedColumns = new HashSet<(long, long, string)>();
@@ -118,6 +140,16 @@ public static class E2kGeometryComposer
                     .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
                 if (!placedWalls.Add((ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2, story.Name))) continue;
 
+                // A wall the engineer has already modelled runs along the same line: compare the
+                // midpoint, since one drawn wall may be modelled as several stacked panels.
+                var mid = new DxfPoint((x1 + x2) / 2.0, (y1 + y2) / 2.0);
+                if (existingWalls.TryGetValue(story.Name, out var alreadyWalls) &&
+                    alreadyWalls.Any(w => DistanceToSegment(mid, w.A, w.B) <= options.AlreadyModelledTolerance))
+                {
+                    skippedWalls++;
+                    continue;
+                }
+
                 string p1 = PointAt(x1, y1, zBottom);
                 string p2 = PointAt(x2, y2, zBottom);
                 string p3 = PointAt(x2, y2, zTop);
@@ -145,6 +177,13 @@ public static class E2kGeometryComposer
                 // members would otherwise double the stiffness at that point.
                 var stack = ((long)Math.Round(x * 100), (long)Math.Round(y * 100), story.Name);
                 if (!placedColumns.Add(stack)) continue;
+
+                if (existingColumns.TryGetValue(story.Name, out var already) &&
+                    already.Any(p => p.DistanceTo(new DxfPoint(x, y)) <= options.AlreadyModelledTolerance))
+                {
+                    skippedColumns++;
+                    continue;
+                }
 
                 string bottom = PointAt(x, y, zBottom);
                 string top = PointAt(x, y, zTop);
@@ -221,11 +260,27 @@ public static class E2kGeometryComposer
         if (slabPropLines.Count > 0) doc.Append("SLAB PROPERTIES", slabPropLines);
         if (framePropLines.Count > 0) doc.Append("FRAME SECTIONS", framePropLines);
 
+        if (skippedWalls > 0 || skippedColumns > 0)
+            flags.Add($"{skippedWalls} wall(s) and {skippedColumns} column(s) were already modelled at those " +
+                      "locations and were not added again.");
+
         var sections = wallProps.Values.Concat(slabProps.Values).Concat(frameProps.Values).ToList();
         return new ComposeSummary(
             wallCounter, colCounter, floorCounter, pointCounter,
             placements.Select(p => p.Story.Name).Distinct().Count(),
             sections, flags);
+    }
+
+    /// <summary>Shortest distance from a point to a line segment.</summary>
+    private static double DistanceToSegment(DxfPoint p, DxfPoint a, DxfPoint b)
+    {
+        double dx = b.X - a.X, dy = b.Y - a.Y;
+        double lengthSquared = dx * dx + dy * dy;
+        if (lengthSquared < 1e-9) return p.DistanceTo(a);
+
+        double t = ((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lengthSquared;
+        t = Math.Clamp(t, 0.0, 1.0);
+        return p.DistanceTo(new DxfPoint(a.X + dx * t, a.Y + dy * t));
     }
 
     private static double Normalise(double degrees)

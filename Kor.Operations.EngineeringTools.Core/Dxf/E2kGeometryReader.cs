@@ -49,13 +49,23 @@ public static partial class E2kGeometryReader
                 points[m.Groups[1].Value] = new DxfPoint(x, y);
         }
 
-        var storyOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // One object can be assigned to several storeys, each on its own line. Keeping only the
+        // last would hide every other storey it stands on.
+        var storyOf = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS" })
             foreach (string raw in doc.LinesOf(header))
             {
                 var m = AssignRegex().Match(raw.Trim());
-                if (m.Success) storyOf[m.Groups[2].Value] = m.Groups[3].Value;
+                if (!m.Success) continue;
+
+                string objectName = m.Groups[2].Value;
+                if (!storyOf.TryGetValue(objectName, out var stories)) storyOf[objectName] = stories = new List<string>();
+                if (!stories.Contains(m.Groups[3].Value, StringComparer.OrdinalIgnoreCase))
+                    stories.Add(m.Groups[3].Value);
             }
+
+        IReadOnlyList<string> StoriesFor(string objectName)
+            => storyOf.TryGetValue(objectName, out var s) ? s : new List<string> { string.Empty };
 
         var geometry = new E2kModelGeometry();
 
@@ -78,7 +88,8 @@ public static partial class E2kGeometryReader
                     distinct.Add(c);
 
             if (distinct.Count < 2) continue;
-            geometry.Walls.Add(new E2kWall(name, storyOf.GetValueOrDefault(name, string.Empty), distinct[0], distinct[1]));
+            foreach (string story in StoriesFor(name))
+                geometry.Walls.Add(new E2kWall(name, story, distinct[0], distinct[1]));
         }
 
         foreach (string raw in doc.LinesOf("LINE CONNECTIVITIES"))
@@ -88,7 +99,8 @@ public static partial class E2kGeometryReader
 
             string name = m.Groups[1].Value;
             if (!points.TryGetValue(m.Groups[3].Value, out var at)) continue;
-            geometry.Columns.Add(new E2kColumn(name, storyOf.GetValueOrDefault(name, string.Empty), at));
+            foreach (string story in StoriesFor(name))
+                geometry.Columns.Add(new E2kColumn(name, story, at));
         }
 
         return geometry;
