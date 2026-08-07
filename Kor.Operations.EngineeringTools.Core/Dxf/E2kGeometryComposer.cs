@@ -87,6 +87,7 @@ public static class E2kGeometryComposer
         var wallProps = new SortedDictionary<double, string>();
         var slabProps = new SortedDictionary<double, string>();
         var frameProps = new SortedDictionary<(double W, double D), string>();
+        var roundProps = new SortedDictionary<double, string>();
 
         // Sections that already existed are reused, not redefined; only genuinely new
         // thicknesses need a section writing.
@@ -261,7 +262,13 @@ public static class E2kGeometryComposer
             foreach (var column in placement.Geometry.Columns)
             {
                 double w = SnapInch(column.Width), d = SnapInch(column.Depth);
-                if (!frameProps.TryGetValue((w, d), out string? sectionName))
+                string? sectionName;
+                if (column.IsRound)
+                {
+                    if (!roundProps.TryGetValue(d, out sectionName))
+                        roundProps[d] = sectionName = $"KOR-D{Trim(d)}";
+                }
+                else if (!frameProps.TryGetValue((w, d), out sectionName))
                 {
                     sectionName = $"KOR-C{Trim(w)}x{Trim(d)}";
                     frameProps[(w, d)] = sectionName;
@@ -438,7 +445,10 @@ public static class E2kGeometryComposer
             $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Slab\"  MATERIAL \"{slabMaterial}\"  MODELINGTYPE \"ShellThin\"  SLABTYPE \"Slab\"  SLABTHICKNESS {Trim(kv.Key)}").ToList();
         string columnMaterial = doc.FindConcreteMaterial("Column") ?? material;
         var framePropLines = frameProps.Select(kv =>
-            $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Rectangular\"  D {Trim(kv.Key.D)} B {Trim(kv.Key.W)}").ToList();
+            $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Rectangular\"  D {Trim(kv.Key.D)} B {Trim(kv.Key.W)}")
+            .Concat(roundProps.Select(kv =>
+                $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Circle\"  D {Trim(kv.Key)}"))
+            .ToList();
 
         if (diaphragms.Count > 0)
             doc.Append("DIAPHRAGM NAMES", diaphragms.Select(d => $"  DIAPHRAGM \"{d}\"    TYPE RIGID"));
@@ -473,7 +483,7 @@ public static class E2kGeometryComposer
                 $"edges would not close: {string.Join(", ", plateless)}. Those storeys have no diaphragm " +
                 "until a plate is added.");
 
-        var sections = wallProps.Values.Concat(slabProps.Values).Concat(frameProps.Values).ToList();
+        var sections = wallProps.Values.Concat(slabProps.Values).Concat(frameProps.Values).Concat(roundProps.Values).ToList();
         return new ComposeSummary(
             wallCounter, colCounter, floorCounter, pointCounter,
             placements.Select(p => p.Story.Name).Distinct().Count(),

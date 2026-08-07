@@ -121,7 +121,16 @@ public sealed record WallOpening(DxfPoint Start, DxfPoint End, double Thickness,
 /// <paramref name="AxisAngleDegrees"/> is the bearing of the long face from global X.
 /// </summary>
 public sealed record ColumnFootprint(
-    DxfPoint Center, double Width, double Depth, string Layer, double AxisAngleDegrees = 0);
+    DxfPoint Center, double Width, double Depth, string Layer, double AxisAngleDegrees = 0)
+{
+    /// <summary>
+    /// A round column. Its footprint has no long axis, so the least-area box lands at whatever
+    /// angle the tessellation happened to favour: modelled from that box it comes out square and
+    /// turned at random, which is what the engineer saw — "these are supposed to be round columns,
+    /// but they're square. Square and rotated."
+    /// </summary>
+    public bool IsRound { get; init; }
+}
 
 /// <summary>Everything one drawing contributes to the model.</summary>
 public sealed class PlanGeometrySet

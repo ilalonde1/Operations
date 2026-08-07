@@ -52,9 +52,13 @@ public sealed record PlanClassificationOptions
     public double MaxColumnSize { get; init; } = 96.0;
 
     /// <summary>
-    /// A wall outline is a thin ribbon tracing faces, so it fills little of its bounding
-    /// box. A footprint that fills most of its box is solid concrete — a pier — and must
-    /// not be sliced into panels.
+    /// A wall outline is a thin ribbon tracing faces, so it fills little of its bounding box. A
+    /// footprint that fills most of its box is solid concrete — a pier — and must not be sliced
+    /// into panels.
+    ///
+    /// Fill alone does not separate the two: a pier is a solid rectangle, but so is an L of two
+    /// walls meeting at a corner once its box is drawn round it. What separates them is shape —
+    /// see the convexity test in AddWallOrColumn.
     /// </summary>
     public double PierFillRatio { get; init; } = 0.6;
 
@@ -346,7 +350,31 @@ public static class StructuralPlanClassifier
         double shortSide = Math.Min(box.Length, box.Thickness);
 
         if (shortSide < options.MinColumnSize || longSide > options.MaxColumnSize) return;
-        result.Columns.Add(new ColumnFootprint(loop.Centroid(), shortSide, longSide, loop.Layer, AxisAngle(box)));
+
+        // A circle drawn in CAD arrives as a many-sided polygon: its least-area box is square and
+        // it fills pi/4 of that box. A rectangle fills all of it. Nothing else lands between.
+        bool round = loop.Points.Count >= 8 &&
+                     longSide > 0 && (longSide - shortSide) / longSide < 0.12 &&
+                     loop.Area / (longSide * shortSide) is > 0.70 and < 0.86;
+
+        result.Columns.Add(round
+            ? new ColumnFootprint(loop.Centroid(), longSide, longSide, loop.Layer, 0) { IsRound = true }
+            : new ColumnFootprint(loop.Centroid(), shortSide, longSide, loop.Layer, AxisAngle(box)));
+    }
+
+    /// <summary>
+    /// How wide the outline is where it has substance — four times its area over its perimeter.
+    ///
+    /// This is what separates a solid pier from two walls meeting at a corner, which the bounding
+    /// box cannot: both fill most of their box. A pier notched at one corner still measures wider
+    /// than any wall in the building; an L of two 12" walls measures about a wall thick, however
+    /// large the box drawn round it. Piers stay whole and corners go to the decomposer, which
+    /// returns the two walls that are actually there instead of one thick one laid across them.
+    /// </summary>
+    private static double EffectiveWidth(PlanLoop loop)
+    {
+        double perimeter = Perimeter(loop);
+        return perimeter < 1e-9 ? 0 : 4.0 * loop.Area / perimeter;
     }
 
     /// <summary>Bearing of the footprint's long face from global X, in degrees.</summary>
@@ -383,8 +411,15 @@ public static class StructuralPlanClassifier
         // Solid footprint rather than a ribbon of faces: a pier. It is drawn on the wall layer and
         // belongs to the lateral system, so it stays a wall panel on its long axis — modelled as a
         // column it would carry no in-plane shear and the core would be softer than it is.
+        //
+        // Only a convex footprint though. Two walls meeting at a corner make an L, which fills
+        // enough of its box to look solid and was being modelled as one thick wall laid across the
+        // corner — "it's almost like it filled the volume, but didn't do the actual corner", and
+        // the single wall it produced lined up with neither of the two it replaced. An L is not
+        // convex; a pier is, so the corner goes to the decomposer and comes back as two walls.
         double boxArea = box.Length * box.Thickness;
-        if (boxArea > 0 && loop.Area / boxArea >= options.PierFillRatio && box.Aspect < 4.0)
+        if (boxArea > 0 && loop.Area / boxArea >= options.PierFillRatio && box.Aspect < 4.0 &&
+            EffectiveWidth(loop) > options.MaxWallThickness)
         {
             if (box.Thickness <= options.MaxPierThickness && box.Length >= options.MinWallLength)
             {

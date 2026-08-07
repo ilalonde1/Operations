@@ -25,7 +25,7 @@ public class LiveProjectBaselineTests
         "31168 YMCA Langara",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31168-reference.e2k",
-        Storeys: 60, Walls: 918, Columns: 2422, Floors: 78);
+        Storeys: 60, Walls: 918, Columns: 2418, Floors: 78);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",

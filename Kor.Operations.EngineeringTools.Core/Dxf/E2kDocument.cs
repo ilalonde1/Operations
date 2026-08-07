@@ -149,9 +149,13 @@ public sealed class E2kDocument
             stack.Add((name, elevation, height));
         }
 
+        // A typical storey in this building, used where a storey's own height cannot be believed.
+        var believable = stack.Select(s => s.Height).Where(h => h >= 60 && h <= maxPlausibleStoreyHeight).OrderBy(h => h).ToList();
+        double typical = believable.Count > 0 ? believable[believable.Count / 2] : maxPlausibleStoreyHeight;
+
         var result = new List<StoryLevel>();
         for (int i = 0; i < stack.Count; i++)
-            result.Add(new StoryLevel(stack[i].Name, stack[i].Elevation, FloorUnder(stack, i, maxPlausibleStoreyHeight)));
+            result.Add(new StoryLevel(stack[i].Name, stack[i].Elevation, FloorUnder(stack, i, maxPlausibleStoreyHeight, typical)));
 
         result.Reverse();
         return result;
@@ -172,7 +176,7 @@ public sealed class E2kDocument
     /// separate a real storey from a duplicate-floor sliver; only the name can.
     /// </summary>
     private static double FloorUnder(
-        IReadOnlyList<(string Name, double Elevation, double Height)> stack, int index, double maxHeight)
+        IReadOnlyList<(string Name, double Elevation, double Height)> stack, int index, double maxHeight, double typicalHeight)
     {
         var (name, top, height) = stack[index];
         string tag = BuildingTagOf(name);
@@ -196,9 +200,14 @@ public sealed class E2kDocument
 
         // Nothing below: the base storey. ETABS parks a model's base far under the structure and
         // absorbs the distance into the lowest storey — on 31168 the base reads -12000 and LEVEL P3
-        // reads 13366, a storey 1,113ft tall. Honouring the base without capping that storey turns
+        // reads 13366, a storey 1,113ft tall. Honouring the base without bounding that storey turns
         // the lowest walls into 1,100ft spikes; ignoring it lifts the whole model 1,000ft up.
-        return top - Math.Min(height, maxHeight);
+        //
+        // Where that height cannot be believed, the storey is given a typical one from this building
+        // rather than the 40ft ceiling: a parkade level is a parkade level, and the ceiling made it
+        // four storeys tall — "the lowest level, which is P3, seems way too high". A base storey
+        // whose own height is credible keeps it.
+        return top - (height > maxHeight ? typicalHeight : height);
     }
 
     /// <summary>
