@@ -142,6 +142,18 @@ public static class StructuralPlanClassifier
     public static PlanGeometrySet Classify(IEnumerable<DxfSegment> segments, PlanClassificationOptions? options = null)
     {
         options ??= new PlanClassificationOptions();
+        var all = segments as IReadOnlyList<DxfSegment> ?? segments.ToList();
+        segments = all;
+
+        // Where the drawing used an arc or a circle. A loop standing on these points was drawn as
+        // a curve, and that is the only sound basis for calling a column round.
+        var curvePoints = new HashSet<(long, long)>();
+        foreach (var s in all.Where(s => s.FromCurve))
+        {
+            curvePoints.Add(Quantise(s.Start));
+            curvePoints.Add(Quantise(s.End));
+        }
+
         var result = new PlanGeometrySet();
         var slabBuilder = new PlanLoopBuilder(options.JoinTolerance, options.BridgeTolerance, options.ExtendLimit);
         var wallBuilder = new PlanLoopBuilder(options.JoinTolerance, options.WallBridgeTolerance, options.ExtendLimit);
@@ -204,7 +216,7 @@ public static class StructuralPlanClassifier
             {
                 if (isColumn)
                 {
-                    AddColumn(result, loop, options);
+                    AddColumn(result, loop, options, curvePoints);
                 }
                 else if (isWall)
                 {
@@ -349,7 +361,11 @@ public static class StructuralPlanClassifier
         return total;
     }
 
-    private static void AddColumn(PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options)
+    private static (long, long) Quantise(DxfPoint p) =>
+        ((long)Math.Round(p.X * 100), (long)Math.Round(p.Y * 100));
+
+    private static void AddColumn(
+        PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options, HashSet<(long, long)> curvePoints)
     {
         var box = LoopGeometry.MinAreaBox(loop.Points);
         double longSide = Math.Max(box.Length, box.Thickness);
@@ -357,11 +373,16 @@ public static class StructuralPlanClassifier
 
         if (shortSide < options.MinColumnSize || longSide > options.MaxColumnSize) return;
 
-        // A circle drawn in CAD arrives as a many-sided polygon: its least-area box is square and
-        // it fills pi/4 of that box. A rectangle fills all of it. Nothing else lands between.
-        bool round = loop.Points.Count >= 8 &&
-                     longSide > 0 && (longSide - shortSide) / longSide < 0.12 &&
-                     loop.Area / (longSide * shortSide) is > 0.70 and < 0.86;
+        // Round only if the drawing drew it with a curve. Every shape test fails here: a square
+        // column with chamfered corners has a square bounding box, fills pi/4 of it, and scores
+        // above 0.95 on perimeter efficiency, exactly as a circle does. On 31168 those tests made
+        // 160 chamfered columns into 10"-diameter circles, while every arc on a column layer in
+        // the whole drawing set measures 16", 24" or 30" and no 10" circle exists anywhere.
+        // Whether an arc was used is a fact about the drawing, not an inference from its shape.
+        int onCurve = loop.Points.Count(p => curvePoints.Contains(Quantise(p)));
+        bool round = loop.Points.Count > 0 &&
+                     onCurve >= loop.Points.Count * 0.8 &&
+                     longSide > 0 && (longSide - shortSide) / longSide < 0.10;
 
         result.Columns.Add(round
             ? new ColumnFootprint(loop.Centroid(), longSide, longSide, loop.Layer, 0) { IsRound = true }

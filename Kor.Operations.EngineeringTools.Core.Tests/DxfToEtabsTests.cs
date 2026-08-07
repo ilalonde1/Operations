@@ -474,6 +474,41 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void OnlyAColumnTheDrawingDrewWithACurveIsRound()
+    {
+        // A chamfered square defeats every shape test: square bounding box, fills pi/4 of it, and
+        // scores above 0.95 on perimeter efficiency — indistinguishable from a circle by geometry.
+        // On 31168 that made 160 of them 10"-diameter round columns while the drawings hold no 10"
+        // arc at all. What the drawing was drawn with is the fact; the shape is only an inference.
+        static IEnumerable<DxfSegment> Chamfered(double cx, double cy, double half, double chamfer)
+        {
+            var pts = new List<DxfPoint>
+            {
+                new(cx - half + chamfer, cy - half), new(cx + half - chamfer, cy - half),
+                new(cx + half, cy - half + chamfer), new(cx + half, cy + half - chamfer),
+                new(cx + half - chamfer, cy + half), new(cx - half + chamfer, cy + half),
+                new(cx - half, cy + half - chamfer), new(cx - half, cy - half + chamfer),
+            };
+            for (int i = 0; i < pts.Count; i++)
+                yield return new DxfSegment("JBP_V_COL", pts[i], pts[(i + 1) % pts.Count]);
+        }
+
+        var chamferedOnly = StructuralPlanClassifier.Classify(Chamfered(0, 0, 5, 1.5));
+        var square = Assert.Single(chamferedOnly.Columns);
+        Assert.False(square.IsRound, "a chamfered square column must not be modelled as round.");
+
+        // ...and a real circle, drawn as arcs, is.
+        var circle = DxfPlanReader.TessellateArc("JBP_V_COL", 500, 500, 8, 0, 180)
+            .Concat(DxfPlanReader.TessellateArc("JBP_V_COL", 500, 500, 8, 180, 360));
+
+        var drawnRound = StructuralPlanClassifier.Classify(circle);
+        var round = Assert.Single(drawnRound.Columns);
+        Assert.True(round.IsRound, "a column drawn with arcs must be modelled as round.");
+        Assert.Equal(16, round.Depth, 0);
+        Assert.Equal(0, round.AxisAngleDegrees, 3);
+    }
+
+    [Fact]
     public void ASmallRingStandingOnItsOwnIsNotAFloorPlate()
     {
         // Slab-edge linework closes into little rings that are not floors. Left in, each one

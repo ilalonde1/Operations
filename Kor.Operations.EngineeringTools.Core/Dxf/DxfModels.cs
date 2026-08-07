@@ -17,6 +17,16 @@ public readonly record struct DxfPoint(double X, double Y)
 public sealed record DxfSegment(string Layer, DxfPoint Start, DxfPoint End)
 {
     public double Length => Start.DistanceTo(End);
+
+    /// <summary>
+    /// This segment came from an arc or a circle rather than from a straight line.
+    ///
+    /// It is the only trustworthy way to know a column is round. Shape cannot tell: a square
+    /// column with chamfered corners has a square bounding box, fills pi/4 of it, and even scores
+    /// as round on perimeter — on 31168 it made 160 of them 10"-diameter circles when the drawings
+    /// hold no 10" arc at all. What the drawing was drawn with is not a heuristic.
+    /// </summary>
+    public bool FromCurve { get; init; }
 }
 
 /// <summary>A closed ring of points, in order. First point is not repeated at the end.</summary>

@@ -168,7 +168,7 @@ public static class DxfPlanReader
         {
             var current = At(startDeg + sweep * k / count);
             if (previous.DistanceTo(current) > 1e-9)
-                yield return new DxfSegment(layer, previous, current);
+                yield return new DxfSegment(layer, previous, current) { FromCurve = true };
             previous = current;
         }
     }
