@@ -32,8 +32,12 @@ public sealed record PlanClassificationOptions
     /// <summary>Walls thicker than this are reported for checking; they are unusual above a podium.</summary>
     public double UnusualWallThickness { get; init; } = 24.0;
 
-    /// <summary>Rings smaller than this on a slab layer are noise, not slabs or openings.</summary>
-    public double MinSlabArea { get; init; } = 400.0;
+    /// <summary>
+    /// Rings smaller than this on a slab layer are noise, not slabs or openings.
+    /// 7,200 in² is 50 ft² — below a plate worth modelling, and the size at which
+    /// interrupted slab edges start closing into meaningless slivers.
+    /// </summary>
+    public double MinSlabArea { get; init; } = 7200.0;
 
     public double JoinTolerance { get; init; } = 0.05;
     public double BridgeTolerance { get; init; } = 6.0;
