@@ -101,10 +101,14 @@ public sealed class E2kDocument
     {
         var parsed = new List<(string Name, double Height)>();
 
-        // The base storey carries an explicit elevation rather than a height, and it is not
-        // always zero — 31168 sets its base at -12000in. Starting from zero would put every
-        // point in the model 1,000ft above where the building actually is.
         double baseElevation = 0;
+
+        // No storey is taller than this. ETABS parks a model's base far below the structure and
+        // absorbs the distance into the lowest storey's height — on 31168 the base reads -12000
+        // and LEVEL P3 reads 13366, a storey 1,113ft tall. Honouring the base without capping the
+        // storey turns the lowest walls into 1,100ft spikes; ignoring the base lifts the whole
+        // model 1,000ft. Both are needed.
+        const double maxPlausibleStoreyHeight = 480.0;
 
         foreach (string raw in LinesOf("STORIES"))
         {
@@ -118,13 +122,13 @@ public sealed class E2kDocument
             string name = line.Substring(firstQuote + 1, lastQuote - firstQuote - 1);
 
             int e = line.IndexOf("ELEV", StringComparison.OrdinalIgnoreCase);
-            if (e >= 0)
+            if (e >= 0 && !line.Contains("HEIGHT", StringComparison.OrdinalIgnoreCase))
             {
-                string tail = line[(e + "ELEV".Length)..].Trim();
-                string token = new(tail.TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
-                if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out double elev))
+                string elevTail = line[(e + "ELEV".Length)..].Trim();
+                string elevToken = new(elevTail.TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
+                if (double.TryParse(elevToken, NumberStyles.Float, CultureInfo.InvariantCulture, out double elev))
                     baseElevation = elev;
-                continue;   // a storey given an elevation is the datum, not a storey of its own
+                continue;
             }
 
             double height = 0;
@@ -145,8 +149,14 @@ public sealed class E2kDocument
         for (int i = parsed.Count - 1; i >= 0; i--)
         {
             var (name, height) = parsed[i];
-            double below = elevation;
             elevation += height;
+
+            // A storey taller than any real one is the base gap, not a storey: keep its top, but
+            // give it a believable bottom so its members are walls rather than 1,000ft spikes.
+            double below = height > maxPlausibleStoreyHeight
+                ? elevation - maxPlausibleStoreyHeight
+                : elevation - height;
+
             result.Add(new StoryLevel(name, elevation, below));
         }
 

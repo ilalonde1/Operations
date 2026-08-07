@@ -292,24 +292,33 @@ public class E2kDocumentTests
     };
 
     [Fact]
-    public void ElevationsStartAtTheBaseStoreysOwnDatum()
+    public void TheBaseGapIsHonouredButNeverBecomesAStoreyHeight()
     {
-        // 31168 puts its base 1000ft below origin. Ignoring that lifted every point in the
-        // model by exactly that much.
-        string[] withDatum =
+        // 31168's shape exactly: the base is parked 1,000ft below the structure and the distance
+        // is absorbed into the lowest storey's height. Ignoring the base lifts the whole model
+        // 1,000ft; honouring it without capping that storey turns its walls into 1,100ft spikes.
+        string[] realShape =
         {
             "$ STORIES - IN SEQUENCE FROM TOP",
             "  STORY \"LEVEL 2\"  HEIGHT 120",
             "  STORY \"LEVEL 1\"  HEIGHT 144",
+            "  STORY \"P1\"  HEIGHT 13366.23",
             "  STORY \"Base\"  ELEV -12000",
             "",
         };
 
-        var stories = E2kDocument.Parse(withDatum).ReadStories();
+        var stories = E2kDocument.Parse(realShape).ReadStories();
+        var parkade = stories.Single(s => s.Name == "P1");
 
-        Assert.Equal(2, stories.Count);
-        Assert.Equal(-12000 + 144, stories.Single(s => s.Name == "LEVEL 1").Elevation, 3);
-        Assert.Equal(-12000 + 144 + 120, stories.Single(s => s.Name == "LEVEL 2").Elevation, 3);
+        // Top of the lowest storey sits where ETABS says it does, just above the ground.
+        Assert.Equal(1366.23, parkade.Elevation, 2);
+
+        // ...and it is a storey, not a thousand-foot wall.
+        Assert.True(parkade.Elevation - parkade.ElevationBelow <= 480,
+            $"lowest storey spans {parkade.Elevation - parkade.ElevationBelow:0}in");
+
+        Assert.Equal(1510.23, stories.Single(s => s.Name == "LEVEL 1").Elevation, 2);
+        Assert.Equal(1630.23, stories.Single(s => s.Name == "LEVEL 2").Elevation, 2);
     }
 
     [Fact]

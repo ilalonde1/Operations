@@ -128,29 +128,62 @@ public static class ModelQuestionnaire
         sheet.SheetView.FreezeRows(4);
     }
 
+    /// <summary>
+    /// Flags are per-location and run into the hundreds; nobody reads that. They are grouped into
+    /// the handful of kinds they actually represent, with a count and one example each, so the
+    /// sheet is a summary to react to rather than a list to work through.
+    /// </summary>
     private static void WriteFlags(XLWorkbook workbook, DxfToEtabsReport report)
     {
-        var sheet = workbook.Worksheets.Add("Flagged locations");
-        sheet.Cell(1, 1).Value = "Places the tool needed judgement. Each is a location worth a glance in the model.";
+        var sheet = workbook.Worksheets.Add("What needed judgement");
+        sheet.Cell(1, 1).Value = "Grouped by kind. The count says how widespread it is; the example says where to look.";
         sheet.Cell(1, 1).Style.Font.Italic = true;
 
-        sheet.Cell(3, 1).Value = "Flag";
-        sheet.Cell(3, 1).Style.Font.Bold = true;
-        sheet.Cell(3, 2).Value = "YOUR ANSWER";
-        sheet.Cell(3, 2).Style.Font.Bold = true;
+        string[] headers = { "Kind", "How often", "An example", "YOUR ANSWER" };
+        for (int c = 0; c < headers.Length; c++)
+        {
+            var cell = sheet.Cell(3, c + 1);
+            cell.Value = headers[c];
+            cell.Style.Font.Bold = true;
+            cell.Style.Fill.BackgroundColor = XLColor.FromArgb(122, 34, 48);
+            cell.Style.Font.FontColor = XLColor.White;
+        }
+
+        var groups = report.Summary.Flags
+            .GroupBy(KindOf)
+            .OrderByDescending(g => g.Count())
+            .ToList();
 
         int row = 4;
-        foreach (string flag in report.Summary.Flags)
+        foreach (var group in groups)
         {
-            sheet.Cell(row, 1).Value = flag;
-            sheet.Cell(row, 2).Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
+            sheet.Cell(row, 1).Value = group.Key;
+            sheet.Cell(row, 2).Value = group.Count();
+            sheet.Cell(row, 3).Value = group.First();
+            sheet.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
             row++;
         }
 
-        sheet.Column(1).Width = 110;
-        sheet.Column(2).Width = 34;
-        sheet.Range(4, 1, Math.Max(4, row - 1), 1).Style.Alignment.WrapText = true;
+        sheet.Column(1).Width = 44;
+        sheet.Column(2).Width = 11;
+        sheet.Column(3).Width = 88;
+        sheet.Column(4).Width = 34;
+        sheet.Range(4, 1, Math.Max(4, row - 1), 3).Style.Alignment.WrapText = true;
+        sheet.Range(4, 1, Math.Max(4, row - 1), 4).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
         sheet.SheetView.FreezeRows(3);
+    }
+
+    private static string KindOf(string flag)
+    {
+        if (flag.Contains("would not close", StringComparison.OrdinalIgnoreCase))
+            return flag.Contains("slab", StringComparison.OrdinalIgnoreCase)
+                ? "Slab outline broken — plate not made"
+                : "Wall outline broken — panels read anyway";
+        if (flag.Contains("unusually thick", StringComparison.OrdinalIgnoreCase)) return "Wall thicker than 24\" — confirm";
+        if (flag.Contains("could not be resolved", StringComparison.OrdinalIgnoreCase)) return "Outline not readable as walls";
+        if (flag.Contains("already modelled", StringComparison.OrdinalIgnoreCase)) return "Member you already have — not duplicated";
+        if (flag.Contains("collapsed", StringComparison.OrdinalIgnoreCase)) return "Slab outline collapsed — skipped";
+        return "Other";
     }
 
     private static void WriteSheetLedger(XLWorkbook workbook, DxfToEtabsReport report)
