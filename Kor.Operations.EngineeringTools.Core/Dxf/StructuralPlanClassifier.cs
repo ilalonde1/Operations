@@ -231,6 +231,26 @@ public static class StructuralPlanClassifier
 
         SplitSlabsAndOpenings(result, slabCandidates, options);
 
+        // A storey whose slab edges will not close still has a floor, and the inside of its
+        // perimeter wall is the outline of it. Used only as a fallback: where the slab layers gave
+        // a plate, that plate is the better boundary and this is ignored.
+        if (result.Slabs.Count == 0 && result.EnclosedByWalls.Count > 0)
+        {
+            var enclosed = result.EnclosedByWalls
+                .Where(l => l.Area >= options.MinPlateArea)
+                .OrderByDescending(l => l.Area)
+                .FirstOrDefault();
+
+            if (enclosed is not null)
+            {
+                result.Slabs.Add(enclosed);
+                result.Flags.Add(
+                    $"No slab edge on this drawing would close, so the floor is taken from the inside face of " +
+                    $"the perimeter wall — {enclosed.Area / 144:N0} sq ft, one outline, one thickness. It is an " +
+                    "approximation offered because a storey with no plate has no diaphragm at all.");
+            }
+        }
+
         // Walls only carry force between them where they share a joint, so the centrelines are
         // joined into a network before anything downstream sees them.
         if (options.ConnectWalls && result.Walls.Count > 1)
@@ -317,6 +337,14 @@ public static class StructuralPlanClassifier
                 if (panels.Count == 0) continue;
 
                 result.Walls.AddRange(panels);
+
+                // The inside face of a perimeter wall is a closed outline of the floor it encloses.
+                // Where the slab edges will not close — the whole parkade on 31168 — this is the
+                // only boundary the drawing offers, and the engineer said a general outline is what
+                // she wants to start from: "we can even have just one thickness per floor, general
+                // outline at first. That will help."
+                result.EnclosedByWalls.Add(inner);
+
                 consumed.Add(outer);
                 consumed.Add(inner);
                 break;

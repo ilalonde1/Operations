@@ -157,6 +157,12 @@ public sealed class PlanGeometrySet
     /// <summary>Doorways found between wall ends, each of which wants a header over it.</summary>
     public List<WallOpening> WallOpenings { get; } = new();
 
+    /// <summary>
+    /// The inside face of a perimeter wall — a closed outline of the floor it encloses, used as a
+    /// floor boundary only where the slab edges themselves would not close.
+    /// </summary>
+    public List<PlanLoop> EnclosedByWalls { get; } = new();
+
     /// <summary>Human-readable notes about anything that could not be resolved cleanly.</summary>
     public List<string> Flags { get; } = new();
 }
