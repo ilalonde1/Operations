@@ -125,6 +125,22 @@ public static class E2kGeometryComposer
         // so one tower's wall crosses more than one of these; see StoreysSpannedBy.
         var allStories = doc.ReadStories().OrderBy(s => s.Elevation).ToList();
 
+        /// <summary>
+        /// The wall section for this thickness, preferring one the project already defines: it
+        /// carries the real concrete mix and a name the engineer will recognise.
+        /// </summary>
+        string WallSection(double thickness)
+        {
+            if (wallProps.TryGetValue(thickness, out string? existing)) return existing;
+
+            string? found = doc.FindShellProperty("Wall", thickness);
+            if (found is not null) reusedSections.Add(found);
+            else newWallProps[thickness] = found = $"KOR-W{Trim(thickness)}";
+
+            wallProps[thickness] = found;
+            return found;
+        }
+
         string NextName(string kind, ref int counter)
         {
             string name;
@@ -215,16 +231,6 @@ public static class E2kGeometryComposer
             foreach (var wall in placement.Geometry.Walls)
             {
                 double thickness = SnapHalfInch(wall.Thickness);
-                if (!wallProps.TryGetValue(thickness, out string? propName))
-                {
-                    // Prefer a section the project already defines at this thickness: it carries
-                    // the real concrete mix and a name the engineer will recognise.
-                    propName = doc.FindShellProperty("Wall", thickness);
-                    if (propName is not null) reusedSections.Add(propName);
-                    else newWallProps[thickness] = propName = $"KOR-W{Trim(thickness)}";
-                    wallProps[thickness] = propName;
-                }
-
                 double x1 = wall.Start.X + options.OffsetX, y1 = wall.Start.Y + options.OffsetY;
                 double x2 = wall.End.X + options.OffsetX, y2 = wall.End.Y + options.OffsetY;
 
@@ -242,6 +248,10 @@ public static class E2kGeometryComposer
                     skippedWalls++;
                     continue;
                 }
+
+                // Claimed only once the wall is certain to be written, so a section is never
+                // declared for a panel that the checks above then drop.
+                string propName = WallSection(thickness);
 
                 string pa = PointAt(x1, y1);
                 string pb = PointAt(x2, y2);
@@ -262,18 +272,6 @@ public static class E2kGeometryComposer
             foreach (var column in placement.Geometry.Columns)
             {
                 double w = SnapInch(column.Width), d = SnapInch(column.Depth);
-                string? sectionName;
-                if (column.IsRound)
-                {
-                    if (!roundProps.TryGetValue(d, out sectionName))
-                        roundProps[d] = sectionName = $"KOR-D{Trim(d)}";
-                }
-                else if (!frameProps.TryGetValue((w, d), out sectionName))
-                {
-                    sectionName = $"KOR-C{Trim(w)}x{Trim(d)}";
-                    frameProps[(w, d)] = sectionName;
-                }
-
                 double x = column.Center.X + options.OffsetX, y = column.Center.Y + options.OffsetY;
 
                 // One column per location per storey: sheets overlap, and duplicated
@@ -289,6 +287,22 @@ public static class E2kGeometryComposer
                 }
 
                 string at = PointAt(x, y);
+
+                // The section is claimed only once the column is certain to be written. Claimed any
+                // earlier, a column that is then skipped as one the engineer already has leaves its
+                // section declared and unused — clutter in her section list for a member that does
+                // not exist.
+                string? sectionName;
+                if (column.IsRound)
+                {
+                    if (!roundProps.TryGetValue(d, out sectionName))
+                        roundProps[d] = sectionName = $"KOR-D{Trim(d)}";
+                }
+                else if (!frameProps.TryGetValue((w, d), out sectionName))
+                {
+                    sectionName = $"KOR-C{Trim(w)}x{Trim(d)}";
+                    frameProps[(w, d)] = sectionName;
+                }
 
                 // ETABS measures ANG from local axis 2, which lies along global Y for an
                 // unrotated column; the section's D is its long face.
@@ -322,14 +336,6 @@ public static class E2kGeometryComposer
             foreach (var opening in placement.Geometry.WallOpenings)
             {
                 double thickness = SnapHalfInch(opening.Thickness);
-                if (!wallProps.TryGetValue(thickness, out string? headerSection))
-                {
-                    headerSection = doc.FindShellProperty("Wall", thickness);
-                    if (headerSection is not null) reusedSections.Add(headerSection);
-                    else newWallProps[thickness] = headerSection = $"KOR-W{Trim(thickness)}";
-                    wallProps[thickness] = headerSection;
-                }
-
                 double sx = opening.Start.X + options.OffsetX, sy = opening.Start.Y + options.OffsetY;
                 double ex = opening.End.X + options.OffsetX, ey = opening.End.Y + options.OffsetY;
 
@@ -344,6 +350,7 @@ public static class E2kGeometryComposer
                 string highA = PointAt(sx, sy, spandrelDepth);
                 string highB = PointAt(ex, ey, spandrelDepth);
 
+                string headerSection = WallSection(thickness);
                 string spandrel = SpandrelFor(sx, sy, ex, ey);
                 string name = NextName("S", ref spandrelCounter);
                 areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{highA}\"  \"{highB}\"  \"{lowB}\"  \"{lowA}\"  0  0  0  0");
@@ -358,13 +365,6 @@ public static class E2kGeometryComposer
             foreach (var slab in placement.Geometry.Slabs)
             {
                 double thickness = options.DefaultSlabThickness;
-                if (!slabProps.TryGetValue(thickness, out string? propName))
-                {
-                    propName = doc.FindShellProperty("Slab", thickness);
-                    if (propName is not null) reusedSections.Add(propName);
-                    else newSlabProps[thickness] = propName = $"KOR-S{Trim(thickness)}";
-                    slabProps[thickness] = propName;
-                }
 
                 var names = slab.Points
                     .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
@@ -385,6 +385,15 @@ public static class E2kGeometryComposer
                 var where = ((long)Math.Round((middle.X + options.OffsetX) / 12.0),
                              (long)Math.Round((middle.Y + options.OffsetY) / 12.0), story.Name);
                 if (!placedSlabs.Add(where)) continue;
+
+                // Claimed only once the plate is certain to be written.
+                if (!slabProps.TryGetValue(thickness, out string? propName))
+                {
+                    propName = doc.FindShellProperty("Slab", thickness);
+                    if (propName is not null) reusedSections.Add(propName);
+                    else newSlabProps[thickness] = propName = $"KOR-S{Trim(thickness)}";
+                    slabProps[thickness] = propName;
+                }
 
                 string name = NextName("F", ref floorCounter);
                 storeysWithPlates.Add(story.Name);

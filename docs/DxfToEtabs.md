@@ -84,3 +84,23 @@ the resulting shapes checked.
 1,090 walls, 3,243 columns, 148 floors. Wall and column outlines in that set close
 exactly, so those are recovered without guesswork; slab edges needed bridging and are
 flagged where they would not close.
+
+## Where things live
+
+One of each, no version trails.
+
+| | |
+|---|---|
+| Dossier (client-facing) | `docs/KOR-DxfToEtabs-web.pdf` — regenerate to a fresh scratch filename, then copy over this one (Edge caches by HTML path) |
+| Model renderer | `tools/Render-E2kModel.ps1 -E2k <file> -OutPng <png> -Title <text>` |
+| Delivered per project | `…/01 ETABS Models/`: `*-FROM-DRAWINGS.e2k`, `*-report.txt`, `*-QUESTIONS-for-Andrea.xlsx`, `*-MODEL-VIEWS.png`, `KOR-Model-From-Drawings-DOSSIER.pdf`, `READ-ME-Andrea.md` |
+
+The renderer is not optional decoration: nothing ships without being drawn and looked at first.
+Counts cannot see a two-inch wall, a plate modelled twice, or a member silently dropped — all
+three shipped once because only numbers were checked. `ModelIntegrityTests` now gates the rest.
+
+## Knowledge
+
+The ETABS format conventions and the engineer's rulings are banked in **KorStandards** (schema in
+`KOR.Drafter/db/`), not in these comments. Facts go there so the next session inherits them
+instead of re-deriving them.
