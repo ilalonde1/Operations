@@ -48,6 +48,21 @@ public static class ModelQuestionnaire
             "31168 P2: the west wall now reads 2,806\" long at 88.1 degrees, alongside the north, south and east.")
             { Decided = true },
 
+        new ModelQuestion("F1", "Parkade floors",
+            "Below grade no slab edge closes, so each parkade level has been given one plate taken from the " +
+            "inside face of the perimeter wall — the site footprint, one thickness. Keep it, or will you draw them?",
+            "31168's P1, P2 and P3 each carry one plate of about 75,800 sq ft. A real slab-edge outline always " +
+            "wins where one exists; this is only used where nothing closes.",
+            "A storey with no plate has no diaphragm at all, and its walls and columns read as unsupported.",
+            "The site measures roughly 325 by 233 ft, so the plate is the footprint rather than an invention."),
+
+        new ModelQuestion("F2", "Three storeys with no floor",
+            "LEVEL 1 MEZZ, C-LEVEL 3 and B-LEVEL 28 have no closed outline anywhere on any slab layer — not " +
+            "even a perimeter wall to fall back on. They need a plate drawn. Anything we should read instead?",
+            "Left without a plate rather than invented from where the columns happen to sit.",
+            "Those three storeys have no diaphragm.",
+            "MEZZ has three closed rings but all are shaft-sized, far below a floor."),
+
         new ModelQuestion("A1", "Short faces in a core",
             "An element under 48\" long is now a column, as you asked. Inside a core, a short wall face " +
             "between two returns also falls under that — do you want those kept as walls?",
@@ -88,14 +103,13 @@ public static class ModelQuestionnaire
             "31168: half of all wall ends now share a joint with another member. Before, none did.")
             { Decided = true },
 
-        new ModelQuestion("S1", "Storeys with no plate",
-            "The parkade levels have walls and columns but no floor plate, because their slab edges will not close. " +
-            "Do you want plates approximated there, or will you draw them?",
-            $"Left out. A ring must reach {options.MinPlateArea / 144:0} sq ft to be modelled as a plate; " +
-            "smaller standalone rings are slab-edge linework and were drawing as scraps of floor hanging in space.",
-            "A storey without a plate has no diaphragm, and in a 3D view its members look unsupported.",
-            "31168: 124 plates over 60 storeys, but LEVEL P1/P2/P3 and LEVEL 1 MEZZ carry members and no plate. " +
-            "31138: standalone rings measured 52-68 sq ft against a real tower floor of 9,666."),
+        new ModelQuestion("S1", "Scraps of floor",
+            "Small closed rings on the slab-edge layers are linework, not floors.",
+            $"A standalone ring must reach {options.MinPlateArea / 144:0} sq ft to be modelled as a plate.",
+            "Modelled, each drew as a chip of concrete hanging in space.",
+            "Measured across both projects the two populations do not overlap: standalone rings come out at " +
+            "52-115 sq ft, real plates at 915 and up. 31138's tower floor is 9,666.")
+            { Decided = true },
 
         new ModelQuestion("S2", "Slab openings",
             "DONE — you said you could cut these yourself, but they are on your green list, so the tool now does it.",
@@ -122,13 +136,12 @@ public static class ModelQuestionnaire
             { Decided = true },
 
         new ModelQuestion("M1", "Storey framework",
-            "YOUR ANSWER: \"Tower B model should only include tower B storeys\" — done, as a second file. " +
-            "It still carries the shared podium, where the drawings show both towers on one sheet. Do you want " +
-            "tower B cut out of the podium levels too, or is the shared podium what you want?",
-            "31168-TOWER-B-FROM-DRAWINGS.e2k: storeys belonging to towers A and C removed, 60 down to 45, of " +
-            "which 43 carry geometry. Elevations are unchanged and the base now sits at 73.9ft instead of -1000ft.",
-            "It is why levels appeared blank, and it decides how results are reported.",
-            "Blank levels fall from 4 to 2 — a 1.7\"-tall transition storey and the parapet."),
+            "YOUR RULE: \"let's have a full model with both towers modelled, I will separate the towers later\".",
+            "Applied. One model on the site storey list, both towers. The Tower-B-only variant that existed " +
+            "before you said this has been withdrawn so there is no second file to choose between.",
+            "It decides how results are reported and how the model compares with the old one.",
+            "The tool can still split a tower out on request; nothing about that is lost.")
+            { Decided = true },
     };
 
     public static void Write(string path, DxfToEtabsReport report, PlanClassificationOptions options, string projectName)
@@ -203,14 +216,15 @@ public static class ModelQuestionnaire
     /// </summary>
     private static void WriteFlags(XLWorkbook workbook, DxfToEtabsReport report)
     {
-        var sheet = workbook.Worksheets.Add("Review & override");
+        var sheet = workbook.Worksheets.Add("For information");
         sheet.Cell(1, 1).Value =
-            "Everything the tool decided for you. APPROXIMATION means it made a defensible guess you can " +
-            "replace; DRAWING LIMIT means the drawing does not contain what would be needed, so it needs you " +
-            "or a redraw. Nothing here is an error — errors are fixed, not listed.";
+            "NOTHING HERE NEEDS AN ANSWER. This is the record of what the tool assumed and where the " +
+            "drawings ran out — the counts are locations, not decisions. Anything that genuinely needs " +
+            "you is a question on the first sheet. Read this only when something in the model looks wrong " +
+            "and you want to know why.";
         sheet.Cell(1, 1).Style.Font.Italic = true;
 
-        string[] headers = { "Kind", "How often", "An example", "YOUR ANSWER" };
+        string[] headers = { "What", "Locations", "An example" };
         for (int c = 0; c < headers.Length; c++)
         {
             var cell = sheet.Cell(3, c + 1);
@@ -231,16 +245,14 @@ public static class ModelQuestionnaire
             sheet.Cell(row, 1).Value = group.Key;
             sheet.Cell(row, 2).Value = group.Count();
             sheet.Cell(row, 3).Value = group.First();
-            sheet.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
             row++;
         }
 
-        sheet.Column(1).Width = 44;
+        sheet.Column(1).Width = 62;
         sheet.Column(2).Width = 11;
         sheet.Column(3).Width = 88;
-        sheet.Column(4).Width = 34;
         sheet.Range(4, 1, Math.Max(4, row - 1), 3).Style.Alignment.WrapText = true;
-        sheet.Range(4, 1, Math.Max(4, row - 1), 4).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+        sheet.Range(4, 1, Math.Max(4, row - 1), 3).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
         sheet.SheetView.FreezeRows(3);
     }
 
