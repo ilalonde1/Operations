@@ -354,6 +354,59 @@ public class ModelIntegrityTests
                 $"{name}: the base is written at {b / 12:0}ft, which is not where this building starts.");
     }
 
+    /// <summary>
+    /// The trailing integers on every connectivity line, checked as text against the forms an
+    /// engineer's own model uses.
+    ///
+    /// These decide where a member sits vertically, and this project's reader ignores them
+    /// entirely — it takes the plan points and gets elevation from the assign. So nothing verified
+    /// them: written wrongly, walls would build at the wrong height and every check would still
+    /// pass, which is exactly how the two-inch wafer panels shipped.
+    ///
+    /// The forms come from Andrea Neuviale's 31138: full-height panels 1 1 0 0 (96 of them),
+    /// partial-height header panels 0 0 0 0 (29, which are her 29 spandrels), columns spanning 1,
+    /// and floors all-zero.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Projects))]
+    public void ConnectivityFlagsMatchTheFormsAnEngineersModelUses(string name)
+    {
+        var built = BuildOrSkip(For(name));
+        if (built is null) return;
+
+        var wrong = new List<string>();
+
+        foreach (string raw in built.Lines)
+        {
+            string line = raw.Trim();
+
+            var panel = Regex.Match(line, @"^AREA\s+""(K[WS]\d+)""\s+PANEL\s+\d+\s+(?:""[^""]+""\s+)+([\d\s]+)$");
+            if (panel.Success)
+            {
+                string flags = Regex.Replace(panel.Groups[2].Value.Trim(), @"\s+", " ");
+                bool header = panel.Groups[1].Value.StartsWith("KS", StringComparison.OrdinalIgnoreCase);
+
+                // A full-height wall spans from the storey below; a header stands within its storey
+                // and takes its extent from the joint offsets instead.
+                string expected = header ? "0 0 0 0" : "1 1 0 0";
+                if (flags != expected) wrong.Add($"{panel.Groups[1].Value} has \"{flags}\", expected \"{expected}\"");
+                continue;
+            }
+
+            var column = Regex.Match(line, @"^LINE\s+""(KC\d+)""\s+COLUMN\s+""[^""]+""\s+""[^""]+""\s+(\S+)");
+            if (column.Success && column.Groups[2].Value != "1")
+                wrong.Add($"{column.Groups[1].Value} spans \"{column.Groups[2].Value}\", expected \"1\"");
+
+            var flat = Regex.Match(line, @"^AREA\s+""(K[FO]\d+)""\s+(?:FLOOR|AREA)\s+\d+\s+(?:""[^""]+""\s+)+([\d\s]+)$");
+            if (flat.Success && flat.Groups[2].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(v => v != "0"))
+                wrong.Add($"{flat.Groups[1].Value} is not flat on its storey");
+        }
+
+        if (wrong.Count == 0) return;
+        Assert.Fail($"{name}: {wrong.Count} member(s) carry storey flags no engineer's model uses: " +
+                    string.Join("; ", wrong.Take(5)));
+    }
+
     /// <summary>Generated sections must not collide with the project's own, or one silently wins.</summary>
     [Theory]
     [MemberData(nameof(Projects))]
