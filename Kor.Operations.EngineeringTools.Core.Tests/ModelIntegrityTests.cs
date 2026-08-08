@@ -292,6 +292,68 @@ public class ModelIntegrityTests
             $"{name}: {loose.Count} header(s) with an end on no wall: {string.Join(", ", loose.Take(5))}");
     }
 
+    /// <summary>
+    /// Reads the shipped file as ETABS reads it — as text — and holds the storey list to what ETABS
+    /// will build from it. Nothing here goes through this project's own parser.
+    ///
+    /// That distinction is the whole point. The base storey has been wrong five times: ignored, so
+    /// the geometry sat a thousand feet high; honoured, so the lowest walls became 1,113ft spikes;
+    /// capped, so the parkade came out four storeys tall; and then corrected inside the reader
+    /// while the file still said HEIGHT 13366, which is what ETABS obeyed — the parkade imported as
+    /// a solid block half the height of the building. Each fix was to the code that reads the
+    /// storey list, and each was checked by that same code, so reader and writer agreed with one
+    /// another and both were wrong about what ETABS would do.
+    ///
+    /// A test that shares the assumption it is testing proves nothing. This one parses the raw
+    /// section and applies the only rule that matters: a storey is a storey.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Projects))]
+    public void TheStoreyListAsWrittenBuildsRealStoreys(string name)
+    {
+        var built = BuildOrSkip(For(name));
+        if (built is null) return;
+
+        var heights = new List<(string Name, double Height)>();
+        double? baseElevation = null;
+
+        string section = string.Empty;
+        foreach (string raw in built.Lines)
+        {
+            if (raw.StartsWith('$')) { section = raw; continue; }
+            if (!section.Contains("STORIES", StringComparison.OrdinalIgnoreCase)) continue;
+
+            string line = raw.Trim();
+            var withHeight = Regex.Match(line, @"^STORY\s+""([^""]+)""\s+HEIGHT\s+(\S+)", RegexOptions.IgnoreCase);
+            if (withHeight.Success &&
+                double.TryParse(withHeight.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double h))
+            {
+                heights.Add((withHeight.Groups[1].Value, h));
+                continue;
+            }
+
+            var withElev = Regex.Match(line, @"^STORY\s+""[^""]+""\s+ELEV\s+(\S+)", RegexOptions.IgnoreCase);
+            if (withElev.Success &&
+                double.TryParse(withElev.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double e))
+                baseElevation = e;
+        }
+
+        Assert.NotEmpty(heights);
+
+        // No storey taller than a double-height lobby. ETABS extrudes every member on a storey by
+        // this number, so one bad value is a whole level of the building drawn as a solid mass.
+        var absurd = heights.Where(s => s.Height > 480).ToList();
+        Assert.True(absurd.Count == 0,
+            $"{name}: the storey list as written contains {absurd.Count} storey taller than 40ft — " +
+            string.Join(", ", absurd.Select(s => $"{s.Name} at {s.Height / 12:0}ft")) +
+            ". ETABS extrudes members by this, whatever the reader believes.");
+
+        // And the building has to start somewhere believable rather than a thousand feet down.
+        if (baseElevation is { } b)
+            Assert.True(Math.Abs(b) < 12 * 500,
+                $"{name}: the base is written at {b / 12:0}ft, which is not where this building starts.");
+    }
+
     /// <summary>Generated sections must not collide with the project's own, or one silently wins.</summary>
     [Theory]
     [MemberData(nameof(Projects))]
