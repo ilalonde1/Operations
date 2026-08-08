@@ -194,14 +194,20 @@ public static class ModelQuestionnaire
     }
 
     /// <summary>
-    /// Flags are per-location and run into the hundreds; nobody reads that. They are grouped into
-    /// the handful of kinds they actually represent, with a count and one example each, so the
-    /// sheet is a summary to react to rather than a list to work through.
+    /// Everything the tool decided that an engineer might decide differently, in one list.
+    ///
+    /// Per-location flags run into the hundreds and nobody reads that, so they are grouped into the
+    /// handful of kinds they represent. Each row says what was done, how widespread it is, where to
+    /// look, and whether it is an approximation offered or a limit of the drawing — the difference
+    /// being whether overriding it is a choice or a necessity.
     /// </summary>
     private static void WriteFlags(XLWorkbook workbook, DxfToEtabsReport report)
     {
-        var sheet = workbook.Worksheets.Add("What needed judgement");
-        sheet.Cell(1, 1).Value = "Grouped by kind. The count says how widespread it is; the example says where to look.";
+        var sheet = workbook.Worksheets.Add("Review & override");
+        sheet.Cell(1, 1).Value =
+            "Everything the tool decided for you. APPROXIMATION means it made a defensible guess you can " +
+            "replace; DRAWING LIMIT means the drawing does not contain what would be needed, so it needs you " +
+            "or a redraw. Nothing here is an error — errors are fixed, not listed.";
         sheet.Cell(1, 1).Style.Font.Italic = true;
 
         string[] headers = { "Kind", "How often", "An example", "YOUR ANSWER" };
@@ -240,15 +246,28 @@ public static class ModelQuestionnaire
 
     private static string KindOf(string flag)
     {
+        if (flag.Contains("perimeter wall", StringComparison.OrdinalIgnoreCase))
+            return "APPROXIMATION · floor taken from the inside of the perimeter wall — replace with your outline where it matters";
+        if (flag.Contains("no floor plate", StringComparison.OrdinalIgnoreCase))
+            return "DRAWING LIMIT · storey has members but no plate, so no diaphragm — nothing in the drawing closes to make one";
+        if (flag.Contains("could not be resolved", StringComparison.OrdinalIgnoreCase))
+            return "DRAWING LIMIT · outline read but modelled as nothing — check this location";
+        if (flag.Contains("modelled as columns", StringComparison.OrdinalIgnoreCase))
+            return "APPROXIMATION · short element joined to nothing, modelled as a column per your 48\" rule";
         if (flag.Contains("would not close", StringComparison.OrdinalIgnoreCase))
             return flag.Contains("slab", StringComparison.OrdinalIgnoreCase)
-                ? "Slab outline broken — plate not made"
-                : "Wall outline broken — panels read anyway";
-        if (flag.Contains("unusually thick", StringComparison.OrdinalIgnoreCase)) return "Wall thicker than 24\" — confirm";
-        if (flag.Contains("could not be resolved", StringComparison.OrdinalIgnoreCase)) return "Outline not readable as walls";
-        if (flag.Contains("already modelled", StringComparison.OrdinalIgnoreCase)) return "Member you already have — not duplicated";
-        if (flag.Contains("no floor plate", StringComparison.OrdinalIgnoreCase)) return "Storey has members but no plate — no diaphragm there";
-        if (flag.Contains("collapsed", StringComparison.OrdinalIgnoreCase)) return "Slab outline collapsed — skipped";
+                ? "DRAWING LIMIT · slab outline broken, so no plate from it"
+                : "APPROXIMATION · wall outline broken, panels read from it anyway";
+        if (flag.Contains("too small for a floor plate", StringComparison.OrdinalIgnoreCase))
+            return "APPROXIMATION · small closed ring treated as linework, not a floor";
+        if (flag.Contains("already modelled", StringComparison.OrdinalIgnoreCase))
+            return "NO ACTION · member you already have, not duplicated";
+        if (flag.Contains("storey(s) belonging to other towers", StringComparison.OrdinalIgnoreCase))
+            return "NO ACTION · other towers' storeys removed from this model";
+        if (flag.Contains("lowest storey", StringComparison.OrdinalIgnoreCase))
+            return "APPROXIMATION · lowest storey given a typical height, because the export folded the base into it";
+        if (flag.Contains("collapsed", StringComparison.OrdinalIgnoreCase))
+            return "DRAWING LIMIT · slab outline collapsed, skipped";
         return "Other";
     }
 
