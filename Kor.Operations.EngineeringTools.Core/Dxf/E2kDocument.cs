@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
 
@@ -236,6 +237,72 @@ public sealed class E2kDocument
             : string.Empty;
 
     /// <summary>
+    /// Gives the lowest storey a believable height and lifts the base up underneath it.
+    ///
+    /// ETABS parks a model's base far below the structure and absorbs the whole distance into the
+    /// lowest storey: 31168 exports with the base at -1,000ft and LEVEL P3 1,113ft tall. Reading
+    /// around that was not enough — the storey list is what ETABS builds from, so on import every
+    /// member on that storey was extruded a thousand feet down and the parkade came in as one solid
+    /// block half the height of the building. "The lowest level, which is P3, seems way too high."
+    ///
+    /// Every storey keeps its elevation: the base rises by exactly as much as the storey shrinks,
+    /// so everything accumulating above it is untouched.
+    /// </summary>
+    /// <returns>True when the storey list was rewritten.</returns>
+    public bool NormaliseBaseStorey()
+    {
+        var section = Find("STORIES");
+        if (section is null) return false;
+
+        var lines = section.Lines;
+        int lowestAt = -1, baseAt = -1;
+        double lowestHeight = 0, baseElevation = 0;
+        var heights = new List<double>();
+
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines[i].Trim();
+            if (!line.StartsWith("STORY", StringComparison.OrdinalIgnoreCase)) continue;
+
+            int h = line.IndexOf("HEIGHT", StringComparison.OrdinalIgnoreCase);
+            if (h >= 0)
+            {
+                string token = new(line[(h + "HEIGHT".Length)..].Trim().TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
+                if (!double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out double value)) continue;
+
+                heights.Add(value);
+                lowestAt = i;            // storeys are listed top-down, so the last one seen is the lowest
+                lowestHeight = value;
+                continue;
+            }
+
+            int e = line.IndexOf("ELEV", StringComparison.OrdinalIgnoreCase);
+            if (e < 0) continue;
+
+            string elevToken = new(line[(e + "ELEV".Length)..].Trim().TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
+            if (double.TryParse(elevToken, NumberStyles.Float, CultureInfo.InvariantCulture, out double elev))
+            {
+                baseAt = i;
+                baseElevation = elev;
+            }
+        }
+
+        const double maxPlausibleStoreyHeight = 480.0;
+        if (lowestAt < 0 || baseAt < 0 || lowestHeight <= maxPlausibleStoreyHeight) return false;
+
+        var believable = heights.Where(v => v >= 60 && v <= maxPlausibleStoreyHeight).OrderBy(v => v).ToList();
+        double typical = believable.Count > 0 ? believable[believable.Count / 2] : maxPlausibleStoreyHeight;
+
+        string Number(double v) => v.ToString("0.####", CultureInfo.InvariantCulture);
+
+        lines[lowestAt] = Regex.Replace(lines[lowestAt], @"(HEIGHT\s+)\S+", $"${{1}}{Number(typical)}",
+            RegexOptions.IgnoreCase);
+        lines[baseAt] = Regex.Replace(lines[baseAt], @"(ELEV\s+)\S+",
+            $"${{1}}{Number(baseElevation + lowestHeight - typical)}", RegexOptions.IgnoreCase);
+        return true;
+    }
+
+    /// <summary>
     /// Cuts the storey list down to one tower's, and rewrites it so ETABS reads the same elevations.
     ///
     /// A site model keeps every tower on one storey list, so a model of tower B carries tower A's
@@ -418,3 +485,4 @@ public sealed class E2kDocument
 
 /// <summary>A storey and the elevations that bound it, in model units (inches).</summary>
 public sealed record StoryLevel(string Name, double Elevation, double ElevationBelow);
+

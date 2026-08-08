@@ -61,6 +61,11 @@ public static class DxfToEtabsService
     {
         var doc = E2kDocument.Load(request.ReferenceE2k);
 
+        // Before anything else: the storey list is what ETABS builds from, and an export parks the
+        // base a thousand feet under the building with the whole distance folded into the lowest
+        // storey. Left alone, every member down there is extruded that far on import.
+        bool baseNormalised = doc.NormaliseBaseStorey();
+
         // A model of one tower carries only that tower's storeys. On a site model the others stand
         // empty, which is what the engineer saw: "some levels don't exist, they're blank."
         var droppedStoreys = request.TowerOnly is null
@@ -129,6 +134,19 @@ public static class DxfToEtabsService
 
         var composeOptions = request.Compose with { OffsetX = offset.X, OffsetY = offset.Y };
         var summary = E2kGeometryComposer.Compose(doc, placements, composeOptions);
+
+        if (baseNormalised)
+        {
+            var lowest = doc.ReadStories().OrderBy(s => s.Elevation).First();
+            summary = summary with
+            {
+                Flags = summary.Flags.Append(
+                    $"The lowest storey ({lowest.Name}) was exported {480 / 12:0}ft-plus tall, because ETABS " +
+                    "parks the base far below the building and folds the distance into it. Its height has been " +
+                    $"set to a typical storey and the base raised to match, so the storey now spans " +
+                    $"{(lowest.Elevation - lowest.ElevationBelow) / 12:0.0}ft. No other storey moved.").ToList(),
+            };
+        }
 
         if (droppedStoreys.Length > 0)
         {

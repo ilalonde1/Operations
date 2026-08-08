@@ -322,6 +322,48 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void TheStoreyListEtabsReadsCarriesNoThousandFootStorey()
+    {
+        // Reading around the parked base was not enough. The storey list is what ETABS builds
+        // from, so on import every member on that storey was extruded a thousand feet down and the
+        // parkade arrived as a solid block half the height of the building.
+        string[] parked =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 2\"  HEIGHT 120",
+            "  STORY \"LEVEL 1\"  HEIGHT 120",
+            "  STORY \"P1\"  HEIGHT 13366.23",
+            "  STORY \"Base\"  ELEV -12000",
+            "",
+        };
+
+        var doc = E2kDocument.Parse(parked);
+        var before = doc.ReadStories().ToDictionary(s => s.Name, s => s.Elevation);
+
+        Assert.True(doc.NormaliseBaseStorey());
+
+        // The lowest storey is a storey now...
+        var lowest = doc.ReadStories().Single(s => s.Name == "P1");
+        Assert.True(lowest.Elevation - lowest.ElevationBelow <= 480,
+            $"lowest storey still spans {lowest.Elevation - lowest.ElevationBelow:0}in");
+
+        // ...and nothing moved: the base rose by exactly as much as the storey shrank.
+        foreach (var storey in doc.ReadStories())
+            Assert.Equal(before[storey.Name], storey.Elevation, 3);
+
+        // A model whose base is already sane is left alone.
+        var healthy = E2kDocument.Parse(new[]
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"L02\"  HEIGHT 120",
+            "  STORY \"L01\"  HEIGHT 144",
+            "  STORY \"Base\"  ELEV -47",
+            "",
+        });
+        Assert.False(healthy.NormaliseBaseStorey());
+    }
+
+    [Fact]
     public void ATowerStoreyStandsOnItsOwnTowersFloorNotOnTheOneAnInchBelow()
     {
         // 31168's upper levels, to scale: three towers share one storey list, so every distinct
