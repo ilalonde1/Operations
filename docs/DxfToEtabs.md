@@ -104,3 +104,15 @@ three shipped once because only numbers were checked. `ModelIntegrityTests` now 
 The ETABS format conventions and the engineer's rulings are banked in **KorStandards** (schema in
 `KOR.Drafter/db/`), not in these comments. Facts go there so the next session inherits them
 instead of re-deriving them.
+
+## Publishing
+
+    .\tools\Publish-EtabsModel.ps1 -Project 31168
+
+One command: builds the CLI (which `dotnet test` does not), regenerates the model, report and
+questionnaire, copies the current dossier, lists what shipped, and **exits non-zero if any
+deliverable predates the source that built it**.
+
+Publishing by hand is what made things stale — the model would be regenerated and the dossier left
+behind quoting counts two rounds old. Staleness was never a discipline problem; it was a four-step
+ritual performed from memory. Use the script.
