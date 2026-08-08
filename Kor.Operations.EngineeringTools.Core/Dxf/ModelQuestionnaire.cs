@@ -146,10 +146,11 @@ public static class ModelQuestionnaire
 
     public static void Write(string path, DxfToEtabsReport report, PlanClassificationOptions options, string projectName)
     {
+        // Two sheets. The questions, and the lookup for when something in the model looks wrong.
+        // The per-drawing ledger lives in the report; it is 60 rows nobody reads in a spreadsheet.
         using var workbook = new XLWorkbook();
         WriteQuestions(workbook, report, options, projectName);
         WriteFlags(workbook, report);
-        WriteSheetLedger(workbook, report);
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         workbook.SaveAs(path);
@@ -159,15 +160,13 @@ public static class ModelQuestionnaire
     {
         var sheet = workbook.Worksheets.Add("Questions");
 
-        sheet.Cell(1, 1).Value = $"{projectName} — questions for the engineer";
+        sheet.Cell(1, 1).Value = $"{projectName} — questions";
         sheet.Cell(1, 1).Style.Font.Bold = true;
         sheet.Cell(1, 1).Style.Font.FontSize = 13;
-        sheet.Cell(2, 1).Value =
-            "Rows marked DECIDED follow from engineering and have been applied — say so only if you disagree. " +
-            "Rows marked OPEN need you. Either way, an answer becomes a rule the tool applies from then on.";
+        sheet.Cell(2, 1).Value = "An answer becomes a rule the tool applies from then on.";
         sheet.Cell(2, 1).Style.Font.Italic = true;
 
-        string[] headers = { "Ref", "Status", "Topic", "Question", "What the tool did", "Why it matters", "YOUR ANSWER", "Evidence" };
+        string[] headers = { "Ref", "Question", "What the tool did", "YOUR ANSWER" };
         for (int c = 0; c < headers.Length; c++)
         {
             var cell = sheet.Cell(4, c + 1);
@@ -177,32 +176,24 @@ public static class ModelQuestionnaire
             cell.Style.Font.FontColor = XLColor.White;
         }
 
+        // Only what is still open. Listing what she has already ruled on is asking her to read her
+        // own answers back.
         int row = 5;
-        foreach (var q in StandingQuestions(options).OrderBy(q => q.Decided ? 1 : 0).ThenBy(q => q.Code))
+        foreach (var q in StandingQuestions(options).Where(q => !q.Decided).OrderBy(q => q.Code))
         {
             sheet.Cell(row, 1).Value = q.Code;
-            sheet.Cell(row, 2).Value = q.Decided ? "DECIDED" : "OPEN";
-            sheet.Cell(row, 2).Style.Font.Bold = true;
-            sheet.Cell(row, 2).Style.Font.FontColor = q.Decided ? XLColor.FromArgb(60, 110, 60) : XLColor.FromArgb(150, 90, 0);
-            sheet.Cell(row, 3).Value = q.Topic;
-            sheet.Cell(row, 4).Value = q.Question;
-            sheet.Cell(row, 5).Value = q.WhatWeDid;
-            sheet.Cell(row, 6).Value = q.WhyItMatters;
-            sheet.Cell(row, 7).Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
-            sheet.Cell(row, 8).Value = q.Evidence;
+            sheet.Cell(row, 2).Value = q.Question;
+            sheet.Cell(row, 3).Value = q.WhatWeDid;
+            sheet.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
             row++;
         }
 
         sheet.Column(1).Width = 7;
-        sheet.Column(2).Width = 11;
-        sheet.Column(3).Width = 18;
-        sheet.Column(4).Width = 46;
-        sheet.Column(5).Width = 46;
-        sheet.Column(6).Width = 44;
-        sheet.Column(7).Width = 34;
-        sheet.Column(8).Width = 40;
-        sheet.Range(5, 4, row - 1, 8).Style.Alignment.WrapText = true;
-        sheet.Range(5, 1, row - 1, 8).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+        sheet.Column(2).Width = 66;
+        sheet.Column(3).Width = 56;
+        sheet.Column(4).Width = 40;
+        sheet.Range(5, 2, row - 1, 4).Style.Alignment.WrapText = true;
+        sheet.Range(5, 1, row - 1, 4).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
         sheet.SheetView.FreezeRows(4);
     }
 
@@ -216,12 +207,9 @@ public static class ModelQuestionnaire
     /// </summary>
     private static void WriteFlags(XLWorkbook workbook, DxfToEtabsReport report)
     {
-        var sheet = workbook.Worksheets.Add("For information");
+        var sheet = workbook.Worksheets.Add("If something looks wrong");
         sheet.Cell(1, 1).Value =
-            "NOTHING HERE NEEDS AN ANSWER. This is the record of what the tool assumed and where the " +
-            "drawings ran out — the counts are locations, not decisions. Anything that genuinely needs " +
-            "you is a question on the first sheet. Read this only when something in the model looks wrong " +
-            "and you want to know why.";
+            "No answer needed. What the tool assumed, and where the drawings ran out. Counts are locations, not decisions.";
         sheet.Cell(1, 1).Style.Font.Italic = true;
 
         string[] headers = { "What", "Locations", "An example" };
