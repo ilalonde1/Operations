@@ -19,6 +19,12 @@ public sealed record PlanSheetInfo(
     /// <summary>A foundation plan: the lowest slab, named by its job rather than by a level.</summary>
     public bool IsFoundation { get; init; }
 
+    /// <summary>
+    /// A mezzanine plan. A mezzanine reads as the level it sits above — "LEVEL 1 PLAN MEZZ" gives
+    /// level 1 — so without this it is indistinguishable from the floor below it.
+    /// </summary>
+    public bool IsMezzanine { get; init; }
+
     public bool HasPlacement => Levels.Count > 0 || ParkadeLevels.Count > 0 || IsRoof || IsFoundation;
 }
 
@@ -112,10 +118,18 @@ public static partial class PlanSheetNaming
             CleanLabel(name))
         {
             IsFoundation = name.Contains("FOUNDATION", StringComparison.OrdinalIgnoreCase),
+            IsMezzanine = IsMezzanineName(name),
             ParkadeLevels = parkade,
             BuildingTags = buildings,
         };
     }
+
+    /// <summary>
+    /// Whether a sheet title or a storey name is a mezzanine. Drafting writes MEZZ; a model may
+    /// write Mezz or MEZZANINE, and 31138's own storey list uses "Mezz".
+    /// </summary>
+    private static bool IsMezzanineName(string text) =>
+        text.Contains("MEZZ", StringComparison.OrdinalIgnoreCase);
 
     private static string StripSheetNumber(string name)
     {
@@ -168,6 +182,13 @@ public static partial class PlanSheetNaming
 
         foreach (string story in stories)
         {
+            // A mezzanine is a storey in its own right, not the unprefixed form of the level below
+            // it. 31168 has "LEVEL 1 MEZZ" above "A-LEVEL 1" and "B-LEVEL 1", and both the level 1
+            // sheet and the level 1 mezzanine sheet read as level 1. The rule that an untagged
+            // sheet belongs to the unprefixed storey then handed the mezzanine both sheets and left
+            // the ground floor of both towers empty — 45 walls and 67 columns modelled a storey up.
+            if (IsMezzanineName(story) != sheet.IsMezzanine) continue;
+
             if (sheet.BuildingTags.Count > 0 &&
                 !sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(story, tag))) continue;
 
@@ -187,6 +208,18 @@ public static partial class PlanSheetNaming
             if (sheet.Levels.Contains(storyLevel)) matches.Add(story);
         }
 
+        // A model may name its mezzanine storey just "Mezz", with no level number — 31138 does.
+        // A mezzanine sheet then matches nothing by number, and its geometry was landing on level 1
+        // instead: 11 walls and 18 columns of a mezzanine part plan built into the floor below.
+        if (matches.Count == 0 && sheet.IsMezzanine)
+        {
+            var unnumbered = stories
+                .Where(s => IsMezzanineName(s) && !SingleLevelRegex().IsMatch(s))
+                .Where(s => sheet.BuildingTags.Count == 0 || sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(s, tag)))
+                .ToList();
+            if (unnumbered.Count > 0) return unnumbered;
+        }
+
         // A building tag only narrows the choice where the model actually separates buildings.
         // Lower storeys are often shared and unprefixed, so a sheet titled "BLDG A&B" covering
         // levels 15-26 must still land on plain "LEVEL 15" and up.
@@ -194,6 +227,8 @@ public static partial class PlanSheetNaming
         {
             foreach (string story in storyNames)
             {
+                if (IsMezzanineName(story) != sheet.IsMezzanine) continue;
+
                 var level = SingleLevelRegex().Match(story);
                 if (level.Success && sheet.Levels.Contains(int.Parse(level.Groups[1].Value)))
                     matches.Add(story);

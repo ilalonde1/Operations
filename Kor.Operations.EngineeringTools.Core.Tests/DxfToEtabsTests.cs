@@ -267,6 +267,46 @@ public class PlanSheetNamingTests
 
         Assert.Equal(new[] { "LEVEL 10" }, PlanSheetNaming.MatchStories(sheet, stories));
     }
+
+    /// <summary>
+    /// A mezzanine reads as the level it sits above, so "LEVEL 1 PLAN MEZZ" and "LEVEL 1 PLAN" both
+    /// parse as level 1. On 31168 the mezzanine was also the only storey whose name starts with
+    /// LEVEL, so the rule above handed it both sheets and the ground floor of both towers was left
+    /// empty — 45 walls and 67 columns modelled one storey up from where they belong.
+    /// </summary>
+    [Fact]
+    public void AMezzanineSheetAndTheFloorBelowItDoNotShareAStorey()
+    {
+        var stories = new[] { "LEVEL 2", "LEVEL 1 MEZZ", "B-LEVEL 1", "A-LEVEL 1" };
+
+        var ground = PlanSheetNaming.Parse("--Structural Plan - LEVEL 1 PLAN - CONCRETE OUTLINE.dxf");
+        var mezz = PlanSheetNaming.Parse("--Structural Plan - LEVEL 1 PLAN MEZZ - CONCRETE OUTLINE.dxf");
+
+        Assert.False(ground.IsMezzanine);
+        Assert.True(mezz.IsMezzanine);
+
+        // The ground floor sheet builds both towers' level 1, and never the mezzanine.
+        Assert.Equal(new[] { "B-LEVEL 1", "A-LEVEL 1" }, PlanSheetNaming.MatchStories(ground, stories));
+
+        // The mezzanine sheet builds the mezzanine, and nothing else.
+        Assert.Equal(new[] { "LEVEL 1 MEZZ" }, PlanSheetNaming.MatchStories(mezz, stories));
+    }
+
+    /// <summary>
+    /// 31138 names its mezzanine storey just "Mezz", with no level number, so a mezzanine sheet
+    /// matches nothing by number. Its part plan — 11 walls and 18 columns — was being built into
+    /// L01, the floor below it.
+    /// </summary>
+    [Fact]
+    public void AMezzanineSheetFindsAMezzanineStoreyThatCarriesNoLevelNumber()
+    {
+        var sheet = PlanSheetNaming.Parse(
+            "Str-Structural Plan - DXF-S2-08_2_LEVEL 1 MEZZ- PART PLAN CONCRETE OUTLINE Copy 1.dxf");
+        var stories = new[] { "L02", "Mezz", "L01", "P1" };
+
+        Assert.True(sheet.IsMezzanine);
+        Assert.Equal(new[] { "Mezz" }, PlanSheetNaming.MatchStories(sheet, stories));
+    }
 }
 
 public class E2kDocumentTests

@@ -222,6 +222,17 @@ public class ModelIntegrityTests
                 continue;
             }
 
+            // Headers too. They were the last member left deduplicating on the storey they were
+            // placed on rather than every storey they span, which put two headers of different
+            // depths over one opening on 31168's A-LEVEL 33.
+            var header = Regex.Match(line, @"^AREA\s+""(KS\d+)""\s+PANEL\s+4\s+""([^""]+)""\s+""([^""]+)""");
+            if (header.Success)
+            {
+                var ids = new[] { header.Groups[2].Value, header.Groups[3].Value }.Where(joints.ContainsKey).ToList();
+                if (ids.Count == 2) Claim("header", header.Groups[1].Value, ids, 1.0);
+                continue;
+            }
+
             var column = Regex.Match(line, @"^LINE\s+""(KC\d+)""\s+COLUMN\s+""([^""]+)""");
             if (column.Success && joints.ContainsKey(column.Groups[2].Value))
                 Claim("column", column.Groups[1].Value, new[] { column.Groups[2].Value }, 1.0);

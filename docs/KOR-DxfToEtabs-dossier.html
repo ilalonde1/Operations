@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Structural model from drawings — 31168 YMCA Langara</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#5b5b5b; --rule:#d9d5cf; --bg:#ffffff;
+    --burgundy:#7a2230; --burgundy-soft:#f6eef0; --accent:#2c5f6f; --warn:#8a5a00; --warn-soft:#fdf6e7;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.62 "Segoe UI",-apple-system,system-ui,sans-serif;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:44px 46px 60px}
+  header{border-bottom:3px solid var(--burgundy);padding-bottom:18px;margin-bottom:30px}
+  .eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--burgundy);font-weight:700}
+  h1{font-size:27px;line-height:1.22;margin:9px 0 6px;font-weight:650;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:14px;margin:0}
+  h2{font-size:18px;margin:34px 0 10px;font-weight:650;letter-spacing:-.005em}
+  h2::before{content:"";display:inline-block;width:14px;height:3px;background:var(--burgundy);
+             vertical-align:middle;margin-right:9px;position:relative;top:-3px}
+  h3{font-size:14.5px;margin:20px 0 6px;font-weight:650;color:var(--accent)}
+  p{margin:0 0 11px}
+  ul{margin:0 0 12px;padding-left:20px} li{margin:0 0 6px}
+  .lede{font-size:16.5px;line-height:1.55;color:#333}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin:20px 0 6px}
+  .card{border:1px solid var(--rule);border-radius:7px;padding:12px 13px;break-inside:avoid}
+  .card .n{font-size:23px;font-weight:680;letter-spacing:-.02em;color:var(--burgundy)}
+  .card .l{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.35}
+  table{width:100%;border-collapse:collapse;margin:12px 0 16px;font-size:13.6px;break-inside:avoid}
+  th{text-align:left;font-weight:650;border-bottom:2px solid var(--rule);padding:7px 9px 7px 0;font-size:12.5px;
+     letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+  td{padding:7px 9px 7px 0;border-bottom:1px solid #eeeae5;vertical-align:top}
+  td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .callout{background:var(--burgundy-soft);border-left:3px solid var(--burgundy);
+           padding:13px 16px;border-radius:0 6px 6px 0;margin:16px 0;break-inside:avoid}
+  .warn{background:var(--warn-soft);border-left:3px solid var(--warn)}
+  .callout p:last-child{margin-bottom:0}
+  code{font:12.8px/1.5 "Cascadia Mono",Consolas,monospace;background:#f4f2ef;padding:1px 5px;border-radius:3px}
+  pre{background:#f7f5f2;border:1px solid var(--rule);border-radius:6px;padding:11px 13px;overflow:auto;
+      font:12.5px/1.55 "Cascadia Mono",Consolas,monospace;break-inside:avoid;margin:10px 0 14px}
+  .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);color:var(--muted);font-size:12px}
+  @media print{ @page{margin:14mm 13mm} .wrap{padding:0} body{font-size:10.6pt} h1{font-size:20pt} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">KOR Structural · Engineering Tools</div>
+  <h1>Structural models built from the drawings</h1>
+  <p class="sub">31168 YMCA Langara and 31138 2170 W 1st · prepared 7 August 2026</p>
+</header>
+
+<p class="lede">Andrea's ETABS models were lost with a failed drive. Rather than re-enter the
+building's geometry by hand, this reads the concrete-outline DXF plans drafting already
+exports and produces an ETABS model covering every storey. It does none of the engineering
+— it removes the typing.</p>
+
+<p class="lede" style="font-size:14px">This one document covers both models. They are not equivalent:
+<strong>31168 is the rebuild</strong> — none of it existed. <strong>31138 is a gap-fill</strong>, because you
+had already rebuilt that building's walls by hand.</p>
+
+<table>
+  <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
+  <tr><td>Storeys populated</td><td><strong>63</strong></td><td>24</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>917</strong></td><td>87</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,469</strong></td><td>172</td></tr>
+  <tr><td>Floor plates</td><td><strong>83</strong></td><td>11</td></tr>
+  <tr><td>Headers over openings (spandrel shells)</td><td><strong>139</strong></td><td>8</td></tr>
+  <tr><td>Shaft and stair openings cut</td><td><strong>46</strong></td><td>2</td></tr>
+  <tr><td>Pier labels</td><td><strong>123</strong></td><td>62</td></tr>
+  <tr><td>Members you already had, not duplicated</td><td>—</td><td>277 walls, 238 columns</td></tr>
+</table>
+
+<h2>What changed after your two calls</h2>
+<p>Everything below came from your feedback on 7 August and is already in the files.</p>
+<p><strong>One correction since the version of 9 August, found in checking rather than by you.</strong>
+A mezzanine reads as the level it sits above, so on 31168 both the <em>LEVEL 1</em> and the
+<em>LEVEL 1 MEZZ</em> sheet were building into <em>LEVEL 1 MEZZ</em>, and the ground floor of both
+towers stood empty — 45 walls and 67 columns a storey too high. On 31138 the same fault put a
+mezzanine part plan into L01. Both now build where they are drawn: 31168 gains A&#8209;LEVEL&nbsp;1
+and B&#8209;LEVEL&nbsp;1, 31138 gains Mezz.</p>
+<table>
+  <tr><th>You said</th><th>What it does now</th></tr>
+  <tr><td>"We can't have a wall go from here to here and then another one from here to here. We need a connection."</td>
+      <td>Wall centrelines form a network. Corners are carried out to where they cross and share a joint; a wall running into another splits it so the T has a joint on both members.</td></tr>
+  <tr><td>"We don't model them as line elements, we model them as shells… in ETABS they're called spandrels."</td>
+      <td>Headers are wall panels standing only over their opening, depth = storey height less opening height, bounded to the 24–60" range your own models use. 139 of them, labelled as spandrels.</td></tr>
+  <tr><td>"Every floor we have two slabs on top of each other."</td>
+      <td>Drafting issues both a range sheet and a sheet per level, so each floor arrived twice. 43 doubled plates removed.</td></tr>
+  <tr><td>"Below grade, the basement walls are missing."</td>
+      <td>They are drawn as two concentric rings, so each read as a building-sized rectangle and both were discarded. Now read as the one wall they are — all four sides, including the angled west one.</td></tr>
+  <tr><td>"These are supposed to be round columns, but they're square. Square and rotated."</td>
+      <td>A column is now modelled round only where the drawing drew it with an arc, not where its
+          shape merely looks circular — a chamfered square passes every shape test a circle does.
+          31168 comes out with exactly the three diameters its drawings contain &mdash; 16", 24"
+          and 30" &mdash; and none besides.</td></tr>
+  <tr><td>"It filled the volume, but didn't do the actual corner."</td>
+      <td><strong>Not settled — asked as question C1.</strong> A stepped block with one limb thinner
+          than the other is still modelled as a single pier, so its centreline sits between the limbs
+          and lines up with neither. Splitting it was tried and is worse: the limbs come out stubby
+          enough to be discarded and fall through to columns, losing their in-plane shear. Whether
+          that block is one pier or a wall with a thickening is your call, so the question carries the
+          measured geometry rather than a guess.</td></tr>
+  <tr><td>"The lowest level, which is P3, seems way too high."</td>
+      <td>ETABS parks the base far below the building and folds the whole distance into the lowest
+          storey — 31168 exported with the base at −1,000 ft and LEVEL P3 1,113 ft tall, so on import
+          every member down there was extruded that far and the parkade arrived as a solid block half
+          the height of the building. The storey list itself is now rewritten: the lowest storey takes
+          a typical height from its own building and the base rises by exactly as much, so every other
+          elevation is untouched. 31168 spans 104–561 ft, with the roof still at 561.1 ft and the
+          lowest slab still at 113.9 ft.</td></tr>
+  <tr><td>"Less than 48 in length should be a column" — then "this should be a wall" for core faces</td>
+      <td>Connection decides, not length: under 48" and joined to no other wall is a column; a short face forming part of a core stays a wall.</td></tr>
+  <tr><td>Loads, diaphragms, stiffness modifiers, section properties are yours</td>
+      <td>Removed. No diaphragms are assigned, no loads applied.</td></tr>
+</table>
+
+<h2>What to open</h2>
+<p>Each sits in its project's <code>02 Engineering\02 Lateral Design\01 ETABS Models\</code>.
+In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
+<table>
+  <tr><th>File</th><th>What it is</th></tr>
+  <tr><td><code>31168-FROM-DRAWINGS.e2k</code></td>
+      <td><strong>The one that matters.</strong> Tower B and the rest of the building — 63 storeys,
+          917 walls, 2,469 columns, 83 plates. Nothing of this existed before.</td></tr>
+  <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
+      <td>A gap-fill. You have already rebuilt this building's walls — between 17 and 42 panels on every
+          storey — so this adds only what the drawings show and your model does not: 87 walls and
+          172 columns, mostly at podium and parkade. 277 walls and 238 columns of yours were
+          recognised at those locations and deliberately not modelled again.</td></tr>
+  <tr><td><code>…-QUESTIONS-for-Andrea.xlsx</code></td>
+      <td>Two sheets. <em>Questions</em> — what you have already ruled on, marked DONE, plus the few
+          still open. <em>Review &amp; override</em> — every decision the tool made for you, each marked
+          <strong>APPROXIMATION</strong> (a guess you can replace) or <strong>DRAWING LIMIT</strong>
+          (the drawing lacks what would be needed).</td></tr>
+  <tr><td><code>…-report.txt</code></td>
+      <td>Not for reading end to end — it is the lookup for "why isn't this in here?". Every sheet,
+          the storeys it landed on, what it produced, and every location that needed judgement.</td></tr>
+</table>
+<p>Everything generated is named <code>KW*</code>, <code>KC*</code>, <code>KP*</code> with new sections
+prefixed <code>KOR-</code>, so you can select, filter or delete the whole lot in one action. Where the
+model already had a section of the right thickness it was reused, so members carry the project's own
+concrete and names you recognise.</p>
+
+<h2>What has been verified, and what has not</h2>
+
+<h3>Verified: the model is drawn and looked at before it is sent</h3>
+<p>Counts and coordinates cannot see the faults that make a model wrong at a glance — a wall two
+inches tall passes every count. So the model is rendered to an image — isometric, two elevations,
+plan — and looked at before the file goes anywhere. Several faults were found that way and fixed,
+none of which any numeric check had noticed:</p>
+<ul>
+  <li><strong>Joints carried elevations.</strong> An ETABS joint is a plan position only — the third
+      number on a <code>POINT</code> line is an offset from the storey the member is assigned to, and
+      elevation comes from that storey. Writing a true elevation there throws a member hundreds of
+      feet off its storey. Your own 31138 model settles it: 1,098 of its 1,156 joints carry nothing
+      but X and Y. Members are now written the way ETABS writes them — a wall as its two plan joints
+      repeated (<code>PANEL 4 "a" "b" "b" "a" 1 1 0 0</code>), a column as one joint rising a storey.</li>
+  <li><strong>Towers were built as wafers.</strong> 31168's storey list is the whole site, so it holds
+      a storey for every tower's floor: because tower B's level 34 sits 2.4″ above tower A's, the
+      export contains a storey named <code>B-LEVEL 34</code> that is two inches tall. Taking a storey's
+      own height as its wall height made 78 panels two-inch wafers hanging a storey above
+      their floor. A wall now stands on the previous floor <em>of its own tower</em>, and is assigned to
+      every storey it passes through so ETABS builds it as one continuous run. The towers interleave
+      at 4.67 ft and 5.0 ft, so no numeric threshold could have separated a real storey from a
+      duplicate floor — only the storey name can.</li>
+  <li><strong>Scraps of floor hung in space.</strong> Slab-edge linework closes into small rings that
+      are not floors. Seven of 31138's fourteen plates were 52–68 ft² against a real tower floor of
+      9,666 ft². Measured across both projects the two populations do not overlap — standalone rings
+      come out at 52–115 ft², real plates at 915 ft² and up — so a ring must now reach 400 ft² to be
+      modelled as a plate.</li>
+</ul>
+<p>Those three are now permanent checks, run against both real projects on every build: no wall or
+column shorter than a person, none taller than a double-height storey, no plate smaller than a room,
+and no storey in the reference that is not storey-height. 432 tests pass.</p>
+
+<h3>Verified: every member sits exactly where the drawing draws it</h3>
+<p>Each plan is rendered with the extracted members drawn over it
+(<code>takeoff dxf-render &lt;plan&gt; &lt;png&gt; --overlay</code>), so what the model carries can be
+compared against the linework directly rather than inferred. On B-LEVEL 30 the core's two shafts,
+its bar wall and all twenty-four perimeter columns land on their outlines; the images are in
+<code>_drawing-renders\</code>. Wall thicknesses and column sizes are measured from the outlines,
+not assumed.</p>
+
+<h3>Verified: against your own model</h3>
+<p>On 31138 the generated columns land where you placed yours by hand: no shift applied, 43 of
+your 87 columns matched within six inches, and on L10 the median distance was 0.0. On 31168 the
+wall inventory agrees with the model that was lost — its pier-force export records five wall piers
+on every typical storey and 34 at L01, and the drawings give five core elements per typical storey
+and 29 walls at L01.</p>
+
+<h3>Verified: the geometry lands on your grid</h3>
+<p>The drawings and the model both come out of the same Revit project, so they already share a
+coordinate system and the geometry is placed without any shift. That is checked against the grid
+itself rather than assumed: the tower core straddles grids 15 and 16, which ETABS places at
+x = 1500 and 1826, and the walls read out of the drawing sit at 1500.05 and 1826.05 — a twentieth
+of an inch. The same holds up the tower, with wall coordinates landing on grid lines on
+B-LEVEL 30, B-LEVEL 33 and LEVEL 20.</p>
+<p>Worth knowing when you look: only the inner face of a core wall sits on its grid line, the
+outer face standing off by the wall thickness, which is how the drawing draws it.</p>
+
+<h2>What it reads, and how</h2>
+<table>
+  <tr><th>Layer</th><th>Becomes</th><th>How</th></tr>
+  <tr><td><code>JBP_V-WALL</code></td><td>Wall panels</td>
+      <td>A core is drawn as one ribbon tracing both faces of a group of walls. Each face is
+          paired with the face opposite it; the pair gives the centreline and the true thickness.</td></tr>
+  <tr><td><code>JBP_V_COL</code></td><td>Columns</td>
+      <td>Footprint gives size and rotation, so a 16×24 sits the way it is drawn.</td></tr>
+  <tr><td><code>JBP_C_SLABEDG*</code></td><td>Floor plates</td>
+      <td>Outlines stitched into rings; rings inside a ring are openings.</td></tr>
+</table>
+<p>Sheet titles carry the placement. <code>LEVEL 29 PLAN (L29-35)</code> fills seven storeys;
+<code>A-LEVEL 28</code> goes to Tower A alone; <code>LEVEL P2</code> to the parkade. The geometry
+is merged into an <code>.e2k</code> that ETABS itself exported, so storeys, grids, materials and
+design settings remain ETABS's own — the file differs from a known-good one only by the lines added.</p>
+
+<h2>Limitations — read before you rely on it</h2>
+
+<h3>Slab plates are the weak half</h3>
+<p>Drafting interrupts slab edges wherever other linework crosses them, so many outlines do not
+close. Those are dropped and reported rather than guessed at, and a standalone ring must reach
+400 ft² to be modelled — the 83 plates that survive have a median area of 9,835 ft², which is a real
+floor plate rather than a sliver. Coverage is therefore partial: the plates that are there are
+believable, but not every storey has one. Treat them as a starting point, or ignore them and place
+your own diaphragms.</p>
+<p><strong>Where no slab edge closes, the floor is taken from the inside face of the perimeter
+wall.</strong> You said a general outline would help to start from — "we can even have just one
+thickness per floor, general outline at first" — and on a below-grade level that wall is the only
+closed boundary the drawing offers. 31168's three parkade levels each get one plate of 75,800 ft²,
+which is the site footprint. It is an approximation, offered because a storey with no plate has no
+diaphragm at all; replace it with your own outline wherever it matters.</p>
+<p>Storeys still carrying members with no plate: on <strong>31168</strong> four —
+<code>B-LEVEL 1</code>, <code>B-LEVEL 28</code>, <code>C-LEVEL 3</code>, <code>LEVEL 1 MEZZ</code>. Each is named at the top
+of that project's report. Widening the slab-edge closure tolerance was tried and measured against
+this, and every plate it added was a fragment, so the tolerance was left alone.</p>
+<p>Widening the closure tolerance was tried and rejected on the evidence: at 18″ the model gained
+302 more plates, but the count of plates in a plausible size range did not change at all — every
+addition was a fragment. Recovering the missing plates needs a better method, not a looser one
+(see below), and that is why only one model is shipped.</p>
+
+<h3>What is set up, and what is yours to decide</h3>
+<p>The model arrives load-ready rather than load-less. Load patterns (Dead with self-weight, Live),
+load cases (Modal at 55 modes, Dead, Live) and the mass source come through from the reference, and
+because every wall, column and plate now carries its true thickness and the project's own concrete,
+<strong>self-weight is real the moment you run it</strong>. On 31138 your own 149 area-load
+assignments are preserved untouched.</p>
+<p>What is not applied is superimposed dead and live load on the generated plates, and that is
+deliberate. Your own 31138 model carries five different SDL values on L01 alone — 5, 25, 45, 70 and
+145 psf — with live load from −50 to 150, because they follow occupancy: terraces, planters, amenity,
+suites, corridors. None of that is visible in a structural outline, and putting a storey's "typical"
+value on a landscaped terrace would flow straight through to the foundation loads.</p>
+<p>A rigid diaphragm per storey is assigned to every generated plate, so modal analysis runs meaningfully out of the box. Also yours: spectra, stiffness modifiers, pier and spandrel labels, and meshing.</p>
+
+<h3>Openings are detected but not cut</h3>
+<p>Shafts and stair openings are found as inner rings and reported, but not subtracted from the
+plates, so slab areas read high where a core passes through.</p>
+
+<div class="callout warn">
+  <p><strong>Check the thick walls.</strong> Anything modelled thicker than 24″ is flagged in the
+  report. Wall outlines that meet at junctions can pair across the junction and read thicker than
+  the wall really is. The flags tell you exactly where to look.</p>
+</div>
+
+<h3>31168's storeys are the whole site, not Tower B alone</h3>
+<p>The model that was lost was Tower B on its own, storeys L01 to L40 with Mezz and P1–P2. This
+one is built on the site model exported from Revit, so its storeys are the whole development —
+<code>B-LEVEL 27</code> upward for the tower, shared unprefixed storeys lower down. The geometry
+is right; the frame it sits in is not the one you were working in. Worth deciding before you build
+on it.</p>
+
+<h3>It believes the drawing</h3>
+<p>Thicknesses and sizes come from what was drawn, not from a schedule. A wall drawn at the wrong
+width models at the wrong width. The plans used here are dated 28 June 2026 — later revisions are
+not in this model.</p>
+
+<h2>The questions, and everything open to override</h2>
+<p>Beside each model is <code>…-QUESTIONS-for-Andrea.xlsx</code>, in two parts.</p>
+<p><strong>Questions</strong> lists every decision the tool had to make without being told. What you
+have already ruled on is marked DONE with what the tool now does, so there is nothing to re-read;
+only the genuinely open ones want an answer.</p>
+<p><strong>Review &amp; override</strong> is everything else it decided for you, grouped, counted, and
+each marked one of two ways. <strong>APPROXIMATION</strong> is a defensible guess you can replace —
+a floor taken from the inside of a perimeter wall, a short element made a column, the lowest storey
+given a typical height. <strong>DRAWING LIMIT</strong> means the drawing does not contain what would
+be needed: an outline that will not close cannot become a plate, whatever the tool does. The first
+kind is a choice; the second takes you or a redraw. Nothing in that list is an error — errors are
+fixed rather than listed.</p>
+<p>Those answers are the point. Each one becomes a rule the tool applies from then on, on this
+project and every one after, instead of a judgement folded into the code where nobody can see it.
+The workbook also carries every flagged location and a ledger of which drawing filled which storey,
+so a wrong answer is traceable to the sheet that caused it.</p>
+
+<h2>What would make it materially better — your input decides</h2>
+<table>
+  <tr><th>Improvement</th><th>What it needs from you</th></tr>
+  <tr><td><strong>Cut the openings.</strong> Subtract shafts and stairs from the plates so slab
+      areas and diaphragms are right.</td>
+      <td>Confirm that inner rings on the slab-edge layers are always openings, never a step or a
+          depression.</td></tr>
+  <tr><td><strong>Close slab edges properly</strong> by extending an interrupted edge along its own
+      direction to the line that cut it, instead of bridging by distance. Measurement says this is
+      the only way to recover the missing plates.</td>
+      <td>Nothing — but tell us which storeys you most need plates on, so it is proven where it
+          matters.</td></tr>
+  <tr><td><strong>Wall grades by height.</strong> Read the wall schedule so 65 MPa low and 45 MPa
+      high come through instead of one material.</td>
+      <td>Point us at the schedule sheet you would read for this, and how you would expect the
+          grades keyed to walls.</td></tr>
+  <tr><td><strong>Beams.</strong> Nothing on the beam layers is read today.</td>
+      <td>Whether beams are worth having, or you would rather add them yourself.</td></tr>
+  <tr><td><strong>A button in the KOR app</strong> instead of a command line.</td>
+      <td>Whether you would run this yourself per project, or ask for it.</td></tr>
+</table>
+<p>The single most useful thing you can send back: open the model, and tell us the first three
+things that are wrong or annoying. Each one is a rule the tool does not yet know.</p>
+
+<h2>Where this sits in the KOR toolset</h2>
+<p>This is a new front end on the engineering engine the app already carries, not a separate
+program.</p>
+<pre>Revit  ──►  drafting's DXF plan exports  ──►  [ DXF → ETABS ]  ──►  .e2k  ──►  ETABS
+PDF drawings ─────────────────────────────►  [ PdfToSafe   ]  ──►  .f2k / .e2k / live OAPI
+PDF drawings ─────────────────────────────►  [ Takeoff     ]  ──►  quantities, xlsx</pre>
+<p>All three live in <code>Kor.Operations.EngineeringTools</code>, share the same geometry code,
+and are covered by the same test suite. PdfToSafe reads drawings when only a PDF
+exists; this reads the DXFs when drafting has exported them, which is exact and needs no vision
+model. The natural next step is a button in the app's Engineering Tools panel so it runs without
+a command line.</p>
+
+<div class="callout">
+  <p><strong>It only stays reliable while the layer names hold.</strong> <code>JBP_V-WALL</code>,
+  <code>JBP_V_COL</code> and <code>JBP_C_SLABEDG</code> are now a machine contract, not just a
+  drafting habit — which is a concrete argument for the Revit template and standards work already
+  under way.</p>
+</div>
+
+<div class="foot">
+  Built 6 August 2026 · <code>Kor.Operations.EngineeringTools.Core/Dxf</code> ·
+  CLI <code>takeoff dxf-to-etabs</code>, <code>dxf-inspect</code>, <code>e2k-compare</code> ·
+  documented at <code>docs/DxfToEtabs.md</code>
+</div>
+
+</div>
+</body>
+</html>
+
+
+
+
+
+
+
+

@@ -368,10 +368,17 @@ public static class E2kGeometryComposer
                 double sx = opening.Start.X + options.OffsetX, sy = opening.Start.Y + options.OffsetY;
                 double ex = opening.End.X + options.OffsetX, ey = opening.End.Y + options.OffsetY;
 
-                var span = new[] { ((long)Math.Round(sx * 100), (long)Math.Round(sy * 100)),
-                                   ((long)Math.Round(ex * 100), (long)Math.Round(ey * 100)) }
+                // Deduplicated the same way as a wall, and for the same reason: the key has to be
+                // every storey the header is assigned to, not the storey it was placed on. Keying on
+                // the placement storey put two headers over one opening on 31168 — one from
+                // B-LEVEL 32 and one from A-LEVEL 33, both spanning A-LEVEL 33, at different depths
+                // because the two storeys are different heights.
+                var span = new[] { ((long)Math.Round(sx), (long)Math.Round(sy)),
+                                   ((long)Math.Round(ex), (long)Math.Round(ey)) }
                     .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
-                if (!placedSpandrels.Add((span[0].Item1, span[0].Item2, span[1].Item1, span[1].Item2, story.Name))) continue;
+                var headerWhere = (span[0].Item1, span[0].Item2, span[1].Item1, span[1].Item2);
+                var headerStoreys = FreeStoreysFor(story, headerWhere, placedSpandrels);
+                if (headerStoreys.Count == 0) continue;
 
                 string lowA = PointAt(sx, sy);
                 string lowB = PointAt(ex, ey);
@@ -383,7 +390,7 @@ public static class E2kGeometryComposer
                 string spandrel = SpandrelFor(sx, sy, ex, ey);
                 string name = NextName("S", ref spandrelCounter);
                 areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{highA}\"  \"{highB}\"  \"{lowB}\"  \"{lowA}\"  0  0  0  0");
-                foreach (string on in StoreysSpannedBy(story))
+                foreach (string on in headerStoreys)
                     areaAssigns.Add(
                         $"  AREAASSIGN  \"{name}\"  \"{on}\"  SECTION \"{headerSection}\"  SPANDREL  \"{spandrel}\"  " +
                         "OBJMESHTYPE \"DEFAULT\"  CARDINALPOINT \"MIDDLE\"");
@@ -473,8 +480,15 @@ public static class E2kGeometryComposer
                 areaAssigns.Add($"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  OPENING \"Yes\"");
             }
 
+            // One complaint per sheet, however many storeys that sheet builds. A sheet covering a
+            // range fills seven storeys and its drawing faults are the same seven times over; the
+            // engineer would read the same line seven times, and a count of them would say seven
+            // outlines were lost where one was.
             foreach (string flag in placement.Geometry.Flags)
-                flags.Add($"{placement.SourceSheet}: {flag}");
+            {
+                string message = $"{placement.SourceSheet}: {flag}";
+                if (!flags.Contains(message)) flags.Add(message);
+            }
         }
 
         string wallMaterial = doc.FindConcreteMaterial("Wall") ?? material;
