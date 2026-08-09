@@ -110,7 +110,7 @@ public static class E2kGeometryComposer
 
         var pointNames = new Dictionary<(long, long, long), string>();
         var placedSlabs = new HashSet<(long, long, string)>();
-        var placedColumns = new HashSet<(long, long, string)>();
+        var placedColumns = new HashSet<(long, long, long, long, string)>();
         var placedWalls = new HashSet<(long, long, long, long, string)>();
         var storeysWithMembers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         var storeysWithPlates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -206,6 +206,31 @@ public static class E2kGeometryComposer
         }
 
         /// <summary>
+        /// The storeys this member may still be assigned to, having removed any already carrying a
+        /// member at the same place.
+        ///
+        /// Deduplicating on the storey a member was PLACED on is not enough once a member is
+        /// assigned to every storey it spans: two placements from different source storeys expand
+        /// onto a common one and both land there. On 31168 that doubled 22 walls and 18 columns —
+        /// KC249 spans A-LEVEL 33 and B-LEVEL 33, KC2100 spans B-LEVEL 32 and A-LEVEL 33, and they
+        /// meet on A-LEVEL 33 with the same joint and section. Doubled stiffness and self-weight,
+        /// invisible in every count, because two members do look like two members.
+        /// </summary>
+        List<string> FreeStoreysFor(StoryLevel story, (long, long, long, long) where, HashSet<(long, long, long, long, string)> taken)
+        {
+            var spanned = StoreysSpannedBy(story);
+
+            // All or nothing. Handing a member only the storeys that happen to be free leaves it
+            // assigned to a two-inch sliver where a duplicate took the rest, which is the wafer
+            // fault over again — a member has to be whole or absent.
+            if (spanned.Any(s => taken.Contains((where.Item1, where.Item2, where.Item3, where.Item4, s))))
+                return new List<string>();
+
+            foreach (string s in spanned) taken.Add((where.Item1, where.Item2, where.Item3, where.Item4, s));
+            return spanned;
+        }
+
+        /// <summary>
         /// Every storey a member on this storey passes through, bottom-up.
         ///
         /// ETABS builds a wall or column between consecutive storeys of its own global list. In a
@@ -234,10 +259,13 @@ public static class E2kGeometryComposer
                 double x1 = wall.Start.X + options.OffsetX, y1 = wall.Start.Y + options.OffsetY;
                 double x2 = wall.End.X + options.OffsetX, y2 = wall.End.Y + options.OffsetY;
 
-                // Same panel from two overlapping sheets must not be modelled twice.
-                var ends = new[] { ((long)Math.Round(x1 * 100), (long)Math.Round(y1 * 100)), ((long)Math.Round(x2 * 100), (long)Math.Round(y2 * 100)) }
+                // Same panel from two overlapping sheets must not be modelled twice — tested against
+                // the storeys it will actually be assigned to, not the one it was placed on.
+                var ends = new[] { ((long)Math.Round(x1), (long)Math.Round(y1)), ((long)Math.Round(x2), (long)Math.Round(y2)) }
                     .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
-                if (!placedWalls.Add((ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2, story.Name))) continue;
+                var wallWhere = (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
+                var wallStoreys = FreeStoreysFor(story, wallWhere, placedWalls);
+                if (wallStoreys.Count == 0) continue;
 
                 // A wall the engineer has already modelled runs along the same line: compare the
                 // midpoint, since one drawn wall may be modelled as several stacked panels.
@@ -263,7 +291,7 @@ public static class E2kGeometryComposer
                 storeysWithMembers.Add(story.Name);
 
                 string pier = options.AssignPierLabels ? $"  PIER  \"{PierFor(x1, y1, x2, y2)}\"" : string.Empty;
-                foreach (string on in StoreysSpannedBy(story))
+                foreach (string on in wallStoreys)
                     areaAssigns.Add(
                         $"  AREAASSIGN  \"{name}\"  \"{on}\"  SECTION \"{propName}\"{pier}  OBJMESHTYPE \"DEFAULT\"  " +
                         "ADDRESTRAINT \"Yes\"  CARDINALPOINT \"MIDDLE\"");
@@ -274,10 +302,11 @@ public static class E2kGeometryComposer
                 double w = SnapInch(column.Width), d = SnapInch(column.Depth);
                 double x = column.Center.X + options.OffsetX, y = column.Center.Y + options.OffsetY;
 
-                // One column per location per storey: sheets overlap, and duplicated
-                // members would otherwise double the stiffness at that point.
-                var stack = ((long)Math.Round(x * 100), (long)Math.Round(y * 100), story.Name);
-                if (!placedColumns.Add(stack)) continue;
+                // One member per place per storey, to the nearest inch. Quantising finer does not work: the// One column per location per storey — tested against the storeys it will actually
+                // be assigned to. Sheets overlap, and duplicates double the stiffness at that point.
+                var colWhere = ((long)Math.Round(x), (long)Math.Round(y), 0L, 0L);
+                var colStoreys = FreeStoreysFor(story, colWhere, placedColumns);
+                if (colStoreys.Count == 0) continue;
 
                 if (existingColumns.TryGetValue(story.Name, out var already) &&
                     already.Any(p => p.DistanceTo(new DxfPoint(x, y)) <= options.AlreadyModelledTolerance))
@@ -312,7 +341,7 @@ public static class E2kGeometryComposer
                 string name = NextName("C", ref colCounter);
                 lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{at}\"  \"{at}\"  1");
                 storeysWithMembers.Add(story.Name);
-                foreach (string on in StoreysSpannedBy(story))
+                foreach (string on in colStoreys)
                     lineAssigns.Add(
                         $"  LINEASSIGN  \"{name}\"  \"{on}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
                         "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
@@ -484,6 +513,16 @@ public static class E2kGeometryComposer
             flags.Add($"{skippedWalls} wall(s) and {skippedColumns} column(s) were already modelled at those " +
                       "locations and were not added again.");
 
+        // A column wider than any in the model it is being added to is probably not a column. One
+        // 65x82 came through on 31168 where the widest in the engineer's own 31138 is 36x72; it may
+        // be a wall or a pier read as a frame, and it is not provable from geometry alone.
+        var oversize = frameProps.Keys.Where(k => Math.Min(k.W, k.D) > 48).ToList();
+        if (oversize.Count > 0)
+            flags.Add(
+                $"{oversize.Count} generated column section(s) are wider than 48\" on both faces " +
+                $"({string.Join(", ", oversize.Select(k => $"{k.W:0}x{k.D:0}"))}). A column that wide is more " +
+                "likely a wall or a pier; worth a look at those locations.");
+
         // A storey with walls and columns but no plate is the one thing that still reads as wrong
         // in a 3D view: members standing with nothing spanning between them. It happens where a
         // drawing's slab edges will not close — the parkade levels on 31168 — and it is worth
@@ -534,3 +573,5 @@ public static class E2kGeometryComposer
     private static string Trim(double value) => value.ToString("0.###", Inv);
     private static string F(double value) => value.ToString("0.####", Inv);
 }
+
+

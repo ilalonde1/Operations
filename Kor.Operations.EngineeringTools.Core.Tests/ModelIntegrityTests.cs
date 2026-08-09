@@ -169,25 +169,66 @@ public class ModelIntegrityTests
         var joints = Joints(built.Lines);
         var storeyOf = FirstStoreyOf(built.Lines);
 
-        // No two plates on one storey may share a place.
-        var seen = new HashSet<(string, long, long)>();
-        var doubled = new List<string>();
+        // No two members of a kind may occupy the same place on the same storey — plates, walls and
+        // columns alike, and tested against EVERY storey each is assigned to.
+        //
+        // Checking plates alone was not enough. A member is deduplicated on the storey it was
+        // placed on, then assigned to every storey it spans, so two placements from different
+        // source storeys expand onto a common one and both land: 22 walls and 18 columns doubled on
+        // 31168 while this test passed, because it only ever looked at KF.
+        var everyAssign = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (string raw in built.Lines)
         {
-            var m = Regex.Match(raw.Trim(), @"^AREA\s+""(KF\d+)""\s+FLOOR\s+\d+\s+(.+)$");
+            var m = Regex.Match(raw.Trim(), @"^(?:AREA|LINE)ASSIGN\s+""(K\w+)""\s+""([^""]+)""");
             if (!m.Success) continue;
+            if (!everyAssign.TryGetValue(m.Groups[1].Value, out var list)) everyAssign[m.Groups[1].Value] = list = new List<string>();
+            list.Add(m.Groups[2].Value);
+        }
 
-            var ids = Refs(m.Groups[2].Value).Where(joints.ContainsKey).ToList();
-            if (ids.Count < 3 || !storeyOf.TryGetValue(m.Groups[1].Value, out string? storey)) continue;
+        var seen = new HashSet<(string Kind, string Storey, long X, long Y, long X2, long Y2)>();
+        var doubled = new List<string>();
 
-            var key = (storey,
-                (long)Math.Round(ids.Average(i => joints[i].X) / 12.0),
-                (long)Math.Round(ids.Average(i => joints[i].Y) / 12.0));
-            if (!seen.Add(key)) doubled.Add($"{m.Groups[1].Value} on {storey}");
+        void Claim(string kind, string member, IReadOnlyList<string> ids, double round)
+        {
+            if (!everyAssign.TryGetValue(member, out var storeys)) return;
+
+            long qx = (long)Math.Round(ids.Average(i => joints[i].X) / round);
+            long qy = (long)Math.Round(ids.Average(i => joints[i].Y) / round);
+            long qx2 = ids.Count > 1 ? (long)Math.Round(joints[ids[0]].X / round) : 0;
+            long qy2 = ids.Count > 1 ? (long)Math.Round(joints[ids[0]].Y / round) : 0;
+
+            foreach (string storey in storeys.Distinct(StringComparer.OrdinalIgnoreCase))
+                if (!seen.Add((kind, storey, qx, qy, qx2, qy2)))
+                    doubled.Add($"{member} ({kind}) on {storey}");
+        }
+
+        foreach (string raw in built.Lines)
+        {
+            string line = raw.Trim();
+
+            var plate = Regex.Match(line, @"^AREA\s+""(KF\d+)""\s+FLOOR\s+\d+\s+(.+)$");
+            if (plate.Success)
+            {
+                var ids = Refs(plate.Groups[2].Value).Where(joints.ContainsKey).ToList();
+                if (ids.Count >= 3) Claim("plate", plate.Groups[1].Value, ids, 12.0);
+                continue;
+            }
+
+            var wall = Regex.Match(line, @"^AREA\s+""(KW\d+)""\s+PANEL\s+4\s+""([^""]+)""\s+""([^""]+)""");
+            if (wall.Success)
+            {
+                var ids = new[] { wall.Groups[2].Value, wall.Groups[3].Value }.Where(joints.ContainsKey).ToList();
+                if (ids.Count == 2) Claim("wall", wall.Groups[1].Value, ids, 1.0);
+                continue;
+            }
+
+            var column = Regex.Match(line, @"^LINE\s+""(KC\d+)""\s+COLUMN\s+""([^""]+)""");
+            if (column.Success && joints.ContainsKey(column.Groups[2].Value))
+                Claim("column", column.Groups[1].Value, new[] { column.Groups[2].Value }, 1.0);
         }
 
         Assert.True(doubled.Count == 0,
-            $"{name}: {doubled.Count} plate(s) modelled on top of another: {string.Join(", ", doubled.Take(5))}");
+            $"{name}: {doubled.Count} member(s) modelled on top of another: {string.Join(", ", doubled.Take(5))}");
 
         // An outline the classifier could not place at all is a member that left no trace. This is
         // a ratchet, not a target: the number may only ever come down. Each figure is what the

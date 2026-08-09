@@ -343,6 +343,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         ModelQuestionnaire.Write(
             questionsPath, dxfReport,
             new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance, ExtendLimit = extendLimit },
+            new ComposeOptions { IncludeFloors = includeFloors },
             Path.GetFileNameWithoutExtension(args[3]));
         Console.WriteLine($"questions for the engineer: {questionsPath}");
     }

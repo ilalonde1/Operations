@@ -29,16 +29,41 @@ public sealed record ModelQuestion(
 /// </summary>
 public static class ModelQuestionnaire
 {
-    /// <summary>Questions that apply to any drawing set, with what the tool currently assumes.</summary>
-    public static IReadOnlyList<ModelQuestion> StandingQuestions(PlanClassificationOptions options) => new[]
+    /// <summary>
+    /// The questions, carrying only facts true of the project being written.
+    ///
+    /// <paramref name="report"/> is what keeps them honest. Written as fixed prose they carried one
+    /// project's numbers into both workbooks, so 31138's asked the engineer to rule on 31168's
+    /// storeys and quoted 31168's plate areas. A question about the wrong building is worse than no
+    /// question: it says nobody read what was sent.
+    /// </summary>
+    public static IReadOnlyList<ModelQuestion> StandingQuestions(
+        PlanClassificationOptions options, ComposeOptions compose, DxfToEtabsReport? report = null)
     {
+        // Whatever this project's own run found, rather than a number typed in once.
+        string plateless = report?.Summary.Flags
+            .FirstOrDefault(f => f.Contains("no floor plate", StringComparison.OrdinalIgnoreCase)) is { } f2
+            ? f2[(f2.IndexOf(':') + 1)..].Split('.')[0].Trim()
+            : "the storeys named in the report";
+
+        string perimeterFloors = report?.Summary.Flags
+            .Any(f => f.Contains("perimeter wall", StringComparison.OrdinalIgnoreCase)) == true
+            ? "Each level with no closed slab edge has been given one plate from the inside face of its perimeter wall."
+            : "No level needed this on your project — every plate came from a drawn slab edge.";
+
+        double minDepth = 24, maxDepth = 60;
+
+        return new[]
+        {
         new ModelQuestion("H1", "Header depth",
-            $"Headers are generated {options.SpandrelDepth:0}\" deep. That is the shallowest beam depth your own " +
-            "31138 model uses, so it should be a sane default — change it only if you want something else.",
-            $"A spandrel beam spanning each opening, {options.SpandrelDepth:0}\" deep and the wall's thickness wide, " +
-            "labelled so the same opening is one spandrel up the building.",
+            $"Header depth follows your rule — storey height less an assumed {compose.OpeningHeight:0}\" opening — " +
+            $"and is then held between {minDepth:0}\" and {maxDepth:0}\". So depth varies by storey rather than being " +
+            "one number. Is the assumed opening height right, and are those bounds sensible?",
+            $"Depth = storey height − {compose.OpeningHeight:0}\", clamped to {minDepth:0}–{maxDepth:0}\". The clamp " +
+            "exists because a double-height storey otherwise produced a 396\" header, which is a wall.",
             "The header couples the piers either side of an opening; its depth drives how much.",
-            "Your 31138 model uses 24\", 26\", 28\", 29\", 30\", 32\", 33\" and 36\" deep beams; 30783 uses 24\" upward too."),
+            $"Your 31138 model's own beams run 24\" to 36\" deep; raised-joint offsets across KOR's models run " +
+            "1.7\" to 122\", so the bounds are policy rather than format."),
 
         new ModelQuestion("P1", "Perimeter basement wall",
             "FIXED. The below-grade perimeter wall is now read on all four sides, including the angled west one.",
@@ -50,30 +75,28 @@ public static class ModelQuestionnaire
 
         new ModelQuestion("C1", "Corners that come out as one thick element",
             "You said \"this wall and this wall should be aligned — it's doing just one big wall that's not " +
-            "aligned with this one\". Here is the case, measured: a stepped block 67\" x 42\" whose top strip " +
-            "is 28\" thick and whose leg is 42\". Is that one pier, or a 28\" wall with a thickening at the end? " +
-            "If it is a wall plus a thickening, what rule separates the two?",
-            "Modelled as one 42\"-thick wall, centred at y=3271 — the core wall it continues runs at y=3278, so " +
-            "the two do not line up. Breaking it into limbs was tried and is worse: they measure 31x28 and " +
-            "14x36, stubby enough that all 70 fell through to columns and lost their in-plane shear.",
+            "aligned with this one\". A stepped block — one limb thinner than the other — is modelled as a " +
+            "single pier on the box's long axis, so its centreline sits between the two limbs and matches " +
+            "neither. Is that one pier, or a wall with a thickening? If the latter, what separates them?",
+            "Left as one pier. Splitting it into limbs was tried and is worse: they come out stubby enough " +
+            "that the aspect rule discards them and they fall through to columns, losing their in-plane shear.",
             "It decides whether these carry shear as walls, and whether their centrelines match the walls beside them.",
-            "31168: 70 of these, identical, repeating up the building at the same plan position. " +
-            "Drawn faces at x=1795/1826.1/1862.1 and y=3249.8/3264/3292."),
+            "Measured on 31168: a 67\" x 42\" block, 28\" top strip and 42\" leg, modelled centred at y=3271 " +
+            "while the core wall it continues runs at y=3278."),
 
-        new ModelQuestion("F1", "Parkade floors",
-            "Below grade no slab edge closes, so each parkade level has been given one plate taken from the " +
-            "inside face of the perimeter wall — the site footprint, one thickness. Keep it, or will you draw them?",
-            "31168's P1, P2 and P3 each carry one plate of about 75,800 sq ft. A real slab-edge outline always " +
-            "wins where one exists; this is only used where nothing closes.",
+        new ModelQuestion("F1", "Floors where no slab edge closes",
+            "Where no slab edge closes, the floor has been taken from the inside face of the perimeter wall — " +
+            "one outline, one thickness. Keep that, or will you draw them?",
+            perimeterFloors + " A real slab-edge outline always wins where one exists; this is only the fallback.",
             "A storey with no plate has no diaphragm at all, and its walls and columns read as unsupported.",
-            "The site measures roughly 325 by 233 ft, so the plate is the footprint rather than an invention."),
+            "The outline is the drawn inside face of the wall, so it is measured rather than invented."),
 
-        new ModelQuestion("F2", "Three storeys with no floor",
-            "LEVEL 1 MEZZ, C-LEVEL 3 and B-LEVEL 28 have no closed outline anywhere on any slab layer — not " +
-            "even a perimeter wall to fall back on. They need a plate drawn. Anything we should read instead?",
+        new ModelQuestion("F2", "Storeys still with no floor",
+            $"These have no closed outline anywhere on any slab layer, and no perimeter wall to fall back on " +
+            $"either: {plateless}. They need a plate drawn — anything we should read instead?",
             "Left without a plate rather than invented from where the columns happen to sit.",
-            "Those three storeys have no diaphragm.",
-            "MEZZ has three closed rings but all are shaft-sized, far below a floor."),
+            "Those storeys have no diaphragm.",
+            "Small closed rings do exist on some of them, but all are shaft-sized, far below a floor."),
 
         new ModelQuestion("A1", "Short faces in a core",
             "An element under 48\" long is now a column, as you asked. Inside a core, a short wall face " +
@@ -154,21 +177,23 @@ public static class ModelQuestionnaire
             "It decides how results are reported and how the model compares with the old one.",
             "The tool can still split a tower out on request; nothing about that is lost.")
             { Decided = true },
-    };
+        };
+    }
 
-    public static void Write(string path, DxfToEtabsReport report, PlanClassificationOptions options, string projectName)
+    public static void Write(string path, DxfToEtabsReport report, PlanClassificationOptions options,
+        ComposeOptions compose, string projectName)
     {
         // Two sheets. The questions, and the lookup for when something in the model looks wrong.
         // The per-drawing ledger lives in the report; it is 60 rows nobody reads in a spreadsheet.
         using var workbook = new XLWorkbook();
-        WriteQuestions(workbook, report, options, projectName);
+        WriteQuestions(workbook, report, options, compose, projectName);
         WriteFlags(workbook, report);
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         workbook.SaveAs(path);
     }
 
-    private static void WriteQuestions(XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, string projectName)
+    private static void WriteQuestions(XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, ComposeOptions compose, string projectName)
     {
         var sheet = workbook.Worksheets.Add("Questions");
 
@@ -191,7 +216,7 @@ public static class ModelQuestionnaire
         // Only what is still open. Listing what she has already ruled on is asking her to read her
         // own answers back.
         int row = 5;
-        foreach (var q in StandingQuestions(options).Where(q => !q.Decided).OrderBy(q => q.Code))
+        foreach (var q in StandingQuestions(options, compose, report).Where(q => !q.Decided).OrderBy(q => q.Code))
         {
             sheet.Cell(row, 1).Value = q.Code;
             sheet.Cell(row, 2).Value = q.Question;
@@ -313,3 +338,4 @@ public static class ModelQuestionnaire
         sheet.SheetView.FreezeRows(1);
     }
 }
+

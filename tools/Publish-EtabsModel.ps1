@@ -57,6 +57,44 @@ if (-not $SkipDossier) {
     }
 }
 
+# The dossier quotes counts, and they are written by hand. A timestamp check cannot see a wrong
+# number in a current file — 31138 shipped with the dossier claiming 162 columns against 165 in the
+# model, and 5 headers against 8. Every count it states must appear in the model it describes.
+$dossier = Join-Path $folder 'KOR-Model-From-Drawings-DOSSIER.pdf'
+$pdftotext = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter 'pdftotext.exe' -ErrorAction SilentlyContinue |
+    Select-Object -First 1 -ExpandProperty FullName
+
+if ((Test-Path $dossier) -and $pdftotext) {
+    $model = Get-Content -LiteralPath $out
+    $actual = [ordered]@{
+        walls    = @($model | Select-String '^\s+AREA\s+"KW\d+"\s+PANEL').Count
+        columns  = @($model | Select-String '^\s+LINE\s+"KC\d+"\s+COLUMN').Count
+        plates   = @($model | Select-String '^\s+AREA\s+"KF\d+"\s+FLOOR').Count
+        headers  = @($model | Select-String '^\s+AREA\s+"KS\d+"\s+PANEL').Count
+        openings = @($model | Select-String '^\s+AREA\s+"KO\d+"\s+AREA').Count
+    }
+    $text = ((& $pdftotext $dossier -) -join ' ') -replace '\s+', ' '
+
+    $wrong = @()
+    foreach ($k in $actual.Keys) {
+        $n = $actual[$k]
+        if ($n -eq 0) { continue }
+        $plain = [string]$n
+        $grouped = '{0:N0}' -f $n
+        if ($text -notmatch ("\b" + [regex]::Escape($plain) + "\b") -and
+            $text -notmatch ("\b" + [regex]::Escape($grouped) + "\b")) {
+            $wrong += "$k = $n"
+        }
+    }
+    if ($wrong) {
+        Write-Host ''
+        Write-Host 'DOSSIER OUT OF DATE — these counts are not in it:' -ForegroundColor Red
+        $wrong | ForEach-Object { Write-Host ("  " + $_) -ForegroundColor Red }
+        Write-Host '  (the model is fine; the document describing it is not)' -ForegroundColor Red
+        exit 1
+    }
+}
+
 # Nothing ships that predates the code that made it.
 $newestSource = (Get-ChildItem (Join-Path $repo 'Kor.Operations.EngineeringTools.Core\Dxf') -Filter '*.cs' |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
