@@ -232,6 +232,112 @@ public class ModelCoverageTests
     }
 
     // ---------------------------------------------------------------------------------------
+    // 4. The member is the RIGHT member.  Nothing was misclassified.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Position is not enough. A member can sit exactly where the drawing puts it and still be
+    /// wrong: a 16" column built 24", a round column built square, a wall built at the wrong
+    /// thickness. Every one of those leaves the counts and the positions perfect — which is how
+    /// 160 chamfered square columns shipped as 10" circles and the engineer, not the build, found
+    /// them.
+    ///
+    /// So each generated column is measured against the RAW linework underneath it — segments off
+    /// the column layers, with the arc flag the DXF entity type gives — and not against the
+    /// classifier's own idea of what it read. That distinction is the whole check: the first
+    /// version of this compared the model to the classifier that built it, agreed with itself
+    /// perfectly, and passed unchanged with round-column detection switched off altogether.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Projects))]
+    public void EveryGeneratedMemberHasTheSizeItWasDrawnAt(string name)
+    {
+        var project = GeneratedModel.For(name);
+        var built = GeneratedModel.BuildOrSkip(project);
+        if (built is null) return;
+
+        var sections = GeneratedModel.Sections(built.Lines);
+        var joints = GeneratedModel.Joints(built.Lines);
+        var assigns = GeneratedModel.AssignedStoreys(built.Lines);
+        var sectionOf = GeneratedModel.SectionOfMember(built.Lines);
+        var linework = GeneratedModel.ColumnLineworkByStorey(project, built.Report);
+
+        var wrong = new List<string>();
+        int checkedCount = 0;
+
+        foreach (string line in built.Lines)
+        {
+            string t = line.Trim();
+
+            var column = Regex.Match(t, @"^LINE\s+""(KC\d+)""\s+COLUMN\s+""([^""]+)""");
+            if (!column.Success) continue;
+
+            string member = column.Groups[1].Value;
+            if (!joints.TryGetValue(column.Groups[2].Value, out var at)) continue;
+            if (!sectionOf.TryGetValue(member, out string? section) || !sections.TryGetValue(section, out var built_)) continue;
+            if (!assigns.TryGetValue(member, out var storeys)) continue;
+
+            // The linework this column stands on: every column-layer segment whose ends both fall
+            // inside the footprint the model gives it, widened by the tolerance.
+            double reach = Math.Max(built_.D, built_.B) / 2.0 + Tolerance;
+            var under = new List<DxfSegment>();
+            foreach (string storey in storeys)
+            {
+                if (!linework.TryGetValue(storey, out var segments)) continue;
+                foreach (var s in segments)
+                    if (Inside(s.Start, at, reach) || Inside(s.End, at, reach))
+                        under.Add(s);
+            }
+            if (under.Count == 0) continue;   // nothing drawn there is the other test's finding
+
+            // Round is knowable only from arc provenance, so that is what is compared.
+            bool drawnRound = under.Any(s => s.FromCurve);
+            if (drawnRound != built_.IsRound)
+            {
+                wrong.Add($"{member} at ({at.X:F0},{at.Y:F0}) drawn with {(drawnRound ? "arcs" : "straight lines only")} " +
+                          $"but built {(built_.IsRound ? "round" : "rectangular")} as '{section}'");
+                continue;
+            }
+
+            double minX = under.Min(s => Math.Min(s.Start.X, s.End.X));
+            double maxX = under.Max(s => Math.Max(s.Start.X, s.End.X));
+            double minY = under.Min(s => Math.Min(s.Start.Y, s.End.Y));
+            double maxY = under.Max(s => Math.Max(s.Start.Y, s.End.Y));
+
+            double drawnLong = Math.Max(maxX - minX, maxY - minY);
+            double drawnShort = Math.Min(maxX - minX, maxY - minY);
+
+            // A footprint that reads as a sliver is one this window failed to capture whole, not a
+            // sliver column. Judging it would report the window's own limits as defects.
+            if (drawnShort < 4.0) continue;
+
+            checkedCount++;
+            double builtLong = built_.IsRound ? built_.D : Math.Max(built_.D, built_.B);
+            double builtShort = built_.IsRound ? built_.D : Math.Min(built_.D, built_.B);
+
+            // The drawn box is axis-aligned and the column may be turned inside it, so the only
+            // sound bound is that the built section must fit within the box at SOME rotation:
+            // its diagonal cannot exceed the box's. Comparing lengths side to side instead calls
+            // an 8x43 turned 45 degrees oversize inside a 36x36 box, which it plainly is not.
+            double builtDiagonal = Math.Sqrt(builtLong * builtLong + builtShort * builtShort);
+            double drawnDiagonal = Math.Sqrt(drawnLong * drawnLong + drawnShort * drawnShort);
+
+            if (builtDiagonal - drawnDiagonal > 2.0)
+                wrong.Add($"{member} at ({at.X:F0},{at.Y:F0}) drawn inside {drawnShort:F0}x{drawnLong:F0} " +
+                          $"but built {builtShort:F0}x{builtLong:F0} as '{section}', which does not fit");
+        }
+
+        int allowed = name.StartsWith("31168") ? GeneratedModel.LangaraMissizedCeiling : GeneratedModel.WestFirstMissizedCeiling;
+        _out.WriteLine($"{name}: {checkedCount} columns matched to the footprint they were drawn from; " +
+                       $"{wrong.Count} do not match it (ceiling {allowed}).");
+        foreach (string w in wrong.Take(10)) _out.WriteLine("    " + w);
+
+        Assert.True(wrong.Count <= allowed,
+            $"{name}: {wrong.Count} generated column(s) are not the size or shape the drawing gives them, " +
+            $"against {allowed} recorded. This number may only come down. First few: {string.Join("; ", wrong.Take(5))}");
+    }
+
+    // ---------------------------------------------------------------------------------------
 
     private static bool Stands(string member, DxfPoint where,
         IReadOnlyDictionary<string, List<DxfPoint>> drawn,
@@ -251,4 +357,7 @@ public class ModelCoverageTests
 
     private static bool Near(DxfPoint a, DxfPoint b) =>
         Math.Abs(a.X - b.X) <= Tolerance && Math.Abs(a.Y - b.Y) <= Tolerance;
+
+    private static bool Inside(DxfPoint p, DxfPoint centre, double reach) =>
+        Math.Abs(p.X - centre.X) <= reach && Math.Abs(p.Y - centre.Y) <= reach;
 }

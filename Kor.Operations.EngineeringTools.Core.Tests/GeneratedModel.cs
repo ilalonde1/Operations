@@ -36,6 +36,19 @@ internal static class GeneratedModel
     internal const int LangaraLostCeiling = 7;
     internal const int WestFirstLostCeiling = 29;
 
+    /// <summary>
+    /// Generated columns whose size or shape does not match the footprint they were drawn from.
+    /// Ratchets, same rule: down only.
+    /// </summary>
+    internal const int LangaraMissizedCeiling = 0;
+    internal const int WestFirstMissizedCeiling = 0;
+
+    /// <summary>A section as the model declares it: a circle has no second dimension.</summary>
+    internal sealed record SectionShape(double D, double B, bool IsRound);
+
+    /// <summary>A column footprint as the drawing gives it, in model coordinates.</summary>
+    internal sealed record DrawnColumn(DxfPoint At, double Width, double Depth, bool IsRound);
+
     internal sealed record Built(string[] Lines, DxfToEtabsReport Report);
 
     private static readonly Dictionary<string, Built> Cache = new();
@@ -184,6 +197,77 @@ internal static class GeneratedModel
             {
                 if (!byStorey.TryGetValue(storey, out var list)) byStorey[storey] = list = new List<DxfPoint>();
                 list.AddRange(points);
+            }
+        }
+        return byStorey;
+    }
+
+    /// <summary>Every frame section the file declares, by name.</summary>
+    internal static Dictionary<string, SectionShape> Sections(string[] lines)
+    {
+        var sections = new Dictionary<string, SectionShape>(StringComparer.OrdinalIgnoreCase);
+        foreach (string line in lines)
+        {
+            var m = Regex.Match(line.Trim(), @"^FRAMESECTION\s+""(.+?)""\s+.*?SHAPE\s+""([^""]+)""");
+            if (!m.Success) continue;
+
+            bool round = m.Groups[2].Value.Contains("Circle", StringComparison.OrdinalIgnoreCase);
+            var d = Regex.Match(line, @"\sD\s+([\d.]+)");
+            var b = Regex.Match(line, @"\sB\s+([\d.]+)");
+            if (!d.Success) continue;
+
+            sections[m.Groups[1].Value] = new SectionShape(
+                double.Parse(d.Groups[1].Value, CultureInfo.InvariantCulture),
+                b.Success ? double.Parse(b.Groups[1].Value, CultureInfo.InvariantCulture) : 0.0,
+                round);
+        }
+        return sections;
+    }
+
+    /// <summary>The section each generated member is assigned.</summary>
+    internal static Dictionary<string, string> SectionOfMember(string[] lines)
+    {
+        var section = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string line in lines)
+        {
+            var m = Regex.Match(line.Trim(), @"^(?:AREA|LINE)ASSIGN\s+""(K\w+)""\s+""[^""]+""\s+SECTION\s+""(.+?)""(?:\s|$)");
+            if (m.Success) section.TryAdd(m.Groups[1].Value, m.Groups[2].Value);
+        }
+        return section;
+    }
+
+    /// <summary>
+    /// The RAW column linework each storey's sheets carry, in model coordinates — segments off the
+    /// column layers, straight from the reader, with the arc flag the DXF entity type gives.
+    ///
+    /// Deliberately not the classifier's own PlanGeometrySet. Comparing a model built from the
+    /// classifier against the classifier's own idea of what it read compares a thing to itself and
+    /// can only ever agree: it passes unchanged with round-column detection disabled entirely.
+    /// Shape has to be judged against the drawing.
+    /// </summary>
+    internal static Dictionary<string, List<DxfSegment>> ColumnLineworkByStorey(Project project, DxfToEtabsReport report)
+    {
+        var (ox, oy) = report.AppliedOffset;
+        var byStorey = new Dictionary<string, List<DxfSegment>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var sheet in report.Sheets)
+        {
+            if (sheet.Stories.Count == 0) continue;
+            string path = Path.Combine(project.DxfFolder, sheet.File);
+            if (!File.Exists(path)) continue;
+
+            var columnLines = DxfPlanReader.ReadSegments(path)
+                .Where(s => s.Layer.Contains("_COL", StringComparison.OrdinalIgnoreCase))
+                .Select(s => new DxfSegment(s.Layer,
+                            new DxfPoint(s.Start.X + ox, s.Start.Y + oy),
+                            new DxfPoint(s.End.X + ox, s.End.Y + oy)) { FromCurve = s.FromCurve })
+                .ToList();
+            if (columnLines.Count == 0) continue;
+
+            foreach (string storey in sheet.Stories)
+            {
+                if (!byStorey.TryGetValue(storey, out var list)) byStorey[storey] = list = new List<DxfSegment>();
+                list.AddRange(columnLines);
             }
         }
         return byStorey;
