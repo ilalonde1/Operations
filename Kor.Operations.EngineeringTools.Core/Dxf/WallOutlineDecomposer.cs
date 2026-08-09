@@ -75,7 +75,11 @@ public static class WallOutlineDecomposer
 
                 double t0 = Math.Max(ta0, tb0), t1 = Math.Min(ta1, tb1);
                 double overlap = t1 - t0;
-                if (overlap < options.MinWallLength) continue;
+
+                // How much face two walls must share to be one panel — not how long an element must
+                // be to count as a wall. Those were the same number once, and raising the second to
+                // 48" stopped every corner's short limb from decomposing.
+                if (overlap < options.MinPanelOverlap) continue;
 
                 // Concrete, or a void? The material between two faces of one wall lies inside
                 // the outline; the gap between walls on opposite sides of a shaft lies outside.

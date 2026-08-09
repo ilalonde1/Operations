@@ -48,6 +48,18 @@ public static class ModelQuestionnaire
             "31168 P2: the west wall now reads 2,806\" long at 88.1 degrees, alongside the north, south and east.")
             { Decided = true },
 
+        new ModelQuestion("C1", "Corners that come out as one thick element",
+            "You said \"this wall and this wall should be aligned — it's doing just one big wall that's not " +
+            "aligned with this one\". Here is the case, measured: a stepped block 67\" x 42\" whose top strip " +
+            "is 28\" thick and whose leg is 42\". Is that one pier, or a 28\" wall with a thickening at the end? " +
+            "If it is a wall plus a thickening, what rule separates the two?",
+            "Modelled as one 42\"-thick wall, centred at y=3271 — the core wall it continues runs at y=3278, so " +
+            "the two do not line up. Breaking it into limbs was tried and is worse: they measure 31x28 and " +
+            "14x36, stubby enough that all 70 fell through to columns and lost their in-plane shear.",
+            "It decides whether these carry shear as walls, and whether their centrelines match the walls beside them.",
+            "31168: 70 of these, identical, repeating up the building at the same plan position. " +
+            "Drawn faces at x=1795/1826.1/1862.1 and y=3249.8/3264/3292."),
+
         new ModelQuestion("F1", "Parkade floors",
             "Below grade no slab edge closes, so each parkade level has been given one plate taken from the " +
             "inside face of the perimeter wall — the site footprint, one thickness. Keep it, or will you draw them?",

@@ -18,8 +18,26 @@ public sealed record PlanClassificationOptions
     /// <summary>
     /// Shorter than this on plan and the element is a column, not a wall — the engineer's rule,
     /// given as the answer to W1: "less than 48 in length should be a column".
+    ///
+    /// This governs only what a whole element IS. It must never govern how a shape is taken apart:
+    /// see <see cref="MinPanelOverlap"/>.
     /// </summary>
     public double MinWallLength { get; init; } = 48.0;
+
+    /// <summary>
+    /// Shortest face pairing the decomposer will accept as a panel.
+    ///
+    /// Deliberately separate from <see cref="MinWallLength"/>, and much smaller. The two were the
+    /// same number once, so raising the wall-versus-column rule to 48" also demanded that every
+    /// face overlap by 48" — and the short limb of every corner stopped decomposing. Those corners
+    /// then fell through to the pier branch and came out as ONE thick wall filling the corner
+    /// volume: "it's almost like it filled the volume, but didn't do the actual corner", and the
+    /// wall it produced lined up with neither of the two it replaced. It put 417 of 918 walls at
+    /// 30" or thicker on 31168, which is not a residential tower.
+    ///
+    /// A limb of a corner is short by nature. Twelve inches is a wall's width, not a wall's length.
+    /// </summary>
+    public double MinPanelOverlap { get; init; } = 12.0;
 
     /// <summary>
     /// Join wall centrelines so that panels meeting at a corner or a T share a joint. Off only for
@@ -477,6 +495,15 @@ public static class StructuralPlanClassifier
         // corner — "it's almost like it filled the volume, but didn't do the actual corner", and
         // the single wall it produced lined up with neither of the two it replaced. An L is not
         // convex; a pier is, so the corner goes to the decomposer and comes back as two walls.
+        // A stepped block stays one pier, and this is a known compromise rather than a settled
+        // answer. On 31168 a 67x42 stepped element comes out as a single 42" wall centred at
+        // y=3271 while the core wall it continues runs at y=3278 — the engineer's "this wall and
+        // this wall should be aligned... it's doing just one big wall that's not aligned with this
+        // one". Sending those to the decomposer instead was tried and is worse: its limbs measure
+        // 31x28 and 14x36, which its aspect rule discards as slivers, so all 70 fell through to
+        // columns and lost their in-plane shear altogether. Trading 70 shear walls for a 7"
+        // centreline is the wrong way round, and whether that block is one pier or a wall with a
+        // thickening is the engineer's call, not a rule to guess at. Asked as question C1.
         double boxArea = box.Length * box.Thickness;
         if (boxArea > 0 && loop.Area / boxArea >= options.PierFillRatio && box.Aspect < 4.0 &&
             EffectiveWidth(loop) > options.MaxWallThickness)
