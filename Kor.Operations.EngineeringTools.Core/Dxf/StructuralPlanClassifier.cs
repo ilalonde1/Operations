@@ -66,6 +66,15 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public double MinPanelAspect { get; init; } = 1.2;
 
+    /// <summary>
+    /// How slender a footprint may be and still be modelled as a column. Measured off the models
+    /// the engineers built: the most slender column in her 31138 gravity model is 12x36, exactly
+    /// 3:1, with nothing beyond it, and the 31168 Revit export carries no concrete rectangular
+    /// column at all. Past that ratio the footprint is a wall in both models, and modelling it as a
+    /// column throws away the in-plane shear it was drawn to carry.
+    /// </summary>
+    public double MaxColumnAspect { get; init; } = 3.0;
+
     public double MinColumnSize { get; init; } = 6.0;
     public double MaxColumnSize { get; init; } = 96.0;
 
@@ -288,8 +297,14 @@ public static class StructuralPlanClassifier
         // Same half-inch of slack as the rectangle test above: a wall drawn at exactly 48" measures
         // a fraction under it after the export, and must not change from a wall into a column for
         // a tenth of an inch of drafting drift.
+        // Slenderness overrides both. Her own 31138 model keeps standalone panels at 30" and 36"
+        // as walls with pier labels — W39, W96, W97, W98, W109, W113 — and its most slender column
+        // is 12x36, exactly 3:1, with nothing beyond it. So an element longer than three times its
+        // thickness is a wall whatever it is joined to; converting it made an 8x38 column that no
+        // engineer would draw and threw away the shear it was drawn to carry.
         var stubs = result.Walls
             .Where(w => w.Length < options.MinWallLength - 0.5 && !Joined(w.Start) && !Joined(w.End))
+            .Where(w => w.Thickness <= 0 || w.Length / w.Thickness <= options.MaxColumnAspect)
             .ToList();
 
         foreach (var stub in stubs)
@@ -495,15 +510,23 @@ public static class StructuralPlanClassifier
         // corner — "it's almost like it filled the volume, but didn't do the actual corner", and
         // the single wall it produced lined up with neither of the two it replaced. An L is not
         // convex; a pier is, so the corner goes to the decomposer and comes back as two walls.
-        // A stepped block stays one pier, and this is a known compromise rather than a settled
-        // answer. On 31168 a 67x42 stepped element comes out as a single 42" wall centred at
-        // y=3271 while the core wall it continues runs at y=3278 — the engineer's "this wall and
-        // this wall should be aligned... it's doing just one big wall that's not aligned with this
-        // one". Sending those to the decomposer instead was tried and is worse: its limbs measure
-        // 31x28 and 14x36, which its aspect rule discards as slivers, so all 70 fell through to
-        // columns and lost their in-plane shear altogether. Trading 70 shear walls for a 7"
-        // centreline is the wrong way round, and whether that block is one pier or a wall with a
-        // thickening is the engineer's call, not a rule to guess at. Asked as question C1.
+        // A stepped block used to stay one pier, and its centreline lined up with neither limb —
+        // "this wall and this wall should be aligned... it's doing just one big wall that's not
+        // aligned with this one". Splitting it was tried first and was worse: the limbs measure
+        // 31x28 and 14x36, every face short of 48", so the decomposer would not look at them and
+        // all 70 fell through to columns, losing their in-plane shear.
+        //
+        // Her own 31138 model says what the answer should look like: fifteen of its pier labels put
+        // several panels on one storey, and three group limbs at right angles — cw9 is a 23" limb
+        // and a 27" limb under one pier, cw15 a 272" and a 104", cw6 ten panels from 2" to 15". So
+        // a stepped block is limbs on their own centrelines under one shared pier label, and the
+        // limbs stay walls however stubby.
+        //
+        // Getting there is not just a threshold. Routing these to the decomposer was tried again
+        // with the face floor lowered to 12" and the panel aspect relaxed to 0.8, and the 70 blocks
+        // still do not come apart — three levers, three walls' difference. Something earlier than
+        // the aspect rule is refusing them, and guessing at it is how the last two rounds went. It
+        // stays question C1 until that is measured, but the question now carries her answer.
         double boxArea = box.Length * box.Thickness;
         if (boxArea > 0 && loop.Area / boxArea >= options.PierFillRatio && box.Aspect < 4.0 &&
             EffectiveWidth(loop) > options.MaxWallThickness)
@@ -538,6 +561,17 @@ public static class StructuralPlanClassifier
         // worth carrying, and the engineer's rule already says a short element is a column.
         if (box.Thickness >= options.MinColumnSize && box.Length <= options.MaxColumnSize)
         {
+            // Too slender to be anyone's column. The most slender column in her own 31138 model is
+            // 12x36, exactly 3:1, and there is nothing beyond it; the 31168 export has no concrete
+            // rectangular column at all. A footprint longer than three times its width is a wall in
+            // both models, so it is modelled as one — on its centreline, keeping its in-plane
+            // shear — rather than as an 8x38 column no engineer would draw.
+            if (box.Aspect > options.MaxColumnAspect)
+            {
+                result.Walls.Add(new WallAxis(box.AxisStart, box.AxisEnd, box.Thickness, loop.Layer));
+                return;
+            }
+
             result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box)));
             return;
         }

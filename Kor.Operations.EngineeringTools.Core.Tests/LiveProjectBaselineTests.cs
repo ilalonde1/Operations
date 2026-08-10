@@ -25,13 +25,20 @@ public class LiveProjectBaselineTests
         "31168 YMCA Langara",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild",
         $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31168-reference.e2k",
-        Storeys: 61, Walls: 918, Columns: 2425, Floors: 83);
+        // Rebaselined 2026-08-09. Storeys 61->63 and walls 918->925 because a mezzanine was
+        // taking the sheet for the floor below it, so both towers' level 1 stood empty; columns
+        // 2425->2464 as the same fix landed level 1 and slender footprints became walls.
+        Storeys: 63, Walls: 925, Columns: 2464, Floors: 83);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",
         $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\_DXF-plans-for-rebuild",
         $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models\31138-reference-from-Andrea-gravity.e2k",
-        Storeys: 23, Walls: 89, Columns: 162, Floors: 11);
+        // Rebaselined 2026-08-09. The big move is walls 89->136: the decomposer was refusing any
+        // face shorter than 48" so corner limbs never formed, and her own gravity model carries
+        // wall panels at 9, 12, 15, 23 and 27 inches. Columns 162->180 net of footprints more
+        // slender than 3:1, which are walls in both engineers' models. Storeys 23->24: Mezz.
+        Storeys: 24, Walls: 136, Columns: 180, Floors: 11);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;

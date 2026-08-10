@@ -42,10 +42,15 @@ public sealed record ComposeOptions
 
     /// <summary>
     /// Height of a doorway, used to size the header over it: the engineer's rule for a spandrel's
-    /// depth is the storey height less the opening height. 84" is a standard door; a plan cannot
-    /// say, so this is the one number in that rule that is assumed rather than measured.
+    /// depth is the storey height less the opening height.
+    ///
+    /// Measured, not assumed. Her own 31138 model carries 29 spandrels, and taking each one's depth
+    /// off its storey height gives the opening she drew it for: 86" eleven times and 88" twelve
+    /// times, with four taller ones at 98-100" and two at a double-height opening. 88" is her
+    /// commonest, and the 84" standard door assumed before it made every header two to four inches
+    /// too deep.
     /// </summary>
-    public double OpeningHeight { get; init; } = 84.0;
+    public double OpeningHeight { get; init; } = 88.0;
 
     /// <summary>
     /// Skip a member the model already has at that place on that storey. The output is the
@@ -357,10 +362,11 @@ public static class E2kGeometryComposer
             // the way both reference models build one: a PANEL whose four joints sit at the storey
             // (flags 0 0 0 0) with two of them raised by the panel's depth.
             // Depth is the storey height less the opening height, held between the shallowest and
-            // deepest spandrels KOR's own models use (24" on 30783, 60" on 31138). Without the
+            // deepest spandrels her own 31138 model uses. Measured off that model: 29 spandrels
+            // running 20" to 60", so the floor is 20 and not the 24 assumed before. Without the
             // ceiling a double-height storey produced a 396"-deep header, which is a wall.
             double storeyHeight = story.Elevation - story.ElevationBelow;
-            double spandrelDepth = SnapInch(Math.Clamp(storeyHeight - options.OpeningHeight, 24.0, 60.0));
+            double spandrelDepth = SnapInch(Math.Clamp(storeyHeight - options.OpeningHeight, 20.0, 60.0));
 
             foreach (var opening in placement.Geometry.WallOpenings)
             {

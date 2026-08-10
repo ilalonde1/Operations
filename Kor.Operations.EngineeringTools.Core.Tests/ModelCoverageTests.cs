@@ -161,15 +161,19 @@ public class ModelCoverageTests
         var joints = GeneratedModel.Joints(built.Lines);
         var assigns = GeneratedModel.AssignedStoreys(built.Lines);
 
-        // Where the generated members ended up, by storey.
-        var modelled = new Dictionary<string, List<DxfPoint>>(StringComparer.OrdinalIgnoreCase);
-        void Put(string member, DxfPoint where)
+        // Where the generated members ended up, by storey, as SEGMENTS. A wall is matched by
+        // distance to its run rather than to its midpoint: the wall network carries a wall out to
+        // the corner it crosses and splits it where another runs into it, so its midpoint moves
+        // even though the wall the drawing shows is plainly modelled. Comparing midpoints reports
+        // that as lost geometry.
+        var modelled = new Dictionary<string, List<(DxfPoint A, DxfPoint B)>>(StringComparer.OrdinalIgnoreCase);
+        void Put(string member, DxfPoint a, DxfPoint b)
         {
             if (!assigns.TryGetValue(member, out var storeys)) return;
             foreach (string s in storeys)
             {
-                if (!modelled.TryGetValue(s, out var list)) modelled[s] = list = new List<DxfPoint>();
-                list.Add(where);
+                if (!modelled.TryGetValue(s, out var list)) modelled[s] = list = new List<(DxfPoint, DxfPoint)>();
+                list.Add((a, b));
             }
         }
 
@@ -178,11 +182,11 @@ public class ModelCoverageTests
             string t = line.Trim();
             var wall = Regex.Match(t, @"^AREA\s+""(KW\d+)""\s+PANEL\s+4\s+""([^""]+)""\s+""([^""]+)""");
             if (wall.Success && joints.TryGetValue(wall.Groups[2].Value, out var a) && joints.TryGetValue(wall.Groups[3].Value, out var b))
-            { Put(wall.Groups[1].Value, Mid(a, b)); continue; }
+            { Put(wall.Groups[1].Value, a, b); continue; }
 
             var column = Regex.Match(t, @"^LINE\s+""(KC\d+)""\s+COLUMN\s+""([^""]+)""");
             if (column.Success && joints.TryGetValue(column.Groups[2].Value, out var at))
-                Put(column.Groups[1].Value, at);
+                Put(column.Groups[1].Value, at, at);
         }
 
         // What the engineer's own model already carries, so a skipped member counts as accounted for.
@@ -198,18 +202,20 @@ public class ModelCoverageTests
             var geometry = GeneratedModel.Classify(project, sheet.File);
             if (geometry is null) continue;
 
-            var candidates = new List<DxfPoint>();
+            var runs = new List<(DxfPoint A, DxfPoint B)>();
             foreach (string storey in sheet.Stories)
             {
-                if (modelled.TryGetValue(storey, out var m)) candidates.AddRange(m);
-                if (existing.TryGetValue(storey, out var e)) candidates.AddRange(e);
+                if (modelled.TryGetValue(storey, out var m)) runs.AddRange(m);
+                if (existing.TryGetValue(storey, out var e)) runs.AddRange(e.Select(p => (p, p)));
             }
+
+            bool Covered(DxfPoint p) => runs.Any(r => DistanceToSegment(p, r.A, r.B) <= Tolerance);
 
             foreach (var axis in geometry.Walls)
             {
                 drawnTotal++;
                 var mid = new DxfPoint((axis.Start.X + axis.End.X) / 2 + ox, (axis.Start.Y + axis.End.Y) / 2 + oy);
-                if (!candidates.Any(c => Near(c, mid)))
+                if (!Covered(mid))
                     lost.Add($"wall at ({mid.X:F0},{mid.Y:F0}) from {sheet.Label}");
             }
 
@@ -217,7 +223,7 @@ public class ModelCoverageTests
             {
                 drawnTotal++;
                 var at = new DxfPoint(col.Center.X + ox, col.Center.Y + oy);
-                if (!candidates.Any(c => Near(c, at)))
+                if (!Covered(at))
                     lost.Add($"column at ({at.X:F0},{at.Y:F0}) from {sheet.Label}");
             }
         }
@@ -357,6 +363,18 @@ public class ModelCoverageTests
 
     private static bool Near(DxfPoint a, DxfPoint b) =>
         Math.Abs(a.X - b.X) <= Tolerance && Math.Abs(a.Y - b.Y) <= Tolerance;
+
+    /// <summary>Shortest distance from a point to a segment; a zero-length segment is a point.</summary>
+    private static double DistanceToSegment(DxfPoint p, DxfPoint a, DxfPoint b)
+    {
+        double dx = b.X - a.X, dy = b.Y - a.Y;
+        double lengthSquared = dx * dx + dy * dy;
+        if (lengthSquared < 1e-9) return Math.Sqrt((p.X - a.X) * (p.X - a.X) + (p.Y - a.Y) * (p.Y - a.Y));
+
+        double t = Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lengthSquared, 0.0, 1.0);
+        double qx = a.X + t * dx, qy = a.Y + t * dy;
+        return Math.Sqrt((p.X - qx) * (p.X - qx) + (p.Y - qy) * (p.Y - qy));
+    }
 
     private static bool Inside(DxfPoint p, DxfPoint centre, double reach) =>
         Math.Abs(p.X - centre.X) <= reach && Math.Abs(p.Y - centre.Y) <= reach;

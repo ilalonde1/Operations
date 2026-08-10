@@ -67,13 +67,13 @@ had already rebuilt that building's walls by hand.</p>
 <table>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
   <tr><td>Storeys populated</td><td><strong>63</strong></td><td>24</td></tr>
-  <tr><td>Wall panels, true thicknesses</td><td><strong>917</strong></td><td>87</td></tr>
-  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,469</strong></td><td>172</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>925</strong></td><td>136</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,464</strong></td><td>180</td></tr>
   <tr><td>Floor plates</td><td><strong>83</strong></td><td>11</td></tr>
-  <tr><td>Headers over openings (spandrel shells)</td><td><strong>139</strong></td><td>8</td></tr>
+  <tr><td>Headers over openings (spandrel shells)</td><td><strong>139</strong></td><td>22</td></tr>
   <tr><td>Shaft and stair openings cut</td><td><strong>46</strong></td><td>2</td></tr>
-  <tr><td>Pier labels</td><td><strong>123</strong></td><td>62</td></tr>
-  <tr><td>Members you already had, not duplicated</td><td>—</td><td>277 walls, 238 columns</td></tr>
+  <tr><td>Pier labels</td><td><strong>129</strong></td><td>109</td></tr>
+  <tr><td>Members you already had, not duplicated</td><td>—</td><td>280 walls, 239 columns</td></tr>
 </table>
 
 <h2>What changed after your two calls</h2>
@@ -89,7 +89,7 @@ and B&#8209;LEVEL&nbsp;1, 31138 gains Mezz.</p>
   <tr><td>"We can't have a wall go from here to here and then another one from here to here. We need a connection."</td>
       <td>Wall centrelines form a network. Corners are carried out to where they cross and share a joint; a wall running into another splits it so the T has a joint on both members.</td></tr>
   <tr><td>"We don't model them as line elements, we model them as shells… in ETABS they're called spandrels."</td>
-      <td>Headers are wall panels standing only over their opening, depth = storey height less opening height, bounded to the 24–60" range your own models use. 139 of them, labelled as spandrels.</td></tr>
+      <td>Headers are wall panels standing only over their opening, depth = storey height less opening height. Both numbers now come off your own 31138 model rather than a standard: its 29 spandrels imply an opening of 86–88" (88" commonest, where 84" was assumed), and they run 20" to 60", so that is the range they are held to. 139 of them, labelled as spandrels.</td></tr>
   <tr><td>"Every floor we have two slabs on top of each other."</td>
       <td>Drafting issues both a range sheet and a sheet per level, so each floor arrived twice. 43 doubled plates removed.</td></tr>
   <tr><td>"Below grade, the basement walls are missing."</td>
@@ -100,12 +100,16 @@ and B&#8209;LEVEL&nbsp;1, 31138 gains Mezz.</p>
           31168 comes out with exactly the three diameters its drawings contain &mdash; 16", 24"
           and 30" &mdash; and none besides.</td></tr>
   <tr><td>"It filled the volume, but didn't do the actual corner."</td>
-      <td><strong>Not settled — asked as question C1.</strong> A stepped block with one limb thinner
-          than the other is still modelled as a single pier, so its centreline sits between the limbs
-          and lines up with neither. Splitting it was tried and is worse: the limbs come out stubby
-          enough to be discarded and fall through to columns, losing their in-plane shear. Whether
-          that block is one pier or a wall with a thickening is your call, so the question carries the
-          measured geometry rather than a guess.</td></tr>
+      <td><strong>Still open — question C1, but your own model now says what the answer is.</strong>
+          A stepped block is still modelled as a single pier, so its centreline sits between the limbs
+          and lines up with neither. Your 31138 gravity model puts several panels on one storey under
+          fifteen of its pier labels, and three of those group limbs at right angles — cw9 a 23" limb
+          with a 27" one, cw15 a 272" with a 104", cw6 ten panels from 2" to 15". So the answer looks
+          like limbs on their own centrelines under one shared pier label. Getting there is not a
+          threshold: the face floor was lowered to 12" and the panel aspect relaxed, and those 70
+          blocks still will not come apart, so something earlier refuses them. Rather than guess at it
+          a third time, it stays a question — and the short limbs are no longer at risk either way,
+          because an element longer than three times its width is now a wall whatever it touches.</td></tr>
   <tr><td>"The lowest level, which is P3, seems way too high."</td>
       <td>ETABS parks the base far below the building and folds the whole distance into the lowest
           storey — 31168 exported with the base at −1,000 ft and LEVEL P3 1,113 ft tall, so on import
@@ -127,11 +131,11 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
   <tr><th>File</th><th>What it is</th></tr>
   <tr><td><code>31168-FROM-DRAWINGS.e2k</code></td>
       <td><strong>The one that matters.</strong> Tower B and the rest of the building — 63 storeys,
-          917 walls, 2,469 columns, 83 plates. Nothing of this existed before.</td></tr>
+          925 walls, 2,464 columns, 83 plates. Nothing of this existed before.</td></tr>
   <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
       <td>A gap-fill. You have already rebuilt this building's walls — between 17 and 42 panels on every
-          storey — so this adds only what the drawings show and your model does not: 87 walls and
-          172 columns, mostly at podium and parkade. 277 walls and 238 columns of yours were
+          storey — so this adds only what the drawings show and your model does not: 136 walls and
+          180 columns, mostly at podium and parkade. 280 walls and 239 columns of yours were
           recognised at those locations and deliberately not modelled again.</td></tr>
   <tr><td><code>…-QUESTIONS-for-Andrea.xlsx</code></td>
       <td>Two sheets. <em>Questions</em> — what you have already ruled on, marked DONE, plus the few

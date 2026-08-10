@@ -39,7 +39,15 @@ public static class WallOutlineDecomposer
 
             var (ai, bi) = edges[i];
             double lengthI = ai.DistanceTo(bi);
-            if (lengthI < options.MinWallLength) continue;
+
+            // A FACE, not a wall. Demanding 48" here was the 48" rule leaking into the decomposer
+            // for the second time: a stepped block's limbs measure 31x28 and 14x36, every face
+            // short of 48, so none was ever considered and the whole block fell through to a
+            // single fat pier or to columns. Her own 31138 model settles what a wall panel may
+            // measure — it carries them at 9, 12, 15, 23 and 27 inches, all with pier labels — so
+            // the floor belongs with the other face-scale threshold, not with the wall-vs-column
+            // rule. Whether a short element is a column is decided later, and on connection.
+            if (lengthI < options.MinPanelOverlap) continue;
 
             double ux = (bi.X - ai.X) / lengthI, uy = (bi.Y - ai.Y) / lengthI;
             double nx = -uy, ny = ux;
