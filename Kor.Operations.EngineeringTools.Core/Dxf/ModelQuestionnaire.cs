@@ -51,19 +51,19 @@ public static class ModelQuestionnaire
             ? "Each level with no closed slab edge has been given one plate from the inside face of its perimeter wall."
             : "No level needed this on your project — every plate came from a drawn slab edge.";
 
-        double minDepth = 24, maxDepth = 60;
+        double minDepth = 20, maxDepth = 60;
 
         return new[]
         {
         new ModelQuestion("H1", "Header depth",
-            $"Header depth follows your rule — storey height less an assumed {compose.OpeningHeight:0}\" opening — " +
-            $"and is then held between {minDepth:0}\" and {maxDepth:0}\". So depth varies by storey rather than being " +
-            "one number. Is the assumed opening height right, and are those bounds sensible?",
-            $"Depth = storey height − {compose.OpeningHeight:0}\", clamped to {minDepth:0}–{maxDepth:0}\". The clamp " +
-            "exists because a double-height storey otherwise produced a 396\" header, which is a wall.",
+            "SETTLED, from your own model — nothing to answer.",
+            $"Depth = storey height − {compose.OpeningHeight:0}\", clamped to {minDepth:0}–{maxDepth:0}\". Both numbers " +
+            "are yours: taking each of your 31138 spandrels' depth off its storey height gives the opening it was " +
+            $"drawn for — 86\" eleven times and 88\" twelve — so {compose.OpeningHeight:0}\" replaces the 84\" standard " +
+            $"door assumed before, and your spandrels run {minDepth:0}\" to {maxDepth:0}\", which is now the range.",
             "The header couples the piers either side of an opening; its depth drives how much.",
-            $"Your 31138 model's own beams run 24\" to 36\" deep; raised-joint offsets across KOR's models run " +
-            "1.7\" to 122\", so the bounds are policy rather than format."),
+            "Say so if these openings are not typical of 31168 — otherwise it needs no answer.")
+            { Decided = true },
 
         new ModelQuestion("P1", "Perimeter basement wall",
             "FIXED. The below-grade perimeter wall is now read on all four sides, including the angled west one.",
@@ -99,11 +99,15 @@ public static class ModelQuestionnaire
             "Small closed rings do exist on some of them, but all are shaft-sized, far below a floor."),
 
         new ModelQuestion("A1", "Short faces in a core",
-            "An element under 48\" long is now a column, as you asked. Inside a core, a short wall face " +
-            "between two returns also falls under that — do you want those kept as walls?",
-            "Applied literally: anything under 48\" long becomes a column. The count is in the report.",
+            "SETTLED, from your own model — nothing to answer.",
+            "Two things decide it now, and neither is length alone. A short face joined to other walls is part of " +
+            "a core and stays a wall. And anything longer than three times its width stays a wall whatever it " +
+            "touches, because your gravity model keeps standalone 30\" and 36\" panels as walls with pier labels — " +
+            "W39, W96, W97, W98, W109, W113 — and its most slender column is 12x36, exactly 3:1, with nothing " +
+            "beyond it. 31168's own export has no concrete rectangular column at all.",
             "A short core face carries in-plane shear as a wall; as a column it carries none.",
-            "31138: 45 panels moved from wall to column under this rule."),
+            "Say so if you would rather the 48\" rule were applied flat — otherwise it needs no answer.")
+            { Decided = true },
 
 
         new ModelQuestion("W1", "Wall vs column",
