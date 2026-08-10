@@ -75,14 +75,19 @@ public static class ModelQuestionnaire
 
         new ModelQuestion("C1", "Corners that come out as one thick element",
             "You said \"this wall and this wall should be aligned — it's doing just one big wall that's not " +
-            "aligned with this one\". A stepped block — one limb thinner than the other — is modelled as a " +
+            "aligned with this one\". A stepped block — one limb thinner than the other — is still modelled as a " +
             "single pier on the box's long axis, so its centreline sits between the two limbs and matches " +
-            "neither. Is that one pier, or a wall with a thickening? If the latter, what separates them?",
-            "Left as one pier. Splitting it into limbs was tried and is worse: they come out stubby enough " +
-            "that the aspect rule discards them and they fall through to columns, losing their in-plane shear.",
+            "neither. Your own 31138 model suggests the answer is limbs on their own centrelines sharing one " +
+            "pier label: fifteen of its pier labels cover several panels on one storey, and three of those " +
+            "group limbs at right angles — cw9 a 23\" limb with a 27\" one, cw15 a 272\" with a 104\", cw6 ten " +
+            "panels from 2\" to 15\". Is that what you want here, and does one shared pier label per block do it?",
+            "Still one pier. Not for want of trying: the decomposer's face floor was lowered to 12\" and its " +
+            "panel aspect relaxed, and these blocks still do not come apart, so something earlier is refusing " +
+            "them. Rather than guess a third time it is measured next. The limbs are no longer at risk either " +
+            "way — anything longer than three times its width now stays a wall whatever it touches.",
             "It decides whether these carry shear as walls, and whether their centrelines match the walls beside them.",
             "Measured on 31168: a 67\" x 42\" block, 28\" top strip and 42\" leg, modelled centred at y=3271 " +
-            "while the core wall it continues runs at y=3278."),
+            "while the core wall it continues runs at y=3278. 70 blocks are affected."),
 
         new ModelQuestion("F1", "Floors where no slab edge closes",
             "Where no slab edge closes, the floor has been taken from the inside face of the perimeter wall — " +
