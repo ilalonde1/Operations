@@ -293,7 +293,12 @@ public static class E2kGeometryComposer
                 // is assigned to (offset 1) and the same pair at that storey (offset 0).
                 string name = NextName("W", ref wallCounter);
                 areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{pa}\"  \"{pb}\"  \"{pb}\"  \"{pa}\"  1  1  0  0");
-                storeysWithMembers.Add(story.Name);
+
+                // Every storey the wall is ASSIGNED to, not the one it was placed on. A storey that
+                // carries structure only because a neighbour's wall spans into it is still a storey
+                // carrying structure, and recording the placement alone hid A-LEVEL 1 from the list
+                // of storeys left without a floor — 50 walls and 65 columns, reported as nothing.
+                foreach (string on in wallStoreys) storeysWithMembers.Add(on);
 
                 string pier = options.AssignPierLabels ? $"  PIER  \"{PierFor(x1, y1, x2, y2)}\"" : string.Empty;
                 foreach (string on in wallStoreys)
@@ -345,7 +350,7 @@ public static class E2kGeometryComposer
                 // A column is one plan point, rising one storey from the storey it is assigned to.
                 string name = NextName("C", ref colCounter);
                 lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{at}\"  \"{at}\"  1");
-                storeysWithMembers.Add(story.Name);
+                foreach (string on in colStoreys) storeysWithMembers.Add(on);
                 foreach (string on in colStoreys)
                     lineAssigns.Add(
                         $"  LINEASSIGN  \"{name}\"  \"{on}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
