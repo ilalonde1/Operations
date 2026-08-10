@@ -124,6 +124,52 @@ and B&#8209;LEVEL&nbsp;1, 31138 gains Mezz.</p>
       <td>Removed. No diaphragms are assigned, no loads applied.</td></tr>
 </table>
 
+<h2>What you give it</h2>
+<p>Two things, and neither is made specially for it.</p>
+<table>
+  <tr><th>You provide</th><th>What is read from it</th></tr>
+  <tr><td><strong>The folder of plan DXFs drafting already exports</strong> for that job</td>
+      <td>Wall outlines, column footprints, slab edges, and the sheet title that says which level
+          each drawing is.</td></tr>
+  <tr><td><strong>Any ETABS file from the same job</strong> — <code>.e2k</code> or <code>.$et</code>,
+      even an empty shell with nothing but the storeys</td>
+      <td>The storey list it builds into, the materials and sections it reuses, the grids, and
+          anything you have already modelled, which it then leaves alone.</td></tr>
+</table>
+<p>No configuration, no tagging, no naming anything up front. If you already have a partial model,
+that is the file to give it.</p>
+
+<table>
+  <tr><th>What those need to contain</th><th>Why</th></tr>
+  <tr><td>Walls on a <code>*WALL*</code> layer, columns on <code>*_COL*</code>, slab edges on
+      <code>*SLABEDG*</code></td>
+      <td>It is how a wall is told from a column from a floor. Layer names are configurable, but
+          something has to separate them.</td></tr>
+  <tr><td>A sheet title naming its level — <code>LEVEL 29 PLAN (L29-35)</code>,
+      <code>A-LEVEL 28</code>, <code>LEVEL P2</code>, <code>FOUNDATION</code></td>
+      <td>It is how a drawing finds its storey. A range in the title fills every storey it covers.</td></tr>
+  <tr><td>A storey list and one concrete material in the ETABS file</td>
+      <td>It builds into your storeys at your elevations, never its own.</td></tr>
+  <tr><td>Both out of the same Revit project</td>
+      <td>They then already share an origin — on 31168 the core walls land on grids 15 and 16 to
+          within a twentieth of an inch. Where they do not, you give it an offset once.</td></tr>
+</table>
+
+<div class="callout">
+  <p><strong>Two things decide how well it works, and both are drafting-side rather than
+  engineering-side: layer discipline, and sheet titles that match the model's storey names.</strong>
+  Every placement fault found so far traces to the second — a model naming a storey <code>P1</code>
+  where the sheet says <code>LEVEL P1</code>, or a <code>LEVEL 1</code> sheet colliding with
+  <code>LEVEL 1 MEZZ</code>. The accuracy of this tool is a function of KOR's drafting standards, so
+  tightening those improves every model it will ever build.</p>
+</div>
+
+<h2>What it does not do</h2>
+<p>No section properties, no loads, no stiffness modifiers, no diaphragms, no design. That is your
+work and it is deliberately left untouched — a diaphragm arriving with the geometry is one more
+thing to undo. It also never overwrites what you have already modelled: on 31138 it recognised 280
+of your walls and 239 of your columns and left every one of them alone.</p>
+
 <h2>What to open</h2>
 <p>Each sits in its project's <code>02 Engineering\02 Lateral Design\01 ETABS Models\</code>.
 In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
@@ -152,6 +198,34 @@ model already had a section of the right thickness it was reused, so members car
 concrete and names you recognise.</p>
 
 <h2>What has been verified, and what has not</h2>
+
+<h3>The four ways a model can be wrong, and which of them a count can see</h3>
+<p>Everything found in this programme has been one of four things, and only two of them show up in
+a total. A member built on the wrong storey leaves every count correct, which is exactly how an
+earlier version of 31168 was nearly sent with the ground floor of both towers empty. So the model is
+now checked against the <em>drawings</em>, in both directions, rather than against itself.</p>
+<table>
+  <tr><th>Fault</th><th>Shows in a count?</th><th>What checks it</th><th>Where it stands</th></tr>
+  <tr><td>Geometry <strong>dropped</strong> — read and modelled as nothing</td><td>yes</td>
+      <td>Every drawn member must be modelled, or already be in your model at that place</td>
+      <td>36 of 4,229 unaccounted; may only ever come down</td></tr>
+  <tr><td>Geometry <strong>doubled</strong></td><td>yes</td>
+      <td>Nothing may occupy the same place on the same storey — walls, columns, plates, headers</td>
+      <td>none</td></tr>
+  <tr><td>Geometry <strong>misplaced</strong> — right member, wrong storey</td><td><strong>no</strong></td>
+      <td>Every member must stand on linework from a sheet placed on its own storey; and no storey
+          between two populated storeys may be empty</td>
+      <td>none</td></tr>
+  <tr><td>Geometry <strong>misclassified</strong> — right place, wrong size or shape</td><td><strong>no</strong></td>
+      <td>Built size and shape against the raw DXF entities, with roundness taken from the arc flag
+          rather than from any judgement of shape</td>
+      <td>none</td></tr>
+</table>
+<p>Each of those checks is proved against the defect it exists for before it is trusted. Undo the
+storey-matching fix and the audit answers <code>B-LEVEL 1, A-LEVEL 1 sit between populated storeys
+with nothing on them</code>. Undo round-column detection and it answers <code>KC217 drawn with
+straight lines only but built round</code>. A check that has never been seen to fail is not a check.</p>
+
 
 <h3>Verified: the model is drawn and looked at before it is sent</h3>
 <p>Counts and coordinates cannot see the faults that make a model wrong at a glance — a wall two
@@ -299,6 +373,41 @@ fixed rather than listed.</p>
 project and every one after, instead of a judgement folded into the code where nobody can see it.
 The workbook also carries every flagged location and a ledger of which drawing filled which storey,
 so a wrong answer is traceable to the sheet that caused it.</p>
+
+<h2>How it gets better — and why that depends on you</h2>
+<p>Everything this tool knows, an engineer told it, and every rule in it can name where it came
+from. That is not a figure of speech: the rules live in a database with the evidence and a
+confidence level attached, and they are applied only once they reach
+<em>replay&#8209;verified</em> or <em>engineer&#8209;confirmed</em>.</p>
+
+<table>
+  <tr><th>What you do</th><th>What happens to it</th></tr>
+  <tr><td><strong>Answer a question in the workbook.</strong></td>
+      <td>Your answer becomes a rule at <em>engineer-confirmed</em> — the highest confidence there
+          is — and applies to every model built from then on, on every job. You are asked once.</td></tr>
+  <tr><td><strong>Say something is wrong when you open a model.</strong></td>
+      <td>It is measured against your own models and the 400-odd on the share, and becomes either a
+          rule or a question with the measurement attached. Nothing is changed on a hunch.</td></tr>
+  <tr><td><strong>Suggest something it should do that it does not.</strong></td>
+      <td>That is how the last four capabilities arrived — headers as spandrels, pier labels,
+          openings cut, the basement wall. Every one started as a sentence on a call.</td></tr>
+</table>
+
+<p>It already learns without asking. Three of the five questions you were going to be sent were
+answered by reading your own 31138 gravity model instead:</p>
+<ul>
+  <li><strong>Header depth.</strong> Taking each of your 29 spandrels' depth off its storey height
+      gives the opening it was drawn for — 86" eleven times and 88" twelve. A standard 84" door had
+      been assumed, so every header was two to four inches too deep. Fixed, and not asked.</li>
+  <li><strong>Short elements.</strong> You keep standalone 30" and 36" panels as walls with pier
+      labels, and your most slender column is 12x36 — exactly 3:1, with nothing beyond it. So
+      anything longer than three times its width is now a wall whatever it touches. Fixed, and not
+      asked.</li>
+  <li><strong>Corners.</strong> Fifteen of your pier labels cover several panels on one storey and
+      three group limbs at right angles, which says what a stepped block should look like. Still
+      asked as C1, because knowing the answer is not the same as being able to build it yet.</li>
+</ul>
+<p>The more of your work it can read, the fewer questions you get. That is the whole design.</p>
 
 <h2>What would make it materially better — your input decides</h2>
 <table>

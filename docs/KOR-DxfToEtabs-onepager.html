@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Structural model from drawings — one page</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#5b5b5b; --rule:#d9d5cf; --bg:#ffffff;
+    --burgundy:#7a2230; --burgundy-soft:#f6eef0; --accent:#2c5f6f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.5 "Segoe UI",-apple-system,system-ui,sans-serif;
+       -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .wrap{max-width:800px;margin:0 auto;padding:32px 38px 40px}
+  header{border-bottom:3px solid var(--burgundy);padding-bottom:12px;margin-bottom:18px}
+  .eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--burgundy);font-weight:700}
+  h1{font-size:23px;line-height:1.2;margin:7px 0 4px;font-weight:650;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13px;margin:0}
+  h2{font-size:14.5px;margin:18px 0 7px;font-weight:680;letter-spacing:.01em;color:var(--burgundy)}
+  p{margin:0 0 8px}
+  ul{margin:0 0 9px;padding-left:18px} li{margin:0 0 4px}
+  .lede{font-size:15.5px;line-height:1.45;color:#2c2c2c;margin-bottom:12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0 4px}
+  .box{border:1px solid var(--rule);border-radius:7px;padding:11px 13px}
+  .box h3{font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0 6px}
+  .card{border:1px solid var(--rule);border-radius:7px;padding:9px 10px;text-align:center}
+  .card .n{font-size:20px;font-weight:680;letter-spacing:-.02em;color:var(--burgundy)}
+  .card .l{font-size:10.5px;color:var(--muted);margin-top:1px;line-height:1.3}
+  .callout{background:var(--burgundy-soft);border-left:3px solid var(--burgundy);
+           padding:10px 13px;border-radius:0 6px 6px 0;margin:12px 0}
+  .callout p:last-child{margin-bottom:0}
+  code{font:12px/1.4 "Cascadia Mono",Consolas,monospace;background:#f4f2ef;padding:1px 4px;border-radius:3px}
+  table{width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:12.8px}
+  td{padding:5px 8px 5px 0;border-bottom:1px solid #eeeae5;vertical-align:top}
+  .foot{margin-top:18px;padding-top:10px;border-top:1px solid var(--rule);color:var(--muted);font-size:11.5px}
+  @media print{ @page{margin:9mm 10mm} .wrap{padding:0} body{font-size:8.4pt;line-height:1.34}
+                h1{font-size:16.5pt} h2{font-size:10.2pt;margin:10px 0 4px}
+                .lede{font-size:9.6pt} .card .n{font-size:15pt} p{margin:0 0 5px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">KOR Structural · Engineering Tools</div>
+  <h1>An ETABS model built from the drawings you already have</h1>
+  <p class="sub">It removes the typing. It does none of the engineering.</p>
+</header>
+
+<p class="lede">Give it the plan DXFs drafting already exports and any ETABS file from the job. It
+returns a model with the geometry entered — walls at their true thicknesses on their centrelines,
+columns sized and turned as drawn, floor plates, headers over the openings, shafts and stairs cut
+out, pier labels so a wall reads as one element up the building.</p>
+
+<div class="cards">
+  <div class="card"><div class="n">925</div><div class="l">wall panels</div></div>
+  <div class="card"><div class="n">2,464</div><div class="l">columns</div></div>
+  <div class="card"><div class="n">83</div><div class="l">floor plates</div></div>
+  <div class="card"><div class="n">63</div><div class="l">storeys</div></div>
+</div>
+<p style="font-size:12px;color:#5b5b5b;margin-top:2px">31168 YMCA Langara, from 62 plan sheets, all placed. None
+of it entered by hand.</p>
+
+<div class="grid">
+  <div class="box">
+    <h3>What you give it</h3>
+    <p><strong>1. The folder of plan DXFs</strong> drafting already exports for the job.</p>
+    <p><strong>2. Any ETABS file from that job</strong> — even an empty shell with just the storeys.
+    If you have a partial model, give it that.</p>
+    <p>No configuration. Nothing made specially.</p>
+    <p style="margin-bottom:0;font-size:12px;color:#5b5b5b">Accuracy rides on two drafting-side
+    things: layer discipline, and sheet titles matching the model's storey names.</p>
+  </div>
+  <div class="box">
+    <h3>What you get back</h3>
+    <p><code>…-FROM-DRAWINGS.e2k</code> — import it.</p>
+    <p><code>…-report.txt</code> — location by location, why anything is missing.</p>
+    <p><code>…-QUESTIONS.xlsx</code> — only what it could not decide. Three rows.</p>
+  </div>
+</div>
+
+<h2>What it will not touch</h2>
+<p>No section properties, loads, stiffness modifiers, diaphragms or design — a diaphragm arriving
+with the geometry is one more thing to undo. And it never overwrites what you have already modelled:
+on 31138 it recognised 280 of your walls and 239 of your columns and left every one alone.</p>
+
+<h2>It gets better every time you tell it something</h2>
+<p>Every rule came from an engineer and can name the evidence behind it. Rules live in a database
+with a confidence level, and apply only once verified or confirmed by you.</p>
+<table>
+  <tr><td style="width:38%"><strong>Answer a question in the workbook</strong></td>
+      <td>It becomes a rule at the highest confidence there is and applies to every model on every
+          job from then on. You are asked once, ever.</td></tr>
+  <tr><td><strong>Open a model and say what is wrong</strong></td>
+      <td>It is measured against your models and the 400-odd on the share, then becomes a rule or a
+          question with the measurement attached. Nothing changes on a hunch.</td></tr>
+  <tr><td><strong>Ask for something it cannot do</strong></td>
+      <td>That is where headers as spandrels, pier labels, cut openings and the basement wall came
+          from. Each started as a sentence on a call.</td></tr>
+</table>
+<p>It also learns without being asked: three of the five questions headed your way were answered by
+reading your own model instead — including that your spandrels imply an 86&ndash;88" opening where an
+84" door had been assumed, which had made every header two to four inches too deep.</p>
+
+<h2>How far to trust it</h2>
+<p>Before it is sent, the model is checked against the drawings both ways — every drawn member must
+be modelled, and every modelled member must stand on linework from a sheet placed on its own storey.
+Size and shape are checked against the raw drawing entities, and every check is proved against the
+defect it exists for. <strong>What it does not know, it says:</strong> on 31168, 7 of its 3,397 drawn
+members unaccounted for, four storeys whose slab edges will not close, and three questions.</p>
+
+<div class="foot">
+  Kor.Operations · Engineering Tools. Built on the same engine as the takeoff and PdfToSafe tools
+  and covered by the same test suite. Ask Ian to run it on any job.
+</div>
+
+</div>
+</body>
+</html>

@@ -55,6 +55,14 @@ if (-not $SkipDossier) {
     if (Test-Path $dossier) {
         Copy-Item $dossier (Join-Path $folder 'KOR-Model-From-Drawings-DOSSIER.pdf') -Force
     }
+
+    # The page an engineer actually reads. It ships beside the dossier rather than instead of it,
+    # and it is copied here for the same reason everything else is: a document produced by a
+    # separate step is a document that goes stale.
+    $onePager = Join-Path $repo 'docs\KOR-DxfToEtabs-onepager-web.pdf'
+    if (Test-Path $onePager) {
+        Copy-Item $onePager (Join-Path $folder 'KOR-Model-From-Drawings-READ-THIS-FIRST.pdf') -Force
+    }
 }
 
 # The dossier quotes counts, and they are written by hand. A timestamp check cannot see a wrong
@@ -223,11 +231,11 @@ $newestSource = (Get-ChildItem (Join-Path $repo 'Kor.Operations.EngineeringTools
     Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
 
 $stale = Get-ChildItem $folder -File |
-    Where-Object { $_.Name -match 'FROM-DRAWINGS|QUESTIONS|DOSSIER' -and $_.LastWriteTime -lt $newestSource }
+    Where-Object { $_.Name -match 'FROM-DRAWINGS|QUESTIONS|DOSSIER|READ-THIS-FIRST' -and $_.LastWriteTime -lt $newestSource }
 
 Write-Host ''
 Get-ChildItem $folder -File |
-    Where-Object { $_.Name -match 'FROM-DRAWINGS|QUESTIONS|DOSSIER' } |
+    Where-Object { $_.Name -match 'FROM-DRAWINGS|QUESTIONS|DOSSIER|READ-THIS-FIRST' } |
     Sort-Object Name |
     ForEach-Object { '  {0,-44} {1,7:N0} KB  {2:HH:mm}' -f $_.Name, ($_.Length / 1kb), $_.LastWriteTime }
 
