@@ -118,7 +118,9 @@ public static class E2kGeometryComposer
         var placedColumns = new HashSet<(long, long, long, long, string)>();
         var placedWalls = new HashSet<(long, long, long, long, string)>();
         var storeysWithMembers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-        var storeysWithPlates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Seeded with the storeys the engineer's own model already floors. "No floor plate" has to
+        // mean no floor from anyone, or a gap-fill project reports her whole building as missing.
+        var storeysWithPlates = doc.StoreysWithFloors();
         var pierNames = new Dictionary<(long, long, long, long), string>();
         var spandrelNames = new Dictionary<(long, long, long, long), string>();
         var placedSpandrels = new HashSet<(long, long, long, long, string)>();

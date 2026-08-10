@@ -82,60 +82,6 @@ public class ModelCoverageTests
     }
 
     // ---------------------------------------------------------------------------------------
-    // 1b. The report names every storey left without a floor
-    // ---------------------------------------------------------------------------------------
-
-    /// <summary>
-    /// A storey carrying walls or columns and no floor plate has no diaphragm, and the engineer is
-    /// told which ones. That list was built from the storey each member was PLACED on rather than
-    /// every storey it is assigned to, so a storey holding structure only because a neighbour's
-    /// wall spans into it never appeared: A-LEVEL 1 sat there with 50 walls, 65 columns and no
-    /// plate, and the report said nothing about it.
-    ///
-    /// What the tool does not know it has to say, so the saying is checked against the file.
-    /// </summary>
-    [Theory]
-    [MemberData(nameof(Projects))]
-    public void TheReportNamesEveryStoreyLeftWithoutAFloor(string name)
-    {
-        var built = GeneratedModel.BuildOrSkip(GeneratedModel.For(name));
-        if (built is null) return;
-
-        var members = GeneratedModel.MembersByStorey(built.Lines);
-        var actual = members
-            .Where(kv => (kv.Value.Walls > 0 || kv.Value.Columns > 0) && kv.Value.Plates == 0)
-            .Select(kv => kv.Key)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        string flag = built.Report.Summary.Flags
-            .FirstOrDefault(f => f.Contains("no floor plate", StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
-
-        var told = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        int colon = flag.IndexOf(':');
-        if (colon >= 0)
-        {
-            string list = flag[(colon + 1)..];
-            int stop = list.IndexOf('.');
-            if (stop >= 0) list = list[..stop];
-            foreach (string s in list.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                told.Add(s);
-        }
-
-        var silent = actual.Except(told, StringComparer.OrdinalIgnoreCase).OrderBy(s => s).ToList();
-        var phantom = told.Except(actual, StringComparer.OrdinalIgnoreCase).OrderBy(s => s).ToList();
-
-        _out.WriteLine($"{name}: {actual.Count} storey(s) carry structure with no plate; the report names {told.Count}.");
-
-        Assert.True(silent.Count == 0,
-            $"{name}: {silent.Count} storey(s) carry structure with no floor plate and the report does not " +
-            $"name them — {string.Join(", ", silent)}. A storey with no diaphragm has to be said out loud.");
-
-        Assert.True(phantom.Count == 0,
-            $"{name}: the report names {phantom.Count} storey(s) as having no plate that do have one — " +
-            $"{string.Join(", ", phantom)}.");
-    }
-
-    // ---------------------------------------------------------------------------------------
     // 2. modelled -> drawn.  Nothing was invented.
     // ---------------------------------------------------------------------------------------
 

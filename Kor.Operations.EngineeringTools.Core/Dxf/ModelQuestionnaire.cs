@@ -87,7 +87,7 @@ public static class ModelQuestionnaire
             "way — anything longer than three times its width now stays a wall whatever it touches.",
             "It decides whether these carry shear as walls, and whether their centrelines match the walls beside them.",
             "Measured on 31168: a 67\" x 42\" block, 28\" top strip and 42\" leg, modelled centred at y=3271 " +
-            "while the core wall it continues runs at y=3278. 70 blocks are affected."),
+            "while the core wall it continues runs at y=3278. Measured on the shipped model: six walls thicker than 30\" on every typical tower storey, 233 in all, 34% of the walls above the podium. Neither your 31138 model nor ours for it carries a single wall over 30\", so this is where 31168 differs."),
 
         new ModelQuestion("F1", "Floors where no slab edge closes",
             "Where no slab edge closes, the floor has been taken from the inside face of the perimeter wall — " +

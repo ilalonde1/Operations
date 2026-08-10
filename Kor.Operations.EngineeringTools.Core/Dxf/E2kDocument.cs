@@ -395,6 +395,39 @@ public sealed class E2kDocument
     }
 
     /// <summary>
+    /// Storeys the model ALREADY has a floor on.
+    ///
+    /// A generated model is the engineer's own model with geometry added, so "this storey has no
+    /// floor plate" has to mean no floor from anyone. Counting only generated plates told the
+    /// engineer that thirteen storeys of 31138 had no plate and no diaphragm when every one of them
+    /// carries her own floors — twelve to twenty-six of them, most already assigned a diaphragm.
+    /// On a gap-fill project that is not a small error: it is the whole building reported missing.
+    /// </summary>
+    public HashSet<string> StoreysWithFloors()
+    {
+        var floors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string raw in LinesOf("AREA CONNECTIVITIES"))
+        {
+            string line = raw.Trim();
+            if (!line.StartsWith("AREA", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var parts = System.Text.RegularExpressions.Regex.Match(line, @"^AREA\s+""([^""]+)""\s+(\w+)");
+            if (!parts.Success || !parts.Groups[2].Value.Equals("FLOOR", StringComparison.OrdinalIgnoreCase)) continue;
+            floors.Add(parts.Groups[1].Value);
+        }
+
+        var storeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string raw in LinesOf("AREA ASSIGNS"))
+        {
+            string line = raw.Trim();
+            var m = System.Text.RegularExpressions.Regex.Match(line, @"^AREAASSIGN\s+""([^""]+)""\s+""([^""]+)""");
+            if (m.Success && floors.Contains(m.Groups[1].Value)) storeys.Add(m.Groups[2].Value);
+        }
+        return storeys;
+    }
+
+    /// <summary>
     /// An existing wall or slab section of the given thickness, if the model already defines one.
     /// Reusing the project's own sections means generated members carry the real concrete mix and
     /// a name the engineer recognises, instead of a new section with a borrowed material.

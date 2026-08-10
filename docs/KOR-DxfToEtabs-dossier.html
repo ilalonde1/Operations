@@ -334,11 +334,11 @@ deliberate. Your own 31138 model carries five different SDL values on L01 alone 
 145 psf — with live load from −50 to 150, because they follow occupancy: terraces, planters, amenity,
 suites, corridors. None of that is visible in a structural outline, and putting a storey's "typical"
 value on a landscaped terrace would flow straight through to the foundation loads.</p>
-<p>A rigid diaphragm per storey is assigned to every generated plate, so modal analysis runs meaningfully out of the box. Also yours: spectra, stiffness modifiers, pier and spandrel labels, and meshing.</p>
+<p>No diaphragm is assigned to a generated plate. That is deliberate — it goes on with the loads and modifiers, which are yours, and one arriving with the geometry is one more thing to undo. Also yours: spectra, stiffness modifiers, and meshing.</p>
 
-<h3>Openings are detected but not cut</h3>
-<p>Shafts and stair openings are found as inner rings and reported, but not subtracted from the
-plates, so slab areas read high where a core passes through.</p>
+<h3>Shaft and stair openings are cut</h3>
+<p>Inner rings on the slab-edge layers are cut out of the plate they sit in, written the way ETABS
+marks an opening — an area carrying no section. The counts are in the table above.</p>
 
 <div class="callout warn">
   <p><strong>Check the thick walls.</strong> Anything modelled thicker than 24″ is flagged in the
@@ -413,10 +413,6 @@ answered by reading your own 31138 gravity model instead:</p>
 <h2>What would make it materially better — your input decides</h2>
 <table>
   <tr><th>Improvement</th><th>What it needs from you</th></tr>
-  <tr><td><strong>Cut the openings.</strong> Subtract shafts and stairs from the plates so slab
-      areas and diaphragms are right.</td>
-      <td>Confirm that inner rings on the slab-edge layers are always openings, never a step or a
-          depression.</td></tr>
   <tr><td><strong>Close slab edges properly</strong> by extending an interrupted edge along its own
       direction to the line that cut it, instead of bridging by distance. Measurement says this is
       the only way to recover the missing plates.</td>
