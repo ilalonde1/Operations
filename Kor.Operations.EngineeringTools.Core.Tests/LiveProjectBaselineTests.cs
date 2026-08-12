@@ -42,7 +42,11 @@ public class LiveProjectBaselineTests
         // Her model stopped at P3 while drafting issues LEVEL P4 and P5, so two whole parkade
         // floors were read and placed nowhere. Adding those storeys brings 60 walls, 43 columns
         // and 2 plates with them, and drops unaccounted drawn members from 29 to 24.
-        Storeys: 26, Walls: 196, Columns: 223, Floors: 13);
+        // Rebaselined again the same day: three sheets are titled "LEVEL 8, 9", "LEVEL 11, 12" and
+        // "LEVEL 17, 18", and only the first number was read, so L09, L12 and L18 were built empty.
+        // Reading listed titles whole takes 26 storeys to 29 and columns 223 to 248; walls hold at
+        // 196 because her model already carries walls on those floors.
+        Storeys: 29, Walls: 196, Columns: 248, Floors: 13);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;

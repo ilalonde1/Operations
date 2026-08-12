@@ -293,6 +293,30 @@ public class PlanSheetNamingTests
     }
 
     /// <summary>
+    /// A sheet title may LIST its levels instead of ranging them. Three 31138 sheets are titled
+    /// "LEVEL 8, 9", "LEVEL 11, 12" and "LEVEL 17, 18"; only the first number was ever read, so
+    /// L09, L12 and L18 were built empty — and nothing said so, because each sheet reported itself
+    /// as placed on the one storey it did find.
+    /// </summary>
+    [Fact]
+    public void ASheetTitleMayListItsLevelsRatherThanRangeThem()
+    {
+        var listed = PlanSheetNaming.Parse("Str-Structural Plan - DXF-S2-26_2_LEVEL 8, 9 PLAN CONCRETE OUTLINE Copy 1.dxf");
+        Assert.Equal(new[] { 8, 9 }, listed.Levels);
+
+        var ampersand = PlanSheetNaming.Parse("LEVEL 11 & 12 PLAN.dxf");
+        Assert.Equal(new[] { 11, 12 }, ampersand.Levels);
+
+        // A range still ranges, and a single level is still single.
+        Assert.Equal(new[] { 4, 5, 6 }, PlanSheetNaming.Parse("LEVEL 4 PLAN (L4-L6).dxf").Levels);
+        Assert.Equal(new[] { 20 }, PlanSheetNaming.Parse("--Structural Plan - LEVEL 20.dxf").Levels);
+
+        // Both storeys are then filled, not just the first.
+        var stories = new[] { "L07", "L08", "L09", "L10" };
+        Assert.Equal(new[] { "L08", "L09" }, PlanSheetNaming.MatchStories(listed, stories));
+    }
+
+    /// <summary>
     /// 31138 names its mezzanine storey just "Mezz", with no level number, so a mezzanine sheet
     /// matches nothing by number. Its part plan — 11 walls and 18 columns — was being built into
     /// L01, the floor below it.

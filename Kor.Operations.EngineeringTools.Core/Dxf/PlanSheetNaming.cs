@@ -48,6 +48,15 @@ public static partial class PlanSheetNaming
     [GeneratedRegex(@"L(?:EVEL)?\s*(\d+)\s*(?:-|TO|THRU|THROUGH)\s*L?(?:EVEL)?\s*(\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex RangeRegex();
 
+    /// <summary>
+    /// A title may LIST its levels rather than range them: "LEVEL 8, 9 PLAN" is two floors, and
+    /// only the first was ever read. Three sheets on 31138 are titled that way, so L09, L12 and L18
+    /// came out empty — 27 walls and 56 columns modelled nowhere, with nothing in any count to say
+    /// so, because the sheet reported itself as placed on the one storey it did find.
+    /// </summary>
+    [GeneratedRegex(@"L(?:EVEL)?\s*(\d+)((?:\s*(?:,|&|and)\s*\d+)+)", RegexOptions.IgnoreCase)]
+    private static partial Regex LevelListRegex();
+
     [GeneratedRegex(@"L(?:EVEL)?\s*(\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex SingleLevelRegex();
 
@@ -106,8 +115,19 @@ public static partial class PlanSheetNaming
             // Sheet identifiers such as "S2-32-1_2" precede the title; strip them so
             // their digits are not mistaken for level numbers.
             string title = StripSheetNumber(name);
-            foreach (Match m in SingleLevelRegex().Matches(title))
+
+            // A listed title first — "LEVEL 8, 9" is two floors, and reading only the 8 loses a
+            // whole storey silently.
+            foreach (Match m in LevelListRegex().Matches(title))
+            {
                 levels.Add(int.Parse(m.Groups[1].Value));
+                foreach (Match more in Regex.Matches(m.Groups[2].Value, @"\d+"))
+                    levels.Add(int.Parse(more.Value));
+            }
+
+            if (levels.Count == 0)
+                foreach (Match m in SingleLevelRegex().Matches(title))
+                    levels.Add(int.Parse(m.Groups[1].Value));
         }
 
         return new PlanSheetInfo(

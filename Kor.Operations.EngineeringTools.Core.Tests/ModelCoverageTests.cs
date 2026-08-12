@@ -86,9 +86,14 @@ public class ModelCoverageTests
     // ---------------------------------------------------------------------------------------
 
     /// <summary>
-    /// Every generated wall and column must stand on linework from a sheet placed on one of the
-    /// storeys it is assigned to. A member with no drawing under it came from somewhere else —
-    /// the wrong storey, or a rule that fired where it should not have.
+    /// Every generated wall and column must stand on RAW linework — segments off the wall or column
+    /// layers of a sheet placed on a storey it is assigned to.
+    ///
+    /// Raw, because the first version of this compared generated members against the classifier's
+    /// own output, and the model is built from that output: the two could only ever agree. It
+    /// reported nothing invented while Building C carried a closed ring of wall the drawings do not
+    /// contain. A member with no drawing under it came from somewhere — the wrong storey, or a rule
+    /// that fired where it should not have.
     /// </summary>
     [Theory]
     [MemberData(nameof(Projects))]
@@ -98,9 +103,28 @@ public class ModelCoverageTests
         var built = GeneratedModel.BuildOrSkip(project);
         if (built is null) return;
 
-        var drawn = GeneratedModel.DrawnByStorey(project, built.Report);
+        var wallLines = GeneratedModel.LineworkByStorey(project, built.Report, "WALL");
+        var colLines = GeneratedModel.LineworkByStorey(project, built.Report, "_COL");
         var joints = GeneratedModel.Joints(built.Lines);
         var assigns = GeneratedModel.AssignedStoreys(built.Lines);
+
+        // A member is measured from its CENTRELINE, and its own linework is half its width away —
+        // a 42" wall's centreline sits 21" from either face, a 65x82 column's centre 32" from its
+        // nearest one. Reaching only the bare tolerance calls those inventions when they are
+        // nothing of the sort, so the reach carries the member's own half-width.
+        var sections = GeneratedModel.Sections(built.Lines);
+        var wallThickness = GeneratedModel.WallThicknesses(built.Lines);
+        var sectionOf = GeneratedModel.SectionOfMember(built.Lines);
+
+        double ReachFor(string member, bool isWall)
+        {
+            if (!sectionOf.TryGetValue(member, out string? section)) return Tolerance;
+            if (isWall)
+                return wallThickness.TryGetValue(section, out double t) ? t / 2.0 + Tolerance : Tolerance;
+            return sections.TryGetValue(section, out var box)
+                ? Math.Max(box.D, box.B) / 2.0 + Tolerance
+                : Tolerance;
+        }
 
         var unfounded = new List<string>();
         int walls = 0, columns = 0;
@@ -113,7 +137,7 @@ public class ModelCoverageTests
             if (wall.Success && joints.TryGetValue(wall.Groups[2].Value, out var a) && joints.TryGetValue(wall.Groups[3].Value, out var b))
             {
                 walls++;
-                if (!Stands(wall.Groups[1].Value, Mid(a, b), drawn, assigns, wallLike: true))
+                if (!StandsOnLinework(wall.Groups[1].Value, Mid(a, b), wallLines, colLines, assigns, ReachFor(wall.Groups[1].Value, true)))
                     unfounded.Add($"{wall.Groups[1].Value} at ({Mid(a, b).X:F0},{Mid(a, b).Y:F0}) on {Where(wall.Groups[1].Value, assigns)}");
                 continue;
             }
@@ -122,7 +146,7 @@ public class ModelCoverageTests
             if (column.Success && joints.TryGetValue(column.Groups[2].Value, out var at))
             {
                 columns++;
-                if (!Stands(column.Groups[1].Value, at, drawn, assigns, wallLike: false))
+                if (!StandsOnLinework(column.Groups[1].Value, at, colLines, wallLines, assigns, ReachFor(column.Groups[1].Value, false)))
                     unfounded.Add($"{column.Groups[1].Value} at ({at.X:F0},{at.Y:F0}) on {Where(column.Groups[1].Value, assigns)}");
             }
         }
@@ -345,14 +369,28 @@ public class ModelCoverageTests
 
     // ---------------------------------------------------------------------------------------
 
-    private static bool Stands(string member, DxfPoint where,
-        IReadOnlyDictionary<string, List<DxfPoint>> drawn,
-        IReadOnlyDictionary<string, List<string>> assigns, bool wallLike)
+    /// <summary>
+    /// Was ANYTHING structural drawn where this member stands? Both layers count, because the
+    /// classifier legitimately crosses between them — a short outline on the wall layer becomes a
+    /// column by the engineer's own rule, and demanding column-layer linework under it calls a
+    /// correct member an invention. Whether it is the RIGHT kind of member is the shape check's
+    /// question, not this one.
+    /// </summary>
+    private static bool StandsOnLinework(string member, DxfPoint where,
+        IReadOnlyDictionary<string, List<DxfSegment>> linework,
+        IReadOnlyDictionary<string, List<DxfSegment>> alsoAcceptable,
+        IReadOnlyDictionary<string, List<string>> assigns, double reach)
     {
         if (!assigns.TryGetValue(member, out var storeys)) return true;   // unassigned is another test's problem
         foreach (string storey in storeys)
-            if (drawn.TryGetValue(storey, out var points) && points.Any(p => Near(p, where)))
-                return true;
+        {
+            foreach (var source in new[] { linework, alsoAcceptable })
+            {
+                if (!source.TryGetValue(storey, out var segments)) continue;
+                foreach (var s in segments)
+                    if (DistanceToSegment(where, s.Start, s.End) <= reach) return true;
+            }
+        }
         return false;
     }
 

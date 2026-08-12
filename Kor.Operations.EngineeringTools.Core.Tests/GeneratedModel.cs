@@ -224,6 +224,19 @@ internal static class GeneratedModel
         return sections;
     }
 
+    /// <summary>Wall thickness by section name, as the file declares it.</summary>
+    internal static Dictionary<string, double> WallThicknesses(string[] lines)
+    {
+        var thickness = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (string line in lines)
+        {
+            var m = Regex.Match(line.Trim(), @"^SHELLPROP\s+""([^""]+)""\s+.*?WALLTHICKNESS\s+([\d.]+)");
+            if (m.Success)
+                thickness[m.Groups[1].Value] = double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
+        }
+        return thickness;
+    }
+
     /// <summary>The section each generated member is assigned.</summary>
     internal static Dictionary<string, string> SectionOfMember(string[] lines)
     {
@@ -246,6 +259,19 @@ internal static class GeneratedModel
     /// Shape has to be judged against the drawing.
     /// </summary>
     internal static Dictionary<string, List<DxfSegment>> ColumnLineworkByStorey(Project project, DxfToEtabsReport report)
+        => LineworkByStorey(project, report, "_COL");
+
+    /// <summary>
+    /// The RAW linework on the given layers, by storey, in model coordinates — straight from the
+    /// reader, never from the classifier.
+    ///
+    /// The distinction is the whole check. Comparing generated members against the classifier's
+    /// own idea of what it read compares the tool to itself and can only agree: it reported that
+    /// nothing had been invented while a closed ring of wall existed in Building C that the
+    /// drawings do not contain.
+    /// </summary>
+    internal static Dictionary<string, List<DxfSegment>> LineworkByStorey(
+        Project project, DxfToEtabsReport report, string layerPattern)
     {
         var (ox, oy) = report.AppliedOffset;
         var byStorey = new Dictionary<string, List<DxfSegment>>(StringComparer.OrdinalIgnoreCase);
@@ -257,7 +283,7 @@ internal static class GeneratedModel
             if (!File.Exists(path)) continue;
 
             var columnLines = DxfPlanReader.ReadSegments(path)
-                .Where(s => s.Layer.Contains("_COL", StringComparison.OrdinalIgnoreCase))
+                .Where(s => s.Layer.Contains(layerPattern, StringComparison.OrdinalIgnoreCase))
                 .Select(s => new DxfSegment(s.Layer,
                             new DxfPoint(s.Start.X + ox, s.Start.Y + oy),
                             new DxfPoint(s.End.X + ox, s.End.Y + oy)) { FromCurve = s.FromCurve })
