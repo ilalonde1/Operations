@@ -370,10 +370,10 @@ public static class E2kGeometryComposer
             // (flags 0 0 0 0) with two of them raised by the panel's depth.
             // Depth is the storey height less the opening height, held between the shallowest and
             // deepest spandrels her own 31138 model uses. Measured off that model: 29 spandrels
-            // running 20" to 60", so the floor is 20 and not the 24 assumed before. Without the
+            // running 20" to 60". The engineer then set the range herself: "Bounding can be 18-60". Without the
             // ceiling a double-height storey produced a 396"-deep header, which is a wall.
             double storeyHeight = story.Elevation - story.ElevationBelow;
-            double spandrelDepth = SnapInch(Math.Clamp(storeyHeight - options.OpeningHeight, 20.0, 60.0));
+            double spandrelDepth = SnapInch(Math.Clamp(storeyHeight - options.OpeningHeight, 18.0, 60.0));
 
             foreach (var opening in placement.Geometry.WallOpenings)
             {

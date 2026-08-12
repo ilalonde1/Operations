@@ -32,6 +32,12 @@ public sealed record DxfToEtabsRequest
     /// <summary>Fall back to centring the drawings on the model's grid extents.</summary>
     public bool CentreOnGrid { get; init; }
 
+    /// <summary>
+    /// Add parkade storeys the drawings have and the model does not. On by the engineer's
+    /// instruction — "the model needs to go to P5" — where her model stopped at P3.
+    /// </summary>
+    public bool AddMissingParkadeStoreys { get; init; } = true;
+
     public PlanClassificationOptions Classification { get; init; } = new();
     public ComposeOptions Compose { get; init; } = new();
 }
@@ -71,6 +77,20 @@ public static class DxfToEtabsService
         var droppedStoreys = request.TowerOnly is null
             ? Array.Empty<string>()
             : doc.KeepOnlyTower(request.TowerOnly).ToArray();
+
+        // Drafting can issue parkade levels the model has never had. On 31138 the drawings go to
+        // LEVEL P5 and the model stopped at P3, so two whole floors were read and placed nowhere —
+        // "the model needs to go to P5". The storeys are added below the lowest parkade level at the
+        // height that parkade already uses, and the base drops by the same amount.
+        var addedStoreys = Array.Empty<string>();
+        if (request.AddMissingParkadeStoreys)
+        {
+            var wanted = Directory.EnumerateFiles(request.DxfFolder, "*.dxf", SearchOption.TopDirectoryOnly)
+                .SelectMany(f => PlanSheetNaming.Parse(f).ParkadeLevels)
+                .Distinct()
+                .ToList();
+            addedStoreys = doc.AddParkadeStoreysBelow(wanted).ToArray();
+        }
 
         var stories = doc.ReadStories();
         if (stories.Count == 0)
@@ -145,6 +165,18 @@ public static class DxfToEtabsService
                     "parks the base far below the building and folds the distance into it. Its height has been " +
                     $"set to a typical storey and the base raised to match, so the storey now spans " +
                     $"{(lowest.Elevation - lowest.ElevationBelow) / 12:0.0}ft. No other storey moved.").ToList(),
+            };
+        }
+
+        if (addedStoreys.Length > 0)
+        {
+            summary = summary with
+            {
+                Flags = summary.Flags.Append(
+                    $"ADDED TO YOUR STOREY LIST: {string.Join(", ", addedStoreys)}. The drawings carry these " +
+                    "parkade levels and the model did not, so their geometry had nowhere to go. Each was given " +
+                    "the height your parkade already uses and the base dropped by the same total, so every " +
+                    "storey above them is exactly where it was.").ToList(),
             };
         }
 

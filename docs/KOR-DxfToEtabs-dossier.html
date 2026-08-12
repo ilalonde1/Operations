@@ -66,18 +66,24 @@ had already rebuilt that building's walls by hand.</p>
 
 <table>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
-  <tr><td>Storeys populated</td><td><strong>63</strong></td><td>24</td></tr>
-  <tr><td>Wall panels, true thicknesses</td><td><strong>925</strong></td><td>136</td></tr>
-  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,464</strong></td><td>180</td></tr>
-  <tr><td>Floor plates</td><td><strong>83</strong></td><td>11</td></tr>
+  <tr><td>Storeys populated</td><td><strong>63</strong></td><td>26</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>925</strong></td><td>196</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,464</strong></td><td>223</td></tr>
+  <tr><td>Floor plates</td><td><strong>83</strong></td><td>13</td></tr>
   <tr><td>Headers over openings (spandrel shells)</td><td><strong>139</strong></td><td>22</td></tr>
   <tr><td>Shaft and stair openings cut</td><td><strong>46</strong></td><td>2</td></tr>
-  <tr><td>Pier labels</td><td><strong>129</strong></td><td>109</td></tr>
-  <tr><td>Members you already had, not duplicated</td><td>—</td><td>280 walls, 239 columns</td></tr>
+  <tr><td>Pier labels</td><td><strong>129</strong></td><td>139</td></tr>
+  <tr><td>Members you already had, not duplicated</td><td>—</td><td>278 walls, 239 columns</td></tr>
 </table>
 
 <h2>What changed after your two calls</h2>
 <p>Everything below came from your feedback on 7 August and is already in the files.</p>
+<p><strong>From your notes of 12 August, already in:</strong> 31138 now goes to <code>P5</code>. Your
+model stopped at <code>P3</code> while drafting issues <em>LEVEL P4</em> and <em>LEVEL P5</em>, so two
+whole parkade floors were being read and placed nowhere. Both storeys are added below P3 at the height
+your parkade already uses, with the base dropped by the same total so nothing above them moved — and
+they bring 60 walls, 43 columns and 2 plates with them. Header bounds are now the 18&ndash;60" you
+specified.</p>
 <p><strong>One correction since the version of 9 August, found in checking rather than by you.</strong>
 A mezzanine reads as the level it sits above, so on 31168 both the <em>LEVEL 1</em> and the
 <em>LEVEL 1 MEZZ</em> sheet were building into <em>LEVEL 1 MEZZ</em>, and the ground floor of both
@@ -89,7 +95,7 @@ and B&#8209;LEVEL&nbsp;1, 31138 gains Mezz.</p>
   <tr><td>"We can't have a wall go from here to here and then another one from here to here. We need a connection."</td>
       <td>Wall centrelines form a network. Corners are carried out to where they cross and share a joint; a wall running into another splits it so the T has a joint on both members.</td></tr>
   <tr><td>"We don't model them as line elements, we model them as shells… in ETABS they're called spandrels."</td>
-      <td>Headers are wall panels standing only over their opening, depth = storey height less opening height. Both numbers now come off your own 31138 model rather than a standard: its 29 spandrels imply an opening of 86–88" (88" commonest, where 84" was assumed), and they run 20" to 60", so that is the range they are held to. 139 of them, labelled as spandrels.</td></tr>
+      <td>Headers are wall panels standing only over their opening, depth = storey height less opening height. Both numbers now come off your own 31138 model rather than a standard: its 29 spandrels imply an opening of 86–88" (88" commonest, where 84" was assumed), and they run 20" to 60"; you then set the range yourself &mdash; 18" to 60". 139 of them, labelled as spandrels.</td></tr>
   <tr><td>"Every floor we have two slabs on top of each other."</td>
       <td>Drafting issues both a range sheet and a sheet per level, so each floor arrived twice. 43 doubled plates removed.</td></tr>
   <tr><td>"Below grade, the basement walls are missing."</td>
@@ -180,8 +186,8 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
           925 walls, 2,464 columns, 83 plates. Nothing of this existed before.</td></tr>
   <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
       <td>A gap-fill. You have already rebuilt this building's walls — between 17 and 42 panels on every
-          storey — so this adds only what the drawings show and your model does not: 136 walls and
-          180 columns, mostly at podium and parkade. 280 walls and 239 columns of yours were
+          storey — so this adds only what the drawings show and your model does not: 196 walls and
+          223 columns, mostly at podium and parkade. 278 walls and 239 columns of yours were
           recognised at those locations and deliberately not modelled again.</td></tr>
   <tr><td><code>…-QUESTIONS-for-Andrea.xlsx</code></td>
       <td>Two sheets. <em>Questions</em> — what you have already ruled on, marked DONE, plus the few

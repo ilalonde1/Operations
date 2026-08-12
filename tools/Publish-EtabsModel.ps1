@@ -126,12 +126,15 @@ if ((Test-Path $dossier) -and $pdftotext) {
     # Numbers in the document that are true of something other than a member count, each allowed
     # for a stated reason. Anything not here and not a model count is a stale claim.
     $allowed = @{
-        wall   = @(78, 29, 45)  # 78: the wafer fault, a count of what was wrong at the time.
-                                # 29: walls the DRAWINGS show at L01, corroborating the lost model.
-                                # 45: what one 31168 storey gained when the mezzanine fault was fixed
-        column = @(87, 67)      # 87: her own hand-placed columns on 31138, validating placement.
-                                # 67: the same 31168 storey's columns, from that same fix
-        plate  = @(14, 7)       # the sliver plates the 400 sq ft rule removed
+        wall   = @(78, 29, 45, 60)  # 78: the wafer fault, a count of what was wrong at the time.
+                                    # 29: walls the DRAWINGS show at L01, corroborating the lost model.
+                                    # 45: what one 31168 storey gained when the mezzanine fault was fixed.
+                                    # 60: what 31138 gained when P4 and P5 were added to its storey list
+        column = @(87, 67, 43)      # 87: her own hand-placed columns on 31138, validating placement.
+                                    # 67: the same 31168 storey's columns, from that same fix.
+                                    # 43: the columns P4 and P5 brought with them
+        plate  = @(14, 7, 2)        # 14, 7: the sliver plates the 400 sq ft rule removed.
+                                    # 2: the plates P4 and P5 brought with them
         header = @()
     }
 

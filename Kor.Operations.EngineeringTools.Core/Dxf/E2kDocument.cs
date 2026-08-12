@@ -249,6 +249,109 @@ public sealed class E2kDocument
     /// so everything accumulating above it is untouched.
     /// </summary>
     /// <returns>True when the storey list was rewritten.</returns>
+    /// <summary>
+    /// Adds parkade storeys the drawings have and the model does not, below the lowest one it has.
+    ///
+    /// The engineer's answer, on seeing the first 31138 model: "the model needs to go to P5". Her
+    /// model stops at P3 while drafting issues LEVEL P4 and LEVEL P5, so two whole parkade floors
+    /// were read, produced geometry, and were then placed nowhere — the storeys did not exist to
+    /// place them on.
+    ///
+    /// Each new storey takes the height the parkade already uses, and the base drops by exactly the
+    /// total added, which leaves every existing elevation where it was. Returns the storeys added,
+    /// lowest last.
+    /// </summary>
+    public IReadOnlyList<string> AddParkadeStoreysBelow(IReadOnlyCollection<int> parkadeLevelsWanted)
+    {
+        var added = new List<string>();
+        if (parkadeLevelsWanted.Count == 0) return added;
+
+        var section = Find("STORIES");
+        if (section is null) return added;
+
+        var lines = section.Lines;
+        var have = new HashSet<int>();
+        int lowestParkadeAt = -1, baseAt = -1;
+        double parkadeHeight = 0, baseElevation = 0;
+        string lowestParkadeLine = string.Empty;
+
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines[i].Trim();
+            if (!line.StartsWith("STORY", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var named = Regex.Match(line, @"^STORY\s+""([^""]+)""", RegexOptions.IgnoreCase);
+            if (!named.Success) continue;
+
+            var parkade = Regex.Match(named.Groups[1].Value, @"^\s*(?:L(?:EVEL)?\s*)?P\s*(\d+)\s*$", RegexOptions.IgnoreCase);
+            if (parkade.Success)
+            {
+                have.Add(int.Parse(parkade.Groups[1].Value));
+                int h = line.IndexOf("HEIGHT", StringComparison.OrdinalIgnoreCase);
+                if (h >= 0)
+                {
+                    string token = new(line[(h + "HEIGHT".Length)..].Trim().TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
+                    if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out double value))
+                    {
+                        lowestParkadeAt = i;          // listed top-down, so the last parkade seen is the lowest
+                        parkadeHeight = value;
+                        lowestParkadeLine = lines[i];
+                    }
+                }
+                continue;
+            }
+
+            int e = line.IndexOf("ELEV", StringComparison.OrdinalIgnoreCase);
+            if (e < 0) continue;
+            string elevToken = new(line[(e + "ELEV".Length)..].Trim().TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
+            if (double.TryParse(elevToken, NumberStyles.Float, CultureInfo.InvariantCulture, out double elev))
+            {
+                baseAt = i;
+                baseElevation = elev;
+            }
+        }
+
+        // Nothing to hang them off, or nothing missing.
+        if (lowestParkadeAt < 0 || baseAt < 0 || parkadeHeight <= 0) return added;
+
+        var missing = parkadeLevelsWanted.Where(l => !have.Contains(l)).OrderBy(l => l).ToList();
+        if (missing.Count == 0) return added;
+
+        // Only ever extend the sequence downward, and only without a gap: P4 and P5 under a P3 are
+        // the next two floors down, but a lone P7 under a P3 is a naming question, not a storey.
+        int deepest = have.Count > 0 ? have.Max() : 0;
+        var contiguous = new List<int>();
+        foreach (int level in missing)
+        {
+            if (level != deepest + contiguous.Count + 1) break;
+            contiguous.Add(level);
+        }
+        if (contiguous.Count == 0) return added;
+
+        string Number(double v) => v.ToString("0.####", CultureInfo.InvariantCulture);
+        var name = Regex.Match(lowestParkadeLine.Trim(), @"^STORY\s+""([^""]+)""", RegexOptions.IgnoreCase).Groups[1].Value;
+        bool spelledOut = name.Contains("LEVEL", StringComparison.OrdinalIgnoreCase);
+
+        var inserted = new List<string>();
+        foreach (int level in contiguous)
+        {
+            string storey = spelledOut ? $"LEVEL P{level}" : $"P{level}";
+            inserted.Add(Regex.Replace(
+                Regex.Replace(lowestParkadeLine, @"(STORY\s+)""[^""]+""", $"${{1}}\"{storey}\"", RegexOptions.IgnoreCase),
+                @"(HEIGHT\s+)\S+", $"${{1}}{Number(parkadeHeight)}", RegexOptions.IgnoreCase));
+            added.Add(storey);
+        }
+
+        lines.InsertRange(lowestParkadeAt + 1, inserted);
+
+        // The base drops by what was added, so every elevation above it is untouched.
+        int baseNow = baseAt + inserted.Count;
+        lines[baseNow] = Regex.Replace(lines[baseNow], @"(ELEV\s+)\S+",
+            $"${{1}}{Number(baseElevation - parkadeHeight * inserted.Count)}", RegexOptions.IgnoreCase);
+
+        return added;
+    }
+
     public bool NormaliseBaseStorey()
     {
         var section = Find("STORIES");

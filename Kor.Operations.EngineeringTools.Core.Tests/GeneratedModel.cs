@@ -34,7 +34,7 @@ internal static class GeneratedModel
     /// may only ever come down. What remains is what the drawings genuinely do not resolve.
     /// </summary>
     internal const int LangaraLostCeiling = 7;
-    internal const int WestFirstLostCeiling = 29;
+    internal const int WestFirstLostCeiling = 24;
 
     /// <summary>
     /// Generated columns whose size or shape does not match the footprint they were drawn from.

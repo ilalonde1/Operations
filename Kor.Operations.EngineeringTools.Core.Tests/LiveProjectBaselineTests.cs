@@ -38,7 +38,11 @@ public class LiveProjectBaselineTests
         // face shorter than 48" so corner limbs never formed, and her own gravity model carries
         // wall panels at 9, 12, 15, 23 and 27 inches. Columns 162->180 net of footprints more
         // slender than 3:1, which are walls in both engineers' models. Storeys 23->24: Mezz.
-        Storeys: 24, Walls: 136, Columns: 180, Floors: 11);
+        // Rebaselined 2026-08-12 on the engineer's instruction "the model needs to go to P5".
+        // Her model stopped at P3 while drafting issues LEVEL P4 and P5, so two whole parkade
+        // floors were read and placed nowhere. Adding those storeys brings 60 walls, 43 columns
+        // and 2 plates with them, and drops unaccounted drawn members from 29 to 24.
+        Storeys: 26, Walls: 196, Columns: 223, Floors: 13);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;
