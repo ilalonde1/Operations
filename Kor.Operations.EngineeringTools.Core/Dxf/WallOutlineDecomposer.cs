@@ -33,6 +33,9 @@ public static class WallOutlineDecomposer
         var used = new bool[edges.Count];
         var walls = new List<WallAxis>();
 
+        // Pairings that are sound in every way except that they are nearly square.
+        var deferred = new List<(int I, int J, DxfPoint Start, DxfPoint End, double Thickness)>();
+
         for (int i = 0; i < edges.Count; i++)
         {
             if (used[i]) continue;
@@ -134,7 +137,18 @@ public static class WallOutlineDecomposer
             bestT0 = runT0;
             bestT1 = runT1;
 
-            if (bestT1 - bestT0 < bestDistance * options.MinPanelAspect) continue;
+            double half0 = bestDistance / 2.0 * bestSide;
+            if (bestT1 - bestT0 < bestDistance * options.MinPanelAspect)
+            {
+                // Nearly square, so it is either a leftover sliver or a limb of a bigger shape.
+                // Which one cannot be told from its own proportions — held over and decided below,
+                // on whether it joins anything.
+                deferred.Add((i, bestJ,
+                    new DxfPoint(ai.X + ux * bestT0 + nx * half0, ai.Y + uy * bestT0 + ny * half0),
+                    new DxfPoint(ai.X + ux * bestT1 + nx * half0, ai.Y + uy * bestT1 + ny * half0),
+                    bestDistance));
+                continue;
+            }
 
             double half = bestDistance / 2.0 * bestSide;
             var start = new DxfPoint(ai.X + ux * bestT0 + nx * half, ai.Y + uy * bestT0 + ny * half);
@@ -148,6 +162,26 @@ public static class WallOutlineDecomposer
             // each other and produce a sliver as wide as the wall is thick, which is what
             // forced the aspect rule to be strict enough to also reject real piers.
             ConsumeEndFaces(edges, used, ai, ux, uy, nx, ny, bestT0, bestT1, bestDistance * bestSide);
+        }
+
+        // A near-square piece that RUNS INTO one of the panels above is the limb of a corner, and
+        // dropping it is what turned tower B's north corners into one fat wall across the top:
+        // each corner is an L, a 67x28 north wall with a 36-thick leg turned down beside it, and
+        // the leg measures 42x36 — aspect 1.17, just under the sliver rule. The whole L then
+        // resolved as a single 42-thick panel, which is thicker than anything drawn there, and
+        // the doorway below the leg went with it. "Still have that problem with the north corner
+        // walls for tower B."
+        //
+        // A genuine leftover sliver touches nothing, because the faces that would have joined it
+        // to a wall were consumed with that wall. So joining is what separates the two.
+        foreach (var (i, j, start, end, thickness) in deferred)
+        {
+            if (used[i] || used[j]) continue;
+            if (!walls.Any(w => LoopGeometry.SegmentsMeet(start, end, w.Start, w.End, 1.0))) continue;
+
+            walls.Add(new WallAxis(start, end, thickness, loop.Layer));
+            used[i] = true;
+            used[j] = true;
         }
 
         return walls;

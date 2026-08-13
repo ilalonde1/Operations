@@ -32,7 +32,17 @@ public class LiveProjectBaselineTests
         // welded to JBP_B_WALL. Walls 925->948 and headers 139->148 as cores that resolved to
         // nothing come back — LEVEL 27 tower B goes from 1 wall to 18, matching its neighbours.
         // Plates 83->82: the lost one existed only because unrelated slab layers were stitched.
-        Storeys: 63, Walls: 947, Columns: 2464, Floors: 82);
+        // Rebaselined 2026-08-13, three of the engineer's own items in one pass. Walls 947->1097
+        // and columns 2464->2438: a panel's length is now how far its concrete runs rather than
+        // how much of its two faces overlap, so the returns turned up at the end of a wall survive
+        // instead of being dropped as slivers or made into columns; and the pier branch no longer
+        // takes an L-shaped corner before the decomposer sees it, so tower B's north corners come
+        // apart into a 67x28 wall and its 36-thick leg instead of one 42-thick panel across the
+        // top. Both were on her list — "Tower A core missing return walls (red) and headers
+        // (blue)" and "still have that problem with the north corner walls for tower B" — and
+        // together they take headers 144->262, because a wall that reaches its true end leaves a
+        // doorway beside it where before there was a void nothing bounded.
+        Storeys: 63, Walls: 1097, Columns: 2438, Floors: 82);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",

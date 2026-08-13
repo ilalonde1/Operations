@@ -623,8 +623,22 @@ public static class StructuralPlanClassifier
         // still do not come apart — three levers, three walls' difference. Something earlier than
         // the aspect rule is refusing them, and guessing at it is how the last two rounds went. It
         // stays question C1 until that is measured, but the question now carries her answer.
+        // MEASURED, and it settles C1. The lever was never the aspect rule or the face floor: it
+        // is that this pier branch ran BEFORE the decomposer and took the shape first. Tower B's
+        // north-west corner is an L — a 67x28 north wall with a 36-thick leg turned down beside
+        // it — and it fills 85% of its box, so the pier test claimed it and wrote ONE panel 67
+        // long and 42 thick. Forty-two inches is thicker than anything drawn there, the leg was
+        // gone, and so was the doorway under it: "still have that problem with the north corner
+        // walls for tower B".
+        //
+        // Handed the same loop, the decomposer returns both limbs on their own centrelines. So it
+        // is asked first, and the pier branch keeps only what genuinely does not come apart — a
+        // solid footprint yields one panel or none, an L yields two.
+        var decomposed = WallOutlineDecomposer.Decompose(loop, options);
+
         double boxArea = box.Length * box.Thickness;
-        if (boxArea > 0 && loop.Area / boxArea >= options.PierFillRatio && box.Aspect < 4.0 &&
+        if (decomposed.Count < 2 &&
+            boxArea > 0 && loop.Area / boxArea >= options.PierFillRatio && box.Aspect < 4.0 &&
             EffectiveWidth(loop) > options.MaxWallThickness)
         {
             if (box.Thickness <= options.MaxPierThickness && box.Length >= options.MinWallLength)
@@ -640,7 +654,7 @@ public static class StructuralPlanClassifier
             }
         }
 
-        var panels = WallOutlineDecomposer.Decompose(loop, options);
+        var panels = decomposed;
         if (panels.Count > 0)
         {
             // Thickness is no longer flagged. It produced 615 notes on 31168 asking the engineer to
