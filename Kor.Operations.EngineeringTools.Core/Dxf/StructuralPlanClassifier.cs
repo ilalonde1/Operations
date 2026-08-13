@@ -188,6 +188,13 @@ public sealed record PlanClassificationOptions
 /// <summary>Turns the raw segments of one plan into the structural members it depicts.</summary>
 public static class StructuralPlanClassifier
 {
+    /// <summary>
+    /// A layer name with its export suffix removed, so JBP_C_SLABEDG, JBP_C_SLABEDG-1 and
+    /// JBP_C_SLABEDG-2 are one family and JBP_V-WALL and JBP_B_WALL are two.
+    /// </summary>
+    private static string LayerFamily(string layer)
+        => System.Text.RegularExpressions.Regex.Replace(layer, @"[-_]\d+$", string.Empty);
+
     internal const string RoleWall = "walls";
     internal const string RoleColumn = "columns";
     internal const string RoleSlab = "slab edges";
@@ -218,26 +225,70 @@ public static class StructuralPlanClassifier
         }
 
         var result = new PlanGeometrySet();
+        var closedByRole = new List<(string Role, IReadOnlyList<PlanLoop> Loops, string Family)>();
+
         var slabBuilder = new PlanLoopBuilder(options.JoinTolerance, options.BridgeTolerance, options.ExtendLimit);
         var wallBuilder = new PlanLoopBuilder(options.JoinTolerance, options.WallBridgeTolerance, options.ExtendLimit);
 
-        // Group by what a layer is for, not by its name. Revit splits one outline across
-        // JBP_C_SLABEDG, -1 and -2 as it exports, so a plate boundary only closes when the
-        // related layers are stitched together.
-        var byRole = DashedLineJoiner.Join(segments, options.DashJoinGap)
+        // Group by layer FAMILY, not by role alone. Revit splits one outline across
+        // JBP_C_SLABEDG, -1 and -2 as it exports, so a plate boundary only closes when those are
+        // stitched together — but they are variants of one name, and JBP_V-WALL and JBP_B_WALL are
+        // not. Pooling everything that shares a role let a broken outline on one layer capture the
+        // segments of a clean one on another: on 31168's LEVEL 27 tower B sheet, JBP_V-WALL's six
+        // closed loops were welded to JBP_B_WALL-1's twelve open chains across a 12" bridge, and
+        // the core came out as a single 326x173 rectangle that resolves to nothing. One wall was
+        // written where the drawing holds eight, which is what the engineer saw as "L27 tower B
+        // still has no walls".
+        // CLOSED FIRST, THEN POOLED. Each layer family is built on its own, so an outline that
+        // already closes is never at risk of being welded to a neighbour. Only what is left OPEN is
+        // pooled across the families of the same role — which is how a boundary Revit really did
+        // split across JBP_C_SLABEDG and -1 still closes, while JBP_V-WALL's six closed loops are
+        // no longer captured by JBP_B_WALL-1's twelve open chains.
+        //
+        // Pooling everything that shared a role cost 31168's LEVEL 27 tower B its core: the drawing
+        // holds ten walls and one was written, which the engineer reported as "L27 still has no
+        // walls". Refusing to pool at all cost 31138 thirty-eight outlines that genuinely span two
+        // layers. Closed first is the rule that serves both.
+        var prepared = DashedLineJoiner.Join(segments, options.DashJoinGap)
             .Select(s => (Segment: s, Role: RoleOf(s.Layer, options)))
             .Where(x => x.Role is not null)
-            .GroupBy(x => x.Role!, x => x.Segment);
+            .ToList();
+
+        var byRole = new List<(string Role, List<PlanLoop> Loops, List<IReadOnlyList<DxfPoint>> OpenChains)>();
+
+        foreach (string role in prepared.Select(x => x.Role!).Distinct())
+        {
+            var builder = role is RoleWall or RoleColumn ? wallBuilder : slabBuilder;
+            var loops = new List<PlanLoop>();
+            var leftovers = new List<DxfSegment>();
+
+            foreach (var family in prepared.Where(x => x.Role == role)
+                                           .GroupBy(x => LayerFamily(x.Segment.Layer), x => x.Segment))
+            {
+                var attempt = builder.Build(family);
+                loops.AddRange(attempt.Loops);
+
+                foreach (var chain in attempt.OpenChains)
+                    for (int i = 0; i < chain.Count - 1; i++)
+                        leftovers.Add(new DxfSegment(family.Key, chain[i], chain[i + 1]));
+            }
+
+            // Second chance for everything that did not close on its own.
+            var pooled = leftovers.Count > 0 ? builder.Build(leftovers) : null;
+            if (pooled is not null) loops.AddRange(pooled.Loops);
+
+            byRole.Add((role, loops, pooled?.OpenChains.ToList() ?? new List<IReadOnlyList<DxfPoint>>()));
+        }
 
         var slabCandidates = new List<PlanLoop>();
 
         foreach (var group in byRole)
         {
-            string layer = group.Key;
+            string layer = group.Role;
             bool isWall = layer == RoleWall;
             bool isColumn = layer == RoleColumn;
 
-            var built = (isWall || isColumn ? wallBuilder : slabBuilder).Build(group);
+            var built = (Loops: group.Loops, OpenChains: group.OpenChains);
 
             // A wall enclosure is broken by its own doorway, so its outline never closes — but it
             // still traces the faces of real walls. Decompose those chains as well rather than

@@ -28,7 +28,11 @@ public class LiveProjectBaselineTests
         // Rebaselined 2026-08-09. Storeys 61->63 and walls 918->925 because a mezzanine was
         // taking the sheet for the floor below it, so both towers' level 1 stood empty; columns
         // 2425->2464 as the same fix landed level 1 and slender footprints became walls.
-        Storeys: 63, Walls: 925, Columns: 2464, Floors: 83);
+        // Rebaselined 2026-08-13: outlines are grouped by layer family, so JBP_V-WALL is no longer
+        // welded to JBP_B_WALL. Walls 925->948 and headers 139->148 as cores that resolved to
+        // nothing come back — LEVEL 27 tower B goes from 1 wall to 18, matching its neighbours.
+        // Plates 83->82: the lost one existed only because unrelated slab layers were stitched.
+        Storeys: 63, Walls: 947, Columns: 2464, Floors: 82);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",

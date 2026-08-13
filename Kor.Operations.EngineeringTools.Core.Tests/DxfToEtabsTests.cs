@@ -294,6 +294,57 @@ public class PlanSheetNamingTests
     }
 
     /// <summary>
+    /// Outlines are stitched across layers that are VARIANTS of one name — Revit splits a slab
+    /// boundary over JBP_C_SLABEDG, -1 and -2 — but never across different names.
+    ///
+    /// Pooling everything that shared a role let a broken outline on one layer capture the segments
+    /// of a clean one on another. On 31168's LEVEL 27 tower B sheet, JBP_V-WALL's six closed loops
+    /// were welded to JBP_B_WALL-1's twelve open chains and the core came out as a single 326x173
+    /// rectangle that resolves to nothing: one wall written where the drawing holds ten, which the
+    /// engineer reported as "L27 tower B still has no walls".
+    /// </summary>
+    [Fact]
+    public void OutlinesOnDifferentLayerFamiliesAreNotWeldedTogether()
+    {
+        static DxfSegment Seg(string layer, double x1, double y1, double x2, double y2)
+            => new(layer, new DxfPoint(x1, y1), new DxfPoint(x2, y2));
+
+        // A clean 240x12 wall outline on one layer.
+        var clean = new[]
+        {
+            Seg("JBP_V-WALL", 0, 0, 240, 0),
+            Seg("JBP_V-WALL", 240, 0, 240, 12),
+            Seg("JBP_V-WALL", 240, 12, 0, 12),
+            Seg("JBP_V-WALL", 0, 12, 0, 0),
+        };
+
+        // Broken stubs on a DIFFERENT wall layer, close enough to be bridged if pooled.
+        var broken = new[]
+        {
+            Seg("JBP_B_WALL-1", 0, 6, 0, 100),
+            Seg("JBP_B_WALL-1", 240, 6, 240, 100),
+        };
+
+        var result = StructuralPlanClassifier.Classify(clean.Concat(broken).ToList(), new PlanClassificationOptions());
+
+        // The clean outline still becomes its wall, on its own centreline.
+        var wall = Assert.Single(result.Walls, w => Math.Abs(w.Thickness - 12) < 0.5);
+        Assert.Equal(240, wall.Length, 1);
+        Assert.Equal(6, wall.Start.Y, 1);
+
+        // Variants of ONE name still stitch: the same outline split across -1 and -2 must close.
+        var split = new[]
+        {
+            Seg("JBP_C_SLABEDG", 0, 0, 600, 0),
+            Seg("JBP_C_SLABEDG-1", 600, 0, 600, 600),
+            Seg("JBP_C_SLABEDG-2", 600, 600, 0, 600),
+            Seg("JBP_C_SLABEDG-2", 0, 600, 0, 0),
+        };
+        var slabs = StructuralPlanClassifier.Classify(split, new PlanClassificationOptions());
+        Assert.Single(slabs.Slabs);
+    }
+
+    /// <summary>
     /// Numbers measured once on one engineer's model became constants. They are now read off the
     /// reference in front of us — but deriving is not automatically better than a constant, and the
     /// gate matters more than the derivation: 31168's reference implies a 37" "opening", because its

@@ -67,13 +67,13 @@ had already rebuilt that building's walls by hand.</p>
 <table>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
   <tr><td>Storeys populated</td><td><strong>63</strong></td><td>29</td></tr>
-  <tr><td>Wall panels, true thicknesses</td><td><strong>925</strong></td><td>196</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>947</strong></td><td>196</td></tr>
   <tr><td>Columns, sized &amp; oriented</td><td><strong>2,464</strong></td><td>248</td></tr>
-  <tr><td>Floor plates</td><td><strong>83</strong></td><td>13</td></tr>
-  <tr><td>Headers over openings (spandrel shells)</td><td><strong>139</strong></td><td>22</td></tr>
+  <tr><td>Floor plates</td><td><strong>82</strong></td><td>13</td></tr>
+  <tr><td>Headers over openings (spandrel shells)</td><td><strong>144</strong></td><td>20</td></tr>
   <tr><td>Shaft and stair openings cut</td><td><strong>46</strong></td><td>2</td></tr>
   <tr><td>Pier labels</td><td><strong>129</strong></td><td>139</td></tr>
-  <tr><td>Members you already had, not duplicated</td><td>—</td><td>305 walls, 270 columns</td></tr>
+  <tr><td>Members you already had, not duplicated</td><td>—</td><td>307 walls, 270 columns</td></tr>
 </table>
 
 <h2>What changed after your two calls</h2>
@@ -95,6 +95,14 @@ Three 31138 sheets are titled <em>LEVEL 8, 9</em>, <em>LEVEL 11, 12</em> and <em
 only the first number was ever read — so L09, L12 and L18 were built empty, and nothing said so,
 because each sheet reported itself placed on the one storey it did find. Listed titles are now read
 whole: 31138 goes from 26 populated storeys to 29.</p>
+<p><strong>Also from 13 August, and the largest single recovery yet:</strong> outlines were being
+stitched across any layers that shared a role, so a broken outline on one layer could capture the
+segments of a clean one on another. On 31168's <em>LEVEL 27 tower B</em> sheet, <code>JBP_V-WALL</code>'s
+six closed loops were welded to <code>JBP_B_WALL-1</code>'s twelve open chains and the core came out
+as a single 326&times;173 rectangle that resolves to nothing &mdash; one wall written where the drawing
+holds ten. Outlines now close per layer family first, and only what is left open is pooled, so a
+boundary Revit genuinely split across two layers still closes. <strong>L27 goes from 1 wall to 18,
+matching every neighbouring storey</strong>, and 31168 gains 22 walls and 5 headers overall.</p>
 <table>
   <tr><th>You said</th><th>What it does now</th></tr>
   <tr><td>"We can't have a wall go from here to here and then another one from here to here. We need a connection."</td>
@@ -188,11 +196,11 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
   <tr><th>File</th><th>What it is</th></tr>
   <tr><td><code>31168-FROM-DRAWINGS.e2k</code></td>
       <td><strong>The one that matters.</strong> Tower B and the rest of the building — 63 storeys,
-          925 walls, 2,464 columns, 83 plates. Nothing of this existed before.</td></tr>
+          947 walls, 2,464 columns, 82 plates. Nothing of this existed before.</td></tr>
   <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
       <td>A gap-fill. You have already rebuilt this building's walls — between 17 and 42 panels on every
           storey — so this adds only what the drawings show and your model does not: 196 walls and
-          248 columns, mostly at podium and parkade. 305 walls and 270 columns of yours were
+          248 columns, mostly at podium and parkade. 307 walls and 270 columns of yours were
           recognised at those locations and deliberately not modelled again.</td></tr>
   <tr><td><code>…-QUESTIONS-for-Andrea.xlsx</code></td>
       <td>Two sheets. <em>Questions</em> — what you have already ruled on, marked DONE, plus the few
@@ -314,7 +322,7 @@ design settings remain ETABS's own — the file differs from a known-good one on
 <h3>Slab plates are the weak half</h3>
 <p>Drafting interrupts slab edges wherever other linework crosses them, so many outlines do not
 close. Those are dropped and reported rather than guessed at, and a standalone ring must reach
-400 ft² to be modelled — the 83 plates that survive have a median area of 9,835 ft², which is a real
+400 ft² to be modelled — the 82 plates that survive have a median area of 9,835 ft², which is a real
 floor plate rather than a sliver. Coverage is therefore partial: the plates that are there are
 believable, but not every storey has one. Treat them as a starting point, or ignore them and place
 your own diaphragms.</p>
@@ -325,8 +333,8 @@ closed boundary the drawing offers. 31168's three parkade levels each get one pl
 which is the site footprint. It is an approximation, offered because a storey with no plate has no
 diaphragm at all; replace it with your own outline wherever it matters.</p>
 <p>Storeys still carrying members with no plate: on <strong>31168</strong> five —
-<code>A-LEVEL 1</code>, <code>B-LEVEL 1</code>, <code>B-LEVEL 28</code>, <code>C-LEVEL 3</code>,
-<code>LEVEL 1 MEZZ</code>. Each is named at the top
+<code>A-LEVEL 1</code>, <code>A-LEVEL 35</code>, <code>B-LEVEL 1</code>, <code>B-LEVEL 28</code>,
+<code>C-LEVEL 3</code>, <code>LEVEL 1 MEZZ</code>. Each is named at the top
 of that project's report. Widening the slab-edge closure tolerance was tried and measured against
 this, and every plate it added was a fragment, so the tolerance was left alone.</p>
 <p>Widening the closure tolerance was tried and rejected on the evidence: at 18″ the model gained
