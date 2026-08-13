@@ -138,6 +138,21 @@ public static class ModelQuestionnaire
             "31168: gaps in a wall run measure as one cluster between 36\" and 48\", nothing below 18\" — those are doors.")
             { Decided = true },
 
+        new ModelQuestion("O1", "The openings you marked on the tower floors",
+            "You marked roughly twenty openings on a typical tower B floor and said \"the openings are missing… " +
+            "this project has lots\". Most of what you marked sits between the elements around the PERIMETER, and " +
+            "those are drawn on the column layer, not the wall layer. Are they wall panels with openings between " +
+            "them, or columns?",
+            "Left as columns, because that is the layer they are on. On a typical tower B floor the sheet carries " +
+            "36 wall-layer segments — the core — and 24 column footprints at 16x40, 18x45, 30x30 and 24x28, none " +
+            "more slender than 2.5:1. An opening is generated where two IN-LINE wall ends face each other, so a " +
+            "gap between two columns produces none.",
+            "A perimeter of columns carries no in-plane shear where a perimeter of pierced wall does, and the " +
+            "difference runs the height of the tower. It also decides whether those gaps want headers.",
+            "The core openings are found and headed: the same run generates 365 headers on 31168, including the " +
+            "55\" doorways beside the tower A core returns and the tower B north corners you marked. What is not " +
+            "found is anything between two columns — nothing on any layer we read says there is an opening there."),
+
         new ModelQuestion("C1", "Wall connectivity",
             "YOUR POINT: \"we can't have a wall go from here to here and then another one from here to here. " +
             "We need a connection\" — and \"this line is not aligned with this one\".",
