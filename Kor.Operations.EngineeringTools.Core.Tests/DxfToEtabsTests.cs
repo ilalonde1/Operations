@@ -293,6 +293,57 @@ public class PlanSheetNamingTests
     }
 
     /// <summary>
+    /// The tool decides what linework IS from the layer it sits on, and the patterns are KOR's own
+    /// drafting convention. A drafter who names columns anything else gets no error today: the
+    /// columns are never seen, the model is built without them, and every count agrees with itself
+    /// because nothing was read. A role with nothing, while unclaimed layers carry real geometry,
+    /// is a naming mismatch and has to stop the run.
+    /// </summary>
+    [Fact]
+    public void ARoleWithNoLayerIsAMismatchWhenGeometrySitsUnclaimed()
+    {
+        static DxfSegment On(string layer) => new(layer, new DxfPoint(0, 0), new DxfPoint(10, 0));
+        var options = new PlanClassificationOptions();
+
+        // Columns drawn on a layer this job has never seen, plus the usual walls and slab edges.
+        var sheet = Enumerable.Repeat(On("JBP_V-WALL"), 300)
+            .Concat(Enumerable.Repeat(On("JBP_C_SLABEDG"), 300))
+            .Concat(Enumerable.Repeat(On("S-COLS-NEW"), 400))
+            .ToList();
+
+        var ledger = LayerLedger.Build(new[] { (IReadOnlyList<DxfSegment>)sheet }, options);
+
+        Assert.Equal("walls", ledger.Single(e => e.Layer == "JBP_V-WALL").Role);
+        Assert.Equal("slab edges", ledger.Single(e => e.Layer == "JBP_C_SLABEDG").Role);
+        Assert.Null(ledger.Single(e => e.Layer == "S-COLS-NEW").Role);
+
+        Assert.Equal(new[] { "columns" }, LayerLedger.RolesMissingWithGeometryUnclaimed(ledger));
+
+        // Told the job's own layer name, the same drawings resolve and nothing is missing.
+        var told = options with { ColumnLayerPatterns = new[] { "-COLS" } };
+        var resolved = LayerLedger.Build(new[] { (IReadOnlyList<DxfSegment>)sheet }, told);
+        Assert.Equal("columns", resolved.Single(e => e.Layer == "S-COLS-NEW").Role);
+        Assert.Empty(LayerLedger.RolesMissingWithGeometryUnclaimed(resolved));
+    }
+
+    /// <summary>
+    /// A drawing set really can have no columns. Refusing that would be a different kind of wrong,
+    /// so a missing role only counts when unclaimed geometry is there to explain it.
+    /// </summary>
+    [Fact]
+    public void ARoleWithNoLayerAndNothingUnclaimedIsAcceptedInSilence()
+    {
+        static DxfSegment On(string layer) => new(layer, new DxfPoint(0, 0), new DxfPoint(10, 0));
+
+        var sheet = Enumerable.Repeat(On("JBP_V-WALL"), 300)
+            .Concat(Enumerable.Repeat(On("JBP_C_SLABEDG"), 300))
+            .ToList();
+
+        var ledger = LayerLedger.Build(new[] { (IReadOnlyList<DxfSegment>)sheet }, new PlanClassificationOptions());
+        Assert.Empty(LayerLedger.RolesMissingWithGeometryUnclaimed(ledger));
+    }
+
+    /// <summary>
     /// Units are read, not assumed. Every rule in the tool is a real length and every coordinate is
     /// written in the model's unit, so a drawing in millimetres does not fail — it produces a
     /// building of entirely the wrong size and says nothing. All 90 sheets across the two jobs

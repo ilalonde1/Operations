@@ -153,6 +153,7 @@ public static class DxfToEtabsService
                          $"{Describe(modelUnitInInches)}, so every coordinate was scaled by {scale:0.######}.");
         var outcomes = new List<SheetOutcome>();
         var parsed = new List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)>();
+        var readSheets = new List<IReadOnlyList<DxfSegment>>();
 
         foreach (string file in files)
         {
@@ -171,6 +172,7 @@ public static class DxfToEtabsService
                     new DxfPoint(g.Start.X * scale, g.Start.Y * scale),
                     new DxfPoint(g.End.X * scale, g.End.Y * scale)) { FromCurve = g.FromCurve }).ToList();
 
+            readSheets.Add(segments);
             var geometry = StructuralPlanClassifier.Classify(segments, classification);
             var matched = PlanSheetNaming.MatchStories(sheet, storyNames);
 
@@ -193,6 +195,24 @@ public static class DxfToEtabsService
             }
 
             parsed.Add((sheet, geometry, matched));
+        }
+
+        // LAYERS. What a piece of linework IS comes from the layer it sits on, and the patterns are
+        // KOR's own drafting convention. A drafter who names columns anything else gets no error —
+        // the columns are simply never seen, and every count agrees with itself because nothing was
+        // read. So the ledger goes in the report, and a role that ends up with nothing while
+        // unclaimed layers carry real geometry stops the run.
+        var ledger = LayerLedger.Build(readSheets, classification);
+        var missingRoles = LayerLedger.RolesMissingWithGeometryUnclaimed(ledger);
+        if (missingRoles.Count > 0)
+        {
+            var candidates = ledger.Where(e => !e.Claimed).Take(10)
+                .Select(e => $"{e.Layer} ({e.Segments:N0} segments)");
+            throw new InvalidOperationException(
+                $"No layer in this drawing set matched {string.Join(" or ", missingRoles)}, yet " +
+                $"{ledger.Where(e => !e.Claimed).Sum(e => e.Segments):N0} segments sit on layers the tool " +
+                "does not recognise. That is a layer-naming mismatch, not a building without them. " +
+                $"Candidates: {string.Join(", ", candidates)}. Set the layer patterns for this job.");
         }
 
         var offset = request.Offset
@@ -220,6 +240,8 @@ public static class DxfToEtabsService
                     $"{(lowest.Elevation - lowest.ElevationBelow) / 12:0.0}ft. No other storey moved.").ToList(),
             };
         }
+
+        summary = summary with { Flags = summary.Flags.Concat(LayerLedger.Describe(ledger)).ToList() };
 
         if (addedStoreys.Length > 0)
         {
