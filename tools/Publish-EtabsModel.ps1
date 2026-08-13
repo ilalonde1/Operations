@@ -280,6 +280,30 @@ if ((Test-Path $dossier) -and $pdftotext) {
             }
         }
     }
+
+    # The one-pager is checked by the same rule, because it is the page that actually gets read
+    # first and it was the one nobody was checking. Every count in the dossier was verified while
+    # the summary beside it claimed 925 wall panels against 947 in the model and 83 plates against
+    # 82 — two wrong numbers in the four largest figures on the page, caught by eye rather than by
+    # this script. A gate that covers the long document and not the short one covers the wrong one.
+    $onePagerSource = Join-Path $repo 'docs\KOR-DxfToEtabs-onepager.html'
+    if (Test-Path $onePagerSource) {
+        $opHtml = Get-Content -LiteralPath $onePagerSource -Raw
+        $opProse = (($opHtml -replace '(?s)<style.*?</style>', ' ' -replace '(?s)<script.*?</script>', ' ' `
+                             -replace '<[^>]+>', ' ') -replace '&[a-z]+;', ' ') -replace '\s+', ' '
+
+        foreach ($c in [regex]::Matches($opProse, '(?<n>\d[\d,]*)\s+(?<what>wall panels|walls|columns|floor plates|plates|headers)')) {
+            $n = [int](($c.Groups['n'].Value) -replace ',', '')
+            $what = switch -Regex ($c.Groups['what'].Value) {
+                'wall'   { 'wall' }; 'column' { 'column' }; 'plate' { 'plate' }; 'header' { 'header' }
+            }
+            $ok = $counts.GetEnumerator() | Where-Object { $_.Key -like "*.$what" -and $_.Value -eq $n }
+            if (-not $ok -and $allowed[$what] -notcontains $n) {
+                $wrong += "one-pager says '$($c.Value)' — no model has that many $what`s"
+            }
+        }
+    }
+
     if ($wrong) {
         Write-Host ''
         Write-Host 'DOSSIER OUT OF DATE — these counts are not in it:' -ForegroundColor Red

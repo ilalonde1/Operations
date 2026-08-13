@@ -125,6 +125,9 @@ public static class E2kGeometryComposer
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
         int skippedColumns = 0, skippedWalls = 0;
 
+        // Members a second sheet drew in a place a first sheet had already claimed, by storey.
+        var droppedAsDuplicate = new List<(string Storey, long X, long Y)>();
+
         var pointNames = new Dictionary<(long, long, long), string>();
         var placedSlabs = new HashSet<(long, long, string)>();
         var placedColumns = new HashSet<(long, long, long, long, string)>();
@@ -242,8 +245,18 @@ public static class E2kGeometryComposer
             // All or nothing. Handing a member only the storeys that happen to be free leaves it
             // assigned to a two-inch sliver where a duplicate took the rest, which is the wafer
             // fault over again — a member has to be whole or absent.
+            //
+            // Dropping it SILENTLY is the part that had to change. A sheet reports the members it
+            // contributed, so the LEVEL 35 tower A plan reported five walls and two columns while
+            // the model got none of them: another sheet had already claimed those places and this
+            // returned empty without a word. Reading the report, the walls are there. Reading the
+            // model, tower A's core stops below its top storey. Whichever of the two is right, the
+            // tool must not be the one keeping it quiet.
             if (spanned.Any(s => taken.Contains((where.Item1, where.Item2, where.Item3, where.Item4, s))))
+            {
+                droppedAsDuplicate.Add((story.Name, where.Item1, where.Item2));
                 return new List<string>();
+            }
 
             foreach (string s in spanned) taken.Add((where.Item1, where.Item2, where.Item3, where.Item4, s));
             return spanned;
@@ -552,6 +565,25 @@ public static class E2kGeometryComposer
             flags.Add($"{skippedWalls} wall(s) and {skippedColumns} column(s) were already modelled at those " +
                       "locations and were not added again.");
 
+        // Two sheets drawing the same member is normal and one of them has to give way. Saying
+        // WHICH storeys lost members that way is what makes the sheet counts readable: a plan can
+        // report members it contributed and put none of them in the model, and without this line
+        // the only way to find out is to go looking in the model for something that is not there.
+        if (droppedAsDuplicate.Count > 0)
+        {
+            var byStorey = droppedAsDuplicate
+                .GroupBy(d => d.Storey)
+                .OrderByDescending(g => g.Count())
+                .ToList();
+
+            flags.Add(
+                $"{droppedAsDuplicate.Count} member(s) were drawn on a sheet in a place another sheet had " +
+                $"already filled, and were not added a second time — " +
+                string.Join(", ", byStorey.Take(6).Select(g => $"{g.Key} ({g.Count()})")) +
+                (byStorey.Count > 6 ? $", and {byStorey.Count - 6} more storey(s)" : string.Empty) +
+                ". Where a storey shows more members drawn than modelled, this is why.");
+        }
+
         // A column wider than any in the model it is being added to is probably not a column. One
         // 65x82 came through on 31168 where the widest in the engineer's own 31138 is 36x72; it may
         // be a wall or a pier read as a frame, and it is not provable from geometry alone.
@@ -572,6 +604,25 @@ public static class E2kGeometryComposer
                 $"{plateless.Count} storey(s) carry walls or columns but no floor plate, because their slab " +
                 $"edges would not close: {string.Join(", ", plateless)}. Those storeys have no diaphragm " +
                 "until a plate is added.");
+
+        // And the reverse, which reads as wrong even faster: a floor with nothing under it. A plate
+        // is carried by the walls and columns assigned to its own storey, so a storey holding a
+        // plate and no members is a slab supported by air.
+        //
+        // It is not a geometry error the tool can fix — it means the plan that would have drawn
+        // that storey's walls has none on it, and only the engineer knows whether the structure
+        // really stops there or the sheet is not the one to read. 31168's building C roof is the
+        // case: a roof plate, and no wall or column beneath it anywhere.
+        var unsupported = storeysWithPlates
+            .Where(s => !storeysWithMembers.Contains(s))
+            .Where(s => !existingWalls.ContainsKey(s) && !existingColumns.ContainsKey(s))
+            .ToList();
+
+        if (unsupported.Count > 0)
+            flags.Add(
+                $"{unsupported.Count} storey(s) carry a floor plate with no wall or column beneath it: " +
+                $"{string.Join(", ", unsupported)}. The plan placed there draws no vertical structure, so " +
+                "either the structure stops below that level or another sheet holds it.");
 
         var sections = wallProps.Values.Concat(slabProps.Values).Concat(frameProps.Values).Concat(roundProps.Values).ToList();
         return new ComposeSummary(

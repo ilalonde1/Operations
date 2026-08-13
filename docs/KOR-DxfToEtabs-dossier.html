@@ -332,11 +332,26 @@ thickness per floor, general outline at first" — and on a below-grade level th
 closed boundary the drawing offers. 31168's three parkade levels each get one plate of 75,800 ft²,
 which is the site footprint. It is an approximation, offered because a storey with no plate has no
 diaphragm at all; replace it with your own outline wherever it matters.</p>
-<p>Storeys still carrying members with no plate: on <strong>31168</strong> five —
+<p>Storeys still carrying members with no plate: on <strong>31168</strong> six —
 <code>A-LEVEL 1</code>, <code>A-LEVEL 35</code>, <code>B-LEVEL 1</code>, <code>B-LEVEL 28</code>,
 <code>C-LEVEL 3</code>, <code>LEVEL 1 MEZZ</code>. Each is named at the top
 of that project's report. Widening the slab-edge closure tolerance was tried and measured against
 this, and every plate it added was a fragment, so the tolerance was left alone.</p>
+
+<h3>A floor with nothing under it, and members a second sheet lost</h3>
+<p>Two things the run now says out loud, because both were happening silently.</p>
+<p><strong>One storey on 31168 carries a floor plate with no wall or column beneath it:</strong>
+<code>C-ROOF</code>. A plate is held up by the members assigned to its own storey, so that is a roof
+slab supported by nothing. It is not a geometry error the tool can repair — the plan placed on that
+storey draws no vertical structure at all — so it is reported and left for you: either building C's
+structure genuinely stops below the roof, or the sheet that carries its walls is not the one we
+read. <em>This is a question, not a claim.</em></p>
+<p><strong>2,145 members were drawn on a sheet in a place another sheet had already filled</strong>
+and were not added a second time. That is normal — a range plan and a per-level plan draw the same
+floor, and one of them has to give way — but until now the run discarded them without a word, so a
+sheet could report the members it contributed and put none of them in the model. The storeys that
+lost members that way are now named in the report. Tower A's level 35 plan is the case that found
+this: five walls and two columns against its name in the sheet table, none of them in the model.</p>
 <p>Widening the closure tolerance was tried and rejected on the evidence: at 18″ the model gained
 302 more plates, but the count of plates in a plausible size range did not change at all — every
 addition was a fragment. Recovering the missing plates needs a better method, not a looser one

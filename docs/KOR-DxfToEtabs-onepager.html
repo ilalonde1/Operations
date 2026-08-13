@@ -55,9 +55,9 @@ columns sized and turned as drawn, floor plates, headers over the openings, shaf
 out, pier labels so a wall reads as one element up the building.</p>
 
 <div class="cards">
-  <div class="card"><div class="n">925</div><div class="l">wall panels</div></div>
+  <div class="card"><div class="n">947</div><div class="l">wall panels</div></div>
   <div class="card"><div class="n">2,464</div><div class="l">columns</div></div>
-  <div class="card"><div class="n">83</div><div class="l">floor plates</div></div>
+  <div class="card"><div class="n">82</div><div class="l">floor plates</div></div>
   <div class="card"><div class="n">63</div><div class="l">storeys</div></div>
 </div>
 <p style="font-size:12px;color:#5b5b5b;margin-top:2px">31168 YMCA Langara, from 62 plan sheets, all placed. None
@@ -84,7 +84,7 @@ of it entered by hand.</p>
 <h2>What it will not touch</h2>
 <p>No section properties, loads, stiffness modifiers, diaphragms or design — a diaphragm arriving
 with the geometry is one more thing to undo. And it never overwrites what you have already modelled:
-on 31138 it recognised 280 of your walls and 239 of your columns and left every one alone.</p>
+on 31138 it recognised 307 of your walls and 270 of your columns and left every one alone.</p>
 
 <h2>It gets better every time you tell it something</h2>
 <p>Every rule came from an engineer and can name the evidence behind it. Rules live in a database
@@ -101,15 +101,16 @@ with a confidence level, and apply only once verified or confirmed by you.</p>
           from. Each started as a sentence on a call.</td></tr>
 </table>
 <p>It also learns without being asked: three of the five questions headed your way were answered by
-reading your own model instead — including that your spandrels imply an 86&ndash;88" opening where an
-84" door had been assumed, which had made every header two to four inches too deep.</p>
+reading your own model instead — including that your 29 spandrels on 31138 imply an 88" opening where
+an 84" door had been assumed, which had made every header four inches too deep.</p>
 
 <h2>How far to trust it</h2>
 <p>Before it is sent, the model is checked against the drawings both ways — every drawn member must
 be modelled, and every modelled member must stand on linework from a sheet placed on its own storey.
 Size and shape are checked against the raw drawing entities, and every check is proved against the
-defect it exists for. <strong>What it does not know, it says:</strong> on 31168, 7 of its 3,397 drawn
-members unaccounted for, five storeys whose slab edges will not close, and three questions.</p>
+defect it exists for. <strong>What it does not know, it says:</strong> on 31168, 7 of its 3,435 drawn
+members unaccounted for, six storeys whose slab edges will not close, one roof plate with nothing
+beneath it, and three questions.</p>
 
 <div class="foot">
   Kor.Operations · Engineering Tools. Built on the same engine as the takeoff and PdfToSafe tools

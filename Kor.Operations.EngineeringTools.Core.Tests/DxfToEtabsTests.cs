@@ -249,6 +249,37 @@ public class PlanSheetNamingTests
         Assert.Equal(new[] { "B-LEVEL 29" }, PlanSheetNaming.MatchStories(sheet, stories));
     }
 
+    /// <summary>
+    /// The tower A plans at the top of 31168, with the model's real storey names around them.
+    ///
+    /// This is where the sheet-per-building rule has to hold under the site model's interleaving:
+    /// tower A's level 35 and tower B's level 35 are within inches of each other, so the storey list
+    /// carries both "A-LEVEL 35" and "B-LEVEL 35" and the A storey is only 8 inches tall. A sheet
+    /// titled BLDG A must still land on the A storey and nowhere else — putting tower A's core on
+    /// B-LEVEL 35 gets the elevation nearly right and the building wrong, and nothing in any count
+    /// would say so.
+    /// </summary>
+    [Fact]
+    public void TowerAPlansLandOnTowerAStoreysEvenWhereTheTowersInterleave()
+    {
+        var stories = new[]
+        {
+            "B-LEVEL 37", "A-LEVEL 36", "B-LEVEL 36", "A-LEVEL 35",
+            "B-LEVEL 35", "B-LEVEL 34", "A-LEVEL 34", "B-LEVEL 33",
+        };
+
+        var level35 = PlanSheetNaming.Parse(
+            "--Structural Plan - S2-22-1_3_LEVEL 35 PLAN - CONCRETE OUTLINE - BLDG A.dxf");
+        var level34 = PlanSheetNaming.Parse(
+            "--Structural Plan - S2-22-1_2_LEVEL 34 PLAN - CONCRETE OUTLINE - BLDG A.dxf");
+
+        Assert.Equal(new[] { 35 }, level35.Levels);
+        Assert.Equal(new[] { "A" }, level35.BuildingTags);
+
+        Assert.Equal(new[] { "A-LEVEL 35" }, PlanSheetNaming.MatchStories(level35, stories));
+        Assert.Equal(new[] { "A-LEVEL 34" }, PlanSheetNaming.MatchStories(level34, stories));
+    }
+
     [Fact]
     public void ParkadeSheetsMatchParkadeStoreysOnly()
     {
@@ -875,6 +906,80 @@ public class E2kDocumentTests
     public void FindsAConcreteMaterialForGeneratedSections()
     {
         Assert.Equal("65 MPa Walls", E2kDocument.Parse(Reference).FindConcreteMaterial());
+    }
+
+    /// <summary>
+    /// When two sheets draw the same member in the same place, the second one gives way — and the
+    /// report has to say so.
+    ///
+    /// It did not. On 31168 the tower A level 35 plan reported five walls and two columns against
+    /// its name in the sheet table and put none of them in the model, because a sheet read earlier
+    /// had already claimed those places. Nothing anywhere recorded the drop. The sheet table read
+    /// as though tower A's core had been built to the top of the tower; the model has it stopping
+    /// below the top storey. A tool that is meant to be honest about what it does not know cannot
+    /// be silent about what it discarded.
+    /// </summary>
+    [Fact]
+    public void AMemberDroppedBecauseAnotherSheetDrewItIsReported()
+    {
+        var doc = E2kDocument.Parse(Reference);
+        var story = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+
+        PlanGeometrySet Plan()
+        {
+            var g = new PlanGeometrySet();
+            g.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(120, 0), 12, "JBP_V-WALL"));
+            g.Columns.Add(new ColumnFootprint(new DxfPoint(50, 50), 24, 24, "JBP_V_COL"));
+            return g;
+        }
+
+        // The same wall and column drawn on two sheets that both land on LEVEL 3.
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(story, Plan(), "first.dxf"),
+            new StoryPlacement(story, Plan(), "second.dxf"),
+        });
+
+        // One of each is built — that part was always right.
+        Assert.Equal(1, summary.Walls);
+        Assert.Equal(1, summary.Columns);
+
+        // And the two that gave way are named, with the storey that lost them.
+        string flag = Assert.Single(summary.Flags, f => f.Contains("already filled"));
+        Assert.Contains("2 member(s)", flag);
+        Assert.Contains("LEVEL 3", flag);
+    }
+
+    /// <summary>
+    /// A floor plate with no wall or column on its own storey is a slab supported by air, and the
+    /// run has to say so.
+    ///
+    /// The tool already named the opposite case — members with no plate over them — and was silent
+    /// on this one, which is the more visible of the two in a 3D view. 31168 ships with building
+    /// C's roof in exactly that state, and nothing in the model, the counts or the report said it.
+    /// </summary>
+    [Fact]
+    public void AFloorWithNoWallOrColumnBeneathItIsReported()
+    {
+        var doc = E2kDocument.Parse(Reference);
+        var story = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+
+        // A slab outline and nothing else — no walls, no columns.
+        var geometry = new PlanGeometrySet();
+        geometry.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new[]
+        {
+            new DxfPoint(0, 0), new DxfPoint(240, 0), new DxfPoint(240, 240), new DxfPoint(0, 240),
+        }, true));
+
+        var summary = E2kGeometryComposer.Compose(
+            doc, new[] { new StoryPlacement(story, geometry, "roof.dxf") });
+
+        Assert.Equal(1, summary.Floors);
+        Assert.Equal(0, summary.Walls);
+        Assert.Equal(0, summary.Columns);
+
+        string flag = Assert.Single(summary.Flags, f => f.Contains("no wall or column beneath it"));
+        Assert.Contains("LEVEL 3", flag);
     }
 
     [Fact]
