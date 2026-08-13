@@ -982,6 +982,52 @@ public class E2kDocumentTests
         Assert.Contains("LEVEL 3", flag);
     }
 
+    /// <summary>
+    /// A wall's return is part of the wall, even where almost none of its face shows.
+    ///
+    /// Tower A's core on 31168 has a 30x41 return turned up at each end of its bottom wall. Only
+    /// 13" of each return's inner face is exposed — the rest of it abuts the wall it joins — and
+    /// judging the panel on that overlap made it a sliver against the 1.2 aspect rule, so both
+    /// returns were dropped. So was the 55" gap between each return and the side wall above it,
+    /// which is a doorway wanting a header. The engineer marked exactly those two things on the
+    /// core in plan: "Tower A core missing return walls (red) and headers (blue)". One cause.
+    ///
+    /// A panel's length is how far its concrete runs, which is what this measures.
+    /// </summary>
+    [Fact]
+    public void AWallsReturnSurvivesEvenWhereItsFaceIsMostlyBuried()
+    {
+        // Traced from 31168's A-LEVEL 28 sheet, walking the outline of the core's bottom wall.
+        var loop = new PlanLoop("JBP_V-WALL", new[]
+        {
+            new DxfPoint(-849, 2966), new DxfPoint(-463, 2966),     // outer face, full 386
+            new DxfPoint(-463, 3007), new DxfPoint(-493, 3007),     // right return
+            new DxfPoint(-493, 2994),
+            new DxfPoint(-819, 2994),                                // inner face, only 326 of it
+            new DxfPoint(-819, 3007), new DxfPoint(-849, 3007),     // left return
+        }, true);
+
+        var panels = WallOutlineDecomposer.Decompose(loop, new PlanClassificationOptions());
+
+        Assert.Equal(3, panels.Count);
+
+        // The wall itself, and it reaches its true ends rather than stopping at the inner face.
+        var bottom = panels.Single(p => Math.Abs(p.Start.Y - 2980) < 1 && Math.Abs(p.End.Y - 2980) < 1);
+        Assert.Equal(386, bottom.Start.DistanceTo(bottom.End), 0);
+        Assert.Equal(28, bottom.Thickness, 0);
+
+        // And a return at each end, 41 long and 30 thick, standing up from the wall.
+        var returns = panels.Where(p => Math.Abs(p.Start.X - p.End.X) < 1).ToList();
+        Assert.Equal(2, returns.Count);
+        Assert.All(returns, r =>
+        {
+            Assert.Equal(41, r.Start.DistanceTo(r.End), 0);
+            Assert.Equal(30, r.Thickness, 0);
+        });
+        Assert.Contains(returns, r => Math.Abs(r.Start.X - -834) < 1);
+        Assert.Contains(returns, r => Math.Abs(r.Start.X - -478) < 1);
+    }
+
     [Fact]
     public void ComposesWallsColumnsAndFloorsIntoTheDocument()
     {

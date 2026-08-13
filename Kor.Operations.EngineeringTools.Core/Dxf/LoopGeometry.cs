@@ -108,4 +108,34 @@ public static class LoopGeometry
 
         return result.Count >= 3 ? result : kept;
     }
+
+    /// <summary>
+    /// Whether two segments touch — crossing, meeting end to end, or running into one another's
+    /// middle. Used to decide whether a short wall is joined to a core or standing on its own,
+    /// which is the difference between a return wall and a column.
+    /// </summary>
+    public static bool SegmentsMeet(DxfPoint a1, DxfPoint a2, DxfPoint b1, DxfPoint b2, double tolerance)
+    {
+        static double DistanceToSegment(DxfPoint p, DxfPoint a, DxfPoint b)
+        {
+            double dx = b.X - a.X, dy = b.Y - a.Y;
+            double lengthSquared = dx * dx + dy * dy;
+            if (lengthSquared < 1e-9) return p.DistanceTo(a);
+            double t = Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lengthSquared, 0.0, 1.0);
+            return p.DistanceTo(new DxfPoint(a.X + t * dx, a.Y + t * dy));
+        }
+
+        // A proper crossing: each segment straddles the other's line.
+        double d1 = (a2.X - a1.X) * (b1.Y - a1.Y) - (a2.Y - a1.Y) * (b1.X - a1.X);
+        double d2 = (a2.X - a1.X) * (b2.Y - a1.Y) - (a2.Y - a1.Y) * (b2.X - a1.X);
+        double d3 = (b2.X - b1.X) * (a1.Y - b1.Y) - (b2.Y - b1.Y) * (a1.X - b1.X);
+        double d4 = (b2.X - b1.X) * (a2.Y - b1.Y) - (b2.Y - b1.Y) * (a2.X - b1.X);
+        if (Math.Sign(d1) != Math.Sign(d2) && Math.Sign(d3) != Math.Sign(d4)) return true;
+
+        // Or an end of one lands on the other, within tolerance.
+        return DistanceToSegment(a1, b1, b2) <= tolerance
+            || DistanceToSegment(a2, b1, b2) <= tolerance
+            || DistanceToSegment(b1, a1, a2) <= tolerance
+            || DistanceToSegment(b2, a1, a2) <= tolerance;
+    }
 }

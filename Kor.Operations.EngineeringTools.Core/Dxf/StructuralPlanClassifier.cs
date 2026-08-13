@@ -381,6 +381,15 @@ public static class StructuralPlanClassifier
         var ends = result.Walls.SelectMany(w => new[] { w.Start, w.End }).ToList();
         bool Joined(DxfPoint p) => ends.Count(q => q.DistanceTo(p) < 0.01) > 1;
 
+        // Meeting a wall along its length is being joined to it just as much as meeting it at a
+        // corner. Tower A's core has a 30x41 return standing on the middle of its bottom wall:
+        // neither of the return's ends touches an end of anything, so an end-to-end test called it
+        // a standalone stub and made it a 30x41 column. The engineer had already settled what it
+        // should be — "a short face joined to other walls is part of a core and stays a wall" —
+        // and she marked these very elements as missing return WALLS.
+        bool RunsInto(WallAxis stub) => result.Walls.Any(other =>
+            !ReferenceEquals(other, stub) && LoopGeometry.SegmentsMeet(stub.Start, stub.End, other.Start, other.End, 1.0));
+
         // Same half-inch of slack as the rectangle test above: a wall drawn at exactly 48" measures
         // a fraction under it after the export, and must not change from a wall into a column for
         // a tenth of an inch of drafting drift.
@@ -390,7 +399,7 @@ public static class StructuralPlanClassifier
         // thickness is a wall whatever it is joined to; converting it made an 8x38 column that no
         // engineer would draw and threw away the shear it was drawn to carry.
         var stubs = result.Walls
-            .Where(w => w.Length < options.MinWallLength - 0.5 && !Joined(w.Start) && !Joined(w.End))
+            .Where(w => w.Length < options.MinWallLength - 0.5 && !Joined(w.Start) && !Joined(w.End) && !RunsInto(w))
             .Where(w => w.Thickness <= 0 || w.Length / w.Thickness <= options.MaxColumnAspect)
             .ToList();
 

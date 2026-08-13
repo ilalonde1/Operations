@@ -279,7 +279,34 @@ public static class WallNetwork
             found.Add(new WallOpening(best.P, best.Q, Math.Min(a.Thickness, b.Thickness), a.Layer));
         }
 
-        return found;
+        // One doorway, one opening.
+        //
+        // A gap is bounded by two wall ends, but more than one PAIR of walls can describe it —
+        // where a wall meets a return, the run continues through the junction and the same
+        // doorway is found again between the far wall and the return. Two headers then land on
+        // top of each other over one door, at whatever depths their two storeys imply.
+        //
+        // The tightest reading wins: the true doorway is the one between the NEAREST pair of
+        // ends, and anything sharing its middle is that same gap seen from further away.
+        var kept = new List<WallOpening>();
+        foreach (var opening in found.OrderBy(o => o.Start.DistanceTo(o.End)))
+        {
+            var mid = new DxfPoint((opening.Start.X + opening.End.X) / 2, (opening.Start.Y + opening.End.Y) / 2);
+            if (kept.Any(k => DistanceToSegment(mid, k.Start, k.End) <= 6.0)) continue;
+            kept.Add(opening);
+        }
+
+        return kept;
+    }
+
+    private static double DistanceToSegment(DxfPoint p, DxfPoint a, DxfPoint b)
+    {
+        double dx = b.X - a.X, dy = b.Y - a.Y;
+        double lengthSquared = dx * dx + dy * dy;
+        if (lengthSquared < 1e-9) return p.DistanceTo(a);
+
+        double t = Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lengthSquared, 0.0, 1.0);
+        return p.DistanceTo(new DxfPoint(a.X + t * dx, a.Y + t * dy));
     }
 
     /// <summary>

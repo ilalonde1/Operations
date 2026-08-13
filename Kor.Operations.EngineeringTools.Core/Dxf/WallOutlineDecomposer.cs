@@ -114,7 +114,27 @@ public static class WallOutlineDecomposer
                 }
             }
 
-            if (bestJ < 0 || bestOverlap < bestDistance * options.MinPanelAspect) continue;
+            if (bestJ < 0) continue;
+
+            // How long the panel is, is how far its MATERIAL runs — not how far its two faces
+            // happen to overlap.
+            //
+            // Where a wall meets another, one of its faces stops early because the other wall's
+            // body takes over: tower A's core has a 30x41 return turned up at each end of its
+            // bottom wall, and only 13" of the return's inner face is exposed. Judged on that 13
+            // the return is a sliver and was dropped — with it went the header over the door
+            // beside it, which is the engineer's "Tower A core missing return walls (red) and
+            // headers (blue)". Both marks, one cause.
+            //
+            // The midline is the honest measure: walk it out from the overlap while it stays
+            // inside the outline. Material inside the outline is concrete; a void is not, so this
+            // cannot run a wall out across an opening.
+            (double runT0, double runT1) = MaterialRun(pts, ai, ux, uy, nx, ny, bestDistance * bestSide / 2.0,
+                                                       bestT0, bestT1, lengthI);
+            bestT0 = runT0;
+            bestT1 = runT1;
+
+            if (bestT1 - bestT0 < bestDistance * options.MinPanelAspect) continue;
 
             double half = bestDistance / 2.0 * bestSide;
             var start = new DxfPoint(ai.X + ux * bestT0 + nx * half, ai.Y + uy * bestT0 + ny * half);
@@ -161,5 +181,35 @@ public static class WallOutlineDecomposer
 
             if (inside) used[k] = true;
         }
+    }
+
+    /// <summary>
+    /// How far the concrete between two faces runs, starting from where the faces overlap.
+    ///
+    /// Walks the panel's midline out in both directions and stops where it leaves the outline.
+    /// Bounded by the face it is measured along, so a panel never claims material past its own
+    /// end, and stepped in half-inches — a doorway is never narrower than that, so a step cannot
+    /// stride over an opening and weld two walls into one.
+    /// </summary>
+    private static (double T0, double T1) MaterialRun(
+        IReadOnlyList<DxfPoint> outline,
+        DxfPoint origin, double ux, double uy, double nx, double ny, double halfOffset,
+        double t0, double t1, double faceLength)
+    {
+        const double step = 0.5;
+
+        bool Concrete(double t)
+        {
+            var p = new DxfPoint(origin.X + ux * t + nx * halfOffset, origin.Y + uy * t + ny * halfOffset);
+            return LoopGeometry.PointInPolygon(p, outline);
+        }
+
+        double low = Math.Max(0, t0), high = Math.Min(faceLength, t1);
+        if (high <= low) return (t0, t1);
+
+        while (low - step >= -1e-9 && Concrete(low - step / 2.0)) low -= step;
+        while (high + step <= faceLength + 1e-9 && Concrete(high + step / 2.0)) high += step;
+
+        return (Math.Max(0, low), Math.Min(faceLength, high));
     }
 }
