@@ -68,10 +68,29 @@ for ($i = 0; $i -lt $ordered.Count; $i++) {
     $n = $ordered[$i].N
     $globalBot[$n] = if ($i -eq 0) { $story[$n].Bot } else { $story[$ordered[$i - 1].N].Top }
 }
+# An object also carries a storey SPAN in its own connectivity line: a wall panel's corner
+# offsets and a column's trailing count. A span of 1 reaches the storey immediately below; N
+# reaches N storeys down, passing through the ones between without a break. That is how a tower
+# in a site model keeps its walls whole across the other tower's floor levels, so the renderer
+# has to honour it or it draws a continuous wall as a stack of separate ones.
+$span = @{}
+foreach ($ln in $lines) {
+    $t = $ln.Trim()
+    if ($t -match '^AREA\s+"([^"]+)"\s+PANEL\s+4\s+(?:"[^"]+"\s+){4}(\d+)') { $span[$matches[1]] = [int]$matches[2] }
+    elseif ($t -match '^LINE\s+"([^"]+)"\s+COLUMN\s+"[^"]+"\s+"[^"]+"\s+(\d+)') { $span[$matches[1]] = [int]$matches[2] }
+}
+$indexOf = @{}
+for ($i = 0; $i -lt $ordered.Count; $i++) { $indexOf[$ordered[$i].N] = $i }
+
 function Instances($name) {
     if (-not $assign.ContainsKey($name) -or $assign[$name].Count -eq 0) { return @() }
+    $n = if ($span.ContainsKey($name) -and $span[$name] -gt 0) { $span[$name] } else { 1 }
     $out = New-Object System.Collections.ArrayList
-    foreach ($s in $assign[$name]) { [void]$out.Add([pscustomobject]@{ Bot = $globalBot[$s]; Top = $story[$s].Top }) }
+    foreach ($s in $assign[$name]) {
+        $i = $indexOf[$s]
+        $bot = if ($null -ne $i -and ($i - $n) -ge 0) { $story[$ordered[$i - $n].N].Top } else { $globalBot[$s] }
+        [void]$out.Add([pscustomobject]@{ Bot = $bot; Top = $story[$s].Top })
+    }
     return $out
 }
 

@@ -85,11 +85,38 @@ public class ModelPlausibilityTests
 
         var geometry = E2kGeometryReader.Read(doc);
 
-        double SpanOf(IEnumerable<string> storeyNames)
+        // A member also carries the number of storeys it reaches down through, so that a tower's
+        // wall can pass the other tower's floor levels in one piece. Measuring from the storey
+        // immediately below the assignment then reads that whole wall as the two-inch sliver it
+        // starts in — the wafer fault inverted, and the reason this had to learn the span.
+        var indexOf = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < ordered.Count; i++) indexOf[ordered[i].Name] = i;
+
+        var spanOf = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (string raw in doc.LinesOf("AREA CONNECTIVITIES").Concat(doc.LinesOf("LINE CONNECTIVITIES")))
+        {
+            string t = raw.Trim();
+            var wall = Regex.Match(t, @"^AREA\s+""(K\w+)""\s+PANEL\s+4\s+(?:""[^""]+""\s+){4}(\d+)");
+            if (wall.Success) { spanOf[wall.Groups[1].Value] = int.Parse(wall.Groups[2].Value); continue; }
+            var column = Regex.Match(t, @"^LINE\s+""(K\w+)""\s+COLUMN\s+""[^""]+""\s+""[^""]+""\s+(\d+)");
+            if (column.Success) spanOf[column.Groups[1].Value] = int.Parse(column.Groups[2].Value);
+        }
+
+        double SpanOf(string member, IEnumerable<string> storeyNames)
         {
             var known = storeyNames.Where(stories.ContainsKey).ToList();
             if (known.Count == 0) return double.NaN;
-            return known.Max(n => stories[n].Elevation) - known.Min(n => globalFloor[n]);
+
+            double top = known.Max(n => stories[n].Elevation);
+            string lowest = known.OrderBy(n => stories[n].Elevation).First();
+
+            int n0 = Math.Max(spanOf.GetValueOrDefault(member, 1), 1);
+            int i = indexOf.GetValueOrDefault(lowest, -1);
+            double floor = i - n0 >= 0 ? ordered[i - n0].Elevation
+                         : i >= 0      ? ordered[0].ElevationBelow
+                         : globalFloor[lowest];
+
+            return top - floor;
         }
 
         // Spandrels are wall panels too, but a header over a door is meant to be shallow — it is
@@ -98,7 +125,7 @@ public class ModelPlausibilityTests
         var wallHeights = geometry.Walls
             .Where(w => w.Name.StartsWith("KW", StringComparison.OrdinalIgnoreCase))
             .GroupBy(w => w.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(g => SpanOf(g.Select(w => w.Story)))
+            .Select(g => SpanOf(g.Key, g.Select(w => w.Story)))
             .Where(h => !double.IsNaN(h))
             .ToList();
 
@@ -115,7 +142,7 @@ public class ModelPlausibilityTests
         var columnHeights = geometry.Columns
             .Where(c => c.Name.StartsWith("K", StringComparison.OrdinalIgnoreCase))
             .GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(g => SpanOf(g.Select(c => c.Story)))
+            .Select(g => SpanOf(g.Key, g.Select(c => c.Story)))
             .Where(h => !double.IsNaN(h))
             .ToList();
 

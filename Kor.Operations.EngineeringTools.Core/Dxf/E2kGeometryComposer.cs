@@ -318,20 +318,38 @@ public static class E2kGeometryComposer
 
                 // A panel is its two plan points repeated: the pair at the storey above the one it
                 // is assigned to (offset 1) and the same pair at that storey (offset 0).
+                // ONE panel for the whole storey the tower actually has, not one per storey in the
+                // model's global list.
+                //
+                // The engineer's instruction, with a drawing of it: "when modelling the walls of
+                // tower B he should ignore tower A elevation system. The walls should not break at
+                // tower A elevations." In a site model the storey list interleaves both towers, so
+                // tower B's wall from B-LEVEL 33 to B-LEVEL 34 crosses A-LEVEL 34 on the way.
+                // Assigning it to every storey it crosses builds it as a stack of separate panels
+                // with a mesh break at each — she drew that as "how it is now" against "how it
+                // should be", one panel from floor to floor.
+                //
+                // The storey offset in the panel's own connectivity is the mechanism: 1 spans one
+                // storey of the list, so N spans N. The placement storey is always the top of the
+                // span, because a storey's floor is its OWN tower's previous level.
+                int wallSpan = wallStoreys.Count;
                 string name = NextName("W", ref wallCounter);
-                areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{pa}\"  \"{pb}\"  \"{pb}\"  \"{pa}\"  1  1  0  0");
+                areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{pa}\"  \"{pb}\"  \"{pb}\"  \"{pa}\"  " +
+                              $"{wallSpan}  {wallSpan}  0  0");
 
                 // Every storey the wall is ASSIGNED to, not the one it was placed on. A storey that
                 // carries structure only because a neighbour's wall spans into it is still a storey
                 // carrying structure, and recording the placement alone hid A-LEVEL 1 from the list
                 // of storeys left without a floor — 50 walls and 65 columns, reported as nothing.
+                // Every storey the wall passes through still counts as carrying structure, even
+                // though only one of them holds the assignment now — a storey a wall runs through
+                // is not an empty storey.
                 foreach (string on in wallStoreys) storeysWithMembers.Add(on);
 
                 string pier = options.AssignPierLabels ? $"  PIER  \"{PierFor(x1, y1, x2, y2)}\"" : string.Empty;
-                foreach (string on in wallStoreys)
-                    areaAssigns.Add(
-                        $"  AREAASSIGN  \"{name}\"  \"{on}\"  SECTION \"{propName}\"{pier}  OBJMESHTYPE \"DEFAULT\"  " +
-                        "ADDRESTRAINT \"Yes\"  CARDINALPOINT \"MIDDLE\"");
+                areaAssigns.Add(
+                    $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"{pier}  OBJMESHTYPE \"DEFAULT\"  " +
+                    "ADDRESTRAINT \"Yes\"  CARDINALPOINT \"MIDDLE\"");
             }
 
             foreach (var column in placement.Geometry.Columns)
@@ -375,13 +393,15 @@ public static class E2kGeometryComposer
                 double angle = Normalise(column.AxisAngleDegrees - 90.0);
 
                 // A column is one plan point, rising one storey from the storey it is assigned to.
+                // "same for columns" — one column from floor to floor of its own tower, spanning
+                // the other tower's storeys rather than being cut at each of them.
+                int colSpan = colStoreys.Count;
                 string name = NextName("C", ref colCounter);
-                lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{at}\"  \"{at}\"  1");
+                lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{at}\"  \"{at}\"  {colSpan}");
                 foreach (string on in colStoreys) storeysWithMembers.Add(on);
-                foreach (string on in colStoreys)
-                    lineAssigns.Add(
-                        $"  LINEASSIGN  \"{name}\"  \"{on}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
-                        "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
+                lineAssigns.Add(
+                    $"  LINEASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
+                    "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
             }
 
             // Headers over the doorways in a wall run. The engineer asked for these directly —

@@ -124,23 +124,30 @@ internal static class GeneratedModel
             if (col.Success) kind[col.Groups[1].Value] = 'C';
         }
 
+        // Counted over every storey a member OCCUPIES. A wall that passes through a storey on its
+        // way between its own tower's floors holds that storey up as surely as one assigned to it,
+        // and counting assignments alone reports the crossed storey as bare.
+        var occupies = AssignedStoreys(lines);
+
         var byStorey = new Dictionary<string, (int, int, int)>(StringComparer.OrdinalIgnoreCase);
-        foreach (string line in lines)
+        foreach (var (member, storeys) in occupies)
         {
-            var m = Regex.Match(line.Trim(), @"^(?:AREA|LINE)ASSIGN\s+""(K\w+)""\s+""([^""]+)""");
-            if (!m.Success || !kind.TryGetValue(m.Groups[1].Value, out char k)) continue;
+            if (!kind.TryGetValue(member, out char k)) continue;
 
             // Headers and openings ride on other members; a storey carrying only those is not
             // independently populated, so they do not count towards a storey being occupied.
             if (k is 'S' or 'O') continue;
 
-            byStorey.TryGetValue(m.Groups[2].Value, out var c);
-            byStorey[m.Groups[2].Value] = k switch
+            foreach (string storey in storeys)
             {
-                'W' => (c.Item1 + 1, c.Item2, c.Item3),
-                'C' => (c.Item1, c.Item2 + 1, c.Item3),
-                _   => (c.Item1, c.Item2, c.Item3 + 1),
-            };
+                byStorey.TryGetValue(storey, out var c);
+                byStorey[storey] = k switch
+                {
+                    'W' => (c.Item1 + 1, c.Item2, c.Item3),
+                    'C' => (c.Item1, c.Item2 + 1, c.Item3),
+                    _   => (c.Item1, c.Item2, c.Item3 + 1),
+                };
+            }
         }
         return byStorey;
     }
@@ -163,15 +170,55 @@ internal static class GeneratedModel
     /// <summary>Every storey each generated object is assigned to.</summary>
     internal static Dictionary<string, List<string>> AssignedStoreys(string[] lines)
     {
+        var storeys = StoreysTopToBottom(lines);
+        var indexOf = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < storeys.Count; i++) indexOf[storeys[i]] = i;
+
+        var spanOf = StoreySpans(lines);
+
         var assigns = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (string line in lines)
         {
             var m = Regex.Match(line.Trim(), @"^(?:AREA|LINE)ASSIGN\s+""(K\w+)""\s+""([^""]+)""");
             if (!m.Success) continue;
-            if (!assigns.TryGetValue(m.Groups[1].Value, out var list)) assigns[m.Groups[1].Value] = list = new List<string>();
-            if (!list.Contains(m.Groups[2].Value, StringComparer.OrdinalIgnoreCase)) list.Add(m.Groups[2].Value);
+
+            string member = m.Groups[1].Value, storey = m.Groups[2].Value;
+            if (!assigns.TryGetValue(member, out var list)) assigns[member] = list = new List<string>();
+
+            // Every storey the member OCCUPIES, not only the one it is assigned to. A member that
+            // spans past another tower's floor levels carries one assignment and a storey span, so
+            // reading the assignment alone reports the storeys it passes through as empty — which
+            // is a fault when it is true and a false alarm when it is not.
+            int span = spanOf.GetValueOrDefault(member, 1);
+            int top = indexOf.GetValueOrDefault(storey, -1);
+            for (int k = 0; k < Math.Max(span, 1) && top >= 0 && top + k < storeys.Count; k++)
+            {
+                string occupied = storeys[top + k];
+                if (!list.Contains(occupied, StringComparer.OrdinalIgnoreCase)) list.Add(occupied);
+            }
+            if (top < 0 && !list.Contains(storey, StringComparer.OrdinalIgnoreCase)) list.Add(storey);
         }
         return assigns;
+    }
+
+    /// <summary>
+    /// How many storeys of the model's own list each member reaches down through: a wall panel's
+    /// corner offsets, and a column's trailing count. One is the ordinary case — floor to floor.
+    /// </summary>
+    internal static Dictionary<string, int> StoreySpans(string[] lines)
+    {
+        var spans = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (string line in lines)
+        {
+            string t = line.Trim();
+
+            var wall = Regex.Match(t, @"^AREA\s+""(K\w+)""\s+PANEL\s+4\s+(?:""[^""]+""\s+){4}(\d+)");
+            if (wall.Success) { spans[wall.Groups[1].Value] = int.Parse(wall.Groups[2].Value); continue; }
+
+            var column = Regex.Match(t, @"^LINE\s+""(K\w+)""\s+COLUMN\s+""[^""]+""\s+""[^""]+""\s+(\d+)");
+            if (column.Success) spans[column.Groups[1].Value] = int.Parse(column.Groups[2].Value);
+        }
+        return spans;
     }
 
     /// <summary>

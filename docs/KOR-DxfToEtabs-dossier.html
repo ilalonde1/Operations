@@ -262,10 +262,19 @@ none of which any numeric check had noticed:</p>
       a storey for every tower's floor: because tower B's level 34 sits 2.4″ above tower A's, the
       export contains a storey named <code>B-LEVEL 34</code> that is two inches tall. Taking a storey's
       own height as its wall height made 78 panels two-inch wafers hanging a storey above
-      their floor. A wall now stands on the previous floor <em>of its own tower</em>, and is assigned to
-      every storey it passes through so ETABS builds it as one continuous run. The towers interleave
-      at 4.67 ft and 5.0 ft, so no numeric threshold could have separated a real storey from a
-      duplicate floor — only the storey name can.</li>
+      their floor. A wall now stands on the previous floor <em>of its own tower</em>. The towers
+      interleave at 4.67 ft and 5.0 ft, so no numeric threshold could have separated a real storey
+      from a duplicate floor — only the storey name can.
+      <br><br>
+      <strong>And it is one panel, not a stack of them.</strong> Assigning that wall to every storey
+      it passed through did build it to the right height, but as several panels with a mesh break at
+      each of the other tower's floor levels. The engineer drew the difference — <em>"when modelling
+      the walls of tower B he should ignore tower A elevation system. The walls should not break at
+      tower A elevations"</em> — so a member now carries a storey <em>span</em> instead: one panel
+      from its own floor to its own ceiling, passing the other tower's levels without a joint. On
+      31168 that took wall panels under 6 ft from 390 to 63, and columns from 921 to 4. A member may
+      only span past storeys belonging to another tower; spanning its own tower's floor is a fault
+      and fails the build.</li>
   <li><strong>Scraps of floor hung in space.</strong> Slab-edge linework closes into small rings that
       are not floors. Seven of 31138's fourteen plates were 52–68 ft² against a real tower floor of
       9,666 ft². Measured across both projects the two populations do not overlap — standalone rings

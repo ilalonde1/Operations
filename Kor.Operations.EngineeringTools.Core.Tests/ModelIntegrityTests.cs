@@ -428,8 +428,14 @@ public class ModelIntegrityTests
     /// pass, which is exactly how the two-inch wafer panels shipped.
     ///
     /// The forms come from Andrea Neuviale's 31138: full-height panels 1 1 0 0 (96 of them),
-    /// partial-height header panels 0 0 0 0 (29, which are her 29 spandrels), columns spanning 1,
-    /// and floors all-zero.
+    /// partial-height header panels 0 0 0 0 (29, which are her 29 spandrels), and floors all-zero.
+    ///
+    /// A member may span MORE than one storey, and the rule for when is the tight part. The
+    /// engineer's instruction, drawn: "when modelling the walls of tower B he should ignore tower A
+    /// elevation system. The walls should not break at tower A elevations." So in a site model a
+    /// member reaches down past the OTHER tower's storeys to its own previous floor — and past
+    /// nothing else. Spanning its own tower's floors would be the real fault this guards, a wall
+    /// swallowing a storey whole, and "span must equal 1" could never tell the two apart.
     /// </summary>
     [Theory]
     [MemberData(nameof(Projects))]
@@ -439,6 +445,39 @@ public class ModelIntegrityTests
         if (built is null) return;
 
         var wrong = new List<string>();
+        var storeyList = GeneratedModel.StoreysTopToBottom(built.Lines);
+        var assignedTo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string raw in built.Lines)
+        {
+            var a = Regex.Match(raw.Trim(), @"^(?:AREA|LINE)ASSIGN\s+""(K\w+)""\s+""([^""]+)""");
+            if (a.Success) assignedTo.TryAdd(a.Groups[1].Value, a.Groups[2].Value);
+        }
+
+        // Read here rather than borrowed from the composer: a check whose two sides share a source
+        // agrees with itself. "B-LEVEL 34" is tower B; "LEVEL 5" is shared by the site.
+        static string BuildingTagOf(string storey)
+            => storey.Length > 2 && char.IsLetter(storey[0]) && storey[1] == '-'
+                ? char.ToUpperInvariant(storey[0]).ToString()
+                : string.Empty;
+
+        // The storeys a member of this span reaches through, below the one it is assigned to.
+        string? SpansOwnTower(string member, int span)
+        {
+            if (span <= 1) return null;
+            if (!assignedTo.TryGetValue(member, out string? top)) return null;
+
+            int i = storeyList.IndexOf(top);
+            if (i < 0) return null;
+
+            string tag = BuildingTagOf(top);
+            for (int k = 1; k < span && i + k < storeyList.Count; k++)
+            {
+                string crossed = storeyList[i + k];
+                if (BuildingTagOf(crossed) == tag)
+                    return $"{member} on {top} spans {span} and swallows {crossed}, its own tower's floor";
+            }
+            return null;
+        }
 
         foreach (string raw in built.Lines)
         {
@@ -447,19 +486,41 @@ public class ModelIntegrityTests
             var panel = Regex.Match(line, @"^AREA\s+""(K[WS]\d+)""\s+PANEL\s+\d+\s+(?:""[^""]+""\s+)+([\d\s]+)$");
             if (panel.Success)
             {
-                string flags = Regex.Replace(panel.Groups[2].Value.Trim(), @"\s+", " ");
-                bool header = panel.Groups[1].Value.StartsWith("KS", StringComparison.OrdinalIgnoreCase);
+                string member = panel.Groups[1].Value;
+                var flags = Regex.Replace(panel.Groups[2].Value.Trim(), @"\s+", " ").Split(' ');
+                bool header = member.StartsWith("KS", StringComparison.OrdinalIgnoreCase);
 
-                // A full-height wall spans from the storey below; a header stands within its storey
-                // and takes its extent from the joint offsets instead.
-                string expected = header ? "0 0 0 0" : "1 1 0 0";
-                if (flags != expected) wrong.Add($"{panel.Groups[1].Value} has \"{flags}\", expected \"{expected}\"");
+                // A header stands within its storey and takes its extent from the joint offsets.
+                if (header)
+                {
+                    if (string.Join(" ", flags) != "0 0 0 0")
+                        wrong.Add($"{member} has \"{string.Join(" ", flags)}\", expected \"0 0 0 0\"");
+                    continue;
+                }
+
+                // A wall: its two top corners carry the span, its two bottom corners sit on the
+                // floor. Any other shape is a panel leaning through the building.
+                if (flags.Length != 4 || flags[2] != "0" || flags[3] != "0" || flags[0] != flags[1])
+                {
+                    wrong.Add($"{member} has \"{string.Join(" ", flags)}\", which is not a wall standing on its floor");
+                    continue;
+                }
+                if (!int.TryParse(flags[0], out int span) || span < 1)
+                {
+                    wrong.Add($"{member} has span \"{flags[0]}\"");
+                    continue;
+                }
+                if (SpansOwnTower(member, span) is { } badWall) wrong.Add(badWall);
                 continue;
             }
 
             var column = Regex.Match(line, @"^LINE\s+""(KC\d+)""\s+COLUMN\s+""[^""]+""\s+""[^""]+""\s+(\S+)");
-            if (column.Success && column.Groups[2].Value != "1")
-                wrong.Add($"{column.Groups[1].Value} spans \"{column.Groups[2].Value}\", expected \"1\"");
+            if (column.Success)
+            {
+                if (!int.TryParse(column.Groups[2].Value, out int span) || span < 1)
+                    wrong.Add($"{column.Groups[1].Value} spans \"{column.Groups[2].Value}\"");
+                else if (SpansOwnTower(column.Groups[1].Value, span) is { } badColumn) wrong.Add(badColumn);
+            }
 
             var flat = Regex.Match(line, @"^AREA\s+""(K[FO]\d+)""\s+(?:FLOOR|AREA)\s+\d+\s+(?:""[^""]+""\s+)+([\d\s]+)$");
             if (flat.Success && flat.Groups[2].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(v => v != "0"))
