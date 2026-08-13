@@ -18,6 +18,52 @@ public static class DxfPlanReader
     public static IReadOnlyList<DxfSegment> ReadSegments(string path)
         => ReadSegments(File.ReadLines(path));
 
+    /// <summary>
+    /// How long one drawing unit is, in inches, from the DXF's own <c>$INSUNITS</c> header.
+    /// Null when the drawing does not say.
+    ///
+    /// Every threshold in this tool is a real length — a 48" wall, a 12" face, a 400 sq ft plate —
+    /// so a drawing in millimetres or feet does not fail, it produces a building of entirely the
+    /// wrong size and says nothing. All 90 sheets across the two jobs so far declare inches, which
+    /// is exactly why this was never noticed.
+    /// </summary>
+    public static double? UnitInInches(string path) => UnitInInches(File.ReadLines(path));
+
+    public static double? UnitInInches(IEnumerable<string> rawLines)
+    {
+        // The header sits before ENTITIES and can run to thousands of lines; stop at the first
+        // entity rather than reading the whole drawing to find a number near the top.
+        string? pending = null;
+        bool inHeader = false;
+
+        foreach (string raw in rawLines)
+        {
+            string line = raw.Trim();
+
+            if (line.Equals("ENTITIES", StringComparison.OrdinalIgnoreCase)) break;
+            if (line.Equals("HEADER", StringComparison.OrdinalIgnoreCase)) { inHeader = true; continue; }
+            if (!inHeader) continue;
+
+            if (line.Equals("$INSUNITS", StringComparison.OrdinalIgnoreCase)) { pending = line; continue; }
+            if (pending is null) continue;
+
+            // The value follows its group code, so skip the code and take the next number.
+            if (line == "70") continue;
+            if (!int.TryParse(line, NumberStyles.Integer, CultureInfo.InvariantCulture, out int code)) { pending = null; continue; }
+
+            return code switch
+            {
+                1 => 1.0,            // inches
+                2 => 12.0,           // feet
+                4 => 1.0 / 25.4,     // millimetres
+                5 => 1.0 / 2.54,     // centimetres
+                6 => 1000.0 / 25.4,  // metres
+                _ => null,           // 0 is unitless; anything else is not a length this tool knows
+            };
+        }
+        return null;
+    }
+
     public static IReadOnlyList<DxfSegment> ReadSegments(IEnumerable<string> rawLines)
     {
         var lines = rawLines as IList<string> ?? rawLines.ToList();

@@ -63,6 +63,16 @@ public sealed record DxfToEtabsReport(
 /// </summary>
 public static class DxfToEtabsService
 {
+    private static string Describe(double unitInInches) => unitInInches switch
+    {
+        1.0 => "inches",
+        12.0 => "feet",
+        _ when Math.Abs(unitInInches - 1.0 / 25.4) < 1e-9 => "millimetres",
+        _ when Math.Abs(unitInInches - 1.0 / 2.54) < 1e-9 => "centimetres",
+        _ when Math.Abs(unitInInches - 1000.0 / 25.4) < 1e-9 => "metres",
+        _ => $"{unitInInches:0.####} inches per unit",
+    };
+
     public static DxfToEtabsReport Run(DxfToEtabsRequest request)
     {
         var doc = E2kDocument.Load(request.ReferenceE2k);
@@ -104,6 +114,43 @@ public static class DxfToEtabsService
             .ToList();
 
         var warnings = new List<string>();
+
+        // UNITS. Every rule here is a real length — a 48" wall, a 12" face, a 400 sq ft plate — and
+        // every coordinate written has to be in the model's own unit. Both are inches on the two
+        // jobs built so far, which is precisely why neither was ever read. A drawing in millimetres
+        // would not fail; it would produce a building of the wrong size and say nothing.
+        double modelUnitInInches = doc.LengthUnitInInches()
+            ?? throw new InvalidOperationException(
+                "The reference model does not state a length unit this tool understands, so geometry " +
+                "cannot be written in its units. Expected CONTROLS UNITS with IN, FT, MM, CM or M.");
+
+        double? drawingUnit = files.Count > 0 ? DxfPlanReader.UnitInInches(files[0]) : modelUnitInInches;
+        if (drawingUnit is null)
+        {
+            throw new InvalidOperationException(
+                $"{Path.GetFileName(files[0])} does not declare $INSUNITS, so there is no way to know " +
+                "whether it is drawn in inches, feet or millimetres. Every size rule and every " +
+                "coordinate depends on that. Set the units in the export, or pass them explicitly.");
+        }
+
+        // Mixed units across one set means the sheets disagree about the size of the building.
+        foreach (string file in files)
+        {
+            double? each = DxfPlanReader.UnitInInches(file);
+            if (each is null || Math.Abs(each.Value - drawingUnit.Value) > 1e-9)
+                throw new InvalidOperationException(
+                    $"{Path.GetFileName(file)} is drawn in different units from the rest of the set. " +
+                    "One drawing set has to share one unit.");
+        }
+
+        double scale = drawingUnit.Value / modelUnitInInches;
+        var classification = Math.Abs(modelUnitInInches - 1.0) < 1e-9
+            ? request.Classification
+            : request.Classification.InUnitOf(modelUnitInInches);
+
+        if (Math.Abs(scale - 1.0) > 1e-9)
+            warnings.Add($"The drawings are {Describe(drawingUnit.Value)} and the model is " +
+                         $"{Describe(modelUnitInInches)}, so every coordinate was scaled by {scale:0.######}.");
         var outcomes = new List<SheetOutcome>();
         var parsed = new List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)>();
 
@@ -119,7 +166,12 @@ public static class DxfToEtabsService
             }
 
             var segments = DxfPlanReader.ReadSegments(file);
-            var geometry = StructuralPlanClassifier.Classify(segments, request.Classification);
+            if (Math.Abs(scale - 1.0) > 1e-9)
+                segments = segments.Select(g => new DxfSegment(g.Layer,
+                    new DxfPoint(g.Start.X * scale, g.Start.Y * scale),
+                    new DxfPoint(g.End.X * scale, g.End.Y * scale)) { FromCurve = g.FromCurve }).ToList();
+
+            var geometry = StructuralPlanClassifier.Classify(segments, classification);
             var matched = PlanSheetNaming.MatchStories(sheet, storyNames);
 
             outcomes.Add(new SheetOutcome(
@@ -152,7 +204,8 @@ public static class DxfToEtabsService
                 if (byName.TryGetValue(storyName, out var story))
                     placements.Add(new StoryPlacement(story, geometry, sheet.FileName));
 
-        var composeOptions = request.Compose with { OffsetX = offset.X, OffsetY = offset.Y };
+        var composeOptions = (Math.Abs(modelUnitInInches - 1.0) < 1e-9 ? request.Compose : request.Compose.InUnitOf(modelUnitInInches))
+            with { OffsetX = offset.X, OffsetY = offset.Y };
         var summary = E2kGeometryComposer.Compose(doc, placements, composeOptions);
 
         if (baseNormalised)

@@ -475,6 +475,34 @@ public sealed class E2kDocument
     }
 
     /// <summary>Names already used for points/areas/lines, so generated names never collide.</summary>
+    /// <summary>
+    /// How long the model's own length unit is, in inches, from its <c>CONTROLS UNITS</c> line.
+    /// Null when the model does not say or uses a unit this tool has no factor for.
+    ///
+    /// The geometry written into a model has to be in the model's units, and every rule in this
+    /// tool is stated in inches. Both jobs so far are inches — "KIP" "IN" "F" and "LB" "IN" "F" —
+    /// so the two have never had to be reconciled.
+    /// </summary>
+    public double? LengthUnitInInches()
+    {
+        foreach (string raw in LinesOf("CONTROLS"))
+        {
+            var m = Regex.Match(raw.Trim(), @"^UNITS\s+""[^""]*""\s+""([^""]+)""", RegexOptions.IgnoreCase);
+            if (!m.Success) continue;
+
+            return m.Groups[1].Value.ToUpperInvariant() switch
+            {
+                "IN" => 1.0,
+                "FT" => 12.0,
+                "MM" => 1.0 / 25.4,
+                "CM" => 1.0 / 2.54,
+                "M"  => 1000.0 / 25.4,
+                _    => null,
+            };
+        }
+        return null;
+    }
+
     public HashSet<string> ExistingObjectNames()
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

@@ -135,6 +135,42 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public double ExtendLimit { get; init; }
 
+    /// <summary>
+    /// The same rules expressed in a different length unit.
+    ///
+    /// Every threshold here is stated in inches because that is what KOR's drawings use. They are
+    /// real lengths, not tuning knobs, so a model working in millimetres needs the same rule at a
+    /// different number — 48 inches, not 48 millimetres. Areas scale by the square.
+    /// </summary>
+    public PlanClassificationOptions InUnitOf(double unitInInches)
+    {
+        double f = 1.0 / unitInInches;          // inches -> that unit
+        double a = f * f;
+
+        return this with
+        {
+            MinWallThickness = MinWallThickness * f,
+            MaxWallThickness = MaxWallThickness * f,
+            MinWallLength = MinWallLength * f,
+            MinPanelOverlap = MinPanelOverlap * f,
+            MinOpeningSpan = MinOpeningSpan * f,
+            MaxOpeningSpan = MaxOpeningSpan * f,
+            SpandrelDepth = SpandrelDepth * f,
+            MinColumnSize = MinColumnSize * f,
+            MaxColumnSize = MaxColumnSize * f,
+            UnusualWallThickness = UnusualWallThickness * f,
+            MaxPierThickness = MaxPierThickness * f,
+            MinSlabArea = MinSlabArea * a,
+            MinPlateArea = MinPlateArea * a,
+            DashJoinGap = DashJoinGap * f,
+            ExtendLimit = ExtendLimit * f,
+            JoinTolerance = JoinTolerance * f,
+            BridgeTolerance = BridgeTolerance * f,
+            WallBridgeTolerance = WallBridgeTolerance * f,
+            // Aspects and fill ratios are dimensionless and must not be touched.
+        };
+    }
+
     public double JoinTolerance { get; init; } = 0.05;
     public double BridgeTolerance { get; init; } = 6.0;
 

@@ -59,6 +59,18 @@ public sealed record ComposeOptions
     /// </summary>
     public bool SkipMembersAlreadyModelled { get; init; } = true;
 
+    /// <summary>The same rules expressed in a different length unit; see PlanClassificationOptions.InUnitOf.</summary>
+    public ComposeOptions InUnitOf(double unitInInches)
+    {
+        double f = 1.0 / unitInInches;
+        return this with
+        {
+            DefaultSlabThickness = DefaultSlabThickness * f,
+            OpeningHeight = OpeningHeight * f,
+            AlreadyModelledTolerance = AlreadyModelledTolerance * f,
+        };
+    }
+
     /// <summary>How close a generated member must be to an existing one to count as the same (inches).</summary>
     public double AlreadyModelledTolerance { get; init; } = 6.0;
 }

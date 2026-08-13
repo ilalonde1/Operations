@@ -293,6 +293,59 @@ public class PlanSheetNamingTests
     }
 
     /// <summary>
+    /// Units are read, not assumed. Every rule in the tool is a real length and every coordinate is
+    /// written in the model's unit, so a drawing in millimetres does not fail — it produces a
+    /// building of entirely the wrong size and says nothing. All 90 sheets across the two jobs
+    /// built so far declare inches, which is exactly why this went unread.
+    /// </summary>
+    [Fact]
+    public void DrawingUnitsAreReadFromTheDxfRatherThanAssumed()
+    {
+        static string[] WithUnits(string insunits) => new[]
+        {
+            "0", "SECTION", "2", "HEADER",
+            "9", "$INSUNITS", "70", insunits,
+            "0", "ENDSEC",
+            "0", "SECTION", "2", "ENTITIES", "0", "ENDSEC", "0", "EOF",
+        };
+
+        Assert.Equal(1.0, DxfPlanReader.UnitInInches(WithUnits("1")));      // inches
+        Assert.Equal(12.0, DxfPlanReader.UnitInInches(WithUnits("2")));     // feet
+        Assert.Equal(1.0 / 25.4, DxfPlanReader.UnitInInches(WithUnits("4")) ?? 0, 9);   // millimetres
+        Assert.Equal(1000.0 / 25.4, DxfPlanReader.UnitInInches(WithUnits("6")) ?? 0, 9);// metres
+
+        // Unitless is not a length. It must be null so the caller can refuse to guess.
+        Assert.Null(DxfPlanReader.UnitInInches(WithUnits("0")));
+
+        // A drawing that never says is likewise unknowable.
+        Assert.Null(DxfPlanReader.UnitInInches(new[] { "0", "SECTION", "2", "ENTITIES", "0", "ENDSEC", "0", "EOF" }));
+    }
+
+    /// <summary>
+    /// A rule is a real length, so it has to survive being restated in another unit: 48 inches is
+    /// 1219.2 millimetres, not 48 millimetres. Ratios are dimensionless and must not move.
+    /// </summary>
+    [Fact]
+    public void RulesRestatedInAnotherUnitKeepTheirRealSize()
+    {
+        var inches = new PlanClassificationOptions();
+        var millimetres = inches.InUnitOf(1.0 / 25.4);
+
+        Assert.Equal(inches.MinWallLength * 25.4, millimetres.MinWallLength, 6);
+        Assert.Equal(inches.MinPanelOverlap * 25.4, millimetres.MinPanelOverlap, 6);
+
+        // Areas go by the square.
+        Assert.Equal(inches.MinPlateArea * 25.4 * 25.4, millimetres.MinPlateArea, 3);
+
+        // Dimensionless rules are untouched.
+        Assert.Equal(inches.MaxColumnAspect, millimetres.MaxColumnAspect);
+        Assert.Equal(inches.PierFillRatio, millimetres.PierFillRatio);
+
+        var compose = new ComposeOptions().InUnitOf(1.0 / 25.4);
+        Assert.Equal(new ComposeOptions().OpeningHeight * 25.4, compose.OpeningHeight, 6);
+    }
+
+    /// <summary>
     /// A sheet title may LIST its levels instead of ranging them. Three 31138 sheets are titled
     /// "LEVEL 8, 9", "LEVEL 11, 12" and "LEVEL 17, 18"; only the first number was ever read, so
     /// L09, L12 and L18 were built empty — and nothing said so, because each sheet reported itself
