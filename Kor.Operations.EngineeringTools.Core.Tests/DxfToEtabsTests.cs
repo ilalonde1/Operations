@@ -1,3 +1,4 @@
+using System.Globalization;
 using Kor.Operations.EngineeringTools.Dxf;
 using Xunit;
 
@@ -290,6 +291,59 @@ public class PlanSheetNamingTests
 
         // The mezzanine sheet builds the mezzanine, and nothing else.
         Assert.Equal(new[] { "LEVEL 1 MEZZ" }, PlanSheetNaming.MatchStories(mezz, stories));
+    }
+
+    /// <summary>
+    /// Numbers measured once on one engineer's model became constants. They are now read off the
+    /// reference in front of us — but deriving is not automatically better than a constant, and the
+    /// gate matters more than the derivation: 31168's reference implies a 37" "opening", because its
+    /// partial-height panels are not door spandrels at all. A value is taken only when there is
+    /// enough of it and it lands where the quantity can physically be.
+    /// </summary>
+    [Fact]
+    public void ARuleIsTakenFromTheReferenceOnlyWhenTheAnswerIsCredible()
+    {
+        static E2kDocument Model(params (string Panel, double Depth, double StoreyHeight)[] spandrels)
+        {
+            var lines = new List<string> { "$ STORIES - IN SEQUENCE FROM TOP" };
+            for (int i = 0; i < spandrels.Length; i++)
+                lines.Add($"  STORY \"S{i}\"  HEIGHT {spandrels[i].StoreyHeight.ToString(CultureInfo.InvariantCulture)} ");
+            lines.Add("  STORY \"Base\"  ELEV 0 ");
+
+            lines.Add("$ POINT COORDINATES");
+            for (int i = 0; i < spandrels.Length; i++)
+            {
+                lines.Add($"  POINT \"P{i}a\"  0 0 {spandrels[i].Depth.ToString(CultureInfo.InvariantCulture)}");
+                lines.Add($"  POINT \"P{i}b\"  100 0");
+            }
+
+            lines.Add("$ AREA CONNECTIVITIES");
+            for (int i = 0; i < spandrels.Length; i++)
+                lines.Add($"  AREA \"{spandrels[i].Panel}\"  PANEL  4  \"P{i}a\"  \"P{i}b\"  \"P{i}b\"  \"P{i}a\"  0  0  0  0");
+
+            lines.Add("$ AREA ASSIGNS");
+            for (int i = 0; i < spandrels.Length; i++)
+                lines.Add($"  AREAASSIGN  \"{spandrels[i].Panel}\"  \"S{i}\"  SECTION \"W12\"");
+
+            return E2kDocument.Parse(lines);
+        }
+
+        // Ten spandrels 30" deep in 118" storeys: an 88" opening, which is a door.
+        var credible = Model(Enumerable.Range(0, 10).Select(i => ($"W{i}", 30.0, 118.0)).ToArray());
+        var taken = ReferenceRules.OpeningHeight(credible, fallback: 84.0);
+        Assert.True(taken.FromReference);
+        Assert.Equal(88.0, taken.Value);
+
+        // Ten panels implying a 37" "opening" — not a door, so the standing value must survive.
+        var absurd = Model(Enumerable.Range(0, 10).Select(i => ($"W{i}", 81.0, 118.0)).ToArray());
+        var refused = ReferenceRules.OpeningHeight(absurd, fallback: 88.0);
+        Assert.False(refused.FromReference);
+        Assert.Equal(88.0, refused.Value);
+        Assert.Contains("not the height of a door", refused.Because);
+
+        // Too few to read anything from.
+        var thin = Model(("W0", 30.0, 118.0), ("W1", 30.0, 118.0));
+        Assert.False(ReferenceRules.OpeningHeight(thin, fallback: 88.0).FromReference);
     }
 
     /// <summary>

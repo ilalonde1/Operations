@@ -38,6 +38,13 @@ public sealed record DxfToEtabsRequest
     /// </summary>
     public bool AddMissingParkadeStoreys { get; init; } = true;
 
+    /// <summary>
+    /// Read what can be read off the reference model — the opening a header spans, how slender a
+    /// column may be — rather than using a number measured once on another job. A derived value is
+    /// taken only where the model supports it and the answer is physically credible.
+    /// </summary>
+    public bool DeriveRulesFromReference { get; init; } = true;
+
     public PlanClassificationOptions Classification { get; init; } = new();
     public ComposeOptions Compose { get; init; } = new();
 }
@@ -144,6 +151,7 @@ public static class DxfToEtabsService
         }
 
         double scale = drawingUnit.Value / modelUnitInInches;
+        var composeFromReference = request.Compose;
         var classification = Math.Abs(modelUnitInInches - 1.0) < 1e-9
             ? request.Classification
             : request.Classification.InUnitOf(modelUnitInInches);
@@ -215,6 +223,21 @@ public static class DxfToEtabsService
                 $"Candidates: {string.Join(", ", candidates)}. Set the layer patterns for this job.");
         }
 
+        // RULES FROM THE MODEL IN FRONT OF US, where it can support them. Several numbers here were
+        // measured once from one engineer's one model and became constants; each is now read off the
+        // reference where that is credible, and the report says which source won.
+        var derived = new List<DerivedRule>();
+        if (request.DeriveRulesFromReference)
+        {
+            var opening = ReferenceRules.OpeningHeight(doc, request.Compose.OpeningHeight);
+            var slender = ReferenceRules.MaxColumnAspect(doc, classification.MaxColumnAspect);
+            derived.Add(opening);
+            derived.Add(slender);
+
+            if (opening.FromReference) composeFromReference = composeFromReference with { OpeningHeight = opening.Value };
+            if (slender.FromReference) classification = classification with { MaxColumnAspect = slender.Value };
+        }
+
         var offset = request.Offset
             ?? (request.CentreOnGrid ? AutoOffset(doc, parsed.Select(p => p.Geometry)) : (0.0, 0.0));
 
@@ -224,7 +247,7 @@ public static class DxfToEtabsService
                 if (byName.TryGetValue(storyName, out var story))
                     placements.Add(new StoryPlacement(story, geometry, sheet.FileName));
 
-        var composeOptions = (Math.Abs(modelUnitInInches - 1.0) < 1e-9 ? request.Compose : request.Compose.InUnitOf(modelUnitInInches))
+        var composeOptions = (Math.Abs(modelUnitInInches - 1.0) < 1e-9 ? composeFromReference : composeFromReference.InUnitOf(modelUnitInInches))
             with { OffsetX = offset.X, OffsetY = offset.Y };
         var summary = E2kGeometryComposer.Compose(doc, placements, composeOptions);
 
@@ -242,6 +265,14 @@ public static class DxfToEtabsService
         }
 
         summary = summary with { Flags = summary.Flags.Concat(LayerLedger.Describe(ledger)).ToList() };
+
+        foreach (var rule in derived)
+            summary = summary with
+            {
+                Flags = summary.Flags.Append(rule.FromReference
+                    ? $"{rule.Name}: {rule.Value:0.##} — {rule.Because}."
+                    : $"{rule.Name}: {rule.Value:0.##}, the standing value — {rule.Because}.").ToList(),
+            };
 
         if (addedStoreys.Length > 0)
         {

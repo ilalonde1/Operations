@@ -503,6 +503,35 @@ public sealed class E2kDocument
         return null;
     }
 
+    /// <summary>
+    /// The largest joint offset each panel carries — for a spandrel, its depth. A joint is a plan
+    /// position, and the third value on its POINT line is how far it is raised above the storey.
+    /// </summary>
+    public Dictionary<string, double> PanelJointOffsets()
+    {
+        var offsetOfJoint = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (string raw in LinesOf("POINT COORDINATES"))
+        {
+            var m = Regex.Match(raw.Trim(), @"^POINT\s+""([^""]+)""\s+-?[\d.]+\s+-?[\d.]+\s+(-?[\d.]+)");
+            if (m.Success && double.TryParse(m.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double z))
+                offsetOfJoint[m.Groups[1].Value] = z;
+        }
+
+        var byPanel = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (string raw in LinesOf("AREA CONNECTIVITIES"))
+        {
+            var m = Regex.Match(raw.Trim(), @"^AREA\s+""([^""]+)""\s+PANEL\s+\d+\s+((?:""[^""]+""\s*)+)");
+            if (!m.Success) continue;
+
+            double deepest = 0;
+            foreach (Match j in Regex.Matches(m.Groups[2].Value, @"""([^""]+)"""))
+                if (offsetOfJoint.TryGetValue(j.Groups[1].Value, out double z) && z > deepest) deepest = z;
+
+            if (deepest > 0) byPanel[m.Groups[1].Value] = deepest;
+        }
+        return byPanel;
+    }
+
     public HashSet<string> ExistingObjectNames()
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
