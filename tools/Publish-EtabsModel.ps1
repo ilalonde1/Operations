@@ -13,25 +13,80 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('31168', '31138')][string]$Project,
+    # Any job number. Nothing about this command knows which jobs exist.
+    [Parameter(Mandatory = $true)][string]$Project,
+
+    # Given only when the job does not follow the usual folder convention.
+    [string]$ModelFolder,
+    [string]$DxfFolder,
+    [string]$Reference,
+
     [switch]$SkipDossier
 )
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 
-$config = @{
-    '31168' = @{
-        Folder    = '\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models'
-        Dxf       = '\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild'
-        Reference = '31168-reference.e2k'
+# ---------------------------------------------------------------------------------------------
+# Find the job rather than being told about it. This script used to accept exactly two job
+# numbers with their folders and reference filenames written out, which made the whole tool a
+# script for 31168 and 31138 however general the engine underneath was.
+# ---------------------------------------------------------------------------------------------
+$projectsRoot = '\\Kor-fs01\Projects\Projects'
+
+if (-not $ModelFolder) {
+    $jobFolder = Get-ChildItem $projectsRoot -Directory -ErrorAction Stop |
+        ForEach-Object { Get-ChildItem $_.FullName -Directory -Filter "$Project*" -ErrorAction SilentlyContinue } |
+        Select-Object -First 1
+    if (-not $jobFolder) { throw "No job folder starting with '$Project' under $projectsRoot." }
+
+    $ModelFolder = Get-ChildItem $jobFolder.FullName -Directory -Recurse -Depth 3 -Filter '*ETABS Models*' -ErrorAction SilentlyContinue |
+        Select-Object -First 1 -ExpandProperty FullName
+    if (-not $ModelFolder) { throw "Found $($jobFolder.Name) but no '01 ETABS Models' folder inside it." }
+}
+
+if (-not $DxfFolder) {
+    # Drafting's plan exports live in a folder named for them, sometimes beside the models and
+    # sometimes a level up — 31168 keeps it inside, 31138 outside.
+    $searchFrom = Split-Path $ModelFolder -Parent
+    $DxfFolder = @(
+        Get-ChildItem $ModelFolder -Directory -Filter '*DXF*' -ErrorAction SilentlyContinue
+        Get-ChildItem $searchFrom -Directory -Filter '*DXF*' -ErrorAction SilentlyContinue
+    ) | Select-Object -First 1 -ExpandProperty FullName
+    if (-not $DxfFolder) { throw "No folder with DXF in its name under $ModelFolder or its parent." }
+}
+
+if (-not $Reference) {
+    # The reference is an engineer's model, never one of ours. Tool output carries KOR-prefixed
+    # object names, and a file round-tripped through ETABS keeps them — which is exactly how a
+    # generated model once got mistaken for an engineer's own work.
+    $candidates = @(Get-ChildItem $ModelFolder -File -ErrorAction Stop |
+        Where-Object { $_.Extension -in '.e2k', '.$et' -and $_.Name -notlike '*FROM-DRAWINGS*' } |
+        Where-Object {
+            $head = Get-Content -LiteralPath $_.FullName -TotalCount 40000 -ErrorAction SilentlyContinue
+            -not ($head -match '"K[WCPFSO]\d+"')
+        })
+
+    if ($candidates.Count -eq 0) { throw "No engineer-built .e2k or .`$et in $ModelFolder to build from." }
+
+    # Never guess between models. Taking the largest, or the first, silently decides which building
+    # gets rebuilt: 31168's folder holds a site reference and a tower-B rebuild within 66 bytes of
+    # each other, and the larger one is not the one meant.
+    $preferred = @($candidates | Where-Object { $_.BaseName -like '*reference*' })
+    if ($preferred.Count -eq 1) { $Reference = $preferred[0].Name }
+    elseif ($candidates.Count -eq 1) { $Reference = $candidates[0].Name }
+    else {
+        throw ("More than one model in $ModelFolder could be the reference, and choosing between them " +
+               "is not this script's call: " + (($candidates | ForEach-Object { $_.Name }) -join ', ') +
+               ". Re-run with -Reference '<file>'.")
     }
-    '31138' = @{
-        Folder    = '\\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models'
-        Dxf       = '\\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\_DXF-plans-for-rebuild'
-        Reference = '31138-reference-from-Andrea-gravity.e2k'
-    }
-}[$Project]
+}
+
+$config = @{ Folder = $ModelFolder; Dxf = $DxfFolder; Reference = $Reference }
+Write-Host "job $Project" -ForegroundColor DarkGray
+Write-Host "  model folder : $ModelFolder" -ForegroundColor DarkGray
+Write-Host "  drawings     : $DxfFolder" -ForegroundColor DarkGray
+Write-Host "  reference    : $Reference" -ForegroundColor DarkGray
 
 $folder = $config.Folder
 $out    = Join-Path $folder "$Project-FROM-DRAWINGS.e2k"
@@ -108,19 +163,36 @@ if ((Test-Path $dossier) -and $pdftotext) {
     # "2,418 DRAWINGS.e2k columns" and no adjacency pattern can see it. The check above already
     # proves the PDF carries the true numbers, which is what catches a PDF that was never rebuilt.
     $source = Join-Path $repo 'docs\KOR-DxfToEtabs-dossier.html'
+    $script:reuse = @()
     $counts = @{}
-    foreach ($p in '31168', '31138') {
-        $f = @{
-            '31168' = '\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models'
-            '31138' = '\\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models'
-        }[$p]
-        $mf = Join-Path $f "$p-FROM-DRAWINGS.e2k"
-        if (-not (Test-Path $mf)) { continue }
-        $mm = Get-Content -LiteralPath $mf
-        $counts["$p.wall"]   = @($mm | Select-String '^\s+AREA\s+"KW\d+"\s+PANEL').Count
-        $counts["$p.column"] = @($mm | Select-String '^\s+LINE\s+"KC\d+"\s+COLUMN').Count
-        $counts["$p.plate"]  = @($mm | Select-String '^\s+AREA\s+"KF\d+"\s+FLOOR').Count
-        $counts["$p.header"] = @($mm | Select-String '^\s+AREA\s+"KS\d+"\s+PANEL').Count
+    # Only the jobs the dossier actually names. Walking the whole Projects share to find every
+    # generated model takes minutes over the network and grows with the company; the document
+    # states which buildings it describes, so those are the ones its numbers are checked against.
+    $named = @()
+    if (Test-Path $source) {
+        $named = [regex]::Matches((Get-Content -LiteralPath $source -Raw), '\b(3\d{4})\b') |
+            ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+    }
+    foreach ($job in $named) {
+        $jf = Get-ChildItem $projectsRoot -Directory -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-ChildItem $_.FullName -Directory -Filter "$job*" -ErrorAction SilentlyContinue } |
+            Select-Object -First 1
+        if (-not $jf) { continue }
+        $mf = Get-ChildItem $jf.FullName -File -Recurse -Depth 4 -Filter "$job-FROM-DRAWINGS.e2k" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if (-not $mf) { continue }
+        $mm = Get-Content -LiteralPath $mf.FullName
+        $counts["$job.wall"]   = @($mm | Select-String '^\s+AREA\s+"KW\d+"\s+PANEL').Count
+        $counts["$job.column"] = @($mm | Select-String '^\s+LINE\s+"KC\d+"\s+COLUMN').Count
+        $counts["$job.plate"]  = @($mm | Select-String '^\s+AREA\s+"KF\d+"\s+FLOOR').Count
+        $counts["$job.header"] = @($mm | Select-String '^\s+AREA\s+"KS\d+"\s+PANEL').Count
+
+        $rp = Join-Path $mf.DirectoryName "$job-FROM-DRAWINGS-report.txt"
+        if (Test-Path $rp) {
+            $rm = [regex]::Match((Get-Content -LiteralPath $rp -Raw),
+                                 '(?<w>\d+) wall\(s\) and (?<c>\d+) column\(s\) were already modelled')
+            if ($rm.Success) { $script:reuse += @([int]$rm.Groups['w'].Value, [int]$rm.Groups['c'].Value) }
+        }
     }
 
     # Numbers in the document that are true of something other than a member count, each allowed
@@ -141,20 +213,7 @@ if ((Test-Path $dossier) -and $pdftotext) {
     # The engineer's own members that were recognised and skipped are a real count the dossier
     # quotes, but they are hers, not ours, so they match no generated total. They are taken from
     # the report rather than allowlisted, so the dossier is checked against a generated number.
-    foreach ($p in '31168', '31138') {
-        $rf = @{
-            '31168' = '\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models'
-            '31138' = '\\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models'
-        }[$p]
-        $rp = Join-Path $rf "$p-FROM-DRAWINGS-report.txt"
-        if (-not (Test-Path $rp)) { continue }
-        $rm = [regex]::Match((Get-Content -LiteralPath $rp -Raw),
-                             '(?<w>\d+) wall\(s\) and (?<c>\d+) column\(s\) were already modelled')
-        if ($rm.Success) {
-            $allowed.wall   += [int]$rm.Groups['w'].Value
-            $allowed.column += [int]$rm.Groups['c'].Value
-        }
-    }
+    foreach ($v in $script:reuse) { $allowed.wall += $v; $allowed.column += $v }
 
     if (Test-Path $source) {
         $html = Get-Content -LiteralPath $source -Raw
