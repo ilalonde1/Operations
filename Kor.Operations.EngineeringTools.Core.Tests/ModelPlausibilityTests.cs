@@ -186,6 +186,10 @@ public class ModelPlausibilityTests
     /// A header must be deep enough to act as one and shallow enough not to be a wall. Its depth
     /// is the storey height less the opening height — the engineer's rule — and on a double-height
     /// storey that arithmetic produced a 396" header before it was bounded.
+    ///
+    /// The bound is hers, given as an answer: "Bounding can be 18"-60"". This used to allow
+    /// 12"-72", which is looser than what she said and would have passed a model that ignored her.
+    /// A rule she has ruled on is the rule the build holds us to.
     /// </summary>
     [Theory]
     [MemberData(nameof(Projects))]
@@ -194,7 +198,7 @@ public class ModelPlausibilityTests
         var model = BuildOrSkip(For(name));
         if (model is null || model.SpandrelDepths.Count == 0) return;
 
-        var wrong = model.SpandrelDepths.Where(d => d < 12 || d > 72).ToList();
+        var wrong = model.SpandrelDepths.Where(d => d < 18 - 0.01 || d > 60 + 0.01).ToList();
         if (wrong.Count == 0) return;
         Assert.Fail($"{name}: {wrong.Count} header(s) outside 12-72in, extremes " +
                     $"{wrong.Min():0} and {wrong.Max():0}in.");
