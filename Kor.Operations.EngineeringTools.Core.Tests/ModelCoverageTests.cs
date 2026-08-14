@@ -295,6 +295,15 @@ public class ModelCoverageTests
         var wrong = new List<string>();
         int checkedCount = 0;
 
+        // Every generated column's plan position, so a piece of linework can be given to the one
+        // it actually belongs to rather than to whichever window reaches it first.
+        var centres = new List<DxfPoint>();
+        foreach (string line in built.Lines)
+        {
+            var c = Regex.Match(line.Trim(), @"^LINE\s+""KC\d+""\s+COLUMN\s+""([^""]+)""");
+            if (c.Success && joints.TryGetValue(c.Groups[1].Value, out var p)) centres.Add(p);
+        }
+
         foreach (string line in built.Lines)
         {
             string t = line.Trim();
@@ -307,7 +316,7 @@ public class ModelCoverageTests
             if (!sectionOf.TryGetValue(member, out string? section) || !sections.TryGetValue(section, out var built_)) continue;
             if (!assigns.TryGetValue(member, out var storeys)) continue;
 
-            // The linework this column stands on: every column-layer segment whose ends both fall
+            // The linework this column stands on: every column-layer segment whose ends fall
             // inside the footprint the model gives it, widened by the tolerance.
             double reach = Math.Max(built_.D, built_.B) / 2.0 + Tolerance;
             var under = new List<DxfSegment>();
@@ -320,8 +329,18 @@ public class ModelCoverageTests
             }
             if (under.Count == 0) continue;   // nothing drawn there is the other test's finding
 
-            // Round is knowable only from arc provenance, so that is what is compared.
-            bool drawnRound = under.Any(s => s.FromCurve);
+            // Round is knowable only from arc provenance, so that is what is compared — but only
+            // from arcs that belong to THIS column.
+            //
+            // The window is widened by the tolerance so a column whose centre sits slightly off
+            // its linework still finds it, and that same widening reaches a neighbour. On 31138 an
+            // 8x8 element sits 21" from a 23.5" round column, so the round one's arcs fell inside
+            // the square one's window and it was reported "drawn with arcs but built rectangular".
+            // Size still measures from everything in the window — narrowing that shrinks the
+            // footprint and reports real columns as oversize — but roundness only listens to
+            // curves that are nearer to this column than to any other.
+            bool drawnRound = under.Any(s => s.FromCurve &&
+                Closer(new DxfPoint((s.Start.X + s.End.X) / 2, (s.Start.Y + s.End.Y) / 2), at, centres));
             if (drawnRound != built_.IsRound)
             {
                 wrong.Add($"{member} at ({at.X:F0},{at.Y:F0}) drawn with {(drawnRound ? "arcs" : "straight lines only")} " +
@@ -416,4 +435,13 @@ public class ModelCoverageTests
 
     private static bool Inside(DxfPoint p, DxfPoint centre, double reach) =>
         Math.Abs(p.X - centre.X) <= reach && Math.Abs(p.Y - centre.Y) <= reach;
+
+    /// <summary>Whether this point belongs to <paramref name="mine"/> rather than to a nearer column.</summary>
+    private static bool Closer(DxfPoint p, DxfPoint mine, IReadOnlyList<DxfPoint> all)
+    {
+        double toMine = p.DistanceTo(mine);
+        foreach (var other in all)
+            if (other.DistanceTo(p) < toMine - 0.01) return false;
+        return true;
+    }
 }

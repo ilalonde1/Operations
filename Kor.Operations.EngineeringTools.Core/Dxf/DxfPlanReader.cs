@@ -69,6 +69,14 @@ public static class DxfPlanReader
         var lines = rawLines as IList<string> ?? rawLines.ToList();
         var segments = new List<DxfSegment>();
 
+        // Drafting places repeated elements — a steel column, a round concrete column — as an
+        // INSERT of a named block rather than as loose linework. Reading only the ENTITIES
+        // section therefore misses them completely, and misses them SILENTLY: nothing was read,
+        // so nothing was dropped, so no count moved and no flag fired. On 31138 that is 100
+        // inserts on column layers and 75 columns absent from the model, whole floors at a time
+        // — levels 5 and 6 lose all 22 each, the mech level and the roof all 15 each.
+        var blocks = ReadBlocks(lines);
+
         int i = 0;
         bool inEntities = false;
 
@@ -111,6 +119,9 @@ public static class DxfPlanReader
                         case "POLYLINE":
                             i = ReadPolyline(lines, i + 2, segments);
                             continue;
+                        case "INSERT":
+                            i = ReadInsert(lines, i + 2, blocks, segments);
+                            continue;
                     }
                 }
             }
@@ -119,6 +130,134 @@ public static class DxfPlanReader
         }
 
         return segments;
+    }
+
+    /// <summary>
+    /// The BLOCKS section, as the segments each named block draws in its own coordinates.
+    ///
+    /// Read with the same four entity readers as the drawing itself, so a block's geometry is
+    /// understood exactly as loose linework would be — including the arc provenance that decides
+    /// whether a column is round.
+    /// </summary>
+    private static Dictionary<string, List<DxfSegment>> ReadBlocks(IList<string> lines)
+    {
+        var blocks = new Dictionary<string, List<DxfSegment>>(StringComparer.OrdinalIgnoreCase);
+
+        int i = 0;
+        bool inBlocks = false;
+        string? name = null;
+        List<DxfSegment>? current = null;
+
+        while (i < lines.Count - 1)
+        {
+            string code = lines[i].Trim();
+            string value = lines[i + 1].Trim();
+
+            if (code != "0") { i += 2; continue; }
+
+            if (value == "SECTION")
+            {
+                for (int j = i + 2; j < Math.Min(i + 8, lines.Count - 1); j += 2)
+                {
+                    if (lines[j].Trim() == "2")
+                    {
+                        inBlocks = lines[j + 1].Trim() == "BLOCKS";
+                        break;
+                    }
+                }
+                i += 2;
+                continue;
+            }
+
+            if (value == "ENDSEC") { inBlocks = false; name = null; current = null; i += 2; continue; }
+            if (!inBlocks) { i += 2; continue; }
+
+            if (value == "BLOCK")
+            {
+                current = new List<DxfSegment>();
+                name = null;
+                // The block's name is the "2" pair inside its own header.
+                for (int j = i + 2; j < lines.Count - 1; j += 2)
+                {
+                    if (lines[j].Trim() == "0") break;
+                    if (lines[j].Trim() == "2") { name = lines[j + 1].Trim(); break; }
+                }
+                if (name is not null) blocks[name] = current;
+                i += 2;
+                continue;
+            }
+
+            if (value == "ENDBLK") { name = null; current = null; i += 2; continue; }
+
+            if (current is not null)
+            {
+                switch (value)
+                {
+                    case "LINE": i = ReadLine(lines, i + 2, current); continue;
+                    case "ARC": i = ReadArc(lines, i + 2, current); continue;
+                    case "LWPOLYLINE": i = ReadLwPolyline(lines, i + 2, current); continue;
+                    case "POLYLINE": i = ReadPolyline(lines, i + 2, current); continue;
+                }
+            }
+
+            i += 2;
+        }
+
+        return blocks;
+    }
+
+    /// <summary>
+    /// One placement of a block: its geometry scaled, rotated and moved to where it sits.
+    ///
+    /// Geometry drawn on layer "0" inside a block takes the layer of the INSERT — that is the DXF
+    /// rule, and it is how a generic column block lands on a column layer. Geometry with a layer
+    /// of its own keeps it.
+    /// </summary>
+    private static int ReadInsert(
+        IList<string> lines, int start,
+        IReadOnlyDictionary<string, List<DxfSegment>> blocks,
+        List<DxfSegment> segments)
+    {
+        string layer = string.Empty, blockName = string.Empty;
+        double x = 0, y = 0, sx = 1, sy = 1, rotation = 0;
+
+        int next = ScanEntity(lines, start, (code, value) =>
+        {
+            switch (code)
+            {
+                case "8": layer = value; break;
+                case "2": blockName = value; break;
+                case "10": TryNumber(value, out x); break;
+                case "20": TryNumber(value, out y); break;
+                case "41": if (TryNumber(value, out double a)) sx = a; break;
+                case "42": if (TryNumber(value, out double b)) sy = b; break;
+                case "50": TryNumber(value, out rotation); break;
+            }
+        });
+
+        if (blockName.Length == 0 || !blocks.TryGetValue(blockName, out var body)) return next;
+
+        // A zero scale would collapse the block onto a point; treat it as unset rather than
+        // writing a stack of zero-length segments.
+        if (sx == 0) sx = 1;
+        if (sy == 0) sy = 1;
+
+        double radians = rotation * Math.PI / 180.0;
+        double cos = Math.Cos(radians), sin = Math.Sin(radians);
+
+        DxfPoint Place(DxfPoint p)
+        {
+            double px = p.X * sx, py = p.Y * sy;
+            return new DxfPoint(x + px * cos - py * sin, y + px * sin + py * cos);
+        }
+
+        foreach (var s in body)
+        {
+            string on = s.Layer is "0" or "" ? layer : s.Layer;
+            segments.Add(new DxfSegment(on, Place(s.Start), Place(s.End)) { FromCurve = s.FromCurve });
+        }
+
+        return next;
     }
 
     private static bool TryNumber(string s, out double value)

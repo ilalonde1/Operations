@@ -962,23 +962,71 @@ public class E2kDocumentTests
     public void AFloorWithNoWallOrColumnBeneathItIsReported()
     {
         var doc = E2kDocument.Parse(Reference);
+        var lower = doc.ReadStories().Single(s => s.Name == "LEVEL 2");
+        var roof = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+
+        var ring = new[]
+        {
+            new DxfPoint(0, 0), new DxfPoint(240, 0), new DxfPoint(240, 240), new DxfPoint(0, 240),
+        };
+
+        // A storey below carrying the building, and above it a roof storey with a slab and no
+        // members of its own — which is 31168's building C exactly.
+        var below = new PlanGeometrySet();
+        below.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(240, 0), 12, "JBP_V-WALL"));
+
+        var above = new PlanGeometrySet();
+        above.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", ring, true));
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(lower, below, "level2.dxf"),
+            new StoryPlacement(roof, above, "roof.dxf"),
+        });
+
+        // The plate is built — there IS structure under its footprint, just not on its own storey.
+        Assert.Equal(1, summary.Floors);
+
+        string flag = Assert.Single(summary.Flags, f => f.Contains("no wall or column beneath it"));
+        Assert.Contains("LEVEL 3", flag);
+    }
+
+    /// <summary>
+    /// A closed ring on a slab layer with no structure anywhere under it is not a floor.
+    ///
+    /// Drafting puts legend panels, detail boxes and key plans on the same layers as the building.
+    /// When the reader learned to read blocks, 31138 gained a 1,758 sq ft "plate" on L01 sitting
+    /// entirely outside the building — x -451 to -178, where every other plate in that model runs
+    /// 18 to 2,082 — with nothing beneath it on any storey. Size cannot catch that: it is larger
+    /// than three real floors in the same model. Having something underneath can.
+    /// </summary>
+    [Fact]
+    public void ASlabOutlineWithNothingUnderItAnywhereIsNotAFloor()
+    {
+        var doc = E2kDocument.Parse(Reference);
         var story = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
 
-        // A slab outline and nothing else — no walls, no columns.
         var geometry = new PlanGeometrySet();
+        geometry.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(240, 0), 12, "JBP_V-WALL"));
         geometry.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new[]
         {
             new DxfPoint(0, 0), new DxfPoint(240, 0), new DxfPoint(240, 240), new DxfPoint(0, 240),
         }, true));
 
+        // The same sheet's legend box, far from anything the building stands on.
+        geometry.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new[]
+        {
+            new DxfPoint(-6000, -6000), new DxfPoint(-5600, -6000),
+            new DxfPoint(-5600, -5600), new DxfPoint(-6000, -5600),
+        }, true));
+
         var summary = E2kGeometryComposer.Compose(
-            doc, new[] { new StoryPlacement(story, geometry, "roof.dxf") });
+            doc, new[] { new StoryPlacement(story, geometry, "level3.dxf") });
 
+        // The real floor is built; the legend box is not.
         Assert.Equal(1, summary.Floors);
-        Assert.Equal(0, summary.Walls);
-        Assert.Equal(0, summary.Columns);
 
-        string flag = Assert.Single(summary.Flags, f => f.Contains("no wall or column beneath it"));
+        string flag = Assert.Single(summary.Flags, f => f.Contains("not made into floor plates"));
         Assert.Contains("LEVEL 3", flag);
     }
 
@@ -1026,6 +1074,82 @@ public class E2kDocumentTests
         });
         Assert.Contains(returns, r => Math.Abs(r.Start.X - -834) < 1);
         Assert.Contains(returns, r => Math.Abs(r.Start.X - -478) < 1);
+    }
+
+    /// <summary>
+    /// A column placed as a block INSERT is a column.
+    ///
+    /// Drafting places anything repeated — a steel column, a round concrete one — as an INSERT of
+    /// a named block rather than as loose linework, and the reader knew only LINE, ARC,
+    /// LWPOLYLINE and POLYLINE. So those columns were never read at all, which is the worst way
+    /// to lose something: nothing was read, so nothing was dropped, so no count moved and no flag
+    /// fired. 31138 has 100 inserts on column layers and was missing 75 of them — levels 5 and 6
+    /// lost all 22 each, the mech level and the roof all 15 each.
+    ///
+    /// Geometry drawn on layer "0" inside a block takes the INSERT's layer. That is the DXF rule
+    /// and it is what puts a generic column block onto a column layer.
+    /// </summary>
+    [Fact]
+    public void ColumnsPlacedAsBlockInsertsAreRead()
+    {
+        // An HSS 6x6 block as 31138 holds one — a square drawn about the block origin, on layer
+        // "0" — placed twice, once turned 90 degrees.
+        var dxf = new List<string>();
+        void Pair(string code, string value) { dxf.Add(code); dxf.Add(value); }
+
+        Pair("0", "SECTION"); Pair("2", "BLOCKS");
+        Pair("0", "BLOCK"); Pair("2", "KOR_COL_STEEL_HSS");
+        foreach (var (x1, y1, x2, y2) in new[]
+        {
+            (-3.0, -3.0, 3.0, -3.0), (3.0, -3.0, 3.0, 3.0),
+            (3.0, 3.0, -3.0, 3.0), (-3.0, 3.0, -3.0, -3.0),
+        })
+        {
+            Pair("0", "LINE"); Pair("8", "0");
+            Pair("10", x1.ToString(CultureInfo.InvariantCulture));
+            Pair("20", y1.ToString(CultureInfo.InvariantCulture));
+            Pair("11", x2.ToString(CultureInfo.InvariantCulture));
+            Pair("21", y2.ToString(CultureInfo.InvariantCulture));
+        }
+        Pair("0", "ENDBLK");
+        Pair("0", "ENDSEC");
+
+        Pair("0", "SECTION"); Pair("2", "ENTITIES");
+        Pair("0", "INSERT"); Pair("8", "JVP_V_COL"); Pair("2", "KOR_COL_STEEL_HSS");
+        Pair("10", "280"); Pair("20", "-471");
+        Pair("0", "INSERT"); Pair("8", "JVP_V_COL"); Pair("2", "KOR_COL_STEEL_HSS");
+        Pair("10", "100"); Pair("20", "200"); Pair("50", "90");
+        Pair("0", "ENDSEC");
+        Pair("0", "EOF");
+
+        var segments = DxfPlanReader.ReadSegments(dxf);
+
+        // Four sides per placement, and they carry the INSERT's layer, not "0".
+        Assert.Equal(8, segments.Count);
+        Assert.All(segments, s => Assert.Equal("JVP_V_COL", s.Layer));
+
+        // The first sits where it was placed: a 6" square centred on (280,-471).
+        var first = segments.Take(4).ToList();
+        Assert.Equal(277, first.Min(s => Math.Min(s.Start.X, s.End.X)), 3);
+        Assert.Equal(283, first.Max(s => Math.Max(s.Start.X, s.End.X)), 3);
+        Assert.Equal(-474, first.Min(s => Math.Min(s.Start.Y, s.End.Y)), 3);
+        Assert.Equal(-468, first.Max(s => Math.Max(s.Start.Y, s.End.Y)), 3);
+
+        // The second is turned, which a square hides — so check it landed, squarely, at its point.
+        var second = segments.Skip(4).ToList();
+        Assert.Equal(97, second.Min(s => Math.Min(s.Start.X, s.End.X)), 3);
+        Assert.Equal(103, second.Max(s => Math.Max(s.Start.X, s.End.X)), 3);
+        Assert.Equal(197, second.Min(s => Math.Min(s.Start.Y, s.End.Y)), 3);
+        Assert.Equal(203, second.Max(s => Math.Max(s.Start.Y, s.End.Y)), 3);
+
+        // And the classifier makes a column of it, which is the point of reading it at all.
+        var geometry = StructuralPlanClassifier.Classify(segments);
+        Assert.Equal(2, geometry.Columns.Count);
+        Assert.All(geometry.Columns, c =>
+        {
+            Assert.Equal(6, c.Width, 1);
+            Assert.Equal(6, c.Depth, 1);
+        });
     }
 
     [Fact]

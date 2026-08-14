@@ -123,10 +123,42 @@ public static class E2kGeometryComposer
         var existingWalls = existing.Walls
             .GroupBy(w => w.Story, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
-        int skippedColumns = 0, skippedWalls = 0;
+        int skippedColumns = 0, skippedWalls = 0, skippedOpenings = 0;
 
         // Members a second sheet drew in a place a first sheet had already claimed, by storey.
         var droppedAsDuplicate = new List<(string Storey, long X, long Y)>();
+
+        // Closed rings on a slab layer with no structure anywhere under them.
+        var orphanPlates = new List<(string Sheet, string Storey, double AreaSqFt)>();
+
+        // Every plan position that carries a wall or a column, from EITHER model, on ANY storey —
+        // what a plate has to have some of underneath it to be a floor rather than a drawn box.
+        var standing = new List<DxfPoint>();
+        foreach (var p in placements)
+        {
+            foreach (var w in p.Geometry.Walls)
+            {
+                standing.Add(new DxfPoint(w.Start.X + options.OffsetX, w.Start.Y + options.OffsetY));
+                standing.Add(new DxfPoint(w.End.X + options.OffsetX, w.End.Y + options.OffsetY));
+            }
+            foreach (var c in p.Geometry.Columns)
+                standing.Add(new DxfPoint(c.Center.X + options.OffsetX, c.Center.Y + options.OffsetY));
+        }
+        foreach (var list in existingWalls.Values)
+            foreach (var w in list) { standing.Add(w.A); standing.Add(w.B); }
+        foreach (var list in existingColumns.Values)
+            standing.AddRange(list);
+
+        bool AnythingStandsUnder(PlanLoop slab, ComposeOptions o)
+        {
+            double minX = slab.Points.Min(p => p.X) + o.OffsetX, maxX = slab.Points.Max(p => p.X) + o.OffsetX;
+            double minY = slab.Points.Min(p => p.Y) + o.OffsetY, maxY = slab.Points.Max(p => p.Y) + o.OffsetY;
+
+            // The bounding box, generously: a plate genuinely carried by structure has some of it
+            // well inside, so this only ever rejects a ring that is nowhere near any.
+            return standing.Any(p => p.X >= minX - 24 && p.X <= maxX + 24 &&
+                                     p.Y >= minY - 24 && p.Y <= maxY + 24);
+        }
 
         var pointNames = new Dictionary<(long, long, long), string>();
         var placedSlabs = new HashSet<(long, long, string)>();
@@ -480,6 +512,22 @@ public static class E2kGeometryComposer
                              (long)Math.Round((middle.Y + options.OffsetY) / 12.0), story.Name);
                 if (!placedSlabs.Add(where)) continue;
 
+                // A floor stands on something. A closed ring on a slab layer with no wall and no
+                // column anywhere inside it — ours or the engineer's, on any storey — is not a
+                // floor plate; it is a legend panel, a detail box, or a key plan that happens to
+                // be drawn on that layer.
+                //
+                // 31138 grew one when the reader learned to read blocks: a 1,758 sq ft plate on
+                // L01 sitting entirely outside the building, x -451 to -178 where every other
+                // plate in the model runs 18 to 2,082, with nothing beneath it anywhere. Area
+                // alone could not catch it — at 1,758 sq ft it is bigger than three real floors
+                // in the same model.
+                if (!AnythingStandsUnder(slab, options))
+                {
+                    orphanPlates.Add((placement.SourceSheet, story.Name, Math.Round(Math.Abs(slab.SignedArea) / 144.0)));
+                    continue;
+                }
+
                 // Claimed only once the plate is certain to be written.
                 if (!slabProps.TryGetValue(thickness, out string? propName))
                 {
@@ -513,8 +561,15 @@ public static class E2kGeometryComposer
             // Shafts and stair openings, cut out of the plate rather than left for the engineer.
             // ETABS models an opening as an area carrying no section, which is how her own 31138
             // model does it — 42 of them, drawn by hand.
+            // An opening is a hole in a plate, so there has to be a plate for it to be a hole in.
+            // A storey whose slab edges never closed gets no plate — and used to get its shafts
+            // cut anyway, leaving an opening bounding nothing at all. 31138's L05 shipped with two.
+            bool storeyHasAPlate = storeysWithPlates.Contains(story.Name);
+
             foreach (var opening in placement.Geometry.Openings)
             {
+                if (!storeyHasAPlate) { skippedOpenings++; continue; }
+
                 var names = opening.Points
                     .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
                     .Distinct()
@@ -584,6 +639,17 @@ public static class E2kGeometryComposer
         if (skippedWalls > 0 || skippedColumns > 0)
             flags.Add($"{skippedWalls} wall(s) and {skippedColumns} column(s) were already modelled at those " +
                       "locations and were not added again.");
+
+        if (orphanPlates.Count > 0)
+            flags.Add(
+                $"{orphanPlates.Count} closed slab outline(s) were not made into floor plates, because no wall " +
+                $"or column stands anywhere under them — a legend or detail box drawn on a slab layer looks " +
+                $"exactly like a floor otherwise: " +
+                string.Join("; ", orphanPlates.Take(4).Select(p => $"{p.Storey} ({p.AreaSqFt:N0} sq ft, {p.Sheet})")) + ".");
+
+        if (skippedOpenings > 0)
+            flags.Add($"{skippedOpenings} shaft or stair opening(s) were not cut, because the storey they are " +
+                      "drawn on has no floor plate to cut them from. They come back with the plate.");
 
         // Two sheets drawing the same member is normal and one of them has to give way. Saying
         // WHICH storeys lost members that way is what makes the sheet counts readable: a plan can

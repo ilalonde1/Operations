@@ -60,7 +60,16 @@ public class LiveProjectBaselineTests
         // "LEVEL 17, 18", and only the first number was read, so L09, L12 and L18 were built empty.
         // Reading listed titles whole takes 26 storeys to 29 and columns 223 to 248; walls hold at
         // 196 because her model already carries walls on those floors.
-        Storeys: 29, Walls: 196, Columns: 248, Floors: 13);
+        // Rebaselined 2026-08-13, columns 248->435 and walls 202->235, from an independent audit:
+        // the reader knew LINE, ARC, LWPOLYLINE and POLYLINE and had no INSERT case, so anything
+        // drafting placed as a block was never read. 31138 puts 100 columns down that way — HSS
+        // 6x6, HSS 8x8 and round concrete — and 75 of them were absent from the model. Reading
+        // the BLOCKS section and placing each insert recovered 43; the remaining 32 were the HSS
+        // 6x6 columns, whose loops close at exactly 6.000000 x 6.000000 and still fell a hair
+        // under a bare 6.0 minimum, so the size limits now carry the same half-inch of slack the
+        // wall rules do. Whole floors were affected: levels 5 and 6 had all 22 missing, the mech
+        // level and the roof all 15. Plates 13->14 and headers 20->22 come with the geometry.
+        Storeys: 29, Walls: 235, Columns: 435, Floors: 14);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;

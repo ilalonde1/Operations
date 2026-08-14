@@ -67,13 +67,13 @@ had already rebuilt that building's walls by hand.</p>
 <table>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
   <tr><td>Storeys populated</td><td><strong>63</strong></td><td>29</td></tr>
-  <tr><td>Wall panels, true thicknesses</td><td><strong>1,097</strong></td><td>202</td></tr>
-  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,463</strong></td><td>244</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>1,099</strong></td><td>235</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,462</strong></td><td>435</td></tr>
   <tr><td>Floor plates</td><td><strong>82</strong></td><td>13</td></tr>
-  <tr><td>Headers over openings (spandrel shells)</td><td><strong>365</strong></td><td>20</td></tr>
-  <tr><td>Shaft and stair openings cut</td><td><strong>46</strong></td><td>2</td></tr>
+  <tr><td>Headers over openings (spandrel shells)</td><td><strong>365</strong></td><td>22</td></tr>
+  <tr><td>Shaft and stair openings cut</td><td><strong>68</strong></td><td>10</td></tr>
   <tr><td>Pier labels</td><td><strong>143</strong></td><td>142</td></tr>
-  <tr><td>Members you already had, not duplicated</td><td>—</td><td>308 walls, 270 columns</td></tr>
+  <tr><td>Members you already had, not duplicated</td><td>—</td><td>306 walls, 315 columns</td></tr>
 </table>
 
 <h2>What changed after your two calls</h2>
@@ -103,12 +103,24 @@ as a single 326&times;173 rectangle that resolves to nothing &mdash; one wall wr
 holds ten. Outlines now close per layer family first, and only what is left open is pooled, so a
 boundary Revit genuinely split across two layers still closes. <strong>L27 goes from 1 wall to 18,
 matching every neighbouring storey</strong>, and 31168 gains 22 walls and 5 headers overall.</p>
+<p><strong>Also 13 August, found by an independent audit and the most serious thing in this
+document:</strong> the DXF reader understood lines, arcs and polylines and had no case for
+<code>INSERT</code> at all. Anything drafting places as a <em>block</em> — which on 31138 is every
+steel column and every round concrete one — was therefore never read. Not dropped, not flagged:
+never read, so no count moved and nothing in the report said a word. <strong>31138 places a hundred of its columns that way, and 75 were absent from the
+model</strong>, whole floors at a time: all 22
+on level 5, all 22 on level 6, all 15 on the mechanical level, all 15 on the roof. The reader now
+reads the block section and places each insert with its own scale and rotation, and the size limits
+carry the same half-inch of slack the wall rules do — the HSS 6&times;6 sections close at exactly
+6.000000&times;6.000000 and were still falling a hair under a bare 6" minimum. All 100 are now
+modelled. On 31138 that is 435 columns where 244 stood, and 235 wall panels where 202 did. <em>31168 contains no
+blocks at all, so none of its numbers move.</em></p>
 <table>
   <tr><th>You said</th><th>What it does now</th></tr>
   <tr><td>"We can't have a wall go from here to here and then another one from here to here. We need a connection."</td>
       <td>Wall centrelines form a network. Corners are carried out to where they cross and share a joint; a wall running into another splits it so the T has a joint on both members.</td></tr>
   <tr><td>"We don't model them as line elements, we model them as shells… in ETABS they're called spandrels."</td>
-      <td>Headers are wall panels standing only over their opening, depth = storey height less opening height. Both numbers now come off your own 31138 model rather than a standard: its 29 spandrels imply an opening of 86–88" (88" commonest, where 84" was assumed), and they run 20" to 60"; you then set the range yourself &mdash; 18" to 60". 139 of them, labelled as spandrels.</td></tr>
+      <td>Headers are wall panels standing only over their opening, depth = storey height less opening height. Both numbers now come off your own 31138 model rather than a standard: its 29 spandrels imply an opening of 86–88" (88" commonest, where 84" was assumed), and they run 20" to 60"; you then set the range yourself &mdash; 18" to 60". 365 of them on 31168, labelled as spandrels.</td></tr>
   <tr><td>"Every floor we have two slabs on top of each other."</td>
       <td>Drafting issues both a range sheet and a sheet per level, so each floor arrived twice. 43 doubled plates removed.</td></tr>
   <tr><td>"Below grade, the basement walls are missing."</td>
@@ -186,8 +198,8 @@ that is the file to give it.</p>
 <h2>What it does not do</h2>
 <p>No section properties, no loads, no stiffness modifiers, no diaphragms, no design. That is your
 work and it is deliberately left untouched — a diaphragm arriving with the geometry is one more
-thing to undo. It also never overwrites what you have already modelled: on 31138 it recognised 280
-of your walls and 239 of your columns and left every one of them alone.</p>
+thing to undo. It also never overwrites what you have already modelled: on 31138 it recognised 306
+of your walls and 315 of your columns and left every one of them alone.</p>
 
 <h2>What to open</h2>
 <p>Each sits in its project's <code>02 Engineering\02 Lateral Design\01 ETABS Models\</code>.
@@ -196,11 +208,11 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
   <tr><th>File</th><th>What it is</th></tr>
   <tr><td><code>31168-FROM-DRAWINGS.e2k</code></td>
       <td><strong>The one that matters.</strong> Tower B and the rest of the building — 63 storeys,
-          1,097 walls, 2,463 columns, 82 plates. Nothing of this existed before.</td></tr>
+          1,099 walls, 2,462 columns, 82 plates. Nothing of this existed before.</td></tr>
   <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
       <td>A gap-fill. You have already rebuilt this building's walls — between 17 and 42 panels on every
-          storey — so this adds only what the drawings show and your model does not: 202 walls and
-          244 columns, mostly at podium and parkade. 308 walls and 270 columns of yours were
+          storey — so this adds only what the drawings show and your model does not: 235 walls and
+          435 columns, mostly at podium and parkade. 306 walls and 315 columns of yours were
           recognised at those locations and deliberately not modelled again.</td></tr>
   <tr><td><code>…-QUESTIONS-for-Andrea.xlsx</code></td>
       <td>Two sheets. <em>Questions</em> — what you have already ruled on, marked DONE, plus the few

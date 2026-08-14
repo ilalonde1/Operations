@@ -1,0 +1,73 @@
+You are auditing a tool that reads a folder of DXF structural plan drawings and writes an
+ETABS model (.e2k) for an engineer to import. Find what is wrong with it.
+
+WHAT TO LOOK AT
+
+  Code      C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core\Dxf\
+  Tests     C:\VIsual Studio Projects\Operations\Kor.Operations.EngineeringTools.Core.Tests\
+  Publish   C:\VIsual Studio Projects\Operations\tools\Publish-EtabsModel.ps1
+  Docs      C:\VIsual Studio Projects\Operations\docs\KOR-DxfToEtabs-*.html
+
+  Two models it has produced, with their drawings and their reports, on the share:
+    \\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\
+        02 Engineering\02 Lateral Design\01 ETABS Models\
+    \\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\
+        02 Engineering\02 Lateral Design\01 ETABS Models\
+
+  In each folder: <job>-FROM-DRAWINGS.e2k is the output, <job>-FROM-DRAWINGS-report.txt is what
+  the tool says about it, <job>-QUESTIONS-for-Andrea.xlsx is what it could not decide, and the
+  DXF plans are under _DXF-plans-for-rebuild.
+
+THE STANDARD
+
+  A structural engineer imports the .e2k into ETABS and looks at it. Anything that would make
+  her distrust the model is a finding. She is a real reviewer with limited patience and this is
+  not her first look — a fault handed back twice costs more than a fault found late.
+
+  Judge the OUTPUT against the DRAWINGS. Both are on the share and both are readable as text.
+
+RULES OF EVIDENCE — these matter more than coverage
+
+  1. Do not treat the tool's own report, dossier, one-pager or test suite as evidence that
+     anything is true. They are claims by the thing under audit. Check them.
+
+  2. Do not treat a file in those folders as an engineer's work because of where it sits or what
+     it is called. Some are this tool's own output round-tripped through ETABS. Establish
+     provenance before you use anything as ground truth. A model full of names beginning K
+     followed by digits was written by this tool.
+
+  3. Where you assert a defect, give the file and the numbers you measured. "This looks wrong"
+     is not a finding. Neither is a defect derived only from reading code — say what it does to
+     the model.
+
+  4. If you cannot determine something, say so and say what would settle it. A confident wrong
+     answer is the most expensive thing you can produce here.
+
+WHAT I AM MOST AFRAID OF, in order
+
+  1. That it is a one-off. This must be a general tool for any job with drawings, not a machine
+     tuned until two specific buildings come out right. Look for rules, thresholds, layer names,
+     storey names or shapes that only make sense for these two jobs, and for anything that would
+     silently produce a wrong model on a third building rather than refusing.
+
+  2. Geometry that is wrong in a way no count can see — a member on the wrong storey, at the
+     wrong size, of the wrong kind, or in a place the drawings do not show it. Totals agreeing
+     with each other proves nothing.
+
+  3. Anything the tool discards, skips or fails to read WITHOUT SAYING SO. Silence is the fault.
+
+  4. Statements in the shipped documents that are not true of the shipped models.
+
+DO NOT
+
+  - Do not build, run tests, or run the publish script. Read and measure only.
+  - Do not modify any file on the \\Kor-fs01 share. Those are live project files.
+  - Do not fix anything. Report.
+
+OUTPUT
+
+  A list of findings, worst first. For each: what is wrong, the evidence you measured, what it
+  would cost the engineer, and how confident you are.
+
+  Then, separately: go back over your own findings and try to knock each one down. Say which
+  survive. I would rather have four findings that hold than twenty that read well.

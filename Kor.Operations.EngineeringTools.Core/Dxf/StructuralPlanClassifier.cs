@@ -528,7 +528,13 @@ public static class StructuralPlanClassifier
         double longSide = Math.Max(box.Length, box.Thickness);
         double shortSide = Math.Min(box.Length, box.Thickness);
 
-        if (shortSide < options.MinColumnSize || longSide > options.MaxColumnSize) return;
+        // The same half-inch of slack the wall rules carry, and for the same reason: a column
+        // drawn at exactly the smallest size the tool accepts measures a hair under it once the
+        // export and the oriented-box fit have both been through it. 31138's HSS 6x6 columns —
+        // 22 on level 5, 22 on level 6 — close into perfect 6.000000 x 6.000000 loops that still
+        // land fractionally below a bare 6.0, and every one was discarded without a word.
+        const double SizeSlack = 0.5;
+        if (shortSide < options.MinColumnSize - SizeSlack || longSide > options.MaxColumnSize + SizeSlack) return;
 
         // Round only if the drawing drew it with a curve. Every shape test fails here: a square
         // column with chamfered corners has a square bounding box, fills pi/4 of it, and scores
@@ -647,11 +653,25 @@ public static class StructuralPlanClassifier
                 return;
             }
 
-            if (box.Thickness >= options.MinColumnSize && box.Length <= options.MaxColumnSize)
+            // A column only if it is short enough to BE one, by her own rule: "less than 48 in
+            // length should be a column".
+            if (box.Length < options.MinWallLength &&
+                box.Thickness >= options.MinColumnSize && box.Length <= options.MaxColumnSize)
             {
                 result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box)));
                 return;
             }
+
+            // Too stocky to be a pier and too big to be a column, but it is solid concrete drawn
+            // on a WALL layer, so it is a pier whatever its proportions. It stays a wall on its
+            // long axis and keeps the in-plane shear it was drawn to carry.
+            //
+            // Without this, one 65x82 footprint on 31168's B-LEVEL 1 became a 65x82 FRAME COLUMN.
+            // The widest column in her own 31138 model is 36x72 and 31168's export has no concrete
+            // rectangular column at all, so nothing that size is a column in either engineer's
+            // hands. The run flagged it for checking, which is not the same as getting it right.
+            result.Walls.Add(new WallAxis(box.AxisStart, box.AxisEnd, box.Thickness, loop.Layer));
+            return;
         }
 
         var panels = decomposed;

@@ -255,7 +255,15 @@ public class ModelIntegrityTests
         // same merges were HIDING small outlines that never resolved either — its member counts are
         // identical either way (196 walls, 248 columns, 13 plates), so nothing new is lost; what
         // changed is that the drawing faults are now visible one by one instead of absorbed.
-        int allowed = name == Langara.Name ? 19 : 41;
+        //
+        // 31138 raised to 55 on 2026-08-13, the one direction this number is not supposed to move,
+        // so the reason is on the record. The reader had no case for INSERT, so every block on the
+        // drawing was invisible to it; now that it reads them, it also reads what does not resolve
+        // inside them. The members those blocks carry are all accounted for — the check that all
+        // 100 column inserts now have a column within 6" of their insert point passes — so this is
+        // leftover linework from geometry that was never looked at before, not structure that
+        // started disappearing. If it moves again, it should move down.
+        int allowed = name == Langara.Name ? 19 : 55;
 
         var unresolved = built.Report.Summary.Flags
             .Where(f => f.Contains("could not be resolved", StringComparison.OrdinalIgnoreCase))
@@ -289,7 +297,11 @@ public class ModelIntegrityTests
         {
             string line = raw.Trim();
 
-            var plate = Regex.Match(line, @"^AREA\s+""(KF\d+)""\s+FLOOR\s+\d+\s+(.+)$");
+            // Any floor, hers as well as ours. On a gap-fill job the plate an opening is cut from
+            // is usually the engineer's own — 31138's L05 carries five of her floor areas and none
+            // of ours, and reading only KF plates called those openings floating when they are cut
+            // in exactly the slab she drew.
+            var plate = Regex.Match(line, @"^AREA\s+""(\w+)""\s+FLOOR\s+\d+\s+(.+)$");
             if (plate.Success && storeyOf.TryGetValue(plate.Groups[1].Value, out string? ps))
             {
                 var ids = Refs(plate.Groups[2].Value).Where(joints.ContainsKey).ToList();
