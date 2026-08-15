@@ -107,3 +107,10 @@ tools/BdTrackingImport/outputs/reconciliation.csv
 tools/BdDeltekLink/ca-deltek-2026-06-18/
 # Disposable doc backups
 docs/*-backup.docx
+
+# Briefs that carry live connection strings. CODEX-STDDETAILS-REVIEW-PROMPT.txt pastes
+# two accounts' passwords in full so an agent can run sqlcmd; committing it would put
+# them in history permanently, where deleting the file later does not remove them.
+# Prompts that need credentials pass them out of band -- the ETABS audit briefs beside
+# it say "connection details are in the file the user gave you" and carry none.
+CODEX-STDDETAILS-REVIEW-PROMPT.txt
