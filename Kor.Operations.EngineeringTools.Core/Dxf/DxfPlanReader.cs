@@ -21,6 +21,24 @@ public static class DxfPlanReader
         "INSERT",
     };
 
+    /// <summary>
+    /// Entity types that could be structure and cannot be read, as opposed to annotation nobody
+    /// expects a model from.
+    ///
+    /// This list is what decides whether a thing is worth reporting, and it deliberately does NOT
+    /// consult the layer name. The report used to name unreadable entities only on layers that had
+    /// already matched a structural pattern, which meant the one drawing that most needed telling —
+    /// a set whose layers this tool does not recognise — was the one it stayed quiet about. A hatch
+    /// on S-CONC produced an empty model, no geometry, and a report that named neither the layer
+    /// nor the hatch, because the gate that would have reported it was the same gate that had
+    /// already rejected the layer.
+    /// </summary>
+    private static readonly HashSet<string> DrawableEntityTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "HATCH", "SOLID", "3DSOLID", "SPLINE", "CIRCLE", "ELLIPSE",
+        "3DFACE", "REGION", "MESH", "POLYFACEMESH", "TRACE", "BODY", "SURFACE",
+    };
+
     public sealed record UnsupportedEntity(string Layer, string EntityType, int Count);
 
     /// <summary>Chord tolerance for turning an arc into segments, in drawing units.</summary>
@@ -176,9 +194,10 @@ public static class DxfPlanReader
 
             if (value == "ENDSEC") { inEntities = false; continue; }
             if (!inEntities || SupportedEntityTypes.Contains(value)) continue;
+            if (!DrawableEntityTypes.Contains(value)) continue;
 
             string layer = EntityLayer(lines, i + 2);
-            if (layer.Length == 0 || RoleOf(layer, options) is null) continue;
+            if (layer.Length == 0) continue;
 
             var key = (layer, value);
             counts[key] = counts.TryGetValue(key, out int already) ? already + 1 : 1;
@@ -205,12 +224,7 @@ public static class DxfPlanReader
     }
 
     private static string? RoleOf(string layer, PlanClassificationOptions options)
-    {
-        if (PlanClassificationOptions.Matches(layer, options.ColumnLayerPatterns)) return "columns";
-        if (PlanClassificationOptions.Matches(layer, options.WallLayerPatterns)) return "walls";
-        if (PlanClassificationOptions.Matches(layer, options.SlabLayerPatterns)) return "slab edges";
-        return null;
-    }
+        => options.RoleOf(layer);
 
     /// <summary>
     /// The BLOCKS section, as the segments each named block draws in its own coordinates.

@@ -439,7 +439,10 @@ public class ModelQuestionnaireTests
 
             var skipped = new List<string>();
             Assert.Empty(RuleSettings.ReadQuestionAnswers(path, skipped));
-            Assert.Empty(skipped);
+
+            // One line, and it says why -- not silence, and not a complaint about the file.
+            string only = Assert.Single(skipped);
+            Assert.Contains("YOUR ANSWER column is empty", only, StringComparison.Ordinal);
         }
         finally
         {
@@ -466,7 +469,7 @@ public class ModelQuestionnaireTests
 
             var skipped = new List<string>();
             Assert.Empty(RuleSettings.ReadQuestionAnswers(path, skipped));
-            Assert.Empty(skipped);
+            Assert.Contains("YOUR ANSWER column is empty", Assert.Single(skipped), StringComparison.Ordinal);
         }
         finally
         {
@@ -495,6 +498,65 @@ public class ModelQuestionnaireTests
             // And it must say the thing that is true, rather than merely omitting the lie.
             Assert.Contains("SCOPE", intro, StringComparison.Ordinal);
             Assert.Contains("tied to a rule", intro, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void AnEditOutsideTheAnswerColumnSaysSoRatherThanImportingSilently()
+    {
+        // "answers found: 0" with no reason reads like the workbook was wrong. It was not -- the
+        // edit was simply in a column nothing reads, and the import had no way to say so.
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using (var workbook = new XLWorkbook(path))
+            {
+                var sheet = workbook.Worksheet("Questions");
+                var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
+                w1.Cell(Col(sheet, "Rule topic")).Value = "something-i-typed-in-the-wrong-column";
+                workbook.Save();
+            }
+
+            var skipped = new List<string>();
+            Assert.Empty(RuleSettings.ReadQuestionAnswers(path, skipped));
+            Assert.Contains(skipped, m => m.Contains("YOUR ANSWER", StringComparison.Ordinal) &&
+                                          m.Contains("changes nothing", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void ALayerNameAnswerImportsAsTextRatherThanBeingSearchedForDigits()
+    {
+        // Running "S8-WALL" through the numeric parser would either refuse the row or store 8.
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using (var workbook = new XLWorkbook(path))
+            {
+                var sheet = workbook.Worksheet("Questions");
+                var l1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "L1");
+                l1.Cell(Col(sheet, "YOUR ANSWER")).Value = " S8-WALL ; CONC-WALL ";
+                workbook.Save();
+            }
+
+            var rule = Assert.Single(RuleSettings.ReadQuestionAnswers(path),
+                a => a.SettingKey == "dxf.wall-layer-patterns");
+            Assert.Equal("S8-WALL;CONC-WALL", rule.SettingValue);
+            Assert.Equal(RuleSettings.TextUnits, rule.SettingUnits);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
         }
     }
 

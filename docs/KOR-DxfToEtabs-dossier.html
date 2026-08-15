@@ -421,10 +421,15 @@ not in this model.</p>
 <h2>The decisions, and everything open to override</h2>
 <p>Beside each model is <code>…-QUESTIONS-for-Andrea.xlsx</code>, in three parts.</p>
 <p><strong>Questions</strong> lists every judgement the tool had to make without being told — and
-every one has been taken. Each row says <strong>DECIDED</strong>, what was decided, and the
-measurement behind it, so you can disagree with a specific number rather than with the tool. Writing
-anything in the answer column overrides that decision from then on. You are not asked to confirm any
-of them; nothing here blocks you from importing the model.</p>
+every one has been taken. Each row carries what was decided and the measurement behind it, so you
+can disagree with a specific number rather than with the tool. You are not asked to confirm any of
+them; nothing here blocks you from importing the model.</p>
+<p>Two kinds of row, and the difference matters. <strong>DECIDED</strong> rows are tied to a rule:
+write in the answer column and the next model is built your way, on this job and every job after.
+<strong>SCOPE</strong> rows record what the tool does or does not attempt at all — beams, for one —
+and there is no number behind them to change. An answer to a SCOPE row is recorded and read, but it
+will not move geometry by itself, so those are worth saying to us directly. The status column says
+which is which, and the answer box is only offered on the rows that can act on one.</p>
 <p><strong>Rules in force</strong> is the whole rule set the model was built on, read-only: the
 value, where it came from, and why it holds. Most of them have a row on the first sheet and it says
 which. The ones that do not are geometry-cleanup tolerances — how far a dashed outline may be

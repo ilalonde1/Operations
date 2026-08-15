@@ -412,6 +412,59 @@ public static class ModelQuestionnaire
                 Decided = true
             },
 
+        new ModelQuestion("L1", "What your wall layers are called",
+            $"OUR DEFAULT, and the one most likely to be wrong on a job we have not seen. Linework counts as a " +
+            $"wall where its layer name contains any of: {string.Join(", ", options.WallLayerPatterns)}. Matched " +
+            "anywhere in the name and case-insensitively, so one short pattern covers a whole office convention.",
+            "Answer with the pattern or patterns your drawings use, separated by semicolons. This is a rule like " +
+            "any other: answer it once and every job afterwards is read your way.",
+            "This decides what the tool considers a wall AT ALL. Get it wrong and there is no partial result — " +
+            "the walls are not misplaced, they are absent, and every count agrees with itself because nothing " +
+            "was ever read.",
+            "Nothing in the drawings can settle this; it is a naming convention, not a measurement. The report " +
+            "lists every layer it did not claim, with its segment count, which is where to look if the model " +
+            "comes back emptier than the drawings.")
+            {
+                RuleTopic = "wall-layer-names",
+                SettingKey = "dxf.wall-layer-patterns",
+                SettingUnits = "layers",
+                Confidence = "engineer-confirmed",
+                Decided = true
+            },
+
+        new ModelQuestion("L2", "What your column layers are called",
+            $"OUR DEFAULT. Linework counts as a column where its layer name contains any of: " +
+            $"{string.Join(", ", options.ColumnLayerPatterns)}.",
+            "Answer with your own patterns, semicolon separated. Columns are tested BEFORE walls, because a " +
+            "layer can satisfy both patterns and the column name is usually the more specific — a layer called " +
+            "V_COL-WALL is a column layer, and testing walls first would take it for a wall.",
+            "A column layer read as a wall layer produces walls where the building has columns, and the two " +
+            "carry load in completely different ways.",
+            "Same as L1: a convention, not a measurement. The unclaimed-layer list in the report is the evidence.")
+            {
+                RuleTopic = "column-layer-names",
+                SettingKey = "dxf.column-layer-patterns",
+                SettingUnits = "layers",
+                Confidence = "engineer-confirmed",
+                Decided = true
+            },
+
+        new ModelQuestion("L3", "What your slab-edge layers are called",
+            $"OUR DEFAULT, and the most KOR-specific of the three. A closed outline counts as a floor where its " +
+            $"layer name contains any of: {string.Join(", ", options.SlabLayerPatterns)}.",
+            "Answer with your own patterns, semicolon separated.",
+            "SLABEDG is a Revit export convention rather than anything standard. A drawing set that names slab " +
+            "edges differently comes back with no floor plates at all, which means no diaphragms, which means " +
+            "every wall and column in the model reads as unsupported.",
+            "Same as L1: a convention, not a measurement.")
+            {
+                RuleTopic = "slab-layer-names",
+                SettingKey = "dxf.slab-layer-patterns",
+                SettingUnits = "layers",
+                Confidence = "engineer-confirmed",
+                Decided = true
+            },
+
         new ModelQuestion("M1", "Storey framework",
             "YOUR RULE: \"let's have a full model with both towers modelled, I will separate the towers later\".",
             "Applied. One model on the site storey list, both towers. The Tower-B-only variant that existed " +
@@ -482,7 +535,11 @@ public static class ModelQuestionnaire
         foreach (var rule in report.RulesApplied.Values.OrderBy(r => r.Key, StringComparer.OrdinalIgnoreCase))
         {
             sheet.Cell(row, 1).Value = rule.Key;
-            sheet.Cell(row, 2).Value = rule.Value;
+
+            // A list rule has no number, and a spreadsheet cell will not take NaN. Its value is the
+            // text itself, which is the thing an engineer needs to read anyway.
+            if (rule.IsNumeric) sheet.Cell(row, 2).Value = rule.Value;
+            else sheet.Cell(row, 2).Value = rule.Text;
             sheet.Cell(row, 3).Value = rule.Units;
             sheet.Cell(row, 4).Value = asked.TryGetValue(rule.Key, out string? code)
                 ? $"question {code}"

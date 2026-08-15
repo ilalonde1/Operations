@@ -6,7 +6,25 @@ using Microsoft.Data.SqlClient;
 namespace Kor.Operations.EngineeringTools.Dxf;
 
 /// <summary>One rule the tool applies, and where the value came from.</summary>
-public sealed record RuleSetting(string Key, double Value, string Units, string Confidence, string Authority, string Because);
+///
+/// <param name="Value">
+/// The number, where the rule is one. NaN for a rule whose value is not a number — see
+/// <paramref name="Text"/>.
+/// </param>
+/// <param name="Text">
+/// The value exactly as the database holds it. Every rule has one; only some parse to a number.
+/// The most firm-specific thing this tool knows — what a wall layer is CALLED — is a list of
+/// strings, and while the contract carried nothing but doubles that rule could not live in the
+/// database at all. It sat in C# as a constant, where no engineer could reach it.
+/// </param>
+public sealed record RuleSetting(
+    string Key, double Value, string Units, string Confidence, string Authority, string Because)
+{
+    public string Text { get; init; } = string.Empty;
+
+    /// <summary>True where the value is a number this tool can apply as a size or a switch.</summary>
+    public bool IsNumeric => !double.IsNaN(Value);
+}
 
 public sealed record QuestionAnswerRule(
     string Code,
@@ -28,6 +46,9 @@ public sealed record RuleImportResult(int RowsRead, int AnswersFound, int RulesW
 public static class RuleSettings
 {
     /// <summary>Where to find KorStandards.</summary>
+    /// <summary>The units a rule declares when its value is a semicolon-separated list of strings.</summary>
+    public const string TextUnits = "layers";
+
     public const string ConnectionEnvironmentVariable = "KOR_ENGINEERINGTOOLS_STANDARDSDB";
 
     /// <summary>
@@ -96,9 +117,23 @@ public static class RuleSettings
                 if (reader.IsDBNull(1)) continue;
 
                 string units = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
-                if (!TryParseSettingValue(reader.GetValue(1), units, out double value))
+                string text = Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture) ?? string.Empty;
+
+                // A rule declared as a list is not expected to parse as a number, and refusing it
+                // for that would stop the run. Anything else that will not parse still does: a
+                // size the tool cannot read is a rule it cannot apply, and continuing would mean
+                // silently using the constant compiled into the code instead.
+                bool isList = units.Equals(TextUnits, StringComparison.OrdinalIgnoreCase);
+                double value = double.NaN;
+                if (!isList && !TryParseSettingValue(reader.GetValue(1), units, out value))
                 {
                     invalid.Add($"{key}='{reader.GetValue(1)}'");
+                    continue;
+                }
+
+                if (isList && text.Trim().Length == 0)
+                {
+                    invalid.Add($"{key}='' (a list rule with nothing in it matches nothing)");
                     continue;
                 }
 
@@ -114,7 +149,10 @@ public static class RuleSettings
                     key, value, units,
                     confidence,
                     reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
-                    reader.IsDBNull(5) ? string.Empty : reader.GetString(5));
+                    reader.IsDBNull(5) ? string.Empty : reader.GetString(5))
+                {
+                    Text = text,
+                };
             }
         }
         catch (Exception ex)
@@ -132,7 +170,27 @@ public static class RuleSettings
 
     /// <summary>The same, for the settings that are switches rather than sizes.</summary>
     public static bool FlagOr(this IReadOnlyDictionary<string, RuleSetting> settings, string key, bool fallback)
-        => settings.TryGetValue(key, out var s) ? Math.Abs(s.Value) > 0.5 : fallback;
+        => settings.TryGetValue(key, out var s) && s.IsNumeric ? Math.Abs(s.Value) > 0.5 : fallback;
+
+    /// <summary>
+    /// A rule whose value is a list of strings — the layer-name patterns, semicolon separated.
+    ///
+    /// An empty or whitespace-only list is refused rather than applied. A pattern list of nothing
+    /// matches no layer, so the run would read a full set of drawings, find no structure anywhere,
+    /// and report a building with no members as though that were the answer.
+    /// </summary>
+    public static IReadOnlyList<string> ListOr(
+        this IReadOnlyDictionary<string, RuleSetting> settings, string key, IReadOnlyList<string> fallback)
+    {
+        if (!settings.TryGetValue(key, out var s)) return fallback;
+
+        var parts = s.Text
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(p => p.Length > 0)
+            .ToList();
+
+        return parts.Count > 0 ? parts : fallback;
+    }
 
     public static RuleImportResult ImportQuestionAnswers(
         string workbookPath,
@@ -192,8 +250,10 @@ public static class RuleSettings
 
         var result = new List<QuestionAnswerRule>();
         int lastRow = sheet.LastRowUsed()?.RowNumber() ?? 4;
+        int rowsSeen = 0;
         for (int row = 5; row <= lastRow; row++)
         {
+            if (sheet.Cell(row, codeCol).GetString().Trim().Length > 0) rowsSeen++;
             string answer = sheet.Cell(row, answerCol).GetString().Trim();
 
             // Blank, or a placeholder that means blank. A cell holding only dashes is somebody
@@ -230,6 +290,30 @@ public static class RuleSettings
                 continue;
             }
 
+            // A list rule's answer is the answer. Running "S-WALL-CONC" through a parser that
+            // hunts for digits would find none and refuse the row, or worse, find the 8 in
+            // "S8-WALL" and store that.
+            if (units.Count == keys.Count && units.All(u => u.Equals(TextUnits, StringComparison.OrdinalIgnoreCase)))
+            {
+                var cleaned = answer
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(x => x.Length > 0)
+                    .ToList();
+
+                if (cleaned.Count == 0)
+                {
+                    skipped.Add($"{code}: an empty layer list would match no layer at all, so it was not imported.");
+                    continue;
+                }
+
+                for (int i = 0; i < keys.Count; i++)
+                    result.Add(new QuestionAnswerRule(
+                        code, scope, keys.Count == 1 ? topic : $"{topic}:{keys[i]}",
+                        question, did, answer,
+                        keys[i], string.Join(";", cleaned), TextUnits, confidence));
+                continue;
+            }
+
             var values = ParseSettingValues(answer, keys.Count, units);
             if (values.Count < keys.Count)
             {
@@ -245,6 +329,16 @@ public static class RuleSettings
                     question, did, answer,
                     keys[i], FormatSettingValue(values[i], unit), unit, confidence));
             }
+        }
+
+        // Nothing found is a result, and it needs saying. Editing a hidden metadata column and
+        // leaving the answer blank imported nothing and reported nothing -- "answers found: 0"
+        // with no reason reads like the file was wrong, when the file was fine and the edit was
+        // simply in a column nothing reads.
+        if (result.Count == 0 && skipped.Count == 0)
+        {
+            skipped.Add($"nothing to import: the YOUR ANSWER column is empty on all {rowsSeen} row(s). " +
+                        "Only that column is read -- an edit anywhere else on the sheet changes nothing.");
         }
 
         foreach (var duplicate in result

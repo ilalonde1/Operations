@@ -192,6 +192,24 @@ public sealed record PlanClassificationOptions
 
     public static bool Matches(string layer, IReadOnlyList<string> patterns)
         => patterns.Any(p => layer.Contains(p, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// What this tool takes a layer to be, or null where it recognises nothing.
+    ///
+    /// The single copy on purpose. The classifier, the ledger and the unread-entity report each
+    /// carried their own identical version, and a ledger that disagrees with the classifier is
+    /// worse than no ledger — it says the geometry was read when it was not.
+    ///
+    /// Columns are tested first because a layer can satisfy more than one pattern and the column
+    /// name is usually the more specific: "V_COL-WALL" is a column layer, not a wall layer.
+    /// </summary>
+    public string? RoleOf(string layer)
+    {
+        if (Matches(layer, ColumnLayerPatterns)) return "columns";
+        if (Matches(layer, WallLayerPatterns)) return "walls";
+        if (Matches(layer, SlabLayerPatterns)) return "slab edges";
+        return null;
+    }
 }
 
 /// <summary>Turns the raw segments of one plan into the structural members it depicts.</summary>
@@ -209,14 +227,13 @@ public static class StructuralPlanClassifier
     internal const string RoleSlab = "slab edges";
 
     private static string? RoleOf(string layer, PlanClassificationOptions options)
-    {
-        // Columns first: a layer may satisfy more than one pattern, and the column
-        // convention (JBP_V_COL) is the most specific.
-        if (PlanClassificationOptions.Matches(layer, options.ColumnLayerPatterns)) return RoleColumn;
-        if (PlanClassificationOptions.Matches(layer, options.WallLayerPatterns)) return RoleWall;
-        if (PlanClassificationOptions.Matches(layer, options.SlabLayerPatterns)) return RoleSlab;
-        return null;
-    }
+        => options.RoleOf(layer) switch
+        {
+            "columns" => RoleColumn,
+            "walls" => RoleWall,
+            "slab edges" => RoleSlab,
+            _ => null,
+        };
 
     public static PlanGeometrySet Classify(IEnumerable<DxfSegment> segments, PlanClassificationOptions? options = null)
     {

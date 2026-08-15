@@ -37,15 +37,7 @@ public static class LayerLedger
     }
 
     private static string? RoleOf(string layer, PlanClassificationOptions options)
-    {
-        // Columns first, exactly as the classifier orders it: a layer named "JBP_V_COL-WALL"
-        // would otherwise be read as a wall by whichever pattern was tried first, and a ledger
-        // that disagrees with the classifier is worse than no ledger.
-        if (PlanClassificationOptions.Matches(layer, options.ColumnLayerPatterns)) return "columns";
-        if (PlanClassificationOptions.Matches(layer, options.WallLayerPatterns)) return "walls";
-        if (PlanClassificationOptions.Matches(layer, options.SlabLayerPatterns)) return "slab edges";
-        return null;
-    }
+        => options.RoleOf(layer);
 
     /// <summary>
     /// The roles that got nothing while unclaimed layers carry real geometry — the signature of a

@@ -95,6 +95,9 @@ public static class DxfToEtabsService
 {
     public static IReadOnlyList<string> RequiredRuleKeys { get; } =
     [
+        "dxf.wall-layer-patterns",
+        "dxf.column-layer-patterns",
+        "dxf.slab-layer-patterns",
         "dxf.min-wall-thickness",
         "dxf.max-wall-thickness",
         "dxf.min-wall-length",
@@ -127,6 +130,21 @@ public static class DxfToEtabsService
         "dxf.skip-members-already-modelled",
         "dxf.spandrel-depth-floor",
         "dxf.spandrel-depth-ceiling",
+    ];
+
+    /// <summary>
+    /// The rules whose value is a list of names rather than a number.
+    ///
+    /// These are the ones that decide what this tool considers structure at all, and until they
+    /// moved here they were three string constants in C#. A firm that names its slab edges
+    /// anything else got a model with no floor plates and no way to correct it without a code
+    /// change, which is the opposite of what "agnostic" is supposed to mean.
+    /// </summary>
+    public static IReadOnlyList<string> TextRuleKeys { get; } =
+    [
+        "dxf.wall-layer-patterns",
+        "dxf.column-layer-patterns",
+        "dxf.slab-layer-patterns",
     ];
 
     private static IReadOnlyDictionary<string, double> BuiltInRuleValues(
@@ -169,8 +187,9 @@ public static class DxfToEtabsService
             ["dxf.spandrel-depth-ceiling"] = compose.SpandrelDepthCeiling,
         };
 
+        var applied = values.Keys.Concat(TextRuleKeys);
         if (!RequiredRuleKeys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
-                .SequenceEqual(values.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase),
+                .SequenceEqual(applied.OrderBy(k => k, StringComparer.OrdinalIgnoreCase),
                     StringComparer.OrdinalIgnoreCase))
             throw new InvalidOperationException("The DXF-to-ETABS required rule list and applied rule list differ.");
 
@@ -182,6 +201,9 @@ public static class DxfToEtabsService
         IReadOnlyDictionary<string, RuleSetting> settings)
         => options with
         {
+            WallLayerPatterns = settings.ListOr("dxf.wall-layer-patterns", options.WallLayerPatterns),
+            ColumnLayerPatterns = settings.ListOr("dxf.column-layer-patterns", options.ColumnLayerPatterns),
+            SlabLayerPatterns = settings.ListOr("dxf.slab-layer-patterns", options.SlabLayerPatterns),
             MinWallThickness = settings.ValueOr("dxf.min-wall-thickness", options.MinWallThickness),
             MaxWallThickness = settings.ValueOr("dxf.max-wall-thickness", options.MaxWallThickness),
             MinWallLength = settings.ValueOr("dxf.min-wall-length", options.MinWallLength),
@@ -344,8 +366,16 @@ public static class DxfToEtabsService
                 int total = unsupported.Sum(e => e.Count);
                 string examples = string.Join(", ", unsupported.Take(4)
                     .Select(e => $"{e.Count:N0} {e.EntityType} on {e.Layer}"));
-                warnings.Add($"{sheet.FileName}: {total:N0} unsupported DXF entit{(total == 1 ? "y" : "ies")} " +
-                             $"on structural layers were not read: {examples}.");
+                // "on structural layers" was the old wording and it was the old gate. It is not
+                // true any more and it was the misleading half: the sheets worth warning about are
+                // the ones whose layers this tool does not recognise, and those have no structural
+                // layer for the sentence to refer to.
+                bool anyClaimed = unsupported.Any(e => classification.RoleOf(e.Layer) is not null);
+                warnings.Add($"{sheet.FileName}: {total:N0} unreadable DXF entit{(total == 1 ? "y" : "ies")} " +
+                             $"carrying shape, not read: {examples}. " +
+                             (anyClaimed
+                                ? "Some sit on layers this tool reads, so that geometry is missing from the model."
+                                : "None sits on a layer this tool reads, so if any of it is structure, the model does not have it."));
             }
 
             if (Math.Abs(scale - 1.0) > 1e-9)

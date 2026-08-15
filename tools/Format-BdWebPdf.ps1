@@ -25,14 +25,31 @@ if (-not $edge) { throw "Microsoft Edge not found in the standard install locati
 
 $srcPath = (Resolve-Path $Html).Path
 $outPath = [System.IO.Path]::GetFullPath($Pdf)
-$uri = "file:///" + ($srcPath -replace '\\', '/')
 
-& $edge --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf="$outPath" $uri 2>$null | Out-Null
+# Render through a copy under a name Edge has never seen.
+#
+# Edge caches file:/// URLs, and it does it silently: edit the HTML, re-render to the same path,
+# and you get a PDF of the version before your edit at a plausible new file size. That shipped a
+# dossier still carrying a claim the source had already corrected, and it passed a check that
+# read the HTML rather than the PDF. The copy sits beside the source so any relative reference
+# still resolves, and is removed once the PDF is on disk.
+$fresh = Join-Path (Split-Path $srcPath -Parent) ("_render-" + [guid]::NewGuid().ToString('N') + ".html")
+Copy-Item -LiteralPath $srcPath -Destination $fresh -Force
+$uri = "file:///" + ($fresh -replace '\\', '/')
 
-# Edge returns before the file is flushed on slower runs; poll briefly.
-$deadline = (Get-Date).AddSeconds(20)
-while (-not (Test-Path $outPath) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
-if (-not (Test-Path $outPath)) { throw "Edge did not produce $outPath" }
+try {
+    & $edge --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf="$outPath" $uri 2>$null | Out-Null
+
+    # Edge returns before the file is flushed on slower runs; poll briefly.
+    $deadline = (Get-Date).AddSeconds(20)
+    while (-not (Test-Path $outPath) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
+    if (-not (Test-Path $outPath)) { throw "Edge did not produce $outPath" }
+}
+finally {
+    # Only after the PDF exists. Deleting while the renderer still holds the source is the race
+    # that produces a PDF of the browser's "file not found" page, which looks like a document.
+    Remove-Item -LiteralPath $fresh -Force -ErrorAction SilentlyContinue
+}
 
 $kb = [math]::Round((Get-Item $outPath).Length / 1kb)
 Write-Output ("WEB-PDF: {0}  ({1} KB)" -f (Split-Path $outPath -Leaf), $kb)

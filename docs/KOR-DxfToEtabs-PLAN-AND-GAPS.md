@@ -4,7 +4,7 @@ Part 1 states what this tool is required to be. Part 2 is an inventory of what d
 that standard, each with the measurement behind it. Neither part ranks the work — sequencing is
 not a technical fact.
 
-Updated 2026-08-15.
+Updated 2026-08-15 (second pass, after an independent audit).
 
 ---
 
@@ -29,9 +29,11 @@ Nothing made specially for it. No per-job configuration.
   centrelines and connected, columns sized and oriented as drawn, floor plates, headers over
   openings, shaft and stair openings cut, pier labels.
 - A report stating, location by location, everything it could not do.
-- A workbook in three sheets: every judgement it had to make, each already decided with the
-  measurement behind it and overridable in one cell; every rule the model was built on, read-only;
-  and every location where a decision was applied, marked approximation or drawing limit.
+- A workbook in three sheets. Every judgement it had to make, each already decided with the
+  measurement behind it: rows marked DECIDED are tied to a rule and change the model when answered,
+  rows marked SCOPE record what the tool does or does not attempt at all and answering one is noted
+  but changes nothing. Then every rule the model was built on, read-only. Then every location where
+  a decision was applied, marked approximation or drawing limit.
 
 ## The three properties that make it a tool
 
@@ -142,7 +144,13 @@ On 31168's tower floors the elements the engineer marked openings between are dr
 layer — 24 footprints at 16×40, 18×45, 30×30, 24×28, none more slender than 2.5:1. Columns or
 pierced wall changes in-plane shear the height of the tower. The layer governs, so they are columns;
 that is the drafting convention and nothing in the drawings contradicts it. It ships as decision O1
-with the footprint measurements beside it, so disagreeing costs one cell rather than a conversation.
+with the footprint measurements beside it.
+
+O1 is a SCOPE row, not a rule: it carries no setting key, so answering it is recorded as a ruling
+and does not change geometry. An earlier version of this entry said disagreeing cost one cell. It
+does not, and saying so was worse than leaving the gap open, because it told a reviewer to stop
+looking at a modelling decision that still cannot learn. Making it learnable means a rule for
+"which layer roles may face an opening", which does not exist yet.
 
 ## Shipping
 

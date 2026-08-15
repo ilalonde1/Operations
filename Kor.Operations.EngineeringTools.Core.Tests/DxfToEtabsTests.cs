@@ -28,8 +28,18 @@ public class DxfPlanReaderTests
     }
 
     [Fact]
-    public void ReportsUnsupportedEntitiesOnStructuralLayers()
+    public void ReportsUnreadableGeometryWhateverLayerItSitsOn()
     {
+        // Rebaselined deliberately. This asserted that the hatch on A-ANNO is dropped and only the
+        // one on JBP_V-WALL is reported — which encodes the assumption that a layer's name tells
+        // you whether its contents are structure. It does not, and that assumption WAS the bug:
+        // unreadable entities were reported only on layers already matching WALL, _COL or SLABEDG,
+        // so a hatch on S-CONC produced an empty model and a report naming neither the layer nor
+        // the hatch.
+        //
+        // Both are reported now, biggest first, and the report says whether any of them sits on a
+        // layer this tool reads. An engineer can dismiss A-ANNO at a glance; the tool cannot,
+        // without being told a convention, which is the thing it must stop assuming.
         string hatchWall = "0\nHATCH\n8\nJBP_V-WALL";
         string hatchAnno = "0\nHATCH\n8\nA-ANNO";
 
@@ -37,10 +47,13 @@ public class DxfPlanReaderTests
             DxfWith(hatchWall, Line("JBP_V-WALL", 0, 0, 10, 0), hatchAnno),
             new PlanClassificationOptions());
 
-        var hatch = Assert.Single(unsupported);
-        Assert.Equal("JBP_V-WALL", hatch.Layer);
-        Assert.Equal("HATCH", hatch.EntityType);
-        Assert.Equal(1, hatch.Count);
+        Assert.Equal(2, unsupported.Count);
+
+        var onWall = Assert.Single(unsupported, e => e.Layer == "JBP_V-WALL");
+        Assert.Equal("HATCH", onWall.EntityType);
+        Assert.Equal(1, onWall.Count);
+
+        Assert.Contains(unsupported, e => e.Layer == "A-ANNO" && e.EntityType == "HATCH");
     }
 
     [Fact]
