@@ -109,6 +109,30 @@ Write-Host "generating $Project..." -ForegroundColor DarkGray
 if ($LASTEXITCODE -ne 0) { throw 'generation failed.' }
 
 if (-not $SkipDossier) {
+    # The dossier and the one-pager describe particular buildings by name. Copying them beside a
+    # job they do not describe hands the engineer a document about somebody else's tower, and it
+    # is the kind of thing nobody notices until it is in front of a client: the counts look
+    # authoritative, the prose reads well, and none of it is about the model it sits next to.
+    #
+    # So the documents travel only to the jobs they actually name. On a job they do not, the model
+    # and the report still publish — those are generated FROM this job and are always true of it.
+    $describes = @()
+    $dossierSource = Join-Path $repo 'docs\KOR-DxfToEtabs-dossier.html'
+    if (Test-Path $dossierSource) {
+        $describes = [regex]::Matches((Get-Content -LiteralPath $dossierSource -Raw), '\b(3\d{4})\b') |
+            ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+    }
+
+    if ($describes -notcontains $Project) {
+        Write-Host ''
+        Write-Host "The dossier and one-pager describe $($describes -join ', ') — not $Project." -ForegroundColor Yellow
+        Write-Host "  Not copied. The model, report and questions are this job's own and have published." -ForegroundColor Yellow
+        Write-Host "  Write a dossier for $Project, or publish with -SkipDossier to say so deliberately." -ForegroundColor Yellow
+        $SkipDossier = $true
+    }
+}
+
+if (-not $SkipDossier) {
     $dossier = Join-Path $repo 'docs\KOR-DxfToEtabs-web.pdf'
     if (Test-Path $dossier) {
         Copy-Item $dossier (Join-Path $folder 'KOR-Model-From-Drawings-DOSSIER.pdf') -Force
