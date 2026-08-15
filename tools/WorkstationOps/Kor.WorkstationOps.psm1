@@ -521,7 +521,279 @@ function Get-KorWorkstationHealth {
     }
 }
 
+# ---------------------------------------------------------------------------
+# Hardware profile
+#
+# WMI would hand all of this over in one call, but Get-CimInstance -ComputerName
+# needs WinRM — the exact thing this network blocks. The mssmbios driver mirrors
+# the raw SMBIOS tables into the registry, so the same firmware data is reachable
+# over reg.exe. That includes per-DIMM part numbers and populated-slot counts,
+# which is the difference between "32GB installed" and "32GB in 4 of 4 slots,
+# nowhere left to grow" — the second one is the answer to an upgrade question.
+#
+# PSU wattage is NOT in SMBIOS. No remote channel exposes it. It is always eyes-on.
+# ---------------------------------------------------------------------------
+
+$script:SmbiosChassisType = @{
+    1 = 'Other'; 2 = 'Unknown'; 3 = 'Desktop'; 4 = 'Low Profile Desktop'; 5 = 'Pizza Box'
+    6 = 'Mini Tower'; 7 = 'Tower'; 8 = 'Portable'; 9 = 'Laptop'; 10 = 'Notebook'
+    11 = 'Hand Held'; 12 = 'Docking Station'; 13 = 'All in One'; 14 = 'Sub Notebook'
+    15 = 'Space-saving'; 16 = 'Lunch Box'; 17 = 'Main Server Chassis'; 18 = 'Expansion Chassis'
+    23 = 'Rack Mount Chassis'; 24 = 'Sealed-case PC'; 25 = 'Multi-system'; 30 = 'Tablet'
+    31 = 'Convertible'; 32 = 'Detachable'; 34 = 'Mini PC'; 35 = 'Stick PC'
+}
+$script:SmbiosMemoryType = @{
+    1 = 'Other'; 2 = 'Unknown'; 3 = 'DRAM'; 17 = 'SDRAM'; 18 = 'SGRAM'; 20 = 'DDR'
+    21 = 'DDR2'; 24 = 'DDR3'; 26 = 'DDR4'; 34 = 'DDR5'; 35 = 'LPDDR5'
+}
+$script:SmbiosFormFactor = @{
+    1 = 'Other'; 2 = 'Unknown'; 8 = 'DIMM'; 9 = 'TSOP'; 12 = 'SODIMM'; 13 = 'RIMM'; 15 = 'FB-DIMM'
+}
+
+function Get-SmbiosString {
+    <#  SMBIOS strings are 1-based indexes into the struct's own string table; 0 means absent. #>
+    param([Parameter(Mandatory)]$Structure, [Parameter(Mandatory)][int]$Offset)
+    if ($Offset -ge $Structure.Data.Length) { return $null }
+    $i = $Structure.Data[$Offset]
+    if ($i -eq 0 -or $i -gt $Structure.Strings.Count) { return $null }
+    $Structure.Strings[$i - 1].Trim()
+}
+
+function ConvertFrom-KorSmbios {
+    <#
+    .SYNOPSIS
+        Parse a raw SMBIOS blob into system, board, chassis, CPU and per-DIMM detail.
+    .DESCRIPTION
+        Input is the bytes of HKLM\SYSTEM\CurrentControlSet\Services\mssmbios\Data\SMBiosData:
+        an 8-byte registry header (major/minor at [1]/[2], table length DWORD at [4]) followed
+        by the SMBIOS table proper. Each structure is type/length/handle + a formatted area +
+        a double-null-terminated string table.
+
+        Deliberately a pure function over a byte array — no network, no registry — so it can be
+        regression-tested against a captured fixture without a machine to point at.
+    .EXAMPLE
+        $bytes = [byte[]]::new(...) ; ConvertFrom-KorSmbios -Bytes $bytes
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][byte[]]$Bytes)
+
+    if ($Bytes.Length -lt 12) { throw 'SMBIOS blob is too short to contain a header and one structure.' }
+
+    $len = [BitConverter]::ToUInt32($Bytes, 4)
+    $end = [Math]::Min(8 + $len, $Bytes.Length)
+    $p = 8
+    $structs = [Collections.Generic.List[object]]::new()
+
+    while ($p + 4 -le $end) {
+        $type = $Bytes[$p]
+        $flen = $Bytes[$p + 1]
+        # A formatted area shorter than the 4-byte header means the table is corrupt; stop
+        # rather than walk off into arbitrary bytes and report confident nonsense.
+        if ($flen -lt 4 -or $p + $flen -gt $end) { break }
+
+        $data = New-Object byte[] $flen
+        [Array]::Copy($Bytes, $p, $data, 0, $flen)
+
+        $sp = $p + $flen
+        $strings = [Collections.Generic.List[string]]::new()
+        if ($sp + 1 -lt $end -and $Bytes[$sp] -eq 0 -and $Bytes[$sp + 1] -eq 0) {
+            $sp += 2
+        } else {
+            while ($sp -lt $end) {
+                $start = $sp
+                while ($sp -lt $end -and $Bytes[$sp] -ne 0) { $sp++ }
+                $strings.Add([Text.Encoding]::ASCII.GetString($Bytes, $start, $sp - $start))
+                $sp++
+                if ($sp -lt $end -and $Bytes[$sp] -eq 0) { $sp++; break }
+            }
+        }
+
+        $structs.Add([PSCustomObject]@{ Type = $type; Data = $data; Strings = $strings })
+        $p = $sp
+        if ($type -eq 127) { break }   # end-of-table
+    }
+
+    $pick = { param($t) $structs | Where-Object { $_.Type -eq $t } | Select-Object -First 1 }
+
+    $sys = & $pick 1
+    $board = & $pick 2
+    $chassis = & $pick 3
+    $cpu = & $pick 4
+    $array = & $pick 16
+
+    $dimms = foreach ($d in ($structs | Where-Object { $_.Type -eq 17 })) {
+        $raw = [BitConverter]::ToUInt16($d.Data, 0x0C)
+        # 0 = slot empty. 0x7FFF = "see the extended DWORD". Bit 15 set = the value is KB, not MB.
+        $sizeMb = if ($raw -eq 0) { 0 }
+                  elseif ($raw -eq 0x7FFF -and $d.Data.Length -ge 0x20) { [BitConverter]::ToUInt32($d.Data, 0x1C) }
+                  elseif ($raw -band 0x8000) { ($raw -band 0x7FFF) / 1024 }
+                  else { [int]$raw }
+        [PSCustomObject]@{
+            Locator       = Get-SmbiosString $d 0x10
+            Bank          = Get-SmbiosString $d 0x11
+            SizeMB        = $sizeMb
+            Populated     = ($sizeMb -gt 0)
+            Type          = if ($d.Data.Length -gt 0x12 -and $script:SmbiosMemoryType.ContainsKey([int]$d.Data[0x12])) { $script:SmbiosMemoryType[[int]$d.Data[0x12]] } else { 'Unknown' }
+            FormFactor    = if ($d.Data.Length -gt 0x0E -and $script:SmbiosFormFactor.ContainsKey([int]$d.Data[0x0E])) { $script:SmbiosFormFactor[[int]$d.Data[0x0E]] } else { 'Unknown' }
+            RatedMTs      = if ($d.Data.Length -ge 0x17) { [BitConverter]::ToUInt16($d.Data, 0x15) } else { $null }
+            ConfiguredMTs = if ($d.Data.Length -ge 0x22) { [BitConverter]::ToUInt16($d.Data, 0x20) } else { $null }
+            Manufacturer  = Get-SmbiosString $d 0x17
+            PartNumber    = Get-SmbiosString $d 0x1A
+        }
+    }
+    $dimms = @($dimms)
+
+    [PSCustomObject]@{
+        Version   = "$($Bytes[1]).$($Bytes[2])"
+        System    = if ($sys) { [PSCustomObject]@{
+                        Manufacturer = Get-SmbiosString $sys 0x04
+                        Product      = Get-SmbiosString $sys 0x05
+                        Family       = if ($sys.Data.Length -gt 0x1A) { Get-SmbiosString $sys 0x1A } else { $null }
+                    } } else { $null }
+        Board     = if ($board) { [PSCustomObject]@{
+                        Manufacturer = Get-SmbiosString $board 0x04
+                        Product      = Get-SmbiosString $board 0x05
+                    } } else { $null }
+        Chassis   = if ($chassis) {
+                        $ct = [int]($chassis.Data[0x05] -band 0x7F)   # bit 7 is "lock present", not part of the type
+                        [PSCustomObject]@{
+                            Manufacturer = Get-SmbiosString $chassis 0x04
+                            TypeCode     = $ct
+                            Type         = if ($script:SmbiosChassisType.ContainsKey($ct)) { $script:SmbiosChassisType[$ct] } else { "Unknown($ct)" }
+                        } } else { $null }
+        Processor = if ($cpu) { [PSCustomObject]@{
+                        Version     = Get-SmbiosString $cpu 0x10
+                        Socket      = Get-SmbiosString $cpu 0x04
+                        MaxSpeedMHz = if ($cpu.Data.Length -ge 0x16) { [BitConverter]::ToUInt16($cpu.Data, 0x14) } else { $null }
+                        Cores       = if ($cpu.Data.Length -gt 0x23) { [int]$cpu.Data[0x23] } else { $null }
+                        Threads     = if ($cpu.Data.Length -gt 0x25) { [int]$cpu.Data[0x25] } else { $null }
+                    } } else { $null }
+        Memory    = [PSCustomObject]@{
+            # Slots comes from the Type 16 array when present, but the count of Type 17
+            # structures is the real physical slot count and is what an upgrade hangs on.
+            Slots          = if ($array -and $array.Data.Length -ge 0x0F) { [int][BitConverter]::ToUInt16($array.Data, 0x0D) } else { $dimms.Count }
+            SlotsPopulated = @($dimms | Where-Object Populated).Count
+            SlotsFree      = $dimms.Count - @($dimms | Where-Object Populated).Count
+            # Measure-Object returns NO object for an empty pipeline, so .Sum would blow up
+            # under StrictMode. A machine with a mangled SMBIOS table must degrade to zero,
+            # not take the whole profile call down with it.
+            InstalledGB    = if ($dimms.Count) { [math]::Round((($dimms | Measure-Object SizeMB -Sum).Sum) / 1024, 1) } else { 0 }
+            MaxCapacityGB  = if ($array -and $array.Data.Length -ge 0x0B) {
+                                 $kb = [BitConverter]::ToUInt32($array.Data, 0x07)
+                                 if ($kb -eq 0x80000000 -and $array.Data.Length -ge 0x17) { [math]::Round([BitConverter]::ToUInt64($array.Data, 0x0F) / 1GB, 0) }
+                                 else { [math]::Round($kb / 1MB, 0) }
+                             } else { $null }
+            Dimms          = $dimms
+        }
+    }
+}
+
+function Get-KorHardwareProfile {
+    <#
+    .SYNOPSIS
+        Full hardware profile for a workstation over c$ and RemoteRegistry — no WinRM needed.
+    .DESCRIPTION
+        Answers the questions a refresh or repurpose decision actually turns on: what CPU and
+        socket, how many DIMM slots are free and at what speed, which discrete GPU is fitted,
+        which disks, and whether the box is a UEFI/Secure Boot install or a legacy MBR one.
+
+        Reachability is gated on port 445, NOT on ping — machines on this fleet answer SMB
+        while dropping ICMP, and gating on ping reports a running workstation as offline.
+
+        Leaves RemoteRegistry exactly as it found it (see Use-KorRemoteRegistry).
+    .EXAMPLE
+        Get-KorHardwareProfile -ComputerName KOR-SPARE100 | Format-List
+    .EXAMPLE
+        'KOR-213','KOR-224' | Get-KorHardwareProfile | Select-Object ComputerName, Cpu, DiscreteGpu
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory, ValueFromPipeline)][string[]]$ComputerName)
+
+    process {
+        foreach ($cn in $ComputerName) {
+            if (-not (Test-NetConnection -ComputerName $cn -Port 445 -WarningAction SilentlyContinue -InformationLevel Quiet)) {
+                [PSCustomObject]@{ ComputerName = $cn; Reachable = $false }
+                continue
+            }
+
+            $reg = { param($key)
+                $out = & reg.exe query "\\$cn\$key" 2>&1
+                if ($LASTEXITCODE -ne 0) { return @{} }
+                $h = @{}
+                foreach ($line in $out) {
+                    if ($line -match '^\s{4}(.+?)\s{4}(REG_\w+)\s{4}(.*)$') { $h[$Matches[1].Trim()] = $Matches[3].Trim() }
+                }
+                $h
+            }
+
+            # The -Body scriptblock executes in its own child scope, so assigning a result
+            # variable inside it would never reach us. Use-KorRemoteRegistry returns whatever
+            # the body emits (every other call in it is Out-Null'd), so emit the object.
+            Use-KorRemoteRegistry -ComputerName $cn -Body {
+                $os = & $reg 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+                $cpu0 = & $reg 'HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0'
+                $secureBoot = & $reg 'HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot\State'
+
+                # GPUs: one subkey per adapter. The RDP mirror driver is always present and
+                # is never the answer to "what card is in it", so it is filtered out.
+                $gpus = foreach ($k in (& reg.exe query "\\$cn\HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}" 2>&1 |
+                                        Where-Object { $_ -match '\\\d{4}$' })) {
+                    $v = & $reg ('HKLM' + (($k.Trim()) -replace '^HKEY_LOCAL_MACHINE', ''))
+                    if ($v['DriverDesc']) {
+                        [PSCustomObject]@{ Name = $v['DriverDesc']; DriverVersion = $v['DriverVersion']; DeviceId = $v['MatchingDeviceId'] }
+                    }
+                }
+                $gpus = @($gpus | Where-Object { $_.Name -notmatch 'Remote Display Adapter|Basic Display' })
+
+                $disks = foreach ($root in 'HKLM\SYSTEM\CurrentControlSet\Enum\SCSI', 'HKLM\SYSTEM\CurrentControlSet\Enum\IDE') {
+                    $out = & reg.exe query "\\$cn\$root" /s /v FriendlyName 2>&1
+                    if ($LASTEXITCODE -eq 0) {
+                        foreach ($line in $out) { if ($line -match 'FriendlyName\s+REG_SZ\s+(.+)$') { $Matches[1].Trim() } }
+                    }
+                }
+
+                $smbios = $null
+                $smbOut = & reg.exe query "\\$cn\HKLM\SYSTEM\CurrentControlSet\Services\mssmbios\Data" /v SMBiosData 2>&1
+                $hex = ($smbOut | Where-Object { $_ -match 'SMBiosData\s+REG_BINARY\s+([0-9A-Fa-f]+)' } |
+                        ForEach-Object { $Matches[1] }) | Select-Object -First 1
+                if ($hex) {
+                    $bytes = New-Object byte[] ($hex.Length / 2)
+                    for ($i = 0; $i -lt $bytes.Length; $i++) { $bytes[$i] = [Convert]::ToByte($hex.Substring($i * 2, 2), 16) }
+                    $smbios = ConvertFrom-KorSmbios -Bytes $bytes
+                }
+
+                $volume = $null
+                try {
+                    $drv = (New-Object -ComObject Scripting.FileSystemObject).GetDrive((Resolve-KorAdminShare $cn))
+                    $volume = [PSCustomObject]@{ TotalGB = [math]::Round($drv.TotalSize / 1GB, 1); FreeGB = [math]::Round($drv.FreeSpace / 1GB, 1) }
+                } catch { Write-Verbose "Volume size unavailable on ${cn}: $($_.Exception.Message)" }
+
+                [PSCustomObject]@{
+                    ComputerName = $cn
+                    Reachable    = $true
+                    Os           = "$($os['ProductName']) $($os['DisplayVersion']) build $($os['CurrentBuild'])"
+                    Cpu          = $cpu0['ProcessorNameString']
+                    Socket       = $smbios.Processor.Socket
+                    Cores        = $smbios.Processor.Cores
+                    Threads      = $smbios.Processor.Threads
+                    Board        = "$($smbios.Board.Manufacturer) $($smbios.Board.Product)".Trim()
+                    Chassis      = $smbios.Chassis.Type
+                    DiscreteGpu  = @($gpus | Where-Object { $_.Name -notmatch 'Intel\(R\) (UHD|HD|Iris)' }).Name
+                    AllGpus      = $gpus
+                    Memory       = $smbios.Memory
+                    Disks        = @($disks | Select-Object -Unique)
+                    SystemVolume = $volume
+                    # 0x0 here on a box with C:\boot means a legacy MBR install — it will not
+                    # take Windows 11 without a rebuild, which is a planning fact, not a setting.
+                    SecureBoot   = if ($secureBoot.ContainsKey('UEFISecureBootEnabled')) { $secureBoot['UEFISecureBootEnabled'] -ne '0x0' } else { $null }
+                    Smbios       = $smbios
+                }
+            }
+        }
+    }
+}
+
 Export-ModuleMember -Function Test-KorWorkstationChannel, Use-KorRemoteRegistry, Get-KorWorkstationEvent,
     Get-KorOutlookAddin, Get-KorOutlookStore, Get-KorOfficeHealth, Set-KorOutlookAddinState,
     Invoke-KorSearchIndexRebuild, Get-KorWorkstationHealth, Get-KorServiceState, Wait-KorServiceState,
-    Invoke-KorSc, Resolve-KorAdminShare
+    Invoke-KorSc, Resolve-KorAdminShare, Get-KorHardwareProfile, ConvertFrom-KorSmbios

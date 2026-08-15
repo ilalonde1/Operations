@@ -18,6 +18,8 @@
         'Get-KorWorkstationHealth'
         'Get-KorServiceState'
         'Wait-KorServiceState'
+        'Get-KorHardwareProfile'
+        'ConvertFrom-KorSmbios'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()
