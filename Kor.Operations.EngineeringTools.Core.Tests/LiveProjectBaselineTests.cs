@@ -83,6 +83,7 @@ public class LiveProjectBaselineTests
         {
             return DxfToEtabsService.Run(new DxfToEtabsRequest
             {
+                RequireRuleSettings = true,
                 DxfFolder = baseline.DxfFolder,
                 ReferenceE2k = baseline.Reference,
                 OutputE2k = output,
@@ -160,6 +161,7 @@ public class LiveProjectBaselineTests
         {
             DxfToEtabsService.Run(new DxfToEtabsRequest
             {
+                RequireRuleSettings = true,
                 DxfFolder = baseline.DxfFolder,
                 ReferenceE2k = baseline.Reference,
                 OutputE2k = output,
@@ -218,6 +220,7 @@ public class LiveProjectBaselineTests
         {
             var report = DxfToEtabsService.Run(new DxfToEtabsRequest
             {
+                RequireRuleSettings = true,
                 DxfFolder = baseline.DxfFolder,
                 ReferenceE2k = baseline.Reference,
                 OutputE2k = output,

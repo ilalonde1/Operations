@@ -52,6 +52,7 @@ public class ModelPlausibilityTests
         {
             DxfToEtabsService.Run(new DxfToEtabsRequest
             {
+                RequireRuleSettings = true,
                 DxfFolder = project.DxfFolder,
                 ReferenceE2k = project.Reference,
                 OutputE2k = output,
