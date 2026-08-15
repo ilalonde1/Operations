@@ -114,6 +114,101 @@ public class ModelQuestionnaireTests
     }
 
     [Fact]
+    public void MalformedSettingAnswerIsSkippedRatherThanImportedAsPlainRuling()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using (var workbook = new XLWorkbook(path))
+            {
+                var sheet = workbook.Worksheet("Questions");
+                var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
+                w1.Cell(4).Value = "ask Andrea";
+                workbook.Save();
+            }
+
+            var skipped = new List<string>();
+            var parsed = RuleSettings.ReadQuestionAnswers(path, skipped);
+
+            Assert.Empty(parsed);
+            Assert.Contains(skipped, s => s.Contains("W1", StringComparison.Ordinal) &&
+                                          s.Contains("dxf.min-wall-length", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void SettingUnitMetadataMismatchIsSkippedRatherThanImportedAsPlainRuling()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using (var workbook = new XLWorkbook(path))
+            {
+                var sheet = workbook.Worksheet("Questions");
+                var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
+                w1.Cell(4).Value = "48";
+                w1.Cell(8).Value = "in;ft";
+                workbook.Save();
+            }
+
+            var skipped = new List<string>();
+            var parsed = RuleSettings.ReadQuestionAnswers(path, skipped);
+
+            Assert.Empty(parsed);
+            Assert.Contains(skipped, s => s.Contains("setting key count (1)", StringComparison.Ordinal) &&
+                                          s.Contains("setting units count (2)", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void DuplicateSettingAnswersAreSkippedRatherThanLastWriteWins()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using (var workbook = new XLWorkbook(path))
+            {
+                var sheet = workbook.Worksheet("Questions");
+                var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
+                var a1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "A1");
+                w1.Cell(4).Value = "48";
+                a1.Cell(4).Value = "60";
+                a1.Cell(7).Value = "dxf.min-wall-length";
+                a1.Cell(8).Value = "in";
+                workbook.Save();
+            }
+
+            var skipped = new List<string>();
+            var parsed = RuleSettings.ReadQuestionAnswers(path, skipped);
+
+            Assert.DoesNotContain(parsed, p => p.SettingKey == "dxf.min-wall-length");
+            Assert.Contains(skipped, s => s.Contains("dxf.min-wall-length", StringComparison.Ordinal) &&
+                                          s.Contains("answered more than once", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void ConfiguredKorStandardsContainsEveryProductionRule()
     {
         string? connection = Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable);

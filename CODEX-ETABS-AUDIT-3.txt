@@ -1,0 +1,80 @@
+Audit the DXF → ETABS generator against the product it is supposed to be, and close what you
+find. The standard and the current gap inventory are both written down; your job is to test
+both, not to inherit either.
+
+START HERE
+
+  docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md
+
+  Part 1 is the product standard: what this tool must be, what it is given, what it returns, and
+  the three properties — agnostic, honest, learning — that separate a tool from a rescue written
+  around two buildings.
+
+  Part 2 is MY inventory of what does not yet meet that standard, with the measurement behind
+  each. TREAT IT AS A CLAIM, NOT A BRIEF. A gap I have stated wrongly, or a gap I have missed
+  entirely, is worth more to me than one you confirm. If an item is already closed, say so and
+  show the measurement. If my reasoning behind one is faulty, say that too — twice tonight a
+  rule I "fixed" turned out to be right for a reason I had recorded falsely, and finding that
+  out was worth more than the fix.
+
+RULES OF EVIDENCE
+
+  1. Do not treat this tool's report, its documents, or its test suite as evidence that anything
+     is true. They are claims by the thing under audit. Measure instead.
+
+  2. Objects named "K" followed by a letter and digits were written by this tool. Some files in
+     the two job folders are its own output round-tripped through ETABS. Establish provenance
+     before using any file as ground truth.
+
+  3. Two buildings are not evidence about a third. There are roughly 1,400 engineer-authored
+     models under \\Kor-fs01\Projects\Projects. A rule justified from 31168 and 31138 alone is
+     unverified however green the suite is — every threshold measured that way tonight was
+     either wrong or resting on a false reason.
+
+  4. State the file and the numbers behind every finding. A defect read off code is not a
+     finding until you say what it does to a model.
+
+  5. Where you cannot determine something, say so and say what would settle it.
+
+WHAT I MOST WANT
+
+  1. The class of fault that has cost the most here is GEOMETRY THAT LEAVES WITHOUT TELLING
+     ANYONE. Three found in the last two days: block INSERTs never read at all; a footprint
+     outside the column size rules returning silently; and the same edges drawn twice on two
+     layers of one family, building 45 members twice on a job we had shipped. Every one passed a
+     green suite. Look for the next one.
+
+  2. Whether anything is still shaped by these two buildings. The engine's geometry carries no
+     job numbers, but the publish gate still holds an allowlist of their historical figures and a
+     positional check that assumes the summary table's left column is 31168.
+
+  3. Whether the model is right, judged against the DRAWINGS. Both are readable as text on the
+     share. A member on the wrong storey, at the wrong size, of the wrong kind, or in a place the
+     drawings do not show it, is the class no count can see.
+
+  4. The learning loop under stress. It works — answering a question and importing it moved
+     geometry and moved it back. Try to break it: two questions writing the same setting, an
+     answer that does not parse, a setting whose units disagree, an import run twice.
+
+CONSTRAINTS
+
+  - The test suite requires KOR_ENGINEERINGTOOLS_STANDARDSDB. Set it process-local; do not setx
+    it onto the machine. Connection details are in the file the user gave you.
+  - Rules live in KorStandards, not in code. A rule change is a migration in
+    C:\VIsual Studio Projects\KOR.Drafter\db\ — never a constant. There is no fallback value by
+    design: a missing rule stops the run.
+  - Do not modify anything under \\Kor-fs01 except by running the publish script for the two jobs
+    it already names.
+  - Run the FULL suite before claiming anything about it — about eight minutes — and say plainly
+    if you did not. A filtered run says nothing about the models.
+  - If you change a rule value or a baseline, the reason and the counts go in the file beside it.
+    A number nobody can check is the thing we have spent two days removing.
+
+OUTPUT
+
+  Findings worst first: what is wrong, the numbers you measured, what it costs the engineer, how
+  confident you are. Then a second pass trying to knock down your own findings, and say which
+  survive. Four that hold beat twenty that read well.
+
+  Then what you changed and what you verified it against. Then, separately: which items in Part 2
+  you found to be already closed, wrongly stated, or missing.

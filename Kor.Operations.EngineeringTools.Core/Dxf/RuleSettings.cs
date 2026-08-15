@@ -220,9 +220,6 @@ public static class RuleSettings
             if (units.Count is not 0 && units.Count != keys.Count)
             {
                 skipped.Add($"{code}: setting key count ({keys.Count}) does not match setting units count ({units.Count}).");
-                result.Add(new QuestionAnswerRule(
-                    code, scope, topic, question, did, answer,
-                    null, null, null, confidence));
                 continue;
             }
 
@@ -230,9 +227,6 @@ public static class RuleSettings
             if (values.Count < keys.Count)
             {
                 skipped.Add($"{code}: answer does not contain {keys.Count} parseable value(s) for {string.Join(", ", keys)}.");
-                result.Add(new QuestionAnswerRule(
-                    code, scope, topic, question, did, answer,
-                    null, null, null, confidence));
                 continue;
             }
 
@@ -244,6 +238,17 @@ public static class RuleSettings
                     question, did, answer,
                     keys[i], FormatSettingValue(values[i], unit), unit, confidence));
             }
+        }
+
+        foreach (var duplicate in result
+            .Where(r => !string.IsNullOrWhiteSpace(r.SettingKey))
+            .GroupBy(r => r.SettingKey!, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .ToList())
+        {
+            string codes = string.Join(", ", duplicate.Select(r => r.Code).Distinct(StringComparer.OrdinalIgnoreCase));
+            skipped.Add($"{duplicate.Key}: answered more than once in this workbook ({codes}); no ruling was imported for that setting.");
+            result.RemoveAll(r => duplicate.Key.Equals(r.SettingKey, StringComparison.OrdinalIgnoreCase));
         }
 
         return result;
