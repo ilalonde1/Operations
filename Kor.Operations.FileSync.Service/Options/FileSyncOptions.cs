@@ -22,5 +22,16 @@ internal sealed class FileSyncOptions
     public string KorTransmittalsDb { get; set; } = string.Empty;
 
     public int HeartbeatSeconds { get; set; } = 60;
+
+    // KorMapSync credentials. Env vars on KOR-APP01, exactly like the Graph and
+    // SQL settings above -- KOR_FILESYNC_DELTEKUSER / _DELTEKPASSWORD /
+    // _MAPBOXTOKEN / _KORSYNCSECRET. Never in knobs, never in source control.
+    public string DeltekUser { get; set; } = string.Empty;
+
+    public string DeltekPassword { get; set; } = string.Empty;
+
+    public string MapboxToken { get; set; } = string.Empty;
+
+    public string KorSyncSecret { get; set; } = string.Empty;
 }
 

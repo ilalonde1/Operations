@@ -26,6 +26,7 @@
     <PackageReference Include="Microsoft.Identity.Client" Version="4.82.1" />
     <PackageReference Include="Microsoft.Graph" Version="5.103.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageReference Include="System.Data.Odbc" Version="9.0.8" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
       <PrivateAssets>all</PrivateAssets>
