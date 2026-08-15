@@ -402,6 +402,9 @@ public class PlanSheetNamingTests
     public void ARuleIsTakenFromTheReferenceOnlyWhenTheAnswerIsCredible()
     {
         static E2kDocument Model(params (string Panel, double Depth, double StoreyHeight)[] spandrels)
+            => Build(true, spandrels);
+
+        static E2kDocument Build(bool labelled, params (string Panel, double Depth, double StoreyHeight)[] spandrels)
         {
             var lines = new List<string> { "$ STORIES - IN SEQUENCE FROM TOP" };
             for (int i = 0; i < spandrels.Length; i++)
@@ -419,9 +422,13 @@ public class PlanSheetNamingTests
             for (int i = 0; i < spandrels.Length; i++)
                 lines.Add($"  AREA \"{spandrels[i].Panel}\"  PANEL  4  \"P{i}a\"  \"P{i}b\"  \"P{i}b\"  \"P{i}a\"  0  0  0  0");
 
+            // Labelled as spandrels, because that is how ETABS records one and how the rule now
+            // finds them. Inferring it from the panel's offsets read several other things as
+            // spandrels too, and the portfolio showed the quantity being measured was not a depth.
             lines.Add("$ AREA ASSIGNS");
             for (int i = 0; i < spandrels.Length; i++)
-                lines.Add($"  AREAASSIGN  \"{spandrels[i].Panel}\"  \"S{i}\"  SECTION \"W12\"");
+                lines.Add($"  AREAASSIGN  \"{spandrels[i].Panel}\"  \"S{i}\"  SECTION \"W12\"" +
+                          (labelled ? $"  SPANDREL \"SP{i}\"" : string.Empty));
 
             return E2kDocument.Parse(lines);
         }
@@ -442,6 +449,16 @@ public class PlanSheetNamingTests
         // Too few to read anything from.
         var thin = Model(("W0", 30.0, 118.0), ("W1", 30.0, 118.0));
         Assert.False(ReferenceRules.OpeningHeight(thin, fallback: 88.0).FromReference);
+
+        // A model that labels no spandrels yields nothing, however many panels have the shape of
+        // one. That is the whole correction: the old rule inferred a spandrel from its offsets,
+        // which reads several other things as spandrels too, and measured a quantity across the
+        // portfolio that turns out to be an elevation rather than a depth. 31168 is exactly this
+        // case — one spandrel name, no labelled areas — and it must decline rather than guess.
+        var unlabelled = Build(false, Enumerable.Range(0, 10).Select(i => ($"W{i}", 30.0, 118.0)).ToArray());
+        var declined = ReferenceRules.OpeningHeight(unlabelled, fallback: 88.0);
+        Assert.False(declined.FromReference);
+        Assert.Equal(88.0, declined.Value);
     }
 
     /// <summary>

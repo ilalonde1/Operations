@@ -74,7 +74,17 @@ public sealed record DxfToEtabsReport(
     IReadOnlyList<SheetOutcome> Sheets,
     IReadOnlyList<string> Warnings,
     PlanClassificationOptions ClassificationUsed,
-    ComposeOptions ComposeUsed);
+    ComposeOptions ComposeUsed)
+{
+    /// <summary>
+    /// Every rule this run read from KorStandards, with its value, its authority and the reason it
+    /// holds. Carried on the report so the deliverable can show an engineer the whole rule set
+    /// rather than only the rules a question happens to ask about — a rule she cannot see is one
+    /// she cannot disagree with. Empty on a run that was not given the rules database.
+    /// </summary>
+    public IReadOnlyDictionary<string, RuleSetting> RulesApplied { get; init; }
+        = new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase);
+}
 
 /// <summary>
 /// Turns a folder of structural plan DXFs into an ETABS model: read, classify,
@@ -90,6 +100,7 @@ public static class DxfToEtabsService
         "dxf.min-wall-length",
         "dxf.min-panel-overlap",
         "dxf.connect-walls",
+        "dxf.floor-from-perimeter-wall",
         "dxf.min-opening-span",
         "dxf.max-opening-span",
         "dxf.min-wall-aspect",
@@ -129,6 +140,7 @@ public static class DxfToEtabsService
             ["dxf.min-wall-length"] = classification.MinWallLength,
             ["dxf.min-panel-overlap"] = classification.MinPanelOverlap,
             ["dxf.connect-walls"] = classification.ConnectWalls ? 1 : 0,
+            ["dxf.floor-from-perimeter-wall"] = classification.FloorFromPerimeterWall ? 1 : 0,
             ["dxf.min-opening-span"] = classification.MinOpeningSpan,
             ["dxf.max-opening-span"] = classification.MaxOpeningSpan,
             ["dxf.min-wall-aspect"] = classification.MinWallAspect,
@@ -175,6 +187,7 @@ public static class DxfToEtabsService
             MinWallLength = settings.ValueOr("dxf.min-wall-length", options.MinWallLength),
             MinPanelOverlap = settings.ValueOr("dxf.min-panel-overlap", options.MinPanelOverlap),
             ConnectWalls = settings.FlagOr("dxf.connect-walls", options.ConnectWalls),
+            FloorFromPerimeterWall = settings.FlagOr("dxf.floor-from-perimeter-wall", options.FloorFromPerimeterWall),
             MinOpeningSpan = settings.ValueOr("dxf.min-opening-span", options.MinOpeningSpan),
             MaxOpeningSpan = settings.ValueOr("dxf.max-opening-span", options.MaxOpeningSpan),
             MinWallAspect = settings.ValueOr("dxf.min-wall-aspect", options.MinWallAspect),
@@ -466,7 +479,10 @@ public static class DxfToEtabsService
         return new DxfToEtabsReport(
             request.OutputE2k, files.Count, parsed.Count,
             placements.Select(p => p.Story.Name).Distinct().Count(),
-            summary, offset, outcomes, warnings, requested, composeFromReference);
+            summary, offset, outcomes, warnings, requested, composeFromReference)
+        {
+            RulesApplied = banked,
+        };
     }
 
     /// <summary>

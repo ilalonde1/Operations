@@ -1,0 +1,148 @@
+Audit 4. The working tree now claims the DXF → ETABS generator is a finished deliverable: that
+every judgement the tool makes has been decided rather than asked, that each decision carries a
+real measurement beside it, and that an engineer can overturn any of them from one cell. Find out
+where that is not true.
+
+Audits 2 and 3 are in this folder. Do not repeat them; assume nothing they found stayed fixed.
+
+WHAT YOU ARE LOOKING AT
+
+  None of this is committed and none of it has been reviewed. The session that wrote it ran out
+  of context partway through and resumed from a summary of itself, so continuity of intent is
+  unproven. Look specifically for edits that contradict each other, changes applied to one of two
+  places that needed them, and prose written before a later change made it false.
+
+  The suite result for this exact tree is not known. Do not assume it is green.
+
+  Uncommitted, and in scope:
+
+    Kor.Operations.EngineeringTools.Core/Dxf/ModelQuestionnaire.cs
+    Kor.Operations.EngineeringTools.Core/Dxf/StructuralPlanClassifier.cs
+    Kor.Operations.EngineeringTools.Core/Dxf/DxfToEtabsService.cs
+    Kor.Operations.EngineeringTools.Core/Dxf/LayerLedger.cs
+    Kor.Operations.EngineeringTools.Core/Dxf/ReferenceRules.cs
+    Kor.Operations.EngineeringTools.Core.Tests/ModelQuestionnaireTests.cs
+    Kor.Operations.EngineeringTools.Core.Tests/DxfToEtabsTests.cs
+    Kor.Operations.EngineeringTools.Core.Tests/PortfolioRuleTests.cs        (new)
+    Kor.Operations.EngineeringTools.Core.Tests/ReferenceModelShapeTests.cs  (new)
+    tools/Publish-EtabsModel.ps1
+    docs/KOR-DxfToEtabs-dossier.html
+    docs/KOR-DxfToEtabs-onepager.html
+    docs/KOR-DxfToEtabs-web.pdf
+    docs/KOR-DxfToEtabs-onepager-web.pdf
+    docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md
+
+  And one migration applied to KorStandards from outside the repo:
+
+    C:\VIsual Studio Projects\KOR.Drafter\db\039_FloorFromPerimeterWallIsASwitch.sql
+
+  Out of scope, different work: Kor.Operations.FileSync.Service, tools/WorkstationOps,
+  Kor.Operations.App.
+
+THE STANDARD
+
+  docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md. Part 1 is the product standard — agnostic, honest,
+  learning. Part 2 is the gap inventory, and it was rewritten in this same unreviewed batch with
+  several items newly marked CLOSED. Those closures are claims under audit. An item marked closed
+  that is not closed is a finding, and a worse one than an open gap, because it stops anyone
+  looking.
+
+RULES OF EVIDENCE
+
+  1. The report, the documents, the workbook and the test suite are claims made by the thing
+     under audit. None is evidence. Measure the artifact.
+
+  2. Read the shipped PDFs as text, not the HTML they were built from. A document is what lands
+     in the engineer's folder, not what the source says it should be.
+
+  3. Objects named "K" followed by a letter and digits were written by this tool, and some files
+     in the two job folders are its own output round-tripped through ETABS. Establish provenance
+     before using any file as ground truth.
+
+  4. A check is not proved by passing. It is proved by failing on the defect it exists for. If
+     you cannot make one fail deliberately, say so — that check is decoration.
+
+  5. State the file and the numbers behind every finding. A defect read off code is not a finding
+     until you say what it does to a model an engineer opens.
+
+  6. Where you cannot determine something, say so and say what would settle it.
+
+WHAT I WANT TESTED
+
+  Questions, not a list of suspected faults. Answer them with measurements, and do not stop at
+  the edge of this list.
+
+  1. THE WORKBOOK SAYS EVERY JUDGEMENT IS SETTLED. Is it, and is each stated reason true?
+     Generate it for both jobs. Row by row: does the value it says was used match the value the
+     run actually used on that job? Does the evidence describe something really present in the
+     model or the drawings it names? Does any row state a fact about one job inside the other
+     job's workbook? A row marked DECIDED with a wrong reason is worse than an open question,
+     because nobody re-checks it.
+
+  2. DOES AN OVERRIDE ACTUALLY OVERRIDE? Prove it end to end with a rule that has never been
+     driven through this path before — not one that already has a test:
+
+       generate the workbook → answer a row written as already decided → dxf-import-rules →
+       regenerate → confirm the geometry moved the way the answer demands → restore → confirm it
+       moves back
+
+     Then try to break it: a malformed answer, a row binding several settings answered with one
+     number, two rows writing the same setting, an answer typed into a hidden column, the import
+     run twice. For each, say which happens — silently ignored, silently half-applied, or refused
+     with a reason the engineer can act on.
+
+     This writes real rows to KorStandards.analysis. That is the mechanism working as designed.
+     Say exactly what you wrote, and leave the database holding the values it started with.
+
+  3. IS EVERY RULE THE TOOL RUNS ON VISIBLE, AND DOES THE DATABASE AGREE WITH THE CODE? Keys,
+     values, units, confidence. Any rule the code applies that KorStandards does not hold, or
+     holds and the code ignores. Whether migration 039 is idempotent and whether the live
+     database matches what a clean run of that file would produce.
+
+  4. DO THE DOCUMENTS SAY ONLY THINGS TRUE OF THE MODELS SHIPPING BESIDE THEM? Every count,
+     storey name and claim about behaviour, in the dossier, the one-pager and the per-job
+     summary. Then the harder question: what does a document assert that no automated check could
+     ever catch, and is it true?
+
+  5. THE PUBLISH GATE. It exists to stop a stale or wrong document reaching an engineer. Make it
+     fail on purpose several ways — a count one out, a true claim phrased so no pattern sees it,
+     a document shipped beside a job it does not describe. Where it does not catch something, say
+     what phrasing gets through.
+
+  6. IF I HAND IT A THIRD JOB TOMORROW, WHAT DOES THE ENGINEER GET AND WHAT IS WRONG WITH IT?
+     Answer concretely. Values, prose, folder-layout assumptions, sheet naming, layer names,
+     allowlists — anything that only makes sense for 31168 and 31138.
+
+  7. ANYTHING THAT LEAVES THE MODEL WITHOUT APPEARING IN THE REPORT. Read and dropped, skipped,
+     deduplicated, or fallen back on, where no count moves and no flag is raised. This class has
+     cost more here than every other combined, and each instance passed a green suite.
+
+CONSTRAINTS
+
+  - Do not modify anything under \\Kor-fs01 except by running the publish script for the two jobs
+    the documents already name.
+  - Set KOR_ENGINEERINGTOOLS_STANDARDSDB process-local. Never setx it onto the machine.
+    Connection details are in the file the user gave you.
+  - Rules live in KorStandards, not in code. A rule change is a migration in
+    C:\VIsual Studio Projects\KOR.Drafter\db\ — never a constant. There is no fallback value by
+    design: a missing rule stops the run.
+  - No destructive git. Do not reset, rebase, force, checkout over, or discard the working tree —
+    it is the thing being audited.
+  - Schema changes are not yours to run. Data is fine; say what you wrote.
+  - Run the FULL suite before claiming anything about it — eight to twelve minutes — and say
+    plainly if you did not. A filtered run says nothing about the models.
+  - If you change a rule value or a baseline, the reason and the counts go in the file beside it.
+
+OUTPUT
+
+  Findings worst first: what is wrong, the numbers you measured, what it costs the engineer who
+  opens the model, how confident you are.
+
+  Then a second pass arguing against your own findings and trying to knock each down. Say which
+  survive. Four that hold beat twenty that read well.
+
+  Then, separately: what you changed and what you verified each change against.
+
+  Then: which Part 2 items you found already closed, wrongly stated, or missing entirely.
+
+  Last, one line on what you could not determine and what would settle it.

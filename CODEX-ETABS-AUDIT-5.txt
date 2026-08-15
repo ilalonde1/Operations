@@ -1,0 +1,125 @@
+Audit the DXF → ETABS generator against the standard it is supposed to meet. Find what fails it.
+
+Record `git rev-parse HEAD` before you start and state it in your output, so what you audited is
+identifiable later.
+
+WHOSE CLAIMS ARE IN THIS TREE
+
+  Two agents have been working on this code, in parallel, without reviewing each other. Nothing
+  here has been read by an engineer. Treat every artifact in it as an unverified claim by whoever
+  wrote it — including:
+
+    - the code comments, which are long and confident and frequently describe intent rather than
+      behaviour
+    - docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md, whose Part 2 inventory carries items marked CLOSED
+    - the test suite, its assertions, and what its test names claim to prove
+    - the shipped documents in docs/
+    - the workbook the tool generates
+    - any prior audit output referenced in this folder
+
+  You are not being asked to confirm any of it. An item asserted as done that is not done is a
+  more valuable finding than a new bug, because it is the one nobody will look at again.
+
+THE STANDARD
+
+  docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md Part 1 states what this tool must be. Three properties:
+
+  AGNOSTIC. It must work on any job, for any structural engineer, with nothing in it that knows
+  about a particular building, a particular drafting office, or a particular set of drawings.
+  This is the property the owner is least satisfied with and most wants tested. Do not limit that
+  to job numbers. Ask what this tool assumes about the drawings it is given — names, structure,
+  units, conventions, folder layout, export habits — and which of those assumptions a different
+  firm would not satisfy. For each, say what the engineer gets: an error, a warning, or a quietly
+  incomplete model.
+
+  HONEST. Anything read and not modelled, discarded, skipped, deduplicated, substituted or fallen
+  back on must appear in the report. A correct decision made silently is indistinguishable from a
+  bug, and this class has cost more here than any other.
+
+  LEARNING. An engineer's answer must become a rule applied to every job afterwards with no code
+  change. Rules and their evidence live in KorStandards; the code is the machine that applies
+  them. Test the claim as an engineer would experience it, not as the code describes it.
+
+RULES OF EVIDENCE
+
+  1. Measure the artifact. The report, the documents, the workbook and the suite are outputs of
+     the thing under audit and are not evidence about it.
+
+  2. Read shipped PDFs as text, not the HTML they were built from. A document is what lands in
+     the engineer's folder.
+
+  3. Objects named "K" followed by a letter and digits were written by this tool, and some files
+     in the job folders are its own output round-tripped through ETABS. Establish provenance
+     before treating any file as ground truth.
+
+  4. A check is proved by failing on the defect it exists for, not by passing. If you cannot make
+     one fail deliberately, say so.
+
+  5. Two buildings are not evidence about a third. Roughly 1,400 engineer-authored models sit
+     under \\Kor-fs01\Projects\Projects. A value justified from 31168 and 31138 alone is
+     unverified however green the suite is.
+
+  6. State the file and the numbers behind every finding. A defect read off code is not a finding
+     until you say what it does to a model an engineer opens.
+
+  7. Where you cannot determine something, say so and say what would settle it.
+
+WHAT TO ANSWER
+
+  Open questions. Answer them with measurements. This list is not a boundary — anything you find
+  that fails the standard is in scope, whether or not it is asked about here.
+
+  1. Hand it a job it has never seen, from a firm that is not this one. What does the engineer
+     get? Be concrete about what breaks, what degrades silently, and what would have to change.
+
+  2. Is anything in this tool true only of the drawings it was built against?
+
+  3. Does the model match the drawings? Both are readable as text. A member on the wrong storey,
+     at the wrong size, of the wrong kind, or in a place the drawings do not show it, is the
+     class no count can see.
+
+  4. What can leave the model without appearing in the report?
+
+  5. Take the learning loop end to end and try to break it. Say for each failure mode whether it
+     is refused with a reason, silently ignored, or silently half-applied.
+
+  6. Does what the code requires match what the database holds — keys, values, units, confidence,
+     one active source per key? Are the migrations idempotent and does the live database match a
+     clean run of them?
+
+  7. Do the shipped documents and the generated workbook say anything that is not true of the
+     models beside them?
+
+  8. Which Part 2 items are wrongly stated, wrongly closed, or missing?
+
+CONSTRAINTS
+
+  - Do not modify anything under \\Kor-fs01 except by running the publish script for the two jobs
+    the documents already name.
+  - Set KOR_ENGINEERINGTOOLS_STANDARDSDB process-local. Never setx it onto the machine.
+    Connection details are in the file the user gave you.
+  - Rules live in KorStandards, not in code. A rule change is a migration in
+    C:\VIsual Studio Projects\KOR.Drafter\db\ — never a constant. There is no fallback value by
+    design: a missing rule stops the run.
+  - Writes to analysis.Ruling are the mechanism working as intended. Say exactly what you wrote,
+    and leave the database holding the values it started with.
+  - Schema changes are not yours to run.
+  - No destructive git. Do not reset, rebase, force, checkout over, or discard anything — the
+    tree is the subject.
+  - Run the FULL suite before claiming anything about it, and say plainly if you did not. Ten to
+    fourteen minutes. A filtered run says nothing about the models.
+  - If you change a rule value or a baseline, the reason and the counts go in the file beside it.
+
+OUTPUT
+
+  Findings worst first: what is wrong, the numbers you measured, what it costs the engineer who
+  opens the model, how confident you are.
+
+  Then a second pass arguing against each of your own findings and trying to knock it down. Say
+  which survive. Four that hold beat twenty that read well.
+
+  Then, separately: what you changed and what you verified each change against.
+
+  Then: which Part 2 items are wrongly stated, wrongly closed, or missing.
+
+  Last, one line on what you could not determine and what would settle it.

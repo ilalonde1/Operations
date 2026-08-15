@@ -25,15 +25,14 @@ public class ModelQuestionnaireTests
 
             using var workbook = new XLWorkbook(path);
             var sheet = workbook.Worksheet("Questions");
-            Assert.Equal("Rule scope", sheet.Cell(4, 5).GetString());
-            Assert.Equal("Rule topic", sheet.Cell(4, 6).GetString());
-            Assert.Equal("Setting key", sheet.Cell(4, 7).GetString());
-            Assert.True(sheet.Column(5).IsHidden);
-            Assert.True(sheet.Column(9).IsHidden);
+            int scope = Col(sheet, "Rule scope"), topic = Col(sheet, "Rule topic"), key = Col(sheet, "Setting key");
+            Assert.True(sheet.Column(scope).IsHidden);
+            Assert.True(sheet.Column(Col(sheet, "Confidence")).IsHidden);
+            Assert.False(sheet.Column(Col(sheet, "YOUR ANSWER")).IsHidden);
             Assert.Contains("corner-limbs-vs-stocky-pier",
-                sheet.RowsUsed().Select(r => r.Cell(6).GetString()));
+                sheet.RowsUsed().Select(r => r.Cell(topic).GetString()));
             Assert.Contains("dxf.opening-height;dxf.spandrel-depth-floor;dxf.spandrel-depth-ceiling",
-                sheet.RowsUsed().Select(r => r.Cell(7).GetString()));
+                sheet.RowsUsed().Select(r => r.Cell(key).GetString()));
         }
         finally
         {
@@ -67,7 +66,7 @@ public class ModelQuestionnaireTests
             {
                 var sheet = workbook.Worksheet("Questions");
                 var h1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "H1");
-                h1.Cell(4).Value = "Opening height 90, clamp 18-60";
+                h1.Cell(Col(sheet, "YOUR ANSWER")).Value = "Opening height 90, clamp 18-60";
                 workbook.Save();
             }
 
@@ -98,7 +97,7 @@ public class ModelQuestionnaireTests
             {
                 var sheet = workbook.Worksheet("Questions");
                 var s1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "S1");
-                s1.Cell(4).Value = "Use 450 sq ft";
+                s1.Cell(Col(sheet, "YOUR ANSWER")).Value = "Use 450 sq ft";
                 workbook.Save();
             }
 
@@ -126,7 +125,7 @@ public class ModelQuestionnaireTests
             {
                 var sheet = workbook.Worksheet("Questions");
                 var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
-                w1.Cell(4).Value = "ask Andrea";
+                w1.Cell(Col(sheet, "YOUR ANSWER")).Value = "ask Andrea";
                 workbook.Save();
             }
 
@@ -156,8 +155,8 @@ public class ModelQuestionnaireTests
             {
                 var sheet = workbook.Worksheet("Questions");
                 var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
-                w1.Cell(4).Value = "48";
-                w1.Cell(8).Value = "in;ft";
+                w1.Cell(Col(sheet, "YOUR ANSWER")).Value = "48";
+                w1.Cell(Col(sheet, "Setting units")).Value = "in;ft";
                 workbook.Save();
             }
 
@@ -188,10 +187,11 @@ public class ModelQuestionnaireTests
                 var sheet = workbook.Worksheet("Questions");
                 var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
                 var a1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "A1");
-                w1.Cell(4).Value = "48";
-                a1.Cell(4).Value = "60";
-                a1.Cell(7).Value = "dxf.min-wall-length";
-                a1.Cell(8).Value = "in";
+                int answer = Col(sheet, "YOUR ANSWER");
+                w1.Cell(answer).Value = "48";
+                a1.Cell(answer).Value = "60";
+                a1.Cell(Col(sheet, "Setting key")).Value = "dxf.min-wall-length";
+                a1.Cell(Col(sheet, "Setting units")).Value = "in";
                 workbook.Save();
             }
 
@@ -211,9 +211,19 @@ public class ModelQuestionnaireTests
     [Fact]
     public void ConfiguredKorStandardsContainsEveryProductionRule()
     {
+        // This FAILS when the rules database is unreachable, where the share-backed tests SKIP.
+        // The asymmetry is deliberate and worth stating, because the two look inconsistent.
+        //
+        // A missing drawing means there is nothing to check: the test has no subject, so skipping
+        // is honest. A missing rule means we do not know what we are checking AGAINST — the suite
+        // would fall back to the values compiled into the tool and certify a model that production,
+        // which reads the database, would never build. A green run that proves the wrong thing is
+        // worse than no run.
         string? connection = Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable);
         Assert.False(string.IsNullOrWhiteSpace(connection),
-            $"{RuleSettings.ConnectionEnvironmentVariable} must be set for the DB-authoritative DXF-to-ETABS rule gate.");
+            $"{RuleSettings.ConnectionEnvironmentVariable} is not set, so this suite would test the values built " +
+            "into the tool while production reads them from KorStandards. Set it (process-local is fine) and " +
+            "run again. A missing drawing may be skipped; a missing rule may not.");
 
         var settings = RuleSettings.LoadRequired(connection, DxfToEtabsService.RequiredRuleKeys);
 
@@ -221,6 +231,277 @@ public class ModelQuestionnaireTests
         Assert.Equal(18, settings["dxf.spandrel-depth-floor"].Value);
         Assert.Equal(0, settings["dxf.extend-limit"].Value);
     }
+
+    [Fact]
+    public void EveryRowSaysWhetherItIsOursToDecideOrTheirsToAnswer()
+    {
+        // A decision that reads like a question wastes an engineer's time; a question that reads
+        // like a decision loses the answer. The workbook has to say which each row is, in a column
+        // nobody has to unhide — and the page's own introduction has to describe the page that was
+        // written, not the one it used to be.
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using var workbook = new XLWorkbook(path);
+            var sheet = workbook.Worksheet("Questions");
+            int status = Col(sheet, "Status");
+            Assert.False(sheet.Column(status).IsHidden);
+
+            var byCode = sheet.RowsUsed().Where(r => r.RowNumber() > 4)
+                .ToDictionary(r => r.Cell(1).GetString(), r => r.Cell(status).GetString());
+
+            var questions = ModelQuestionnaire
+                .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report);
+
+            Assert.Contains(questions, q => q.Decided);
+            foreach (var q in questions)
+                Assert.Equal(
+                    !q.Decided ? "NEEDS YOU" : ModelQuestionnaire.Changeable(q) ? "DECIDED" : "SCOPE",
+                    byCode[q.Code]);
+
+            string intro = sheet.Cell(2, 1).GetString();
+            if (questions.All(q => q.Decided))
+                Assert.DoesNotContain("NEEDS YOU", intro, StringComparison.Ordinal);
+            else
+                Assert.Contains("NEEDS YOU", intro, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void EveryDecisionWeTookCarriesTheEvidenceThatDroveIt()
+    {
+        // This is the entire basis for settling these ourselves instead of sending them out as
+        // questions. A decided row with nothing in its Evidence column is a hardcode with a label
+        // on it, and the engineer has no way to argue with a number she cannot see the reason for.
+        var report = MinimalReport(Path.Combine(Path.GetTempPath(), "unused.xlsx"));
+        var decided = ModelQuestionnaire
+            .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report)
+            .Where(q => q.Decided)
+            .ToList();
+
+        Assert.NotEmpty(decided);
+        foreach (var q in decided)
+            Assert.False(string.IsNullOrWhiteSpace(q.Evidence),
+                $"{q.Code} is marked DECIDED but carries no evidence.");
+    }
+
+    [Fact]
+    public void AnsweringADecidedRowOverridesIt()
+    {
+        // The whole basis for deciding these ourselves is that one cell takes it back. If a DECIDED
+        // row could not be overridden it would be a hardcode wearing a label.
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using (var workbook = new XLWorkbook(path))
+            {
+                var sheet = workbook.Worksheet("Questions");
+                var a1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "A1");
+                Assert.Equal("DECIDED", a1.Cell(Col(sheet, "Status")).GetString());
+                a1.Cell(Col(sheet, "YOUR ANSWER")).Value = "2.5";
+                workbook.Save();
+            }
+
+            var parsed = RuleSettings.ReadQuestionAnswers(path);
+            var rule = Assert.Single(parsed, a => a.SettingKey == "dxf.max-column-aspect");
+            Assert.Equal("2.5", rule.SettingValue);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void EveryRuleTheRunAppliedIsVisibleWhetherOrNotAQuestionAsksAboutIt()
+    {
+        // The questions sheet covers judgement. This one covers everything, including the seven
+        // geometry tolerances no question touches — a rule an engineer cannot see is one she cannot
+        // disagree with, and "why did that outline not close" needs a number she can name.
+        string? connection = Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable);
+        Assert.False(string.IsNullOrWhiteSpace(connection));
+
+        var applied = RuleSettings.LoadRequired(connection, DxfToEtabsService.RequiredRuleKeys);
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path) with { RulesApplied = applied };
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using var workbook = new XLWorkbook(path);
+            var sheet = workbook.Worksheet("Rules in force");
+            var listed = sheet.RowsUsed().Where(r => r.RowNumber() > 4)
+                .ToDictionary(r => r.Cell(1).GetString(), r => r.Cell(4).GetString());
+
+            foreach (string key in DxfToEtabsService.RequiredRuleKeys)
+                Assert.True(listed.ContainsKey(key), $"{key} governs the model and is on no sheet.");
+
+            // A rule a question binds must point at that question, or the engineer changes it in
+            // the wrong place and nothing happens.
+            Assert.Equal("question W1", listed["dxf.min-wall-length"]);
+            Assert.Equal("question F1", listed["dxf.floor-from-perimeter-wall"]);
+            // And a rule no question binds must not appear to point at one. Checked against the
+            // exact cell rather than for the word "question", which the unbound wording also uses.
+            Assert.DoesNotMatch(@"^question\s", listed["dxf.join-tolerance"]);
+            Assert.Contains("becomes a question", listed["dxf.join-tolerance"], StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void ARowOffersAnAnswerOnlyWhereAnAnswerChangesSomething()
+    {
+        // The failure this exists for: all 25 rows were marked DECIDED in one colour with an empty
+        // cream answer box, and seven of them had no setting key at all. An engineer could answer
+        // C1, F2, M1, M2, O1, P1 or S2, see it accepted, and get an identical model back. The
+        // workbook was inviting an answer it could not act on.
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using var workbook = new XLWorkbook(path);
+            var sheet = workbook.Worksheet("Questions");
+            int status = Col(sheet, "Status"), answer = Col(sheet, "YOUR ANSWER");
+
+            var rows = sheet.RowsUsed().Where(r => r.RowNumber() > 4)
+                .ToDictionary(r => r.Cell(1).GetString(), r => r);
+
+            var questions = ModelQuestionnaire
+                .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report);
+
+            int changeable = 0, scope = 0;
+            foreach (var q in questions)
+            {
+                var row = rows[q.Code];
+                string shown = row.Cell(status).GetString();
+
+                if (!q.Decided)
+                {
+                    Assert.Equal("NEEDS YOU", shown);
+                    continue;
+                }
+
+                if (ModelQuestionnaire.Changeable(q))
+                {
+                    changeable++;
+                    Assert.Equal("DECIDED", shown);
+                    Assert.True(string.IsNullOrEmpty(row.Cell(answer).GetString()),
+                        $"{q.Code} is answerable, so its answer cell must start empty.");
+                }
+                else
+                {
+                    scope++;
+                    Assert.Equal("SCOPE", shown);
+
+                    // Empty, not a dash. A placeholder here is a nonblank answer to the importer.
+                    Assert.True(string.IsNullOrEmpty(row.Cell(answer).GetString()),
+                        $"{q.Code} is a SCOPE row; its answer cell must hold nothing at all.");
+                }
+            }
+
+            // Both kinds must actually be present, or this test passes by having nothing to check.
+            Assert.True(changeable > 0 && scope > 0,
+                $"expected both kinds of row; got {changeable} changeable and {scope} scope.");
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void AnUntouchedWorkbookImportsNothingAtAll()
+    {
+        // Found by the suite the moment it existed: marking SCOPE rows with a dash so they would
+        // not read as empty fields put a nonblank string in the answer column, and the importer
+        // banked seven rulings per import that no engineer had typed. Whatever the sheet writes
+        // into that column, a workbook nobody has answered must import as silence.
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            var skipped = new List<string>();
+            Assert.Empty(RuleSettings.ReadQuestionAnswers(path, skipped));
+            Assert.Empty(skipped);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void ADashMeansNothingToSayRatherThanAnAnswer()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            using (var workbook = new XLWorkbook(path))
+            {
+                var sheet = workbook.Worksheet("Questions");
+                var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
+                w1.Cell(Col(sheet, "YOUR ANSWER")).Value = "—";
+                workbook.Save();
+            }
+
+            var skipped = new List<string>();
+            Assert.Empty(RuleSettings.ReadQuestionAnswers(path, skipped));
+            Assert.Empty(skipped);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void NeitherIntroductionPromisesThatEveryAnswerBecomesARule()
+    {
+        // Tested on the string rather than the sheet, because the branch that does not render is
+        // the one that rots. This text claimed "any nonblank answer becomes a rule applied to every
+        // job from then on" — false for every row with no setting key — and a correction to the
+        // rendered branch left the claim alive in the other one.
+        foreach (string intro in new[]
+                 {
+                     ModelQuestionnaire.Introduction(open: 0, changeable: 18),
+                     ModelQuestionnaire.Introduction(open: 3, changeable: 18),
+                 })
+        {
+            Assert.DoesNotMatch(@"(?i)any[^.]*answer[^.]*becomes a rule", intro);
+            Assert.DoesNotMatch(@"(?i)every[^.]*answer[^.]*becomes a rule", intro);
+            Assert.DoesNotMatch(@"(?i)overrides any (row|decision|of them)", intro);
+            Assert.DoesNotMatch(@"(?i)one cell overrides", intro);
+
+            // And it must say the thing that is true, rather than merely omitting the lie.
+            Assert.Contains("SCOPE", intro, StringComparison.Ordinal);
+            Assert.Contains("tied to a rule", intro, StringComparison.Ordinal);
+        }
+    }
+
+    private static int Col(IXLWorksheet sheet, string header)
+        => sheet.Row(4).CellsUsed()
+            .Single(c => c.GetString().Trim().Equals(header, StringComparison.OrdinalIgnoreCase))
+            .Address.ColumnNumber;
 
     private static DxfToEtabsReport MinimalReport(string path)
         => new(

@@ -46,6 +46,15 @@ public sealed record PlanClassificationOptions
     public bool ConnectWalls { get; init; } = true;
 
     /// <summary>
+    /// Where no slab edge closes on a storey, take its floor from the inside face of the perimeter
+    /// wall. On, because a storey with no plate has no diaphragm at all and its walls and columns
+    /// read as unsupported — an approximation beats nothing there. Off for an engineer who would
+    /// rather see the gap than an outline she did not draw; a real slab edge always wins over this
+    /// either way, so turning it off changes nothing on a storey that has one.
+    /// </summary>
+    public bool FloorFromPerimeterWall { get; init; } = true;
+
+    /// <summary>
     /// Narrowest and widest gap between in-line wall ends that counts as an opening wanting a
     /// header over it. Measured on 31168: one cluster of 142 gaps between 36" and 48", nothing
     /// below 18", and a separate group past 120" that is different walls rather than an opening.
@@ -379,7 +388,7 @@ public static class StructuralPlanClassifier
         // A storey whose slab edges will not close still has a floor, and the inside of its
         // perimeter wall is the outline of it. Used only as a fallback: where the slab layers gave
         // a plate, that plate is the better boundary and this is ignored.
-        if (result.Slabs.Count == 0 && result.EnclosedByWalls.Count > 0)
+        if (options.FloorFromPerimeterWall && result.Slabs.Count == 0 && result.EnclosedByWalls.Count > 0)
         {
             var enclosed = result.EnclosedByWalls
                 .Where(l => l.Area >= options.MinPlateArea)
@@ -590,6 +599,26 @@ public static class StructuralPlanClassifier
         bool round = loop.Points.Count > 0 &&
                      onCurve >= loop.Points.Count * 0.8 &&
                      longSide > 0 && (longSide - shortSide) / longSide < 0.10;
+
+        // Drawn round, but not with arcs.
+        //
+        // Roundness is taken from arc provenance and nothing else, because every shape test fails
+        // it: a chamfered square fills pi/4 of its box and scores as a circle, which is how 160 of
+        // them once became 10" cylinders. But the converse is a real risk in the other direction —
+        // a drafter who draws a circle as a many-sided polyline gets a SQUARE column and nothing
+        // says so. That cannot be settled from shape either, so it is reported rather than decided:
+        // a footprint with many vertices, near-square, filling about pi/4 of its box, and carrying
+        // no arc at all, is exactly what a polygonised circle looks like.
+        if (!round && loop.Points.Count >= 8 && longSide > 0 &&
+            (longSide - shortSide) / longSide < 0.10)
+        {
+            double fill = Math.Abs(loop.SignedArea) / (longSide * shortSide);
+            if (fill is > 0.72 and < 0.85)
+                result.Flags.Add(
+                    $"{loop.Layer}: a {shortSide:0}x{longSide:0} footprint with {loop.Points.Count} vertices fills " +
+                    $"{fill:0.00} of its box and is drawn with no arc, which is what a circle drawn as a polyline " +
+                    "looks like. Modelled square — check whether it is round.");
+        }
 
         result.Columns.Add(round
             ? new ColumnFootprint(loop.Centroid(), longSide, longSide, loop.Layer, 0) { IsRound = true }

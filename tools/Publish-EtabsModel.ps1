@@ -108,6 +108,93 @@ Write-Host "generating $Project..." -ForegroundColor DarkGray
     Select-String -Pattern 'Storeys built|^Walls|^Columns|^Floors'
 if ($LASTEXITCODE -ne 0) { throw 'generation failed.' }
 
+# ---------------------------------------------------------------------------------------------
+# A summary of THIS job, written from this job's own model and report.
+#
+# The dossier is a deep explainer for the two jobs it names and does not generalise. Without
+# something in its place a third job arrives as a bare .e2k and a text report, and the engineer
+# has to read the whole report to learn whether anything is missing. This is the page that says
+# what was built and what was not, in the job's own numbers, so it cannot be wrong about a
+# building it is not describing.
+# ---------------------------------------------------------------------------------------------
+$reportPath = Join-Path $folder "$Project-FROM-DRAWINGS-report.txt"
+$model      = Get-Content -LiteralPath $out
+$counts = [ordered]@{
+    # Storeys the building has, not rows in the list: the base carries an elevation, not a height.
+    'Storeys populated' = @($model | Select-String '^\s+STORY\s+"[^"]+"\s+HEIGHT').Count
+    'Wall panels'       = @($model | Select-String '^\s+AREA\s+"KW\d+"\s+PANEL').Count
+    'Columns'           = @($model | Select-String '^\s+LINE\s+"KC\d+"\s+COLUMN').Count
+    'Floor plates'      = @($model | Select-String '^\s+AREA\s+"KF\d+"\s+FLOOR').Count
+    'Headers'           = @($model | Select-String '^\s+AREA\s+"KS\d+"\s+PANEL').Count
+    'Openings cut'      = @($model | Select-String '^\s+AREA\s+"KO\d+"\s+AREA').Count
+}
+
+# Everything the run declined to do, in its own words. These lines are the honest half of the
+# page and are taken verbatim rather than summarised, because summarising is where they soften.
+$notModelled = @()
+if (Test-Path $reportPath) {
+    $flags = Select-String -Path $reportPath -Pattern '^\s+- ' |
+        ForEach-Object { $_.Line.Trim().TrimStart('-').Trim() } |
+        Where-Object { $_ -match 'not |no |could not|were |outside|drawn more than once|beneath' }
+
+    # A flag naming a sheet repeats once per sheet. Twelve lines saying the same thing about
+    # twelve drawings is not a summary of anything — it is the report again, and the reader
+    # stops. Model-wide findings are shown as written; per-sheet ones are grouped by what they
+    # SAY, with the sheet count and the total in front.
+    $modelWide = @($flags | Where-Object { $_ -notmatch '\.dxf:' })
+    $perSheet  = @($flags | Where-Object { $_ -match '\.dxf:' })
+
+    $grouped = $perSheet |
+        ForEach-Object {
+            $text = ($_ -replace '^.*?\.dxf:\s*', '')
+            [pscustomobject]@{
+                Shape = ($text -replace '\d[\d,]*', '#')
+                Total = [int](([regex]::Match($text, '^(\d[\d,]*)')).Groups[1].Value -replace ',', '')
+                Text  = $text
+            }
+        } |
+        Group-Object Shape |
+        ForEach-Object {
+            $sum = ($_.Group | Measure-Object Total -Sum).Sum
+            $one = $_.Group[0].Text
+            if ($_.Count -eq 1) { $one }
+            else { "$sum across $($_.Count) drawings: " + ($one -replace '^\d[\d,]*\s*', '') }
+        }
+
+    $notModelled = @($modelWide) + @($grouped) | Select-Object -First 10
+}
+
+$esc = { param($t) [System.Net.WebUtility]::HtmlEncode([string]$t) }
+$html = New-Object System.Collections.Generic.List[string]
+$html.Add('<title>' + (& $esc "$Project - model from drawings") + '</title>')
+$html.Add('<style>body{font:14px/1.55 "Segoe UI",system-ui,sans-serif;max-width:46rem;margin:0 auto;padding:34px 28px;color:#1a1a1a}h1{font-size:22px;margin:0 0 2px;font-weight:650}.sub{color:#5b5b5b;font-size:12.5px;margin:0 0 18px}h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#7a2230;margin:22px 0 7px}table{border-collapse:collapse;width:100%;font-size:13.5px}td{padding:4px 8px 4px 0;border-bottom:1px solid #eeeae5}td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}li{margin:0 0 5px}code{background:#f4f2ef;padding:1px 4px;border-radius:3px;font-size:12.5px}</style>')
+$html.Add('<h1>' + (& $esc $Project) + ' &mdash; model from drawings</h1>')
+$html.Add('<p class="sub">Generated ' + (Get-Date -Format 'd MMMM yyyy') + ' from ' + (& $esc (Split-Path $DxfFolder -Leaf)) + ', on top of ' + (& $esc $Reference) + '. It removes the typing; it does none of the engineering.</p>')
+$html.Add('<h2>What was built</h2><table>')
+foreach ($k in $counts.Keys) { $html.Add('<tr><td>' + (& $esc $k) + '</td><td class="n">' + ('{0:N0}' -f $counts[$k]) + '</td></tr>') }
+$html.Add('</table>')
+
+if ($notModelled.Count) {
+    $html.Add('<h2>What was not, and why</h2><ul>')
+    foreach ($n in $notModelled) { $html.Add('<li>' + (& $esc $n) + '</li>') }
+    $html.Add('</ul>')
+}
+
+$html.Add('<h2>What it did not touch</h2><p>No loads, diaphragms, stiffness modifiers, section properties, meshing or design &mdash; those are yours. Geometry already in your model was recognised and left alone rather than duplicated.</p>')
+$html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is listed in <code>' + (& $esc "$Project-QUESTIONS-for-Andrea.xlsx") + '</code>, each already decided, with the measurement behind it beside it. Nothing there is waiting on you. Rows tied to a rule can be changed from the answer cell, and that becomes the rule for every job afterwards &mdash; you are asked once. Rows without a rule key are visible scope decisions, not yet learnable settings. A second sheet lists every rule this model was built on, read-only, including the geometry tolerances no decision asks about.</p>')
+$html.Add('<p class="sub" style="margin-top:22px">Location by location, the full account is in <code>' + (& $esc "$Project-FROM-DRAWINGS-report.txt") + '</code>.</p>')
+
+$summaryHtml = Join-Path $env:TEMP "kor-summary-$Project.html"
+$summaryPdf  = Join-Path $folder "KOR-$Project-SUMMARY.pdf"
+$html -join "`n" | Set-Content -LiteralPath $summaryHtml -Encoding UTF8
+& (Join-Path $PSScriptRoot 'Format-BdWebPdf.ps1') -Html $summaryHtml -Pdf $summaryPdf | Out-Null
+
+# The temp HTML is left where it is. Deleting it the instant the renderer returns is a race the
+# renderer loses on a slow run, and what lands in the job folder is a PDF of the browser's
+# "file not found" page -- which looks like a document until somebody opens it.
+if (-not (Test-Path $summaryPdf)) { throw "the per-job summary did not render: $summaryPdf" }
+Write-Host "  summary      : $(Split-Path $summaryPdf -Leaf)" -ForegroundColor DarkGray
+
 if (-not $SkipDossier) {
     # The dossier and the one-pager describe particular buildings by name. Copying them beside a
     # job they do not describe hands the engineer a document about somebody else's tower, and it
@@ -248,10 +335,20 @@ if ((Test-Path $dossier) -and $pdftotext) {
         $prose = (($html -replace '(?s)<style.*?</style>', ' ' -replace '(?s)<script.*?</script>', ' ' `
                         -replace '<[^>]+>', ' ') -replace '&[a-z]+;', ' ') -replace '\s+', ' '
 
-        # Prose: "<number> <member>".
-        foreach ($c in [regex]::Matches($prose, '(?<n>\d[\d,]*)\s+(?<what>wall panels|walls|columns|floor plates|plates|headers)')) {
-            $n = [int](($c.Groups['n'].Value) -replace ',', '')
-            $what = switch -Regex ($c.Groups['what'].Value) {
+        # Prose: "<number> <member>", "<number> of your <member>", and "<member>: <number>" —
+        # each reads as a count to an engineer. The member-first form matters because summaries
+        # often phrase counts as labels.
+        $countClaimPattern = '(?:(?<n>\d[\d,]*)\s+(?:of\s+(?:your|her|its|the)\s+)?(?<what>wall panels|walls|columns|floor plates|plates|headers))|(?:(?<what2>wall panels|walls|columns|floor plates|plates|headers)\s*[:(]\s*(?<n2>\d[\d,]*))'
+
+        # Prose: "<number> <member>", and "<number> of your <member>" — which reads as a count to
+        # anyone but a pattern that demands adjacency. That hole shipped: two sentences said "315 of
+        # your columns" while the table three lines up said 316, and the report says 316. The gate
+        # existed precisely to catch that and could not see the sentence.
+        foreach ($c in [regex]::Matches($prose, $countClaimPattern)) {
+            $nText = if ($c.Groups['n'].Success) { $c.Groups['n'].Value } else { $c.Groups['n2'].Value }
+            $whatText = if ($c.Groups['what'].Success) { $c.Groups['what'].Value } else { $c.Groups['what2'].Value }
+            $n = [int]($nText -replace ',', '')
+            $what = switch -Regex ($whatText) {
                 'wall'   { 'wall' }; 'column' { 'column' }; 'plate' { 'plate' }; 'header' { 'header' }
             }
             $ok = $counts.GetEnumerator() | Where-Object { $_.Key -like "*.$what" -and $_.Value -eq $n }
@@ -263,15 +360,20 @@ if ((Test-Path $dossier) -and $pdftotext) {
         # The dossier names the storeys left without a floor plate. That list is generated into the
         # report, and a code change moves it: fixing the mezzanine fault gave 31168 a fourth such
         # storey, and the dossier still named three. Every storey the report lists must be named.
+        #
+        # The dossier says whose storeys it is listing — "on 31168 six" — so which job this check
+        # applies to is read from that sentence rather than named in code. With the job hardwired,
+        # rewriting the section for a different building would have silently stopped checking it.
         $plateless = Join-Path $folder "$Project-FROM-DRAWINGS-report.txt"
-        if (Test-Path $plateless) {
+        $listedFor = [regex]::Match($prose,
+            'Storeys still carrying members with no plate[^0-9]*\b(?<job>3\d{4})\b')
+        if ((Test-Path $plateless) -and $listedFor.Success -and $listedFor.Groups['job'].Value -eq $Project) {
             $pm = [regex]::Match((Get-Content -LiteralPath $plateless -Raw),
                                  'carry walls or columns but no floor plate[^:]*:\s*(?<list>[^.]+)\.')
-            if ($pm.Success -and $prose -match [regex]::Escape('Storeys still carrying members with no plate')) {
+            if ($pm.Success) {
                 foreach ($s in ($pm.Groups['list'].Value -split ',\s*')) {
                     $storey = $s.Trim()
-                    # Only the project the dossier actually enumerates; it lists 31168's by name.
-                    if ($Project -eq '31168' -and $storey -and $prose -notmatch [regex]::Escape($storey)) {
+                    if ($storey -and $prose -notmatch [regex]::Escape($storey)) {
                         $wrong += "dossier does not name '$storey' among the storeys left without a plate"
                     }
                 }
@@ -286,23 +388,40 @@ if ((Test-Path $dossier) -and $pdftotext) {
             $wrong += "dossier states more than one test count: $($suite -join ', ')"
         }
 
-        # The summary table, where the label comes first and both projects' numbers follow. Checked
-        # by position: left column is 31168, right is 31138, and each must be that model's own count.
+        # The summary table, where the label comes first and each project's number follows. Which
+        # column belongs to which building is read from the table's own header row, not assumed:
+        # this used to say "left is 31168, right is 31138" in code, so reordering the columns or
+        # adding a third job would have checked every number against the wrong building and passed.
         $rows = @{
             'Wall panels'              = 'wall'
             'Columns, sized'           = 'column'
             'Floor plates'             = 'plate'
             'Headers over openings'    = 'header'
         }
-        foreach ($label in $rows.Keys) {
-            $what = $rows[$label]
-            $m = [regex]::Match($prose, [regex]::Escape($label) + '[^0-9]*(?<a>[\d,]+)\s+(?<b>[\d,]+)')
-            if (-not $m.Success) { $wrong += "dossier table has no '$label' row"; continue }
-            foreach ($side in @(@('a', '31168'), @('b', '31138'))) {
-                $stated = [int](($m.Groups[$side[0]].Value) -replace ',', '')
-                $true_  = $counts["$($side[1]).$what"]
-                if ($null -ne $true_ -and $stated -ne $true_) {
-                    $wrong += "dossier table: $label for $($side[1]) says $stated, model has $true_"
+
+        $tableJobs = @()
+        $hm = [regex]::Match($html, '(?s)<tr>\s*<th>What was generated</th>(?<cells>.*?)</tr>')
+        if ($hm.Success) {
+            $tableJobs = @([regex]::Matches($hm.Groups['cells'].Value, '<th>[^<]*?\b(3\d{4})\b') |
+                ForEach-Object { $_.Groups[1].Value })
+        }
+        if ($tableJobs.Count -eq 0) {
+            $wrong += "dossier summary table does not name the jobs its columns describe"
+        }
+        else {
+            foreach ($label in $rows.Keys) {
+                $what = $rows[$label]
+                $pattern = [regex]::Escape($label) + '[^0-9]*' +
+                           ((1..$tableJobs.Count | ForEach-Object { '([\d,]+)' }) -join '\s+')
+                $m = [regex]::Match($prose, $pattern)
+                if (-not $m.Success) { $wrong += "dossier table has no '$label' row"; continue }
+                for ($i = 0; $i -lt $tableJobs.Count; $i++) {
+                    $job    = $tableJobs[$i]
+                    $stated = [int](($m.Groups[$i + 1].Value) -replace ',', '')
+                    $true_  = $counts["$job.$what"]
+                    if ($null -ne $true_ -and $stated -ne $true_) {
+                        $wrong += "dossier table: $label for $job says $stated, model has $true_"
+                    }
                 }
             }
         }
@@ -319,9 +438,11 @@ if ((Test-Path $dossier) -and $pdftotext) {
         $opProse = (($opHtml -replace '(?s)<style.*?</style>', ' ' -replace '(?s)<script.*?</script>', ' ' `
                              -replace '<[^>]+>', ' ') -replace '&[a-z]+;', ' ') -replace '\s+', ' '
 
-        foreach ($c in [regex]::Matches($opProse, '(?<n>\d[\d,]*)\s+(?<what>wall panels|walls|columns|floor plates|plates|headers)')) {
-            $n = [int](($c.Groups['n'].Value) -replace ',', '')
-            $what = switch -Regex ($c.Groups['what'].Value) {
+        foreach ($c in [regex]::Matches($opProse, $countClaimPattern)) {
+            $nText = if ($c.Groups['n'].Success) { $c.Groups['n'].Value } else { $c.Groups['n2'].Value }
+            $whatText = if ($c.Groups['what'].Success) { $c.Groups['what'].Value } else { $c.Groups['what2'].Value }
+            $n = [int]($nText -replace ',', '')
+            $what = switch -Regex ($whatText) {
                 'wall'   { 'wall' }; 'column' { 'column' }; 'plate' { 'plate' }; 'header' { 'header' }
             }
             $ok = $counts.GetEnumerator() | Where-Object { $_.Key -like "*.$what" -and $_.Value -eq $n }

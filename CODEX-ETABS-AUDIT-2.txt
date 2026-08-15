@@ -1,0 +1,75 @@
+Audit the DXF → ETABS generator against the product it is supposed to be, and finish what is
+not finished. Find what is wrong before you fix anything.
+
+THE STANDARD
+
+  Read docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md first. It states what this tool is required to be
+  and says nothing about how far the code meets it. That judgement is yours to make, not to
+  inherit.
+
+  The three properties that matter: it must work on ANY job with no knowledge of particular
+  buildings in it; it must name everything it discards, skips or falls back on; and an
+  engineer's answer must become a rule that applies to every job afterwards with no code change.
+
+RULES OF EVIDENCE
+
+  1. Do not treat the tool's report, its documents, or its test suite as evidence that anything
+     is true. They are claims made by the thing under audit. Measure instead.
+
+  2. Some files in the two job folders are this tool's own output round-tripped through ETABS,
+     not an engineer's work. Objects named "K" followed by digits were written by this tool.
+     Establish provenance before using any file as ground truth.
+
+  3. State the file and the numbers behind every finding. A defect derived only from reading
+     code is not a finding until you say what it does to a model.
+
+  4. Where you cannot determine something, say so and say what would settle it.
+
+WHAT I MOST WANT TESTED, in order
+
+  1. THE LEARNING LOOP, END TO END. This is the product's headline claim and it has only ever
+     been exercised in pieces — the parsing has unit tests, the SQL has unit tests, and nobody
+     has ever run the whole path on a real model. Do it:
+
+        generate the questions workbook → answer one question that maps to a setting →
+        takeoff dxf-import-rules → regenerate the model → confirm the geometry actually moved
+
+     Then put it back and confirm it moves back. dxf.min-wall-length is a good choice: it is
+     the engineer's own rule, it changes what is a wall and what is a column, and the effect is
+     large enough to see in the counts.
+
+     This writes real rows to KorStandards.analysis.Ruling. That is the mechanism working as
+     designed — supersession is what RulingHistory exists for — but say exactly what you wrote,
+     and leave the database holding the same values it started with.
+
+  2. WHAT IS STILL SHAPED BY TWO BUILDINGS. The engine's geometry has no job numbers in it, but
+     look for anything that only makes sense for 31168 and 31138: values, evidence prose,
+     assumptions about folder layout, sheet naming, or layer names. The questions workbook is a
+     known offender — it cites both jobs in its evidence text, so a third job's engineer reads
+     measurements about towers she is not working on. There may be more.
+
+  3. WHETHER THE MODEL IS RIGHT. Judge the output against the DRAWINGS, both readable as text
+     on the share. Geometry that is wrong in a way no count can see — a member on the wrong
+     storey, at the wrong size, of the wrong kind, or in a place the drawings do not show it —
+     is the class that has cost the most here.
+
+  4. ANYTHING DISCARDED IN SILENCE. The reader had no case for INSERT until today, so every
+     block on the drawing was invisible: not dropped, not flagged, never read, and no count
+     moved. Look for anything else that can leave the model without appearing in the report.
+
+CONSTRAINTS
+
+  - Do not modify anything under \\Kor-fs01 except by running the publish script for the two
+    jobs it already describes.
+  - The test suite now requires KOR_ENGINEERINGTOOLS_STANDARDSDB. Set it process-local; do not
+    setx it onto the machine.
+  - Run the FULL test suite before you claim anything about it, and say so plainly if you did
+    not. It takes about eight minutes. A filtered run tells us nothing about the models.
+
+OUTPUT
+
+  Findings, worst first: what is wrong, the numbers you measured, what it costs the engineer,
+  how confident you are. Then a second pass over your own findings trying to knock each down,
+  and say which survive. Four that hold beat twenty that read well.
+
+  Then what you changed, and what you verified it against.

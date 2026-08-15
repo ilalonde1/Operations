@@ -4,7 +4,7 @@ Part 1 states what this tool is required to be. Part 2 is an inventory of what d
 that standard, each with the measurement behind it. Neither part ranks the work — sequencing is
 not a technical fact.
 
-Updated 2026-08-14.
+Updated 2026-08-15.
 
 ---
 
@@ -29,7 +29,9 @@ Nothing made specially for it. No per-job configuration.
   centrelines and connected, columns sized and oriented as drawn, floor plates, headers over
   openings, shaft and stair openings cut, pier labels.
 - A report stating, location by location, everything it could not do.
-- A workbook of the questions it could not decide, for the engineer to answer in a column.
+- A workbook in three sheets: every judgement it had to make, each already decided with the
+  measurement behind it and overridable in one cell; every rule the model was built on, read-only;
+  and every location where a decision was applied, marked approximation or drawing limit.
 
 ## The three properties that make it a tool
 
@@ -78,18 +80,28 @@ by a letter and digits were written by this tool.
 
 ## Learning
 
-**L1. Ten of the thirty-one rules can be changed by an engineer; twenty-one cannot.**
-The workbook binds eight questions to ten settings. The rest can only be moved by writing a
-migration. Of those twenty-one, roughly half are engineering judgement — min and max column size,
-the opening-span window that decides what gap is a doorway, max pier thickness, min wall thickness,
-unusual wall thickness, min slab area, default slab thickness, pier fill ratio, min panel aspect —
-and roughly half are CAD tolerances that arguably should not be engineer-facing.
+**L1. PARTLY CLOSED 2026-08-15. Twenty-five of the thirty-two rules can be changed by an
+engineer; seven decided workbook rows are still not learnable settings.**
+The workbook binds eighteen rows to twenty-five settings. The remaining seven rules are
+geometry-cleanup tolerances — join, bridge, wall-bridge and dash-join gaps, the extend limit, min
+panel overlap, already-modelled tolerance — and asking a structural engineer to set them would be
+noise. They are not hidden: a *Rules in force* sheet lists all thirty-two with value, units,
+confidence, who set it and why it holds, and says which question changes each one.
+`dxf.floor-from-perimeter-wall` was added as a rule in migration 039 and moved to a single-source
+ruling in migration 040 rather than staying behaviour welded into the classifier.
+
+What is still not true: seven DECIDED rows in the workbook (`C1`, `F2`, `M1`, `M2`, `O1`, `P1`,
+`S2`) carry no setting key. They are visible and importable as prose rulings, but the generator
+does not read them back, so an answer there does not change the next model.
 
 **L2. Nothing re-measures the rules against the portfolio.**
 The 2026-08-14 measurement of 1,126 models was a one-off run by hand. No part of the build re-runs
 it, and nothing notices when a rule drifts from what engineers draw.
 
-**L3. `dxf.opening-height` = 88″ has no sound basis.**
+**L3. PARTLY CLOSED 2026-08-15. `dxf.opening-height` = 88″ has no sound basis, and now says so
+where the engineer can see it.**
+It is a DECIDED row (H1) carrying its derivation, so the weak basis is stated on the deliverable
+rather than buried, and one cell replaces it. The measurement problem below is unchanged.
 It was derived by reading the third value on a `POINT` line as a spandrel depth. Across 41,838 such
 values the quantity is an elevation above the storey base, not a member depth. The proper source is
 the `$ PIER/SPANDREL NAMES` block, which is empty in most models — so it may not be derivable from
@@ -117,25 +129,44 @@ no vertical structure on its own storey.
 A drafter who draws a circle as a polyline gets a square column, and nothing says so. Whether that
 occurs in the corpus is unmeasured.
 
-**C5. Beams are not modelled at all.**
-There is no `LINE … BEAM` path. Whether that is in scope has never been asked.
+**C5. CLOSED 2026-08-15. Beams are out of scope, said out loud rather than by omission.**
+Measured first: 31138's `JBP_S_BEAM` layer holds one entity per sheet, 25 across 25 drawings, so
+these concrete-outline plans do not carry framing — the 27 beams in that engineer's own model were
+drawn by her. Modelling them would mean inventing a depth as well as a position. It is now decision
+M2 in the workbook, and `LayerLedger` names any unclaimed BEAM, JOIST, BRACE or TRUSS layer carrying
+20 segments or more, so a job whose drawings *do* carry framing is told it was skipped instead of
+reading a clean report.
 
-**C6. O1 is unanswered.**
+**C6. DECIDED 2026-08-15, and it is the one decision most worth an engineer overturning.**
 On 31168's tower floors the elements the engineer marked openings between are drawn on the column
 layer — 24 footprints at 16×40, 18×45, 30×30, 24×28, none more slender than 2.5:1. Columns or
-pierced wall changes in-plane shear the height of the tower, and only she can say which.
+pierced wall changes in-plane shear the height of the tower. The layer governs, so they are columns;
+that is the drafting convention and nothing in the drawings contradicts it. It ships as decision O1
+with the footprint measurements beside it, so disagreeing costs one cell rather than a conversation.
 
 ## Shipping
 
-**S1. The dossier and one-pager describe two buildings.**
-They no longer travel to a job they do not name, so a third job now receives no document at all.
-Either they are generated per job from that job's report, or the decision to ship without them is
-made explicitly.
+**S1. PARTLY CLOSED 2026-08-15. Every job gets a document written from its own model, but the
+document must not overstate learnability.**
+The dossier and one-pager describe two buildings and travel only to the jobs they name — that part
+stands, because a document about somebody else's tower reads authoritative and is wrong. What was
+missing is now generated: `KOR-<job>-SUMMARY.pdf`, built from that job's own model and report every
+time it publishes, stating what was produced and, verbatim from the run, everything it declined to
+do. A third job no longer arrives as a bare `.e2k`. The summary now says only rule-backed rows can
+be changed from one cell; rows without a rule key are visible scope decisions, not yet learnable
+settings.
 
-**S2. The publish count gate still carries two-job scaffolding.**
-An allowlist of historical figures from 31168 and 31138, a positional check that assumes the left
-column of the summary table is 31168 and the right is 31138, and a `$Project -eq '31168'` branch.
-All of it exists to validate a two-job document and would go with S1.
+**S2. MOSTLY CLOSED 2026-08-15. The publish gate no longer names a job.**
+The summary-table check reads which column belongs to which building from the table's own header
+row, and the plateless-storey check reads whose storeys the dossier is listing from the sentence
+that says so. Both were hardwired job numbers. What remains is the allowlist of historical figures
+— numbers that appear in the prose and are true of something other than a current member count,
+each carrying a written reason. That is document-specific by nature and goes with S1.
+
+Found while doing it, and fixed: the gate matched `<number> <member>` only when adjacent, so
+"315 of your columns" was invisible to it. The dossier said 315 in one sentence and 316 three lines
+above, and the report says 316 — exactly the fault the gate exists to catch, sitting in the document
+it was checking. Both patterns now also match "N of your/her/its/the <member>".
 
 ## Build
 

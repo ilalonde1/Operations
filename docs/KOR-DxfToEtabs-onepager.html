@@ -77,22 +77,24 @@ of it entered by hand.</p>
     <h3>What you get back</h3>
     <p><code>…-FROM-DRAWINGS.e2k</code> — import it.</p>
     <p><code>…-report.txt</code> — location by location, why anything is missing.</p>
-    <p><code>…-QUESTIONS.xlsx</code> — only what it could not decide. Four rows.</p>
+    <p><code>…-QUESTIONS.xlsx</code> — every judgement it had to make, each already decided with
+    the measurement behind it. Nothing waiting on you; rows tied to a rule can be changed from the answer cell. A second
+    sheet lists every rule the model was built on, read-only.</p>
   </div>
 </div>
 
 <h2>What it will not touch</h2>
 <p>No section properties, loads, stiffness modifiers, diaphragms or design — a diaphragm arriving
 with the geometry is one more thing to undo. And it never overwrites what you have already modelled:
-on 31138 it recognised 306 of your walls and 315 of your columns and left every one alone.</p>
+on 31138 it recognised 306 of your walls and 316 of your columns and left every one alone.</p>
 
 <h2>It gets better every time you tell it something</h2>
 <p>Every rule came from an engineer and can name the evidence behind it. Rules live in a database
 with a confidence level, and apply only once verified or confirmed by you.</p>
 <table>
-  <tr><td style="width:38%"><strong>Answer a question in the workbook</strong></td>
+  <tr><td style="width:38%"><strong>Override a decision in the workbook</strong></td>
       <td>It becomes a rule at the highest confidence there is and applies to every model on every
-          job from then on. You are asked once, ever.</td></tr>
+          job from then on, superseding ours. You are asked once, ever.</td></tr>
   <tr><td><strong>Open a model and say what is wrong</strong></td>
       <td>It is measured against your models and the 400-odd on the share, then becomes a rule or a
           question with the measurement attached. Nothing changes on a hunch. Most recent: "the walls
@@ -103,8 +105,8 @@ with a confidence level, and apply only once verified or confirmed by you.</p>
       <td>That is where headers as spandrels, pier labels, cut openings and the basement wall came
           from. Each started as a sentence on a call.</td></tr>
 </table>
-<p>It also learns without being asked: three of the five questions headed your way were answered by
-reading your own model instead — including that your 29 spandrels on 31138 imply an 88" opening where
+<p>It also learns without being asked: decisions that can be made from a model are recorded as rules
+with their evidence — including that your 29 spandrels on 31138 imply an 88" opening where
 an 84" door had been assumed, which had made every header four inches too deep.</p>
 
 <h2>How far to trust it</h2>
@@ -112,8 +114,9 @@ an 84" door had been assumed, which had made every header four inches too deep.<
 be modelled, and every modelled member must stand on linework from a sheet placed on its own storey.
 Size and shape are checked against the raw drawing entities, and every check is proved against the
 defect it exists for. <strong>What it does not know, it says:</strong> on 31168, 7 of its 3,435 drawn
-members unaccounted for, six storeys whose slab edges will not close, one roof plate with nothing
-beneath it, and four questions.</p>
+members unaccounted for, six storeys whose slab edges will not close, and one roof plate with
+nothing beneath it. Every judgement it had to make is listed and decided in the workbook with the
+measurement behind it, so what it assumed is as visible as what it read.</p>
 
 <div class="foot">
   Kor.Operations · Engineering Tools. Built on the same engine as the takeoff and PdfToSafe tools

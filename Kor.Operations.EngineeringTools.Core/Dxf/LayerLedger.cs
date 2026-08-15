@@ -66,10 +66,29 @@ public static class LayerLedger
     }
 
     /// <summary>The ledger as report lines: what each layer was taken for, biggest first.</summary>
-    public static IEnumerable<string> Describe(IReadOnlyList<LayerEntry> ledger, int topUnclaimed = 8)
+    public static IEnumerable<string> Describe(IReadOnlyList<LayerEntry> ledger, int topUnclaimed = int.MaxValue)
     {
         foreach (var entry in ledger.Where(e => e.Claimed))
             yield return $"{entry.Layer} -> {entry.Role} ({entry.Segments:N0} segments)";
+
+        // A layer that names a member this tool does not model is not the same as a layer of
+        // dimensions or hatching, and burying it in a list of forty-three ignored names hides it.
+        //
+        // Beams are the case in hand. They are deliberately out of scope: the concrete-outline
+        // plans this reads do not carry framing — 31138's JBP_S_BEAM holds one entity per sheet,
+        // 25 across 25 drawings — and the 27 beams in that engineer's own model were drawn by her.
+        // Inventing them would mean inventing a depth as well as a position. But a job whose
+        // drawings DO carry framing must be told it was skipped, rather than reading a clean report
+        // and assuming the model is whole.
+        var structural = ledger
+            .Where(e => !e.Claimed && e.Segments >= 20)
+            .Where(e => new[] { "BEAM", "JOIST", "BRACE", "TRUSS" }
+                .Any(w => e.Layer.Contains(w, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        foreach (var entry in structural)
+            yield return $"{entry.Layer} carries {entry.Segments:N0} segments and names a member this tool does " +
+                         "not model. Nothing from it is in the model — those members are yours.";
 
         var ignored = ledger.Where(e => !e.Claimed).Take(topUnclaimed).ToList();
         if (ignored.Count == 0) yield break;

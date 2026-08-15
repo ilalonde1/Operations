@@ -131,16 +131,17 @@ blocks at all, so none of its numbers move.</em></p>
           31168 comes out with exactly the three diameters its drawings contain &mdash; 16", 24"
           and 30" &mdash; and none besides.</td></tr>
   <tr><td>"It filled the volume, but didn't do the actual corner."</td>
-      <td><strong>Still open — question C1, but your own model now says what the answer is.</strong>
-          A stepped block is still modelled as a single pier, so its centreline sits between the limbs
-          and lines up with neither. Your 31138 gravity model puts several panels on one storey under
-          fifteen of its pier labels, and three of those group limbs at right angles — cw9 a 23" limb
-          with a 27" one, cw15 a 272" with a 104", cw6 ten panels from 2" to 15". So the answer looks
-          like limbs on their own centrelines under one shared pier label. Getting there is not a
-          threshold: the face floor was lowered to 12" and the panel aspect relaxed, and those 70
-          blocks still will not come apart, so something earlier refuses them. Rather than guess at it
-          a third time, it stays a question — and the short limbs are no longer at risk either way,
-          because an element longer than three times its width is now a wall whatever it touches.</td></tr>
+      <td>Fixed, and it was a bug rather than a judgement call. An L now comes apart into its two
+          limbs, each on its own centreline — which is what your own 31138 model says it should be:
+          fifteen of its pier labels carry several panels on one storey, and three of those group
+          limbs at right angles (cw9 a 23" limb with a 27", cw15 a 272" with a 104"). What stopped it
+          was never a threshold. A solid-footprint test ran <em>before</em> the decomposer and claimed
+          anything filling most of its bounding box, and an L fills 85% of its own; handed the same
+          outline directly, the decomposer had always returned both limbs. It is asked first now, and
+          the one-pier branch keeps only what genuinely does not come apart. Tower B's north-west
+          corner had been a single panel 67 long and 42 thick — thicker than anything drawn there,
+          the leg gone and the doorway under it gone with it. Across 31168 it recovered 84 more wall
+          panels and 156 more headers, and the 55" opening on both corners.</td></tr>
   <tr><td>"The lowest level, which is P3, seems way too high."</td>
       <td>ETABS parks the base far below the building and folds the whole distance into the lowest
           storey — 31168 exported with the base at −1,000 ft and LEVEL P3 1,113 ft tall, so on import
@@ -199,7 +200,7 @@ that is the file to give it.</p>
 <p>No section properties, no loads, no stiffness modifiers, no diaphragms, no design. That is your
 work and it is deliberately left untouched — a diaphragm arriving with the geometry is one more
 thing to undo. It also never overwrites what you have already modelled: on 31138 it recognised 306
-of your walls and 315 of your columns and left every one of them alone.</p>
+of your walls and 316 of your columns and left every one of them alone.</p>
 
 <h2>What to open</h2>
 <p>Each sits in its project's <code>02 Engineering\02 Lateral Design\01 ETABS Models\</code>.
@@ -215,8 +216,11 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
           390 columns, mostly at podium and parkade. 306 walls and 316 columns of yours were
           recognised at those locations and deliberately not modelled again.</td></tr>
   <tr><td><code>…-QUESTIONS-for-Andrea.xlsx</code></td>
-      <td>Two sheets. <em>Questions</em> — what you have already ruled on, marked DONE, plus the few
-          still open. <em>Review &amp; override</em> — every decision the tool made for you, each marked
+      <td>Three sheets. <em>Questions</em> — every judgement the tool had to make, each marked
+          <strong>DECIDED</strong> with the measurement behind it. Nothing in it is waiting on you;
+          rows tied to a rule can be changed from the answer cell. <em>Rules in force</em> — every rule the model was built on,
+          read-only, including the geometry tolerances no question asks about. <em>Review &amp;
+          override</em> — every location where a decision was applied, each marked
           <strong>APPROXIMATION</strong> (a guess you can replace) or <strong>DRAWING LIMIT</strong>
           (the drawing lacks what would be needed).</td></tr>
   <tr><td><code>…-report.txt</code></td>
@@ -295,7 +299,8 @@ none of which any numeric check had noticed:</p>
 </ul>
 <p>Those three are now permanent checks, run against both real projects on every build: no wall or
 column shorter than a person, none taller than a double-height storey, no plate smaller than a room,
-and no storey in the reference that is not storey-height. 432 tests pass.</p>
+and no storey in the reference that is not storey-height. The core regression suite is run before
+publishing.</p>
 
 <h3>Verified: every member sits exactly where the drawing draws it</h3>
 <p>Each plan is rendered with the extracted members drawn over it
@@ -413,11 +418,19 @@ on it.</p>
 width models at the wrong width. The plans used here are dated 28 June 2026 — later revisions are
 not in this model.</p>
 
-<h2>The questions, and everything open to override</h2>
-<p>Beside each model is <code>…-QUESTIONS-for-Andrea.xlsx</code>, in two parts.</p>
-<p><strong>Questions</strong> lists every decision the tool had to make without being told. What you
-have already ruled on is marked DONE with what the tool now does, so there is nothing to re-read;
-only the genuinely open ones want an answer.</p>
+<h2>The decisions, and everything open to override</h2>
+<p>Beside each model is <code>…-QUESTIONS-for-Andrea.xlsx</code>, in three parts.</p>
+<p><strong>Questions</strong> lists every judgement the tool had to make without being told — and
+every one has been taken. Each row says <strong>DECIDED</strong>, what was decided, and the
+measurement behind it, so you can disagree with a specific number rather than with the tool. Writing
+anything in the answer column overrides that decision from then on. You are not asked to confirm any
+of them; nothing here blocks you from importing the model.</p>
+<p><strong>Rules in force</strong> is the whole rule set the model was built on, read-only: the
+value, where it came from, and why it holds. Most of them have a row on the first sheet and it says
+which. The ones that do not are geometry-cleanup tolerances — how far a dashed outline may be
+bridged to close, how close a generated member must sit to one of yours to count as the same member.
+Nothing there is a question, but if an outline did not close and you want to say why, that page is
+the number to name.</p>
 <p><strong>Review &amp; override</strong> is everything else it decided for you, grouped, counted, and
 each marked one of two ways. <strong>APPROXIMATION</strong> is a defensible guess you can replace —
 a floor taken from the inside of a perimeter wall, a short element made a column, the lowest storey
@@ -438,9 +451,10 @@ confidence level attached, and they are applied only once they reach
 
 <table>
   <tr><th>What you do</th><th>What happens to it</th></tr>
-  <tr><td><strong>Answer a question in the workbook.</strong></td>
+  <tr><td><strong>Override a decision in the workbook.</strong></td>
       <td>Your answer becomes a rule at <em>engineer-confirmed</em> — the highest confidence there
-          is — and applies to every model built from then on, on every job. You are asked once.</td></tr>
+          is — and applies to every model built from then on, on every job. It supersedes ours
+          permanently; you are asked once.</td></tr>
   <tr><td><strong>Say something is wrong when you open a model.</strong></td>
       <td>It is measured against your own models and the 400-odd on the share, and becomes either a
           rule or a question with the measurement attached. Nothing is changed on a hunch.</td></tr>
@@ -450,7 +464,8 @@ confidence level attached, and they are applied only once they reach
 </table>
 
 <p>It already learns without asking. Three of the five questions you were going to be sent were
-answered by reading your own 31138 gravity model instead:</p>
+answered by reading your own 31138 gravity model instead — and every one of them is now a decision
+in the workbook rather than a question in your inbox:</p>
 <ul>
   <li><strong>Header depth.</strong> Taking each of your 29 spandrels' depth off its storey height
       gives the opening it was drawn for — 86" eleven times and 88" twelve. A standard 84" door had
@@ -460,8 +475,11 @@ answered by reading your own 31138 gravity model instead:</p>
       anything longer than three times its width is now a wall whatever it touches. Fixed, and not
       asked.</li>
   <li><strong>Corners.</strong> Fifteen of your pier labels cover several panels on one storey and
-      three group limbs at right angles, which says what a stepped block should look like. Still
-      asked as C1, because knowing the answer is not the same as being able to build it yet.</li>
+      three group limbs at right angles, which says what a stepped block should look like. Built, and
+      not asked: an L now comes apart into its two limbs on their own centrelines. What had been
+      stopping it was order — a solid-footprint test ran before the decomposer and claimed anything
+      filling most of its bounding box, and an L fills 85% of its own. Tower B's north-west corner
+      had been one panel 67 long and 42 thick, thicker than anything drawn there.</li>
 </ul>
 <p>The more of your work it can read, the fewer questions you get. That is the whole design.</p>
 

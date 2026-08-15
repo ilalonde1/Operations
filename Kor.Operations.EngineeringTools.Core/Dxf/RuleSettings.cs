@@ -195,7 +195,14 @@ public static class RuleSettings
         for (int row = 5; row <= lastRow; row++)
         {
             string answer = sheet.Cell(row, answerCol).GetString().Trim();
+
+            // Blank, or a placeholder that means blank. A cell holding only dashes is somebody
+            // writing "nothing to say here", not a ruling — and it is what the questionnaire
+            // itself once wrote into every row it could not act on.
             if (string.IsNullOrWhiteSpace(answer)) continue;
+            if (answer.All(c => c is '-' or '‐' or '‑' or '‒' or '–'
+                                  or '—' or '―' or '−' || char.IsWhiteSpace(c)))
+                continue;
 
             string code = sheet.Cell(row, codeCol).GetString().Trim();
             string question = sheet.Cell(row, questionCol).GetString().Trim();
@@ -317,6 +324,16 @@ BEGIN
            SettingValue = @SettingValue,
            SettingUnits = @SettingUnits
      WHERE Id = @id;
+END
+
+IF @SettingKey IS NOT NULL
+BEGIN
+    UPDATE analysis.FormatConvention
+       SET RetiredAtUtc = SYSDATETIMEOFFSET(),
+           RetiredReason = N'Superseded by an engineer questionnaire ruling for the same setting.',
+           UpdatedAtUtc = SYSDATETIMEOFFSET()
+     WHERE SettingKey = @SettingKey
+       AND RetiredAtUtc IS NULL;
 END
 
 SELECT @id;

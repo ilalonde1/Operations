@@ -37,20 +37,29 @@ public static class ReferenceRules
         var storeyHeight = doc.ReadStories()
             .ToDictionary(s => s.Name, s => s.Elevation - s.ElevationBelow, StringComparer.OrdinalIgnoreCase);
 
+        // A spandrel is a panel the ENGINEER LABELLED as one.
+        //
+        // This used to infer it from the panel's form — every joint at the storey, none a storey up
+        // — which is what a spandrel looks like but also what several other things look like.
+        // Measured across the portfolio, the third value on a POINT line is an elevation above the
+        // storey base rather than a member depth, and reading every all-zero panel as a spandrel
+        // swept in 41,838 values whose median sits at 0.38 of storey height. The number that came
+        // out happened to be right and could not be defended.
+        //
+        // ETABS carries the answer directly: PIER/SPANDREL NAMES, with the label on the area
+        // assign. 31138 has 46 spandrel names across 99 labelled areas, and reading only those
+        // gives depths clustered at 30" and 32" — inside the engineer's own 18"-60" clamp — and an
+        // opening of 86" or 88" on 90 of the 99. Same answer, on evidence that holds.
+        //
+        // A model with no spandrel labels yields nothing here, and the standing value stands. That
+        // is the honest outcome rather than a fallback to the old inference: 31168 carries one
+        // spandrel name and no labelled areas at all.
         var spandrels = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        foreach (string raw in doc.LinesOf("AREA CONNECTIVITIES"))
+        foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
         {
             var m = Regex.Match(raw.Trim(),
-                @"^AREA\s+""([^""]+)""\s+PANEL\s+(\d+)\s+((?:""[^""]+""\s+)+)([\d\s.]+)$", RegexOptions.IgnoreCase);
-            if (!m.Success) continue;
-
-            var offsets = m.Groups[4].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                .Select(v => double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) ? d : -1)
-                .ToList();
-
-            // A spandrel is the partial-height form: every joint at the storey, none a storey up.
-            if (offsets.Count == 0 || offsets.Any(v => v < 0) || offsets.Any(v => v >= 1)) continue;
-            spandrels[m.Groups[1].Value] = 0;
+                @"^AREAASSIGN\s+""([^""]+)""\s+""[^""]+"".*?\bSPANDREL\s+""[^""]+""", RegexOptions.IgnoreCase);
+            if (m.Success) spandrels[m.Groups[1].Value] = 0;
         }
 
         // Depth is carried by the raised joints, which the POINT lines hold as a third value.

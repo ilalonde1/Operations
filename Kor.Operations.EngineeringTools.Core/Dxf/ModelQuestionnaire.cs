@@ -57,6 +57,20 @@ public static class ModelQuestionnaire
             ? "Each level with no closed slab edge has been given one plate from the inside face of its perimeter wall."
             : "No level needed this on your project — every plate came from a drawn slab edge.";
 
+        string leftAlone = report?.Summary.Flags
+            .FirstOrDefault(f => f.Contains("were already modelled", StringComparison.OrdinalIgnoreCase)) is { } f3
+            ? "On this job " + char.ToLowerInvariant(f3[0]) + f3[1..].TrimEnd() +
+              " Turning this off would have added every one of them a second time."
+            : "Nothing of yours was recognised at a generated location on this job, so nothing was skipped for " +
+              "this reason — the count appears in the report when it is not zero.";
+
+        string beamEvidence = report?.Summary.Flags
+            .FirstOrDefault(f => f.Contains("names a member this tool does not model", StringComparison.OrdinalIgnoreCase)) is { } beam
+            ? beam
+            : "This job's structural layers did not contain a beam, joist, brace or truss layer with enough " +
+              "linework to read as framing. Where a future drawing set does, the report names that layer and " +
+              "says nothing from it is in the model.";
+
         double minDepth = compose.SpandrelDepthFloor, maxDepth = compose.SpandrelDepthCeiling;
 
         return new[]
@@ -83,33 +97,50 @@ public static class ModelQuestionnaire
             { Decided = true },
 
         new ModelQuestion("C1", "Corners that come out as one thick element",
-            "You said \"this wall and this wall should be aligned — it's doing just one big wall that's not " +
-            "aligned with this one\". A stepped block — one limb thinner than the other — is still modelled as a " +
-            "single pier on the box's long axis, so its centreline sits between the two limbs and matches " +
-            "neither. Should these be limbs on their own centrelines sharing one pier label, or one stocky pier?",
-            "Still one pier. Not for want of trying: the decomposer's face floor was lowered to 12\" and its " +
-            "panel aspect relaxed, and these blocks still do not come apart, so something earlier is refusing " +
-            "them. Rather than guess a third time it is measured next. The limbs are no longer at risk either " +
-            "way — anything longer than three times its width now stays a wall whatever it touches.",
+            "FIXED, and it was our bug rather than a judgement call. An L-shaped corner was coming out as one " +
+            "thick element on a centreline that matched neither limb.",
+            "An L now comes apart into its two limbs, each on its own centreline. The cause was order, not " +
+            "geometry: a solid-footprint test ran BEFORE the decomposer and claimed anything filling most of its " +
+            "bounding box, and an L fills 85% of its own. Handed the same outline directly, the decomposer had " +
+            "always returned both limbs. So the decomposer is asked first, and the one-pier branch now keeps only " +
+            "what genuinely does not come apart — a shape yielding fewer than two panels.",
             "It decides whether these carry shear as walls, and whether their centrelines match the walls beside them.",
-            "Answering this records the judgement; it will not change geometry until a decomposition rule is added.")
-            { RuleTopic = "corner-limbs-vs-stocky-pier" },
+            "Measured on the regression outline that exposed it: the corner is a 67x28 wall with a 36-thick " +
+            "leg turned down beside it. It had been ONE " +
+            "panel 67 long and 42 thick — thicker than anything drawn there, the leg gone and the doorway under it " +
+            "gone with it. On the measured model it recovered 84 more wall panels, 156 more headers and four openings " +
+            "including the 55\" gap on both corners. Held by a baseline test.")
+            { RuleTopic = "corner-limbs-vs-stocky-pier", Decided = true },
 
         new ModelQuestion("F1", "Floors where no slab edge closes",
-            "Where no slab edge closes, the floor has been taken from the inside face of the perimeter wall — " +
-            "one outline, one thickness. Keep that, or will you draw them?",
-            perimeterFloors + " A real slab-edge outline always wins where one exists; this is only the fallback.",
+            "OUR DECISION — one cell here turns it off. Where a storey's slab edges will not close, its floor is " +
+            "taken from the inside face of the perimeter wall: one outline, one thickness, flagged in the report " +
+            "as an approximation.",
+            perimeterFloors + " A real slab-edge outline always wins where one exists, so this governs only the " +
+            "storeys that have none. Answer 0 to leave those storeys without a plate instead.",
             "A storey with no plate has no diaphragm at all, and its walls and columns read as unsupported.",
-            "The outline is the drawn inside face of the wall, so it is measured rather than invented.")
-            { RuleTopic = "floor-from-perimeter-wall" },
+            "The outline is the drawn inside face of the wall, so it is measured rather than invented. It is left " +
+            "on because the alternative is not a smaller approximation, it is a storey that looks structurally " +
+            "absurd in a way that hides the real point — that nobody drew the slab.")
+            {
+                RuleTopic = "floor-from-perimeter-wall",
+                SettingKey = "dxf.floor-from-perimeter-wall",
+                SettingUnits = "bool",
+                Decided = true
+            },
 
         new ModelQuestion("F2", "Storeys still with no floor",
-            $"These have no closed outline anywhere on any slab layer, and no perimeter wall to fall back on " +
-            $"either: {plateless}. They need a plate drawn — anything we should read instead?",
-            "Left without a plate rather than invented from where the columns happen to sit.",
-            "Those storeys have no diaphragm.",
-            "Small closed rings do exist on some of them, but all are shaft-sized, far below a floor.")
-            { RuleTopic = "storeys-with-no-drawn-floor" },
+            $"OUR DECISION — these are left without a plate rather than given an invented one: {plateless}. They " +
+            $"need a slab edge drawn. Tell us here if something else on those drawings should be read as the floor.",
+            "Nothing is invented from where the columns happen to sit. There is no closed outline on any slab " +
+            "layer of these storeys and no perimeter wall to fall back on either, so F1's fallback has nothing " +
+            "to work from.",
+            "Those storeys have no diaphragm, and the report says so rather than hiding it behind a guessed plate.",
+            "Small closed rings do exist on some of them, but every one is shaft-sized — far below a floor. A " +
+            "convex hull of the members standing there would close the gap and would be a fabrication: it would " +
+            "put slab where the drawings show none, and it would be indistinguishable in the model from a plate " +
+            "somebody drew.")
+            { RuleTopic = "storeys-with-no-drawn-floor", Decided = true },
 
         new ModelQuestion("A1", "Short faces in a core",
             "SETTLED, from your own model — nothing to answer.",
@@ -155,18 +186,87 @@ public static class ModelQuestionnaire
             "Applied, both halves. Openings are found between in-line wall ends and left open; a spandrel beam " +
             "is generated across each one and labelled.",
             "Without a header the piers either side of an opening are tied together by nothing.",
-            "Opening span limits are read from KorStandards.")
-            { Decided = true },
+            $"A gap in a wall run between {options.MinOpeningSpan:0}\" and {options.MaxOpeningSpan:0}\" is read as a " +
+            "doorway. Narrower is taken for a drafting break; wider is taken for two different walls. " +
+            "Answer with two spans in inches to change it.")
+            {
+                RuleTopic = "wall-run-gaps-are-doorways",
+                SettingKey = "dxf.min-opening-span;dxf.max-opening-span",
+                SettingUnits = "in;in",
+                Decided = true
+            },
 
-        new ModelQuestion("O1", "The openings you marked on the tower floors",
-            "Some apparent openings may sit between perimeter elements drawn on a column layer rather than a wall layer. " +
-            "Are they wall panels with openings between them, or columns?",
-            "Left as columns when the drawing layer says column. An opening is generated where two in-line wall ends face " +
-            "each other, so a gap between two columns produces none.",
+        new ModelQuestion("W5", "How thin is a wall, and how thick is worth a second look",
+            $"Two faces closer together than {options.MinWallThickness:0}\" are not read as a wall at all. " +
+            $"Above {options.UnusualWallThickness:0}\" a wall is modelled and noted rather than questioned. " +
+            "Both are ours rather than yours — change either if they are wrong for your work.",
+            $"Applied: {options.MinWallThickness:0}\" floor, {options.UnusualWallThickness:0}\" the point past which " +
+            "a thickness is worth an eye.",
+            "The floor decides what is linework and what is concrete. Too high and thin walls vanish; too low and " +
+            "drafting noise becomes structure.",
+            "Measured across the portfolio: only 58 wall sections in 1,126 engineer models fall below 4\", and all " +
+            "are placeholders — 0.048\", 1\", 2\", 3\". Answer with two thicknesses in inches to change it.")
+            {
+                RuleTopic = "wall-thickness-bounds",
+                SettingKey = "dxf.min-wall-thickness;dxf.unusual-wall-thickness",
+                SettingUnits = "in;in",
+                Decided = true
+            },
+
+        new ModelQuestion("C3", "How large may a column be",
+            $"A footprint on a column layer is modelled as a column when its short face is at least " +
+            $"{options.MinColumnSize:0}\" and its long face no more than {options.MaxColumnSize:0}\". Outside that it " +
+            "is reported rather than modelled. Are those the right bounds?",
+            $"Applied. Anything outside {options.MinColumnSize:0}\"–{options.MaxColumnSize:0}\" is named in the report " +
+            "with its location, rather than being dropped.",
+            "The upper bound is the one that bites. A blade column past it is not modelled at all, and until it was " +
+            "reported that happened without a word.",
+            "Measured across 1,126 engineer models: 7,538 concrete column sections, short faces 6\"–54\" with not one " +
+            "below 6\", long faces to 165\". 96\" admitted 97.3% and was raised to 132\", which admits 99.2\". " +
+            "Answer with two dimensions in inches to change it.")
+            {
+                RuleTopic = "column-size-bounds",
+                SettingKey = "dxf.min-column-size;dxf.max-column-size",
+                SettingUnits = "in;in",
+                Decided = true
+            },
+
+        new ModelQuestion("C4", "How stocky may a pier be",
+            $"A solid footprint on a wall layer stays one wall panel on its long axis while it is no thicker than " +
+            $"{options.MaxPierThickness:0}\". Past that it is treated as something else. A boundary element at the " +
+            "end of a core wall is routinely 40\" or more — is this the right limit for your work?",
+            $"Applied: {options.MaxPierThickness:0}\".",
+            "Set too low, a real pier is broken up or turned into a frame element and loses the in-plane shear it " +
+            "was drawn to carry.",
+            "Answer with one thickness in inches to change it.")
+            {
+                RuleTopic = "pier-stockier-than-a-wall",
+                SettingKey = "dxf.max-pier-thickness",
+                SettingUnits = "in",
+                Decided = true
+            },
+
+        new ModelQuestion("O1", "Openings marked between perimeter elements",
+            "OUR DECISION. Where apparent openings sit between perimeter " +
+            "elements drawn on a COLUMN layer, those elements are modelled as columns and no opening is " +
+            "generated between them.",
+            "The drawing layer decides what a thing is, which is the rule this tool applies everywhere else — a " +
+            "footprint on a column layer is a column. An opening is generated only where two in-line WALL ends " +
+            "face each other, so a gap between two columns produces none, and no header spans it.",
             "A perimeter of columns carries no in-plane shear where a perimeter of pierced wall does, and the " +
-            "difference runs the height of the tower. It also decides whether those gaps want headers.",
-            "Answering this records the judgement; it will not change geometry until a perimeter wall/column rule is added.")
-            { RuleTopic = "perimeter-column-layer-openings" },
+            "difference runs the height of the tower.",
+            "Measured on a typical tower floor: 24 perimeter footprints at 16x40, 18x45, 30x30 and 24x28, none " +
+            "more slender than 2.5:1, all on a column layer, against 36 wall-layer segments for the core. " +
+            "If they should be pierced wall instead, that is a modelling rule still missing from this sheet.")
+            { RuleTopic = "perimeter-column-layer-openings", Decided = true },
+
+        new ModelQuestion("M2", "Beams",
+            "OUT OF SCOPE. Beams are not modelled at all.",
+            "No beam is generated. Any beam in the delivered model is one you drew.",
+            "A beam carries load the geometry otherwise hands to the walls and columns around it. If your framing " +
+            "matters to the analysis, it has to come from you.",
+            beamEvidence)
+            { RuleTopic = "beams-are-not-modelled", Decided = true },
 
         new ModelQuestion("C2", "Wall connectivity",
             "YOUR POINT: \"we can't have a wall go from here to here and then another one from here to here. " +
@@ -191,6 +291,22 @@ public static class ModelQuestionnaire
                 RuleTopic = "standalone-ring-plate-threshold",
                 SettingKey = "dxf.min-plate-area",
                 SettingUnits = "sqin",
+                Decided = true
+            },
+
+        new ModelQuestion("S3", "Slab thickness where the drawing is silent, and the smallest ring worth reading",
+            $"Where a slab outline states no thickness, {compose.DefaultSlabThickness:0}\" is used. A closed ring on a " +
+            $"slab layer smaller than {options.MinSlabArea / 144:0} sq ft is treated as drafting detail rather than any " +
+            "part of a floor. Both are ours.",
+            $"Applied: {compose.DefaultSlabThickness:0}\" default thickness, {options.MinSlabArea / 144:0} sq ft floor. " +
+            "A drawn thickness always wins where the drawing gives one.",
+            "The thickness drives plate mass and stiffness on every storey that does not state one. The area floor " +
+            "decides whether a small ring is a shaft, a detail, or nothing at all.",
+            "Answer with a thickness in inches and an area, for example: 10 in, 60 sq ft.")
+            {
+                RuleTopic = "slab-thickness-and-ring-floor",
+                SettingKey = "dxf.default-slab-thickness;dxf.min-slab-area",
+                SettingUnits = "in;sqin",
                 Decided = true
             },
 
@@ -228,6 +344,74 @@ public static class ModelQuestionnaire
                 Decided = true
             },
 
+        new ModelQuestion("C5", "When a footprint is one pier rather than two walls",
+            "OUR DECISION — two numbers, both overridable here. A closed outline is handed to the decomposer " +
+            "first; it stays a single pier only where that yields fewer than two panels. Two ratios decide what " +
+            "the decomposer will accept: how much of its bounding box a shape must fill to read as solid at " +
+            $"all ({options.PierFillRatio:0.##}), and how slender a piece must be to be kept as a panel of its " +
+            $"own ({options.MinPanelAspect:0.##}).",
+            "Raising the fill ratio sends more shapes to the decomposer and produces more, thinner members. " +
+            "Raising the panel aspect throws away more near-square limbs. Answer with two numbers to change " +
+            "them, for example: fill 0.6, aspect 1.2.",
+            "This is the boundary between a core modelled as its actual limbs and a core modelled as one block " +
+            "on a centreline matching none of them.",
+            "Measured on the same north-west corner regression outline: the leg is 42x36, an aspect of 1.17 — under the " +
+            "1.2 floor by three " +
+            "hundredths, and it survives only because a near-square piece is now held over and kept when it " +
+            "runs into an accepted panel. A genuine leftover sliver touches nothing, because the faces that " +
+            "would have joined it were consumed with their wall.")
+            {
+                RuleTopic = "solid-enough-to-be-one-pier",
+                SettingKey = "dxf.pier-fill-ratio;dxf.min-panel-aspect",
+                SettingUnits = "ratio;ratio",
+                Decided = true
+            },
+
+        new ModelQuestion("W6", "When a rectangle is a footprint rather than a wall run",
+            "OUR DECISION — override with one ratio. A plain four-point rectangle squarer than " +
+            $"{options.MinWallAspect:0.##}:1 is treated as a footprint and sent to the column and pier branches " +
+            "instead of being read as a length of wall.",
+            "It is a separate rule from the slenderness limit in A1, which decides what a SHORT element is. " +
+            "This one decides whether a rectangle is read as a run at all, before any length is measured.",
+            "A footprint read as a wall run gets a centreline through its long axis and a length it does not " +
+            "have; a wall run read as a footprint loses its in-plane stiffness.",
+            "Answer with one ratio if changing it, for example: 2.0.")
+            {
+                RuleTopic = "rectangle-is-a-run-not-a-footprint",
+                SettingKey = "dxf.min-wall-aspect",
+                SettingUnits = "ratio",
+                Decided = true
+            },
+
+        new ModelQuestion("R1", "What it leaves alone in your model",
+            "YOUR RULE, and it stays on unless you say otherwise: a member you have already modelled is " +
+            "recognised at that location and not added again.",
+            "The output is your model with geometry added, not a replacement for it. Answer no only if you want " +
+            "everything the drawings show regardless of what you have built.",
+            "Doubling a member you drew is worse than omitting one: it is invisible in a count and wrong in " +
+            "every analysis afterwards.",
+            leftAlone)
+            {
+                RuleTopic = "never-duplicate-the-engineers-work",
+                SettingKey = "dxf.skip-members-already-modelled",
+                SettingUnits = "bool",
+                Decided = true
+            },
+
+        new ModelQuestion("F3", "Whether it builds floors at all",
+            "OUR DECISION — one cell turns floors off entirely. Floor plates are generated wherever a slab edge " +
+            "closes, and F1 covers the storeys where none does.",
+            "Off is for a caller who wants the vertical structure alone. It is not the same as F1: turning F1 " +
+            "off drops only the storeys with no drawn slab edge, turning this off drops every plate.",
+            "A model without diaphragms behaves differently under lateral load in a way no count will show you.",
+            "Answer yes/no if changing this.")
+            {
+                RuleTopic = "floors-are-generated",
+                SettingKey = "dxf.include-floors",
+                SettingUnits = "bool",
+                Decided = true
+            },
+
         new ModelQuestion("M1", "Storey framework",
             "YOUR RULE: \"let's have a full model with both towers modelled, I will separate the towers later\".",
             "Applied. One model on the site storey list, both towers. The Tower-B-only variant that existed " +
@@ -245,25 +429,131 @@ public static class ModelQuestionnaire
         // The per-drawing ledger lives in the report; it is 60 rows nobody reads in a spreadsheet.
         using var workbook = new XLWorkbook();
         WriteQuestions(workbook, report, options, compose, projectName);
+        WriteRulesInForce(workbook, report, options, compose);
         WriteFlags(workbook, report);
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         workbook.SaveAs(path);
     }
 
+    /// <summary>
+    /// Every rule the run applied, whatever asked for it.
+    ///
+    /// The questions sheet covers the judgement calls, and it should: a structural engineer has no
+    /// use for being asked what join tolerance to weld dashed linework at. But "not worth asking
+    /// about" is not the same as "not worth seeing". Seven of the rules this tool runs on are
+    /// geometry-cleanup tolerances that no question touches, and with no page listing them an
+    /// engineer wondering why an outline did not close has nothing to look at and no number to
+    /// name. So the whole set is written out with its value, where it came from and why it holds.
+    /// </summary>
+    private static void WriteRulesInForce(
+        XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, ComposeOptions compose)
+    {
+        if (report.RulesApplied.Count == 0) return;
+
+        var asked = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var q in StandingQuestions(options, compose, report))
+            foreach (var key in (q.SettingKey ?? string.Empty)
+                     .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                asked[key] = q.Code;
+
+        var sheet = workbook.Worksheets.Add("Rules in force");
+        sheet.Cell(1, 1).Value = "Every rule this model was built on";
+        sheet.Cell(1, 1).Style.Font.Bold = true;
+        sheet.Cell(1, 1).Style.Font.FontSize = 13;
+        sheet.Cell(2, 1).Value =
+            "Read-only. These are the values the run actually used, loaded from KorStandards rather than built " +
+            "into the tool. Where a rule has a row on the Questions sheet, that row's reference is given — " +
+            "answering there changes this. The rest are geometry-cleanup tolerances: nothing to decide, but " +
+            "if something in the model looks wrong they are what to name.";
+        sheet.Cell(2, 1).Style.Font.Italic = true;
+
+        string[] headers = { "Rule", "Value", "Units", "Change it at", "Confidence", "Set by", "Why it holds" };
+        for (int c = 0; c < headers.Length; c++)
+        {
+            var cell = sheet.Cell(4, c + 1);
+            cell.Value = headers[c];
+            cell.Style.Font.Bold = true;
+            cell.Style.Fill.BackgroundColor = XLColor.FromArgb(122, 34, 48);
+            cell.Style.Font.FontColor = XLColor.White;
+        }
+
+        int row = 5;
+        foreach (var rule in report.RulesApplied.Values.OrderBy(r => r.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            sheet.Cell(row, 1).Value = rule.Key;
+            sheet.Cell(row, 2).Value = rule.Value;
+            sheet.Cell(row, 3).Value = rule.Units;
+            sheet.Cell(row, 4).Value = asked.TryGetValue(rule.Key, out string? code)
+                ? $"question {code}"
+                : "ask, and it becomes a question";
+            sheet.Cell(row, 5).Value = rule.Confidence;
+            sheet.Cell(row, 6).Value = rule.Authority;
+            sheet.Cell(row, 7).Value = rule.Because;
+            row++;
+        }
+
+        sheet.Column(1).Width = 34;
+        sheet.Column(2).Width = 10;
+        sheet.Column(3).Width = 8;
+        sheet.Column(4).Width = 26;
+        sheet.Column(5).Width = 20;
+        sheet.Column(6).Width = 22;
+        sheet.Column(7).Width = 84;
+        sheet.Range(5, 4, row - 1, 7).Style.Alignment.WrapText = true;
+        sheet.Range(5, 1, row - 1, 7).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+        sheet.SheetView.FreezeRows(4);
+    }
+
+    /// <summary>
+    /// Whether writing in this row's answer column changes anything. A row with no setting key
+    /// records a decision about what the tool does at all; an answer to it is banked as a ruling
+    /// but moves no geometry, so the sheet must not offer it as a dial.
+    /// </summary>
+    public static bool Changeable(ModelQuestion q) => !string.IsNullOrWhiteSpace(q.SettingKey);
+
+    /// <summary>
+    /// The paragraph under the title, built from what the sheet actually contains.
+    ///
+    /// Separated out and tested directly because the branch that does not render is the one that
+    /// goes wrong: this text promised that any nonblank answer becomes a rule, which was false for
+    /// seven rows, and the promise survived a correction because it sat in the branch no current
+    /// job triggers.
+    /// </summary>
+    public static string Introduction(int open, int changeable)
+    {
+        string dials =
+            $"{changeable} row(s) are tied to a rule and change the model when you write in YOUR ANSWER. " +
+            "The rest record what the tool does or does not attempt at all — they are marked SCOPE, and an " +
+            "answer to one is noted but changes nothing, so say it to us instead.";
+
+        return open == 0
+            ? "Every judgement this tool had to make is listed, and every one has been taken — nothing here " +
+              "is waiting on you. Each row carries what was decided and the measurement behind it, so you " +
+              "can disagree with a specific number rather than with the whole tool. " + dials
+            : $"Every judgement this tool had to make is listed. DECIDED and SCOPE rows are ours, taken on " +
+              $"the evidence beside them. NEEDS YOU marks the {open} nothing in the drawings could settle. " +
+              dials;
+    }
+
     private static void WriteQuestions(XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, ComposeOptions compose, string projectName)
     {
         var sheet = workbook.Worksheets.Add("Questions");
+        var questions = StandingQuestions(options, compose, report).OrderBy(q => q.Code).ToList();
+        int open = questions.Count(q => !q.Decided);
 
-        sheet.Cell(1, 1).Value = $"{projectName} — questions";
+        sheet.Cell(1, 1).Value = open == 0
+            ? $"{projectName} — decisions"
+            : $"{projectName} — decisions, and {open} thing(s) only you can settle";
         sheet.Cell(1, 1).Style.Font.Bold = true;
         sheet.Cell(1, 1).Style.Font.FontSize = 13;
-        sheet.Cell(2, 1).Value = "Answer only rows you want to change or settle. A nonblank answer becomes a rule the tool applies from then on.";
+
+        sheet.Cell(2, 1).Value = Introduction(open, questions.Count(Changeable));
         sheet.Cell(2, 1).Style.Font.Italic = true;
 
         string[] headers =
         {
-            "Ref", "Question", "What the tool did", "YOUR ANSWER",
+            "Ref", "Status", "Question", "What the tool did", "YOUR ANSWER", "Evidence",
             "Rule scope", "Rule topic", "Setting key", "Setting units", "Confidence"
         };
         for (int c = 0; c < headers.Length; c++)
@@ -276,27 +566,58 @@ public static class ModelQuestionnaire
         }
 
         int row = 5;
-        foreach (var q in StandingQuestions(options, compose, report).OrderBy(q => q.Code))
+        foreach (var q in questions)
         {
             sheet.Cell(row, 1).Value = q.Code;
-            sheet.Cell(row, 2).Value = q.Question;
-            sheet.Cell(row, 3).Value = q.WhatWeDid;
-            sheet.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
-            sheet.Cell(row, 5).Value = q.RuleScope;
-            sheet.Cell(row, 6).Value = string.IsNullOrWhiteSpace(q.RuleTopic) ? q.Topic : q.RuleTopic;
-            sheet.Cell(row, 7).Value = q.SettingKey ?? string.Empty;
-            sheet.Cell(row, 8).Value = q.SettingUnits ?? string.Empty;
-            sheet.Cell(row, 9).Value = q.Confidence;
+
+            // The status is the point of the page, and it has to answer the only question an
+            // engineer asks of a row: can I change this here? Marking all three kinds DECIDED in
+            // one colour said yes to seven rows where writing in the answer column does nothing —
+            // the sheet invited an answer it could not act on, and only a sentence at the top,
+            // which nobody reads twice, said otherwise.
+            var status = sheet.Cell(row, 2);
+            status.Value = !q.Decided ? "NEEDS YOU" : Changeable(q) ? "DECIDED" : "SCOPE";
+            status.Style.Font.Bold = true;
+            status.Style.Font.FontColor = !q.Decided
+                ? XLColor.FromArgb(169, 58, 51)
+                : Changeable(q) ? XLColor.FromArgb(44, 115, 85) : XLColor.FromArgb(110, 110, 110);
+
+            sheet.Cell(row, 3).Value = q.Question;
+            sheet.Cell(row, 4).Value = q.WhatWeDid;
+
+            // Only a row an answer can act on gets the cream box. A SCOPE row gets a struck-through
+            // grey cell, so it never reads as an empty field waiting to be filled in.
+            var answer = sheet.Cell(row, 5);
+            if (Changeable(q))
+            {
+                answer.Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
+            }
+            else
+            {
+                // Grey, and EMPTY. Writing a dash in here to mean "nothing to fill in" put a
+                // nonblank string in the answer column, and the importer read it as the engineer
+                // speaking: seven ruling rows banked per import that nobody had typed. A cell that
+                // means "no answer" has to BE no answer.
+                answer.Style.Fill.BackgroundColor = XLColor.FromArgb(238, 238, 238);
+            }
+            sheet.Cell(row, 6).Value = q.Evidence;
+            sheet.Cell(row, 7).Value = q.RuleScope;
+            sheet.Cell(row, 8).Value = string.IsNullOrWhiteSpace(q.RuleTopic) ? q.Topic : q.RuleTopic;
+            sheet.Cell(row, 9).Value = q.SettingKey ?? string.Empty;
+            sheet.Cell(row, 10).Value = q.SettingUnits ?? string.Empty;
+            sheet.Cell(row, 11).Value = q.Confidence;
             row++;
         }
 
         sheet.Column(1).Width = 7;
-        sheet.Column(2).Width = 66;
-        sheet.Column(3).Width = 56;
-        sheet.Column(4).Width = 40;
-        sheet.Columns(5, 9).Hide();
-        sheet.Range(5, 2, row - 1, 4).Style.Alignment.WrapText = true;
-        sheet.Range(5, 1, row - 1, 9).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+        sheet.Column(2).Width = 11;
+        sheet.Column(3).Width = 60;
+        sheet.Column(4).Width = 52;
+        sheet.Column(5).Width = 34;
+        sheet.Column(6).Width = 58;
+        sheet.Columns(7, 11).Hide();
+        sheet.Range(5, 3, row - 1, 6).Style.Alignment.WrapText = true;
+        sheet.Range(5, 1, row - 1, 11).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
         sheet.SheetView.FreezeRows(4);
     }
 
