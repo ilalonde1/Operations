@@ -249,10 +249,41 @@ public static class StructuralPlanClassifier
         // holds ten walls and one was written, which the engineer reported as "L27 still has no
         // walls". Refusing to pool at all cost 31138 thirty-eight outlines that genuinely span two
         // layers. Closed first is the rule that serves both.
-        var prepared = DashedLineJoiner.Join(segments, options.DashJoinGap)
-            .Select(s => (Segment: s, Role: RoleOf(s.Layer, options)))
-            .Where(x => x.Role is not null)
-            .ToList();
+        // One edge drawn twice is one edge.
+        //
+        // Revit exports the same rectangle onto a layer and its variant — 31138's parkade columns
+        // appear identically on JBP_V_COL and JBP_V_COL-1, four edges each, same coordinates to the
+        // tenth of an inch. Those are one family, so both copies reach the same loop builder, and a
+        // ring built from eight coincident edges can stitch through a neighbour instead of closing
+        // on itself: one 36x104 column came out where the drawing holds a 12x30.
+        //
+        // Deduplicated per layer FAMILY and by geometry, undirected, so a segment and its reverse
+        // count once. Across families it is left alone: JBP_V-WALL and JBP_B_WALL drawing the same
+        // line is two different claims about the same place, and the layer ledger should keep both.
+        var seenEdges = new HashSet<(string Family, long, long, long, long)>();
+        var prepared = new List<(DxfSegment Segment, string? Role)>();
+        int duplicateEdges = 0;
+
+        foreach (var s in DashedLineJoiner.Join(segments, options.DashJoinGap))
+        {
+            string? role = RoleOf(s.Layer, options);
+            if (role is null) continue;
+
+            var a = ((long)Math.Round(s.Start.X * 10), (long)Math.Round(s.Start.Y * 10));
+            var b = ((long)Math.Round(s.End.X * 10), (long)Math.Round(s.End.Y * 10));
+            var (lo, hi) = a.CompareTo(b) <= 0 ? (a, b) : (b, a);
+
+            if (!seenEdges.Add((LayerFamily(s.Layer), lo.Item1, lo.Item2, hi.Item1, hi.Item2)))
+            {
+                duplicateEdges++;
+                continue;
+            }
+            prepared.Add((s, role));
+        }
+
+        if (duplicateEdges > 0)
+            result.Flags.Add($"{duplicateEdges} edge(s) were drawn more than once on the same layer family " +
+                             "and were read once.");
 
         var byRole = new List<(string Role, List<PlanLoop> Loops, List<IReadOnlyList<DxfPoint>> OpenChains)>();
 
@@ -534,7 +565,20 @@ public static class StructuralPlanClassifier
         // 22 on level 5, 22 on level 6 — close into perfect 6.000000 x 6.000000 loops that still
         // land fractionally below a bare 6.0, and every one was discarded without a word.
         const double SizeSlack = 0.5;
-        if (shortSide < options.MinColumnSize - SizeSlack || longSide > options.MaxColumnSize + SizeSlack) return;
+        if (shortSide < options.MinColumnSize - SizeSlack || longSide > options.MaxColumnSize + SizeSlack)
+        {
+            // Say so. A footprint on a column layer that falls outside the size rules is a column
+            // the engineer drew and this tool declined to model, and returning quietly makes it
+            // one more thing that leaves without appearing in any count.
+            //
+            // The upper bound is the one that bites: measured across 1,126 engineer models,
+            // 207 of 7,538 concrete rectangular column sections run from 98" to 165" — blade
+            // columns and wall piers modelled as frame elements, routine in residential towers.
+            result.Flags.Add(
+                $"{loop.Layer}: a {shortSide:0}x{longSide:0} footprint on a column layer is outside " +
+                $"{options.MinColumnSize:0}-{options.MaxColumnSize:0}\" and was not modelled — check this location.");
+            return;
+        }
 
         // Round only if the drawing drew it with a curve. Every shape test fails here: a square
         // column with chamfered corners has a square bounding box, fills pi/4 of it, and scores
@@ -696,7 +740,16 @@ public static class StructuralPlanClassifier
             // rectangular column at all. A footprint longer than three times its width is a wall in
             // both models, so it is modelled as one — on its centreline, keeping its in-plane
             // shear — rather than as an 8x38 column no engineer would draw.
-            if (box.Aspect > options.MaxColumnAspect)
+            // Long enough to be a wall by the engineer's own rule — "less than 48 in length should
+            // be a column" — so it is one, whatever its proportions.
+            //
+            // Slenderness alone is not enough to decide this. A 36x104 footprint on 31138's
+            // JBP_B_WALL measures 2.89:1, slips under the 3.0 limit, and became a 36x104 FRAME
+            // COLUMN once the portfolio raised the size cap past 104. The 96" cap had been the only
+            // thing stopping it, and stopping it silently. This is wall-layer concrete a hundred
+            // inches long; modelling it as a frame element throws away the in-plane shear it was
+            // drawn to carry, exactly as it did for the 65x82 in the pier branch above.
+            if (box.Length >= options.MinWallLength - LengthSlack || box.Aspect > options.MaxColumnAspect)
             {
                 result.Walls.Add(new WallAxis(box.AxisStart, box.AxisEnd, box.Thickness, loop.Layer));
                 return;

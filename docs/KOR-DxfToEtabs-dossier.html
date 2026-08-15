@@ -67,13 +67,13 @@ had already rebuilt that building's walls by hand.</p>
 <table>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
   <tr><td>Storeys populated</td><td><strong>63</strong></td><td>29</td></tr>
-  <tr><td>Wall panels, true thicknesses</td><td><strong>1,099</strong></td><td>235</td></tr>
-  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,462</strong></td><td>435</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>1,119</strong></td><td>242</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,462</strong></td><td>390</td></tr>
   <tr><td>Floor plates</td><td><strong>82</strong></td><td>13</td></tr>
-  <tr><td>Headers over openings (spandrel shells)</td><td><strong>365</strong></td><td>22</td></tr>
-  <tr><td>Shaft and stair openings cut</td><td><strong>68</strong></td><td>10</td></tr>
+  <tr><td>Headers over openings (spandrel shells)</td><td><strong>375</strong></td><td>22</td></tr>
+  <tr><td>Shaft and stair openings cut</td><td><strong>68</strong></td><td>3</td></tr>
   <tr><td>Pier labels</td><td><strong>143</strong></td><td>142</td></tr>
-  <tr><td>Members you already had, not duplicated</td><td>—</td><td>306 walls, 315 columns</td></tr>
+  <tr><td>Members you already had, not duplicated</td><td>—</td><td>306 walls, 316 columns</td></tr>
 </table>
 
 <h2>What changed after your two calls</h2>
@@ -113,7 +113,7 @@ on level 5, all 22 on level 6, all 15 on the mechanical level, all 15 on the roo
 reads the block section and places each insert with its own scale and rotation, and the size limits
 carry the same half-inch of slack the wall rules do — the HSS 6&times;6 sections close at exactly
 6.000000&times;6.000000 and were still falling a hair under a bare 6" minimum. All 100 are now
-modelled. On 31138 that is 435 columns where 244 stood, and 235 wall panels where 202 did. <em>31168 contains no
+modelled. On 31138 that is 390 columns where 244 stood, and 242 wall panels where 202 did. <em>31168 contains no
 blocks at all, so none of its numbers move.</em></p>
 <table>
   <tr><th>You said</th><th>What it does now</th></tr>
@@ -208,11 +208,11 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
   <tr><th>File</th><th>What it is</th></tr>
   <tr><td><code>31168-FROM-DRAWINGS.e2k</code></td>
       <td><strong>The one that matters.</strong> Tower B and the rest of the building — 63 storeys,
-          1,099 walls, 2,462 columns, 82 plates. Nothing of this existed before.</td></tr>
+          1,119 walls, 2,462 columns, 82 plates. Nothing of this existed before.</td></tr>
   <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
       <td>A gap-fill. You have already rebuilt this building's walls — between 17 and 42 panels on every
-          storey — so this adds only what the drawings show and your model does not: 235 walls and
-          435 columns, mostly at podium and parkade. 306 walls and 315 columns of yours were
+          storey — so this adds only what the drawings show and your model does not: 242 walls and
+          390 columns, mostly at podium and parkade. 306 walls and 316 columns of yours were
           recognised at those locations and deliberately not modelled again.</td></tr>
   <tr><td><code>…-QUESTIONS-for-Andrea.xlsx</code></td>
       <td>Two sheets. <em>Questions</em> — what you have already ruled on, marked DONE, plus the few

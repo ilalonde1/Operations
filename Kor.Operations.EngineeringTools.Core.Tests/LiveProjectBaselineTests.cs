@@ -42,7 +42,12 @@ public class LiveProjectBaselineTests
         // (blue)" and "still have that problem with the north corner walls for tower B" — and
         // together they take headers 144->262, because a wall that reaches its true end leaves a
         // doorway beside it where before there was a void nothing bounded.
-        Storeys: 63, Walls: 1097, Columns: 2438, Floors: 82);
+        // Rebaselined 2026-08-14 after every dimension rule was measured against the 1,126
+        // engineer-authored models on the projects volume rather than against these two jobs.
+        // The wall ceiling moved 36->60 because 36 was rejecting 4,681 of 36,761 real wall
+        // sections, and the column long-side cap 96->132 because 207 real column sections run 98"-165".
+        // Walls 1,097->1,119 and headers 365->375 follow from the wall ceiling; columns hold.
+        Storeys: 63, Walls: 1119, Columns: 2462, Floors: 82);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",
@@ -69,7 +74,16 @@ public class LiveProjectBaselineTests
         // under a bare 6.0 minimum, so the size limits now carry the same half-inch of slack the
         // wall rules do. Whole floors were affected: levels 5 and 6 had all 22 missing, the mech
         // level and the roof all 15. Plates 13->14 and headers 20->22 come with the geometry.
-        Storeys: 29, Walls: 235, Columns: 435, Floors: 14);
+        // Rebaselined 2026-08-14, and the columns move DOWN, which is the point of it.
+        // 435 included duplicates: 31138 draws the same edges on JBP_V_COL and JBP_V_COL-1 with
+        // identical coordinates, one layer family, so 45 members were built twice and every count
+        // agreed with itself. Reading an edge once per family gives 390.
+        // Walls 235->242: a 36x104 footprint on JBP_B_WALL had been becoming a frame column,
+        // stopped only by the old 96" size cap and stopped silently. Wall-layer concrete 104"
+        // long is a wall by the engineer's own rule -- "less than 48 in length should be a
+        // column" -- so it is one now, keeping the in-plane shear it was drawn to carry.
+        // Plates 14->13: the orphan-plate rule dropped a legend box that had been a floor.
+        Storeys: 29, Walls: 242, Columns: 390, Floors: 13);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;
