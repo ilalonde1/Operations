@@ -12,6 +12,17 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 /// </summary>
 public static class DxfPlanReader
 {
+    private static readonly HashSet<string> SupportedEntityTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "LINE",
+        "ARC",
+        "LWPOLYLINE",
+        "POLYLINE",
+        "INSERT",
+    };
+
+    public sealed record UnsupportedEntity(string Layer, string EntityType, int Count);
+
     /// <summary>Chord tolerance for turning an arc into segments, in drawing units.</summary>
     public const double ArcChordTolerance = 0.25;
 
@@ -130,6 +141,75 @@ public static class DxfPlanReader
         }
 
         return segments;
+    }
+
+    public static IReadOnlyList<UnsupportedEntity> UnsupportedStructuralEntities(
+        string path,
+        PlanClassificationOptions options)
+        => UnsupportedStructuralEntities(File.ReadLines(path), options);
+
+    public static IReadOnlyList<UnsupportedEntity> UnsupportedStructuralEntities(
+        IEnumerable<string> rawLines,
+        PlanClassificationOptions options)
+    {
+        var lines = rawLines as IList<string> ?? rawLines.ToList();
+        var counts = new Dictionary<(string Layer, string EntityType), int>();
+        bool inEntities = false;
+
+        for (int i = 0; i < lines.Count - 1; i += 2)
+        {
+            string code = lines[i].Trim();
+            string value = lines[i + 1].Trim();
+
+            if (code != "0") continue;
+
+            if (value == "SECTION")
+            {
+                for (int j = i + 2; j < Math.Min(i + 8, lines.Count - 1); j += 2)
+                {
+                    if (lines[j].Trim() != "2") continue;
+                    inEntities = lines[j + 1].Trim() == "ENTITIES";
+                    break;
+                }
+                continue;
+            }
+
+            if (value == "ENDSEC") { inEntities = false; continue; }
+            if (!inEntities || SupportedEntityTypes.Contains(value)) continue;
+
+            string layer = EntityLayer(lines, i + 2);
+            if (layer.Length == 0 || RoleOf(layer, options) is null) continue;
+
+            var key = (layer, value);
+            counts[key] = counts.TryGetValue(key, out int already) ? already + 1 : 1;
+        }
+
+        return counts
+            .Select(kv => new UnsupportedEntity(kv.Key.Layer, kv.Key.EntityType, kv.Value))
+            .OrderByDescending(e => e.Count)
+            .ThenBy(e => e.Layer, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(e => e.EntityType, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string EntityLayer(IList<string> lines, int start)
+    {
+        for (int i = start; i < lines.Count - 1; i += 2)
+        {
+            string code = lines[i].Trim();
+            if (code == "0") return string.Empty;
+            if (code == "8") return lines[i + 1].Trim();
+        }
+
+        return string.Empty;
+    }
+
+    private static string? RoleOf(string layer, PlanClassificationOptions options)
+    {
+        if (PlanClassificationOptions.Matches(layer, options.ColumnLayerPatterns)) return "columns";
+        if (PlanClassificationOptions.Matches(layer, options.WallLayerPatterns)) return "walls";
+        if (PlanClassificationOptions.Matches(layer, options.SlabLayerPatterns)) return "slab edges";
+        return null;
     }
 
     /// <summary>

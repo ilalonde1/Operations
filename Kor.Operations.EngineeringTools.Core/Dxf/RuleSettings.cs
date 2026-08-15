@@ -261,9 +261,11 @@ public static class RuleSettings
 DECLARE @id UNIQUEIDENTIFIER;
 SELECT @id = Id
   FROM analysis.Ruling WITH (UPDLOCK, HOLDLOCK)
- WHERE Engineer = @Engineer
-   AND Scope = @Scope
-   AND Topic = @Topic
+ WHERE ((@SettingKey IS NOT NULL AND SettingKey = @SettingKey)
+        OR (@SettingKey IS NULL
+            AND Engineer = @Engineer
+            AND Scope = @Scope
+            AND Topic = @Topic))
    AND RetiredAtUtc IS NULL;
 
 IF @id IS NULL
@@ -297,7 +299,10 @@ BEGIN
             OR ISNULL(SettingUnits, N'') <> ISNULL(@SettingUnits, N''));
 
     UPDATE analysis.Ruling
-       SET Ruling = @Ruling,
+       SET Engineer = @Engineer,
+           Scope = @Scope,
+           Topic = @Topic,
+           Ruling = @Ruling,
            Quote = @Quote,
            ActionType = 'APPLY',
            Confidence = @Confidence,
@@ -314,7 +319,7 @@ SELECT @id;
         Add(command, "@Engineer", engineer);
         Add(command, "@Scope", answer.Scope);
         Add(command, "@Topic", answer.Topic);
-        Add(command, "@Ruling", answer.Answer);
+        Add(command, "@Ruling", RulingText(answer));
         Add(command, "@Quote", answer.Answer);
         Add(command, "@Confidence", answer.Confidence);
         Add(command, "@RuledOn", DateTime.UtcNow.Date);
@@ -506,6 +511,11 @@ END
         => units?.Equals("bool", StringComparison.OrdinalIgnoreCase) == true
             ? (Math.Abs(value) > 0.5 ? "1" : "0")
             : value.ToString("0.########", CultureInfo.InvariantCulture);
+
+    private static string RulingText(QuestionAnswerRule answer)
+        => !string.IsNullOrWhiteSpace(answer.SettingKey)
+            ? $"{answer.Question} Answer: {answer.Answer}"
+            : answer.Answer;
 
     private static void Add(SqlCommand command, string name, object? value)
         => command.Parameters.AddWithValue(name, value ?? DBNull.Value);

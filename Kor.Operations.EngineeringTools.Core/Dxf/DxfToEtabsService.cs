@@ -325,6 +325,16 @@ public static class DxfToEtabsService
             }
 
             var segments = DxfPlanReader.ReadSegments(file);
+            var unsupported = DxfPlanReader.UnsupportedStructuralEntities(file, classification);
+            if (unsupported.Count > 0)
+            {
+                int total = unsupported.Sum(e => e.Count);
+                string examples = string.Join(", ", unsupported.Take(4)
+                    .Select(e => $"{e.Count:N0} {e.EntityType} on {e.Layer}"));
+                warnings.Add($"{sheet.FileName}: {total:N0} unsupported DXF entit{(total == 1 ? "y" : "ies")} " +
+                             $"on structural layers were not read: {examples}.");
+            }
+
             if (Math.Abs(scale - 1.0) > 1e-9)
                 segments = segments.Select(g => new DxfSegment(g.Layer,
                     new DxfPoint(g.Start.X * scale, g.Start.Y * scale),

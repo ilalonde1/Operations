@@ -62,13 +62,11 @@ public static class ModelQuestionnaire
         return new[]
         {
         new ModelQuestion("H1", "Header depth",
-            "SETTLED, from your own model — nothing to answer.",
-            $"Depth = storey height − {compose.OpeningHeight:0}\", clamped to {minDepth:0}–{maxDepth:0}\". Both numbers " +
-            "are yours: taking each of your 31138 spandrels' depth off its storey height gives the opening it was " +
-            $"drawn for — 86\" eleven times and 88\" twelve — so {compose.OpeningHeight:0}\" replaces the 84\" standard " +
-            $"door assumed before, and your spandrels run {minDepth:0}\" to {maxDepth:0}\", which is now the range.",
+            "Current rule. Change these numbers only if this job needs a different opening height or header-depth clamp.",
+            $"Depth = storey height − {compose.OpeningHeight:0}\", clamped to {minDepth:0}–{maxDepth:0}\". " +
+            "The backing evidence lives in KorStandards; a nonblank answer here supersedes the rule for future jobs.",
             "The header couples the piers either side of an opening; its depth drives how much.",
-            "Say so if these openings are not typical of 31168 — otherwise it needs no answer.")
+            "Answer with three numbers if changing it, for example: opening 90, clamp 18-60.")
             {
                 RuleTopic = "header-depth-from-opening-height",
                 SettingKey = "dxf.opening-height;dxf.spandrel-depth-floor;dxf.spandrel-depth-ceiling",
@@ -81,24 +79,20 @@ public static class ModelQuestionnaire
             "Walls drawn as two concentric rings are paired and read as the one wall they are. The west wall was " +
             "dropped because the two rings were joined without a proper bridge, so its midpoint probed as void.",
             "It was the whole below-grade lateral system: \"the basement walls are missing\".",
-            "31168 P2: the west wall now reads 2,806\" long at 88.1 degrees, alongside the north, south and east.")
+            "If this job has a perimeter wall drawn only as hatch or non-linework, it should appear in the report as unread.")
             { Decided = true },
 
         new ModelQuestion("C1", "Corners that come out as one thick element",
             "You said \"this wall and this wall should be aligned — it's doing just one big wall that's not " +
             "aligned with this one\". A stepped block — one limb thinner than the other — is still modelled as a " +
             "single pier on the box's long axis, so its centreline sits between the two limbs and matches " +
-            "neither. Your own 31138 model suggests the answer is limbs on their own centrelines sharing one " +
-            "pier label: fifteen of its pier labels cover several panels on one storey, and three of those " +
-            "group limbs at right angles — cw9 a 23\" limb with a 27\" one, cw15 a 272\" with a 104\", cw6 ten " +
-            "panels from 2\" to 15\". Is that what you want here, and does one shared pier label per block do it?",
+            "neither. Should these be limbs on their own centrelines sharing one pier label, or one stocky pier?",
             "Still one pier. Not for want of trying: the decomposer's face floor was lowered to 12\" and its " +
             "panel aspect relaxed, and these blocks still do not come apart, so something earlier is refusing " +
             "them. Rather than guess a third time it is measured next. The limbs are no longer at risk either " +
             "way — anything longer than three times its width now stays a wall whatever it touches.",
             "It decides whether these carry shear as walls, and whether their centrelines match the walls beside them.",
-            "Measured on 31168: a 67\" x 42\" block, 28\" top strip and 42\" leg, modelled centred at y=3271 " +
-            "while the core wall it continues runs at y=3278. Measured on the shipped model: six walls thicker than 30\" on every typical tower storey, 233 in all, 34% of the walls above the podium. Neither your 31138 model nor ours for it carries a single wall over 30\", so this is where 31168 differs.")
+            "Answering this records the judgement; it will not change geometry until a decomposition rule is added.")
             { RuleTopic = "corner-limbs-vs-stocky-pier" },
 
         new ModelQuestion("F1", "Floors where no slab edge closes",
@@ -121,11 +115,9 @@ public static class ModelQuestionnaire
             "SETTLED, from your own model — nothing to answer.",
             "Two things decide it now, and neither is length alone. A short face joined to other walls is part of " +
             "a core and stays a wall. And anything longer than three times its width stays a wall whatever it " +
-            "touches, because your gravity model keeps standalone 30\" and 36\" panels as walls with pier labels — " +
-            "W39, W96, W97, W98, W109, W113 — and its most slender column is 12x36, exactly 3:1, with nothing " +
-            "beyond it. 31168's own export has no concrete rectangular column at all.",
+            "touches. Change the slenderness limit here if this job treats a different footprint aspect as a column.",
             "A short core face carries in-plane shear as a wall; as a column it carries none.",
-            "Say so if you would rather the 48\" rule were applied flat — otherwise it needs no answer.")
+            "Answer with one ratio if changing it, for example: 2.5.")
             {
                 RuleTopic = "column-slenderness-limit",
                 SettingKey = "dxf.max-column-aspect",
@@ -138,7 +130,7 @@ public static class ModelQuestionnaire
             "YOUR RULE: \"less than 48 in length should be a column\".",
             $"Applied. Anything under {options.MinWallLength:0}\" long on plan is now a column, whatever layer it is drawn on.",
             "A pier modelled as a column carries no in-plane shear; a column modelled as a wall is too stiff.",
-            "31138: 45 panels moved from wall to column. See A1 — this also catches short faces inside a core.")
+            "Answer with one length in inches if changing it.")
             {
                 RuleTopic = "wall-vs-column-length",
                 SettingKey = "dxf.min-wall-length",
@@ -148,10 +140,9 @@ public static class ModelQuestionnaire
 
         new ModelQuestion("W2", "Thick walls",
             "YOUR RULE: \"some walls are thicker than 24\"\".",
-            "Applied. The \"unusually thick, confirm\" flag is gone — it produced 615 notes on 31168 asking you " +
-            $"to confirm something that is simply true. Walls up to {options.MaxWallThickness:0}\" are modelled without comment.",
+            $"Applied. Walls up to {options.MaxWallThickness:0}\" are modelled without comment.",
             "A flag that is always wrong trains the reader to skip the whole list.",
-            "31168's Revit sections carry real 36\" walls.")
+            "Answer with one thickness in inches if changing it.")
             {
                 RuleTopic = "thick-walls-are-real",
                 SettingKey = "dxf.max-wall-thickness",
@@ -164,23 +155,17 @@ public static class ModelQuestionnaire
             "Applied, both halves. Openings are found between in-line wall ends and left open; a spandrel beam " +
             "is generated across each one and labelled.",
             "Without a header the piers either side of an opening are tied together by nothing.",
-            "31168: gaps in a wall run measure as one cluster between 36\" and 48\", nothing below 18\" — those are doors.")
+            "Opening span limits are read from KorStandards.")
             { Decided = true },
 
         new ModelQuestion("O1", "The openings you marked on the tower floors",
-            "You marked roughly twenty openings on a typical tower B floor and said \"the openings are missing… " +
-            "this project has lots\". Most of what you marked sits between the elements around the PERIMETER, and " +
-            "those are drawn on the column layer, not the wall layer. Are they wall panels with openings between " +
-            "them, or columns?",
-            "Left as columns, because that is the layer they are on. On a typical tower B floor the sheet carries " +
-            "36 wall-layer segments — the core — and 24 column footprints at 16x40, 18x45, 30x30 and 24x28, none " +
-            "more slender than 2.5:1. An opening is generated where two IN-LINE wall ends face each other, so a " +
-            "gap between two columns produces none.",
+            "Some apparent openings may sit between perimeter elements drawn on a column layer rather than a wall layer. " +
+            "Are they wall panels with openings between them, or columns?",
+            "Left as columns when the drawing layer says column. An opening is generated where two in-line wall ends face " +
+            "each other, so a gap between two columns produces none.",
             "A perimeter of columns carries no in-plane shear where a perimeter of pierced wall does, and the " +
             "difference runs the height of the tower. It also decides whether those gaps want headers.",
-            "The core openings are found and headed: the same run generates 365 headers on 31168, including the " +
-            "55\" doorways beside the tower A core returns and the tower B north corners you marked. What is not " +
-            "found is anything between two columns — nothing on any layer we read says there is an opening there.")
+            "Answering this records the judgement; it will not change geometry until a perimeter wall/column rule is added.")
             { RuleTopic = "perimeter-column-layer-openings" },
 
         new ModelQuestion("C2", "Wall connectivity",
@@ -189,7 +174,7 @@ public static class ModelQuestionnaire
             "Walls now form a network: centrelines meeting at a corner are carried out to where they cross and " +
             "share a joint, and a wall running into another splits it so the T has a joint on both members.",
             "A wall in ETABS is a shell; two walls only carry force between them where they share a joint.",
-            "31168: half of all wall ends now share a joint with another member. Before, none did.")
+            "Answer yes/no if changing this.")
             {
                 RuleTopic = "wall-connectivity-required",
                 SettingKey = "dxf.connect-walls",
@@ -201,8 +186,7 @@ public static class ModelQuestionnaire
             "Small closed rings on the slab-edge layers are linework, not floors.",
             $"A standalone ring must reach {options.MinPlateArea / 144:0} sq ft to be modelled as a plate.",
             "Modelled, each drew as a chip of concrete hanging in space.",
-            "Measured across both projects the two populations do not overlap: standalone rings come out at " +
-            "52-115 sq ft, real plates at 915 and up. 31138's tower floor is 9,666.")
+            "Answer with an area, for example: 450 sq ft.")
             {
                 RuleTopic = "standalone-ring-plate-threshold",
                 SettingKey = "dxf.min-plate-area",
@@ -213,9 +197,9 @@ public static class ModelQuestionnaire
         new ModelQuestion("S2", "Slab openings",
             "DONE — you said you could cut these yourself, but they are on your green list, so the tool now does it.",
             "Shafts and stair openings are cut out of the plates as areas carrying no section, which is how your " +
-            "own 31138 model does it. 46 cut on 31168.",
+            "ETABS imports floor openings.",
             "An uncut plate overstates floor area, mass and diaphragm stiffness at the core.",
-            "Your 31138 model carries 42 openings drawn by hand, each an AREA with SECTION \"None\".")
+            "If this job uses a different opening convention, answer this row.")
             { Decided = true },
 
         new ModelQuestion("Y1", "Yours, not the tool's",
@@ -236,7 +220,7 @@ public static class ModelQuestionnaire
             "Applied. Every generated wall carries one, and walls at the same plan position on different storeys " +
             "share a label, so a pier is one element up the building.",
             "Without a shared label the forces come out panel by panel and are no use to design from.",
-            "31168: 113 pier labels across 910 wall panels — that ratio is the walls stacking, which is right.")
+            "Answer yes/no if changing this.")
             {
                 RuleTopic = "pier-label-every-wall",
                 SettingKey = "dxf.assign-pier-labels",

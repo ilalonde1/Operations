@@ -28,6 +28,22 @@ public class DxfPlanReaderTests
     }
 
     [Fact]
+    public void ReportsUnsupportedEntitiesOnStructuralLayers()
+    {
+        string hatchWall = "0\nHATCH\n8\nJBP_V-WALL";
+        string hatchAnno = "0\nHATCH\n8\nA-ANNO";
+
+        var unsupported = DxfPlanReader.UnsupportedStructuralEntities(
+            DxfWith(hatchWall, Line("JBP_V-WALL", 0, 0, 10, 0), hatchAnno),
+            new PlanClassificationOptions());
+
+        var hatch = Assert.Single(unsupported);
+        Assert.Equal("JBP_V-WALL", hatch.Layer);
+        Assert.Equal("HATCH", hatch.EntityType);
+        Assert.Equal(1, hatch.Count);
+    }
+
+    [Fact]
     public void IgnoresEntitiesOutsideTheEntitiesSection()
     {
         var lines = new List<string> { "0", "SECTION", "2", "HEADER" };
