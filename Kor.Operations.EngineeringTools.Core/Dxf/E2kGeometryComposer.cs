@@ -68,11 +68,22 @@ public sealed record ComposeOptions
             DefaultSlabThickness = DefaultSlabThickness * f,
             OpeningHeight = OpeningHeight * f,
             AlreadyModelledTolerance = AlreadyModelledTolerance * f,
+            SpandrelDepthFloor = SpandrelDepthFloor * f,
+            SpandrelDepthCeiling = SpandrelDepthCeiling * f,
         };
     }
 
     /// <summary>How close a generated member must be to an existing one to count as the same (inches).</summary>
     public double AlreadyModelledTolerance { get; init; } = 6.0;
+
+    /// <summary>
+    /// How shallow and how deep a generated header may be. The engineer set these herself —
+    /// "Bounding can be 18"-60"" — and they are options rather than literals so that answer can
+    /// live in KorStandards and change the model without changing this file.
+    /// </summary>
+    public double SpandrelDepthFloor { get; init; } = 18.0;
+
+    public double SpandrelDepthCeiling { get; init; } = 60.0;
 }
 
 public sealed record ComposeSummary(
@@ -450,7 +461,7 @@ public static class E2kGeometryComposer
             // running 20" to 60". The engineer then set the range herself: "Bounding can be 18-60". Without the
             // ceiling a double-height storey produced a 396"-deep header, which is a wall.
             double storeyHeight = story.Elevation - story.ElevationBelow;
-            double spandrelDepth = SnapInch(Math.Clamp(storeyHeight - options.OpeningHeight, 18.0, 60.0));
+            double spandrelDepth = SnapInch(Math.Clamp(storeyHeight - options.OpeningHeight, options.SpandrelDepthFloor, options.SpandrelDepthCeiling));
 
             foreach (var opening in placement.Geometry.WallOpenings)
             {

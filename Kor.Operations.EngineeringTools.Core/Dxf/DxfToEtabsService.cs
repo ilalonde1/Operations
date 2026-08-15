@@ -47,6 +47,17 @@ public sealed record DxfToEtabsRequest
 
     public PlanClassificationOptions Classification { get; init; } = new();
     public ComposeOptions Compose { get; init; } = new();
+
+    /// <summary>
+    /// Where to read the banked rules from. Null takes it from the environment.
+    /// </summary>
+    public string? RuleSettingsConnection { get; init; }
+
+    /// <summary>
+    /// Production generation must be driven by KorStandards. Tests and local probes can leave this
+    /// false to use the built-in defaults and have that fact stated in the report.
+    /// </summary>
+    public bool RequireRuleSettings { get; init; }
 }
 
 public sealed record SheetOutcome(
@@ -61,7 +72,9 @@ public sealed record DxfToEtabsReport(
     ComposeSummary Summary,
     (double X, double Y) AppliedOffset,
     IReadOnlyList<SheetOutcome> Sheets,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    PlanClassificationOptions ClassificationUsed,
+    ComposeOptions ComposeUsed);
 
 /// <summary>
 /// Turns a folder of structural plan DXFs into an ETABS model: read, classify,
@@ -70,6 +83,133 @@ public sealed record DxfToEtabsReport(
 /// </summary>
 public static class DxfToEtabsService
 {
+    public static IReadOnlyList<string> RequiredRuleKeys { get; } =
+    [
+        "dxf.min-wall-thickness",
+        "dxf.max-wall-thickness",
+        "dxf.min-wall-length",
+        "dxf.min-panel-overlap",
+        "dxf.connect-walls",
+        "dxf.min-opening-span",
+        "dxf.max-opening-span",
+        "dxf.min-wall-aspect",
+        "dxf.min-panel-aspect",
+        "dxf.max-column-aspect",
+        "dxf.min-column-size",
+        "dxf.max-column-size",
+        "dxf.pier-fill-ratio",
+        "dxf.unusual-wall-thickness",
+        "dxf.max-pier-thickness",
+        "dxf.min-slab-area",
+        "dxf.min-plate-area",
+        "dxf.dash-join-gap",
+        "dxf.extend-limit",
+        "dxf.join-tolerance",
+        "dxf.bridge-tolerance",
+        "dxf.wall-bridge-tolerance",
+        "dxf.default-slab-thickness",
+        "dxf.opening-height",
+        "dxf.already-modelled-tolerance",
+        "dxf.assign-pier-labels",
+        "dxf.assign-diaphragms",
+        "dxf.include-floors",
+        "dxf.skip-members-already-modelled",
+        "dxf.spandrel-depth-floor",
+        "dxf.spandrel-depth-ceiling",
+    ];
+
+    private static IReadOnlyDictionary<string, double> BuiltInRuleValues(
+        PlanClassificationOptions classification,
+        ComposeOptions compose)
+    {
+        var values = new Dictionary<string, double>
+        {
+            ["dxf.min-wall-thickness"] = classification.MinWallThickness,
+            ["dxf.max-wall-thickness"] = classification.MaxWallThickness,
+            ["dxf.min-wall-length"] = classification.MinWallLength,
+            ["dxf.min-panel-overlap"] = classification.MinPanelOverlap,
+            ["dxf.connect-walls"] = classification.ConnectWalls ? 1 : 0,
+            ["dxf.min-opening-span"] = classification.MinOpeningSpan,
+            ["dxf.max-opening-span"] = classification.MaxOpeningSpan,
+            ["dxf.min-wall-aspect"] = classification.MinWallAspect,
+            ["dxf.min-panel-aspect"] = classification.MinPanelAspect,
+            ["dxf.max-column-aspect"] = classification.MaxColumnAspect,
+            ["dxf.min-column-size"] = classification.MinColumnSize,
+            ["dxf.max-column-size"] = classification.MaxColumnSize,
+            ["dxf.pier-fill-ratio"] = classification.PierFillRatio,
+            ["dxf.unusual-wall-thickness"] = classification.UnusualWallThickness,
+            ["dxf.max-pier-thickness"] = classification.MaxPierThickness,
+            ["dxf.min-slab-area"] = classification.MinSlabArea,
+            ["dxf.min-plate-area"] = classification.MinPlateArea,
+            ["dxf.dash-join-gap"] = classification.DashJoinGap,
+            ["dxf.extend-limit"] = classification.ExtendLimit,
+            ["dxf.join-tolerance"] = classification.JoinTolerance,
+            ["dxf.bridge-tolerance"] = classification.BridgeTolerance,
+            ["dxf.wall-bridge-tolerance"] = classification.WallBridgeTolerance,
+            ["dxf.default-slab-thickness"] = compose.DefaultSlabThickness,
+            ["dxf.opening-height"] = compose.OpeningHeight,
+            ["dxf.already-modelled-tolerance"] = compose.AlreadyModelledTolerance,
+            ["dxf.assign-pier-labels"] = compose.AssignPierLabels ? 1 : 0,
+            ["dxf.assign-diaphragms"] = compose.AssignDiaphragms ? 1 : 0,
+            ["dxf.include-floors"] = compose.IncludeFloors ? 1 : 0,
+            ["dxf.skip-members-already-modelled"] = compose.SkipMembersAlreadyModelled ? 1 : 0,
+            ["dxf.spandrel-depth-floor"] = compose.SpandrelDepthFloor,
+            ["dxf.spandrel-depth-ceiling"] = compose.SpandrelDepthCeiling,
+        };
+
+        if (!RequiredRuleKeys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
+                .SequenceEqual(values.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase),
+                    StringComparer.OrdinalIgnoreCase))
+            throw new InvalidOperationException("The DXF-to-ETABS required rule list and applied rule list differ.");
+
+        return values;
+    }
+
+    private static PlanClassificationOptions ApplyRules(
+        PlanClassificationOptions options,
+        IReadOnlyDictionary<string, RuleSetting> settings)
+        => options with
+        {
+            MinWallThickness = settings.ValueOr("dxf.min-wall-thickness", options.MinWallThickness),
+            MaxWallThickness = settings.ValueOr("dxf.max-wall-thickness", options.MaxWallThickness),
+            MinWallLength = settings.ValueOr("dxf.min-wall-length", options.MinWallLength),
+            MinPanelOverlap = settings.ValueOr("dxf.min-panel-overlap", options.MinPanelOverlap),
+            ConnectWalls = settings.FlagOr("dxf.connect-walls", options.ConnectWalls),
+            MinOpeningSpan = settings.ValueOr("dxf.min-opening-span", options.MinOpeningSpan),
+            MaxOpeningSpan = settings.ValueOr("dxf.max-opening-span", options.MaxOpeningSpan),
+            MinWallAspect = settings.ValueOr("dxf.min-wall-aspect", options.MinWallAspect),
+            MinPanelAspect = settings.ValueOr("dxf.min-panel-aspect", options.MinPanelAspect),
+            MaxColumnAspect = settings.ValueOr("dxf.max-column-aspect", options.MaxColumnAspect),
+            MinColumnSize = settings.ValueOr("dxf.min-column-size", options.MinColumnSize),
+            MaxColumnSize = settings.ValueOr("dxf.max-column-size", options.MaxColumnSize),
+            PierFillRatio = settings.ValueOr("dxf.pier-fill-ratio", options.PierFillRatio),
+            UnusualWallThickness = settings.ValueOr("dxf.unusual-wall-thickness", options.UnusualWallThickness),
+            MaxPierThickness = settings.ValueOr("dxf.max-pier-thickness", options.MaxPierThickness),
+            MinSlabArea = settings.ValueOr("dxf.min-slab-area", options.MinSlabArea),
+            MinPlateArea = settings.ValueOr("dxf.min-plate-area", options.MinPlateArea),
+            DashJoinGap = settings.ValueOr("dxf.dash-join-gap", options.DashJoinGap),
+            ExtendLimit = settings.ValueOr("dxf.extend-limit", options.ExtendLimit),
+            JoinTolerance = settings.ValueOr("dxf.join-tolerance", options.JoinTolerance),
+            BridgeTolerance = settings.ValueOr("dxf.bridge-tolerance", options.BridgeTolerance),
+            WallBridgeTolerance = settings.ValueOr("dxf.wall-bridge-tolerance", options.WallBridgeTolerance),
+        };
+
+    private static ComposeOptions ApplyRules(
+        ComposeOptions options,
+        IReadOnlyDictionary<string, RuleSetting> settings)
+        => options with
+        {
+            DefaultSlabThickness = settings.ValueOr("dxf.default-slab-thickness", options.DefaultSlabThickness),
+            OpeningHeight = settings.ValueOr("dxf.opening-height", options.OpeningHeight),
+            AlreadyModelledTolerance = settings.ValueOr("dxf.already-modelled-tolerance", options.AlreadyModelledTolerance),
+            AssignPierLabels = settings.FlagOr("dxf.assign-pier-labels", options.AssignPierLabels),
+            AssignDiaphragms = settings.FlagOr("dxf.assign-diaphragms", options.AssignDiaphragms),
+            IncludeFloors = settings.FlagOr("dxf.include-floors", options.IncludeFloors),
+            SkipMembersAlreadyModelled = settings.FlagOr("dxf.skip-members-already-modelled", options.SkipMembersAlreadyModelled),
+            SpandrelDepthFloor = settings.ValueOr("dxf.spandrel-depth-floor", options.SpandrelDepthFloor),
+            SpandrelDepthCeiling = settings.ValueOr("dxf.spandrel-depth-ceiling", options.SpandrelDepthCeiling),
+        };
+
     private static string Describe(double unitInInches) => unitInInches switch
     {
         1.0 => "inches",
@@ -150,11 +290,21 @@ public static class DxfToEtabsService
                     "One drawing set has to share one unit.");
         }
 
+        // The rules, from KorStandards where the run is production. An answer from the engineer is
+        // banked there with its confidence, and this is where it becomes behaviour.
+        var builtIn = BuiltInRuleValues(request.Classification, request.Compose);
+        var banked = request.RequireRuleSettings
+            ? RuleSettings.LoadRequired(request.RuleSettingsConnection, builtIn.Keys)
+            : new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase);
+        warnings.AddRange(RuleSettings.Describe(banked, builtIn));
+
+        var requested = ApplyRules(request.Classification, banked);
+
         double scale = drawingUnit.Value / modelUnitInInches;
-        var composeFromReference = request.Compose;
+        var composeFromReference = ApplyRules(request.Compose, banked);
         var classification = Math.Abs(modelUnitInInches - 1.0) < 1e-9
-            ? request.Classification
-            : request.Classification.InUnitOf(modelUnitInInches);
+            ? requested
+            : requested.InUnitOf(modelUnitInInches);
 
         if (Math.Abs(scale - 1.0) > 1e-9)
             warnings.Add($"The drawings are {Describe(drawingUnit.Value)} and the model is " +
@@ -229,7 +379,7 @@ public static class DxfToEtabsService
         var derived = new List<DerivedRule>();
         if (request.DeriveRulesFromReference)
         {
-            var opening = ReferenceRules.OpeningHeight(doc, request.Compose.OpeningHeight);
+            var opening = ReferenceRules.OpeningHeight(doc, composeFromReference.OpeningHeight);
             var slender = ReferenceRules.MaxColumnAspect(doc, classification.MaxColumnAspect);
             derived.Add(opening);
             derived.Add(slender);
@@ -306,7 +456,7 @@ public static class DxfToEtabsService
         return new DxfToEtabsReport(
             request.OutputE2k, files.Count, parsed.Count,
             placements.Select(p => p.Story.Name).Distinct().Count(),
-            summary, offset, outcomes, warnings);
+            summary, offset, outcomes, warnings, requested, composeFromReference);
     }
 
     /// <summary>

@@ -262,15 +262,51 @@ if (args.Length >= 1 && args[0].Equals("e2k-compare", StringComparison.OrdinalIg
     return 0;
 }
 
+// IMPORT answered DXF -> ETABS questions into KorStandards. The generation command reads these
+// rulings back through analysis.vw_RuleSetting on later runs.
+// Usage: takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]
+if (args.Length >= 1 && args[0].Equals("dxf-import-rules", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine("Usage: takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]");
+        return 1;
+    }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Questions workbook not found '{args[1]}'."); return 2; }
+
+    string? engineer = null;
+    string? rulesDb = null;
+    for (int i = 2; i < args.Length; i++)
+    {
+        string flag = args[i];
+        if (flag.Equals("--engineer", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) engineer = args[++i];
+        else if (flag.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) rulesDb = args[++i];
+        else { Console.Error.WriteLine($"Unknown argument '{flag}'."); return 1; }
+    }
+
+    if (string.IsNullOrWhiteSpace(engineer))
+    {
+        Console.Error.WriteLine("--engineer is required; it is the authority written to analysis.Ruling.");
+        return 1;
+    }
+
+    var import = RuleSettings.ImportQuestionAnswers(args[1], engineer, rulesDb);
+    Console.WriteLine($"answers found : {import.AnswersFound}");
+    Console.WriteLine($"rules written : {import.RulesWritten}");
+    Console.WriteLine($"settings      : {import.SettingsWritten}");
+    foreach (string skipped in import.Skipped) Console.WriteLine("skipped: " + skipped);
+    return 0;
+}
+
 // DXF -> ETABS — build a model from drafting's concrete-outline plan exports. Walls, columns and slabs are
 // read off the structural layers, each sheet is placed on every storey its title covers, and the result is
 // merged into an .e2k ETABS itself exported (so storeys, grids and materials stay ETABS's own).
-// Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]
+// Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--rules-db <connection>] [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]
 if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalIgnoreCase))
 {
     if (args.Length < 4)
     {
-        Console.Error.WriteLine("Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]");
+        Console.Error.WriteLine("Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--rules-db <connection>] [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]");
         return 1;
     }
     if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"DXF folder not found '{args[1]}'."); return 2; }
@@ -280,6 +316,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     string? towerOnly = null;
     string? reportPath = null;
     string? questionsPath = null;
+    string? rulesDb = null;
     (double X, double Y)? offset = null;
     bool includeFloors = true;
     double bridgeTolerance = new PlanClassificationOptions().BridgeTolerance;
@@ -293,6 +330,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         else if (flag.Equals("--tower", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) towerOnly = args[++i];
         else if (flag.Equals("--report", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) reportPath = args[++i];
         else if (flag.Equals("--questions", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) questionsPath = args[++i];
+        else if (flag.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) rulesDb = args[++i];
         else if (flag.Equals("--no-floors", StringComparison.OrdinalIgnoreCase)) includeFloors = false;
         else if (flag.Equals("--bridge", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length &&
                  double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double bt))
@@ -332,6 +370,8 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         Offset = offset,
         Classification = new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance, ExtendLimit = extendLimit },
         Compose = new ComposeOptions { IncludeFloors = includeFloors },
+        RuleSettingsConnection = rulesDb,
+        RequireRuleSettings = true,
     });
 
     string text = DxfToEtabsService.FormatReport(dxfReport);
@@ -342,8 +382,8 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     {
         ModelQuestionnaire.Write(
             questionsPath, dxfReport,
-            new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance, ExtendLimit = extendLimit },
-            new ComposeOptions { IncludeFloors = includeFloors },
+            dxfReport.ClassificationUsed,
+            dxfReport.ComposeUsed,
             Path.GetFileNameWithoutExtension(args[3]));
         Console.WriteLine($"questions for the engineer: {questionsPath}");
     }

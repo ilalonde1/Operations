@@ -20,6 +20,7 @@ param(
     [string]$ModelFolder,
     [string]$DxfFolder,
     [string]$Reference,
+    [string]$RulesDb = $env:KOR_ENGINEERINGTOOLS_STANDARDSDB,
 
     [switch]$SkipDossier
 )
@@ -87,6 +88,7 @@ Write-Host "job $Project" -ForegroundColor DarkGray
 Write-Host "  model folder : $ModelFolder" -ForegroundColor DarkGray
 Write-Host "  drawings     : $DxfFolder" -ForegroundColor DarkGray
 Write-Host "  reference    : $Reference" -ForegroundColor DarkGray
+if (-not $RulesDb) { throw "KOR_ENGINEERINGTOOLS_STANDARDSDB is not set; refusing to publish a model from built-in rules." }
 
 $folder = $config.Folder
 $out    = Join-Path $folder "$Project-FROM-DRAWINGS.e2k"
@@ -100,6 +102,7 @@ $cli = Join-Path $repo 'Kor.Operations.EngineeringTools.TakeoffCli\bin\Debug\net
 
 Write-Host "generating $Project..." -ForegroundColor DarkGray
 & $cli dxf-to-etabs $config.Dxf (Join-Path $folder $config.Reference) $out `
+    --rules-db $RulesDb `
     --report (Join-Path $folder "$Project-FROM-DRAWINGS-report.txt") `
     --questions (Join-Path $folder "$Project-QUESTIONS-for-Andrea.xlsx") |
     Select-String -Pattern 'Storeys built|^Walls|^Columns|^Floors'

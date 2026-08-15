@@ -17,6 +17,12 @@ public sealed record ModelQuestion(
     /// worth more than one answering eight open questions.
     /// </summary>
     public bool Decided { get; init; }
+
+    public string RuleScope { get; init; } = "etabs-modelling";
+    public string RuleTopic { get; init; } = string.Empty;
+    public string? SettingKey { get; init; }
+    public string? SettingUnits { get; init; }
+    public string Confidence { get; init; } = "engineer-confirmed";
 }
 
 /// <summary>
@@ -51,7 +57,7 @@ public static class ModelQuestionnaire
             ? "Each level with no closed slab edge has been given one plate from the inside face of its perimeter wall."
             : "No level needed this on your project — every plate came from a drawn slab edge.";
 
-        double minDepth = 20, maxDepth = 60;
+        double minDepth = compose.SpandrelDepthFloor, maxDepth = compose.SpandrelDepthCeiling;
 
         return new[]
         {
@@ -63,7 +69,12 @@ public static class ModelQuestionnaire
             $"door assumed before, and your spandrels run {minDepth:0}\" to {maxDepth:0}\", which is now the range.",
             "The header couples the piers either side of an opening; its depth drives how much.",
             "Say so if these openings are not typical of 31168 — otherwise it needs no answer.")
-            { Decided = true },
+            {
+                RuleTopic = "header-depth-from-opening-height",
+                SettingKey = "dxf.opening-height;dxf.spandrel-depth-floor;dxf.spandrel-depth-ceiling",
+                SettingUnits = "in;in;in",
+                Decided = true
+            },
 
         new ModelQuestion("P1", "Perimeter basement wall",
             "FIXED. The below-grade perimeter wall is now read on all four sides, including the angled west one.",
@@ -87,21 +98,24 @@ public static class ModelQuestionnaire
             "way — anything longer than three times its width now stays a wall whatever it touches.",
             "It decides whether these carry shear as walls, and whether their centrelines match the walls beside them.",
             "Measured on 31168: a 67\" x 42\" block, 28\" top strip and 42\" leg, modelled centred at y=3271 " +
-            "while the core wall it continues runs at y=3278. Measured on the shipped model: six walls thicker than 30\" on every typical tower storey, 233 in all, 34% of the walls above the podium. Neither your 31138 model nor ours for it carries a single wall over 30\", so this is where 31168 differs."),
+            "while the core wall it continues runs at y=3278. Measured on the shipped model: six walls thicker than 30\" on every typical tower storey, 233 in all, 34% of the walls above the podium. Neither your 31138 model nor ours for it carries a single wall over 30\", so this is where 31168 differs.")
+            { RuleTopic = "corner-limbs-vs-stocky-pier" },
 
         new ModelQuestion("F1", "Floors where no slab edge closes",
             "Where no slab edge closes, the floor has been taken from the inside face of the perimeter wall — " +
             "one outline, one thickness. Keep that, or will you draw them?",
             perimeterFloors + " A real slab-edge outline always wins where one exists; this is only the fallback.",
             "A storey with no plate has no diaphragm at all, and its walls and columns read as unsupported.",
-            "The outline is the drawn inside face of the wall, so it is measured rather than invented."),
+            "The outline is the drawn inside face of the wall, so it is measured rather than invented.")
+            { RuleTopic = "floor-from-perimeter-wall" },
 
         new ModelQuestion("F2", "Storeys still with no floor",
             $"These have no closed outline anywhere on any slab layer, and no perimeter wall to fall back on " +
             $"either: {plateless}. They need a plate drawn — anything we should read instead?",
             "Left without a plate rather than invented from where the columns happen to sit.",
             "Those storeys have no diaphragm.",
-            "Small closed rings do exist on some of them, but all are shaft-sized, far below a floor."),
+            "Small closed rings do exist on some of them, but all are shaft-sized, far below a floor.")
+            { RuleTopic = "storeys-with-no-drawn-floor" },
 
         new ModelQuestion("A1", "Short faces in a core",
             "SETTLED, from your own model — nothing to answer.",
@@ -112,7 +126,12 @@ public static class ModelQuestionnaire
             "beyond it. 31168's own export has no concrete rectangular column at all.",
             "A short core face carries in-plane shear as a wall; as a column it carries none.",
             "Say so if you would rather the 48\" rule were applied flat — otherwise it needs no answer.")
-            { Decided = true },
+            {
+                RuleTopic = "column-slenderness-limit",
+                SettingKey = "dxf.max-column-aspect",
+                SettingUnits = "ratio",
+                Decided = true
+            },
 
 
         new ModelQuestion("W1", "Wall vs column",
@@ -120,7 +139,12 @@ public static class ModelQuestionnaire
             $"Applied. Anything under {options.MinWallLength:0}\" long on plan is now a column, whatever layer it is drawn on.",
             "A pier modelled as a column carries no in-plane shear; a column modelled as a wall is too stiff.",
             "31138: 45 panels moved from wall to column. See A1 — this also catches short faces inside a core.")
-            { Decided = true },
+            {
+                RuleTopic = "wall-vs-column-length",
+                SettingKey = "dxf.min-wall-length",
+                SettingUnits = "in",
+                Decided = true
+            },
 
         new ModelQuestion("W2", "Thick walls",
             "YOUR RULE: \"some walls are thicker than 24\"\".",
@@ -128,7 +152,12 @@ public static class ModelQuestionnaire
             $"to confirm something that is simply true. Walls up to {options.MaxWallThickness:0}\" are modelled without comment.",
             "A flag that is always wrong trains the reader to skip the whole list.",
             "31168's Revit sections carry real 36\" walls.")
-            { Decided = true },
+            {
+                RuleTopic = "thick-walls-are-real",
+                SettingKey = "dxf.max-wall-thickness",
+                SettingUnits = "in",
+                Decided = true
+            },
 
         new ModelQuestion("W3", "Doorways and headers",
             "YOUR RULE: \"the wall should stop at the opening. A header (spandrel) may be over the opening\".",
@@ -151,16 +180,22 @@ public static class ModelQuestionnaire
             "difference runs the height of the tower. It also decides whether those gaps want headers.",
             "The core openings are found and headed: the same run generates 365 headers on 31168, including the " +
             "55\" doorways beside the tower A core returns and the tower B north corners you marked. What is not " +
-            "found is anything between two columns — nothing on any layer we read says there is an opening there."),
+            "found is anything between two columns — nothing on any layer we read says there is an opening there.")
+            { RuleTopic = "perimeter-column-layer-openings" },
 
-        new ModelQuestion("C1", "Wall connectivity",
+        new ModelQuestion("C2", "Wall connectivity",
             "YOUR POINT: \"we can't have a wall go from here to here and then another one from here to here. " +
             "We need a connection\" — and \"this line is not aligned with this one\".",
             "Walls now form a network: centrelines meeting at a corner are carried out to where they cross and " +
             "share a joint, and a wall running into another splits it so the T has a joint on both members.",
             "A wall in ETABS is a shell; two walls only carry force between them where they share a joint.",
             "31168: half of all wall ends now share a joint with another member. Before, none did.")
-            { Decided = true },
+            {
+                RuleTopic = "wall-connectivity-required",
+                SettingKey = "dxf.connect-walls",
+                SettingUnits = "bool",
+                Decided = true
+            },
 
         new ModelQuestion("S1", "Scraps of floor",
             "Small closed rings on the slab-edge layers are linework, not floors.",
@@ -168,7 +203,12 @@ public static class ModelQuestionnaire
             "Modelled, each drew as a chip of concrete hanging in space.",
             "Measured across both projects the two populations do not overlap: standalone rings come out at " +
             "52-115 sq ft, real plates at 915 and up. 31138's tower floor is 9,666.")
-            { Decided = true },
+            {
+                RuleTopic = "standalone-ring-plate-threshold",
+                SettingKey = "dxf.min-plate-area",
+                SettingUnits = "sqin",
+                Decided = true
+            },
 
         new ModelQuestion("S2", "Slab openings",
             "DONE — you said you could cut these yourself, but they are on your green list, so the tool now does it.",
@@ -184,7 +224,12 @@ public static class ModelQuestionnaire
             "there is nothing to undo. No loads are applied. Sections carry nominal thickness only.",
             "These are the judgement half of the work; you said you want to keep them, and they are quick.",
             "Green list: columns, walls, slabs, openings, grid lines, storey elevations. Yellow list: these.")
-            { Decided = true },
+            {
+                RuleTopic = "diaphragms-are-the-engineers",
+                SettingKey = "dxf.assign-diaphragms",
+                SettingUnits = "bool",
+                Decided = true
+            },
 
         new ModelQuestion("W4", "Pier labels",
             "YOUR RULE: \"all walls should be assigned a pier label\".",
@@ -192,7 +237,12 @@ public static class ModelQuestionnaire
             "share a label, so a pier is one element up the building.",
             "Without a shared label the forces come out panel by panel and are no use to design from.",
             "31168: 113 pier labels across 910 wall panels — that ratio is the walls stacking, which is right.")
-            { Decided = true },
+            {
+                RuleTopic = "pier-label-every-wall",
+                SettingKey = "dxf.assign-pier-labels",
+                SettingUnits = "bool",
+                Decided = true
+            },
 
         new ModelQuestion("M1", "Storey framework",
             "YOUR RULE: \"let's have a full model with both towers modelled, I will separate the towers later\".",
@@ -224,10 +274,14 @@ public static class ModelQuestionnaire
         sheet.Cell(1, 1).Value = $"{projectName} — questions";
         sheet.Cell(1, 1).Style.Font.Bold = true;
         sheet.Cell(1, 1).Style.Font.FontSize = 13;
-        sheet.Cell(2, 1).Value = "An answer becomes a rule the tool applies from then on.";
+        sheet.Cell(2, 1).Value = "Answer only rows you want to change or settle. A nonblank answer becomes a rule the tool applies from then on.";
         sheet.Cell(2, 1).Style.Font.Italic = true;
 
-        string[] headers = { "Ref", "Question", "What the tool did", "YOUR ANSWER" };
+        string[] headers =
+        {
+            "Ref", "Question", "What the tool did", "YOUR ANSWER",
+            "Rule scope", "Rule topic", "Setting key", "Setting units", "Confidence"
+        };
         for (int c = 0; c < headers.Length; c++)
         {
             var cell = sheet.Cell(4, c + 1);
@@ -237,15 +291,18 @@ public static class ModelQuestionnaire
             cell.Style.Font.FontColor = XLColor.White;
         }
 
-        // Only what is still open. Listing what she has already ruled on is asking her to read her
-        // own answers back.
         int row = 5;
-        foreach (var q in StandingQuestions(options, compose, report).Where(q => !q.Decided).OrderBy(q => q.Code))
+        foreach (var q in StandingQuestions(options, compose, report).OrderBy(q => q.Code))
         {
             sheet.Cell(row, 1).Value = q.Code;
             sheet.Cell(row, 2).Value = q.Question;
             sheet.Cell(row, 3).Value = q.WhatWeDid;
             sheet.Cell(row, 4).Style.Fill.BackgroundColor = XLColor.FromArgb(253, 246, 231);
+            sheet.Cell(row, 5).Value = q.RuleScope;
+            sheet.Cell(row, 6).Value = string.IsNullOrWhiteSpace(q.RuleTopic) ? q.Topic : q.RuleTopic;
+            sheet.Cell(row, 7).Value = q.SettingKey ?? string.Empty;
+            sheet.Cell(row, 8).Value = q.SettingUnits ?? string.Empty;
+            sheet.Cell(row, 9).Value = q.Confidence;
             row++;
         }
 
@@ -253,8 +310,9 @@ public static class ModelQuestionnaire
         sheet.Column(2).Width = 66;
         sheet.Column(3).Width = 56;
         sheet.Column(4).Width = 40;
+        sheet.Columns(5, 9).Hide();
         sheet.Range(5, 2, row - 1, 4).Style.Alignment.WrapText = true;
-        sheet.Range(5, 1, row - 1, 4).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+        sheet.Range(5, 1, row - 1, 9).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
         sheet.SheetView.FreezeRows(4);
     }
 
