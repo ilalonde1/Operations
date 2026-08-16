@@ -383,6 +383,19 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     double joinTolerance = new PlanClassificationOptions().JoinTolerance;
     double extendLimit = new PlanClassificationOptions().ExtendLimit;
 
+    // Layer names for THIS job. The database holds a default, and a default is the right shape for
+    // a threshold -- a 48" wall is 48" on every job. It is the wrong shape for a layer name: what
+    // drafting calls a column is a fact about one office, and often about one project within it.
+    // 500 Foster draws columns on V-COL; KOR draws them on JBP_V_COL. Making the pattern a global
+    // rule and setting it for one job breaks the other, so the rule alone cannot make this tool
+    // agnostic -- it only makes the value visible. This is what makes a new job runnable today.
+    List<string>? wallLayers = null, columnLayers = null, slabLayers = null;
+
+    static List<string> Patterns(string raw) => raw
+        .Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(p => p.Length > 0)
+        .ToList();
+
     for (int i = 4; i < args.Length; i++)
     {
         string flag = args[i];
@@ -392,6 +405,9 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         else if (flag.Equals("--questions", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) questionsPath = args[++i];
         else if (flag.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) rulesDb = args[++i];
         else if (flag.Equals("--no-floors", StringComparison.OrdinalIgnoreCase)) includeFloors = false;
+        else if (flag.Equals("--wall-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) wallLayers = Patterns(args[++i]);
+        else if (flag.Equals("--column-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) columnLayers = Patterns(args[++i]);
+        else if (flag.Equals("--slab-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) slabLayers = Patterns(args[++i]);
         else if (flag.Equals("--bridge", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length &&
                  double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double bt))
         {
@@ -432,6 +448,9 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         TowerOnly = towerOnly,
         Offset = offset,
         Classification = new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance, ExtendLimit = extendLimit },
+        WallLayerPatterns = wallLayers,
+        ColumnLayerPatterns = columnLayers,
+        SlabLayerPatterns = slabLayers,
         Compose = new ComposeOptions { IncludeFloors = includeFloors },
         RuleSettingsConnection = rulesDb,
         RequireRuleSettings = true,

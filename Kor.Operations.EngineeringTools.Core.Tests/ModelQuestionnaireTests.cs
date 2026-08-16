@@ -254,7 +254,9 @@ public class ModelQuestionnaireTests
                 .ToDictionary(r => r.Cell(1).GetString(), r => r.Cell(status).GetString());
 
             var questions = ModelQuestionnaire
-                .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report);
+                .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report)
+                .Where(q => !q.ForTheRecord)   // the rest live on "Rules in force"
+                .ToList();
 
             Assert.Contains(questions, q => q.Decided);
             foreach (var q in questions)
@@ -284,7 +286,7 @@ public class ModelQuestionnaireTests
         var decided = ModelQuestionnaire
             .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report)
             .Where(q => q.Decided)
-            .ToList();
+            .ToList();   // evidence is required of every decision, front page or not
 
         Assert.NotEmpty(decided);
         foreach (var q in decided)
@@ -382,7 +384,9 @@ public class ModelQuestionnaireTests
                 .ToDictionary(r => r.Cell(1).GetString(), r => r);
 
             var questions = ModelQuestionnaire
-                .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report);
+                .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report)
+                .Where(q => !q.ForTheRecord)
+                .ToList();
 
             int changeable = 0, scope = 0;
             foreach (var q in questions)
@@ -553,6 +557,51 @@ public class ModelQuestionnaireTests
                 a => a.SettingKey == "dxf.wall-layer-patterns");
             Assert.Equal("S8-WALL;CONC-WALL", rule.SettingValue);
             Assert.Equal(RuleSettings.TextUnits, rule.SettingUnits);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void TheFrontPageCarriesOnlyWhatSheHasToRead()
+    {
+        // 28 rows of which ten mattered is a page that gets closed. Three of them told a KOR
+        // engineer what KOR's own layer convention is, and two were changelog entries about bugs
+        // already fixed. They stay in the workbook; they stop competing for her attention.
+        string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            var report = MinimalReport(path);
+            ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
+
+            var all = ModelQuestionnaire.StandingQuestions(
+                report.ClassificationUsed, report.ComposeUsed, report);
+            var record = all.Where(q => q.ForTheRecord).Select(q => q.Code).ToList();
+            Assert.NotEmpty(record);
+
+            using var workbook = new XLWorkbook(path);
+            var sheet = workbook.Worksheet("Questions");
+            var shown = sheet.RowsUsed().Where(r => r.RowNumber() > 4)
+                .Select(r => r.Cell(1).GetString())
+                .Where(c => c.Length > 0 && c.Length <= 3)
+                .ToList();
+
+            foreach (string code in record)
+                Assert.DoesNotContain(code, shown);
+
+            Assert.Equal(all.Count - record.Count, shown.Count);
+
+            // Kept off, not hidden: the sheet has to say they exist and where they are.
+            string note = string.Join(" ", sheet.RowsUsed().Select(r => r.Cell(1).GetString()));
+            Assert.Contains("Rules in force", note, StringComparison.Ordinal);
+            foreach (string code in record)
+                Assert.Contains(code, note, StringComparison.Ordinal);
+
+            // And every one of them is still in the full rule set, not dropped.
+            var rules = workbook.Worksheet("Rules in force");
+            Assert.NotNull(rules);
         }
         finally
         {

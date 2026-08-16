@@ -16,6 +16,24 @@ public sealed record DxfToEtabsRequest
     public string? BuildingTag { get; init; }
 
     /// <summary>
+    /// Layer-name patterns for THIS job, overriding the rule in KorStandards for this run only.
+    ///
+    /// A threshold is the same on every job — a 48" wall is 48" everywhere — so a global rule is
+    /// the right shape for one. A layer name is not: what drafting calls a column is a fact about
+    /// one office and often one project inside it. 500 Foster draws columns on V-COL and KOR draws
+    /// them on JBP_V_COL, so setting the global rule for either breaks the other.
+    ///
+    /// Moving these patterns into the database made them visible and overridable-once. This makes
+    /// an unfamiliar job runnable TODAY, without a migration and without disturbing anyone else's
+    /// jobs. Answering the workbook question is still how a convention becomes permanent.
+    /// </summary>
+    public IReadOnlyList<string>? WallLayerPatterns { get; init; }
+
+    public IReadOnlyList<string>? ColumnLayerPatterns { get; init; }
+
+    public IReadOnlyList<string>? SlabLayerPatterns { get; init; }
+
+    /// <summary>
     /// Cut the model down to one tower: its storeys and the shared podium ones, with the other
     /// towers' storeys removed so none of them stands empty.
     /// </summary>
@@ -334,6 +352,28 @@ public static class DxfToEtabsService
         warnings.AddRange(RuleSettings.Describe(banked, builtIn));
 
         var requested = ApplyRules(request.Classification, banked);
+
+        // After the rules, never before: ApplyRules takes the database value over whatever the
+        // caller set, which is right for a threshold and wrong for a name given for this job.
+        if (request.WallLayerPatterns is { Count: > 0 })
+            requested = requested with { WallLayerPatterns = request.WallLayerPatterns };
+        if (request.ColumnLayerPatterns is { Count: > 0 })
+            requested = requested with { ColumnLayerPatterns = request.ColumnLayerPatterns };
+        if (request.SlabLayerPatterns is { Count: > 0 })
+            requested = requested with { SlabLayerPatterns = request.SlabLayerPatterns };
+
+        foreach (var (role, given) in new[]
+                 {
+                     ("wall", request.WallLayerPatterns),
+                     ("column", request.ColumnLayerPatterns),
+                     ("slab-edge", request.SlabLayerPatterns),
+                 })
+        {
+            if (given is { Count: > 0 })
+                warnings.Add($"{role} layers for this run were given as {string.Join(", ", given)}, " +
+                             "overriding the standing rule. Answer the layer question in the workbook to " +
+                             "make it the rule instead of a flag.");
+        }
 
         double scale = drawingUnit.Value / modelUnitInInches;
         var composeFromReference = ApplyRules(request.Compose, banked);

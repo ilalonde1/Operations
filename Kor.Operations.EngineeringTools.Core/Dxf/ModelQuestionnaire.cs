@@ -18,6 +18,18 @@ public sealed record ModelQuestion(
     /// </summary>
     public bool Decided { get; init; }
 
+    /// <summary>
+    /// True where this row is a matter of record rather than something an engineer opening the
+    /// job needs to read: a bug we fixed, or a default that is only interesting on a drawing set
+    /// from another office.
+    ///
+    /// It stays in the workbook — on the reference sheet, with everything else. What it stops
+    /// doing is competing for attention on the front page. Twenty-eight rows of which ten matter
+    /// is a page that gets closed, and three of them told a KOR engineer what KOR's own layer
+    /// convention is.
+    /// </summary>
+    public bool ForTheRecord { get; init; }
+
     public string RuleScope { get; init; } = "etabs-modelling";
     public string RuleTopic { get; init; } = string.Empty;
     public string? SettingKey { get; init; }
@@ -94,7 +106,7 @@ public static class ModelQuestionnaire
             "dropped because the two rings were joined without a proper bridge, so its midpoint probed as void.",
             "It was the whole below-grade lateral system: \"the basement walls are missing\".",
             "If this job has a perimeter wall drawn only as hatch or non-linework, it should appear in the report as unread.")
-            { Decided = true },
+            { Decided = true, ForTheRecord = true },
 
         new ModelQuestion("C1", "Corners that come out as one thick element",
             "FIXED, and it was our bug rather than a judgement call. An L-shaped corner was coming out as one " +
@@ -110,7 +122,7 @@ public static class ModelQuestionnaire
             "panel 67 long and 42 thick — thicker than anything drawn there, the leg gone and the doorway under it " +
             "gone with it. On the measured model it recovered 84 more wall panels, 156 more headers and four openings " +
             "including the 55\" gap on both corners. Held by a baseline test.")
-            { RuleTopic = "corner-limbs-vs-stocky-pier", Decided = true },
+            { RuleTopic = "corner-limbs-vs-stocky-pier", Decided = true, ForTheRecord = true },
 
         new ModelQuestion("F1", "Floors where no slab edge closes",
             "OUR DECISION — one cell here turns it off. Where a storey's slab edges will not close, its floor is " +
@@ -429,7 +441,7 @@ public static class ModelQuestionnaire
                 SettingKey = "dxf.wall-layer-patterns",
                 SettingUnits = "layers",
                 Confidence = "engineer-confirmed",
-                Decided = true
+                Decided = true, ForTheRecord = true
             },
 
         new ModelQuestion("L2", "What your column layers are called",
@@ -446,7 +458,7 @@ public static class ModelQuestionnaire
                 SettingKey = "dxf.column-layer-patterns",
                 SettingUnits = "layers",
                 Confidence = "engineer-confirmed",
-                Decided = true
+                Decided = true, ForTheRecord = true
             },
 
         new ModelQuestion("L3", "What your slab-edge layers are called",
@@ -462,7 +474,7 @@ public static class ModelQuestionnaire
                 SettingKey = "dxf.slab-layer-patterns",
                 SettingUnits = "layers",
                 Confidence = "engineer-confirmed",
-                Decided = true
+                Decided = true, ForTheRecord = true
             },
 
         new ModelQuestion("M1", "Storey framework",
@@ -596,7 +608,13 @@ public static class ModelQuestionnaire
     private static void WriteQuestions(XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, ComposeOptions compose, string projectName)
     {
         var sheet = workbook.Worksheets.Add("Questions");
-        var questions = StandingQuestions(options, compose, report).OrderBy(q => q.Code).ToList();
+        var all = StandingQuestions(options, compose, report).OrderBy(q => q.Code).ToList();
+
+        // The front page is what an engineer has to read. Everything else is on "Rules in force",
+        // which is the whole set, read-only, and always has been. Handing her all of it twice put
+        // fixed bugs and this office's own layer names in the same list as the decisions that
+        // actually shape her model.
+        var questions = all.Where(q => !q.ForTheRecord).ToList();
         int open = questions.Count(q => !q.Decided);
 
         sheet.Cell(1, 1).Value = open == 0
@@ -664,6 +682,19 @@ public static class ModelQuestionnaire
             sheet.Cell(row, 10).Value = q.SettingUnits ?? string.Empty;
             sheet.Cell(row, 11).Value = q.Confidence;
             row++;
+        }
+
+        // The rows kept off the front page are named, not hidden. An engineer who wants the fixed
+        // bugs and the standing defaults should be able to find them without being told they exist.
+        int kept = all.Count - questions.Count;
+        if (kept > 0)
+        {
+            var note = sheet.Cell(row + 1, 1);
+            note.Value = $"{kept} further row(s) — bugs already fixed, and the layer-name defaults — are on " +
+                         "the ‘Rules in force’ sheet with the rest of the rule set: " +
+                         string.Join(", ", all.Where(q => q.ForTheRecord).Select(q => q.Code));
+            note.Style.Font.Italic = true;
+            note.Style.Font.FontColor = XLColor.FromArgb(130, 130, 130);
         }
 
         sheet.Column(1).Width = 7;
