@@ -14,6 +14,18 @@
         .\Measure-EtabsCorpusRules.ps1 -Root D:\Projects\Projects -Out C:\Temp\corpus-rules.txt
 
     It reads only. It writes one text file, wherever -Out says.
+
+    TWO QUESTIONS, ONE WALK. This measures whether the RULE VALUES match what engineers draw.
+    -ReaderCheck adds the other half: whether this tool's READER can open each model at all.
+    They are different failures. A rule that is slightly wrong produces a model with some members
+    misjudged; a reference model the reader cannot parse produces no model whatsoever, because the
+    reference is read before anything else happens and a model whose units will not resolve throws
+    at the door. Every rule has been measured against the portfolio. Until now the reader had been
+    run against two files, from one office, exported the same way.
+
+    The reader pass shells out to the built CLI on purpose. Re-implementing the parse here would
+    test THIS script's parser rather than the one production uses, which is the whole failure mode
+    being guarded against.
 #>
 [CmdletBinding()]
 param(
@@ -23,7 +35,10 @@ param(
     [string]$Out = (Join-Path $env:TEMP 'kor-etabs-corpus-rules.txt'),
 
     # 0 reads every model found. Set a number to sample instead.
-    [int]$Sample = 0
+    [int]$Sample = 0,
+
+    # Also run this tool's own reader over every model and classify what stops it.
+    [switch]$ReaderCheck
 )
 
 $ErrorActionPreference = 'Stop'
@@ -145,7 +160,34 @@ $lines.Add("")
 
 $lines.Add("PANEL STOREY-SPAN FORMS   the tool writes 'n n 0 0'; n>1 spans past another tower's storeys")
 foreach ($p in ($panelForm.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 10)) {
-    $lines.Add("   {0,-14} {1}" -f $p.Key, $p.Value)
+    # Parenthesised: without them PowerShell hands $p.Value to Add() as a second argument and
+    # the format string never receives it, which threw at the very end of a full corpus run.
+    $lines.Add(("   {0,-14} {1}" -f $p.Key, $p.Value))
+}
+
+if ($ReaderCheck) {
+    $repo = Split-Path $PSScriptRoot -Parent
+    $cli  = Join-Path $repo (Join-Path 'Kor.Operations.EngineeringTools.TakeoffCli' (Join-Path 'bin' (Join-Path 'Debug' (Join-Path 'net8.0' 'takeoff.exe'))))
+    if (-not (Test-Path $cli)) {
+        Write-Host "building the CLI for the reader pass..." -ForegroundColor DarkGray
+        & dotnet build (Join-Path $repo 'Kor.Operations.EngineeringTools.TakeoffCli') -c Debug --nologo -v q | Out-Null
+    }
+
+    if (Test-Path $cli) {
+        Write-Host ""
+        Write-Host "reading every model with the tool's own reader..." -ForegroundColor DarkGray
+        $readerOut = [System.IO.Path]::ChangeExtension($Out, '.reader.txt')
+        $summary = & $cli corpus-read $Root $readerOut 2>$null
+
+        $lines.Add("")
+        $lines.Add("CAN THE READER OPEN THESE AT ALL   a reference it cannot parse produces no model")
+        foreach ($line in $summary) { $lines.Add("   $line") }
+        $lines.Add("   per-model detail: $readerOut")
+    }
+    else {
+        $lines.Add("")
+        $lines.Add("READER CHECK SKIPPED — takeoff.exe not built and dotnet build failed.")
+    }
 }
 
 $lines | Set-Content -LiteralPath $Out -Encoding UTF8
