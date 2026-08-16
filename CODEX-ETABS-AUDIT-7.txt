@@ -1,0 +1,106 @@
+Audit the whole state of the DXF → ETABS generator at commit 72c1a2ca on develop.
+
+This is a state-of-the-app audit, not a diff review. The owner has spent weeks on this tool and
+cannot currently tell what is finished, what is half-built, and what is claimed but untrue. That
+is the question to answer.
+
+READ FIRST, THEN DISTRUST
+
+  CLAUDE.md                              working rules, written from failures
+  docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md   Part 1 the standard, Part 2 the gap inventory
+  CODEX-ETABS-AUDIT-2.txt .. -6.txt      five previous audits and what they found
+
+  Everything in this repository was written by an assistant or by you, and reviewed by neither.
+  Treat code comments, commit messages, the gap inventory, the shipped documents, the generated
+  workbook and the test suite as claims by the thing under audit. An item asserted as closed that
+  is not closed is the most valuable finding available, because it is the one nobody looks at
+  again.
+
+STATE AS CLAIMED, ALL OF IT UNVERIFIED
+
+  Operations   72c1a2ca on develop, pushed
+  KOR.Drafter  3624a61 on main, migrations 028-041 applied to KorStandards
+
+  The last full suite run was 482 passing at commit 58d01e97. Since then the questionnaire and the
+  CLI have changed and THE FULL SUITE HAS NOT RUN. Do not assume green.
+
+  Also unverified: the per-job layer flags (--wall-layers, --column-layers, --slab-layers), the
+  workbook front-page trim, and an exportdxf verb added to the Revit bridge that is built but not
+  deployed.
+
+WHAT THE TOOL IS SUPPOSED TO BE
+
+  An engineer points it at any job's plan DXFs plus any ETABS file from that job, and gets back a
+  model with the building's geometry entered, so the hours go into engineering rather than typing.
+  Agnostic: nothing in it knows about a particular building or office. Honest: anything read and
+  not modelled appears in the report. Learning: an engineer's answer becomes a rule for every job
+  afterwards with no code change.
+
+THE QUESTION THAT MATTERS MOST
+
+  This tool has produced models for exactly two buildings, and both were used to tune it. It has
+  never built a model for a building it was not developed against. Everything else is secondary to
+  that, including every finding in the five previous audits.
+
+  There is now most of a third case on disk. \\Kor-fs01 holds engineer-authored ETABS models for
+  30783, 30864, 30694, 30859, 30891 and 30662. Tonight 110 structural plan views were exported
+  from 30783's Revit model, but they carry the linked architectural model, so concrete walls land
+  on A-WALL among partitions and no layer pattern separates them.
+
+  Answer this concretely: what does it take to put ONE building through this tool that it was not
+  built against, and what happens when you do? If the answer is that the drawings cannot be made
+  usable, say so plainly and say why — that is a finding, not a failure.
+
+WHAT ELSE TO ANSWER
+
+  1. Which Part 2 items are wrongly stated, wrongly closed, or missing entirely?
+  2. Does the suite pass at this commit, and what does it NOT cover — which code paths and failure
+     branches could break a model and leave it green?
+  3. Does the generated workbook say anything untrue, ask anything already answered, or hide
+     anything an engineer needs?
+  4. Is the model right, judged against the drawings rather than against itself?
+  5. What can still leave the model without appearing in the report?
+  6. Does the code match what the documents and comments say it does?
+  7. Anything else. This list is not the boundary.
+
+RULES OF EVIDENCE
+
+  1. Measure the artifact. The report, the workbook, the documents and the suite are outputs of
+     the thing under audit.
+  2. Read shipped PDFs as text, not the HTML behind them.
+  3. Objects named "K" plus a letter and digits were written by this tool; some files in the job
+     folders are its own output round-tripped through ETABS. Establish provenance.
+  4. A check is proved by failing on the defect it exists for, not by passing.
+  5. Two buildings are not evidence about a third.
+  6. State the file and the numbers behind every finding. A defect read off code is not a finding
+     until you say what it does to a model an engineer opens.
+  7. Where you cannot determine something, say so and say what would settle it.
+
+CONSTRAINTS
+
+  - Do not modify anything under \\Kor-fs01 except by running the publish script for the two jobs
+    the documents already name.
+  - Do not open, modify or upgrade any Revit model. KOR-302N is a workstation someone uses.
+  - Set KOR_ENGINEERINGTOOLS_STANDARDSDB process-local. Never setx it.
+  - Rules live in KorStandards. A rule change is a migration in KOR.Drafter\db\, never a constant.
+    A missing rule stops a run by design.
+  - Writes to analysis.Ruling are the mechanism working as intended. Say what you wrote and leave
+    the database holding the values it started with.
+  - No destructive git. Do not push.
+  - Run the FULL suite before claiming anything about it, and say plainly if you did not. It takes
+    ten to fourteen minutes because twenty of its tests rebuild both reference buildings from real
+    drawings over SMB.
+
+OUTPUT
+
+  Lead with a straight answer to one question: IS THIS TOOL READY TO PUT IN FRONT OF A STRUCTURAL
+  ENGINEER, and if not, what are the three things stopping it. Everything else follows that.
+
+  Then findings worst first: what is wrong, the numbers you measured, what it costs the engineer
+  who opens the model, how confident you are.
+
+  Then a second pass arguing against your own findings. Say which survive.
+
+  Then what you changed and what you verified each change against.
+
+  Then which Part 2 items are wrong, and one line on what you could not determine.
