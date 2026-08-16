@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
@@ -301,6 +302,51 @@ if (args.Length >= 1 && args[0].Equals("dxf-import-rules", StringComparison.Ordi
 // DXF -> ETABS — build a model from drafting's concrete-outline plan exports. Walls, columns and slabs are
 // read off the structural layers, each sheet is placed on every storey its title covers, and the result is
 // merged into an .e2k ETABS itself exported (so storeys, grids and materials stay ETABS's own).
+// CORPUS READER CHECK — run this tool's reader over every model KOR engineers have built.
+//
+// The rules have been measured against the portfolio. The reader never has: it has been exercised
+// against two reference models from one office. Since an unfamiliar job's FIRST act is to hand
+// this tool a reference model unlike anything it has read, that is the wrong two files to be
+// confident about. Read-only; writes nothing but its own report.
+//
+// Usage: takeoff corpus-read <projectsRoot> [out.txt] [--limit N]
+if (args.Length >= 2 && args[0].Equals("corpus-read", StringComparison.OrdinalIgnoreCase))
+{
+    string root = args[1];
+    if (!Directory.Exists(root)) { Console.Error.WriteLine($"Not a folder: '{root}'."); return 2; }
+
+    int limit = 0;
+    for (int i = 2; i < args.Length - 1; i++)
+        if (args[i].Equals("--limit", StringComparison.OrdinalIgnoreCase))
+            int.TryParse(args[i + 1], out limit);
+
+    string? outPath = args.Length > 2 && !args[2].StartsWith("--", StringComparison.Ordinal) ? args[2] : null;
+
+    var results = new List<CorpusReadResult>();
+    var started = DateTime.UtcNow;
+    foreach (string corpusModel in CorpusReaderCheck.Models(root, limit))
+    {
+        results.Add(CorpusReaderCheck.Check(corpusModel));
+        if (results.Count % 50 == 0)
+            Console.Error.WriteLine($"  {results.Count:N0} read ({(DateTime.UtcNow - started).TotalSeconds:0}s)");
+    }
+
+    string summary = CorpusReaderCheck.Summarise(results);
+    Console.WriteLine(summary);
+
+    if (outPath is not null)
+    {
+        var lines = new List<string> { summary, string.Empty, "outcome	storeys	walls	columns	detail	path" };
+        lines.AddRange(results
+            .OrderBy(r => r.Outcome, StringComparer.Ordinal)
+            .Select(r => $"{r.Outcome}	{r.Storeys}	{r.Walls}	{r.Columns}	{r.Detail}	{r.Path}"));
+        File.WriteAllLines(outPath, lines);
+        Console.WriteLine($"per-model detail: {outPath}");
+    }
+
+    return 0;
+}
+
 // Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--rules-db <connection>] [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]
 if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalIgnoreCase))
 {
@@ -311,6 +357,20 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     }
     if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"DXF folder not found '{args[1]}'."); return 2; }
     if (!File.Exists(args[2])) { Console.Error.WriteLine($"Reference .e2k not found '{args[2]}'."); return 2; }
+
+    // The reference must be an engineer's model, never one of ours. A file round-tripped through
+    // ETABS keeps its KOR-prefixed object names, and building from one produces a report saying
+    // nothing was generated beside a file that plainly contains generated members -- both true,
+    // together untrue. The publish script has always refused this; the CLI, which is what a
+    // wrapper calls, did not.
+    if (File.ReadLines(args[2]).Take(40000).Any(l => Regex.IsMatch(l, @"""K[WCPFSO]\d+""")))
+    {
+        Console.Error.WriteLine(
+            $"'{Path.GetFileName(args[2])}' carries KOR-generated object names, so it is this tool's own " +
+            "output rather than an engineer's model. Building from it would report nothing generated " +
+            "beside a file that already contains generated members. Point at the engineer's model.");
+        return 2;
+    }
 
     string? building = null;
     string? towerOnly = null;
@@ -360,7 +420,10 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         }
     }
 
-    var dxfReport = DxfToEtabsService.Run(new DxfToEtabsRequest
+    DxfToEtabsReport dxfReport;
+    try
+    {
+        dxfReport = DxfToEtabsService.Run(new DxfToEtabsRequest
     {
         DxfFolder = args[1],
         ReferenceE2k = args[2],
@@ -372,7 +435,24 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         Compose = new ComposeOptions { IncludeFloors = includeFloors },
         RuleSettingsConnection = rulesDb,
         RequireRuleSettings = true,
-    });
+        });
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or IOException or FormatException)
+    {
+        // A drawing set this tool cannot use is an ordinary outcome, not a defect in the tool. It
+        // used to arrive as an unhandled .NET exception: no report, a stack trace, and the source
+        // paths of this machine printed at an engineer who wanted to know what was wrong with her
+        // drawings. The message was always the useful part; only the delivery was wrong.
+        Console.Error.WriteLine($"Cannot build a model from these inputs: {ex.Message}");
+        if (reportPath is not null)
+        {
+            File.WriteAllText(reportPath,
+                "No model was produced." + Environment.NewLine + Environment.NewLine + ex.Message + Environment.NewLine);
+            Console.Error.WriteLine($"Written to {reportPath}.");
+        }
+
+        return 2;
+    }
 
     string text = DxfToEtabsService.FormatReport(dxfReport);
     Console.WriteLine(text);
@@ -388,7 +468,30 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         Console.WriteLine($"questions for the engineer: {questionsPath}");
     }
 
-    return dxfReport.Summary.Walls + dxfReport.Summary.Columns > 0 ? 0 : 3;
+    if (dxfReport.Summary.Walls + dxfReport.Summary.Columns > 0) return 0;
+
+    // Nothing was generated, so nothing may be left behind that looks like a model. The file
+    // written here is the reference with no drawing geometry added -- 870 KB, structurally valid,
+    // and containing not one thing read from the drawings. Whoever copies it past a non-zero exit
+    // code gets a building that is entirely somebody else's.
+    if (File.Exists(args[3]))
+    {
+        try
+        {
+            File.Delete(args[3]);
+            Console.Error.WriteLine(
+                $"No walls or columns were generated, so no model was written. " +
+                $"'{Path.GetFileName(args[3])}' would have been the reference model with nothing added to it.");
+        }
+        catch (IOException io)
+        {
+            Console.Error.WriteLine(
+                $"No walls or columns were generated. '{Path.GetFileName(args[3])}' holds the reference " +
+                $"model with nothing added and should not be used ({io.Message}).");
+        }
+    }
+
+    return 3;
 }
 
 // MODEL takeoff — read concrete quantities straight from a structural Revit/IFC export (the source that

@@ -444,6 +444,8 @@ public static class DxfToEtabsService
         var offset = request.Offset
             ?? (request.CentreOnGrid ? AutoOffset(doc, parsed.Select(p => p.Geometry)) : (0.0, 0.0));
 
+        warnings.AddRange(FarFromOriginWarnings(parsed.Select(p => p.Geometry), offset));
+
         var placements = new List<StoryPlacement>();
         foreach (var (sheet, geometry, matched) in parsed)
             foreach (string storyName in matched)
@@ -520,6 +522,46 @@ public static class DxfToEtabsService
     /// project coordinates while ETABS models sit near their own origin, so without
     /// this the geometry lands thousands of inches away from the grid.
     /// </summary>
+    /// <summary>
+    /// Whether the geometry lands somewhere a building could be, once the offset is applied.
+    ///
+    /// Everything upstream of this is relative. A Revit export carries project coordinates
+    /// thousands of inches from the origin and that is ordinary, which is exactly what the offset
+    /// exists to absorb — so no part of the pipeline had a reason to care about absolute
+    /// magnitude, and none did. A single wall drawn at 1,000,000,000,000 inches therefore
+    /// generated cleanly and exited zero: one wall, the right count, fifteen million miles from
+    /// the building.
+    ///
+    /// A quarter of a million inches is about four miles. No building is four miles across and no
+    /// offset this tool computes should leave one out there, so past that something upstream is
+    /// wrong — the wrong units, a corrupt coordinate, or sheets from two different sites.
+    ///
+    /// It warns and writes anyway. Moving the members would invent a position nobody drew, and
+    /// dropping them would lose the evidence of whatever went wrong.
+    /// </summary>
+    public static IReadOnlyList<string> FarFromOriginWarnings(
+        IEnumerable<PlanGeometrySet> sets, (double X, double Y) offset)
+    {
+        const double FarFromOrigin = 250_000.0;
+
+        double farthest = 0;
+        foreach (var geometry in sets)
+            foreach (var wall in geometry.Walls)
+                farthest = Math.Max(farthest, Math.Max(
+                    Math.Max(Math.Abs(wall.Start.X + offset.X), Math.Abs(wall.Start.Y + offset.Y)),
+                    Math.Max(Math.Abs(wall.End.X + offset.X), Math.Abs(wall.End.Y + offset.Y))));
+
+        if (farthest <= FarFromOrigin) return Array.Empty<string>();
+
+        return new[]
+        {
+            $"Geometry lands {farthest / 12.0:N0} ft from the model origin, which is further than any " +
+            "building is wide. The drawings are probably in different units from the model, carry a " +
+            "corrupt coordinate, or come from more than one site. The members were written where they " +
+            "were drawn; nothing was moved to hide it.",
+        };
+    }
+
     private static (double X, double Y) AutoOffset(E2kDocument doc, IEnumerable<PlanGeometrySet> sets)
     {
         var (gMinX, gMaxX, gMinY, gMaxY) = ReadGridExtents(doc);

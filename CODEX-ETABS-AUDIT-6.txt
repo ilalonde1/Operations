@@ -1,0 +1,122 @@
+Adversarial audit of the DXF → ETABS generator at commit 2baacc7e (branch develop).
+
+Five audits have already run against this tool. They looked at silent geometry loss, whether the
+code is shaped around two particular buildings, the model against the drawings, the learning loop
+under stress, the workbook, the shipped documents, the publish gate, and the rules database. Their
+briefs are in this folder as CODEX-ETABS-AUDIT-2.txt through -5.txt.
+
+This one is for what none of them looked at. Read the earlier briefs so you do not repeat them.
+
+WHERE THINGS STAND
+
+  Both repositories are committed and clean:
+
+    Operations   2baacc7e  (develop, 88 commits ahead of origin, NOT pushed)
+    KOR.Drafter  ccabd58   (main, migrations 028-041, applied to KorStandards)
+
+  The full suite reports 481 passed, 0 failed, 0 skipped at 9m42s with the rules database
+  reachable. Treat that as a claim by the thing under audit, not as evidence.
+
+  The push to GitHub is blocked by secret-scanning on an unrelated commit. Do not attempt to push,
+  and do not rewrite history to get around it.
+
+THE STANDARD
+
+  docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md Part 1. Three properties: agnostic — nothing in it knows
+  about a particular building, office or drawing set; honest — anything read and not modelled,
+  discarded, skipped, substituted or fallen back on appears in the report; learning — an
+  engineer's answer becomes a rule for every job afterwards with no code change.
+
+  Part 2 is the gap inventory and was edited by the same hands that wrote the code. Items marked
+  CLOSED are claims under audit.
+
+RULES OF EVIDENCE
+
+  1. The report, the documents, the workbook, the database and the test suite are outputs of the
+     thing under audit. Measure the artifact instead.
+
+  2. Read shipped PDFs as text, not the HTML they were built from.
+
+  3. Objects named "K" followed by a letter and digits were written by this tool, and some files
+     in the job folders are its own output round-tripped through ETABS.
+
+  4. A check is proved by failing on the defect it exists for, not by passing.
+
+  5. State the file and the numbers behind every finding. A defect read off code is not a finding
+     until you say what it does to a model an engineer opens.
+
+  6. Where you cannot determine something, say so and say what would settle it.
+
+WHAT THIS AUDIT IS FOR
+
+  New ground. These are directions, not suspicions — the point is to look where nobody has.
+
+  1. HOSTILE AND MALFORMED INPUT. Everything so far has been measured on two well-formed drawing
+     sets from one office. Feed it things a real job will eventually contain: a truncated DXF, a
+     file that is not DXF at all, an empty folder, a drawing with no ENTITIES section, coordinates
+     at absurd magnitudes, a reference model with no storeys, a reference model that is this
+     tool's own output, two sheets claiming the same storey, a sheet claiming a storey the
+     reference does not have. For each: does it fail with a reason an engineer can act on, fail
+     with a stack trace, or succeed quietly with a model missing things?
+
+  2. RUNNING IT TWICE. Generate, then generate again over the top. Publish, then publish again.
+     Import the same answered workbook twice. Is the second run identical to the first, and if it
+     is not, is the difference intended and stated? Anything that accumulates — duplicated
+     members, growing reports, repeated database rows — matters more than it looks.
+
+  3. THE OUTPUT AS A FILE. Nobody has imported a generated .e2k into ETABS and that still cannot
+     be settled here. What CAN be settled is whether the file obeys the same structural invariants
+     as the engineer-authored models on the share: block ordering, required sections, name
+     uniqueness, every referenced joint defined, every assignment pointing at something that
+     exists, storey names matching between blocks. Compare against real models rather than against
+     what the writer intended.
+
+  4. UNITS, PRECISION AND COORDINATES. The drawings and the model can be in different units, the
+     geometry is offset onto the model's grid, and everything is rounded somewhere. Where does
+     precision get lost, what magnitude of error does it produce in the model, and would anyone
+     notice? Portfolio measurement found models in inches, feet, millimetres and metres.
+
+  5. WHAT THE SUITE DOES NOT COVER. 481 tests is a number, not a guarantee. Measure what is
+     actually exercised. Which code paths, which failure branches, which options never appear in
+     any test? Where could a change be made that breaks a model and leaves the suite green? Name
+     the specific gaps, not a coverage percentage.
+
+  6. EVERYTHING AROUND THE ENGINE. The CLI, the report formatter, the publish script, the
+     questionnaire writer and the rule importer have had far less attention than the geometry.
+     They are also what an engineer actually touches.
+
+  7. SECRETS AND CONFIGURATION. Connection strings, environment variables, what gets written into
+     reports, workbooks, logs and console output, and what a generated artifact reveals about the
+     machine or database that produced it.
+
+  8. Anything else you find. This list is a starting point and not a boundary.
+
+CONSTRAINTS
+
+  - Do not modify anything under \\Kor-fs01 except by running the publish script for the two jobs
+    the documents already name.
+  - Set KOR_ENGINEERINGTOOLS_STANDARDSDB process-local. Never setx it onto the machine.
+  - Rules live in KorStandards, not in code. A rule change is a migration in
+    C:\VIsual Studio Projects\KOR.Drafter\db\ — never a constant. A missing rule stops the run by
+    design; there is no fallback value.
+  - Writes to analysis.Ruling are the mechanism working as intended. Say exactly what you wrote,
+    and leave the database holding the values it started with.
+  - Schema changes are not yours to run.
+  - No destructive git: no reset, rebase, force, checkout over, or discarding. Do not push.
+  - Run the FULL suite before claiming anything about it, and say plainly if you did not. Ten to
+    fourteen minutes. A filtered run says nothing about the models.
+  - If you change a rule value or a baseline, the reason and the counts go in the file beside it.
+
+OUTPUT
+
+  Findings worst first: what is wrong, the numbers you measured, what it costs the engineer who
+  opens the model, how confident you are.
+
+  Then a second pass arguing against each of your own findings and trying to knock it down. Say
+  which survive. Four that hold beat twenty that read well.
+
+  Then, separately: what you changed and what you verified each change against.
+
+  Then: which Part 2 items are wrongly stated, wrongly closed, or missing.
+
+  Last, one line on what you could not determine and what would settle it.

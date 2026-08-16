@@ -82,15 +82,24 @@ by a letter and digits were written by this tool.
 
 ## Learning
 
-**L1. PARTLY CLOSED 2026-08-15. Twenty-five of the thirty-two rules can be changed by an
-engineer; seven decided workbook rows are still not learnable settings.**
-The workbook binds eighteen rows to twenty-five settings. The remaining seven rules are
+**L1. PARTLY CLOSED. Twenty-eight of the thirty-five rules can be changed by an engineer; seven
+decided workbook rows are still not learnable settings.**
+All thirty-five rules live in `KorStandards` — none is a constant in code, and none is missing from
+the database. Twenty-eight of them have a workbook row an engineer can answer. The other seven are
 geometry-cleanup tolerances — join, bridge, wall-bridge and dash-join gaps, the extend limit, min
-panel overlap, already-modelled tolerance — and asking a structural engineer to set them would be
-noise. They are not hidden: a *Rules in force* sheet lists all thirty-two with value, units,
-confidence, who set it and why it holds, and says which question changes each one.
+panel overlap, already-modelled tolerance — and asking a structural engineer to set a dash-join gap
+would be noise, so no question is put in front of her. They are not hidden either: a *Rules in
+force* sheet lists all thirty-five with value, units, confidence, who set it and why it holds, and
+says which question changes each one.
+
+The three added last are the layer-name patterns (migration 041), which decide what this tool
+considers structure at all and were C# constants until then.
 `dxf.floor-from-perimeter-wall` was added as a rule in migration 039 and moved to a single-source
 ruling in migration 040 rather than staying behaviour welded into the classifier.
+
+These counts are checked against the database and the generated workbook, not asserted: an earlier
+edit to this entry silently failed to apply because the text it targeted had already been reworded,
+and the stale numbers survived a round of review.
 
 What is still not true: seven DECIDED rows in the workbook (`C1`, `F2`, `M1`, `M2`, `O1`, `P1`,
 `S2`) carry no setting key. They are visible and importable as prose rulings, but the generator
