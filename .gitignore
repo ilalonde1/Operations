@@ -114,3 +114,8 @@ docs/*-backup.docx
 # Prompts that need credentials pass them out of band -- the ETABS audit briefs beside
 # it say "connection details are in the file the user gave you" and carry none.
 CODEX-STDDETAILS-REVIEW-PROMPT.txt
+
+# A verbatim copy of the live WordPress theme. It carried the Mapbox token AND the
+# WordPress sync secret in plaintext, and GitHub push protection caught only the first.
+# Removed from history 2026-08-15; keep it out.
+docs/map-audit/live-theme/
