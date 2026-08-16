@@ -1,106 +1,288 @@
-Audit the whole state of the DXF → ETABS generator at commit 72c1a2ca on develop.
+Gap analysis of the DXF → ETABS generator at commit 94940baa on develop.
 
-This is a state-of-the-app audit, not a diff review. The owner has spent weeks on this tool and
-cannot currently tell what is finished, what is half-built, and what is claimed but untrue. That
-is the question to answer.
+Not a diff review. The question is the distance between what this tool is SUPPOSED to be and what
+it actually is, stated concretely enough to act on. Six audits have already run; their briefs are
+in this folder as CODEX-ETABS-AUDIT-2.txt through -6.txt. Section 4 below lists what is already
+known so you spend your time on new ground.
 
-READ FIRST, THEN DISTRUST
 
-  CLAUDE.md                              working rules, written from failures
-  docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md   Part 1 the standard, Part 2 the gap inventory
-  CODEX-ETABS-AUDIT-2.txt .. -6.txt      five previous audits and what they found
+==============================================================================================
+1. WHAT THIS TOOL IS SUPPOSED TO BE
+==============================================================================================
 
-  Everything in this repository was written by an assistant or by you, and reviewed by neither.
-  Treat code comments, commit messages, the gap inventory, the shipped documents, the generated
-  workbook and the test suite as claims by the thing under audit. An item asserted as closed that
-  is not closed is the most valuable finding available, because it is the one nobody looks at
-  again.
+THE SITUATION IT EXISTS FOR
 
-STATE AS CLAIMED, ALL OF IT UNVERIFIED
+  A structural engineer is designing a concrete tower. To analyse the lateral system she needs the
+  geometry in ETABS: every shear wall, every column, every slab, on every level. On a 45-storey
+  building that is roughly 1,750 walls and 1,487 columns.
 
-  Operations   72c1a2ca on develop, pushed
-  KOR.Drafter  3624a61 on main, migrations 028-041 applied to KorStandards
+  Today a person builds that by hand — opens ETABS, sets up the storeys, and draws it. Days to
+  weeks of mouse work.
 
-  The last full suite run was 482 passing at commit 58d01e97. Since then the questionnaire and the
-  CLI have changed and THE FULL SUITE HAS NOT RUN. Do not assume green.
+  None of it is engineering. It is transcription. The building already exists, fully drawn, in the
+  structural plans drafting has already produced. Somebody is retyping a document that already
+  exists, into a different program, by clicking.
 
-  Also unverified: the per-job layer flags (--wall-layers, --column-layers, --slab-layers), the
-  workbook front-page trim, and an exportdxf verb added to the Revit bridge that is built but not
-  deployed.
+  This tool removes the retyping. That is its entire function.
 
-WHAT THE TOOL IS SUPPOSED TO BE
+WHAT IT IS GIVEN
 
-  An engineer points it at any job's plan DXFs plus any ETABS file from that job, and gets back a
-  model with the building's geometry entered, so the hours go into engineering rather than typing.
-  Agnostic: nothing in it knows about a particular building or office. Honest: anything read and
-  not modelled appears in the report. Learning: an engineer's answer becomes a rule for every job
-  afterwards with no code change.
+  1. The folder of plan DXFs drafting already exports for that job — one per level.
+  2. Any ETABS file from the same job, even an empty shell. That is where the storey names,
+     elevations, units, materials and grid come from.
 
-THE QUESTION THAT MATTERS MOST
+  Nothing made specially for it. No per-job configuration files.
 
-  This tool has produced models for exactly two buildings, and both were used to tune it. It has
-  never built a model for a building it was not developed against. Everything else is secondary to
-  that, including every finding in the five previous audits.
+  IMPORTANT AND EASY TO GET WRONG: the input is not "DXF files" generically. It is the specific
+  artifact drafting already produces for that job. This tool sits inside an existing workflow
+  between drafting and engineering; it does not get to redefine what drafting hands over.
 
-  There is now most of a third case on disk. \\Kor-fs01 holds engineer-authored ETABS models for
-  30783, 30864, 30694, 30859, 30891 and 30662. Tonight 110 structural plan views were exported
-  from 30783's Revit model, but they carry the linked architectural model, so concrete walls land
-  on A-WALL among partitions and no layer pattern separates them.
+WHAT IT RETURNS
 
-  Answer this concretely: what does it take to put ONE building through this tool that it was not
-  built against, and what happens when you do? If the answer is that the drawings cannot be made
+  - An ETABS .e2k carrying: walls at their true drawn thickness, on their centrelines, and
+    CONNECTED so they transfer force; columns sized and oriented as drawn; floor plates; headers
+    over openings; shaft and stair openings cut; a pier label on every wall.
+  - A report stating, location by location, everything it could not do.
+  - A workbook of the judgement calls it had to make, each answerable.
+
+WHAT IT MUST NEVER DO
+
+  - Loads, load assignment, diaphragms, stiffness modifiers, section properties, meshing, design.
+    That half is the engineering and she wants to keep it.
+  - Overwrite or duplicate geometry the engineer has already modelled. On 31138 it recognised 306
+    of her walls and 316 of her columns and left every one alone.
+
+THE THREE PROPERTIES THAT MAKE IT A TOOL RATHER THAN A RESCUE
+
+  AGNOSTIC   Nothing in it knows about a particular building, office or drawing set. No job
+             numbers, no per-project branches, no value tuned so one model comes out right.
+
+  HONEST     Anything read and not modelled, discarded, skipped, deduplicated, substituted or
+             fallen back on appears in the report. A correct decision made silently is
+             indistinguishable from a bug.
+
+  LEARNING   An engineer's answer becomes a rule applied to every job afterwards, with no code
+             change and without her being asked twice. Rules and their evidence live in
+             KorStandards; the code is the machine that applies them.
+
+WHAT SUCCESS ACTUALLY MEANS — AND THE MEASURE THAT IS EASY TO MISS
+
+  The goal is not "produce geometry". It is HOW MUCH OF HER CHECKING SHE CAN SKIP.
+
+  A tool that is 95% right and quiet about the other 5% is worse than useless: she must verify
+  every member to find the bad ones, which is the same work as drawing them, so she would be
+  faster starting from nothing. The number that matters is not how many members were placed. It
+  is whether the report can be trusted when it says "this is what I could not do."
+
+  Judge everything below against that. An unreported approximation is a more serious defect than a
+  reported failure.
+
+
+==============================================================================================
+2. THE JOB
+==============================================================================================
+
+  Produce a gap analysis: for each property and promise in section 1, state what is actually true
+  at this commit, with the measurement behind it, and what it costs the engineer.
+
+  LEAD YOUR OUTPUT WITH ONE ANSWER: is this ready to put in front of a structural engineer, and if
+  not, what are the three things stopping it.
+
+  The single largest gap, which outranks every finding in the previous six audits:
+
+    THIS TOOL HAS PRODUCED MODELS FOR EXACTLY TWO BUILDINGS, AND BOTH WERE USED TO TUNE IT. It has
+    never built a model for a building it was not developed against.
+
+  There is most of a third case on disk. \\Kor-fs01 holds engineer-authored ETABS models for jobs
+  30783, 30864, 30694, 30859, 30891 and 30662 — six other buildings, 27 to 61 storeys, one of them
+  in feet, one a CSiXRevit export. All seven read cleanly through this tool's reader.
+
+  What is missing is drawings. Answer concretely: what would it take to put ONE unfamiliar building
+  through this tool end to end, and what happens when you do? If the drawings cannot be made
   usable, say so plainly and say why — that is a finding, not a failure.
 
-WHAT ELSE TO ANSWER
 
-  1. Which Part 2 items are wrongly stated, wrongly closed, or missing entirely?
-  2. Does the suite pass at this commit, and what does it NOT cover — which code paths and failure
-     branches could break a model and leave it green?
-  3. Does the generated workbook say anything untrue, ask anything already answered, or hide
-     anything an engineer needs?
-  4. Is the model right, judged against the drawings rather than against itself?
-  5. What can still leave the model without appearing in the report?
-  6. Does the code match what the documents and comments say it does?
-  7. Anything else. This list is not the boundary.
+==============================================================================================
+3. STATE AS CLAIMED — ALL OF IT UNVERIFIED
+==============================================================================================
 
-RULES OF EVIDENCE
+  Operations   94940baa on develop, pushed
+  KOR.Drafter  3624a61 on main; migrations 028-041 applied to KorStandards
+
+  THE FULL SUITE HAS NOT RUN AT THIS COMMIT. Last green was 482 passing at 58d01e97. Since then
+  the questionnaire, the service and the CLI have all changed. Do not assume green.
+
+  Specifically unverified:
+    - per-job layer overrides: --wall-layers, --column-layers, --slab-layers
+    - the workbook front-page trim (five rows moved to the reference sheet)
+    - an exportdxf verb added to the Revit bridge: built, NOT deployed
+
+  Everything in both repositories was written by an assistant and reviewed by nobody. Treat code
+  comments, commit messages, docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md, the shipped PDFs, the generated
+  workbook and the test suite as claims by the thing under audit. An item asserted as closed that
+  is not closed is the most valuable finding available, because it is the one nobody re-checks.
+
+
+==============================================================================================
+4. ALREADY KNOWN — DO NOT SPEND TIME REDISCOVERING
+==============================================================================================
+
+THE FOUR FAULT CLASSES
+
+  Geometry can be DROPPED, DOUBLED, MISPLACED or MISCLASSIFIED. Totals catch the first two and are
+  blind to the last two: a member built on the wrong storey leaves every count healthy. 31168 once
+  shipped with the ground floor of both towers empty and their 45 walls and 67 columns standing on
+  the mezzanine, with no number wrong anywhere.
+
+  Never verify output against the classifier that produced it.
+
+ETABS .e2k FORMAT, LEARNED THE HARD WAY
+
+  - Joints in POINT COORDINATES are PLAN ONLY.
+  - A wall is  AREA "x" PANEL 4 "a" "b" "b" "a" n n 0 0  — the trailing integers are the storey
+    span and offsets. The assigned storey is the TOP of the member; span n reaches n storeys down.
+  - 0 0 0 0 is a spandrel/header.
+  - 136 panels in the portfolio are 1 0 0 1 — skewed, corners at different storeys. The reader
+    handles these; there is a test. Do not re-investigate.
+  - Coincident joints are NORMAL, not a defect.
+  - Site models interleave towers, so 2-inch and 8-inch sliver storeys are REAL.
+  - The third value on a POINT line is an elevation above the storey base, NOT a member depth.
+    The 88" opening height rests on that bad derivation and is a known open gap (L3).
+
+KOR DRAFTING CONVENTIONS THE READER DEPENDS ON
+
+  - A perimeter wall is drawn as two concentric rings and must be paired into one wall.
+  - Drafting issues both a range sheet and a per-level sheet, so a floor arrives twice.
+  - "P1" and "LEVEL P1" are the same storey; MEZZ reads as the level below.
+  - Round columns are recognised only from arc provenance — a chamfered square passes every shape
+    test a circle does.
+  - Layer families: X and X-1 are one family and must be deduplicated per family, or the same
+    edges build members twice.
+  - Block INSERTs must be expanded or every block on the drawing is invisible.
+
+THINGS ALREADY MEASURED AGAINST THE PORTFOLIO (1,126 engineer models, 145 projects)
+
+  - Units: 936 models in inches, 159 in feet, 29 in millimetres, 2 in metres. Unit declaration is
+    NOT a gap; do not re-scan for it.
+  - Wall thickness cap was 36" and rejected 4,681 real wall sections; corrected to 60".
+  - Column aspect <= 3.0 rejects 17.9% of 7,538 real column sections. The extremes are blade
+    columns drawn deliberately across 15 projects. This is a KNOWN OPEN GAP and it is delicate:
+    the engineer explicitly ruled 3.0, and her own model's most slender column is exactly 3:1. Do
+    not silently overrule an engineer with a statistic.
+
+THE REVIT SIDE
+
+  - A raw Revit view export carries the LINKED ARCHITECTURAL MODEL. Concrete walls land on A-WALL
+    among partitions, curtain wall and doors, where no layer pattern can separate them. The link
+    category must be hidden in the view before exporting. This was discovered tonight and is why
+    the third building is not yet testable.
+  - Layer patterns are per-JOB, not global. Moving them into the database made them visible, not
+    agnostic — setting a global rule for one job breaks the others. Hence the CLI overrides.
+
+ENVIRONMENT
+
+  - Get-ChildItem -Recurse over SMB is unusably slow. Corpus work runs ON the file server.
+    \\Kor-fs01\Projects\Projects is E:\Projects\Projects there.
+  - FS01 has no .NET runtime. A self-contained single-file publish runs there without installing.
+  - WinRM is blocked on KOR-302N. It works on Kor-fs01, where Invoke-CimMethod also works.
+  - The full suite takes 10-14 minutes because ~20 tests rebuild both reference buildings from real
+    drawings over SMB. Do not start one and then keep editing — it locks the output directory and
+    leaves test hosts wedged in SMB I/O.
+  - Edge silently caches file:// URLs, so a rebuilt PDF can carry the old text at a plausible new
+    size. Format-BdWebPdf.ps1 now renders through a fresh filename.
+  - sqlcmd input files need a UTF-8 BOM.
+  - A missing rule stops a production run by design; there is no fallback value.
+  - analysis.vw_RuleSetting must have ONE active row per key. Importing an engineer's answer
+    retires the matching convention in the same transaction.
+
+
+==============================================================================================
+5. PRIOR ART — THESE EXIST. DO NOT REBUILD THEM.
+==============================================================================================
+
+  tools/Measure-EtabsCorpusRules.ps1              measures the rules against the whole portfolio;
+                                                  -ReaderCheck adds a reader pass. Runs on FS01.
+  Kor.Operations.EngineeringTools.Core.Tests/
+    ModelCoverageTests.cs                         model vs DRAWINGS, both directions, plus the
+                                                  empty-storey check
+    PortfolioRuleTests.cs                         rules vs a sampled corpus (KOR_PORTFOLIO_CHECK)
+    ReferenceModelShapeTests.cs                   skewed 1 0 0 1 panels
+    HostileInputTests.cs                          coordinates far from origin
+    AgnosticismTests.cs                           foreign layer names
+  ../KOR.Drafter/db/tools/verify_e2k_claims.ps1   format conventions against real models
+  tools/Publish-EtabsModel.ps1                    one command: generate, report, workbook, docs,
+                                                  with a gate that checks every count in the docs
+
+  Two hours were lost tonight building a second corpus walker and proposing a coverage diff, both
+  of which already existed. Before writing any script or tool, search these paths and say in your
+  output what you searched and what you found.
+
+
+==============================================================================================
+6. THE ENGINEER'S OWN RULINGS — DO NOT OVERTURN THESE SILENTLY
+==============================================================================================
+
+  "less than 48 in length should be a column"
+  "some walls are thicker than 24 inches"
+  "the wall should stop at the opening; a header may be over the opening"
+  "all walls should be assigned a pier label"
+  "we can't have a wall go from here to here and then another one from here to here — we need a
+   connection"                                    (connectivity is the whole point)
+  "let's have a full model with both towers modelled; I will separate the towers later"
+  loads, diaphragms, stiffness modifiers and section properties are hers
+
+  These are banked in KorStandards at engineer-confirmed, the highest confidence there is. If the
+  portfolio disagrees with one, that is a finding to report, not a value to change.
+
+
+==============================================================================================
+7. RULES OF EVIDENCE
+==============================================================================================
 
   1. Measure the artifact. The report, the workbook, the documents and the suite are outputs of
-     the thing under audit.
+     the thing under audit, not evidence about it.
   2. Read shipped PDFs as text, not the HTML behind them.
-  3. Objects named "K" plus a letter and digits were written by this tool; some files in the job
-     folders are its own output round-tripped through ETABS. Establish provenance.
+  3. Objects named "K" plus a letter and digits were written by this tool, and some files in the
+     job folders are its own output round-tripped through ETABS. Establish provenance.
   4. A check is proved by failing on the defect it exists for, not by passing.
   5. Two buildings are not evidence about a third.
   6. State the file and the numbers behind every finding. A defect read off code is not a finding
      until you say what it does to a model an engineer opens.
   7. Where you cannot determine something, say so and say what would settle it.
 
-CONSTRAINTS
+
+==============================================================================================
+8. CONSTRAINTS
+==============================================================================================
 
   - Do not modify anything under \\Kor-fs01 except by running the publish script for the two jobs
     the documents already name.
   - Do not open, modify or upgrade any Revit model. KOR-302N is a workstation someone uses.
   - Set KOR_ENGINEERINGTOOLS_STANDARDSDB process-local. Never setx it.
   - Rules live in KorStandards. A rule change is a migration in KOR.Drafter\db\, never a constant.
-    A missing rule stops a run by design.
-  - Writes to analysis.Ruling are the mechanism working as intended. Say what you wrote and leave
+  - Writes to analysis.Ruling are the mechanism working as intended. Say what you wrote, and leave
     the database holding the values it started with.
   - No destructive git. Do not push.
-  - Run the FULL suite before claiming anything about it, and say plainly if you did not. It takes
-    ten to fourteen minutes because twenty of its tests rebuild both reference buildings from real
-    drawings over SMB.
+  - Run the FULL suite before claiming anything about it, and say plainly if you did not.
 
-OUTPUT
 
-  Lead with a straight answer to one question: IS THIS TOOL READY TO PUT IN FRONT OF A STRUCTURAL
-  ENGINEER, and if not, what are the three things stopping it. Everything else follows that.
+==============================================================================================
+9. OUTPUT
+==============================================================================================
 
-  Then findings worst first: what is wrong, the numbers you measured, what it costs the engineer
-  who opens the model, how confident you are.
+  FIRST, in three sentences: is this ready to put in front of a structural engineer, and if not,
+  what are the three things stopping it.
 
-  Then a second pass arguing against your own findings. Say which survive.
+  THEN the gap analysis: for each property and promise in section 1, what is actually true, the
+  measurement behind it, and what the gap costs the engineer.
 
-  Then what you changed and what you verified each change against.
+  THEN findings worst first — what is wrong, the numbers, the cost, your confidence.
 
-  Then which Part 2 items are wrong, and one line on what you could not determine.
+  THEN a second pass arguing against your own findings; say which survive. Four that hold beat
+  twenty that read well.
+
+  THEN what you changed and what you verified each change against.
+
+  THEN which Part 2 items in the gap inventory are wrongly stated, wrongly closed, or missing.
+
+  LAST, one line on what you could not determine and what would settle it.
