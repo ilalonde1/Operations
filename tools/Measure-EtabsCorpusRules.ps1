@@ -38,7 +38,12 @@ param(
     [int]$Sample = 0,
 
     # Also run this tool's own reader over every model and classify what stops it.
-    [switch]$ReaderCheck
+    [switch]$ReaderCheck,
+
+    # Where takeoff.exe is. Only needed when the script is running somewhere without the repo --
+    # a file server, for instance, which is exactly where this belongs and is the one place the
+    # repo-relative default cannot work.
+    [string]$Cli
 )
 
 $ErrorActionPreference = 'Stop'
@@ -167,7 +172,8 @@ foreach ($p in ($panelForm.GetEnumerator() | Sort-Object Value -Descending | Sel
 
 if ($ReaderCheck) {
     $repo = Split-Path $PSScriptRoot -Parent
-    $cli  = Join-Path $repo (Join-Path 'Kor.Operations.EngineeringTools.TakeoffCli' (Join-Path 'bin' (Join-Path 'Debug' (Join-Path 'net8.0' 'takeoff.exe'))))
+    if ($Cli) { $cli = $Cli }
+    else { $cli = Join-Path $repo (Join-Path 'Kor.Operations.EngineeringTools.TakeoffCli' (Join-Path 'bin' (Join-Path 'Debug' (Join-Path 'net8.0' 'takeoff.exe')))) }
     if (-not (Test-Path $cli)) {
         Write-Host "building the CLI for the reader pass..." -ForegroundColor DarkGray
         & dotnet build (Join-Path $repo 'Kor.Operations.EngineeringTools.TakeoffCli') -c Debug --nologo -v q | Out-Null

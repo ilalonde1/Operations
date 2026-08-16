@@ -60,13 +60,18 @@ public static class CorpusReaderCheck
             AttributesToSkip = FileAttributes.ReparsePoint,
         };
 
+        // The pattern goes to the FILESYSTEM, not to a LINQ Where. "*.*" with a .NET-side filter
+        // makes this enumerate every drawing, PDF and archive on a projects volume to find a
+        // hundred-odd models -- which on the file server ran for minutes at 1 second of CPU,
+        // because it was walking millions of names it had no use for.
         IEnumerable<string> files;
         try
         {
-            files = Directory.EnumerateFiles(root, "*.*", options)
-                .Where(f => f.EndsWith(".e2k", StringComparison.OrdinalIgnoreCase)
-                         || f.EndsWith(".$et", StringComparison.OrdinalIgnoreCase));
+            files = Directory.EnumerateFiles(root, "*.e2k", options)
+                .Concat(Directory.EnumerateFiles(root, "*.$et", options));
 
+            // Sorting is only worth its cost when everything is being read anyway; with a limit it
+            // would force the whole walk before the first file, which is what --limit exists to avoid.
             if (limit == 0) files = files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
         }
         catch (IOException) { yield break; }
