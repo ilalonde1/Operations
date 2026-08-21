@@ -396,3 +396,50 @@ dead-UI window.
 
 **Not swept, by instruction:** the other ~68 raw-exception sites. Item 185.
 
+### 2026-08-21 · FileSync service deployed to KOR-APP01 — item 183
+
+Followed the existing runbook (memory: *FileSync.Service deploy runbook*) rather than improvising —
+`publish.ps1` → `sc.exe stop` → robocopy `/XF appsettings.Production.json install-service.ps1
+uninstall-service.ps1` → `sc.exe start`. Checked the log first: last activity 10:37, service idle, so
+nothing was interrupted mid-upload.
+
+**Artifact verified before starting**, per the same discipline as the MCP:
+
+| check | before | after |
+|---|---|---|
+| `FileSyncSchedulingCatalog` in deployed DLL | **0** | **1** |
+| `KorMapSyncJob` in deployed DLL | — | **2** |
+| DLL date | 2026-08-12 | **2026-08-21 12:48** |
+| `appsettings.Production.json` | May 1 | **May 1, untouched** |
+
+**Runtime proof, which is the point:** the startup log now reads
+`Quartz.ContainerConfigurationProcessor Adding job: DEFAULT.KorMapSync`. Six jobs where there were
+five. **KorMapSync is scheduled for the first time** — it will fire daily at 02:15 local, and the
+public project map stops being stale. Watcher (gen 1), LockRegistry and TriggerPoller all started
+clean. File version 1.0.12.0.
+
+**Expected oddity, not a regression:** the startup line still says `Mode="Shadow"`. That is the
+heartbeat `GlobalMode` the service has always written, and item 12 deliberately did **not** invent a
+meaning for it — the App now derives its column from the per-job modes instead. The log line is
+cosmetic and the screen no longer presents it as policy.
+
+**Item 184 remains Ian's and is not done:** App + signed VSTO republish, scheduled this evening. Until
+it ships, items 13, 14, 16, 17, 18, 19, 23 and the App halves of 11 and 12 are in git and in front of
+nobody. Item 13 is the one with a daily cost.
+
+### 2026-08-21 · Brief 5 out — items 24, 25, 26, 27
+`codex/BRIEF-5-etabs-deliverable.md` → `briefed 5`. All four verified first:
+
+- **24** `[RUN]` `strings docs/KOR-DxfToEtabs-onepager-web.pdf` returns `ERR_FILE_NOT_FOUND` and
+  `Microsoft Edge`. 59 KB of browser error page, and `Publish-EtabsModel.ps1:231` copies it into
+  client job folders.
+- **25** `[READ]` the count gate at `Publish-EtabsModel.ps1:435` parses `onepager.html`, not the PDF.
+- **26** `[READ]` `DxfToEtabsService.cs:350` passes `builtIn.Keys` where `RequiredRuleKeys` sits at `:114`.
+- **27** `[RUN]` 3 of 19 `ModelQuestionnaireTests` red: `ALayerNameAnswerImportsAsTextRatherThanBeing
+  SearchedForDigits`, `TheFrontPageCarriesOnlyWhatSheHasToRead`, `QuestionsWorkbookCarriesHiddenRule
+  Metadata`.
+
+**Framing that matters for 27:** the audit asserts all three are stale tests rather than product
+defects. The brief does **not** pass that assertion on as fact. Editing a test until it goes green is
+how a gate is lost, and this register already carries two entries about gates that do not gate.
+
