@@ -771,7 +771,7 @@ namespace EmailFilerv2
 
         private static DateTime? ToUtcOrNull(DateTime dt)
         {
-            if (dt == DateTime.MinValue)
+            if (!OutlookDateGuard.IsPlausibleSentOn(dt, DateTime.Now))
                 return null;
 
             if (dt.Kind == DateTimeKind.Unspecified)

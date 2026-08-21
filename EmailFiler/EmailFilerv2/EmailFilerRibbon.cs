@@ -791,7 +791,7 @@ namespace EmailFilerv2
             const string ext = ".msg";
 
             string subject = mail.Subject ?? "Email";
-            string sent = (mail.SentOn == DateTime.MinValue ? DateTime.Now : mail.SentOn)
+            string sent = OutlookDateGuard.GetPlausibleSentOnOrNow(mail.SentOn)
                 .ToString("yyyy-MM-dd HHmm");
 
             foreach (char c in Path.GetInvalidFileNameChars())

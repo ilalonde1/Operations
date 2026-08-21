@@ -403,6 +403,7 @@
     <Compile Include="EmailFilerRibbon.cs" />
     <Compile Include="HostExeResolver.cs" />
     <Compile Include="ItemsToFileProcessor.cs" />
+    <Compile Include="OutlookDateGuard.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>

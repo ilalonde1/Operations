@@ -168,3 +168,34 @@ using this every day*, and those are different lists.
 normal day, not by what it would do to an audience. Item 13 — 39% of filed emails carrying a
 `4501-01-01` prefix — outranks every disclosure item on that basis.
 
+### 2026-08-21 · Brief 2 VERIFIED — items 13, 19
+
+Both held. Codex added `EmailFiler/EmailFilerv2/OutlookDateGuard.cs` and wired it into
+`EmailFilerv2.csproj` — required, since that is an old-style project with explicit
+`<Compile Include>`.
+
+- **Build.** `Kor.Operations.App` green via `dotnet build`, 0 errors. `EmailFilerv2` green via
+  MSBuild (`Program Files\Microsoft Visual Studio\18\Community`) — it is .NET Framework VSTO, so
+  `dotnet build` is the wrong tool for it.
+- **Artifact checked, not just source.** `OutlookDateGuard` is present in the rebuilt
+  `EmailFilerv2.dll` (11:55), same byte-scan result as a known-present type. Per this repo's rule 5,
+  the check is the shipped binary rather than the diff that was supposed to produce it.
+- **13** — `EmailFilerRibbon.cs:794` now calls `GetPlausibleSentOnOrNow`. Range is 1990-01-01 to
+  `Now.AddDays(1)`; the firm's email corpus starts 2014, so the lower bound has clearance.
+- **13, second path** — Codex checked `ItemsToFileProcessor` as asked and reported the filename path
+  did *not* share the defect (it already used `DateTime.Now`, `:570`), but that `ToUtcOrNull:774`
+  shared the weak validation. Fixed there too. Verified the return contract did not change: it was
+  already `DateTime?` and already returned null, and both callers (`:664,:665`) already assign to
+  `DateTime?`. No new null path.
+- **19** — the fallback `Process.Start` now has its own try/catch and names the file in the message.
+  The first call gets an early `return` so success no longer falls into the fallback. Codex confirmed
+  those are the only two `Process.Start` calls in that file.
+
+**Open, and not ours:** item 13 ships inside the VSTO add-in. Until it is rebuilt and republished
+signed with Ian's certificate, all ~40 staff keep filing with the old binary. Register status for 13
+is `code verified — awaiting signed VSTO republish` rather than `verified`, because saying otherwise
+would be the exact defect this audit's systemic finding #1 is about.
+
+**Not done:** nothing renames the 872 already-misfiled emails. Deliberately out of scope — that is a
+decision about client folders, not a code change.
+

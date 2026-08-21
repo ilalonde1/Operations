@@ -396,6 +396,8 @@ namespace Kor.Operations
                 b.Tag is string path &&
                 !string.IsNullOrWhiteSpace(path))
             {
+                Exception? openError = null;
+
                 try
                 {
                     // Prefer Outlook to open .msg
@@ -405,8 +407,14 @@ namespace Kor.Operations
                         Arguments = $"/f \"{path}\"",
                         UseShellExecute = false
                     });
+                    return;
                 }
-                catch
+                catch (Exception ex)
+                {
+                    openError = ex;
+                }
+
+                try
                 {
                     // Fallback: shell open
                     Process.Start(new ProcessStartInfo
@@ -414,6 +422,17 @@ namespace Kor.Operations
                         FileName = path,
                         UseShellExecute = true
                     });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        this,
+                        $"Could not open the filed email:\n\n{path}\n\n{ex.Message}",
+                        "Email Filer - Open Failed",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    Debug.WriteLine($"Email open failed for '{path}'. Outlook error: {openError?.Message}; Shell error: {ex.Message}");
                 }
             }
         }
