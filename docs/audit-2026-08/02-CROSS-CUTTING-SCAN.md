@@ -42,12 +42,38 @@ independent reasons. Both are defects in the scan, not in the reporting of it.
 |---|---|---|
 | `Kor.Operations.App/App.config` (connectionStrings) | **Live SQL password for `transmittals_app`** — still the literal scaffold placeholder shipped by the template | **YES** |
 | `Kor.Operations.App/App.config` (connectionStrings) | **Live SQL password for `opportunities_app`** | **YES** |
-| `Redirector/Kor.Transmittals.Redirector/Program.cs:33` | **Azure AD Graph tenant ID, client ID and client secret**, hardcoded as `??` fallbacks. No `Graph:*` key exists in any appsettings on disk or on the server — **so the fallback is what production uses** | no (dir is untracked) |
+| `Redirector/Kor.Transmittals.Redirector/Program.cs:33` | **Azure AD Graph tenant ID, client ID and client secret**, hardcoded as `??` fallbacks. No `Graph:*` key exists in any appsettings on disk or on the server — **so the fallback is what production uses** | ~~no (dir is untracked)~~ **YES — see third correction below** |
+| `_Scripts Rebuild/**/*.ps1` — **24 tracked files** | **The same Azure AD client secret**, in plaintext, committed | **YES** |
 | `Redirector/Kor.Transmittals.Redirector/Program.cs` | reCAPTCHA **secret** key, plaintext | no |
 | `KOR-APP01` deployed `appsettings.Production.json` (MCP) | Live Anthropic API key, Deltek credentials, SQL password, cleartext | no — server only |
 
 `App.config` being tracked means the two SQL passwords are **in git history**, so rotating the
 password is necessary but not sufficient — the history retains them.
+
+### Third correction 2026-08-21 — the redirector's Graph secret IS in git, 24 times
+
+The row above said `no (dir is untracked)`. That was true of the redirector's own directory and
+false about the credential. `git grep` for the literal secret over `HEAD` returns **24 tracked files**
+in this repository — `_Scripts Rebuild/FileSync/Production/*.ps1`,
+`_Scripts Rebuild/FileSync/Maint/*.ps1`, `_Scripts Rebuild/Concrete Test Reports/*.ps1` and
+`Send-Weekly-PM-Deadlines.ps1` — every one of them carrying it in plaintext `[RUN]`. They arrived in
+`c9c13e6b`, *"import production PS1 source-of-truth + handoff brief"*, as the originals that were
+then ported into `Kor.Operations.FileSync.Service`; all seven Quartz runner names map onto script
+names in that tree.
+
+**Why the scan missed it:** the same defect as the first correction, one file type further out. The
+scan read `.cs`, then `.config`. It never read `.ps1`. Ratchet #2 in `START-HERE.md` §6 specifies
+`.cs .config .json .xml .ps1 .md` precisely because of this; its first run — before the audit's own
+first commit — found this and a live secret inside the audit markdown itself.
+
+**Two consequences.**
+
+1. Item 59 says the redirector's secret is *"compiled into a deployed DLL, in a file with no version
+   control"*. It is also committed, in this repo, 24 times. Rotation is still the right call and it
+   is still `BEFORE-DEMO`, but the history-purge item can no longer be scoped to `App.config` alone.
+2. **Rotating that secret will break those 24 scripts.** Whether any of them still runs on a
+   schedule is a server question, not a repository one — the FileSync service was built to replace
+   them, but "superseded in the repo" is not "unscheduled on the box". Check before rotating.
 
 ### Second correction — the empty-catch counts are UNDERCOUNTS
 

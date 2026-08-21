@@ -71,3 +71,24 @@ Item 2 only hides the two Awards *columns* — the drill-down still opens. Read
 so gating it is one more edit. Added as §3.5 of the brief. **If this holds, item 2's own description
 is incomplete** — amend it when the work is verified, do not silently widen it.
 
+### 2026-08-21 · Ratchet #2 run for the first time — two findings, one of them in the audit itself
+
+Ran the `START-HERE.md` §6 secret scan across `.cs .config .json .xml .ps1 .md` before the audit's
+first commit, because §7 asserted the markdown was redacted and safe and rule 5 says verify the
+artifact rather than the claim about it.
+
+1. **`modules/02-transmittals-tracking.md:259` quoted the redirector's live Entra client secret
+   verbatim** in a fenced code block. Redacted before staging; it never entered history. `START-HERE`
+   §7 now carries the correction rather than a silent edit.
+2. **The same secret is committed in 24 tracked `.ps1` files** under `_Scripts Rebuild/` `[RUN]`.
+   The audit's own credential table recorded that credential as *not* in git because the redirector's
+   directory is untracked. The directory is untracked; the credential is not. `02-CROSS-CUTTING-SCAN.md`
+   now carries a third correction, and item 59 carries the rotation side-effect.
+
+Neither of these is a new class — both are the *same* class the file already retracted twice: the
+scan's file-type coverage, one extension further out each time. `.cs` → `.config` → `.ps1`.
+
+**Not doing now, and why:** purging history. It stays `SOON` for the reason the register already
+gives — a history rewrite two weeks before a demo is the wrong order of operations — and the new
+count changes the scope of that job, not its timing.
+
