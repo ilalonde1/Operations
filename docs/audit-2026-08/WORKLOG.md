@@ -1,0 +1,73 @@
+# Work log — executing the August 2026 audit
+
+**Authority: `04-TODO-REGISTER.md` is the single arbiter of *state*.** Its `status` column says
+whether an item is done. This file is the append-only *evidence trail* — what was briefed, what
+changed, how it was checked. If the two ever disagree, the register wins and this file is wrong.
+
+Do not restate an item's text here. Reference it by number.
+
+## How a piece moves
+
+    open  →  briefed <N>  →  applied <N>  →  verified <date>
+
+- **open** — in the register, untouched.
+- **briefed N** — handed to Codex in `codex/BRIEF-N-*.md`. Codex is asked to *verify the finding
+  first* and to say so if it does not hold.
+- **applied N** — Codex reports the edit landed. **Not** yet trustworthy.
+- **verified <date>** — checked here on the dev box against the artifact, not against Codex's
+  report. Evidence recorded below. Only then does the register status change.
+
+A finding Codex overturns is recorded as `not-an-issue` with its reasoning **and** an independent
+check, per the audit's own calibration note: the defect findings held, the absence findings did not.
+
+## Status vocabulary in the register
+
+| value | means |
+|---|---|
+| `open` | untouched |
+| `briefed N` | out with Codex under brief N |
+| `applied N` | Codex says done, unverified here |
+| `verified YYYY-MM-DD` | checked on the dev box; evidence in this file |
+| `not-an-issue` | the finding did not hold; see the entry here |
+| `superseded` | folded into another item; names which |
+
+---
+
+## Log
+
+*(newest last)*
+
+### 2026-08-21 · Brief 1 — "Client present" mode for the BD surface
+`codex/BRIEF-1-client-present-mode.md` · items **1, 2, 18, 22, 23** → `briefed 1`
+
+Verified all five findings against live source before briefing:
+
+| item | check | result |
+|---|---|---|
+| 1 | `DashboardView.xaml:589,659` | held — `DisplacementRead` on Open Structural Seats, `CapacityRead` on Competitor Watch, both on the landing view |
+| 2 | `OrgDossierView.xaml:618` | held — register says `:610`, it is at `:618` |
+| 2 | `CompetitionInfoView.xaml:125,144` | held — exact lines |
+| 18 | `PursuitBriefViewModel.cs:125,129` | held — exact lines, verbatim string |
+| 22 | `BdWorkspaceWindow.xaml:96` | held — `AttributionButton`, "BD Scorecard" |
+| 23 | `CompetitionInfoSourcesWindow.xaml:114` | held — register says `:106`, the `Coming next` TextBlock is at `:114` |
+
+**Decisions taken as head, which the register left open:**
+
+- Item 1 offered *land elsewhere* **or** *suppress the columns*. Chose **suppress**. Changing the
+  landing view moves everyone's muscle memory to solve a problem that only exists when a client is
+  in the room; the two columns are the entire disclosure.
+- Item 2 says "behind a demo flag". **No feature-flag mechanism exists in this app** — grepped
+  `DemoMode|IsDemo|KOR_DEMO|FeatureFlag` across `Kor.Operations.App`, zero hits. So brief 1 creates
+  one: a single `Demo.ClientPresent` App.config key. One switch covers all six gates and reverses
+  after the demo by editing one value.
+- Item 18 offered *replace* or *delete the card*. Chose **replace with `—`**: the card has a shape
+  worth keeping and an em dash is an honest empty state that survives the PDF export.
+
+**One gate added that the audit missed.** Module 08 RISK 5 notes that double-clicking a name in the
+Awards **Winner** column opens `CompetitorProfileWindow`, which chips `NORR ARCHITECTS & ENGINEERS
+LIMITED` and `ROBSON DESIGN BUILD LTD.` as **DIRECT COMPETITOR** and lists their named executives.
+Item 2 only hides the two Awards *columns* — the drill-down still opens. Read
+`CompetitorProfileWindow.xaml:52-72`: the whole AI panel is a single `Border` with one `Visibility`,
+so gating it is one more edit. Added as §3.5 of the brief. **If this holds, item 2's own description
+is incomplete** — amend it when the work is verified, do not silently widen it.
+

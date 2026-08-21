@@ -119,3 +119,8 @@ CODEX-STDDETAILS-REVIEW-PROMPT.txt
 # WordPress sync secret in plaintext, and GitHub push protection caught only the first.
 # Removed from history 2026-08-15; keep it out.
 docs/map-audit/live-theme/
+
+# Audit 2026-08 — rendered artifacts contain live credentials quoted as evidence.
+# The markdown is redacted and safe to commit; these are not.
+docs/KOR-Operations-Brain-*-web.pdf
+docs/audit-2026-08/_*.html
