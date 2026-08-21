@@ -199,3 +199,27 @@ would be the exact defect this audit's systemic finding #1 is about.
 **Not done:** nothing renames the 872 already-misfiled emails. Deliberately out of scope — that is a
 decision about client folders, not a code change.
 
+### 2026-08-21 · Brief 3 — FileSync truth
+`codex/BRIEF-3-filesync-truth.md` · items **10, 11, 12** → `briefed 3`
+
+All three verified against live source before briefing. First brief to require the fix **and** its
+gate in the same change, per the repo's own rule that checks go in the build.
+
+**Nearly repeated the audit's own worst mistake.** `QuartzInstaller` registers 5 runners while the
+assembly has 8 `IJobRunner` implementations, which reads as three unregistered jobs. It is one.
+`WatcherSyncRunner` is driven by `WatcherHostedService` (`Program.cs:91`) and `NoOpJobRunner` is a
+stub. Claiming those two were broken would have been an absence finding from a grep — the exact
+class of error `START-HERE.md` §2 says was wrong 4 times out of 4. The brief names both as traps, and
+test 4.2 encodes them as declared exemptions rather than leaving the next person to re-derive it.
+
+**Decision taken as head — item 12.** The register offers *"honour `KOR_FILESYNC_MODE`, or relabel"*.
+There is no such environment variable anywhere in the solution. Honouring it would mean inventing a
+global mode to justify a label, when the per-job `Mode` column is already the real authority. Briefed
+the opposite: derive the column from the job rows and rename the header. A value nothing consults
+should not be displayed as policy.
+
+**My side of the contract when it returns:** run each new test against the **pre-fix** code and
+confirm it fails there. A gate that passes before and after is the defect this audit's systemic
+finding #1 describes, and adding one while claiming to close that finding would be worse than
+leaving the bug.
+
