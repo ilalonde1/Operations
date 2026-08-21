@@ -29,8 +29,9 @@ public class ModelQuestionnaireTests
             Assert.True(sheet.Column(scope).IsHidden);
             Assert.True(sheet.Column(Col(sheet, "Confidence")).IsHidden);
             Assert.False(sheet.Column(Col(sheet, "YOUR ANSWER")).IsHidden);
-            Assert.Contains("corner-limbs-vs-stocky-pier",
-                sheet.RowsUsed().Select(r => r.Cell(topic).GetString()));
+            var topics = sheet.RowsUsed().Select(r => r.Cell(topic).GetString()).ToList();
+            Assert.Contains("header-depth-from-opening-height", topics);
+            Assert.DoesNotContain("corner-limbs-vs-stocky-pier", topics);
             Assert.Contains("dxf.opening-height;dxf.spandrel-depth-floor;dxf.spandrel-depth-ceiling",
                 sheet.RowsUsed().Select(r => r.Cell(key).GetString()));
         }
@@ -548,8 +549,10 @@ public class ModelQuestionnaireTests
             using (var workbook = new XLWorkbook(path))
             {
                 var sheet = workbook.Worksheet("Questions");
-                var l1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "L1");
-                l1.Cell(Col(sheet, "YOUR ANSWER")).Value = " S8-WALL ; CONC-WALL ";
+                var l1 = ModelQuestionnaire
+                    .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report)
+                    .Single(q => q.Code == "L1");
+                AppendQuestionRow(sheet, l1, " S8-WALL ; CONC-WALL ");
                 workbook.Save();
             }
 
@@ -573,7 +576,7 @@ public class ModelQuestionnaireTests
         string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");
         try
         {
-            var report = MinimalReport(path);
+            var report = MinimalReport(path) with { RulesApplied = AppliedRulesForQuestionnaire() };
             ModelQuestionnaire.Write(path, report, report.ClassificationUsed, report.ComposeUsed, "test");
 
             var all = ModelQuestionnaire.StandingQuestions(
@@ -601,13 +604,46 @@ public class ModelQuestionnaireTests
 
             // And every one of them is still in the full rule set, not dropped.
             var rules = workbook.Worksheet("Rules in force");
-            Assert.NotNull(rules);
+            var listed = rules.RowsUsed().Where(r => r.RowNumber() > 4)
+                .ToDictionary(r => r.Cell(1).GetString(), r => r.Cell(4).GetString());
+            foreach (var q in all.Where(q => q.ForTheRecord && !string.IsNullOrWhiteSpace(q.SettingKey)))
+            {
+                foreach (string key in q.SettingKey!.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    Assert.True(listed.ContainsKey(key), $"{q.Code} is off the front page and {key} is missing from Rules in force.");
+                    Assert.Equal($"question {q.Code}", listed[key]);
+                }
+            }
         }
         finally
         {
             if (File.Exists(path)) File.Delete(path);
         }
     }
+
+    private static void AppendQuestionRow(IXLWorksheet sheet, ModelQuestion question, string answer)
+    {
+        int row = (sheet.LastRowUsed()?.RowNumber() ?? 4) + 1;
+        sheet.Cell(row, Col(sheet, "Ref")).Value = question.Code;
+        sheet.Cell(row, Col(sheet, "Question")).Value = question.Question;
+        sheet.Cell(row, Col(sheet, "What the tool did")).Value = question.WhatWeDid;
+        sheet.Cell(row, Col(sheet, "YOUR ANSWER")).Value = answer;
+        sheet.Cell(row, Col(sheet, "Rule scope")).Value = question.RuleScope;
+        sheet.Cell(row, Col(sheet, "Rule topic")).Value = string.IsNullOrWhiteSpace(question.RuleTopic)
+            ? question.Topic
+            : question.RuleTopic;
+        sheet.Cell(row, Col(sheet, "Setting key")).Value = question.SettingKey ?? string.Empty;
+        sheet.Cell(row, Col(sheet, "Setting units")).Value = question.SettingUnits ?? string.Empty;
+        sheet.Cell(row, Col(sheet, "Confidence")).Value = question.Confidence;
+    }
+
+    private static IReadOnlyDictionary<string, RuleSetting> AppliedRulesForQuestionnaire()
+        => DxfToEtabsService.RequiredRuleKeys.ToDictionary(
+            key => key,
+            key => DxfToEtabsService.TextRuleKeys.Contains(key, StringComparer.OrdinalIgnoreCase)
+                ? new RuleSetting(key, double.NaN, RuleSettings.TextUnits, "test", "test", "test") { Text = "WALL" }
+                : new RuleSetting(key, 1, "in", "test", "test", "test") { Text = "1" },
+            StringComparer.OrdinalIgnoreCase);
 
     private static int Col(IXLWorksheet sheet, string header)
         => sheet.Row(4).CellsUsed()

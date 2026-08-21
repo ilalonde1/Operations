@@ -443,3 +443,52 @@ nobody. Item 13 is the one with a daily cost.
 defects. The brief does **not** pass that assertion on as fact. Editing a test until it goes green is
 how a gate is lost, and this register already carries two entries about gates that do not gate.
 
+### 2026-08-21 · Brief 5 verified — items 24, 25, 26, 27
+
+Full `Kor.Operations.EngineeringTools.Core.Tests` suite: **483/483 green, 8m51s**, including the three
+that were red.
+
+**24 — the shipped PDF is real now.** Checked as text on my side, not by opening it:
+`pdftotext -layout` returns the actual one-pager prose, and a byte-grep for `ERR_FILE_NOT_FOUND` /
+`Microsoft Edge` returns **0**. Was 59 KB of Edge error page.
+
+**25 — the gate is proven, not asserted.** I pulled the old broken PDF back out of git
+(`git show HEAD:docs/KOR-DxfToEtabs-onepager-web.pdf`) and ran the new gate's logic against both:
+
+| | browser-error guard | count claims found |
+|---|---|---|
+| old committed artifact | **fires** | **0** → the no-claims guard also fires |
+| new re-rendered | clean | 3 |
+
+So the gate would have caught item 24. Codex also added the **no-claims** guard unprompted, which
+closes the real hole: an error-page PDF yields zero count claims, the loop body never executes, and a
+gate that only checked claims would have passed it silently.
+
+**26 — correct, with a live precondition I could not verify.** `RequiredRuleKeys` (35) vs
+`builtIn.Keys` (32); the three missing are `dxf.wall-layer-patterns`, `dxf.column-layer-patterns`,
+`dxf.slab-layer-patterns` — exactly the keys that decide what counts as a wall. **But this makes them
+required, and a missing rule stops a production run by design.** `041_LayerNamesAreARuleNotAConstant.sql`
+seeds all three; whether it is *applied* on `KOR-APP01\SQLEXPRESS` I cannot check — `kor\ilalonde`
+cannot open `KorStandards`. Query handed to Ian. **Status stays `code verified — awaiting DB
+confirmation`.** Three rows back closes it; fewer means the migration must run before anyone uses the
+tool.
+
+**27 — all three were genuinely stale tests, and two got stronger.** I did not take that on trust:
+
+- `QuestionsWorkbookCarriesHiddenRuleMetadata` — now asserts a real topic **is** present *and* that
+  `corner-limbs-vs-stocky-pier` is absent, pinning the deliberate `ForTheRecord` filtering. Stronger.
+- `TheFrontPageCarriesOnlyWhatSheHasToRead` — was `Assert.NotNull(rules)`, nearly vacuous. Now asserts
+  **every** `ForTheRecord` question's setting keys appear in *Rules in force* with provenance
+  `question <code>`. Substantially stronger.
+- `ALayerNameAnswerImportsAsTextRatherThanBeingSearchedForDigits` — fixture only: L1 is deliberately
+  off the front page, so the test builds the row instead of reading it. Behaviour under test unchanged.
+
+None of these is a test edited until it went green.
+
+**Out of brief, and it is the real root cause of 24.** Codex also fixed `tools/Format-BdWebPdf.ps1`.
+The old code waited only for the output to **exist** — so re-rendering over an existing PDF saw the
+stale file instantly, deleted the temp HTML, and shipped the old bytes. It now waits for
+`LastWriteTime` to move past the render start and **throws** if Edge never refreshed. That is the
+mechanism behind the committed error page, and the file is the house renderer for **every BD
+dossier**, so the fix is broader than this item. Change is strictly additive (longer wait + a throw).
+

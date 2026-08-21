@@ -347,7 +347,7 @@ public static class DxfToEtabsService
         // banked there with its confidence, and this is where it becomes behaviour.
         var builtIn = BuiltInRuleValues(request.Classification, request.Compose);
         var banked = request.RequireRuleSettings
-            ? RuleSettings.LoadRequired(request.RuleSettingsConnection, builtIn.Keys)
+            ? RuleSettings.LoadRequired(request.RuleSettingsConnection, RequiredRuleKeys)
             : new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase);
         warnings.AddRange(RuleSettings.Describe(banked, builtIn));
 

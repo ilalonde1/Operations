@@ -427,18 +427,21 @@ if ((Test-Path $dossier) -and $pdftotext) {
         }
     }
 
-    # The one-pager is checked by the same rule, because it is the page that actually gets read
-    # first and it was the one nobody was checking. Every count in the dossier was verified while
-    # the summary beside it claimed 925 wall panels against 947 in the model and 83 plates against
-    # 82 — two wrong numbers in the four largest figures on the page, caught by eye rather than by
-    # this script. A gate that covers the long document and not the short one covers the wrong one.
-    $onePagerSource = Join-Path $repo 'docs\KOR-DxfToEtabs-onepager.html'
-    if (Test-Path $onePagerSource) {
-        $opHtml = Get-Content -LiteralPath $onePagerSource -Raw
-        $opProse = (($opHtml -replace '(?s)<style.*?</style>', ' ' -replace '(?s)<script.*?</script>', ' ' `
-                             -replace '<[^>]+>', ' ') -replace '&[a-z]+;', ' ') -replace '\s+', ' '
+    # The one-pager is checked by the same rule, against the PDF that ships. Reading the source
+    # HTML proves only that the input was right; it says nothing about a stale or failed render.
+    $onePagerPdf = Join-Path $folder 'KOR-Model-From-Drawings-READ-THIS-FIRST.pdf'
+    if (Test-Path $onePagerPdf) {
+        $opProse = ((& $pdftotext -layout $onePagerPdf -) -join ' ') -replace '\s+', ' '
+        if ($opProse -match 'ERR_FILE_NOT_FOUND|File not found|Microsoft Edge') {
+            $wrong += "one-pager PDF renders as a browser error page"
+        }
 
-        foreach ($c in [regex]::Matches($opProse, $countClaimPattern)) {
+        $opClaims = [regex]::Matches($opProse, $countClaimPattern)
+        if ($opClaims.Count -eq 0) {
+            $wrong += "one-pager PDF contains no checked model count claims"
+        }
+
+        foreach ($c in $opClaims) {
             $nText = if ($c.Groups['n'].Success) { $c.Groups['n'].Value } else { $c.Groups['n2'].Value }
             $whatText = if ($c.Groups['what'].Success) { $c.Groups['what'].Value } else { $c.Groups['what2'].Value }
             $n = [int]($nText -replace ',', '')

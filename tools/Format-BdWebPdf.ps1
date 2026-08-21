@@ -38,12 +38,18 @@ Copy-Item -LiteralPath $srcPath -Destination $fresh -Force
 $uri = "file:///" + ($fresh -replace '\\', '/')
 
 try {
+    $started = Get-Date
     & $edge --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf="$outPath" $uri 2>$null | Out-Null
 
-    # Edge returns before the file is flushed on slower runs; poll briefly.
+    # Edge can return while an existing destination still holds the old PDF. Wait for this render
+    # to touch the output before removing the temporary source file.
     $deadline = (Get-Date).AddSeconds(20)
-    while (-not (Test-Path $outPath) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 500 }
+    while (((-not (Test-Path $outPath)) -or ((Get-Item $outPath).LastWriteTime -lt $started)) -and
+           (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 500
+    }
     if (-not (Test-Path $outPath)) { throw "Edge did not produce $outPath" }
+    if ((Get-Item $outPath).LastWriteTime -lt $started) { throw "Edge did not refresh $outPath" }
 }
 finally {
     # Only after the PDF exists. Deleting while the renderer still holds the source is the race
