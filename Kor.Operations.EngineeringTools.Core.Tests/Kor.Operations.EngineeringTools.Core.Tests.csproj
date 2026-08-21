@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.EngineeringTools.Core\Kor.Operations.EngineeringTools.Core.csproj" />
+    <ProjectReference Include="..\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj" />
   </ItemGroup>
 
 </Project>

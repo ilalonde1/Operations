@@ -154,6 +154,7 @@ public partial class BdWorkspaceWindow : Window
         ContentHost.Content = _services.GetRequiredService<RelationshipsView>();
     }
 
+    // async-void OK: invoked by the global-search callback, which has a void delegate contract; awaited work is caught and reported here.
     private async void OpenOrgDossier(long canonicalOrgId)
     {
         NavigateToRelationships();

@@ -344,7 +344,7 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
             try
             {
                 var target = Path.GetFullPath(outputPath);
-                try { File.Delete(target); } catch { }
+                try { File.Delete(target); } catch { /* Best-effort cleanup: a locked stale PDF will make the render fail below. */ }
                 var psi = new ProcessStartInfo
                 {
                     FileName = edge,
@@ -359,7 +359,7 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
                 };
                 using var proc = Process.Start(psi);
                 if (proc is null) return false;
-                if (!proc.WaitForExit(60_000)) { try { proc.Kill(true); } catch { } return false; }
+                if (!proc.WaitForExit(60_000)) { try { proc.Kill(true); } catch { /* Best-effort cleanup: the timeout already returns a failed render. */ } return false; }
 
                 // Edge can exit a beat before the file is flushed.
                 var deadline = DateTime.UtcNow.AddSeconds(15);
@@ -372,7 +372,7 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
             }
             finally
             {
-                try { Directory.Delete(scratch, recursive: true); } catch { }
+                try { Directory.Delete(scratch, recursive: true); } catch { /* Best-effort cleanup of temp HTML/profile files after rendering. */ }
             }
         }
         catch

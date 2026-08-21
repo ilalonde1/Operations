@@ -586,3 +586,36 @@ commits stale, so anyone opening them sees old output.
 **If engineer feedback arrives, it must land in this register with evidence tiers rather than staying
 in a chat window.** Item 130's whole problem is that the module has never had that input.
 
+### 2026-08-21 · Brief 7 verified — items 57, 112, 115
+
+**The App build failed on arrival.** `UnhandledExceptionPolicy.cs:16,19` used the named argument
+`canContinue:` against a record whose positional parameter is `CanContinue`. C# named arguments are
+case-sensitive, so both of Codex's own gate-anchor lines did not compile. Two characters, twice —
+fixed here rather than spending a round trip. Second batch running to catch something the
+no-build/no-test rule let through.
+
+After the fix: build green, and every gate checked.
+
+| gate | check | result |
+|---|---|---|
+| 112 | `AsyncVoidTests` + `EmptyCatchBlockTests` **are** the gate — they must go red → green | **6/6 green.** The repo's own architectural signal is now true for the first time in this work |
+| 115 | revert the fatal decision to `CanContinue: true` | **1 of 2 fails** |
+| 57 | delete one row from the help table | **1 of 2 fails** — drift is caught |
+
+**Also verified by running the thing, not reading it:** `takeoff` with no arguments now prints a real
+command list with usage lines, instead of the legacy CSV-diff usage from `Program.cs:2744`.
+
+**Codex's judgement calls, and my read:**
+
+- **112** — wrote a true reason for each of the five rather than restructuring, as briefed. The three
+  `HtmlBriefPdfGenerator` catches are best-effort cleanup (`File.Delete`, `proc.Kill`,
+  `Directory.Delete`) and the reasons say so.
+- **115** — survivable: SQL/ODBC and ordinary exceptions on the dispatcher and unobserved-task paths.
+  Fatal: `OutOfMemory`, `StackOverflow`, `AccessViolation`, `AppDomainUnloaded`, `BadImageFormat`.
+  AppDomain-level logs and messages but does **not** swallow, on the grounds that it is not a real
+  continuation point. That is the right call — a handler that marks everything handled converts a
+  crash into silent corruption.
+- **57** — settled on **39** real subcommands; `gray` and `imperial` are flags, `single` and `perim`
+  are commands. The help table is the same shape as the FileSync scheduling catalog: one declared
+  list the dispatcher and the help printer both read, so it cannot drift.
+

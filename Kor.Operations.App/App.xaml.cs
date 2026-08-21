@@ -1,8 +1,10 @@
 #nullable enable
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using Kor.Operations.App.Options;
+using Kor.Operations.App.Services;
 using Kor.Operations.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -58,6 +60,7 @@ namespace Kor.Operations
             }
 
             Log.Logger = CompositionHelpers.GetSerilogLogger();
+            RegisterGlobalExceptionHandlers();
             SecretMigrationRunner.RunOnceAtStartup();
             EnvironmentSecretOverrides.Apply();
             QuestPDF.Settings.License =
@@ -134,6 +137,8 @@ namespace Kor.Operations
 
         protected override void OnExit(ExitEventArgs e)
         {
+            UnregisterGlobalExceptionHandlers();
+
             try { _pipeServer?.StopAsync().GetAwaiter().GetResult(); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Pipe server stop failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message); } // sync-over-async OK: app shutdown; UI message pump tearing down
             try { _guard?.Dispose(); } catch (Exception ex) { Log.ForContext<OperationsApp>().Warning(ex, "Single-instance guard dispose failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message); }
 
@@ -152,6 +157,100 @@ namespace Kor.Operations
             }
 
             base.OnExit(e);
+        }
+
+        private void RegisterGlobalExceptionHandlers()
+        {
+            DispatcherUnhandledException += OnDispatcherUnhandledException;
+            TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+            AppDomain.CurrentDomain.UnhandledException += OnAppDomainUnhandledException;
+        }
+
+        private void UnregisterGlobalExceptionHandlers()
+        {
+            DispatcherUnhandledException -= OnDispatcherUnhandledException;
+            TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
+            AppDomain.CurrentDomain.UnhandledException -= OnAppDomainUnhandledException;
+        }
+
+        private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            Log.ForContext<OperationsApp>().Error(
+                e.Exception,
+                "Unhandled UI dispatcher exception. {ErrorType}: {ErrorMessage}",
+                e.Exception.GetType().FullName,
+                e.Exception.Message);
+
+            var decision = UnhandledExceptionPolicy.Decide(e.Exception);
+            TryShowUnhandledExceptionMessage(decision);
+            e.Handled = decision.CanContinue;
+            if (!decision.CanContinue)
+            {
+                Shutdown(-1);
+            }
+        }
+
+        private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+        {
+            Log.ForContext<OperationsApp>().Error(
+                e.Exception,
+                "Unobserved task exception. {ErrorType}: {ErrorMessage}",
+                e.Exception.GetType().FullName,
+                e.Exception.Message);
+
+            var decision = UnhandledExceptionPolicy.Decide(e.Exception);
+            TryShowUnhandledExceptionMessage(decision);
+            if (decision.CanContinue)
+            {
+                e.SetObserved();
+            }
+            else
+            {
+                Dispatcher.BeginInvoke((Action)(() => Shutdown(-1)));
+            }
+        }
+
+        private void OnAppDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            var exception = e.ExceptionObject as Exception
+                ?? new InvalidOperationException("A non-Exception object reached the AppDomain unhandled exception handler.");
+
+            Log.ForContext<OperationsApp>().Fatal(
+                exception,
+                "Unhandled AppDomain exception. Runtime terminating: {IsTerminating}",
+                e.IsTerminating);
+
+            var decision = UnhandledExceptionPolicy.Decide(exception);
+            TryShowUnhandledExceptionMessage(e.IsTerminating ? decision with { CanContinue = false } : decision);
+        }
+
+        private void TryShowUnhandledExceptionMessage(UnhandledExceptionDecision decision)
+        {
+            try
+            {
+                void Show() => MessageBox.Show(
+                    decision.UserMessage,
+                    decision.CanContinue ? "KOR - Something went wrong" : "KOR - Application closing",
+                    MessageBoxButton.OK,
+                    decision.CanContinue ? MessageBoxImage.Warning : MessageBoxImage.Error);
+
+                if (Dispatcher.CheckAccess())
+                {
+                    Show();
+                }
+                else
+                {
+                    Dispatcher.Invoke((Action)Show);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext<OperationsApp>().Warning(
+                    ex,
+                    "Failed to show global exception message. {ErrorType}: {ErrorMessage}",
+                    ex.GetType().FullName,
+                    ex.Message);
+            }
         }
 
         private static void ClearProcessProxyEnvVars()

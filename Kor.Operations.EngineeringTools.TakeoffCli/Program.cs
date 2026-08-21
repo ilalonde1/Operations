@@ -9,6 +9,12 @@ using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
+if (TakeoffCliHelp.IsHelpRequest(args))
+{
+    TakeoffCliHelp.WriteTo(Console.Out);
+    return 0;
+}
+
 // Explicit usage for the new modes so a short/typo'd invocation reports help instead of falling
 // through to the default CSV-diff path and failing with a confusing FileNotFound.
 if (args.Length >= 1 && args[0].Equals("estimate", StringComparison.OrdinalIgnoreCase) && args.Length < 3)
@@ -2966,6 +2972,76 @@ sealed class PlateConfig
     public string? Grade { get; set; }
     public bool ScaleConfirmed { get; set; } = true;
     public double? RebarLbPerCyOverride { get; set; }
+}
+
+public sealed record TakeoffCliCommand(string Name, string Usage, string Description);
+
+public static class TakeoffCliHelp
+{
+    public static IReadOnlyList<TakeoffCliCommand> Commands { get; } =
+    [
+        new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
+        new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800]", "Render structural DXF layers to a PNG."),
+        new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls]", "Inspect DXF layers, loops, and wall outlines."),
+        new("e2k-compare", "takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [...]", "Compare generated ETABS geometry against a reference model."),
+        new("dxf-import-rules", "takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]", "Import per-job DXF rule answers."),
+        new("corpus-read", "takeoff corpus-read <projectsRoot> [out.txt] [--limit N]", "Extract readable project corpus text."),
+        new("dxf-to-etabs", "takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [options]", "Build an ETABS model from DXF plans."),
+        new("ifc-takeoff", "takeoff ifc-takeoff <model.ifc> <out.xlsx>", "Generate a quantity takeoff from an IFC model."),
+        new("vector-takeoff", "takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson] [--deterministic] [--fresh]", "Run the vector PDF quantity takeoff pipeline."),
+        new("vector-plate", "takeoff vector-plate <pdf> <page> <png>", "Ask the vision layer for one slab plate box."),
+        new("vector-zones", "takeoff vector-zones <pdf> <png> <page> <modalThk>", "Read thickened slab zones inside a plate."),
+        new("vector-synth", "takeoff vector-synth <pdf> <page>", "Synthesize a structured takeoff for one PDF page."),
+        new("vector-digest", "takeoff vector-digest <pdf> <out.json> [firstPage] [lastPage]", "Write a drawing digest JSON from a PDF."),
+        new("vector-sched", "takeoff vector-sched <pdf> <page>", "Probe slab schedule thickness cells on a page."),
+        new("vector-dump", "takeoff vector-dump <pdf> <page>", "Dump vector text and paths from a PDF page."),
+        new("vector-plate-auto", "takeoff vector-plate-auto <png>", "Probe deterministic slab plate detection on a PNG."),
+        new("vector-geom", "takeoff vector-geom <pdf> <page>", "Dump vector geometry area candidates."),
+        new("vector-signals", "takeoff vector-signals <pdf> <page> [png] [scaleDenom=100] [dpi=110]", "Compare all slab-area signal candidates for a sheet."),
+        new("scale-scan", "takeoff scale-scan <pdf> [first] [last]", "Scan pages for machine-readable title-block scales."),
+        new("vector-words", "takeoff vector-words <pdf> <page> [needle]", "Dump PDF words by font size and position."),
+        new("vision-estimate", "takeoff vision-estimate <pages.json> <out.xlsx>", "Run the vision-assisted estimate pipeline."),
+        new("estimate", "takeoff estimate <config.json> <out.xlsx>", "Run a configured raster takeoff estimate."),
+        new("measure", "takeoff measure <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [gray]", "Measure one raster crop."),
+        new("graycomp", "takeoff graycomp <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [lo] [hi]", "Inspect gray-fill connected components in a crop."),
+        new("hatch", "takeoff hatch <png> <x0> <y0> <x1> <y1> <dpi> <scaleNote> [densityPct] [minSqFt] [winR]", "Detect hatched footing regions in a crop."),
+        new("wallsched", "takeoff wallsched <png>", "Read a wall schedule from a raster sheet."),
+        new("wallplan", "takeoff wallplan <png>", "Read core wall key-plan mark lengths."),
+        new("perim", "takeoff perim <png> [scale] [dpi]", "Measure a plate contour perimeter from a rendered page."),
+        new("col-text", "takeoff col-text <pdf> <page>", "Read a column schedule deterministically from PDF text."),
+        new("sched-read", "takeoff sched-read <kind> <sheet.png>", "Run one vision schedule reader and print JSON."),
+        new("sched-tokens", "takeoff sched-tokens <pdf> <page>", "Dump schedule keyword tokens from a page."),
+        new("dedupe-probe", "takeoff dedupe-probe <pdf> <page> <needle>", "Inspect PDF word de-duplication for a token."),
+        new("footings", "takeoff footings <pdf> [first] [last]", "Run deterministic footing schedule takeoff."),
+        new("render", "takeoff render <pdf> <pngDir> [dpi] [first] [last]", "Rasterize PDF pages to PNG files."),
+        new("elev-scan", "takeoff elev-scan <pdf> [first] [last]", "Scan for floor elevations and storey height notes."),
+        new("wallconcrete", "takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>", "Price core wall concrete from key plan and schedule."),
+        new("single", "takeoff single <schedule.csv> <out.xlsx> [wbs] [name] [issue] [imperial]", "Generate an absolute takeoff workbook from one schedule CSV."),
+        new("overlay", "takeoff overlay <before.pdf> <after.pdf> <out.pdf> [name] [beforeLabel] [afterLabel] [imperial]", "Generate visual rebar markup between two PDFs."),
+        new("rebar", "takeoff rebar <before.pdf> <after.pdf> <out.xlsx> [name] [beforeLabel] [afterLabel]", "Generate a rebar change report between two PDFs."),
+    ];
+
+    public static bool IsHelpRequest(string[] args) =>
+        args.Length == 0
+        || (args.Length == 1 && IsHelpToken(args[0]));
+
+    private static bool IsHelpToken(string token) =>
+        string.Equals(token, "--help", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(token, "-h", StringComparison.OrdinalIgnoreCase);
+
+    public static void WriteTo(TextWriter writer)
+    {
+        writer.WriteLine("Usage:");
+        writer.WriteLine("  takeoff <command> [arguments]");
+        writer.WriteLine("  takeoff <before.csv> <after.csv> <out-basepath> [wbs1] [name] [beforeLabel] [afterLabel]");
+        writer.WriteLine();
+        writer.WriteLine("Commands:");
+        foreach (var command in Commands)
+        {
+            writer.WriteLine($"  {command.Name,-18} {command.Description}");
+            writer.WriteLine($"  {"",-18} {command.Usage}");
+        }
+    }
 }
 
 

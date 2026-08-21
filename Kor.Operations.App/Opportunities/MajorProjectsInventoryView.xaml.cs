@@ -128,6 +128,7 @@ public partial class MajorProjectsInventoryView : UserControl
 
     private void OpenRef_Click(object sender, RoutedEventArgs e) => OpenRef();
 
+    // async-void OK: called from WPF click/Enter handlers through a void helper; awaited dossier load is caught and reported here.
     private async void OpenRef()
     {
         var raw = RefBox.Text?.Trim();
