@@ -65,7 +65,18 @@ CONSTRAINTS
 
   - Do not modify anything under \\Kor-fs01. The 31168 job folder holds a package an engineer is
     reviewing right now.
-  - Set KOR_ENGINEERINGTOOLS_STANDARDSDB process-local. Never setx it.
+  - KOR_ENGINEERINGTOOLS_STANDARDSDB IS NOT SET ON THIS MACHINE AND THERE IS NO LOCAL DATABASE.
+    Stop looking for one. Derive it, process-local only, from the connection string that IS set --
+    KOR_OPPORTUNITIES_OPPORTUNITIESDB -- by swapping the database name to KorStandards:
+
+      $c = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
+      $kv = @{}; foreach ($p in ($c -split ';')) { if ($p -match '=') { $k,$v = $p.Split('=',2); $kv[$k.Trim().ToLower()] = $v.Trim() } }
+      $u = $kv['user id']; if (-not $u) { $u = $kv['uid'] }
+      $pw = $kv['password']; if (-not $pw) { $pw = $kv['pwd'] }
+      $env:KOR_ENGINEERINGTOOLS_STANDARDSDB = "Server=$($kv['server']);Database=KorStandards;User Id=$u;Password=$pw;TrustServerCertificate=True"
+
+    KorStandards lives on KOR-APP01\SQLEXPRESS, schema analysis. It is a real server on the LAN,
+    reachable from this machine. Never setx it, never print it, never write it to a file.
   - Rules live in KorStandards; a rule change is a migration in KOR.Drafter\db\, never a constant.
   - No destructive git. Do not push.
   - Run the full suite before claiming anything about it — 489 tests, ten to fourteen minutes
