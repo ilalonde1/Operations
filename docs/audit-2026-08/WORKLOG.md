@@ -142,3 +142,29 @@ they are his.
 **Item 2 amended, not silently widened** — it now records that the `CompetitorProfileWindow` panel is
 part of the gate.
 
+### 2026-08-21 · Brief 1 partly REVERTED — the switch was a feature nobody asked for
+
+`9d4a95ed` reverted except the two permanent copy fixes. Build green, 0 errors.
+
+**What went wrong, so it does not recur.** Item 2 said *"gate behind a demo flag"*. The app had no
+flag mechanism, so I invented one — a config key, a new class, six gates — and shipped it as the
+first batch of audit work. That is not fixing a defect. It is adding a feature to someone's product
+on the strength of a demo I never confirmed was happening, because the audit is written top to
+bottom around one and I inherited the framing without checking it.
+
+**The owner's actual goal: the app runs smoothly without issues.** That re-ranks this register.
+`BEFORE-DEMO` is ordered by *risk to a meeting*. It is not ordered by *what is broken for the people
+using this every day*, and those are different lists.
+
+- **Reverted** — items **1, 2, 22** back to `open`, retagged *demo staging, not a defect*. Nothing
+  about them is wrong; they are just not what "running smoothly" means. `DemoClientPresentMode.cs`
+  deleted, `Demo.ClientPresent` removed from `App.config` and `AppConfigKeys`, all five gated XAML
+  files restored.
+- **Kept** — items **18** and **23** stay `verified`. *"coming with the AI Crucible."* rendered in
+  every Pursuit Brief and exported into the client PDF, and the "Coming next" panel advertised three
+  unbuilt features. Both are wrong whether or not anyone ever demos this.
+
+**New ranking rule for this register:** an item earns priority by what it does to real users on a
+normal day, not by what it would do to an audience. Item 13 — 39% of filed emails carrying a
+`4501-01-01` prefix — outranks every disclosure item on that basis.
+
