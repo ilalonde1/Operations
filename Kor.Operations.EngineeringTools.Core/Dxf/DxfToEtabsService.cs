@@ -568,6 +568,33 @@ public static class DxfToEtabsService
             warnings.Add($"{sheetsCutAway} sheet(s) draw storeys this run removed and were not placed. " +
                          "That is the cut doing its job, not a drawing that failed to read.");
 
+        // A rigid diaphragm spread across storeys is what ETABS warns about the moment the model
+        // opens: "Horizontal rigid diaphragm connection found between joints at different
+        // elevations." It comes in with the REFERENCE -- this tool assigns no diaphragms at all,
+        // by the engineer's own ruling -- and an engineer seeing that dialog beside a generated
+        // model will reasonably assume the generator did it. Say whose it is.
+        var diaphragmStoreys = new Dictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
+        {
+            var m = Regex.Match(raw.Trim(),
+                @"^AREAASSIGN\s+""(?<obj>[^""]+)""\s+""(?<storey>[^""]+)"".*?DIAPH\s+""(?<d>[^""]+)""",
+                RegexOptions.IgnoreCase);
+            if (!m.Success) continue;
+            if (m.Groups["obj"].Value.StartsWith("K", StringComparison.OrdinalIgnoreCase)) continue;
+
+            string d = m.Groups["d"].Value;
+            if (!diaphragmStoreys.TryGetValue(d, out var set))
+                diaphragmStoreys[d] = set = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            set.Add(m.Groups["storey"].Value);
+        }
+
+        foreach (var (name, storeys) in diaphragmStoreys.Where(kv => kv.Value.Count > 1))
+            warnings.Add($"Your reference model puts diaphragm \"{name}\" on more than one storey " +
+                         $"({string.Join(", ", storeys)}). ETABS warns about that on import — " +
+                         "\"rigid diaphragm connection between joints at different elevations\". " +
+                         "It came from the reference, not from anything generated here, and nothing " +
+                         "was changed about it.");
+
         warnings.AddRange(FarFromOriginWarnings(parsed.Select(p => p.Geometry), offset));
 
         var placements = new List<StoryPlacement>();

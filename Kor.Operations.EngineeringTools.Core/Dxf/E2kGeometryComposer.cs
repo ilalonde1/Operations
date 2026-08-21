@@ -581,11 +581,24 @@ public static class E2kGeometryComposer
             {
                 if (!storeyHasAPlate) { skippedOpenings++; continue; }
 
-                var names = opening.Points
+                // IN PERIMETER ORDER, or ETABS refuses the area and ignores its assign.
+                //
+                // The loop's points do not arrive walked round the shape, so writing them as they
+                // come produced polygons that cross themselves. 31168's KO3 went down the left
+                // edge, across the bottom, then jumped back to the middle of the left edge before
+                // heading right. ETABS said "Area Object KO4 not correctly defined" and threw the
+                // opening away. Four-point openings survived by luck; every six-point one did not.
+                // Found by importing a model, which is the only thing that could have found it.
+                var ordered = InPerimeterOrder(opening.Points);
+                var names = ordered
                     .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
                     .Distinct()
                     .ToList();
                 if (names.Count < 3) continue;
+
+                // Still crossing after ordering is not a shape this can write. Skipping it and
+                // saying so beats emitting geometry ETABS discards silently.
+                if (SelfIntersects(ordered)) { skippedOpenings++; continue; }
 
                 var centre = opening.Centroid();
                 var key = ((long)Math.Round((centre.X + options.OffsetX) * 100),
@@ -753,6 +766,52 @@ public static class E2kGeometryComposer
         while (degrees < 0) degrees += 360.0;
         while (degrees >= 360.0) degrees -= 360.0;
         return degrees;
+    }
+
+    /// <summary>
+    /// The vertices walked round the shape, by angle about the centroid.
+    ///
+    /// A closed outline knows its corners but not the order to visit them in, and an area written
+    /// in the wrong order is a polygon that crosses itself. Exact for any convex shape, which is
+    /// what a shaft or a stair opening is; anything concave is checked by the caller rather than
+    /// trusted.
+    /// </summary>
+    private static List<DxfPoint> InPerimeterOrder(IReadOnlyList<DxfPoint> points)
+    {
+        if (points.Count < 3) return points.ToList();
+        double cx = points.Average(p => p.X), cy = points.Average(p => p.Y);
+        return points.OrderBy(p => Math.Atan2(p.Y - cy, p.X - cx)).ToList();
+    }
+
+    /// <summary>Whether any two non-adjacent edges of the closed polygon cross.</summary>
+    private static bool SelfIntersects(IReadOnlyList<DxfPoint> polygon)
+    {
+        int n = polygon.Count;
+        if (n < 4) return false;
+
+        for (int i = 0; i < n; i++)
+        {
+            DxfPoint a1 = polygon[i], a2 = polygon[(i + 1) % n];
+            for (int j = i + 1; j < n; j++)
+            {
+                // Adjacent edges share a vertex; touching there is not crossing.
+                if ((j + 1) % n == i || j == (i + 1) % n) continue;
+                if (Crosses(a1, a2, polygon[j], polygon[(j + 1) % n])) return true;
+            }
+        }
+
+        return false;
+
+        static bool Crosses(DxfPoint p1, DxfPoint p2, DxfPoint q1, DxfPoint q2)
+        {
+            double d1 = Side(q1, q2, p1), d2 = Side(q1, q2, p2);
+            double d3 = Side(p1, p2, q1), d4 = Side(p1, p2, q2);
+            return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0))
+                && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+        }
+
+        static double Side(DxfPoint a, DxfPoint b, DxfPoint c)
+            => (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
     }
 
     private static double SnapHalfInch(double value) => Math.Round(value * 2.0, MidpointRounding.AwayFromZero) / 2.0;
