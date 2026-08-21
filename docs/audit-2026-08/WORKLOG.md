@@ -294,3 +294,30 @@ server (App uses `CAD`), `Financials:UsdToCadRateByYear` is absent entirely, and
 `appsettings.Production.json` is already on the server as `.bak-20260821`. Not applied yet — timing
 is Ian's call now that the blast radius is known.
 
+### 2026-08-21 · Items 5 and 6 applied to KOR-APP01
+
+`appsettings.Production.json` edited via JSON round-trip, **validated by re-parsing before writing** —
+a malformed config takes the service down on restart, and this file has no second copy in git.
+
+| key | before | after |
+|---|---|---|
+| `Financials:BilledDefaultOrg` | `""` | `CAD` — matches `App.config:71` |
+| `Mcp:EmployeeSummaryExcludedIds` | **absent** | `["IANLALONDE","DALERSINGH"]` — matches `App.config:149` |
+
+Confirmed untouched after the write: `Mcp.Username/Password/AnthropicApiKey/SqlConnectionString`,
+`DeltekOdbc.Dsn/User/Catalog`. Backup remains at `appsettings.Production.json.bak-20260821`.
+
+Restarted; `/health` ok, `/tools` 200 (23 tools), `/coo-card/latest` 200, `/alerts/active` 200.
+
+**A third key was deliberately NOT set, and it is a finding against item 36.**
+`Financials:UsdToCadRateByYear` is absent from the server and looked like the same omission. It is
+not worth setting: `Mcp/Program.cs:60` reads it into `FinancialsOptions`, and **nothing in
+`Kor.Operations.Business` or `Kor.Operations.Mcp` ever reads it back** `[RUN]`. Its only consumer is
+`PartnerFinancialsViewModel.cs:585`, in the WPF app.
+
+So the MCP *cannot* apply per-year FX — it has only the flat `BilledUsdToCadRate`. That is the
+mechanism behind item 36's $35k gap: the App's Partner Financials converts USA work at the per-year
+rate while anything served by the MCP uses the flat one, and no config change on the server can close
+it. Item 36 now carries this. Writing the key would have been cargo cult — it would have changed
+nothing and left a false trail that the divergence was handled.
+
