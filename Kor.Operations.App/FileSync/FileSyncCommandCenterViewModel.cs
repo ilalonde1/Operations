@@ -197,7 +197,7 @@ public sealed class FileSyncCommandCenterViewModel : ObservableObject
                     StringComparer.Ordinal);
 
             Heartbeats.Clear();
-            foreach (var h in heartbeats)
+            foreach (var h in FileSyncModeSummary.ApplyToHeartbeats(heartbeats, jobs))
                 Heartbeats.Add(h);
 
             Jobs.Clear();

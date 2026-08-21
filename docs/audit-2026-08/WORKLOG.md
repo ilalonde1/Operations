@@ -223,3 +223,36 @@ confirm it fails there. A gate that passes before and after is the defect this a
 finding #1 describes, and adding one while claiming to close that finding would be worse than
 leaving the bug.
 
+### 2026-08-21 · Brief 3 verified — 10 and 12 gated, **11 is not**
+
+Builds green: service, new test project, App. Tests: 2/2 in
+`Kor.Operations.FileSync.Service.Tests`, 5/5 filtered in `Kor.Operations.App.Tests`.
+
+**Every gate was run against the pre-fix code, one at a time.** That is the only reason this entry
+is not a clean sweep.
+
+| gate | fix reverted | result |
+|---|---|---|
+| `SchedulingCoverageTests` | `KorMapSync` removed from the catalog | **2/2 fail** — real gate |
+| `FileSyncModeSummaryTests` | `Derive` replaced with `return "Shadow"` | **3 fail** — real gate |
+| `FileSyncLogTailerTests` | `fs.Length` → `new FileInfo(path).Length` | **passes anyway — not a gate** |
+
+**Item 11: the fix is right and the test does not lock it.** Reverting the exact line Codex named
+(`FileSyncLogTailer.cs:73`) leaves the test green, so it would not catch a regression. The test is
+still a worthwhile regression test — it proves the tailer reads a file another writer holds open —
+but it does not reproduce *this* defect.
+
+Why: `FileInfo.Length` reads the directory entry via `GetFileAttributesEx`, while `FileStream.Length`
+queries the open file object. The gap the audit measured (0 vs 43,165 on the same file at the same
+instant) is Windows lazily updating that directory entry for a file being appended by another
+**process** — Serilog, in the real case. A single-process test writing with `AutoFlush` updates the
+entry promptly, so the two sources agree and the bug will not reproduce.
+
+The fix stands on its own: taking the length from the handle you are about to read from removes the
+window by construction rather than narrowing it. But *gated* and *correct* are different claims, and
+the register now says which one this is.
+
+**Recommendation, not taken unilaterally:** a gate that reproduces needs a second process holding the
+file, which is a heavier test than the defect warrants with 172 items still open. My call is to keep
+the fix, keep the regression test, and leave item 11 honestly marked. Ian's to overrule.
+

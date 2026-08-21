@@ -150,8 +150,8 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Default mode"    Binding="{Binding GlobalMode}"           Width="100"
-                                            ToolTipService.ToolTip="Service-wide default. Per-job overrides live in the Jobs grid below."/>
+                        <DataGridTextColumn Header="Job modes"       Binding="{Binding JobModeSummary}"       Width="100"
+                                            ToolTipService.ToolTip="Derived from the per-job Mode values in the Jobs grid below."/>
                         <DataGridTextColumn Header="Version"         Binding="{Binding ServiceVersion}"       Width="100"/>
                         <DataGridTextColumn Header="Jobs"            Binding="{Binding JobsRegistered}"       Width="60"/>
                         <DataGridTextColumn Header="Started"         Binding="{Binding StartedAt, StringFormat='yyyy-MM-dd HH:mm:ss'}" Width="160"/>

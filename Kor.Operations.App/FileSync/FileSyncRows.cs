@@ -15,6 +15,8 @@ public sealed class HeartbeatRow
 
     public string GlobalMode { get; init; } = string.Empty;
 
+    public string JobModeSummary { get; init; } = string.Empty;
+
     public string? ServiceVersion { get; init; }
 
     public int? WatcherGen { get; init; }

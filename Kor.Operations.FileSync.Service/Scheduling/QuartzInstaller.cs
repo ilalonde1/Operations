@@ -1,5 +1,6 @@
 #nullable enable
 using Kor.Operations.FileSync.Service.Jobs.ConcreteTestReports;
+using Kor.Operations.FileSync.Service.Jobs.KorMapSync;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToToSend;
 using Kor.Operations.FileSync.Service.Jobs.RenameReportsUploads;
@@ -21,68 +22,15 @@ internal static class QuartzInstaller
             //   recovery instead of dropping the firing silently. Without this,
             //   a Mon 05:00 reboot quietly skips the WeeklyPmDeadlines email.
 
-            // WeeklyPmDeadlines: Mondays @ 05:00 (matches PS1 Scheduled Task and the
-            // FileSync.Jobs seed row). Cron is static here on purpose -- the DB row
-            // is the source of truth for Enabled/Mode, and a per-job runner reads
-            // its own knobs at fire time. Adjusting cadence still requires a
-            // service restart; that's fine for now.
-            var weeklyKey = new JobKey(WeeklyPmDeadlinesRunner.Name);
-            q.AddJob<WeeklyPmDeadlinesJob>(opts => opts.WithIdentity(weeklyKey));
-            q.AddTrigger(t => t
-                .ForJob(weeklyKey)
-                .WithIdentity(WeeklyPmDeadlinesRunner.Name + "-trigger")
-                .WithCronSchedule("0 0 5 ? * MON", c => c
-                    .InTimeZone(TimeZoneInfo.Local)
-                    .WithMisfireHandlingInstructionFireAndProceed()));
-
-            // ConcreteTestReports: 1st of month @ 00:30 PT (matches PS1 task and
-            // FileSync.Jobs seed). Half-hour offset leaves room for MoveReportsToEor
-            // at 00:00.
-            var ctrKey = new JobKey(ConcreteTestReportsRunner.Name);
-            q.AddJob<ConcreteTestReportsJob>(opts => opts.WithIdentity(ctrKey));
-            q.AddTrigger(t => t
-                .ForJob(ctrKey)
-                .WithIdentity(ConcreteTestReportsRunner.Name + "-trigger")
-                .WithCronSchedule("0 30 0 1 * ?", c => c
-                    .InTimeZone(TimeZoneInfo.Local)
-                    .WithMisfireHandlingInstructionFireAndProceed()));
-
-            // MoveReportsToEor: 1st of month @ 00:00 PT (matches PS1 Scheduled
-            // Task and FileSync.Jobs seed). Runs ahead of ConcreteTestReports so
-            // freshly distributed Reports/ folders are clear before CTR scans.
-            var eorKey = new JobKey(MoveReportsToEorRunner.Name);
-            q.AddJob<MoveReportsToEorJob>(opts => opts.WithIdentity(eorKey));
-            q.AddTrigger(t => t
-                .ForJob(eorKey)
-                .WithIdentity(MoveReportsToEorRunner.Name + "-trigger")
-                .WithCronSchedule("0 0 0 1 * ?", c => c
-                    .InTimeZone(TimeZoneInfo.Local)
-                    .WithMisfireHandlingInstructionFireAndProceed()));
-
-            // RenameReportsUploads: every night @ 23:30 PT (matches PS1
-            // Scheduled Task on KOR-APP01). Mode is read from FileSync.Jobs
-            // at fire time, so flipping Live/Shadow doesn't require a redeploy.
-            var renameKey = new JobKey(RenameReportsUploadsRunner.Name);
-            q.AddJob<RenameReportsUploadsJob>(opts => opts.WithIdentity(renameKey));
-            q.AddTrigger(t => t
-                .ForJob(renameKey)
-                .WithIdentity(RenameReportsUploadsRunner.Name + "-trigger")
-                .WithCronSchedule("0 30 23 * * ?", c => c
-                    .InTimeZone(TimeZoneInfo.Local)
-                    .WithMisfireHandlingInstructionFireAndProceed()));
-
-            // MoveReportsToToSend: 5th of every month @ 08:00 PT (matches the
-            // "Move Reports From EOR To Server" Scheduled Task on KOR-APP01).
-            // EORs ack their monthly reports any time in the first few days
-            // of the month; firing on the 5th gives them a buffer.
-            var toSendKey = new JobKey(MoveReportsToToSendRunner.Name);
-            q.AddJob<MoveReportsToToSendJob>(opts => opts.WithIdentity(toSendKey));
-            q.AddTrigger(t => t
-                .ForJob(toSendKey)
-                .WithIdentity(MoveReportsToToSendRunner.Name + "-trigger")
-                .WithCronSchedule("0 0 8 5 * ?", c => c
-                    .InTimeZone(TimeZoneInfo.Local)
-                    .WithMisfireHandlingInstructionFireAndProceed()));
+            // Cadences live in FileSyncSchedulingCatalog so the coverage test
+            // can prove every real IJobRunner is cron-scheduled or explicitly
+            // exempt. The DB row remains the source of truth for Enabled/Mode.
+            // KorMapSync is daily @ 02:15 local: public website feed, off-hours,
+            // and clear of the midnight/monthly report jobs.
+            foreach (var schedule in FileSyncSchedulingCatalog.QuartzSchedules)
+            {
+                AddScheduledJob(q, schedule);
+            }
         });
 
         services.AddQuartzHostedService(opt =>
@@ -98,5 +46,50 @@ internal static class QuartzInstaller
         });
 
         return services;
+    }
+
+    private static void AddScheduledJob(IServiceCollectionQuartzConfigurator q, QuartzScheduledJob schedule)
+    {
+        if (schedule.JobType == typeof(WeeklyPmDeadlinesJob))
+        {
+            AddScheduledJob<WeeklyPmDeadlinesJob>(q, schedule);
+        }
+        else if (schedule.JobType == typeof(ConcreteTestReportsJob))
+        {
+            AddScheduledJob<ConcreteTestReportsJob>(q, schedule);
+        }
+        else if (schedule.JobType == typeof(MoveReportsToEorJob))
+        {
+            AddScheduledJob<MoveReportsToEorJob>(q, schedule);
+        }
+        else if (schedule.JobType == typeof(RenameReportsUploadsJob))
+        {
+            AddScheduledJob<RenameReportsUploadsJob>(q, schedule);
+        }
+        else if (schedule.JobType == typeof(MoveReportsToToSendJob))
+        {
+            AddScheduledJob<MoveReportsToToSendJob>(q, schedule);
+        }
+        else if (schedule.JobType == typeof(KorMapSyncJob))
+        {
+            AddScheduledJob<KorMapSyncJob>(q, schedule);
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unsupported FileSync Quartz job type '{schedule.JobType.FullName}'.");
+        }
+    }
+
+    private static void AddScheduledJob<TJob>(IServiceCollectionQuartzConfigurator q, QuartzScheduledJob schedule)
+        where TJob : IJob
+    {
+        var key = new JobKey(schedule.RunnerName);
+        q.AddJob<TJob>(opts => opts.WithIdentity(key));
+        q.AddTrigger(t => t
+            .ForJob(key)
+            .WithIdentity(schedule.TriggerName)
+            .WithCronSchedule(schedule.CronExpression, c => c
+                .InTimeZone(TimeZoneInfo.Local)
+                .WithMisfireHandlingInstructionFireAndProceed()));
     }
 }

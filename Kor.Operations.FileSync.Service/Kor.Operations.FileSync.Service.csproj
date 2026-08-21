@@ -13,6 +13,9 @@
     <Version>1.0.12</Version>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Kor.Operations.FileSync.Service.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.8" />

@@ -11,8 +11,9 @@ namespace Kor.Operations.App.FileSync;
 // Polls a Serilog rolling-file path and yields newly-appended lines.
 //
 // Why polling instead of FileSystemWatcher? FSW on a remote SMB share fires
-// inconsistently and misses lots of write events; polling FileInfo.Length
-// every 2 s is reliable and the cost is one stat call per tick.
+// inconsistently and misses lots of write events. We poll by opening the file
+// and reading Stream.Length; FileInfo metadata can be stale while the service
+// is actively appending on another handle.
 //
 // Open mode is FileShare.ReadWrite|Delete so the service can keep writing
 // (Serilog opens with the same share flags) and roll the file to a new day
@@ -64,8 +65,12 @@ public sealed class FileSyncLogTailer : IDisposable
             if (!File.Exists(path))
                 return Array.Empty<FileSyncLogLine>();
 
-            var fi = new FileInfo(path);
-            var current = fi.Length;
+            using var fs = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            var current = fs.Length;
 
             // File shrank -> rolled (Serilog rolling file or operator wiped
             // it). Restart from byte 0 so we don't lose context.
@@ -76,11 +81,6 @@ public sealed class FileSyncLogTailer : IDisposable
                 return Array.Empty<FileSyncLogLine>();
 
             var newLines = new List<FileSyncLogLine>();
-            using var fs = new FileStream(
-                path,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete);
             fs.Seek(lastLen, SeekOrigin.Begin);
             using var sr = new StreamReader(fs, Encoding.UTF8, detectEncodingFromByteOrderMarks: false);
             FileSyncLogParser.ParseInto(sr, newLines, ref carry);
