@@ -71,3 +71,17 @@ Background test runs, watchers and scans count. "I'll stop after this finishes" 
 - `\\Kor-fs01\Projects\Projects` is `E:\Projects\Projects` on the server itself.
 - FS01 has no .NET runtime. A self-contained single-file publish
   (`-r win-x64 --self-contained -p:PublishSingleFile=true`) runs there without installing anything.
+
+## 7. Never write a C# regex through a non-raw Python string.
+
+`\b` in a Python string is a BACKSPACE, U+0008. It converts silently — no warning, unlike `\s`
+and `\d`, which at least raise a SyntaxWarning. The C# then holds an invisible control character
+where a word boundary was meant, the pattern matches nothing, and every part of it tests fine in
+isolation.
+
+What this cost: a diaphragm check that never fired, an hour hunting an innocent `LinesOf` call,
+and a Codex brief written around a hypothesis that was wrong. Also a mangled `\bin\Debug\net8.0`
+path in a PowerShell script, from the same cause.
+
+Use the Edit tool for anything containing a regex or a Windows path. If a script must generate
+it, use a raw string (`r"..."`) and read the file back to confirm what landed.

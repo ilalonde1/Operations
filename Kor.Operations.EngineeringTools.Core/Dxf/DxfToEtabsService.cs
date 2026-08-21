@@ -573,27 +573,7 @@ public static class DxfToEtabsService
         // elevations." It comes in with the REFERENCE -- this tool assigns no diaphragms at all,
         // by the engineer's own ruling -- and an engineer seeing that dialog beside a generated
         // model will reasonably assume the generator did it. Say whose it is.
-        var diaphragmStoreys = new Dictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
-        {
-            var m = Regex.Match(raw.Trim(),
-                @"^AREAASSIGN\s+""(?<obj>[^""]+)""\s+""(?<storey>[^""]+)"".*?DIAPH\s+""(?<d>[^""]+)""",
-                RegexOptions.IgnoreCase);
-            if (!m.Success) continue;
-            if (m.Groups["obj"].Value.StartsWith("K", StringComparison.OrdinalIgnoreCase)) continue;
-
-            string d = m.Groups["d"].Value;
-            if (!diaphragmStoreys.TryGetValue(d, out var set))
-                diaphragmStoreys[d] = set = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-            set.Add(m.Groups["storey"].Value);
-        }
-
-        foreach (var (name, storeys) in diaphragmStoreys.Where(kv => kv.Value.Count > 1))
-            warnings.Add($"Your reference model puts diaphragm \"{name}\" on more than one storey " +
-                         $"({string.Join(", ", storeys)}). ETABS warns about that on import — " +
-                         "\"rigid diaphragm connection between joints at different elevations\". " +
-                         "It came from the reference, not from anything generated here, and nothing " +
-                         "was changed about it.");
+        warnings.AddRange(ReferenceDiaphragmWarnings(doc));
 
         warnings.AddRange(FarFromOriginWarnings(parsed.Select(p => p.Geometry), offset));
 
@@ -728,6 +708,34 @@ public static class DxfToEtabsService
             "corrupt coordinate, or come from more than one site. The members were written where they " +
             "were drawn; nothing was moved to hide it.",
         };
+    }
+
+    public static IReadOnlyList<string> ReferenceDiaphragmWarnings(E2kDocument doc)
+    {
+        var warnings = new List<string>();
+        var diaphragmStoreys = new Dictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
+        {
+            var m = Regex.Match(raw.Trim(),
+                @"^AREAASSIGN\s+""(?<obj>[^""]+)""\s+""(?<storey>[^""]+)"".*?\bDIAPH\s+""(?<d>[^""]+)""",
+                RegexOptions.IgnoreCase);
+            if (!m.Success) continue;
+            if (m.Groups["obj"].Value.StartsWith("K", StringComparison.OrdinalIgnoreCase)) continue;
+
+            string d = m.Groups["d"].Value;
+            if (!diaphragmStoreys.TryGetValue(d, out var set))
+                diaphragmStoreys[d] = set = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            set.Add(m.Groups["storey"].Value);
+        }
+
+        foreach (var (name, storeys) in diaphragmStoreys.Where(kv => kv.Value.Count > 1))
+            warnings.Add($"Your reference model puts diaphragm \"{name}\" on more than one storey " +
+                         $"({string.Join(", ", storeys)}). ETABS warns about that on import — " +
+                         "\"rigid diaphragm connection between joints at different elevations\". " +
+                         "It came from the reference, not from anything generated here, and nothing " +
+                         "was changed about it.");
+
+        return warnings;
     }
 
     private static (double X, double Y) AutoOffset(E2kDocument doc, IEnumerable<PlanGeometrySet> sets)

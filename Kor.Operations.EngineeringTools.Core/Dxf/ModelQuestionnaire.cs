@@ -608,7 +608,16 @@ public static class ModelQuestionnaire
     private static void WriteQuestions(XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, ComposeOptions compose, string projectName)
     {
         var sheet = workbook.Worksheets.Add("Questions");
-        var all = StandingQuestions(options, compose, report).OrderBy(q => q.Code).ToList();
+        // Ordered by what it asks of her, not alphabetically.
+        //
+        // Sorting by reference put A1 first because it starts with an A, and buried the rows she
+        // could actually act on among rows there is nothing to do about. An engineer opening this
+        // wants the same thing every time: what needs me, then what can I change, then what am I
+        // merely being told.
+        var all = StandingQuestions(options, compose, report)
+            .OrderBy(q => q.Decided ? (Changeable(q) ? 1 : 2) : 0)
+            .ThenBy(q => q.Code, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         // The front page is what an engineer has to read. Everything else is on "Rules in force",
         // which is the whole set, read-only, and always has been. Handing her all of it twice put
