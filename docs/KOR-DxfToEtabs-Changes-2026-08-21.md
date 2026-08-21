@@ -12,6 +12,34 @@ every status change is in `WORKLOG.md`.
 
 ---
 
+## 0 · READ THIS FIRST — two things collide with what you are doing
+
+Written after reading where your session actually is: the `exportdxf` verb on `KOR.Drafter.Bridge`,
+500 Foster (30783-01) vs Andrea's finished model, per-job layer flags, and the workbook front page.
+
+**Your git view is stale.** Your last message said *"both repos are still clean at `6ce3e428`"*.
+Operations `HEAD` is now **`1151fcf5`** — thirteen commits later, same working tree, same `develop`.
+Run `git log --oneline -15` before any git operation. Nothing of yours was touched; every commit
+staged named paths in the App, FileSync, TakeoffCli and EngineeringTools, plus `docs/`.
+
+**Collision 1 — the front-page test is now stricter, and it is on your side.**
+You said *"five tests walk every question against the front page, which no longer holds them all."*
+`TheFrontPageCarriesOnlyWhatSheHasToRead` used to assert only `Assert.NotNull(rules)`. It now asserts
+that **every `ForTheRecord` question's setting keys appear in *Rules in force* with provenance
+`question <code>`**. That is exactly the design you described — register moves off the front page and
+into *Rules in force* — so the test now **enforces** the thing you were about to build rather than
+fighting it. But it will fail loudly if a question leaves the front page without landing in *Rules in
+force*. Suite is `483/483` as of `8341372b`.
+
+**Collision 2 — the three layer-pattern keys are now REQUIRED.**
+`DxfToEtabsService.cs:350` now passes `RequiredRuleKeys` (35) instead of `builtIn.Keys` (32). The
+three additions are `dxf.wall-layer-patterns`, `dxf.column-layer-patterns`, `dxf.slab-layer-patterns`
+— the same three your per-job layer flags work touches. They are confirmed present in `KorStandards`
+`[QUERIED]`, so nothing breaks today. **But if per-job flags introduce a new rule key, it must be in
+`RequiredRuleKeys` or a run will stop** — that is now the guarantee, not a warning.
+
+---
+
 ## 1 · Four things changed
 
 | # | change | why it matters to you |
