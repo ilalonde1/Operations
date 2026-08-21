@@ -763,6 +763,7 @@ namespace Kor.Operations.Financials
         private string _summaryNet = "";
         private string _summaryMargin = "";
         private string _reconciliationBanner = "";
+        private string _asOfLabel = "";
         private Brush _reconciliationBrush = FrozenBrush("#FF065F46");
         private BilledFinancialsResult? _lastResult;
 
@@ -849,6 +850,12 @@ namespace Kor.Operations.Financials
             private set { _reconciliationBanner = value ?? ""; OnPropertyChanged(); OnPropertyChanged(nameof(ReconciliationVisibility)); }
         }
 
+        public string AsOfLabel
+        {
+            get => _asOfLabel;
+            private set { _asOfLabel = value ?? ""; OnPropertyChanged(); OnPropertyChanged(nameof(AsOfVisibility)); }
+        }
+
         public Brush ReconciliationBrush
         {
             get => _reconciliationBrush;
@@ -856,6 +863,7 @@ namespace Kor.Operations.Financials
         }
 
         public Visibility ReconciliationVisibility => string.IsNullOrWhiteSpace(ReconciliationBanner) ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility AsOfVisibility => FinancialPostingPeriodLabels.VisibleWhenPresent(AsOfLabel);
 
         public string ReconciliationTooltip =>
             "Billed = invoices issued (LedgerAR). Posted = transactions GL-posted by accounting (GLSummary). The lag is normal; Billed matches the accounting team's invoice register.";
@@ -873,6 +881,7 @@ namespace Kor.Operations.Financials
             SummaryNet = "";
             SummaryMargin = "";
             ReconciliationBanner = "";
+            AsOfLabel = "";
         }
 
         public void SetError(string message)
@@ -897,6 +906,7 @@ namespace Kor.Operations.Financials
             SummaryExpenses = Math.Abs(expenses).ToString("C0", CultureInfo.CurrentCulture);
             SummaryNet = net.ToString("C0", CultureInfo.CurrentCulture);
             SummaryMargin = margin.HasValue ? margin.Value.ToString("P1", CultureInfo.CurrentCulture) : "";
+            AsOfLabel = FinancialPostingPeriodLabels.BilledThrough(result.MaxBilledPeriod);
 
             var rec = result.Reconciliation;
             ReconciliationBanner = $"Billed (range): {rec.BilledRangeCad:C0} | Posted to GL: {rec.PostedRangeCad:C0} | Δ {rec.DeltaCad:C0}";

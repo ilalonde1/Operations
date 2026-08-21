@@ -74,7 +74,10 @@
                         </Border>
                     </DockPanel>
                     <TextBlock Foreground="{StaticResource Text.Secondary}" FontSize="11"
-                               Margin="0,3,0,0" Opacity="0.85">
+                               Margin="0,3,0,0" Opacity="0.85"
+                               Visibility="{Binding AsOfVisibility}">
+                        <Run Text="{Binding AsOfLabel, Mode=OneWay}"/>
+                        <Run Text=" "/>
                         <Run Text="LedgerAR invoiced revenue by PR Principal | Last activity: "/>
                         <Run Text="{Binding LastMoPeriodLabel, Mode=OneWay}" FontWeight="SemiBold"/>
                     </TextBlock>

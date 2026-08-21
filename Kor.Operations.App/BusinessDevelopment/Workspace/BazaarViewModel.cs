@@ -103,16 +103,11 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
             // Reuse the tested list path (excludes closed Won/Lost), then keep
             // only the grabbable pool: still New, not yet owned, not dismissed
             // ("not for us", migration 284 — client mirror of
-            // vw_ActionableOpportunities). Ranked by relevance (scored first,
-            // highest score first), deadline as tiebreak.
+            // vw_ActionableOpportunities). The default view also drops expired
+            // tenders, notification digests and same-tender duplicates before
+            // ranking by relevance and earliest live deadline.
             var all = await _opportunityStore.ListAsync(ct, includeClosed: false).ConfigureAwait(true);
-            var grabbable = all
-                .Where(o => o.Status == OpportunityStatus.New
-                            && string.IsNullOrWhiteSpace(o.OwnerStaffId)
-                            && o.DismissedAtUtc is null)
-                .OrderByDescending(o => o.RelevanceScore.HasValue)
-                .ThenByDescending(o => o.RelevanceScore)
-                .ThenByDescending(o => o.SubmissionDeadlineUtc ?? DateTimeOffset.MinValue);
+            var grabbable = BazaarOpportunitySelector.SelectDefaultView(all, DateTimeOffset.UtcNow);
 
             Grabbable.Clear();
             foreach (var o in grabbable)

@@ -392,7 +392,7 @@
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="$/Hr" Binding="{Binding FeePerHr, StringFormat='$\{0:N0\}'}" Width="52">
                         <DataGridTextColumn.HeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                            <Setter Property="ToolTip" Value="How much fee the firm earns for every hour of engineering + drafting work on this project. Higher = more efficient. The typical project earns about $185/hr."/></Style>
+                            <Setter Property="ToolTip" Value="{Binding DataContext.FeePerHrComparisonTooltip, RelativeSource={RelativeSource AncestorType=DataGrid}}"/></Style>
                         </DataGridTextColumn.HeaderStyle>
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock" BasedOn="{StaticResource CellRight}"/></DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
@@ -1084,13 +1084,13 @@
                                     <Run Text="Net Fee"/><Run Text=" (fee − subconsultants)" Foreground="{StaticResource Text.Secondary}" FontSize="10"/>
                                 </TextBlock>
                                 <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding NetFee, StringFormat='$\{0:#,##0\}', Mode=OneWay}" Style="{StaticResource MetricValue}" FontWeight="Bold"/>
-                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Fee / Hr" Style="{StaticResource MetricLabel}" ToolTip="Fee ÷ production hours (Eng + Draft). The gross billing rate. Compare to the $185/hr portfolio median."/>
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Fee / Hr" Style="{StaticResource MetricLabel}" ToolTip="{Binding DataContext.FeePerHrComparisonTooltip, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                 <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding FeePerHr, StringFormat='$\{0:N0\}', Mode=OneWay}" Style="{StaticResource MetricValue}"/>
                                 <TextBlock Grid.Row="5" Grid.Column="2" Style="{StaticResource MetricCompare}" Margin="6,2,0,2"
-                                           Text="{Binding DataContext.AvgFeePerHr, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs ${0:N0}'}">
+                                           Text="{Binding DataContext.FeePerHrComparisonRate, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='vs ${0:N0}'}">
                                     <TextBlock.Foreground>
                                         <MultiBinding Converter="{StaticResource CompBrush}" ConverterParameter="higher">
-                                            <Binding Path="FeePerHr"/><Binding Path="DataContext.AvgFeePerHr" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                            <Binding Path="FeePerHr"/><Binding Path="DataContext.FeePerHrComparisonRate" RelativeSource="{RelativeSource AncestorType=Window}"/>
                                         </MultiBinding>
                                     </TextBlock.Foreground>
                                 </TextBlock>

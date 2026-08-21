@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using Kor.Operations.App.Options;
 using Kor.Operations.Core;
 using Serilog;
@@ -355,6 +356,8 @@ namespace Kor.Operations.Financials
         public string CombinedGridTitle => $"CAD+USD Combined ({SelectedYear})";
         public string CadGridTitle => $"CAD Only ({SelectedYear})";
         public string UsdGridTitle => $"USD Only ({SelectedYear})";
+        public string AsOfLabel { get; private set; } = "";
+        public Visibility AsOfVisibility => FinancialPostingPeriodLabels.VisibleWhenPresent(AsOfLabel);
         public string LastMoPeriodLabel { get; private set; } = "";
         public string TwoMoAgoPeriodLabel { get; private set; } = "";
         public double YoyLastYearTotal => YoyRows.Sum(r => r.LastYear);
@@ -376,7 +379,7 @@ namespace Kor.Operations.Financials
                 var minPeriod = (SelectedYear - 4) * 100 + 1;
                 var maxPeriod = SelectedYear * 100 + 12;
                 var rows = await _service.LoadPartnerBilledRevenueByPeriodAsync(minPeriod, maxPeriod, ct).ConfigureAwait(true);
-                Build(rows);
+                ApplyRows(rows);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
@@ -419,13 +422,16 @@ namespace Kor.Operations.Financials
             }
         }
 
-        private void Build(IReadOnlyList<BilledFinancialsService.PartnerBilledRevenueRow> sourceRows)
+        internal void ApplyRows(IReadOnlyList<BilledFinancialsService.PartnerBilledRevenueRow> sourceRows)
         {
             var selectedPeriods = Enumerable.Range(1, 12).Select(m => SelectedYear * 100 + m).ToArray();
             var priorPeriods = Enumerable.Range(1, 12).Select(m => (SelectedYear - 1) * 100 + m).ToArray();
             var lastIdx = FindLastActivityIndex(sourceRows, selectedPeriods);
+            AsOfLabel = FinancialPostingPeriodLabels.BilledThrough(selectedPeriods[Math.Max(0, lastIdx)]);
             LastMoPeriodLabel = FormatPeriodLabel(selectedPeriods[Math.Max(0, lastIdx)]);
             TwoMoAgoPeriodLabel = lastIdx >= 1 ? FormatPeriodLabel(selectedPeriods[lastIdx - 1]) : "";
+            OnPropertyChanged(nameof(AsOfLabel));
+            OnPropertyChanged(nameof(AsOfVisibility));
             OnPropertyChanged(nameof(LastMoPeriodLabel));
             OnPropertyChanged(nameof(TwoMoAgoPeriodLabel));
 

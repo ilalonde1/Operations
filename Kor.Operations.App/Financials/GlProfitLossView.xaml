@@ -164,6 +164,19 @@
                             Visibility="{Binding PostingLagVisibility, FallbackValue=Collapsed, TargetNullValue=Collapsed}">
                         <TextBlock Text="{Binding PostingLagBanner}"
                                    Foreground="#FF92400E"
+                                    TextTrimming="CharacterEllipsis"/>
+                    </Border>
+
+                    <Border x:Name="AsOfPanel"
+                            Background="#FFEFF6F2"
+                            BorderBrush="#FF86B7A1"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10"
+                            Margin="0,0,0,8"
+                            Visibility="{Binding AsOfVisibility, FallbackValue=Collapsed, TargetNullValue=Collapsed}">
+                        <TextBlock Text="{Binding AsOfLabel}"
+                                   Foreground="#FF065F46"
                                    TextTrimming="CharacterEllipsis"/>
                     </Border>
 

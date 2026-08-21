@@ -406,16 +406,7 @@ namespace Kor.Operations.Financials
         {
             get
             {
-                if (!MaxPostedPeriod.HasValue)
-                    return "";
-
-                var postedMonth = new DateTime(MaxPostedPeriod.Value.Year, MaxPostedPeriod.Value.Month, 1);
-                var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-                var monthLag = (currentMonth.Year - postedMonth.Year) * 12 + currentMonth.Month - postedMonth.Month;
-                if (monthLag <= 1)
-                    return "";
-
-                return $"Deltek posted through {postedMonth.ToString("MMM yyyy", CultureInfo.CurrentCulture)} — figures may reflect a {monthLag}-month posting lag.";
+                return FinancialPostingPeriodLabels.DeltekPostedThrough(MaxPostedPeriod);
             }
         }
 

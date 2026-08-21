@@ -910,16 +910,7 @@ namespace Kor.Operations.Financials
         {
             get
             {
-                if (!MaxPostedPeriod.HasValue) return "";
-                var p = MaxPostedPeriod.Value;
-                var year = p / 100;
-                var month = p % 100;
-                if (month < 1 || month > 12 || year < 1990 || year > 2100) return "";
-                var postedMonth = new DateTime(year, month, 1);
-                var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-                var lag = (currentMonth.Year - postedMonth.Year) * 12 + currentMonth.Month - postedMonth.Month;
-                if (lag <= 1) return "";
-                return $"GL posted through {postedMonth.ToString("MMM yyyy", CultureInfo.CurrentCulture)} — months after that have no posted data yet.";
+                return FinancialPostingPeriodLabels.GlPostedThrough(MaxPostedPeriod);
             }
         }
 

@@ -118,13 +118,7 @@ namespace Kor.Operations.Financials
         {
             get
             {
-                var lag = PostingLagMonths;
-                if (!MaxPostedPeriod.HasValue || lag <= 1) return "";
-                var postedMonth = new DateTime(MaxPostedPeriod.Value.Year, MaxPostedPeriod.Value.Month, 1);
-                var postedLabel = postedMonth.ToString("MMM yyyy", System.Globalization.CultureInfo.CurrentCulture);
-                return lag == 2
-                    ? $"Deltek posted through {postedLabel} — normal close lag."
-                    : $"Deltek posted through {postedLabel} — figures may reflect a {lag}-month posting lag.";
+                return FinancialPostingPeriodLabels.DeltekPostedThrough(MaxPostedPeriod, normalCloseLagAtTwoMonths: true);
             }
         }
 

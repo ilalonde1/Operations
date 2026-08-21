@@ -151,7 +151,7 @@ namespace Kor.Operations.PMTools
         public string ViewMode
         {
             get => _viewMode;
-            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsDmSummaryView)); OnPropertyChanged(nameof(IsEmployeeSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); OnPropertyChanged(nameof(MedianFeePerHr)); OnPropertyChanged(nameof(P25FeePerHr)); OnPropertyChanged(nameof(P75FeePerHr)); OnPropertyChanged(nameof(KpiCountLabel)); OnPropertyChanged(nameof(KpiCount)); OnPropertyChanged(nameof(KpiCountUnit)); } }
+            set { if (SetField(ref _viewMode, value)) { OnPropertyChanged(nameof(IsProjectView)); OnPropertyChanged(nameof(IsPmSummaryView)); OnPropertyChanged(nameof(IsDmSummaryView)); OnPropertyChanged(nameof(IsEmployeeSummaryView)); OnPropertyChanged(nameof(IsFeeBandView)); OnPropertyChanged(nameof(IsConstructionTypeView)); OnPropertyChanged(nameof(IsYoYTrendView)); OnPropertyChanged(nameof(MedianFeePerHr)); OnPropertyChanged(nameof(FeePerHrComparisonRate)); OnPropertyChanged(nameof(FeePerHrComparisonTooltip)); OnPropertyChanged(nameof(P25FeePerHr)); OnPropertyChanged(nameof(P75FeePerHr)); OnPropertyChanged(nameof(KpiCountLabel)); OnPropertyChanged(nameof(KpiCount)); OnPropertyChanged(nameof(KpiCountUnit)); } }
         }
 
         public bool IsProjectView => _viewMode == "Projects";
@@ -226,7 +226,18 @@ namespace Kor.Operations.PMTools
         public double TotalDraftHrs { get => _totalDraftHrs; private set => SetField(ref _totalDraftHrs, value); }
         public double WeightedEngPct { get => _weightedEngPct; private set => SetField(ref _weightedEngPct, value); }
         public double WeightedDraftPct { get => _weightedDraftPct; private set => SetField(ref _weightedDraftPct, value); }
-        public double MedianFeePerHr { get => IsEmployeeSummaryView ? _empMedianFeePerHr : _medianFeePerHr; private set => SetField(ref _medianFeePerHr, value); }
+        public double MedianFeePerHr
+        {
+            get => IsEmployeeSummaryView ? _empMedianFeePerHr : _medianFeePerHr;
+            private set
+            {
+                if (SetField(ref _medianFeePerHr, value))
+                {
+                    OnPropertyChanged(nameof(FeePerHrComparisonRate));
+                    OnPropertyChanged(nameof(FeePerHrComparisonTooltip));
+                }
+            }
+        }
         public double MeanFeePerHr { get => _meanFeePerHr; private set => SetField(ref _meanFeePerHr, value); }
         public double P25FeePerHr { get => IsEmployeeSummaryView ? _empP25FeePerHr : _p25FeePerHr; private set => SetField(ref _p25FeePerHr, value); }
         public double P75FeePerHr { get => IsEmployeeSummaryView ? _empP75FeePerHr : _p75FeePerHr; private set => SetField(ref _p75FeePerHr, value); }
@@ -247,6 +258,8 @@ namespace Kor.Operations.PMTools
         public double AvgNetFeePerHr { get => _avgNetFeePerHr; private set => SetField(ref _avgNetFeePerHr, value); }
         public double AvgSubPct { get => _avgSubPct; private set => SetField(ref _avgSubPct, value); }
         public double AvgBillablePct { get => _avgBillablePct; private set => SetField(ref _avgBillablePct, value); }
+        public double FeePerHrComparisonRate => MedianFeePerHr;
+        public string FeePerHrComparisonTooltip => HistoricalAnalyticsTooltipText.FeePerHourComparison(FeePerHrComparisonRate);
 
         public int LoadedCount => _allRows.Count;
         internal IReadOnlyList<HistoricalProjectRow> AllRows => _allRows;
@@ -960,6 +973,8 @@ namespace Kor.Operations.PMTools
             _empP25FeePerHr = ne > 0 ? empFeePerHrs[Math.Min(ne - 1, Math.Max(0, (int)Math.Ceiling(ne * 0.25) - 1))] : 0;
             _empP75FeePerHr = ne > 0 ? empFeePerHrs[Math.Min(ne - 1, Math.Max(0, (int)Math.Ceiling(ne * 0.75) - 1))] : 0;
             OnPropertyChanged(nameof(MedianFeePerHr));
+            OnPropertyChanged(nameof(FeePerHrComparisonRate));
+            OnPropertyChanged(nameof(FeePerHrComparisonTooltip));
             OnPropertyChanged(nameof(P25FeePerHr));
             OnPropertyChanged(nameof(P75FeePerHr));
 

@@ -513,3 +513,49 @@ It also confirms the *shape* of the standing answer: since 2026-08-15 these are 
 closing the gap is a settings change, not a code change. Someone can add the Revit layer names to
 these three rules without touching the tool.
 
+### 2026-08-21 · Brief 6 verified — items 20, 21, 33
+
+**Codex shipped two failing tests.** Both threw `Could not find repo root` — they walked up looking
+for `Kor.Operations.sln`, and **there is no such file**; the only solution is
+`Kor.Operations.App/Kor.Operations.App.sln`. I fixed both to anchor on a directory instead, matching
+the helper from brief 4 that already worked. Two lines, test-harness only, no product code. This is
+exactly what the no-build/no-test rule trades away, and why every batch gets run here.
+
+After the fix: **7/7** on the new gates.
+
+**All three gates fail on their revert:**
+
+| gate | revert | result |
+|---|---|---|
+| tooltip | `FeePerHrComparisonRate => 185d` | **1 of 2 fails** |
+| bazaar | deadline filter + BDALERTS exclusion removed | **1 of 3 fails** |
+| as-of | `AsOfLabel = string.Empty` on Partner Financials | **1 of 2 fails** |
+
+**Decisions Codex made, and my read on them:**
+
+- **Item 20** — went with the *observed* median (`MedianFeePerHr`) rather than relabelling `$185` as a
+  target. Right call: the tooltip sat under a KPI strip showing ~$380, and one hover disproved it.
+  The number is no longer a literal in XAML, so the two cannot drift apart again — which was the
+  actual defect.
+- **Item 21** — same-tender key is normalised title + deadline date, or title + normalised buyer when
+  there is no deadline, with blank/`Unknown`/`Manual` buyers treated as blank and the source prefix
+  ignored so `BCBID-*` and `BCBIDENG-*` collapse. View-level only; ingest untouched, as briefed.
+- **Item 21 ordering** — Codex judged deadline `DESC` unintentional (the comment called it a tiebreak)
+  and changed equal-score ordering to **earliest live deadline first**. Agreed: the old order put the
+  furthest-away deadline above the one closing Friday.
+- **Item 33** — the posted-through derivation was **duplicated three times**, as suspected. Codex
+  centralised it in `FinancialPostingPeriodLabels`. **I checked the refactor rather than trusting it:**
+  all three call sites used `lag <= 1 → ""`, the helper reproduces that, the GL year/month validity
+  guard survives, and the `normal close lag` variant that only Executive Summary had is preserved
+  behind a flag. Strings identical.
+
+**Regression check — App suite, documented safe filter: 519/522.** The 3 failures are **not ours**:
+
+- `AsyncVoidTests` → `BdWorkspaceWindow.xaml.cs:157`, `MajorProjectsInventoryView.xaml.cs:131`
+- `EmptyCatchBlockTests` → `HtmlBriefPdfGenerator.cs:347,362,375`
+- `IntelExtractorTests.SqlEnrichmentTrackingStore_recordAttempt…` — SQL-backed, needs DB write
+
+None of those files was touched today, and every `catch` we added logs or surfaces a message, so the
+gate passes on our code. The first two are **item 112**, an `S` — five minutes to make "the suite is
+green" a true statement. Annotated there.
+
