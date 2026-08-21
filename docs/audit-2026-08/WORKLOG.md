@@ -256,3 +256,41 @@ the register now says which one this is.
 file, which is a heavier test than the defect warrants with 172 items still open. My call is to keep
 the fix, keep the regression test, and leave item 11 honestly marked. Ian's to overrule.
 
+### 2026-08-21 · MCP redeployed to KOR-APP01 — items 3, 4
+
+**Before.** Deployed DLLs dated **Jul 17 — 35 days stale**. `grep -ac SplitWipNet` on the deployed
+`Kor.Operations.Business.dll` returned **0**; the same scan on a fresh publish from HEAD returned 1.
+The WIP fix genuinely was not in production.
+
+**Done.** Published `Kor.Operations.Mcp` Release/win-x64 framework-dependent to
+`_Publish\_Ops\Mcp\20260821_122327`, stopped `Kor.Operations.Mcp` via `sc.exe`, robocopied
+(`/XF appsettings.json appsettings.Production.json` so live config survived — confirmed, both kept
+their May timestamps), restarted.
+
+**Verified as the artifact, not `/health` alone** — which is item 4, and the reason it is a separate
+item: the stamped version had already disagreed with the binary's contents once.
+
+- `SplitWipNet` in deployed `Business.dll`: 0 → **1**
+- DLL dates: Jul 17 → **Aug 21 12:23**
+- `/health` reports `0.4.2+4947d9772011c469...` — **the actual commit SHA**, so the deployed artifact
+  is now traceable to source. That is systemic finding #2, closed for this service.
+- Authenticated end-to-end, not just `/health`: `/tools` 200 (**23 tools**), `/coo-card/latest` 200
+  (7,818 bytes), `/alerts/active` 200 (103,890 bytes). Unauthenticated 401s are the shared-password
+  auth working, not a fault.
+
+**Blast radius, recorded because it is bigger than "the AI".** This service also backs
+`/collections` (including POST), `/alerts` (including `run-now` and `acknowledge`), and
+`/coo-brief` + `/coo-card`. A restart interrupts all of it, not just `/ask`. Downtime was ~60 s.
+
+**Checked and deliberately NOT changed.** Seven `Financials.Billed*` keys are `""` in the deployed
+config while `App.config` carries real values, which looks like the same divergence as item 5. It is
+not: `BilledFinancialsService.cs:99` passes a code default to `ParseAccounts`, and
+`DefaultRevenueAccounts` is `4001.00, 4003.00, 4210.00, 4220.00, 4240.00` — **identical** to
+`App.config:47`. Empty there is harmless. Leave them alone.
+
+**Still open — items 5 and 6 need a SECOND restart.** `Financials:BilledDefaultOrg` is `""` on the
+server (App uses `CAD`), `Financials:UsdToCadRateByYear` is absent entirely, and
+`Mcp:EmployeeSummaryExcludedIds` does not exist in the deployed config at all. A backup of
+`appsettings.Production.json` is already on the server as `.bak-20260821`. Not applied yet — timing
+is Ian's call now that the blast radius is known.
+
