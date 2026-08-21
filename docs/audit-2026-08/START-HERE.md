@@ -14,7 +14,7 @@ tooling.
 | File | What it is | Read it when |
 |---|---|---|
 | `04-TODO-REGISTER.md` | **182 actions, sized, tagged, with owners, each carrying a `status`. This is the roadmap and the single arbiter of what is done.** | Always. Start here. |
-| `WORKLOG.md` | The evidence trail behind each status change — what was briefed, what changed, how it was checked | Before trusting a `verified` |
+| `WORKLOG.md` | **Starts with WHERE THIS STANDS — the résumé of what is shipped, what is fixed-but-not-deployed, and what is in flight.** Then the evidence trail behind each status change | **Picking this up cold — read this first**, and before trusting any `verified` |
 | `codex/BRIEF-*.md` | The exact text handed to Codex for each batch | Reconstructing why a change was made |
 | `07-EXECUTIVE-SUMMARY.md` | The whole picture in ~12 minutes | You need context fast |
 | `05-MASTER-AUDIT.md` | Macro view + the five systemic findings | You are fixing a *class* of problem |

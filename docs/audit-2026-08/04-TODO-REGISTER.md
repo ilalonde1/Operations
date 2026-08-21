@@ -313,6 +313,22 @@ Getting this right matters as much as the fix list. Each of these looks urgent a
 
 ---
 
+## ADDED DURING EXECUTION — found while fixing, not in the original audit
+
+These are real to-dos discovered by doing the work. Same rules: evidence tier carried, status in the
+last column.
+
+| # | item | module | size | why it matters | who | status |
+|---|---|---|---|---|---|---|
+| 183 | **Deploy the FileSync service to KOR-APP01.** The live binary is `2026-08-12`; the `KorMapSync` registration and the mode-column fix are committed and tested but **not running** | 03 | S | Until this ships, `KorMapSync` still never fires and the public project map stays stale — the defect item 10 describes is fixed in git and live in neither `[RUN]` | **Ian** | open |
+| 184 | **Republish the App + VSTO add-in (signed).** Carries items 13, 18, 19, and the App-side halves of 11 and 12 to users | 01, 03, 08 | S | Item 13 in particular: until the add-in is signed and republished, all ~40 staff keep filing `4501-01-01` filenames | **Ian** | **scheduled 2026-08-21 evening** |
+| 185 | Sweep the remaining ~68 raw-exception-on-screen sites onto the mapper brief 4 introduces | 08, 04, 06, 03 | L | Item 17 fixed the org dossier because it is the demo path. `BdReportsViewModel.cs` alone has 11 more. 72 total `[RUN]` | either | open |
+| 186 | Decide item 11's gate: a cross-process log-tailer test, or accept it ungated and say so | 03 | M | The current test passes with the bug reinstated `[RUN]`. `FileInfo.Length` only goes stale when **another process** appends, which a single-process test cannot reproduce | either | open |
+| 187 | Write an MCP deploy script + runbook | 05 | S | The 2026-08-21 redeploy was done by hand — publish, `sc.exe` stop, robocopy with `/XF` on both `appsettings` files, restart, byte-scan. There is no script, and `publish.ps1` is FileSync-only. The next person will re-derive the `/XF` flags or clobber live config `[RUN]` | either | open |
+| 188 | Make the MCP able to apply per-year FX, or accept the flat rate and document it | 04, 05 | M | `UsdToCadRateByYear` is read into `FinancialsOptions` and never consumed server-side. This is the mechanism under item 36's $35k gap and **no config change can close it** `[RUN]` | either | open |
+
+---
+
 ## Things that are not faults
 
 **Carried forward so no future session re-raises a settled question.** Every entry below was

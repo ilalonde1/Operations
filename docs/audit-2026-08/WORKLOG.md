@@ -6,6 +6,45 @@ changed, how it was checked. If the two ever disagree, the register wins and thi
 
 Do not restate an item's text here. Reference it by number.
 
+## WHERE THIS STANDS — 2026-08-21, end of session
+
+**Read this, then `04-TODO-REGISTER.md`. Everything below is recorded there too; this is the résumé.**
+
+### In flight right now
+- **Brief 4** (`codex/BRIEF-4-failure-honesty.md`) — items **14, 16, 17** are with Codex. When it
+  reports: build, read the diff, then **revert each named production line and confirm its gate
+  fails**. Only then does the register move.
+
+### Shipped to production today
+| what | where | evidence |
+|---|---|---|
+| MCP from HEAD (items 3, 4) | KOR-APP01 | `SplitWipNet` 0 → 1 in the deployed DLL; `/health` reports commit `4947d977` |
+| MCP config (items 5, 6) | KOR-APP01 | `BilledDefaultOrg` `""` → `CAD`; `EmployeeSummaryExcludedIds` absent → `[IANLALONDE,DALERSINGH]` |
+
+### Fixed in git, NOT yet in front of anyone
+This is the gap that matters most when picking this up again.
+
+- **FileSync service** — live binary is `2026-08-12`. Items 10 and 12's service-side fixes are
+  committed and tested but **not deployed**, so `KorMapSync` still never fires and the public map is
+  still stale. → **item 183**
+- **App + VSTO add-in** — items 13, 18, 19 and the App halves of 11 and 12 are committed and not
+  published. Item 13 is the live one: ~40 staff keep filing `4501-01-01` filenames until the signed
+  add-in ships. → **item 184**, scheduled for the evening of 2026-08-21.
+
+### Known-imperfect, deliberately
+- **Item 11 is not gated.** Its test passes with the bug reinstated. The fix is right; the test does
+  not lock it. → **item 186**
+- **Items 1, 2, 22** are `open — demo staging, not a defect`. The "client present" switch built for
+  them was reverted: it was a feature nobody asked for. Do not rebuild it without being asked.
+- **Item 36 cannot be closed by config.** The MCP never consumes `UsdToCadRateByYear`. → **item 188**
+
+### The rule that earned its keep
+Run every new gate against the **pre-fix** code. Three of four did fail correctly; the fourth did not
+and is recorded as ungated rather than counted. A gate that passes either way is the same defect this
+audit's systemic finding #1 describes.
+
+---
+
 ## How a piece moves
 
     open  →  briefed <N>  →  applied <N>  →  verified <date>
