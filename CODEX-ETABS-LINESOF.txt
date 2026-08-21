@@ -1,0 +1,75 @@
+One bug, one hypothesis to kill, at commit c4f613f4 on develop. Small and specific.
+
+BACKGROUND YOU NEED AND NOTHING MORE
+
+  This tool builds an ETABS .e2k from plan DXFs plus the engineer's own reference .e2k. Today one
+  of its models was imported into ETABS for the first time. That found a real defect, now fixed:
+  opening polygons were written with their vertices out of perimeter order, so they crossed
+  themselves and ETABS discarded every six-point opening on the job.
+
+  What is left is smaller and possibly worse.
+
+THE BUG
+
+  In Kor.Operations.EngineeringTools.Core/Dxf/DxfToEtabsService.cs, around line 576, a block reads
+  the reference model's area assigns to find diaphragms assigned across more than one storey:
+
+      foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
+
+  It never matches anything. It should match seven lines.
+
+  MEASURED, so you do not have to repeat it:
+
+    - The reference is 31168-reference.e2k, 43 KB, on the projects share under
+      03 Residential\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models
+    - It contains exactly one section header, spelled "$ AREA ASSIGNS"
+    - That section contains 7 lines carrying DIAPH, of the form
+        AREAASSIGN  "F1"  "LEVEL 3"  SECTION "Rvt-Floor0"  DIAPH  "D1"  OBJMESHTYPE "DEFAULT" ...
+    - Those 7 lines survive into the generated output, so the section is being read SOMEWHERE
+    - E2kDocument.Find is  _sections.FirstOrDefault(s => s.Header.Contains(headerContains,
+      StringComparison.OrdinalIgnoreCase))  and "$ AREA ASSIGNS".Contains("AREA ASSIGNS") is true
+    - The regex in the block matches the real line when run against it standalone: obj=F1,
+      storey=LEVEL 3, diaph=D1
+    - The block is at method scope, not inside a conditional, and runs before Compose and before
+      the report is built
+    - warnings is declared once, at line 350, and is the list handed to the report
+
+  So every part works in isolation and the whole does not. Find out why.
+
+WHY IT MATTERS MORE THAN ONE MISSING REPORT LINE
+
+  ReferenceRules.cs reads spandrels through the SAME call — doc.LinesOf("AREA ASSIGNS") — to
+  derive dxf.opening-height from the engineer's own model. Every run reports:
+
+      "opening height: 88, the standing value — the reference model has only 0 spandrel(s) to
+       measure, so the standing value stands."
+
+  A section that returns no lines and a section with no spandrel labels produce an identical
+  message. If the lookup is broken, that derivation has never run on any job, and the 88" opening
+  height — already recorded in the gap register as resting on a derivation that was later shown to
+  measure the wrong quantity — has never been tested against a reference at all.
+
+  Settle that. Either the lookup works and the reference genuinely has no spandrel labels, or it
+  does not work and a whole feature has been silently inert.
+
+WHAT I WANT BACK
+
+  1. Why LinesOf("AREA ASSIGNS") returns empty there, with the evidence.
+  2. Whether ReferenceRules is affected, measured rather than reasoned.
+  3. The fix, and a test that fails on the bug — not on a mock, on a document shaped like the
+     real reference.
+  4. If some part of my measurement above is wrong, say which and show it. I would rather be
+     corrected than agreed with.
+
+CONSTRAINTS
+
+  - Do not modify anything under \\Kor-fs01. The 31168 job folder holds a package an engineer is
+    reviewing right now.
+  - Set KOR_ENGINEERINGTOOLS_STANDARDSDB process-local. Never setx it.
+  - Rules live in KorStandards; a rule change is a migration in KOR.Drafter\db\, never a constant.
+  - No destructive git. Do not push.
+  - Run the full suite before claiming anything about it — 489 tests, ten to fourteen minutes
+    because about twenty rebuild two real buildings from drawings over SMB — and say plainly if
+    you did not.
+  - Do not start a suite and then keep editing. It locks the output directory and leaves test
+    hosts wedged in SMB I/O.
