@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
 
@@ -34,10 +35,37 @@ public sealed record DxfToEtabsRequest
     public IReadOnlyList<string>? SlabLayerPatterns { get; init; }
 
     /// <summary>
+    /// CAD tolerances given for THIS run, overriding the standing rule — the geometry-cleanup
+    /// numbers an engineer never sets but somebody investigating a drawing needs to move.
+    ///
+    /// They existed as CLI flags and did nothing: ApplyRules takes the database value over the
+    /// caller's, so --bridge 14 parsed, was accepted, and ran at 6 with nothing said. A conclusion
+    /// recorded against that flag — "widening the closure tolerance was tried, every plate it
+    /// added was a fragment" — was reached without the tolerance ever changing.
+    /// </summary>
+    public double? BridgeTolerance { get; init; }
+
+    public double? JoinTolerance { get; init; }
+
+    public double? ExtendLimit { get; init; }
+
+    public double? DashJoinGap { get; init; }
+
+    /// <summary>
     /// Cut the model down to one tower: its storeys and the shared podium ones, with the other
     /// towers' storeys removed so none of them stands empty.
     /// </summary>
     public string? TowerOnly { get; init; }
+
+    /// <summary>
+    /// Keep this storey and everything below it; drop everything above.
+    ///
+    /// The other way to say "the podium and the mid-rise, not the towers". <see cref="TowerOnly"/>
+    /// cuts by name and cannot express it: on a site model the tower floors below the split carry
+    /// no tower prefix, and the towers' ground floors carry one while sitting at grade inside the
+    /// podium that is wanted.
+    /// </summary>
+    public string? TopStorey { get; init; }
 
     /// <summary>
     /// Translation applied to drawing coordinates. Defaults to none: the CAD export and the
@@ -288,6 +316,12 @@ public static class DxfToEtabsService
             ? Array.Empty<string>()
             : doc.KeepOnlyTower(request.TowerOnly).ToArray();
 
+        // After the tower cut, not instead of it: the two answer different questions and an
+        // engineer may want both ("building C, and nothing above its roof").
+        var droppedAbove = request.TopStorey is null
+            ? Array.Empty<string>()
+            : doc.KeepStoreysUpTo(request.TopStorey).ToArray();
+
         // Drafting can issue parkade levels the model has never had. On 31138 the drawings go to
         // LEVEL P5 and the model stopped at P3, so two whole floors were read and placed nowhere —
         // "the model needs to go to P5". The storeys are added below the lowest parkade level at the
@@ -362,6 +396,25 @@ public static class DxfToEtabsService
         if (request.SlabLayerPatterns is { Count: > 0 })
             requested = requested with { SlabLayerPatterns = request.SlabLayerPatterns };
 
+        // Same reason, same place: after the rules, or the database silently wins.
+        if (request.BridgeTolerance is { } bridge) requested = requested with { BridgeTolerance = bridge };
+        if (request.JoinTolerance is { } join) requested = requested with { JoinTolerance = join };
+        if (request.ExtendLimit is { } extend) requested = requested with { ExtendLimit = extend };
+        if (request.DashJoinGap is { } dash) requested = requested with { DashJoinGap = dash };
+
+        foreach (var (what, given, standing) in new (string, double?, double)[]
+                 {
+                     ("bridge tolerance", request.BridgeTolerance, banked.ValueOr("dxf.bridge-tolerance", 0)),
+                     ("join tolerance", request.JoinTolerance, banked.ValueOr("dxf.join-tolerance", 0)),
+                     ("extend limit", request.ExtendLimit, banked.ValueOr("dxf.extend-limit", 0)),
+                     ("dash-join gap", request.DashJoinGap, banked.ValueOr("dxf.dash-join-gap", 0)),
+                 })
+        {
+            if (given is { } v)
+                warnings.Add($"{what} for this run was given as {v:0.###}, overriding the standing rule " +
+                             $"of {standing:0.###}. This model was not built to the banked tolerances.");
+        }
+
         foreach (var (role, given) in new[]
                  {
                      ("wall", request.WallLayerPatterns),
@@ -384,6 +437,15 @@ public static class DxfToEtabsService
         if (Math.Abs(scale - 1.0) > 1e-9)
             warnings.Add($"The drawings are {Describe(drawingUnit.Value)} and the model is " +
                          $"{Describe(modelUnitInInches)}, so every coordinate was scaled by {scale:0.######}.");
+        // Everything a deliberate cut took out, by name and by the level number in the name, so a
+        // sheet for a removed storey can be recognised and not reported as a failure.
+        var cutStoreys = new HashSet<string>(droppedStoreys.Concat(droppedAbove), StringComparer.OrdinalIgnoreCase);
+        var cutLevelNumbers = new HashSet<int>(cutStoreys
+            .Select(n => Regex.Match(n, @"(\d+)"))
+            .Where(m => m.Success)
+            .Select(m => int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)));
+        int sheetsCutAway = 0;
+
         var outcomes = new List<SheetOutcome>();
         var parsed = new List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)>();
         var readSheets = new List<IReadOnlyList<DxfSegment>>();
@@ -400,7 +462,12 @@ public static class DxfToEtabsService
             }
 
             var segments = DxfPlanReader.ReadSegments(file);
+            // Held, not raised yet. This warning is only true of a sheet that is IN the model: a
+            // sheet whose storeys were cut away, or that placed nowhere, already has its own line
+            // saying so, and telling an engineer about 96 unread ellipses on a tower she asked us
+            // to leave out reads as though nobody understood the request.
             var unsupported = DxfPlanReader.UnsupportedStructuralEntities(file, classification);
+            string? unreadWarning = null;
             if (unsupported.Count > 0)
             {
                 int total = unsupported.Sum(e => e.Count);
@@ -411,11 +478,11 @@ public static class DxfToEtabsService
                 // the ones whose layers this tool does not recognise, and those have no structural
                 // layer for the sentence to refer to.
                 bool anyClaimed = unsupported.Any(e => classification.RoleOf(e.Layer) is not null);
-                warnings.Add($"{sheet.FileName}: {total:N0} unreadable DXF entit{(total == 1 ? "y" : "ies")} " +
-                             $"carrying shape, not read: {examples}. " +
-                             (anyClaimed
-                                ? "Some sit on layers this tool reads, so that geometry is missing from the model."
-                                : "None sits on a layer this tool reads, so if any of it is structure, the model does not have it."));
+                unreadWarning = $"{sheet.FileName}: {total:N0} unreadable DXF entit{(total == 1 ? "y" : "ies")} " +
+                                $"carrying shape, not read: {examples}. " +
+                                (anyClaimed
+                                    ? "Some sit on layers this tool reads, so that geometry is missing from the model."
+                                    : "None sits on a layer this tool reads, so if any of it is structure, the model does not have it.");
             }
 
             if (Math.Abs(scale - 1.0) > 1e-9)
@@ -433,6 +500,16 @@ public static class DxfToEtabsService
 
             if (matched.Count == 0)
             {
+                // A sheet that matches nothing because WE removed its storeys is not a fault, and
+                // listing forty of them individually reads as forty faults. They are counted and
+                // reported once, after the loop.
+                if (cutStoreys.Count > 0 && sheet.Levels.Concat(sheet.ParkadeLevels.Select(p => -p))
+                        .Any(l => cutLevelNumbers.Contains(l)))
+                {
+                    sheetsCutAway++;
+                    continue;
+                }
+
                 warnings.Add(!sheet.HasPlacement
                     ? $"{sheet.FileName}: no level number in the sheet name — not placed."
                     : $"{sheet.FileName}: levels {string.Join(",", sheet.Levels.Select(l => l.ToString()).Concat(sheet.ParkadeLevels.Select(p => "P" + p)))} match no storey in the model — not placed.");
@@ -444,6 +521,9 @@ public static class DxfToEtabsService
                 warnings.Add($"{sheet.FileName}: no structural outlines found on the expected layers — not placed.");
                 continue;
             }
+
+            // The sheet is in the model, so what it could not read is now worth saying.
+            if (unreadWarning is not null) warnings.Add(unreadWarning);
 
             parsed.Add((sheet, geometry, matched));
         }
@@ -483,6 +563,10 @@ public static class DxfToEtabsService
 
         var offset = request.Offset
             ?? (request.CentreOnGrid ? AutoOffset(doc, parsed.Select(p => p.Geometry)) : (0.0, 0.0));
+
+        if (sheetsCutAway > 0)
+            warnings.Add($"{sheetsCutAway} sheet(s) draw storeys this run removed and were not placed. " +
+                         "That is the cut doing its job, not a drawing that failed to read.");
 
         warnings.AddRange(FarFromOriginWarnings(parsed.Select(p => p.Geometry), offset));
 
@@ -528,6 +612,23 @@ public static class DxfToEtabsService
                     "parkade levels and the model did not, so their geometry had nowhere to go. Each was given " +
                     "the height your parkade already uses and the base dropped by the same total, so every " +
                     "storey above them is exactly where it was.").ToList(),
+            };
+        }
+
+        if (droppedAbove.Length > 0)
+        {
+            // Same reason as the tower cut below: the reference's own members on the storeys we
+            // removed would otherwise point at storeys the model no longer has. And a cut this
+            // large has to be stated -- 26 storeys leaving a model quietly is the fault class this
+            // report exists for, whether or not somebody asked for it.
+            int orphanedAbove = doc.DropAssignsForMissingStoreys();
+            summary = summary with
+            {
+                Flags = summary.Flags.Append(
+                    $"Nothing above {request.TopStorey}: {droppedAbove.Length} storey(s) standing higher were " +
+                    $"removed from the storey list, along with {orphanedAbove} assign(s) that stood on them. " +
+                    $"Removed: {string.Join(", ", droppedAbove.Take(8))}{(droppedAbove.Length > 8 ? ", …" : "")}. " +
+                    "Anything the drawings show above that height is not in this model.").ToList(),
             };
         }
 

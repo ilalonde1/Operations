@@ -380,11 +380,15 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
 
     string? building = null;
     string? towerOnly = null;
+    string? topStorey = null;
     string? reportPath = null;
     string? questionsPath = null;
     string? rulesDb = null;
     (double X, double Y)? offset = null;
     bool includeFloors = true;
+    // Whether the flag was GIVEN, not just its value: passing the default silently is how these
+    // three came to look like they worked.
+    bool bridgeGiven = false, joinGiven = false, extendGiven = false;
     double bridgeTolerance = new PlanClassificationOptions().BridgeTolerance;
     double joinTolerance = new PlanClassificationOptions().JoinTolerance;
     double extendLimit = new PlanClassificationOptions().ExtendLimit;
@@ -407,6 +411,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         string flag = args[i];
         if (flag.Equals("--bldg", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) building = args[++i];
         else if (flag.Equals("--tower", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) towerOnly = args[++i];
+        else if (flag.Equals("--top-storey", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) topStorey = args[++i];
         else if (flag.Equals("--report", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) reportPath = args[++i];
         else if (flag.Equals("--questions", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) questionsPath = args[++i];
         else if (flag.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) rulesDb = args[++i];
@@ -418,16 +423,19 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
                  double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double bt))
         {
             bridgeTolerance = bt;
+            bridgeGiven = true;
         }
         else if (flag.Equals("--join", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length &&
                  double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double jt))
         {
             joinTolerance = jt;
+            joinGiven = true;
         }
         else if (flag.Equals("--extend", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length &&
                  double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double ex))
         {
             extendLimit = ex;
+            extendGiven = true;
         }
         else if (flag.Equals("--offset", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
         {
@@ -452,8 +460,12 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         OutputE2k = args[3],
         BuildingTag = building,
         TowerOnly = towerOnly,
+        TopStorey = topStorey,
         Offset = offset,
-        Classification = new PlanClassificationOptions { BridgeTolerance = bridgeTolerance, JoinTolerance = joinTolerance, ExtendLimit = extendLimit },
+        Classification = new PlanClassificationOptions(),
+        BridgeTolerance = bridgeGiven ? bridgeTolerance : null,
+        JoinTolerance = joinGiven ? joinTolerance : null,
+        ExtendLimit = extendGiven ? extendLimit : null,
         WallLayerPatterns = wallLayers,
         ColumnLayerPatterns = columnLayers,
         SlabLayerPatterns = slabLayers,

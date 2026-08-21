@@ -22,6 +22,12 @@ param(
     [string]$Reference,
     [string]$RulesDb = $env:KOR_ENGINEERINGTOOLS_STANDARDSDB,
 
+    # Keep this storey and everything below it. For a site model where the engineer wants one
+    # building: 31168's YMCA and its parkade is -TopStorey "C-ROOF", which keeps Level 1 entire --
+    # both towers' ground floors included, because they sit at grade inside the podium -- and drops
+    # the towers and the tower floors below the split that carry no tower prefix.
+    [string]$TopStorey,
+
     [switch]$SkipDossier
 )
 
@@ -101,7 +107,11 @@ if ($LASTEXITCODE -ne 0) { throw 'CLI build failed.' }
 $cli = Join-Path $repo 'Kor.Operations.EngineeringTools.TakeoffCli\bin\Debug\net8.0\takeoff.exe'
 
 Write-Host "generating $Project..." -ForegroundColor DarkGray
+$cutArgs = @()
+if ($TopStorey) { $cutArgs += @('--top-storey', $TopStorey) }
+
 & $cli dxf-to-etabs $config.Dxf (Join-Path $folder $config.Reference) $out `
+    @cutArgs `
     --rules-db $RulesDb `
     --report (Join-Path $folder "$Project-FROM-DRAWINGS-report.txt") `
     --questions (Join-Path $folder "$Project-QUESTIONS-for-Andrea.xlsx") |

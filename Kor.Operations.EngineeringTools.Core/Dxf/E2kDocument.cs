@@ -418,6 +418,61 @@ public sealed class E2kDocument
     /// the elevation it had and the building neither grows nor shrinks.
     /// </summary>
     /// <returns>The storeys removed, for reporting.</returns>
+    /// <summary>
+    /// Drops every storey standing above <paramref name="topStorey"/>, keeping that one and
+    /// everything below it whatever it is called.
+    ///
+    /// <see cref="KeepOnlyTower"/> cuts by NAME, which is the wrong axis for the ordinary request
+    /// "give me the podium and the mid-rise, not the towers". On 31168 the towers' floors above
+    /// level 26 carry an A- or B- prefix and are caught by name, but levels 11 to 26 are equally
+    /// tower — the drawings label them BLDG A&amp;B — and carry no prefix at all, so a name filter
+    /// keeps sixteen storeys of tower. Meanwhile the towers' ground floors, A-LEVEL 1 and
+    /// B-LEVEL 1, ARE wanted: they sit at grade inside the podium the engineer asked for, and a
+    /// name filter throws them away.
+    ///
+    /// Elevation gets both right in one rule, because that is the shape of the request: the
+    /// engineer is pointing at a height, not at a naming convention.
+    /// </summary>
+    /// <returns>The storeys removed, in the order they were listed.</returns>
+    public IReadOnlyList<string> KeepStoreysUpTo(string topStorey)
+    {
+        var section = Find("STORIES");
+        if (section is null) return Array.Empty<string>();
+
+        var stories = ReadStories().OrderBy(s => s.Elevation).ToList();
+        if (stories.Count == 0) return Array.Empty<string>();
+
+        var top = stories.FirstOrDefault(s =>
+            s.Name.Equals(topStorey.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (top is null)
+            throw new InvalidOperationException(
+                $"The reference model has no storey named '{topStorey}'. It lists: " +
+                string.Join(", ", stories.OrderByDescending(s => s.Elevation).Select(s => s.Name)) + ".");
+
+        // At OR below, and ties are kept: two towers interleaving at one elevation is normal here,
+        // and cutting one of a pair because it sorted second would remove real structure.
+        var dropped = stories.Where(s => s.Elevation > top.Elevation).Select(s => s.Name).ToList();
+        if (dropped.Count == 0) return dropped;
+
+        var retained = stories.Where(s => s.Elevation <= top.Elevation).ToList();
+        if (retained.Count == 0) return Array.Empty<string>();
+
+        // ETABS lists storeys from the top down, each carrying the height of the storey below it.
+        var rebuilt = new List<string>();
+        double baseElevation = retained[0].ElevationBelow;
+        for (int i = retained.Count - 1; i >= 0; i--)
+        {
+            double below = i == 0 ? baseElevation : retained[i - 1].Elevation;
+            rebuilt.Add($"  STORY \"{retained[i].Name}\"  HEIGHT {(retained[i].Elevation - below).ToString("0.####", CultureInfo.InvariantCulture)}");
+        }
+        rebuilt.Add($"  STORY \"Base\"  ELEV {baseElevation.ToString("0.####", CultureInfo.InvariantCulture)}");
+        rebuilt.Add(string.Empty);
+
+        section.Lines.Clear();
+        section.Lines.AddRange(rebuilt);
+        return dropped;
+    }
+
     public IReadOnlyList<string> KeepOnlyTower(string tower)
     {
         var section = Find("STORIES");
