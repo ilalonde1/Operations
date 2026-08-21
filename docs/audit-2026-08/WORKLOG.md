@@ -92,3 +92,53 @@ scan's file-type coverage, one extension further out each time. `.cs` → `.conf
 gives — a history rewrite two weeks before a demo is the wrong order of operations — and the new
 count changes the scope of that job, not its timing.
 
+### 2026-08-21 · Brief 2 — error honesty
+`codex/BRIEF-2-error-honesty.md` · items **14, 16, 17, 19** → **drafted, NOT issued.** Status stays
+`open`. One brief is in flight at a time; brief 2 goes out only after brief 1 is verified.
+
+All four held. `PursuitBriefWindow.Approach.cs:65-77`, `HomeWindow.xaml.cs` bare catch (7 hosts
+forced `Visible`, two of them Financials and Compensation), `OrgDossierViewModel.cs:501,556` +
+`OrgDossierView.xaml:925`, `EmailSearchWindow.xaml.cs:412`. Item 14's 4-minute figure is exact —
+`AppAiService.cs:31`.
+
+**Two corrections to the register, both found while verifying:**
+
+- **Item 14 is two instances, not one.** `Controls/AiQueryPanel.xaml.cs:111` has the same shape and
+  additionally appends the error string to `_history` as an `assistant` turn, so a failed call
+  poisons every later question in that panel. Added to the brief.
+- **Item 17's "nine status-line sites" is 72** `[RUN]` — `BdReportsViewModel.cs` alone has 11.
+  Item 17 stays `S` by scoping to the org dossier, which is the demo path; the sweep is new item 183.
+
+**Decision taken as head:** the register proposes matching `AppAiService`'s three error *prefixes* at
+the call sites. Rejected — that leaves failure representable as success and makes the fourth prefix a
+new bug. Briefed the cause instead: change the return so a caller cannot read an error as an answer.
+`AppAiService`/`IAppAiService` have no consumers outside `Kor.Operations.App`, so it is three files.
+
+### 2026-08-21 · Brief 1 VERIFIED — items 1, 2, 18, 22, 23 → `verified 2026-08-21`
+
+Codex reported all eight edits `held`. Checked here:
+
+- **Build green**, 0 errors. The 8 warnings are pre-existing and in unrelated files.
+- **Diff correct.** Four gates use `{x:Static app:DemoClientPresentMode.InternalOnlyVisibility}`
+  directly; the two that had an existing `Visibility` binding (`OrgDossierView` displacement panel,
+  `CompetitorProfileWindow` AI panel) were rewritten as a `Style` whose base `Setter` is the flag and
+  whose `DataTrigger` re-collapses on the data condition. `SectionCard` is `TargetType="Border"`, so
+  the `BasedOn` is valid.
+- **Gate mechanism proven, not assumed.** `{x:Static}` on `DataGridColumn.Visibility` resolves —
+  which `{Binding}` would not, since the column is outside the visual tree. Truth table across all
+  four quadrants passes: with the flag off the panels still follow their data condition; with it on
+  they collapse regardless.
+- **App launches with the flag on.**
+
+**Harness note worth keeping:** the first truth-table run reported a false failure. A detached
+element plus `Measure()` does not evaluate `DataTrigger`s — the trigger only fires once the element
+is in a real window. The code was correct and the test was wrong. Anything checking WPF triggers
+must put the element in a `Window` and pump to `DispatcherPriority.Loaded`.
+
+**Not done, and it is Ian's anyway:** seeing the gated columns absent on the real dashboard. The
+screenshot attempt caught the wrong window. Items 39 and 44 are the rehearsal that covers this, and
+they are his.
+
+**Item 2 amended, not silently widened** — it now records that the `CompetitorProfileWindow` panel is
+part of the gate.
+

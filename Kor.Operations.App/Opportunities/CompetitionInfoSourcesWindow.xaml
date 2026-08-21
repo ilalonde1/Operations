@@ -109,20 +109,6 @@
                     </StackPanel>
                 </Border>
 
-                <Border Background="#F8F9FB" CornerRadius="6" Padding="14">
-                    <StackPanel>
-                        <TextBlock Text="Coming next" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <TextBlock TextWrapping="Wrap" FontSize="12.5">
-                            Bidders tab  all bidders + their bid prices for opportunities where BC Bid publishes
-                            unverified bid results (currently ~60 rows; expands as the scraper runs).
-                            <LineBreak/>
-                            Detail panel on row-click  full description, document list with one-click open from the
-                            UNC archive, automatic cross-reference to Awards / Bidders tabs.
-                            <LineBreak/>
-                            CSV export of any filtered view.
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

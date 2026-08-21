@@ -9,6 +9,7 @@ namespace Kor.Operations.Services
         public const string BrochureSharedProposalsRootPath = "Brochure.SharedProposalsRootPath";
         public const string PursuitFilesRoot = "BD.PursuitFilesRoot";
         public const string CompensationPoolRate = "Compensation.PoolRate";
+        public const string DemoClientPresent = "Demo.ClientPresent";
         public const string FinancialsPnLGlFlipSign = "Financials.PnL.GlFlipSign";
         public const string FinancialsPnLIncomeGroupTypes = "Financials.PnL.IncomeGroupTypes";
         public const string FinancialsPnLExpenseGroupTypes = "Financials.PnL.ExpenseGroupTypes";

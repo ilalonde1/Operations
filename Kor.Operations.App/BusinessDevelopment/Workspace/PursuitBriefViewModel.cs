@@ -122,11 +122,11 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
 
     public bool ArchitectWarmthIsPlaceholder => string.IsNullOrWhiteSpace(_architectWarmthDisplay);
 
-    public string ThePlayDisplay => string.IsNullOrWhiteSpace(Brief?.ThePlay) ? "coming with the AI Crucible." : Brief!.ThePlay!;
+    public string ThePlayDisplay => string.IsNullOrWhiteSpace(Brief?.ThePlay) ? "—" : Brief!.ThePlay!;
 
     public bool ThePlayIsPlaceholder => string.IsNullOrWhiteSpace(Brief?.ThePlay);
 
-    public string FitScoreDisplay => Brief?.FitScore is { } score ? score.ToString("0.###") : "coming with the AI Crucible.";
+    public string FitScoreDisplay => Brief?.FitScore is { } score ? score.ToString("0.###") : "—";
 
     public bool FitScoreIsPlaceholder => Brief?.FitScore.HasValue != true;
 

@@ -1,6 +1,7 @@
 <Window x:Class="Kor.Operations.App.BusinessDevelopment.Workspace.BdWorkspaceWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:Kor.Operations.App"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         xmlns:appControls="clr-namespace:Kor.Operations.App.Controls"
         xmlns:local="clr-namespace:Kor.Operations.App.BusinessDevelopment.Workspace"
@@ -94,6 +95,7 @@
                     <TextBlock Text="KNOW" Style="{StaticResource NavGroupHeader}"/>
                     <Button x:Name="RelationshipsButton" Content="Relationships" Style="{StaticResource NavButton}" Click="Relationships_Click"/>
                     <Button x:Name="AttributionButton" Content="BD Scorecard" Style="{StaticResource NavButton}" Click="Attribution_Click"
+                            Visibility="{x:Static app:DemoClientPresentMode.InternalOnlyVisibility}"
                             ToolTip="Wins, won fee, active pursuits — the honest scorecard."/>
                     <Button x:Name="CompetitionButton" Content="Market History" Style="{StaticResource NavButton}" Click="Competition_Click"
                             ToolTip="Who won what, historically — the competitor record."/>
