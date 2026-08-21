@@ -559,3 +559,30 @@ None of those files was touched today, and every `catch` we added logs or surfac
 gate passes on our code. The first two are **item 112**, an `S` — five minutes to make "the suite is
 green" a true statement. Annotated there.
 
+### 2026-08-21 · Brief 7 out — items 57, 112, 115
+`codex/BRIEF-7-fail-loudly.md` → `briefed 7`. Verified first:
+
+- **115** `[RUN]` grep for `DispatcherUnhandledException|UnhandledException|UnobservedTaskException`
+  across the App: **zero hits**. There is no global handler anywhere.
+- **112** `[RUN]` the offenders are unchanged and are exactly the 2 failures in the App suite:
+  `BdWorkspaceWindow.xaml.cs:157`, `MajorProjectsInventoryView.xaml.cs:131`,
+  `HtmlBriefPdfGenerator.cs:347,362,375`.
+- **57** `[RUN]` `TakeoffCli/Program.cs` is 2,971 lines with **41** distinct command tokens; a bare
+  invocation prints the usage line for the oldest CSV-diff path.
+
+**Why these three together:** 112 and 115 are the same subject from both ends — 112 makes the repo's
+own gates tell the truth, 115 stops an unhandled exception in one of those `async void` handlers from
+taking the whole app down without a word. Doing 112 without 115 makes the signal green while leaving
+the risk.
+
+### 2026-08-21 · ETABS module status pulled for the engineer
+
+No work done — a read of the register for Ian to take to the engineer. Four items verified today (24,
+25, 26, 27) and the module's two real gaps remain **item 130** (no engineer has ever imported a
+generated `.e2k` and signed off — `[DOC]`, the largest untested surface) and **item 129** (one
+unfamiliar building end to end). Item 43 also matters here: the 31168 and 31138 job folders are 5
+commits stale, so anyone opening them sees old output.
+
+**If engineer feedback arrives, it must land in this register with evidence tiers rather than staying
+in a chat window.** Item 130's whole problem is that the module has never had that input.
+
