@@ -807,11 +807,31 @@ public static class DxfToEtabsService
         sb.AppendLine($"Offset applied: {report.AppliedOffset.X:0.#}, {report.AppliedOffset.Y:0.#} in");
         sb.AppendLine();
 
+        // Sheets that are IN the model first. Sorting by filename alone opened this table with
+        // eleven tower sheets showing 0 storeys, because A-LEVEL sorts before LEVEL -- eleven rows
+        // that read as eleven failures, on a job whose engineer had asked for no towers. They were
+        // removed on purpose; they belong under a heading that says so.
+        var placedSheets = report.Sheets.Where(x => x.Stories.Count > 0)
+            .OrderBy(x => x.File, StringComparer.OrdinalIgnoreCase).ToList();
+        var unplacedSheets = report.Sheets.Where(x => x.Stories.Count == 0)
+            .OrderBy(x => x.File, StringComparer.OrdinalIgnoreCase).ToList();
+
         sb.AppendLine("Sheet                                                  Lvls  Storeys  Walls  Cols  Slabs");
-        foreach (var s in report.Sheets.OrderBy(s => s.File, StringComparer.OrdinalIgnoreCase))
+        foreach (var s in placedSheets)
         {
             string name = s.File.Length <= 52 ? s.File.PadRight(52) : s.File[..49] + "...";
             sb.AppendLine($"{name}  {s.Levels.Count,4}  {s.Stories.Count,7}  {s.Walls,5}  {s.Columns,4}  {s.Slabs,5}");
+        }
+
+        if (unplacedSheets.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"Read but not placed on any storey in this model ({unplacedSheets.Count}):");
+            foreach (var s in unplacedSheets)
+            {
+                string name = s.File.Length <= 52 ? s.File.PadRight(52) : s.File[..49] + "...";
+                sb.AppendLine($"{name}  {s.Levels.Count,4}  {s.Stories.Count,7}  {s.Walls,5}  {s.Columns,4}  {s.Slabs,5}");
+            }
         }
 
         if (report.Warnings.Count > 0)

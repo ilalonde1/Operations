@@ -484,7 +484,79 @@ public static class ModelQuestionnaire
             "It decides how results are reported and how the model compares with the old one.",
             "The tool can still split a tower out on request; nothing about that is lost.")
             { Decided = true },
-        };
+        }
+        .Concat(ThisJobsQuestions(report))
+        .ToList();
+    }
+
+    /// <summary>
+    /// What THIS run could not settle, as questions rather than as lines in a report.
+    ///
+    /// Everything above is a standing rule -- true of every job, answered once. None of it is a
+    /// question about the building in front of her. So the workbook could open saying "nothing
+    /// here is waiting on you" while the report beside it listed four storeys with no diaphragm
+    /// that only an engineer can resolve. The questions this job raised were written down in a
+    /// place nobody is asked to answer.
+    ///
+    /// These come from the run's own flags, so they cannot claim a problem the model does not
+    /// have, and they disappear from the workbook when the job stops having it.
+    /// </summary>
+    private static IEnumerable<ModelQuestion> ThisJobsQuestions(DxfToEtabsReport? report)
+    {
+        if (report is null) yield break;
+
+        string? Flag(string contains) => report.Summary.Flags
+            .FirstOrDefault(f => f.Contains(contains, StringComparison.OrdinalIgnoreCase));
+
+        if (Flag("no floor plate") is { } plateless)
+        {
+            string storeys = plateless[(plateless.IndexOf(':') + 1)..].Split('.')[0].Trim();
+            yield return new ModelQuestion("J1", "Storeys with no floor plate",
+                $"These storeys carry walls and columns but no slab, so they have no diaphragm: {storeys}. " +
+                "Their slab edges would not close. Is the slab edge drawn closed on those sheets, or is " +
+                "the floor shown some other way we should be reading?",
+                "Nothing was invented in their place. The perimeter-wall fallback needs an enclosing wall " +
+                "ring and these storeys have none, so they were left without a plate and named here.",
+                "A storey with no diaphragm behaves differently under lateral load, and every wall and " +
+                "column on it reads as unsupported.",
+                "Closure tolerance was tested at 6, 12 and 18 inches on this job and the result did not " +
+                "change, so this is not a tolerance that can be widened into a floor.")
+                { RuleTopic = "storeys-with-no-drawn-floor" };
+        }
+
+        if (Flag("no wall or column beneath") is { } floating)
+        {
+            string storeys = floating[(floating.IndexOf(':') + 1)..].Split('.')[0].Trim();
+            yield return new ModelQuestion("J2", "A floor with nothing under it",
+                $"{storeys} carries a floor plate with no wall or column on its own storey. Does the " +
+                "structure stop below that level, or is it drawn on a sheet we did not place there?",
+                "The plate was kept rather than dropped, because a roof over structure that stops below " +
+                "is a real building and guessing otherwise would remove a floor she drew.",
+                "A plate with nothing beneath it is either correct or a sheet that landed on the wrong storey.",
+                "Taken from this run: the plan placed there draws no vertical structure at all.")
+                { RuleTopic = "plate-with-nothing-beneath" };
+        }
+
+        var unresolved = report.Summary.Flags
+            .Where(f => f.Contains("could not be resolved into wall panels", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (unresolved.Count > 0)
+        {
+            string where = string.Join("; ", unresolved
+                .Select(f => f[(f.LastIndexOf(':') + 1)..].Replace("— check this location", "").Trim())
+                .Take(4));
+
+            yield return new ModelQuestion("J3", "Wall outlines that would not resolve",
+                $"{unresolved.Count} outline(s) on the wall layers could not be turned into wall panels, so " +
+                $"those walls are not in the model: {where}. Are these walls, and if so is anything unusual " +
+                "about how they are drawn?",
+                "The outlines were read and their shapes measured; what failed is turning them into panels " +
+                "on centrelines. Nothing was guessed in their place.",
+                "These are missing walls, not misplaced ones, and no count will show them to you.",
+                "The sizes above are measured off the drawing, so they can be found on the sheet.")
+                { RuleTopic = "outlines-that-would-not-resolve" };
+        }
     }
 
     public static void Write(string path, DxfToEtabsReport report, PlanClassificationOptions options,
