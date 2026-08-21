@@ -492,3 +492,24 @@ stale file instantly, deleted the temp HTML, and shipped the old bytes. It now w
 mechanism behind the committed error page, and the file is the house renderer for **every BD
 dossier**, so the fix is broader than this item. Change is strictly additive (longer wait + a throw).
 
+### 2026-08-21 · Item 26 closed — migration 041 confirmed applied
+
+Ian ran the query on `KOR-APP01\SQLEXPRESS`. All three keys present `[QUERIED]`:
+
+| SettingKey | SettingValue |
+|---|---|
+| `dxf.wall-layer-patterns` | `WALL` |
+| `dxf.column-layer-patterns` | `_COL` |
+| `dxf.slab-layer-patterns` | `SLABEDG` |
+
+So making them required cannot stop a production run. **Item 26 → verified.**
+
+**Second thing those values settle.** Standing answer 61.7 says a Revit-exported DXF yields walls but
+no columns and no floors, because Revit exports `A-WALL` / `S-COLS` / `A-FLOR` against rules expecting
+`WALL` / `_COL` / `SLABEDG`. That was `[RUN]` from a source read. The live rule values now confirm the
+rules half `[QUERIED]` — the mismatch is real and current.
+
+It also confirms the *shape* of the standing answer: since 2026-08-15 these are database rules, so
+closing the gap is a settings change, not a code change. Someone can add the Revit layer names to
+these three rules without touching the tool.
+
