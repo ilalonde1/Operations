@@ -360,3 +360,39 @@ rate while anything served by the MCP uses the flat one, and no config change on
 it. Item 36 now carries this. Writing the key would have been cargo cult — it would have changed
 nothing and left a false trail that the divergence was handled.
 
+### 2026-08-21 · Brief 4 verified — items 14, 16, 17
+
+Build green. 16/16 filtered App tests pass (11 new + the 5 from brief 3).
+
+**Each named line reverted individually, as promised.**
+
+| gate | revert applied | result |
+|---|---|---|
+| `AiResultDecisionTests` | `AppAiResult.Failure` → `new(true, message, message)` — an error reporting success, which is the original defect exactly | **2 of 3 fail** — real gate |
+| `HomeTileVisibilityStateTests` | catch fail-opens `FinancialsTileHost`/`CompensationTileHost` again | **1 of 3 fails** — real gate |
+| `UserFacingExceptionMapperTests` | see below | **partial** |
+
+**Item 17's gate is partial, and the line Codex named is not the one that trips it.**
+
+Codex nominated `OrgDossierViewModel.cs:533` (the `MapAndLog` call). Replacing that call with
+`ex.GetType().Name + ": " + ex.Message` — semantically the original bug — left **all 5 tests green**.
+Two reasons: `MapAndLog` has **two** call sites in that file so the `Assert.Contains` still matched,
+and the `Assert.DoesNotContain` guards an exact literal (`ErrorMessage: ex.GetType()...`) that a
+rewrite does not reproduce.
+
+Restoring the **exact original literal** — `IDeltekClientContextService.LoadAsync returned null …` —
+**does** fail it (1 of 5).
+
+So: the four behavioural tests genuinely gate the mapper (`Map`, `MapAndLog`, message content, and
+that the original exception still reaches the logger). The fifth is a **source-text** assertion that
+catches a literal reintroduction and not an equivalent rewrite. That is weaker than gates 1 and 2 and
+stronger than item 11's, which failed to fail at all. Recorded rather than rounded up.
+
+**Shape Codex chose for the AI result:** `AppAiResult(bool IsSuccess, string Text, string?
+ErrorMessage)` with `Success`/`Failure` factories. `Failure` sets `Text` to `string.Empty`, so there
+is no error text for a caller to render by accident — which is why reverting that one line breaks the
+gate. The Pursuit Brief now has a real Cancel wired to a cancellation token, closing the 4-minute
+dead-UI window.
+
+**Not swept, by instruction:** the other ~68 raw-exception sites. Item 185.
+

@@ -292,23 +292,29 @@ namespace Kor.Operations
 
                 RebuildHomeCardsLayout();
             }
-            catch
+            catch (Exception ex)
             {
-                FinancialsTileHost.Visibility = Visibility.Visible;
-                CompensationTileHost.Visibility = Visibility.Visible;
-                PmToolsTileHost.Visibility = Visibility.Visible;
-                StandardDetailsTileHost.Visibility = Visibility.Visible;
-                GeneralToolsCard.Visibility = Visibility.Visible;
-                FeeProposalBuilderCard.Visibility = Visibility.Visible;
-                EngineeringToolsTileHost.Visibility = Visibility.Visible;
-                FileSyncCommandCenterTileHost.Visibility = Visibility.Collapsed;
-                MondayBriefingCard.Visibility = Visibility.Collapsed;
-                CooCardCard.Visibility = Visibility.Collapsed;
-                OpportunitiesTileHost.Visibility = Visibility.Collapsed;
-                BusinessDevelopmentTileHost.Visibility = Visibility.Collapsed;
-                BdReportsTileHost.Visibility = Visibility.Collapsed;
+                Log.Warning(ex, "Home tile security lookup failed; applying restricted fallback visibility.");
+                ApplyTileVisibility(HomeTileVisibilityState.ForSecurityLookupFailure());
                 RebuildHomeCardsLayout();
             }
+        }
+
+        private void ApplyTileVisibility(HomeTileVisibilityState state)
+        {
+            FinancialsTileHost.Visibility = state.Financials;
+            CompensationTileHost.Visibility = state.Compensation;
+            PmToolsTileHost.Visibility = state.PmTools;
+            StandardDetailsTileHost.Visibility = state.StandardDetails;
+            GeneralToolsCard.Visibility = state.GeneralTools;
+            FeeProposalBuilderCard.Visibility = state.FeeProposalBuilder;
+            EngineeringToolsTileHost.Visibility = state.EngineeringTools;
+            FileSyncCommandCenterTileHost.Visibility = state.FileSyncCommandCenter;
+            MondayBriefingCard.Visibility = state.MondayBriefing;
+            CooCardCard.Visibility = state.CooCard;
+            OpportunitiesTileHost.Visibility = state.Opportunities;
+            BusinessDevelopmentTileHost.Visibility = state.BusinessDevelopment;
+            BdReportsTileHost.Visibility = state.BdReports;
         }
 
         private void RebuildHomeCardsLayout()

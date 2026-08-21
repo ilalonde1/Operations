@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Operations.App.Crm;
+using Kor.Operations.App.Services;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
@@ -498,7 +499,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
                                 ArOutstanding: 0m,
                                 Ar90Plus: 0m,
                                 DegradedSections: false,
-                                ErrorMessage: "IDeltekClientContextService.LoadAsync returned null - Clendor has no row for this ClientId on the App's ODBC connection."));
+                                ErrorMessage: UserFacingExceptionMapper.DeltekClientNotFoundMessage));
                             return;
                         }
 
@@ -529,7 +530,11 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Org dossier Deltek snapshot failed for {ClendorClientId}.", deltekTrigger);
+                        var message = UserFacingExceptionMapper.MapAndLog(
+                            _logger,
+                            ex,
+                            "Org dossier Deltek snapshot failed for {ClendorClientId}.",
+                            deltekTrigger);
                         SetDeltekSnapshotIfCurrent(canonicalOrgId, deltekTrigger, new DossierDeltekSnapshot(
                             ClientId: deltekTrigger,
                             ClientName: "",
@@ -542,7 +547,7 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
                             ArOutstanding: 0m,
                             Ar90Plus: 0m,
                             DegradedSections: false,
-                            ErrorMessage: ex.GetType().Name + ": " + ex.Message));
+                            ErrorMessage: message));
                     }
                 });
             }
@@ -553,8 +558,11 @@ public sealed class OrgDossierViewModel : ObservableObject, IAiContextProvider
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Org dossier load failed for CanonicalOrgId {CanonicalOrgId}.", canonicalOrgId);
-            StatusMessage = $"Load failed: {ex.GetType().Name}: {ex.Message}";
+            StatusMessage = UserFacingExceptionMapper.MapAndLog(
+                _logger,
+                ex,
+                "Org dossier load failed for CanonicalOrgId {CanonicalOrgId}.",
+                canonicalOrgId);
             throw;
         }
     }

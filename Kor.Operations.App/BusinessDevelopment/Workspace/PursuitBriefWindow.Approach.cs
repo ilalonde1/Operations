@@ -38,6 +38,7 @@ public partial class PursuitBriefWindow
         "Be specific to this pursuit. If the intel is thin on a point, say so briefly rather than inventing.";
 
     private bool _approachBusy;
+    private CancellationTokenSource? _approachCts;
 
     private async void DraftApproach_Click(object sender, RoutedEventArgs e)
     {
@@ -54,7 +55,10 @@ public partial class PursuitBriefWindow
         }
 
         _approachBusy = true;
+        _approachCts = new CancellationTokenSource();
         DraftApproachButton.IsEnabled = false;
+        CancelApproachButton.Visibility = Visibility.Visible;
+        CancelApproachButton.IsEnabled = true;
         ApproachHost.Children.Clear();
         ApproachStatus.Text = "Drafting who to call, script & email from the current intel…";
 
@@ -62,9 +66,15 @@ public partial class PursuitBriefWindow
         {
             var context = BuildApproachContext(_vm.Brief);
             var conversation = new[] { ("user", ApproachInstruction) };
-            var md = await ai.AskAsync(conversation, localContext: context, ct: CancellationToken.None).ConfigureAwait(true);
+            var result = await ai.AskAsync(conversation, localContext: context, ct: _approachCts.Token).ConfigureAwait(true);
 
-            if (string.IsNullOrWhiteSpace(md))
+            if (!result.IsSuccess)
+            {
+                ApproachStatus.Text = result.ErrorMessage ?? "AI draft failed. Try again.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(result.Text))
             {
                 ApproachStatus.Text = "No draft came back — try again.";
                 return;
@@ -73,7 +83,7 @@ public partial class PursuitBriefWindow
             var ink = (Brush)(TryFindResource("Text.Primary") ?? Brushes.Black);
             var codeBg = (Brush)(TryFindResource("App.Background") ?? Brushes.WhiteSmoke);
             var codeBorder = (Brush)(TryFindResource("Panel.Border") ?? Brushes.LightGray);
-            MarkdownPresenter.Render(md, ApproachHost, ink, codeBg, codeBorder);
+            MarkdownPresenter.Render(result.Text, ApproachHost, ink, codeBg, codeBorder);
             ApproachStatus.Text = $"Drafted {DateTime.Now:HH:mm} from live intel — regenerate any time for the current picture.";
         }
         catch (Exception ex)
@@ -82,9 +92,20 @@ public partial class PursuitBriefWindow
         }
         finally
         {
+            _approachCts?.Dispose();
+            _approachCts = null;
             _approachBusy = false;
             DraftApproachButton.IsEnabled = true;
+            CancelApproachButton.Visibility = Visibility.Collapsed;
+            CancelApproachButton.IsEnabled = false;
         }
+    }
+
+    private void CancelApproach_Click(object sender, RoutedEventArgs e)
+    {
+        CancelApproachButton.IsEnabled = false;
+        ApproachStatus.Text = "Cancelling draft…";
+        _approachCts?.Cancel();
     }
 
     /// <summary>Flattens the brief's live intel into a labelled block for the model.</summary>

@@ -69,11 +69,20 @@
                                 <TextBlock Text="Drafted live from the current intel below — regenerate any time; nothing is stored, so it never goes stale."
                                            Foreground="{StaticResource Text.Secondary}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
                             </StackPanel>
-                            <Button Grid.Column="1" x:Name="DraftApproachButton" Content="Draft approach"
-                                    Padding="14,7" VerticalAlignment="Top"
-                                    Style="{StaticResource Button.Primary}"
-                                    Click="DraftApproach_Click"
-                                    ToolTip="Claude writes who to call, a call script, and a draft email from this pursuit's current intel."/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                <Button x:Name="DraftApproachButton" Content="Draft approach"
+                                        Padding="14,7"
+                                        Style="{StaticResource Button.Primary}"
+                                        Click="DraftApproach_Click"
+                                        ToolTip="Claude writes who to call, a call script, and a draft email from this pursuit's current intel."/>
+                                <Button x:Name="CancelApproachButton" Content="Cancel"
+                                        Padding="14,7"
+                                        Margin="8,0,0,0"
+                                        Visibility="Collapsed"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Click="CancelApproach_Click"
+                                        ToolTip="Cancel the current AI draft request."/>
+                            </StackPanel>
                         </Grid>
                         <TextBlock x:Name="ApproachStatus" Foreground="{StaticResource Text.Secondary}" FontSize="12"
                                    TextWrapping="Wrap" Margin="0,10,0,0"/>

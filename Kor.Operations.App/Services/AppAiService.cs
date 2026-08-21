@@ -56,20 +56,20 @@ internal sealed class AppAiService
             : "";
     }
 
-    internal async Task<string> AskAsync(
+    internal async Task<AppAiResult> AskAsync(
         IReadOnlyList<(string Role, string Content)> conversation,
         string? localContext = null,
         CancellationToken ct = default,
         string? systemPromptOverride = null)
     {
-        if (conversation.Count == 0) return "";
+        if (conversation.Count == 0) return AppAiResult.Success(string.Empty);
 
         // The MCP gateway holds the system prompt + KOR rules. systemPromptOverride
         // is ignored on this path; the server is canonical. Callers that need a
         // custom system prompt should still be using AskWithToolsAsync (PdfToSafe).
         if (!_mcp.IsConfigured)
         {
-            return "AI is not configured. Set McpServer.ServiceUrl/Username/Password in App.config.";
+            return AppAiResult.Failure("AI is not configured. Set McpServer.ServiceUrl/Username/Password in App.config.");
         }
 
         // Build the full context (every registered IAiContextProvider's
@@ -91,7 +91,7 @@ internal sealed class AppAiService
             { lastUserIndex = i; break; }
         }
         if (lastUserIndex < 0 || string.IsNullOrWhiteSpace(conversation[lastUserIndex].Content))
-            return "";
+            return AppAiResult.Success(string.Empty);
 
         var lastUserContent = conversation[lastUserIndex].Content;
 
@@ -132,21 +132,21 @@ internal sealed class AppAiService
             if (!response.IsSuccessStatusCode)
             {
                 Log.Warning("MCP /ask returned {Status}: {Body}", (int)response.StatusCode, json);
-                return $"AI service returned HTTP {(int)response.StatusCode}. {Truncate(json, 500)}";
+                return AppAiResult.Failure($"AI service returned HTTP {(int)response.StatusCode}. {Truncate(json, 500)}");
             }
 
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-            return root.TryGetProperty("answer", out var answerEl) ? (answerEl.GetString() ?? "") : "";
+            return AppAiResult.Success(root.TryGetProperty("answer", out var answerEl) ? (answerEl.GetString() ?? string.Empty) : string.Empty);
         }
         catch (OperationCanceledException)
         {
-            return "";
+            return AppAiResult.Failure("AI request was cancelled.");
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "MCP /ask request failed.");
-            return $"Unable to reach AI service: {ex.Message}";
+            return AppAiResult.Failure($"Unable to reach AI service: {ex.Message}");
         }
     }
 

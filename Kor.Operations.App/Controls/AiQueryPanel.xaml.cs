@@ -105,13 +105,13 @@ namespace Kor.Operations.Controls
                             ? $"Done — {result.ToolCallsExecuted} change(s) applied."
                             : $"{result.Text}\n\n({result.ToolCallsExecuted} change(s) applied.)")
                         : result.Text;
+                    response = AiConversationHistory.ApplyAssistantResult(_history, AppAiResult.Success(response));
                 }
                 else
                 {
-                    response = await _aiService.AskAsync(_history, localContext);
+                    var result = await _aiService.AskAsync(_history, localContext);
+                    response = AiConversationHistory.ApplyAssistantResult(_history, result);
                 }
-
-                _history.Add(("assistant", response));
 
                 while (_history.Count > 12) _history.RemoveAt(0);
 
