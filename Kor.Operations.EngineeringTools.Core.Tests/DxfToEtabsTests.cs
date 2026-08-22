@@ -1236,6 +1236,35 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void ALevelWithNoNumberInItsNameIsStillPlaced()
+    {
+        // Matching a plan to a storey by the level NUMBER in its title is a fact about how one
+        // office names levels, not about buildings. Run against Autodesk's own structural sample,
+        // four of nine plans landed nowhere -- Parking, Top of Footing, R2, Parapet 2 -- and the
+        // building came through with those floors missing.
+        var stories = new[] { "Top of Footing", "Parking", "L1_43_High", "L2", "R2", "Parapet 2" };
+
+        // Named levels, no numbers to read, and decoration the export adds.
+        Assert.Equal(new[] { "Parking" },
+            PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("--Structural Plan - Parking.dxf"), stories));
+        Assert.Equal(new[] { "Top of Footing" },
+            PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("--Structural Plan - TOP_OF_FOOTING.dxf"), stories));
+        Assert.Equal(new[] { "R2" },
+            PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("--Structural Plan - R2.dxf"), stories));
+
+        // Whole words only. "L2" must not claim "L1_43_High" merely for containing an L, and
+        // "Parapet 2" is its own storey rather than a second reading of level 2.
+        Assert.Equal(new[] { "L2" },
+            PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("--Structural Plan - L2.dxf"), stories));
+
+        // And the number still wins where there is one: this only runs when numbers found nothing,
+        // so a job that names its levels numerically is untouched.
+        var korStories = new[] { "C-LEVEL 8", "LEVEL 8", "LEVEL 2" };
+        Assert.Equal(new[] { "LEVEL 8" },
+            PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("--Structural Plan - LEVEL 8.dxf"), korStories));
+    }
+
+    [Fact]
     public void AJobsOwnDrawingsSetTheCeilingRatherThanThePortfolio()
     {
         // dxf.max-wall-thickness is 60", measured over 1,126 engineer models where 42" walls appear

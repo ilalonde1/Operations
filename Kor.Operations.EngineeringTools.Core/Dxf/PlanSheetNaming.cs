@@ -278,6 +278,33 @@ public static partial class PlanSheetNaming
             if (unprefixed.Count > 0) return unprefixed;
         }
 
+        // A level with no number in its name.
+        //
+        // Everything above matches on the level NUMBER carried in the sheet title, which is a fact
+        // about how one office names levels, not about buildings. Run against Autodesk's own
+        // structural sample, four of its nine plans landed nowhere -- Parking, Top of Footing, R2,
+        // Parapet 2 -- because none of those names contains a number this could read. The building
+        // came through with its floors missing and nothing said which.
+        //
+        // The level's own NAME is the better key and it is right there: drafting titles a plan
+        // after the level it cuts, and the bridge writes the level name into the filename when it
+        // exports. So once matching by number has failed outright, the sheet's title is compared
+        // to the storey names themselves, punctuation and case set aside.
+        //
+        // Numbers still win: this runs only where they found nothing, so no job that names its
+        // levels numerically is touched by it.
+        if (matches.Count == 0)
+        {
+            var byName = stories
+                .Where(story => IsMezzanineName(story) == sheet.IsMezzanine)
+                .Where(story => sheet.BuildingTags.Count == 0
+                             || sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(story, tag)))
+                .Where(story => SameName(story, sheet.Label) || SameName(story, sheet.FileName))
+                .ToList();
+
+            if (byName.Count > 0) return byName;
+        }
+
         // A numbered level that matches no storey falls back to what the sheet SAYS it is.
         //
         // Drafting numbers the top of a building; the model names it. 31065's drawings carry
@@ -324,6 +351,46 @@ public static partial class PlanSheetNaming
             if (m.Success && int.TryParse(m.Groups[1].Value, out int n) && n > top) top = n;
         }
         return top;
+    }
+
+    /// <summary>
+    /// Whether a sheet title names this storey, with the decoration drafting adds set aside:
+    /// case, underscores, hyphens and runs of spaces. "Top of Footing" matches "TOP_OF_FOOTING",
+    /// and a title that merely CONTAINS the storey name matches it too, because a sheet is
+    /// commonly called "Parking Plan" for a level called "Parking".
+    ///
+    /// Whole words only. Without that, a storey called "L1" would claim every sheet with an L1 in
+    /// it — "L1_43_High" among them — and a name match that is looser than the number match it
+    /// stands in for would be worse than no match at all.
+    /// </summary>
+    private static bool SameName(string storyName, string sheetTitle)
+    {
+        string story = Normalise(storyName);
+        string sheet = Normalise(sheetTitle);
+        if (story.Length == 0 || sheet.Length == 0) return false;
+        if (story == sheet) return true;
+
+        int at = sheet.IndexOf(story, StringComparison.Ordinal);
+        while (at >= 0)
+        {
+            bool startsClean = at == 0 || sheet[at - 1] == ' ';
+            bool endsClean = at + story.Length == sheet.Length || sheet[at + story.Length] == ' ';
+            if (startsClean && endsClean) return true;
+            at = sheet.IndexOf(story, at + 1, StringComparison.Ordinal);
+        }
+
+        return false;
+    }
+
+    private static string Normalise(string text)
+    {
+        var sb = new System.Text.StringBuilder(text.Length);
+        foreach (char c in text)
+        {
+            if (char.IsLetterOrDigit(c)) sb.Append(char.ToUpperInvariant(c));
+            else if (sb.Length > 0 && sb[^1] != ' ') sb.Append(' ');
+        }
+        return sb.ToString().Trim();
     }
 
     private static bool StoryBelongsToBuilding(string storyName, string buildingTag)

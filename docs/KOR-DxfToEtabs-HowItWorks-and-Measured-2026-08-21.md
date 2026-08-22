@@ -152,3 +152,75 @@ out of scope — plus a wall 132 inches thick. Both survived because the output 
 looked at before it was sent. The cut used, `-TopStorey C-ROOF`, removes storeys *above* an
 elevation; the towers' `LEVEL 3`–`LEVEL 10` carry no prefix and sit *below* the mid-rise's roof.
 Neither a name filter nor an elevation filter can see them. `--drop-storeys` names them.
+
+---
+
+# Drafting conventions, and what travels between them
+
+Every convention below was met by running the tool against a real model, not by reasoning about
+what drafting might do. **The rule this section exists to state: nothing about a drawing set is
+assumed until a model has been run through and the result measured.** Each new model either
+confirms the table or adds a row, and adding a row should be a change to the matcher, not a
+per-job flag somebody remembers to type.
+
+## Sheet naming — what tells the tool which storey a plan belongs to
+
+| source | example filename | how it places |
+|---|---|---|
+| KOR, 31168 / 31065 | `--Structural Plan - LEVEL 5.dxf` | level number in the title |
+| KOR, 31168 ranges | `LEVEL 4 PLAN (L4-L14) - CONCRETE OUTLINE - A &B` | range expands to 11 storeys; `BLDG A&B` narrows the building |
+| KOR, 31104 | `31104-01 2520 Balaclava-Structural Plan - LEVEL P2.dxf` | job number and address prefixed before the title |
+| KOR, sheet-numbered | `S2-40-1_1_LEVEL 3 PLAN - CONCRETE OUTLINE - BLDG C` | sheet identifier stripped first, or its digits read as levels |
+| Autodesk sample | `--Structural Plan - Parking.dxf`, `Top of Footing`, `R2`, `Parapet 2` | **no number at all — matched on the level's NAME** |
+
+The last row is the one that broke it. Matching on level numbers is a fact about one office's
+naming, not about buildings: four of Autodesk's nine structural plans landed nowhere and the
+building came through with those floors missing. Names are now compared directly once numbers find
+nothing — case, underscores and hyphens set aside, whole words only, so `L2` cannot claim
+`L1_43_High`. Numbers still win where there are any, so no numeric job is affected.
+
+Placing all nine took that sample from 5 storeys / 51 walls / 70 columns to
+**9 storeys / 110 walls / 104 columns.**
+
+## Layer naming — what the tool reads
+
+| source | walls | columns | slab edge |
+|---|---|---|---|
+| KOR | `JBP_V-WALL` (+ `-1`, `-2`) | `JBP_V_COL` | `JBP_C_SLABEDG` (+ `-1`, `-2`) |
+| Autodesk sample (AIA) | `A-WALL` | `S-COLS-SYMB` | `A-FLOR` |
+
+Defaults are `WALL`, `_COL`, `SLABEDG`. On the AIA set that reads walls, **no columns** — `S-COLS-SYMB`
+has a hyphen where the default expects an underscore — **and no slabs**. Supplying
+`--wall-layers A-WALL --column-layers S-COLS --slab-layers A-FLOR` fixes it.
+
+**Still a per-job flag, and it should not be.** Nothing derives the layer roles from the drawing.
+That is the next convention to make travel: the tool can see every layer, how many segments each
+carries, and what shapes they close into, which is enough to propose a mapping and ask once.
+
+Layers KOR draws that are deliberately NOT read: `JBP_C_B_STRUCT` (ruled out by the engineer,
+migration 042), `JBP_C_HATCH` (unread everywhere — if hatch ever carries structure that is a hole
+on every job, and it has not been asked about).
+
+## Getting the drawings out of Revit
+
+`KOR.Drafter.Bridge`, verb `exportdxf`, on a machine with Revit and the add-in — today only
+**KOR-302N** (Revit 2020–2026 + bridge). KOR-308 has Revit and no bridge; KOR-210 has Revit 2024
+and ETABS.
+
+Drop `<id>.json` in `C:\KOR.Drafter\bridge\inbox`, read the reply from `outbox`:
+
+```json
+{ "verb": "opendoc",   "path": "C:\Temp\Model.rvt", "detach": true }
+{ "verb": "exportdxf", "doc": "Model", "folder": "C:\Temp\dxf", "viewtype": "EngineeringPlan" }
+```
+
+`viewtype` matters — the default is `FloorPlan`, which is the architectural set. It exports with
+shared coordinates and names each file after the level, which is what makes placement possible at
+all.
+
+Measured on the Autodesk sample: open 39 s, export of 9 plans 21 s. The bridge answered Revit's
+unresolved-references dialog by itself.
+
+One limit found: **the Revit API cannot close the active document.** `closedoc` fails if the model
+is the one on screen and another document is open, so a model opened this way on somebody's live
+session has to be closed by hand.
