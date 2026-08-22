@@ -1,6 +1,34 @@
 One job: the ground floor has no slab. Make it have one, or prove it should not.
 
-Repo: C:\VIsual Studio Projects\Operations, branch develop, at commit d3f0205c.
+Repo: C:\VIsual Studio Projects\Operations, branch develop. Written at commit d3f0205c; several
+things below were settled after it was written, so read this first.
+
+WHAT CHANGED SINCE THIS WAS WRITTEN -- do not re-derive any of it
+
+  1. IT IS NOT A DASHED LINE. Every slab-edge layer on these sheets carries linetype "Continuous"
+     in the LAYER table: JBP_C_SLABEDG, -1 and -2 alike. Only JBP_B_WALL is ___HIDDEN. The whole
+     "is this a dashed edge-below" question below is ANSWERED, and the answer is no. The 11-inch
+     median gaps are real breaks in the linework, not dashes.
+
+  2. NO TOLERANCE CLOSES IT. Measured on the LEVEL 1 sheet, pooled and per layer, at gaps of
+     0.05, 1, 6, 14, 24, 36, 48 and 72 inches, tessellating arcs: the largest region the slab edge
+     encloses is 119 SQ FT. JBP_C_SLABEDG spans the full 334x235 ft footprint as 66 to 79 open
+     chains that never join into a boundary. There is nothing there to close. Raising a tolerance
+     cannot produce that floor and neither can extending -- stop before you try.
+
+  3. THOSE STOREYS ARE NO LONGER BARE. ComposeOptions.InferMissingFloors, off by default, gives a
+     storey with members and no floor the plate from the storey below it -- and only where that
+     plate actually stands under this storey's own walls and columns, because "nearest below" alone
+     handed the mid-rise a floor belonging to the podium under the towers. 31168 ships with it on.
+     It is a stand-in, reported as INFERRED, not an answer.
+
+  So the question is no longer "what gap closes it". It is: IS THERE A REAL SLAB EDGE ON THESE
+  SHEETS AT ALL, and if not, where should a ground-floor plate come from -- the flood-fill plate
+  detection that already exists (see below), the parkade below, or nothing? An engineer trimming an
+  inferred plate is a fair outcome; an invented one she cannot tell from a measured one is not.
+
+  What still stands: everything about WHERE the code is, the flood-fill work already in the repo,
+  and the constraints at the end. Read those.
 
 WHY THIS AND NOTHING ELSE
 
@@ -47,29 +75,29 @@ MEASURED ALREADY -- do not spend the afternoon re-deriving this
   Two shapes of failure, and they are not the same problem:
 
     - SLABEDG-2 breaks into 187 pieces with a median gap of 11 inches and 373 of 374 loose ends
-      inside 24. That is the signature of a line drawn dashed, sitting just outside a 14" joiner.
+      inside 24. That LOOKS like a dashed line sitting just outside a 14" joiner. It is not one:
+      the layer is Continuous. Eleven-inch breaks in a continuous line are the thing to explain.
     - SLABEDG and SLABEDG-1 have gaps with a median of 46 and 55 inches and a maximum of 762.
-      Those are not dashes. Something else is going on there and it needs its own answer.
+      Those are not dashes either, and never looked like it.
 
   Also measured, so you do not go looking: these DXFs contain LINE and ARC entities only. No
   LWPOLYLINE, no TEXT, no MTEXT -- 0 text entities in the file, so nothing in the drawing names
-  what any of this is. Every slab-edge LINE carries linetype ByLayer, so whether the line is
-  dashed is decided by the LAYER table entry, not the entity. I did NOT read the LAYER table.
-  That is the first thing to look at: group code 6 on the LAYER record for each of the three,
-  against the LTYPE table, which defines ___HIDDEN, ___DASHED, ___PHANTOM, ___CENTER and Dash.
+  what any of this is. Every slab-edge LINE carries linetype ByLayer, so dashedness is decided by
+  the LAYER record. That HAS now been read: all three slab layers are "Continuous". Only
+  JBP_B_WALL is ___HIDDEN. Nothing on the slab-edge layers is dashed.
 
-THE TRAP -- read this before changing a tolerance
+THE TRAP -- read this before you invent a plate
 
-  Raising dash-join-gap until the outlines close is the obvious move and may be the wrong one.
-  On a structural plan a dashed slab edge frequently means the edge BELOW, or an outline of
-  something on another level. Joining it would produce a floor plate that closes cleanly, passes
-  every count, imports without complaint, and is not the floor that is there.
+  Tolerance is a dead end and is already measured out (see the top). The remaining trap is the
+  opposite one: producing a plate that closes cleanly, passes every count, imports without
+  complaint, and is not the floor that is there. That is worse than the hole, because an engineer
+  cannot see it.
 
-  So the question to answer first is not "what gap closes it". It is "what is SLABEDG-2".
-  Answer that from the drawing -- the layer's linetype, what the geometry encloses, how it sits
-  relative to SLABEDG and SLABEDG-1, whether the same three layers behave this way on sheets
-  whose floors DO come out right. Every other C-LEVEL sheet produces a floor; those are the
-  control group and they are in the same folder.
+  So the question is "what IS on these layers". Answer it from the drawing -- what the geometry
+  encloses, how the three layers sit relative to each other, and whether they behave this way on
+  sheets whose floors DO come out right. Every C-LEVEL sheet produces a floor; those are the
+  control group and they are in the same folder. If the honest answer is that no slab edge is
+  drawn on Level 1 at all, say so -- that is a finding, and drafting can close the outline.
 
   If the honest answer is that SLABEDG-2 is not this level's edge, then say so and the fix is
   elsewhere -- the floor has to come from SLABEDG and SLABEDG-1 and their 46-inch gaps.
