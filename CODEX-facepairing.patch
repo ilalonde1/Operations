@@ -1,0 +1,184 @@
+diff --git a/Kor.Operations.EngineeringTools.Core/Dxf/StructuralPlanClassifier.cs b/Kor.Operations.EngineeringTools.Core/Dxf/StructuralPlanClassifier.cs
+index 636dfaeb..98f7c26c 100644
+--- a/Kor.Operations.EngineeringTools.Core/Dxf/StructuralPlanClassifier.cs
++++ b/Kor.Operations.EngineeringTools.Core/Dxf/StructuralPlanClassifier.cs
+@@ -353,16 +353,37 @@ public static class StructuralPlanClassifier
+             int recovered = 0;
+             if (isWall)
+             {
++                // Chains the decomposer got nothing from, kept for the pooled pass below. A chain
++                // it already read is not offered again: pooling is the fallback for what one chain
++                // cannot describe on its own, not a second opinion on what it could.
++                var unread = new List<IReadOnlyList<DxfPoint>>();
++
+                 foreach (var chain in built.OpenChains)
+                 {
+-                    if (chain.Count < 4) continue;
++                    if (chain.Count < 4) { unread.Add(chain); continue; }
+                     var asLoop = new PlanLoop(layer, chain, closedExactly: false);
+                     var panels = WallOutlineDecomposer.Decompose(asLoop, options);
+-                    if (panels.Count == 0) continue;
++                    if (panels.Count == 0) { unread.Add(chain); continue; }
+ 
+                     result.Walls.AddRange(panels);
+                     recovered += panels.Count;
+                 }
++
++                // And then across the chains, not only inside each one.
++                //
++                // The pass above hands each open chain to the decomposer on its own, so it finds a
++                // wall only where one chain happens to trace BOTH faces. Drafting does not promise
++                // that: on 31065's ground floor the exterior wall arrives as nineteen open chains
++                // on JBP_WALL_EXTERIOR, no two of which close, and the two faces of one wall sit in
++                // different chains. Eight panels were recovered out of seventeen outlines and the
++                // storey came out with 56% of the wall length the engineer's own model has, the
++                // worst of any level in that building.
++                //
++                // Pooled, those faces pair immediately and at believable thicknesses: fifteen pairs
++                // at 9.8" and 11.8", the largest running 85 feet. Her own walls there are 10 to 16
++                // inches, so these are the walls, not an artefact of pairing anything with
++                // anything. L1 goes from 56% to 82%.
++                recovered += PairOpenFaces(result, unread, layer, options);
+             }
+ 
+             if (built.OpenChains.Count > 0)
+@@ -657,6 +678,139 @@ public static class StructuralPlanClassifier
+         return perimeter < 1e-9 ? 0 : 4.0 * loop.Area / perimeter;
+     }
+ 
++    /// <summary>
++    /// Pairs wall faces lying in DIFFERENT open chains, which the per-chain decomposition cannot
++    /// see. Each face is used once and the nearest qualifying partner wins, so across a corridor
++    /// the separation exceeds the wall-thickness ceiling and no pair is made.
++    /// </summary>
++    /// <returns>How many panels were recovered.</returns>
++    private static int PairOpenFaces(
++        PlanGeometrySet result,
++        IReadOnlyList<IReadOnlyList<DxfPoint>> chains,
++        string layer,
++        PlanClassificationOptions options)
++    {
++        var faces = new List<(DxfPoint A, DxfPoint B, double Length)>();
++        foreach (var chain in chains)
++            for (int i = 0; i < chain.Count - 1; i++)
++            {
++                double length = chain[i].DistanceTo(chain[i + 1]);
++                if (length >= options.MinPanelOverlap) faces.Add((chain[i], chain[i + 1], length));
++            }
++
++        if (faces.Count < 2) return 0;
++
++        var used = new bool[faces.Count];
++        int made = 0;
++
++        for (int i = 0; i < faces.Count; i++)
++        {
++            if (used[i]) continue;
++            var (ai, bi, li) = faces[i];
++            double ux = (bi.X - ai.X) / li, uy = (bi.Y - ai.Y) / li;
++            double nx = -uy, ny = ux;
++
++            int best = -1;
++            double bestSeparation = 0, bestT0 = 0, bestT1 = 0, bestSide = 0;
++
++            for (int j = 0; j < faces.Count; j++)
++            {
++                if (j == i || used[j]) continue;
++                var (aj, bj, lj) = faces[j];
++
++                double vx = (bj.X - aj.X) / lj, vy = (bj.Y - aj.Y) / lj;
++                if (Math.Abs(ux * vx + uy * vy) < 0.985) continue;
++
++                double d1 = (aj.X - ai.X) * nx + (aj.Y - ai.Y) * ny;
++                double d2 = (bj.X - ai.X) * nx + (bj.Y - ai.Y) * ny;
++
++                // Both ends on one side, or the faces cross rather than face each other.
++                if (Math.Sign(d1) != Math.Sign(d2) && Math.Abs(d1) > 1e-6 && Math.Abs(d2) > 1e-6) continue;
++
++                double separation = (Math.Abs(d1) + Math.Abs(d2)) / 2.0;
++                if (separation < options.MinWallThickness || separation > options.MaxWallThickness) continue;
++
++                double tb0 = (aj.X - ai.X) * ux + (aj.Y - ai.Y) * uy;
++                double tb1 = (bj.X - ai.X) * ux + (bj.Y - ai.Y) * uy;
++                if (tb0 > tb1) (tb0, tb1) = (tb1, tb0);
++
++                double t0 = Math.Max(0, tb0), t1 = Math.Min(li, tb1);
++                if (t1 - t0 < options.MinPanelOverlap) continue;
++
++                if (best < 0 || separation < bestSeparation - 1e-6)
++                {
++                    best = j;
++                    bestSeparation = separation;
++                    bestT0 = t0;
++                    bestT1 = t1;
++                    bestSide = Math.Sign(d1 + d2) >= 0 ? 1.0 : -1.0;
++                }
++            }
++
++            if (best < 0) continue;
++
++            double offset = bestSeparation / 2.0 * bestSide;
++            var start = new DxfPoint(ai.X + ux * bestT0 + nx * offset, ai.Y + uy * bestT0 + ny * offset);
++            var end = new DxfPoint(ai.X + ux * bestT1 + nx * offset, ai.Y + uy * bestT1 + ny * offset);
++
++            used[i] = used[best] = true;
++
++            // The per-chain pass runs first and finds a wall wherever one chain traced both of its
++            // faces, so pooling re-derives some of what it already has. Keyed the way the composer
++            // keys one, because letting a duplicate through is not free: it is reported as a member
++            // read and then not modelled, which is the count the coverage ratchet watches.
++            var candidate = new WallAxis(start, end, bestSeparation, layer);
++            if (result.Walls.Any(w => SameWall(w, candidate))) continue;
++
++            // Nor a second reading of a run this sheet already has. Identical endpoints are the
++            // easy case; the one that costs is a pooled pair lying ALONG a panel the per-chain
++            // pass already produced, ending a few inches short of it. Both describe one wall, the
++            // composer writes whichever it meets first, and the other is reported as a member read
++            // and not modelled -- three of those on 31168's tower A level 35 plan alone.
++            var mid = new DxfPoint((start.X + end.X) / 2.0, (start.Y + end.Y) / 2.0);
++            if (result.Walls.Any(w => DistanceToSegment(mid, w.Start, w.End) <= options.MinWallThickness))
++                continue;
++
++            result.Walls.Add(candidate);
++            made++;
++        }
++
++        return made;
++    }
++
++    /// <summary>Perpendicular distance from a point to a segment, clamped to the segment's ends.</summary>
++    private static double DistanceToSegment(DxfPoint p, DxfPoint a, DxfPoint b)
++    {
++        double dx = b.X - a.X, dy = b.Y - a.Y;
++        double lengthSquared = dx * dx + dy * dy;
++        if (lengthSquared < 1e-12) return p.DistanceTo(a);
++
++        double t = ((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lengthSquared;
++        t = Math.Clamp(t, 0, 1);
++        return p.DistanceTo(new DxfPoint(a.X + dx * t, a.Y + dy * t));
++    }
++
++    /// <summary>
++    /// The same wall, by the rule the composer uses to decide it has one already: the two ends,
++    /// rounded to the inch, in either order. Thickness is deliberately not part of it — the
++    /// composer's key does not carry thickness either, so two passes deriving one centreline at
++    /// 9.8" and 10.2" are one wall there and must be one wall here.
++    /// </summary>
++    private static bool SameWall(WallAxis a, WallAxis b)
++    {
++        static (long, long, long, long) Key(WallAxis w)
++        {
++            var ends = new[]
++            {
++                ((long)Math.Round(w.Start.X), (long)Math.Round(w.Start.Y)),
++                ((long)Math.Round(w.End.X), (long)Math.Round(w.End.Y)),
++            }.OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
++            return (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
++        }
++
++        return Key(a) == Key(b);
++    }
++
+     /// <summary>Bearing of the footprint's long face from global X, in degrees.</summary>
+     private static double AxisAngle(OrientedBox box)
+     {

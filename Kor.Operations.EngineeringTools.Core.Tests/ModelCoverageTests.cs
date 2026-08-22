@@ -230,7 +230,7 @@ public class ModelCoverageTests
             foreach (string storey in sheet.Stories)
             {
                 if (modelled.TryGetValue(storey, out var m)) runs.AddRange(m);
-                if (existing.TryGetValue(storey, out var e)) runs.AddRange(e.Select(p => (p, p)));
+                if (existing.TryGetValue(storey, out var e)) runs.AddRange(e);
             }
 
             bool Covered(DxfPoint p) => runs.Any(r => DistanceToSegment(p, r.A, r.B) <= Tolerance);

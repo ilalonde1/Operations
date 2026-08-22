@@ -1,0 +1,127 @@
+One change, already written, that improves the model and trips a ratchet. Find out why.
+
+Repo: C:\VIsual Studio Projects\Operations, branch develop. The change is NOT committed --
+it is saved as CODEX-facepairing.patch in the repo root. Apply it with:
+
+    git apply CODEX-facepairing.patch
+
+It touches one file: Kor.Operations.EngineeringTools.Core/Dxf/StructuralPlanClassifier.cs
+
+WHAT THE CHANGE DOES
+
+  A wall is read by pairing its two faces. Closed outlines go to WallOutlineDecomposer, and open
+  chains are handed to it ONE CHAIN AT A TIME, so a wall is only found where a single chain traced
+  both of its faces.
+
+  Drafting does not promise that. On 31065's ground floor the exterior wall arrives as 19 open
+  chains on JBP_WALL_EXTERIOR, none of which close, and the two faces of one wall sit in DIFFERENT
+  chains. Eight panels were recovered from seventeen outlines and the storey came out with 56% of
+  the wall length the engineer's own model has -- the worst level in that building.
+
+  Pooled across chains, those faces pair immediately and believably: fifteen pairs at 9.8" and
+  11.8" (her own walls there are 10 to 16), the largest running 85 feet. The patch adds
+  PairOpenFaces, which does that pairing. L1 goes from 56% to 82% of her wall length.
+
+THE PROBLEM
+
+  ModelCoverageTests.EveryDrawnMemberIsModelledOrAlreadyThere is a ratchet: it counts drawn
+  members that were read and then neither modelled nor already present in the engineer's model,
+  and that count MAY ONLY COME DOWN. With the patch applied:
+
+      31138 2170 W 1st    0 lost   (ceiling 0)   -- fine
+      31168 YMCA Langara  10 lost  (ceiling 7)   -- FAILS
+
+  All ten are on ONE sheet: "S2-22-1_3_LEVEL 35 PLAN - CONCRETE OUTLINE - BLDG A".
+
+MEASURED ALREADY -- do not spend the night re-deriving this
+
+  - Without the patch, 31168 loses 7, and those 7 are the SAME sheet. The patch adds 3 more of
+    what is already there rather than a new kind of fault.
+  - That sheet classifies 8 walls and 2 columns and places on exactly 1 storey. ALL TEN are
+    dropped by the composer. Meanwhile 7 unrelated member assignments sit on A-LEVEL 35 from
+    other sheets. Run it yourself with scratch script run31168-full.ps1 (see below) -- the sheet
+    table line is "--Structural Plan - S2-22-1_3_LEVEL 35 PLAN - CON...  1  1  8  2  0".
+  - A code comment in DxfToEtabsService already records this fault from before the patch: "On
+    31168 the tower A level 35 plan reported five walls and two columns against its name in the
+    sheet table and put none of them in the model, because a sheet read earlier had already
+    claimed those places." Five walls plus two columns is exactly the 7.
+
+  THREE THINGS TRIED THAT DID NOT MOVE THE NUMBER. Do not repeat them:
+
+    1. Dedupe the pooled wall against walls already in result.Walls by both endpoints rounded to
+       the inch, in either order, thickness excluded -- the same key E2kGeometryComposer uses.
+       31138 went 35 -> 30; 31168 stayed at 10.
+    2. Also skip a pooled wall whose midpoint lies within MinWallThickness of an existing result
+       wall's segment, to catch a pair lying ALONG a panel rather than exactly on it. No change.
+    3. Pool only the chains the per-chain decomposition got nothing from, so a chain already read
+       is never offered twice. No change: still 10.
+
+  So the three extra are not duplicates of anything the per-chain pass produced. They are three
+  more walls on a sheet whose members are all dropped for a reason that predates this change.
+
+WHAT I WANT BACK
+
+  1. WHY every member on that sheet is dropped. Which code path drops them -- the already-modelled
+     test against the reference, FreeStoreysFor finding no free storey, or something else -- and
+     what claimed those places first. Evidence, not a theory.
+  2. Whether the right answer is to fix that, or to stop the pooled pass producing walls there.
+     Say which and why.
+  3. The patch landed with 31168 at 7 or below, and 31138 still at 0.
+  4. A test that fails on the bug the pooled pass fixes -- a fixture shaped like the real thing,
+     two faces of one wall in two separate open chains, asserting a wall comes out.
+  5. If any measurement above is wrong, say which and show it. I would rather be corrected.
+
+  DO NOT raise either ceiling. That counter may only come down; raising it is how a tool starts
+  losing members quietly, which is the exact failure this whole file exists to prevent.
+
+WHERE THINGS ARE
+
+  Kor.Operations.EngineeringTools.Core/Dxf/
+      StructuralPlanClassifier.cs     the patch; PairOpenFaces is near the bottom
+      WallOutlineDecomposer.cs        the per-chain pairing it stands beside
+      E2kGeometryComposer.cs          FreeStoreysFor, the already-modelled test, placedWalls
+      DxfToEtabsService.cs            reads rules, places sheets on storeys, writes the report
+
+  Kor.Operations.EngineeringTools.Core.Tests/
+      ModelCoverageTests.cs           the ratchet
+      GeneratedModel.cs               ceilings, and ExistingByStorey
+
+  A ready-made full-site run, no cuts, which is what the coverage test builds:
+      C:\Users\ilalonde\AppData\Local\Temp\claude\C--VIsual-Studio-Projects-Operations\
+        e2f29e17-4db8-4bed-a024-942bc97f51ef\scratchpad\run31168-full.ps1
+
+  Useful and needs no database:
+      takeoff dxf-inspect <sheet.dxf> [--walls]     layers, loops, open chains, gap distribution
+      takeoff dxf-render  <sheet.dxf> <out.png> --overlay --size 2400
+
+CONSTRAINTS
+
+  - Do NOT modify anything under \\Kor-fs01. Read the drawings; write nothing there.
+  - KOR_ENGINEERINGTOOLS_STANDARDSDB is not set on this machine and there is no local database.
+    Derive it, process-local only, from KOR_OPPORTUNITIES_OPPORTUNITIESDB by swapping the database
+    name to KorStandards:
+
+      $c = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
+      $kv = @{}; foreach ($p in ($c -split ';')) { if ($p -match '=') { $k,$v = $p.Split('=',2); $kv[$k.Trim().ToLower()] = $v.Trim() } }
+      $u = $kv['user id']; if (-not $u) { $u = $kv['uid'] }
+      $pw = $kv['password']; if (-not $pw) { $pw = $kv['pwd'] }
+      $env:KOR_ENGINEERINGTOOLS_STANDARDSDB = "Server=$($kv['server']);Database=KorStandards;User Id=$u;Password=$pw;TrustServerCertificate=True"
+
+    Never setx it, never print it, never write it to a file.
+  - Rules live in KorStandards. A rule change is a migration in C:\VIsual Studio Projects\KOR.Drafter\db\,
+    never a constant in code. Write it, do not apply it.
+  - No destructive git. Do not push.
+  - Never write a C# regex or a Windows path through a Python string that is not raw. "\b" becomes
+    a BACKSPACE silently -- no warning, unlike \s and \d -- and the pattern then matches nothing
+    while every piece of it tests fine on its own. Read the file back and confirm what landed.
+  - The full suite is 501 tests and takes about ten minutes because roughly twenty rebuild two real
+    buildings from drawings over SMB. The two coverage tests alone run in two minutes:
+      dotnet test ... --filter "FullyQualifiedName~EveryDrawnMemberIsModelledOrAlreadyThere"
+    Run the full suite before claiming anything about it, and say plainly if you did not. Do not
+    start it and then keep editing -- it locks the output directory and leaves test hosts wedged.
+
+FINALLY
+
+  Review your own change adversarially before handing it back. Assume the three walls are real
+  losses and the ratchet is right. What would have to be true for that, and what in the model
+  would show it? Say what you checked to rule it out, and what you could not.

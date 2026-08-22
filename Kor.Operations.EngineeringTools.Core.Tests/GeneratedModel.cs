@@ -34,9 +34,13 @@ internal static class GeneratedModel
     /// may only ever come down. What remains is what the drawings genuinely do not resolve.
     /// </summary>
     internal const int LangaraLostCeiling = 7;
-    // 26: building per layer family reads 13 more drawn members on 31138 and models most of
-    // them; two more remain unresolved. Member counts are identical, so nothing was lost.
-    internal const int WestFirstLostCeiling = 26;
+
+    // 0, down from 26. Every one of those 26 was sitting exactly on top of a wall the engineer had
+    // already modelled: this test kept only her walls' MIDPOINTS, so a drawn wall the composer
+    // correctly skipped counted as covered only where the two midpoints happened to coincide. One
+    // drawn wall spanning several of her panels never could. ExistingByStorey carries the runs now
+    // and the number is what it always should have been.
+    internal const int WestFirstLostCeiling = 0;
 
     /// <summary>
     /// Generated columns whose size or shape does not match the footprint they were drawn from.
@@ -350,24 +354,37 @@ internal static class GeneratedModel
     }
 
     /// <summary>The engineer's own walls and columns in the reference model, by storey.</summary>
-    internal static Dictionary<string, List<DxfPoint>> ExistingByStorey(Project project)
+    /// <summary>
+    /// What the engineer's own model already carries, as the RUNS those members occupy.
+    ///
+    /// This kept only each wall's midpoint, which made a wall a point. A drawn wall that the
+    /// composer correctly skips because she already has one along that line was then credited as
+    /// covered only if the two midpoints happened to coincide -- true where one drawn wall becomes
+    /// one of her panels, and false as soon as a drawn wall spans several of them. The longer the
+    /// panel read off the drawing, the more certainly it was called lost while sitting exactly on
+    /// top of her wall.
+    ///
+    /// E2kWall has carried both ends all along. Using them makes the coverage test measure what it
+    /// says it measures; it can only remove false losses, never hide real ones.
+    /// </summary>
+    internal static Dictionary<string, List<(DxfPoint A, DxfPoint B)>> ExistingByStorey(Project project)
     {
-        var byStorey = new Dictionary<string, List<DxfPoint>>(StringComparer.OrdinalIgnoreCase);
+        var byStorey = new Dictionary<string, List<(DxfPoint A, DxfPoint B)>>(StringComparer.OrdinalIgnoreCase);
         if (!File.Exists(project.Reference)) return byStorey;
 
         var doc = E2kDocument.Load(project.Reference);
         var geometry = E2kGeometryReader.Read(doc);
 
-        void Add(string storey, DxfPoint at)
+        void Add(string storey, DxfPoint a, DxfPoint b)
         {
-            if (!byStorey.TryGetValue(storey, out var list)) byStorey[storey] = list = new List<DxfPoint>();
-            list.Add(at);
+            if (!byStorey.TryGetValue(storey, out var list)) byStorey[storey] = list = new List<(DxfPoint, DxfPoint)>();
+            list.Add((a, b));
         }
 
         foreach (var w in geometry.Walls)
-            Add(w.Story, w.Midpoint);
+            Add(w.Story, w.A, w.B);
         foreach (var c in geometry.Columns)
-            Add(c.Story, c.At);
+            Add(c.Story, c.At, c.At);
 
         return byStorey;
     }
