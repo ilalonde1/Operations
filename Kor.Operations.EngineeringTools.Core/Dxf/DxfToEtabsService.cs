@@ -639,6 +639,15 @@ public static class DxfToEtabsService
 
         warnings.AddRange(FarFromOriginWarnings(parsed.Select(p => p.Geometry), offset));
 
+        // What this job's own drawings say a wall is, before anything is written. A portfolio rule
+        // cannot tell a 42" tower core from two faces paired across a parkade corridor; the job's
+        // own distribution can, and it costs nothing to measure. See JobCalibration.
+        var calibration = JobCalibration.From(
+            parsed.SelectMany(p => p.Geometry.Walls).ToList(),
+            parsed.SelectMany(p => p.Geometry.Columns).ToList());
+
+        warnings.AddRange(calibration.Notes(parsed.SelectMany(p => p.Geometry.Walls).ToList()));
+
         var placements = new List<StoryPlacement>();
         foreach (var (sheet, geometry, matched) in parsed)
             foreach (string storyName in matched)

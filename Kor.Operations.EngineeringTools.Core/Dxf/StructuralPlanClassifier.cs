@@ -819,9 +819,18 @@ public static class StructuralPlanClassifier
             return;
         }
 
+        // The bounding box says nothing about how much concrete is in it. An L-shaped path three
+        // inches wide measures 541x145 and reads, in a flag, exactly like a wall would — which is
+        // how eighteen of these went into an engineer's workbook as questions about her building
+        // when every one was linework: 2 to 4 inches of implied material, against her thinnest
+        // real wall at 10. The material per unit of run is the number that separates them, so the
+        // flag carries it and whoever reads the flag does not have to go back to the drawing.
+        double implied = box.Length > 1e-9 ? loop.Area / box.Length : 0;
+
         result.Flags.Add(
             $"{loop.Layer}: outline {box.Length:0}x{box.Thickness:0} with {loop.Points.Count} vertices " +
-            "could not be resolved into wall panels — check this location.");
+            $"could not be resolved into wall panels — check this location. " +
+            $"[implied thickness {implied:0.0} in]");
     }
 
     /// <summary>Largest rings are slabs; rings sitting inside one of them are openings.</summary>

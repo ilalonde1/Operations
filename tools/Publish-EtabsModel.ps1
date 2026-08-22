@@ -24,9 +24,24 @@ param(
 
     # Keep this storey and everything below it. For a site model where the engineer wants one
     # building: 31168's YMCA and its parkade is -TopStorey "C-ROOF", which keeps Level 1 entire --
-    # both towers' ground floors included, because they sit at grade inside the podium -- and drops
-    # the towers and the tower floors below the split that carry no tower prefix.
+    # both towers' ground floors included, because they sit at grade inside the podium.
+    #
+    # It does NOT drop the towers. Their floors below the split carry no prefix and stand below the
+    # mid-rise's own roof, so an elevation cut keeps every one of them: 31168 went to an engineer
+    # with eight storeys of a building she had said was out of scope. Name them in -DropStoreys.
     [string]$TopStorey,
+
+    # Storeys to leave out by name, whatever their height. The blunt instrument, and the only one
+    # that reaches a tower whose levels look like the podium's and sit at the mid-rise's elevations.
+    # 31168's YMCA is -DropStoreys 'LEVEL 3','LEVEL 4','LEVEL 5','LEVEL 6','LEVEL 7','LEVEL 8','LEVEL 9','LEVEL 10'.
+    [string[]]$DropStoreys,
+
+    # Give a storey that has members but no floor the plate from the storey below it, where that
+    # plate stands under those members. For a job whose drawings carry no closed slab outline --
+    # 31168's Level 1 and mezzanine -- the alternative is members with nothing spanning between
+    # them. The plates are reported as INFERRED, because a plate she cannot tell from a measured
+    # one is worse than the hole it fills.
+    [switch]$InferFloors,
 
     [switch]$SkipDossier
 )
@@ -109,6 +124,8 @@ $cli = Join-Path $repo 'Kor.Operations.EngineeringTools.TakeoffCli\bin\Debug\net
 Write-Host "generating $Project..." -ForegroundColor DarkGray
 $cutArgs = @()
 if ($TopStorey) { $cutArgs += @('--top-storey', $TopStorey) }
+if ($DropStoreys) { $cutArgs += @('--drop-storeys', ($DropStoreys -join ',')) }
+if ($InferFloors) { $cutArgs += '--infer-floors' }
 
 & $cli dxf-to-etabs $config.Dxf (Join-Path $folder $config.Reference) $out `
     @cutArgs `

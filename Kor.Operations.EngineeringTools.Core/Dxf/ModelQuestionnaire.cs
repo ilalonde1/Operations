@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 
@@ -502,6 +503,16 @@ public static class ModelQuestionnaire
     /// These come from the run's own flags, so they cannot claim a problem the model does not
     /// have, and they disappear from the workbook when the job stops having it.
     /// </summary>
+    /// <summary>
+    /// Thinnest run of material this will call concrete and put in front of an engineer.
+    ///
+    /// Not a modelling threshold -- the classifier has its own, and a thin outline is already not
+    /// modelled. This decides only whether the tool ASKS about it. Six inches is below anything
+    /// either reference model builds in -- 31168's thinnest wall is 10 -- and well above the 2 to
+    /// 4 inches that drafting scratch measures.
+    /// </summary>
+    private const double MinConcreteThickness = 6.0;
+
     private static IEnumerable<ModelQuestion> ThisJobsQuestions(DxfToEtabsReport? report)
     {
         if (report is null) yield break;
@@ -538,8 +549,43 @@ public static class ModelQuestionnaire
                 { RuleTopic = "plate-with-nothing-beneath" };
         }
 
+        // Plates a storey was given because its own drawing has none. She is not being asked to
+        // solve anything -- the model has a floor there -- but a plate she cannot tell from a
+        // measured one is worse than the hole it filled, so it is put in front of her, once.
+        if (Flag("not drawn one for") is { } inferred)
+        {
+            string storeys = inferred[(inferred.IndexOf(':') + 1)..].Split('.')[0].Trim();
+            yield return new ModelQuestion("J4", "Floors taken from the storey below",
+                $"These storeys were given the floor plate from the storey beneath them: {storeys}. " +
+                "Their own drawings carry no closed slab edge to read one from. Are these plates the " +
+                "right shape, or should their edges be somewhere else?",
+                "Nothing was invented: each plate is the one below it, and only where that plate stands " +
+                "under this storey's own walls and columns. They are marked INFERRED in the report.",
+                "Without them those storeys have no diaphragm at all and every member on them reads as " +
+                "unsupported. With them, the edges are the storey below's, not yours.",
+                "Measured on this job: the slab edge on those sheets arrives as sixty-odd open chains, " +
+                "and at every tolerance from 0.05 to 72 inches the largest region it encloses is 119 sq " +
+                "ft. There is nothing there to close, so no tolerance produces that floor.")
+                { RuleTopic = "floors-taken-from-below" };
+        }
+
+        // Only the ones that could be concrete.
+        //
+        // Every outline that will not resolve was asked about, and on 31168 that put eighteen rows
+        // in front of an engineer of which every single one was linework: 2 to 4 inches of implied
+        // material where her thinnest real wall is 10. Asking her to identify drafting scratch is
+        // how a workbook stops being read. The flag now carries the implied thickness, so the ones
+        // too thin to be concrete are answered here rather than by her.
         var unresolved = report.Summary.Flags
             .Where(f => f.Contains("could not be resolved into wall panels", StringComparison.OrdinalIgnoreCase))
+            .Where(f =>
+            {
+                var t = Regex.Match(f, @"implied thickness\s+([\d.]+)\s*in", RegexOptions.IgnoreCase);
+                if (!t.Success) return true;   // an older flag with no measurement still gets asked
+                return !double.TryParse(t.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture,
+                           out double thickness)
+                    || thickness >= MinConcreteThickness;
+            })
             .ToList();
 
         if (unresolved.Count > 0)

@@ -1236,6 +1236,46 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void AJobsOwnDrawingsSetTheCeilingRatherThanThePortfolio()
+    {
+        // dxf.max-wall-thickness is 60", measured over 1,126 engineer models where 42" walls appear
+        // 1,256 times -- all real, all tower cores. It is right for the portfolio and useless for a
+        // single job: on 31168 it admitted 42" walls into a parkade and a 132" wall into a model an
+        // engineer opened, while her own walls run 10 to 16.
+        //
+        // The job's own drawings know better. Measured against two engineers' models, the
+        // distribution read off the drawings tracks theirs through the body and overshoots only at
+        // the top: on 31065 the drawings give a p90 of 23.6" against her 23.6", on 31104 24.0"
+        // against her 24.0". So the drawings' own upper tenth is the ceiling, and no constant is
+        // needed to find it.
+        var walls = new List<WallAxis>();
+        for (int i = 0; i < 40; i++)
+            walls.Add(new WallAxis(new DxfPoint(0, i * 10), new DxfPoint(120, i * 10), 12, "JBP_V-WALL"));
+        for (int i = 0; i < 5; i++)
+            walls.Add(new WallAxis(new DxfPoint(0, 500 + i * 10), new DxfPoint(120, 500 + i * 10), 24, "JBP_V-WALL"));
+        walls.Add(new WallAxis(new DxfPoint(0, 900), new DxfPoint(120, 900), 96, "JBP_V-WALL"));
+
+        var calibration = JobCalibration.From(walls, Array.Empty<ColumnFootprint>());
+
+        Assert.True(calibration.IsUsable);
+        Assert.Equal(12, calibration.WallMedian, 1);
+        Assert.Equal(96, calibration.WallMax, 1);
+
+        var notes = calibration.Notes(walls).ToList();
+
+        // It states what the job is, and names what stands outside it -- with the location, because
+        // a count on its own does not tell an engineer where to look.
+        Assert.Contains(notes, n => n.Contains("median 12", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.Contains("96", StringComparison.Ordinal) && n.Contains("(0,900)", StringComparison.Ordinal));
+
+        // And it is quiet on a job too small to have a distribution: a percentile off three walls
+        // would call the fourth an outlier.
+        var few = JobCalibration.From(walls.Take(3).ToList(), Array.Empty<ColumnFootprint>());
+        Assert.False(few.IsUsable);
+        Assert.Empty(few.Notes(walls.Take(3).ToList()));
+    }
+
+    [Fact]
     public void AModelCanBeBuiltFromALevelListWithNoEtabsFileAtAll()
     {
         // The tool demanded an engineer's .e2k to produce an .e2k, which is why it had only ever
