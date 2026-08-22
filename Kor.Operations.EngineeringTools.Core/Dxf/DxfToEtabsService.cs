@@ -68,6 +68,17 @@ public sealed record DxfToEtabsRequest
     public string? TopStorey { get; init; }
 
     /// <summary>
+    /// Storeys to leave out by name, whatever their elevation.
+    ///
+    /// <see cref="TopStorey"/> was meant to be the answer to "not the towers" and is not: 31168's
+    /// tower levels 3 to 10 carry no prefix and stand below the mid-rise's own roof, so cutting at
+    /// C-ROOF kept all eight of them and an engineer opened a model of a building she had said was
+    /// out of scope. Nothing about their names or their heights marks them; only their position on
+    /// plan does, and until that is the rule they are named here.
+    /// </summary>
+    public IReadOnlyList<string> DropStoreys { get; init; } = Array.Empty<string>();
+
+    /// <summary>
     /// Translation applied to drawing coordinates. Defaults to none: the CAD export and the
     /// model both come out of the same Revit project, so the drawings already sit in the
     /// model's coordinate system — on 31168 the core walls land on grid lines 15 and 16 to
@@ -310,6 +321,10 @@ public static class DxfToEtabsService
         // storey. Left alone, every member down there is extruded that far on import.
         bool baseNormalised = doc.NormaliseBaseStorey();
 
+        // The storey list as the engineer's own model has it, kept because sheet matching needs it
+        // whatever the cuts do to the model afterwards. See the note where matchNames is built.
+        var storiesBeforeCuts = doc.ReadStories().Select(s => s.Name).ToList();
+
         // A model of one tower carries only that tower's storeys. On a site model the others stand
         // empty, which is what the engineer saw: "some levels don't exist, they're blank."
         var droppedStoreys = request.TowerOnly is null
@@ -321,6 +336,11 @@ public static class DxfToEtabsService
         var droppedAbove = request.TopStorey is null
             ? Array.Empty<string>()
             : doc.KeepStoreysUpTo(request.TopStorey).ToArray();
+
+        // Last, and after both, because it exists to catch what neither of them can see.
+        var droppedByName = request.DropStoreys.Count == 0
+            ? Array.Empty<string>()
+            : doc.DropStoreys(request.DropStoreys).ToArray();
 
         // Drafting can issue parkade levels the model has never had. On 31138 the drawings go to
         // LEVEL P5 and the model stopped at P3, so two whole floors were read and placed nowhere —
@@ -342,6 +362,7 @@ public static class DxfToEtabsService
 
         var storyNames = stories.Select(s => s.Name).ToList();
         var byName = stories.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
 
         var files = Directory.EnumerateFiles(request.DxfFolder, "*.dxf", SearchOption.TopDirectoryOnly)
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
@@ -439,12 +460,23 @@ public static class DxfToEtabsService
                          $"{Describe(modelUnitInInches)}, so every coordinate was scaled by {scale:0.######}.");
         // Everything a deliberate cut took out, by name and by the level number in the name, so a
         // sheet for a removed storey can be recognised and not reported as a failure.
-        var cutStoreys = new HashSet<string>(droppedStoreys.Concat(droppedAbove), StringComparer.OrdinalIgnoreCase);
+        var cutStoreys = new HashSet<string>(
+            droppedStoreys.Concat(droppedAbove).Concat(droppedByName), StringComparer.OrdinalIgnoreCase);
         var cutLevelNumbers = new HashSet<int>(cutStoreys
             .Select(n => Regex.Match(n, @"(\d+)"))
             .Where(m => m.Success)
             .Select(m => int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)));
         int sheetsCutAway = 0;
+
+        // Sheets are matched against the storey list the model had BEFORE any cut, and the cut
+        // storeys are struck from the answer afterwards. Matching against what is left instead
+        // lets a drawing migrate to another building: an untagged "LEVEL 8" sheet prefers the
+        // unprefixed "LEVEL 8" storey and falls through to "C-LEVEL 8" once that is the only
+        // level 8 still standing. Removing the towers' eight storeys therefore moved the towers'
+        // drawings INTO the mid-rise — C-LEVEL 8 went from 10 wall panels to 34 — which is a worse
+        // fault than the one being fixed, and it looks like a fuller model rather than a wrong one.
+        // A sheet whose own storey has been cut belongs nowhere, and says so.
+        var matchNames = cutStoreys.Count == 0 ? storyNames : storiesBeforeCuts;
 
         var outcomes = new List<SheetOutcome>();
         var parsed = new List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)>();
@@ -492,7 +524,9 @@ public static class DxfToEtabsService
 
             readSheets.Add(segments);
             var geometry = StructuralPlanClassifier.Classify(segments, classification);
-            var matched = PlanSheetNaming.MatchStories(sheet, storyNames);
+            var matched = PlanSheetNaming.MatchStories(sheet, matchNames)
+                .Where(s => !cutStoreys.Contains(s))
+                .ToList();
 
             outcomes.Add(new SheetOutcome(
                 sheet.FileName, sheet.Label, sheet.BuildingTag, sheet.Levels, matched,
@@ -636,6 +670,20 @@ public static class DxfToEtabsService
                     $"removed from the storey list, along with {orphanedAbove} assign(s) that stood on them. " +
                     $"Removed: {string.Join(", ", droppedAbove.Take(8))}{(droppedAbove.Length > 8 ? ", …" : "")}. " +
                     "Anything the drawings show above that height is not in this model.").ToList(),
+            };
+        }
+
+        if (droppedByName.Length > 0)
+        {
+            int orphanedByName = doc.DropAssignsForMissingStoreys();
+            summary = summary with
+            {
+                Flags = summary.Flags.Append(
+                    $"Left out by name: {droppedByName.Length} storey(s) were removed because they belong to a " +
+                    $"building this model is not of, along with {orphanedByName} assign(s) that stood on them. " +
+                    $"Removed: {string.Join(", ", droppedByName)}. " +
+                    "Neither the height cut nor the tower cut can see these — they are named, and that is " +
+                    "why the footprint of every storey kept is listed above.").ToList(),
             };
         }
 

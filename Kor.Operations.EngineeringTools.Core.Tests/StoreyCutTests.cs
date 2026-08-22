@@ -122,4 +122,58 @@ public class StoreyCutTests
         // nothing, and a literal here only asserts what I guessed ReadStories counts.
         Assert.Equal(before, Names(doc));
     }
+
+    [Fact]
+    public void TheHeightCutLeavesTheTowerLevelsThatStandBelowTheRoof()
+    {
+        // What actually happened on 31168, asserted so it cannot happen quietly again.
+        //
+        // "Nothing above the mid-rise roof" was taken to mean "no towers", and it does not. The
+        // towers' LEVEL 10 sits BELOW C-ROOF, carries no prefix to catch it by, and is a tower
+        // floor in a part of the site the mid-rise does not occupy — 213 to 308 ft on plan against
+        // the mid-rise's 357 to 429. Eight storeys of tower reached an engineer who had asked for
+        // none, and neither filter here can see them.
+        var doc = SiteModel();
+        doc.KeepStoreysUpTo("C-ROOF");
+        var kept = Names(doc);
+
+        Assert.Contains("LEVEL 10", kept);          // a tower floor, below the roof, still standing
+        Assert.Contains("C-LEVEL 9", kept);         // and the mid-rise's own, correctly
+    }
+
+    [Fact]
+    public void NamingTheTowerStoreysRemovesWhatNeitherFilterCanSee()
+    {
+        var doc = SiteModel();
+        doc.KeepStoreysUpTo("C-ROOF");
+
+        var dropped = doc.DropStoreys(new[] { "LEVEL 10" });
+        var kept = Names(doc);
+
+        Assert.Equal(new[] { "LEVEL 10" }, dropped);
+        Assert.DoesNotContain("LEVEL 10", kept);
+
+        // Everything the engineer asked for is still there, at the elevation it had.
+        Assert.Contains("C-ROOF", kept);
+        Assert.Contains("C-LEVEL 9", kept);
+        Assert.Contains("A-LEVEL 1", kept);
+        Assert.Contains("B-LEVEL 1", kept);
+        Assert.Contains("LEVEL P1", kept);
+
+        var roof = doc.ReadStories().Single(s => s.Name == "C-ROOF");
+        var parkade = doc.ReadStories().Single(s => s.Name == "LEVEL P1");
+        Assert.True(roof.Elevation > parkade.Elevation);
+    }
+
+    [Fact]
+    public void DroppingAStoreyThatIsNotThereIsRefused()
+    {
+        // A misspelling that silently drops nothing would leave the towers in and say the cut ran.
+        var doc = SiteModel();
+        var before = Names(doc);
+        var ex = Assert.Throws<InvalidOperationException>(() => doc.DropStoreys(new[] { "LEVEL 100" }));
+
+        Assert.Contains("LEVEL 100", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(before, Names(doc));
+    }
 }

@@ -1,7 +1,10 @@
 param(
     [Parameter(Mandatory = $true)][string]$E2k,
     [Parameter(Mandatory = $true)][string]$OutPng,
-    [string]$Title = ''
+    [string]$Title = '',
+    # One storey only. Looking at a whole 23-storey stack in plan tells you nothing about which
+    # panel on which floor is wrong; the engineer marks up one level at a time and so must this.
+    [string]$Storey = ''
 )
 
 # Draws an ETABS .e2k the way ETABS will build it, so the model can be looked at rather than
@@ -87,6 +90,7 @@ function Instances($name) {
     $n = if ($span.ContainsKey($name) -and $span[$name] -gt 0) { $span[$name] } else { 1 }
     $out = New-Object System.Collections.ArrayList
     foreach ($s in $assign[$name]) {
+        if ($Storey -ne '' -and $s -ne $Storey) { continue }
         $i = $indexOf[$s]
         $bot = if ($null -ne $i -and ($i - $n) -ge 0) { $story[$ordered[$i - $n].N].Top } else { $globalBot[$s] }
         [void]$out.Add([pscustomobject]@{ Bot = $bot; Top = $story[$s].Top })

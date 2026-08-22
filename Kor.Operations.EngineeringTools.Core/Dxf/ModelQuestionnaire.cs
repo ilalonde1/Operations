@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
@@ -531,7 +532,7 @@ public static class ModelQuestionnaire
                 $"{storeys} carries a floor plate with no wall or column on its own storey. Does the " +
                 "structure stop below that level, or is it drawn on a sheet we did not place there?",
                 "The plate was kept rather than dropped, because a roof over structure that stops below " +
-                "is a real building and guessing otherwise would remove a floor she drew.",
+                "is a real building, and guessing otherwise would remove a floor you drew.",
                 "A plate with nothing beneath it is either correct or a sheet that landed on the wrong storey.",
                 "Taken from this run: the plan placed there draws no vertical structure at all.")
                 { RuleTopic = "plate-with-nothing-beneath" };
@@ -543,18 +544,33 @@ public static class ModelQuestionnaire
 
         if (unresolved.Count > 0)
         {
-            string where = string.Join("; ", unresolved
-                .Select(f => f[(f.LastIndexOf(':') + 1)..].Replace("— check this location", "").Trim())
-                .Take(4));
+            // Sheet, layer and size for each, so they can be found. The first version of this row
+            // repeated "could not be resolved into wall panels" once per outline, named no sheet
+            // at all, and showed four of eighteen without saying the other fourteen existed.
+            var located = unresolved
+                .Select(f =>
+                {
+                    var m = Regex.Match(f,
+                        @"^(?<sheet>.+?\.dxf):\s*(?<layer>[^:]+):\s*outline\s+(?<size>[\dx.]+)\s+with\s+(?<v>\d+)\s+vert",
+                        RegexOptions.IgnoreCase);
+                    return m.Success
+                        ? $"{m.Groups["size"].Value}\" ({m.Groups["v"].Value} corners) on {m.Groups["layer"].Value}, " +
+                          $"sheet {Regex.Replace(m.Groups["sheet"].Value, @"^-+Structural Plan - ", "")}"
+                        : f.Trim();
+                })
+                .ToList();
 
             yield return new ModelQuestion("J3", "Wall outlines that would not resolve",
-                $"{unresolved.Count} outline(s) on the wall layers could not be turned into wall panels, so " +
-                $"those walls are not in the model: {where}. Are these walls, and if so is anything unusual " +
-                "about how they are drawn?",
-                "The outlines were read and their shapes measured; what failed is turning them into panels " +
-                "on centrelines. Nothing was guessed in their place.",
-                "These are missing walls, not misplaced ones, and no count will show them to you.",
-                "The sizes above are measured off the drawing, so they can be found on the sheet.")
+                $"{located.Count} outline(s) on the wall layers were read but could not be turned into wall " +
+                "panels, so those walls are NOT in the model. Each one, with the size measured off your " +
+                $"drawing and the sheet it is on:{Environment.NewLine}" +
+                string.Join(Environment.NewLine, located.Select(x => "  • " + x)) + Environment.NewLine +
+                "Are these walls? If so, is there anything unusual about how they are drawn?",
+                "The outlines were read and measured; what failed was turning them into panels on their " +
+                "centrelines. Nothing was guessed in their place, and nothing was moved.",
+                "These are missing walls rather than misplaced ones, and no count in the model will show " +
+                "them to you — the totals look healthy without them.",
+                "Sizes are width by depth in inches, measured off the linework on the sheet named.")
                 { RuleTopic = "outlines-that-would-not-resolve" };
         }
     }

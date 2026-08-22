@@ -432,6 +432,14 @@ public sealed class E2kDocument
     ///
     /// Elevation gets both right in one rule, because that is the shape of the request: the
     /// engineer is pointing at a height, not at a naming convention.
+    ///
+    /// It does NOT get both right, and believing it did shipped eight storeys of tower to an
+    /// engineer who had asked for none. 31168's towers carry LEVEL 3 through LEVEL 10 with no
+    /// prefix, and every one of those sits BELOW the mid-rise's own roof, so cutting at C-ROOF
+    /// kept all eight. Their names look like the podium's and their elevations look like the
+    /// mid-rise's; neither axis can separate them. What separates them is where they stand on
+    /// plan — the towers occupy y 213-308 ft and the mid-rise y 357-429 ft, no overlap at all.
+    /// Use <see cref="DropStoreys"/> until that footprint test is the rule.
     /// </summary>
     /// <returns>The storeys removed, in the order they were listed.</returns>
     public IReadOnlyList<string> KeepStoreysUpTo(string topStorey)
@@ -471,6 +479,69 @@ public sealed class E2kDocument
         section.Lines.Clear();
         section.Lines.AddRange(rebuilt);
         return dropped;
+    }
+
+    /// <summary>
+    /// Drops the named storeys outright, keeping every other one at the elevation it had.
+    ///
+    /// The blunt instrument, and it exists because the two sharp ones both missed. A storey that
+    /// belongs to a building the engineer did not ask for can carry that building's prefix, in
+    /// which case <see cref="KeepOnlyTower"/> finds it; or sit above the part she wants, in which
+    /// case <see cref="KeepStoreysUpTo"/> finds it. 31168's tower levels 3 to 10 do neither, and
+    /// they reached her model because there was no third option to reach for.
+    ///
+    /// Naming the storeys is not a rule and does not pretend to be one. The rule is a plan
+    /// footprint test; this is what to use in the meantime, and the report's footprint table is
+    /// what makes the need for it visible.
+    /// </summary>
+    /// <returns>The storeys removed, in the order they were listed.</returns>
+    public IReadOnlyList<string> DropStoreys(IEnumerable<string> names)
+    {
+        var section = Find("STORIES");
+        if (section is null) return Array.Empty<string>();
+
+        var wanted = new HashSet<string>(
+            names.Select(n => n.Trim()).Where(n => n.Length > 0), StringComparer.OrdinalIgnoreCase);
+        if (wanted.Count == 0) return Array.Empty<string>();
+
+        var stories = ReadStories().OrderBy(s => s.Elevation).ToList();
+        if (stories.Count == 0) return Array.Empty<string>();
+
+        // Naming a storey that is not there is a typo, not a no-op: silently keeping the tower
+        // because its name was misspelled is exactly the failure this method exists to stop.
+        var unknown = wanted.Where(n => !stories.Any(s => s.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).ToList();
+        if (unknown.Count > 0)
+            throw new InvalidOperationException(
+                $"The model has no storey named {string.Join(", ", unknown.Select(u => $"'{u}'"))}. It lists: " +
+                string.Join(", ", stories.OrderByDescending(s => s.Elevation).Select(s => s.Name)) + ".");
+
+        var dropped = stories.Where(s => wanted.Contains(s.Name)).Select(s => s.Name).ToList();
+        var retained = stories.Where(s => !wanted.Contains(s.Name)).ToList();
+        if (retained.Count == 0)
+            throw new InvalidOperationException("Dropping those storeys would leave the model with none.");
+
+        section.Lines.Clear();
+        section.Lines.AddRange(RebuildStoreyLines(retained));
+        return dropped;
+    }
+
+    /// <summary>
+    /// The STORIES section as ETABS writes it: top down, each storey carrying the height of the
+    /// one below it, closed by the base elevation. Shared so that a storey kept by any of the
+    /// cuts stays at the elevation it had and the building neither grows nor shrinks.
+    /// </summary>
+    private static List<string> RebuildStoreyLines(IReadOnlyList<StoryLevel> retained)
+    {
+        var rebuilt = new List<string>();
+        double baseElevation = retained[0].ElevationBelow;
+        for (int i = retained.Count - 1; i >= 0; i--)
+        {
+            double below = i == 0 ? baseElevation : retained[i - 1].Elevation;
+            rebuilt.Add($"  STORY \"{retained[i].Name}\"  HEIGHT {(retained[i].Elevation - below).ToString("0.####", CultureInfo.InvariantCulture)}");
+        }
+        rebuilt.Add($"  STORY \"Base\"  ELEV {baseElevation.ToString("0.####", CultureInfo.InvariantCulture)}");
+        rebuilt.Add(string.Empty);
+        return rebuilt;
     }
 
     public IReadOnlyList<string> KeepOnlyTower(string tower)

@@ -381,6 +381,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     string? building = null;
     string? towerOnly = null;
     string? topStorey = null;
+    var dropStoreys = new List<string>();
     string? reportPath = null;
     string? questionsPath = null;
     string? rulesDb = null;
@@ -412,6 +413,8 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         if (flag.Equals("--bldg", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) building = args[++i];
         else if (flag.Equals("--tower", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) towerOnly = args[++i];
         else if (flag.Equals("--top-storey", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) topStorey = args[++i];
+        else if (flag.Equals("--drop-storeys", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            dropStoreys.AddRange(args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         else if (flag.Equals("--report", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) reportPath = args[++i];
         else if (flag.Equals("--questions", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) questionsPath = args[++i];
         else if (flag.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) rulesDb = args[++i];
@@ -461,6 +464,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         BuildingTag = building,
         TowerOnly = towerOnly,
         TopStorey = topStorey,
+        DropStoreys = dropStoreys,
         Offset = offset,
         Classification = new PlanClassificationOptions(),
         BridgeTolerance = bridgeGiven ? bridgeTolerance : null,

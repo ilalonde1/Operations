@@ -1234,4 +1234,72 @@ public class E2kDocumentTests
         // A column is one plan joint, rising a storey.
         Assert.Contains(lines, l => l.Contains("KC1") && l.TrimEnd().EndsWith("1"));
     }
+
+    [Fact]
+    public void AFootprintThickerThanAnyWallIsFlaggedRatherThanModelled()
+    {
+        // 31168 shipped an engineer a wall 132 inches thick — eleven feet. The branch that made it
+        // was the one for solid concrete "whatever its proportions", and whatever its proportions
+        // had no ceiling written on it. Nothing in either reference model comes near: 31168's own
+        // walls run 10 to 16 inches with 36 for the tower core and nothing in between.
+        //
+        // The point is not that 132 is a big number. It is that a footprint this stocky is not a
+        // pier drawn thick, it is a shape that is not a wall, and the run has to say so instead of
+        // handing over a member no engineer can account for.
+        static IEnumerable<DxfSegment> Solid(double x0, double y0, double x1, double y1)
+        {
+            var c = new[] { new DxfPoint(x0, y0), new DxfPoint(x1, y0), new DxfPoint(x1, y1), new DxfPoint(x0, y1) };
+            for (int i = 0; i < 4; i++) yield return new DxfSegment("JBP_V-WALL", c[i], c[(i + 1) % 4]);
+        }
+
+        var options = new PlanClassificationOptions();
+        var blob = StructuralPlanClassifier.Classify(Solid(0, 0, 300, 132).ToList(), options);
+
+        Assert.Empty(blob.Walls);
+        Assert.Empty(blob.Columns);
+        Assert.Contains(blob.Flags, f => f.Contains("thicker than any wall", StringComparison.OrdinalIgnoreCase));
+
+        // And the ceiling does not swallow the piers it was put above: 48" is the limit, so a
+        // footprint at 48 is still a wall and keeps the in-plane shear it was drawn to carry.
+        // 150 long, not 300 — past an aspect of 4 a footprint is not a pier at all and never
+        // reaches this branch, so a longer one would prove nothing about the ceiling.
+        var pier = StructuralPlanClassifier.Classify(Solid(0, 0, 150, 48).ToList(), options);
+        Assert.NotEmpty(pier.Walls);
+        Assert.DoesNotContain(pier.Flags, f => f.Contains("thicker than any wall", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void ASheetWhoseOwnStoreyWasCutDoesNotMigrateOntoAnotherBuilding()
+    {
+        // Removing the towers' storeys moved the towers' DRAWINGS into the mid-rise, which reads as
+        // a fuller model rather than a wrong one: C-LEVEL 8 went from 10 wall panels to 34.
+        //
+        // The matcher prefers the unprefixed storey for an untagged sheet, and falls through to a
+        // prefixed one when that is the only level 8 left standing. So matching has to be done
+        // against the storey list the model had BEFORE the cut, with the cut storeys struck from
+        // the answer afterwards — a sheet whose own storey is gone belongs nowhere.
+        var beforeCut = new[]
+        {
+            "C-ROOF", "LEVEL 10", "C-LEVEL 9", "LEVEL 9", "C-LEVEL 8", "LEVEL 8", "LEVEL 2", "LEVEL P1",
+        };
+        var sheet = PlanSheetNaming.Parse("--Structural Plan - LEVEL 8.dxf");
+
+        // Uncut, it lands where it belongs.
+        Assert.Equal(new[] { "LEVEL 8" }, PlanSheetNaming.MatchStories(sheet, beforeCut));
+
+        // Matched against what is LEFT after the cut, it migrates onto the mid-rise. This is the
+        // fault, asserted so that the rule below is visibly doing something.
+        var afterCut = beforeCut.Where(s => s is not ("LEVEL 8" or "LEVEL 9" or "LEVEL 10")).ToList();
+        Assert.Contains("C-LEVEL 8", PlanSheetNaming.MatchStories(sheet, afterCut));
+
+        // The rule: match against the full list, then strike what was cut. Nothing remains.
+        var cut = new HashSet<string>(new[] { "LEVEL 8", "LEVEL 9", "LEVEL 10" }, StringComparer.OrdinalIgnoreCase);
+        Assert.Empty(PlanSheetNaming.MatchStories(sheet, beforeCut).Where(s => !cut.Contains(s)));
+
+        // The mid-rise's own sheet is untouched by any of it.
+        var midRise = PlanSheetNaming.Parse("--Structural Plan - C-LEVEL 8.dxf");
+        Assert.Equal(
+            new[] { "C-LEVEL 8" },
+            PlanSheetNaming.MatchStories(midRise, beforeCut).Where(s => !cut.Contains(s)).ToArray());
+    }
 }

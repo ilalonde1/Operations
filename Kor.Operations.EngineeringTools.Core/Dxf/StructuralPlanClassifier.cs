@@ -760,6 +760,20 @@ public static class StructuralPlanClassifier
             // The widest column in her own 31138 model is 36x72 and 31168's export has no concrete
             // rectangular column at all, so nothing that size is a column in either engineer's
             // hands. The run flagged it for checking, which is not the same as getting it right.
+            //
+            // "Whatever its proportions" had no ceiling on it, and that is how a 132" wall — eleven
+            // feet thick — reached an engineer's model. Nothing in either reference is near it:
+            // 31168's own walls run 10 to 16 inches, with 36 for the tower core and nothing between.
+            // A footprint this stocky is not a pier drawn thick, it is a shape that is not a wall,
+            // and saying so is worth more than a member nobody can account for.
+            if (box.Thickness > options.MaxPierThickness)
+            {
+                result.Flags.Add(
+                    $"{loop.Layer}: solid outline {box.Length:0}x{box.Thickness:0} is thicker than any wall in " +
+                    $"this building ({options.MaxPierThickness:0}\" limit) — not modelled, check this location.");
+                return;
+            }
+
             result.Walls.Add(new WallAxis(box.AxisStart, box.AxisEnd, box.Thickness, loop.Layer));
             return;
         }
