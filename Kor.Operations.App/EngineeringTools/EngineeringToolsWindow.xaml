@@ -134,6 +134,32 @@
                     </StackPanel>
                 </Button>
 
+                <!-- Drawings → ETABS -->
+                <Button x:Name="DxfToEtabsCard"
+                        Style="{StaticResource HomeCardButton}"
+                        Click="OpenDxfToEtabs_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                            <TextBlock Text="🏗" FontSize="15"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Drawings to ETABS Model"
+                                   FontSize="15" FontWeight="SemiBold"
+                                   Margin="0,8,0,2"/>
+                        <TextBlock Text="Build an ETABS model from a folder of structural plan DXFs and the model ETABS already exported for the job. Pick the storeys to build, and see every rule the run applied and everything it wants a look at."
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Primary.Brush}"
+                                CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3"
+                                HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
             </controls:CenteredUniformGrid>
         </ScrollViewer>
     </Grid>

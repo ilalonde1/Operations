@@ -29,5 +29,12 @@ namespace Kor.Operations.EngineeringTools
             win.Owner = this;
             win.Show();
         }
+
+        private void OpenDxfToEtabs_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<DxfToEtabs.DxfToEtabsWindow>();
+            win.Owner = this;
+            win.Show();
+        }
     }
 }

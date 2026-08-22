@@ -1,0 +1,133 @@
+<Window x:Class="Kor.Operations.EngineeringTools.DxfToEtabs.DxfToEtabsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KOR — Drawings to ETABS Model"
+        Width="1100" Height="860"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Drawings to ETABS Model" FontSize="18" FontWeight="Bold" Foreground="#1F3864"/>
+        <TextBlock Grid.Row="1" Margin="0,2,0,12" Foreground="#595959" TextWrapping="Wrap"
+                   Text="Builds an ETABS .e2k from a folder of structural plan DXFs and the model ETABS already exported for the job. Choose which storeys to build — a site model carries every building, and the storeys you leave unticked are not modelled and their drawings are not read."/>
+
+        <!-- Intake -->
+        <Border Grid.Row="2" BorderBrush="#D9D9D9" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Drawings folder:" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                <TextBox   Grid.Row="0" Grid.Column="1" x:Name="DxfFolderBox" Margin="0,0,8,6" VerticalContentAlignment="Center"/>
+                <Button    Grid.Row="0" Grid.Column="2" x:Name="BrowseDxfButton" Content="Browse…" Width="90" Margin="0,0,0,6"
+                           Click="BrowseDxf_Click"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Reference model:" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                <TextBox   Grid.Row="1" Grid.Column="1" x:Name="ReferenceBox" Margin="0,0,8,6" VerticalContentAlignment="Center"/>
+                <Button    Grid.Row="1" Grid.Column="2" x:Name="BrowseReferenceButton" Content="Browse…" Width="90" Margin="0,0,0,6"
+                           Click="BrowseReference_Click"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Save model as:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox   Grid.Row="2" Grid.Column="1" x:Name="OutputBox" Margin="0,0,8,0" VerticalContentAlignment="Center"/>
+                <Button    Grid.Row="2" Grid.Column="2" x:Name="BrowseOutputButton" Content="Browse…" Width="90"
+                           Click="BrowseOutput_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- Storeys + output -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="330"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" BorderBrush="#D9D9D9" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,12,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Storeys to build" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <Button x:Name="AllButton"  Content="All"  Width="52" Margin="0,0,6,0" Click="SelectAll_Click"/>
+                        <Button x:Name="NoneButton" Content="None" Width="52" Margin="0,0,6,0" Click="SelectNone_Click"/>
+                        <TextBlock x:Name="StoreyCountText" VerticalAlignment="Center" Foreground="#595959"/>
+                    </StackPanel>
+
+                    <ListBox Grid.Row="2" x:Name="StoreyList" SelectionMode="Extended">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding Build, Mode=TwoWay}" Content="{Binding Label}"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" BorderBrush="#D9D9D9" BorderThickness="1" CornerRadius="6" Padding="0">
+                <TabControl x:Name="OutputTabs" BorderThickness="0">
+                    <TabItem Header="Report">
+                        <TextBox x:Name="ReportBox" IsReadOnly="True" TextWrapping="NoWrap"
+                                 FontFamily="Consolas" FontSize="12" BorderThickness="0"
+                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+                    </TabItem>
+                    <TabItem Header="Needs a look">
+                        <ListBox x:Name="FlagList" BorderThickness="0" FontSize="12">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2,0,2"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </TabItem>
+                    <TabItem Header="Rules used">
+                        <DataGrid x:Name="RulesGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                  BorderThickness="0" GridLinesVisibility="Horizontal" FontSize="12"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Rule"      Binding="{Binding Key}"        Width="230"/>
+                                <DataGridTextColumn Header="Value"     Binding="{Binding Value}"      Width="90"/>
+                                <DataGridTextColumn Header="Units"     Binding="{Binding Units}"      Width="60"/>
+                                <DataGridTextColumn Header="Authority" Binding="{Binding Confidence}" Width="140"/>
+                                <DataGridTextColumn Header="Why it holds" Binding="{Binding Because}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </TabItem>
+                </TabControl>
+            </Border>
+        </Grid>
+
+        <!-- Action bar -->
+        <Grid Grid.Row="4" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" x:Name="StatusText" VerticalAlignment="Center"
+                       Foreground="#595959" TextWrapping="Wrap"/>
+            <Button Grid.Column="1" x:Name="OpenFolderButton" Content="Open output folder" Width="140" Margin="0,0,8,0"
+                    IsEnabled="False" Click="OpenFolder_Click"/>
+            <Button Grid.Column="2" x:Name="BuildButton" Content="Build model" Width="130" Height="30"
+                    FontWeight="SemiBold" Click="Build_Click"/>
+        </Grid>
+    </Grid>
+</Window>

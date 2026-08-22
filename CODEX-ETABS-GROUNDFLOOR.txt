@@ -1,0 +1,163 @@
+One job: the ground floor has no slab. Make it have one, or prove it should not.
+
+Repo: C:\VIsual Studio Projects\Operations, branch develop, at commit d3f0205c.
+
+WHY THIS AND NOTHING ELSE
+
+  The engineer asked for one thing in her own words -- "You should model L1 entirely" -- and
+  Level 1 comes out with no floor at all. Until that is fixed the model is not usable to her,
+  so do not fix anything else on the way past.
+
+THE FAULT
+
+  In the model generated from 31168's drawings, five storeys carry zero FLOOR areas:
+
+      C-LEVEL 3, LEVEL 1 MEZZ, B-LEVEL 1, A-LEVEL 1
+
+  They have walls and columns. They have no plate. Every other storey has one.
+
+MEASURED ALREADY -- do not spend the afternoon re-deriving this
+
+  Slab edges live on a layer family: JBP_C_SLABEDG, JBP_C_SLABEDG-1, JBP_C_SLABEDG-2. The
+  loop builder joins ends within dxf.join-tolerance and bridges gaps up to dxf.bridge-tolerance;
+  DashedLineJoiner stitches across dxf.dash-join-gap first.
+
+  Rule values actually in force on the run (from KorStandards, printed in the report):
+
+      dxf.join-tolerance   = 0.05 in
+      dxf.bridge-tolerance = 6 in
+      dxf.dash-join-gap    = 14 in
+
+  `takeoff dxf-inspect <sheet.dxf>` prints, per layer, closed loops / open chains and the
+  distribution of loose-end gaps. On the two Level 1 sheets:
+
+    LEVEL 1 PLAN - CONCRETE OUTLINE.dxf
+      JBP_C_SLABEDG     200 segs   6 closed  69 open   138 loose ends  median gap  46.0  max 762.5   within 24: 24/138
+      JBP_C_SLABEDG-1   374 segs  13 closed  26 open    52 loose ends  median gap  55.0  max 395.4   within 24:  8/52
+      JBP_C_SLABEDG-2   228 segs   1 closed 187 open   374 loose ends  median gap  11.0  max  24.4   within 24: 373/374
+
+    LEVEL 1 PLAN MEZZ - CONCRETE OUTLINE.dxf
+      JBP_C_SLABEDG      57 segs   0 closed  17 open    34 loose ends  median gap 104.2  max 486.5
+      JBP_C_SLABEDG-1   398 segs   3 closed  50 open   100 loose ends  median gap  45.2  max 162.6
+      JBP_C_SLABEDG-2   265 segs   0 closed 199 open   398 loose ends  median gap  11.0  max  45.8
+
+  The run's own flag for the mezzanine sheet:
+      "slab edges: 190 outline(s) would not close (21502 units of edge ignored)."
+
+  Two shapes of failure, and they are not the same problem:
+
+    - SLABEDG-2 breaks into 187 pieces with a median gap of 11 inches and 373 of 374 loose ends
+      inside 24. That is the signature of a line drawn dashed, sitting just outside a 14" joiner.
+    - SLABEDG and SLABEDG-1 have gaps with a median of 46 and 55 inches and a maximum of 762.
+      Those are not dashes. Something else is going on there and it needs its own answer.
+
+  Also measured, so you do not go looking: these DXFs contain LINE and ARC entities only. No
+  LWPOLYLINE, no TEXT, no MTEXT -- 0 text entities in the file, so nothing in the drawing names
+  what any of this is. Every slab-edge LINE carries linetype ByLayer, so whether the line is
+  dashed is decided by the LAYER table entry, not the entity. I did NOT read the LAYER table.
+  That is the first thing to look at: group code 6 on the LAYER record for each of the three,
+  against the LTYPE table, which defines ___HIDDEN, ___DASHED, ___PHANTOM, ___CENTER and Dash.
+
+THE TRAP -- read this before changing a tolerance
+
+  Raising dash-join-gap until the outlines close is the obvious move and may be the wrong one.
+  On a structural plan a dashed slab edge frequently means the edge BELOW, or an outline of
+  something on another level. Joining it would produce a floor plate that closes cleanly, passes
+  every count, imports without complaint, and is not the floor that is there.
+
+  So the question to answer first is not "what gap closes it". It is "what is SLABEDG-2".
+  Answer that from the drawing -- the layer's linetype, what the geometry encloses, how it sits
+  relative to SLABEDG and SLABEDG-1, whether the same three layers behave this way on sheets
+  whose floors DO come out right. Every other C-LEVEL sheet produces a floor; those are the
+  control group and they are in the same folder.
+
+  If the honest answer is that SLABEDG-2 is not this level's edge, then say so and the fix is
+  elsewhere -- the floor has to come from SLABEDG and SLABEDG-1 and their 46-inch gaps.
+
+BEFORE YOU WRITE ANY JOINING CODE -- THIS IS ALREADY SOLVED IN THIS REPO
+
+  Do not write a new gap-closer. The same assembly already finds a floor plate by a route that
+  does not care whether the edge is dashed or broken every eleven inches:
+
+      Kor.Operations.EngineeringTools.Core/PlanGeometry.cs
+          MeasureEnclosedArea(luminance, w, h, darkThreshold, sealHairlineGaps: true)
+          -- flood-fills the region enclosed by the heaviest closed linework and seals hairline
+             gaps on the way. Built for exactly this failure and used by the takeoff engine.
+      Kor.Operations.EngineeringTools.Core/SlabAreaReconciler.cs
+      Kor.Operations.EngineeringTools.Core/PlateReliability.cs
+
+  The DXF-to-ETABS path calls none of them. It closes outlines from scratch in PlanLoopBuilder
+  and is stuck on tolerances, while the plate detection sitting beside it is insensitive to the
+  thing it is stuck on. There is also a `vector-plate` / `vector-plate-auto` verb on the CLI, and
+  a PDF ingestion path that feeds the same geometry.
+
+  So the first question is not "how do I close these loops". It is: can the plate for this storey
+  come from the existing plate detection, with the vector outline used to place and trim it? If it
+  can, that is the fix, and it is smaller than anything in the section below. If it genuinely
+  cannot -- say why, with what you tried -- then go on to the vector work.
+
+  A caution that cuts the other way: flood fill will happily enclose a region bounded by whatever
+  linework is heaviest, including the dashed edge-below if that is what is there. It removes the
+  tolerance problem, not the question of WHICH edge is the floor. That question still has to be
+  answered.
+
+WHERE THE CODE IS
+
+  Kor.Operations.EngineeringTools.Core/Dxf/
+      DxfPlanReader.cs               reads LINE/ARC into segments, carries the layer name
+      DashedLineJoiner.cs            stitches collinear pieces across dash-join-gap
+      PlanLoopBuilder.cs             joins ends, bridges, closes loops
+      StructuralPlanClassifier.cs    SplitSlabsAndOpenings; MinPlateArea is 57600 sq in (400 sq ft)
+                                     -- a ring smaller than that is called linework, not a plate
+      DxfToEtabsService.cs           reads rules, places sheets on storeys, writes the report
+
+  Drawings and the reference model:
+      \\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\
+
+  Useful without a database:
+      takeoff dxf-inspect <sheet.dxf>            layers, loops, open chains, gap distribution
+      takeoff dxf-render  <sheet.dxf> <out.png> --overlay --size 2400
+                                                 the drawing with what the classifier extracted
+                                                 drawn over it, which is how you look at it
+
+WHAT I WANT BACK
+
+  1. What JBP_C_SLABEDG-2 is, with the evidence -- layer linetype, and what the geometry is.
+  2. Why the five storeys have no plate. If the two sheet families fail for different reasons,
+     both reasons.
+  3. The fix, and the floors appearing on those storeys.
+  4. A test that fails on the bug: a fixture shaped like the real sheet, not a mock, asserting
+     that a storey whose drawing carries a slab edge comes out with a plate.
+  5. If a rule value has to change, that is a migration in C:\VIsual Studio Projects\KOR.Drafter\db\
+     -- write it, do not apply it, and say what evidence sets the number.
+  6. If any measurement above is wrong, say which and show it. I would rather be corrected.
+
+CONSTRAINTS
+
+  - Do NOT modify anything under \\Kor-fs01. Read the drawings, write nothing there. That folder
+    holds a package an engineer is looking at.
+  - KOR_ENGINEERINGTOOLS_STANDARDSDB is not set on this machine and there is no local database.
+    Derive it, process-local only, from KOR_OPPORTUNITIES_OPPORTUNITIESDB by swapping the database
+    name to KorStandards:
+
+      $c = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
+      $kv = @{}; foreach ($p in ($c -split ';')) { if ($p -match '=') { $k,$v = $p.Split('=',2); $kv[$k.Trim().ToLower()] = $v.Trim() } }
+      $u = $kv['user id']; if (-not $u) { $u = $kv['uid'] }
+      $pw = $kv['password']; if (-not $pw) { $pw = $kv['pwd'] }
+      $env:KOR_ENGINEERINGTOOLS_STANDARDSDB = "Server=$($kv['server']);Database=KorStandards;User Id=$u;Password=$pw;TrustServerCertificate=True"
+
+    Never setx it, never print it, never write it to a file.
+  - Rules live in KorStandards. A rule change is a migration, never a constant in code.
+  - No destructive git. Do not push.
+  - Never write a C# regex or a Windows path through a Python string that is not raw. "\b" becomes
+    a BACKSPACE silently -- no warning, unlike \s and \d -- and the pattern then matches nothing
+    while every piece of it tests fine on its own. This has cost a day already.
+  - The full suite is 493 tests and takes 10 to 14 minutes because about twenty rebuild two real
+    buildings from drawings over SMB. Run it before claiming anything about it, and say plainly
+    if you did not. Do not start it and then keep editing -- it locks the output directory.
+
+FINALLY
+
+  Review your own change adversarially before you hand it back. Assume the floor you produced is
+  the wrong floor. What would have to be true for that to be the case, and what in the drawing
+  would show it? Say what you checked to rule it out, and what you could not rule out.
