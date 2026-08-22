@@ -5,6 +5,37 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 /// <summary>One drawing's geometry, placed on one storey of the model.</summary>
 public sealed record StoryPlacement(StoryLevel Story, PlanGeometrySet Geometry, string SourceSheet);
 
+/// <summary>
+/// The ground something covers on plan. Enough to answer "is this plate under those members",
+/// which is the question that stops a floor being borrowed from a different building.
+/// </summary>
+public readonly record struct Extent(double MinX, double MinY, double MaxX, double MaxY)
+{
+    public static Extent At(double x, double y) => new(x, y, x, y);
+
+    public Extent With(double x, double y)
+        => new(Math.Min(MinX, x), Math.Min(MinY, y), Math.Max(MaxX, x), Math.Max(MaxY, y));
+
+    /// <summary>
+    /// How much of <paramref name="other"/>'s footprint this one covers, 0 to 1.
+    ///
+    /// Zero width or height is inside, not outside. A storey holding one column has an extent with
+    /// no area at all, and treating that as no overlap says the plate below does not stand under
+    /// it — which is exactly backwards, and would leave the storeys with least structure the ones
+    /// least likely to get a floor.
+    /// </summary>
+    public double CoverageOf(Extent other)
+    {
+        double w = Math.Min(MaxX, other.MaxX) - Math.Max(MinX, other.MinX);
+        double h = Math.Min(MaxY, other.MaxY) - Math.Max(MinY, other.MinY);
+        if (w < 0 || h < 0) return 0;
+
+        const double Thin = 1e-9;
+        double area = Math.Max(other.MaxX - other.MinX, Thin) * Math.Max(other.MaxY - other.MinY, Thin);
+        return Math.Min(1.0, Math.Max(w, Thin) * Math.Max(h, Thin) / area);
+    }
+}
+
 public sealed record ComposeOptions
 {
     /// <summary>Material for generated walls, slabs and columns. Falls back to any concrete in the model.</summary>
@@ -25,6 +56,24 @@ public sealed record ComposeOptions
     public double OffsetY { get; init; }
 
     public bool IncludeFloors { get; init; } = true;
+
+    /// <summary>
+    /// Where a storey has walls and columns but no floor, carry up the plate from the storey below.
+    ///
+    /// Not a tolerance workaround. On 31168 the Level 1, mezzanine and C-Level 3 sheets have no
+    /// closed slab outline to read: JBP_C_SLABEDG spans the whole 334x235 ft footprint but arrives
+    /// as sixty-odd open chains, and at every gap from 0.05" to 72" the largest region it encloses
+    /// is 119 sq ft. There is nothing there to close, so no tolerance produces that floor, and four
+    /// storeys stood with members and nothing spanning between them.
+    ///
+    /// A ground floor over a parkade has the parkade's extent, so the plate below is the honest
+    /// stand-in and an engineer can drag its edges. It is INFERRED, not read, so it is reported as
+    /// such and the storey is named -- a plate she cannot tell from a measured one is worse than
+    /// the hole it fills.
+    ///
+    /// Off by default: a plate that was not drawn is a judgement, and judgements are opt-in.
+    /// </summary>
+    public bool InferMissingFloors { get; init; }
 
     /// <summary>
     /// Give every generated wall a pier label — the engineer's answer to W4, "all walls should be
@@ -141,6 +190,19 @@ public static class E2kGeometryComposer
 
         // Closed rings on a slab layer with no structure anywhere under them.
         var orphanPlates = new List<(string Sheet, string Storey, double AreaSqFt)>();
+
+        // Every plate written, by the storey it was written on, with the ground it covers, so one
+        // can be carried up to a storey whose own drawing has no closed outline -- and only if it
+        // actually sits under that storey. See ComposeOptions.InferMissingFloors.
+        var platesByStorey = new Dictionary<string, List<(string Name, string Prop, Extent Where)>>(StringComparer.OrdinalIgnoreCase);
+
+        // Where each storey's own walls and columns stand, for the same reason.
+        var memberExtents = new Dictionary<string, Extent>(StringComparer.OrdinalIgnoreCase);
+
+        void Covers(string storeyName, double x, double y)
+            => memberExtents[storeyName] = memberExtents.TryGetValue(storeyName, out var had)
+                ? had.With(x, y)
+                : Extent.At(x, y);
 
         // Every plan position that carries a wall or a column, from EITHER model, on ANY storey —
         // what a plate has to have some of underneath it to be a floor rather than a drawn box.
@@ -387,7 +449,12 @@ public static class E2kGeometryComposer
                 // Every storey the wall passes through still counts as carrying structure, even
                 // though only one of them holds the assignment now — a storey a wall runs through
                 // is not an empty storey.
-                foreach (string on in wallStoreys) storeysWithMembers.Add(on);
+                foreach (string on in wallStoreys)
+                {
+                    storeysWithMembers.Add(on);
+                    Covers(on, wall.Start.X + options.OffsetX, wall.Start.Y + options.OffsetY);
+                    Covers(on, wall.End.X + options.OffsetX, wall.End.Y + options.OffsetY);
+                }
 
                 string pier = options.AssignPierLabels ? $"  PIER  \"{PierFor(x1, y1, x2, y2)}\"" : string.Empty;
                 areaAssigns.Add(
@@ -441,7 +508,11 @@ public static class E2kGeometryComposer
                 int colSpan = colStoreys.Count;
                 string name = NextName("C", ref colCounter);
                 lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{at}\"  \"{at}\"  {colSpan}");
-                foreach (string on in colStoreys) storeysWithMembers.Add(on);
+                foreach (string on in colStoreys)
+                {
+                    storeysWithMembers.Add(on);
+                    Covers(on, column.Center.X + options.OffsetX, column.Center.Y + options.OffsetY);
+                }
                 lineAssigns.Add(
                     $"  LINEASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
                     "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
@@ -567,6 +638,13 @@ public static class E2kGeometryComposer
                 areaAssigns.Add(
                     $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"" +
                     $"{diaphragmAssign}  CARDINALPOINT \"MIDDLE\"");
+
+                if (!platesByStorey.TryGetValue(story.Name, out var onThisStorey))
+                    platesByStorey[story.Name] = onThisStorey = new List<(string, string, Extent)>();
+
+                var plateExtent = Extent.At(slab.Points[0].X + options.OffsetX, slab.Points[0].Y + options.OffsetY);
+                foreach (var p in slab.Points) plateExtent = plateExtent.With(p.X + options.OffsetX, p.Y + options.OffsetY);
+                onThisStorey.Add((name, propName, plateExtent));
             }
 
             // Shafts and stair openings, cut out of the plate rather than left for the engineer.
@@ -641,6 +719,68 @@ public static class E2kGeometryComposer
             .Concat(roundProps.Select(kv =>
                 $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Circle\"  D {Trim(kv.Key)}"))
             .ToList();
+
+        // Carry a plate up to a storey whose own drawing has no closed outline to read. Assigning
+        // the plate below to this storey as well is how ETABS itself repeats a member up a
+        // building — one object, one assign per storey — so it needs no new geometry, only its own
+        // diaphragm, which must not be shared across elevations.
+        //
+        // This has to run BEFORE the sections below are appended to the document. Written after
+        // them, the assigns and diaphragms are built, counted, and reported in a flag that says
+        // four storeys were given a floor — and none of it reaches the file.
+        var inferredPlates = new List<(string Storey, string From)>();
+        if (options.InferMissingFloors && options.IncludeFloors)
+        {
+            foreach (var storey in allStories)
+            {
+                if (!storeysWithMembers.Contains(storey.Name)) continue;
+                if (storeysWithPlates.Contains(storey.Name)) continue;
+
+                // The nearest storey BELOW whose plate actually stands under these members. Below,
+                // not nearest either way: a floor is carried by what is under it, and reaching
+                // downward cannot borrow from a tower above.
+                //
+                // "Nearest below" alone is not enough on a site model, and taking it produced a
+                // visibly wrong floor: C-LEVEL 3 is the mid-rise at y 316-422 ft, the storey below
+                // it is LEVEL 2 whose plate is the podium under the TOWERS at y 213-308, and the
+                // mid-rise was handed a floor standing somewhere it is not. A donor has to cover
+                // the ground this storey's own walls and columns stand on.
+                if (!memberExtents.TryGetValue(storey.Name, out var standingOn)) continue;
+
+                var donor = allStories
+                    .Where(s => s.Elevation < storey.Elevation)
+                    .OrderByDescending(s => s.Elevation)
+                    .Select(s => (Storey: s, Plates: platesByStorey.TryGetValue(s.Name, out var p)
+                        ? p.Where(x => x.Where.CoverageOf(standingOn) >= 0.5).ToList()
+                        : new List<(string Name, string Prop, Extent Where)>()))
+                    .FirstOrDefault(x => x.Plates.Count > 0);
+                if (donor.Storey is null) continue;
+
+                string inferredDiaphragm = string.Empty;
+                if (options.AssignDiaphragms)
+                {
+                    string diaphragm = DiaphragmFor(storey.Name, prefix);
+                    diaphragms.Add(diaphragm);
+                    inferredDiaphragm = $"  DIAPH \"{diaphragm}\"";
+                }
+
+                foreach (var (plate, prop, _) in donor.Plates)
+                    areaAssigns.Add(
+                        $"  AREAASSIGN  \"{plate}\"  \"{storey.Name}\"  SECTION \"{prop}\"  OBJMESHTYPE \"DEFAULT\"" +
+                        $"{inferredDiaphragm}  CARDINALPOINT \"MIDDLE\"");
+
+                storeysWithPlates.Add(storey.Name);
+                inferredPlates.Add((storey.Name, donor.Storey.Name));
+            }
+
+            if (inferredPlates.Count > 0)
+                flags.Add(
+                    $"{inferredPlates.Count} storey(s) were given a floor plate they were not drawn one for, " +
+                    "taken from the storey below: " +
+                    string.Join(", ", inferredPlates.Select(p => $"{p.Storey} (from {p.From})")) +
+                    ". These plates are INFERRED, not measured — the drawings for those storeys carry no " +
+                    "closed slab outline — so check their edges before relying on them.");
+        }
 
         if (diaphragms.Count > 0)
             doc.Append("DIAPHRAGM NAMES", diaphragms.Select(d => $"  DIAPHRAGM \"{d}\"    TYPE RIGID"));

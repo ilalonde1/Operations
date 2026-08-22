@@ -20,6 +20,12 @@ public sealed record PlanSheetInfo(
     public bool IsFoundation { get; init; }
 
     /// <summary>
+    /// The roof over the lift overrun, which stands above the main roof. A model with two roof
+    /// storeys gets two roof sheets, and without telling them apart both land on the same one.
+    /// </summary>
+    public bool IsElevatorRoof { get; init; }
+
+    /// <summary>
     /// A mezzanine plan. A mezzanine reads as the level it sits above — "LEVEL 1 PLAN MEZZ" gives
     /// level 1 — so without this it is indistinguishable from the floor below it.
     /// </summary>
@@ -138,6 +144,8 @@ public static partial class PlanSheetNaming
             CleanLabel(name))
         {
             IsFoundation = name.Contains("FOUNDATION", StringComparison.OrdinalIgnoreCase),
+            IsElevatorRoof = name.Contains("ELEVATOR ROOF", StringComparison.OrdinalIgnoreCase)
+                          || name.Contains("ELEV ROOF", StringComparison.OrdinalIgnoreCase),
             IsMezzanine = IsMezzanineName(name),
             ParkadeLevels = parkade,
             BuildingTags = buildings,
@@ -270,7 +278,52 @@ public static partial class PlanSheetNaming
             if (unprefixed.Count > 0) return unprefixed;
         }
 
+        // A numbered level that matches no storey falls back to what the sheet SAYS it is.
+        //
+        // Drafting numbers the top of a building; the model names it. 31065's drawings carry
+        // "ROOF LEVEL (L20)" and "ELEVATOR ROOF (L21)" while the model's top three storeys are
+        // L19, Roof and ELV — so both sheets matched nothing and were dropped whole, taking the
+        // roof of the building with them. The roof rule above could have placed them, but it only
+        // runs for a sheet with NO level number at all, and these have one.
+        //
+        // Numbers first, always: this runs only once matching by number has failed outright, so a
+        // sheet whose level exists in the model is untouched by it.
+        if (matches.Count == 0 && (sheet.IsRoof || sheet.IsFoundation))
+        {
+            var eligible = stories
+                .Where(s => sheet.BuildingTags.Count == 0 || sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(s, tag)))
+                .ToList();
+            if (eligible.Count == 0) eligible = stories;
+            if (eligible.Count == 0) return matches;
+
+            if (sheet.IsFoundation) return eligible.TakeLast(1).ToList();
+
+            // The named roofs, in the order the model lists them — top down — so an elevator roof
+            // above a main roof takes the higher one and they do not both land on the same storey.
+            var roofs = eligible.Where(s => s.Contains("ROOF", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (roofs.Count == 0) return eligible.Take(1).ToList();
+            if (roofs.Count == 1) return roofs;
+
+            // Two roof storeys and two roof sheets: the higher-numbered sheet is the higher one.
+            int highest = sheet.Levels.Count > 0 ? sheet.Levels.Max() : 0;
+            bool topmost = sheet.IsElevatorRoof
+                || (highest > 0 && stories.Count > 0 && highest >= LevelCeiling(stories));
+            return topmost ? roofs.Take(1).ToList() : roofs.Skip(1).Take(1).ToList();
+        }
+
         return matches;
+    }
+
+    /// <summary>The largest level number any storey in the model names.</summary>
+    private static int LevelCeiling(IEnumerable<string> stories)
+    {
+        int top = 0;
+        foreach (string s in stories)
+        {
+            var m = SingleLevelRegex().Match(s);
+            if (m.Success && int.TryParse(m.Groups[1].Value, out int n) && n > top) top = n;
+        }
+        return top;
     }
 
     private static bool StoryBelongsToBuilding(string storyName, string buildingTag)

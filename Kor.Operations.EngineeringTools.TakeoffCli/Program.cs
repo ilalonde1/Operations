@@ -358,18 +358,23 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
 {
     if (args.Length < 4)
     {
-        Console.Error.WriteLine("Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--rules-db <connection>] [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]");
+        Console.Error.WriteLine("Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k|-> <out.e2k> [--levels levels.csv] [--rules-db <connection>] [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]");
+        Console.Error.WriteLine("       Pass '-' for the reference when giving --levels: a job that has never been modelled has no .e2k.");
         return 1;
     }
     if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"DXF folder not found '{args[1]}'."); return 2; }
-    if (!File.Exists(args[2])) { Console.Error.WriteLine($"Reference .e2k not found '{args[2]}'."); return 2; }
+
+    // "-" means there is no reference model, which is the ordinary case for a job nobody has
+    // modelled yet. The level list stands in for it; see E2kShellBuilder.
+    bool noReference = args[2] == "-";
+    if (!noReference && !File.Exists(args[2])) { Console.Error.WriteLine($"Reference .e2k not found '{args[2]}'."); return 2; }
 
     // The reference must be an engineer's model, never one of ours. A file round-tripped through
     // ETABS keeps its KOR-prefixed object names, and building from one produces a report saying
     // nothing was generated beside a file that plainly contains generated members -- both true,
     // together untrue. The publish script has always refused this; the CLI, which is what a
     // wrapper calls, did not.
-    if (File.ReadLines(args[2]).Take(40000).Any(l => Regex.IsMatch(l, @"""K[WCPFSO]\d+""")))
+    if (!noReference && File.ReadLines(args[2]).Take(40000).Any(l => Regex.IsMatch(l, @"""K[WCPFSO]\d+""")))
     {
         Console.Error.WriteLine(
             $"'{Path.GetFileName(args[2])}' carries KOR-generated object names, so it is this tool's own " +
@@ -382,11 +387,14 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     string? towerOnly = null;
     string? topStorey = null;
     var dropStoreys = new List<string>();
+    string? levelsFile = null;
+    string levelsUnit = "in";
     string? reportPath = null;
     string? questionsPath = null;
     string? rulesDb = null;
     (double X, double Y)? offset = null;
     bool includeFloors = true;
+    bool inferFloors = false;
     // Whether the flag was GIVEN, not just its value: passing the default silently is how these
     // three came to look like they worked.
     bool bridgeGiven = false, joinGiven = false, extendGiven = false;
@@ -413,12 +421,15 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         if (flag.Equals("--bldg", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) building = args[++i];
         else if (flag.Equals("--tower", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) towerOnly = args[++i];
         else if (flag.Equals("--top-storey", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) topStorey = args[++i];
+        else if (flag.Equals("--levels", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) levelsFile = args[++i];
+        else if (flag.Equals("--levels-unit", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) levelsUnit = args[++i];
         else if (flag.Equals("--drop-storeys", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
             dropStoreys.AddRange(args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         else if (flag.Equals("--report", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) reportPath = args[++i];
         else if (flag.Equals("--questions", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) questionsPath = args[++i];
         else if (flag.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) rulesDb = args[++i];
         else if (flag.Equals("--no-floors", StringComparison.OrdinalIgnoreCase)) includeFloors = false;
+        else if (flag.Equals("--infer-floors", StringComparison.OrdinalIgnoreCase)) inferFloors = true;
         else if (flag.Equals("--wall-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) wallLayers = Patterns(args[++i]);
         else if (flag.Equals("--column-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) columnLayers = Patterns(args[++i]);
         else if (flag.Equals("--slab-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) slabLayers = Patterns(args[++i]);
@@ -459,12 +470,14 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         dxfReport = DxfToEtabsService.Run(new DxfToEtabsRequest
     {
         DxfFolder = args[1],
-        ReferenceE2k = args[2],
+        ReferenceE2k = noReference ? string.Empty : args[2],
         OutputE2k = args[3],
         BuildingTag = building,
         TowerOnly = towerOnly,
         TopStorey = topStorey,
         DropStoreys = dropStoreys,
+        LevelsFile = levelsFile,
+        LevelsUnit = levelsUnit,
         Offset = offset,
         Classification = new PlanClassificationOptions(),
         BridgeTolerance = bridgeGiven ? bridgeTolerance : null,
@@ -473,7 +486,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         WallLayerPatterns = wallLayers,
         ColumnLayerPatterns = columnLayers,
         SlabLayerPatterns = slabLayers,
-        Compose = new ComposeOptions { IncludeFloors = includeFloors },
+        Compose = new ComposeOptions { IncludeFloors = includeFloors, InferMissingFloors = inferFloors },
         RuleSettingsConnection = rulesDb,
         RequireRuleSettings = true,
         });

@@ -1236,6 +1236,145 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void AModelCanBeBuiltFromALevelListWithNoEtabsFileAtAll()
+    {
+        // The tool demanded an engineer's .e2k to produce an .e2k, which is why it had only ever
+        // run on the two jobs that had one. Measured on 31168: 98% of the output came off the
+        // drawings and the reference contributed 25 members. What it actually carried was levels,
+        // materials and grids -- and of those only the levels are a fact about the job.
+        //
+        // Levels are what Revit knows. KOR.Drafter.Bridge already reads GenLevel off every plan
+        // view it exports, so drawings and levels come out of one pass and no ETABS file is needed.
+        var levels = E2kShellBuilder.ParseLevels(new[]
+        {
+            "# what Revit knows",
+            "Level,Elevation",          // a pasted header, skipped because it has no number
+            "P1, -144",
+            "L1, 0",
+            "L2, 144",
+            "Roof, 288",
+            "",
+        });
+
+        Assert.Equal(new[] { "P1", "L1", "L2", "Roof" }, levels.Select(l => l.Name).ToArray());
+
+        var doc = E2kShellBuilder.FromLevels(levels);
+        var stories = doc.ReadStories().OrderBy(s => s.Elevation).ToList();
+
+        // Every level is a storey, at the elevation Revit gave, and the base sits at the lowest
+        // one rather than below it -- a gap underneath puts the lowest storey's walls on stilts.
+        Assert.Equal(new[] { "P1", "L1", "L2", "Roof" }, stories.Select(s => s.Name).ToArray());
+        Assert.Equal(-144, stories[0].Elevation, 3);
+        Assert.Equal(288, stories[^1].Elevation, 3);
+
+        // And it is a model the composer can build into: one concrete material is all it needs,
+        // because it defines every section it discovers a drawing wants.
+        Assert.NotNull(doc.FindConcreteMaterial());
+
+        var geometry = new PlanGeometrySet();
+        geometry.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(240, 0), 12, "JBP_V-WALL"));
+        geometry.Columns.Add(new ColumnFootprint(new DxfPoint(60, 60), 24, 24, "JBP_V_COL"));
+
+        var summary = E2kGeometryComposer.Compose(
+            doc, new[] { new StoryPlacement(stories.Single(s => s.Name == "L2"), geometry, "level2.dxf") });
+
+        Assert.Equal(1, summary.Walls);
+        Assert.Equal(1, summary.Columns);
+        Assert.Contains(doc.LinesOf("AREA ASSIGNS"), l => l.Contains("\"L2\""));
+    }
+
+    [Fact]
+    public void ALevelListThatNamesOneLevelTwiceIsRefused()
+    {
+        // A plan sheet is placed by level NAME. Two levels sharing one is not something the
+        // placement can resolve, and taking the first silently would model half the building
+        // onto the wrong storey.
+        var ex = Assert.Throws<InvalidOperationException>(() => E2kShellBuilder.ParseLevels(new[]
+        {
+            "L1, 0",
+            "L2, 144",
+            "L2, 288",
+        }));
+
+        Assert.Contains("L2", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AStoreyWithNoDrawnFloorTakesOneFromBelowButNeverFromAnotherBuilding()
+    {
+        // 31168's Level 1, its mezzanine and C-LEVEL 3 have no closed slab outline to read at all
+        // -- their slab edge arrives as sixty-odd open chains enclosing 119 sq ft at every
+        // tolerance -- so four storeys stood with members and nothing spanning between them.
+        //
+        // Carrying up the plate below fills them. Carrying up the NEAREST plate below does not:
+        // the mid-rise sits at one end of the site and the storey under it is the podium beneath
+        // the towers, so "nearest" hands a building a floor standing somewhere it is not. The
+        // donor has to cover the ground this storey's own members stand on.
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"MID-RISE\"  HEIGHT 120",     // members at x 900..1100 — the far end of the site
+            "  STORY \"PODIUM\"  HEIGHT 120",       // a plate at x 0..200 only — under the towers
+            "  STORY \"PARKADE\"  HEIGHT 120",      // a plate across the whole site
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        static PlanGeometrySet Plate(double x0, double x1)
+        {
+            var g = new PlanGeometrySet();
+            g.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+            {
+                new(x0, 0), new(x1, 0), new(x1, 600), new(x0, 600),
+            }, true));
+            // A plate is only kept where something stands under it.
+            g.Columns.Add(new ColumnFootprint(new DxfPoint((x0 + x1) / 2, 300), 24, 24, "JBP_V_COL"));
+            return g;
+        }
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        var midRiseMembers = new PlanGeometrySet();
+        midRiseMembers.Columns.Add(new ColumnFootprint(new DxfPoint(1000, 300), 24, 24, "JBP_V_COL"));
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories["PARKADE"], Plate(0, 1200), "parkade.dxf"),
+            new StoryPlacement(stories["PODIUM"], Plate(0, 200), "podium.dxf"),
+            new StoryPlacement(stories["MID-RISE"], midRiseMembers, "midrise.dxf"),
+        }, new ComposeOptions { InferMissingFloors = true });
+
+        string flag = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
+
+        // It reached PAST the podium, whose plate does not stand under the mid-rise, to the
+        // parkade, whose plate does.
+        Assert.Contains("MID-RISE (from PARKADE)", flag);
+        Assert.DoesNotContain("MID-RISE (from PODIUM)", flag);
+
+        // And it says the plate is inferred, because a plate she cannot tell from a measured one
+        // is worse than the hole it fills.
+        Assert.Contains("INFERRED", flag, StringComparison.Ordinal);
+
+        // Off unless asked: a plate that was not drawn is a judgement.
+        var untouched = E2kGeometryComposer.Compose(E2kDocument.Parse(site), new[]
+        {
+            new StoryPlacement(stories["PARKADE"], Plate(0, 1200), "parkade.dxf"),
+            new StoryPlacement(stories["MID-RISE"], midRiseMembers, "midrise.dxf"),
+        });
+        Assert.DoesNotContain(untouched.Flags, f => f.Contains("not drawn one for"));
+        Assert.Contains(untouched.Flags, f => f.Contains("no floor plate"));
+    }
+
+    [Fact]
     public void AFootprintThickerThanAnyWallIsFlaggedRatherThanModelled()
     {
         // 31168 shipped an engineer a wall 132 inches thick — eleven feet. The branch that made it
@@ -1294,7 +1433,7 @@ public class E2kDocumentTests
 
         // The rule: match against the full list, then strike what was cut. Nothing remains.
         var cut = new HashSet<string>(new[] { "LEVEL 8", "LEVEL 9", "LEVEL 10" }, StringComparer.OrdinalIgnoreCase);
-        Assert.Empty(PlanSheetNaming.MatchStories(sheet, beforeCut).Where(s => !cut.Contains(s)));
+        Assert.DoesNotContain(PlanSheetNaming.MatchStories(sheet, beforeCut), s => !cut.Contains(s));
 
         // The mid-rise's own sheet is untouched by any of it.
         var midRise = PlanSheetNaming.Parse("--Structural Plan - C-LEVEL 8.dxf");

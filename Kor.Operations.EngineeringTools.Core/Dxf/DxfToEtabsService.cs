@@ -8,8 +8,25 @@ public sealed record DxfToEtabsRequest
 {
     public required string DxfFolder { get; init; }
 
-    /// <summary>An .e2k that ETABS itself exported from the target model — the source of storeys, grids and materials.</summary>
-    public required string ReferenceE2k { get; init; }
+    /// <summary>
+    /// An .e2k that ETABS itself exported from the target model — storeys, grids and materials.
+    ///
+    /// No longer required. Give <see cref="LevelsFile"/> instead and the model is built from a
+    /// level list with no ETABS file on the input side at all; see <see cref="E2kShellBuilder"/>.
+    /// Supply one or the other.
+    /// </summary>
+    public string ReferenceE2k { get; init; } = string.Empty;
+
+    /// <summary>
+    /// A level list — "name, elevation" a line — used in place of a reference model.
+    ///
+    /// This is what Revit knows and what the drawings cannot say, being flat. KOR.Drafter.Bridge
+    /// already reads it: every plan view it exports carries the level it was cut at.
+    /// </summary>
+    public string? LevelsFile { get; init; }
+
+    /// <summary>The unit the level elevations are given in, as ETABS names it: "in", "ft", "mm", "m".</summary>
+    public string LevelsUnit { get; init; } = "in";
 
     public required string OutputE2k { get; init; }
 
@@ -314,7 +331,18 @@ public static class DxfToEtabsService
 
     public static DxfToEtabsReport Run(DxfToEtabsRequest request)
     {
-        var doc = E2kDocument.Load(request.ReferenceE2k);
+        // Either a model ETABS exported, or a list of levels. The second is the ordinary case now:
+        // a job that has never been modelled has no .e2k to give, which is every job but two.
+        if (string.IsNullOrWhiteSpace(request.ReferenceE2k) && string.IsNullOrWhiteSpace(request.LevelsFile))
+            throw new InvalidOperationException(
+                "Give either a reference .e2k or a level list. Without one there is no way to know " +
+                "what the storeys are called or how high they are, and a plan drawing cannot say — " +
+                "it is flat.");
+
+        var doc = string.IsNullOrWhiteSpace(request.LevelsFile)
+            ? E2kDocument.Load(request.ReferenceE2k)
+            : E2kShellBuilder.FromLevels(
+                E2kShellBuilder.ParseLevels(File.ReadAllLines(request.LevelsFile)), request.LevelsUnit);
 
         // Before anything else: the storey list is what ETABS builds from, and an export parks the
         // base a thousand feet under the building with the whole distance folded into the lowest
@@ -617,8 +645,15 @@ public static class DxfToEtabsService
                 if (byName.TryGetValue(storyName, out var story))
                     placements.Add(new StoryPlacement(story, geometry, sheet.FileName));
 
+        // Carried straight from the request, never from the rules: a plate that was not drawn is a
+        // judgement about one job's drawings, not a standard the office holds.
         var composeOptions = (Math.Abs(modelUnitInInches - 1.0) < 1e-9 ? composeFromReference : composeFromReference.InUnitOf(modelUnitInInches))
-            with { OffsetX = offset.X, OffsetY = offset.Y };
+            with
+            {
+                OffsetX = offset.X,
+                OffsetY = offset.Y,
+                InferMissingFloors = request.Compose.InferMissingFloors,
+            };
         var summary = E2kGeometryComposer.Compose(doc, placements, composeOptions);
 
         if (baseNormalised)
