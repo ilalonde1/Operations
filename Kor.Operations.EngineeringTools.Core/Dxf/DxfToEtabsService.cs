@@ -528,6 +528,21 @@ public static class DxfToEtabsService
             // to leave out reads as though nobody understood the request.
             var unsupported = DxfPlanReader.UnsupportedStructuralEntities(file, classification);
             string? unreadWarning = null;
+            // HATCH is fill, and fill is not structure.
+            //
+            // It was reported as shape the model might be missing, which put a line on nearly every
+            // sheet of every job: 88 on one of 31168's Level 2 sheets, 33 on Autodesk's sample, 13
+            // of those on a layer this tool reads. Two conventions, the same noise. Ruled out
+            // 2026-08-21 -- "Almost positive hatching is always fill" -- so it stops being counted
+            // as geometry gone missing. It is still READ as nothing, which was always true; what
+            // changes is that the report no longer suggests a hole where there is none.
+            //
+            // Everything else that carries shape and cannot be read -- ELLIPSE, SPLINE, a solid --
+            // still counts, because none of those has been ruled on.
+            unsupported = unsupported
+                .Where(e => !e.EntityType.Equals("HATCH", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
             if (unsupported.Count > 0)
             {
                 int total = unsupported.Sum(e => e.Count);
