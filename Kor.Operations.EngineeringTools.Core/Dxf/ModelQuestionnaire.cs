@@ -555,14 +555,15 @@ public static class ModelQuestionnaire
         if (Flag("not drawn one for") is { } inferred)
         {
             string storeys = inferred[(inferred.IndexOf(':') + 1)..].Split('.')[0].Trim();
-            yield return new ModelQuestion("J4", "Floors taken from the storey below",
-                $"These storeys were given the floor plate from the storey beneath them: {storeys}. " +
+            yield return new ModelQuestion("J4", "Floors copied from another storey",
+                $"These storeys were given another storey's floor plate: {storeys}. " +
                 "Their own drawings carry no closed slab edge to read one from. Are these plates the " +
                 "right shape, or should their edges be somewhere else?",
-                "Nothing was invented: each plate is the one below it, and only where that plate stands " +
-                "under this storey's own walls and columns. They are marked INFERRED in the report.",
+                "Nothing was invented: each plate is another storey's own, chosen as the one closest in " +
+                "SHAPE to what stands on this storey — not merely the nearest below it, which handed the " +
+                "mid-rise the ground floor's site-wide slab. They are marked INFERRED in the report.",
                 "Without them those storeys have no diaphragm at all and every member on them reads as " +
-                "unsupported. With them, the edges are the storey below's, not yours.",
+                "unsupported. With them, the edges are another storey's, not yours.",
                 "Measured on this job: the slab edge on those sheets arrives as sixty-odd open chains, " +
                 "and at every tolerance from 0.05 to 72 inches the largest region it encloses is 119 sq " +
                 "ft. There is nothing there to close, so no tolerance produces that floor.")

@@ -17,6 +17,27 @@ public readonly record struct Extent(double MinX, double MinY, double MaxX, doub
         => new(Math.Min(MinX, x), Math.Min(MinY, y), Math.Max(MaxX, x), Math.Max(MaxY, y));
 
     /// <summary>
+    /// How alike two footprints are, 0 to 1 — shared ground over combined ground.
+    ///
+    /// Coverage alone chooses badly. C-LEVEL 3 is the mid-rise and the storey below it is the
+    /// ground floor, whose plate spans the whole site and therefore covers the mid-rise
+    /// completely — so "the nearest plate below that stands under these members" handed a
+    /// 206x73 ft building a 336x237 ft floor, out over the ground the towers stand on. Likeness
+    /// says what coverage cannot: the floor a storey should borrow is the one shaped like it.
+    /// </summary>
+    public double LikenessTo(Extent other)
+    {
+        double w = Math.Min(MaxX, other.MaxX) - Math.Max(MinX, other.MinX);
+        double h = Math.Min(MaxY, other.MaxY) - Math.Max(MinY, other.MinY);
+        if (w <= 0 || h <= 0) return 0;
+
+        double shared = w * h;
+        double mine = Math.Max((MaxX - MinX) * (MaxY - MinY), 1e-9);
+        double theirs = Math.Max((other.MaxX - other.MinX) * (other.MaxY - other.MinY), 1e-9);
+        return shared / (mine + theirs - shared);
+    }
+
+    /// <summary>
     /// How much of <paramref name="other"/>'s footprint this one covers, 0 to 1.
     ///
     /// Zero width or height is inside, not outside. A storey holding one column has an extent with
@@ -747,13 +768,28 @@ public static class E2kGeometryComposer
                 // the ground this storey's own walls and columns stand on.
                 if (!memberExtents.TryGetValue(storey.Name, out var standingOn)) continue;
 
+                // The plate SHAPED like this storey, not merely the nearest one under it.
+                //
+                // Nearest-below covers the ordinary case and fails the interesting one: C-LEVEL 3
+                // is the mid-rise, the storey beneath it is the ground floor whose plate spans the
+                // whole site, and that plate covers the mid-rise completely. So it was chosen, and
+                // a 206x73 ft building was given a 336x237 ft floor reaching out over the ground
+                // the towers stand on.
+                //
+                // Above is allowed too. A mid-rise floor with no slab edge drawn looks like the
+                // floor above it far more than like the podium below, and C-LEVEL 4's plate is the
+                // right answer for C-LEVEL 3. Ties break downward, because what a floor stands on
+                // is still the better guess when two candidates are equally alike.
                 var donor = allStories
-                    .Where(s => s.Elevation < storey.Elevation)
-                    .OrderByDescending(s => s.Elevation)
+                    .Where(s => !s.Name.Equals(storey.Name, StringComparison.OrdinalIgnoreCase))
                     .Select(s => (Storey: s, Plates: platesByStorey.TryGetValue(s.Name, out var p)
                         ? p.Where(x => x.Where.CoverageOf(standingOn) >= 0.5).ToList()
                         : new List<(string Name, string Prop, Extent Where)>()))
-                    .FirstOrDefault(x => x.Plates.Count > 0);
+                    .Where(x => x.Plates.Count > 0)
+                    .OrderByDescending(x => x.Plates.Max(pl => pl.Where.LikenessTo(standingOn)))
+                    .ThenBy(x => x.Storey.Elevation < storey.Elevation ? 0 : 1)
+                    .ThenByDescending(x => x.Storey.Elevation)
+                    .FirstOrDefault();
                 if (donor.Storey is null) continue;
 
                 string inferredDiaphragm = string.Empty;
@@ -776,7 +812,7 @@ public static class E2kGeometryComposer
             if (inferredPlates.Count > 0)
                 flags.Add(
                     $"{inferredPlates.Count} storey(s) were given a floor plate they were not drawn one for, " +
-                    "taken from the storey below: " +
+                    "copied from the storey whose own plate is closest in shape to what stands on them: " +
                     string.Join(", ", inferredPlates.Select(p => $"{p.Storey} (from {p.From})")) +
                     ". These plates are INFERRED, not measured — the drawings for those storeys carry no " +
                     "closed slab outline — so check their edges before relying on them.");
