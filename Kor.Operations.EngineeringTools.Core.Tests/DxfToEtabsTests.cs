@@ -1501,6 +1501,168 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void ABorrowedFloorComesFromTheStoreyShapedLikeThisOneAndTheNearestSuchStorey()
+    {
+        // Two faults, one fixture, because they are the same mistake at two scales.
+        //
+        // 31168's C-LEVEL 3 is the mid-rise: 206x73 ft of building. It has no closed slab edge of
+        // its own, and the storey beneath it is the ground floor, whose slab spans the whole
+        // 336x237 ft site and therefore COVERS the mid-rise completely. "Nearest plate below that
+        // stands under these members" chose it, and an engineer opened a model where one floor
+        // reached out over the ground the towers stand on. Coverage cannot tell a floor from a
+        // field; likeness can.
+        //
+        // Then likeness alone reached SIX storeys up, preferring a plate that beat the one
+        // directly above by eight inches of bounding box. Plates that agree to within inches are
+        // the same answer, and the tie belongs to the storey next door.
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"FAR-ABOVE\"  HEIGHT 120",
+            "  STORY \"NEXT-ABOVE\"  HEIGHT 120",
+            "  STORY \"TARGET\"  HEIGHT 120",
+            "  STORY \"GROUND\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        // A plate, plus a column under it so the plate is kept at all.
+        static PlanGeometrySet Plate(double x0, double y0, double x1, double y1)
+        {
+            var g = new PlanGeometrySet();
+            g.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+            {
+                new(x0, y0), new(x1, y0), new(x1, y1), new(x0, y1),
+            }, true));
+            g.Columns.Add(new ColumnFootprint(new DxfPoint((x0 + x1) / 2, (y0 + y1) / 2), 24, 24, "JBP_V_COL"));
+            return g;
+        }
+
+        // The storey needing a floor: a band of columns across the mid-rise's footprint only.
+        var targetMembers = new PlanGeometrySet();
+        for (int x = 900; x <= 1100; x += 50)
+            targetMembers.Columns.Add(new ColumnFootprint(new DxfPoint(x, 300), 24, 24, "JBP_V_COL"));
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            // Spans the whole site. Covers the target completely and looks nothing like it.
+            new StoryPlacement(stories["GROUND"], Plate(0, 0, 1200, 600), "ground.dxf"),
+            // The mid-rise's own footprint, one storey up.
+            new StoryPlacement(stories["NEXT-ABOVE"], Plate(880, 260, 1120, 340), "next.dxf"),
+            // A typical floor repeats, so the same footprint again two storeys further up. Equally
+            // alike, and the tie must not go to the one further away.
+            new StoryPlacement(stories["FAR-ABOVE"], Plate(880, 260, 1120, 340), "far.dxf"),
+            new StoryPlacement(stories["TARGET"], targetMembers, "target.dxf"),
+        }, new ComposeOptions { InferMissingFloors = true });
+
+        string flag = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
+
+        // Shape beat coverage: it did not take the site-wide slab it was standing on.
+        Assert.DoesNotContain("TARGET (from GROUND)", flag);
+
+        // And among two plates that are the same answer, it took the one next door rather than
+        // the one further up that won on eight inches of bounding box.
+        Assert.Contains("TARGET (from NEXT-ABOVE)", flag);
+        Assert.DoesNotContain("TARGET (from FAR-ABOVE)", flag);
+
+        // TARGET's columns sit in a straight line, so its extent has no area at all. That must not
+        // flatten every candidate to a dead heat and hand the choice back to "nearest below",
+        // which is GROUND — the site-wide slab this whole rule exists to refuse.
+        Assert.Equal(0, targetMembers.Columns.Max(c => c.Center.Y) - targetMembers.Columns.Min(c => c.Center.Y));
+    }
+
+    [Fact]
+    public void EveryStoreyCarryingMembersAlsoCarriesAFloorToSpanBetweenThem()
+    {
+        // Counted by hand once, so it is counted by the build from now on. The count in the report
+        // is a count of plate OBJECTS, and a borrowed floor is the donor's object assigned a second
+        // time -- so "15 storeys, 14 floors" is correct and reads exactly like a storey that lost
+        // its floor. The thing actually worth asserting is per-storey: nothing stands on nothing.
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"UPPER\"  HEIGHT 120",
+            "  STORY \"MIDDLE\"  HEIGHT 120",
+            "  STORY \"LOWER\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        static PlanGeometrySet Floored()
+        {
+            var g = new PlanGeometrySet();
+            g.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+            {
+                new(0, 0), new(400, 0), new(400, 400), new(0, 400),
+            }, true));
+            g.Columns.Add(new ColumnFootprint(new DxfPoint(200, 200), 24, 24, "JBP_V_COL"));
+            return g;
+        }
+
+        var bare = new PlanGeometrySet();
+        bare.Columns.Add(new ColumnFootprint(new DxfPoint(200, 200), 24, 24, "JBP_V_COL"));
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories["LOWER"], Floored(), "lower.dxf"),
+            new StoryPlacement(stories["MIDDLE"], bare, "middle.dxf"),
+            new StoryPlacement(stories["UPPER"], Floored(), "upper.dxf"),
+        }, new ComposeOptions { InferMissingFloors = true });
+
+        Assert.Equal(3, summary.Stories);
+
+        // Which areas are floors, and which storeys each is assigned to. An inferred plate is the
+        // SAME area name appearing under a second storey, which is why counting objects misleads.
+        static string Quoted(string line, int which)
+        {
+            var parts = line.Split('"');
+            return parts.Length > which * 2 ? parts[which * 2 - 1] : string.Empty;
+        }
+
+        var floorNames = doc.LinesOf("AREA CONNECTIVITIES")
+            .Where(l => l.TrimStart().StartsWith("AREA ", StringComparison.Ordinal)
+                        && l.Contains(" FLOOR ", StringComparison.Ordinal))
+            .Select(l => Quoted(l, 1))
+            .ToHashSet(StringComparer.Ordinal);
+        Assert.NotEmpty(floorNames);
+
+        var flooredStoreys = doc.LinesOf("AREA ASSIGNS")
+            .Where(l => l.TrimStart().StartsWith("AREAASSIGN", StringComparison.Ordinal)
+                        && floorNames.Contains(Quoted(l, 1)))
+            .Select(l => Quoted(l, 2))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string storey in new[] { "LOWER", "MIDDLE", "UPPER" })
+            Assert.Contains(storey, flooredStoreys);
+
+        // Fewer plate objects than floored storeys — the borrowed one — and that is not a fault.
+        Assert.True(floorNames.Count < flooredStoreys.Count,
+            $"expected a borrowed plate: {floorNames.Count} objects across {flooredStoreys.Count} storeys");
+    }
+
+    [Fact]
     public void AStoreyWithBrokenContinuousSlabEdgeGetsAPlate()
     {
         // 31168's ground floor slab edge is not dashed and no vector tolerance closes it. The

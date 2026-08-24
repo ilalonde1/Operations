@@ -24,17 +24,33 @@ public readonly record struct Extent(double MinX, double MinY, double MaxX, doub
     /// completely — so "the nearest plate below that stands under these members" handed a
     /// 206x73 ft building a 336x237 ft floor, out over the ground the towers stand on. Likeness
     /// says what coverage cannot: the floor a storey should borrow is the one shaped like it.
+    ///
+    /// Zero width or height is given a nominal foot first, for the same reason <see cref="CoverageOf"/>
+    /// treats it as inside: a storey whose columns happen to sit in a straight line has an extent
+    /// with no area, every candidate then scores zero, they all tie, and the choice falls silently
+    /// back to "nearest" — which is the rule this replaced.
     /// </summary>
     public double LikenessTo(Extent other)
     {
-        double w = Math.Min(MaxX, other.MaxX) - Math.Max(MinX, other.MinX);
-        double h = Math.Min(MaxY, other.MaxY) - Math.Max(MinY, other.MinY);
+        const double Nominal = 12.0;
+        var mineBox = Fattened(this, Nominal);
+        var theirsBox = Fattened(other, Nominal);
+
+        double w = Math.Min(mineBox.MaxX, theirsBox.MaxX) - Math.Max(mineBox.MinX, theirsBox.MinX);
+        double h = Math.Min(mineBox.MaxY, theirsBox.MaxY) - Math.Max(mineBox.MinY, theirsBox.MinY);
         if (w <= 0 || h <= 0) return 0;
 
         double shared = w * h;
-        double mine = Math.Max((MaxX - MinX) * (MaxY - MinY), 1e-9);
-        double theirs = Math.Max((other.MaxX - other.MinX) * (other.MaxY - other.MinY), 1e-9);
+        double mine = (mineBox.MaxX - mineBox.MinX) * (mineBox.MaxY - mineBox.MinY);
+        double theirs = (theirsBox.MaxX - theirsBox.MinX) * (theirsBox.MaxY - theirsBox.MinY);
         return shared / (mine + theirs - shared);
+    }
+
+    private static Extent Fattened(Extent e, double least)
+    {
+        double padX = Math.Max(0, least - (e.MaxX - e.MinX)) / 2;
+        double padY = Math.Max(0, least - (e.MaxY - e.MinY)) / 2;
+        return new Extent(e.MinX - padX, e.MinY - padY, e.MaxX + padX, e.MaxY + padY);
     }
 
     /// <summary>
@@ -778,19 +794,37 @@ public static class E2kGeometryComposer
                 //
                 // Above is allowed too. A mid-rise floor with no slab edge drawn looks like the
                 // floor above it far more than like the podium below, and C-LEVEL 4's plate is the
-                // right answer for C-LEVEL 3. Ties break downward, because what a floor stands on
-                // is still the better guess when two candidates are equally alike.
-                var donor = allStories
+                // right answer for C-LEVEL 3.
+                //
+                // Likeness picks the shortlist, not the winner. Taken raw it separates a 206.1x72.7
+                // plate from a 206.6x71.9 one and decides on eight inches, which sent C-LEVEL 3 six
+                // storeys up to borrow from C-LEVEL 9 instead of from C-LEVEL 4 directly above it.
+                // Two plates that agree on the building to within inches are the same answer.
+                //
+                // The margin is relative, not a rounding. Rounded to a hundredth, a job whose plates
+                // are large next to the members standing on them scores every candidate 0.00, every
+                // candidate ties, and the choice collapses back to "nearest" -- which is the bug
+                // this whole block exists to undo.
+                //
+                // Among the equally alike, the NEAREST storey wins: its slab edge is the least
+                // likely to have moved. Equally near, below wins, because what a floor stands on is
+                // still the better guess.
+                var candidates = allStories
                     .Where(s => !s.Name.Equals(storey.Name, StringComparison.OrdinalIgnoreCase))
                     .Select(s => (Storey: s, Plates: platesByStorey.TryGetValue(s.Name, out var p)
                         ? p.Where(x => x.Where.CoverageOf(standingOn) >= 0.5).ToList()
                         : new List<(string Name, string Prop, Extent Where)>()))
                     .Where(x => x.Plates.Count > 0)
-                    .OrderByDescending(x => x.Plates.Max(pl => pl.Where.LikenessTo(standingOn)))
-                    .ThenBy(x => x.Storey.Elevation < storey.Elevation ? 0 : 1)
-                    .ThenByDescending(x => x.Storey.Elevation)
-                    .FirstOrDefault();
-                if (donor.Storey is null) continue;
+                    .Select(x => (x.Storey, x.Plates, Likeness: x.Plates.Max(pl => pl.Where.LikenessTo(standingOn))))
+                    .ToList();
+                if (candidates.Count == 0) continue;
+
+                double bestLikeness = candidates.Max(c => c.Likeness);
+                var donor = candidates
+                    .Where(c => c.Likeness >= bestLikeness * 0.98)
+                    .OrderBy(c => Math.Abs(c.Storey.Elevation - storey.Elevation))
+                    .ThenBy(c => c.Storey.Elevation < storey.Elevation ? 0 : 1)
+                    .First();
 
                 string inferredDiaphragm = string.Empty;
                 if (options.AssignDiaphragms)
