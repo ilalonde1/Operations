@@ -68,8 +68,8 @@ had already rebuilt that building's walls by hand.</p>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
   <tr><td>Storeys populated</td><td><strong>15</strong></td><td>29</td></tr>
   <tr><td>Wall panels, true thicknesses</td><td><strong>349</strong></td><td>242</td></tr>
-  <tr><td>Columns, sized &amp; oriented</td><td><strong>763</strong></td><td>390</td></tr>
-  <tr><td>Floor plates</td><td><strong>15</strong></td><td>13</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>770</strong></td><td>390</td></tr>
+  <tr><td>Floor plates</td><td><strong>16</strong></td><td>13</td></tr>
   <tr><td>Headers over openings (spandrel shells)</td><td><strong>31</strong></td><td>22</td></tr>
   <tr><td>Shaft and stair openings cut</td><td><strong>43</strong></td><td>3</td></tr>
   <tr><td>Pier labels</td><td><strong>130</strong></td><td>142</td></tr>
@@ -209,7 +209,7 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
   <tr><th>File</th><th>What it is</th></tr>
   <tr><td><code>31168-FROM-DRAWINGS.e2k</code></td>
       <td><strong>The one that matters.</strong> The YMCA, its podium and the parkade — 15 storeys,
-          349 walls, 763 columns, 15 plates, every storey floored. The two towers are NOT in it:
+          349 walls, 770 columns, 16 plates, every storey floored. The two towers are NOT in it:
           you asked for none above grade, so LEVEL 3 to LEVEL 10 are cut by name. Nothing of this
           existed before.</td></tr>
   <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
@@ -353,7 +353,7 @@ close as vectors. On 31168 the slab-edge layer arrives as sixty-odd open chains,
 tolerance from 0.05 to 72 inches the largest region they enclose is 119 ft² — so no tolerance was
 ever going to produce those floors, and widening one was measured and abandoned. They are now
 recovered by rasterising the drawn linework and flood-filling it, which is why <strong>every storey
-carrying members now has a floor</strong>. The 15 plates have a median area of 14,985 ft².</p>
+carrying members now has a floor</strong>. The 16 plates have a median area of 14,985 ft².</p>
 <p><strong>The cost of that is the edges.</strong> A plate recovered from a raster is traced off
 pixels, so its outline comes out slightly stepped rather than crisp. The area and the position are
 right; the edge is approximate. Clean the outline wherever it matters.</p>

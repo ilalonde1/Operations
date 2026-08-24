@@ -438,8 +438,19 @@ if ((-not $SkipDossier) -and (-not $Variant) -and (Test-Path $dossier) -and $pdf
             ForEach-Object { Get-ChildItem $_.FullName -Directory -Filter "$job*" -ErrorAction SilentlyContinue } |
             Select-Object -First 1
         if (-not $jf) { continue }
-        $mf = Get-ChildItem $jf.FullName -File -Recurse -Depth 4 -Filter "$job-FROM-DRAWINGS.e2k" -ErrorAction SilentlyContinue |
-            Select-Object -First 1
+        # For the job being published, check the dossier against the model STAGED by this run --
+        # not the one sitting in the folder, which is whatever last succeeded.
+        #
+        # Reading the landed model deadlocks the moment the two differ: generation moved to a
+        # staging folder so nothing lands until it passes, and this gate then compared the new
+        # dossier against the OLD model and refused, so the new model could never land to make the
+        # dossier true. The 7 roof columns sat in staging through two publishes for exactly this.
+        $mf = $null
+        if ($job -eq $Project -and (Test-Path $out)) { $mf = Get-Item $out }
+        if (-not $mf) {
+            $mf = Get-ChildItem $jf.FullName -File -Recurse -Depth 4 -Filter "$job-FROM-DRAWINGS.e2k" -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+        }
         if (-not $mf) { continue }
         $mm = Get-Content -LiteralPath $mf.FullName
         $counts["$job.wall"]   = @($mm | Select-String '^\s+AREA\s+"KW\d+"\s+PANEL').Count
@@ -447,7 +458,7 @@ if ((-not $SkipDossier) -and (-not $Variant) -and (Test-Path $dossier) -and $pdf
         $counts["$job.plate"]  = @($mm | Select-String '^\s+AREA\s+"KF\d+"\s+FLOOR').Count
         $counts["$job.header"] = @($mm | Select-String '^\s+AREA\s+"KS\d+"\s+PANEL').Count
 
-        $rp = Join-Path $mf.DirectoryName "$job-FROM-DRAWINGS-report.txt"
+        $rp = if ($job -eq $Project) { $reportPath } else { Join-Path $mf.DirectoryName "$job-FROM-DRAWINGS-report.txt" }
         if (Test-Path $rp) {
             $rm = [regex]::Match((Get-Content -LiteralPath $rp -Raw),
                                  '(?<w>\d+) wall\(s\) and (?<c>\d+) column\(s\) were already modelled')
