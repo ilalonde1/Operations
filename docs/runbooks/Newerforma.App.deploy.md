@@ -48,6 +48,12 @@ A build that compiles can still fail to launch. Before trusting a deploy, launch
 
 ## History
 
+- **V16 (2026-08-24)** — PMTools security group expanded to 17 (six drafters added); dead
+  `SecurityGroup.Financials` placeholder removed; includes DXF->ETABS work. `.playwright` culled
+  776.5 MB -> 331.8 MB; zip 146.7 MB; hash-verified on share. **First fleet-wide automated install
+  (24/24)** — see `Newerforma.App.install.md`.
+- **V15 (2026-07-11)** — 153.6 MB.
+- **V14 (2026-06-29)** — 153.4 MB.
 - **V13 (2026-06-20)** — single-click typeahead-commit fix; `.playwright` culled (288 MB → **146 MB**);
   EmailFilerv2 grafted; hash-verified on share. First run of this process.
 
