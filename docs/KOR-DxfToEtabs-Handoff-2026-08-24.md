@@ -8,15 +8,16 @@ Supersedes the 2026-08-21 handoff. Read this before touching the module.
 
 | file | what it is |
 |---|---|
-| `31168-FROM-DRAWINGS.e2k` | **15 storeys · 349 walls · 763 columns · 14 floor plates across 15 floored storeys.** No tower storey. Every storey carrying members carries a floor. Thickest wall 42". **Zero members that did not come from the drawings.** |
+| `31168-FROM-DRAWINGS.e2k` | **15 storeys · 349 walls · 763 columns · 15 floor plates, every storey floored.** No tower storey. Every storey carrying members carries a floor. Thickest wall 42". **Zero members that did not come from the drawings.** |
 | `31168-FROM-DRAWINGS-report.txt` | sheets placed and not, every flag, every rule applied with its authority |
 | `31168-QUESTIONS-for-Andrea.xlsx` | **3 questions**, the rest DECIDED |
 | `KOR-31168-SUMMARY.pdf` | one page, regenerated with the model |
 | `31168-reference-SHELL.e2k` | **load-bearing — see below** |
 
-**14 floor plates across 15 floored storeys is correct, not a missing floor.** The count is of
-plate OBJECTS; C-LEVEL 3 borrows C-LEVEL 4's object, assigned a second time. Check floors per
-storey, never by the total. That total fooled me for ten minutes on 24 Aug.
+**Floor plate count can legitimately be lower than the storey count.** It counts plate OBJECTS,
+and C-LEVEL 3 borrows C-LEVEL 4's, assigned a second time. Check floors per storey, never by the
+total — that total fooled me for ten minutes on 24 Aug. The summary now prints "Storeys with a
+floor" beside it whenever the two differ.
 
 ### Two explainer PDFs were withdrawn on 24 Aug
 
@@ -64,8 +65,10 @@ three `ASSIGNS` sections and `PIER/SPANDREL NAMES` from the reference, keep ever
 1. **C-ROOF carries a plate with no wall or column beneath it.** Does the structure stop below, or
    is it on a sheet we did not place?
 2. **C-LEVEL 3 took its plate from C-LEVEL 4** (`-InferFloors`). Are the edges right?
-3. **LEVEL 2 and LEVEL 1 MEZZ have a floor that stops well short of their structure** — new on
-   24 Aug, see below. Is that the building, or a slab edge that failed to close?
+3. **LEVEL 2 and LEVEL 1 MEZZ have a floor that stops well short of their structure.** Is that the
+   building — a mezzanine over part of a room, a podium ending where the tower starts — or did a
+   slab edge fail to close? This is NOT the hourglass, which is fixed; it is the separate question
+   of how far the podium reaches.
 
 Everything else in the workbook is DECIDED with the reasoning attached.
 
@@ -108,7 +111,33 @@ yes. It took rendering the mezzanine and looking at it.
   its drawings correctly, proven by rendering our extraction over the sheet. Do not re-litigate.
 - **Autodesk samples** prove the pipeline is portable — Revit → bridge → DXF → `.e2k` with nothing
   typed — but cannot measure accuracy: they are beam-framed and this tool does not model beams.
-- **Never opened in ETABS since the shell rebuild.** No ETABS on this machine; KOR-210 has it.
+## Opened in ETABS — 24 Aug, ETABS 22.6.0 on KOR-210
+
+It imports and reads as a building. `Analyze → Check Model` was run twice.
+
+**First run: 8 warnings.** Five were pairs of joints "too close" — 0.0005 to 0.0042 inches, four
+thousandths — where two sheets reached the same corner and the 1/1000-inch quantisation grid
+rounded them either side of a cell boundary. Those were walls that should have been connected and
+were not. `PointAt` now reuses the nearest joint within 1/20 inch. Joints fell 3,461 → 3,456,
+exactly the five ETABS named.
+
+**Second run: 3 warnings, all the same kind, and all benign:**
+
+| storey | member joints ON the slab edge | mesh reduction |
+|---|---|---|
+| LEVEL P1 | 9 | 68.50 ft² (0.090%) |
+| LEVEL P2 | 6 | 36.30 ft² (0.048%) |
+| LEVEL P3 | 4 | 23.41 ft² (0.031%) |
+
+Roughly 6–8 ft² per joint, monotonic with the count. Where a perimeter wall ends exactly on the
+slab edge, ETABS subdivides the plate there and drops a sliver. There are **no openings** on those
+storeys, so it is not openings being cut. Walls terminating on the slab boundary is correct
+modelling; this is the mesher's arithmetic, not a hole in the floor. Not fixable from our side
+without moving walls off the edge, which would be wrong. **Say it to the engineer rather than
+chase it.**
+
+Check Model raised **nothing** about LEVEL 2 — the two split podium plates passed ETABS's own
+geometry check, which is stronger evidence than anything measurable from the text file.
 
 ## The habit that catches this class of fault
 
