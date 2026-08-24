@@ -210,7 +210,19 @@ if (Test-Path $reportPath) {
             else { "$sum across $($_.Count) drawings: " + ($one -replace '^\d[\d,]*\s*', '') }
         }
 
-    $notModelled = @($modelWide) + @($grouped) | Select-Object -First 10
+    $all = @($modelWide) + @($grouped)
+
+    # First sentence each, and a line saying where the rest of the words are.
+    #
+    # Taken verbatim, ten of these ran to 37 lines and pushed a one-page summary onto a second
+    # page -- and page two of a one-page summary is where the thing nobody reads lives. The
+    # softening this comment used to warn about comes from PARAPHRASING; a first sentence is the
+    # finding in the tool's own words, and the report beside it carries every one in full.
+    $notModelled = $all | Select-Object -First 8 | ForEach-Object {
+        $m = [regex]::Match($_, '^(.+?[.!])(\s|$)')
+        if ($m.Success -and $m.Groups[1].Value.Length -lt $_.Length) { $m.Groups[1].Value + ' …' } else { $_ }
+    }
+    $trimmedAway = $all.Count - @($notModelled).Count
 }
 
 $esc = { param($t) [System.Net.WebUtility]::HtmlEncode([string]$t) }
@@ -229,6 +241,11 @@ if ($notModelled.Count) {
     $html.Add('<h2>What was not, and why</h2><ul>')
     foreach ($n in $notModelled) { $html.Add('<li>' + (& $esc $n) + '</li>') }
     $html.Add('</ul>')
+    if ($trimmedAway -gt 0) {
+        # Never a silent truncation. A page that shows eight of eleven findings without saying so
+        # reads as "these are the findings".
+        $html.Add('<p class="sub">Shortened to the first sentence of each, and ' + $trimmedAway + ' further finding(s) are not listed here. All of them appear in full in <code>' + (& $esc "$Project-FROM-DRAWINGS-report.txt") + '</code>.</p>')
+    }
 }
 
 $html.Add('<h2>What it did not touch</h2><p>No loads, diaphragms, stiffness modifiers, section properties, meshing or design &mdash; those are yours. Geometry already in your model was recognised and left alone rather than duplicated.</p>')
