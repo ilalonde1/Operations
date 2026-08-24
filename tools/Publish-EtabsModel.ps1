@@ -46,6 +46,18 @@ param(
     # one is worse than the hole it fills.
     [switch]$InferFloors,
 
+    # A second model from the same job, beside the first rather than over it.
+    #
+    # 31168 ships the YMCA, its podium and the parkade; the two towers were cut out at the
+    # engineer's request and are a separate deliverable she asked for later. Every output name is
+    # built from the job number, so a second run would have overwritten the first one silently --
+    # the model, the report, the workbook and the summary, all four.
+    #
+    # A variant publish also leaves the general explainers completely alone. They describe the main
+    # model, and a document about a different building sitting next to this one is the exact fault
+    # this script spent a day learning to refuse.
+    [string]$Variant,
+
     [switch]$SkipDossier
 )
 
@@ -115,7 +127,12 @@ Write-Host "  reference    : $Reference" -ForegroundColor DarkGray
 if (-not $RulesDb) { throw "KOR_ENGINEERINGTOOLS_STANDARDSDB is not set; refusing to publish a model from built-in rules." }
 
 $folder = $config.Folder
-$out    = Join-Path $folder "$Project-FROM-DRAWINGS.e2k"
+
+# Every artefact this run owns is named from $label; the dossier gate still keys on $Project,
+# because the explainers describe the job's main model whichever variant is being built.
+$label = if ($Variant) { "$Project-$($Variant.Trim().ToUpperInvariant())" } else { $Project }
+$out    = Join-Path $folder "$label-FROM-DRAWINGS.e2k"
+if ($Variant) { Write-Host "  variant      : $label" -ForegroundColor DarkGray }
 
 # The CLI is not rebuilt by `dotnet test`, so a stale exe silently publishes yesterday's rules.
 Write-Host 'building the CLI...' -ForegroundColor DarkGray
@@ -133,8 +150,8 @@ if ($InferFloors) { $cutArgs += '--infer-floors' }
 & $cli dxf-to-etabs $config.Dxf (Join-Path $folder $config.Reference) $out `
     @cutArgs `
     --rules-db $RulesDb `
-    --report (Join-Path $folder "$Project-FROM-DRAWINGS-report.txt") `
-    --questions (Join-Path $folder "$Project-QUESTIONS-for-Andrea.xlsx") |
+    --report (Join-Path $folder "$label-FROM-DRAWINGS-report.txt") `
+    --questions (Join-Path $folder "$label-QUESTIONS-for-Andrea.xlsx") |
     Select-String -Pattern 'Storeys built|^Walls|^Columns|^Floors'
 if ($LASTEXITCODE -ne 0) { throw 'generation failed.' }
 
@@ -147,7 +164,7 @@ if ($LASTEXITCODE -ne 0) { throw 'generation failed.' }
 # what was built and what was not, in the job's own numbers, so it cannot be wrong about a
 # building it is not describing.
 # ---------------------------------------------------------------------------------------------
-$reportPath = Join-Path $folder "$Project-FROM-DRAWINGS-report.txt"
+$reportPath = Join-Path $folder "$label-FROM-DRAWINGS-report.txt"
 $model      = Get-Content -LiteralPath $out
 $counts = [ordered]@{
     # Storeys the building has, not rows in the list: the base carries an elevation, not a height.
@@ -231,7 +248,7 @@ $html.Add('<title>' + (& $esc "$Project - model from drawings") + '</title>')
 # Sized to fit ONE page, because it is called a one-page summary and was running to two. A second
 # page is where the thing nobody read lives.
 $html.Add('<style>body{font:12.5px/1.42 "Segoe UI",system-ui,sans-serif;max-width:46rem;margin:0 auto;padding:20px 26px;color:#1a1a1a}h1{font-size:19px;margin:0 0 2px;font-weight:650}.sub{color:#5b5b5b;font-size:11.5px;margin:0 0 12px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#7a2230;margin:14px 0 5px}table{border-collapse:collapse;width:100%;font-size:12.5px}td{padding:2px 8px 2px 0;border-bottom:1px solid #eeeae5}td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}li{margin:0 0 3px}ul{margin:4px 0;padding-left:18px}p{margin:5px 0}code{background:#f4f2ef;padding:1px 4px;border-radius:3px;font-size:11.5px}</style>')
-$html.Add('<h1>' + (& $esc $Project) + ' &mdash; model from drawings</h1>')
+$html.Add('<h1>' + (& $esc $label) + ' &mdash; model from drawings</h1>')
 $html.Add('<p class="sub">Generated ' + (Get-Date -Format 'd MMMM yyyy') + ' from ' + (& $esc (Split-Path $DxfFolder -Leaf)) + ', on top of ' + (& $esc $Reference) + '. It removes the typing; it does none of the engineering.</p>')
 $html.Add('<h2>What was built</h2><table>')
 foreach ($k in $counts.Keys) { $html.Add('<tr><td>' + (& $esc $k) + '</td><td class="n">' + ('{0:N0}' -f $counts[$k]) + '</td></tr>') }
@@ -244,7 +261,7 @@ if ($notModelled.Count) {
     if ($trimmedAway -gt 0) {
         # Never a silent truncation. A page that shows eight of eleven findings without saying so
         # reads as "these are the findings".
-        $html.Add('<p class="sub">Shortened to the first sentence of each, and ' + $trimmedAway + ' further finding(s) are not listed here. All of them appear in full in <code>' + (& $esc "$Project-FROM-DRAWINGS-report.txt") + '</code>.</p>')
+        $html.Add('<p class="sub">Shortened to the first sentence of each, and ' + $trimmedAway + ' further finding(s) are not listed here. All of them appear in full in <code>' + (& $esc "$label-FROM-DRAWINGS-report.txt") + '</code>.</p>')
     }
 }
 
@@ -269,11 +286,11 @@ $waiting = if ($null -eq $openQuestions) {
     "$openQuestions rows are marked NEEDS YOU &mdash; nothing in the drawings could settle them."
 }
 
-$html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is listed in <code>' + (& $esc "$Project-QUESTIONS-for-Andrea.xlsx") + '</code>, each with the measurement behind it beside it. ' + $waiting + ' Rows tied to a rule can be changed from the answer cell, and that becomes the rule for every job afterwards &mdash; you are asked once. Rows without a rule key are visible scope decisions, not yet learnable settings. A second sheet lists every rule this model was built on, read-only, including the geometry tolerances no decision asks about.</p>')
-$html.Add('<p class="sub" style="margin-top:22px">Location by location, the full account is in <code>' + (& $esc "$Project-FROM-DRAWINGS-report.txt") + '</code>.</p>')
+$html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is listed in <code>' + (& $esc "$label-QUESTIONS-for-Andrea.xlsx") + '</code>, each with the measurement behind it beside it. ' + $waiting + ' Rows tied to a rule can be changed from the answer cell, and that becomes the rule for every job afterwards &mdash; you are asked once. Rows without a rule key are visible scope decisions, not yet learnable settings. A second sheet lists every rule this model was built on, read-only, including the geometry tolerances no decision asks about.</p>')
+$html.Add('<p class="sub" style="margin-top:22px">Location by location, the full account is in <code>' + (& $esc "$label-FROM-DRAWINGS-report.txt") + '</code>.</p>')
 
-$summaryHtml = Join-Path $env:TEMP "kor-summary-$Project.html"
-$summaryPdf  = Join-Path $folder "KOR-$Project-SUMMARY.pdf"
+$summaryHtml = Join-Path $env:TEMP "kor-summary-$label.html"
+$summaryPdf  = Join-Path $folder "KOR-$label-SUMMARY.pdf"
 $html -join "`n" | Set-Content -LiteralPath $summaryHtml -Encoding UTF8
 & (Join-Path $PSScriptRoot 'Format-BdWebPdf.ps1') -Html $summaryHtml -Pdf $summaryPdf | Out-Null
 
@@ -299,7 +316,7 @@ if ($pdfinfo) {
     Write-Host "  summary pages: $pages" -ForegroundColor DarkGray
 }
 
-if (-not $SkipDossier) {
+if ((-not $SkipDossier) -and (-not $Variant)) {
     # The dossier and the one-pager describe particular buildings by name. Copying them beside a
     # job they do not describe hands the engineer a document about somebody else's tower, and it
     # is the kind of thing nobody notices until it is in front of a client: the counts look
@@ -344,7 +361,7 @@ $dossier = $dossierSourcePdf
 $pdftotext = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter 'pdftotext.exe' -ErrorAction SilentlyContinue |
     Select-Object -First 1 -ExpandProperty FullName
 
-if ((-not $SkipDossier) -and (Test-Path $dossier) -and $pdftotext) {
+if ((-not $SkipDossier) -and (-not $Variant) -and (Test-Path $dossier) -and $pdftotext) {
     $model = Get-Content -LiteralPath $out
     $actual = [ordered]@{
         walls    = @($model | Select-String '^\s+AREA\s+"KW\d+"\s+PANEL').Count
@@ -579,7 +596,7 @@ if ((-not $SkipDossier) -and (Test-Path $dossier) -and $pdftotext) {
     Copy-Item $dossierSourcePdf $dossierTarget -Force
     if (Test-Path $onePagerSourcePdf) { Copy-Item $onePagerSourcePdf $onePagerTarget -Force }
 }
-elseif ($SkipDossier) {
+elseif ($SkipDossier -and (-not $Variant)) {
     # -SkipDossier says "do not ship the explainer". A copy left from a run that did ship it makes
     # that a lie, so saying no removes it rather than merely declining to refresh it.
     foreach ($t in @($dossierTarget, $onePagerTarget)) {
@@ -594,12 +611,17 @@ elseif ($SkipDossier) {
 $newestSource = (Get-ChildItem (Join-Path $repo 'Kor.Operations.EngineeringTools.Core\Dxf') -Filter '*.cs' |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
 
+# A variant publish owns only its own files. Judging the other model's artefacts against this
+# run's source would report the YMCA package as stale every time the towers are rebuilt, which is
+# false and would train someone to ignore the word.
+$mine = if ($Variant) { "^$([regex]::Escape($label))-" } else { 'FROM-DRAWINGS|QUESTIONS|DOSSIER|READ-THIS-FIRST' }
+
 $stale = Get-ChildItem $folder -File |
-    Where-Object { $_.Name -match 'FROM-DRAWINGS|QUESTIONS|DOSSIER|READ-THIS-FIRST' -and $_.LastWriteTime -lt $newestSource }
+    Where-Object { $_.Name -match $mine -and $_.LastWriteTime -lt $newestSource }
 
 Write-Host ''
 Get-ChildItem $folder -File |
-    Where-Object { $_.Name -match 'FROM-DRAWINGS|QUESTIONS|DOSSIER|READ-THIS-FIRST' } |
+    Where-Object { $_.Name -match $mine } |
     Sort-Object Name |
     ForEach-Object { '  {0,-44} {1,7:N0} KB  {2:HH:mm}' -f $_.Name, ($_.Length / 1kb), $_.LastWriteTime }
 

@@ -301,6 +301,7 @@ public static class DxfToEtabsService
             JoinTolerance = settings.ValueOr("dxf.join-tolerance", options.JoinTolerance),
             BridgeTolerance = settings.ValueOr("dxf.bridge-tolerance", options.BridgeTolerance),
             WallBridgeTolerance = settings.ValueOr("dxf.wall-bridge-tolerance", options.WallBridgeTolerance),
+            OutlineSelfTouchTolerance = settings.ValueOr("dxf.outline-self-touch-tolerance", options.OutlineSelfTouchTolerance),
         };
 
     private static ComposeOptions ApplyRules(
@@ -317,6 +318,10 @@ public static class DxfToEtabsService
             SkipMembersAlreadyModelled = settings.FlagOr("dxf.skip-members-already-modelled", options.SkipMembersAlreadyModelled),
             SpandrelDepthFloor = settings.ValueOr("dxf.spandrel-depth-floor", options.SpandrelDepthFloor),
             SpandrelDepthCeiling = settings.ValueOr("dxf.spandrel-depth-ceiling", options.SpandrelDepthCeiling),
+            JointMergeTolerance = settings.ValueOr("dxf.joint-merge-tolerance", options.JointMergeTolerance),
+            DonorPlateLikenessMargin = settings.ValueOr("dxf.donor-plate-likeness-margin", options.DonorPlateLikenessMargin),
+            MinFloorCoverage = settings.ValueOr("dxf.min-floor-coverage", options.MinFloorCoverage),
+            SelfTouchReportGap = settings.ValueOr("dxf.self-touch-report-gap", options.SelfTouchReportGap),
         };
 
     private static string Describe(double unitInInches) => unitInInches switch

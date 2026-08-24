@@ -128,6 +128,13 @@ public sealed record PlanClassificationOptions
     public double MinPlateArea { get; init; } = 57600.0;
 
     /// <summary>
+    /// How close two non-adjacent edges of one slab outline must come before the ring is treated
+    /// as closing through itself and split into the plates it is drawing.
+    /// See `dxf.outline-self-touch-tolerance`.
+    /// </summary>
+    public double OutlineSelfTouchTolerance { get; init; } = 0.05;
+
+    /// <summary>
     /// Largest dash gap to close when rebuilding a dashed line. Measured on KOR's exports:
     /// hidden edges dash at a constant 11", while genuine interruptions in a slab boundary
     /// run 18" and wider.
@@ -424,7 +431,7 @@ public static class StructuralPlanClassifier
                     //
                     // Slabs only. Wall and column rings go through their own paths above, and a
                     // wall outline that touches itself means something different there.
-                    var rings = LoopGeometry.SplitSelfCrossings(loop.Points);
+                    var rings = LoopGeometry.SplitSelfCrossings(loop.Points, options.OutlineSelfTouchTolerance);
                     if (rings.Count == 1)
                     {
                         slabCandidates.Add(loop);

@@ -167,6 +167,29 @@ public sealed record ComposeOptions
     /// "Bounding can be 18"-60"" — and they are options rather than literals so that answer can
     /// live in KorStandards and change the model without changing this file.
     /// </summary>
+    /// <summary>
+    /// Two generated joints closer than this are one joint. See `dxf.joint-merge-tolerance`.
+    /// </summary>
+    public double JointMergeTolerance { get; init; } = 0.05;
+
+    /// <summary>
+    /// Candidate donor plates within this fraction of the best shape match are equally good, and
+    /// the nearest storey wins. See `dxf.donor-plate-likeness-margin`.
+    /// </summary>
+    public double DonorPlateLikenessMargin { get; init; } = 0.98;
+
+    /// <summary>
+    /// A storey whose plate reaches less of the ground its members cover than this is reported.
+    /// See `dxf.min-floor-coverage`.
+    /// </summary>
+    public double MinFloorCoverage { get; init; } = 0.6;
+
+    /// <summary>
+    /// A plate still coming this close to itself after splitting is flagged. The backstop for the
+    /// splitter, not the splitter. See `dxf.self-touch-report-gap`.
+    /// </summary>
+    public double SelfTouchReportGap { get; init; } = 2.0;
+
     public double SpandrelDepthFloor { get; init; } = 18.0;
 
     public double SpandrelDepthCeiling { get; init; } = 60.0;
@@ -401,14 +424,14 @@ public static class E2kGeometryComposer
             // no two joints can end up closer than that however the arithmetic falls. A twentieth
             // of an inch is far below anything structural -- thicknesses snap to the half inch --
             // and far above the rounding noise.
-            const double JoinTolerance = 0.05;
-            static long Q(double v) => (long)Math.Round(v / JoinTolerance);
+            double joinTolerance = options.JointMergeTolerance;
+            long Q(double v) => (long)Math.Round(v / joinTolerance);
 
             var key = (Q(x), Q(y), Q(zOffset));
             if (pointNames.TryGetValue(key, out string? existing)) return existing;
 
             string? nearest = null;
-            double nearestDistance = JoinTolerance;
+            double nearestDistance = joinTolerance;
             for (long dx = -1; dx <= 1; dx++)
             for (long dy = -1; dy <= 1; dy++)
             for (long dz = -1; dz <= 1; dz++)
@@ -754,7 +777,7 @@ public static class E2kGeometryComposer
                 // Reported with its coordinate rather than repaired. Two wings joined at a point
                 // are usually two plates, but which two is the drawing's answer, not this tool's.
                 double pinch = NarrowestSelfGap(slab.Points);
-                if (pinch <= 2.0)
+                if (pinch <= options.SelfTouchReportGap)
                 {
                     var at = SelfGapAt(slab.Points);
                     pinchedPlates.Add((story.Name, placement.SourceSheet, pinch,
@@ -960,7 +983,7 @@ public static class E2kGeometryComposer
 
                 double bestLikeness = candidates.Max(c => c.Likeness);
                 var donor = candidates
-                    .Where(c => c.Likeness >= bestLikeness * 0.98)
+                    .Where(c => c.Likeness >= bestLikeness * options.DonorPlateLikenessMargin)
                     .OrderBy(c => Math.Abs(c.Storey.Elevation - storey.Elevation))
                     .ThenBy(c => c.Storey.Elevation < storey.Elevation ? 0 : 1)
                     .First();
@@ -1029,7 +1052,7 @@ public static class E2kGeometryComposer
                 spanned = spanned.With(plate.Where.MinX, plate.Where.MinY).With(plate.Where.MaxX, plate.Where.MaxY);
 
             double covered = spanned.CoverageOf(standingOn);
-            if (covered < 0.6) thinlyFloored.Add((storey.Name, (int)Math.Round(covered * 100)));
+            if (covered < options.MinFloorCoverage) thinlyFloored.Add((storey.Name, (int)Math.Round(covered * 100)));
         }
 
         if (thinlyFloored.Count > 0)
