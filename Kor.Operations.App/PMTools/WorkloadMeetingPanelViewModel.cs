@@ -341,13 +341,21 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
         // while our async work was in flight.
         var genAtStart = System.Threading.Interlocked.Read(ref _meetingSelectionGeneration);
         var ok = false;
+        var stale = false;
         await RunBusyAsync(async () =>
         {
             ActivityText = "Saving\u2026";
             MeetingError = null;
             try
             {
-                await _store.UpsertProjectPriorityAsync(selection.Id, wbs1, priority, notes: null).ConfigureAwait(false);
+                if (!await _store.UpsertProjectPriorityAsync(selection.Id, wbs1, priority, notes: null).ConfigureAwait(false))
+                {
+                    // Refused: somebody created a newer meeting after this window loaded its
+                    // list. Handled outside the busy block so the reload isn't nested here.
+                    stale = true;
+                    return;
+                }
+
                 var projects = await _store.GetProjectsForMeetingAsync(selection.Id).ConfigureAwait(false);
                 // Drop stale refresh if the user switched meetings after our save began.
                 if (System.Threading.Interlocked.Read(ref _meetingSelectionGeneration) != genAtStart)
@@ -387,7 +395,35 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             }
         }).ConfigureAwait(false);
         ActivityText = string.Empty;
+        if (stale)
+        {
+            await HandleStaleMeetingRejectionAsync($"priority change on {wbs1}").ConfigureAwait(false);
+        }
+
         return ok;
+    }
+
+    /// <summary>
+    /// The store refused a write because a newer meeting exists. This window cannot discover
+    /// that on its own: <see cref="LoadAsync"/> runs once from Window_Loaded, the Refresh
+    /// button reloads Deltek project data rather than the meeting list, and there is no timer.
+    /// So reload the list and say plainly what happened. The refused edit is deliberately not
+    /// replayed into the new meeting — moving somebody's change onto a meeting they were not
+    /// looking at, possibly over someone else's value, is their call to make, not ours.
+    /// </summary>
+    private async Task HandleStaleMeetingRejectionAsync(string what)
+    {
+        _logger.LogWarning(
+            "Refused {What}: the selected meeting is no longer the latest. Reloading meetings.", what);
+
+        await LoadAsync().ConfigureAwait(false);
+
+        // LoadAsync clears MeetingError, so the message goes on after it, not before.
+        await _dispatcher.InvokeAsync(() =>
+        {
+            MeetingError = "A newer meeting was created after this window was opened, so the change "
+                         + "was not saved. The meeting list has been reloaded — please re-enter it.";
+        });
     }
 
     public async Task LoadAsync()
@@ -580,6 +616,7 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
     private async Task ExecuteMeetingNotesSaveAsync(Guid meetingId, string? notes)
     {
+        var stale = false;
         await RunBusyAsync(async () =>
         {
             ActivityText = "Saving\u2026";
@@ -602,8 +639,10 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                     return;
                 }
 
-                await _store.SaveMeetingNotesAsync(meetingId, notes).ConfigureAwait(false);
+                var saved = await _store.SaveMeetingNotesAsync(meetingId, notes).ConfigureAwait(false);
 
+                // Clear the pending slot either way: a refused save will be refused again, so
+                // leaving it queued would only produce a second rejection on the next flush.
                 lock (_notesGate)
                 {
                     if (_pendingNotesMeetingId == meetingId)
@@ -611,6 +650,11 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                         _pendingNotesMeetingId = null;
                         _pendingNotesValue = null;
                     }
+                }
+
+                if (!saved)
+                {
+                    stale = true;
                 }
             }
             catch (Exception ex)
@@ -620,6 +664,10 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
             }
         }).ConfigureAwait(false);
         ActivityText = string.Empty;
+        if (stale)
+        {
+            await HandleStaleMeetingRejectionAsync("meeting notes").ConfigureAwait(false);
+        }
     }
 
     private void OnProjectNotesChanged(WorkloadMeetingProjectRow row)
@@ -687,7 +735,10 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
                     _logger.LogWarning("Skipping project notes save — meeting {MeetingId} no longer exists.", meetingId);
                     return;
                 }
-                await _store.SaveProjectNotesAsync(meetingId, wbs1, notes, _disposeCts.Token).ConfigureAwait(false);
+                if (!await _store.SaveProjectNotesAsync(meetingId, wbs1, notes, _disposeCts.Token).ConfigureAwait(false))
+                {
+                    await HandleStaleMeetingRejectionAsync($"notes on {wbs1}").ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
@@ -724,7 +775,15 @@ public sealed class WorkloadMeetingPanelViewModel : INotifyPropertyChanged, IDis
 
         await FlushPendingNotesSaveAsync(selectionId).ConfigureAwait(false);
         foreach (var row in rows)
-            await _store.SaveProjectNotesAsync(selectionId, row.Wbs1, row.Notes, ct).ConfigureAwait(false);
+        {
+            if (!await _store.SaveProjectNotesAsync(selectionId, row.Wbs1, row.Notes, ct).ConfigureAwait(false))
+            {
+                // Every remaining row targets the same meeting and would be refused too, so
+                // stop here and report once rather than once per project.
+                await HandleStaleMeetingRejectionAsync("notes").ConfigureAwait(false);
+                return;
+            }
+        }
     }
 
     public async Task DeleteMeetingAsync()

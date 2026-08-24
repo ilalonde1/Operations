@@ -33,16 +33,66 @@ namespace Kor.Operations.Data
         Task EnsureTablesAsync(CancellationToken ct = default);
         Task<IReadOnlyList<WorkloadMeeting>> GetAllMeetingsAsync(CancellationToken ct = default);
         Task<WorkloadMeeting> CreateMeetingAsync(DateTime meetingDate, string? createdBy, CancellationToken ct = default);
-        Task SaveMeetingNotesAsync(Guid meetingId, string? notes, CancellationToken ct = default);
+        /// <summary>Writes the meeting-level notes. Returns false, having written
+        /// nothing, when <paramref name="meetingId"/> is no longer the latest meeting.</summary>
+        Task<bool> SaveMeetingNotesAsync(Guid meetingId, string? notes, CancellationToken ct = default);
         Task<IReadOnlyList<WorkloadMeetingProject>> GetProjectsForMeetingAsync(Guid meetingId, CancellationToken ct = default);
-        Task UpsertProjectPriorityAsync(Guid meetingId, string wbs1, int priority, string? notes, CancellationToken ct = default);
-        Task SaveProjectNotesAsync(Guid meetingId, string wbs1, string? notes, CancellationToken ct = default);
+        /// <summary>Sets, or when <paramref name="priority"/> is 0 clears, a project's meeting
+        /// priority. Returns false, having written nothing, when <paramref name="meetingId"/>
+        /// is no longer the latest meeting.</summary>
+        Task<bool> UpsertProjectPriorityAsync(Guid meetingId, string wbs1, int priority, string? notes, CancellationToken ct = default);
+
+        /// <summary>Writes a project's notes. Returns false, having written nothing, when
+        /// <paramref name="meetingId"/> is no longer the latest meeting. Note that true does
+        /// not imply a row was updated — a project with no priority row has nowhere to store
+        /// notes, and that is a legitimate no-op rather than a rejection.</summary>
+        Task<bool> SaveProjectNotesAsync(Guid meetingId, string wbs1, string? notes, CancellationToken ct = default);
         Task DeleteMeetingAsync(Guid meetingId, CancellationToken ct = default);
         Task CarryForwardProjectsAsync(Guid sourceMeetingId, Guid targetMeetingId, CancellationToken ct = default);
     }
 
+    /// <summary>
+    /// Store for the PM Tools workload meeting.
+    ///
+    /// <para>Edits are only ever accepted against the <em>latest</em> meeting. That rule used
+    /// to live solely in <c>WorkloadMeetingPanelViewModel.IsCurrentMeeting</c>, which compares
+    /// the selection against the client's in-memory list. That list is loaded once when the
+    /// window opens and is never refreshed afterwards — the Refresh button reloads Deltek
+    /// project data, not the meeting list. So a window left open while somebody else created
+    /// the next meeting went on believing the previous meeting was current, and its writes
+    /// landed in that previous meeting: silently, because the client-side guard saw nothing
+    /// wrong, and unrecoverably, because the carry-forward copy into the new meeting had
+    /// already happened. Observed 2026-08-24, when the day's meeting was created 49 minutes
+    /// after a user had opened the window.</para>
+    ///
+    /// <para>The guard therefore lives here, in the same statement as the write, so no caller
+    /// can bypass it and there is no window between the check and the write. "Latest" is
+    /// resolved with the identical ordering the UI uses — <c>MeetingDate DESC, CreatedAt
+    /// DESC</c> — so the two cannot disagree about which meeting is current. That tie-break
+    /// is load-bearing, not theoretical: two meetings already share the date 2026-07-27.</para>
+    ///
+    /// <para><see cref="CarryForwardProjectsAsync"/> is deliberately exempt. It seeds a newly
+    /// created meeting, and guarding it would mean a second person creating a meeting in the
+    /// gap between <see cref="CreateMeetingAsync"/> and the copy would leave an empty meeting
+    /// behind.</para>
+    /// </summary>
     public sealed class SqlWorkloadMeetingStore : IWorkloadMeetingStore
     {
+        /// <summary>
+        /// Resolves the latest meeting and short-circuits the write when the caller's meeting
+        /// is not it. Prepended to each guarded statement; the batch yields a single BIT —
+        /// 1 when the write was attempted, 0 when it was refused as stale.
+        /// </summary>
+        private const string LatestMeetingGuard = @"
+DECLARE @Latest UNIQUEIDENTIFIER =
+    (SELECT TOP 1 Id FROM dbo.WorkloadMeetings ORDER BY MeetingDate DESC, CreatedAt DESC);
+IF @Latest IS NULL OR @Latest <> @MeetingId
+BEGIN
+    SELECT CAST(0 AS BIT);
+    RETURN;
+END
+";
+
         private readonly string _cs;
 
         public SqlWorkloadMeetingStore(string connectionString)
@@ -145,20 +195,21 @@ VALUES (@Id, @MeetingDate, NULL, @CreatedAt, @CreatedBy);";
             };
         }
 
-        public async Task SaveMeetingNotesAsync(Guid meetingId, string? notes, CancellationToken ct = default)
+        public async Task<bool> SaveMeetingNotesAsync(Guid meetingId, string? notes, CancellationToken ct = default)
         {
-            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
             {
-                const string sql = @"
-UPDATE dbo.WorkloadMeetings SET Notes = @Notes WHERE Id = @Id;";
+                const string sql = LatestMeetingGuard + @"
+UPDATE dbo.WorkloadMeetings SET Notes = @Notes WHERE Id = @MeetingId;
+SELECT CAST(1 AS BIT);";
 
                 await using var cn = new SqlConnection(_cs);
                 await cn.OpenAsync(innerCt);
                 await using var cmd = new SqlCommand(sql, cn);
                 cmd.CommandTimeout = SqlTimeouts.Batch;
-                AddParameter(cmd, "@Id", meetingId);
+                AddParameter(cmd, "@MeetingId", meetingId);
                 AddParameter(cmd, "@Notes", (object?)notes ?? DBNull.Value);
-                await cmd.ExecuteNonQueryAsync(innerCt);
+                return Convert.ToBoolean(await cmd.ExecuteScalarAsync(innerCt));
             }, ct);
         }
 
@@ -195,27 +246,28 @@ ORDER BY Priority, Wbs1;";
             }, ct);
         }
 
-        public async Task UpsertProjectPriorityAsync(Guid meetingId, string wbs1, int priority, string? notes, CancellationToken ct = default)
+        public async Task<bool> UpsertProjectPriorityAsync(Guid meetingId, string wbs1, int priority, string? notes, CancellationToken ct = default)
         {
-            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
             {
                 await using var cn = new SqlConnection(_cs);
                 await cn.OpenAsync(innerCt);
 
                 if (priority == 0)
                 {
-                    const string deleteSql = @"
+                    const string deleteSql = LatestMeetingGuard + @"
 DELETE FROM dbo.WorkloadMeetingProjects
-WHERE MeetingId = @MeetingId AND Wbs1 = @Wbs1;";
+WHERE MeetingId = @MeetingId AND Wbs1 = @Wbs1;
+SELECT CAST(1 AS BIT);";
                     await using var cmd = new SqlCommand(deleteSql, cn);
                     cmd.CommandTimeout = SqlTimeouts.Batch;
                     AddParameter(cmd, "@MeetingId", meetingId);
                     cmd.Parameters.Add(new SqlParameter("@Wbs1", SqlDbType.NVarChar, 50) { Value = wbs1 });
-                    await cmd.ExecuteNonQueryAsync(innerCt);
+                    return Convert.ToBoolean(await cmd.ExecuteScalarAsync(innerCt));
                 }
                 else
                 {
-                    const string upsertSql = @"
+                    const string upsertSql = LatestMeetingGuard + @"
 MERGE dbo.WorkloadMeetingProjects AS target
 USING (SELECT @MeetingId AS MeetingId, @Wbs1 AS Wbs1) AS source
 ON target.MeetingId = source.MeetingId AND target.Wbs1 = source.Wbs1
@@ -223,26 +275,28 @@ WHEN MATCHED THEN
     UPDATE SET Priority = @Priority
 WHEN NOT MATCHED THEN
     INSERT (Id, MeetingId, Wbs1, Priority, Notes)
-    VALUES (NEWID(), @MeetingId, @Wbs1, @Priority, @Notes);";
+    VALUES (NEWID(), @MeetingId, @Wbs1, @Priority, @Notes);
+SELECT CAST(1 AS BIT);";
                     await using var cmd = new SqlCommand(upsertSql, cn);
                     cmd.CommandTimeout = SqlTimeouts.Batch;
                     AddParameter(cmd, "@MeetingId", meetingId);
                     cmd.Parameters.Add(new SqlParameter("@Wbs1", SqlDbType.NVarChar, 50) { Value = wbs1 });
                     AddParameter(cmd, "@Priority", (byte)priority);
                     AddParameter(cmd, "@Notes", (object?)notes ?? DBNull.Value);
-                    await cmd.ExecuteNonQueryAsync(innerCt);
+                    return Convert.ToBoolean(await cmd.ExecuteScalarAsync(innerCt));
                 }
             }, ct);
         }
 
-        public async Task SaveProjectNotesAsync(Guid meetingId, string wbs1, string? notes, CancellationToken ct = default)
+        public async Task<bool> SaveProjectNotesAsync(Guid meetingId, string wbs1, string? notes, CancellationToken ct = default)
         {
-            await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
+            return await RetryPolicy.Pipeline.ExecuteAsync(async innerCt =>
             {
-                const string sql = @"
+                const string sql = LatestMeetingGuard + @"
 UPDATE dbo.WorkloadMeetingProjects
 SET Notes = @Notes
-WHERE MeetingId = @MeetingId AND Wbs1 = @Wbs1;";
+WHERE MeetingId = @MeetingId AND Wbs1 = @Wbs1;
+SELECT CAST(1 AS BIT);";
 
                 await using var cn = new SqlConnection(_cs);
                 await cn.OpenAsync(innerCt);
@@ -251,7 +305,7 @@ WHERE MeetingId = @MeetingId AND Wbs1 = @Wbs1;";
                 AddParameter(cmd, "@MeetingId", meetingId);
                 cmd.Parameters.Add(new SqlParameter("@Wbs1", SqlDbType.NVarChar, 50) { Value = wbs1 });
                 AddParameter(cmd, "@Notes", (object?)notes ?? DBNull.Value);
-                await cmd.ExecuteNonQueryAsync(innerCt);
+                return Convert.ToBoolean(await cmd.ExecuteScalarAsync(innerCt));
             }, ct);
         }
 
