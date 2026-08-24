@@ -1803,6 +1803,84 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void TheGateRefusesEveryFaultThatActuallyReachedAnEngineer()
+    {
+        // Not a list of things that could go wrong. A list of things that DID, on 31168, between
+        // 15 and 24 August -- each one past every count in the report, each one found because
+        // somebody happened to look. The report FLAGS; this REFUSES. That is the difference, and it
+        // is the whole reason this exists: a flag needs a reader, and the reader is usually the
+        // person who already believes the model is right.
+        static string[] Model(params string[] body) => new[]
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"B-LEVEL 2\"  HEIGHT 120",
+            "  STORY \"A-LEVEL 2\"  HEIGHT 2",
+            "  STORY \"LEVEL 1\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ POINT COORDINATES",
+        }.Concat(body).ToArray();
+
+        // A storey the run was told to drop, still in the file. Eight of these reached her.
+        var kept = ShippedModelInvariants.Check(Model("  POINT \"KP1\"  0 0"), droppedStoreys: new[] { "A-LEVEL 2" });
+        Assert.Contains(kept, x => x.Rule == "storey-cut");
+
+        // A member the reference model contributed. She circled four and said "these are not walls".
+        var carried = ShippedModelInvariants.Check(Model(
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"W18\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1 1 0 0",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"W18\"  \"LEVEL 1\"  SECTION \"x\""));
+        Assert.Contains(carried, x => x.Rule == "not-from-a-drawing");
+
+        // A storey carrying members with no floor: everything on it reads as unsupported.
+        var noFloor = ShippedModelInvariants.Check(Model(
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"KW1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1 1 0 0",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KW1\"  \"LEVEL 1\"  SECTION \"x\""));
+        Assert.Contains(noFloor, x => x.Rule == "storey-with-no-floor");
+
+        // One member on two storeys. Six spandrels shipped like this, 1.7 inches tall on the second.
+        var doubled = ShippedModelInvariants.Check(Model(
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0", "  POINT \"KP3\"  100 100", "  POINT \"KP4\"  0 100",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"KS1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  0 0 0 0",
+            "  AREA \"KF1\"  FLOOR  4  \"KP1\"  \"KP2\"  \"KP3\"  \"KP4\"  0 0 0 0",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KS1\"  \"A-LEVEL 2\"  SECTION \"x\"",
+            "  AREAASSIGN  \"KS1\"  \"B-LEVEL 2\"  SECTION \"x\"",
+            "  AREAASSIGN  \"KF1\"  \"A-LEVEL 2\"  SECTION \"x\"",
+            "  AREAASSIGN  \"KF1\"  \"B-LEVEL 2\"  SECTION \"x\""));
+        Assert.Contains(doubled, x => x.Rule == "member-on-two-storeys" && x.What.Contains("KS1"));
+
+        // ... but a FLOOR on two storeys is a borrowed plate, which is declared and allowed.
+        Assert.DoesNotContain(doubled, x => x.Rule == "member-on-two-storeys" && x.What.Contains("KF1"));
+
+        // Two joints four thousandths of an inch apart: walls that should have joined and did not.
+        var split = ShippedModelInvariants.Check(Model(
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100.0000 0", "  POINT \"KP3\"  100.0042 0", "  POINT \"KP4\"  0 100",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"KF1\"  FLOOR  4  \"KP1\"  \"KP2\"  \"KP3\"  \"KP4\"  0 0 0 0",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KF1\"  \"LEVEL 1\"  SECTION \"x\""));
+        Assert.Contains(split, x => x.Rule == "joints-too-close");
+
+        // A sound model raises nothing.
+        var sound = ShippedModelInvariants.Check(Model(
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0", "  POINT \"KP3\"  100 100", "  POINT \"KP4\"  0 100",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"KW1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1 1 0 0",
+            "  AREA \"KF1\"  FLOOR  4  \"KP1\"  \"KP2\"  \"KP3\"  \"KP4\"  0 0 0 0",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KW1\"  \"LEVEL 1\"  SECTION \"x\"",
+            "  AREAASSIGN  \"KF1\"  \"LEVEL 1\"  SECTION \"x\""));
+        Assert.Empty(sound);
+    }
+
+    [Fact]
     public void AHeaderGetsOneStoreyEvenWhereAWallWouldGetTwo()
     {
         // A wall's height IS the storey, so assigning it to every storey it spans is what makes one
@@ -1869,9 +1947,14 @@ public class E2kDocumentTests
         {
             Assert.True(storeys.Count == 1, $"{header} is assigned to {storeys.Count} storeys: {string.Join(", ", storeys)}");
 
-            // And on the storey the wall actually stands on, not the 1.7-inch one above it.
-            // A header on a two-inch sliver is not a header.
-            Assert.Equal("A-LEVEL 1", storeys[0]);
+            // And on its OWN building's storey. "The lowest storey it spans" was the first answer
+            // and it crosses towers: the storey below A-LEVEL 35 is B-LEVEL 35, so six of tower B's
+            // headers landed on a tower A storey at x 124-154 ft, where every tower A plate sits at
+            // x -106 to -3. It reached the shipped YMCA model too -- KS1, KS2, KS3 are tower B's,
+            // on A-LEVEL 1, 1.7 inches from where they belong.
+            //
+            // A short header on the right building beats a whole one on the wrong building.
+            Assert.Equal("B-LEVEL 1", storeys[0]);
         }
     }
 

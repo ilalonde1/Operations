@@ -140,6 +140,43 @@ if (args.Length >= 1 && args[0].Equals("dxf-render", StringComparison.OrdinalIgn
 // INSPECT one plan: what does this drawing actually give the model? Lists the layers, the
 // outlines that closed, and every member read out of them with its dimensions.
 // Usage: takeoff dxf-inspect <plan.dxf> [--walls]
+// The gate. Every fault it refuses actually shipped, or came within one publish of shipping, on
+// 31168 -- and every one passed the counts in the report. The report FLAGS, which needs a reader;
+// this REFUSES, which does not.
+if (args.Length >= 1 && args[0].Equals("verify-e2k", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>]"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
+
+    double jointTolerance = 0.05;
+    var droppedNames = new List<string>();
+    for (int i = 2; i < args.Length - 1; i++)
+    {
+        if (args[i].Equals("--joint-tolerance", StringComparison.OrdinalIgnoreCase))
+            double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out jointTolerance);
+        if (args[i].Equals("--dropped", StringComparison.OrdinalIgnoreCase))
+            droppedNames.AddRange(args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim()).Where(x => x.Length > 0));
+    }
+
+    var breaches = ShippedModelInvariants.Check(File.ReadLines(args[1]), jointTolerance, droppedNames);
+    if (breaches.Count == 0)
+    {
+        Console.WriteLine($"verify-e2k: {Path.GetFileName(args[1])} passes every invariant.");
+        return 0;
+    }
+
+    Console.Error.WriteLine($"verify-e2k: {Path.GetFileName(args[1])} FAILS {breaches.Count} check(s).");
+    foreach (var group in breaches.GroupBy(b => b.Rule).OrderBy(g => g.Key, StringComparer.Ordinal))
+    {
+        Console.Error.WriteLine($"  [{group.Key}] {group.Count()}");
+        foreach (var b in group.Take(6)) Console.Error.WriteLine($"      {b.What}   ({b.Where})");
+        if (group.Count() > 6) Console.Error.WriteLine($"      ... and {group.Count() - 6} more");
+    }
+    return 3;
+}
+
 if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIgnoreCase))
 {
     if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls]"); return 1; }

@@ -131,7 +131,19 @@ $folder = $config.Folder
 # Every artefact this run owns is named from $label; the dossier gate still keys on $Project,
 # because the explainers describe the job's main model whichever variant is being built.
 $label = if ($Variant) { "$Project-$($Variant.Trim().ToUpperInvariant())" } else { $Project }
-$out    = Join-Path $folder "$label-FROM-DRAWINGS.e2k"
+
+# NOTHING IS WRITTEN INTO THE JOB FOLDER UNTIL IT HAS PASSED.
+#
+# The model used to be generated straight into the engineer's folder and checked afterwards, which
+# makes every check a note rather than a gate: eight tower storeys, a 132-inch wall, four carried-in
+# members and a site-wide plate all reached that folder with the checks running after they landed.
+# Generation goes to a staging folder now, verify-e2k runs against the finished file, and only a
+# model that passes is copied across. A failure leaves the engineer's folder exactly as it was.
+$stage = Join-Path ([System.IO.Path]::GetTempPath()) "kor-publish-$label"
+if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+New-Item -ItemType Directory -Path $stage | Out-Null
+
+$out    = Join-Path $stage "$label-FROM-DRAWINGS.e2k"
 if ($Variant) { Write-Host "  variant      : $label" -ForegroundColor DarkGray }
 
 # The CLI is not rebuilt by `dotnet test`, so a stale exe silently publishes yesterday's rules.
@@ -150,10 +162,24 @@ if ($InferFloors) { $cutArgs += '--infer-floors' }
 & $cli dxf-to-etabs $config.Dxf (Join-Path $folder $config.Reference) $out `
     @cutArgs `
     --rules-db $RulesDb `
-    --report (Join-Path $folder "$label-FROM-DRAWINGS-report.txt") `
-    --questions (Join-Path $folder "$label-QUESTIONS.xlsx") |
+    --report (Join-Path $stage "$label-FROM-DRAWINGS-report.txt") `
+    --questions (Join-Path $stage "$label-QUESTIONS.xlsx") |
     Select-String -Pattern 'Storeys built|^Walls|^Columns|^Floors'
 if ($LASTEXITCODE -ne 0) { throw 'generation failed.' }
+
+# ---------------------------------------------------------------------------------------------
+# The gate. Structural invariants, checked against the finished file, before it can reach anyone.
+# ---------------------------------------------------------------------------------------------
+$verifyArgs = @()
+if ($DropStoreys) { $verifyArgs += @('--dropped', ($DropStoreys -join ',')) }
+
+& $cli verify-e2k $out @verifyArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ''
+    Write-Host "REFUSED — the model did not pass, and nothing was written to the job folder." -ForegroundColor Red
+    Write-Host "  the file that failed is at $out" -ForegroundColor DarkGray
+    exit 1
+}
 
 # ---------------------------------------------------------------------------------------------
 # A summary of THIS job, written from this job's own model and report.
@@ -164,7 +190,7 @@ if ($LASTEXITCODE -ne 0) { throw 'generation failed.' }
 # what was built and what was not, in the job's own numbers, so it cannot be wrong about a
 # building it is not describing.
 # ---------------------------------------------------------------------------------------------
-$reportPath = Join-Path $folder "$label-FROM-DRAWINGS-report.txt"
+$reportPath = Join-Path $stage "$label-FROM-DRAWINGS-report.txt"
 $model      = Get-Content -LiteralPath $out
 $counts = [ordered]@{
     # Storeys the building has, not rows in the list: the base carries an elevation, not a height.
@@ -290,7 +316,7 @@ $html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is 
 $html.Add('<p class="sub" style="margin-top:22px">Location by location, the full account is in <code>' + (& $esc "$label-FROM-DRAWINGS-report.txt") + '</code>.</p>')
 
 $summaryHtml = Join-Path $env:TEMP "kor-summary-$label.html"
-$summaryPdf  = Join-Path $folder "KOR-$label-SUMMARY.pdf"
+$summaryPdf  = Join-Path $stage "KOR-$label-SUMMARY.pdf"
 $html -join "`n" | Set-Content -LiteralPath $summaryHtml -Encoding UTF8
 & (Join-Path $PSScriptRoot 'Format-BdWebPdf.ps1') -Html $summaryHtml -Pdf $summaryPdf | Out-Null
 
@@ -607,21 +633,46 @@ elseif ($SkipDossier -and (-not $Variant)) {
     }
 }
 
+# ---------------------------------------------------------------------------------------------
+# Every gate has passed. Only now does anything cross into the engineer's folder.
+# ---------------------------------------------------------------------------------------------
+$landed = @()
+foreach ($f in Get-ChildItem $stage -File) {
+    Copy-Item $f.FullName (Join-Path $folder $f.Name) -Force
+    $landed += $f.Name
+}
+Write-Host ''
+Write-Host "  landed: $($landed.Count) file(s)" -ForegroundColor DarkGray
+
+# The workbook was named QUESTIONS-for-Andrea.xlsx until 24 Aug -- one engineer's first name on
+# every job, and the one-pager already called it QUESTIONS.xlsx. The old copy would otherwise sit
+# beside the new one, and two workbooks is worse than a badly named one.
+$super = Join-Path $folder "$label-QUESTIONS-for-Andrea.xlsx"
+if ((Test-Path $super) -and (Test-Path (Join-Path $folder "$label-QUESTIONS.xlsx"))) {
+    Remove-Item -LiteralPath $super -Force
+    Write-Host "  withdrew the superseded $label-QUESTIONS-for-Andrea.xlsx" -ForegroundColor Yellow
+}
+
 # Nothing ships that predates the code that made it.
 $newestSource = (Get-ChildItem (Join-Path $repo 'Kor.Operations.EngineeringTools.Core\Dxf') -Filter '*.cs' |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
 
-# A variant publish owns only its own files. Judging the other model's artefacts against this
-# run's source would report the YMCA package as stale every time the towers are rebuilt, which is
-# false and would train someone to ignore the word.
-$mine = if ($Variant) { "^$([regex]::Escape($label))-" } else { 'FROM-DRAWINGS|QUESTIONS|DOSSIER|READ-THIS-FIRST' }
+# This run owns exactly the files it just landed, plus the explainers when it shipped them.
+#
+# Pattern-matching on FROM-DRAWINGS|QUESTIONS instead made a YMCA publish judge the TOWERS model,
+# and report a package it had not touched as stale. A false "stale" is worse than none: it teaches
+# whoever reads it that the word does not mean anything.
+$owned = @($landed)
+if ((-not $SkipDossier) -and (-not $Variant)) {
+    $owned += @('KOR-Model-From-Drawings-DOSSIER.pdf', 'KOR-Model-From-Drawings-READ-THIS-FIRST.pdf')
+}
 
 $stale = Get-ChildItem $folder -File |
-    Where-Object { $_.Name -match $mine -and $_.LastWriteTime -lt $newestSource }
+    Where-Object { $owned -contains $_.Name -and $_.LastWriteTime -lt $newestSource }
 
 Write-Host ''
 Get-ChildItem $folder -File |
-    Where-Object { $_.Name -match $mine } |
+    Where-Object { $owned -contains $_.Name } |
     Sort-Object Name |
     ForEach-Object { '  {0,-44} {1,7:N0} KB  {2:HH:mm}' -f $_.Name, ($_.Length / 1kb), $_.LastWriteTime }
 

@@ -231,7 +231,12 @@ public sealed class E2kDocument
     /// shared by the site ("LEVEL 5", "LEVEL P1") and for any single-building model, where every
     /// storey is shared and the ordinary floor-below rule applies.
     /// </summary>
-    private static string BuildingTagOf(string name)
+    /// <summary>
+    /// The building a storey belongs to on a site model — "A" from "A-LEVEL 35" — or empty for a
+    /// storey shared by the whole site. Public because geometry decisions need it too: a member
+    /// must never be moved onto a storey belonging to a different building.
+    /// </summary>
+    public static string BuildingTagOf(string name)
         => name.Length > 2 && char.IsLetter(name[0]) && name[1] == '-'
             ? char.ToUpperInvariant(name[0]).ToString()
             : string.Empty;

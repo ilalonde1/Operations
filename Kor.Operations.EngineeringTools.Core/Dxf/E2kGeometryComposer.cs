@@ -755,9 +755,26 @@ public static class E2kGeometryComposer
                 // The sliver is always the upper of the pair, because FloorUnder gives it the real
                 // floor below as its base, which is exactly why the span covers two in the first
                 // place.
-                string headerStorey = headerStoreys.Count == 1
-                    ? headerStoreys[0]
-                    : headerStoreys
+                // ... and NEVER onto another building.
+                //
+                // "The lowest storey it spans" was the first rule and it crosses towers. On a site
+                // model the storey below A-LEVEL 35 is B-LEVEL 35, so six of tower B's headers were
+                // assigned to a tower A storey -- found at x 124-154 ft where every tower A plate
+                // sits at x -106 to -3. It reached the shipped YMCA model too: KS1, KS2 and KS3 are
+                // tower B's, on A-LEVEL 1.
+                //
+                // A header belongs to the building its sheet was drawn for. Where the storey it
+                // stands on belongs to the same building, take it; where it does not, stay put --
+                // a short header on the right building beats a whole one on the wrong building.
+                string placedTag = E2kDocument.BuildingTagOf(story.Name);
+                var sameBuilding = headerStoreys
+                    .Where(n => string.Equals(E2kDocument.BuildingTagOf(n), placedTag, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (sameBuilding.Count == 0) sameBuilding = new List<string> { story.Name };
+
+                string headerStorey = sameBuilding.Count == 1
+                    ? sameBuilding[0]
+                    : sameBuilding
                         .Select(n => allStories.First(s => s.Name.Equals(n, StringComparison.OrdinalIgnoreCase)))
                         .OrderBy(s => s.Elevation)
                         .First().Name;
