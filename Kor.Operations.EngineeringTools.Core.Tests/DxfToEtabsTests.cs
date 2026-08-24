@@ -1583,6 +1583,70 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void TwoMembersReachingTheSameCornerShareOneJointNotTwoAThousandthApart()
+    {
+        // ETABS Check Model on 31168 named five pairs of joints "too close" -- 0.0005 to 0.0042
+        // inches apart, four THOUSANDTHS, wherever two sheets reached the same corner and the old
+        // 1/1000-inch grid rounded them either side of a cell boundary. KW32 on B-LEVEL 1 and
+        // KW157 on LEVEL P1 met at (155.3, 305.8) ft as two separate joints.
+        //
+        // Duplicate nodes where walls should be joined is worse than clutter: connectivity is what
+        // the model is for. This is the check ETABS runs, run here instead.
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"UPPER\"  HEIGHT 120",
+            "  STORY \"LOWER\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        // The same corner from two sheets, four thousandths of an inch apart — and deliberately
+        // straddling a grid boundary, which is what defeated the old quantisation.
+        var lower = new PlanGeometrySet();
+        lower.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(240.4996, 0), 12, "JBP_V-WALL"));
+
+        var upper = new PlanGeometrySet();
+        upper.Walls.Add(new WallAxis(new DxfPoint(240.5038, 0), new DxfPoint(480, 0), 12, "JBP_V-WALL"));
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories["LOWER"], lower, "lower.dxf"),
+            new StoryPlacement(stories["UPPER"], upper, "upper.dxf"),
+        });
+
+        var joints = doc.LinesOf("POINT COORDINATES")
+            .Where(l => l.TrimStart().StartsWith("POINT ", StringComparison.Ordinal))
+            .Select(l => l.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+            // Generated joints only. The fixture's own seed joint belongs to the reference model.
+            .Where(bits => bits[1].Trim('"').StartsWith("K", StringComparison.Ordinal))
+            .Select(bits => (X: double.Parse(bits[2], CultureInfo.InvariantCulture),
+                             Y: double.Parse(bits[3], CultureInfo.InvariantCulture)))
+            .ToList();
+
+        Assert.NotEmpty(joints);
+
+        for (int i = 0; i < joints.Count; i++)
+            for (int k = i + 1; k < joints.Count; k++)
+            {
+                double d = Math.Sqrt(Math.Pow(joints[i].X - joints[k].X, 2) + Math.Pow(joints[i].Y - joints[k].Y, 2));
+                Assert.True(d >= 0.05,
+                    $"two joints {d:0.0000} in apart at ({joints[i].X:0.###}, {joints[i].Y:0.###}) — ETABS calls that too close");
+            }
+    }
+
+    [Fact]
     public void AnOutlineThatCrossesItselfComesBackAsTwoRingsNotOneHourglass()
     {
         // 31168's LEVEL 2 slab edge is two podium wings whose outlines CROSS -- not two rings

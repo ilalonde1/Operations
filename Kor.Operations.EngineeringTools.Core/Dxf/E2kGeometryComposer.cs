@@ -334,6 +334,7 @@ public static class E2kGeometryComposer
         }
 
         var pointNames = new Dictionary<(long, long, long), string>();
+        var pointCoords = new Dictionary<string, (double X, double Y, double Z)>(StringComparer.Ordinal);
         var placedSlabs = new HashSet<(long, long, string)>();
         var placedColumns = new HashSet<(long, long, long, long, string)>();
         var placedWalls = new HashSet<(long, long, long, long, string)>();
@@ -387,14 +388,45 @@ public static class E2kGeometryComposer
         /// a member that does not run the full height of its storey, such as a header.
         string PointAt(double x, double y, double zOffset = 0)
         {
-            // Quantise to 1/1000 inch so shared corners collapse to one joint.
-            var key = ((long)Math.Round(x * 1000), (long)Math.Round(y * 1000), (long)Math.Round(zOffset * 1000));
+            // A grid alone does not merge what is already the same point.
+            //
+            // Quantising to 1/1000 inch left two joints four THOUSANDTHS of an inch apart wherever
+            // two sheets reached the same corner and rounded either side of a cell boundary. ETABS
+            // Check Model named five of them on 31168 -- KW32 on B-LEVEL 1 and KW157 on LEVEL P1
+            // meeting at (155.3, 305.8) ft, 0.0020 in apart -- and an engineer opening the model
+            // sees duplicate nodes where walls should be joined. Connectivity is the whole point of
+            // the model, so this is worse than clutter.
+            //
+            // Look in the neighbouring cells too and reuse the nearest joint within tolerance, so
+            // no two joints can end up closer than that however the arithmetic falls. A twentieth
+            // of an inch is far below anything structural -- thicknesses snap to the half inch --
+            // and far above the rounding noise.
+            const double JoinTolerance = 0.05;
+            static long Q(double v) => (long)Math.Round(v / JoinTolerance);
+
+            var key = (Q(x), Q(y), Q(zOffset));
             if (pointNames.TryGetValue(key, out string? existing)) return existing;
+
+            string? nearest = null;
+            double nearestDistance = JoinTolerance;
+            for (long dx = -1; dx <= 1; dx++)
+            for (long dy = -1; dy <= 1; dy++)
+            for (long dz = -1; dz <= 1; dz++)
+            {
+                if (dx == 0 && dy == 0 && dz == 0) continue;
+                if (!pointNames.TryGetValue((key.Item1 + dx, key.Item2 + dy, key.Item3 + dz), out string? near)) continue;
+                if (!pointCoords.TryGetValue(near, out var at)) continue;
+
+                double d = Math.Sqrt(Math.Pow(at.X - x, 2) + Math.Pow(at.Y - y, 2) + Math.Pow(at.Z - zOffset, 2));
+                if (d < nearestDistance) { nearestDistance = d; nearest = near; }
+            }
+            if (nearest is not null) return nearest;
 
             string name;
             do { name = $"{prefix}P{++pointCounter}"; } while (used.Contains(name));
             used.Add(name);
             pointNames[key] = name;
+            pointCoords[name] = (x, y, zOffset);
 
             pointLines.Add(Math.Abs(zOffset) < 1e-9
                 ? $"  POINT \"{name}\"  {F(x)} {F(y)}"
