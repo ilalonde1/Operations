@@ -23,7 +23,7 @@ floor" beside it whenever the two differ.
 
 `KOR-Model-From-Drawings-DOSSIER.pdf` and `KOR-Model-From-Drawings-READ-THIS-FIRST.pdf` are gone
 from that folder. Both described the old full-site model — **63 storeys, 1,119 walls, 2,462
-columns, 82 plates** — beside a model with 15, 349, 763 and 14. The one-pager is the page an
+columns, 82 plates** — beside a model with 15, 349, 763 and 15. The one-pager is the page an
 engineer reads first, and it led with those numbers.
 
 They survived because the publish script copied them in and checked their counts *afterwards*, so
@@ -83,16 +83,29 @@ reaches:
 | LEVEL 1 MEZZ | 96 | 281 × 206 ft | 94 × 26 ft | **4%** |
 | every other storey | — | — | — | 99–100% |
 
-LEVEL 2's plate is a 16-joint outline that pinches to a near-point at x ≈ 27 ft — two wings meeting
-at a waist about 0.8 ft wide — and renders as an hourglass. Either the podium's real shape, or a
-slab edge that closed through itself. A self-touching area is not a good thing to hand ETABS either
-way.
-
-**Reported, not repaired**, and that is deliberate: a mezzanine over part of a room and a slab edge
-that failed to close produce the same model. `ModelQuestionnaire` J5 asks her which.
-
 Until this, "does the storey have a plate" was the only question asked, and both storeys answered
-yes. It took rendering the mezzanine and looking at it.
+yes. It took rendering the mezzanine and looking at it. `ModelQuestionnaire` J5 asks her which it
+is — a mezzanine over part of a room and a slab edge that failed to close produce the same model,
+and only she can say.
+
+### LEVEL 2's hourglass — FIXED 24 Aug, do not re-litigate
+
+The 43% above is what remains AFTER the real defect was fixed, and the two are separate things.
+
+LEVEL 2 arrived as ONE 16-joint ring, 296 × 96 ft, whose own edges met at (26, 248) ft with a gap
+of exactly 0.00. Sensible area, sensible bounding box, an hourglass in the model. It is two podium
+wings, now **two plates of 12,380 and 12,271 sq ft**.
+
+Three wrong guesses got there, each caught by measuring the shipped model rather than by a test:
+
+1. Split where the ring walk **revisits a node** — the wings share no vertex, so nothing happened.
+2. Split where two edges **cross** — they do not; `u = 1.0000000113`, an endpoint landing ON another
+   edge. A T-touch, not a crossing.
+3. Split on a self-touch — worked, and left one lobe still meeting itself, because a 2-inch
+   **hairline spur** produces a lobe with no area and the code gave up instead of cleaning it.
+
+`LoopGeometry.SplitSelfCrossings` handles all three. **ETABS Check Model raised nothing about
+LEVEL 2**, which is better evidence than anything measurable here.
 
 ## Two things to tell her before she finds them
 
