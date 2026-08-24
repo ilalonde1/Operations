@@ -17,10 +17,13 @@ WHAT THIS IS AND WHY IT IS BEING AUDITED
     - members carried in from the reference model that no drawing produced, which she circled in
       ETABS and said "these are not walls"
     - a floor plate 336x237 ft given to a storey whose building is 206x73 ft
+    - two explainer PDFs beside the model describing a 63-storey, 1,119-wall version of it, which
+      the publish script had been reporting as stale on every run while copying them in anyway
 
-  Every one of those passed every count. THAT is the fault class. Counts agreeing is not evidence.
+  Every one of those passed every count in the report. THAT is the fault class. Counts agreeing is
+  not evidence, and a check that runs after the thing it checks is a note, not a gate.
 
-  I am the person who missed all three. That is why this is being audited by someone else.
+  I am the person who missed all four. That is why this is being audited by someone else.
 
 WHAT TO AUDIT -- THE PACKAGE, NOT THE CODE
 
@@ -29,7 +32,15 @@ WHAT TO AUDIT -- THE PACKAGE, NOT THE CODE
   | 31168-QUESTIONS-for-Andrea.xlsx  | should carry TWO questions and a page of decided items |
   | KOR-31168-SUMMARY.pdf            | one page, the thing she reads first |
   | 31168-reference-SHELL.e2k        | the input: her reference with members stripped, grids kept |
-  | KOR-Model-From-Drawings-READ-THIS-FIRST.pdf | general explainer, KNOWN STALE for this job |
+
+  Two general explainers -- KOR-Model-From-Drawings-DOSSIER.pdf and
+  KOR-Model-From-Drawings-READ-THIS-FIRST.pdf -- were in that folder until this session and are
+  now withdrawn. Both described the OLD full-site model: 63 storeys, 1,119 walls, 2,462 columns,
+  82 plates, against a model with 15, 349, 763 and 14. The publish script checked those counts
+  AFTER copying the documents in, so every run reported them stale and left them there anyway.
+  The check now runs against the source before anything is copied, and a source that fails takes
+  any stale copy out of the folder with it. If either file is present when you look, say so --
+  it means the withdrawal did not hold.
 
   The question is not "does the code work". It is: OPEN THESE AS SHE WOULD, and say what an
   engineer would question, disbelieve, or waste an hour on.
@@ -55,27 +66,34 @@ WHAT IT SHOULD CONTAIN, SO YOU CAN CHECK RATHER THAN GUESS
 
   Every argument is load-bearing and docs\KOR-DxfToEtabs-Handoff-2026-08-24.md says why.
 
-WHERE I WOULD LOOK FIRST, HAVING BEEN WRONG THREE TIMES
+WHERE I WOULD LOOK FIRST, HAVING BEEN WRONG FOUR TIMES
 
   1. LOOK AT EVERY STOREY. tools\Render-E2kModel.ps1 -E2k <file> -OutPng <png> -Storey "<name>".
      Fifteen renders take over ten minutes; run them one at a time or in the background. A model
      that is wrong in a way counts cannot see is the whole reason this brief exists. Ask of each
      one: is that the shape of that floor, is anything floating, is anything missing that the
      drawing shows.
-  2. THE INFERRED PLATES. Four storeys have no closed slab edge on their drawings and were given
-     another storey's plate. The report names them. Are those plates the right shape for those
-     storeys? One of them was catastrophically wrong until an hour ago.
-  3. A-LEVEL 1 carries 6 walls and ZERO columns, while the report says 128 members drawn on a
+  2. THE INFERRED PLATE. Exactly ONE storey has no closed slab edge on its own drawings and was
+     given another storey's: C-LEVEL 3, from C-LEVEL 4. Flood fill recovers the rest. That plate
+     was 336x237 ft -- the whole site, out over the ground the towers stand on -- until this
+     session; it is now 206x72 ft. Measure it against C-LEVEL 4's own and against C-LEVEL 3's
+     drawing. It is the single most likely remaining defect.
+  3. THE COUNT THAT LOOKS LIKE A FAULT AND IS NOT. The report says 15 storeys and 14 floors, and
+     that reads exactly like a storey that lost its floor. It is a count of plate OBJECTS, and
+     C-LEVEL 3's borrowed plate is C-LEVEL 4's object assigned a second time. Check it per storey,
+     not by the totals -- I got this wrong once already today. If any storey carrying members has
+     no floor assign, that IS a fault.
+  4. A-LEVEL 1 carries 6 walls and ZERO columns, while the report says 128 members drawn on a
      sheet placed there were dropped as already-filled. Is its structure genuinely modelled on
      B-LEVEL 1 at the same elevation, or has a storey quietly lost its columns? I believe the
      former and have not proved it.
-  4. THE SUMMARY PDF AGAINST THE MODEL. Read the PDF as TEXT, not the HTML it came from, and check
+  5. THE SUMMARY PDF AGAINST THE MODEL. Read the PDF as TEXT, not the HTML it came from, and check
      every number in it against the .e2k. A stale dossier claiming 1,119 walls sat in this folder
-     for a week.
-  5. THE WORKBOOK. Two questions is the target. Anything a reader could answer from the drawings
+     for nine days because the check that caught it ran after the copy.
+  6. THE WORKBOOK. Two questions is the target. Anything a reader could answer from the drawings
      is a question that should not be there -- eighteen rows asking about 2-4 inch drafting scratch
      went to her once.
-  6. Plate edges recovered by flood fill are traced off a raster and come out slightly stepped. Is
+  7. Plate edges recovered by flood fill are traced off a raster and come out slightly stepped. Is
      that acceptable to hand over, or does it read as sloppy?
 
 WHAT I CANNOT DO AND WOULD LIKE DONE

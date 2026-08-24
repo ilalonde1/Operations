@@ -36,8 +36,11 @@ param(
     # 31168's YMCA is -DropStoreys 'LEVEL 3','LEVEL 4','LEVEL 5','LEVEL 6','LEVEL 7','LEVEL 8','LEVEL 9','LEVEL 10'.
     [string[]]$DropStoreys,
 
-    # Give a storey that has members but no floor the plate from the storey below it, where that
-    # plate stands under those members. For a job whose drawings carry no closed slab outline --
+    # Give a storey that has members but no floor a plate copied from another storey -- the one
+    # whose own plate stands under those members AND is closest to them in shape. Nearest-below
+    # was the first rule and it handed 31168's mid-rise the ground floor's site-wide slab, because
+    # a slab that spans the whole site covers everything above it.
+    # For a job whose drawings carry no closed slab outline --
     # 31168's Level 1 and mezzanine -- the alternative is members with nothing spanning between
     # them. The plates are reported as INFERRED, because a plate she cannot tell from a measured
     # one is worse than the hole it fills.
@@ -246,29 +249,28 @@ if (-not $SkipDossier) {
     }
 }
 
-if (-not $SkipDossier) {
-    $dossier = Join-Path $repo 'docs\KOR-DxfToEtabs-web.pdf'
-    if (Test-Path $dossier) {
-        Copy-Item $dossier (Join-Path $folder 'KOR-Model-From-Drawings-DOSSIER.pdf') -Force
-    }
-
-    # The page an engineer actually reads. It ships beside the dossier rather than instead of it,
-    # and it is copied here for the same reason everything else is: a document produced by a
-    # separate step is a document that goes stale.
-    $onePager = Join-Path $repo 'docs\KOR-DxfToEtabs-onepager-web.pdf'
-    if (Test-Path $onePager) {
-        Copy-Item $onePager (Join-Path $folder 'KOR-Model-From-Drawings-READ-THIS-FIRST.pdf') -Force
-    }
-}
+# The copy used to happen HERE, and the count check ran afterwards against the copy. So the run
+# that discovered the dossier was three model-revisions out of date had already put it in the
+# engineer's folder, and exiting 1 left it there: a document claiming 1,119 walls and 63 storeys
+# sat beside a 349-wall, 15-storey model for nine days, saying "the model is fine, the document
+# describing it is not" to a terminal nobody was reading.
+#
+# A check that runs after the copy is not a gate, it is a note. Nothing is copied now until the
+# counts have been checked against the SOURCE, and a source that fails takes its stale copy out of
+# the folder with it.
+$dossierSourcePdf = Join-Path $repo 'docs\KOR-DxfToEtabs-web.pdf'
+$onePagerSourcePdf = Join-Path $repo 'docs\KOR-DxfToEtabs-onepager-web.pdf'
+$dossierTarget = Join-Path $folder 'KOR-Model-From-Drawings-DOSSIER.pdf'
+$onePagerTarget = Join-Path $folder 'KOR-Model-From-Drawings-READ-THIS-FIRST.pdf'
 
 # The dossier quotes counts, and they are written by hand. A timestamp check cannot see a wrong
 # number in a current file — 31138 shipped with the dossier claiming 162 columns against 165 in the
 # model, and 5 headers against 8. Every count it states must appear in the model it describes.
-$dossier = Join-Path $folder 'KOR-Model-From-Drawings-DOSSIER.pdf'
+$dossier = $dossierSourcePdf
 $pdftotext = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter 'pdftotext.exe' -ErrorAction SilentlyContinue |
     Select-Object -First 1 -ExpandProperty FullName
 
-if ((Test-Path $dossier) -and $pdftotext) {
+if ((-not $SkipDossier) -and (Test-Path $dossier) -and $pdftotext) {
     $model = Get-Content -LiteralPath $out
     $actual = [ordered]@{
         walls    = @($model | Select-String '^\s+AREA\s+"KW\d+"\s+PANEL').Count
@@ -454,9 +456,9 @@ if ((Test-Path $dossier) -and $pdftotext) {
         }
     }
 
-    # The one-pager is checked by the same rule, against the PDF that ships. Reading the source
+    # The one-pager is checked by the same rule, against the PDF that would ship. Reading the source
     # HTML proves only that the input was right; it says nothing about a stale or failed render.
-    $onePagerPdf = Join-Path $folder 'KOR-Model-From-Drawings-READ-THIS-FIRST.pdf'
+    $onePagerPdf = $onePagerSourcePdf
     if (Test-Path $onePagerPdf) {
         $opProse = ((& $pdftotext -layout $onePagerPdf -) -join ' ') -replace '\s+', ' '
         if ($opProse -match 'ERR_FILE_NOT_FOUND|File not found|Microsoft Edge') {
@@ -487,7 +489,30 @@ if ((Test-Path $dossier) -and $pdftotext) {
         Write-Host 'DOSSIER OUT OF DATE — these counts are not in it:' -ForegroundColor Red
         $wrong | ForEach-Object { Write-Host ("  " + $_) -ForegroundColor Red }
         Write-Host '  (the model is fine; the document describing it is not)' -ForegroundColor Red
+
+        # It did not ship, and any copy an earlier run left behind goes with it. Leaving it there
+        # is how a 1,119-wall document ended up beside a 349-wall model in front of an engineer.
+        foreach ($t in @($dossierTarget, $onePagerTarget)) {
+            if (Test-Path $t) {
+                Remove-Item -LiteralPath $t -Force
+                Write-Host "  withdrawn from the job folder: $(Split-Path $t -Leaf)" -ForegroundColor Yellow
+            }
+        }
         exit 1
+    }
+
+    # Checked, and only now copied.
+    Copy-Item $dossierSourcePdf $dossierTarget -Force
+    if (Test-Path $onePagerSourcePdf) { Copy-Item $onePagerSourcePdf $onePagerTarget -Force }
+}
+elseif ($SkipDossier) {
+    # -SkipDossier says "do not ship the explainer". A copy left from a run that did ship it makes
+    # that a lie, so saying no removes it rather than merely declining to refresh it.
+    foreach ($t in @($dossierTarget, $onePagerTarget)) {
+        if (Test-Path $t) {
+            Remove-Item -LiteralPath $t -Force
+            Write-Host "  withdrawn from the job folder: $(Split-Path $t -Leaf)" -ForegroundColor Yellow
+        }
     }
 }
 
