@@ -1,0 +1,128 @@
+One question: is 31104 a building this tool reads badly, or a comparison that was never valid?
+
+Repo: C:\VIsual Studio Projects\Operations, branch develop.
+
+WHY THIS ONE
+
+  This tool has been scored against an engineer's own model on exactly two buildings it had never
+  seen. One went well and one collapsed, and nobody knows why. Until that is settled we cannot say
+  whether it generalises or whether the good result was luck -- and everything else being built on
+  top of it rests on the answer.
+
+      31065  5350-5430 Heather Street   1,077 of 1,097 columns within 6in, median residual 0.0in
+                                        94-95% of her wall length on L2, L3, L10, L15
+      31104  3080 West Broadway            14 of 276 columns within 6in, median residual 70in
+                                        3 of 34 walls within 12in on P1
+
+  Same tool, same run, no cuts, both built from a shell stripped out of the engineer's own model.
+
+METHOD, SO YOU REPRODUCE THE SAME THING
+
+  Take the engineer's model, strip it to a shell -- storeys, materials, sections, grids, NO members
+  -- build from the drawings against that shell, then diff the result against her full model. Her
+  model is only ever the yardstick, never an input.
+
+      answer key   \\Kor-fs01\Projects\Projects\03 Residential\31104-01 (3080 West Broadway
+                   Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31104-Broad-FULL.e2k
+      drawings     ...\02 Engineering\CAD Export\DXF Files\*.dxf   (9 sheets)
+      compare      takeoff e2k-compare <hers.e2k> <ours.e2k> P1 L1 L2 L3
+
+  A second model sits in an AN subfolder -- "31104-01 review.$et". Both have identical point
+  extents, X -576..1803 and Y 2760..4141, so they are the same building.
+
+MEASURED ALREADY -- do not spend the night re-deriving any of this
+
+  - The building is in the RIGHT PLACE. Best-fit offset -104,-2 inches, and per storey the extents
+    match hers to within a few inches: P1 ours X -572..1797 against hers -571..1797. It is not a
+    global offset, a mirror, or a rotation -- all four transforms were tested against her columns
+    ignoring storey, and none scored better than 7 of 276:
+
+        as generated 6/276   mirrored in X 7/276   mirrored in Y 0/276
+        rotated 180  0/276   rotated 90 cw 0/276   rotated 90 ccw 0/276
+
+  - It is NOT a storey mapping shift. Every one of our storeys was cross-matched against every one
+    of hers by column position. The whole matrix is zeroes and ones -- our L1 does not match her P1,
+    L1, L2, L3, L4 or Roof, and neither does any other pairing. Nothing is off by one.
+
+  - Layers are the ordinary KOR convention, not the problem: JBP_V-WALL with 14 closed loops and
+    JBP_V_COL with 28 closed loops on the LEVEL 01 sheet. 28 closed column outlines against her 26
+    columns on L1, so roughly the right number of the right things are being read.
+
+  - THREE OF NINE SHEETS PLACED NOWHERE, losing 51 walls and 55 columns:
+        "ELEV- OVERRUN"                     no level number in the name
+        "LEVEL 1 MEZZ AND LEVEL2 CANOPY"    reads as levels 1 and 2, lands on neither
+        "LEVEL P2"                          HER MODEL HAS NO P2 AT ALL
+    Note the last one. The drawings cover a parkade level her model does not contain.
+
+  - HER MODEL IS ODD, and this is the thread I would pull first. Her L3 and L4 each carry 61
+    columns of section "12x24"; her L1 carries 21 of "12x36". A concrete building does not gain
+    forty columns going up. There are nine drawing sheets for seven levels. And every material in
+    her file is declared TYPE "Other" -- not one "Concrete" -- so this tool cannot even use it as a
+    reference model, only as a yardstick.
+
+  - Sheet names carry a job number and address before the title:
+        "31104-01 2520 Balaclava-Structural Plan - S2-03-1_1_LEVEL 01 - CONC.dxf"
+    while the job folder is named 3080 West Broadway and the model is "31104-Broad-FULL". Balaclava
+    and Broadway are different streets. The extents say one building; the names do not agree.
+
+WHAT I WANT BACK
+
+  1. WHICH IS IT. Either the tool reads this building badly -- then what, specifically, with the
+     members named -- or the comparison is invalid, and then say what her model actually is. "Both
+     a bit" is an acceptable answer if it is the true one, with the split quantified.
+  2. If the comparison IS valid: the largest single cause of 14/276, measured. Start with her 61
+     columns on L3 against 21 on L1 and find out what those 61 are.
+  3. If it is NOT valid: what a valid third test looks like on this job, or why there is not one.
+     31065 and 31138 are the only other buildings with an engineer's model AND drawings.
+  4. Do not change the classifier to make a number move until question 1 is answered. This is a
+     diagnosis, not a fix.
+  5. If any measurement above is wrong, say which and show it. I would rather be corrected.
+
+WHERE THINGS ARE
+
+  Kor.Operations.EngineeringTools.Core/Dxf/
+      DxfToEtabsService.cs            reads rules, places sheets on storeys, writes the report
+      PlanSheetNaming.cs              MatchStories -- how a filename becomes a storey
+      StructuralPlanClassifier.cs     what a piece of linework becomes
+      E2kShellBuilder.cs              the shell, for building without a reference model
+
+  Kor.Operations.EngineeringTools.TakeoffCli, useful and needing no database:
+      takeoff dxf-inspect <sheet.dxf> [--walls]     layers, loops, open chains, gap distribution
+      takeoff dxf-render  <sheet.dxf> <out.png> --overlay --size 2400
+      takeoff e2k-compare <hers.e2k> <ours.e2k> <storey> [<storey> ...]
+
+  tools\Render-E2kModel.ps1 -E2k <file> -OutPng <png> [-Storey "L2"]
+      Draws a model, or one storey of it, so it can be LOOKED AT. Use it. A model that reads as
+      plausible in counts and is visibly wrong is the fault class this project keeps hitting.
+
+CONSTRAINTS
+
+  - Do NOT modify anything under \\Kor-fs01. Read the drawings and the models; write nothing there.
+  - KOR_ENGINEERINGTOOLS_STANDARDSDB is not set on this machine and there is no local database.
+    Derive it, process-local only, from KOR_OPPORTUNITIES_OPPORTUNITIESDB by swapping the database
+    name to KorStandards:
+
+      $c = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
+      $kv = @{}; foreach ($p in ($c -split ';')) { if ($p -match '=') { $k,$v = $p.Split('=',2); $kv[$k.Trim().ToLower()] = $v.Trim() } }
+      $u = $kv['user id']; if (-not $u) { $u = $kv['uid'] }
+      $pw = $kv['password']; if (-not $pw) { $pw = $kv['pwd'] }
+      $env:KOR_ENGINEERINGTOOLS_STANDARDSDB = "Server=$($kv['server']);Database=KorStandards;User Id=$u;Password=$pw;TrustServerCertificate=True"
+
+    Never setx it, never print it, never write it to a file.
+  - Rules live in KorStandards. A rule change is a migration in C:\VIsual Studio Projects\KOR.Drafter\db\,
+    never a constant in code. Write it, do not apply it.
+  - No destructive git. Do not push.
+  - Never write a C# regex or a Windows path through a Python string that is not raw. "\b" becomes
+    a BACKSPACE silently -- no warning, unlike \s and \d -- and the pattern then matches nothing
+    while every piece of it tests fine on its own. Read the file back and confirm what landed.
+  - The coverage ratchets in ModelCoverageTests may only ever come down: 31138 at 0, 31168 at 7.
+    Do not raise either. The full suite is ~502 tests and about ten minutes, because roughly twenty
+    rebuild two real buildings from drawings over SMB. Run it before claiming anything about it, and
+    say plainly if you did not. Do not start it and then keep editing -- it locks the output
+    directory and leaves test hosts wedged.
+
+FINALLY
+
+  Review your own conclusion adversarially. If you decide the comparison is invalid, that is the
+  convenient answer -- it means the tool is not at fault. Say what would have to be true for the
+  tool to be badly wrong here anyway, what you checked to rule it out, and what you could not.

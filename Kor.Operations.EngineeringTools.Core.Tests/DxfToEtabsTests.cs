@@ -404,6 +404,25 @@ public class PlanSheetNamingTests
         Assert.Single(slabs.Slabs);
     }
 
+    [Fact]
+    public void WallFacesInSeparateOpenChainsArePaired()
+    {
+        static DxfSegment Seg(double x1, double y1, double x2, double y2)
+            => new("JBP_V-WALL", new DxfPoint(x1, y1), new DxfPoint(x2, y2));
+
+        var result = StructuralPlanClassifier.Classify(new[]
+        {
+            Seg(0, 0, 240, 0),
+            Seg(0, 10, 240, 10),
+        });
+
+        var wall = Assert.Single(result.Walls);
+        Assert.Equal(10, wall.Thickness, 1);
+        Assert.Equal(240, wall.Length, 1);
+        Assert.Equal(5, wall.Start.Y, 1);
+        Assert.Equal(5, wall.End.Y, 1);
+    }
+
     /// <summary>
     /// Numbers measured once on one engineer's model became constants. They are now read off the
     /// reference in front of us — but deriving is not automatically better than a constant, and the

@@ -690,13 +690,16 @@ public static class StructuralPlanClassifier
         string layer,
         PlanClassificationOptions options)
     {
-        var faces = new List<(DxfPoint A, DxfPoint B, double Length)>();
-        foreach (var chain in chains)
+        var faces = new List<(DxfPoint A, DxfPoint B, double Length, int Chain)>();
+        for (int chainIndex = 0; chainIndex < chains.Count; chainIndex++)
+        {
+            var chain = chains[chainIndex];
             for (int i = 0; i < chain.Count - 1; i++)
             {
                 double length = chain[i].DistanceTo(chain[i + 1]);
-                if (length >= options.MinPanelOverlap) faces.Add((chain[i], chain[i + 1], length));
+                if (length >= options.MinPanelOverlap) faces.Add((chain[i], chain[i + 1], length, chainIndex));
             }
+        }
 
         if (faces.Count < 2) return 0;
 
@@ -706,7 +709,7 @@ public static class StructuralPlanClassifier
         for (int i = 0; i < faces.Count; i++)
         {
             if (used[i]) continue;
-            var (ai, bi, li) = faces[i];
+            var (ai, bi, li, chainI) = faces[i];
             double ux = (bi.X - ai.X) / li, uy = (bi.Y - ai.Y) / li;
             double nx = -uy, ny = ux;
 
@@ -716,7 +719,8 @@ public static class StructuralPlanClassifier
             for (int j = 0; j < faces.Count; j++)
             {
                 if (j == i || used[j]) continue;
-                var (aj, bj, lj) = faces[j];
+                var (aj, bj, lj, chainJ) = faces[j];
+                if (chainI == chainJ) continue;
 
                 double vx = (bj.X - aj.X) / lj, vy = (bj.Y - aj.Y) / lj;
                 if (Math.Abs(ux * vx + uy * vy) < 0.985) continue;
@@ -728,7 +732,22 @@ public static class StructuralPlanClassifier
                 if (Math.Sign(d1) != Math.Sign(d2) && Math.Abs(d1) > 1e-6 && Math.Abs(d2) > 1e-6) continue;
 
                 double separation = (Math.Abs(d1) + Math.Abs(d2)) / 2.0;
-                if (separation < options.MinWallThickness || separation > options.MaxWallThickness) continue;
+
+                // This fallback is for ordinary wall faces split across open chains, and it is
+                // capped well below the wall-thickness rule on purpose. A thick pair across two
+                // chains is ambiguous -- the two sides of a corridor read exactly like one core
+                // wall -- and inside a closed outline the decomposer settles it by asking whether
+                // the material between the faces lies within the polygon. Open chains have no
+                // polygon and there is no equivalent: a test for "does a third face stand in the
+                // gap" was written and measured, and it does NOT separate them. It let three
+                // ambiguous 28-30" pairs through on 31168's tower A level 35 plan and put the
+                // coverage ratchet back to 10 against a ceiling of 7.
+                //
+                // The cap costs real coverage and is known to: 31065's ground floor recovers to
+                // 64% of the engineer's wall length rather than the 82% an uncapped pass reaches.
+                // That is the price of not inventing members, and it is the right way round.
+                double maxOpenFacePairThickness = Math.Min(options.MaxWallThickness, 18.0);
+                if (separation < options.MinWallThickness || separation > maxOpenFacePairThickness) continue;
 
                 double tb0 = (aj.X - ai.X) * ux + (aj.Y - ai.Y) * uy;
                 double tb1 = (bj.X - ai.X) * ux + (bj.Y - ai.Y) * uy;
