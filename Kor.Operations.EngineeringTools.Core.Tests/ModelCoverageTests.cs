@@ -119,7 +119,32 @@ public class ModelCoverageTests
         if (built is null) return;
 
         var wallLines = GeneratedModel.LineworkByStorey(project, built.Report, "WALL");
-        var colLines = GeneratedModel.LineworkByStorey(project, built.Report, "_COL");
+
+        // Columns include the DASHED linework that shows what is below the slab.
+        //
+        // The engineer's rule, 24 Aug: "the dash lines are columns below supporting the slab,
+        // always." A roof plan draws no solid columns at all, because nothing stands on a roof --
+        // 31168's carries seven closed 12x30 loops on S-HIDDEN and nothing on JBP_V_COL. Those
+        // seven are the columns holding the roof up.
+        //
+        // This widens WHERE the check looks for raw linework. It does not weaken what the check
+        // demands: every generated member must still sit on linework a human drew, read straight
+        // from the file, never from the classifier's own account of what it found.
+        var colLines = Merge(
+            GeneratedModel.LineworkByStorey(project, built.Report, "_COL"),
+            GeneratedModel.LineworkByStorey(project, built.Report, "HIDDEN"));
+
+        static Dictionary<string, List<DxfSegment>> Merge(
+            Dictionary<string, List<DxfSegment>> a, Dictionary<string, List<DxfSegment>> b)
+        {
+            var merged = new Dictionary<string, List<DxfSegment>>(a, StringComparer.OrdinalIgnoreCase);
+            foreach (var (storey, segs) in b)
+            {
+                if (merged.TryGetValue(storey, out var got)) got.AddRange(segs);
+                else merged[storey] = new List<DxfSegment>(segs);
+            }
+            return merged;
+        }
         var joints = GeneratedModel.Joints(built.Lines);
         var assigns = GeneratedModel.AssignedStoreys(built.Lines);
 

@@ -152,6 +152,28 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public double FloodFillBridge { get; init; } = 36.0;
 
+    /// <summary>
+    /// Layers carrying the DASHED linework that shows what is below the slab.
+    ///
+    /// The engineer's rule, 24 Aug: "the dash lines are columns below supporting the slab, always.
+    /// The solid ones are columns on top of the slab" -- and later the same day, "it's the same for
+    /// walls too". A roof plan therefore draws no solid columns at all, because nothing stands on a
+    /// roof, and 31168's does not: JBP_V_COL is absent from it entirely while S-HIDDEN carries
+    /// seven closed 12x30 loops. Those are the columns holding the roof up, and the tool discarded
+    /// the layer as non-structural and then reported a plate with nothing beneath it.
+    ///
+    /// Read ONLY where a sheet draws a slab and no structure to carry it. Applying the rule
+    /// everywhere would double the columns: C-LEVEL 3 has 41 solid and 37 dashed, in entirely
+    /// different places at different sizes, because it is a transfer level and the dashed ones are
+    /// the podium columns already modelled on the storey below.
+    ///
+    /// She also warned that not every dashed line is structure -- a SPARSE dashed line is the
+    /// building outline and is to be ignored, a DENSE one is an element below. This is not a
+    /// dash-pitch test; it is protected only because it takes CLOSED loops and applies the column
+    /// size bounds, so a curtain-wall outline does not qualify. See ruling two-kinds-of-dashed-line.
+    /// </summary>
+    public IReadOnlyList<string> BelowSlabLayerPatterns { get; init; } = new[] { "HIDDEN" };
+
 
     /// <summary>
     /// Largest dash gap to close when rebuilding a dashed line. Measured on KOR's exports:
@@ -476,6 +498,40 @@ public static class StructuralPlanClassifier
         }
 
         SplitSlabsAndOpenings(result, slabCandidates, options);
+
+        // A slab with nothing to carry it, and the support drawn dashed on a hidden layer.
+        //
+        // This fires only when the sheet gives a plate and no structure at all, which is what a
+        // roof plan looks like: nothing stands on a roof, so nothing is drawn solid. 31168's roof
+        // reported "a floor plate with no wall or column beneath it" and asked the engineer whether
+        // the structure stopped below. It does not -- the seven columns holding it up are on the
+        // sheet, drawn dashed, on a layer being discarded as non-structural.
+        if (result.Slabs.Count > 0 && result.Columns.Count == 0 && result.Walls.Count == 0)
+        {
+            var below = segments
+                .Where(x => PlanClassificationOptions.Matches(x.Layer, options.BelowSlabLayerPatterns))
+                .ToList();
+
+            if (below.Count > 0)
+            {
+                var asColumns = Classify(below, options with
+                {
+                    ColumnLayerPatterns = options.BelowSlabLayerPatterns,
+                    WallLayerPatterns = Array.Empty<string>(),
+                    SlabLayerPatterns = Array.Empty<string>(),
+                    BelowSlabLayerPatterns = Array.Empty<string>(),
+                });
+
+                if (asColumns.Columns.Count > 0)
+                {
+                    result.Columns.AddRange(asColumns.Columns);
+                    result.Flags.Add(
+                        $"{asColumns.Columns.Count} column(s) supporting this slab were read from dashed " +
+                        "linework below it, because the sheet draws no structure on top of the slab. " +
+                        "The engineer's rule: dashed is below and carries the slab, solid is above.");
+                }
+            }
+        }
 
         if (result.Slabs.Count == 0)
         {
