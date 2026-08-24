@@ -954,7 +954,10 @@ public static class DxfToEtabsService
             // the engineer's model — are the ones worth acting on, and there are only a handful.
             // Listed with the per-sheet flags they fell off the end of a 766-line truncation.
             var wholeModel = report.Summary.Flags.Where(f => !f.Contains(".dxf:", StringComparison.OrdinalIgnoreCase)).ToList();
-            var perSheet = report.Summary.Flags.Where(f => f.Contains(".dxf:", StringComparison.OrdinalIgnoreCase)).ToList();
+            var perSheet = report.Summary.Flags
+                .Where(f => f.Contains(".dxf:", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(PerSheetFlagPriority)
+                .ToList();
 
             if (wholeModel.Count > 0)
             {
@@ -970,5 +973,14 @@ public static class DxfToEtabsService
         }
 
         return sb.ToString();
+    }
+
+    private static int PerSheetFlagPriority(string flag)
+    {
+        if (flag.Contains("recovered by flood", StringComparison.OrdinalIgnoreCase)) return 0;
+        if (flag.Contains("taken from the inside face", StringComparison.OrdinalIgnoreCase)) return 1;
+        if (flag.Contains("could not be resolved", StringComparison.OrdinalIgnoreCase)) return 2;
+        if (flag.Contains("Modelled square", StringComparison.OrdinalIgnoreCase)) return 3;
+        return 10;
     }
 }

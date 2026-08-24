@@ -423,6 +423,21 @@ public static class StructuralPlanClassifier
 
         SplitSlabsAndOpenings(result, slabCandidates, options);
 
+        if (result.Slabs.Count == 0)
+        {
+            var slabSegments = prepared
+                .Where(x => x.Role == RoleSlab)
+                .Select(x => x.Segment)
+                .ToList();
+
+            if (DxfFloodFillPlateDetector.TryRecover(slabSegments, options, out var recoveredPlate, out string note)
+                && recoveredPlate is not null)
+            {
+                result.Slabs.Add(recoveredPlate);
+                result.Flags.Add(note);
+            }
+        }
+
         // A storey whose slab edges will not close still has a floor, and the inside of its
         // perimeter wall is the outline of it. Used only as a fallback: where the slab layers gave
         // a plate, that plate is the better boundary and this is ignored.

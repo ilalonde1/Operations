@@ -1428,9 +1428,9 @@ public class E2kDocumentTests
     [Fact]
     public void AStoreyWithNoDrawnFloorTakesOneFromBelowButNeverFromAnotherBuilding()
     {
-        // 31168's Level 1, its mezzanine and C-LEVEL 3 have no closed slab outline to read at all
-        // -- their slab edge arrives as sixty-odd open chains enclosing 119 sq ft at every
-        // tolerance -- so four storeys stood with members and nothing spanning between them.
+        // 31168's Level 1, its mezzanine and C-LEVEL 3 used to have no closed vector slab outline
+        // to read -- their slab edge arrived as open chains whose vector joins never made a floor
+        // plate -- so four storeys stood with members and nothing spanning between them.
         //
         // Carrying up the plate below fills them. Carrying up the NEAREST plate below does not:
         // the mid-rise sits at one end of the site and the storey under it is the podium beneath
@@ -1498,6 +1498,142 @@ public class E2kDocumentTests
         });
         Assert.DoesNotContain(untouched.Flags, f => f.Contains("not drawn one for"));
         Assert.Contains(untouched.Flags, f => f.Contains("no floor plate"));
+    }
+
+    [Fact]
+    public void AStoreyWithBrokenContinuousSlabEdgeGetsAPlate()
+    {
+        // 31168's ground floor slab edge is not dashed and no vector tolerance closes it. The
+        // drawing still carries a visible continuous floor boundary: many short slab-edge runs
+        // separated by breaks in the same population as its loose-end gaps. This fixture keeps
+        // that shape with gaps past the dash joiner and bridge tolerances, and drives the service,
+        // not just the classifier, so the composer still has to accept the plate as non-orphaned.
+        string root = Path.Combine(Path.GetTempPath(), $"kor-broken-slab-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            string dxf = Path.Combine(root, "--Structural Plan - LEVEL 1 PLAN - CONCRETE OUTLINE.dxf");
+            File.WriteAllLines(dxf, BrokenSlabEdgeDxf());
+
+            string levels = Path.Combine(root, "levels.csv");
+            File.WriteAllLines(levels, new[] { "LEVEL 1,0", "LEVEL 2,144" });
+
+            string output = Path.Combine(root, "out.e2k");
+            var report = DxfToEtabsService.Run(new DxfToEtabsRequest
+            {
+                DxfFolder = root,
+                LevelsFile = levels,
+                OutputE2k = output,
+                DeriveRulesFromReference = false,
+            });
+
+            var sheet = Assert.Single(report.Sheets);
+            Assert.Equal(1, sheet.Slabs);
+
+            string[] lines = File.ReadAllLines(output);
+            Assert.Contains(lines, line => line.Contains("AREAASSIGN", StringComparison.Ordinal)
+                                           && line.Contains("\"LEVEL 1\"", StringComparison.Ordinal)
+                                           && line.Contains("SECTION", StringComparison.Ordinal));
+            Assert.Contains(report.Warnings.Concat(sheet.Flags),
+                line => line.Contains("flood-filling", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+
+        static IEnumerable<string> BrokenSlabEdgeDxf()
+        {
+            var lines = new List<string>
+            {
+                "0", "SECTION", "2", "HEADER",
+                "9", "$INSUNITS", "70", "1",
+                "0", "ENDSEC",
+                "0", "SECTION", "2", "ENTITIES",
+            };
+            foreach (var segment in BrokenRectangle("JBP_C_SLABEDG-2", 0, 0, 900, 700, run: 48, gap: 20))
+                lines.AddRange(Line(segment.Layer, segment.Start.X, segment.Start.Y, segment.End.X, segment.End.Y));
+
+            foreach (var segment in Rectangle("JBP_V_COL", 420, 320, 450, 350))
+                lines.AddRange(Line(segment.Layer, segment.Start.X, segment.Start.Y, segment.End.X, segment.End.Y));
+
+            lines.AddRange(new[] { "0", "ENDSEC", "0", "EOF" });
+            return lines;
+        }
+
+        static IEnumerable<DxfSegment> BrokenRectangle(string layer, double x0, double y0, double x1, double y1, double run, double gap)
+        {
+            foreach (var s in BrokenLine(layer, x0, y0, x1, y0, run, gap)) yield return s;
+            foreach (var s in BrokenLine(layer, x1, y0, x1, y1, run, gap)) yield return s;
+            foreach (var s in BrokenLine(layer, x1, y1, x0, y1, run, gap)) yield return s;
+            foreach (var s in BrokenLine(layer, x0, y1, x0, y0, run, gap)) yield return s;
+        }
+
+        static IEnumerable<DxfSegment> BrokenLine(string layer, double x0, double y0, double x1, double y1, double run, double gap)
+        {
+            double dx = x1 - x0, dy = y1 - y0;
+            double length = Math.Sqrt(dx * dx + dy * dy);
+            double ux = dx / length, uy = dy / length;
+            for (double d = 0; d < length; d += run + gap)
+            {
+                double end = Math.Min(d + run, length);
+                yield return new DxfSegment(
+                    layer,
+                    new DxfPoint(x0 + ux * d, y0 + uy * d),
+                    new DxfPoint(x0 + ux * end, y0 + uy * end));
+            }
+        }
+
+        static IEnumerable<DxfSegment> Rectangle(string layer, double x0, double y0, double x1, double y1)
+        {
+            yield return new DxfSegment(layer, new DxfPoint(x0, y0), new DxfPoint(x1, y0));
+            yield return new DxfSegment(layer, new DxfPoint(x1, y0), new DxfPoint(x1, y1));
+            yield return new DxfSegment(layer, new DxfPoint(x1, y1), new DxfPoint(x0, y1));
+            yield return new DxfSegment(layer, new DxfPoint(x0, y1), new DxfPoint(x0, y0));
+        }
+
+        static IEnumerable<string> Line(string layer, double x0, double y0, double x1, double y1)
+        {
+            yield return "0";
+            yield return "LINE";
+            yield return "8";
+            yield return layer;
+            yield return "10";
+            yield return x0.ToString(CultureInfo.InvariantCulture);
+            yield return "20";
+            yield return y0.ToString(CultureInfo.InvariantCulture);
+            yield return "11";
+            yield return x1.ToString(CultureInfo.InvariantCulture);
+            yield return "21";
+            yield return y1.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+
+    [Fact]
+    public void RecoveredFloorPlateFlagsAreNotBuriedBehindRoutineOutlineNoise()
+    {
+        var flags = Enumerable.Range(1, 45)
+            .Select(i => $"sheet-{i}.dxf: slab edges: 40 outline(s) would not close ({i} units of edge ignored).")
+            .Append("target.dxf: Slab edges did not close as vectors, so one floor plate was recovered by flood-filling the drawn slab-edge linework — 1,234 sq ft. Treat as recovered geometry.")
+            .ToList();
+
+        var report = new DxfToEtabsReport(
+            "out.e2k",
+            SheetsRead: 1,
+            SheetsPlaced: 1,
+            StoriesPopulated: 1,
+            new ComposeSummary(0, 0, 1, 4, 1, Array.Empty<string>(), flags),
+            (0, 0),
+            Array.Empty<SheetOutcome>(),
+            Array.Empty<string>(),
+            new PlanClassificationOptions(),
+            new ComposeOptions());
+
+        string text = DxfToEtabsService.FormatReport(report);
+
+        Assert.Contains("recovered by flood-filling", text);
+        Assert.Contains("... and 6 more", text);
     }
 
     [Fact]
