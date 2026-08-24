@@ -1,0 +1,124 @@
+Audit the package about to go to a structural engineer. Find what she would find.
+
+Repo: C:\VIsual Studio Projects\Operations, branch develop.
+Package: \\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\
+         02 Engineering\02 Lateral Design\01 ETABS Models\
+
+WHAT THIS IS AND WHY IT IS BEING AUDITED
+
+  A tool builds an ETABS .e2k from structural plan DXFs so the engineer checks a model instead of
+  tracing one off fifteen sheets by hand. Andrea Neuviale is the engineer on 31168.
+
+  She has already been sent a bad package once. It contained eight storeys of a building she had
+  said was out of scope, and a wall 132 inches thick. Both survived because the person who built it
+  verified his own work and did not open the result. Since then two more faults were found the same
+  way -- by looking, not by counting:
+
+    - members carried in from the reference model that no drawing produced, which she circled in
+      ETABS and said "these are not walls"
+    - a floor plate 336x237 ft given to a storey whose building is 206x73 ft
+
+  Every one of those passed every count. THAT is the fault class. Counts agreeing is not evidence.
+
+  I am the person who missed all three. That is why this is being audited by someone else.
+
+WHAT TO AUDIT -- THE PACKAGE, NOT THE CODE
+
+  | 31168-FROM-DRAWINGS.e2k          | the model |
+  | 31168-FROM-DRAWINGS-report.txt   | sheets placed and not, every flag, every rule with its authority |
+  | 31168-QUESTIONS-for-Andrea.xlsx  | should carry TWO questions and a page of decided items |
+  | KOR-31168-SUMMARY.pdf            | one page, the thing she reads first |
+  | 31168-reference-SHELL.e2k        | the input: her reference with members stripped, grids kept |
+  | KOR-Model-From-Drawings-READ-THIS-FIRST.pdf | general explainer, KNOWN STALE for this job |
+
+  The question is not "does the code work". It is: OPEN THESE AS SHE WOULD, and say what an
+  engineer would question, disbelieve, or waste an hour on.
+
+WHAT IT SHOULD CONTAIN, SO YOU CAN CHECK RATHER THAN GUESS
+
+  - 15 storeys: C-ROOF, C-LEVEL 9..3, LEVEL 2, LEVEL 1 MEZZ, B-LEVEL 1, A-LEVEL 1, LEVEL P1..P3
+  - NO storey named "LEVEL 3" through "LEVEL 10". Those are the two towers and she asked for none
+    above grade. A-LEVEL 1 and B-LEVEL 1 are the towers' GROUND floors and are wanted -- they sit
+    at grade inside the podium.
+  - every storey carrying members also carries a floor plate
+  - no member whose name does not begin with K. Anything else came from the reference rather than
+    from a drawing, and the shell exists to prevent exactly that.
+  - thickest generated wall 42 inches. Her own walls run 10-16" with a 36" core.
+
+  Rebuild command, if you need to reproduce it:
+
+      .\tools\Publish-EtabsModel.ps1 -Project 31168 `
+          -Reference '31168-reference-SHELL.e2k' `
+          -TopStorey 'C-ROOF' `
+          -DropStoreys 'LEVEL 3','LEVEL 4','LEVEL 5','LEVEL 6','LEVEL 7','LEVEL 8','LEVEL 9','LEVEL 10' `
+          -InferFloors
+
+  Every argument is load-bearing and docs\KOR-DxfToEtabs-Handoff-2026-08-24.md says why.
+
+WHERE I WOULD LOOK FIRST, HAVING BEEN WRONG THREE TIMES
+
+  1. LOOK AT EVERY STOREY. tools\Render-E2kModel.ps1 -E2k <file> -OutPng <png> -Storey "<name>".
+     Fifteen renders take over ten minutes; run them one at a time or in the background. A model
+     that is wrong in a way counts cannot see is the whole reason this brief exists. Ask of each
+     one: is that the shape of that floor, is anything floating, is anything missing that the
+     drawing shows.
+  2. THE INFERRED PLATES. Four storeys have no closed slab edge on their drawings and were given
+     another storey's plate. The report names them. Are those plates the right shape for those
+     storeys? One of them was catastrophically wrong until an hour ago.
+  3. A-LEVEL 1 carries 6 walls and ZERO columns, while the report says 128 members drawn on a
+     sheet placed there were dropped as already-filled. Is its structure genuinely modelled on
+     B-LEVEL 1 at the same elevation, or has a storey quietly lost its columns? I believe the
+     former and have not proved it.
+  4. THE SUMMARY PDF AGAINST THE MODEL. Read the PDF as TEXT, not the HTML it came from, and check
+     every number in it against the .e2k. A stale dossier claiming 1,119 walls sat in this folder
+     for a week.
+  5. THE WORKBOOK. Two questions is the target. Anything a reader could answer from the drawings
+     is a question that should not be there -- eighteen rows asking about 2-4 inch drafting scratch
+     went to her once.
+  6. Plate edges recovered by flood fill are traced off a raster and come out slightly stepped. Is
+     that acceptable to hand over, or does it read as sloppy?
+
+WHAT I CANNOT DO AND WOULD LIKE DONE
+
+  IMPORT IT INTO ETABS. There is no ETABS on this machine; there is one on KOR-210, and the model
+  has never been opened in it since the shell rebuild. A file that parses is not a file that opens
+  usefully. If it imports, say what the model looks like on screen at C-LEVEL 5 and at B-LEVEL 1.
+
+WHAT I WANT BACK
+
+  1. Anything an engineer would question, ranked by what would cost her the most time.
+  2. For each: whether it is wrong, or right and merely surprising. Both matter; they need
+     different fixes -- one is a defect, the other a sentence in the summary.
+  3. Anything in the package that CONTRADICTS anything else in the package. The report, the
+     workbook, the PDF and the model are generated together and have disagreed before.
+  4. If you find nothing, say so plainly rather than manufacturing findings. "I opened all fifteen
+     storeys and they are the building" is a useful answer.
+
+CONSTRAINTS
+
+  - Do NOT modify anything under \\Kor-fs01. Read the package; write nothing there. An engineer is
+    reviewing it.
+  - Do not regenerate the package over the top of it. If you need to rebuild, build to a scratch
+    folder.
+  - KOR_ENGINEERINGTOOLS_STANDARDSDB is not set here and there is no local database. Derive it,
+    process-local only, from KOR_OPPORTUNITIES_OPPORTUNITIESDB by swapping the database name to
+    KorStandards:
+
+      $c = $env:KOR_OPPORTUNITIES_OPPORTUNITIESDB
+      $kv = @{}; foreach ($p in ($c -split ';')) { if ($p -match '=') { $k,$v = $p.Split('=',2); $kv[$k.Trim().ToLower()] = $v.Trim() } }
+      $u = $kv['user id']; if (-not $u) { $u = $kv['uid'] }
+      $pw = $kv['password']; if (-not $pw) { $pw = $kv['pwd'] }
+      $env:KOR_ENGINEERINGTOOLS_STANDARDSDB = "Server=$($kv['server']);Database=KorStandards;User Id=$u;Password=$pw;TrustServerCertificate=True"
+
+    Never setx it, never print it, never write it to a file.
+  - No destructive git. Do not push.
+  - The coverage ratchets in ModelCoverageTests may only come down: 31138 at 0, 31168 at 7.
+  - The full suite is ~505 tests and about fifteen minutes, because roughly twenty rebuild two real
+    buildings from drawings over SMB and flood fill now rasterises sheets. Run it before claiming
+    anything about it, and say plainly if you did not. Do not start it and then keep editing.
+
+FINALLY
+
+  The convenient answer is that the package is fine. Say what you actually opened and what you only
+  inferred, and name the checks you did not do. The last three faults were all found by opening
+  something, and all three were invisible to every count in the report.
