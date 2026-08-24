@@ -1583,6 +1583,141 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void AnOutlineThatCrossesItselfComesBackAsTwoRingsNotOneHourglass()
+    {
+        // 31168's LEVEL 2 slab edge is two podium wings whose outlines CROSS -- not two rings
+        // sharing a node, which is why walking the segments never noticed. It came back as one
+        // 16-joint ring, 296 x 96 ft, sensible area and bounding box, whose edges met at
+        // (26, 248) ft with a gap of exactly 0.00 ft. An hourglass where two floors were drawn,
+        // and ETABS meshes that badly or refuses it.
+        //
+        // The crossing point is where one wing ends, so the drawing says where to cut.
+        var bowtie = new List<DxfPoint>
+        {
+            new(0, 0), new(200, 200), new(200, 0), new(0, 200),
+        };
+
+        var rings = LoopGeometry.SplitSelfCrossings(bowtie);
+
+        Assert.Equal(2, rings.Count);
+
+        // Neither half may still cross itself, and both wings survive: splitting must not throw
+        // one away, or a floor quietly halves.
+        foreach (var r in rings)
+        {
+            Assert.True(E2kGeometryComposer.NarrowestSelfGap(r) > 1.0,
+                $"a split ring still closes through itself: {E2kGeometryComposer.NarrowestSelfGap(r):0.00}");
+            Assert.True(new PlanLoop("JBP_C_SLABEDG", r, closedExactly: true).Area > 0);
+        }
+
+        // One wing left of the crossing, one right of it — this bowtie splits across X, and both
+        // halves share a centroid Y of exactly 100, so Y cannot tell them apart.
+        var centres = rings.Select(r => new PlanLoop("JBP_C_SLABEDG", r, closedExactly: true).Centroid().X).ToList();
+        Assert.Equal(2, centres.Select(x => x > 100).Distinct().Count());
+
+        // An ordinary rectangle comes back as itself, or this would cut up every floor on every job.
+        var plain = new List<DxfPoint> { new(0, 0), new(200, 0), new(200, 100), new(0, 100) };
+        Assert.Single(LoopGeometry.SplitSelfCrossings(plain));
+
+        // And the shape 31168 ACTUALLY has, which a bowtie would not have caught. LEVEL 2's
+        // outline does not cross itself: a VERTEX lands exactly on another edge -- u came out at
+        // 1.0000000113, an endpoint, so a strict crossing test found nothing and the hourglass
+        // survived a full republish unchanged. That is how this case was found.
+        var tTouch = new List<DxfPoint>
+        {
+            new(0, 0), new(200, 0), new(200, 100),
+            new(100, 0),                              // back down ONTO the bottom edge
+            new(0, 100),
+        };
+        var touched = LoopGeometry.SplitSelfCrossings(tTouch);
+        Assert.Equal(2, touched.Count);
+        foreach (var r in touched)
+            Assert.True(E2kGeometryComposer.NarrowestSelfGap(r) > 1.0,
+                $"a split ring still touches itself: {E2kGeometryComposer.NarrowestSelfGap(r):0.00}");
+
+        // A HAIRLINE SPUR is not a second wing. 31168's LEVEL 2 has one at the waist -- two joints
+        // 2 inches apart where the outline doubles back and comes straight out again. Splitting
+        // there yields a lobe with no area, and the first version of this gave up when it saw
+        // that, leaving a plate still meeting itself at 0.00 after the real hourglass was cut in
+        // two. The spur is dropped and the ring that has substance survives whole.
+        var spur = new List<DxfPoint>
+        {
+            new(0, 0), new(200, 0), new(200, 100), new(0, 100),
+            new(0, 50), new(0, 51),   // doubles back along its own left edge for an inch
+        };
+        var cleaned = LoopGeometry.SplitSelfCrossings(spur);
+        var body = Assert.Single(cleaned);
+        Assert.True(E2kGeometryComposer.NarrowestSelfGap(body) > 1.0,
+            $"the spur survived: self-gap {E2kGeometryComposer.NarrowestSelfGap(body):0.00}");
+        Assert.True(new PlanLoop("JBP_C_SLABEDG", body, closedExactly: true).Area > 15000,
+            "dropping the spur must not shrink the floor");
+    }
+
+    [Fact]
+    public void AFloorOutlineThatClosesThroughItselfIsReportedWithWhereItTouches()
+    {
+        // 31168's LEVEL 2 plate is 16 joints whose edges touch each other exactly -- narrowest gap
+        // between non-adjacent edges 0.00 ft, at (26, 248) ft. It renders as an hourglass. Area,
+        // joint count and bounding box all look entirely reasonable, and it went to an engineer
+        // described only as "43% coverage, worth a look", which is far too soft: ETABS meshes a
+        // self-touching area badly or refuses it, whatever the podium's real shape turns out to be.
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"L2\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        // Two wings meeting at a single point: a bowtie, the shape a slab edge makes when it
+        // closes through its own linework.
+        var g = new PlanGeometrySet();
+        g.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+        {
+            new(0, 0), new(1200, 0), new(1200, 600),          // left wing, out to the waist
+            new(1200, 1200), new(2400, 1200), new(2400, 600), // right wing, back through it
+            new(1200, 600), new(0, 600),
+        }, true));
+        g.Columns.Add(new ColumnFootprint(new DxfPoint(600, 300), 24, 24, "JBP_V_COL"));
+        g.Columns.Add(new ColumnFootprint(new DxfPoint(1800, 900), 24, 24, "JBP_V_COL"));
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories["L2"], g, "level2.dxf"),
+        });
+
+        string flag = Assert.Single(summary.Flags, f => f.Contains("closes through itself"));
+        Assert.Contains("L2", flag, StringComparison.Ordinal);
+        Assert.Contains("TOUCHING", flag, StringComparison.Ordinal);
+        Assert.Contains("level2.dxf", flag, StringComparison.Ordinal);
+
+        // An ordinary rectangle is not flagged, or the check is noise on every job.
+        var plain = new PlanGeometrySet();
+        plain.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+        {
+            new(0, 0), new(2400, 0), new(2400, 1200), new(0, 1200),
+        }, true));
+        plain.Columns.Add(new ColumnFootprint(new DxfPoint(1200, 600), 24, 24, "JBP_V_COL"));
+
+        var clean = E2kGeometryComposer.Compose(E2kDocument.Parse(site), new[]
+        {
+            new StoryPlacement(stories["L2"], plain, "clean.dxf"),
+        });
+        Assert.DoesNotContain(clean.Flags, f => f.Contains("closes through itself"));
+    }
+
+    [Fact]
     public void AHeaderGetsOneStoreyEvenWhereAWallWouldGetTwo()
     {
         // A wall's height IS the storey, so assigning it to every storey it spans is what makes one

@@ -998,6 +998,13 @@ public static class DxfToEtabsService
 
     private static int PerSheetFlagPriority(string flag)
     {
+        // A flag that says the model CHANGED SHAPE comes before any flag about something the tool
+        // merely noticed. Splitting one floor into two is the largest single thing this list can
+        // report, and it landed in the tail of a Take(40) with no priority of its own -- so the
+        // one flag written specifically to stop a silent change was itself silent, on the run that
+        // turned 31168's LEVEL 2 from one plate into two.
+        if (flag.Contains("crossed itself", StringComparison.OrdinalIgnoreCase)) return -1;
+
         if (flag.Contains("recovered by flood", StringComparison.OrdinalIgnoreCase)) return 0;
         if (flag.Contains("taken from the inside face", StringComparison.OrdinalIgnoreCase)) return 1;
         if (flag.Contains("could not be resolved", StringComparison.OrdinalIgnoreCase)) return 2;

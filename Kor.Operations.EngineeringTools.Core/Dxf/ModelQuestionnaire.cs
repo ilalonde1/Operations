@@ -585,6 +585,24 @@ public static class ModelQuestionnaire
         // A floor that stops short of the structure standing on it. She has to answer this one --
         // a podium ending where a tower begins and a slab edge that failed to close produce the
         // same model, and only the person who knows the building can say which.
+        // The outline that closes through itself. Its own question, and above J5, because it is a
+        // defect rather than something only she can settle: whatever the podium's real shape,
+        // ETABS will not mesh a self-touching area properly. It goes to her because splitting one
+        // ring into two plates needs the drawing, not because there is any doubt it is wrong.
+        if (Flag("closes through itself") is { } pinched)
+        {
+            string where = pinched[(pinched.IndexOf(':') + 1)..].Split(". A floor is a ring")[0].Trim();
+            yield return new ModelQuestion("J6", "A floor outline that closes through itself",
+                $"{where}. Is that floor two separate slabs that our reader joined into one ring, or " +
+                "does the slab genuinely narrow to nothing there?",
+                "Reported, not repaired. The outline is the one the drawing's slab-edge linework closed " +
+                "into; splitting it into two plates needs to know which two, and that is on the drawing.",
+                "A floor is a ring, and where the ring meets its own edge ETABS meshes it badly or refuses " +
+                "it. Everything standing on that storey then has a diaphragm that may not behave like one.",
+                "Say whether it is one slab or two. If two, the point they should separate at is enough.")
+                { RuleTopic = "plate-outline-closes-through-itself" };
+        }
+
         if (Flag("Floor does not reach the structure") is { } shortFloor)
         {
             string storeys = shortFloor[(shortFloor.IndexOf(':') + 1)..].Split(". Those")[0].Trim();

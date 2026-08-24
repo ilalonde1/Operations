@@ -416,7 +416,35 @@ public static class StructuralPlanClassifier
                 }
                 else if (loop.Area >= options.MinSlabArea)
                 {
-                    slabCandidates.Add(loop);
+                    // A slab edge that closed through its own linework is a figure of eight, and
+                    // it is two floors, not one. 31168's LEVEL 2 podium came back as a single
+                    // 16-joint ring whose two wings met at (26, 248) ft -- sensible area, sensible
+                    // bounding box, and an hourglass in the model. The crossing point is where one
+                    // wing ends, so the drawing itself says where to cut.
+                    //
+                    // Slabs only. Wall and column rings go through their own paths above, and a
+                    // wall outline that touches itself means something different there.
+                    var rings = LoopGeometry.SplitSelfCrossings(loop.Points);
+                    if (rings.Count == 1)
+                    {
+                        slabCandidates.Add(loop);
+                    }
+                    else
+                    {
+                        var kept = rings
+                            .Select(r => new PlanLoop(loop.Layer, r, closedExactly: true))
+                            .Where(r => r.Area >= options.MinSlabArea)
+                            .ToList();
+
+                        // Never silently. If splitting loses the floor, the whole storey changes.
+                        result.Flags.Add(
+                            $"{loop.Layer}: a slab outline crossed itself and was read as {kept.Count} " +
+                            $"separate plate(s) rather than one ring through its own edge " +
+                            $"({string.Join(" + ", kept.Select(r => $"{r.Area / 144:0} sq ft"))}).");
+
+                        if (kept.Count > 0) slabCandidates.AddRange(kept);
+                        else slabCandidates.Add(loop);
+                    }
                 }
             }
         }

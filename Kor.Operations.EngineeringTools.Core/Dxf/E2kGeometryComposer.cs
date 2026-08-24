@@ -194,6 +194,56 @@ public static class E2kGeometryComposer
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
+    /// <summary>
+    /// The narrowest gap, in inches, between two edges of one outline that are not neighbours.
+    ///
+    /// A floor plate is a ring. Where two parts of that ring come together, the outline has closed
+    /// through itself: an hourglass, a figure of eight, a sliver reaching back along its own edge.
+    /// ETABS meshes that badly or not at all, and it is invisible to area, to joint count, and to
+    /// every coverage measure — 31168's LEVEL 2 plate touches itself exactly, gap 0.00 ft, and its
+    /// area and bounding box look entirely reasonable.
+    ///
+    /// Neighbouring edges share a joint and so are always zero apart; they are skipped.
+    /// </summary>
+    public static double NarrowestSelfGap(IReadOnlyList<DxfPoint> ring) => SelfGap(ring).Gap;
+
+    /// <summary>Where <see cref="NarrowestSelfGap"/> found it, for a report that says where to look.</summary>
+    public static DxfPoint SelfGapAt(IReadOnlyList<DxfPoint> ring) => SelfGap(ring).At;
+
+    private static (double Gap, DxfPoint At) SelfGap(IReadOnlyList<DxfPoint> ring)
+    {
+        int n = ring.Count;
+        if (n < 5) return (double.MaxValue, new DxfPoint(0, 0));
+
+        double best = double.MaxValue;
+        var at = new DxfPoint(0, 0);
+        for (int i = 0; i < n; i++)
+        {
+            for (int k = i + 1; k < n; k++)
+            {
+                // Neighbours share a joint; the ring's last edge neighbours its first.
+                if (k == i + 1 || (i == 0 && k == n - 1)) continue;
+
+                double d = SegmentGap(ring[i], ring[(i + 1) % n], ring[k], ring[(k + 1) % n]);
+                if (d < best) { best = d; at = ring[i]; }
+            }
+        }
+        return (best, at);
+    }
+
+    private static double SegmentGap(DxfPoint a1, DxfPoint a2, DxfPoint b1, DxfPoint b2)
+        => Math.Min(
+            Math.Min(PointToSegment(a1, b1, b2), PointToSegment(a2, b1, b2)),
+            Math.Min(PointToSegment(b1, a1, a2), PointToSegment(b2, a1, a2)));
+
+    private static double PointToSegment(DxfPoint p, DxfPoint a, DxfPoint b)
+    {
+        double dx = b.X - a.X, dy = b.Y - a.Y;
+        double len = dx * dx + dy * dy;
+        double t = len <= 0 ? 0 : Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / len, 0, 1);
+        return Math.Sqrt(Math.Pow(p.X - (a.X + t * dx), 2) + Math.Pow(p.Y - (a.Y + t * dy), 2));
+    }
+
     public static ComposeSummary Compose(E2kDocument doc, IReadOnlyList<StoryPlacement> placements, ComposeOptions? options = null)
     {
         options ??= new ComposeOptions();
@@ -294,6 +344,7 @@ public static class E2kGeometryComposer
         var pierNames = new Dictionary<(long, long, long, long), string>();
         var spandrelNames = new Dictionary<(long, long, long, long), string>();
         var placedSpandrels = new HashSet<(long, long, long, long, string)>();
+        var pinchedPlates = new List<(string Storey, string Sheet, double GapInches, double AtXft, double AtYft)>();
         var placedOpenings = new HashSet<(long, long, string)>();
         int spandrelCounter = 0, openingCounter = 0;
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
@@ -660,6 +711,24 @@ public static class E2kGeometryComposer
                     continue;
                 }
 
+                // An outline that closes through itself.
+                //
+                // 31168's LEVEL 2 plate is 16 joints whose edges TOUCH at (26, 248) ft -- gap 0.00.
+                // It renders as an hourglass, two wings meeting at a point, and it went to an
+                // engineer described only as "43% coverage, worth a look". A self-touching area is
+                // a defect whatever the podium's real shape is: ETABS will refuse to mesh it or
+                // mesh it wrongly, and no amount of looking at percentages says so.
+                //
+                // Reported with its coordinate rather than repaired. Two wings joined at a point
+                // are usually two plates, but which two is the drawing's answer, not this tool's.
+                double pinch = NarrowestSelfGap(slab.Points);
+                if (pinch <= 2.0)
+                {
+                    var at = SelfGapAt(slab.Points);
+                    pinchedPlates.Add((story.Name, placement.SourceSheet, pinch,
+                        (at.X + options.OffsetX) / 12.0, (at.Y + options.OffsetY) / 12.0));
+                }
+
                 // One plate per place per storey. Drafting issues both a range sheet (L4-L14) and a
                 // sheet for the individual level, so the same floor arrives twice and was modelled
                 // twice — "every floor we have two slabs on top of each other". Walls and columns
@@ -906,6 +975,17 @@ public static class E2kGeometryComposer
         // Reported, not fixed. A mezzanine really is a small floor in a big room, and a podium
         // really does stop where the tower begins; which of those this is belongs to the engineer.
         // The number is what she cannot get from a count.
+        if (pinchedPlates.Count > 0)
+            flags.Add(
+                $"{pinchedPlates.Count} floor plate(s) have an outline that closes through itself: " +
+                string.Join(", ", pinchedPlates
+                    .OrderBy(p => p.GapInches)
+                    .Select(p => $"{p.Storey} — two edges {(p.GapInches < 0.5 ? "TOUCHING" : $"{p.GapInches / 12.0:0.0} ft apart")} " +
+                                 $"at ({p.AtXft:0}, {p.AtYft:0}) ft, from {p.Sheet}")) +
+                ". A floor is a ring; where the ring meets itself the outline has closed through its own " +
+                "edge, and ETABS will mesh it badly or refuse it. Two wings joined at a point are usually " +
+                "two plates — which two is the drawing's answer, so this is reported and not repaired.");
+
         var thinlyFloored = new List<(string Storey, int Percent)>();
         foreach (var storey in allStories)
         {
