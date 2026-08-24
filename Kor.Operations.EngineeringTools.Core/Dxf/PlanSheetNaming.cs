@@ -31,6 +31,30 @@ public sealed record PlanSheetInfo(
     /// </summary>
     public bool IsMezzanine { get; init; }
 
+    /// <summary>
+    /// The levels this sheet calls a mezzanine, where it does not call all of them that.
+    ///
+    /// IsMezzanine is one flag for a whole sheet, and a title can be both: 31104 has
+    /// "LEVEL 1 MEZZ AND LEVEL2 CANOPY", a level-1 mezzanine and a level-2 canopy on one drawing.
+    /// One flag cannot express it, so the sheet was mezzanine-only, level 1 and level 2 are not
+    /// mezzanine storeys, and it matched nothing at all -- 19 walls and 30 columns read and placed
+    /// nowhere. It will happen again on any sheet that spans a mezzanine and an ordinary level.
+    ///
+    /// Empty where every level on the sheet is the same kind, which is the ordinary case and
+    /// behaves exactly as before.
+    /// </summary>
+    public IReadOnlyList<int> MezzanineLevels { get; init; } = Array.Empty<int>();
+
+    /// <summary>Whether this sheet has anything to say about a storey of this kind.</summary>
+    public bool Serves(bool storeyIsMezzanine)
+        => storeyIsMezzanine
+            ? IsMezzanine
+            : !IsMezzanine || MezzanineLevels.Count < Levels.Count;
+
+    /// <summary>Whether this sheet calls THIS level a mezzanine.</summary>
+    public bool CallsLevelMezzanine(int level)
+        => IsMezzanine && (MezzanineLevels.Count == 0 || MezzanineLevels.Contains(level));
+
     public bool HasPlacement => Levels.Count > 0 || ParkadeLevels.Count > 0 || IsRoof || IsFoundation;
 }
 
@@ -147,6 +171,7 @@ public static partial class PlanSheetNaming
             IsElevatorRoof = name.Contains("ELEVATOR ROOF", StringComparison.OrdinalIgnoreCase)
                           || name.Contains("ELEV ROOF", StringComparison.OrdinalIgnoreCase),
             IsMezzanine = IsMezzanineName(name),
+            MezzanineLevels = MezzanineLevelsIn(StripSheetNumber(name)),
             ParkadeLevels = parkade,
             BuildingTags = buildings,
         };
@@ -156,6 +181,36 @@ public static partial class PlanSheetNaming
     /// Whether a sheet title or a storey name is a mezzanine. Drafting writes MEZZ; a model may
     /// write Mezz or MEZZANINE, and 31138's own storey list uses "Mezz".
     /// </summary>
+    /// <summary>
+    /// Which levels a title calls a mezzanine, when it calls some of them that and not others.
+    ///
+    /// Split on the word AND, never on "&" -- "BLDG A&B" is a building tag and splitting there
+    /// would take a plan for two towers apart. Returns empty unless the title genuinely mixes the
+    /// two kinds, so a sheet that is wholly a mezzanine is untouched.
+    /// </summary>
+    private static IReadOnlyList<int> MezzanineLevelsIn(string title)
+    {
+        var parts = Regex.Split(title, @"\s+AND\s+", RegexOptions.IgnoreCase);
+        if (parts.Length < 2) return Array.Empty<int>();
+
+        var mezzanine = new List<int>();
+        bool anyPlain = false;
+
+        foreach (string part in parts)
+        {
+            var levels = SingleLevelRegex().Matches(part).Select(m => int.Parse(m.Groups[1].Value)).ToList();
+            if (levels.Count == 0) continue;
+
+            if (IsMezzanineName(part)) mezzanine.AddRange(levels);
+            else anyPlain = true;
+        }
+
+        // Only interesting where the title really does mix them.
+        return mezzanine.Count > 0 && anyPlain
+            ? mezzanine.Distinct().OrderBy(v => v).ToList()
+            : Array.Empty<int>();
+    }
+
     private static bool IsMezzanineName(string text) =>
         text.Contains("MEZZ", StringComparison.OrdinalIgnoreCase);
 
@@ -215,7 +270,8 @@ public static partial class PlanSheetNaming
             // sheet and the level 1 mezzanine sheet read as level 1. The rule that an untagged
             // sheet belongs to the unprefixed storey then handed the mezzanine both sheets and left
             // the ground floor of both towers empty — 45 walls and 67 columns modelled a storey up.
-            if (IsMezzanineName(story) != sheet.IsMezzanine) continue;
+            bool storeyIsMezzanine = IsMezzanineName(story);
+            if (!sheet.Serves(storeyIsMezzanine)) continue;
 
             if (sheet.BuildingTags.Count > 0 &&
                 !sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(story, tag))) continue;
@@ -233,7 +289,13 @@ public static partial class PlanSheetNaming
             if (!levelInStory.Success) continue;
 
             int storyLevel = int.Parse(levelInStory.Groups[1].Value);
-            if (sheet.Levels.Contains(storyLevel)) matches.Add(story);
+            if (!sheet.Levels.Contains(storyLevel)) continue;
+
+            // A mezzanine storey takes only the levels this sheet calls a mezzanine, and an
+            // ordinary storey takes only the ones it does not.
+            if (storeyIsMezzanine != sheet.CallsLevelMezzanine(storyLevel)) continue;
+
+            matches.Add(story);
         }
 
         // A model may name its mezzanine storey just "Mezz", with no level number — 31138 does.

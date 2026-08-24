@@ -1255,6 +1255,44 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void ASheetCanNameAMezzanineForOneLevelAndNotAnother()
+    {
+        // IsMezzanine was one flag for a whole sheet, and 31104 has a title that is both:
+        // "LEVEL 1 MEZZ AND LEVEL2 CANOPY" -- a level-1 mezzanine and a level-2 canopy on one
+        // drawing. The flag made it mezzanine-only, neither L1 nor L2 is a mezzanine storey, and it
+        // matched nothing at all: 19 walls and 30 columns read off the sheet and placed nowhere.
+        var stories = new[] { "P1", "L1", "L2", "L3", "Mezz" };
+        var mixed = PlanSheetNaming.Parse("31104-01 2520 Balaclava-Structural Plan - LEVEL 1 MEZZ AND LEVEL2 CANOPY.dxf");
+
+        Assert.True(mixed.IsMezzanine);
+        Assert.Equal(new[] { 1, 2 }, mixed.Levels);
+        Assert.Equal(new[] { 1 }, mixed.MezzanineLevels);
+
+        // The canopy lands on level 2. The mezzanine half does NOT land on L1 -- a mezzanine is a
+        // storey in its own right, and putting its members on the floor below is the fault that
+        // gave 31168's ground floor a storey's worth of somebody else's walls.
+        Assert.Equal(new[] { "L2" }, PlanSheetNaming.MatchStories(mixed, stories));
+
+        // A sheet that is wholly a mezzanine is untouched by any of this: still mezzanine-only,
+        // and still refusing the numbered floor below it.
+        var wholly = PlanSheetNaming.Parse("--Structural Plan - LEVEL 1 PLAN MEZZ - CONCRETE OUTLINE.dxf");
+        Assert.True(wholly.IsMezzanine);
+        Assert.Empty(wholly.MezzanineLevels);
+        Assert.DoesNotContain("L1", PlanSheetNaming.MatchStories(wholly, stories));
+
+        // And an ordinary sheet stays ordinary.
+        var plain = PlanSheetNaming.Parse("--Structural Plan - LEVEL 2.dxf");
+        Assert.False(plain.IsMezzanine);
+        Assert.Equal(new[] { "L2" }, PlanSheetNaming.MatchStories(plain, stories));
+
+        // "AND" is the only splitter, never "&": "BLDG A&B" is a building tag and splitting there
+        // would take a plan for two towers apart.
+        var twoBuildings = PlanSheetNaming.Parse("--Structural Plan - LEVEL 3 PLAN - BLDG A&B.dxf");
+        Assert.Empty(twoBuildings.MezzanineLevels);
+        Assert.Equal(new[] { "A", "B" }, twoBuildings.BuildingTags);
+    }
+
+    [Fact]
     public void ALevelWithNoNumberInItsNameIsStillPlaced()
     {
         // Matching a plan to a storey by the level NUMBER in its title is a fact about how one
