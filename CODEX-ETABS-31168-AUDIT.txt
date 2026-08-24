@@ -11,8 +11,8 @@ WHAT THIS IS AND WHY IT IS BEING AUDITED
 
   She has already been sent a bad package once. It contained eight storeys of a building she had
   said was out of scope, and a wall 132 inches thick. Both survived because the person who built it
-  verified his own work and did not open the result. Since then two more faults were found the same
-  way -- by looking, not by counting:
+  verified his own work and did not open the result. Since then three more faults were found the
+  same way -- by looking, not by counting:
 
     - members carried in from the reference model that no drawing produced, which she circled in
       ETABS and said "these are not walls"
@@ -23,13 +23,13 @@ WHAT THIS IS AND WHY IT IS BEING AUDITED
   Every one of those passed every count in the report. THAT is the fault class. Counts agreeing is
   not evidence, and a check that runs after the thing it checks is a note, not a gate.
 
-  I am the person who missed all four. That is why this is being audited by someone else.
+  I am the person who missed all five. That is why this is being audited by someone else.
 
 WHAT TO AUDIT -- THE PACKAGE, NOT THE CODE
 
   | 31168-FROM-DRAWINGS.e2k          | the model |
   | 31168-FROM-DRAWINGS-report.txt   | sheets placed and not, every flag, every rule with its authority |
-  | 31168-QUESTIONS-for-Andrea.xlsx  | should carry TWO questions and a page of decided items |
+  | 31168-QUESTIONS-for-Andrea.xlsx  | should carry THREE questions and a page of decided items |
   | KOR-31168-SUMMARY.pdf            | one page, the thing she reads first |
   | 31168-reference-SHELL.e2k        | the input: her reference with members stripped, grids kept |
 
@@ -66,7 +66,7 @@ WHAT IT SHOULD CONTAIN, SO YOU CAN CHECK RATHER THAN GUESS
 
   Every argument is load-bearing and docs\KOR-DxfToEtabs-Handoff-2026-08-24.md says why.
 
-WHERE I WOULD LOOK FIRST, HAVING BEEN WRONG FOUR TIMES
+WHERE I WOULD LOOK FIRST, HAVING BEEN WRONG FIVE TIMES
 
   1. LOOK AT EVERY STOREY. tools\Render-E2kModel.ps1 -E2k <file> -OutPng <png> -Storey "<name>".
      Fifteen renders take over ten minutes; run them one at a time or in the background. A model
@@ -83,17 +83,32 @@ WHERE I WOULD LOOK FIRST, HAVING BEEN WRONG FOUR TIMES
      C-LEVEL 3's borrowed plate is C-LEVEL 4's object assigned a second time. Check it per storey,
      not by the totals -- I got this wrong once already today. If any storey carrying members has
      no floor assign, that IS a fault.
-  4. A-LEVEL 1 carries 6 walls and ZERO columns, while the report says 128 members drawn on a
-     sheet placed there were dropped as already-filled. Is its structure genuinely modelled on
-     B-LEVEL 1 at the same elevation, or has a storey quietly lost its columns? I believe the
-     former and have not proved it.
-  5. THE SUMMARY PDF AGAINST THE MODEL. Read the PDF as TEXT, not the HTML it came from, and check
+  4. THE TWO STOREYS WHOSE FLOOR STOPS SHORT OF THEIR STRUCTURE. Measured this session, per
+     storey, as the fraction of the ground a storey's own members cover that its plate reaches:
+
+         LEVEL 2         101 members over 279 x 206 ft, plate 296 x 96 ft  ->  43%
+         LEVEL 1 MEZZ     96 members over 281 x 206 ft, plate  94 x 26 ft  ->   4%
+         every other storey                                                    99-100%
+
+     LEVEL 2's plate is also a 16-joint outline that pinches to a near-point at x = 27 ft and
+     renders as an hourglass -- two wings meeting at a waist about 0.8 ft wide. That is either
+     the podium's real shape or a slab edge that closed through itself. I do not know which, and
+     a self-touching area is not a good thing to hand ETABS either way. Look at it.
+
+     Both storeys now carry a flag and question J5 saying so. Neither is fixed, because a
+     mezzanine over part of a room and a slab edge that failed to close produce the same model.
+  5. A-LEVEL 1 carries 6 walls and ZERO columns, while the report says 128 members drawn on a
+     sheet placed there were dropped as already-filled. I rendered A-LEVEL 1 and B-LEVEL 1: they
+     sit at the same elevation, B-LEVEL 1 carries the ground floor's full field of columns and
+     cores, and A-LEVEL 1 adds only the six walls B-LEVEL 1 did not already have. That is
+     consistent with dedup working, and I still have not proved the six are the right six.
+  6. THE SUMMARY PDF AGAINST THE MODEL. Read the PDF as TEXT, not the HTML it came from, and check
      every number in it against the .e2k. A stale dossier claiming 1,119 walls sat in this folder
      for nine days because the check that caught it ran after the copy.
-  6. THE WORKBOOK. Two questions is the target. Anything a reader could answer from the drawings
+  7. THE WORKBOOK. Three questions now (J5 is new). Anything a reader could answer from the drawings
      is a question that should not be there -- eighteen rows asking about 2-4 inch drafting scratch
      went to her once.
-  7. Plate edges recovered by flood fill are traced off a raster and come out slightly stepped. Is
+  8. Plate edges recovered by flood fill are traced off a raster and come out slightly stepped. Is
      that acceptable to hand over, or does it read as sloppy?
 
 WHAT I CANNOT DO AND WOULD LIKE DONE

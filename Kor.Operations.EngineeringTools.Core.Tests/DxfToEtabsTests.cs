@@ -1583,6 +1583,63 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void AFloorThatStopsShortOfItsOwnStructureIsReportedEvenThoughTheStoreyHasOne()
+    {
+        // "Has a plate" was the only question asked, and 31168 answers it yes on LEVEL 2 -- whose
+        // floor reaches 96 ft of a 206 ft spread of walls and columns, because only the towers'
+        // podium closed and the mid-rise half of the level did not. Every count agreed. It took
+        // rendering the storey and looking at it.
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"WHOLE\"  HEIGHT 120",
+            "  STORY \"HALF-FLOORED\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        // Columns right across the storey, and a plate over one end of them only.
+        static PlanGeometrySet Storey(double plateMaxX)
+        {
+            var g = new PlanGeometrySet();
+            for (int x = 100; x <= 3900; x += 200)
+                g.Columns.Add(new ColumnFootprint(new DxfPoint(x, 500), 24, 24, "JBP_V_COL"));
+            g.Columns.Add(new ColumnFootprint(new DxfPoint(2000, 1500), 24, 24, "JBP_V_COL"));
+            g.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+            {
+                new(0, 0), new(plateMaxX, 0), new(plateMaxX, 2000), new(0, 2000),
+            }, true));
+            return g;
+        }
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories["HALF-FLOORED"], Storey(1200), "half.dxf"),   // plate over a third
+            new StoryPlacement(stories["WHOLE"], Storey(4000), "whole.dxf"),         // plate over all of it
+        }, new ComposeOptions { InferMissingFloors = true });
+
+        string flag = Assert.Single(summary.Flags, f => f.Contains("Floor does not reach the structure"));
+        Assert.Contains("HALF-FLOORED", flag, StringComparison.Ordinal);
+
+        // The storey whose floor does reach its structure is not named, or the flag is noise.
+        Assert.DoesNotContain("WHOLE (", flag, StringComparison.Ordinal);
+
+        // And it reports rather than repairs: the plate is still the one the drawing gave.
+        Assert.DoesNotContain(summary.Flags, f => f.Contains("not drawn one for"));
+    }
+
+    [Fact]
     public void EveryStoreyCarryingMembersAlsoCarriesAFloorToSpanBetweenThem()
     {
         // Counted by hand once, so it is counted by the build from now on. The count in the report

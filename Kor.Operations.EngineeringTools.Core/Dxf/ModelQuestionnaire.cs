@@ -570,6 +570,26 @@ public static class ModelQuestionnaire
                 { RuleTopic = "floors-taken-from-below" };
         }
 
+        // A floor that stops short of the structure standing on it. She has to answer this one --
+        // a podium ending where a tower begins and a slab edge that failed to close produce the
+        // same model, and only the person who knows the building can say which.
+        if (Flag("Floor does not reach the structure") is { } shortFloor)
+        {
+            string storeys = shortFloor[(shortFloor.IndexOf(':') + 1)..].Split(". Those")[0].Trim();
+            yield return new ModelQuestion("J5", "Floors that stop short of their structure",
+                $"On these storeys the floor spans much less ground than the walls and columns standing " +
+                $"on it: {storeys}. Is that the building — a mezzanine over part of a room, a podium " +
+                "ending where the tower starts — or did a slab edge fail to close?",
+                "Nothing was added or removed. Each of these storeys has the plate its own drawing gave, " +
+                "and the number is how much of the ground its own members cover that the plate reaches.",
+                "If it is the building, nothing needs doing and the model is right. If a slab edge failed " +
+                "to close, every member out beyond the plate is standing with no diaphragm, and the " +
+                "analysis will distribute lateral load as though that part of the floor were not there.",
+                "Say which storeys are correct as drawn. For any that are not, the slab layer and the " +
+                "sheet they should have come from is enough to go back and read them again.")
+                { RuleTopic = "floor-stops-short-of-members" };
+        }
+
         // Only the ones that could be concrete.
         //
         // Every outline that will not resolve was asked about, and on 31168 that put eighteen rows

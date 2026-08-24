@@ -841,6 +841,12 @@ public static class E2kGeometryComposer
 
                 storeysWithPlates.Add(storey.Name);
                 inferredPlates.Add((storey.Name, donor.Storey.Name));
+
+                // A borrowed plate is this storey's floor for every purpose after this, the
+                // coverage check below included.
+                if (!platesByStorey.TryGetValue(storey.Name, out var borrowed))
+                    platesByStorey[storey.Name] = borrowed = new List<(string, string, Extent)>();
+                borrowed.AddRange(donor.Plates);
             }
 
             if (inferredPlates.Count > 0)
@@ -851,6 +857,40 @@ public static class E2kGeometryComposer
                     ". These plates are INFERRED, not measured — the drawings for those storeys carry no " +
                     "closed slab outline — so check their edges before relying on them.");
         }
+
+        // A storey can hold a floor and still have most of its structure standing under open air.
+        // "Has a plate" is the only question asked until now, and 31168 answers it yes on LEVEL 2
+        // -- whose plate reaches 96 ft of a 206 ft spread of walls and columns, because only the
+        // towers' podium closed and the mid-rise half of the level did not. Nothing in the package
+        // said so. It took rendering the storey and looking at it, which is the fault this module
+        // keeps repeating: the count agrees, the model is wrong, and only a picture disagrees.
+        //
+        // Reported, not fixed. A mezzanine really is a small floor in a big room, and a podium
+        // really does stop where the tower begins; which of those this is belongs to the engineer.
+        // The number is what she cannot get from a count.
+        var thinlyFloored = new List<(string Storey, int Percent)>();
+        foreach (var storey in allStories)
+        {
+            if (!memberExtents.TryGetValue(storey.Name, out var standingOn)) continue;
+            if (!platesByStorey.TryGetValue(storey.Name, out var plates) || plates.Count == 0) continue;
+
+            var spanned = plates[0].Where;
+            foreach (var plate in plates.Skip(1))
+                spanned = spanned.With(plate.Where.MinX, plate.Where.MinY).With(plate.Where.MaxX, plate.Where.MaxY);
+
+            double covered = spanned.CoverageOf(standingOn);
+            if (covered < 0.6) thinlyFloored.Add((storey.Name, (int)Math.Round(covered * 100)));
+        }
+
+        if (thinlyFloored.Count > 0)
+            flags.Add(
+                "Floor does not reach the structure on " + thinlyFloored.Count + " storey(s): " +
+                string.Join(", ", thinlyFloored.Select(t => $"{t.Storey} ({t.Percent}% of the ground its own " +
+                                                            "walls and columns cover)")) +
+                ". Those storeys have a plate, so nothing here says the floor is missing — it says the drawn " +
+                "slab edge stops well short of the members. A mezzanine or a podium that ends where a tower " +
+                "begins reads exactly like this and is correct; a slab edge that failed to close does too, and " +
+                "is not.");
 
         if (diaphragms.Count > 0)
             doc.Append("DIAPHRAGM NAMES", diaphragms.Select(d => $"  DIAPHRAGM \"{d}\"    TYPE RIGID"));
