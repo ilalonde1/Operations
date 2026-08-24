@@ -31,7 +31,9 @@ internal static class DxfFloodFillPlateDetector
         if ((long)width * height > 4_000_000) return false;
 
         var dark = new bool[width * height];
-        int strokeRadius = Math.Max(1, (int)Math.Ceiling(options.DashJoinGap / (2.0 * pixelSize)));
+        // The bridge is the size of the INTERRUPTIONS in a slab edge, not the size of a dash.
+        double bridge = options.FloodFillBridge > 0 ? options.FloodFillBridge : options.DashJoinGap;
+        int strokeRadius = Math.Max(1, (int)Math.Ceiling(bridge / (2.0 * pixelSize)));
 
         (int X, int Y) Map(DxfPoint p)
         {

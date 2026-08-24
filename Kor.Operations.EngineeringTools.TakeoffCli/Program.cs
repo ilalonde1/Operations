@@ -3053,6 +3053,7 @@ public static class TakeoffCliHelp
         new("dxf-import-rules", "takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]", "Import per-job DXF rule answers."),
         new("corpus-read", "takeoff corpus-read <projectsRoot> [out.txt] [--limit N]", "Extract readable project corpus text."),
         new("dxf-to-etabs", "takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [options]", "Build an ETABS model from DXF plans."),
+        new("verify-e2k", "takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>]", "Refuse a finished model that breaks a structural invariant."),
         new("ifc-takeoff", "takeoff ifc-takeoff <model.ifc> <out.xlsx>", "Generate a quantity takeoff from an IFC model."),
         new("vector-takeoff", "takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson] [--deterministic] [--fresh]", "Run the vector PDF quantity takeoff pipeline."),
         new("vector-plate", "takeoff vector-plate <pdf> <page> <png>", "Ask the vision layer for one slab plate box."),

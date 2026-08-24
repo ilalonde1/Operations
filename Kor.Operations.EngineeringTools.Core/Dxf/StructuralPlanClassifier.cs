@@ -135,6 +135,25 @@ public sealed record PlanClassificationOptions
     public double OutlineSelfTouchTolerance { get; init; } = 0.05;
 
     /// <summary>
+    /// How wide an interruption the flood-fill plate recovery may bridge, in drawing units.
+    ///
+    /// The stroke it rasterises with used to come from <see cref="DashJoinGap"/>, which is the
+    /// wrong scale: that number is the DASH pitch, 11 inches on this office's hidden lines, and it
+    /// closed gaps of roughly two feet. A slab edge is interrupted wherever other linework crosses
+    /// it, and on 31168's C-LEVEL 3 those interruptions reach 103 inches -- so the fill escaped,
+    /// no plate was recovered, and the storey borrowed its neighbour's floor. The engineer's answer
+    /// was "level 3 has its own slab edge, it's on the drawings", and she was right.
+    ///
+    /// Measured on 31168: at 36 inches C-LEVEL 3 recovers its own 12,830 sq ft floor, LEVEL 1 and
+    /// the mezzanine move less than a percent, LEVEL 2 keeps the two separate slabs the engineer
+    /// confirmed, and C-LEVEL 4 does not move at all. Below 36 C-LEVEL 3 recovers nothing.
+    ///
+    /// Zero falls back to <see cref="DashJoinGap"/>, which is what it did before.
+    /// </summary>
+    public double FloodFillBridge { get; init; } = 36.0;
+
+
+    /// <summary>
     /// Largest dash gap to close when rebuilding a dashed line. Measured on KOR's exports:
     /// hidden edges dash at a constant 11", while genuine interruptions in a slab boundary
     /// run 18" and wider.
@@ -460,16 +479,54 @@ public static class StructuralPlanClassifier
 
         if (result.Slabs.Count == 0)
         {
-            var slabSegments = prepared
+            // One LAYER at a time, not every slab layer rasterised together.
+            //
+            // A flood fill needs a boundary and nothing else. Linework from a second slab layer
+            // lands INSIDE that boundary, and interior marks can only break a fill -- they can
+            // never help it. Drafting splits slab edges across JBP_C_SLABEDG, -1 and -2, and
+            // rasterising all three of 31168's C-LEVEL 3 recovered nothing at any bridge width,
+            // in a pattern that was not even monotonic: 48 in found a plate, 72 through 120 found
+            // none, 144 found one far too big. On its own, JBP_C_SLABEDG recovers the floor
+            // steadily -- 12,830 / 13,101 / 13,375 sq ft as the bridge widens.
+            //
+            // That storey borrowed its neighbour's plate for want of this, and the engineer came
+            // back with "level 3 has its own slab edge, it's on the drawings". It is.
+            //
+            // Largest wins: the slab edge encloses more than any layer of steps or depressions
+            // drawn inside it.
+            var slabLayers = prepared
                 .Where(x => x.Role == RoleSlab)
-                .Select(x => x.Segment)
+                .GroupBy(x => x.Segment.Layer, StringComparer.OrdinalIgnoreCase)
+                .Select(g => (Layer: g.Key, Segments: g.Select(x => x.Segment).ToList()))
                 .ToList();
 
-            if (DxfFloodFillPlateDetector.TryRecover(slabSegments, options, out var recoveredPlate, out string note)
-                && recoveredPlate is not null)
+            PlanLoop? best = null;
+            string bestNote = string.Empty;
+            string bestLayer = string.Empty;
+
+            foreach (var (layer, segs) in slabLayers)
+                if (DxfFloodFillPlateDetector.TryRecover(segs, options, out var got, out string note)
+                    && got is not null
+                    && (best is null || got.Area > best.Area))
+                {
+                    best = got; bestNote = note; bestLayer = layer;
+                }
+
+            // Everything together, as a last resort, for a drawing that really does split one
+            // outline across layers.
+            if (best is null && slabLayers.Count > 1)
             {
-                result.Slabs.Add(recoveredPlate);
-                result.Flags.Add(note);
+                var pooled = slabLayers.SelectMany(x => x.Segments).ToList();
+                if (DxfFloodFillPlateDetector.TryRecover(pooled, options, out var got, out string note) && got is not null)
+                {
+                    best = got; bestNote = note; bestLayer = "all slab layers together";
+                }
+            }
+
+            if (best is not null)
+            {
+                result.Slabs.Add(best);
+                result.Flags.Add(bestNote + $" Read from {bestLayer} alone.");
             }
         }
 

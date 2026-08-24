@@ -22,6 +22,21 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// 1,449 files, seeded so it is the same sample every time and a failure can be reproduced.
 /// Skipped when the share is unreachable; skipped when the rules database is not configured.
 /// </summary>
+/// <remarks>
+/// SLOW: walks the engineer-model corpus on the share.
+///
+/// Tagged so an ordinary edit can run everything else in seconds. These five classes are the
+/// reason the suite takes ten minutes, and a suite that takes ten minutes gets run for changes
+/// it cannot possibly affect -- a PowerShell edit, a document -- while holding the build lock
+/// against the next change.
+///
+///   dotnet test --filter "Speed!=Slow"    every edit, seconds
+///   dotnet test                           geometry changes and before any publish
+///
+/// Geometry work always runs the full suite: the coverage ratchets here are the only thing
+/// that catches a member read on one build and lost on the next, and they may only come down.
+/// </remarks>
+[Trait("Speed", "Slow")]
 public class PortfolioRuleTests
 {
     private const string ProjectsRoot = @"\\Kor-fs01\Projects\Projects";

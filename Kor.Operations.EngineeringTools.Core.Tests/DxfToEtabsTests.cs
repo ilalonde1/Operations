@@ -2311,7 +2311,25 @@ public class E2kDocumentTests
         string text = DxfToEtabsService.FormatReport(report);
 
         Assert.Contains("recovered by flood-filling", text);
-        Assert.Contains("... and 6 more", text);
+
+        // Priority, not truncation. The report used to stop at forty flags, so this asserted the
+        // "... and 6 more" line and relied on ordering to lift the important one above the cut.
+        //
+        // The cut is gone: the report is the location-by-location account and is the only place
+        // some findings appear at all. Truncating it hid the line saying a floor had been split in
+        // two, and hid every slab-closure flag for the storey an engineer came back on with "level
+        // 3 has its own slab edge, it's on the drawings" -- the evidence needed to answer her was
+        // in the flags the report declined to print.
+        //
+        // What still has to hold is that a recovered plate is not read forty-fifth.
+        int recovered = text.IndexOf("recovered by flood-filling", StringComparison.Ordinal);
+        int firstNoise = text.IndexOf("outline(s) would not close", StringComparison.Ordinal);
+        Assert.True(recovered < firstNoise,
+            "a recovered floor plate must be listed before routine outline noise");
+
+        Assert.DoesNotContain("... and", text);
+        foreach (int i in new[] { 1, 20, 45 })
+            Assert.Contains($"sheet-{i}.dxf", text);
     }
 
     [Fact]

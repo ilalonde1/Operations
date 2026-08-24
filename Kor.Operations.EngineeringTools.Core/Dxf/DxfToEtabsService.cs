@@ -302,6 +302,7 @@ public static class DxfToEtabsService
             BridgeTolerance = settings.ValueOr("dxf.bridge-tolerance", options.BridgeTolerance),
             WallBridgeTolerance = settings.ValueOr("dxf.wall-bridge-tolerance", options.WallBridgeTolerance),
             OutlineSelfTouchTolerance = settings.ValueOr("dxf.outline-self-touch-tolerance", options.OutlineSelfTouchTolerance),
+            FloodFillBridge = settings.ValueOr("dxf.flood-fill-bridge", options.FloodFillBridge),
         };
 
     private static ComposeOptions ApplyRules(
@@ -993,9 +994,15 @@ public static class DxfToEtabsService
             }
 
             sb.AppendLine();
+            // ALL of them. This document is the location-by-location account, and it is the only
+            // place some findings appear at all -- the one-page summary abbreviates on purpose.
+            //
+            // It used to stop at forty. That hid the line saying a floor had been split into two
+            // plates, and it hid every slab-closure flag for C-LEVEL 3 on 31168 -- the storey the
+            // engineer came back on with "level 3 has its own slab edge, it's on the drawings".
+            // The evidence needed to answer her was in the 31 flags the report declined to print.
             sb.AppendLine($"Flags ({perSheet.Count}) — outlines that needed judgement:");
-            foreach (string f in perSheet.Take(40)) sb.AppendLine("  - " + f);
-            if (perSheet.Count > 40) sb.AppendLine($"  ... and {perSheet.Count - 40} more");
+            foreach (string f in perSheet) sb.AppendLine("  - " + f);
         }
 
         return sb.ToString();
