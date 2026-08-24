@@ -154,10 +154,29 @@ $counts = [ordered]@{
     'Storeys populated' = @($model | Select-String '^\s+STORY\s+"[^"]+"\s+HEIGHT').Count
     'Wall panels'       = @($model | Select-String '^\s+AREA\s+"KW\d+"\s+PANEL').Count
     'Columns'           = @($model | Select-String '^\s+LINE\s+"KC\d+"\s+COLUMN').Count
+    # Plate OBJECTS, and a storey that borrows one is the donor's object assigned a second time.
+    # So this is legitimately lower than the storey count, and reads exactly like a storey that
+    # lost its floor -- it cost me ten minutes on 24 Aug and would cost an engineer more. The
+    # floored-storey count goes beside it so nobody has to work that out.
     'Floor plates'      = @($model | Select-String '^\s+AREA\s+"KF\d+"\s+FLOOR').Count
-    'Headers'           = @($model | Select-String '^\s+AREA\s+"KS\d+"\s+PANEL').Count
-    'Openings cut'      = @($model | Select-String '^\s+AREA\s+"KO\d+"\s+AREA').Count
 }
+
+# How many storeys actually carry a floor, which is the number a reader means when they compare
+# "floor plates" against "storeys populated" and find one missing.
+$floorNames = @($model | Select-String '^\s+AREA\s+"(KF\d+)"\s+FLOOR' |
+    ForEach-Object { $_.Matches[0].Groups[1].Value })
+$flooredStoreys = @($model | Select-String '^\s+AREAASSIGN\s+"(KF\d+)"\s+"([^"]+)"' |
+    Where-Object { $floorNames -contains $_.Matches[0].Groups[1].Value } |
+    ForEach-Object { $_.Matches[0].Groups[2].Value } |
+    Sort-Object -Unique).Count
+
+# Shown only when it differs, and it differs exactly when a storey borrowed a plate. Printing
+# "14 plates, 15 storeys floored" unasked answers the question before it is asked; printing
+# "14 plates" alone leaves a reader to conclude a storey lost its floor, which is what I did.
+if ($flooredStoreys -gt $counts['Floor plates']) { $counts['Storeys with a floor'] = $flooredStoreys }
+
+$counts['Headers']      = @($model | Select-String '^\s+AREA\s+"KS\d+"\s+PANEL').Count
+$counts['Openings cut'] = @($model | Select-String '^\s+AREA\s+"KO\d+"\s+AREA').Count
 
 # Everything the run declined to do, in its own words. These lines are the honest half of the
 # page and are taken verbatim rather than summarised, because summarising is where they soften.
