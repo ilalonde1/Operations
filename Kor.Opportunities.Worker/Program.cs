@@ -292,6 +292,44 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IEnrichmentProvider>
 builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.INewsStore>(sp =>
     new Kor.Opportunities.Data.Awards.SqlNewsStore(Cs(sp)));
 
+// --- Industry event ingest (2026-08-24) ----------------------------------
+// Association calendars are rows in opportunities.IndustryEventSource, seeded
+// by IndustryEventSourceBootstrapHostedService. Adding an association means
+// adding a source row plus a parser, not editing a document.
+builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IIndustryEventSourceStore>(sp =>
+    new Kor.Opportunities.Data.IndustryEvents.SqlIndustryEventSourceStore(Cs(sp)));
+
+builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IIndustryEventStore>(sp =>
+    new Kor.Opportunities.Data.IndustryEvents.SqlIndustryEventStore(Cs(sp)));
+
+builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IEventMarketRegionStore>(sp =>
+    new Kor.Opportunities.Data.IndustryEvents.SqlEventMarketRegionStore(Cs(sp)));
+
+builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IIndustryEventCalendarParser,
+    Kor.Opportunities.Data.IndustryEvents.IcbaCardCalendarParser>();
+
+builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.IndustryEvents.IndustryEventIngestService), c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(45);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("KOR-Operations-BD-EventsBot/1.0 (+ilalonde@korstructural.com)");
+})
+.AddPolicyHandler((sp, _) => RetryPolicy(sp, "IndustryEventsIngest"));
+
+builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IndustryEventIngestService>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<OpportunitiesWorkerOptions>>().Value;
+    var http = sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Kor.Opportunities.Data.IndustryEvents.IndustryEventIngestService));
+    return new Kor.Opportunities.Data.IndustryEvents.IndustryEventIngestService(
+        http,
+        sp.GetRequiredService<Kor.Opportunities.Data.IndustryEvents.IIndustryEventSourceStore>(),
+        sp.GetRequiredService<Kor.Opportunities.Data.IndustryEvents.IIndustryEventStore>(),
+        sp.GetRequiredService<Kor.Opportunities.Data.IndustryEvents.IEventMarketRegionStore>(),
+        sp.GetServices<Kor.Opportunities.Data.IndustryEvents.IIndustryEventCalendarParser>(),
+        sp.GetRequiredService<ILogger<Kor.Opportunities.Data.IndustryEvents.IndustryEventIngestService>>(),
+        options.IngestionMaxBytesPerResponse);
+});
+
 builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.Awards.NewsFeedPollService), c =>
 {
     c.Timeout = TimeSpan.FromSeconds(30);
@@ -824,6 +862,19 @@ builder.Services.AddQuartz(q =>
        .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
   });
 
+  var industryEventsKey = new JobKey("IndustryEventsIngestJob");
+  q.AddJob<Kor.Opportunities.Worker.Services.IndustryEventsIngestJob>(opts => opts.WithIdentity(industryEventsKey));
+
+  q.AddTrigger(t =>
+  {
+      // Default: 03:45 daily — before DataRetirementJob's 04:30 sweep, so a
+      // calendar that still lists an event is re-seen before the reaper runs.
+      var cron = builder.Configuration["IndustryEventsIngestCronSchedule"] ?? "0 45 3 * * ?";
+      t.ForJob(industryEventsKey)
+       .WithIdentity("IndustryEventsIngestTrigger")
+       .WithCronSchedule(cron, cb => cb.WithMisfireHandlingInstructionDoNothing());
+  });
+
   var newsFeedKey = new JobKey("NewsFeedPollJob");
   q.AddJob<Kor.Opportunities.Worker.Services.NewsFeedPollJob>(opts => opts.WithIdentity(newsFeedKey));
 
@@ -1312,6 +1363,7 @@ builder.Services.AddQuartz(q =>
 
             builder.Services.AddHostedService<HeartbeatBackgroundService>();
             builder.Services.AddHostedService<SourceBootstrapHostedService>();
+            builder.Services.AddHostedService<IndustryEventSourceBootstrapHostedService>();
             builder.Services.AddHostedService<IngestionTriggerPollerBackgroundService>();
             builder.Services.AddHostedService<BdResearchTriggerPollerBackgroundService>();
             builder.Services.AddHostedService<BdPersonResearchTriggerPollerBackgroundService>();

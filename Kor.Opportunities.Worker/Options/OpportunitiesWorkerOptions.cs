@@ -178,6 +178,9 @@ public sealed class OpportunitiesWorkerOptions
     public string CaSocrataAppToken { get; set; } = "";
 
     // --- Round 12: news feed aggregator ---
+    public bool IndustryEventsIngestEnabled { get; set; } = true;
+    public string? IndustryEventsIngestCronSchedule { get; set; }   // default in Program.cs
+
     public bool NewsFeedPollEnabled { get; set; } = true;
     public string? NewsFeedPollCronSchedule { get; set; }   // default in Program.cs
 

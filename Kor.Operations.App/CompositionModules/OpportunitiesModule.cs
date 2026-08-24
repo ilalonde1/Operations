@@ -80,6 +80,10 @@ internal static class OpportunitiesModule
             });
         services.AddSingleton<IPursuitBriefStore>(_ => new SqlPursuitBriefStore(options.OpportunitiesDb));
         services.AddSingleton<IIndustryEventStore>(_ => new SqlIndustryEventStore(options.OpportunitiesDb));
+        services.AddSingleton<IIndustryEventSourceStore>(
+            _ => new SqlIndustryEventSourceStore(options.OpportunitiesDb));
+        services.AddSingleton<IEventMarketRegionStore>(
+            _ => new SqlEventMarketRegionStore(options.OpportunitiesDb));
         services.AddSingleton<IntelReadService>(_ => new IntelReadService(options.OpportunitiesDb));
 
         // Phase 1A/B/C: BD Pursuit Brief — data store + Word generator + region picker.

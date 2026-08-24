@@ -16,7 +16,7 @@ public sealed class SqlIndustryEventStore : IIndustryEventStore
 Id, SourceKey, Name, Organizer, EventType, StartDate, EndDate, Recurrence, City,
 Market, Format, SectorsThemes, Audience, TargetsPresent, RegistrationUrl,
 CostNote, KorRelevance, SourceNote, RetiredAtUtc, RetiredReason, CreatedAtUtc,
-UpdatedAtUtc";
+UpdatedAtUtc, IndustryEventSourceId, LastSeenAtUtc";
 
     private readonly string _connectionString;
 
@@ -54,16 +54,25 @@ WHEN MATCHED THEN
         CostNote = @costNote,
         KorRelevance = @korRelevance,
         SourceNote = @sourceNote,
+        -- An ingested row claims provenance; a hand-curated upsert leaves it alone.
+        IndustryEventSourceId = COALESCE(@industryEventSourceId, target.IndustryEventSourceId),
+        LastSeenAtUtc = CASE
+            WHEN @industryEventSourceId IS NULL THEN target.LastSeenAtUtc
+            ELSE sysdatetimeoffset()
+        END,
         UpdatedAtUtc = sysdatetimeoffset()
 WHEN NOT MATCHED THEN
     INSERT
         (SourceKey, Name, Organizer, EventType, StartDate, EndDate, Recurrence,
          City, Market, Format, SectorsThemes, Audience, TargetsPresent,
-         RegistrationUrl, CostNote, KorRelevance, SourceNote)
+         RegistrationUrl, CostNote, KorRelevance, SourceNote,
+         IndustryEventSourceId, LastSeenAtUtc)
     VALUES
         (@sourceKey, @name, @organizer, @eventType, @startDate, @endDate, @recurrence,
          @city, @market, @format, @sectorsThemes, @audience, @targetsPresent,
-         @registrationUrl, @costNote, @korRelevance, @sourceNote);";
+         @registrationUrl, @costNote, @korRelevance, @sourceNote,
+         @industryEventSourceId,
+         CASE WHEN @industryEventSourceId IS NULL THEN NULL ELSE sysdatetimeoffset() END);";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -122,7 +131,9 @@ ORDER BY
             r.IsDBNull(18) ? null : r.GetDateTimeOffset(18),
             r.IsDBNull(19) ? null : r.GetString(19),
             r.GetDateTimeOffset(20),
-            r.GetDateTimeOffset(21));
+            r.GetDateTimeOffset(21),
+            r.IsDBNull(22) ? null : r.GetInt64(22),
+            r.IsDBNull(23) ? null : r.GetDateTimeOffset(23));
     }
 
     private static void AddParams(SqlCommand cmd, IndustryEventRecord record)
@@ -144,6 +155,10 @@ ORDER BY
         AddString(cmd, "@costNote", record.CostNote, 300);
         AddString(cmd, "@korRelevance", record.KorRelevance, 1000);
         AddString(cmd, "@sourceNote", record.SourceNote, 500);
+        cmd.Parameters.Add("@industryEventSourceId", SqlDbType.BigInt).Value =
+            record.IndustryEventSourceId.HasValue
+                ? record.IndustryEventSourceId.Value
+                : DBNull.Value;
     }
 
     private static void AddString(SqlCommand cmd, string name, string? value, int size)

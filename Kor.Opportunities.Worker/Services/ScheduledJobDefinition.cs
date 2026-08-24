@@ -21,6 +21,9 @@ internal static class ScheduledJobDefinitions
         new(nameof(VendorSiteExtractionJob), "VendorSiteExtractionCronSchedule", "0 2/5 * * * ?", o => o.VendorSiteExtractionEnabled, "Enrichment"),
         new(nameof(EnrichmentDispatchJob), "EnrichmentDispatchCronSchedule", "0 9/10 * * * ?", o => o.EnrichmentDispatchEnabled, "Enrichment"),
         new(nameof(NewsFeedPollJob), "NewsFeedPollCronSchedule", "0 12/30 * * * ?", o => o.NewsFeedPollEnabled, "Ingestion"),
+        // 2026-08-24: the feeder for IndustryEvents. The table previously had
+        // only DataRetirementJob (a reaper), so it could only ever shrink.
+        new(nameof(IndustryEventsIngestJob), "IndustryEventsIngestCronSchedule", "0 45 3 * * ?", o => o.IndustryEventsIngestEnabled, "Ingestion"),
         new(nameof(NewsMentionClassifyJob), "NewsClassificationCronSchedule", "0 3/5 * * * ?", o => o.NewsClassificationEnabled, "Enrichment"),
         new(nameof(BuildingPermitsImportJob), "BuildingPermitsCronSchedule", "0 30 6 * * ?", o => o.BuildingPermitsImportEnabled, "Ingestion"),
         new(nameof(DataRetirementJob), "DataRetirementCronSchedule", "0 30 4 * * ?", o => o.DataRetirementEnabled, "Cleanup"),

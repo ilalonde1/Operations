@@ -25,4 +25,6 @@ public sealed record IndustryEventRow(
     DateTimeOffset? RetiredAtUtc,
     string? RetiredReason,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc,
+    long? IndustryEventSourceId = null,
+    DateTimeOffset? LastSeenAtUtc = null);
