@@ -66,13 +66,13 @@ had already rebuilt that building's walls by hand.</p>
 
 <table>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
-  <tr><td>Storeys populated</td><td><strong>63</strong></td><td>29</td></tr>
-  <tr><td>Wall panels, true thicknesses</td><td><strong>1,119</strong></td><td>242</td></tr>
-  <tr><td>Columns, sized &amp; oriented</td><td><strong>2,462</strong></td><td>390</td></tr>
-  <tr><td>Floor plates</td><td><strong>82</strong></td><td>13</td></tr>
-  <tr><td>Headers over openings (spandrel shells)</td><td><strong>375</strong></td><td>22</td></tr>
-  <tr><td>Shaft and stair openings cut</td><td><strong>68</strong></td><td>3</td></tr>
-  <tr><td>Pier labels</td><td><strong>143</strong></td><td>142</td></tr>
+  <tr><td>Storeys populated</td><td><strong>15</strong></td><td>29</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>349</strong></td><td>242</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>763</strong></td><td>390</td></tr>
+  <tr><td>Floor plates</td><td><strong>15</strong></td><td>13</td></tr>
+  <tr><td>Headers over openings (spandrel shells)</td><td><strong>31</strong></td><td>22</td></tr>
+  <tr><td>Shaft and stair openings cut</td><td><strong>43</strong></td><td>3</td></tr>
+  <tr><td>Pier labels</td><td><strong>130</strong></td><td>142</td></tr>
   <tr><td>Members you already had, not duplicated</td><td>—</td><td>306 walls, 316 columns</td></tr>
 </table>
 
@@ -208,8 +208,10 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
 <table>
   <tr><th>File</th><th>What it is</th></tr>
   <tr><td><code>31168-FROM-DRAWINGS.e2k</code></td>
-      <td><strong>The one that matters.</strong> Tower B and the rest of the building — 63 storeys,
-          1,119 walls, 2,462 columns, 82 plates. Nothing of this existed before.</td></tr>
+      <td><strong>The one that matters.</strong> The YMCA, its podium and the parkade — 15 storeys,
+          349 walls, 763 columns, 15 plates, every storey floored. The two towers are NOT in it:
+          you asked for none above grade, so LEVEL 3 to LEVEL 10 are cut by name. Nothing of this
+          existed before.</td></tr>
   <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
       <td>A gap-fill. You have already rebuilt this building's walls — between 17 and 42 panels on every
           storey — so this adds only what the drawings show and your model does not: 242 walls and
@@ -345,24 +347,37 @@ design settings remain ETABS's own — the file differs from a known-good one on
 
 <h2>Limitations — read before you rely on it</h2>
 
-<h3>Slab plates are the weak half</h3>
+<h3>Slab plates — no longer the weak half, but still the part to check</h3>
 <p>Drafting interrupts slab edges wherever other linework crosses them, so many outlines do not
-close. Those are dropped and reported rather than guessed at, and a standalone ring must reach
-400 ft² to be modelled — the 82 plates that survive have a median area of 9,835 ft², which is a real
-floor plate rather than a sliver. Coverage is therefore partial: the plates that are there are
-believable, but not every storey has one. Treat them as a starting point, or ignore them and place
-your own diaphragms.</p>
+close as vectors. On 31168 the slab-edge layer arrives as sixty-odd open chains, and at every
+tolerance from 0.05 to 72 inches the largest region they enclose is 119 ft² — so no tolerance was
+ever going to produce those floors, and widening one was measured and abandoned. They are now
+recovered by rasterising the drawn linework and flood-filling it, which is why <strong>every storey
+carrying members now has a floor</strong>. The 15 plates have a median area of 14,985 ft².</p>
+<p><strong>The cost of that is the edges.</strong> A plate recovered from a raster is traced off
+pixels, so its outline comes out slightly stepped rather than crisp. The area and the position are
+right; the edge is approximate. Clean the outline wherever it matters.</p>
+<p>Two other things worth knowing about the plates on this job. <strong>C-LEVEL 3 has no closed slab
+edge of its own</strong> and was given C-LEVEL 4's plate — the storey whose own floor is closest in
+shape to what stands on C-LEVEL 3 — and it is marked INFERRED in the report. And <strong>LEVEL 2's
+outline closed through its own linework</strong>, arriving as one ring of 296 × 96 ft whose edges met
+at a point; it is two podium wings and is now modelled as two plates of 12,380 and 12,271 ft².</p>
 <p><strong>Where no slab edge closes, the floor is taken from the inside face of the perimeter
 wall.</strong> You said a general outline would help to start from — "we can even have just one
 thickness per floor, general outline at first" — and on a below-grade level that wall is the only
 closed boundary the drawing offers. 31168's three parkade levels each get one plate of 75,800 ft²,
 which is the site footprint. It is an approximation, offered because a storey with no plate has no
 diaphragm at all; replace it with your own outline wherever it matters.</p>
-<p>Storeys still carrying members with no plate: on <strong>31168</strong> six —
-<code>A-LEVEL 1</code>, <code>A-LEVEL 35</code>, <code>B-LEVEL 1</code>, <code>B-LEVEL 28</code>,
-<code>C-LEVEL 3</code>, <code>LEVEL 1 MEZZ</code>. Each is named at the top
-of that project's report. Widening the slab-edge closure tolerance was tried and measured against
-this, and every plate it added was a fragment, so the tolerance was left alone.</p>
+<p><strong>Storeys carrying members with no plate: on 31168, none.</strong> Six had none when this
+was first written — <code>A-LEVEL 1</code>, <code>B-LEVEL 1</code>, <code>C-LEVEL 3</code>,
+<code>LEVEL 1 MEZZ</code> and two tower levels no longer in the model. Flood fill recovered four of
+them and C-LEVEL 3 borrows its neighbour's. Any storey that still had none would be named at the
+top of that project's report.</p>
+<p>What the report does still name is the opposite case: a storey whose floor <em>reaches</em> less
+ground than the structure standing on it. On 31168 that is <code>LEVEL 2</code> at 43% and
+<code>LEVEL 1 MEZZ</code> at 4%, against 99–100% everywhere else. A mezzanine over part of a room
+and a podium that ends where a tower begins both look exactly like that and are correct; so does a
+slab edge that failed to close, and that is not. It is asked rather than guessed.</p>
 
 <h3>A floor with nothing under it, and members a second sheet lost</h3>
 <p>Two things the run now says out loud, because both were happening silently.</p>

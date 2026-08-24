@@ -26,8 +26,8 @@
   .box h3{font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
   .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0 6px}
   .card{border:1px solid var(--rule);border-radius:7px;padding:9px 10px;text-align:center}
-  .card .n{font-size:20px;font-weight:680;letter-spacing:-.02em;color:var(--burgundy)}
-  .card .l{font-size:10.5px;color:var(--muted);margin-top:1px;line-height:1.3}
+  .card .n{font-size:20px;font-weight:680;letter-spacing:-.02em;color:var(--burgundy);display:inline}
+  .card .l{font-size:10.5px;color:var(--muted);line-height:1.3;display:inline;margin-left:4px}
   .callout{background:var(--burgundy-soft);border-left:3px solid var(--burgundy);
            padding:10px 13px;border-radius:0 6px 6px 0;margin:12px 0}
   .callout p:last-child{margin-bottom:0}
@@ -49,26 +49,27 @@
   <p class="sub">It removes the typing. It does none of the engineering.</p>
 </header>
 
-<p class="lede">Give it the plan DXFs drafting already exports and any ETABS file from the job. It
-returns a model with the geometry entered — walls at their true thicknesses on their centrelines,
+<p class="lede">Give it the plan DXFs drafting already exports, and either an ETABS file from the job or
+just a list of storey names and elevations. It returns a model with the geometry entered — walls at their true thicknesses on their centrelines,
 columns sized and turned as drawn, floor plates, headers over the openings, shafts and stairs cut
 out, pier labels so a wall reads as one element up the building.</p>
 
 <div class="cards">
-  <div class="card"><div class="n">1,119</div><div class="l">wall panels</div></div>
-  <div class="card"><div class="n">2,462</div><div class="l">columns</div></div>
-  <div class="card"><div class="n">82</div><div class="l">floor plates</div></div>
-  <div class="card"><div class="n">63</div><div class="l">storeys</div></div>
+  <div class="card"><span class="n">349</span><span class="l">wall panels</span></div>
+  <div class="card"><span class="n">763</span><span class="l">columns</span></div>
+  <div class="card"><span class="n">15</span><span class="l">floor plates</span></div>
+  <div class="card"><span class="n">15</span><span class="l">storeys</span></div>
 </div>
-<p style="font-size:12px;color:#5b5b5b;margin-top:2px">31168 YMCA Langara, from 62 plan sheets, all placed. None
-of it entered by hand.</p>
+<p style="font-size:12px;color:#5b5b5b;margin-top:2px">31168 YMCA Langara — the YMCA, its podium and the
+parkade, read from the job's plan sheets. The two towers are cut out by name at the engineer's request.
+None of it entered by hand.</p>
 
 <div class="grid">
   <div class="box">
     <h3>What you give it</h3>
     <p><strong>1. The folder of plan DXFs</strong> drafting already exports for the job.</p>
-    <p><strong>2. Any ETABS file from that job</strong> — even an empty shell with just the storeys.
-    If you have a partial model, give it that.</p>
+    <p><strong>2. Somewhere to put it</strong> — any ETABS file from that job, even an empty shell with
+    just the storeys. If you have no ETABS file at all, a list of storey names and elevations does.</p>
     <p>No configuration. Nothing made specially.</p>
     <p style="margin-bottom:0;font-size:12px;color:#5b5b5b">Accuracy rides on two drafting-side
     things: layer discipline, and sheet titles matching the model's storey names.</p>
