@@ -174,7 +174,20 @@ public sealed record ComposeOptions
 
 public sealed record ComposeSummary(
     int Walls, int Columns, int Floors, int Points, int Stories,
-    IReadOnlyList<string> Sections, IReadOnlyList<string> Flags);
+    IReadOnlyList<string> Sections, IReadOnlyList<string> Flags)
+{
+    /// <summary>
+    /// The sections that already existed in the model this was built on and were used rather than
+    /// duplicated — <c>Rvt-Wall2</c>, <c>Rvt-Floor0</c> and the like on a job whose reference came
+    /// out of CSiXRevit.
+    ///
+    /// Kept apart from <see cref="Sections"/> because listing them together under "sections made"
+    /// reads like Revit content came through with the geometry, on a package whose whole claim is
+    /// that it did not. They are property definitions the generated members point at; every member
+    /// is still one this tool drew.
+    /// </summary>
+    public IReadOnlyList<string> Reused { get; init; } = Array.Empty<string>();
+}
 
 /// <summary>Writes classified plan geometry into an existing ETABS model document.</summary>
 public static class E2kGeometryComposer
@@ -589,6 +602,32 @@ public static class E2kGeometryComposer
                 var headerStoreys = FreeStoreysFor(story, headerWhere, placedSpandrels);
                 if (headerStoreys.Count == 0) continue;
 
+                // A header is NOT a wall for this purpose, and treating it as one shipped six
+                // 0.14 ft panels to an engineer.
+                //
+                // A wall's height IS the storey, so assigning it to every storey it spans is what
+                // makes one continuous member instead of a wafer. A header carries its own depth in
+                // its own joints. Assigned to a second storey it does not become taller — it becomes
+                // a SECOND copy, clamped to that storey. On 31168 the ground floor is two storeys
+                // 1.7 inches apart, so KS1-KS6 landed on A-LEVEL 1 at full depth and again on
+                // B-LEVEL 1 as 1.7-inch slivers. Measured, not inferred: the renderer reports
+                // B-LEVEL 1 wall heights as min 0.14 ft, median 16.40 ft, six under 6 ft.
+                //
+                // Invisible in every count, because six headers do look like six headers.
+                //
+                // So: one storey. Dedup still tests every storey the opening spans -- that is what
+                // stops two sheets putting two headers over one opening -- but only one assign is
+                // written, on the LOWEST storey spanned: the one the wall run actually stands on.
+                // The sliver is always the upper of the pair, because FloorUnder gives it the real
+                // floor below as its base, which is exactly why the span covers two in the first
+                // place.
+                string headerStorey = headerStoreys.Count == 1
+                    ? headerStoreys[0]
+                    : headerStoreys
+                        .Select(n => allStories.First(s => s.Name.Equals(n, StringComparison.OrdinalIgnoreCase)))
+                        .OrderBy(s => s.Elevation)
+                        .First().Name;
+
                 string lowA = PointAt(sx, sy);
                 string lowB = PointAt(ex, ey);
                 if (lowA == lowB) continue;
@@ -599,10 +638,9 @@ public static class E2kGeometryComposer
                 string spandrel = SpandrelFor(sx, sy, ex, ey);
                 string name = NextName("S", ref spandrelCounter);
                 areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{highA}\"  \"{highB}\"  \"{lowB}\"  \"{lowA}\"  0  0  0  0");
-                foreach (string on in headerStoreys)
-                    areaAssigns.Add(
-                        $"  AREAASSIGN  \"{name}\"  \"{on}\"  SECTION \"{headerSection}\"  SPANDREL  \"{spandrel}\"  " +
-                        "OBJMESHTYPE \"DEFAULT\"  CARDINALPOINT \"MIDDLE\"");
+                areaAssigns.Add(
+                    $"  AREAASSIGN  \"{name}\"  \"{headerStorey}\"  SECTION \"{headerSection}\"  SPANDREL  \"{spandrel}\"  " +
+                    "OBJMESHTYPE \"DEFAULT\"  CARDINALPOINT \"MIDDLE\"");
             }
 
             if (!options.IncludeFloors) continue;
@@ -988,7 +1026,10 @@ public static class E2kGeometryComposer
         return new ComposeSummary(
             wallCounter, colCounter, floorCounter, pointCounter,
             placements.Select(p => p.Story.Name).Distinct().Count(),
-            sections, flags);
+            sections, flags)
+        {
+            Reused = reusedSections.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList(),
+        };
     }
 
     /// <summary>A diaphragm name for one storey, kept short and legible in ETABS.</summary>

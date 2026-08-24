@@ -216,7 +216,9 @@ if (Test-Path $reportPath) {
 $esc = { param($t) [System.Net.WebUtility]::HtmlEncode([string]$t) }
 $html = New-Object System.Collections.Generic.List[string]
 $html.Add('<title>' + (& $esc "$Project - model from drawings") + '</title>')
-$html.Add('<style>body{font:14px/1.55 "Segoe UI",system-ui,sans-serif;max-width:46rem;margin:0 auto;padding:34px 28px;color:#1a1a1a}h1{font-size:22px;margin:0 0 2px;font-weight:650}.sub{color:#5b5b5b;font-size:12.5px;margin:0 0 18px}h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#7a2230;margin:22px 0 7px}table{border-collapse:collapse;width:100%;font-size:13.5px}td{padding:4px 8px 4px 0;border-bottom:1px solid #eeeae5}td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}li{margin:0 0 5px}code{background:#f4f2ef;padding:1px 4px;border-radius:3px;font-size:12.5px}</style>')
+# Sized to fit ONE page, because it is called a one-page summary and was running to two. A second
+# page is where the thing nobody read lives.
+$html.Add('<style>body{font:12.5px/1.42 "Segoe UI",system-ui,sans-serif;max-width:46rem;margin:0 auto;padding:20px 26px;color:#1a1a1a}h1{font-size:19px;margin:0 0 2px;font-weight:650}.sub{color:#5b5b5b;font-size:11.5px;margin:0 0 12px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#7a2230;margin:14px 0 5px}table{border-collapse:collapse;width:100%;font-size:12.5px}td{padding:2px 8px 2px 0;border-bottom:1px solid #eeeae5}td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}li{margin:0 0 3px}ul{margin:4px 0;padding-left:18px}p{margin:5px 0}code{background:#f4f2ef;padding:1px 4px;border-radius:3px;font-size:11.5px}</style>')
 $html.Add('<h1>' + (& $esc $Project) + ' &mdash; model from drawings</h1>')
 $html.Add('<p class="sub">Generated ' + (Get-Date -Format 'd MMMM yyyy') + ' from ' + (& $esc (Split-Path $DxfFolder -Leaf)) + ', on top of ' + (& $esc $Reference) + '. It removes the typing; it does none of the engineering.</p>')
 $html.Add('<h2>What was built</h2><table>')
@@ -230,7 +232,27 @@ if ($notModelled.Count) {
 }
 
 $html.Add('<h2>What it did not touch</h2><p>No loads, diaphragms, stiffness modifiers, section properties, meshing or design &mdash; those are yours. Geometry already in your model was recognised and left alone rather than duplicated.</p>')
-$html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is listed in <code>' + (& $esc "$Project-QUESTIONS-for-Andrea.xlsx") + '</code>, each already decided, with the measurement behind it beside it. Nothing there is waiting on you. Rows tied to a rule can be changed from the answer cell, and that becomes the rule for every job afterwards &mdash; you are asked once. Rows without a rule key are visible scope decisions, not yet learnable settings. A second sheet lists every rule this model was built on, read-only, including the geometry tolerances no decision asks about.</p>')
+# "Nothing there is waiting on you" was written into this page once and then left, while the
+# workbook beside it opened with three NEEDS YOU rows. The engineer reads this page first, so the
+# page told her there was nothing to do and the workbook told her there were three things. Take the
+# count from the report, which takes it from the same code that writes the workbook.
+$openQuestions = $null
+if (Test-Path $reportPath) {
+    $m = Select-String -Path $reportPath -Pattern '^Questions for you:\s*(\d+)' | Select-Object -First 1
+    if ($m) { $openQuestions = [int]$m.Matches[0].Groups[1].Value }
+}
+
+$waiting = if ($null -eq $openQuestions) {
+    'See that workbook for what is still open.'
+} elseif ($openQuestions -eq 0) {
+    'Nothing there is waiting on you.'
+} elseif ($openQuestions -eq 1) {
+    'One row is marked NEEDS YOU &mdash; nothing in the drawings could settle it.'
+} else {
+    "$openQuestions rows are marked NEEDS YOU &mdash; nothing in the drawings could settle them."
+}
+
+$html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is listed in <code>' + (& $esc "$Project-QUESTIONS-for-Andrea.xlsx") + '</code>, each with the measurement behind it beside it. ' + $waiting + ' Rows tied to a rule can be changed from the answer cell, and that becomes the rule for every job afterwards &mdash; you are asked once. Rows without a rule key are visible scope decisions, not yet learnable settings. A second sheet lists every rule this model was built on, read-only, including the geometry tolerances no decision asks about.</p>')
 $html.Add('<p class="sub" style="margin-top:22px">Location by location, the full account is in <code>' + (& $esc "$Project-FROM-DRAWINGS-report.txt") + '</code>.</p>')
 
 $summaryHtml = Join-Path $env:TEMP "kor-summary-$Project.html"
@@ -243,6 +265,22 @@ $html -join "`n" | Set-Content -LiteralPath $summaryHtml -Encoding UTF8
 # "file not found" page -- which looks like a document until somebody opens it.
 if (-not (Test-Path $summaryPdf)) { throw "the per-job summary did not render: $summaryPdf" }
 Write-Host "  summary      : $(Split-Path $summaryPdf -Leaf)" -ForegroundColor DarkGray
+
+# It is called a one-page summary in every document that mentions it, and it had quietly become
+# two. Page two of a one-page summary is where the thing nobody reads lives, so the claim is
+# checked rather than trusted.
+$pdfinfo = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter 'pdfinfo.exe' -ErrorAction SilentlyContinue |
+    Select-Object -First 1 -ExpandProperty FullName
+if ($pdfinfo) {
+    $pages = (& $pdfinfo $summaryPdf | Select-String '^Pages:\s*(\d+)').Matches[0].Groups[1].Value
+    if ([int]$pages -gt 1) {
+        Write-Host ''
+        Write-Host "The one-page summary is $pages pages." -ForegroundColor Red
+        Write-Host '  Either it fits on one page or it stops being called a one-page summary.' -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "  summary pages: $pages" -ForegroundColor DarkGray
+}
 
 if (-not $SkipDossier) {
     # The dossier and the one-pager describe particular buildings by name. Copying them beside a

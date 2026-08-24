@@ -1583,6 +1583,79 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void AHeaderGetsOneStoreyEvenWhereAWallWouldGetTwo()
+    {
+        // A wall's height IS the storey, so assigning it to every storey it spans is what makes one
+        // continuous member instead of a wafer. A header is not a wall for this purpose: its depth
+        // is already in its own joints, so a second assign is a second COPY, clamped to that
+        // storey's height.
+        //
+        // 31168's ground floor is two storeys 1.7 inches apart. Six headers went to an engineer as
+        // full-depth panels on one and 0.14 ft slivers on the other -- measured, not inferred: the
+        // renderer reported B-LEVEL 1 wall heights min 0.14 ft, median 16.40 ft, six under 6 ft.
+        // Invisible in every count, because six headers do look like six headers.
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            // 31168's own ground floor, to the inch. The tower tags matter: FloorUnder uses them
+            // to give the 1.7-inch storey the REAL floor below it as its base, which is what makes
+            // the span cover two storeys at all.
+            "  STORY \"B-LEVEL 1\"  HEIGHT 1.6737",
+            "  STORY \"A-LEVEL 1\"  HEIGHT 195.0763",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        // A wall with a doorway in it: the opening becomes a header over the gap.
+        var g = new PlanGeometrySet();
+        g.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(600, 0), 12, "JBP_V-WALL"));
+        g.WallOpenings.Add(new WallOpening(new DxfPoint(200, 0), new DxfPoint(320, 0), 12, "JBP_V-WALL"));
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories["B-LEVEL 1"], g, "ground.dxf"),
+        });
+
+        // Every header object, and how many storeys each is assigned to.
+        static string Quoted(string line, int which)
+        {
+            var parts = line.Split('"');
+            return parts.Length > which * 2 ? parts[which * 2 - 1] : string.Empty;
+        }
+
+        var headers = doc.LinesOf("AREA CONNECTIVITIES")
+            .Where(l => l.TrimStart().StartsWith("AREA ", StringComparison.Ordinal) && l.TrimEnd().EndsWith("0  0  0  0", StringComparison.Ordinal))
+            .Select(l => Quoted(l, 1))
+            .ToHashSet(StringComparer.Ordinal);
+        Assert.NotEmpty(headers);
+
+        var assignsPerHeader = doc.LinesOf("AREA ASSIGNS")
+            .Where(l => l.TrimStart().StartsWith("AREAASSIGN", StringComparison.Ordinal) && headers.Contains(Quoted(l, 1)))
+            .GroupBy(l => Quoted(l, 1))
+            .ToDictionary(x => x.Key, x => x.Select(l => Quoted(l, 2)).ToList());
+
+        foreach (var (header, storeys) in assignsPerHeader)
+        {
+            Assert.True(storeys.Count == 1, $"{header} is assigned to {storeys.Count} storeys: {string.Join(", ", storeys)}");
+
+            // And on the storey the wall actually stands on, not the 1.7-inch one above it.
+            // A header on a two-inch sliver is not a header.
+            Assert.Equal("A-LEVEL 1", storeys[0]);
+        }
+    }
+
+    [Fact]
     public void AFloorThatStopsShortOfItsOwnStructureIsReportedEvenThoughTheStoreyHasOne()
     {
         // "Has a plate" was the only question asked, and 31168 answers it yes on LEVEL 2 -- whose

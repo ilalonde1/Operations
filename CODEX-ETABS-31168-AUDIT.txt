@@ -4,6 +4,31 @@ Repo: C:\VIsual Studio Projects\Operations, branch develop.
 Package: \\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\
          02 Engineering\02 Lateral Design\01 ETABS Models\
 
+ALREADY FOUND AND FIXED BY THE FIRST AUDIT PASS -- do not re-report these
+
+  A previous run of this brief found seven things. Six are fixed; one is open. Re-reporting them
+  wastes a pass, so here is where each landed. Everything else in this brief still stands.
+
+  FIXED  Six spandrels KS1-KS6 were assigned to BOTH A-LEVEL 1 and B-LEVEL 1, which are 1.7 inches
+         apart, so six of them existed as 0.14 ft panels. Confirmed by measurement, not inference:
+         the renderer reported B-LEVEL 1 wall heights as min 0.14 ft, median 16.40 ft, six under
+         6 ft. A wall's height IS its storey, so spanning two is what makes it continuous; a header
+         carries its own depth in its joints, so a second assign is a second copy clamped to the
+         sliver. Headers now take one storey -- the lowest they span, the one the wall stands on.
+  FIXED  KOR-31168-SUMMARY.pdf said "Nothing there is waiting on you" beside a workbook with three
+         NEEDS YOU rows. The sentence was written into the page once and the count lived elsewhere.
+         The report now carries "Questions for you: N" and the page is built from it.
+  FIXED  Workbook row M1 said "One model on the site storey list, both towers" against a model that
+         correctly excludes LEVEL 3-10. M1's answer is now taken from the run's own storey cut.
+  FIXED  The summary was two pages while every document called it one page. Tightened to fit, and
+         the publish now FAILS if it renders as more than one page.
+  FIXED  "Sections made" listed Rvt-Wall2, Rvt-Wall8 and Rvt-Floor0, which reads like Revit content
+         came through with the geometry. Reused section properties are now listed separately and
+         labelled as pointed at, not redefined.
+  FIXED  The folder held six older ETABS artifacts she could open by mistake. TowerB-rebuild.*,
+         Anrea_look.* and R26_detached.* -- 13 files -- were MOVED to _superseded\, not deleted.
+  OPEN   LEVEL 2's plate. Still the most likely real defect in the model; see item 4 below.
+
 WHAT THIS IS AND WHY IT IS BEING AUDITED
 
   A tool builds an ETABS .e2k from structural plan DXFs so the engineer checks a model instead of

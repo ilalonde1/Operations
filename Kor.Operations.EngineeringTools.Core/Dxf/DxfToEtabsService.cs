@@ -910,7 +910,28 @@ public static class DxfToEtabsService
         sb.AppendLine($"Columns       : {report.Summary.Columns}");
         sb.AppendLine($"Floors        : {report.Summary.Floors}");
         sb.AppendLine($"Joints        : {report.Summary.Points}");
-        sb.AppendLine($"Sections made : {string.Join(", ", report.Summary.Sections)}");
+        // Made and reused, kept apart.
+        //
+        // One list headed "Sections made" that included Rvt-Wall2, Rvt-Wall8 and Rvt-Floor0 read
+        // like the Revit export's content had come through with the geometry -- on a package whose
+        // whole claim is that every member came from a drawing. It had not: those are property
+        // definitions that already existed in the model this was built on, and using one rather
+        // than inventing a duplicate is the right thing to do. It just has to say so.
+        var made = report.Summary.Sections.Where(s => !report.Summary.Reused.Contains(s, StringComparer.OrdinalIgnoreCase)).ToList();
+        sb.AppendLine($"Sections made : {string.Join(", ", made)}");
+        if (report.Summary.Reused.Count > 0)
+            sb.AppendLine($"Sections reused: {string.Join(", ", report.Summary.Reused)}   " +
+                          "(already in your model — pointed at, not redefined; no member came from it)");
+
+        // The count the workbook opens with, on the report, so no third document has to guess it.
+        // The one-page summary said "nothing there is waiting on you" beside a workbook with three
+        // NEEDS YOU rows, because the sentence was written once and the count lived somewhere else.
+        int open = ModelQuestionnaire
+            .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report)
+            .Where(q => !q.ForTheRecord)
+            .Count(q => !q.Decided);
+        sb.AppendLine($"Questions for you: {open}");
+
         sb.AppendLine($"Offset applied: {report.AppliedOffset.X:0.#}, {report.AppliedOffset.Y:0.#} in");
         sb.AppendLine();
 

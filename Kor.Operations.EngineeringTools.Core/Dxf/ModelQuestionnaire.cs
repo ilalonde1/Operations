@@ -71,6 +71,19 @@ public static class ModelQuestionnaire
             ? "Each level with no closed slab edge has been given one plate from the inside face of its perimeter wall."
             : "No level needed this on your project — every plate came from a drawn slab edge.";
 
+        // M1's answer was fixed text saying "both towers" — true when she gave that rule. Then she
+        // asked for the towers out, the run dropped eight storeys, and the workbook still told her
+        // both towers were modelled, in her own quoted words, beside a file that does not contain
+        // them. A row contradicting the model next to it makes an engineer doubt the whole package.
+        string storeyFramework = report?.Summary.Flags
+            .FirstOrDefault(f => f.Contains("belong to a building this model is not of", StringComparison.OrdinalIgnoreCase)) is { } f4
+            ? "Applied, then NARROWED at your request — this model is not the whole site. " +
+              f4[(f4.IndexOf("Removed:", StringComparison.Ordinal) is var i && i >= 0 ? i : 0)..].Split('.')[0].Trim() +
+              ". The storey list is otherwise the site list, so results and comparisons still line up " +
+              "with the model you had. Ask and the towers come back in one run."
+            : "Applied. One model on the site storey list, both towers. The Tower-B-only variant that existed " +
+              "before you said this has been withdrawn so there is no second file to choose between.";
+
         string leftAlone = report?.Summary.Flags
             .FirstOrDefault(f => f.Contains("were already modelled", StringComparison.OrdinalIgnoreCase)) is { } f3
             ? "On this job " + char.ToLowerInvariant(f3[0]) + f3[1..].TrimEnd() +
@@ -481,8 +494,7 @@ public static class ModelQuestionnaire
 
         new ModelQuestion("M1", "Storey framework",
             "YOUR RULE: \"let's have a full model with both towers modelled, I will separate the towers later\".",
-            "Applied. One model on the site storey list, both towers. The Tower-B-only variant that existed " +
-            "before you said this has been withdrawn so there is no second file to choose between.",
+            storeyFramework,
             "It decides how results are reported and how the model compares with the old one.",
             "The tool can still split a tower out on request; nothing about that is lost.")
             { Decided = true },
