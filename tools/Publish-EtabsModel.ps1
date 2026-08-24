@@ -151,7 +151,7 @@ if ($InferFloors) { $cutArgs += '--infer-floors' }
     @cutArgs `
     --rules-db $RulesDb `
     --report (Join-Path $folder "$label-FROM-DRAWINGS-report.txt") `
-    --questions (Join-Path $folder "$label-QUESTIONS-for-Andrea.xlsx") |
+    --questions (Join-Path $folder "$label-QUESTIONS.xlsx") |
     Select-String -Pattern 'Storeys built|^Walls|^Columns|^Floors'
 if ($LASTEXITCODE -ne 0) { throw 'generation failed.' }
 
@@ -286,7 +286,7 @@ $waiting = if ($null -eq $openQuestions) {
     "$openQuestions rows are marked NEEDS YOU &mdash; nothing in the drawings could settle them."
 }
 
-$html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is listed in <code>' + (& $esc "$label-QUESTIONS-for-Andrea.xlsx") + '</code>, each with the measurement behind it beside it. ' + $waiting + ' Rows tied to a rule can be changed from the answer cell, and that becomes the rule for every job afterwards &mdash; you are asked once. Rows without a rule key are visible scope decisions, not yet learnable settings. A second sheet lists every rule this model was built on, read-only, including the geometry tolerances no decision asks about.</p>')
+$html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is listed in <code>' + (& $esc "$label-QUESTIONS.xlsx") + '</code>, each with the measurement behind it beside it. ' + $waiting + ' Rows tied to a rule can be changed from the answer cell, and that becomes the rule for every job afterwards &mdash; you are asked once. Rows without a rule key are visible scope decisions, not yet learnable settings. A second sheet lists every rule this model was built on, read-only, including the geometry tolerances no decision asks about.</p>')
 $html.Add('<p class="sub" style="margin-top:22px">Location by location, the full account is in <code>' + (& $esc "$label-FROM-DRAWINGS-report.txt") + '</code>.</p>')
 
 $summaryHtml = Join-Path $env:TEMP "kor-summary-$label.html"

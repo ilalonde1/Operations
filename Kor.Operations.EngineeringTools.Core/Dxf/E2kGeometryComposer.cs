@@ -327,6 +327,29 @@ public static class E2kGeometryComposer
                 ? had.With(x, y)
                 : Extent.At(x, y);
 
+        // Where a storey's OWN members stand, as opposed to every member that passes through it.
+        //
+        // A wall is assigned to every storey it spans, which is what makes it one continuous member
+        // instead of a wafer -- and on a site model with two interleaved towers that means tower B's
+        // walls are assigned across tower A's storeys as well. Their positions then count as ground
+        // that A-LEVEL 27 "covers", and the storey reads as 255 x 81 ft of structure standing on a
+        // 104 x 95 ft plate: 38%, on six consecutive floors with identical numbers, which is one
+        // cause rather than six coincidences.
+        //
+        // Worse than a misleading number, it chose a floor: B-LEVEL 28 shape-matched against BOTH
+        // towers and borrowed LEVEL 2's podium plate from twenty-six storeys below, because a
+        // site-wide podium is a better match for two towers than either tower is.
+        //
+        // Both questions -- what floor should this storey borrow, and does its floor reach its
+        // structure -- are about what STANDS on the storey. A member passing through stands on a
+        // different one.
+        var ownExtents = new Dictionary<string, Extent>(StringComparer.OrdinalIgnoreCase);
+
+        void CoversOwn(string storeyName, double x, double y)
+            => ownExtents[storeyName] = ownExtents.TryGetValue(storeyName, out var had)
+                ? had.With(x, y)
+                : Extent.At(x, y);
+
         // Every plan position that carries a wall or a column, from EITHER model, on ANY storey —
         // what a plate has to have some of underneath it to be a floor rather than a drawn box.
         var standing = new List<DxfPoint>();
@@ -612,6 +635,9 @@ public static class E2kGeometryComposer
                     Covers(on, wall.End.X + options.OffsetX, wall.End.Y + options.OffsetY);
                 }
 
+                CoversOwn(story.Name, wall.Start.X + options.OffsetX, wall.Start.Y + options.OffsetY);
+                CoversOwn(story.Name, wall.End.X + options.OffsetX, wall.End.Y + options.OffsetY);
+
                 string pier = options.AssignPierLabels ? $"  PIER  \"{PierFor(x1, y1, x2, y2)}\"" : string.Empty;
                 areaAssigns.Add(
                     $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"{pier}  OBJMESHTYPE \"DEFAULT\"  " +
@@ -669,6 +695,8 @@ public static class E2kGeometryComposer
                     storeysWithMembers.Add(on);
                     Covers(on, column.Center.X + options.OffsetX, column.Center.Y + options.OffsetY);
                 }
+
+                CoversOwn(story.Name, column.Center.X + options.OffsetX, column.Center.Y + options.OffsetY);
                 lineAssigns.Add(
                     $"  LINEASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
                     "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
@@ -944,7 +972,7 @@ public static class E2kGeometryComposer
                 // it is LEVEL 2 whose plate is the podium under the TOWERS at y 213-308, and the
                 // mid-rise was handed a floor standing somewhere it is not. A donor has to cover
                 // the ground this storey's own walls and columns stand on.
-                if (!memberExtents.TryGetValue(storey.Name, out var standingOn)) continue;
+                if (!ownExtents.TryGetValue(storey.Name, out var standingOn)) continue;
 
                 // The plate SHAPED like this storey, not merely the nearest one under it.
                 //
@@ -1044,7 +1072,7 @@ public static class E2kGeometryComposer
         var thinlyFloored = new List<(string Storey, int Percent)>();
         foreach (var storey in allStories)
         {
-            if (!memberExtents.TryGetValue(storey.Name, out var standingOn)) continue;
+            if (!ownExtents.TryGetValue(storey.Name, out var standingOn)) continue;
             if (!platesByStorey.TryGetValue(storey.Name, out var plates) || plates.Count == 0) continue;
 
             var spanned = plates[0].Where;

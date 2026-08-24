@@ -1683,6 +1683,27 @@ public class E2kDocumentTests
         var plain = new List<DxfPoint> { new(0, 0), new(200, 0), new(200, 100), new(0, 100) };
         Assert.Single(LoopGeometry.SplitSelfCrossings(plain));
 
+        // A MICRO-EDGE between two vertices that are the same point. 31168's B-LEVEL 36 and 37 each
+        // carry one: a 0.12 inch edge at (189.4, 228.5) leaves the edges either side of it 0.065
+        // and 0.306 inches apart, so the ring meets itself without ever crossing. Drafting noise on
+        // a 9,600 sq ft plate, and below every threshold that would have caught it.
+        //
+        // Tolerance is the whole fix: at 0.05 in these survive, at 0.5 in the spur is dropped. The
+        // margin is measured -- the tightest self-gap on any sound plate in either 31168 model is
+        // 0.38 ft, which is 4.6 inches, so half an inch sits nine times below anything real.
+        var micro = new List<DxfPoint>
+        {
+            new(0, 0), new(200, 0), new(200, 100),
+            new(0.30, 100.0),      // ... to here, then a micro-edge back to the corner
+            new(0.0, 100.0),
+            new(0.0, 50.0),
+        };
+        Assert.Single(LoopGeometry.SplitSelfCrossings(micro, 0.05));   // too tight: survives
+        var cleaned2 = LoopGeometry.SplitSelfCrossings(micro, 0.5);
+        Assert.Single(cleaned2);
+        Assert.True(new PlanLoop("JBP_C_SLABEDG", cleaned2[0], closedExactly: true).Area > 15000,
+            "dropping a micro-edge must not shrink the floor");
+
         // And the shape 31168 ACTUALLY has, which a bowtie would not have caught. LEVEL 2's
         // outline does not cross itself: a VERTEX lands exactly on another edge -- u came out at
         // 1.0000000113, an endpoint, so a strict crossing test found nothing and the hourglass
@@ -1851,6 +1872,89 @@ public class E2kDocumentTests
             // And on the storey the wall actually stands on, not the 1.7-inch one above it.
             // A header on a two-inch sliver is not a header.
             Assert.Equal("A-LEVEL 1", storeys[0]);
+        }
+    }
+
+    [Fact]
+    public void AMemberPassingThroughAStoreyIsNotStructureStandingOnIt()
+    {
+        // On a site model with two interleaved towers, a wall is assigned to every storey it spans
+        // -- that is what makes it one continuous member instead of a wafer. So tower B's walls are
+        // assigned across tower A's storeys, and their positions were counted as ground tower A's
+        // storey "covers".
+        //
+        // 31168's towers read as 255 x 81 ft of structure on a 104 x 95 ft plate, 38%, with
+        // IDENTICAL numbers on six consecutive floors -- one cause, not six coincidences. And it
+        // chose a floor: B-LEVEL 28 shape-matched against BOTH towers and borrowed the podium's
+        // plate from twenty-six storeys below, because a site-wide slab fits two towers better than
+        // either tower does.
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"B-LEVEL 3\"  HEIGHT 118",
+            "  STORY \"A-LEVEL 3\"  HEIGHT 2",     // the interleave: 2 inches apart
+            "  STORY \"B-LEVEL 2\"  HEIGHT 118",
+            "  STORY \"A-LEVEL 2\"  HEIGHT 2",
+            "  STORY \"PODIUM\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        static PlanGeometrySet Tower(double x0, double x1, bool withPlate)
+        {
+            var g = new PlanGeometrySet();
+            for (double x = x0 + 100; x < x1; x += 200)
+                g.Columns.Add(new ColumnFootprint(new DxfPoint(x, 600), 24, 24, "JBP_V_COL"));
+            if (withPlate)
+                g.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+                {
+                    new(x0, 200), new(x1, 200), new(x1, 1000), new(x0, 1000),
+                }, true));
+            return g;
+        }
+
+        var podium = new PlanGeometrySet();
+        podium.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+        {
+            new(0, 0), new(4000, 0), new(4000, 1200), new(0, 1200),
+        }, true));
+        podium.Columns.Add(new ColumnFootprint(new DxfPoint(2000, 600), 24, 24, "JBP_V_COL"));
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        // Tower B's top floor has no slab edge of its own and must borrow one.
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories["PODIUM"], podium, "podium.dxf"),
+            new StoryPlacement(stories["A-LEVEL 2"], Tower(200, 1200, withPlate: true), "towerA2.dxf"),
+            new StoryPlacement(stories["B-LEVEL 2"], Tower(2800, 3800, withPlate: true), "towerB2.dxf"),
+            new StoryPlacement(stories["A-LEVEL 3"], Tower(200, 1200, withPlate: true), "towerA3.dxf"),
+            new StoryPlacement(stories["B-LEVEL 3"], Tower(2800, 3800, withPlate: false), "towerB3.dxf"),
+        }, new ComposeOptions { InferMissingFloors = true });
+
+        string inferred = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
+
+        // It borrows a TOWER floor, not the podium. Shape-matching against both towers at once is
+        // what made a site-wide slab the best fit, and put a podium plate 26 storeys up.
+        Assert.DoesNotContain("from PODIUM", inferred);
+        Assert.Contains("B-LEVEL 3 (from B-LEVEL 2)", inferred);
+
+        // And no tower storey is reported as under-floored merely because the other tower's
+        // columns pass through it.
+        var shortFloor = summary.Flags.FirstOrDefault(f => f.Contains("Floor does not reach the structure"));
+        if (shortFloor is not null)
+        {
+            Assert.DoesNotContain("A-LEVEL 3 (", shortFloor);
+            Assert.DoesNotContain("B-LEVEL 2 (", shortFloor);
         }
     }
 
