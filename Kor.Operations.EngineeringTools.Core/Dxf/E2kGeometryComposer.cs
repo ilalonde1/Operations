@@ -407,6 +407,9 @@ public static class E2kGeometryComposer
         var pierNames = new Dictionary<(long, long, long, long), string>();
         var spandrelNames = new Dictionary<(long, long, long, long), string>();
         var placedSpandrels = new HashSet<(long, long, long, long, string)>();
+        // The openings cut in each storey's floor, so a borrowed floor arrives with its holes.
+        var openingsByStorey = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
         var pinchedPlates = new List<(string Storey, string Sheet, double GapInches, double AtXft, double AtYft)>();
 
         // Which sheets had their slab thickness assumed rather than read. The engineer, asked
@@ -1016,6 +1019,13 @@ public static class E2kGeometryComposer
                 // 74 written the other way with a null section, and none of those 74 carry the
                 // attribute, so the two are alternatives and this is the one in common use.
                 areaAssigns.Add($"  AREAASSIGN  \"{name}\"  \"{slabStory.Name}\"  OPENING \"Yes\"");
+
+                // Remembered so a storey borrowing this floor can borrow its holes too. A slab is
+                // handed on with the shaft still cut in it; handing on the plate alone gives a
+                // borrowed storey a solid floor where the lift goes through.
+                if (!openingsByStorey.TryGetValue(slabStory.Name, out var cut))
+                    openingsByStorey[slabStory.Name] = cut = new List<string>();
+                cut.Add(name);
             }
 
             // One complaint per sheet, however many storeys that sheet builds. A sheet covering a
@@ -1163,6 +1173,14 @@ public static class E2kGeometryComposer
                     areaAssigns.Add(
                         $"  AREAASSIGN  \"{plate}\"  \"{storey.Name}\"  SECTION \"{prop}\"  OBJMESHTYPE \"DEFAULT\"" +
                         $"{inferredDiaphragm}  CARDINALPOINT \"MIDDLE\"");
+
+                // The holes come with it. A floor borrowed whole is a floor with the lift shaft
+                // filled in -- 31065's engineer cuts her two cores on all 22 storeys, and this tool
+                // had one of them on 7, because the storeys that borrowed their floor got a solid
+                // one. An opening ETABS is not told about is diaphragm that is not there.
+                if (openingsByStorey.TryGetValue(donor.Storey.Name, out var holes))
+                    foreach (string hole in holes)
+                        areaAssigns.Add($"  AREAASSIGN  \"{hole}\"  \"{storey.Name}\"  OPENING \"Yes\"");
 
                 storeysWithPlates.Add(storey.Name);
                 inferredPlates.Add((storey.Name, donor.Storey.Name));

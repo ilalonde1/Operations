@@ -615,6 +615,42 @@ public static class StructuralPlanClassifier
 
         SplitSlabsAndOpenings(result, slabCandidates, options);
 
+        // A CORE IS A HOLE. An elevator or stair shaft is a closed wall enclosure standing inside a
+        // floor, and the slab does not run through it.
+        //
+        // This tool cut an opening only where a ring was drawn on a SLAB layer, so it found the
+        // ones drafting outlines and missed every shaft: 22 openings against the 359 an engineer
+        // cuts on 31065. Nothing else in the suite could see that -- walls, columns, floor areas
+        // and storey assignment were all healthy while the model carried six percent of her holes,
+        // each one a piece of diaphragm that is not there.
+        //
+        // The enclosures are already found. PairConcentricWallRings reads a wall drawn as two faces
+        // and keeps the inner one, because on a storey whose slab edges will not close that inside
+        // face is the only floor outline the drawing offers. A perimeter wall's inner face IS the
+        // floor; a core's inner face is a hole in it. What separates them is nothing more than
+        // which one is inside the other.
+        foreach (var enclosure in result.EnclosedByWalls)
+        {
+            var centre = enclosure.Centroid();
+
+            // Inside a floor, and smaller than it. The perimeter wall of a storey encloses the
+            // floor rather than sitting in it, and its own centroid is inside its own outline --
+            // so the area test is what keeps a building from becoming a hole in itself.
+            bool insideAFloor = result.Slabs.Any(slab =>
+                slab.Area > enclosure.Area
+                && LoopGeometry.PointInPolygon(centre, slab.Points));
+            if (!insideAFloor) continue;
+
+            // Not one the drawing already gave us as a ring on a slab layer.
+            if (result.Openings.Any(o => LoopGeometry.PointInPolygon(centre, o.Points))) continue;
+
+            result.Openings.Add(enclosure);
+            result.Flags.Add(
+                $"{enclosure.Layer}: a wall encloses {enclosure.Area / 144:N0} sq ft standing inside a floor " +
+                "— read as a shaft and cut out of the slab. If it is a room rather than a core, the slab " +
+                "runs through it and this opening should come out.");
+        }
+
         // A slab with nothing to carry it, and the support drawn dashed on a hidden layer.
         //
         // This fires only when the sheet gives a plate and no structure at all, which is what a
