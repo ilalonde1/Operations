@@ -221,20 +221,33 @@ public class ModelPlausibilityTests
     }
 
     /// <summary>
-    /// A wall shorter than a person is not a wall. 31168's site model interleaves three towers on
-    /// one storey list, so storeys exist that are 2" tall; taking a storey's own height as its wall
-    /// height turned 78 panels into wafers floating a full storey above the floor below.
+    /// A wall the thickness of a wafer is a storey-height fault, not a wall.
+    ///
+    /// 31168's site model interleaves three towers on one storey list, so storeys exist that are
+    /// 2 in tall; taking a storey's own height as its wall height turned 78 panels into wafers
+    /// floating a full storey above the floor below.
+    ///
+    /// The bound is 12 in, not the six feet this asked for originally. Six feet was the right
+    /// number while every member sat on the storey whose sheet it was read from, because nothing
+    /// then landed on the short storeys at all. Members now rise to the storey above, and the
+    /// storeys at the top of those towers are genuinely short in the ENGINEER'S OWN model --
+    /// B-LEVEL 41 is 36 in, B-LEVEL 28 is 36 in, B-LEVEL 27 is 12 in. Those are parapets and
+    /// mechanical upstands, and a 3 ft panel on a 3 ft storey is the drawing, not a defect.
+    /// Failing them would be this test insisting the building is wrong.
+    ///
+    /// What it still catches is the fault it was written for: a panel on a storey 2 in from its
+    /// neighbour, which is a drafting artefact no member should ever be assigned to.
     /// </summary>
     [Theory]
     [MemberData(nameof(Projects))]
-    public void NoWallIsShorterThanAPerson(string name)
+    public void NoWallIsAWafer(string name)
     {
         var model = BuildOrSkip(For(name));
         if (model is null || model.WallHeights.Count == 0) return;
 
-        var wafers = model.WallHeights.Where(h => h < 72).ToList();
+        var wafers = model.WallHeights.Where(h => h < 12).ToList();
         if (wafers.Count == 0) return;
-        Assert.Fail($"{name}: {wafers.Count} wall panel(s) under 6ft tall, shortest {wafers.Min() / 12:0.00}ft. " +
+        Assert.Fail($"{name}: {wafers.Count} wall panel(s) under 12in tall, shortest {wafers.Min():0.0}in. " +
                     "A panel that short is a storey-height fault, not a wall.");
     }
 

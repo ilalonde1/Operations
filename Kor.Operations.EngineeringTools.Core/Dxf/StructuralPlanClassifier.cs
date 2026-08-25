@@ -524,7 +524,7 @@ public static class StructuralPlanClassifier
 
                 if (asColumns.Columns.Count > 0)
                 {
-                    result.Columns.AddRange(asColumns.Columns);
+                    result.Columns.AddRange(asColumns.Columns.Select(c => c with { FromBelow = true }));
                     result.Flags.Add(
                         $"{asColumns.Columns.Count} column(s) supporting this slab were read from dashed " +
                         "linework below it, because the sheet draws no structure on top of the slab. " +

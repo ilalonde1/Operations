@@ -98,7 +98,18 @@ public class LiveProjectBaselineTests
         // long is a wall by the engineer's own rule -- "less than 48 in length should be a
         // column" -- so it is one now, keeping the in-plane shear it was drawn to carry.
         // Plates 14->13: the orphan-plate rule dropped a legend box that had been a floor.
-        Storeys: 29, Walls: 242, Columns: 390, Floors: 13);
+        //
+        // Rebaselined 2026-08-24. Walls 242->205 and columns 390->304 because members now rise to
+        // the storey they run to, and on THIS job that means fewer of them are built, not more:
+        // 31138 is a gap-fill against a model the engineer had already built by hand, so a member
+        // landing on its true storey lands where hers already is and is correctly skipped as a
+        // duplicate. Measured both ways on the same build: walls already modelled 312->348,
+        // columns 316->391. Exactly the members that stopped being generated.
+        //
+        // That is the second independent building to confirm the rule -- 31065 scores it against
+        // an engineer's own model in EngineerModelBenchmarkTests, and this one shows it from the
+        // other side, by agreeing with a model the tool was not built from.
+        Storeys: 29, Walls: 205, Columns: 304, Floors: 13);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;

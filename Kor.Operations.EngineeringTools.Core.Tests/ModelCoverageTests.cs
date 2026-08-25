@@ -147,6 +147,7 @@ public class ModelCoverageTests
         }
         var joints = GeneratedModel.Joints(built.Lines);
         var assigns = GeneratedModel.AssignedStoreys(built.Lines);
+        var order = GeneratedModel.StoreysTopToBottom(built.Lines);
 
         // A member is measured from its CENTRELINE, and its own linework is half its width away —
         // a 42" wall's centreline sits 21" from either face, a 65x82 column's centre 32" from its
@@ -177,7 +178,7 @@ public class ModelCoverageTests
             if (wall.Success && joints.TryGetValue(wall.Groups[2].Value, out var a) && joints.TryGetValue(wall.Groups[3].Value, out var b))
             {
                 walls++;
-                if (!StandsOnLinework(wall.Groups[1].Value, Mid(a, b), wallLines, colLines, assigns, ReachFor(wall.Groups[1].Value, true)))
+                if (!StandsOnLinework(wall.Groups[1].Value, Mid(a, b), wallLines, colLines, assigns, ReachFor(wall.Groups[1].Value, true), order))
                     unfounded.Add($"{wall.Groups[1].Value} at ({Mid(a, b).X:F0},{Mid(a, b).Y:F0}) on {Where(wall.Groups[1].Value, assigns)}");
                 continue;
             }
@@ -186,7 +187,7 @@ public class ModelCoverageTests
             if (column.Success && joints.TryGetValue(column.Groups[2].Value, out var at))
             {
                 columns++;
-                if (!StandsOnLinework(column.Groups[1].Value, at, colLines, wallLines, assigns, ReachFor(column.Groups[1].Value, false)))
+                if (!StandsOnLinework(column.Groups[1].Value, at, colLines, wallLines, assigns, ReachFor(column.Groups[1].Value, false), order))
                     unfounded.Add($"{column.Groups[1].Value} at ({at.X:F0},{at.Y:F0}) on {Where(column.Groups[1].Value, assigns)}");
             }
         }
@@ -255,6 +256,7 @@ public class ModelCoverageTests
 
         // What the engineer's own model already carries, so a skipped member counts as accounted for.
         var existing = GeneratedModel.ExistingByStorey(project);
+        var storeyOrder = GeneratedModel.StoreysTopToBottom(built.Lines);
 
         var lost = new List<string>();
         int drawnTotal = 0;
@@ -267,7 +269,8 @@ public class ModelCoverageTests
             if (geometry is null) continue;
 
             var runs = new List<(DxfPoint A, DxfPoint B)>();
-            foreach (string storey in sheet.Stories)
+            foreach (string placed in sheet.Stories)
+            foreach (string storey in new[] { placed }.Concat(Nearby(storeyOrder, placed, upward: true)))
             {
                 if (modelled.TryGetValue(storey, out var m)) runs.AddRange(m);
                 if (existing.TryGetValue(storey, out var e)) runs.AddRange(e);
@@ -331,6 +334,7 @@ public class ModelCoverageTests
         var assigns = GeneratedModel.AssignedStoreys(built.Lines);
         var sectionOf = GeneratedModel.SectionOfMember(built.Lines);
         var linework = GeneratedModel.ColumnLineworkByStorey(project, built.Report);
+        var sizeOrder = GeneratedModel.StoreysTopToBottom(built.Lines);
 
         var wrong = new List<string>();
         int checkedCount = 0;
@@ -354,66 +358,97 @@ public class ModelCoverageTests
             string member = column.Groups[1].Value;
             if (!joints.TryGetValue(column.Groups[2].Value, out var at)) continue;
             if (!sectionOf.TryGetValue(member, out string? section) || !sections.TryGetValue(section, out var built_)) continue;
-            if (!assigns.TryGetValue(member, out var storeys)) continue;
+            if (!assigns.TryGetValue(member, out var assigned)) continue;
 
-            // The linework this column stands on: every column-layer segment whose ends fall
-            // inside the footprint the model gives it, widened by the tolerance.
+            // Its drawing is on the storey below: a solid column drawn on the plan for storey N is
+            // assigned to N+1, the storey it rises to.
+            var storeys = assigned
+                .Concat(assigned.SelectMany(x => Nearby(sizeOrder, x, upward: false)))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            // The linework this column stands on, ONE CANDIDATE STOREY AT A TIME.
+            //
+            // The audit cannot know which sheet a member came from -- production assigns a solid
+            // column to the storey it rises to, so its drawing is on a storey below, and an
+            // interleaved site model puts two candidates there. Pooling their linework invents
+            // footprints that were never drawn: a round column one storey down and a rectangular
+            // one at the same point on the next both land in the window, and the member is
+            // reported "drawn with arcs but built rectangular" when it is neither. 21 of 31168's
+            // 44 reports were exactly that.
+            //
+            // So each candidate is judged alone and the member passes if ANY of them agrees. It
+            // came from one sheet; agreeing with one is agreement.
             double reach = Math.Max(built_.D, built_.B) / 2.0 + Tolerance;
-            var under = new List<DxfSegment>();
+            string? complaint = null;
+            bool agreed = false, anyLinework = false;
+
             foreach (string storey in storeys)
             {
                 if (!linework.TryGetValue(storey, out var segments)) continue;
-                foreach (var s in segments)
-                    if (Inside(s.Start, at, reach) || Inside(s.End, at, reach))
-                        under.Add(s);
+
+                var under = new List<DxfSegment>();
+                foreach (var seg in segments)
+                    if (Inside(seg.Start, at, reach) || Inside(seg.End, at, reach))
+                        under.Add(seg);
+                if (under.Count == 0) continue;
+                anyLinework = true;
+
+                // Round is knowable only from arc provenance, so that is what is compared -- but
+                // only from arcs that belong to THIS column. The window is widened by the
+                // tolerance so a column whose centre sits slightly off its linework still finds
+                // it, and that same widening reaches a neighbour. On 31138 an 8x8 element sits 21"
+                // from a 23.5" round column, so the round one's arcs fell inside the square one's
+                // window. Size still measures from everything in the window -- narrowing that
+                // shrinks the footprint and reports real columns as oversize -- but roundness only
+                // listens to curves nearer to this column than to any other.
+                bool drawnRound = under.Any(seg => seg.FromCurve &&
+                    Closer(new DxfPoint((seg.Start.X + seg.End.X) / 2, (seg.Start.Y + seg.End.Y) / 2), at, centres));
+                if (drawnRound != built_.IsRound)
+                {
+                    complaint ??= $"{member} at ({at.X:F0},{at.Y:F0}) drawn with " +
+                                  $"{(drawnRound ? "arcs" : "straight lines only")} but built " +
+                                  $"{(built_.IsRound ? "round" : "rectangular")} as '{section}'";
+                    continue;
+                }
+
+                double minX = under.Min(seg => Math.Min(seg.Start.X, seg.End.X));
+                double maxX = under.Max(seg => Math.Max(seg.Start.X, seg.End.X));
+                double minY = under.Min(seg => Math.Min(seg.Start.Y, seg.End.Y));
+                double maxY = under.Max(seg => Math.Max(seg.Start.Y, seg.End.Y));
+
+                double drawnLong = Math.Max(maxX - minX, maxY - minY);
+                double drawnShort = Math.Min(maxX - minX, maxY - minY);
+
+                // A footprint that reads as a sliver is one this window failed to capture whole,
+                // not a sliver column. Judging it would report the window's own limits as defects.
+                if (drawnShort < 4.0) { agreed = true; break; }
+
+                double builtLong = built_.IsRound ? built_.D : Math.Max(built_.D, built_.B);
+                double builtShort = built_.IsRound ? built_.D : Math.Min(built_.D, built_.B);
+
+                // The drawn box is axis-aligned and the column may be turned inside it, so the
+                // only sound bound is that the built section must fit within the box at SOME
+                // rotation: its diagonal cannot exceed the box's. Comparing lengths side to side
+                // instead calls an 8x43 turned 45 degrees oversize inside a 36x36 box.
+                double builtDiagonal = Math.Sqrt(builtLong * builtLong + builtShort * builtShort);
+                double drawnDiagonal = Math.Sqrt(drawnLong * drawnLong + drawnShort * drawnShort);
+
+                if (builtDiagonal - drawnDiagonal > 2.0)
+                {
+                    complaint ??= $"{member} at ({at.X:F0},{at.Y:F0}) drawn inside " +
+                                  $"{drawnShort:F0}x{drawnLong:F0} but built {builtShort:F0}x{builtLong:F0} " +
+                                  $"as '{section}', which does not fit";
+                    continue;
+                }
+
+                agreed = true;
+                break;
             }
-            if (under.Count == 0) continue;   // nothing drawn there is the other test's finding
 
-            // Round is knowable only from arc provenance, so that is what is compared — but only
-            // from arcs that belong to THIS column.
-            //
-            // The window is widened by the tolerance so a column whose centre sits slightly off
-            // its linework still finds it, and that same widening reaches a neighbour. On 31138 an
-            // 8x8 element sits 21" from a 23.5" round column, so the round one's arcs fell inside
-            // the square one's window and it was reported "drawn with arcs but built rectangular".
-            // Size still measures from everything in the window — narrowing that shrinks the
-            // footprint and reports real columns as oversize — but roundness only listens to
-            // curves that are nearer to this column than to any other.
-            bool drawnRound = under.Any(s => s.FromCurve &&
-                Closer(new DxfPoint((s.Start.X + s.End.X) / 2, (s.Start.Y + s.End.Y) / 2), at, centres));
-            if (drawnRound != built_.IsRound)
-            {
-                wrong.Add($"{member} at ({at.X:F0},{at.Y:F0}) drawn with {(drawnRound ? "arcs" : "straight lines only")} " +
-                          $"but built {(built_.IsRound ? "round" : "rectangular")} as '{section}'");
-                continue;
-            }
-
-            double minX = under.Min(s => Math.Min(s.Start.X, s.End.X));
-            double maxX = under.Max(s => Math.Max(s.Start.X, s.End.X));
-            double minY = under.Min(s => Math.Min(s.Start.Y, s.End.Y));
-            double maxY = under.Max(s => Math.Max(s.Start.Y, s.End.Y));
-
-            double drawnLong = Math.Max(maxX - minX, maxY - minY);
-            double drawnShort = Math.Min(maxX - minX, maxY - minY);
-
-            // A footprint that reads as a sliver is one this window failed to capture whole, not a
-            // sliver column. Judging it would report the window's own limits as defects.
-            if (drawnShort < 4.0) continue;
-
+            if (!anyLinework) continue;   // nothing drawn there is the other test's finding
             checkedCount++;
-            double builtLong = built_.IsRound ? built_.D : Math.Max(built_.D, built_.B);
-            double builtShort = built_.IsRound ? built_.D : Math.Min(built_.D, built_.B);
-
-            // The drawn box is axis-aligned and the column may be turned inside it, so the only
-            // sound bound is that the built section must fit within the box at SOME rotation:
-            // its diagonal cannot exceed the box's. Comparing lengths side to side instead calls
-            // an 8x43 turned 45 degrees oversize inside a 36x36 box, which it plainly is not.
-            double builtDiagonal = Math.Sqrt(builtLong * builtLong + builtShort * builtShort);
-            double drawnDiagonal = Math.Sqrt(drawnLong * drawnLong + drawnShort * drawnShort);
-
-            if (builtDiagonal - drawnDiagonal > 2.0)
-                wrong.Add($"{member} at ({at.X:F0},{at.Y:F0}) drawn inside {drawnShort:F0}x{drawnLong:F0} " +
-                          $"but built {builtShort:F0}x{builtLong:F0} as '{section}', which does not fit");
+            if (!agreed && complaint is not null) wrong.Add(complaint);
         }
 
         int allowed = name.StartsWith("31168") ? GeneratedModel.LangaraMissizedCeiling : GeneratedModel.WestFirstMissizedCeiling;
@@ -435,13 +470,49 @@ public class ModelCoverageTests
     /// correct member an invention. Whether it is the RIGHT kind of member is the shape check's
     /// question, not this one.
     /// </summary>
+    /// <summary>
+    /// The storeys next to a given one, either side, nearest first.
+    ///
+    /// The audit maps a member back to the sheet it was drawn on, and production no longer puts
+    /// the two on the same storey: a solid wall or column drawn on the plan for storey N is
+    /// assigned to N+1, the storey it rises to. So a member's drawing is on the storey BELOW it,
+    /// and a sheet's members are on the storey ABOVE it.
+    ///
+    /// Two deep, not one, because a site model interleaves towers a couple of inches apart and a
+    /// member rises past its twin -- 31168 has storeys 1.7 in from their neighbour. Widening the
+    /// search for the DRAWING does not weaken what is demanded: the member must still stand on
+    /// linework a human drew.
+    /// </summary>
+    private static List<string> Nearby(IReadOnlyList<string> topToBottom, string storey, bool upward)
+    {
+        int i = topToBottom.ToList().FindIndex(s => s.Equals(storey, StringComparison.OrdinalIgnoreCase));
+        if (i < 0) return new List<string>();
+
+        // The list runs top to bottom, so "below" is a HIGHER index.
+        int step = upward ? -1 : 1;
+        var found = new List<string>();
+        for (int n = 1; n <= 2; n++)
+        {
+            int j = i + step * n;
+            if (j >= 0 && j < topToBottom.Count) found.Add(topToBottom[j]);
+        }
+        return found;
+    }
+
     private static bool StandsOnLinework(string member, DxfPoint where,
         IReadOnlyDictionary<string, List<DxfSegment>> linework,
         IReadOnlyDictionary<string, List<DxfSegment>> alsoAcceptable,
-        IReadOnlyDictionary<string, List<string>> assigns, double reach)
+        IReadOnlyDictionary<string, List<string>> assigns, double reach,
+        IReadOnlyList<string>? topToBottom = null)
     {
         if (!assigns.TryGetValue(member, out var storeys)) return true;   // unassigned is another test's problem
-        foreach (string storey in storeys)
+
+        var look = new List<string>(storeys);
+        if (topToBottom is not null)
+            foreach (string storey in storeys)
+                look.AddRange(Nearby(topToBottom, storey, upward: false));
+
+        foreach (string storey in look)
         {
             foreach (var source in new[] { linework, alsoAcceptable })
             {

@@ -95,6 +95,19 @@ public sealed record ComposeOptions
     public bool IncludeFloors { get; init; } = true;
 
     /// <summary>
+    /// Whether a wall or column drawn SOLID on the plan for storey N is assigned to N+1, the
+    /// storey it rises to. Off, everything lands on the storey whose sheet it was read from.
+    ///
+    /// NOT a rule setting, deliberately. This is how ETABS assigns members and how this office
+    /// drafts, not a per-job convention, and a switch in KorStandards would let a job turn it off
+    /// and ship every wall and column a storey low without anything being said. The RULING is
+    /// banked -- analysis.Ruling, solid-linework-belongs-to-the-storey-above, engineer-confirmed --
+    /// and the code obeys it. This flag exists so the change can be measured against the same
+    /// build of the same code, which is the only comparison that means anything.
+    /// </summary>
+    public bool MembersRiseToStoreyAbove { get; init; } = true;
+
+    /// <summary>
     /// Where a storey has walls and columns but no floor, carry up the plate from the storey below.
     ///
     /// Not a tolerance workaround. On 31168 the Level 1, mezzanine and C-Level 3 sheets have no
@@ -571,9 +584,43 @@ public static class E2kGeometryComposer
             return spanned.Count > 0 ? spanned : new List<string> { story.Name };
         }
 
+        // WHICH STOREY A MEMBER BELONGS TO.
+        //
+        // ETABS assigns a member to the storey it rises TO. A wall or column drawn SOLID on the
+        // plan for storey N stands on that slab and runs N -> N+1, so it belongs to N+1. A member
+        // drawn DASHED on the same sheet is below the slab, runs N-1 -> N, and belongs to N. One
+        // rule, seen from either side of the slab.
+        //
+        // The engineer, asked directly: "The solid columns on L3 run L3 -> L4 ... same rule for
+        // walls." Slabs and openings do not move -- "the slab stays at level N".
+        //
+        // Measured before shipping, because it moves every member in every model. 31065 is a
+        // building this tool has never been tuned against, with an engineer's own model to check
+        // against and the drawings that model was built from. Per storey, columns landing within
+        // 6 in of the engineer's own: 904/1,097 as it was, 1,065/1,097 with the shift. Walls
+        // within 12 in: 540/904 to 582/904. L1 goes from 5/53 to 47/53, L19 from 1/42 to 42/42,
+        // the roof from 0/16 to 16/16, and no storey loses more than one member.
+        //
+        // The typical floors L6-L18 sit at 42/42 either way. They are identical to each other, so
+        // a one-storey shift is invisible there -- which is exactly why counting them as evidence
+        // that placement was already right was wrong. The storeys that DIFFER from their
+        // neighbours are the ones that can see this, and every one of them says the same thing.
+        // The next SLAB up, not the next name in the list. Site models carry two storeys at one
+        // physical level -- 31168's ground floor is drafted twice, as A-LEVEL 1 and B-LEVEL 1,
+        // 1.7 in apart. Rising to the nearer of those builds a wall 1.7 in tall, which is how this
+        // change first announced itself: "no wall is shorter than a person" went red on 31168.
+        // Two storeys within a foot of each other are one level, and a member rises past them.
+        const double SameLevel = 12.0;
+        StoryLevel RisesTo(StoryLevel from)
+            => allStories.FirstOrDefault(s => s.Elevation > from.Elevation + SameLevel) ?? from;
+
         foreach (var placement in placements)
         {
-            var story = placement.Story;
+            // Where the sheet was placed: slabs and openings belong here.
+            var slabStory = placement.Story;
+
+            // Where what stands on it belongs: one storey up.
+            var story = options.MembersRiseToStoreyAbove ? RisesTo(placement.Story) : placement.Story;
 
             foreach (var wall in placement.Geometry.Walls)
             {
@@ -652,16 +699,20 @@ public static class E2kGeometryComposer
 
             foreach (var column in placement.Geometry.Columns)
             {
+                // A column read from dashed linework is already the storey below's structure
+                // holding this slab up, so it belongs to the sheet's own storey and does not rise.
+                var colStory = column.FromBelow ? slabStory : story;
+
                 double w = SnapInch(column.Width), d = SnapInch(column.Depth);
                 double x = column.Center.X + options.OffsetX, y = column.Center.Y + options.OffsetY;
 
                 // One member per place per storey, to the nearest inch. Quantising finer does not work: the// One column per location per storey — tested against the storeys it will actually
                 // be assigned to. Sheets overlap, and duplicates double the stiffness at that point.
                 var colWhere = ((long)Math.Round(x), (long)Math.Round(y), 0L, 0L);
-                var colStoreys = FreeStoreysFor(story, colWhere, placedColumns);
+                var colStoreys = FreeStoreysFor(colStory, colWhere, placedColumns);
                 if (colStoreys.Count == 0) continue;
 
-                if (existingColumns.TryGetValue(story.Name, out var already) &&
+                if (existingColumns.TryGetValue(colStory.Name, out var already) &&
                     already.Any(p => p.DistanceTo(new DxfPoint(x, y)) <= options.AlreadyModelledTolerance))
                 {
                     skippedColumns++;
@@ -702,9 +753,9 @@ public static class E2kGeometryComposer
                     Covers(on, column.Center.X + options.OffsetX, column.Center.Y + options.OffsetY);
                 }
 
-                CoversOwn(story.Name, column.Center.X + options.OffsetX, column.Center.Y + options.OffsetY);
+                CoversOwn(colStory.Name, column.Center.X + options.OffsetX, column.Center.Y + options.OffsetY);
                 lineAssigns.Add(
-                    $"  LINEASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
+                    $"  LINEASSIGN  \"{name}\"  \"{colStory.Name}\"  SECTION \"{sectionName}\"  ANG {Trim(angle)} MINNUMSTA 3 " +
                     "AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
             }
 
@@ -831,7 +882,7 @@ public static class E2kGeometryComposer
                 if (pinch <= options.SelfTouchReportGap)
                 {
                     var at = SelfGapAt(slab.Points);
-                    pinchedPlates.Add((story.Name, placement.SourceSheet, pinch,
+                    pinchedPlates.Add((slabStory.Name, placement.SourceSheet, pinch,
                         (at.X + options.OffsetX) / 12.0, (at.Y + options.OffsetY) / 12.0));
                 }
 
@@ -841,7 +892,7 @@ public static class E2kGeometryComposer
                 // were already deduplicated; plates were not.
                 var middle = slab.Centroid();
                 var where = ((long)Math.Round((middle.X + options.OffsetX) / 12.0),
-                             (long)Math.Round((middle.Y + options.OffsetY) / 12.0), story.Name);
+                             (long)Math.Round((middle.Y + options.OffsetY) / 12.0), slabStory.Name);
                 if (!placedSlabs.Add(where)) continue;
 
                 // A floor stands on something. A closed ring on a slab layer with no wall and no
@@ -856,7 +907,7 @@ public static class E2kGeometryComposer
                 // in the same model.
                 if (!AnythingStandsUnder(slab, options))
                 {
-                    orphanPlates.Add((placement.SourceSheet, story.Name, Math.Round(Math.Abs(slab.SignedArea) / 144.0)));
+                    orphanPlates.Add((placement.SourceSheet, slabStory.Name, Math.Round(Math.Abs(slab.SignedArea) / 144.0)));
                     continue;
                 }
 
@@ -870,28 +921,28 @@ public static class E2kGeometryComposer
                 }
 
                 string name = NextName("F", ref floorCounter);
-                storeysWithPlates.Add(story.Name);
+                storeysWithPlates.Add(slabStory.Name);
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  FLOOR  {names.Count}  {joints}  {offsets}");
-                assumedThickness.Add((story.Name, placement.SourceSheet));
+                assumedThickness.Add((slabStory.Name, placement.SourceSheet));
 
                 string diaphragmAssign = string.Empty;
                 if (options.AssignDiaphragms)
                 {
                     // One per storey rather than one shared: a single diaphragm across elevations
                     // ties joints at different heights, which ETABS warns about.
-                    string diaphragm = DiaphragmFor(story.Name, prefix);
+                    string diaphragm = DiaphragmFor(slabStory.Name, prefix);
                     diaphragms.Add(diaphragm);
                     diaphragmAssign = $"  DIAPH \"{diaphragm}\"";
                 }
 
                 areaAssigns.Add(
-                    $"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"" +
+                    $"  AREAASSIGN  \"{name}\"  \"{slabStory.Name}\"  SECTION \"{propName}\"  OBJMESHTYPE \"DEFAULT\"" +
                     $"{diaphragmAssign}  CARDINALPOINT \"MIDDLE\"");
 
-                if (!platesByStorey.TryGetValue(story.Name, out var onThisStorey))
-                    platesByStorey[story.Name] = onThisStorey = new List<(string, string, Extent)>();
+                if (!platesByStorey.TryGetValue(slabStory.Name, out var onThisStorey))
+                    platesByStorey[slabStory.Name] = onThisStorey = new List<(string, string, Extent)>();
 
                 var plateExtent = Extent.At(slab.Points[0].X + options.OffsetX, slab.Points[0].Y + options.OffsetY);
                 foreach (var p in slab.Points) plateExtent = plateExtent.With(p.X + options.OffsetX, p.Y + options.OffsetY);
@@ -904,7 +955,7 @@ public static class E2kGeometryComposer
             // An opening is a hole in a plate, so there has to be a plate for it to be a hole in.
             // A storey whose slab edges never closed gets no plate — and used to get its shafts
             // cut anyway, leaving an opening bounding nothing at all. 31138's L05 shipped with two.
-            bool storeyHasAPlate = storeysWithPlates.Contains(story.Name);
+            bool storeyHasAPlate = storeysWithPlates.Contains(slabStory.Name);
 
             foreach (var opening in placement.Geometry.Openings)
             {
@@ -931,7 +982,7 @@ public static class E2kGeometryComposer
 
                 var centre = opening.Centroid();
                 var key = ((long)Math.Round((centre.X + options.OffsetX) * 100),
-                           (long)Math.Round((centre.Y + options.OffsetY) * 100), story.Name);
+                           (long)Math.Round((centre.Y + options.OffsetY) * 100), slabStory.Name);
                 if (!placedOpenings.Add(key)) continue;
 
                 string name = NextName("O", ref openingCounter);
@@ -943,7 +994,7 @@ public static class E2kGeometryComposer
                 // the way every model on the share does it. Her 31138 carries 220 of these against
                 // 74 written the other way with a null section, and none of those 74 carry the
                 // attribute, so the two are alternatives and this is the one in common use.
-                areaAssigns.Add($"  AREAASSIGN  \"{name}\"  \"{story.Name}\"  OPENING \"Yes\"");
+                areaAssigns.Add($"  AREAASSIGN  \"{name}\"  \"{slabStory.Name}\"  OPENING \"Yes\"");
             }
 
             // One complaint per sheet, however many storeys that sheet builds. A sheet covering a

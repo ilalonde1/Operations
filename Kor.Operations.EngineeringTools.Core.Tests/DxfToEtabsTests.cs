@@ -640,6 +640,19 @@ public class PlanSheetNamingTests
 
 public class E2kDocumentTests
 {
+    /// <summary>
+    /// The placement these fixtures were written against: a sheet's members and its slab on one
+    /// storey. Production assigns a solid member to the storey it RISES to, one above the sheet it
+    /// was read from -- see MembersRiseToStoreyAbove -- which puts a synthetic single-sheet storey's
+    /// plate and its members on different storeys and breaks fixtures that are not about placement
+    /// at all. The rule these tests exist for is which plate is borrowed, and which storey is
+    /// reported as short of floor; neither depends on it.
+    ///
+    /// The rise itself is covered where it can actually be judged: AMemberRisesToTheStoreyAbove
+    /// below, and EngineerModelBenchmarkTests, which scores it against an engineer's own model.
+    /// </summary>
+    private static readonly ComposeOptions FlagsOnly = new() { MembersRiseToStoreyAbove = false };
+
     private static readonly string[] Reference =
     {
         "$ PROGRAM INFORMATION",
@@ -1047,13 +1060,60 @@ public class E2kDocumentTests
         {
             new StoryPlacement(lower, below, "level2.dxf"),
             new StoryPlacement(roof, above, "roof.dxf"),
-        });
+        }, FlagsOnly);
 
         // The plate is built — there IS structure under its footprint, just not on its own storey.
         Assert.Equal(1, summary.Floors);
 
         string flag = Assert.Single(summary.Flags, f => f.Contains("no wall or column beneath it"));
         Assert.Contains("LEVEL 3", flag);
+    }
+
+    /// <summary>
+    /// A solid wall or column drawn on the plan for storey N belongs to storey N+1.
+    ///
+    /// ETABS builds a member from the storey below UP TO the storey it is assigned to, so a column
+    /// assigned to L4 occupies L3 to L4. A plan sheet is the other way round: the solid columns on
+    /// the LEVEL 3 sheet stand on the Level 3 slab and rise to Level 4. Assigning them to L3 builds
+    /// them from L2 to L3 -- a storey below where they are, with the slab they carry floating above
+    /// them. The engineer: "The solid columns on L3 run L3 -> L4 ... same rule for walls."
+    ///
+    /// The slab does not move: "the slab stays at level N". Nor does a column read from DASHED
+    /// linework, which is already the structure below this sheet's slab holding it up.
+    ///
+    /// Scored on a real building in EngineerModelBenchmarkTests: columns landing on the engineer's
+    /// own storey went from 798/1,097 to 929/1,097 when this rule went in.
+    /// </summary>
+    [Fact]
+    public void AMemberRisesToTheStoreyAboveTheSheetItWasDrawnOn()
+    {
+        var doc = E2kDocument.Parse(Reference);
+        var level2 = doc.ReadStories().Single(s => s.Name == "LEVEL 2");
+
+        var geometry = new PlanGeometrySet();
+        geometry.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(240, 0), 12, "JBP_V-WALL"));
+        geometry.Columns.Add(new ColumnFootprint(new DxfPoint(60, 60), 24, 24, "JBP_V_COL"));
+        geometry.Columns.Add(new ColumnFootprint(new DxfPoint(180, 60), 24, 24, "JBP_HIDDEN", 0, FromBelow: true));
+        geometry.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new[]
+        {
+            new DxfPoint(0, 0), new DxfPoint(240, 0), new DxfPoint(240, 240), new DxfPoint(0, 240),
+        }, true));
+
+        E2kGeometryComposer.Compose(doc, new[] { new StoryPlacement(level2, geometry, "level2.dxf") });
+
+        var walls = doc.LinesOf("AREA ASSIGNS").Where(l => l.Contains("\"KW")).ToList();
+        var columns = doc.LinesOf("LINE ASSIGNS").Where(l => l.Contains("\"KC")).ToList();
+        var plates = doc.LinesOf("AREA ASSIGNS").Where(l => l.Contains("\"KF")).ToList();
+
+        // Drawn solid on the LEVEL 2 sheet, so it stands on that slab and rises to LEVEL 3.
+        Assert.All(walls, l => Assert.Contains("\"LEVEL 3\"", l));
+        Assert.Single(columns, l => l.Contains("\"LEVEL 3\""));
+
+        // Drawn dashed, so it is under the LEVEL 2 slab and stays there.
+        Assert.Single(columns, l => l.Contains("\"LEVEL 2\""));
+
+        // And the slab itself does not move.
+        Assert.All(plates, l => Assert.Contains("\"LEVEL 2\"", l));
     }
 
     /// <summary>
@@ -1439,7 +1499,10 @@ public class E2kDocumentTests
 
         Assert.Equal(1, summary.Walls);
         Assert.Equal(1, summary.Columns);
-        Assert.Contains(doc.LinesOf("AREA ASSIGNS"), l => l.Contains("\"L2\""));
+
+        // On the storey ABOVE the sheet it was read from: a wall drawn on the L2 plan stands on
+        // the L2 slab and runs up to Roof, and ETABS names a member for the storey it rises to.
+        Assert.Contains(doc.LinesOf("AREA ASSIGNS"), l => l.Contains("\"Roof\""));
     }
 
     [Fact]
@@ -1510,7 +1573,7 @@ public class E2kDocumentTests
             new StoryPlacement(stories["PARKADE"], Plate(0, 1200), "parkade.dxf"),
             new StoryPlacement(stories["PODIUM"], Plate(0, 200), "podium.dxf"),
             new StoryPlacement(stories["MID-RISE"], midRiseMembers, "midrise.dxf"),
-        }, new ComposeOptions { InferMissingFloors = true });
+        }, FlagsOnly with { InferMissingFloors = true });
 
         string flag = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
 
@@ -1597,7 +1660,7 @@ public class E2kDocumentTests
             // alike, and the tie must not go to the one further away.
             new StoryPlacement(stories["FAR-ABOVE"], Plate(880, 260, 1120, 340), "far.dxf"),
             new StoryPlacement(stories["TARGET"], targetMembers, "target.dxf"),
-        }, new ComposeOptions { InferMissingFloors = true });
+        }, FlagsOnly with { InferMissingFloors = true });
 
         string flag = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
 
@@ -2055,7 +2118,7 @@ public class E2kDocumentTests
             new StoryPlacement(stories["B-LEVEL 2"], Tower(2800, 3800, withPlate: true), "towerB2.dxf"),
             new StoryPlacement(stories["A-LEVEL 3"], Tower(200, 1200, withPlate: true), "towerA3.dxf"),
             new StoryPlacement(stories["B-LEVEL 3"], Tower(2800, 3800, withPlate: false), "towerB3.dxf"),
-        }, new ComposeOptions { InferMissingFloors = true });
+        }, FlagsOnly with { InferMissingFloors = true });
 
         string inferred = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
 
@@ -2119,7 +2182,7 @@ public class E2kDocumentTests
         {
             new StoryPlacement(stories["HALF-FLOORED"], Storey(1200), "half.dxf"),   // plate over a third
             new StoryPlacement(stories["WHOLE"], Storey(4000), "whole.dxf"),         // plate over all of it
-        }, new ComposeOptions { InferMissingFloors = true });
+        }, FlagsOnly with { InferMissingFloors = true });
 
         string flag = Assert.Single(summary.Flags, f => f.Contains("Floor does not reach the structure"));
         Assert.Contains("HALF-FLOORED", flag, StringComparison.Ordinal);
@@ -2178,7 +2241,7 @@ public class E2kDocumentTests
             new StoryPlacement(stories["LOWER"], Floored(), "lower.dxf"),
             new StoryPlacement(stories["MIDDLE"], bare, "middle.dxf"),
             new StoryPlacement(stories["UPPER"], Floored(), "upper.dxf"),
-        }, new ComposeOptions { InferMissingFloors = true });
+        }, FlagsOnly with { InferMissingFloors = true });
 
         Assert.Equal(3, summary.Stories);
 

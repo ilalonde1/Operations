@@ -465,6 +465,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
 
     string? building = null;
     string? towerOnly = null;
+    bool membersRise = true;
     string? topStorey = null;
     var dropStoreys = new List<string>();
     string? levelsFile = null;
@@ -509,6 +510,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         else if (flag.Equals("--questions", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) questionsPath = args[++i];
         else if (flag.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) rulesDb = args[++i];
         else if (flag.Equals("--no-floors", StringComparison.OrdinalIgnoreCase)) includeFloors = false;
+        else if (flag.Equals("--no-storey-rise", StringComparison.OrdinalIgnoreCase)) membersRise = false;
         else if (flag.Equals("--infer-floors", StringComparison.OrdinalIgnoreCase)) inferFloors = true;
         else if (flag.Equals("--wall-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) wallLayers = Patterns(args[++i]);
         else if (flag.Equals("--column-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) columnLayers = Patterns(args[++i]);
@@ -566,7 +568,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         WallLayerPatterns = wallLayers,
         ColumnLayerPatterns = columnLayers,
         SlabLayerPatterns = slabLayers,
-        Compose = new ComposeOptions { IncludeFloors = includeFloors, InferMissingFloors = inferFloors },
+        Compose = new ComposeOptions { IncludeFloors = includeFloors, InferMissingFloors = inferFloors, MembersRiseToStoreyAbove = membersRise },
         RuleSettingsConnection = rulesDb,
         RequireRuleSettings = true,
         });

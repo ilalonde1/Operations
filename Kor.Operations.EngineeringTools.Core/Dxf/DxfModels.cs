@@ -131,8 +131,16 @@ public sealed record WallOpening(DxfPoint Start, DxfPoint End, double Thickness,
 /// <paramref name="AxisAngleDegrees"/> is the bearing of the long face from global X.
 /// </summary>
 public sealed record ColumnFootprint(
-    DxfPoint Center, double Width, double Depth, string Layer, double AxisAngleDegrees = 0)
+    DxfPoint Center, double Width, double Depth, string Layer, double AxisAngleDegrees = 0,
+    bool FromBelow = false)
 {
+    /// <summary>
+    /// Read from DASHED linework, so it stands under this sheet's slab rather than on top of it.
+    /// A solid member drawn on the plan for storey N rises N -> N+1 and belongs to N+1; a dashed
+    /// one runs N-1 -> N and belongs to N. The two are the same rule from either side of the slab,
+    /// and this flag is which side a member was found on.
+    /// </summary>
+
     /// <summary>
     /// A round column. Its footprint has no long axis, so the least-area box lands at whatever
     /// angle the tessellation happened to favour: modelled from that box it comes out square and
