@@ -187,6 +187,39 @@ public static class WallNetwork
         var joints = new List<DxfPoint>();
         foreach (var axis in axes) { joints.Add(axis.A); joints.Add(axis.B); }
 
+        // WHERE TWO WALLS CROSS, BOTH ARE CUT.
+        //
+        // Until now this cut a wall only where another wall's END landed on it -- a T. Two walls
+        // that cross with neither ending at the crossing were left whole, so they passed through
+        // each other with no joint in common and carried no force between them. In ETABS they are
+        // two shells that happen to overlap.
+        //
+        // The engineer, on a crossing at P2: "two walls that are joined on the drawings should be
+        // shells in etabs, that intersect in one joint."
+        //
+        // Only a crossing INSIDE both walls is added; a crossing at or beyond an end is a corner,
+        // which pass 1 already carries the ends out to.
+        for (int i = 0; i < axes.Count; i++)
+        for (int j = i + 1; j < axes.Count; j++)
+        {
+            if (!TryCross(axes[i], axes[j], out var cross)) continue;
+            if (!Inside(axes[i], cross) || !Inside(axes[j], cross)) continue;
+            joints.Add(cross);
+        }
+
+        static bool Inside(Axis axis, DxfPoint at)
+        {
+            double dx = axis.B.X - axis.A.X, dy = axis.B.Y - axis.A.Y;
+            double lengthSquared = dx * dx + dy * dy;
+            if (lengthSquared < 1e-9) return false;
+
+            double t = ((at.X - axis.A.X) * dx + (at.Y - axis.A.Y) * dy) / lengthSquared;
+            if (t <= 0.001 || t >= 0.999) return false;
+
+            var onAxis = new DxfPoint(axis.A.X + dx * t, axis.A.Y + dy * t);
+            return onAxis.DistanceTo(at) <= SnapTolerance;
+        }
+
         var result = new List<Axis>();
 
         foreach (var axis in axes)

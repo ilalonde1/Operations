@@ -90,7 +90,14 @@ public class EngineerModelBenchmarkTests
     /// way, 168,717 against 170,274 sq ft of a real 327,220. 31138 is not over-reading floors; it
     /// is finding half of them.
     /// </summary>
-    private const int FloorFloor = 19;
+    // WALKED BACK from 19 to 16 on 25 August, deliberately.
+    //
+    // The three points came from chain-closing and a wider chaining pass, and the engineer opened
+    // the model those produced: "on several levels (9, 3, mezz, 1) he inverted slab and opening".
+    // Floor AREA cannot see a donut, which is how all three scored as gains. They are withdrawn
+    // and this number goes with them. A ratchet exists to catch a regression nobody meant; it is
+    // not a reason to keep shipping geometry an engineer has rejected.
+    private const int FloorFloor = 16;
 
     private const double ColumnTolerance = 6.0;
     private const double WallTolerance = 12.0;
@@ -176,7 +183,8 @@ public class EngineerModelBenchmarkTests
     /// <summary>
     /// Openings — shafts, stairs, every penetration cut from a slab.
     ///
-    /// 22 against her 359. This is the largest known gap in the tool and it was invisible until
+    /// 8 against her 359, walked back from 22 with the plate recovery that produced them. The
+    /// largest known gap in the tool and it was invisible until
     /// measured: nothing else here can see an opening, so the model looked healthy on every other
     /// number while carrying six percent of the holes an engineer cuts.
     ///
@@ -194,7 +202,7 @@ public class EngineerModelBenchmarkTests
         var score = ScoreOrSkip();
         if (score is null) return;
 
-        Assert.True(score.Openings >= 22,
+        Assert.True(score.Openings >= 8,
             $"Openings fell to {score.Openings} against the engineer's {score.ReferenceOpenings}; " +
             "the ratchet is 22. This number may only go up.");
     }

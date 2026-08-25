@@ -68,7 +68,13 @@ public class LiveProjectBaselineTests
         // too tight. On this job it is what gives LEVEL 1 the first floor plate it has ever had --
         // 78,859 sq ft on a storey whose slab edge has never closed as vectors -- and the YMCA
         // mezzanine the second of the three slabs the engineer says are there.
-        Storeys: 63, Walls: 1119, Columns: 2462, Floors: 94);
+        //
+        // Rebaselined 2026-08-25. Walls 1119 -> 1388 because two walls that cross are now both cut
+        // at the crossing so they share a joint -- the engineer's rule, and the panels either side
+        // of a cut are two panels. Floors 94 -> 87 because the three plate-recovery changes made on
+        // 24 August were withdrawn the next morning, after she opened the model and found floors
+        // with their own slabs cut out of them as openings.
+        Storeys: 63, Walls: 1388, Columns: 2462, Floors: 87);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",
@@ -123,7 +129,11 @@ public class LiveProjectBaselineTests
         // engineer's own model, 31138 carries 170,274 sq ft of floor against her 327,220, and only
         // 11 of its 27 storeys are within a fifth of hers. It is finding half her floors, not
         // inventing extra ones.
-        Storeys: 29, Walls: 205, Columns: 304, Floors: 48);
+        //
+        // Floors 48 -> 15 with the withdrawal of chain-closing. That job is back to reading only
+        // the outlines its drawings actually close; its part-plan storeys are unfloored again, and
+        // that is a visible gap rather than an invented slab.
+        Storeys: 29, Walls: 205, Columns: 304, Floors: 15);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;
