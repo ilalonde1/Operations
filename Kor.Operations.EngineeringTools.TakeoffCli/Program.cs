@@ -155,13 +155,16 @@ if (args.Length >= 1 && args[0].Equals("dxf-render", StringComparison.OrdinalIgn
 // this REFUSES, which does not.
 if (args.Length >= 1 && args[0].Equals("verify-e2k", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>]"); return 1; }
+    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>] [--reference <ref.e2k>]"); return 1; }
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
 
     double jointTolerance = 0.05;
     var droppedNames = new List<string>();
+    string? referencePath = null;
     for (int i = 2; i < args.Length - 1; i++)
     {
+        if (args[i].Equals("--reference", StringComparison.OrdinalIgnoreCase))
+            referencePath = args[i + 1];
         if (args[i].Equals("--joint-tolerance", StringComparison.OrdinalIgnoreCase))
             double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out jointTolerance);
@@ -170,7 +173,12 @@ if (args.Length >= 1 && args[0].Equals("verify-e2k", StringComparison.OrdinalIgn
                 .Select(x => x.Trim()).Where(x => x.Length > 0));
     }
 
-    var breaches = ShippedModelInvariants.Check(File.ReadLines(args[1]), jointTolerance, droppedNames);
+    if (referencePath is not null && !File.Exists(referencePath))
+    { Console.Error.WriteLine($"Reference not found '{referencePath}'."); return 2; }
+
+    var breaches = ShippedModelInvariants.Check(
+        File.ReadLines(args[1]), jointTolerance, droppedNames,
+        referencePath is null ? null : File.ReadLines(referencePath));
     if (breaches.Count == 0)
     {
         Console.WriteLine($"verify-e2k: {Path.GetFileName(args[1])} passes every invariant.");
@@ -3098,7 +3106,7 @@ public static class TakeoffCliHelp
         new("dxf-import-rules", "takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]", "Import per-job DXF rule answers."),
         new("corpus-read", "takeoff corpus-read <projectsRoot> [out.txt] [--limit N]", "Extract readable project corpus text."),
         new("dxf-to-etabs", "takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [options]", "Build an ETABS model from DXF plans."),
-        new("verify-e2k", "takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>]", "Refuse a finished model that breaks a structural invariant."),
+        new("verify-e2k", "takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>] [--reference <ref.e2k>]", "Refuse a finished model that breaks a structural invariant."),
         new("ifc-takeoff", "takeoff ifc-takeoff <model.ifc> <out.xlsx>", "Generate a quantity takeoff from an IFC model."),
         new("vector-takeoff", "takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson] [--deterministic] [--fresh]", "Run the vector PDF quantity takeoff pipeline."),
         new("vector-plate", "takeoff vector-plate <pdf> <page> <png>", "Ask the vision layer for one slab plate box."),

@@ -41,11 +41,32 @@ public static class ShippedModelInvariants
     /// <param name="lines">The finished model, as written.</param>
     /// <param name="jointTolerance">Two joints closer than this are one joint. See dxf.joint-merge-tolerance.</param>
     /// <param name="droppedStoreys">Storeys the run was told to leave out; none of them may appear.</param>
+    /// <param name="referenceE2k">
+    /// The model this one was built into, when there is one. A job where the engineer has already
+    /// modelled part of the building is a GAP-FILL: her objects are carried through into the
+    /// output, and they are not this tool's to judge. Without this, 31138 fails 514 checks and
+    /// every one of them is her work -- 361 objects "not from a drawing" because they carry her
+    /// names rather than a K prefix, and 153 members "on two storeys" because she models a column
+    /// running P3 to L01 as one member, which is correct and is what those rules exist to stop US
+    /// doing. Give it and the rules apply to what this tool built; leave it out and everything in
+    /// the file is treated as ours, which is right for a model built on an empty shell.
+    /// </param>
     public static IReadOnlyList<ModelViolation> Check(
         IEnumerable<string> lines,
         double jointTolerance = 0.05,
-        IEnumerable<string>? droppedStoreys = null)
+        IEnumerable<string>? droppedStoreys = null,
+        IEnumerable<string>? referenceE2k = null)
     {
+        var carriedThrough = new HashSet<string>(StringComparer.Ordinal);
+        if (referenceE2k is not null)
+            foreach (string raw in referenceE2k)
+            {
+                var asArea = AreaLine.Match(raw);
+                if (asArea.Success) { carriedThrough.Add(asArea.Groups[1].Value); continue; }
+                var asLine = LineLine.Match(raw);
+                if (asLine.Success) carriedThrough.Add(asLine.Groups[1].Value);
+            }
+
         var v = new List<ModelViolation>();
 
         var pts = new Dictionary<string, (double X, double Y, double Z)>(StringComparer.Ordinal);
@@ -106,7 +127,7 @@ public static class ShippedModelInvariants
         //    K prefix; anything else is the reference model's, and four of those were circled in
         //    ETABS with "these are not walls".
         foreach (var (name, _) in kind)
-            if (!name.StartsWith("K", StringComparison.Ordinal))
+            if (!name.StartsWith("K", StringComparison.Ordinal) && !carriedThrough.Contains(name))
                 v.Add(new ModelViolation("not-from-a-drawing", $"object '{name}' did not come from a drawing", name));
 
         // 3. A storey carrying members must have a floor, or everything on it reads as unsupported.
@@ -126,7 +147,7 @@ public static class ShippedModelInvariants
         //    it is declared. A WALL, COLUMN or header on two storeys is one member counted twice:
         //    six spandrels shipped that way, 1.7 inches tall on the second storey.
         foreach (var (obj, sts) in onStoreys)
-            if (sts.Count > 1 && !floors.Contains(obj))
+            if (sts.Count > 1 && !floors.Contains(obj) && !carriedThrough.Contains(obj))
                 v.Add(new ModelViolation("member-on-two-storeys",
                     $"'{obj}' is assigned to {sts.Count} storeys: {string.Join(", ", sts)}", obj));
 

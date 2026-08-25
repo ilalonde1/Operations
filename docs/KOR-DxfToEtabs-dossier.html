@@ -67,13 +67,13 @@ had already rebuilt that building's walls by hand.</p>
 <table>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
   <tr><td>Storeys populated</td><td><strong>14</strong></td><td>29</td></tr>
-  <tr><td>Wall panels, true thicknesses</td><td><strong>349</strong></td><td>242</td></tr>
-  <tr><td>Columns, sized &amp; oriented</td><td><strong>763</strong></td><td>390</td></tr>
-  <tr><td>Floor plates</td><td><strong>15</strong></td><td>13</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>349</strong></td><td>205</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>763</strong></td><td>304</td></tr>
+  <tr><td>Floor plates</td><td><strong>15</strong></td><td>15</td></tr>
   <tr><td>Headers over openings (spandrel shells)</td><td><strong>31</strong></td><td>22</td></tr>
   <tr><td>Shaft and stair openings cut</td><td><strong>43</strong></td><td>3</td></tr>
   <tr><td>Pier labels</td><td><strong>130</strong></td><td>142</td></tr>
-  <tr><td>Members you already had, not duplicated</td><td>—</td><td>306 walls, 316 columns</td></tr>
+  <tr><td>Members you already had, not duplicated</td><td>—</td><td>348 walls, 391 columns</td></tr>
 </table>
 
 <h2>What changed after your two calls</h2>
@@ -113,7 +113,7 @@ on level 5, all 22 on level 6, all 15 on the mechanical level, all 15 on the roo
 reads the block section and places each insert with its own scale and rotation, and the size limits
 carry the same half-inch of slack the wall rules do — the HSS 6&times;6 sections close at exactly
 6.000000&times;6.000000 and were still falling a hair under a bare 6" minimum. All 100 are now
-modelled. On 31138 that is 390 columns where 244 stood, and 242 wall panels where 202 did. <em>31168 contains no
+modelled. On 31138 that is 304 columns where 244 stood, and 205 wall panels where 202 did. <em>31168 contains no
 blocks at all, so none of its numbers move.</em></p>
 <table>
   <tr><th>You said</th><th>What it does now</th></tr>
@@ -199,8 +199,8 @@ that is the file to give it.</p>
 <h2>What it does not do</h2>
 <p>No section properties, no loads, no stiffness modifiers, no diaphragms, no design. That is your
 work and it is deliberately left untouched — a diaphragm arriving with the geometry is one more
-thing to undo. It also never overwrites what you have already modelled: on 31138 it recognised 306
-of your walls and 316 of your columns and left every one of them alone.</p>
+thing to undo. It also never overwrites what you have already modelled: on 31138 it recognised 348
+of your walls and 391 of your columns and left every one of them alone.</p>
 
 <h2>What to open</h2>
 <p>Each sits in its project's <code>02 Engineering\02 Lateral Design\01 ETABS Models\</code>.
@@ -215,9 +215,10 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
           one big slab at L1, one elevation&rdquo;. Nothing of this existed before.</td></tr>
   <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
       <td>A gap-fill. You have already rebuilt this building's walls — between 17 and 42 panels on every
-          storey — so this adds only what the drawings show and your model does not: 242 walls and
-          390 columns, mostly at podium and parkade. 306 walls and 316 columns of yours were
-          recognised at those locations and deliberately not modelled again.</td></tr>
+          storey — so this adds only what the drawings show and your model does not: 205 walls and
+          304 columns, mostly at podium and parkade. 348 walls and 391 columns of yours were
+          recognised at those locations and deliberately not modelled again — more than before,
+          because a member now sits on the storey it runs to and so lands where yours already is.</td></tr>
   <tr><td><code>…-QUESTIONS.xlsx</code></td>
       <td>Three sheets. <em>Questions</em> — every judgement the tool had to make, each marked
           <strong>DECIDED</strong> with the measurement behind it. Nothing in it is waiting on you;

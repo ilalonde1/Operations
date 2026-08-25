@@ -189,6 +189,10 @@ if ($LASTEXITCODE -ne 0) { throw 'generation failed.' }
 $verifyArgs = @()
 if ($DropStoreys) { $verifyArgs += @('--dropped', ($DropStoreys -join ',')) }
 
+# The reference goes in so the invariants judge what THIS TOOL built. On a gap-fill job the
+# engineer's own model is carried through into the output, and hers is not ours to refuse:
+# 31138 failed 514 checks, every one of them her work.
+$verifyArgs += @('--reference', (Join-Path $folder $config.Reference))
 & $cli verify-e2k $out @verifyArgs
 if ($LASTEXITCODE -ne 0) {
     Write-Host ''
@@ -277,85 +281,122 @@ if (Test-Path $reportPath) {
     # page -- and page two of a one-page summary is where the thing nobody reads lives. The
     # softening this comment used to warn about comes from PARAPHRASING; a first sentence is the
     # finding in the tool's own words, and the report beside it carries every one in full.
-    $notModelled = $all | Select-Object -First 8 | ForEach-Object {
-        $m = [regex]::Match($_, '^(.+?[.!])(\s|$)')
-        if ($m.Success -and $m.Groups[1].Value.Length -lt $_.Length) { $m.Groups[1].Value + ' …' } else { $_ }
+    $firstSentence = {
+        param($count)
+        $all | Select-Object -First $count | ForEach-Object {
+            $m = [regex]::Match($_, '^(.+?[.!])(\s|$)')
+            if ($m.Success -and $m.Groups[1].Value.Length -lt $_.Length) { $m.Groups[1].Value + ' …' } else { $_ }
+        }
     }
+    $findingsShown = 8
+    $notModelled = & $firstSentence $findingsShown
     $trimmedAway = $all.Count - @($notModelled).Count
 }
 
 $esc = { param($t) [System.Net.WebUtility]::HtmlEncode([string]$t) }
-$html = New-Object System.Collections.Generic.List[string]
-$html.Add('<title>' + (& $esc "$Project - model from drawings") + '</title>')
-# Sized to fit ONE page, because it is called a one-page summary and was running to two. A second
-# page is where the thing nobody read lives.
-$html.Add('<style>body{font:12.5px/1.42 "Segoe UI",system-ui,sans-serif;max-width:46rem;margin:0 auto;padding:20px 26px;color:#1a1a1a}h1{font-size:19px;margin:0 0 2px;font-weight:650}.sub{color:#5b5b5b;font-size:11.5px;margin:0 0 12px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#7a2230;margin:14px 0 5px}table{border-collapse:collapse;width:100%;font-size:12.5px}td{padding:2px 8px 2px 0;border-bottom:1px solid #eeeae5}td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}li{margin:0 0 3px}ul{margin:4px 0;padding-left:18px}p{margin:5px 0}code{background:#f4f2ef;padding:1px 4px;border-radius:3px;font-size:11.5px}</style>')
-$html.Add('<h1>' + (& $esc $label) + ' &mdash; model from drawings</h1>')
-$html.Add('<p class="sub">Generated ' + (Get-Date -Format 'd MMMM yyyy') + ' from ' + (& $esc (Split-Path $DxfFolder -Leaf)) + ', on top of ' + (& $esc $Reference) + '. It removes the typing; it does none of the engineering.</p>')
-$html.Add('<h2>What was built</h2><table>')
-foreach ($k in $counts.Keys) { $html.Add('<tr><td>' + (& $esc $k) + '</td><td class="n">' + ('{0:N0}' -f $counts[$k]) + '</td></tr>') }
-$html.Add('</table>')
 
-if ($notModelled.Count) {
-    $html.Add('<h2>What was not, and why</h2><ul>')
-    foreach ($n in $notModelled) { $html.Add('<li>' + (& $esc $n) + '</li>') }
-    $html.Add('</ul>')
-    if ($trimmedAway -gt 0) {
-        # Never a silent truncation. A page that shows eight of eleven findings without saying so
-        # reads as "these are the findings".
-        $html.Add('<p class="sub">Shortened to the first sentence of each, and ' + $trimmedAway + ' further finding(s) are not listed here. All of them appear in full in <code>' + (& $esc "$label-FROM-DRAWINGS-report.txt") + '</code>.</p>')
+# The page is built inside a scriptblock so it can be built AGAIN with fewer findings listed.
+# The findings are the only part whose length varies, and the page has to come out one page.
+$buildSummaryHtml = {
+    $html = New-Object System.Collections.Generic.List[string]
+    $html.Add('<title>' + (& $esc "$Project - model from drawings") + '</title>')
+    # Sized to fit ONE page, because it is called a one-page summary and was running to two. A second
+    # page is where the thing nobody read lives.
+    $html.Add('<style>body{font:12.5px/1.42 "Segoe UI",system-ui,sans-serif;max-width:46rem;margin:0 auto;padding:20px 26px;color:#1a1a1a}h1{font-size:19px;margin:0 0 2px;font-weight:650}.sub{color:#5b5b5b;font-size:11.5px;margin:0 0 12px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#7a2230;margin:14px 0 5px}table{border-collapse:collapse;width:100%;font-size:12.5px}td{padding:2px 8px 2px 0;border-bottom:1px solid #eeeae5}td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}li{margin:0 0 3px}ul{margin:4px 0;padding-left:18px}p{margin:5px 0}code{background:#f4f2ef;padding:1px 4px;border-radius:3px;font-size:11.5px}</style>')
+    $html.Add('<h1>' + (& $esc $label) + ' &mdash; model from drawings</h1>')
+    $html.Add('<p class="sub">Generated ' + (Get-Date -Format 'd MMMM yyyy') + ' from ' + (& $esc (Split-Path $DxfFolder -Leaf)) + ', on top of ' + (& $esc $Reference) + '. It removes the typing; it does none of the engineering.</p>')
+    $html.Add('<h2>What was built</h2><table>')
+    foreach ($k in $counts.Keys) { $html.Add('<tr><td>' + (& $esc $k) + '</td><td class="n">' + ('{0:N0}' -f $counts[$k]) + '</td></tr>') }
+    $html.Add('</table>')
+
+    if ($notModelled.Count) {
+        $html.Add('<h2>What was not, and why</h2><ul>')
+        foreach ($n in $notModelled) { $html.Add('<li>' + (& $esc $n) + '</li>') }
+        $html.Add('</ul>')
+        if ($trimmedAway -gt 0) {
+            # Never a silent truncation. A page that shows eight of eleven findings without saying so
+            # reads as "these are the findings".
+            $html.Add('<p class="sub">Shortened to the first sentence of each, and ' + $trimmedAway + ' further finding(s) are not listed here. All of them appear in full in <code>' + (& $esc "$label-FROM-DRAWINGS-report.txt") + '</code>.</p>')
+        }
     }
+
+    $html.Add('<h2>What it did not touch</h2><p>No loads, diaphragms, stiffness modifiers, section properties, meshing or design &mdash; those are yours. Geometry already in your model was recognised and left alone rather than duplicated.</p>')
+    # "Nothing there is waiting on you" was written into this page once and then left, while the
+    # workbook beside it opened with three NEEDS YOU rows. The engineer reads this page first, so the
+    # page told her there was nothing to do and the workbook told her there were three things. Take the
+    # count from the report, which takes it from the same code that writes the workbook.
+    $openQuestions = $null
+    if (Test-Path $reportPath) {
+        $m = Select-String -Path $reportPath -Pattern '^Questions for you:\s*(\d+)' | Select-Object -First 1
+        if ($m) { $openQuestions = [int]$m.Matches[0].Groups[1].Value }
+    }
+
+    $waiting = if ($null -eq $openQuestions) {
+        'See that workbook for what is still open.'
+    } elseif ($openQuestions -eq 0) {
+        'Nothing there is waiting on you.'
+    } elseif ($openQuestions -eq 1) {
+        'One row is marked NEEDS YOU &mdash; nothing in the drawings could settle it.'
+    } else {
+        "$openQuestions rows are marked NEEDS YOU &mdash; nothing in the drawings could settle them."
+    }
+
+    $html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is listed in <code>' + (& $esc "$label-QUESTIONS.xlsx") + '</code>, each with the measurement behind it beside it. ' + $waiting + ' Rows tied to a rule can be changed from the answer cell, and that becomes the rule for every job afterwards &mdash; you are asked once. Rows without a rule key are visible scope decisions, not yet learnable settings. A second sheet lists every rule this model was built on, read-only, including the geometry tolerances no decision asks about.</p>')
+    $html.Add('<p class="sub" style="margin-top:22px">Location by location, the full account is in <code>' + (& $esc "$label-FROM-DRAWINGS-report.txt") + '</code>.</p>')
+    $html
 }
 
-$html.Add('<h2>What it did not touch</h2><p>No loads, diaphragms, stiffness modifiers, section properties, meshing or design &mdash; those are yours. Geometry already in your model was recognised and left alone rather than duplicated.</p>')
-# "Nothing there is waiting on you" was written into this page once and then left, while the
-# workbook beside it opened with three NEEDS YOU rows. The engineer reads this page first, so the
-# page told her there was nothing to do and the workbook told her there were three things. Take the
-# count from the report, which takes it from the same code that writes the workbook.
-$openQuestions = $null
-if (Test-Path $reportPath) {
-    $m = Select-String -Path $reportPath -Pattern '^Questions for you:\s*(\d+)' | Select-Object -First 1
-    if ($m) { $openQuestions = [int]$m.Matches[0].Groups[1].Value }
-}
-
-$waiting = if ($null -eq $openQuestions) {
-    'See that workbook for what is still open.'
-} elseif ($openQuestions -eq 0) {
-    'Nothing there is waiting on you.'
-} elseif ($openQuestions -eq 1) {
-    'One row is marked NEEDS YOU &mdash; nothing in the drawings could settle it.'
-} else {
-    "$openQuestions rows are marked NEEDS YOU &mdash; nothing in the drawings could settle them."
-}
-
-$html.Add('<h2>What it decided for you</h2><p>Every judgement it had to make is listed in <code>' + (& $esc "$label-QUESTIONS.xlsx") + '</code>, each with the measurement behind it beside it. ' + $waiting + ' Rows tied to a rule can be changed from the answer cell, and that becomes the rule for every job afterwards &mdash; you are asked once. Rows without a rule key are visible scope decisions, not yet learnable settings. A second sheet lists every rule this model was built on, read-only, including the geometry tolerances no decision asks about.</p>')
-$html.Add('<p class="sub" style="margin-top:22px">Location by location, the full account is in <code>' + (& $esc "$label-FROM-DRAWINGS-report.txt") + '</code>.</p>')
+$html = & $buildSummaryHtml
 
 $summaryHtml = Join-Path $env:TEMP "kor-summary-$label.html"
 $summaryPdf  = Join-Path $stage "KOR-$label-SUMMARY.pdf"
-$html -join "`n" | Set-Content -LiteralPath $summaryHtml -Encoding UTF8
-& (Join-Path $PSScriptRoot 'Format-BdWebPdf.ps1') -Html $summaryHtml -Pdf $summaryPdf | Out-Null
 
-# The temp HTML is left where it is. Deleting it the instant the renderer returns is a race the
-# renderer loses on a slow run, and what lands in the job folder is a PDF of the browser's
-# "file not found" page -- which looks like a document until somebody opens it.
-if (-not (Test-Path $summaryPdf)) { throw "the per-job summary did not render: $summaryPdf" }
-Write-Host "  summary      : $(Split-Path $summaryPdf -Leaf)" -ForegroundColor DarkGray
+$pdfinfo = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter 'pdfinfo.exe' -ErrorAction SilentlyContinue |
+    Select-Object -First 1 -ExpandProperty FullName
 
 # It is called a one-page summary in every document that mentions it, and it had quietly become
 # two. Page two of a one-page summary is where the thing nobody reads lives, so the claim is
-# checked rather than trusted.
-$pdfinfo = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter 'pdfinfo.exe' -ErrorAction SilentlyContinue |
-    Select-Object -First 1 -ExpandProperty FullName
+# checked rather than trusted -- and now MET rather than merely checked: the findings list is the
+# only part of this page whose length varies, so it is shortened until the page is one page.
+#
+# It used to refuse instead, which is right for a wrong number and wrong for a long one. 31168's
+# two towers are 63 storeys and their findings run longer than the mid-rise's, so a publish that
+# was correct in every other respect was blocked by its own covering note. Whatever is dropped is
+# still counted and named as dropped, and every finding is in the report in full.
+$pages = 1
+foreach ($tryCount in 8, 6, 4, 3, 2) {
+    if ($tryCount -ne $findingsShown) {
+        $findingsShown = $tryCount
+        $notModelled = & $firstSentence $findingsShown
+        $trimmedAway = $all.Count - @($notModelled).Count
+        $html = & $buildSummaryHtml
+    }
+
+    $html -join "`n" | Set-Content -LiteralPath $summaryHtml -Encoding UTF8
+    & (Join-Path $PSScriptRoot 'Format-BdWebPdf.ps1') -Html $summaryHtml -Pdf $summaryPdf | Out-Null
+
+    # The temp HTML is left where it is. Deleting it the instant the renderer returns is a race the
+    # renderer loses on a slow run, and what lands in the job folder is a PDF of the browser's
+    # "file not found" page -- which looks like a document until somebody opens it.
+    if (-not (Test-Path $summaryPdf)) { throw "the per-job summary did not render: $summaryPdf" }
+
+    if (-not $pdfinfo) { break }
+    $pages = [int](& $pdfinfo $summaryPdf | Select-String '^Pages:\s*(\d+)').Matches[0].Groups[1].Value
+    if ($pages -le 1) { break }
+}
+
+Write-Host "  summary      : $(Split-Path $summaryPdf -Leaf)" -ForegroundColor DarkGray
 if ($pdfinfo) {
-    $pages = (& $pdfinfo $summaryPdf | Select-String '^Pages:\s*(\d+)').Matches[0].Groups[1].Value
-    if ([int]$pages -gt 1) {
+    if ($pages -gt 1) {
         Write-Host ''
-        Write-Host "The one-page summary is $pages pages." -ForegroundColor Red
+        Write-Host "The one-page summary is $pages pages even with only $findingsShown finding(s) listed." -ForegroundColor Red
         Write-Host '  Either it fits on one page or it stops being called a one-page summary.' -ForegroundColor Red
         exit 1
     }
     Write-Host "  summary pages: $pages" -ForegroundColor DarkGray
+    if ($findingsShown -lt 8) {
+        Write-Host "  findings shown: $findingsShown (shortened to fit one page; all are in the report)" -ForegroundColor DarkGray
+    }
 }
 
 if ((-not $SkipDossier) -and (-not $Variant)) {
