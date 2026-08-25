@@ -1070,6 +1070,52 @@ public class E2kDocumentTests
     }
 
     /// <summary>
+    /// A floor that reaches a fraction of its own structure is a fragment, and borrows.
+    ///
+    /// Borrowing used to fire only where a storey had NO plate, and drafting does not oblige.
+    /// 31138's typical floors are issued as PART PLANS: the middle of the slab is left off the
+    /// sheet because it is identical to the one next door, so the outline arrives cut by a 23 ft
+    /// break through its top and bottom edges. No bridge should close a gap that size and none
+    /// does. LEVEL 11 and 12 came out as two strips of 1,731 and 776 sq ft against the 9,668 the
+    /// engineer models — the storey HAD a plate, so nothing borrowed, and the model carried a tenth
+    /// of that floor.
+    ///
+    /// Measured against her own model, letting fragments borrow takes that job from 170,274 sq ft
+    /// of floor to 307,326 of her 327,220 — 52% to 94% — and from 11 storeys within a fifth of hers
+    /// to 19 of 27.
+    /// </summary>
+    [Fact]
+    public void AFloorThatIsOnlyAFragmentOfItsStoreyBorrowsAWholeOne()
+    {
+        var doc = E2kDocument.Parse(Reference);
+        var lower = doc.ReadStories().Single(s => s.Name == "LEVEL 2");
+        var upper = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+
+        // Columns right across both storeys, so each has the same ground to cover.
+        static PlanGeometrySet Storey(double plateMaxX)
+        {
+            var g = new PlanGeometrySet();
+            for (int x = 100; x <= 3900; x += 400)
+            for (int y = 100; y <= 900; y += 400)
+                g.Columns.Add(new ColumnFootprint(new DxfPoint(x, y), 24, 24, "JBP_V_COL"));
+            g.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+            {
+                new(0, 0), new(plateMaxX, 0), new(plateMaxX, 1000), new(0, 1000),
+            }, true));
+            return g;
+        }
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(lower, Storey(4000), "level2.dxf"),   // the whole floor
+            new StoryPlacement(upper, Storey(400), "level3.dxf"),    // a strip of it: a part plan
+        }, new ComposeOptions { InferMissingFloors = true });
+
+        string flag = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
+        Assert.Contains("LEVEL 3", flag);
+    }
+
+    /// <summary>
     /// A solid wall or column drawn on the plan for storey N belongs to storey N+1.
     ///
     /// ETABS builds a member from the storey below UP TO the storey it is assigned to, so a column

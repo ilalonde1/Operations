@@ -13,6 +13,9 @@ public readonly record struct Extent(double MinX, double MinY, double MaxX, doub
 {
     public static Extent At(double x, double y) => new(x, y, x, y);
 
+    /// <summary>The ground this covers, in square drawing units.</summary>
+    public double Area => Math.Max(0, MaxX - MinX) * Math.Max(0, MaxY - MinY);
+
     public Extent With(double x, double y)
         => new(Math.Min(MinX, x), Math.Min(MinY, y), Math.Max(MaxX, x), Math.Max(MaxY, y));
 
@@ -1033,10 +1036,39 @@ public static class E2kGeometryComposer
         var inferredPlates = new List<(string Storey, string From)>();
         if (options.InferMissingFloors && options.IncludeFloors)
         {
+            var fragments = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             foreach (var storey in allStories)
             {
                 if (!storeysWithMembers.Contains(storey.Name)) continue;
-                if (storeysWithPlates.Contains(storey.Name)) continue;
+
+                // A FRAGMENT is not a floor either.
+                //
+                // This used to fire only where a storey had no plate at all, and drafting does not
+                // oblige: 31138's typical floors are issued as PART PLANS, the middle of the slab
+                // left off the sheet because it is identical to the one next door. LEVEL 11 and 12
+                // arrive as two strips of 1,731 and 776 sq ft against the 9,668 the engineer
+                // models -- an outline cut by a 23 ft break through its top and bottom edges, which
+                // no bridge should close and none does. The storey has a plate, so nothing borrowed,
+                // and the model carried a tenth of that floor.
+                //
+                // A floor that reaches a fraction of the ground its own walls and columns stand on
+                // is a fragment, and a storey shaped like its neighbour can take its neighbour's.
+                // Reported as INFERRED like every other borrowed plate: a floor she cannot tell
+                // from a measured one is worse than the hole it fills.
+                if (storeysWithPlates.Contains(storey.Name))
+                {
+                    if (!ownExtents.TryGetValue(storey.Name, out var standsOn)) continue;
+                    if (!platesByStorey.TryGetValue(storey.Name, out var already)) continue;
+
+                    // Fattened, because a storey whose columns sit in a line has an extent with no
+                    // height and would never be seen as a fragment at all.
+                    double structure = standsOn.Area;
+                    double covered = already.Sum(x => x.Item3.Area);
+                    if (structure <= 0 || covered / structure >= options.MinFloorCoverage) continue;
+
+                    fragments.Add(storey.Name);
+                }
 
                 // The nearest storey BELOW whose plate actually stands under these members. Below,
                 // not nearest either way: a floor is carried by what is under it, and reaching
