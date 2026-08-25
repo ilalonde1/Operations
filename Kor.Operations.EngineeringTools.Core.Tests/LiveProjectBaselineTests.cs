@@ -62,7 +62,13 @@ public class LiveProjectBaselineTests
         // The wall ceiling moved 36->60 because 36 was rejecting 4,681 of 36,761 real wall
         // sections, and the column long-side cap 96->132 because 207 real column sections run 98"-165".
         // Walls 1,097->1,119 and headers 365->375 follow from the wall ceiling; columns hold.
-        Storeys: 63, Walls: 1119, Columns: 2462, Floors: 82);
+        //
+        // Rebaselined 2026-08-24, floors 82 -> 94, from the same change: slab outlines now close by
+        // joining their own loose ends, and at the interruption width where the ordinary bridge is
+        // too tight. On this job it is what gives LEVEL 1 the first floor plate it has ever had --
+        // 78,859 sq ft on a storey whose slab edge has never closed as vectors -- and the YMCA
+        // mezzanine the second of the three slabs the engineer says are there.
+        Storeys: 63, Walls: 1119, Columns: 2462, Floors: 94);
 
     private static readonly Baseline WestFirst = new(
         "31138 2170 W 1st",
@@ -109,7 +115,15 @@ public class LiveProjectBaselineTests
         // That is the second independent building to confirm the rule -- 31065 scores it against
         // an engineer's own model in EngineerModelBenchmarkTests, and this one shows it from the
         // other side, by agreeing with a model the tool was not built from.
-        Storeys: 29, Walls: 205, Columns: 304, Floors: 13);
+        //
+        // Rebaselined 2026-08-24, floors 13 -> 48. Slab outlines now close two ways the drawing
+        // does not: by joining a chain's own two loose ends, and at the interruption width where
+        // the ordinary bridge is too tight. More plates on this job is the RIGHT direction, and it
+        // is measured rather than assumed -- built from a bare storey list and scored against the
+        // engineer's own model, 31138 carries 170,274 sq ft of floor against her 327,220, and only
+        // 11 of its 27 storeys are within a fifth of hers. It is finding half her floors, not
+        // inventing extra ones.
+        Storeys: 29, Walls: 205, Columns: 304, Floors: 48);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;

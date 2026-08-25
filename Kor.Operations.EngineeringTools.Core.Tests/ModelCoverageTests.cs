@@ -499,6 +499,66 @@ public class ModelCoverageTests
         return found;
     }
 
+    /// <summary>
+    /// A floor area an engineer has already seen and accepted does not move without the build
+    /// saying so.
+    ///
+    /// C-LEVEL 3's own slab edge is 12,830 sq ft. That figure is not a preference: it is what
+    /// dxf.flood-fill-bridge = 36 in was SET BY -- migration 047 records it -- and it is the number
+    /// that answered the engineer when she corrected a model that had borrowed C-LEVEL 4's plate:
+    /// "level 3 has its own slab edge, it's on the drawings." She has seen 12,830 in a model and
+    /// not objected.
+    ///
+    /// A later change to how slab outlines close read that storey as 22,676 sq ft instead, and
+    /// nothing failed. It was caught because a person remembered, which is not a control. Every
+    /// count in this model is checked by something; the one figure an engineer has actually ruled
+    /// on was checked by nobody.
+    /// </summary>
+    [Theory]
+    [InlineData("31168 YMCA Langara", "C-LEVEL 3", 12830)]
+    public void APlateTheEngineerHasAcceptedKeepsItsArea(string name, string storey, int expected)
+    {
+        var built = GeneratedModel.BuildOrSkip(GeneratedModel.For(name));
+        if (built is null) return;
+
+        var joints = GeneratedModel.Joints(built.Lines);
+        var assigns = GeneratedModel.AssignedStoreys(built.Lines);
+
+        double total = 0;
+        foreach (string line in built.Lines)
+        {
+            var m = Regex.Match(line.Trim(), @"^AREA\s+""(KF\d+)""\s+FLOOR\s+(\d+)\s+(.*)$");
+            if (!m.Success) continue;
+            if (!assigns.TryGetValue(m.Groups[1].Value, out var on)
+                || !on.Contains(storey, StringComparer.OrdinalIgnoreCase)) continue;
+
+            var ring = Regex.Matches(m.Groups[3].Value, @"""([^""]+)""")
+                .Select(x => x.Groups[1].Value)
+                .Take(int.Parse(m.Groups[2].Value))
+                .Where(joints.ContainsKey)
+                .Select(x => joints[x])
+                .ToList();
+
+            double sum = 0;
+            for (int i = 0; i < ring.Count; i++)
+            {
+                var a = ring[i];
+                var b = ring[(i + 1) % ring.Count];
+                sum += a.X * b.Y - b.X * a.Y;
+            }
+            total += Math.Abs(sum) / 2.0;
+        }
+
+        double sqft = total / 144.0;
+        _out.WriteLine($"{name} {storey}: {sqft:N0} sq ft, banked {expected:N0}.");
+
+        Assert.True(Math.Abs(sqft - expected) <= expected * 0.05,
+            $"{name} {storey} is {sqft:N0} sq ft against the banked {expected:N0}. That figure is an " +
+            "engineer's, recorded in KorStandards, and she has seen it in a model. Changing it is a " +
+            "decision, not a side effect -- if the new reading is right, take it to her and move the " +
+            "banked value with a migration.");
+    }
+
     private static bool StandsOnLinework(string member, DxfPoint where,
         IReadOnlyDictionary<string, List<DxfSegment>> linework,
         IReadOnlyDictionary<string, List<DxfSegment>> alsoAcceptable,

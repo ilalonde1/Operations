@@ -2309,8 +2309,14 @@ public class E2kDocumentTests
             Assert.Contains(lines, line => line.Contains("AREAASSIGN", StringComparison.Ordinal)
                                            && line.Contains("\"LEVEL 1\"", StringComparison.Ordinal)
                                            && line.Contains("SECTION", StringComparison.Ordinal));
+            // However it was recovered, it says so. A plate the drawing did not close is an
+            // inference, and the engineer checking this model is entitled to know which of her
+            // floors were read and which were reconstructed -- by flood-filling the linework, or
+            // by joining an outline's own two loose ends.
             Assert.Contains(report.Warnings.Concat(sheet.Flags),
-                line => line.Contains("flood-filling", StringComparison.OrdinalIgnoreCase));
+                line => line.Contains("flood-filling", StringComparison.OrdinalIgnoreCase)
+                        || line.Contains("joining", StringComparison.OrdinalIgnoreCase)
+                        || line.Contains("interruption width", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {

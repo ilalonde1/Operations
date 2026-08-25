@@ -73,6 +73,23 @@ param(
     # this script spent a day learning to refuse.
     [string]$Variant,
 
+    # One model per building, worked out from the drawings rather than passed in.
+    #
+    # A site model carries several buildings in one storey list, and the operator had to know the
+    # shape of the job to cut it: -Tower C -TopStorey C-ROOF -DropStoreys LEVEL 3..LEVEL 10. That
+    # is the tool asking the engineer to know what the tool is looking at, and getting it wrong is
+    # silent -- a model went to her carrying eight storeys of a building she had said was out of
+    # scope.
+    #
+    # takeoff dxf-buildings reads which storeys belong to which building: a storey NAMED for one
+    # belongs to it, and a storey named for nobody belongs to whichever building's footprint its
+    # structure stands inside -- or to all of them, which is what a shared podium or parkade is.
+    # This then publishes one model per building, each carrying only its own elevations.
+    #
+    # The engineer, unprompted: "let's do one model per building", and "it's best if a file only
+    # has the elevations relevant to the building modelled".
+    [switch]$PerBuilding,
+
     [switch]$SkipDossier
 )
 
@@ -167,6 +184,52 @@ Write-Host 'building the CLI...' -ForegroundColor DarkGray
 if ($LASTEXITCODE -ne 0) { throw 'CLI build failed.' }
 
 $cli = Join-Path $repo 'Kor.Operations.EngineeringTools.TakeoffCli\bin\Debug\net8.0\takeoff.exe'
+
+# One model per building: ask the drawings which storeys belong to which, then publish each as its
+# own variant. Everything below runs unchanged for each one.
+if ($PerBuilding -and -not $Variant) {
+    $refPath = Join-Path $folder $config.Reference
+    $everyStorey = @(Select-String -Path $refPath -Pattern '^\s*STORY\s+"([^"]+)"' |
+        ForEach-Object { $_.Matches[0].Groups[1].Value } |
+        Where-Object { $_ -ne 'Base' })
+
+    $split = & $cli dxf-buildings $config.Dxf $refPath
+    if ($LASTEXITCODE -ne 0) { throw 'dxf-buildings failed.' }
+
+    $any = $false
+    foreach ($line in $split) {
+        $parts = $line -split "`t", 2
+        if ($parts.Count -lt 2) { continue }
+        $tag = $parts[0]
+        $mine = $parts[1] -split ',' | Where-Object { $_ }
+        $drop = @($everyStorey | Where-Object { $mine -notcontains $_ })
+
+        Write-Host ''
+        Write-Host "building $tag : $($mine.Count) storey(s), dropping $($drop.Count)" -ForegroundColor Cyan
+
+        # -Tower AND -DropStoreys, because they answer different halves of this.
+        #
+        # -Tower cuts by NAME: it drops the storeys belonging to other buildings, and keeps the
+        # shared base BELOW this one -- 31168's ground floor is drafted twice, as A-LEVEL 1 and
+        # B-LEVEL 1 1.7 in apart, and building C stands on it. Without that, C comes out with no
+        # ground floor at all.
+        #
+        # -DropStoreys reaches what a name cannot: LEVEL 3 to LEVEL 26 are tower floors called
+        # nothing in particular, and only the footprint knows they are not the YMCA's.
+        $forward = @{ Project = $Project; Reference = $config.Reference; ModelFolder = $ModelFolder
+                      DxfFolder = $DxfFolder; RulesDb = $RulesDb; Variant = $tag; Tower = $tag }
+        $dropUntagged = @($drop | Where-Object { $_ -notmatch '^[A-Za-z]-' })
+        if ($dropUntagged.Count -gt 0) { $forward.DropStoreys = $dropUntagged }
+        if ($InferFloors) { $forward.InferFloors = $true }
+
+        & $PSCommandPath @forward
+        if ($LASTEXITCODE -ne 0) { throw "publishing building $tag failed." }
+        $any = $true
+    }
+
+    if (-not $any) { throw 'dxf-buildings named no buildings.' }
+    return
+}
 
 Write-Host "generating $Project..." -ForegroundColor DarkGray
 $cutArgs = @()

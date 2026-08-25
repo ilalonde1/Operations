@@ -74,6 +74,24 @@ public class EngineerModelBenchmarkTests
     /// </summary>
     private const int WallFloor = 806;
 
+    /// <summary>
+    /// Storeys whose floor area is within a fifth of the engineer's. A ratchet: up only.
+    ///
+    /// 19 of 23, up from 16. Two changes got it there: slab outlines now close by joining a
+    /// chain's two loose ends, and a chain that will not close at the ordinary 6 in bridge is
+    /// offered the interruption width, dxf.flood-fill-bridge at 36 in, which is what a slab edge
+    /// cut by crossing linework actually carries. The second gave the YMCA mezzanine the second of
+    /// the three slabs the engineer says are there.
+    ///
+    /// That change was nearly given back over a fear that measured out to nothing: 31138 appeared
+    /// to go from 13 floor plates to 50. Those were different builds -- 13 is the residue added to
+    /// a model the engineer had already built by hand, 50 is the whole building from a bare storey
+    /// list -- and scored against HER model the two settings are identical, 11 of 27 storeys either
+    /// way, 168,717 against 170,274 sq ft of a real 327,220. 31138 is not over-reading floors; it
+    /// is finding half of them.
+    /// </summary>
+    private const int FloorFloor = 19;
+
     private const double ColumnTolerance = 6.0;
     private const double WallTolerance = 12.0;
 
@@ -101,6 +119,37 @@ public class EngineerModelBenchmarkTests
     }
 
     /// <summary>
+    /// Floor plates the size the engineer made them, storey by storey, within a fifth.
+    ///
+    /// Nothing else in this file can see a plate. Walls and columns are unmoved by a change to how
+    /// slab outlines are read, so a change that doubles a floor scores identically on both and
+    /// looks free -- which is how C-LEVEL 3 on 31168 nearly shipped at 22,676 sq ft against the
+    /// 12,830 it had, on the one storey the engineer had checked herself.
+    ///
+    /// The guard that was going to catch it would not have. The plan was "a closed outline may not
+    /// enclose more ground than the structure standing on that storey", and that sheet's own walls
+    /// and columns span the same 250 ft the wrong plate did, because the tower columns pass through
+    /// it. Measuring the sheet before writing the rule is what showed that; it would otherwise have
+    /// shipped as a guard that guards nothing.
+    ///
+    /// A fifth is loose on purpose. A plate traced off a raster has a stepped edge, and slabs
+    /// cantilever past the structure by amounts a drawing states and this tool does not read.
+    /// Being out by a FACTOR is the fault worth refusing.
+    /// </summary>
+    [Fact]
+    public void FloorPlatesAreTheSizeTheEngineerMadeThem()
+    {
+        var score = ScoreOrSkip();
+        if (score is null) return;
+
+        _out.WriteLine(score.Report);
+        Assert.True(score.FloorsWithin20Percent >= FloorFloor,
+            $"Storeys whose floor area is within 20% of the engineer's fell to " +
+            $"{score.FloorsWithin20Percent}/{score.ReferenceFloors}; the ratchet is {FloorFloor}. " +
+            $"This number may only go up.\n{score.Report}");
+    }
+
+    /// <summary>
     /// The whole-model best fit, kept as a guard rather than as a score. It is the figure that got
     /// quoted as evidence this tool worked -- "1,077 of 1,097 columns within 6 inches" -- and it is
     /// storey-agnostic, so it stayed near-perfect through the entire period when every member was
@@ -119,7 +168,8 @@ public class EngineerModelBenchmarkTests
     }
 
     private sealed record Score(
-        int Columns, int ReferenceColumns, int Walls, int ReferenceWalls, int AnyStorey, string Report);
+        int Columns, int ReferenceColumns, int Walls, int ReferenceWalls, int AnyStorey,
+        int FloorsWithin20Percent, int ReferenceFloors, string Report);
 
     private static Score? _cached;
     private static readonly object Gate = new();
@@ -217,7 +267,8 @@ public class EngineerModelBenchmarkTests
 
     private sealed record Members(
         Dictionary<string, List<DxfPoint>> Columns,
-        Dictionary<string, List<(DxfPoint A, DxfPoint B)>> Walls);
+        Dictionary<string, List<(DxfPoint A, DxfPoint B)>> Walls,
+        Dictionary<string, double> FloorArea);
 
     /// <summary>
     /// Columns as their plan point and walls as their midpoint, per storey. "K" is the prefix this
@@ -229,6 +280,7 @@ public class EngineerModelBenchmarkTests
         var points = new Dictionary<string, DxfPoint>(StringComparer.OrdinalIgnoreCase);
         var columnAt = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var wallEnds = new Dictionary<string, (string A, string B)>(StringComparer.OrdinalIgnoreCase);
+        var floorJoints = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (string line in lines)
         {
@@ -244,11 +296,19 @@ public class EngineerModelBenchmarkTests
             if (c.Success) { columnAt[c.Groups[1].Value] = c.Groups[2].Value; continue; }
 
             var w = Regex.Match(line, @"^\s*AREA\s+""([^""]+)""\s+PANEL\s+4\s+""([^""]+)""\s+""([^""]+)""");
-            if (w.Success) wallEnds[w.Groups[1].Value] = (w.Groups[2].Value, w.Groups[3].Value);
+            if (w.Success) { wallEnds[w.Groups[1].Value] = (w.Groups[2].Value, w.Groups[3].Value); continue; }
+
+            var f = Regex.Match(line, @"^\s*AREA\s+""([^""]+)""\s+FLOOR\s+(\d+)\s+(.*)$");
+            if (f.Success)
+                floorJoints[f.Groups[1].Value] = Regex.Matches(f.Groups[3].Value, @"""([^""]+)""")
+                    .Select(x => x.Groups[1].Value)
+                    .Take(int.Parse(f.Groups[2].Value))
+                    .ToList();
         }
 
         var columns = new Dictionary<string, List<DxfPoint>>(StringComparer.OrdinalIgnoreCase);
         var walls = new Dictionary<string, List<(DxfPoint A, DxfPoint B)>>(StringComparer.OrdinalIgnoreCase);
+        var floorArea = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
         foreach (string line in lines)
         {
@@ -264,9 +324,14 @@ public class EngineerModelBenchmarkTests
                      && points.TryGetValue(ends.A, out var s)
                      && points.TryGetValue(ends.B, out var e))
                 AddWall(walls, storey, (s, e));
+            else if (floorJoints.TryGetValue(name, out var ring))
+            {
+                double area = Shoelace(ring.Where(points.ContainsKey).Select(x => points[x]).ToList());
+                floorArea[storey] = floorArea.TryGetValue(storey, out double had) ? had + area : area;
+            }
         }
 
-        return new Members(columns, walls);
+        return new Members(columns, walls, floorArea);
 
         static void Add(Dictionary<string, List<DxfPoint>> into, string storey, DxfPoint at)
         {
@@ -295,6 +360,20 @@ public class EngineerModelBenchmarkTests
     /// a wall of mine run along this wall of hers? Her panel's midpoint is measured to the nearest
     /// point on our panel's line, not to our midpoint.
     /// </summary>
+    /// <summary>Signed area of a ring, in square inches, unsigned.</summary>
+    private static double Shoelace(IReadOnlyList<DxfPoint> ring)
+    {
+        if (ring.Count < 3) return 0;
+        double sum = 0;
+        for (int i = 0; i < ring.Count; i++)
+        {
+            var a = ring[i];
+            var b = ring[(i + 1) % ring.Count];
+            sum += a.X * b.Y - b.X * a.Y;
+        }
+        return Math.Abs(sum) / 2.0;
+    }
+
     private static double DistanceToRun(DxfPoint p, DxfPoint a, DxfPoint b)
     {
         double dx = b.X - a.X, dy = b.Y - a.Y;
@@ -309,6 +388,7 @@ public class EngineerModelBenchmarkTests
     private static Score Compare(Members engineer, Members ours)
     {
         int columns = 0, refColumns = 0, walls = 0, refWalls = 0, anyStorey = 0;
+        int floorsClose = 0, refFloors = 0;
         var report = new List<string> { "storey    refCol  hit   refWall  hit" };
 
         var everyOurColumn = ours.Columns.Values.SelectMany(x => x).ToList();
@@ -330,11 +410,26 @@ public class EngineerModelBenchmarkTests
             walls += w; refWalls += refWall.Count;
             anyStorey += Within(refCol, everyOurColumn, ColumnTolerance);
 
-            report.Add($"{storey,-9} {refCol.Count,6} {c,4}   {refWall.Count,7} {w,4}");
+            // Floor area, which is what a slab-reading change moves and what nothing else here
+            // can see. Walls and columns are untouched by it, so a change that doubles a floor
+            // scores identically on both and looks free.
+            double refArea = engineer.FloorArea.TryGetValue(storey, out double ra) ? ra : 0;
+            double ourArea = ours.FloorArea.TryGetValue(storey, out double oa) ? oa : 0;
+            string floorNote = string.Empty;
+            if (refArea > 0)
+            {
+                refFloors++;
+                if (Math.Abs(ourArea - refArea) <= refArea * 0.20) floorsClose++;
+                floorNote = $"   floor {refArea / 144,8:N0} vs {ourArea / 144,8:N0} sq ft";
+            }
+
+            report.Add($"{storey,-9} {refCol.Count,6} {c,4}   {refWall.Count,7} {w,4}{floorNote}");
         }
 
-        report.Add($"columns {columns}/{refColumns}, walls {walls}/{refWalls}");
-        return new Score(columns, refColumns, walls, refWalls, anyStorey, string.Join("\n", report));
+        report.Add($"columns {columns}/{refColumns}, walls {walls}/{refWalls}, " +
+                   $"floors within 20% {floorsClose}/{refFloors}");
+        return new Score(columns, refColumns, walls, refWalls, anyStorey, floorsClose, refFloors,
+            string.Join("\n", report));
     }
 
     private static int Within(List<DxfPoint> reference, List<DxfPoint> ours, double tolerance)

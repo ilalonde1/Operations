@@ -20,6 +20,7 @@
         'Wait-KorServiceState'
         'Get-KorHardwareProfile'
         'ConvertFrom-KorSmbios'
+        'Get-KorThermalProfile'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

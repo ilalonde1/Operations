@@ -364,6 +364,23 @@ public static class StructuralPlanClassifier
         foreach (string role in prepared.Select(x => x.Role!).Distinct())
         {
             var builder = role is RoleWall or RoleColumn ? wallBuilder : slabBuilder;
+
+            // A SECOND chaining pass at the interruption width was tried here and is not used.
+            //
+            // The reasoning was sound -- a slab edge is cut wherever other linework crosses it, and
+            // how wide those cuts run is banked as dxf.flood-fill-bridge, 36 in, against an
+            // ordinary bridge of 6 in. It scores well too: floors within a fifth of the engineer's
+            // on 31065 go from 18 of 23 to 19.
+            //
+            // It also welds separate buildings together. 31168's LEVEL 2 carries two towers on one
+            // sheet, 12,380 and 12,271 sq ft, and the wider reach joins them into a single 26,309
+            // sq ft plate spanning both. A storey may genuinely carry several slabs -- that is why
+            // this reads more than one -- and a rule that cannot tell a second slab from a second
+            // building is not ready, whatever it scores. One point of floor agreement does not buy
+            // two buildings sharing a diaphragm.
+            var slabRescue = role == RoleSlab && options.FloodFillBridge > options.BridgeTolerance
+                ? new PlanLoopBuilder(options.JoinTolerance, options.FloodFillBridge, options.ExtendLimit)
+                : null;
             var loops = new List<PlanLoop>();
             var leftovers = new List<DxfSegment>();
 
@@ -382,10 +399,48 @@ public static class StructuralPlanClassifier
             var pooled = leftovers.Count > 0 ? builder.Build(leftovers) : null;
             if (pooled is not null) loops.AddRange(pooled.Loops);
 
-            byRole.Add((role, loops, pooled?.OpenChains.ToList() ?? new List<IReadOnlyList<DxfPoint>>()));
+            var stillOpen = pooled?.OpenChains.ToList() ?? new List<IReadOnlyList<DxfPoint>>();
+
+            if (slabRescue is not null && stillOpen.Count > 0)
+            {
+                var rescued = slabRescue.Build(stillOpen
+                    .SelectMany(c => Enumerable.Range(0, c.Count - 1)
+                        .Select(i => new DxfSegment(RoleSlab, c[i], c[i + 1])))
+                    .ToList());
+                // Never silently: an outline that needed the wider reach is a reconstruction, and
+                // the engineer checking this model is entitled to know which floors were read off
+                // the drawing and which were inferred from it.
+                if (rescued.Loops.Count > 0)
+                    result.Flags.Add(
+                        $"{rescued.Loops.Count} slab outline(s) closed only at the interruption width " +
+                        $"({options.FloodFillBridge:0} in), not the ordinary {options.BridgeTolerance:0} in — " +
+                        "a slab edge cut by other linework. Recovered geometry: check the edge.");
+
+                loops.AddRange(rescued.Loops);
+                stillOpen = rescued.OpenChains.ToList();
+            }
+
+            byRole.Add((role, loops, stillOpen));
         }
 
+        // The ground this sheet's own structure stands on, as a box. A reconstructed slab outline
+        // is judged against it: a floor covers a meaningful share of its building's footprint, and
+        // a closed scrap of linework does not. Absolute area cannot tell them apart -- 400 sq ft is
+        // the minimum plate and also the size of every stair landing on 31138 -- but 400 against
+        // 30,000 is plainly not a floor, whatever the building.
+        var structurePoints = prepared
+            .Where(x => x.Role is RoleWall or RoleColumn)
+            .SelectMany(x => new[] { x.Segment.Start, x.Segment.End })
+            .ToList();
+
+        double structureGround = structurePoints.Count > 0
+            ? (structurePoints.Max(p => p.X) - structurePoints.Min(p => p.X))
+              * (structurePoints.Max(p => p.Y) - structurePoints.Min(p => p.Y))
+            : 0;
+
         var slabCandidates = new List<PlanLoop>();
+        int chainClosedCount = 0;
+        var chainRings = new List<PlanLoop>();
 
         foreach (var group in byRole)
         {
@@ -394,6 +449,7 @@ public static class StructuralPlanClassifier
             bool isColumn = layer == RoleColumn;
 
             var built = (Loops: group.Loops, OpenChains: group.OpenChains);
+            var closedFromChains = new List<PlanLoop>();
 
             // A wall enclosure is broken by its own doorway, so its outline never closes — but it
             // still traces the faces of real walls. Decompose those chains as well rather than
@@ -434,6 +490,66 @@ public static class StructuralPlanClassifier
                 recovered += PairOpenFaces(result, unread, layer, options);
             }
 
+            // A slab outline broken in ONE place is still that slab's outline.
+            //
+            // Drafting interrupts a slab edge wherever other linework crosses it, so an outline
+            // arrives as a chain with two loose ends rather than a ring. Joining a chain's own two
+            // ends is not a guess about what was drawn: it is the one reading that uses every
+            // segment the draftsman put down and adds none he did not.
+            //
+            // The ring still has to pass the tests a drawn one does -- minimum plate area, and
+            // filling enough of its own bounding box to be a slab rather than a strip of
+            // annotation -- and a chain with more than two loose ends is left alone, because which
+            // end joins which is a guess at that point and a wrong guess builds a floor nobody
+            // drew.
+            // ONLY where the drawing closed no FLOOR on this sheet.
+            //
+            // A closed outline big enough to be a floor is the draftsman saying what the floor is,
+            // and joining loose ends where he has already said it adds floors nobody drew: 31138
+            // goes from 13 floor plates to 50 that way. But "closed nothing at all" is too crude a
+            // reading of the same idea -- the YMCA mezzanine closes three rings of about 110 sq ft,
+            // which are stair nosings, and they were enough to stop the reconstruction on a sheet
+            // whose actual slab outlines are three OPEN chains of 2,593, 1,961 and 502 sq ft. The
+            // engineer: "there are actually 3 slabs at mezzanine level for the YMCA."
+            //
+            // Allowing it everywhere is worth something real and measured: 31065 goes from 16 to
+            // 18 of 23 storeys whose floor area is within a fifth of the engineer's, because L2
+            // through L5 gain plates the drawing does close elsewhere on the same sheet. Two rules
+            // were tried to keep that and drop 31138's extras -- "must beat the largest drawn
+            // outline" (kills both, since the gains ADD area rather than replace it) and "must
+            // cover a tenth of the ground this storey's structure stands on" (31138 still comes out
+            // at 37 plates, because its slab edges arrive as many large open chains). Neither
+            // separates them. Until one does, this is a reconstruction of last resort, beside the
+            // flood fill, and the two points on 31065 are left on the table deliberately.
+            if (layer == RoleSlab && built.OpenChains.Count > 0)
+            {
+                foreach (var chain in built.OpenChains)
+                {
+                    if (chain.Count < 4) continue;
+
+                    var ring = new PlanLoop(layer, chain, closedExactly: false);
+
+                    if (ring.Area < options.MinPlateArea) continue;
+
+
+                    var (minX, minY, maxX, maxY) = ring.Bounds();
+                    double box = (maxX - minX) * (maxY - minY);
+                    if (box <= 0 || ring.Area / box < 0.55) continue;
+
+                    closedFromChains.Add(ring);
+                    chainRings.Add(ring);
+                    chainClosedCount++;
+
+                    // Never silently. A plate the drawing did not close is a reconstruction, and an
+                    // engineer checking this model is entitled to know which of her floors this
+                    // tool inferred and which it read.
+                    result.Flags.Add(
+                        $"{layer}: a slab outline of {ring.Area / 144:N0} sq ft was closed by joining " +
+                        "its own two loose ends — the drawing leaves it open where other linework " +
+                        "crosses it. Recovered geometry: check the edge.");
+                }
+            }
+
             if (built.OpenChains.Count > 0)
             {
                 double openLength = built.OpenChains.Sum(c =>
@@ -449,7 +565,7 @@ public static class StructuralPlanClassifier
 
             // A wall drawn as two separate rings — its outer face and its inner face — is one wall,
             // not two enormous ones. Pair them before anything looks at them singly.
-            var loops = built.Loops.ToList();
+            var loops = built.Loops.Concat(closedFromChains).ToList();
             if (isWall) loops = PairConcentricWallRings(result, loops, options);
 
             foreach (var loop in loops)
@@ -533,7 +649,17 @@ public static class StructuralPlanClassifier
             }
         }
 
-        if (result.Slabs.Count == 0)
+        // The fill also runs when every floor found came from JOINING A CHAIN'S ENDS, because
+        // that reading and this one can disagree by a factor and the bigger one is the floor.
+        //
+        // Measured on 31065, where an engineer's own model says what the answer is. Closing chains
+        // gains L2 through L5 outright -- L3 goes from 10,956 to 25,381 sq ft against her 29,046 --
+        // and on L1 and P1 it closes a DETAIL inside the floor, which then counted as the floor and
+        // stopped the fill from running at all: L1 fell from 36,280 to 5,499 sq ft against her
+        // 58,229, and P1 from 34,458 to 1,359 against her 40,067. Both readings are reconstructions
+        // of an outline the drawing leaves open; neither is authoritative, so the one that encloses
+        // the ground wins, and a closed chain sitting inside it is a detail and becomes an opening.
+        if (result.Slabs.Count == 0 || chainClosedCount > 0)
         {
             // One LAYER at a time, not every slab layer rasterised together.
             //
@@ -579,6 +705,64 @@ public static class StructuralPlanClassifier
                 }
             }
 
+            // A chain-closed ring the fill's plate encloses is a detail inside the floor, not the
+            // floor. Handing it back as an opening is what it is.
+            if (best is not null && result.Slabs.Count > 0)
+            {
+                // A chain-closed ring loses to the drawn linework wherever the two overlap, whichever
+                // is bigger. Joining a chain's ends is a reconstruction of an outline the drawing
+                // leaves open; the fill traces what the draftsman actually put down. Where both
+                // describe the same ground, his linework is the better witness.
+                //
+                // Size cannot decide it. C-LEVEL 3's chain closes into 22,676 sq ft against the
+                // 12,830 the fill recovers, and 12,830 is the banked answer -- it is the figure
+                // dxf.flood-fill-bridge = 36 in was set BY, and the one that answered the engineer
+                // when she said "level 3 has its own slab edge, it's on the drawings". Taking the
+                // larger would have quietly overwritten a value she has already seen and accepted.
+                var swallowed = result.Slabs
+                    .Where(x => LoopGeometry.PointInPolygon(x.Centroid(), best.Points)
+                                && (x.Area < best.Area || chainRings.Contains(x)))
+                    .ToList();
+
+                // Swallowing MORE THAN ONE is a weld, not a floor. 31168's LEVEL 2 carries two
+                // towers, 12,380 and 12,271 sq ft, and letting the fill run on that storey
+                // produced a single 26,309 sq ft plate spanning x -109..191 -- both towers on one
+                // diaphragm, traced off 1,924 raster points. A reading that covers two floors
+                // already found has found the ground between them, which is not floor.
+                if (swallowed.Count > 1)
+                {
+                    result.Flags.Add(
+                        $"a floor of {best.Area / 144:N0} sq ft recovered from the drawn linework covers " +
+                        $"{swallowed.Count} floors already read on this storey and was not modelled — one " +
+                        "plate spanning separate structures is a diaphragm they do not share.");
+                    best = null;
+                }
+                else if (swallowed.Count > 0)
+                {
+                    foreach (var inside in swallowed) result.Slabs.Remove(inside);
+                    result.Openings.AddRange(swallowed);
+                    result.Flags.Add(
+                        $"{swallowed.Count} closed outline(s) totalling {swallowed.Sum(x => x.Area) / 144:N0} sq ft " +
+                        $"sit inside the {best.Area / 144:N0} sq ft floor recovered from the drawn linework, so they " +
+                        "are read as openings in it rather than as floors of their own.");
+                }
+                // And the other way round: a floor already found may enclose the fill's plate, in
+                // which case the fill has recovered part of a floor that is already there. Two
+                // plates stacked on the same ground are one diaphragm counted twice, which is
+                // worse than either of them alone -- 31168's C-LEVEL 3 came out carrying 22,676
+                // and 12,830 sq ft at once.
+                //
+                // If neither encloses the other the two readings found different ground and both
+                // are floors. Discarding one because the other exists is how LEVEL P1 came out at
+                // 1,359 sq ft against the engineer's 40,067: a chain closed around a small part of
+                // a parkade whose outline the fill had whole.
+                else if (result.Slabs.Any(x =>
+                             LoopGeometry.PointInPolygon(best.Centroid(), x.Points) && x.Area >= best.Area))
+                {
+                    best = null;
+                }
+            }
+
             if (best is not null)
             {
                 result.Slabs.Add(best);
@@ -589,7 +773,14 @@ public static class StructuralPlanClassifier
         // A storey whose slab edges will not close still has a floor, and the inside of its
         // perimeter wall is the outline of it. Used only as a fallback: where the slab layers gave
         // a plate, that plate is the better boundary and this is ignored.
-        if (options.FloorFromPerimeterWall && result.Slabs.Count == 0 && result.EnclosedByWalls.Count > 0)
+        // Also when every floor found came from joining a chain's ends, for the same reason the
+        // flood fill runs then: a chain can close around a detail inside the floor and stop the
+        // reading that had the floor whole. LEVEL P1 on 31065 came out at 1,359 sq ft against the
+        // engineer's 40,067 that way -- the parkade's outline is its perimeter wall, and a closed
+        // scrap of linework inside it counted as the floor and suppressed it.
+        if (options.FloorFromPerimeterWall
+            && (result.Slabs.Count == 0 || result.Slabs.Count == chainClosedCount)
+            && result.EnclosedByWalls.Count > 0)
         {
             var enclosed = result.EnclosedByWalls
                 .Where(l => l.Area >= options.MinPlateArea)
@@ -1179,8 +1370,36 @@ public static class StructuralPlanClassifier
         {
             var centre = loop.Centroid();
             var container = slabs.FirstOrDefault(s => LoopGeometry.PointInPolygon(centre, s.Points));
-            if (container is not null) result.Openings.Add(loop);
-            else slabs.Add(loop);
+            if (container is not null) { result.Openings.Add(loop); continue; }
+
+            // Two floors on one storey may abut; they may not lie on top of each other. Containment
+            // by centroid is not enough to see that -- two readings of the same floor can each have
+            // their centre outside the other while covering most of the same ground, and both then
+            // ship as floors. That is one diaphragm counted twice, and ETABS has no way to know.
+            //
+            // 31168's LEVEL 2 arrived as four plates that way: 26,309 sq ft, then 10,838 and 8,216
+            // lying across it and each other.
+            var (aMinX, aMinY, aMaxX, aMaxY) = loop.Bounds();
+            double own = (aMaxX - aMinX) * (aMaxY - aMinY);
+
+            var clash = slabs.FirstOrDefault(s =>
+            {
+                var (bMinX, bMinY, bMaxX, bMaxY) = s.Bounds();
+                double w = Math.Min(aMaxX, bMaxX) - Math.Max(aMinX, bMinX);
+                double h = Math.Min(aMaxY, bMaxY) - Math.Max(aMinY, bMinY);
+                return w > 0 && h > 0 && own > 0 && (w * h) / own >= 0.5;
+            });
+
+            if (clash is not null)
+            {
+                result.Flags.Add(
+                    $"a floor plate of {loop.Area / 144:N0} sq ft lies over one of " +
+                    $"{clash.Area / 144:N0} sq ft already read on this storey and was not modelled — two " +
+                    "readings of one floor, not two floors. The larger is kept.");
+                continue;
+            }
+
+            slabs.Add(loop);
         }
 
         // A ring too small to be a floor and not inside one is linework, not structure. Modelling

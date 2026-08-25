@@ -324,6 +324,177 @@ if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIg
 // VERIFY a generated model against a trusted one: how closely does the geometry built from
 // drawings reproduce what the imported model already says is there, storey by storey.
 // Usage: takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [<story> ...]
+// WHICH BUILDING EACH STOREY BELONGS TO, read off the drawings rather than passed in by hand.
+//
+// A site model carries several buildings in one storey list, and until now the operator had to
+// know the shape of the job and say so: -Tower C -TopStorey C-ROOF -DropStoreys LEVEL 3..LEVEL 10.
+// That is the tool asking the engineer to know what the tool is looking at.
+//
+// A storey NAMED for a building belongs to it. A storey named for nobody -- "LEVEL 12", "LEVEL P1"
+// -- belongs to whichever building's footprint its structure stands inside, and to all of them
+// when it stands under all of them, which is what a shared podium or parkade is.
+//
+// Usage: takeoff dxf-buildings <dxfFolder> <reference.e2k>
+// PUBLISH a job: one model per building, verified, staged, and only then landed.
+//
+// The whole flow used to be an 818-line PowerShell script that the test suite could not reach and
+// that shipped as readable text beside the binary. What it DECIDED now lives in JobPublisher and
+// PublishPlan, compiled and covered; what is left in a launcher is rendering PDFs and copying
+// files, which is plumbing.
+//
+// Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference f.e2k] [--rules-db c]
+//                        [--infer-floors] [--stage folder] [--land]
+if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 4)
+    {
+        Console.Error.WriteLine("Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stage <folder>] [--land]");
+        return 1;
+    }
+    if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
+    if (!Directory.Exists(args[2])) { Console.Error.WriteLine($"Not found '{args[2]}'."); return 2; }
+
+    string? pubReference = null, pubRules = null;
+    string pubStage = Path.Combine(Path.GetTempPath(), $"kor-publish-{args[3]}");
+    bool pubInfer = false, pubLand = false;
+
+    for (int i = 4; i < args.Length; i++)
+    {
+        if (args[i].Equals("--reference", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubReference = args[++i];
+        else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubRules = args[++i];
+        else if (args[i].Equals("--stage", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubStage = args[++i];
+        else if (args[i].Equals("--infer-floors", StringComparison.OrdinalIgnoreCase)) pubInfer = true;
+        else if (args[i].Equals("--land", StringComparison.OrdinalIgnoreCase)) pubLand = true;
+        else { Console.Error.WriteLine($"Unknown argument '{args[i]}'."); return 1; }
+    }
+
+    var outcome = JobPublisher.Run(new JobPublisher.Request
+    {
+        Project = args[3],
+        ModelFolder = args[1],
+        DxfFolder = args[2],
+        Reference = pubReference,
+        RuleSettingsConnection = pubRules,
+        StageFolder = pubStage,
+        InferFloors = pubInfer,
+    });
+
+    if (outcome.Refused is not null)
+    {
+        Console.Error.WriteLine($"REFUSED - {outcome.Refused}");
+        return 3;
+    }
+
+    Console.WriteLine($"reference : {outcome.Reference}");
+    Console.WriteLine($"buildings : {outcome.Models.Count}");
+    Console.WriteLine();
+
+    foreach (var one in outcome.Models)
+    {
+        Console.WriteLine($"{one.Label}");
+        Console.WriteLine($"  storeys {one.Storeys}   walls {one.Walls}   columns {one.Columns}   floors {one.Floors}");
+
+        if (one.Passed) { Console.WriteLine("  verify-e2k: passes every invariant."); continue; }
+
+        Console.WriteLine($"  verify-e2k: FAILS {one.Violations.Count} check(s) - NOT landed.");
+        foreach (var group in one.Violations.GroupBy(v => v.Rule))
+        {
+            Console.WriteLine($"    [{group.Key}] {group.Count()}");
+            foreach (var breach in group.Take(3)) Console.WriteLine($"        {breach.What}");
+        }
+    }
+
+    // Landing is the caller's word, not this tool's assumption. A staged model that failed stays
+    // where it is, with its violations, which is the whole point of staging it.
+    if (!pubLand) { Console.WriteLine(); Console.WriteLine("staged only; pass --land to copy what passed into the job folder."); }
+    else
+    {
+        Console.WriteLine();
+        foreach (var passed in outcome.Models.Where(m => m.Passed))
+            foreach (string file in Directory.EnumerateFiles(pubStage, $"{passed.Label}-*"))
+            {
+                string to = Path.Combine(args[1], Path.GetFileName(file));
+                File.Copy(file, to, overwrite: true);
+                Console.WriteLine($"  landed {Path.GetFileName(file)}");
+            }
+    }
+
+    return outcome.Models.All(m => m.Passed) ? 0 : 3;
+}
+
+if (args.Length >= 1 && args[0].Equals("dxf-buildings", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff dxf-buildings <dxfFolder> <reference.e2k>"); return 1; }
+    if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
+    if (!File.Exists(args[2])) { Console.Error.WriteLine($"Not found '{args[2]}'."); return 2; }
+
+    var refDoc = E2kDocument.Load(args[2]);
+    var allStoreys = refDoc.ReadStories().Select(s => s.Name).ToList();
+    var classifyWith = new PlanClassificationOptions();
+
+    var reach = new Dictionary<string, (double MinX, double MinY, double MaxX, double MaxY)>(StringComparer.OrdinalIgnoreCase);
+
+    foreach (string file in Directory.EnumerateFiles(args[1], "*.dxf", SearchOption.TopDirectoryOnly))
+    {
+        var sheet = PlanSheetNaming.Parse(file);
+        var on = PlanSheetNaming.MatchStories(sheet, allStoreys);
+        if (on.Count == 0) continue;
+
+        var found = StructuralPlanClassifier.Classify(DxfPlanReader.ReadSegments(file), classifyWith);
+        var pts = found.Walls.SelectMany(w => new[] { w.Start, w.End })
+            .Concat(found.Columns.Select(c => c.Center))
+            .ToList();
+        if (pts.Count == 0) continue;
+
+        var box = (pts.Min(p => p.X), pts.Min(p => p.Y), pts.Max(p => p.X), pts.Max(p => p.Y));
+        foreach (string storey in on)
+            reach[storey] = reach.TryGetValue(storey, out var had)
+                ? (Math.Min(had.MinX, box.Item1), Math.Min(had.MinY, box.Item2),
+                   Math.Max(had.MaxX, box.Item3), Math.Max(had.MaxY, box.Item4))
+                : box;
+    }
+
+    var tags = allStoreys.Select(E2kDocument.BuildingTagOf).Where(t => t.Length > 0).Distinct().OrderBy(t => t).ToList();
+    if (tags.Count == 0) { Console.WriteLine("ONE\t" + string.Join(",", allStoreys)); return 0; }
+
+    var footprint = new Dictionary<string, (double MinX, double MinY, double MaxX, double MaxY)>(StringComparer.OrdinalIgnoreCase);
+    foreach (string tag in tags)
+        foreach (string storey in allStoreys.Where(s => E2kDocument.BuildingTagOf(s).Equals(tag, StringComparison.OrdinalIgnoreCase)))
+            if (reach.TryGetValue(storey, out var box))
+                footprint[tag] = footprint.TryGetValue(tag, out var had)
+                    ? (Math.Min(had.MinX, box.MinX), Math.Min(had.MinY, box.MinY),
+                       Math.Max(had.MaxX, box.MaxX), Math.Max(had.MaxY, box.MaxY))
+                    : box;
+
+    static double Overlap((double MinX, double MinY, double MaxX, double MaxY) a,
+                          (double MinX, double MinY, double MaxX, double MaxY) b)
+    {
+        double w = Math.Min(a.MaxX, b.MaxX) - Math.Max(a.MinX, b.MinX);
+        double h = Math.Min(a.MaxY, b.MaxY) - Math.Max(a.MinY, b.MinY);
+        double own = (a.MaxX - a.MinX) * (a.MaxY - a.MinY);
+        return w > 0 && h > 0 && own > 0 ? w * h / own : 0;
+    }
+
+    foreach (string tag in tags)
+    {
+        var mine = new List<string>();
+        foreach (string storey in allStoreys)
+        {
+            string owner = E2kDocument.BuildingTagOf(storey);
+            if (owner.Length > 0) { if (owner.Equals(tag, StringComparison.OrdinalIgnoreCase)) mine.Add(storey); continue; }
+            if (!reach.TryGetValue(storey, out var box)) { mine.Add(storey); continue; }
+            if (!footprint.TryGetValue(tag, out var mineBox)) continue;
+
+            bool here = Overlap(box, mineBox) >= 0.5;
+            bool shared = tags.All(t => footprint.TryGetValue(t, out var f) && Overlap(f, box) >= 0.5);
+            if (here || shared) mine.Add(storey);
+        }
+
+        Console.WriteLine($"{tag}\t{string.Join(",", mine)}");
+    }
+    return 0;
+}
+
 if (args.Length >= 1 && args[0].Equals("e2k-compare", StringComparison.OrdinalIgnoreCase))
 {
     if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [<story> ...]"); return 1; }
@@ -3102,6 +3273,8 @@ public static class TakeoffCliHelp
         new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
         new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls] [--plates]", "Inspect DXF layers, loops, wall outlines, and recovered floor plates."),
+        new("publish", "takeoff publish <modelFolder> <dxfFolder> <job> [--rules-db <c>] [--land]", "Build, verify and land one model per building."),
+        new("dxf-buildings", "takeoff dxf-buildings <dxfFolder> <reference.e2k>", "Say which storeys belong to which building."),
         new("e2k-compare", "takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [...]", "Compare generated ETABS geometry against a reference model."),
         new("dxf-import-rules", "takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]", "Import per-job DXF rule answers."),
         new("corpus-read", "takeoff corpus-read <projectsRoot> [out.txt] [--limit N]", "Extract readable project corpus text."),

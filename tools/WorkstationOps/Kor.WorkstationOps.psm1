@@ -793,7 +793,188 @@ function Get-KorHardwareProfile {
     }
 }
 
+function Get-KorThermalProfile {
+    <#
+    .SYNOPSIS
+        Why a workstation is loud, hot, or throttling: cooling profile, fan speeds,
+        temperatures, GPU state, and whether the CPU is genuinely being limited.
+    .DESCRIPTION
+        Written 2026-08-24 after KOR-305 was reported as NOISY. Every Office-focused check in
+        this module came back clean; the answer was a BIOS cooling profile set to Performance
+        on a machine that was idle and cold. This function exists so the next "it's noisy" is
+        one command instead of four hand-written probes.
+
+        Unlike the rest of the module this uses CIM over DCOM, which the fleet permits even
+        though WinRM is blocked. Reachability is gated on port 445, never on ping.
+
+        Two traps worth not re-learning:
+
+        1. A COLD, IDLE MACHINE CAN STILL BE LOUD. Check the fan profile before hunting for
+           runaway load. KOR-305 sat at 2.2% CPU and 27.9 C while running Lenovo
+           "Performance mode", which holds an aggressive curve regardless of temperature.
+
+        2. Kernel-Processor-Power EVENT 37 IS USUALLY MEANINGLESS on Intel hybrid CPUs. It
+           says "limited by system firmware" and fires constantly for the E-cores, whose max
+           turbo sits below the nominal-derived ceiling. On KOR-305 it had fired 4,928 times
+           and meant nothing: every instance named a logical processor in 16-31, exactly the
+           16 E-cores of an i9-13900K. Only treat it as a real throttle when it names a
+           P-core. ThrottledPCores below does that filtering for you.
+    .EXAMPLE
+        Get-KorThermalProfile -ComputerName KOR-305 | Format-List
+    .EXAMPLE
+        'KOR-305','KOR-306' | Get-KorThermalProfile | Select-Object ComputerName, CoolingMode, CpuFanRpm
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, ValueFromPipeline)][string[]]$ComputerName,
+        # Event-log scan is the slow part; skip it when you only want the live readings.
+        [switch]$SkipEventScan
+    )
+
+    process {
+        foreach ($cn in $ComputerName) {
+            if (-not (Test-NetConnection -ComputerName $cn -Port 445 -WarningAction SilentlyContinue -InformationLevel Quiet)) {
+                [PSCustomObject]@{ ComputerName = $cn; Reachable = $false }
+                continue
+            }
+
+            # Neither CIM transport is reliable on this fleet by itself, so try both rather
+            # than assuming either. DCOM answers "RPC server is unavailable" wherever the
+            # dynamic port range is blocked, which is most machines; WSMan answers only where
+            # the WinRM listener happens to be up. Whichever connects first wins.
+            $session = $null
+            $proto = $null
+            foreach ($p in 'Wsman', 'Dcom') {
+                try {
+                    $session = New-CimSession -ComputerName $cn -SessionOption (New-CimSessionOption -Protocol $p) `
+                        -OperationTimeoutSec 20 -ErrorAction Stop
+                    $proto = $p
+                    break
+                }
+                catch { $session = $null }
+            }
+            if (-not $session) {
+                [PSCustomObject]@{
+                    ComputerName = $cn; Reachable = $true
+                    Findings     = @('No CIM transport: WSMan and DCOM both refused. Thermal data needs one of them.')
+                }
+                continue
+            }
+
+            $cim = { param($ns, $cls)
+                try { Get-CimInstance -CimSession $session -Namespace $ns -ClassName $cls -ErrorAction Stop } catch { $null }
+            }
+            # The Lenovo_DT_* desktop getters report through a 'return' property, not a value
+            # property. A platform that does not populate one answers 0 — which is neither a
+            # temperature nor an RPM, so surface it as null rather than a confident zero.
+            $lenovoData = { param($cls)
+                try {
+                    $i = Get-CimInstance -CimSession $session -Namespace root\wmi -ClassName $cls -ErrorAction Stop | Select-Object -First 1
+                    if ($null -ne $i -and [int]$i.return -gt 0) { [int]$i.return } else { $null }
+                } catch { $null }
+            }
+
+            # Win32_ComputerSystem, NOT Win32_ComputerSystemProduct: over WSMan the former
+            # comes back as "the XML is invalid" from these Lenovo boxes, and the latter
+            # carries the same vendor and model without tripping the serialiser.
+            $cs   = & $cim 'root\cimv2' 'Win32_ComputerSystemProduct'
+            $bios = & $cim 'root\cimv2' 'Win32_BIOS'
+            $cpu  = @(& $cim 'root\cimv2' 'Win32_Processor')
+
+            # BIOS cooling profile. This is the setting that actually decides the fan curve.
+            $coolingMode = $null
+            $biosSettings = & $cim 'root\wmi' 'Lenovo_BiosSetting'
+            foreach ($s in $biosSettings) {
+                if ($s.CurrentSetting -match '^(IntelligentCoolingPerformanceMode|ThermalMode|FanControl)\s*,\s*([^;]+)') {
+                    $coolingMode = $Matches[2].Trim()
+                }
+            }
+
+            $smartFan = $null
+            $smartFanLabel = $null
+            try {
+                $gz = Get-CimInstance -CimSession $session -Namespace root\wmi -ClassName LENOVO_GAMEZONE_DATA -ErrorAction Stop | Select-Object -First 1
+                $smartFan = (Invoke-CimMethod -InputObject $gz -MethodName GetSmartFanMode -ErrorAction Stop).Data
+                # Lenovo's numbering is not consistent across lines, so decode leniently and
+                # let CoolingMode (read straight from BIOS) be the authoritative answer.
+                $smartFanLabel = switch ($smartFan) {
+                    1 { 'Quiet' } 2 { 'Balanced' } 3 { 'Performance' } 4 { 'Full Speed' } default { "mode $smartFan" }
+                }
+            } catch { }
+
+            $thermalC = $null
+            $tz = & $cim 'root\wmi' 'MSAcpi_ThermalZoneTemperature'
+            if ($tz) { $thermalC = [math]::Round((($tz | Select-Object -First 1).CurrentTemperature / 10) - 273.15, 1) }
+
+            # Real RPM, where the platform exposes it.
+            $cpuFan = & $lenovoData 'Lenovo_DT_GetCPUFan'
+            $sysFan = & $lenovoData 'Lenovo_DT_GetSYSFan'
+            $cpuTemp = & $lenovoData 'Lenovo_DT_GetCPUTemp'
+
+            # GPU fans are a common noise source and nvidia-smi is the only honest source for
+            # them. It has to run ON the box: Win32_Process Create works where WinRM does not.
+            $gpu = $null
+            try {
+                $tmp = "C:\Windows\Temp\kor-thermal-gpu.txt"
+                $unc = "\\$cn\c$\Windows\Temp\kor-thermal-gpu.txt"
+                if (Test-Path $unc) { Remove-Item $unc -Force -ErrorAction SilentlyContinue }
+                $cmd = "cmd.exe /c nvidia-smi --query-gpu=name,temperature.gpu,fan.speed,utilization.gpu,power.draw,power.limit --format=csv,noheader > $tmp 2>&1"
+                $null = Invoke-CimMethod -CimSession $session -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $cmd } -ErrorAction Stop
+                for ($i = 0; $i -lt 10 -and -not (Test-Path $unc); $i++) { Start-Sleep -Milliseconds 500 }
+                if (Test-Path $unc) {
+                    $line = (Get-Content $unc -ErrorAction SilentlyContinue | Where-Object { $_ -match ',' } | Select-Object -First 1)
+                    if ($line) {
+                        $f = $line -split '\s*,\s*'
+                        $gpu = [PSCustomObject]@{
+                            Name = $f[0]; TempC = $f[1]; FanPct = $f[2]; UtilPct = $f[3]; PowerW = $f[4]; PowerLimitW = $f[5]
+                        }
+                    }
+                }
+            } catch { }
+
+            # Only P-core throttling is real; see the E-core trap in the description.
+            $throttledP = $null
+            if (-not $SkipEventScan) {
+                try {
+                    $ev = Get-KorWorkstationEvent -ComputerName $cn -LogName System -ErrorAction Stop |
+                        Where-Object { $_.Id -eq 37 -and $_.ProviderName -match 'Processor-Power' }
+                    $procs = foreach ($e in $ev) { if ($e.Message -match 'processor (\d+) in group') { [int]$Matches[1] } }
+                    $pcoreHits = @($procs | Sort-Object -Unique | Where-Object { $_ -lt 16 })
+                    $throttledP = $pcoreHits.Count
+                } catch { }
+            }
+
+            [PSCustomObject]@{
+                ComputerName    = $cn
+                Reachable       = $true
+                Transport       = $proto
+                Model           = if ($cs) { "$($cs.Vendor) $($cs.Name)".Trim() } else { $null }
+                Bios            = if ($bios) { "$($bios.SMBIOSBIOSVersion) ($(if ($bios.ReleaseDate) { $bios.ReleaseDate.ToString('yyyy-MM-dd') }))" } else { $null }
+                Cpu             = if ($cpu) { $cpu[0].Name.Trim() } else { $null }
+                CpuLoadPct      = if ($cpu) { ($cpu | Measure-Object LoadPercentage -Average).Average } else { $null }
+                CoolingMode     = $coolingMode
+                SmartFanMode    = $smartFanLabel
+                ThermalZoneC    = $thermalC
+                CpuTempC        = $cpuTemp
+                CpuFanRpm       = $cpuFan
+                SysFanRpm       = $sysFan
+                Gpu             = $gpu
+                ThrottledPCores = $throttledP
+                Findings        = @(
+                    if ($coolingMode -and $coolingMode -match 'Performance|Full Speed') {
+                        "Cooling profile is '$coolingMode' — an aggressive fan curve that stays loud even at idle. 'Balance mode' is the quiet setting."
+                    }
+                    if ($thermalC -and $thermalC -gt 80) { "Thermal zone at $thermalC C — genuinely hot, not just a fan profile." }
+                    if ($throttledP) { "$throttledP P-core(s) report firmware limiting — this one is real, unlike E-core reports." }
+                    if ($gpu -and [int]($gpu.FanPct -replace '\D') -gt 60) { "GPU fan at $($gpu.FanPct) — check GPU load and dust." }
+                )
+            }
+        }
+    }
+}
+
 Export-ModuleMember -Function Test-KorWorkstationChannel, Use-KorRemoteRegistry, Get-KorWorkstationEvent,
     Get-KorOutlookAddin, Get-KorOutlookStore, Get-KorOfficeHealth, Set-KorOutlookAddinState,
     Invoke-KorSearchIndexRebuild, Get-KorWorkstationHealth, Get-KorServiceState, Wait-KorServiceState,
-    Invoke-KorSc, Resolve-KorAdminShare, Get-KorHardwareProfile, ConvertFrom-KorSmbios
+    Invoke-KorSc, Resolve-KorAdminShare, Get-KorHardwareProfile, ConvertFrom-KorSmbios,
+    Get-KorThermalProfile
