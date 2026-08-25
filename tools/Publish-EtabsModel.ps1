@@ -36,6 +36,21 @@ param(
     # 31168's YMCA is -DropStoreys 'LEVEL 3','LEVEL 4','LEVEL 5','LEVEL 6','LEVEL 7','LEVEL 8','LEVEL 9','LEVEL 10'.
     [string[]]$DropStoreys,
 
+    # One model per building: keep this building's storeys and drop every storey that names a
+    # DIFFERENT one. "A-LEVEL 34" names tower A; "LEVEL P1" names nobody and is shared, so it
+    # stays. -Tower C is 31168's YMCA.
+    #
+    # The engineer, unprompted: "it's best if a file only has the elevations relevant to the
+    # building modelled", and before that "let's do one model per building". The model published
+    # on 24 August carried A-LEVEL 1 and B-LEVEL 1 -- two towers' ground floors -- inside a file
+    # she was reviewing as the YMCA. Storeys from another building corrupt every storey-to-storey
+    # check she makes, because the stack she is checking is not the stack that exists.
+    #
+    # This cuts by NAME and cannot reach a storey the drafting left untagged: 31168's LEVEL 3
+    # through LEVEL 10 are tower floors called nothing in particular, and they still need
+    # -DropStoreys. The two work together; neither replaces the other.
+    [string]$Tower,
+
     # Give a storey that has members but no floor a plate copied from another storey -- the one
     # whose own plate stands under those members AND is closest to them in shape. Nearest-below
     # was the first rule and it handed 31168's mid-rise the ground floor's site-wide slab, because
@@ -157,6 +172,7 @@ Write-Host "generating $Project..." -ForegroundColor DarkGray
 $cutArgs = @()
 if ($TopStorey) { $cutArgs += @('--top-storey', $TopStorey) }
 if ($DropStoreys) { $cutArgs += @('--drop-storeys', ($DropStoreys -join ',')) }
+if ($Tower) { $cutArgs += @('--tower', $Tower) }
 if ($InferFloors) { $cutArgs += '--infer-floors' }
 
 & $cli dxf-to-etabs $config.Dxf (Join-Path $folder $config.Reference) $out `

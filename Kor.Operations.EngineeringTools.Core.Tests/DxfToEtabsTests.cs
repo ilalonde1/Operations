@@ -1057,6 +1057,39 @@ public class E2kDocumentTests
     }
 
     /// <summary>
+    /// Every plate says out loud that its thickness was assumed.
+    ///
+    /// The engineer, asked whether 12" was acceptable where a drawing states no thickness: "ok to
+    /// use 12" but let me know where slab thickness tags are missing". Half that answer is a
+    /// default and half is a request, and the request is the half that was missing. This tool does
+    /// not read a thickness tag off a drawing at all, so the honest report is not a list of the
+    /// sheets where a tag is absent -- it is that no plate anywhere in the model got its thickness
+    /// from the drawings. A number she is not told about is a guess wearing a number.
+    /// </summary>
+    [Fact]
+    public void EveryPlateReportsThatItsThicknessWasAssumed()
+    {
+        var doc = E2kDocument.Parse(Reference);
+        var story = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+
+        var geometry = new PlanGeometrySet();
+        geometry.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(240, 0), 12, "JBP_V-WALL"));
+        geometry.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new[]
+        {
+            new DxfPoint(0, 0), new DxfPoint(240, 0), new DxfPoint(240, 240), new DxfPoint(0, 240),
+        }, true));
+
+        var summary = E2kGeometryComposer.Compose(
+            doc, new[] { new StoryPlacement(story, geometry, "level3.dxf") });
+
+        Assert.Equal(1, summary.Floors);
+
+        string flag = Assert.Single(summary.Flags, f => f.Contains("Slab thickness is ASSUMED"));
+        Assert.Contains("12\"", flag);
+        Assert.Contains("LEVEL 3", flag);
+    }
+
+    /// <summary>
     /// A closed ring on a slab layer with no structure anywhere under it is not a floor.
     ///
     /// Drafting puts legend panels, detail boxes and key plans on the same layers as the building.

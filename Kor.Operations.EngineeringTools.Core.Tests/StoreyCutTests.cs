@@ -31,7 +31,8 @@ public class StoreyCutTests
         "  STORY \"LEVEL 10\"  HEIGHT 120",
         "  STORY \"C-LEVEL 9\"  HEIGHT 120",
         "  STORY \"LEVEL 2\"  HEIGHT 120",
-        "  STORY \"B-LEVEL 1\"  HEIGHT 120",
+        // 1.7 in, which is what 31168's two ground floors really are: one slab drafted twice.
+        "  STORY \"B-LEVEL 1\"  HEIGHT 1.7",
         "  STORY \"A-LEVEL 1\"  HEIGHT 120",
         "  STORY \"LEVEL P1\"  HEIGHT 120",
         "  STORY \"Base\"  ELEV 0",
@@ -77,8 +78,63 @@ public class StoreyCutTests
 
         Assert.Contains("LEVEL 11", kept);          // tower floor, no prefix, survives
         Assert.Contains("LEVEL 12", kept);
-        Assert.DoesNotContain("A-LEVEL 1", kept);   // wanted at grade, removed
+    }
+
+    /// <summary>
+    /// The shared base under a building is that building's too, whoever the drafting named it for.
+    ///
+    /// "One model per building" is what the engineer asked for, and cutting every storey with
+    /// another building's letter on it is the obvious reading -- but it took the YMCA's ground
+    /// floor away. A-LEVEL 1 and B-LEVEL 1 sit 1.7 in apart at grade inside the podium the YMCA
+    /// stands on, so the model came out with LEVEL 2 resting on the mezzanine and no ground floor
+    /// anywhere. Her answer: "It's all one big slab at L1, one elevation. Doesn't really matter
+    /// which one." One slab, one storey, and it keeps the name the drawing uses -- there is a
+    /// single LEVEL 1 PLAN sheet, not one per tower.
+    /// </summary>
+    [Fact]
+    public void TheGroundFloorDraftedTwiceBecomesOneStoreyOfTheBuildingAboveIt()
+    {
+        var doc = SiteModel();
+        doc.KeepOnlyTower("C");
+        var kept = Names(doc);
+
+        Assert.Contains("LEVEL 1", kept);           // the pair, merged and no longer named for a tower
+        Assert.DoesNotContain("A-LEVEL 1", kept);
         Assert.DoesNotContain("B-LEVEL 1", kept);
+        Assert.Single(kept, n => n == "LEVEL 1");
+
+        // Above where building C starts, another building's storeys still go.
+        Assert.DoesNotContain("A-LEVEL 27", kept);
+        Assert.DoesNotContain("B-LEVEL 28", kept);
+    }
+
+    /// <summary>
+    /// The merge reaches the shared base and nothing else. Site models interleave towers by a
+    /// couple of inches the whole way up, and each of those pairs is two real storeys of two real
+    /// buildings -- welding them together would put one tower's walls in the other's model.
+    /// </summary>
+    [Fact]
+    public void InterleavedTowerStoreysAboveTheBaseAreNeverMerged()
+    {
+        var doc = E2kDocument.Parse(new[]
+        {
+            "$ CONTROLS",
+            "  UNITS  \"Kip\"  \"in\"",
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"B-LEVEL 27\"  HEIGHT 2",
+            "  STORY \"A-LEVEL 27\"  HEIGHT 120",
+            "  STORY \"A-LEVEL 26\"  HEIGHT 120",
+            "  STORY \"LEVEL P1\"  HEIGHT 120",
+            "  STORY \"Base\"  ELEV 0",
+        });
+
+        doc.KeepOnlyTower("A");
+        var kept = Names(doc);
+
+        Assert.Contains("A-LEVEL 27", kept);        // kept under its own name, not bared
+        Assert.Contains("A-LEVEL 26", kept);
+        Assert.DoesNotContain("B-LEVEL 27", kept);  // the other tower's storey, 2 in away, still goes
+        Assert.DoesNotContain("LEVEL 27", kept);
     }
 
     [Fact]

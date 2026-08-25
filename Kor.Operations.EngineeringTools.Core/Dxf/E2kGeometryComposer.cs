@@ -392,6 +392,12 @@ public static class E2kGeometryComposer
         var spandrelNames = new Dictionary<(long, long, long, long), string>();
         var placedSpandrels = new HashSet<(long, long, long, long, string)>();
         var pinchedPlates = new List<(string Storey, string Sheet, double GapInches, double AtXft, double AtYft)>();
+
+        // Which sheets had their slab thickness assumed rather than read. The engineer, asked
+        // whether 12 in was acceptable where a drawing is silent: "ok to use 12" but let me know
+        // where slab thickness tags are missing". A default nobody is told about is a guess
+        // wearing a number.
+        var assumedThickness = new List<(string Storey, string Sheet)>();
         var placedOpenings = new HashSet<(long, long, string)>();
         int spandrelCounter = 0, openingCounter = 0;
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
@@ -868,6 +874,7 @@ public static class E2kGeometryComposer
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  FLOOR  {names.Count}  {joints}  {offsets}");
+                assumedThickness.Add((story.Name, placement.SourceSheet));
 
                 string diaphragmAssign = string.Empty;
                 if (options.AssignDiaphragms)
@@ -1075,6 +1082,21 @@ public static class E2kGeometryComposer
         // Reported, not fixed. A mezzanine really is a small floor in a big room, and a podium
         // really does stop where the tower begins; which of those this is belongs to the engineer.
         // The number is what she cannot get from a count.
+        if (assumedThickness.Count > 0)
+        {
+            var storeys = assumedThickness
+                .Select(x => x.Storey)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            flags.Add(
+                $"Slab thickness is ASSUMED, not read: every one of the {assumedThickness.Count} floor plate(s) " +
+                $"in this model is {options.DefaultSlabThickness:0}\" thick because this tool does not yet read a " +
+                "thickness tag off a drawing. It is the engineer's default, given for exactly this case, and it " +
+                "is applied everywhere rather than only where a tag is missing — so no plate in this model has a " +
+                $"thickness that came from the drawings. Storeys affected: {string.Join(", ", storeys)}.");
+        }
+
         if (pinchedPlates.Count > 0)
             flags.Add(
                 $"{pinchedPlates.Count} floor plate(s) have an outline that closes through itself: " +

@@ -574,7 +574,9 @@ public static class DxfToEtabsService
             readSheets.Add(segments);
             var geometry = StructuralPlanClassifier.Classify(segments, classification);
             var matched = PlanSheetNaming.MatchStories(sheet, matchNames)
+                .Select(s => doc.StoreyRenames.TryGetValue(s, out string? now) ? now : s)
                 .Where(s => !cutStoreys.Contains(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             outcomes.Add(new SheetOutcome(

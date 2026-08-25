@@ -549,6 +549,17 @@ public sealed class E2kDocument
         return rebuilt;
     }
 
+    private readonly Dictionary<string, string> _storeyRenames = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Storeys this document has renamed, old name to new. A cut that renames a storey has moved
+    /// it, not removed it, and the sheets that belong to it must follow: the drawings are matched
+    /// against the storey list as it was BEFORE any cut, so without this the LEVEL 1 PLAN sheet
+    /// goes looking for "A-LEVEL 1", finds nothing standing under that name, and 59 walls and 63
+    /// columns leave the model without a word said.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> StoreyRenames => _storeyRenames;
+
     public IReadOnlyList<string> KeepOnlyTower(string tower)
     {
         var section = Find("STORIES");
@@ -558,13 +569,65 @@ public sealed class E2kDocument
         var stories = ReadStories().OrderBy(s => s.Elevation).ToList();
         if (stories.Count == 0) return Array.Empty<string>();
 
+        // A storey belonging to another building is dropped -- but only from the point this
+        // building starts. BELOW that, a tagged storey is the shared base the buildings stand on,
+        // not somebody else's floor.
+        //
+        // 31168's ground floor is drafted twice, as A-LEVEL 1 and B-LEVEL 1, 1.7 in apart. Cutting
+        // both by name left the YMCA with LEVEL 2 sitting on LEVEL 1 MEZZ and no ground floor at
+        // all. The engineer: "It's all one big slab at L1, one elevation. Doesn't really matter
+        // which one." One slab, so one storey: the lower of the pair is kept and renamed to the
+        // name with no building in it, which is also what the sheet is called -- there is one
+        // LEVEL 1 PLAN drawing, not one per tower.
+        //
+        // Restricted to the shared base on purpose. Site models interleave towers by a couple of
+        // inches all the way up, and those pairs are two real storeys of two real buildings; this
+        // merge must never reach them. Above this building's lowest storey nothing is merged.
+        double buildingStarts = stories
+            .Where(s => string.Equals(BuildingTagOf(s.Name), keep, StringComparison.OrdinalIgnoreCase))
+            .Select(s => (double?)s.Elevation)
+            .FirstOrDefault() ?? double.MinValue;
+
         var dropped = stories
             .Where(s => BuildingTagOf(s.Name) is var t && t.Length > 0 && t != keep)
+            .Where(s => s.Elevation >= buildingStarts)
             .Select(s => s.Name)
             .ToList();
-        if (dropped.Count == 0) return dropped;
 
-        var retained = stories.Where(s => !dropped.Contains(s.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+        // What is left of the shared base: storeys named for a building, standing under this one.
+        // Where several sit within a foot of each other they are one level drawn more than once.
+        var sharedBase = stories
+            .Where(s => BuildingTagOf(s.Name).Length > 0 && s.Elevation < buildingStarts)
+            .OrderBy(s => s.Elevation)
+            .ToList();
+
+        var renames = new List<(string From, string To)>();
+        for (int i = 0; i < sharedBase.Count; i++)
+        {
+            var group = new List<StoryLevel> { sharedBase[i] };
+            while (i + 1 < sharedBase.Count && sharedBase[i + 1].Elevation - group[0].Elevation <= 12.0)
+                group.Add(sharedBase[++i]);
+
+            string bare = group[0].Name[2..];
+            if (stories.Any(s => string.Equals(s.Name, bare, StringComparison.OrdinalIgnoreCase))
+                || renames.Any(r => string.Equals(r.To, bare, StringComparison.OrdinalIgnoreCase)))
+                bare = group[0].Name;
+            renames.Add((group[0].Name, bare));
+            if (!string.Equals(group[0].Name, bare, StringComparison.OrdinalIgnoreCase))
+                _storeyRenames[group[0].Name] = bare;
+            foreach (var also in group.Skip(1))
+                _storeyRenames[also.Name] = bare;
+            dropped.AddRange(group.Skip(1).Select(s => s.Name));
+        }
+
+        if (dropped.Count == 0 && renames.All(r => r.From == r.To)) return Array.Empty<string>();
+
+        var retained = stories
+            .Where(s => !dropped.Contains(s.Name, StringComparer.OrdinalIgnoreCase))
+            .Select(s => renames.FirstOrDefault(r => string.Equals(r.From, s.Name, StringComparison.OrdinalIgnoreCase)) is { From: not null } hit
+                ? s with { Name = hit.To }
+                : s)
+            .ToList();
         if (retained.Count == 0) return Array.Empty<string>();
 
         // ETABS lists storeys from the top down, each with the height of the storey below it.

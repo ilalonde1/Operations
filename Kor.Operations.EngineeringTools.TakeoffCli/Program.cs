@@ -54,8 +54,18 @@ if (args.Length >= 1 && args[0].Equals("dxf-render", StringComparison.OrdinalIgn
         if (args[i].Equals("--size", StringComparison.OrdinalIgnoreCase)) int.TryParse(args[i + 1], out size);
 
     var renderOptions = new PlanClassificationOptions();
+
+    // --layers narrows the drawing to the layers named, so one question can be looked at on its
+    // own. A slab boundary is impossible to judge with every wall and column drawn over it.
+    var onlyLayers = new List<string>();
+    for (int i = 3; i < args.Length - 1; i++)
+        if (args[i].Equals("--layers", StringComparison.OrdinalIgnoreCase))
+            onlyLayers.AddRange(args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()));
+
     var renderSegments = DxfPlanReader.ReadSegments(args[1])
-        .Where(s => PlanClassificationOptions.Matches(s.Layer, renderOptions.WallLayerPatterns)
+        .Where(s => onlyLayers.Count > 0
+            ? onlyLayers.Any(l => s.Layer.Contains(l, StringComparison.OrdinalIgnoreCase))
+            : PlanClassificationOptions.Matches(s.Layer, renderOptions.WallLayerPatterns)
                  || PlanClassificationOptions.Matches(s.Layer, renderOptions.ColumnLayerPatterns)
                  || PlanClassificationOptions.Matches(s.Layer, renderOptions.SlabLayerPatterns))
         .ToList();
@@ -179,12 +189,45 @@ if (args.Length >= 1 && args[0].Equals("verify-e2k", StringComparison.OrdinalIgn
 
 if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls]"); return 1; }
+    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--plates]"); return 1; }
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
 
     bool wallDetail = args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase));
+    bool plateDetail = args.Any(a => a.Equals("--plates", StringComparison.OrdinalIgnoreCase));
     var inspectOptions = new PlanClassificationOptions();
     var inspectSegments = DxfPlanReader.ReadSegments(args[1]);
+
+    // What floor plates does this ONE sheet yield, and at what bridge width? Reading it out of a
+    // finished model means rebuilding the whole job over SMB to answer a question about one
+    // storey. This answers it in a second, which is the difference between measuring and guessing.
+    if (plateDetail)
+    {
+        var onlyPlateLayers = new List<string>();
+        for (int i = 2; i < args.Length - 1; i++)
+            if (args[i].Equals("--layers", StringComparison.OrdinalIgnoreCase))
+                onlyPlateLayers.AddRange(args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()));
+
+        if (onlyPlateLayers.Count > 0)
+            inspectSegments = inspectSegments
+                .Where(x => onlyPlateLayers.Any(l => x.Layer.Equals(l, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+        Console.WriteLine($"{Path.GetFileName(args[1])}" +
+            (onlyPlateLayers.Count > 0 ? $"   [{string.Join(", ", onlyPlateLayers)} only, {inspectSegments.Count} segs]" : ""));
+        double banked = inspectOptions.FloodFillBridge;
+        foreach (double bridge in new[] { banked, banked * 1.5, banked * 2.0, banked * 2.5, banked * 3.0, banked * 4.0 })
+        {
+            var got = StructuralPlanClassifier.Classify(inspectSegments, inspectOptions with { FloodFillBridge = bridge });
+            Console.WriteLine($"  bridge {bridge,6:0.#} in   {got.Slabs.Count,2} plate(s)");
+            foreach (var plate in got.Slabs.OrderByDescending(x => x.Area))
+            {
+                double x0 = plate.Points.Min(q => q.X) / 12, x1 = plate.Points.Max(q => q.X) / 12;
+                double y0 = plate.Points.Min(q => q.Y) / 12, y1 = plate.Points.Max(q => q.Y) / 12;
+                Console.WriteLine($"      {plate.Area / 144,10:N0} sq ft   x {x0,7:0}..{x1,-7:0} y {y0,7:0}..{y1,-7:0}");
+            }
+        }
+        return 0;
+    }
 
     Console.WriteLine($"{Path.GetFileName(args[1])}");
     Console.WriteLine($"segments: {inspectSegments.Count}");
@@ -3047,8 +3090,8 @@ public static class TakeoffCliHelp
     public static IReadOnlyList<TakeoffCliCommand> Commands { get; } =
     [
         new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
-        new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800]", "Render structural DXF layers to a PNG."),
-        new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls]", "Inspect DXF layers, loops, and wall outlines."),
+        new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
+        new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls] [--plates]", "Inspect DXF layers, loops, wall outlines, and recovered floor plates."),
         new("e2k-compare", "takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [...]", "Compare generated ETABS geometry against a reference model."),
         new("dxf-import-rules", "takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]", "Import per-job DXF rule answers."),
         new("corpus-read", "takeoff corpus-read <projectsRoot> [out.txt] [--limit N]", "Extract readable project corpus text."),
