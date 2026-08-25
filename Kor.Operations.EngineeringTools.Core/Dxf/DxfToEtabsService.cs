@@ -531,6 +531,7 @@ public static class DxfToEtabsService
             }
 
             var segments = DxfPlanReader.ReadSegments(file);
+            var tags = DxfPlanReader.ReadPositionedTags(file);
             // Held, not raised yet. This warning is only true of a sheet that is IN the model: a
             // sheet whose storeys were cut away, or that placed nowhere, already has its own line
             // saying so, and telling an engineer about 96 unread ellipses on a tower she asked us
@@ -570,12 +571,18 @@ public static class DxfToEtabsService
             }
 
             if (Math.Abs(scale - 1.0) > 1e-9)
+            {
                 segments = segments.Select(g => new DxfSegment(g.Layer,
                     new DxfPoint(g.Start.X * scale, g.Start.Y * scale),
                     new DxfPoint(g.End.X * scale, g.End.Y * scale)) { FromCurve = g.FromCurve }).ToList();
+                tags = tags.Select(t => t with
+                {
+                    Point = new DxfPoint(t.Point.X * scale, t.Point.Y * scale)
+                }).ToList();
+            }
 
             readSheets.Add(segments);
-            var geometry = StructuralPlanClassifier.Classify(segments, classification, sheet);
+            var geometry = StructuralPlanClassifier.Classify(segments, classification, sheet, tags);
             var matched = PlanSheetNaming.MatchStories(sheet, matchNames)
                 .Select(s => doc.StoreyRenames.TryGetValue(s, out string? now) ? now : s)
                 .Where(s => !cutStoreys.Contains(s))

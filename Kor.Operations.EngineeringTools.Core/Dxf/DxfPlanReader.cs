@@ -1,14 +1,16 @@
 using System.Globalization;
+using System.Text;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
 
 /// <summary>
 /// A deliberately small DXF reader: it pulls LINE, ARC, LWPOLYLINE and POLYLINE
-/// entities out of the ENTITIES section and returns them as straight segments.
+/// entities out of the ENTITIES section and returns them as straight segments,
+/// and carries drawing text as positioned tags beside that geometry.
 ///
 /// This is not a general DXF library. It handles what Revit's "export to CAD"
-/// actually emits for a structural plan, and ignores everything else (text,
-/// hatches, dimensions, blocks), because only the geometry layers matter here.
+/// actually emits for a structural plan, and ignores everything else (hatches,
+/// dimensions), because only geometry and annotation have model paths here.
 /// </summary>
 public static class DxfPlanReader
 {
@@ -19,6 +21,9 @@ public static class DxfPlanReader
         "LWPOLYLINE",
         "POLYLINE",
         "INSERT",
+        "TEXT",
+        "MTEXT",
+        "ATTRIB",
     };
 
     /// <summary>
@@ -46,6 +51,9 @@ public static class DxfPlanReader
 
     public static IReadOnlyList<DxfSegment> ReadSegments(string path)
         => ReadSegments(File.ReadLines(path));
+
+    public static IReadOnlyList<DxfPositionedTag> ReadPositionedTags(string path)
+        => ReadPositionedTags(File.ReadLines(path));
 
     /// <summary>
     /// How long one drawing unit is, in inches, from the DXF's own <c>$INSUNITS</c> header.
@@ -151,6 +159,11 @@ public static class DxfPlanReader
                         case "INSERT":
                             i = ReadInsert(lines, i + 2, blocks, segments);
                             continue;
+                        case "TEXT":
+                        case "MTEXT":
+                        case "ATTRIB":
+                            i = ScanEntity(lines, i + 2, static (_, _) => { });
+                            continue;
                     }
                 }
             }
@@ -159,6 +172,57 @@ public static class DxfPlanReader
         }
 
         return segments;
+    }
+
+    public static IReadOnlyList<DxfPositionedTag> ReadPositionedTags(IEnumerable<string> rawLines)
+    {
+        var lines = rawLines as IList<string> ?? rawLines.ToList();
+        var tags = new List<DxfPositionedTag>();
+
+        int i = 0;
+        bool inEntities = false;
+
+        while (i < lines.Count - 1)
+        {
+            string code = lines[i].Trim();
+            string value = lines[i + 1].Trim();
+
+            if (code == "0")
+            {
+                if (value == "SECTION")
+                {
+                    for (int j = i + 2; j < Math.Min(i + 8, lines.Count - 1); j += 2)
+                    {
+                        if (lines[j].Trim() == "2")
+                        {
+                            inEntities = lines[j + 1].Trim() == "ENTITIES";
+                            break;
+                        }
+                    }
+                }
+                else if (value == "ENDSEC")
+                {
+                    inEntities = false;
+                }
+                else if (inEntities)
+                {
+                    switch (value)
+                    {
+                        case "TEXT":
+                        case "ATTRIB":
+                            i = ReadTextTag(lines, i + 2, tags, stripMTextFormatting: false);
+                            continue;
+                        case "MTEXT":
+                            i = ReadTextTag(lines, i + 2, tags, stripMTextFormatting: true);
+                            continue;
+                    }
+                }
+            }
+
+            i += 2;
+        }
+
+        return tags;
     }
 
     public static IReadOnlyList<UnsupportedEntity> UnsupportedStructuralEntities(
@@ -396,6 +460,99 @@ public static class DxfPlanReader
             if (a.DistanceTo(b) > 1e-9) into.Add(new DxfSegment(layer, a, b));
         }
         return next;
+    }
+
+    private static int ReadTextTag(
+        IList<string> lines,
+        int start,
+        List<DxfPositionedTag> into,
+        bool stripMTextFormatting)
+    {
+        string layer = string.Empty;
+        var chunks = new List<string>();
+        double x = 0, y = 0;
+        bool hasX = false, hasY = false;
+
+        int next = ScanEntity(lines, start, (code, value) =>
+        {
+            switch (code)
+            {
+                case "8": layer = value; break;
+                case "1": chunks.Add(value); break;
+                case "3" when stripMTextFormatting: chunks.Add(value); break;
+                case "10": if (TryNumber(value, out x)) hasX = true; break;
+                case "20": if (TryNumber(value, out y)) hasY = true; break;
+            }
+        });
+
+        string raw = string.Concat(chunks);
+        if (raw.Length > 0 && hasX && hasY)
+        {
+            string text = stripMTextFormatting ? PlainMText(raw) : raw;
+            into.Add(new DxfPositionedTag(text, new DxfPoint(x, y), layer, raw));
+        }
+
+        return next;
+    }
+
+    private static string PlainMText(string raw)
+    {
+        var text = new StringBuilder(raw.Length);
+
+        for (int i = 0; i < raw.Length; i++)
+        {
+            char c = raw[i];
+            if (c == '\\' && i + 1 < raw.Length)
+            {
+                char command = raw[++i];
+                switch (command)
+                {
+                    case 'P':
+                    case 'p':
+                        text.Append('\n');
+                        break;
+                    case '{':
+                        text.Append('{');
+                        break;
+                    case '}':
+                        text.Append('}');
+                        break;
+                    case '\\':
+                        text.Append('\\');
+                        break;
+                    case 'f':
+                    case 'F':
+                    case 'H':
+                    case 'h':
+                    case 'C':
+                    case 'c':
+                        if (!TrySkipMTextCommand(raw, ref i))
+                        {
+                            text.Append('\\');
+                            text.Append(command);
+                        }
+                        break;
+                    default:
+                        text.Append('\\');
+                        text.Append(command);
+                        break;
+                }
+                continue;
+            }
+
+            if (c is '{' or '}') continue;
+            text.Append(c);
+        }
+
+        return text.ToString().Trim();
+    }
+
+    private static bool TrySkipMTextCommand(string raw, ref int commandIndex)
+    {
+        int semicolon = raw.IndexOf(';', commandIndex + 1);
+        if (semicolon < 0) return false;
+        commandIndex = semicolon;
+        return true;
     }
 
     private static int ReadArc(IList<string> lines, int start, List<DxfSegment> into)

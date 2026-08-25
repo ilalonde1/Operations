@@ -17,6 +17,27 @@ public class DxfPlanReaderTests
     private static string Line(string layer, double x1, double y1, double x2, double y2)
         => $"0\nLINE\n8\n{layer}\n10\n{x1}\n20\n{y1}\n11\n{x2}\n21\n{y2}";
 
+    private static string Text(string layer, string value, double x, double y)
+        => $"0\nTEXT\n8\n{layer}\n10\n{Number(x)}\n20\n{Number(y)}\n1\n{value}";
+
+    private static string MText(string layer, string group3, string group1, double x, double y)
+        => $"0\nMTEXT\n8\n{layer}\n10\n{Number(x)}\n20\n{Number(y)}\n3\n{group3}\n1\n{group1}";
+
+    private static string Attrib(string layer, string value, double x, double y)
+        => $"0\nATTRIB\n8\n{layer}\n10\n{Number(x)}\n20\n{Number(y)}\n1\n{value}";
+
+    private static string Rectangle(string layer, double x0, double y0, double x1, double y1)
+        => string.Join("\n", new[]
+        {
+            Line(layer, x0, y0, x1, y0),
+            Line(layer, x1, y0, x1, y1),
+            Line(layer, x1, y1, x0, y1),
+            Line(layer, x0, y1, x0, y0),
+        });
+
+    private static string Number(double value)
+        => value.ToString(CultureInfo.InvariantCulture);
+
     [Fact]
     public void ReadsLinesWithLayers()
     {
@@ -25,6 +46,89 @@ public class DxfPlanReaderTests
         Assert.Equal(2, segs.Count);
         Assert.Equal("WALL", segs[0].Layer);
         Assert.Equal(10, segs[0].Length, 6);
+    }
+
+    [Fact]
+    public void ReadsTextEntityAsPositionedTag()
+    {
+        var lines = DxfWith(Text("S-NOTES", "S.O.G.", 12.5, -3));
+
+        var tag = Assert.Single(DxfPlanReader.ReadPositionedTags(lines));
+
+        Assert.Equal("S.O.G.", tag.Text);
+        Assert.Equal("S.O.G.", tag.RawText);
+        Assert.Equal(new DxfPoint(12.5, -3), tag.Point);
+        Assert.Equal("S-NOTES", tag.Layer);
+        Assert.Empty(DxfPlanReader.ReadSegments(lines));
+    }
+
+    [Fact]
+    public void ReadsAttribEntityAsPositionedTag()
+    {
+        var tag = Assert.Single(DxfPlanReader.ReadPositionedTags(
+            DxfWith(Attrib("GRID-BUBBLE", "A", 100, 200))));
+
+        Assert.Equal("A", tag.Text);
+        Assert.Equal(new DxfPoint(100, 200), tag.Point);
+        Assert.Equal("GRID-BUBBLE", tag.Layer);
+    }
+
+    [Fact]
+    public void ReadsMTextFormattingAsPlainReadableText()
+    {
+        string first = @"{\fArial|b0|i0;\H0.7x;\C1;";
+        string last = @"1\P\{A\}}";
+
+        var tag = Assert.Single(DxfPlanReader.ReadPositionedTags(
+            DxfWith(MText("GRID-BUBBLE", first, last, 50, 75))));
+
+        Assert.Equal("1\n{A}", tag.Text);
+        Assert.Equal(first + last, tag.RawText);
+        Assert.Equal(new DxfPoint(50, 75), tag.Point);
+        Assert.Equal("GRID-BUBBLE", tag.Layer);
+    }
+
+    [Fact]
+    public void TextDoesNotChangeStructuralModelOutput()
+    {
+        var structural = new[]
+        {
+            Rectangle("JBP_V-WALL", 0, 0, 240, 12),
+            Rectangle("JBP_V_COL", 300, 0, 324, 24),
+            Rectangle("JBP_C_SLABEDG", 0, 100, 600, 700),
+            Rectangle("JBP_C_SLABEDG", 100, 200, 220, 320),
+        };
+        var withoutText = DxfWith(structural);
+        var withText = DxfWith(structural.Concat(new[]
+        {
+            Text("A-ANNO", "S.O.G.", 75, 75),
+            MText("A-ANNO", @"{\fArial|b0|i0;\H0.7x;", "8}", 90, 90),
+        }).ToArray());
+
+        var withoutSegments = DxfPlanReader.ReadSegments(withoutText);
+        var withSegments = DxfPlanReader.ReadSegments(withText);
+        Assert.Equal(withoutSegments, withSegments);
+
+        var expected = StructuralPlanClassifier.Classify(withoutSegments);
+        var actual = StructuralPlanClassifier.Classify(
+            withSegments,
+            tags: DxfPlanReader.ReadPositionedTags(withText));
+
+        Assert.Equal(2, actual.Tags.Count);
+        AssertSameModelOutput(expected, actual);
+    }
+
+    [Fact]
+    public void TextOnIgnoredLayerIsStillCarriedByClassifier()
+    {
+        var tags = DxfPlanReader.ReadPositionedTags(DxfWith(Text("A-ANNO-TEXT", "GRID 1", 10, 20)));
+        Assert.Null(new PlanClassificationOptions().RoleOf("A-ANNO-TEXT"));
+
+        var geometry = StructuralPlanClassifier.Classify(Array.Empty<DxfSegment>(), tags: tags);
+
+        var tag = Assert.Single(geometry.Tags);
+        Assert.Equal("GRID 1", tag.Text);
+        Assert.Equal("A-ANNO-TEXT", tag.Layer);
     }
 
     [Fact]
@@ -84,6 +188,28 @@ public class DxfPlanReaderTests
         Assert.True(segs.Count >= 2);
         // Every vertex must sit on the circle.
         Assert.All(segs, s => Assert.Equal(100, Math.Sqrt(s.Start.X * s.Start.X + s.Start.Y * s.Start.Y), 3));
+    }
+
+    private static void AssertSameModelOutput(PlanGeometrySet expected, PlanGeometrySet actual)
+    {
+        Assert.Equal(expected.Walls, actual.Walls);
+        Assert.Equal(expected.Columns, actual.Columns);
+        AssertLoopsEqual(expected.Slabs, actual.Slabs);
+        AssertLoopsEqual(expected.Openings, actual.Openings);
+        Assert.Equal(expected.WallOpenings, actual.WallOpenings);
+        Assert.Equal(expected.Flags, actual.Flags);
+    }
+
+    private static void AssertLoopsEqual(IReadOnlyList<PlanLoop> expected, IReadOnlyList<PlanLoop> actual)
+    {
+        Assert.Equal(expected.Count, actual.Count);
+        for (int i = 0; i < expected.Count; i++)
+        {
+            Assert.Equal(expected[i].Layer, actual[i].Layer);
+            Assert.Equal(expected[i].ClosedExactly, actual[i].ClosedExactly);
+            Assert.Equal(expected[i].Points, actual[i].Points);
+            Assert.Equal(expected[i].Area, actual[i].Area, 6);
+        }
     }
 }
 

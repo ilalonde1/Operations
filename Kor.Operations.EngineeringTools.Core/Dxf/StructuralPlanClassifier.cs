@@ -286,7 +286,8 @@ public static class StructuralPlanClassifier
     public static PlanGeometrySet Classify(
         IEnumerable<DxfSegment> segments,
         PlanClassificationOptions? options = null,
-        PlanSheetInfo? sheet = null)
+        PlanSheetInfo? sheet = null,
+        IEnumerable<DxfPositionedTag>? tags = null)
     {
         options ??= new PlanClassificationOptions();
         var all = segments as IReadOnlyList<DxfSegment> ?? segments.ToList();
@@ -302,6 +303,8 @@ public static class StructuralPlanClassifier
         }
 
         var result = new PlanGeometrySet();
+        if (tags is not null) result.Tags.AddRange(tags);
+
         var closedByRole = new List<(string Role, IReadOnlyList<PlanLoop> Loops, string Family)>();
 
         var slabBuilder = new PlanLoopBuilder(options.JoinTolerance, options.BridgeTolerance, options.ExtendLimit);

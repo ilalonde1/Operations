@@ -131,7 +131,11 @@ public static class JobPublisher
             var on = PlanSheetNaming.MatchStories(sheet, storeys);
             if (on.Count == 0) continue;
 
-            var found = StructuralPlanClassifier.Classify(DxfPlanReader.ReadSegments(file), options, sheet);
+            var found = StructuralPlanClassifier.Classify(
+                DxfPlanReader.ReadSegments(file),
+                options,
+                sheet,
+                DxfPlanReader.ReadPositionedTags(file));
             var points = found.Walls.SelectMany(w => new[] { w.Start, w.End })
                 .Concat(found.Columns.Select(c => c.Center))
                 .ToList();

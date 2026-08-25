@@ -29,6 +29,9 @@ public sealed record DxfSegment(string Layer, DxfPoint Start, DxfPoint End)
     public bool FromCurve { get; init; }
 }
 
+/// <summary>Annotation read from the drawing at the point where the drafter placed it.</summary>
+public sealed record DxfPositionedTag(string Text, DxfPoint Point, string Layer, string RawText);
+
 /// <summary>A closed ring of points, in order. First point is not repeated at the end.</summary>
 public sealed class PlanLoop
 {
@@ -164,6 +167,9 @@ public sealed class PlanGeometrySet
 
     /// <summary>Doorways found between wall ends, each of which wants a header over it.</summary>
     public List<WallOpening> WallOpenings { get; } = new();
+
+    /// <summary>Readable drawing annotation, carried without deciding what structural rule it means.</summary>
+    public List<DxfPositionedTag> Tags { get; } = new();
 
     /// <summary>
     /// The inside face of a perimeter wall — a closed outline of the floor it encloses, used as a
