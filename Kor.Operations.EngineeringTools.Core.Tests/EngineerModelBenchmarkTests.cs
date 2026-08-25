@@ -176,22 +176,35 @@ public class EngineerModelBenchmarkTests
         _out.WriteLine(score.Report);
         Assert.True(score.SizedRight >= 133,
             $"Columns matching her size fell to {score.SizedRight}/{score.SizedCompared}; the ratchet is 133.");
-        Assert.True(score.ThickRight >= 58,
-            $"Walls matching her thickness fell to {score.ThickRight}/{score.ThickCompared}; the ratchet is 58.");
+        // 60 of 66, tightened from 58 on 25 August. The old figure was left behind by a change that
+        // widened the comparison — 62 of her walls were being checked when it was set, 66 now — so
+        // it had gone slack by two and would have let a real regression through. Read twice, on the
+        // code before and after this session's change, identical both times.
+        Assert.True(score.ThickRight >= 60,
+            $"Walls matching her thickness fell to {score.ThickRight}/{score.ThickCompared}; the ratchet is 60.");
     }
 
     /// <summary>
     /// Openings — shafts, stairs, every penetration cut from a slab.
     ///
-    /// 8 against her 359, walked back from 22 with the plate recovery that produced them. The
-    /// largest known gap in the tool and it was invisible until
-    /// measured: nothing else here can see an opening, so the model looked healthy on every other
-    /// number while carrying six percent of the holes an engineer cuts.
+    /// THE DENOMINATOR WAS WRONG UNTIL 25 AUGUST, and it made this look four times worse than it
+    /// is. "8 against her 359" was read as the tool finding six percent of the holes an engineer
+    /// cuts, and it was the top item on the gap list on that basis. Her 359 are not 359 holes.
+    /// Measured off her own model, 176 of them (49%) are under six inches across and come to
+    /// 452 sq ft in the whole building; only 53 are at least 12in across and at least 10 sq ft.
+    /// The rest is slab trimmed back off a wall face — see IsAHole, which has the geometry.
     ///
-    /// The reason is structural rather than a tolerance. An opening is made from a closed ring
-    /// lying inside a slab, so this tool finds the ones drawn on a slab-edge layer. Hers include
-    /// every elevator and stair shaft, which are bounded by WALLS — a closed wall enclosure with no
-    /// floor inside it — and nothing here reads those as holes.
+    /// So the score is 8 of 53, not 8 of 359. Still the largest gap in the tool, and still
+    /// invisible to everything else here — nothing else in this file can see an opening, so the
+    /// model looks healthy on every other number while missing shafts. But chasing 359 would mean
+    /// inventing three hundred one-inch slivers, which would be worse than missing them.
+    ///
+    /// The reason for the real gap is structural rather than a tolerance. An opening is made from
+    /// a closed ring lying inside a slab, so this tool finds the ones drawn on a slab-edge layer.
+    /// Hers include every elevator and stair shaft, which are bounded by WALLS — a closed wall
+    /// enclosure with no floor inside it — and nothing here reads those as holes. Reading every
+    /// wall enclosure as a shaft was tried on 24 August and rejected by the engineer the next
+    /// morning, because a wall enclosure is a ROOM at least as often as it is a shaft.
     ///
     /// A ratchet at the measured value, not a target. It exists so the next change is scored
     /// against it, and so this cannot quietly get worse while somebody works on floors.
@@ -202,10 +215,18 @@ public class EngineerModelBenchmarkTests
         var score = ScoreOrSkip();
         if (score is null) return;
 
-        Assert.True(score.Openings >= 8,
-            $"Openings fell to {score.Openings} against the engineer's {score.ReferenceOpenings}; " +
-            "the ratchet is 22. This number may only go up.");
+        _out.WriteLine(score.Report);
+        Assert.True(score.Openings >= OpeningFloor,
+            $"Openings fell to {score.Openings} against the engineer's {score.ReferenceOpenings} holes; " +
+            $"the ratchet is {OpeningFloor}. This number may only go up.\n{score.Report}");
     }
+
+    /// <summary>
+    /// Holes this tool cuts where the engineer cut one. Measured, not chosen — and stated as one
+    /// name so the assertion and the message it prints can never drift apart, which they had:
+    /// this test asserted 8 while telling whoever read the failure that the ratchet was 22.
+    /// </summary>
+    private const int OpeningFloor = 8;
 
     /// <summary>
     /// The whole-model best fit, kept as a guard rather than as a score. It is the figure that got
@@ -331,7 +352,8 @@ public class EngineerModelBenchmarkTests
         Dictionary<string, double> FloorArea,
         List<(DxfPoint At, double Long, double Short, bool Round)> ColumnSizes,
         List<(DxfPoint At, double Thickness)> WallThicknesses,
-        int Openings);
+        int Openings,
+        int FlaggedOpenings);
 
     /// <summary>
     /// Columns as their plan point and walls as their midpoint, per storey. "K" is the prefix this
@@ -344,13 +366,14 @@ public class EngineerModelBenchmarkTests
         var columnAt = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var wallEnds = new Dictionary<string, (string A, string B)>(StringComparer.OrdinalIgnoreCase);
         var floorJoints = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var openingJoints = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         // Section tables: what a column's size is, and how thick a wall is. Compared member by
         // member, these are the properties an engineer would otherwise retype.
         var frame = new Dictionary<string, (double Long, double Short, bool Round)>(StringComparer.OrdinalIgnoreCase);
         var shell = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         var sectionOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        int openings = 0;
+        int openings = 0, flagged = 0;
 
         foreach (string line in lines)
         {
@@ -388,9 +411,22 @@ public class EngineerModelBenchmarkTests
 
             var f = Regex.Match(line, @"^\s*AREA\s+""([^""]+)""\s+FLOOR\s+(\d+)\s+(.*)$");
             if (f.Success)
+            {
                 floorJoints[f.Groups[1].Value] = Regex.Matches(f.Groups[3].Value, @"""([^""]+)""")
                     .Select(x => x.Groups[1].Value)
                     .Take(int.Parse(f.Groups[2].Value))
+                    .ToList();
+                continue;
+            }
+
+            // An opening's own ring: AREA "A1" AREA 4 "1" "2" "3" "4" 0 0 0 0. Without this the
+            // only thing known about an opening was that it existed, which is how a count of 359
+            // stood as the target for two days -- see how it is filtered below.
+            var op = Regex.Match(line, @"^\s*AREA\s+""([^""]+)""\s+AREA\s+(\d+)\s+(.*)$");
+            if (op.Success)
+                openingJoints[op.Groups[1].Value] = Regex.Matches(op.Groups[3].Value, @"""([^""]+)""")
+                    .Select(x => x.Groups[1].Value)
+                    .Take(int.Parse(op.Groups[2].Value))
                     .ToList();
         }
 
@@ -408,7 +444,11 @@ public class EngineerModelBenchmarkTests
 
             var sec = Regex.Match(line, @"SECTION\s+""(.+?)""");
             if (sec.Success) sectionOf.TryAdd(name, sec.Groups[1].Value);
-            if (line.Contains("OPENING \"Yes\"", StringComparison.OrdinalIgnoreCase)) openings++;
+            if (line.Contains("OPENING \"Yes\"", StringComparison.OrdinalIgnoreCase))
+            {
+                flagged++;
+                if (IsAHole(name, openingJoints, points)) openings++;
+            }
 
             if (columnAt.TryGetValue(name, out string? at) && points.TryGetValue(at, out var pt))
                 Add(columns, storey, pt);
@@ -443,7 +483,7 @@ public class EngineerModelBenchmarkTests
             wallThicknesses.Add((new DxfPoint((s1.X + e1.X) / 2, (s1.Y + e1.Y) / 2), t));
         }
 
-        return new Members(columns, walls, floorArea, columnSizes, wallThicknesses, openings);
+        return new Members(columns, walls, floorArea, columnSizes, wallThicknesses, openings, flagged);
 
         static void Add(Dictionary<string, List<DxfPoint>> into, string storey, DxfPoint at)
         {
@@ -566,12 +606,57 @@ public class EngineerModelBenchmarkTests
         report.Add($"columns {columns}/{refColumns}, walls {walls}/{refWalls}, " +
                    $"floors within 20% {floorsClose}/{refFloors}, " +
                    $"column size {sizedRight}/{sized}, wall thickness {thickRight}/{thick}, " +
-                   $"openings {ours.Openings} of her {engineer.Openings}");
+                   $"openings {ours.Openings} of her {engineer.Openings} " +
+                   $"(holes; she flags {engineer.FlaggedOpenings} in all, the rest slab trim)");
 
         return new Score(columns, refColumns, walls, refWalls, anyStorey, floorsClose, refFloors,
             sizedRight, sized, thickRight, thick, ours.Openings, engineer.Openings,
             string.Join("\n", report));
     }
+
+    /// <summary>
+    /// Whether an area flagged OPENING "Yes" is a HOLE THROUGH A FLOOR, or a sliver of slab
+    /// trimmed off where it met a wall.
+    ///
+    /// Both are legitimate, and an engineer writes far more of the second than the first. On
+    /// 31065 she flags 359 openings. Measured off her own model:
+    ///
+    ///     176 of the 359 (49%) are UNDER SIX INCHES across, and come to 452 sq ft in total
+    ///      53 of the 359 (15%) are at least 12in across and at least 10 sq ft
+    ///
+    /// A typical tower floor of hers carries sixteen. Two are shafts -- 107 and 103 sq ft, one
+    /// per tower core. The other fourteen are hairlines: 1-3in wide, 175in long, lying along the
+    /// core walls. Each sliver's centre sits 3.7-11.4in from one of her wall centrelines, which
+    /// is a wall face at her thicknesses; the two real shafts sit 41-42in away, out in the middle
+    /// of the core where a lift goes. They are the slab edge trimmed back off the wall, not
+    /// penetrations, and nothing should be trying to reproduce them from a drawing.
+    ///
+    /// So "openings 22 of her 359" was never six percent of the holes in this building. The
+    /// denominator was mostly slab trim. Filtered to holes, the same models score against 53.
+    /// The filter is applied to OUR openings by the same rule, so it cannot flatter us: a sliver
+    /// this tool cut would not count either.
+    /// </summary>
+    private static bool IsAHole(
+        string name,
+        Dictionary<string, List<string>> openingJoints,
+        Dictionary<string, DxfPoint> points)
+    {
+        if (!openingJoints.TryGetValue(name, out var ring)) return false;
+
+        var ring2 = ring.Where(points.ContainsKey).Select(x => points[x]).ToList();
+        if (ring2.Count < 3) return false;
+
+        double wide = ring2.Max(p => p.X) - ring2.Min(p => p.X);
+        double tall = ring2.Max(p => p.Y) - ring2.Min(p => p.Y);
+
+        return Math.Min(wide, tall) >= HoleNarrowest && Shoelace(ring2) >= HoleSmallest;
+    }
+
+    /// <summary>Narrowest a penetration may be, in inches. Below this it is slab trim.</summary>
+    private const double HoleNarrowest = 12.0;
+
+    /// <summary>Smallest a penetration may be, in square inches — 10 sq ft.</summary>
+    private const double HoleSmallest = 10.0 * 144.0;
 
     private static int Within(List<DxfPoint> reference, List<DxfPoint> ours, double tolerance)
         => reference.Count(p => ours.Any(q =>
