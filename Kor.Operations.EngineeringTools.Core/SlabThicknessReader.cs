@@ -18,23 +18,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     /// </summary>
     public static class SlabThicknessReader
     {
-        // IMPERIAL: "<n>" SLAB" — a storey number, a 1–2 char inch mark (the glyph varies on CAD sheets),
-        // then SLAB. The inch mark is REQUIRED, which is what keeps a metric "200 SLAB" out of this pool.
-        private static readonly Regex ImperialRx = new(@"(\d{1,2})\s*[^\w\s]{1,2}\s*SLAB",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-        // METRIC: "<mm> SLAB" — a 2–3 digit millimetre depth directly before SLAB (no inch mark). The
-        // required adjacency keeps an imperial «10" SLAB» (inch mark intervenes) and note-numbering
-        // («5. SLABS») out of this pool. Metric drawings (e.g. 5380 Heather) call out "200 SLAB".
-        private static readonly Regex MetricRx = new(@"(\d{2,3})\s*SLAB",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-        private const int MinIn = 4;     // thinner than this is a topping/SOG, not a structural slab
-        private const int MaxIn = 48;    // thicker is a transfer mat, not a field slab
-        private const int MinMm = 100;   // ~4"  — plausible structural slab in millimetres
-        private const int MaxMm = 600;   // ~24" — above this is a transfer/mat, not a field slab
+        private const int MinIn = SlabThicknessCallout.FieldMinIn;
+        private const int MaxIn = SlabThicknessCallout.FieldMaxIn;
+        private const int MinMm = SlabThicknessCallout.FieldMinMm;
+        private const int MaxMm = SlabThicknessCallout.FieldMaxMm;
         private const int RecoverMaxMm = 1200; // recovery (mats only) admits a deep mat foundation (~48")
-        private const double MmPerInch = 25.4;
+        private const double MmPerInch = SlabThicknessCallout.MmPerInch;
 
         // RECOVERY anchors — a STRUCTURAL base-slab depth the field reader skips only because it isn't stated
         // in the bare «N" SLAB» shape: a transfer MAT or a RAFT. Deliberately NOT slab-on-grade / SOG / topping:
@@ -63,15 +52,16 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             foreach (var line in lines)
             {
                 if (string.IsNullOrEmpty(line)) continue;
-                foreach (Match m in ImperialRx.Matches(line))
+                foreach (var c in SlabThicknessCallout.MatchNumberFirstText(line))
                 {
-                    int n = int.Parse(m.Groups[1].Value);
-                    if (n >= MinIn && n <= MaxIn) imperial.Add(n);
-                }
-                foreach (Match m in MetricRx.Matches(line))
-                {
-                    int n = int.Parse(m.Groups[1].Value);
-                    if (n >= MinMm && n <= MaxMm) metricMm.Add(n);
+                    if (c.IsMetric)
+                    {
+                        if (c.Value >= MinMm && c.Value <= MaxMm) metricMm.Add(c.Value);
+                    }
+                    else if (c.Value >= MinIn && c.Value <= MaxIn)
+                    {
+                        imperial.Add(c.Value);
+                    }
                 }
             }
 

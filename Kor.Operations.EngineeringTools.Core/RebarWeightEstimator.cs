@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Kor.Operations.EngineeringTools.QuantityTakeoff;
 
 namespace Kor.Operations.EngineeringTools.RebarChange
 {
@@ -145,7 +146,6 @@ namespace Kor.Operations.EngineeringTools.RebarChange
         private static readonly Regex WallTh = new(@"(\d{3})\s*WALL", RegexOptions.Compiled);
         private static readonly Regex WallVert = new(@"(\d{2})M\s*@\s*(\d{2,3})\s*VERT", RegexOptions.Compiled);
         private static readonly Regex WallHoriz = new(@"(\d{2})M\s*@\s*(\d{2,3})\s*HORIZ", RegexOptions.Compiled);
-        private static readonly Regex SlabTh = new(@"(\d{3,4})\s*SLAB", RegexOptions.Compiled);
         private static readonly Regex Mat = new(@"\b(\d{2})M\s*@\s*(\d{2,4})\b", RegexOptions.Compiled);
 
         /// <summary>
@@ -170,7 +170,7 @@ namespace Kor.Operations.EngineeringTools.RebarChange
             var wallV = TopSpec(WallVert, 2);
             var wallH = TopSpec(WallHoriz, 2);
 
-            var slabTh = SlabTh.Matches(all).Select(m => m.Groups[1].Value)
+            var slabTh = SlabThicknessCallout.MatchMetricCorroborationTextMm(all).Select(mm => mm.ToString())
                 .GroupBy(x => x).OrderByDescending(g => g.Count()).Take(3).Select(g => g.Key + "mm").ToList();
             var mats = Mat.Matches(all)
                 .Where(m => { int s = int.Parse(m.Groups[2].Value); return s >= 100 && s <= 400; })

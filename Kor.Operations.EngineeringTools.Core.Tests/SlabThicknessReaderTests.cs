@@ -87,6 +87,42 @@ public sealed class SlabThicknessReaderTests
         Assert.Equal(10, SlabThicknessReader.DominantThicknessIn(lines));
     }
 
+    [Theory]
+    [MemberData(nameof(DominantThicknessCharacterizationCases))]
+    public void DominantThicknessIn_preserves_existing_page_text_behavior(IReadOnlyList<string> lines, int? expected)
+    {
+        Assert.Equal(expected, SlabThicknessReader.DominantThicknessIn(lines));
+    }
+
+    public static IEnumerable<object?[]> DominantThicknessCharacterizationCases()
+    {
+        yield return new object?[]
+        {
+            new List<string> { "10\" SLAB", "24\" SLAB", "10\" SLAB", "INTO BOTTOM OF SLAB, SLAB BAND OR FOOTING." },
+            10
+        };
+        yield return new object?[]
+        {
+            new List<string> { "4\" UNREINFORCED SLAB ON GRADE", "12\" PC3 x 8. FOR ALL SLAB ON GRADE STEPS", "12\" SLABS DETAIL" },
+            12
+        };
+        yield return new object?[]
+        {
+            new List<string> { "5. SLABS TO BE CAMBERED PER STRUCTURAL", "200 SLAB", "200 SLAB", "250 SLAB" },
+            8
+        };
+        yield return new object?[]
+        {
+            new List<string> { "300 SLAB", "300 SLAB", "300 SLAB" },
+            12
+        };
+        yield return new object?[]
+        {
+            new List<string> { "SLAB 24\"" },
+            null
+        };
+    }
+
     // ── RecoverStructuralDepthIn: the wider read for a plate the field reader came up empty on ──
 
     [Fact]

@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 {
@@ -26,20 +25,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// <summary>One slab-thickness callout: its value (inches) and its anchor in PDF points (y-up).</summary>
         public readonly record struct Callout(double Cx, double Cy, int ValueIn);
 
-        private const int MinIn = 4;        // thinner is a topping/SOG, not a structural slab
-        private const int MaxIn = 48;       // capture up to a thickening/band so the decision can see it
-        private const int FieldMaxIn = 16;  // a true field slab; above this is a localized thickening/mat
-
-        // Words immediately left of SLAB on the same baseline, ending in «<n>" » — the same tight shape
-        // SlabThicknessReader uses, so "UNREINFORCED SLAB" / "PC3 … SLAB" are skipped (a word intervenes).
-        private static readonly Regex TailRx = new(@"(\d{1,2})\s*[^\w\s]{1,2}\s*$",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-        // Metric tail: a 2–3 digit millimetre depth directly before SLAB (no inch mark) — "200 SLAB",
-        // "900 SLAB". Mirrors SlabThicknessReader's metric handling so a metric set zones too.
-        private static readonly Regex MetricTailRx = new(@"(\d{2,3})\s*$", RegexOptions.Compiled);
-        private const int MinMm = 100, MaxMm = 1200;
-        private const double MmPerInch = 25.4;
+        private const int MinIn = SlabThicknessCallout.ZonerMinIn;
+        private const int MaxIn = SlabThicknessCallout.ZonerMaxIn;
+        private const int FieldMaxIn = SlabThicknessCallout.ZonerFieldMaxIn;
+        private const int MinMm = SlabThicknessCallout.ZonerMinMm, MaxMm = SlabThicknessCallout.ZonerMaxMm;
+        private const double MmPerInch = SlabThicknessCallout.MmPerInch;
 
         private const double BaselineTolPt = 6.0;    // same-line tolerance (matches ReadTextLines)
         private const double LeftReachPt = 60.0;     // how far left of SLAB to look for its number
@@ -73,16 +63,19 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 string ctx = string.Join(" ", left.Select(w => w.Text));
 
                 // Imperial («10" SLAB») first; if there is no inch mark, try a metric mm tail («200 SLAB»).
+                var parsed = SlabThicknessCallout.MatchNumberFirstTail(ctx);
+                if (parsed is null) continue;
+
                 int v;
-                var m = TailRx.Match(ctx);
-                if (m.Success) v = int.Parse(m.Groups[1].Value);
-                else
+                if (parsed.Value.IsMetric)
                 {
-                    var mm = MetricTailRx.Match(ctx);
-                    if (!mm.Success) continue;
-                    int mmVal = int.Parse(mm.Groups[1].Value);
+                    int mmVal = parsed.Value.Value;
                     if (mmVal < MinMm || mmVal > MaxMm) continue;
                     v = (int)Math.Round(mmVal / MmPerInch, MidpointRounding.AwayFromZero);
+                }
+                else
+                {
+                    v = parsed.Value.Value;
                 }
                 if (v < MinIn || v > MaxIn) continue;
                 callouts.Add(new Callout(slab.Cx, slab.Cy, v));

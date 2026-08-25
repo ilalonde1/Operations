@@ -15,6 +15,7 @@ public class ThicknessAnnotationParserTests
     [InlineData("200 THK", 200.0)]
     [InlineData("175 THK", 175.0)]
     [InlineData("300 SLAB", 300.0)]
+    [InlineData("250.5 SLAB", 250.5)]
     [InlineData("200mm", 200.0)]
     [InlineData("250.5mm", 250.5)]
     public void TryParse_ValidMetric_ReturnsMillimetres(string input, double expected)
@@ -32,11 +33,20 @@ public class ThicknessAnnotationParserTests
     }
 
     [Theory]
+    [InlineData("8\" SLAB", 203.2)]
+    [InlineData("200\" SLAB", 200.0)]
+    public void TryParse_SlabCalloutBranch_preserves_existing_annotation_behavior(string input, double expected)
+    {
+        Assert.Equal(expected, ThicknessAnnotationParser.TryParse(input)!.Value, precision: 1);
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("hello world")]
     [InlineData("BEAM 300x600")]
+    [InlineData("SLAB 24\"")]
     public void TryParse_NoMatch_ReturnsNull(string? input)
     {
         Assert.Null(ThicknessAnnotationParser.TryParse(input!));

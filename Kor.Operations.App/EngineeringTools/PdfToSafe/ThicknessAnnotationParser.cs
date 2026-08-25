@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Kor.Operations.EngineeringTools.QuantityTakeoff;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
@@ -19,7 +20,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             (new Regex(@"\bT[Ss]?\s*=\s*(\d+(?:\.\d+)?)\s*(mm|"")?", RegexOptions.IgnoreCase), false),
             (new Regex(@"\b(\d+(?:\.\d+)?)\s*(mm|"")?\s*THK(?:NESS)?\b", RegexOptions.IgnoreCase), false),
-            (new Regex(@"\b(\d+(?:\.\d+)?)\s*(mm|"")?(?:\s+SLAB)\b", RegexOptions.IgnoreCase), false),
             (new Regex(@"\b(\d+(?:\.\d+)?)\s*mm\b", RegexOptions.IgnoreCase), false),
             (new Regex(@"\b(\d+(?:\.\d+)?)\s*""\s*(?:THK)?\b", RegexOptions.IgnoreCase), true),
         };
@@ -32,8 +32,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             if (string.IsNullOrWhiteSpace(text)) return null;
 
-            foreach (var (re, isInches) in _patterns)
+            for (int i = 0; i < _patterns.Length; i++)
             {
+                if (i == 2 && SlabThicknessCallout.MatchPdfToSafeNumberFirstSlabMm(text) is double slabMm)
+                    return slabMm;
+
+                var (re, isInches) = _patterns[i];
                 var m = re.Match(text);
                 if (!m.Success) continue;
                 if (!double.TryParse(m.Groups[1].Value,
@@ -43,7 +47,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     continue;
 
                 double mm = isInches ? val * 25.4 : val;
-                if (mm >= 50 && mm <= 2000) return mm;
+                if (mm >= SlabThicknessCallout.PdfToSafeMinMm && mm <= SlabThicknessCallout.PdfToSafeMaxMm) return mm;
             }
             return null;
         }

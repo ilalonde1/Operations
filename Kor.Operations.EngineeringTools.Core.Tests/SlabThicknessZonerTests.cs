@@ -63,6 +63,25 @@ public sealed class SlabThicknessZonerTests
     }
 
     [Fact]
+    public void ReadCallouts_preserves_existing_positioned_callout_behavior()
+    {
+        var page = Page(
+            Callout("8\"", "SLAB", 600, 100)
+                .Concat(Callout("12\"", "SLABS", 500, 200))
+                .Concat(Callout("200", "SLAB", 400, 300))
+                .Append(Word("12\"", 100, 300))
+                .Append(Word("PC3", 140, 300))
+                .Append(Word("SLAB", 190, 300))
+                .Append(Word("SLAB", 100, 200))
+                .Append(Word("24\"", 140, 200))
+                .ToArray());
+
+        var callouts = SlabThicknessZoner.ReadCallouts(page);
+
+        Assert.Equal(new[] { 8, 8, 12 }, callouts.Select(c => c.ValueIn).OrderBy(v => v));
+    }
+
+    [Fact]
     public void Qualifies_a_genuine_two_zone_tower_floor()
     {
         // 8"x7 + 12"x5 — the real p48 tower split: 12" has real support, so it zones.
