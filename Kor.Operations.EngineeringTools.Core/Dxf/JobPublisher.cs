@@ -105,7 +105,8 @@ public static class JobPublisher
             // the engineer's own model is carried through into the output, and hers is not ours to
             // refuse: 31138 failed 514 checks, every one of them her work.
             var violations = ShippedModelInvariants.Check(
-                File.ReadLines(output), 0.05, plan.DropStoreys, File.ReadLines(referencePath));
+                File.ReadLines(output), 0.05, plan.DropStoreys, File.ReadLines(referencePath),
+                report.FoundationStoreys);
 
             built.Add(new Built(label, output, report.Summary.Stories, report.Summary.Walls,
                 report.Summary.Columns, report.Summary.Floors, violations));
@@ -130,7 +131,7 @@ public static class JobPublisher
             var on = PlanSheetNaming.MatchStories(sheet, storeys);
             if (on.Count == 0) continue;
 
-            var found = StructuralPlanClassifier.Classify(DxfPlanReader.ReadSegments(file), options);
+            var found = StructuralPlanClassifier.Classify(DxfPlanReader.ReadSegments(file), options, sheet);
             var points = found.Walls.SelectMany(w => new[] { w.Start, w.End })
                 .Concat(found.Columns.Select(c => c.Center))
                 .ToList();

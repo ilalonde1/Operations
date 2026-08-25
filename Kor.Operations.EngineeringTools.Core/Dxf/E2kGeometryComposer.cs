@@ -3,7 +3,11 @@ using System.Globalization;
 namespace Kor.Operations.EngineeringTools.Dxf;
 
 /// <summary>One drawing's geometry, placed on one storey of the model.</summary>
-public sealed record StoryPlacement(StoryLevel Story, PlanGeometrySet Geometry, string SourceSheet);
+public sealed record StoryPlacement(
+    StoryLevel Story,
+    PlanGeometrySet Geometry,
+    string SourceSheet,
+    bool IsFoundationSheet = false);
 
 /// <summary>
 /// The ground something covers on plan. Enough to answer "is this plate under those members",
@@ -411,6 +415,11 @@ public static class E2kGeometryComposer
         var openingsByStorey = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         var pinchedPlates = new List<(string Storey, string Sheet, double GapInches, double AtXft, double AtYft)>();
+
+        var foundationStoreys = placements
+            .Where(p => p.IsFoundationSheet)
+            .Select(p => p.Story.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Which sheets had their slab thickness assumed rather than read. The engineer, asked
         // whether 12 in was acceptable where a drawing is silent: "ok to use 12" but let me know
@@ -1075,6 +1084,12 @@ public static class E2kGeometryComposer
             {
                 if (!storeysWithMembers.Contains(storey.Name)) continue;
 
+                // The neighbour-borrowing rule is for a suspended floor whose slab edge did not
+                // close. A FOUNDATION sheet is different evidence: Andrea's 25 August answer on
+                // P3 was that S.O.G. is slab-on-grade and "we don't model those." Borrowing a plate
+                // onto that storey would recreate the same false diaphragm by another path.
+                if (foundationStoreys.Contains(storey.Name)) continue;
+
                 // A FRAGMENT is not a floor either.
                 //
                 // This used to fire only where a storey had no plate at all, and drafting does not
@@ -1345,11 +1360,24 @@ public static class E2kGeometryComposer
                 $"({string.Join(", ", oversize.Select(k => $"{k.W:0}x{k.D:0}"))}). A column that wide is more " +
                 "likely a wall or a pier; worth a look at those locations.");
 
-        // A storey with walls and columns but no plate is the one thing that still reads as wrong
-        // in a 3D view: members standing with nothing spanning between them. It happens where a
-        // drawing's slab edges will not close — the parkade levels on 31168 — and it is worth
-        // naming, because the storey has no diaphragm until a plate is drawn there.
-        var plateless = storeysWithMembers.Where(s => !storeysWithPlates.Contains(s)).ToList();
+        // An ordinary storey with walls and columns but no plate is the one thing that still reads
+        // as wrong in a 3D view: members standing with nothing spanning between them. A FOUNDATION
+        // storey is reported separately because S.O.G. is deliberately not a suspended diaphragm.
+        var foundationPlateless = storeysWithMembers
+            .Where(s => !storeysWithPlates.Contains(s))
+            .Where(s => foundationStoreys.Contains(s))
+            .ToList();
+        var plateless = storeysWithMembers
+            .Where(s => !storeysWithPlates.Contains(s))
+            .Where(s => !foundationStoreys.Contains(s))
+            .ToList();
+        if (foundationPlateless.Count > 0)
+            flags.Add(
+                $"{foundationPlateless.Count} foundation storey(s) carry walls or columns but no floor plate: " +
+                $"{string.Join(", ", foundationPlateless)}. The placed sheet is a FOUNDATION plan, and Andrea " +
+                "Neuviale confirmed on 25 August that S.O.G. is slab-on-grade; it is not a suspended diaphragm " +
+                "and is not modelled.");
+
         if (plateless.Count > 0)
             flags.Add(
                 $"{plateless.Count} storey(s) carry walls or columns but no floor plate, because their slab " +
@@ -1463,5 +1491,3 @@ public static class E2kGeometryComposer
     private static string Trim(double value) => value.ToString("0.###", Inv);
     private static string F(double value) => value.ToString("0.####", Inv);
 }
-
-

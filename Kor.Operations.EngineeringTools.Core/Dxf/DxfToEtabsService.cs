@@ -158,6 +158,9 @@ public sealed record DxfToEtabsReport(
     /// </summary>
     public IReadOnlyDictionary<string, RuleSetting> RulesApplied { get; init; }
         = new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Storeys placed from FOUNDATION sheets, where a slab-on-grade is not a diaphragm.</summary>
+    public IReadOnlyList<string> FoundationStoreys { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>
@@ -572,7 +575,7 @@ public static class DxfToEtabsService
                     new DxfPoint(g.End.X * scale, g.End.Y * scale)) { FromCurve = g.FromCurve }).ToList();
 
             readSheets.Add(segments);
-            var geometry = StructuralPlanClassifier.Classify(segments, classification);
+            var geometry = StructuralPlanClassifier.Classify(segments, classification, sheet);
             var matched = PlanSheetNaming.MatchStories(sheet, matchNames)
                 .Select(s => doc.StoreyRenames.TryGetValue(s, out string? now) ? now : s)
                 .Where(s => !cutStoreys.Contains(s))
@@ -675,7 +678,13 @@ public static class DxfToEtabsService
         foreach (var (sheet, geometry, matched) in parsed)
             foreach (string storyName in matched)
                 if (byName.TryGetValue(storyName, out var story))
-                    placements.Add(new StoryPlacement(story, geometry, sheet.FileName));
+                    placements.Add(new StoryPlacement(story, geometry, sheet.FileName, sheet.IsFoundation));
+
+        var foundationStoreys = placements
+            .Where(p => p.IsFoundationSheet)
+            .Select(p => p.Story.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         // Carried straight from the request, never from the rules: a plate that was not drawn is a
         // judgement about one job's drawings, not a standard the office holds.
@@ -777,6 +786,7 @@ public static class DxfToEtabsService
             summary, offset, outcomes, warnings, requested, composeFromReference)
         {
             RulesApplied = banked,
+            FoundationStoreys = foundationStoreys,
         };
     }
 

@@ -51,12 +51,16 @@ public static class ShippedModelInvariants
     /// doing. Give it and the rules apply to what this tool built; leave it out and everything in
     /// the file is treated as ours, which is right for a model built on an empty shell.
     /// </param>
+    /// <param name="foundationStoreys">Storeys matched from FOUNDATION sheets, where S.O.G. is not a diaphragm.</param>
     public static IReadOnlyList<ModelViolation> Check(
         IEnumerable<string> lines,
         double jointTolerance = 0.05,
         IEnumerable<string>? droppedStoreys = null,
-        IEnumerable<string>? referenceE2k = null)
+        IEnumerable<string>? referenceE2k = null,
+        IEnumerable<string>? foundationStoreys = null)
     {
+        var foundation = new HashSet<string>(foundationStoreys ?? Array.Empty<string>(),
+            StringComparer.OrdinalIgnoreCase);
         var openings = new HashSet<string>(StringComparer.Ordinal);
         var carriedThrough = new HashSet<string>(StringComparer.Ordinal);
         if (referenceE2k is not null)
@@ -143,7 +147,12 @@ public static class ShippedModelInvariants
                 (floors.Contains(obj) ? withFloor : withMembers).Add(st);
 
         foreach (string st in withMembers)
-            if (!withFloor.Contains(st))
+            // Narrow S.O.G. exception: only storeys that the DXF sheet matcher marked as coming
+            // from FOUNDATION sheets are allowed to carry members without a floor plate. Andrea
+            // Neuviale's 25 August answer on LEVEL P3 was explicit: "There is only a slab-on-grade
+            // (S.O.G on our drawings) at P3 but we don't model those." A slab on grade is not a
+            // suspended diaphragm, so this invariant is wrong there and still right everywhere else.
+            if (!withFloor.Contains(st) && !foundation.Contains(st))
                 v.Add(new ModelViolation("storey-with-no-floor", $"'{st}' carries members and has no floor plate", st));
 
         // 4. A member must not belong to two storeys. A floor may -- that is a borrowed plate, and

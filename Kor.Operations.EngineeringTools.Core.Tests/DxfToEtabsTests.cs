@@ -673,6 +673,16 @@ public class E2kDocumentTests
         "",
     };
 
+    private static string[] InvariantModel(params string[] body) => new[]
+    {
+        "$ STORIES - IN SEQUENCE FROM TOP",
+        "  STORY \"LEVEL 1\"  HEIGHT 120",
+        "  STORY \"LEVEL P3\"  HEIGHT 120",
+        "  STORY \"Base\"  HEIGHT 0",
+        "",
+        "$ POINT COORDINATES",
+    }.Concat(body).ToArray();
+
     [Fact]
     public void TheBaseGapIsHonouredButNeverBecomesAStoreyHeight()
     {
@@ -895,6 +905,54 @@ public class E2kDocumentTests
         Assert.All(set.Walls, w => Assert.Equal(12, w.Thickness, 1));
         Assert.True(set.Walls.Sum(w => w.Length) > 3000,
             $"the perimeter should come through as wall, got {set.Walls.Sum(w => w.Length):0}\" of it.");
+    }
+
+    [Fact]
+    public void AFoundationSheetDoesNotTakeAFloorFromThePerimeterWall()
+    {
+        static IEnumerable<DxfSegment> Ring(double x0, double y0, double x1, double y1, string layer)
+        {
+            var c = new[] { new DxfPoint(x0, y0), new DxfPoint(x1, y0), new DxfPoint(x1, y1), new DxfPoint(x0, y1) };
+            for (int i = 0; i < 4; i++) yield return new DxfSegment(layer, c[i], c[(i + 1) % 4]);
+        }
+
+        static IEnumerable<DxfSegment> BrokenSlab()
+        {
+            yield return new DxfSegment("JBP_C_SLABEDG", new DxfPoint(0, 0), new DxfPoint(1200, 0));
+            yield return new DxfSegment("JBP_C_SLABEDG", new DxfPoint(1200, 0), new DxfPoint(1200, 900));
+            yield return new DxfSegment("JBP_C_SLABEDG", new DxfPoint(1200, 900), new DxfPoint(200, 900));
+        }
+
+        var sheet = PlanSheetNaming.Parse("--Structural Plan - LEVEL P3 PLAN - FOUNDATION.dxf");
+        var set = StructuralPlanClassifier.Classify(
+            Ring(0, 0, 1200, 900, "JBP_B_WALL")
+                .Concat(Ring(12, 12, 1188, 888, "JBP_B_WALL"))
+                .Concat(BrokenSlab()),
+            sheet: sheet);
+
+        Assert.NotEmpty(set.Walls);
+        Assert.Empty(set.Slabs);
+        Assert.Contains(set.Flags, f =>
+            f.Contains("foundation drawing", StringComparison.OrdinalIgnoreCase)
+            && f.Contains("not modelled as a floor plate", StringComparison.OrdinalIgnoreCase)
+            && f.Contains("S.O.G.", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void AFoundationSheetWithAClosedSlabEdgeStillProducesThatPlate()
+    {
+        static IEnumerable<DxfSegment> Slab(double x0, double y0, double x1, double y1)
+        {
+            var c = new[] { new DxfPoint(x0, y0), new DxfPoint(x1, y0), new DxfPoint(x1, y1), new DxfPoint(x0, y1) };
+            for (int i = 0; i < 4; i++) yield return new DxfSegment("JBP_C_SLABEDG", c[i], c[(i + 1) % 4]);
+        }
+
+        var sheet = PlanSheetNaming.Parse("--Structural Plan - LEVEL P3 PLAN - FOUNDATION.dxf");
+        var set = StructuralPlanClassifier.Classify(Slab(0, 0, 1200, 900), sheet: sheet);
+
+        var plate = Assert.Single(set.Slabs);
+        Assert.Equal(1200 * 900, plate.Area, 3);
+        Assert.DoesNotContain(set.Flags, f => f.Contains("not modelled as a floor plate", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -2020,6 +2078,107 @@ public class E2kDocumentTests
             "  AREAASSIGN  \"KW1\"  \"LEVEL 1\"  SECTION \"x\"",
             "  AREAASSIGN  \"KF1\"  \"LEVEL 1\"  SECTION \"x\""));
         Assert.Empty(sound);
+    }
+
+    [Fact]
+    public void AFoundationStoreyWithMembersAndNoFloorPlateDoesNotNeedADiaphragm()
+    {
+        var violations = ShippedModelInvariants.Check(InvariantModel(
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"KW1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1 1 0 0",
+            "$ LINE CONNECTIVITIES",
+            "  LINE \"KC1\"  COLUMN  \"KP1\"  \"KP2\"  0 0 0 0",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KW1\"  \"LEVEL P3\"  SECTION \"x\"",
+            "$ LINE ASSIGNS",
+            "  LINEASSIGN  \"KC1\"  \"LEVEL P3\"  SECTION \"x\""),
+            foundationStoreys: new[] { "LEVEL P3" });
+
+        Assert.DoesNotContain(violations, x => x.Rule == "storey-with-no-floor");
+    }
+
+    [Fact]
+    public void ANonFoundationStoreyWithMembersAndNoFloorPlateStillFailsTheInvariant()
+    {
+        var violations = ShippedModelInvariants.Check(InvariantModel(
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"KW1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1 1 0 0",
+            "$ LINE CONNECTIVITIES",
+            "  LINE \"KC1\"  COLUMN  \"KP1\"  \"KP2\"  0 0 0 0",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KW1\"  \"LEVEL 1\"  SECTION \"x\"",
+            "$ LINE ASSIGNS",
+            "  LINEASSIGN  \"KC1\"  \"LEVEL 1\"  SECTION \"x\""),
+            foundationStoreys: new[] { "LEVEL P3" });
+
+        Assert.Contains(violations, x => x.Rule == "storey-with-no-floor" && x.Where == "LEVEL 1");
+    }
+
+    [Fact]
+    public void AFoundationStoreyDoesNotBorrowANeighbouringFloor()
+    {
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 1\"  HEIGHT 120",
+            "  STORY \"LEVEL P3\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        static PlanGeometrySet Floored()
+        {
+            var g = new PlanGeometrySet();
+            g.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new List<DxfPoint>
+            {
+                new(0, 0), new(400, 0), new(400, 400), new(0, 400),
+            }, true));
+            g.Columns.Add(new ColumnFootprint(new DxfPoint(200, 200), 24, 24, "JBP_V_COL"));
+            return g;
+        }
+
+        static string Quoted(string line, int which)
+        {
+            var parts = line.Split('"');
+            return parts.Length > which * 2 ? parts[which * 2 - 1] : string.Empty;
+        }
+
+        var foundation = new PlanGeometrySet();
+        foundation.Columns.Add(new ColumnFootprint(new DxfPoint(200, 200), 24, 24, "JBP_V_COL"));
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories["LEVEL 1"], Floored(), "level1.dxf"),
+            new StoryPlacement(stories["LEVEL P3"], foundation, "level-p3-foundation.dxf", IsFoundationSheet: true),
+        }, FlagsOnly with { InferMissingFloors = true });
+
+        var floorNames = doc.LinesOf("AREA CONNECTIVITIES")
+            .Where(l => l.TrimStart().StartsWith("AREA ", StringComparison.Ordinal)
+                        && l.Contains(" FLOOR ", StringComparison.Ordinal))
+            .Select(l => Quoted(l, 1))
+            .ToHashSet(StringComparer.Ordinal);
+        var floorAssignsOnP3 = doc.LinesOf("AREA ASSIGNS")
+            .Where(l => l.TrimStart().StartsWith("AREAASSIGN", StringComparison.Ordinal)
+                        && floorNames.Contains(Quoted(l, 1))
+                        && Quoted(l, 2).Equals("LEVEL P3", StringComparison.OrdinalIgnoreCase));
+
+        Assert.Empty(floorAssignsOnP3);
+        Assert.Contains(summary.Flags, f =>
+            f.Contains("foundation storey", StringComparison.OrdinalIgnoreCase)
+            && f.Contains("not modelled", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

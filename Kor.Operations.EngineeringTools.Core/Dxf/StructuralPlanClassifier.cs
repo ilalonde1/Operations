@@ -283,7 +283,10 @@ public static class StructuralPlanClassifier
             _ => null,
         };
 
-    public static PlanGeometrySet Classify(IEnumerable<DxfSegment> segments, PlanClassificationOptions? options = null)
+    public static PlanGeometrySet Classify(
+        IEnumerable<DxfSegment> segments,
+        PlanClassificationOptions? options = null,
+        PlanSheetInfo? sheet = null)
     {
         options ??= new PlanClassificationOptions();
         var all = segments as IReadOnlyList<DxfSegment> ?? segments.ToList();
@@ -839,11 +842,28 @@ public static class StructuralPlanClassifier
 
             if (enclosed is not null)
             {
-                result.Slabs.Add(enclosed);
-                result.Flags.Add(
-                    $"No slab edge on this drawing would close, so the floor is taken from the inside face of " +
-                    $"the perimeter wall — {enclosed.Area / 144:N0} sq ft, one outline, one thickness. It is an " +
-                    "approximation offered because a storey with no plate has no diaphragm at all.");
+                if (sheet?.IsFoundation == true)
+                {
+                    // Reading (a), not (b): only the perimeter-wall fallback is suppressed on a
+                    // FOUNDATION sheet. A closed slab edge still models a plate, because a
+                    // foundation plan can draw a real suspended slab over a pit or transfer. The
+                    // fault Andrea named on 25 August was the fallback doing the opposite of the
+                    // drawing: "There is only a slab-on-grade (S.O.G on our drawings) at P3 but we
+                    // don't model those."
+                    result.Flags.Add(
+                        $"No slab edge on this foundation drawing would close. The inside face of " +
+                        $"the perimeter wall encloses {enclosed.Area / 144:N0} sq ft, but it is not " +
+                        "modelled as a floor plate because a FOUNDATION sheet can be slab-on-grade, " +
+                        "and S.O.G. is not a suspended slab.");
+                }
+                else
+                {
+                    result.Slabs.Add(enclosed);
+                    result.Flags.Add(
+                        $"No slab edge on this drawing would close, so the floor is taken from the inside face of " +
+                        $"the perimeter wall — {enclosed.Area / 144:N0} sq ft, one outline, one thickness. It is an " +
+                        "approximation offered because a storey with no plate has no diaphragm at all.");
+                }
             }
         }
 
