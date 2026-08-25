@@ -51,14 +51,13 @@ param(
     # -DropStoreys. The two work together; neither replaces the other.
     [string]$Tower,
 
-    # Give a storey that has members but no floor a plate copied from another storey -- the one
-    # whose own plate stands under those members AND is closest to them in shape. Nearest-below
-    # was the first rule and it handed 31168's mid-rise the ground floor's site-wide slab, because
-    # a slab that spans the whole site covers everything above it.
-    # For a job whose drawings carry no closed slab outline --
-    # 31168's Level 1 and mezzanine -- the alternative is members with nothing spanning between
-    # them. The plates are reported as INFERRED, because a plate she cannot tell from a measured
-    # one is worse than the hole it fills.
+    # Opt-in only. Give a storey that has members but no floor a plate copied from another storey
+    # -- the one whose own plate stands under those members AND is closest to them in shape.
+    # Nearest-below was the first rule and it handed 31168's mid-rise the ground floor's site-wide
+    # slab, because a slab that spans the whole site covers everything above it. Andrea rejected
+    # borrowed slabs on 25 August, so the default publish leaves the missing diaphragm visible
+    # instead. If this is used, the plates are reported as INFERRED, because a plate she cannot tell
+    # from a measured one is worse than the hole it fills.
     [switch]$InferFloors,
 
     # A second model from the same job, beside the first rather than over it.

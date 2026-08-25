@@ -179,18 +179,42 @@ if (args.Length >= 1 && args[0].Equals("verify-e2k", StringComparison.OrdinalIgn
     var breaches = ShippedModelInvariants.Check(
         File.ReadLines(args[1]), jointTolerance, droppedNames,
         referencePath is null ? null : File.ReadLines(referencePath));
-    if (breaches.Count == 0)
+    var blockers = breaches.Where(b => b.BlocksPublishing).ToList();
+    var advisory = breaches.Where(b => !b.BlocksPublishing).ToList();
+    if (blockers.Count == 0)
     {
-        Console.WriteLine($"verify-e2k: {Path.GetFileName(args[1])} passes every invariant.");
+        if (advisory.Count == 0)
+        {
+            Console.WriteLine($"verify-e2k: {Path.GetFileName(args[1])} passes every publish-blocking invariant.");
+            return 0;
+        }
+
+        Console.WriteLine($"verify-e2k: {Path.GetFileName(args[1])} passes every publish-blocking invariant; reports {advisory.Count} advisory check(s).");
+        foreach (var group in advisory.GroupBy(b => b.Rule).OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            Console.WriteLine($"  [advisory:{group.Key}] {group.Count()}");
+            foreach (var b in group.Take(6)) Console.WriteLine($"      {b.What}   ({b.Where})");
+            if (group.Count() > 6) Console.WriteLine($"      ... and {group.Count() - 6} more");
+        }
         return 0;
     }
 
-    Console.Error.WriteLine($"verify-e2k: {Path.GetFileName(args[1])} FAILS {breaches.Count} check(s).");
-    foreach (var group in breaches.GroupBy(b => b.Rule).OrderBy(g => g.Key, StringComparer.Ordinal))
+    Console.Error.WriteLine($"verify-e2k: {Path.GetFileName(args[1])} FAILS {blockers.Count} publish-blocking check(s).");
+    foreach (var group in blockers.GroupBy(b => b.Rule).OrderBy(g => g.Key, StringComparer.Ordinal))
     {
         Console.Error.WriteLine($"  [{group.Key}] {group.Count()}");
         foreach (var b in group.Take(6)) Console.Error.WriteLine($"      {b.What}   ({b.Where})");
         if (group.Count() > 6) Console.Error.WriteLine($"      ... and {group.Count() - 6} more");
+    }
+    if (advisory.Count > 0)
+    {
+        Console.Error.WriteLine($"  advisory check(s) also reported: {advisory.Count}");
+        foreach (var group in advisory.GroupBy(b => b.Rule).OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            Console.Error.WriteLine($"  [advisory:{group.Key}] {group.Count()}");
+            foreach (var b in group.Take(6)) Console.Error.WriteLine($"      {b.What}   ({b.Where})");
+            if (group.Count() > 6) Console.Error.WriteLine($"      ... and {group.Count() - 6} more");
+        }
     }
     return 3;
 }
@@ -394,13 +418,37 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
         Console.WriteLine($"{one.Label}");
         Console.WriteLine($"  storeys {one.Storeys}   walls {one.Walls}   columns {one.Columns}   floors {one.Floors}");
 
-        if (one.Passed) { Console.WriteLine("  verify-e2k: passes every invariant."); continue; }
+        if (one.Passed)
+        {
+            if (one.AdvisoryViolations.Count == 0)
+            {
+                Console.WriteLine("  verify-e2k: passes every publish-blocking invariant.");
+                continue;
+            }
 
-        Console.WriteLine($"  verify-e2k: FAILS {one.Violations.Count} check(s) - NOT landed.");
-        foreach (var group in one.Violations.GroupBy(v => v.Rule))
+            Console.WriteLine($"  verify-e2k: passes every publish-blocking invariant; reports {one.AdvisoryViolations.Count} advisory check(s).");
+            foreach (var group in one.AdvisoryViolations.GroupBy(v => v.Rule))
+            {
+                Console.WriteLine($"    [advisory:{group.Key}] {group.Count()}");
+                foreach (var breach in group.Take(3)) Console.WriteLine($"        {breach.What}");
+            }
+            continue;
+        }
+
+        Console.WriteLine($"  verify-e2k: FAILS {one.BlockingViolations.Count} publish-blocking check(s) - NOT landed.");
+        foreach (var group in one.BlockingViolations.GroupBy(v => v.Rule))
         {
             Console.WriteLine($"    [{group.Key}] {group.Count()}");
             foreach (var breach in group.Take(3)) Console.WriteLine($"        {breach.What}");
+        }
+        if (one.AdvisoryViolations.Count > 0)
+        {
+            Console.WriteLine($"    advisory check(s) also reported: {one.AdvisoryViolations.Count}");
+            foreach (var group in one.AdvisoryViolations.GroupBy(v => v.Rule))
+            {
+                Console.WriteLine($"    [advisory:{group.Key}] {group.Count()}");
+                foreach (var breach in group.Take(3)) Console.WriteLine($"        {breach.What}");
+            }
         }
     }
 
@@ -3336,5 +3384,4 @@ public static class TakeoffCliHelp
         }
     }
 }
-
 

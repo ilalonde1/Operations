@@ -62,7 +62,7 @@ public static class ModelQuestionnaire
     {
         // Whatever this project's own run found, rather than a number typed in once.
         string plateless = report?.Summary.Flags
-            .FirstOrDefault(f => f.Contains("no floor plate", StringComparison.OrdinalIgnoreCase)) is { } f2
+            .FirstOrDefault(f => f.Contains("carry walls or columns and no floor plate", StringComparison.OrdinalIgnoreCase)) is { } f2
             ? f2[(f2.IndexOf(':') + 1)..].Split('.')[0].Trim()
             : "the storeys named in the report";
 
@@ -532,7 +532,7 @@ public static class ModelQuestionnaire
         string? Flag(string contains) => report.Summary.Flags
             .FirstOrDefault(f => f.Contains(contains, StringComparison.OrdinalIgnoreCase));
 
-        if (Flag("no floor plate") is { } plateless)
+        if (Flag("carry walls or columns and no floor plate") is { } plateless)
         {
             string storeys = plateless[(plateless.IndexOf(':') + 1)..].Split('.')[0].Trim();
             yield return new ModelQuestion("J1", "Storeys with no floor plate",
@@ -564,7 +564,7 @@ public static class ModelQuestionnaire
         // Plates a storey was given because its own drawing has none. She is not being asked to
         // solve anything -- the model has a floor there -- but a plate she cannot tell from a
         // measured one is worse than the hole it filled, so it is put in front of her, once.
-        if (Flag("not drawn one for") is { } inferred)
+        if (Flag("a floor plate from a neighbour") is { } inferred)
         {
             string storeys = inferred[(inferred.IndexOf(':') + 1)..].Split('.')[0].Trim();
             yield return new ModelQuestion("J4", "Floors copied from another storey",

@@ -55,6 +55,30 @@ public class ModelQuestionnaireTests
     }
 
     [Fact]
+    public void MissingAndBorrowedFloorsAreBothNamedForTheEngineer()
+    {
+        var report = MinimalReport(Path.Combine(Path.GetTempPath(), "unused.xlsx")) with
+        {
+            Summary = new ComposeSummary(1, 1, 1, 4, 2, Array.Empty<string>(), new[]
+            {
+                "1 storey(s) carry walls or columns and no floor plate, so they have no diaphragm: LEVEL 2. Nothing was borrowed or invented for them; add a plate if these storeys need one.",
+                "1 storey(s) were given a floor plate from a neighbour, copied from the storey whose own plate is closest in shape to what stands on them: LEVEL 3 (from LEVEL 2). These plates are INFERRED, not measured -- the drawings for those storeys carry no closed slab outline -- so check their edges before relying on them.",
+            })
+        };
+
+        var questions = ModelQuestionnaire.StandingQuestions(
+            report.ClassificationUsed, report.ComposeUsed, report);
+
+        var missing = Assert.Single(questions, q => q.Code == "J1");
+        Assert.Contains("LEVEL 2", missing.Question, StringComparison.Ordinal);
+        Assert.Contains("no diaphragm", missing.Question, StringComparison.OrdinalIgnoreCase);
+
+        var borrowed = Assert.Single(questions, q => q.Code == "J4");
+        Assert.Contains("LEVEL 3 (from LEVEL 2)", borrowed.Question, StringComparison.Ordinal);
+        Assert.Contains("INFERRED", borrowed.WhatWeDid, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AnsweredQuestionCanWriteMultipleSettingRules()
     {
         string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");

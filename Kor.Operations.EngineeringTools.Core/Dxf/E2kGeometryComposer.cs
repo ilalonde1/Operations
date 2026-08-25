@@ -115,7 +115,7 @@ public sealed record ComposeOptions
     public bool MembersRiseToStoreyAbove { get; init; } = true;
 
     /// <summary>
-    /// Where a storey has walls and columns but no floor, carry up the plate from the storey below.
+    /// Opt-in: where a storey has walls and columns but no floor, copy a plate from a nearby storey.
     ///
     /// Not a tolerance workaround. On 31168 the Level 1, mezzanine and C-Level 3 sheets have no
     /// closed slab outline to read: JBP_C_SLABEDG spans the whole 334x235 ft footprint but arrives
@@ -123,10 +123,10 @@ public sealed record ComposeOptions
     /// is 119 sq ft. There is nothing there to close, so no tolerance produces that floor, and four
     /// storeys stood with members and nothing spanning between them.
     ///
-    /// A ground floor over a parkade has the parkade's extent, so the plate below is the honest
-    /// stand-in and an engineer can drag its edges. It is INFERRED, not read, so it is reported as
-    /// such and the storey is named -- a plate she cannot tell from a measured one is worse than
-    /// the hole it fills.
+    /// This remains available only for an operator who deliberately asks for it. Andrea rejected
+    /// borrowed slabs on 25 August: a copied parkade plate can look like measured geometry until
+    /// she notices it is wrong. It is INFERRED, not read, so it is reported as such and the storey
+    /// is named -- a plate she cannot tell from a measured one is worse than the hole it fills.
     ///
     /// Off by default: a plate that was not drawn is a judgement, and judgements are opt-in.
     /// </summary>
@@ -1062,10 +1062,10 @@ public static class E2kGeometryComposer
                 $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Circle\"  D {Trim(kv.Key)}"))
             .ToList();
 
-        // Carry a plate up to a storey whose own drawing has no closed outline to read. Assigning
-        // the plate below to this storey as well is how ETABS itself repeats a member up a
-        // building — one object, one assign per storey — so it needs no new geometry, only its own
-        // diaphragm, which must not be shared across elevations.
+        // When the operator asks for it, copy a plate to a storey whose own drawing has no closed
+        // outline to read. Assigning the donor plate to this storey as well is how ETABS itself
+        // repeats a member up a building — one object, one assign per storey — so it needs no new
+        // geometry, only its own diaphragm, which must not be shared across elevations.
         //
         // This has to run BEFORE the sections below are appended to the document. Written after
         // them, the assigns and diaphragms are built, counted, and reported in a flag that says
@@ -1188,9 +1188,8 @@ public static class E2kGeometryComposer
                 // over ground the mid-rise does not stand on. The engineer saw the result of that
                 // on four levels.
                 //
-                // A storey with NO floor keeps the old rule and takes the best available, because
-                // some floor shaped roughly right beats a storey with nothing spanning between its
-                // members.
+                // When this opt-in path is used, a storey with NO floor takes the best available
+                // donor. The default path now leaves the missing diaphragm visible instead.
                 var donor = candidates
                     .Where(c => c.Likeness >= bestLikeness * options.DonorPlateLikenessMargin)
                     .OrderBy(c => Math.Abs(c.Storey.Elevation - storey.Elevation))
@@ -1360,9 +1359,11 @@ public static class E2kGeometryComposer
                 $"({string.Join(", ", oversize.Select(k => $"{k.W:0}x{k.D:0}"))}). A column that wide is more " +
                 "likely a wall or a pier; worth a look at those locations.");
 
-        // An ordinary storey with walls and columns but no plate is the one thing that still reads
-        // as wrong in a 3D view: members standing with nothing spanning between them. A FOUNDATION
-        // storey is reported separately because S.O.G. is deliberately not a suspended diaphragm.
+        // An ordinary storey with walls and columns but no plate is now a stated absence, not a
+        // reason to invent a slab. Andrea opened borrowed floors on 25 August and said "This one
+        // needs to go." A storey with no diaphragm is something she can add; a false one looks real
+        // until she catches it. A FOUNDATION storey is reported separately because S.O.G. is
+        // deliberately not a suspended diaphragm.
         var foundationPlateless = storeysWithMembers
             .Where(s => !storeysWithPlates.Contains(s))
             .Where(s => foundationStoreys.Contains(s))
@@ -1380,9 +1381,9 @@ public static class E2kGeometryComposer
 
         if (plateless.Count > 0)
             flags.Add(
-                $"{plateless.Count} storey(s) carry walls or columns but no floor plate, because their slab " +
-                $"edges would not close: {string.Join(", ", plateless)}. Those storeys have no diaphragm " +
-                "until a plate is added.");
+                $"{plateless.Count} storey(s) carry walls or columns and no floor plate, so they have no diaphragm: " +
+                $"{string.Join(", ", plateless)}. Nothing was borrowed or invented for them; add a plate if these " +
+                "storeys need one.");
 
         // And the reverse, which reads as wrong even faster: a floor with nothing under it. A plate
         // is carried by the walls and columns assigned to its own storey, so a storey holding a

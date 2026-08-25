@@ -39,7 +39,13 @@ public static class JobPublisher
         string Label, string OutputPath, int Storeys, int Walls, int Columns, int Floors,
         IReadOnlyList<ModelViolation> Violations)
     {
-        public bool Passed => Violations.Count == 0;
+        public IReadOnlyList<ModelViolation> BlockingViolations
+            => Violations.Where(v => v.BlocksPublishing).ToList();
+
+        public IReadOnlyList<ModelViolation> AdvisoryViolations
+            => Violations.Where(v => !v.BlocksPublishing).ToList();
+
+        public bool Passed => BlockingViolations.Count == 0;
     }
 
     public sealed record Outcome(string Reference, IReadOnlyList<Built> Models, string? Refused);

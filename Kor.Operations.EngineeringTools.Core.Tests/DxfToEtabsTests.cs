@@ -809,6 +809,12 @@ public class E2kDocumentTests
         "$ POINT COORDINATES",
     }.Concat(body).ToArray();
 
+    private static string Quoted(string line, int which)
+    {
+        var parts = line.Split('"');
+        return parts.Length > which * 2 ? parts[which * 2 - 1] : string.Empty;
+    }
+
     [Fact]
     public void TheBaseGapIsHonouredButNeverBecomesAStoreyHeight()
     {
@@ -1816,14 +1822,26 @@ public class E2kDocumentTests
         // is worse than the hole it fills.
         Assert.Contains("INFERRED", flag, StringComparison.Ordinal);
 
-        // Off unless asked: a plate that was not drawn is a judgement.
-        var untouched = E2kGeometryComposer.Compose(E2kDocument.Parse(site), new[]
+        // Off unless asked: a plate that was not drawn is a judgement. The report names the hole,
+        // and the donor's area is not assigned to the bare storey.
+        var untouchedDoc = E2kDocument.Parse(site);
+        var untouched = E2kGeometryComposer.Compose(untouchedDoc, new[]
         {
             new StoryPlacement(stories["PARKADE"], Plate(0, 1200), "parkade.dxf"),
             new StoryPlacement(stories["MID-RISE"], midRiseMembers, "midrise.dxf"),
         });
         Assert.DoesNotContain(untouched.Flags, f => f.Contains("a floor plate from a neighbour"));
         Assert.Contains(untouched.Flags, f => f.Contains("no floor plate"));
+
+        var floorNames = untouchedDoc.LinesOf("AREA CONNECTIVITIES")
+            .Where(l => l.TrimStart().StartsWith("AREA ", StringComparison.Ordinal)
+                        && l.Contains(" FLOOR ", StringComparison.Ordinal))
+            .Select(l => Quoted(l, 1))
+            .ToHashSet(StringComparer.Ordinal);
+        Assert.DoesNotContain(untouchedDoc.LinesOf("AREA ASSIGNS"),
+            l => l.TrimStart().StartsWith("AREAASSIGN", StringComparison.Ordinal)
+                 && floorNames.Contains(Quoted(l, 1))
+                 && Quoted(l, 2).Equals("MID-RISE", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -2129,13 +2147,15 @@ public class E2kDocumentTests
     }
 
     [Fact]
-    public void TheGateRefusesEveryFaultThatActuallyReachedAnEngineer()
+    public void TheGateRefusesFatalFaultsAndReportsStoreysWithNoFloor()
     {
         // Not a list of things that could go wrong. A list of things that DID, on 31168, between
         // 15 and 24 August -- each one past every count in the report, each one found because
-        // somebody happened to look. The report FLAGS; this REFUSES. That is the difference, and it
-        // is the whole reason this exists: a flag needs a reader, and the reader is usually the
-        // person who already believes the model is right.
+        // somebody happened to look.
+        //
+        // One case has changed force: a storey with no plate now ships as a named missing
+        // diaphragm, because the refusal pushed operators toward borrowed floors the engineer
+        // rejected. The other cases still refuse.
         static string[] Model(params string[] body) => new[]
         {
             "$ STORIES - IN SEQUENCE FROM TOP",
@@ -2149,7 +2169,7 @@ public class E2kDocumentTests
 
         // A storey the run was told to drop, still in the file. Eight of these reached her.
         var kept = ShippedModelInvariants.Check(Model("  POINT \"KP1\"  0 0"), droppedStoreys: new[] { "A-LEVEL 2" });
-        Assert.Contains(kept, x => x.Rule == "storey-cut");
+        Assert.True(Assert.Single(kept, x => x.Rule == "storey-cut").BlocksPublishing);
 
         // A member the reference model contributed. She circled four and said "these are not walls".
         var carried = ShippedModelInvariants.Check(Model(
@@ -2158,16 +2178,20 @@ public class E2kDocumentTests
             "  AREA \"W18\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1 1 0 0",
             "$ AREA ASSIGNS",
             "  AREAASSIGN  \"W18\"  \"LEVEL 1\"  SECTION \"x\""));
-        Assert.Contains(carried, x => x.Rule == "not-from-a-drawing");
+        Assert.True(Assert.Single(carried, x => x.Rule == "not-from-a-drawing").BlocksPublishing);
 
-        // A storey carrying members with no floor: everything on it reads as unsupported.
+        // A storey carrying members with no floor: reported as a missing diaphragm, not filled by
+        // borrowing just to satisfy this gate.
         var noFloor = ShippedModelInvariants.Check(Model(
             "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0",
             "$ AREA CONNECTIVITIES",
             "  AREA \"KW1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1 1 0 0",
             "$ AREA ASSIGNS",
             "  AREAASSIGN  \"KW1\"  \"LEVEL 1\"  SECTION \"x\""));
-        Assert.Contains(noFloor, x => x.Rule == "storey-with-no-floor");
+        var missingFloor = Assert.Single(noFloor, x => x.Rule == "storey-with-no-floor");
+        Assert.Equal(ModelViolationSeverity.Advisory, missingFloor.Severity);
+        Assert.False(missingFloor.BlocksPublishing);
+        Assert.True(new JobPublisher.Built("test", "test.e2k", 1, 1, 0, 0, noFloor).Passed);
 
         // One member on two storeys. Six spandrels shipped like this, 1.7 inches tall on the second.
         var doubled = ShippedModelInvariants.Check(Model(
@@ -2180,7 +2204,8 @@ public class E2kDocumentTests
             "  AREAASSIGN  \"KS1\"  \"B-LEVEL 2\"  SECTION \"x\"",
             "  AREAASSIGN  \"KF1\"  \"A-LEVEL 2\"  SECTION \"x\"",
             "  AREAASSIGN  \"KF1\"  \"B-LEVEL 2\"  SECTION \"x\""));
-        Assert.Contains(doubled, x => x.Rule == "member-on-two-storeys" && x.What.Contains("KS1"));
+        Assert.True(Assert.Single(doubled, x => x.Rule == "member-on-two-storeys" && x.What.Contains("KS1")).BlocksPublishing);
+        Assert.False(new JobPublisher.Built("test", "test.e2k", 2, 1, 0, 1, doubled).Passed);
 
         // ... but a FLOOR on two storeys is a borrowed plate, which is declared and allowed.
         Assert.DoesNotContain(doubled, x => x.Rule == "member-on-two-storeys" && x.What.Contains("KF1"));
@@ -2192,7 +2217,8 @@ public class E2kDocumentTests
             "  AREA \"KF1\"  FLOOR  4  \"KP1\"  \"KP2\"  \"KP3\"  \"KP4\"  0 0 0 0",
             "$ AREA ASSIGNS",
             "  AREAASSIGN  \"KF1\"  \"LEVEL 1\"  SECTION \"x\""));
-        Assert.Contains(split, x => x.Rule == "joints-too-close");
+        Assert.True(Assert.Single(split, x => x.Rule == "joints-too-close").BlocksPublishing);
+        Assert.False(new JobPublisher.Built("test", "test.e2k", 1, 0, 0, 1, split).Passed);
 
         // A sound model raises nothing.
         var sound = ShippedModelInvariants.Check(Model(
@@ -2221,11 +2247,11 @@ public class E2kDocumentTests
             "  LINEASSIGN  \"KC1\"  \"LEVEL P3\"  SECTION \"x\""),
             foundationStoreys: new[] { "LEVEL P3" });
 
-        Assert.DoesNotContain(violations, x => x.Rule == "storey-with-no-floor");
+        Assert.Empty(violations);
     }
 
     [Fact]
-    public void ANonFoundationStoreyWithMembersAndNoFloorPlateStillFailsTheInvariant()
+    public void ANonFoundationStoreyWithMembersAndNoFloorPlateIsReportedButDoesNotBlockPublishing()
     {
         var violations = ShippedModelInvariants.Check(InvariantModel(
             "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0",
@@ -2239,7 +2265,56 @@ public class E2kDocumentTests
             "  LINEASSIGN  \"KC1\"  \"LEVEL 1\"  SECTION \"x\""),
             foundationStoreys: new[] { "LEVEL P3" });
 
-        Assert.Contains(violations, x => x.Rule == "storey-with-no-floor" && x.Where == "LEVEL 1");
+        var missing = Assert.Single(violations, x => x.Rule == "storey-with-no-floor" && x.Where == "LEVEL 1");
+        Assert.Equal(ModelViolationSeverity.Advisory, missing.Severity);
+        Assert.True(new JobPublisher.Built("test", "test.e2k", 1, 1, 1, 0, violations).Passed);
+    }
+
+    [Fact]
+    public void AStoreyCarryingMembersWithNoFloorPlateIsNamedInTheReport()
+    {
+        string[] site =
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 2\"  HEIGHT 120",
+            "  STORY \"LEVEL 1\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ MATERIAL PROPERTIES",
+            "  MATERIAL  \"65 MPa Walls\"    TYPE \"Concrete\"    GRADE \"x\"",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"1\"  0 0 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "",
+        };
+
+        var bare = new PlanGeometrySet();
+        bare.Columns.Add(new ColumnFootprint(new DxfPoint(200, 200), 24, 24, "JBP_V_COL"));
+
+        var doc = E2kDocument.Parse(site);
+        var stories = doc.ReadStories().ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        var summary = E2kGeometryComposer.Compose(doc, new[]
+        {
+            new StoryPlacement(stories["LEVEL 1"], bare, "level1.dxf"),
+        }, FlagsOnly);
+
+        string flag = Assert.Single(summary.Flags, f => f.Contains("carry walls or columns and no floor plate"));
+        Assert.Equal(
+            "1 storey(s) carry walls or columns and no floor plate, so they have no diaphragm: LEVEL 1. Nothing was borrowed or invented for them; add a plate if these storeys need one.",
+            flag);
+
+        var report = new DxfToEtabsReport(
+            "test.e2k", 1, 1, 1, summary, (0, 0),
+            Array.Empty<SheetOutcome>(), Array.Empty<string>(),
+            new PlanClassificationOptions(), FlagsOnly);
+
+        string text = DxfToEtabsService.FormatReport(report);
+
+        Assert.Contains("About the model as a whole:", text, StringComparison.Ordinal);
+        Assert.Contains(flag, text, StringComparison.Ordinal);
     }
 
     [Fact]

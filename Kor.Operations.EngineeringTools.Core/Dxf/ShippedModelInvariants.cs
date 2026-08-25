@@ -3,8 +3,21 @@ using System.Text.RegularExpressions;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
 
+public enum ModelViolationSeverity
+{
+    Advisory,
+    Fatal
+}
+
 /// <summary>One thing wrong with a finished model, in the words the reader needs.</summary>
-public sealed record ModelViolation(string Rule, string What, string Where);
+public sealed record ModelViolation(
+    string Rule,
+    string What,
+    string Where,
+    ModelViolationSeverity Severity = ModelViolationSeverity.Fatal)
+{
+    public bool BlocksPublishing => Severity == ModelViolationSeverity.Fatal;
+}
 
 /// <summary>
 /// What must be true of a model before it is allowed to reach an engineer.
@@ -137,7 +150,10 @@ public static class ShippedModelInvariants
             if (!name.StartsWith("K", StringComparison.Ordinal) && !carriedThrough.Contains(name))
                 v.Add(new ModelViolation("not-from-a-drawing", $"object '{name}' did not come from a drawing", name));
 
-        // 3. A storey carrying members must have a floor, or everything on it reads as unsupported.
+        // 3. A storey carrying members with no floor is a disclosure, not a refusal. Andrea has
+        //    now rejected the alternative twice: borrowing made false slabs look like measured
+        //    ones. A missing diaphragm an engineer can add beats a fabricated one she has to notice
+        //    is wrong, so this stays in the invariant list but no longer blocks publishing.
         var floors = kind.Where(x => x.Value.Equals("FLOOR", StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Key).ToHashSet(StringComparer.Ordinal);
         var withMembers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -153,7 +169,11 @@ public static class ShippedModelInvariants
             // (S.O.G on our drawings) at P3 but we don't model those." A slab on grade is not a
             // suspended diaphragm, so this invariant is wrong there and still right everywhere else.
             if (!withFloor.Contains(st) && !foundation.Contains(st))
-                v.Add(new ModelViolation("storey-with-no-floor", $"'{st}' carries members and has no floor plate", st));
+                v.Add(new ModelViolation(
+                    "storey-with-no-floor",
+                    $"'{st}' carries members and has no floor plate, so it has no diaphragm until a plate is added",
+                    st,
+                    ModelViolationSeverity.Advisory));
 
         // 4. A member must not belong to two storeys. A floor may -- that is a borrowed plate, and
         //    it is declared. A WALL, COLUMN or header on two storeys is one member counted twice:
