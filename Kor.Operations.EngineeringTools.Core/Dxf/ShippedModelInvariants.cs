@@ -57,6 +57,7 @@ public static class ShippedModelInvariants
         IEnumerable<string>? droppedStoreys = null,
         IEnumerable<string>? referenceE2k = null)
     {
+        var openings = new HashSet<string>(StringComparer.Ordinal);
         var carriedThrough = new HashSet<string>(StringComparer.Ordinal);
         if (referenceE2k is not null)
             foreach (string raw in referenceE2k)
@@ -106,6 +107,8 @@ public static class ShippedModelInvariants
             m = Assign.Match(raw);
             if (m.Success)
             {
+                if (raw.Contains("OPENING", StringComparison.OrdinalIgnoreCase))
+                    openings.Add(m.Groups[2].Value);
                 if (!onStoreys.TryGetValue(m.Groups[2].Value, out var list))
                     onStoreys[m.Groups[2].Value] = list = new List<string>();
                 if (!list.Contains(m.Groups[3].Value, StringComparer.OrdinalIgnoreCase)) list.Add(m.Groups[3].Value);
@@ -147,7 +150,11 @@ public static class ShippedModelInvariants
         //    it is declared. A WALL, COLUMN or header on two storeys is one member counted twice:
         //    six spandrels shipped that way, 1.7 inches tall on the second storey.
         foreach (var (obj, sts) in onStoreys)
-            if (sts.Count > 1 && !floors.Contains(obj) && !carriedThrough.Contains(obj))
+            // An OPENING on several storeys is one hole through several floors, which is what it
+            // is: a lift shaft does not stop at each slab. The engineer's own model does exactly
+            // this -- 31065 carries 359 opening assigns from 25 objects, about fourteen storeys
+            // each -- and a borrowed floor here now carries its holes with it for the same reason.
+            if (sts.Count > 1 && !floors.Contains(obj) && !openings.Contains(obj) && !carriedThrough.Contains(obj))
                 v.Add(new ModelViolation("member-on-two-storeys",
                     $"'{obj}' is assigned to {sts.Count} storeys: {string.Join(", ", sts)}", obj));
 
