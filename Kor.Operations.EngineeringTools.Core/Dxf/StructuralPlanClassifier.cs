@@ -378,9 +378,8 @@ public static class StructuralPlanClassifier
             // this reads more than one -- and a rule that cannot tell a second slab from a second
             // building is not ready, whatever it scores. One point of floor agreement does not buy
             // two buildings sharing a diaphragm.
-            var slabRescue = role == RoleSlab && options.FloodFillBridge > options.BridgeTolerance
-                ? new PlanLoopBuilder(options.JoinTolerance, options.FloodFillBridge, options.ExtendLimit)
-                : null;
+            // BOTH RECOVERY PASSES ARE OFF. See the note at the chain-closing block below.
+            PlanLoopBuilder? slabRescue = null;   // OFF -- see the chain-closing note below.
             var loops = new List<PlanLoop>();
             var leftovers = new List<DxfSegment>();
 
@@ -521,7 +520,21 @@ public static class StructuralPlanClassifier
             // at 37 plates, because its slab edges arrive as many large open chains). Neither
             // separates them. Until one does, this is a reconstruction of last resort, beside the
             // flood fill, and the two points on 31065 are left on the table deliberately.
-            if (layer == RoleSlab && built.OpenChains.Count > 0)
+            // OFF, 25 August. Closing a slab outline by joining its own loose ends, and the wider
+            // chaining pass above, both scored well on floor AREA against an engineer's own model
+            // -- 16 to 19 of 23 storeys within a fifth of hers -- and both produced shapes no
+            // engineer draws. Area cannot see a donut. What reached her was C-LEVEL 3 as a 22,676
+            // sq ft plate with an 11,809 sq ft hole in it, LEVEL 1 as 78,859 with 74,832 cut out,
+            // and her reply: "on several levels (9, 3, mezz, 1) he inverted slab and opening."
+            //
+            // Three plate-recovery mechanisms went in on one night -- these two and fragment
+            // borrowing -- each measured only by total area, each interacting with the other two
+            // and with how openings are found. They come back one at a time, each judged by
+            // looking at the geometry, not by a total.
+            //
+            // What remains is what it was before: outlines the drawing closes, and a flood fill of
+            // the drawn linework where it does not.
+            if (false && layer == RoleSlab && built.OpenChains.Count > 0)
             {
                 foreach (var chain in built.OpenChains)
                 {
@@ -615,41 +628,21 @@ public static class StructuralPlanClassifier
 
         SplitSlabsAndOpenings(result, slabCandidates, options);
 
-        // A CORE IS A HOLE. An elevator or stair shaft is a closed wall enclosure standing inside a
-        // floor, and the slab does not run through it.
+        // A WALL ENCLOSURE INSIDE A FLOOR IS NOT AUTOMATICALLY A SHAFT. Tried and withdrawn.
         //
-        // This tool cut an opening only where a ring was drawn on a SLAB layer, so it found the
-        // ones drafting outlines and missed every shaft: 22 openings against the 359 an engineer
-        // cuts on 31065. Nothing else in the suite could see that -- walls, columns, floor areas
-        // and storey assignment were all healthy while the model carried six percent of her holes,
-        // each one a piece of diaphragm that is not there.
+        // The reasoning was that an elevator or stair core is a closed wall enclosure standing in a
+        // floor, and the slab does not run through it -- and the enclosures were already being
+        // found. It shipped, and the engineer opened it the same morning: "on several levels
+        // (9, 3, mezz, 1) he inverted slab and opening", with a region cut as a hole marked SHOULD
+        // BE SLAB.
         //
-        // The enclosures are already found. PairConcentricWallRings reads a wall drawn as two faces
-        // and keeps the inner one, because on a storey whose slab edges will not close that inside
-        // face is the only floor outline the drawing offers. A perimeter wall's inner face IS the
-        // floor; a core's inner face is a hole in it. What separates them is nothing more than
-        // which one is inside the other.
-        foreach (var enclosure in result.EnclosedByWalls)
-        {
-            var centre = enclosure.Centroid();
+        // A wall enclosure is a ROOM at least as often as it is a shaft, and nothing in a concrete
+        // outline distinguishes them: both are four walls around a space. Cutting them all turns
+        // rooms into holes, which is worse than missing shafts -- a missing hole is slab an
+        // engineer deletes, an invented one is diaphragm she has to notice is gone.
+        //
+        // Openings still come from rings drawn on a slab layer, which is drafting saying "hole".
 
-            // Inside a floor, and smaller than it. The perimeter wall of a storey encloses the
-            // floor rather than sitting in it, and its own centroid is inside its own outline --
-            // so the area test is what keeps a building from becoming a hole in itself.
-            bool insideAFloor = result.Slabs.Any(slab =>
-                slab.Area > enclosure.Area
-                && LoopGeometry.PointInPolygon(centre, slab.Points));
-            if (!insideAFloor) continue;
-
-            // Not one the drawing already gave us as a ring on a slab layer.
-            if (result.Openings.Any(o => LoopGeometry.PointInPolygon(centre, o.Points))) continue;
-
-            result.Openings.Add(enclosure);
-            result.Flags.Add(
-                $"{enclosure.Layer}: a wall encloses {enclosure.Area / 144:N0} sq ft standing inside a floor " +
-                "— read as a shaft and cut out of the slab. If it is a room rather than a core, the slab " +
-                "runs through it and this opening should come out.");
-        }
 
         // A slab with nothing to carry it, and the support drawn dashed on a hidden layer.
         //
@@ -775,12 +768,26 @@ public static class StructuralPlanClassifier
                 }
                 else if (swallowed.Count > 0)
                 {
+                    // DISCARDED, NOT CUT OUT. Two readings of one floor is not a floor with a hole
+                    // in it.
+                    //
+                    // These made openings until 25 August, and it shipped: LEVEL 1 went to the
+                    // engineer as a 78,859 sq ft plate with a 74,832 sq ft hole in it -- the real
+                    // slab, cut out of the recovered one -- and C-LEVEL 3, C-LEVEL 9 and the
+                    // mezzanine the same way. She opened it and wrote "on several levels
+                    // (9, 3, mezz, 1) he inverted slab and opening", with a region marked SHOULD
+                    // BE SLAB. She was describing this line.
+                    //
+                    // A ring inside a floor IS an opening when the drawing puts it there, and
+                    // SplitSlabsAndOpenings still reads it that way. What this branch has is
+                    // different: the same ground described twice, once by a vector outline and once
+                    // by a raster fill of the same linework. Keeping the larger and dropping the
+                    // smaller is all that is wanted.
                     foreach (var inside in swallowed) result.Slabs.Remove(inside);
-                    result.Openings.AddRange(swallowed);
                     result.Flags.Add(
                         $"{swallowed.Count} closed outline(s) totalling {swallowed.Sum(x => x.Area) / 144:N0} sq ft " +
-                        $"sit inside the {best.Area / 144:N0} sq ft floor recovered from the drawn linework, so they " +
-                        "are read as openings in it rather than as floors of their own.");
+                        $"lie inside the {best.Area / 144:N0} sq ft floor recovered from the same linework, so they " +
+                        "are the same floor read twice and only the larger is modelled.");
                 }
                 // And the other way round: a floor already found may enclose the fill's plate, in
                 // which case the fill has recovered part of a floor that is already there. Two
@@ -814,8 +821,15 @@ public static class StructuralPlanClassifier
         // reading that had the floor whole. LEVEL P1 on 31065 came out at 1,359 sq ft against the
         // engineer's 40,067 that way -- the parkade's outline is its perimeter wall, and a closed
         // scrap of linework inside it counted as the floor and suppressed it.
+        // ONLY where the sheet gives no slab at all.
+        //
+        // This was widened on 24 August to also run where every slab came from joining a chain's
+        // ends, on the reasoning that a chain can close around a detail and leave the real floor
+        // unfound. The reasoning holds and the cost is worse: C-LEVEL 3 and the mezzanine were
+        // handed a 75,832 sq ft outline -- the whole site, taken from a perimeter wall drawn on
+        // their sheets -- on top of their own floors. A storey the drawing gives a slab has a slab.
         if (options.FloorFromPerimeterWall
-            && (result.Slabs.Count == 0 || result.Slabs.Count == chainClosedCount)
+            && result.Slabs.Count == 0
             && result.EnclosedByWalls.Count > 0)
         {
             var enclosed = result.EnclosedByWalls
@@ -1406,7 +1420,47 @@ public static class StructuralPlanClassifier
         {
             var centre = loop.Centroid();
             var container = slabs.FirstOrDefault(s => LoopGeometry.PointInPolygon(centre, s.Points));
-            if (container is not null) { result.Openings.Add(loop); continue; }
+            if (container is not null)
+            {
+                // TWO FACES OF ONE BOUNDARY ARE NOT A FLOOR WITH A HOLE IN IT.
+                //
+                // A slab edge drawn as an outer and an inner line -- the two faces of the perimeter
+                // wall -- gives two rings, one inside the other, a wall's thickness apart. Taking
+                // the outer as the floor and cutting the inner out of it leaves the storey as a
+                // thin ring of concrete round the outside and nothing in the middle.
+                //
+                // It shipped that way: LEVEL 1 went out as a 78,859 sq ft floor with a 74,832 sq ft
+                // hole in it, C-LEVEL 3 as 75,832 with 22,676 cut out, and the engineer opened it
+                // and wrote "on several levels (9, 3, mezz, 1) he inverted slab and opening".
+                //
+                // The band between them says which case this is, exactly as it does for a wall
+                // drawn as two faces: a gap the width of a wall is one boundary, a gap of anything
+                // else is a genuine hole.
+                double band = (container.Area - loop.Area)
+                              / ((Perimeter(container) + Perimeter(loop)) / 2.0);
+
+                if (band >= options.MinWallThickness && band <= options.MaxWallThickness)
+                {
+                    result.Flags.Add(
+                        $"{loop.Layer}: a slab outline of {loop.Area / 144:N0} sq ft sits " +
+                        $"{band:0} in inside one of {container.Area / 144:N0} sq ft — read as the two " +
+                        "faces of one edge, not as a hole. The outer face is the floor.");
+                    continue;
+                }
+
+                // Say how far inside it sits. An opening the size of the floor it is cut from is
+                // the thing an engineer spots first, and the band is what says whether it is a hole
+                // or the other face of the same edge.
+                result.Flags.Add(
+                    $"{loop.Layer}: an opening of {loop.Area / 144:N0} sq ft cut from a floor of " +
+                    $"{container.Area / 144:N0} sq ft, its edge {band:0} in inside — " +
+                    (loop.Area > container.Area * 0.5
+                        ? "MORE THAN HALF the floor, which is worth checking."
+                        : "check it is a hole and not the inner face of the edge."));
+
+                result.Openings.Add(loop);
+                continue;
+            }
 
             // Two floors on one storey may abut; they may not lie on top of each other. Containment
             // by centroid is not enough to see that -- two readings of the same floor can each have

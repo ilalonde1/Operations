@@ -1154,7 +1154,28 @@ public static class E2kGeometryComposer
                     .ToList();
                 if (candidates.Count == 0) continue;
 
+                // A storey that HAS a floor may not be handed one several times bigger.
+                //
+                // Borrowing exists for a storey the drawing gives no floor at all, and it now also
+                // reaches a storey whose floor is a fragment. A fragment is still a measurement of
+                // the right building: C-LEVEL 3's own slab is 12,830 sq ft, and it was handed LEVEL
+                // P1's site-wide 75,832 sq ft parkade -- six times its own, spanning ground the
+                // mid-rise does not stand on. A storey with nothing keeps the old rule, which is
+                // where every test of this behaviour lives.
                 double bestLikeness = candidates.Max(c => c.Likeness);
+
+                // A storey that already HAS a floor only borrows one SHAPED like it.
+                //
+                // Size cannot decide this: a part-plan fragment is a narrow strip of a much bigger
+                // floor, which is exactly the case borrowing exists for. Shape can. C-LEVEL 3's
+                // walls and columns span 250 x 90 ft and it was handed LEVEL P1's site-wide
+                // parkade at 332 x 233 -- a fifth of the resemblance, and a floor reaching far out
+                // over ground the mid-rise does not stand on. The engineer saw the result of that
+                // on four levels.
+                //
+                // A storey with NO floor keeps the old rule and takes the best available, because
+                // some floor shaped roughly right beats a storey with nothing spanning between its
+                // members.
                 var donor = candidates
                     .Where(c => c.Likeness >= bestLikeness * options.DonorPlateLikenessMargin)
                     .OrderBy(c => Math.Abs(c.Storey.Elevation - storey.Elevation))
