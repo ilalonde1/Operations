@@ -150,6 +150,56 @@ public class EngineerModelBenchmarkTests
     }
 
     /// <summary>
+    /// Columns the size and shape the engineer made them, and walls her thickness.
+    ///
+    /// Position is not the whole job. A column in exactly the right place at the wrong size, or a
+    /// 12 in wall where she has 24, is a member she retypes — and nothing else in this suite
+    /// compares either against HER model. ModelCoverageTests checks sizes against the DRAWINGS,
+    /// which is the tool marking its own reading of them.
+    ///
+    /// 133 of 139 columns and 58 of 62 walls, measured only where both models declare a section.
+    /// These were unknown until 25 August and turned out to be the strong part.
+    /// </summary>
+    [Fact]
+    public void MembersAreTheSizeTheEngineerMadeThem()
+    {
+        var score = ScoreOrSkip();
+        if (score is null) return;
+
+        _out.WriteLine(score.Report);
+        Assert.True(score.SizedRight >= 133,
+            $"Columns matching her size fell to {score.SizedRight}/{score.SizedCompared}; the ratchet is 133.");
+        Assert.True(score.ThickRight >= 58,
+            $"Walls matching her thickness fell to {score.ThickRight}/{score.ThickCompared}; the ratchet is 58.");
+    }
+
+    /// <summary>
+    /// Openings — shafts, stairs, every penetration cut from a slab.
+    ///
+    /// 22 against her 359. This is the largest known gap in the tool and it was invisible until
+    /// measured: nothing else here can see an opening, so the model looked healthy on every other
+    /// number while carrying six percent of the holes an engineer cuts.
+    ///
+    /// The reason is structural rather than a tolerance. An opening is made from a closed ring
+    /// lying inside a slab, so this tool finds the ones drawn on a slab-edge layer. Hers include
+    /// every elevator and stair shaft, which are bounded by WALLS — a closed wall enclosure with no
+    /// floor inside it — and nothing here reads those as holes.
+    ///
+    /// A ratchet at the measured value, not a target. It exists so the next change is scored
+    /// against it, and so this cannot quietly get worse while somebody works on floors.
+    /// </summary>
+    [Fact]
+    public void OpeningsAreCutWhereTheEngineerCutsThem()
+    {
+        var score = ScoreOrSkip();
+        if (score is null) return;
+
+        Assert.True(score.Openings >= 22,
+            $"Openings fell to {score.Openings} against the engineer's {score.ReferenceOpenings}; " +
+            "the ratchet is 22. This number may only go up.");
+    }
+
+    /// <summary>
     /// The whole-model best fit, kept as a guard rather than as a score. It is the figure that got
     /// quoted as evidence this tool worked -- "1,077 of 1,097 columns within 6 inches" -- and it is
     /// storey-agnostic, so it stayed near-perfect through the entire period when every member was
@@ -169,7 +219,9 @@ public class EngineerModelBenchmarkTests
 
     private sealed record Score(
         int Columns, int ReferenceColumns, int Walls, int ReferenceWalls, int AnyStorey,
-        int FloorsWithin20Percent, int ReferenceFloors, string Report);
+        int FloorsWithin20Percent, int ReferenceFloors,
+        int SizedRight, int SizedCompared, int ThickRight, int ThickCompared,
+        int Openings, int ReferenceOpenings, string Report);
 
     private static Score? _cached;
     private static readonly object Gate = new();
@@ -205,7 +257,7 @@ public class EngineerModelBenchmarkTests
                     DxfToEtabsService.Run(new DxfToEtabsRequest
                     {
                         RequireRuleSettings = true,
-                        DxfFolder = DxfFolder,
+                        DxfFolder = DrawingCache.Local(DxfFolder),
                         LevelsFile = levels,
                         OutputE2k = output,
                     });
@@ -268,7 +320,10 @@ public class EngineerModelBenchmarkTests
     private sealed record Members(
         Dictionary<string, List<DxfPoint>> Columns,
         Dictionary<string, List<(DxfPoint A, DxfPoint B)>> Walls,
-        Dictionary<string, double> FloorArea);
+        Dictionary<string, double> FloorArea,
+        List<(DxfPoint At, double Long, double Short, bool Round)> ColumnSizes,
+        List<(DxfPoint At, double Thickness)> WallThicknesses,
+        int Openings);
 
     /// <summary>
     /// Columns as their plan point and walls as their midpoint, per storey. "K" is the prefix this
@@ -281,6 +336,13 @@ public class EngineerModelBenchmarkTests
         var columnAt = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var wallEnds = new Dictionary<string, (string A, string B)>(StringComparer.OrdinalIgnoreCase);
         var floorJoints = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+        // Section tables: what a column's size is, and how thick a wall is. Compared member by
+        // member, these are the properties an engineer would otherwise retype.
+        var frame = new Dictionary<string, (double Long, double Short, bool Round)>(StringComparer.OrdinalIgnoreCase);
+        var shell = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var sectionOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        int openings = 0;
 
         foreach (string line in lines)
         {
@@ -297,6 +359,24 @@ public class EngineerModelBenchmarkTests
 
             var w = Regex.Match(line, @"^\s*AREA\s+""([^""]+)""\s+PANEL\s+4\s+""([^""]+)""\s+""([^""]+)""");
             if (w.Success) { wallEnds[w.Groups[1].Value] = (w.Groups[2].Value, w.Groups[3].Value); continue; }
+
+            var fs = Regex.Match(line, @"^\s*FRAMESECTION\s+""(.+?)""\s+.*?SHAPE\s+""([^""]+)""");
+            if (fs.Success)
+            {
+                var d = Regex.Match(line, @"\sD\s+([\d.]+)");
+                var b2 = Regex.Match(line, @"\sB\s+([\d.]+)");
+                if (d.Success)
+                {
+                    double dv = double.Parse(d.Groups[1].Value);
+                    double bv = b2.Success ? double.Parse(b2.Groups[1].Value) : 0.0;
+                    frame[fs.Groups[1].Value] = (Math.Max(dv, bv), Math.Min(dv, bv),
+                        fs.Groups[2].Value.Contains("Circle", StringComparison.OrdinalIgnoreCase));
+                }
+                continue;
+            }
+
+            var sp = Regex.Match(line, @"^\s*SHELLPROP\s+""([^""]+)""\s+.*?WALLTHICKNESS\s+([\d.]+)");
+            if (sp.Success) { shell[sp.Groups[1].Value] = double.Parse(sp.Groups[2].Value); continue; }
 
             var f = Regex.Match(line, @"^\s*AREA\s+""([^""]+)""\s+FLOOR\s+(\d+)\s+(.*)$");
             if (f.Success)
@@ -318,6 +398,10 @@ public class EngineerModelBenchmarkTests
             string name = a.Groups[1].Value, storey = a.Groups[2].Value;
             if (generated != name.StartsWith("K", StringComparison.Ordinal)) continue;
 
+            var sec = Regex.Match(line, @"SECTION\s+""(.+?)""");
+            if (sec.Success) sectionOf.TryAdd(name, sec.Groups[1].Value);
+            if (line.Contains("OPENING \"Yes\"", StringComparison.OrdinalIgnoreCase)) openings++;
+
             if (columnAt.TryGetValue(name, out string? at) && points.TryGetValue(at, out var pt))
                 Add(columns, storey, pt);
             else if (wallEnds.TryGetValue(name, out var ends)
@@ -331,7 +415,27 @@ public class EngineerModelBenchmarkTests
             }
         }
 
-        return new Members(columns, walls, floorArea);
+        var columnSizes = new List<(DxfPoint, double, double, bool)>();
+        foreach (var (name, at) in columnAt)
+        {
+            if (generated != name.StartsWith("K", StringComparison.Ordinal)) continue;
+            if (!points.TryGetValue(at, out var where)) continue;
+            if (!sectionOf.TryGetValue(name, out string? section)) continue;
+            if (!frame.TryGetValue(section, out var box)) continue;
+            columnSizes.Add((where, box.Long, box.Short, box.Round));
+        }
+
+        var wallThicknesses = new List<(DxfPoint, double)>();
+        foreach (var (name, ends) in wallEnds)
+        {
+            if (generated != name.StartsWith("K", StringComparison.Ordinal)) continue;
+            if (!points.TryGetValue(ends.A, out var s1) || !points.TryGetValue(ends.B, out var e1)) continue;
+            if (!sectionOf.TryGetValue(name, out string? section)) continue;
+            if (!shell.TryGetValue(section, out double t)) continue;
+            wallThicknesses.Add((new DxfPoint((s1.X + e1.X) / 2, (s1.Y + e1.Y) / 2), t));
+        }
+
+        return new Members(columns, walls, floorArea, columnSizes, wallThicknesses, openings);
 
         static void Add(Dictionary<string, List<DxfPoint>> into, string storey, DxfPoint at)
         {
@@ -426,9 +530,38 @@ public class EngineerModelBenchmarkTests
             report.Add($"{storey,-9} {refCol.Count,6} {c,4}   {refWall.Count,7} {w,4}{floorNote}");
         }
 
+        // Column size, wall thickness and openings: the properties an engineer retypes if they
+        // are wrong, and which position alone cannot see. Compared only where BOTH models declare
+        // one -- a member with no section says nothing about whether this tool sized it right.
+        int sized = 0, sizedRight = 0;
+        foreach (var (at, wide, narrow, round) in engineer.ColumnSizes)
+        {
+            var near = ours.ColumnSizes
+                .Where(o => Math.Abs(o.At.X - at.X) <= ColumnTolerance && Math.Abs(o.At.Y - at.Y) <= ColumnTolerance)
+                .ToList();
+            if (near.Count == 0) continue;
+            sized++;
+            if (near.Any(o => Math.Abs(o.Long - wide) <= 2 && Math.Abs(o.Short - narrow) <= 2)) sizedRight++;
+        }
+
+        int thick = 0, thickRight = 0;
+        foreach (var (at, t) in engineer.WallThicknesses)
+        {
+            var near = ours.WallThicknesses
+                .Where(o => Math.Abs(o.At.X - at.X) <= WallTolerance && Math.Abs(o.At.Y - at.Y) <= WallTolerance)
+                .ToList();
+            if (near.Count == 0) continue;
+            thick++;
+            if (near.Any(o => Math.Abs(o.Thickness - t) <= 1.0)) thickRight++;
+        }
+
         report.Add($"columns {columns}/{refColumns}, walls {walls}/{refWalls}, " +
-                   $"floors within 20% {floorsClose}/{refFloors}");
+                   $"floors within 20% {floorsClose}/{refFloors}, " +
+                   $"column size {sizedRight}/{sized}, wall thickness {thickRight}/{thick}, " +
+                   $"openings {ours.Openings} of her {engineer.Openings}");
+
         return new Score(columns, refColumns, walls, refWalls, anyStorey, floorsClose, refFloors,
+            sizedRight, sized, thickRight, thick, ours.Openings, engineer.Openings,
             string.Join("\n", report));
     }
 

@@ -68,13 +68,18 @@ internal static class GeneratedModel
             if (Cache.TryGetValue(project.Name, out var cached)) return cached;
             if (!Directory.Exists(project.DxfFolder) || !File.Exists(project.Reference)) return null;
 
+            // Read the drawings from this disk. Same sheets, checked against the share; see
+            // DrawingCache. Thirteen minutes of this suite is SMB, and it holds the build lock
+            // while it spends them.
+            string drawings = DrawingCache.Local(project.DxfFolder);
+
             string output = Path.Combine(Path.GetTempPath(), $"kor-coverage-{Guid.NewGuid():N}.e2k");
             try
             {
                 var report = DxfToEtabsService.Run(new DxfToEtabsRequest
                 {
                     RequireRuleSettings = true,
-                    DxfFolder = project.DxfFolder,
+                    DxfFolder = drawings,
                     ReferenceE2k = project.Reference,
                     OutputE2k = output,
                 });

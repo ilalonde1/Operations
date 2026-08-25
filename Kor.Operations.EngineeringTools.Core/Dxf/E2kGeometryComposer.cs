@@ -615,7 +615,25 @@ public static class E2kGeometryComposer
         // Two storeys within a foot of each other are one level, and a member rises past them.
         const double SameLevel = 12.0;
         StoryLevel RisesTo(StoryLevel from)
-            => allStories.FirstOrDefault(s => s.Elevation > from.Elevation + SameLevel) ?? from;
+        {
+            // Never onto another building's storey.
+            //
+            // On a site model the next distinct elevation above tower A's floor is often tower B's,
+            // and rising to it puts A's wall in B's building -- the same fault that put six of
+            // tower B's headers on a tower A storey 130 ft from where they were drawn. A member
+            // rises to the next storey of the building it belongs to, or to a shared one; a storey
+            // named for somebody else is not a candidate.
+            string tag = E2kDocument.BuildingTagOf(from.Name);
+
+            var above = allStories
+                .Where(s => s.Elevation > from.Elevation + SameLevel)
+                .Where(s => E2kDocument.BuildingTagOf(s.Name) is var t
+                            && (t.Length == 0 || tag.Length == 0
+                                || t.Equals(tag, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            return above.Count > 0 ? above[0] : from;
+        }
 
         foreach (var placement in placements)
         {
@@ -1036,7 +1054,12 @@ public static class E2kGeometryComposer
         var inferredPlates = new List<(string Storey, string From)>();
         if (options.InferMissingFloors && options.IncludeFloors)
         {
+            // Storeys whose floor is a fragment rather than a whole one, and the plates handed out
+            // during this pass. A borrowed plate must not become the next storey's donor: donors
+            // are read off drawings, and a chain of borrows carries one storey's slab edge to a
+            // building it was never drawn for.
             var fragments = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var borrowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var storey in allStories)
             {
@@ -1061,8 +1084,9 @@ public static class E2kGeometryComposer
                     if (!ownExtents.TryGetValue(storey.Name, out var standsOn)) continue;
                     if (!platesByStorey.TryGetValue(storey.Name, out var already)) continue;
 
-                    // Fattened, because a storey whose columns sit in a line has an extent with no
-                    // height and would never be seen as a fragment at all.
+                    // A storey whose structure has no extent in one direction -- columns in a
+                    // single line -- covers no ground, and the ratio below is meaningless. It is
+                    // left alone rather than guessed at.
                     double structure = standsOn.Area;
                     double covered = already.Sum(x => x.Item3.Area);
                     if (structure <= 0 || covered / structure >= options.MinFloorCoverage) continue;
@@ -1106,8 +1130,12 @@ public static class E2kGeometryComposer
                 // Among the equally alike, the NEAREST storey wins: its slab edge is the least
                 // likely to have moved. Equally near, below wins, because what a floor stands on is
                 // still the better guess.
+                // A storey that borrowed its own floor earlier in this pass is not a donor. Donors
+                // are read off drawings; lending a borrowed plate on carries one storey's slab edge
+                // to a building it was never drawn for, and the chain has no end.
                 var candidates = allStories
                     .Where(s => !s.Name.Equals(storey.Name, StringComparison.OrdinalIgnoreCase))
+                    .Where(s => !borrowed.Contains(s.Name))
                     .Select(s => (Storey: s, Plates: platesByStorey.TryGetValue(s.Name, out var p)
                         ? p.Where(x => x.Where.CoverageOf(standingOn) >= 0.5).ToList()
                         : new List<(string Name, string Prop, Extent Where)>()))
@@ -1141,14 +1169,15 @@ public static class E2kGeometryComposer
 
                 // A borrowed plate is this storey's floor for every purpose after this, the
                 // coverage check below included.
-                if (!platesByStorey.TryGetValue(storey.Name, out var borrowed))
-                    platesByStorey[storey.Name] = borrowed = new List<(string, string, Extent)>();
-                borrowed.AddRange(donor.Plates);
+                borrowed.Add(storey.Name);
+                if (!platesByStorey.TryGetValue(storey.Name, out var mine))
+                    platesByStorey[storey.Name] = mine = new List<(string, string, Extent)>();
+                mine.AddRange(donor.Plates);
             }
 
             if (inferredPlates.Count > 0)
                 flags.Add(
-                    $"{inferredPlates.Count} storey(s) were given a floor plate they were not drawn one for, " +
+                    $"{inferredPlates.Count} storey(s) were given a floor plate from a neighbour, " +
                     "copied from the storey whose own plate is closest in shape to what stands on them: " +
                     string.Join(", ", inferredPlates.Select(p => $"{p.Storey} (from {p.From})")) +
                     ". These plates are INFERRED, not measured — the drawings for those storeys carry no " +

@@ -1111,7 +1111,7 @@ public class E2kDocumentTests
             new StoryPlacement(upper, Storey(400), "level3.dxf"),    // a strip of it: a part plan
         }, new ComposeOptions { InferMissingFloors = true });
 
-        string flag = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
+        string flag = Assert.Single(summary.Flags, f => f.Contains("a floor plate from a neighbour"));
         Assert.Contains("LEVEL 3", flag);
     }
 
@@ -1621,7 +1621,7 @@ public class E2kDocumentTests
             new StoryPlacement(stories["MID-RISE"], midRiseMembers, "midrise.dxf"),
         }, FlagsOnly with { InferMissingFloors = true });
 
-        string flag = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
+        string flag = Assert.Single(summary.Flags, f => f.Contains("a floor plate from a neighbour"));
 
         // It reached PAST the podium, whose plate does not stand under the mid-rise, to the
         // parkade, whose plate does.
@@ -1638,7 +1638,7 @@ public class E2kDocumentTests
             new StoryPlacement(stories["PARKADE"], Plate(0, 1200), "parkade.dxf"),
             new StoryPlacement(stories["MID-RISE"], midRiseMembers, "midrise.dxf"),
         });
-        Assert.DoesNotContain(untouched.Flags, f => f.Contains("not drawn one for"));
+        Assert.DoesNotContain(untouched.Flags, f => f.Contains("a floor plate from a neighbour"));
         Assert.Contains(untouched.Flags, f => f.Contains("no floor plate"));
     }
 
@@ -1708,7 +1708,7 @@ public class E2kDocumentTests
             new StoryPlacement(stories["TARGET"], targetMembers, "target.dxf"),
         }, FlagsOnly with { InferMissingFloors = true });
 
-        string flag = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
+        string flag = Assert.Single(summary.Flags, f => f.Contains("a floor plate from a neighbour"));
 
         // Shape beat coverage: it did not take the site-wide slab it was standing on.
         Assert.DoesNotContain("TARGET (from GROUND)", flag);
@@ -2166,7 +2166,7 @@ public class E2kDocumentTests
             new StoryPlacement(stories["B-LEVEL 3"], Tower(2800, 3800, withPlate: false), "towerB3.dxf"),
         }, FlagsOnly with { InferMissingFloors = true });
 
-        string inferred = Assert.Single(summary.Flags, f => f.Contains("not drawn one for"));
+        string inferred = Assert.Single(summary.Flags, f => f.Contains("a floor plate from a neighbour"));
 
         // It borrows a TOWER floor, not the podium. Shape-matching against both towers at once is
         // what made a site-wide slab the best fit, and put a podium plate 26 storeys up.
@@ -2237,7 +2237,7 @@ public class E2kDocumentTests
         Assert.DoesNotContain("WHOLE (", flag, StringComparison.Ordinal);
 
         // And it reports rather than repairs: the plate is still the one the drawing gave.
-        Assert.DoesNotContain(summary.Flags, f => f.Contains("not drawn one for"));
+        Assert.DoesNotContain(summary.Flags, f => f.Contains("a floor plate from a neighbour"));
     }
 
     [Fact]
