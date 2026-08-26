@@ -329,6 +329,8 @@ public static class DxfToEtabsService
             WallBridgeTolerance = settings.ValueOr("dxf.wall-bridge-tolerance", options.WallBridgeTolerance),
             OutlineSelfTouchTolerance = settings.ValueOr("dxf.outline-self-touch-tolerance", options.OutlineSelfTouchTolerance),
             FloodFillBridge = settings.ValueOr("dxf.flood-fill-bridge", options.FloodFillBridge),
+            DoubledEdgeParallelRatio = settings.ValueOr("dxf.doubled-edge-parallel-ratio", options.DoubledEdgeParallelRatio),
+            DoubledEdgeCoverage = settings.ValueOr("dxf.doubled-edge-coverage", options.DoubledEdgeCoverage),
         };
 
     private static ComposeOptions ApplyRules(

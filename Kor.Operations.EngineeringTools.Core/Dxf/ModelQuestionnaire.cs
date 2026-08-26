@@ -535,30 +535,56 @@ public static class ModelQuestionnaire
         if (Flag("carry walls or columns and no floor plate") is { } plateless)
         {
             string storeys = plateless[(plateless.IndexOf(':') + 1)..].Split('.')[0].Trim();
+            // SHE HAS ANSWERED THIS, AND SAID SO ABOUT THE ASKING. Looking at A-LEVEL 35 on
+            // 25 August: "35 carries walls, columns, no slab. IT'S OBSESSED WITH DIAPHRAGM." And
+            // then, plainly: "I just told her to ignore those, cause I'll be trying those."
+            //
+            // So this is not a question any more. It is a list she asked to be handed, of storeys
+            // she will put a plate on herself, and a workbook that keeps asking it after being told
+            // twice is a workbook that stops being read.
             yield return new ModelQuestion("J1", "Storeys with no floor plate",
-                $"These storeys carry walls and columns but no slab, so they have no diaphragm: {storeys}. " +
-                "Their slab edges would not close. Is the slab edge drawn closed on those sheets, or is " +
-                "the floor shown some other way we should be reading?",
+                $"FOR YOUR LIST, NOT A QUESTION — you said you would take these on yourself. These " +
+                $"storeys carry walls and columns and no slab, so they have no diaphragm until you " +
+                $"add one: {storeys}. Their slab edges do not close on the drawing and nothing was " +
+                "invented in their place.",
                 "Nothing was invented in their place. The perimeter-wall fallback needs an enclosing wall " +
                 "ring and these storeys have none, so they were left without a plate and named here.",
-                "A storey with no diaphragm behaves differently under lateral load, and every wall and " +
-                "column on it reads as unsupported.",
+                "Listed so you know which storeys they are, not so you can tell us what to do about them. " +
+                "Banked as diaphragms-are-the-engineers: loads, diaphragms, stiffness modifiers and " +
+                "section properties are yours, and the tool assigns none of them.",
                 "Closure tolerance was tested at 6, 12 and 18 inches on this job and the result did not " +
                 "change, so this is not a tolerance that can be widened into a floor.")
-                { RuleTopic = "storeys-with-no-drawn-floor" };
+                { RuleTopic = "storeys-with-no-drawn-floor", Decided = true };
         }
 
         if (Flag("no wall or column beneath") is { } floating)
         {
             string storeys = floating[(floating.IndexOf(':') + 1)..].Split('.')[0].Trim();
+            // SHE ANSWERED THIS ON 24 AUGUST, IN ONE LINE, AND IT IS BANKED AS
+            // dashed-columns-support-the-slab: "the dash lines (pink) are columns below supporting
+            // the slab, always. The solid ones (yellow) are columns on top of the slab. So Roof
+            // plan is supported by walls and columns only, no columns on top."
+            //
+            // The migration that banked it says so outright -- "This answers J2 outright. C-ROOF
+            // was reported as a plate with no wall or column beneath it and the question was
+            // whether the structure stopped below; it does not, and the columns holding it up are
+            // on the sheet, drawn dashed." Confirmed again on 25 August as
+            // roof-carries-columns-not-walls: "That is correct as drawn."
+            //
+            // So the storeys listed here are the expected output of her own convention, and the
+            // question is closed. It stays on the sheet as a list, because a plate she did not
+            // draw would show up in it.
             yield return new ModelQuestion("J2", "A floor with nothing under it",
-                $"{storeys} carries a floor plate with no wall or column on its own storey. Does the " +
-                "structure stop below that level, or is it drawn on a sheet we did not place there?",
+                $"FOR INFORMATION, ANSWERED — {storeys} carries a floor plate with no wall or " +
+                "column on its own storey. By your rule that is correct as drawn: a column drawn " +
+                "DASHED is below the slab and supports it, so it is counted on the storey below, " +
+                "and a roof plan carries no columns on top at all. Worth a glance only if one of " +
+                "these is a plate you did not draw.",
                 "The plate was kept rather than dropped, because a roof over structure that stops below " +
                 "is a real building, and guessing otherwise would remove a floor you drew.",
                 "A plate with nothing beneath it is either correct or a sheet that landed on the wrong storey.",
                 "Taken from this run: the plan placed there draws no vertical structure at all.")
-                { RuleTopic = "plate-with-nothing-beneath" };
+                { RuleTopic = "plate-with-nothing-beneath", Decided = true };
         }
 
         // Plates a storey was given because its own drawing has none. She is not being asked to
@@ -592,15 +618,34 @@ public static class ModelQuestionnaire
         if (Flag("closes through itself") is { } pinched)
         {
             string where = pinched[(pinched.IndexOf(':') + 1)..].Split(". A floor is a ring")[0].Trim();
+            // BOTH HALVES OF THIS ARE ALREADY RULED ON.
+            //
+            // What to DO is plate-outline-closes-through-itself: where an outline meets its own
+            // edge the ring is split into the separate plates it is drawing -- and it is, which is
+            // why LEVEL 2 ships as 12,380 + 12,271 sq ft rather than as one hourglass.
+            //
+            // What is left is a-plate-that-still-meets-itself-is-reported, which sets
+            // dxf.self-touch-report-gap and says in terms that a plate still coming within it
+            // AFTER splitting is FLAGGED IN THE REPORT. Reporting is the settled outcome, not an
+            // open question.
+            //
+            // And for LEVEL 2 she settled the substance herself on 24 August: "Level 2 and level
+            // mezz have each two separate slabs" -- banked as a-storey-may-have-two-separate-slabs.
+            // Asking her whether LEVEL 2 is two slabs is asking her to say it a third time.
             yield return new ModelQuestion("J6", "A floor outline that closes through itself",
-                $"{where}. Is that floor two separate slabs that our reader joined into one ring, or " +
-                "does the slab genuinely narrow to nothing there?",
-                "Reported, not repaired. The outline is the one the drawing's slab-edge linework closed " +
-                "into; splitting it into two plates needs to know which two, and that is on the drawing.",
-                "A floor is a ring, and where the ring meets its own edge ETABS meshes it badly or refuses " +
-                "it. Everything standing on that storey then has a diaphragm that may not behave like one.",
-                "Say whether it is one slab or two. If two, the point they should separate at is enough.")
-                { RuleTopic = "plate-outline-closes-through-itself" };
+                $"FOR INFORMATION, ANSWERED — {where}. Each of these was already SPLIT into the " +
+                "separate plates it draws, by your rule; what is listed is the residue, where the " +
+                "split pieces still pass within two inches of each other. Nothing is needed from " +
+                "you — it is here because two inches of slab is a meshing problem in ETABS and the " +
+                "coordinate is what you would need to nudge it.",
+                "Split, then reported. The ring was cut at the point it met its own edge into the plates " +
+                "it was drawing, and what remains within two inches of itself is named rather than cut " +
+                "further, because widening the cut drops real slab.",
+                "A floor is a ring, and where the ring passes within inches of its own edge ETABS meshes it " +
+                "badly or refuses it.",
+                "Two inches is dxf.self-touch-report-gap, measured across 31168: normal notched plates come " +
+                "no closer than 0.38 ft to themselves, so it fires only on something degenerate.")
+                { RuleTopic = "plate-outline-closes-through-itself", Decided = true };
         }
 
         // SHE HAS ALREADY ANSWERED THIS ONE, FOUR TIMES IN ONE CALL.
@@ -642,7 +687,11 @@ public static class ModelQuestionnaire
                 "analysis will distribute lateral load as though that part of the floor were not there.",
                 "Say which storeys are correct as drawn. For any that are not, the slab layer and the " +
                 "sheet they should have come from is enough to go back and read them again.")
-                { RuleTopic = "floor-stops-short-of-members" };
+                // The status has to agree with the words. Where the edge is KNOWN not to have
+                // closed, the row already says in capitals that it is a defect and not a question
+                // -- and it was still printing NEEDS YOU beside that sentence, which is the
+                // workbook contradicting itself on the one page an engineer reads.
+                { RuleTopic = "floor-stops-short-of-members", Decided = edgeKnownOpen };
         }
 
         // Only the ones that could be concrete.

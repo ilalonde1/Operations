@@ -14,6 +14,18 @@ public sealed record PlanClassificationOptions
     public IReadOnlyList<string> ColumnLayerPatterns { get; init; } = new[] { "_COL" };
     public IReadOnlyList<string> SlabLayerPatterns { get; init; } = new[] { "SLABEDG" };
 
+    /// <summary>
+    /// How much wider the far side of the band between two nested rings may be than the near side
+    /// before they stop being one edge drawn twice. See `dxf.doubled-edge-parallel-ratio`.
+    /// </summary>
+    public double DoubledEdgeParallelRatio { get; init; } = 2.0;
+
+    /// <summary>
+    /// How much of a floor an inner ring must cover before being read as that floor's own edge
+    /// drawn again rather than as a hole in it. See `dxf.doubled-edge-coverage`.
+    /// </summary>
+    public double DoubledEdgeCoverage { get; init; } = 0.5;
+
     public double MinWallThickness { get; init; } = 4.0;
     public double MaxWallThickness { get; init; } = 36.0;
 
@@ -1495,6 +1507,59 @@ public static class StructuralPlanClassifier
     }
 
     /// <summary>Largest rings are slabs; rings sitting inside one of them are openings.</summary>
+    /// <summary>
+    /// How far every point of <paramref name="ring"/> sits from the nearest edge of
+    /// <paramref name="from"/>, as the smallest and largest such distance.
+    ///
+    /// Sampled along the ring rather than at its corners: a long straight run between two corners
+    /// can drift a long way from the boundary it is being compared with, and reading the corners
+    /// alone misses it entirely.
+    /// </summary>
+    internal static (double Min, double Max) Offsets(PlanLoop ring, PlanLoop from, double step = 12.0)
+    {
+        double min = double.MaxValue, max = 0.0;
+        var pts = ring.Points;
+
+        for (int i = 0; i < pts.Count; i++)
+        {
+            var a = pts[i];
+            var b = pts[(i + 1) % pts.Count];
+            double length = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+            int samples = Math.Max(1, (int)(length / step));
+
+            for (int k = 0; k < samples; k++)
+            {
+                double t = k / (double)samples;
+                var p = new DxfPoint(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
+                double d = DistanceToBoundary(p, from);
+                if (d < min) min = d;
+                if (d > max) max = d;
+            }
+        }
+
+        return min == double.MaxValue ? (0.0, 0.0) : (min, max);
+    }
+
+    private static double DistanceToBoundary(DxfPoint p, PlanLoop loop)
+    {
+        double best = double.MaxValue;
+        var pts = loop.Points;
+
+        for (int i = 0; i < pts.Count; i++)
+        {
+            var a = pts[i];
+            var b = pts[(i + 1) % pts.Count];
+            double dx = b.X - a.X, dy = b.Y - a.Y;
+            double len = dx * dx + dy * dy;
+            double t = len <= 0 ? 0.0 : Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / len, 0.0, 1.0);
+            double ox = p.X - (a.X + t * dx), oy = p.Y - (a.Y + t * dy);
+            double d = Math.Sqrt(ox * ox + oy * oy);
+            if (d < best) best = d;
+        }
+
+        return best == double.MaxValue ? 0.0 : best;
+    }
+
     private static void SplitSlabsAndOpenings(PlanGeometrySet result, List<PlanLoop> candidates, PlanClassificationOptions options)
     {
         var ordered = candidates.OrderByDescending(l => l.Area).ToList();
@@ -1529,6 +1594,55 @@ public static class StructuralPlanClassifier
                         $"{loop.Layer}: a slab outline of {loop.Area / 144:N0} sq ft sits " +
                         $"{band:0} in inside one of {container.Area / 144:N0} sq ft — read as the two " +
                         "faces of one edge, not as a hole. The outer face is the floor.");
+                    continue;
+                }
+
+                // A SLAB EDGE DRAWN TWICE AT MORE THAN A WALL'S THICKNESS.
+                //
+                // The band above catches an inner face a WALL's thickness inside the outer one,
+                // because that is what a perimeter wall's two faces look like. A slab edge drawn
+                // twice at any other spacing falls straight through it and is cut as a hole. On
+                // the site model that is B-LEVEL 39, whose 9,472 sq ft roof went out with 6,611
+                // cut out of it, and A-LEVEL 33 and B-LEVEL 33 the same.
+                //
+                // What identifies it is not the spacing but the PARALLELISM: an inner ring that
+                // keeps roughly the same distance from the outer one the whole way round is that
+                // outer one drawn again, at 8 ft 3 in on B-LEVEL 39 (99.3 to 102.9 in, measured
+                // on every point of the ring) and at 9 to 14 ft on the LEVEL 33 plans.
+                //
+                // Parallel alone is not enough, and this is the trap: a rectangular shaft centred
+                // in a rectangular plate is also parallel to it. So the ring must ALSO cover most
+                // of the floor, which no shaft does. 31168's genuine holes sit at 34%, 27% and
+                // 0.9% of their plates and their offsets vary by a factor of seven; the three
+                // doubled edges sit at 63%, 64% and 70% and vary by less than two.
+                //
+                // Nothing is invented: the inner ring is dropped and the outer stays the plate,
+                // exactly as the band branch does.
+                var (inner, outer) = (Offsets(loop, container), Offsets(container, loop));
+                bool parallel = inner.Min > 0
+                                && inner.Max <= inner.Min * options.DoubledEdgeParallelRatio
+                                && outer.Max <= inner.Min * (options.DoubledEdgeParallelRatio + 0.5);
+                bool coversMostOfIt = loop.Area > container.Area * options.DoubledEdgeCoverage;
+
+                if (parallel && coversMostOfIt)
+                {
+                    // Her rule says the same thing where the drawing carries the words for it:
+                    // "the tag is always inside the slab ... while the crosses mark openings",
+                    // banked as a-tag-inside-a-region-means-slab. Quoted when it is there, because
+                    // a measurement an engineer can check against her own drawing is worth more
+                    // than one she has to take on trust.
+                    var saysSlab = result.Tags.FirstOrDefault(t =>
+                        SlabThicknessCallout.MatchNumberFirstText(t.Text).Any() &&
+                        LoopGeometry.PointInPolygon(t.Point, loop.Points));
+
+                    result.Flags.Add(
+                        $"{loop.Layer}: a ring of {loop.Area / 144:N0} sq ft inside a floor of " +
+                        $"{container.Area / 144:N0} sq ft was NOT cut as an opening — it runs " +
+                        $"{inner.Min:0} to {inner.Max:0} in inside the outer edge the whole way round and " +
+                        $"covers {loop.Area / container.Area:P0} of it, which is the same slab edge drawn " +
+                        "twice rather than a hole" +
+                        (saysSlab is not null ? $", and \"{saysSlab.Text}\" is printed inside it." : ".") +
+                        " The outer face is the floor.");
                     continue;
                 }
 

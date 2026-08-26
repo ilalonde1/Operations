@@ -175,6 +175,89 @@ public static class ShippedModelInvariants
                     st,
                     ModelViolationSeverity.Advisory));
 
+        // 3b. AN OPENING BIGGER THAN THE FLOOR AROUND IT IS THE FAULT SHE REJECTED THE MODEL FOR.
+        //
+        //     "on several levels (9, 3, mezz, 1) he inverted slab and opening" — 25 August, with a
+        //     region marked SHOULD BE SLAB. Every count in that model was healthy. Nothing in the
+        //     report said a floor had been turned inside out, because nothing measured a hole
+        //     against the plate it was cut from.
+        //
+        //     The classifier now refuses the two shapes that produced it — a slab edge drawn twice,
+        //     and one floor read twice — but a refusal in the reader is not a check on the file.
+        //     This is the check on the file: every opening, measured against the smallest floor on
+        //     a storey it shares that encloses it. Over half is reported; nothing around it at all
+        //     is reported, because a hole in nothing is not a hole.
+        //
+        //     Advisory. A genuine atrium can be large, and 31168 has one — 4,219 sq ft, 34% of
+        //     LEVEL 2 — so this discloses rather than refuses. What it will not do again is stay
+        //     silent.
+        double PolygonArea(IReadOnlyList<string> ring)
+        {
+            double sum = 0;
+            for (int i = 0; i < ring.Count; i++)
+            {
+                if (!pts.TryGetValue(ring[i], out var a)) return 0;
+                if (!pts.TryGetValue(ring[(i + 1) % ring.Count], out var b)) return 0;
+                sum += a.Item1 * b.Item2 - b.Item1 * a.Item2;
+            }
+            return Math.Abs(sum) / 2.0;
+        }
+
+        bool Encloses(IReadOnlyList<string> ring, double x, double y)
+        {
+            bool inside = false;
+            for (int i = 0; i < ring.Count; i++)
+            {
+                if (!pts.TryGetValue(ring[i], out var a)) return false;
+                if (!pts.TryGetValue(ring[(i + 1) % ring.Count], out var b)) return false;
+                if ((a.Item2 > y) != (b.Item2 > y) &&
+                    x < (b.Item1 - a.Item1) * (y - a.Item2) / (b.Item2 - a.Item2) + a.Item1)
+                    inside = !inside;
+            }
+            return inside;
+        }
+
+        foreach (string hole in openings)
+        {
+            if (carriedThrough.Contains(hole)) continue;                  // hers, not ours to judge
+            if (!joints.TryGetValue(hole, out var holeRing) || holeRing.Count < 3) continue;
+
+            double holeArea = PolygonArea(holeRing);
+            if (holeArea <= 0) continue;
+
+            double cx = 0, cy = 0; int n = 0;
+            foreach (string j in holeRing)
+                if (pts.TryGetValue(j, out var q)) { cx += q.Item1; cy += q.Item2; n++; }
+            if (n == 0) continue;
+            cx /= n; cy /= n;
+
+            onStoreys.TryGetValue(hole, out var holeStoreys);
+            double smallest = double.MaxValue;
+
+            foreach (string plate in floors)
+            {
+                if (!joints.TryGetValue(plate, out var plateRing) || plateRing.Count < 3) continue;
+                if (holeStoreys is not null && onStoreys.TryGetValue(plate, out var plateStoreys)
+                    && !plateStoreys.Any(st => holeStoreys.Contains(st, StringComparer.OrdinalIgnoreCase)))
+                    continue;
+                if (!Encloses(plateRing, cx, cy)) continue;
+
+                double a = PolygonArea(plateRing);
+                if (a > 0 && a < smallest) smallest = a;
+            }
+
+            if (smallest == double.MaxValue)
+                v.Add(new ModelViolation("opening-with-no-floor",
+                    $"'{hole}' is a {holeArea / 144:N0} sq ft opening with no floor plate around it on its " +
+                    "own storey, so it cuts nothing",
+                    hole, ModelViolationSeverity.Advisory));
+            else if (holeArea > smallest * 0.5)
+                v.Add(new ModelViolation("opening-bigger-than-half-its-floor",
+                    $"'{hole}' cuts {holeArea / 144:N0} sq ft out of a {smallest / 144:N0} sq ft floor — " +
+                    $"{holeArea / smallest:P0} of it. Check it is a hole and not the inner face of the slab edge",
+                    hole, ModelViolationSeverity.Advisory));
+        }
+
         // 4. A member must not belong to two storeys. A floor may -- that is a borrowed plate, and
         //    it is declared. A WALL, COLUMN or header on two storeys is one member counted twice:
         //    six spandrels shipped that way, 1.7 inches tall on the second storey.

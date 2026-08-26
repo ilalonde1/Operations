@@ -1,3 +1,4 @@
+using Kor.Operations.EngineeringTools.Dxf;
 using Microsoft.Data.SqlClient;
 using Xunit;
 using Xunit.Abstractions;
@@ -35,6 +36,9 @@ public class RulingCoverageTests
     /// </summary>
     private static readonly Dictionary<string, string> Proven = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["a-tag-inside-a-region-means-slab"] = "TagGatedSlabRecoveryTests.AnOpenOutlineWithNoCallOutInsideItRecoversNothing",
+        ["a-plate-recovered-twice-is-not-a-hole"] = "PlateReadTwiceTests.AFloorFoundTwiceIsOnePlateAndNoOpening",
+        ["a-question-she-has-answered-is-not-asked-again"] = "RulingCoverageTests.NoQuestionIsAskedOnATopicSheHasAlreadyRuledOn",
         ["solid-linework-belongs-to-the-storey-above"] = "DxfToEtabsTests.AMemberRisesToTheStoreyAboveTheSheetItWasDrawnOn",
         ["dashed-columns-support-the-slab"] = "DxfToEtabsTests.AMemberRisesToTheStoreyAboveTheSheetItWasDrawnOn (the dashed half)",
         ["level-one-is-one-storey"] = "StoreyCutTests.TheGroundFloorDraftedTwiceBecomesOneStoreyOfTheBuildingAboveIt",
@@ -160,6 +164,103 @@ public class RulingCoverageTests
             "follows it, or add it to NotYetObeyed with the reason it does not — but do not leave a " +
             "ruling recorded and unanswered. solid-linework-belongs-to-the-storey-above sat exactly " +
             "there while every model went out with every wall a storey too low.");
+    }
+
+    /// <summary>
+    /// Rows that keep asking even though their topic is banked, each with the sentence in the
+    /// ruling that authorises the question.
+    ///
+    /// A ruling settles what the TOOL does. Occasionally it settles that and then says, in terms,
+    /// that a particular case still goes to the engineer -- and the difference between that and an
+    /// oversight is whether somebody wrote down which. This is where they write it down.
+    /// </summary>
+    private static readonly Dictionary<string, string> AsksDespiteARuling = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["J3"] =
+            "outlines-that-would-not-resolve settles the reporting and then draws the line itself: " +
+            "\"one thinner than concrete is ANSWERED RATHER THAN ASKED\". The ones thick enough to be " +
+            "concrete are the remainder the ruling deliberately leaves with her, and on 31168 the " +
+            "filter removes every row — all eighteen were 2 to 4 inches of drafting scratch.",
+        ["J4"] =
+            "floors-taken-from-below settles WHICH plate a storey with no slab edge of its own is " +
+            "given, and requires it to be marked INFERRED. It does not settle whether the shape is " +
+            "right, and asking is what produced level-three-has-its-own-slab-edge: she answered " +
+            "\"NO, level 3 has its own slab edge, it's on the drawings\" and the reader was fixed.",
+    };
+
+    /// <summary>
+    /// A question she has already answered is not put to her again.
+    ///
+    /// The other test in this file asks whether the CODE obeys a ruling. This asks whether the
+    /// WORKBOOK does, and they fail differently. Every J-row below was marked NEEDS YOU on a
+    /// model sent to her while the answer sat banked in this database in her own words --
+    /// diaphragms-are-the-engineers for the storeys with no plate, dashed-columns-support-the-slab
+    /// for the plates with nothing beneath them, a-storey-may-have-two-separate-slabs for LEVEL 2.
+    /// She said so on the call: "it's obsessed with diaphragm", and "I just told her to ignore
+    /// those".
+    ///
+    /// A workbook that asks an engineer something she has answered twice is a workbook she stops
+    /// opening, and every genuine question on it goes with her. So: a row whose RuleTopic is a
+    /// banked ruling may be listed, may carry any wording, and may not be marked NEEDS YOU.
+    /// </summary>
+    [Fact]
+    public void NoQuestionIsAskedOnATopicSheHasAlreadyRuledOn()
+    {
+        string? connection = Environment.GetEnvironmentVariable("KOR_ENGINEERINGTOOLS_STANDARDSDB");
+        if (string.IsNullOrWhiteSpace(connection))
+        {
+            _out.WriteLine("SKIPPED: KOR_ENGINEERINGTOOLS_STANDARDSDB is not set.");
+            return;
+        }
+
+        List<string> banked;
+        try { banked = ReadTopics(connection); }
+        catch (Exception ex) { _out.WriteLine($"SKIPPED: KorStandards unreachable — {ex.Message}"); return; }
+        if (banked.Count == 0) { _out.WriteLine("SKIPPED: no rulings returned."); return; }
+
+        var ruled = new HashSet<string>(banked, StringComparer.OrdinalIgnoreCase);
+
+        // Every this-job question fires off a report flag, so a report with none of them asks
+        // none of them. This one carries all of them at once — a building no drawing set would
+        // produce, which is the point: it makes every row that CAN appear appear.
+        var everyFault = new DxfToEtabsReport(
+            "questions-audit.e2k", 1, 1, 1,
+            new ComposeSummary(1, 1, 1, 4, 1, Array.Empty<string>(), new[]
+            {
+                "2 storey(s) carry walls or columns and no floor plate, so they have no diaphragm: X, Y.",
+                "8 storey(s) carry a floor plate with no wall or column beneath it: X, Y.",
+                "3 storey(s) were given a floor plate from a neighbour: X, Y.",
+                "1 floor plate(s) have an outline that closes through itself: X — two edges TOUCHING " +
+                "at (1, 2) ft, from a.dxf. A floor is a ring",
+                "Floor does not reach the structure on 2 storey(s): X (24% of the ground its own walls " +
+                "and columns cover). Those storeys have a plate.",
+                "a.dxf: slab edges: 4 outline(s) would not close (10 units of edge ignored).",
+                "a.dxf: JBP_V-WALL: outline 256x70 with 6 vertices could not be resolved into wall " +
+                "panels — check this location. [implied thickness 14.0 in]",
+            }),
+            (0, 0),
+            Array.Empty<SheetOutcome>(),
+            Array.Empty<string>(),
+            new PlanClassificationOptions(),
+            new ComposeOptions { SpandrelDepthFloor = 18, SpandrelDepthCeiling = 60 });
+
+        var asked = ModelQuestionnaire
+            .StandingQuestions(everyFault.ClassificationUsed, everyFault.ComposeUsed, everyFault)
+            .Where(q => !q.Decided)
+            .Where(q => !string.IsNullOrWhiteSpace(q.RuleTopic) && ruled.Contains(q.RuleTopic))
+            .Where(q => !AsksDespiteARuling.ContainsKey(q.Code))
+            .Select(q => $"{q.Code} ({q.RuleTopic})")
+            .ToList();
+
+        _out.WriteLine($"{banked.Count} rulings banked; {asked.Count} question(s) still ask about one.");
+
+        Assert.True(asked.Count == 0,
+            "These rows are marked NEEDS YOU on a topic the engineer has already ruled on:\n  " +
+            string.Join("\n  ", asked) +
+            "\n\nRead the ruling in analysis.Ruling and either state its answer in the row and mark it " +
+            "Decided, or — if the ruling itself says this case still goes to her — add the row to " +
+            "AsksDespiteARuling with the sentence that says so. Asking her twice spends the only " +
+            "attention the workbook gets.");
     }
 
     /// <summary>

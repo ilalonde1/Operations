@@ -793,6 +793,96 @@ function Get-KorHardwareProfile {
     }
 }
 
+function Get-KorInstalledSoftware {
+    <#
+    .SYNOPSIS
+        What is actually installed on a workstation, with version, install date and location.
+    .DESCRIPTION
+        The answer to most "it won't install / it won't run" tickets, because the truth is
+        almost always in the uninstall keys and almost never what the user reports. Reads both
+        the native and WOW6432Node uninstall hives over RemoteRegistry, so 32-bit products on a
+        64-bit machine are not silently missed — that omission is how a duplicate install gets
+        called a clean one.
+
+        Written 2026-08-25 for KOR-223N (Javelin 6.8). The user reported "errors downloading"
+        and suspected the processor; the machine exceeded every published requirement and the
+        software was already installed — twice, alongside the version it was meant to replace.
+        DisplayName alone would have hidden that. Duplicates and a "<name>-1" sibling are the
+        signature of an installer that ran again over a live instance, so both are surfaced.
+
+        InstallLocation is returned because a product registered in the uninstall hive but
+        absent from disk is a broken install, and that pair of facts is what distinguishes it.
+    .EXAMPLE
+        Get-KorInstalledSoftware -ComputerName KOR-223N -Name Javelin
+    .EXAMPLE
+        Get-KorInstalledSoftware -ComputerName KOR-223N -Name Javelin |
+            Group-Object DisplayName, Version | Where-Object Count -gt 1
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, ValueFromPipeline)][string[]]$ComputerName,
+        # Regex matched against DisplayName. Omit for everything.
+        [string]$Name
+    )
+
+    process {
+        foreach ($cn in $ComputerName) {
+            if (-not (Test-NetConnection -ComputerName $cn -Port 445 -WarningAction SilentlyContinue -InformationLevel Quiet)) {
+                [PSCustomObject]@{ ComputerName = $cn; Reachable = $false }
+                continue
+            }
+
+            Use-KorRemoteRegistry -ComputerName $cn -Body {
+                foreach ($hive in 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+                                  'HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall') {
+
+                    # ONE recursive query per hive, parsed locally. Querying each subkey
+                    # separately is hundreds of SMB round trips: measured on KOR-223N it
+                    # exceeded 10 minutes and returned nothing, while /s returns in seconds.
+                    # Same lesson as pushing a filter to the filesystem instead of to LINQ.
+                    $out = & reg.exe query "\\$cn\$hive" /s 2>$null
+                    if ($LASTEXITCODE -ne 0) { continue }
+
+                    $bitness = if ($hive -match 'WOW6432Node') { 'x86' } else { 'x64' }
+                    $key = $null
+                    $prop = @{}
+
+                    $emit = {
+                        if ($key -and $prop['DisplayName']) {
+                            if (-not $Name -or $prop['DisplayName'] -match $Name) {
+                                [PSCustomObject]@{
+                                    ComputerName    = $cn
+                                    DisplayName     = $prop['DisplayName']
+                                    Version         = $prop['DisplayVersion']
+                                    Publisher       = $prop['Publisher']
+                                    InstallDate     = $prop['InstallDate']
+                                    InstallLocation = $prop['InstallLocation']
+                                    Bitness         = $bitness
+                                    UninstallString = $prop['UninstallString']
+                                    RegistryKey     = $key
+                                }
+                            }
+                        }
+                    }
+
+                    foreach ($line in $out) {
+                        $l = "$line"
+                        if ($l -match '^HKEY_') {
+                            & $emit
+                            $key = $l.Trim()
+                            $prop = @{}
+                        }
+                        elseif ($l -match '^\s+(\S.*?)\s{4,}REG_\w+\s{4,}(.*)$') {
+                            $prop[$Matches[1].Trim()] = $Matches[2].Trim()
+                        }
+                    }
+                    & $emit
+                }
+            }
+        }
+    }
+}
+
 function Get-KorThermalProfile {
     <#
     .SYNOPSIS
@@ -977,4 +1067,4 @@ Export-ModuleMember -Function Test-KorWorkstationChannel, Use-KorRemoteRegistry,
     Get-KorOutlookAddin, Get-KorOutlookStore, Get-KorOfficeHealth, Set-KorOutlookAddinState,
     Invoke-KorSearchIndexRebuild, Get-KorWorkstationHealth, Get-KorServiceState, Wait-KorServiceState,
     Invoke-KorSc, Resolve-KorAdminShare, Get-KorHardwareProfile, ConvertFrom-KorSmbios,
-    Get-KorThermalProfile
+    Get-KorThermalProfile, Get-KorInstalledSoftware
