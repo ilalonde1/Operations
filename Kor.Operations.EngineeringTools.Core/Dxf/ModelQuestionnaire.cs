@@ -603,13 +603,38 @@ public static class ModelQuestionnaire
                 { RuleTopic = "plate-outline-closes-through-itself" };
         }
 
+        // SHE HAS ALREADY ANSWERED THIS ONE, FOUR TIMES IN ONE CALL.
+        //
+        // 25 August, at 5:50, 6:56, 7:23 and 7:38, and in writing before that: "why is level 2
+        // empty ... it's actually missing, so there's a problem at level 2 ... it's missing the
+        // slab". Then she diagnosed it herself: "it drew the inside slab, because we have
+        // different thicknesses ... she's having a hard time with overlapping slabs. Because
+        // there's a base slab that's 14 inch and inside we have a thicker one."
+        //
+        // So for a storey whose slab edge is KNOWN not to have closed, the two explanations this
+        // question offers are not open: we know which it is, and putting it to her again is how a
+        // workbook stops being read. It is stated as a defect instead, and only storeys with no
+        // such flag are still a question.
         if (Flag("Floor does not reach the structure") is { } shortFloor)
         {
             string storeys = shortFloor[(shortFloor.IndexOf(':') + 1)..].Split(". Those")[0].Trim();
+
+            bool edgeKnownOpen = report.Summary.Flags.Any(f =>
+                f.Contains("would not close", StringComparison.OrdinalIgnoreCase) ||
+                f.Contains("did not close as vectors", StringComparison.OrdinalIgnoreCase) ||
+                f.Contains("crossed itself", StringComparison.OrdinalIgnoreCase));
+
             yield return new ModelQuestion("J5", "Floors that stop short of their structure",
-                $"On these storeys the floor spans much less ground than the walls and columns standing " +
-                $"on it: {storeys}. Is that the building — a mezzanine over part of a room, a podium " +
-                "ending where the tower starts — or did a slab edge fail to close?",
+                edgeKnownOpen
+                    ? $"On these storeys the floor spans much less ground than the walls and columns " +
+                      $"standing on it: {storeys}. THIS IS A KNOWN DEFECT, NOT A QUESTION — this " +
+                      "model also reports a slab edge on these sheets that would not close, which is " +
+                      "the cause you identified: a base slab with a thicker one inside it, where only " +
+                      "the inner outline closes. Nothing is needed from you unless a storey listed " +
+                      "here is genuinely a small plate over open space."
+                    : $"On these storeys the floor spans much less ground than the walls and columns " +
+                      $"standing on it: {storeys}. Is that the building — a mezzanine over part of a " +
+                      "room, a podium ending where the tower starts — or did a slab edge fail to close?",
                 "Nothing was added or removed. Each of these storeys has the plate its own drawing gave, " +
                 "and the number is how much of the ground its own members cover that the plate reaches.",
                 "If it is the building, nothing needs doing and the model is right. If a slab edge failed " +
