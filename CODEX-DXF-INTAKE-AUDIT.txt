@@ -1,0 +1,92 @@
+GOAL
+Adversarially audit one day's work on the DXF-to-ETABS intake: the path that turns a Revit
+model into an ETABS .e2k an engineer will open. Find what is WRONG, UNPROVEN, or SILENTLY
+WEAKER than it looks. Assume the author was over-confident and working fast.
+
+You are reviewing, not building. Do not modify files. Do not run builds or tests. Do not run
+git commands that write. Read, reason, and report.
+
+REPOS
+  C:\VIsual Studio Projects\Operations          the generator, the tests, the publisher
+  C:\VIsual Studio Projects\KOR.Drafter         the Revit bridge (src\KOR.Drafter.Bridge\)
+  C:\VIsual Studio Projects\KOR.Drafter\db\     the rule migrations (051, 052 applied today)
+
+THE COMMITS TO AUDIT (Operations, newest first)
+  dafb4aee  Two sheets of one storey are witnesses, not rivals
+  b70fb47c  A ring running along the plate's own edge is that edge, not a hole in it
+  62a788b8  A plate is as thick as the drawing says inside it
+  4e867a7a  Four rulings that worked by luck now work by design
+  21e9bb34  Every rule the code reads is a rule the run requires
+  f0b1817a  A question she has answered is not asked again, and an edge drawn twice is not a hole
+(KOR.Drafter)
+  34f8ada   Name the export for the view, which is what carries the building
+  1bcb82c   exportdxf takes drafting's own export setup, so one export carries both
+
+WHAT WAS CLAIMED. Test each claim against the code, not against the commit message.
+
+1. SLAB VERSUS HOLE. Three new rules decide whether a ring inside a floor is an opening:
+   - a "doubled edge": parallel within dxf.doubled-edge-parallel-ratio AND covering more than
+     dxf.doubled-edge-coverage of the plate  (StructuralPlanClassifier.SplitSlabsAndOpenings)
+   - a ring whose edge lies ON the plate's edge for >= 50% of its length (FractionOnBoundary)
+   - an opening not cut where a plate on the SAME STOREY from a DIFFERENT SHEET stands on the
+     same ground: area within 2%, centre within 24 in  (E2kGeometryComposer, PlateFillingThisOpening)
+   ASK: what real opening does each of these delete? Construct the drawing that defeats it. A
+   lift core running the full height of a small floor plate; a light well; a stair opening in a
+   narrow podium; two genuinely different floors that happen to have equal area. The engineer
+   REJECTED a model on 25 August for inverting slab and opening -- the failure mode here is
+   deleting a hole she drew, and it is invisible in every count.
+
+2. PER-PLATE THICKNESS. PlanLoop.ThicknessInchesFromTag, set in the classifier from a call-out
+   inside the ring, preferred by the composer over the per-sheet stick-file value.
+   ASK: the bounds are 4..120 inches and the parser requires the word SLAB -- what real call-out
+   is refused, and what non-slab text is accepted? Check the UNIT path especially: the tag is in
+   inches, ComposeOptions.ModelUnitInInches divides it, and ComposeOptions.InUnitOf() scales other
+   lengths. Is ModelUnitInInches ever scaled by InUnitOf, or set before it? A units error here is
+   silent and ships a 12 inch slab as 1 foot thick or 144.
+   Also: "smallest enclosing plate wins" -- what happens when two plates of EQUAL area both
+   contain the tag?
+
+3. THE REQUIRED-RULE LIST. RequiredRuleKeys grew from 35 to 43 keys, and RequiredRuleCoverageTests
+   claims to prove that every rule the code READS is one the run REQUIRES, using a recording
+   dictionary passed to ApplyRules.
+   ASK: does the recorder actually observe every read? Are there settings read anywhere OTHER
+   than the two ApplyRules methods -- in the classifier, the composer, the publisher, the CLI?
+   Those would be invisible to this test. Name any you find.
+
+4. THE QUESTION GATE. RulingCoverageTests.NoQuestionIsAskedOnATopicSheHasAlreadyRuledOn builds a
+   report carrying every flag and fails if a NEEDS YOU row's topic is a banked ruling.
+   ASK: is the synthetic report REALISTIC -- do those flag strings match what the composer
+   actually emits today, string for string? If a flag's wording changed, the question it triggers
+   would silently stop being generated and this test would still pass. Check each flag literal in
+   the test against its producer.
+
+5. THE BRIDGE EXPORT. exportdxf now takes "setup" and "viewcontains", forces SharedCoords,
+   Polymesh and TextTreatment.Exact over the setup, and names files for the VIEW.
+   ASK: forcing three options over a saved setup -- what does Polymesh do to a wall or a curved
+   slab edge that the setup's own solid mode would not? Is SafeName(view.Name) safe against a view
+   name containing a path separator, a leading dot, or a name longer than MAX_PATH once joined?
+   What happens when two views differ only by characters SafeName replaces?
+
+6. WHAT IS PUBLISHED RIGHT NOW, and whether the two models are consistent with each other:
+     31168-TOWERS-FROM-DRAWINGS.e2k   built from _DXF-from-Revit-2026-08-26   62 storeys 106 plates
+     31168-FROM-DRAWINGS.e2k          built from _DXF-plans-for-rebuild       14 storeys  16 plates
+   in \\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\
+      02 Engineering\02 Lateral Design\01 ETABS Models\
+   ASK: two models of one building from two different drawing sets. Where do they DISAGREE about
+   shared structure -- the parkade, LEVEL 1, LEVEL 2, the mezzanine, which are in both? An engineer
+   opening both should not find two different answers for the same slab. Quantify any disagreement
+   you find (storey, plate area, thickness). This is the finding I most expect to exist.
+
+RULES OF ENGAGEMENT
+- Every claim you make cites a file and line, or a number you read out of an artifact.
+- Do not report style, naming or comment volume. Only defects, unproven claims, and silent
+  weakening.
+- Where a test exists, ask what it would MISS, not whether it passes.
+- Reading the share is allowed and encouraged. NEVER use Get-ChildItem -Recurse over SMB -- it is
+  unusably slow; enumerate one directory at a time.
+- Do not trust a commit message. Several describe measurements taken once, on one job.
+
+FINISH WITH AN ADVERSARIAL REVIEW OF YOUR OWN FINDINGS
+For each finding you are about to report, state the strongest argument that it is NOT a defect,
+then say whether that argument defeats it. Drop the ones it defeats. Rank what survives by what
+would reach an engineer's model without anything turning red.
