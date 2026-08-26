@@ -672,6 +672,58 @@ public static class E2kGeometryComposer
             return above.Count > 0 ? above[0] : from;
         }
 
+        // EVERY PLATE ON EVERY STOREY, BEFORE ANY OPENING IS CUT.
+        //
+        // One storey is drawn on more than one sheet, and the sheets are WITNESSES to the same
+        // ground rather than rivals. 31168's B-LEVEL 1 has three: the BLDG C sheet draws an
+        // 11,026 sq ft mat and says 56" SLAB inside it, while the overall level plan draws a
+        // 72,424 sq ft floor with an 11,026 sq ft region left out of it — because at a different
+        // thickness it is a different region, not because it is a void.
+        //
+        // Read one sheet at a time, that hole is a hole. Read together, it is where the mat goes.
+        // The composer is the first place both are known, so it is the only place this can be
+        // reconciled — and it has to be, because the model that came out of not reconciling it
+        // was a mat with 93 per cent of itself cut away, which is the fault the engineer rejected
+        // on 25 August.
+        var plateGroundByStorey = new Dictionary<string, List<(double X, double Y, double Area, string Sheet)>>(
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var placement in placements)
+            foreach (var slab in placement.Geometry.Slabs)
+            {
+                var mid = slab.Centroid();
+                if (!plateGroundByStorey.TryGetValue(placement.Story.Name, out var list))
+                    plateGroundByStorey[placement.Story.Name] = list = new();
+                list.Add((mid.X, mid.Y, slab.Area, placement.SourceSheet));
+            }
+
+        /// <summary>
+        /// A plate on this storey, drawn on a DIFFERENT sheet, standing on the same ground as
+        /// this opening.
+        ///
+        /// Deliberately tight: the same outline read twice, not merely an overlap. Area within a
+        /// fiftieth and centre within two feet. A genuine shaft has no plate of its own shape
+        /// anywhere on its storey, so it cannot match this, and a lift core stays a lift core.
+        /// </summary>
+        string? PlateFillingThisOpening(string storey, string sheet, PlanLoop opening)
+        {
+            if (!plateGroundByStorey.TryGetValue(storey, out var plates)) return null;
+
+            var at = opening.Centroid();
+            double area = opening.Area;
+            if (area <= 0) return null;
+
+            foreach (var (x, y, plateArea, from) in plates)
+            {
+                if (string.Equals(from, sheet, StringComparison.OrdinalIgnoreCase)) continue;
+                if (Math.Abs(plateArea - area) > area * 0.02) continue;
+                if (Math.Abs(x - at.X) > 24.0 || Math.Abs(y - at.Y) > 24.0) continue;
+                return from;
+            }
+
+            return null;
+        }
+
         foreach (var placement in placements)
         {
             // Where the sheet was placed: slabs and openings belong here.
@@ -1042,6 +1094,19 @@ public static class E2kGeometryComposer
             foreach (var opening in placement.Geometry.Openings)
             {
                 if (!storeyHasAPlate) { skippedOpenings++; continue; }
+
+                // Another sheet drew a floor exactly here, so this is a thickness change rather
+                // than a void. Reported, never silent: the two readings disagreed and this says
+                // which was taken and on whose authority.
+                if (PlateFillingThisOpening(slabStory.Name, placement.SourceSheet, opening) is { } filledBy)
+                {
+                    flags.Add(
+                        $"{placement.SourceSheet}: an opening of {opening.Area / 144:N0} sq ft on " +
+                        $"{slabStory.Name} was NOT cut — {Path.GetFileName(filledBy)} draws a floor plate of " +
+                        "the same shape on the same ground, so the two sheets are describing one storey and " +
+                        "this region is a change of thickness, not a hole.");
+                    continue;
+                }
 
                 // IN PERIMETER ORDER, or ETABS refuses the area and ignores its assign.
                 //
