@@ -1,3 +1,5 @@
+using Kor.Operations.EngineeringTools.QuantityTakeoff;
+
 namespace Kor.Operations.EngineeringTools.Dxf;
 
 /// <summary>
@@ -540,7 +542,22 @@ public static class StructuralPlanClassifier
             //
             // What remains is what it was before: outlines the drawing closes, and a flood fill of
             // the drawn linework where it does not.
-            if (false && layer == RoleSlab && built.OpenChains.Count > 0)
+            // BACK ON, 25 August, AND ONLY WHERE THE DRAWING SAYS SO.
+            //
+            // It came off because it guessed. Closing a chain recovers a REGION and says nothing
+            // about what the region is, so C-LEVEL 3 shipped as a 22,676 sq ft plate with an
+            // 11,809 sq ft hole in it and LEVEL 1 as 78,859 with 74,832 cut out, and she wrote
+            // "on several levels (9, 3, mezz, 1) he inverted slab and opening."
+            //
+            // The drawing was never ambiguous. «14\" SLAB» is printed inside the slab. What was
+            // missing was the tag: the DXFs this tool is given carry no text, so the sentence that
+            // settles it never arrived. AnnotationOverlay brings it now, from an export that does
+            // carry text, landing within a third of an inch.
+            //
+            // So a recovered outline is a floor when a thickness call-out stands inside it, and
+            // nothing at all when none does. No tag, no plate -- which is why this is safe where
+            // the same code was not: it can no longer invent a floor, only confirm one.
+            if (layer == RoleSlab && built.OpenChains.Count > 0 && result.Tags.Count > 0)
             {
                 foreach (var chain in built.OpenChains)
                 {
@@ -550,22 +567,27 @@ public static class StructuralPlanClassifier
 
                     if (ring.Area < options.MinPlateArea) continue;
 
-
                     var (minX, minY, maxX, maxY) = ring.Bounds();
                     double box = (maxX - minX) * (maxY - minY);
                     if (box <= 0 || ring.Area / box < 0.55) continue;
+
+                    var says = result.Tags.FirstOrDefault(t =>
+                        SlabThicknessCallout.MatchNumberFirstText(t.Text).Any() &&
+                        LoopGeometry.PointInPolygon(t.Point, ring.Points));
+                    if (says is null) continue;
 
                     closedFromChains.Add(ring);
                     chainRings.Add(ring);
                     chainClosedCount++;
 
-                    // Never silently. A plate the drawing did not close is a reconstruction, and an
-                    // engineer checking this model is entitled to know which of her floors this
-                    // tool inferred and which it read.
+                    // Never silently, and now with the reason. An engineer checking this model is
+                    // entitled to know which of her floors this tool inferred, which it read, and
+                    // which word on her own drawing it believed.
                     result.Flags.Add(
                         $"{layer}: a slab outline of {ring.Area / 144:N0} sq ft was closed by joining " +
                         "its own two loose ends — the drawing leaves it open where other linework " +
-                        "crosses it. Recovered geometry: check the edge.");
+                        $"crosses it — and modelled as floor because \"{says.Text}\" is printed " +
+                        "inside it. Recovered geometry: check the edge.");
                 }
             }
 
