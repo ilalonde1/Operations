@@ -78,6 +78,20 @@ public static class AnnotationOverlay
             var here = Centroid(spun);
             var frame = new Frame(degrees, target.X - here.X, target.Y - here.Y);
 
+            // A CENTROID CANNOT START THIS ON ITS OWN, AND THE REASON IS THE GRID.
+            //
+            // The two exports do not find the same columns -- LEVEL 2 gives 60 against 73 -- and
+            // those thirteen pull the mean sideways. On this job the miss was 276 in, which is
+            // more than a column bay, so pairing each column with its NEAREST neighbour paired it
+            // with the wrong one and the refinement settled happily one bay out: the turn correct,
+            // the y correct to an inch, and the x a bay adrift.
+            //
+            // So the offset is voted on instead. Every pairing of a sampled annotated column with
+            // a geometry column proposes an offset; the one the most columns agree with wins.
+            // Wrong-bay proposals collect a handful of votes, the true one collects most of the
+            // building, and no amount of unmatched columns changes which is which.
+            frame = SweepOffset(frame, spun, geometryColumns);
+
             // CENTROIDS ALONE ARE NOT ENOUGH, and the real data says so: LEVEL P2 carries 445
             // columns against 455, and those ten pull the centroid far enough that the sheet
             // reads as a 28 in miss when the true fit is a third of an inch. The extras are not
@@ -175,13 +189,106 @@ public static class AnnotationOverlay
         return id;
     }
 
-    /// <summary>Column midpoints — the point cloud the two exports are matched on.</summary>
+    /// <summary>
+    /// Column layer names used by an export this job's rules were NOT written for.
+    ///
+    /// The job's own column pattern is the drafting office's — JBP_V_COL here — and the bridge
+    /// export does not use it. Revit has no export-layer table set, so it falls back to the AIA
+    /// default and writes columns on S-COLS. Looked up through the job's patterns that yields no
+    /// columns at all, the frame cannot be solved, and every sheet is refused for a reason that
+    /// sounds geometric and is not: LEVEL 2 registers to three tenths of an inch and was still
+    /// turned away, because nothing was being compared.
+    ///
+    /// The job's own patterns are tried first and still win. This is only what to fall back on.
+    /// </summary>
+    private static readonly string[] StandardColumnLayers =
+    {
+        "S-COLS", "S-COL", "A-COLS", "A-COL", "S-COLS-HDLN",
+    };
+
+    /// <summary>
+    /// COLUMN CENTRES, not segment midpoints.
+    ///
+    /// A column is drawn as a closed outline, and the two exports do not break that outline into
+    /// the same edges — LEVEL 2 yields 688 segments on one side against 670 on the other for the
+    /// same columns. The midpoint of an edge is a point on the column's SIDE, and which side
+    /// depends on how the exporter decomposed it, so those clouds never line up however good the
+    /// transform is. Matching them refused LEVEL 2 outright while the true fit was three tenths
+    /// of an inch.
+    ///
+    /// The centre of a column is the same point in both, whatever the drafting. So the classifier
+    /// finds the columns and their centres are what get matched.
+    /// </summary>
     private static IReadOnlyList<DxfPoint> ColumnPoints(
         IReadOnlyList<DxfSegment> segments, PlanClassificationOptions options)
-        => segments
-            .Where(s => options.RoleOf(s.Layer) == "columns")
-            .Select(s => new DxfPoint((s.Start.X + s.End.X) / 2.0, (s.Start.Y + s.End.Y) / 2.0))
-            .ToList();
+    {
+        var found = StructuralPlanClassifier.Classify(segments, options);
+        if (found.Columns.Count > 0) return found.Columns.Select(c => c.Center).ToList();
+
+        // The job's own patterns did not recognise this export, which is the ordinary case for
+        // the bridge's own output: Revit has no export-layer table set, so it writes the AIA
+        // default and columns land on S-COLS rather than the office's JBP_V_COL.
+        var standard = options with { ColumnLayerPatterns = StandardColumnLayers };
+        var again = StructuralPlanClassifier.Classify(segments, standard);
+        return again.Columns.Select(c => c.Center).ToList();
+    }
+
+    /// <summary>
+    /// Search around the centroid guess for the offset the most columns agree with.
+    ///
+    /// A centroid cannot start this on its own, and the reason is the grid. The two exports do
+    /// not find the same columns -- LEVEL 2 gives 60 against 73 -- and those thirteen pull the
+    /// mean sideways. On this job the miss was 276 in, which is MORE THAN A COLUMN BAY, so
+    /// pairing each column with its nearest neighbour paired it with the wrong one and the
+    /// refinement settled happily one bay out: the turn right, the y right to an inch, and the x
+    /// a bay adrift. Nothing downstream could tell.
+    ///
+    /// So the offset is searched rather than computed: a bounded sweep around the centroid guess,
+    /// scored by how many columns land on a column. A one-bay error agrees with a handful; the
+    /// true offset agrees with most of the floor. The sweep reaches a bay and a half in each
+    /// direction, which is what the centroid can plausibly be wrong by, and steps finely enough
+    /// that the true offset cannot fall between two samples.
+    /// </summary>
+    private static Frame SweepOffset(
+        Frame frame, IReadOnlyList<DxfPoint> spun, IReadOnlyList<DxfPoint> geometry)
+    {
+        const double reach = 420.0;   // a bay and a half on this job's 240 in grid
+        const double step = 12.0;     // an inch of drafting slop, not a bay
+        const double agree = 18.0;
+
+        double bestX = frame.OffsetX, bestY = frame.OffsetY;
+        int bestScore = -1;
+
+        for (double dx = -reach; dx <= reach; dx += step)
+        {
+            for (double dy = -reach; dy <= reach; dy += step)
+            {
+                double ox = frame.OffsetX + dx, oy = frame.OffsetY + dy;
+                int score = 0;
+                foreach (var p in spun)
+                {
+                    double px = p.X + ox, py = p.Y + oy;
+                    foreach (var q in geometry)
+                    {
+                        if (System.Math.Abs(px - q.X) <= agree && System.Math.Abs(py - q.Y) <= agree)
+                        {
+                            score++;
+                            break;
+                        }
+                    }
+                }
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestX = ox;
+                    bestY = oy;
+                }
+            }
+        }
+
+        return frame with { OffsetX = bestX, OffsetY = bestY };
+    }
 
     /// <summary>
     /// Take the offset from the columns that already agree, and ignore the rest.

@@ -386,8 +386,22 @@ public static class StructuralPlanClassifier
             // this reads more than one -- and a rule that cannot tell a second slab from a second
             // building is not ready, whatever it scores. One point of floor agreement does not buy
             // two buildings sharing a diaphragm.
-            // BOTH RECOVERY PASSES ARE OFF. See the note at the chain-closing block below.
-            PlanLoopBuilder? slabRescue = null;   // OFF -- see the chain-closing note below.
+            // BACK ON FOR SLAB EDGES, AND ONLY WHERE THE DRAWING SAYS SO.
+            //
+            // The fear that took it off was welding: 31168's LEVEL 2 carries two towers on one
+            // sheet, 12,380 and 12,271 sq ft, and the wider reach joined them into a single
+            // 26,309 sq ft plate spanning both, which is two buildings sharing a diaphragm.
+            //
+            // That is now guarded twice over. A recovered outline is kept only where a THICKNESS
+            // CALL-OUT stands inside it -- so it can no longer invent a floor, only confirm one --
+            // and a fill plate that swallows two floors already found is still refused as a weld
+            // further down. The engineer, on the slab this is meant to reach: "there's a base slab
+            // that's 14 inch and inside we have a thicker one", and the tool drew only the inner.
+            //
+            // Without tags this stays exactly as it was: off.
+            PlanLoopBuilder? slabRescue = role == RoleSlab && result.Tags.Count > 0
+                ? new PlanLoopBuilder(options.JoinTolerance, options.FloodFillBridge, options.ExtendLimit)
+                : null;
             var loops = new List<PlanLoop>();
             var leftovers = new List<DxfSegment>();
 
@@ -417,13 +431,31 @@ public static class StructuralPlanClassifier
                 // Never silently: an outline that needed the wider reach is a reconstruction, and
                 // the engineer checking this model is entitled to know which floors were read off
                 // the drawing and which were inferred from it.
-                if (rescued.Loops.Count > 0)
-                    result.Flags.Add(
-                        $"{rescued.Loops.Count} slab outline(s) closed only at the interruption width " +
-                        $"({options.FloodFillBridge:0} in), not the ordinary {options.BridgeTolerance:0} in — " +
-                        "a slab edge cut by other linework. Recovered geometry: check the edge.");
+                // Only the ones the drawing names. A wider reach closes shapes that are not
+                // floors as readily as ones that are, and the call-out is what tells them apart.
+                var named = rescued.Loops
+                    .Select(l => (Loop: l, Says: result.Tags.FirstOrDefault(t =>
+                        SlabThicknessCallout.MatchNumberFirstText(t.Text).Any() &&
+                        LoopGeometry.PointInPolygon(t.Point, l.Points))))
+                    .Where(x => x.Says is not null)
+                    .ToList();
 
-                loops.AddRange(rescued.Loops);
+                foreach (var (loop, says) in named)
+                    result.Flags.Add(
+                        $"A slab outline of {loop.Area / 144:N0} sq ft closed only at the interruption " +
+                        $"width ({options.FloodFillBridge:0} in), not the ordinary " +
+                        $"{options.BridgeTolerance:0} in — a slab edge cut by other linework — and was " +
+                        $"modelled as floor because \"{says!.Text}\" is printed inside it. " +
+                        "Recovered geometry: check the edge.");
+
+                int declined = rescued.Loops.Count - named.Count;
+                if (declined > 0)
+                    result.Flags.Add(
+                        $"{declined} further outline(s) closed at the interruption width but carry no " +
+                        "slab thickness call-out inside them, so they were NOT modelled as floors. " +
+                        "Nothing was invented where the drawing does not say what the shape is.");
+
+                loops.AddRange(named.Select(x => x.Loop));
                 stillOpen = rescued.OpenChains.ToList();
             }
 
