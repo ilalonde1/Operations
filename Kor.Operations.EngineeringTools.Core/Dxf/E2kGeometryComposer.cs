@@ -1327,6 +1327,10 @@ public static class E2kGeometryComposer
                 "edge, and ETABS will mesh it badly or refuse it. Two wings joined at a point are usually " +
                 "two plates — which two is the drawing's answer, so this is reported and not repaired.");
 
+        // Named the way PlanSheetNaming names one, so a storey and the sheet that drew it agree.
+        static bool IsMezzanineStorey(string storey)
+            => storey.Contains("MEZZ", StringComparison.OrdinalIgnoreCase);
+
         var thinlyFloored = new List<(string Storey, int Percent)>();
         foreach (var storey in allStories)
         {
@@ -1336,6 +1340,20 @@ public static class E2kGeometryComposer
             var spanned = plates[0].Where;
             foreach (var plate in plates.Skip(1))
                 spanned = spanned.With(plate.Where.MinX, plate.Where.MinY).With(plate.Where.MaxX, plate.Where.MaxY);
+
+            // A MEZZANINE IS SUPPOSED TO LOOK LIKE THIS, AND SHE HAS SAID SO.
+            //
+            // The engineer, 25 August, asked about exactly this question on LEVEL 1 MEZZ:
+            // "it could be perfectly fine, and it's just being raised as a false alarm ... the
+            // mezzanine level you usually have like just a couple of smaller slab, but obviously
+            // the vertical elements have to go through, right? But you just have like a little
+            // plate."
+            //
+            // A mezzanine is a small plate inside a tall space whose columns and walls run past it
+            // to the storey above. Its floor covering a fraction of the ground its members stand on
+            // is the definition of a mezzanine, not a fault, and asking her about it a third time
+            // is how a questionnaire stops being read.
+            if (IsMezzanineStorey(storey.Name)) continue;
 
             double covered = spanned.CoverageOf(standingOn);
             if (covered < options.MinFloorCoverage) thinlyFloored.Add((storey.Name, (int)Math.Round(covered * 100)));
