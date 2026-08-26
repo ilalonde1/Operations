@@ -230,6 +230,25 @@ public static class DxfToEtabsService
         "dxf.skip-members-already-modelled",
         "dxf.spandrel-depth-floor",
         "dxf.spandrel-depth-ceiling",
+
+        // These eight were read and not required, which is the one combination that looks safe and
+        // is not. LoadRequired pulls the whole view, so a value present in KorStandards was always
+        // applied -- but a value MISSING from it fell back to the number in this file, silently,
+        // on a production run whose whole contract is that a missing rule stops it. They were also
+        // invisible: the report and the engineer's "Rules in force" sheet are built from this list,
+        // so eight of the rules her model was actually built on were named nowhere she could see.
+        //
+        // Found by comparing the keys the code reads against this list against the database: 43,
+        // 35, 43. All eight were in KorStandards, so requiring them changes no value, only what
+        // happens when one is absent and what she is told.
+        "dxf.donor-plate-likeness-margin",
+        "dxf.doubled-edge-coverage",
+        "dxf.doubled-edge-parallel-ratio",
+        "dxf.flood-fill-bridge",
+        "dxf.joint-merge-tolerance",
+        "dxf.min-floor-coverage",
+        "dxf.outline-self-touch-tolerance",
+        "dxf.self-touch-report-gap",
     ];
 
     /// <summary>
@@ -285,6 +304,14 @@ public static class DxfToEtabsService
             ["dxf.skip-members-already-modelled"] = compose.SkipMembersAlreadyModelled ? 1 : 0,
             ["dxf.spandrel-depth-floor"] = compose.SpandrelDepthFloor,
             ["dxf.spandrel-depth-ceiling"] = compose.SpandrelDepthCeiling,
+            ["dxf.donor-plate-likeness-margin"] = compose.DonorPlateLikenessMargin,
+            ["dxf.doubled-edge-coverage"] = classification.DoubledEdgeCoverage,
+            ["dxf.doubled-edge-parallel-ratio"] = classification.DoubledEdgeParallelRatio,
+            ["dxf.flood-fill-bridge"] = classification.FloodFillBridge,
+            ["dxf.joint-merge-tolerance"] = compose.JointMergeTolerance,
+            ["dxf.min-floor-coverage"] = compose.MinFloorCoverage,
+            ["dxf.outline-self-touch-tolerance"] = classification.OutlineSelfTouchTolerance,
+            ["dxf.self-touch-report-gap"] = compose.SelfTouchReportGap,
         };
 
         var applied = values.Keys.Concat(TextRuleKeys);
@@ -296,7 +323,7 @@ public static class DxfToEtabsService
         return values;
     }
 
-    private static PlanClassificationOptions ApplyRules(
+    internal static PlanClassificationOptions ApplyRules(
         PlanClassificationOptions options,
         IReadOnlyDictionary<string, RuleSetting> settings)
         => options with
@@ -333,7 +360,7 @@ public static class DxfToEtabsService
             DoubledEdgeCoverage = settings.ValueOr("dxf.doubled-edge-coverage", options.DoubledEdgeCoverage),
         };
 
-    private static ComposeOptions ApplyRules(
+    internal static ComposeOptions ApplyRules(
         ComposeOptions options,
         IReadOnlyDictionary<string, RuleSetting> settings)
         => options with

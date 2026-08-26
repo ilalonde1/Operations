@@ -13,4 +13,11 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The rule-plumbing tests reach ApplyRules directly. They pass it a settings
+         dictionary that records every key looked up, which is the only way to prove the
+         required-rule list covers everything the code actually reads. -->
+    <InternalsVisibleTo Include="Kor.Operations.EngineeringTools.Core.Tests" />
+  </ItemGroup>
+
 </Project>
