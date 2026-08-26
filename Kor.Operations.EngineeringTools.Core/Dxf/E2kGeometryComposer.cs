@@ -194,6 +194,16 @@ public sealed record ComposeOptions
             AlreadyModelledTolerance = AlreadyModelledTolerance * f,
             SpandrelDepthFloor = SpandrelDepthFloor * f,
             SpandrelDepthCeiling = SpandrelDepthCeiling * f,
+
+            // Both are real lengths and both were left out. Two joints closer than a twentieth
+            // of an INCH are one joint, and a plate coming within two INCHES of itself is
+            // reported -- neither means anything in a unit the drawing happens to count in.
+            //
+            // ModelUnitInInches is deliberately NOT here: it is what a unit MEASURES, not a
+            // length measured in one, and scaling it would make the tag-thickness conversion
+            // wrong by the square.
+            JointMergeTolerance = JointMergeTolerance * f,
+            SelfTouchReportGap = SelfTouchReportGap * f,
         };
     }
 

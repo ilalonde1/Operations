@@ -127,4 +127,56 @@ public class PlateThicknessFromTheDrawingTests
         else
             Assert.Equal(99, plate.ThicknessInchesFromTag);   // 99" is thick but within a mat's range
     }
+
+    /// <summary>
+    /// THE ONE THAT WOULD HAVE CAUGHT IT. Two tags inside one plate, in an order that puts the
+    /// wrong one first.
+    ///
+    /// The first version walked plates and asked `slab.Area &lt; smallest` inside a loop where
+    /// slab.Area never changes, so the FIRST tag encountered won and the order of the tag list
+    /// decided a plate's thickness. It read like "smallest plate wins" and was arbitrary. An
+    /// adversarial audit found it; no test did.
+    ///
+    /// Two different numbers with no separate outline between them is not a case to guess at, so
+    /// the plate keeps the default and says why.
+    /// </summary>
+    [Fact]
+    public void TwoDifferentCallOutsInOnePlateAreRefusedRatherThanGuessedBetween()
+    {
+        var set = StructuralPlanClassifier.Classify(
+            Ring(0, 0, 3000, 2400).ToList(), Options(), sheet: null,
+            tags: new[] { Tag("56\" SLAB", 900, 800), Tag("14\" SLAB", 2100, 1600) });
+
+        var plate = Assert.Single(set.Slabs);
+        Assert.Null(plate.ThicknessInchesFromTag);
+        Assert.Contains(set.Flags, f =>
+            f.Contains("different thickness call-outs", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// The same call-out written the other way round. "SLAB 14\"" is what a drafter types as
+    /// often as "14\" SLAB", and the classifier was matching only the number-first form.
+    /// </summary>
+    [Theory]
+    [InlineData("SLAB 14\"")]
+    [InlineData("14\" SLAB")]
+    public void ACallOutIsReadInEitherOrder(string text)
+    {
+        var set = StructuralPlanClassifier.Classify(
+            Ring(0, 0, 1200, 900).ToList(), Options(), sheet: null,
+            tags: new[] { Tag(text, 600, 450) });
+
+        Assert.Equal(14, Assert.Single(set.Slabs).ThicknessInchesFromTag);
+    }
+
+    /// <summary>Note numbering is not a thickness, whichever way round it reads.</summary>
+    [Fact]
+    public void NoteNumberingIsNotAThickness()
+    {
+        var set = StructuralPlanClassifier.Classify(
+            Ring(0, 0, 1200, 900).ToList(), Options(), sheet: null,
+            tags: new[] { Tag("5. SLABS SHALL BE 20 MPa", 600, 450) });
+
+        Assert.Null(Assert.Single(set.Slabs).ThicknessInchesFromTag);
+    }
 }
