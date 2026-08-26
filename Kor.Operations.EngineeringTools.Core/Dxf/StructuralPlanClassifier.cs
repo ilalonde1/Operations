@@ -972,12 +972,19 @@ public static class StructuralPlanClassifier
 
                 result.Walls.AddRange(panels);
 
-                // The inside face of a perimeter wall is a closed outline of the floor it encloses.
-                // Where the slab edges will not close — the whole parkade on 31168 — this is the
-                // only boundary the drawing offers, and the engineer said a general outline is what
-                // she wants to start from: "we can even have just one thickness per floor, general
-                // outline at first. That will help."
-                result.EnclosedByWalls.Add(inner);
+                // THE OUTER FACE, NOT THE INNER ONE. The engineer, 25 August, on a markup showing
+                // a slab edge stopping short: "it should always follow the outer edge of the walls
+                // ... you take the other edge of the wall and it extends here."
+                //
+                // A slab runs to the outside of the wall it sits on, not to the inside face. Taking
+                // the inner ring lost a band the width of the wall all the way round — on 31168's
+                // parkade, a 12in wall around a 250ft perimeter is roughly a thousand square feet
+                // per storey, and it read as a floor that stopped short of its own structure.
+                //
+                // This is a boundary of last resort either way: it stands in where the slab edges
+                // will not close, and she asked for exactly that — "we can even have just one
+                // thickness per floor, general outline at first. That will help."
+                result.EnclosedByWalls.Add(outer);
 
                 consumed.Add(outer);
                 consumed.Add(inner);
