@@ -1600,6 +1600,38 @@ public static class StructuralPlanClassifier
         return min == double.MaxValue ? (0.0, 0.0) : (min, max);
     }
 
+    /// <summary>
+    /// What fraction of <paramref name="ring"/> lies ON the boundary of <paramref name="from"/>,
+    /// within <paramref name="touching"/>.
+    ///
+    /// A hole is surrounded by floor: every point of its edge has slab on the outside of it. A
+    /// ring that RUNS ALONG the plate's own edge is not a hole in the plate, it is the plate's
+    /// edge described a second time — and cutting it leaves the floor as a rim.
+    /// </summary>
+    internal static double FractionOnBoundary(PlanLoop ring, PlanLoop from, double touching, double step = 12.0)
+    {
+        int on = 0, total = 0;
+        var pts = ring.Points;
+
+        for (int i = 0; i < pts.Count; i++)
+        {
+            var a = pts[i];
+            var b = pts[(i + 1) % pts.Count];
+            double length = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+            int samples = Math.Max(1, (int)(length / step));
+
+            for (int k = 0; k < samples; k++)
+            {
+                double t = k / (double)samples;
+                var q = new DxfPoint(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
+                total++;
+                if (DistanceToBoundary(q, from) <= touching) on++;
+            }
+        }
+
+        return total == 0 ? 0.0 : on / (double)total;
+    }
+
     private static double DistanceToBoundary(DxfPoint p, PlanLoop loop)
     {
         double best = double.MaxValue;
@@ -1654,6 +1686,32 @@ public static class StructuralPlanClassifier
                         $"{loop.Layer}: a slab outline of {loop.Area / 144:N0} sq ft sits " +
                         $"{band:0} in inside one of {container.Area / 144:N0} sq ft — read as the two " +
                         "faces of one edge, not as a hole. The outer face is the floor.");
+                    continue;
+                }
+
+                // A RING THAT RUNS ALONG THE PLATE'S OWN EDGE IS THAT EDGE, NOT A HOLE IN IT.
+                //
+                // The richer Revit export found this on 2026-08-26: B-LEVEL 1's 11,026 sq ft mat
+                // came back with 10,245 sq ft cut out of it — 93 per cent — and the cut ring's
+                // edge sits a MEDIAN OF ZERO INCHES from the plate's own boundary. It is the same
+                // outline, read once from one slab layer and once from another.
+                //
+                // Distinct from the doubled-edge test below, which wants a roughly CONSTANT band:
+                // this ring's offset runs 0 to 194 inches, so no band test sees it. What identifies
+                // it is that most of its length lies ON the boundary rather than inside it, and a
+                // hole cannot do that — a hole has floor on every side of it.
+                //
+                // Left as a plate rather than cut: the engineer rejected the inverse of exactly
+                // this on 25 August, "he inverted slab and opening".
+                double sharedEdge = FractionOnBoundary(loop, container, options.MinWallThickness);
+
+                if (sharedEdge >= 0.5)
+                {
+                    result.Flags.Add(
+                        $"{loop.Layer}: a ring of {loop.Area / 144:N0} sq ft inside a floor of " +
+                        $"{container.Area / 144:N0} sq ft was NOT cut as an opening — {sharedEdge:P0} of its " +
+                        "edge lies on the floor's own edge, so it is that edge read a second time rather " +
+                        "than a hole. A hole has floor on every side of it.");
                     continue;
                 }
 
