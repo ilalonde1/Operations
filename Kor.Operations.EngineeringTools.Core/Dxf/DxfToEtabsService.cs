@@ -25,6 +25,12 @@ public sealed record DxfToEtabsRequest
     /// </summary>
     public string? LevelsFile { get; init; }
 
+    /// <summary>
+    /// Optional structural stick-file PDF. When supplied, floor plate thickness is read per matched
+    /// sheet title; when absent, generated plates keep <c>dxf.default-slab-thickness</c>.
+    /// </summary>
+    public string? StickFilePdf { get; init; }
+
     /// <summary>The unit the level elevations are given in, as ETABS names it: "in", "ft", "mm", "m".</summary>
     public string LevelsUnit { get; init; } = "in";
 
@@ -136,7 +142,12 @@ public sealed record DxfToEtabsRequest
 
 public sealed record SheetOutcome(
     string File, string Label, string? Building, IReadOnlyList<int> Levels,
-    IReadOnlyList<string> Stories, int Walls, int Columns, int Slabs, IReadOnlyList<string> Flags);
+    IReadOnlyList<string> Stories, int Walls, int Columns, int Slabs, IReadOnlyList<string> Flags)
+{
+    public int? DrawingSlabThicknessInches { get; init; }
+    public int? DrawingSlabThicknessPage { get; init; }
+    public string? DrawingSlabThicknessTitle { get; init; }
+}
 
 public sealed record DxfToEtabsReport(
     string OutputPath,
@@ -362,6 +373,11 @@ public static class DxfToEtabsService
         // whatever the cuts do to the model afterwards. See the note where matchNames is built.
         var storiesBeforeCuts = doc.ReadStories().Select(s => s.Name).ToList();
 
+        var files = Directory.EnumerateFiles(request.DxfFolder, "*.dxf", SearchOption.TopDirectoryOnly)
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var sheetInfoByFile = files.ToDictionary(f => f, PlanSheetNaming.Parse, StringComparer.OrdinalIgnoreCase);
+
         // A model of one tower carries only that tower's storeys. On a site model the others stand
         // empty, which is what the engineer saw: "some levels don't exist, they're blank."
         var droppedStoreys = request.TowerOnly is null
@@ -386,8 +402,8 @@ public static class DxfToEtabsService
         var addedStoreys = Array.Empty<string>();
         if (request.AddMissingParkadeStoreys)
         {
-            var wanted = Directory.EnumerateFiles(request.DxfFolder, "*.dxf", SearchOption.TopDirectoryOnly)
-                .SelectMany(f => PlanSheetNaming.Parse(f).ParkadeLevels)
+            var wanted = sheetInfoByFile.Values
+                .SelectMany(s => s.ParkadeLevels)
                 .Distinct()
                 .ToList();
             addedStoreys = doc.AddParkadeStoreysBelow(wanted).ToArray();
@@ -400,10 +416,6 @@ public static class DxfToEtabsService
         var storyNames = stories.Select(s => s.Name).ToList();
         var byName = stories.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
 
-
-        var files = Directory.EnumerateFiles(request.DxfFolder, "*.dxf", SearchOption.TopDirectoryOnly)
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-            .ToList();
 
         var warnings = new List<string>();
 
@@ -518,10 +530,13 @@ public static class DxfToEtabsService
         var outcomes = new List<SheetOutcome>();
         var parsed = new List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)>();
         var readSheets = new List<IReadOnlyList<DxfSegment>>();
+        var slabThicknessBySheet = StickFileSlabThicknessReader.ReadBySheet(
+            sheetInfoByFile.Values.ToList(),
+            request.StickFilePdf);
 
         foreach (string file in files)
         {
-            var sheet = PlanSheetNaming.Parse(file);
+            var sheet = sheetInfoByFile[file];
 
             if (request.BuildingTag is not null &&
                 sheet.BuildingTags.Count > 0 &&
@@ -589,9 +604,16 @@ public static class DxfToEtabsService
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            slabThicknessBySheet.TryGetValue(sheet.FileName, out var slabThickness);
+
             outcomes.Add(new SheetOutcome(
                 sheet.FileName, sheet.Label, sheet.BuildingTag, sheet.Levels, matched,
-                geometry.Walls.Count, geometry.Columns.Count, geometry.Slabs.Count, geometry.Flags));
+                geometry.Walls.Count, geometry.Columns.Count, geometry.Slabs.Count, geometry.Flags)
+            {
+                DrawingSlabThicknessInches = slabThickness?.ThicknessInches,
+                DrawingSlabThicknessPage = slabThickness?.PageNumber,
+                DrawingSlabThicknessTitle = slabThickness?.MatchedTitle,
+            });
 
             if (matched.Count == 0)
             {
@@ -683,9 +705,17 @@ public static class DxfToEtabsService
 
         var placements = new List<StoryPlacement>();
         foreach (var (sheet, geometry, matched) in parsed)
+        {
+            slabThicknessBySheet.TryGetValue(sheet.FileName, out var slabThickness);
             foreach (string storyName in matched)
                 if (byName.TryGetValue(storyName, out var story))
-                    placements.Add(new StoryPlacement(story, geometry, sheet.FileName, sheet.IsFoundation));
+                    placements.Add(new StoryPlacement(story, geometry, sheet.FileName, sheet.IsFoundation)
+                    {
+                        SlabThickness = slabThickness is null ? null : slabThickness.ThicknessInches / modelUnitInInches,
+                        SlabThicknessInches = slabThickness?.ThicknessInches,
+                        SlabThicknessPage = slabThickness?.PageNumber,
+                    });
+        }
 
         var foundationStoreys = placements
             .Where(p => p.IsFoundationSheet)
@@ -701,6 +731,8 @@ public static class DxfToEtabsService
                 OffsetX = offset.X,
                 OffsetY = offset.Y,
                 InferMissingFloors = request.Compose.InferMissingFloors,
+                StickFileSlabThicknessAttempted = !string.IsNullOrWhiteSpace(request.StickFilePdf),
+                DefaultSlabThicknessInches = composeFromReference.DefaultSlabThickness,
             };
         var summary = E2kGeometryComposer.Compose(doc, placements, composeOptions);
 

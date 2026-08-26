@@ -25,6 +25,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -42,9 +43,14 @@
                 <Button    Grid.Row="1" Grid.Column="2" x:Name="BrowseReferenceButton" Content="Browse…" Width="90" Margin="0,0,0,6"
                            Click="BrowseReference_Click"/>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Save model as:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBox   Grid.Row="2" Grid.Column="1" x:Name="OutputBox" Margin="0,0,8,0" VerticalContentAlignment="Center"/>
-                <Button    Grid.Row="2" Grid.Column="2" x:Name="BrowseOutputButton" Content="Browse…" Width="90"
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Stick file PDF:" VerticalAlignment="Center" Margin="0,0,8,6"/>
+                <TextBox   Grid.Row="2" Grid.Column="1" x:Name="StickFileBox" Margin="0,0,8,6" VerticalContentAlignment="Center"/>
+                <Button    Grid.Row="2" Grid.Column="2" x:Name="BrowseStickFileButton" Content="Browse…" Width="90" Margin="0,0,0,6"
+                           Click="BrowseStickFile_Click"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Save model as:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox   Grid.Row="3" Grid.Column="1" x:Name="OutputBox" Margin="0,0,8,0" VerticalContentAlignment="Center"/>
+                <Button    Grid.Row="3" Grid.Column="2" x:Name="BrowseOutputButton" Content="Browse…" Width="90"
                            Click="BrowseOutput_Click"/>
             </Grid>
         </Border>

@@ -126,6 +126,16 @@ namespace Kor.Operations.EngineeringTools.DxfToEtabs
             LoadReference(ofd.FileName);
         }
 
+        private void BrowseStickFile_Click(object sender, RoutedEventArgs e)
+        {
+            var ofd = new OpenFileDialog
+            {
+                Title = "Select the structural stick file PDF",
+                Filter = "PDF drawing set (*.pdf)|*.pdf|All files (*.*)|*.*",
+            };
+            if (ofd.ShowDialog(this) == true) StickFileBox.Text = ofd.FileName;
+        }
+
         private void LoadReference(string path)
         {
             try
@@ -188,10 +198,12 @@ namespace Kor.Operations.EngineeringTools.DxfToEtabs
         {
             string dxf = DxfFolderBox.Text.Trim();
             string reference = ReferenceBox.Text.Trim();
+            string stickFile = StickFileBox.Text.Trim();
             string output = OutputBox.Text.Trim();
 
             if (!Directory.Exists(dxf)) { Complain("Choose the folder holding the plan DXFs."); return; }
             if (!File.Exists(reference)) { Complain("Choose the model ETABS exported for this job."); return; }
+            if (!string.IsNullOrWhiteSpace(stickFile) && !File.Exists(stickFile)) { Complain("Choose a stick file PDF that exists, or leave it blank."); return; }
             if (string.IsNullOrWhiteSpace(output)) { Complain("Choose where to save the generated model."); return; }
             if (_storeys.Count == 0) { Complain("The reference model lists no storeys."); return; }
             if (_storeys.All(s => !s.Build)) { Complain("Tick at least one storey to build."); return; }
@@ -219,6 +231,7 @@ namespace Kor.Operations.EngineeringTools.DxfToEtabs
                 {
                     DxfFolder = dxf,
                     ReferenceE2k = reference,
+                    StickFilePdf = string.IsNullOrWhiteSpace(stickFile) ? null : stickFile,
                     OutputE2k = output,
                     DropStoreys = drop,
                     RuleSettingsConnection = rules,
@@ -264,6 +277,7 @@ namespace Kor.Operations.EngineeringTools.DxfToEtabs
             BuildButton.IsEnabled = !busy;
             BrowseDxfButton.IsEnabled = !busy;
             BrowseReferenceButton.IsEnabled = !busy;
+            BrowseStickFileButton.IsEnabled = !busy;
             BrowseOutputButton.IsEnabled = !busy;
             AllButton.IsEnabled = !busy;
             NoneButton.IsEnabled = !busy;

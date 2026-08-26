@@ -7,7 +7,16 @@ public sealed record StoryPlacement(
     StoryLevel Story,
     PlanGeometrySet Geometry,
     string SourceSheet,
-    bool IsFoundationSheet = false);
+    bool IsFoundationSheet = false)
+{
+    /// <summary>Slab thickness for this sheet, in the same length unit as the model being written.</summary>
+    public double? SlabThickness { get; init; }
+
+    /// <summary>The same read thickness in inches, kept for the engineer-facing report.</summary>
+    public double? SlabThicknessInches { get; init; }
+
+    public int? SlabThicknessPage { get; init; }
+}
 
 /// <summary>
 /// The ground something covers on plan. Enough to answer "is this plate under those members",
@@ -92,6 +101,9 @@ public sealed record ComposeOptions
     /// </summary>
     public double DefaultSlabThickness { get; init; } = 12.0;
 
+    /// <summary>Report-only copy before model-unit conversion; null preserves the historical wording.</summary>
+    public double? DefaultSlabThicknessInches { get; init; }
+
     /// <summary>Prefix for every generated object, so KOR-made geometry is filterable in ETABS.</summary>
     public string NamePrefix { get; init; } = "K";
 
@@ -100,6 +112,12 @@ public sealed record ComposeOptions
     public double OffsetY { get; init; }
 
     public bool IncludeFloors { get; init; } = true;
+
+    /// <summary>
+    /// True only when the caller supplied a stick-file PDF for this run. Kept separate from
+    /// <see cref="DefaultSlabThickness"/> so the no-stick-file path can keep its old wording.
+    /// </summary>
+    public bool StickFileSlabThicknessAttempted { get; init; }
 
     /// <summary>
     /// Whether a wall or column drawn SOLID on the plan for storey N is assigned to N+1, the
@@ -426,6 +444,7 @@ public static class E2kGeometryComposer
         // where slab thickness tags are missing". A default nobody is told about is a guess
         // wearing a number.
         var assumedThickness = new List<(string Storey, string Sheet)>();
+        var readThickness = new List<(string Storey, string Sheet, double ThicknessInches, int? Page)>();
         var placedOpenings = new HashSet<(long, long, string)>();
         int spandrelCounter = 0, openingCounter = 0;
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
@@ -888,7 +907,7 @@ public static class E2kGeometryComposer
 
             foreach (var slab in placement.Geometry.Slabs)
             {
-                double thickness = options.DefaultSlabThickness;
+                double thickness = placement.SlabThickness ?? options.DefaultSlabThickness;
 
                 var names = slab.Points
                     .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
@@ -958,7 +977,10 @@ public static class E2kGeometryComposer
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  FLOOR  {names.Count}  {joints}  {offsets}");
-                assumedThickness.Add((slabStory.Name, placement.SourceSheet));
+                if (placement.SlabThickness is not null && placement.SlabThicknessInches is { } sourceThickness)
+                    readThickness.Add((slabStory.Name, placement.SourceSheet, sourceThickness, placement.SlabThicknessPage));
+                else
+                    assumedThickness.Add((slabStory.Name, placement.SourceSheet));
 
                 string diaphragmAssign = string.Empty;
                 if (options.AssignDiaphragms)
@@ -1247,19 +1269,51 @@ public static class E2kGeometryComposer
         // Reported, not fixed. A mezzanine really is a small floor in a big room, and a podium
         // really does stop where the tower begins; which of those this is belongs to the engineer.
         // The number is what she cannot get from a count.
+        if (readThickness.Count > 0)
+        {
+            var storeys = readThickness
+                .GroupBy(x => x.Storey, StringComparer.OrdinalIgnoreCase)
+                .Select(g =>
+                {
+                    var first = g.First();
+                    string page = first.Page is { } p ? $" from PDF page {p}" : string.Empty;
+                    return $"{g.Key}: {first.ThicknessInches:0}\"{page}";
+                })
+                .ToList();
+
+            flags.Add(
+                "Slab thickness read from the stick file PDF by sheet title: " +
+                string.Join(", ", storeys) +
+                ". These are FIELD slab thicknesses for each matched sheet only. Local thickenings, " +
+                "drop bands and transfer bands on the same drawings are not modelled here, so a storey " +
+                "reported as 14\" may still carry 30\" or 36\" bands the model does not have.");
+        }
+
         if (assumedThickness.Count > 0)
         {
+            double defaultThicknessForReport = options.DefaultSlabThicknessInches ?? options.DefaultSlabThickness;
             var storeys = assumedThickness
                 .Select(x => x.Storey)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            flags.Add(
-                $"Slab thickness is ASSUMED, not read: every one of the {assumedThickness.Count} floor plate(s) " +
-                $"in this model is {options.DefaultSlabThickness:0}\" thick because this tool does not yet read a " +
-                "thickness tag off a drawing. It is the engineer's default, given for exactly this case, and it " +
-                "is applied everywhere rather than only where a tag is missing — so no plate in this model has a " +
-                $"thickness that came from the drawings. Storeys affected: {string.Join(", ", storeys)}.");
+            if (!options.StickFileSlabThicknessAttempted && readThickness.Count == 0)
+            {
+                flags.Add(
+                    $"Slab thickness is ASSUMED, not read: every one of the {assumedThickness.Count} floor plate(s) " +
+                    $"in this model is {defaultThicknessForReport:0}\" thick because this tool does not yet read a " +
+                    "thickness tag off a drawing. It is the engineer's default, given for exactly this case, and it " +
+                    "is applied everywhere rather than only where a tag is missing — so no plate in this model has a " +
+                    $"thickness that came from the drawings. Storeys affected: {string.Join(", ", storeys)}.");
+            }
+            else
+            {
+                flags.Add(
+                    $"Slab thickness still ASSUMED: {assumedThickness.Count} floor plate(s) use the engineer's " +
+                    $"default {defaultThicknessForReport:0}\" because their DXF sheet did not match a stick-file " +
+                    "PDF page with a readable field slab thickness. Storeys affected: " +
+                    $"{string.Join(", ", storeys)}.");
+            }
         }
 
         if (pinchedPlates.Count > 0)
