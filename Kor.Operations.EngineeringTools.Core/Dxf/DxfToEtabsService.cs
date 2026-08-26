@@ -31,6 +31,18 @@ public sealed record DxfToEtabsRequest
     /// </summary>
     public string? StickFilePdf { get; init; }
 
+    /// <summary>
+    /// A second export of the same drawings that CARRIES ITS TEXT, from our own Revit bridge.
+    ///
+    /// The DXFs this tool is usually given contain no text at all, so the thickness tag printed
+    /// inside a slab -- the thing that says a region is slab and not a hole -- never reaches it.
+    /// Supply this and the tags are lifted onto the geometry by AnnotationOverlay, which solves
+    /// the rigid transform between the two exports from their column clouds.
+    ///
+    /// Absent, everything behaves exactly as before.
+    /// </summary>
+    public string? AnnotatedDxfFolder { get; init; }
+
     /// <summary>The unit the level elevations are given in, as ETABS names it: "in", "ft", "mm", "m".</summary>
     public string LevelsUnit { get; init; } = "in";
 
@@ -530,6 +542,10 @@ public static class DxfToEtabsService
         var outcomes = new List<SheetOutcome>();
         var parsed = new List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)>();
         var readSheets = new List<IReadOnlyList<DxfSegment>>();
+
+        // What was read from the annotated export, and from which sheet. The engineer must be
+        // able to see which drawing's words landed on which drawing's geometry.
+        var annotationNotes = new List<string>();
         var slabThicknessBySheet = StickFileSlabThicknessReader.ReadBySheet(
             sheetInfoByFile.Values.ToList(),
             request.StickFilePdf);
@@ -547,6 +563,19 @@ public static class DxfToEtabsService
 
             var segments = DxfPlanReader.ReadSegments(file);
             var tags = DxfPlanReader.ReadPositionedTags(file);
+
+            // THE WORDS COME FROM THE OTHER EXPORT, IF THERE IS ONE.
+            //
+            // Matched by storey rather than by file name: the two exports name their sheets
+            // differently -- "LEVEL 2 PLAN - CONCRETE OUTLINE" against plain "LEVEL 2" -- and
+            // PlanSheetNaming already reads both into the levels they serve.
+            if (!string.IsNullOrWhiteSpace(request.AnnotatedDxfFolder) && tags.Count == 0)
+            {
+                var carried = AnnotationOverlay.TagsFor(
+                    request.AnnotatedDxfFolder!, sheet, segments, classification, out string? note);
+                if (carried.Count > 0) tags = carried;
+                if (note is not null) annotationNotes.Add(note);
+            }
             // Held, not raised yet. This warning is only true of a sheet that is IN the model: a
             // sheet whose storeys were cut away, or that placed nowhere, already has its own line
             // saying so, and telling an engineer about 96 unread ellipses on a tower she asked us
@@ -690,6 +719,8 @@ public static class DxfToEtabsService
         // elevations." It comes in with the REFERENCE -- this tool assigns no diaphragms at all,
         // by the engineer's own ruling -- and an engineer seeing that dialog beside a generated
         // model will reasonably assume the generator did it. Say whose it is.
+        // Which drawing's words landed on which drawing's geometry, said plainly.
+        warnings.AddRange(annotationNotes);
         warnings.AddRange(ReferenceDiaphragmWarnings(doc));
 
         warnings.AddRange(FarFromOriginWarnings(parsed.Select(p => p.Geometry), offset));

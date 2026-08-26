@@ -108,6 +108,82 @@ public static class AnnotationOverlay
         => tags.Select(t => t with { Point = frame.Apply(t.Point) }).ToList();
 
     /// <summary>
+    /// Find this sheet's twin in the annotated export and bring its tags across.
+    ///
+    /// Matched by STOREY, not by file name: the two exports name their sheets differently --
+    /// "LEVEL 2 PLAN - CONCRETE OUTLINE" against a plain "LEVEL 2" -- and PlanSheetNaming
+    /// already reads either into the levels it serves.
+    ///
+    /// Returns nothing, and says why, whenever it cannot be sure. Silence is the wrong answer
+    /// here: a thickness on the wrong storey is the fault this must be incapable of.
+    /// </summary>
+    public static IReadOnlyList<DxfPositionedTag> TagsFor(
+        string annotatedFolder,
+        PlanSheetInfo sheet,
+        IReadOnlyList<DxfSegment> geometrySegments,
+        PlanClassificationOptions options,
+        out string? note)
+    {
+        note = null;
+        var none = (IReadOnlyList<DxfPositionedTag>)System.Array.Empty<DxfPositionedTag>();
+        if (!Directory.Exists(annotatedFolder)) return none;
+
+        var mine = SheetIdentity(sheet);
+        if (mine.Count == 0) return none;
+
+        // A view exported more than once -- "(for reinforcing plan)", "(key plan)" -- describes
+        // the same storey. Prefer the plain one: it is the structural view, and the variants
+        // carry the same geometry with extra annotation layered over it.
+        var twins = Directory.EnumerateFiles(annotatedFolder, "*.dxf", SearchOption.TopDirectoryOnly)
+            .Where(f => SheetIdentity(PlanSheetNaming.Parse(Path.GetFileName(f))).SetEquals(mine))
+            .OrderBy(f => Path.GetFileName(f).Contains('(') ? 1 : 0)
+            .ThenBy(f => Path.GetFileName(f).Length)
+            .ToList();
+
+        if (twins.Count == 0) return none;
+
+        var twin = twins[0];
+        var theirTags = DxfPlanReader.ReadPositionedTags(twin);
+        if (theirTags.Count == 0) return none;
+
+        var frame = Solve(ColumnPoints(DxfPlanReader.ReadSegments(twin), options),
+                          ColumnPoints(geometrySegments, options));
+        if (frame is null)
+        {
+            note = $"{sheet.FileName}: an annotated export of this sheet was found " +
+                   $"({Path.GetFileName(twin)}) but its columns could not be lined up with this " +
+                   "drawing's, so none of its text was used. Nothing was placed from a frame that " +
+                   "could not be proven.";
+            return none;
+        }
+
+        var carried = Carry(theirTags, frame.Value);
+        note = $"{sheet.FileName}: {carried.Count} annotation(s) read from " +
+               $"{Path.GetFileName(twin)} and placed on this drawing " +
+               $"(turned {frame.Value.RotationDegrees:0}°).";
+        return carried;
+    }
+
+    private static HashSet<string> SheetIdentity(PlanSheetInfo s)
+    {
+        var id = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (int level in s.Levels) id.Add((s.IsMezzanine ? "MEZZ " : "L") + level);
+        foreach (int p in s.ParkadeLevels) id.Add("P" + p);
+        if (s.IsRoof && s.Levels.Count == 0) id.Add(s.IsElevatorRoof ? "ELEVROOF" : "ROOF");
+        if (s.IsFoundation) id.Add("FOUNDATION");
+        foreach (string tag in s.BuildingTags) id.Add("BLDG " + tag);
+        return id;
+    }
+
+    /// <summary>Column midpoints — the point cloud the two exports are matched on.</summary>
+    private static IReadOnlyList<DxfPoint> ColumnPoints(
+        IReadOnlyList<DxfSegment> segments, PlanClassificationOptions options)
+        => segments
+            .Where(s => options.RoleOf(s.Layer) == "columns")
+            .Select(s => new DxfPoint((s.Start.X + s.End.X) / 2.0, (s.Start.Y + s.End.Y) / 2.0))
+            .ToList();
+
+    /// <summary>
     /// Take the offset from the columns that already agree, and ignore the rest.
     ///
     /// The inlier cut is the MEDIAN nearest distance under the current frame, so it adapts:

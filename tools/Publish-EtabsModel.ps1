@@ -21,6 +21,10 @@ param(
     [string]$DxfFolder,
     [string]$Reference,
     [string]$StickFile,
+
+    # A second export of the same drawings that carries its TEXT, from our own Revit bridge.
+    # The tags are lifted onto the geometry by solving the transform between the two exports.
+    [string]$AnnotatedDxf,
     [string]$RulesDb = $env:KOR_ENGINEERINGTOOLS_STANDARDSDB,
 
     # Keep this storey and everything below it. For a site model where the engineer wants one
@@ -161,8 +165,15 @@ if ($StickFile) {
     # kept the assumed thickness while the run reported success.
     $StickFile = (Resolve-Path -LiteralPath $StickFile).ProviderPath
 }
+if ($AnnotatedDxf) {
+    if (-not (Test-Path -LiteralPath $AnnotatedDxf -PathType Container)) {
+        throw "Annotated DXF folder not found '$AnnotatedDxf'."
+    }
+    # ProviderPath, not Path -- same UNC trap as the stick file.
+    $AnnotatedDxf = (Resolve-Path -LiteralPath $AnnotatedDxf).ProviderPath
+}
 
-$config = @{ Folder = $ModelFolder; Dxf = $DxfFolder; Reference = $Reference; StickFile = $StickFile }
+$config = @{ Folder = $ModelFolder; Dxf = $DxfFolder; Reference = $Reference; StickFile = $StickFile; AnnotatedDxf = $AnnotatedDxf }
 Write-Host "job $Project" -ForegroundColor DarkGray
 Write-Host "  model folder : $ModelFolder" -ForegroundColor DarkGray
 Write-Host "  drawings     : $DxfFolder" -ForegroundColor DarkGray
@@ -234,6 +245,7 @@ if ($PerBuilding -and -not $Variant) {
         if ($dropUntagged.Count -gt 0) { $forward.DropStoreys = $dropUntagged }
         if ($InferFloors) { $forward.InferFloors = $true }
         if ($config.StickFile) { $forward.StickFile = $config.StickFile }
+        if ($config.AnnotatedDxf) { $forward.AnnotatedDxf = $config.AnnotatedDxf }
 
         & $PSCommandPath @forward
         if ($LASTEXITCODE -ne 0) { throw "publishing building $tag failed." }
@@ -251,6 +263,7 @@ if ($DropStoreys) { $cutArgs += @('--drop-storeys', ($DropStoreys -join ',')) }
 if ($Tower) { $cutArgs += @('--tower', $Tower) }
 if ($InferFloors) { $cutArgs += '--infer-floors' }
 if ($config.StickFile) { $cutArgs += @('--stick-file', $config.StickFile) }
+if ($config.AnnotatedDxf) { $cutArgs += @('--annotated-dxf', $config.AnnotatedDxf) }
 
 & $cli dxf-to-etabs $config.Dxf (Join-Path $folder $config.Reference) $out `
     @cutArgs `

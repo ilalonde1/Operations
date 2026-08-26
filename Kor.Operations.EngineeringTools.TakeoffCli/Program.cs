@@ -372,7 +372,7 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
 {
     if (args.Length < 4)
     {
-        Console.Error.WriteLine("Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stick-file <f.pdf>] [--stage <folder>] [--land]");
+        Console.Error.WriteLine("Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stick-file <f.pdf>] [--annotated-dxf <folder>] [--stage <folder>] [--land]");
         return 1;
     }
     if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
@@ -695,6 +695,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     string? building = null;
     string? towerOnly = null;
     string? stickFile = null;
+    string? annotatedDxf = null;
     bool membersRise = true;
     string? topStorey = null;
     var dropStoreys = new List<string>();
@@ -743,6 +744,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         else if (flag.Equals("--no-storey-rise", StringComparison.OrdinalIgnoreCase)) membersRise = false;
         else if (flag.Equals("--infer-floors", StringComparison.OrdinalIgnoreCase)) inferFloors = true;
         else if (flag.Equals("--stick-file", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) stickFile = args[++i];
+        else if (flag.Equals("--annotated-dxf", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) annotatedDxf = args[++i];
         else if (flag.Equals("--wall-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) wallLayers = Patterns(args[++i]);
         else if (flag.Equals("--column-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) columnLayers = Patterns(args[++i]);
         else if (flag.Equals("--slab-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) slabLayers = Patterns(args[++i]);
@@ -784,6 +786,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     {
         DxfFolder = args[1],
         StickFilePdf = stickFile,
+        AnnotatedDxfFolder = annotatedDxf,
         ReferenceE2k = noReference ? string.Empty : args[2],
         OutputE2k = args[3],
         BuildingTag = building,
