@@ -39,6 +39,10 @@ public class RulingCoverageTests
         ["a-tag-inside-a-region-means-slab"] = "TagGatedSlabRecoveryTests.AnOpenOutlineWithNoCallOutInsideItRecoversNothing",
         ["a-plate-recovered-twice-is-not-a-hole"] = "PlateReadTwiceTests.AFloorFoundTwiceIsOnePlateAndNoOpening",
         ["a-question-she-has-answered-is-not-asked-again"] = "RulingCoverageTests.NoQuestionIsAskedOnATopicSheHasAlreadyRuledOn",
+        ["pier-label-every-wall"] = "EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel",
+        ["hatch-is-not-structure"] = "EngineerRulingsStillHoldTests.HatchOnAStructuralLayerContributesNoGeometry",
+        ["layers-that-are-not-structure"] = "EngineerRulingsStillHoldTests.GeometryOnAnUnrecognisedLayerIsNotModelled",
+        ["perimeter-column-layer-openings"] = "EngineerRulingsStillHoldTests.TheGapBetweenTwoPerimeterColumnsIsNotCutAsAnOpening",
         ["solid-linework-belongs-to-the-storey-above"] = "DxfToEtabsTests.AMemberRisesToTheStoreyAboveTheSheetItWasDrawnOn",
         ["dashed-columns-support-the-slab"] = "DxfToEtabsTests.AMemberRisesToTheStoreyAboveTheSheetItWasDrawnOn (the dashed half)",
         ["level-one-is-one-storey"] = "StoreyCutTests.TheGroundFloorDraftedTwiceBecomesOneStoreyOfTheBuildingAboveIt",
@@ -103,27 +107,17 @@ public class RulingCoverageTests
             "Confirmation of dashed-columns-support-the-slab on one sheet, not a separate rule.",
         ["slab-thickness-and-ring-floor"] = "Superseded by default-slab-thickness-twelve-inches.",
         ["outlines-that-would-not-resolve"] = "Reporting behaviour; the report names them.",
-        ["perimeter-column-layer-openings"] = "Unverified.",
         ["floor-from-perimeter-wall"] =
             "The fallback exists and runs where a sheet closes no slab at all, but no test asserts " +
             "it fires from HER rule -- \"we can even have just one thickness per floor, general " +
             "outline at first\" -- rather than from ours. It also changed twice on 24-25 August, " +
             "widened and narrowed again, with nothing red either time.",
-        ["pier-label-every-wall"] =
-            "dxf.assign-pier-labels is on and 130 labels are written, but nothing asserts EVERY " +
-            "wall gets one, which is what she asked for.",
         ["parkade-datum-credible"] =
             "NormaliseBaseStorey exists because she said \"the lowest level, which is P3, seems way " +
             "too high\". No test asserts the datum stays credible on a new job.",
-        ["layers-that-are-not-structure"] =
-            "Layer patterns are settings and are portfolio-measured, but nothing proves a " +
-            "non-structural layer is refused rather than merely absent from the pattern list.",
         ["section-properties-stay-engineer"] = "Scope. The tool writes sections it creates and reuses hers.",
         ["tool-engineer-scope-split"] = "Scope. A working agreement, not code.",
         ["revit-diff-is-the-prize"] = "Direction, not a rule this tool can obey today.",
-        ["hatch-is-not-structure"] =
-            "Migration 044. Whether the reader still honours it has never been asserted; a hatch " +
-            "layer reaching the wall or column patterns would not fail anything today.",
     };
 
     [Fact]
