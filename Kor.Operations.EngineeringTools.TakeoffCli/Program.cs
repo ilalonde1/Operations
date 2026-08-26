@@ -372,13 +372,13 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
 {
     if (args.Length < 4)
     {
-        Console.Error.WriteLine("Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stage <folder>] [--land]");
+        Console.Error.WriteLine("Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stick-file <f.pdf>] [--stage <folder>] [--land]");
         return 1;
     }
     if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
     if (!Directory.Exists(args[2])) { Console.Error.WriteLine($"Not found '{args[2]}'."); return 2; }
 
-    string? pubReference = null, pubRules = null;
+    string? pubReference = null, pubRules = null, pubStick = null;
     string pubStage = Path.Combine(Path.GetTempPath(), $"kor-publish-{args[3]}");
     bool pubInfer = false, pubLand = false;
 
@@ -388,6 +388,7 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
         else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubRules = args[++i];
         else if (args[i].Equals("--stage", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubStage = args[++i];
         else if (args[i].Equals("--infer-floors", StringComparison.OrdinalIgnoreCase)) pubInfer = true;
+        else if (args[i].Equals("--stick-file", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubStick = args[++i];
         else if (args[i].Equals("--land", StringComparison.OrdinalIgnoreCase)) pubLand = true;
         else { Console.Error.WriteLine($"Unknown argument '{args[i]}'."); return 1; }
     }
@@ -401,6 +402,7 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
         RuleSettingsConnection = pubRules,
         StageFolder = pubStage,
         InferFloors = pubInfer,
+        StickFilePdf = pubStick,
     });
 
     if (outcome.Refused is not null)
@@ -692,6 +694,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
 
     string? building = null;
     string? towerOnly = null;
+    string? stickFile = null;
     bool membersRise = true;
     string? topStorey = null;
     var dropStoreys = new List<string>();
@@ -739,6 +742,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         else if (flag.Equals("--no-floors", StringComparison.OrdinalIgnoreCase)) includeFloors = false;
         else if (flag.Equals("--no-storey-rise", StringComparison.OrdinalIgnoreCase)) membersRise = false;
         else if (flag.Equals("--infer-floors", StringComparison.OrdinalIgnoreCase)) inferFloors = true;
+        else if (flag.Equals("--stick-file", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) stickFile = args[++i];
         else if (flag.Equals("--wall-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) wallLayers = Patterns(args[++i]);
         else if (flag.Equals("--column-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) columnLayers = Patterns(args[++i]);
         else if (flag.Equals("--slab-layers", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) slabLayers = Patterns(args[++i]);
@@ -779,6 +783,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         dxfReport = DxfToEtabsService.Run(new DxfToEtabsRequest
     {
         DxfFolder = args[1],
+        StickFilePdf = stickFile,
         ReferenceE2k = noReference ? string.Empty : args[2],
         OutputE2k = args[3],
         BuildingTag = building,

@@ -20,6 +20,7 @@ param(
     [string]$ModelFolder,
     [string]$DxfFolder,
     [string]$Reference,
+    [string]$StickFile,
     [string]$RulesDb = $env:KOR_ENGINEERINGTOOLS_STANDARDSDB,
 
     # Keep this storey and everything below it. For a site model where the engineer wants one
@@ -150,11 +151,23 @@ if (-not $Reference) {
     }
 }
 
-$config = @{ Folder = $ModelFolder; Dxf = $DxfFolder; Reference = $Reference }
+if ($StickFile) {
+    if (-not (Test-Path -LiteralPath $StickFile -PathType Leaf)) {
+        throw "Stick file PDF not found '$StickFile'."
+    }
+    # ProviderPath, not Path. On a UNC path Resolve-Path's .Path is provider-qualified --
+    # "Microsoft.PowerShell.Core\FileSystem::\\Kor-fs01\..." -- which PowerShell understands and
+    # .NET does not. Handed that, the CLI opened nothing, matched nothing, and every plate quietly
+    # kept the assumed thickness while the run reported success.
+    $StickFile = (Resolve-Path -LiteralPath $StickFile).ProviderPath
+}
+
+$config = @{ Folder = $ModelFolder; Dxf = $DxfFolder; Reference = $Reference; StickFile = $StickFile }
 Write-Host "job $Project" -ForegroundColor DarkGray
 Write-Host "  model folder : $ModelFolder" -ForegroundColor DarkGray
 Write-Host "  drawings     : $DxfFolder" -ForegroundColor DarkGray
 Write-Host "  reference    : $Reference" -ForegroundColor DarkGray
+if ($StickFile) { Write-Host "  stick file   : $StickFile" -ForegroundColor DarkGray }
 if (-not $RulesDb) { throw "KOR_ENGINEERINGTOOLS_STANDARDSDB is not set; refusing to publish a model from built-in rules." }
 
 $folder = $config.Folder
@@ -220,6 +233,7 @@ if ($PerBuilding -and -not $Variant) {
         $dropUntagged = @($drop | Where-Object { $_ -notmatch '^[A-Za-z]-' })
         if ($dropUntagged.Count -gt 0) { $forward.DropStoreys = $dropUntagged }
         if ($InferFloors) { $forward.InferFloors = $true }
+        if ($config.StickFile) { $forward.StickFile = $config.StickFile }
 
         & $PSCommandPath @forward
         if ($LASTEXITCODE -ne 0) { throw "publishing building $tag failed." }
@@ -236,6 +250,7 @@ if ($TopStorey) { $cutArgs += @('--top-storey', $TopStorey) }
 if ($DropStoreys) { $cutArgs += @('--drop-storeys', ($DropStoreys -join ',')) }
 if ($Tower) { $cutArgs += @('--tower', $Tower) }
 if ($InferFloors) { $cutArgs += '--infer-floors' }
+if ($config.StickFile) { $cutArgs += @('--stick-file', $config.StickFile) }
 
 & $cli dxf-to-etabs $config.Dxf (Join-Path $folder $config.Reference) $out `
     @cutArgs `

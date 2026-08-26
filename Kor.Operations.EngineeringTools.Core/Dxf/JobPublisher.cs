@@ -33,6 +33,13 @@ public static class JobPublisher
 
         /// <summary>Give a storey with members but no drawn floor one borrowed from its neighbour.</summary>
         public bool InferFloors { get; init; }
+
+        /// <summary>
+        /// The job's stick file. A sheet that matches one of its pages takes that page's field
+        /// slab thickness instead of the engineer's default — see StickFileSlabThicknessReader.
+        /// Without it every plate is the assumed default, which is what shipped until now.
+        /// </summary>
+        public string? StickFilePdf { get; init; }
     }
 
     public sealed record Built(
@@ -92,6 +99,7 @@ public static class JobPublisher
                 RequireRuleSettings = request.RuleSettingsConnection is not null,
                 RuleSettingsConnection = request.RuleSettingsConnection,
                 DxfFolder = request.DxfFolder,
+                StickFilePdf = request.StickFilePdf,
                 ReferenceE2k = referencePath,
                 OutputE2k = output,
                 TowerOnly = plan.Tower.Length == 0 ? null : plan.Tower,
