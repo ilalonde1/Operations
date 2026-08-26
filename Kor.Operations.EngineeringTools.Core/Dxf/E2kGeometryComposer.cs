@@ -228,6 +228,12 @@ public sealed record ComposeOptions
     /// </summary>
     public double SelfTouchReportGap { get; init; } = 2.0;
 
+    /// <summary>
+    /// One model unit, in inches. Needed because a thickness read off the drawing arrives as a
+    /// printed dimension in inches while every other length here is in the model's own unit.
+    /// </summary>
+    public double ModelUnitInInches { get; init; } = 1.0;
+
     public double SpandrelDepthFloor { get; init; } = 18.0;
 
     public double SpandrelDepthCeiling { get; init; } = 60.0;
@@ -907,7 +913,19 @@ public static class E2kGeometryComposer
 
             foreach (var slab in placement.Geometry.Slabs)
             {
-                double thickness = placement.SlabThickness ?? options.DefaultSlabThickness;
+                // The drawing first, then the stick file, then the engineer's default.
+                //
+                // A number printed inside this plate beats one matched to the sheet the plate
+                // came from, which beats a default -- most obviously where one storey carries
+                // two thicknesses, and the per-sheet answer has to be wrong about one of them.
+                //
+                // Scaled the same way the stick-file number is (DxfToEtabsService:774): the tag
+                // is in inches and everything here is in model units.
+                double? fromTag = slab.ThicknessInchesFromTag is { } tagged && options.ModelUnitInInches > 0
+                    ? tagged / options.ModelUnitInInches
+                    : null;
+
+                double thickness = fromTag ?? placement.SlabThickness ?? options.DefaultSlabThickness;
 
                 var names = slab.Points
                     .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
@@ -977,7 +995,16 @@ public static class E2kGeometryComposer
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  FLOOR  {names.Count}  {joints}  {offsets}");
-                if (placement.SlabThickness is not null && placement.SlabThicknessInches is { } sourceThickness)
+                // A plate priced from the call-out printed inside it counts as READ, and it has to,
+                // or the report contradicts the model: 44 plates carried a thickness off the
+                // drawing while the summary said "every one of the 106 floor plate(s) in this
+                // model is 12 inch thick". A sentence like that is worse than no sentence — an
+                // engineer who checks one plate and finds 7 inches stops believing the rest.
+                //
+                // Page is null for these: they came from the drawing, not from a page of a PDF.
+                if (slab.ThicknessInchesFromTag is { } printed)
+                    readThickness.Add((slabStory.Name, placement.SourceSheet, printed, null));
+                else if (placement.SlabThickness is not null && placement.SlabThicknessInches is { } sourceThickness)
                     readThickness.Add((slabStory.Name, placement.SourceSheet, sourceThickness, placement.SlabThicknessPage));
                 else
                     assumedThickness.Add((slabStory.Name, placement.SourceSheet));
@@ -1308,11 +1335,20 @@ public static class E2kGeometryComposer
             }
             else
             {
+                // WHY it was assumed, and the reason differs now that there are two ways to know.
+                // Saying "did not match a stick-file PDF page" on a run given no stick file sends
+                // an engineer to look for a matching problem that does not exist; the real answer
+                // there is that the drawing prints no call-out inside those outlines.
+                string because = options.StickFileSlabThicknessAttempted
+                    ? "no thickness call-out is printed inside them and their DXF sheet did not match a " +
+                      "stick-file PDF page with a readable field slab thickness"
+                    : "no thickness call-out is printed inside them on the drawing";
+
                 flags.Add(
-                    $"Slab thickness still ASSUMED: {assumedThickness.Count} floor plate(s) use the engineer's " +
-                    $"default {defaultThicknessForReport:0}\" because their DXF sheet did not match a stick-file " +
-                    "PDF page with a readable field slab thickness. Storeys affected: " +
-                    $"{string.Join(", ", storeys)}.");
+                    $"Slab thickness still ASSUMED: {assumedThickness.Count} of " +
+                    $"{assumedThickness.Count + readThickness.Count} floor plate(s) use the engineer's " +
+                    $"default {defaultThicknessForReport:0}\" because {because}. " +
+                    $"Storeys affected: {string.Join(", ", storeys)}.");
             }
         }
 

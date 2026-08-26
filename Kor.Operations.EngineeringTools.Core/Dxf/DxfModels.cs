@@ -48,6 +48,23 @@ public sealed class PlanLoop
     /// <summary>False when the ring was completed by bridging a gap rather than by exact endpoint matching.</summary>
     public bool ClosedExactly { get; }
 
+    /// <summary>
+    /// The slab thickness printed INSIDE this outline, in inches, where the drawing says one.
+    ///
+    /// The engineer's rule: "the tag is always inside the slab". Until 2026-08-26 the tool could
+    /// not obey the second half of it, because the DXFs this office exported carried no text at
+    /// all -- thickness came from matching a DXF sheet to a page of the stick-file PDF, which is
+    /// one number for a whole sheet and is only as good as the filename.
+    ///
+    /// Naming drafting's own export setup put the words back in the file, so the number can come
+    /// from the region it is printed in. Per plate rather than per sheet, which is what a storey
+    /// with a 14 inch slab and a 48 inch transfer slab on it actually needs.
+    ///
+    /// Inches, always, whatever the drawing's units -- the call-out is a printed dimension and
+    /// says its own unit. The composer scales it.
+    /// </summary>
+    public double? ThicknessInchesFromTag { get; init; }
+
     public double SignedArea
     {
         get

@@ -793,6 +793,11 @@ public static class DxfToEtabsService
                 InferMissingFloors = request.Compose.InferMissingFloors,
                 StickFileSlabThicknessAttempted = !string.IsNullOrWhiteSpace(request.StickFilePdf),
                 DefaultSlabThicknessInches = composeFromReference.DefaultSlabThickness,
+
+                // Set AFTER InUnitOf, and never scaled by it: this is what a model unit MEASURES,
+                // not a length measured in one. A thickness read off the drawing arrives as a
+                // printed dimension in inches and is the only value here that needs it.
+                ModelUnitInInches = modelUnitInInches,
             };
         var summary = E2kGeometryComposer.Compose(doc, placements, composeOptions);
 

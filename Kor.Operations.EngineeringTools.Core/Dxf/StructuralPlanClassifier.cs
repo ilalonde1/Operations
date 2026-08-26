@@ -700,6 +700,66 @@ public static class StructuralPlanClassifier
 
         SplitSlabsAndOpenings(result, slabCandidates, options);
 
+        // THE THICKNESS THE DRAWING PRINTS INSIDE THE PLATE.
+        //
+        // Her rule, banked as a-tag-inside-a-region-means-slab: "the tag is always inside the
+        // slab". It already decides slab-versus-hole; this is the rest of the same sentence --
+        // the tag does not just say THAT it is a slab, it says how thick.
+        //
+        // Smallest enclosing plate wins. A transfer slab drawn inside a floor gets its own
+        // call-out, and on 31168's LEVEL 2 the two are 14 inches and 48; assigning the outer
+        // plate's number to both is the wrong answer twice.
+        if (result.Tags.Count > 0 && result.Slabs.Count > 0)
+        {
+            var priced = new List<PlanLoop>(result.Slabs.Count);
+
+            foreach (var slab in result.Slabs)
+            {
+                int? inches = null;
+                string quoted = string.Empty;
+                double smallest = double.MaxValue;
+
+                foreach (var tag in result.Tags)
+                {
+                    if (!LoopGeometry.PointInPolygon(tag.Point, slab.Points)) continue;
+
+                    foreach (var parsed in SlabThicknessCallout.MatchNumberFirstText(tag.Text))
+                    {
+                        // A plate is not one inch thick and not ten feet thick. Outside that a
+                        // number inside a region is a bar mark, a room number or a level datum
+                        // that happens to be followed by an inch symbol.
+                        int v = parsed.ValueIn;
+                        if (v < 4 || v > 120) continue;
+
+                        if (slab.Area < smallest)
+                        {
+                            smallest = slab.Area;
+                            inches = v;
+                            // The words themselves, on the row. A number with no evidence beside
+                            // it is exactly what an engineer cannot check, and this tool has
+                            // shipped one before.
+                            quoted = tag.Text.Replace('\n', ' ').Replace('\r', ' ').Trim();
+                            if (quoted.Length > 40) quoted = quoted[..40] + "…";
+                        }
+                        break;
+                    }
+                }
+
+                if (inches is null) { priced.Add(slab); continue; }
+
+                priced.Add(new PlanLoop(slab.Layer, slab.Points, slab.ClosedExactly)
+                {
+                    ThicknessInchesFromTag = inches
+                });
+                result.Flags.Add(
+                    $"{slab.Layer}: a floor plate of {slab.Area / 144:N0} sq ft is {inches}\" thick — read " +
+                    $"from \"{quoted}\", printed inside it. Not assumed, and not taken from a stick file.");
+            }
+
+            result.Slabs.Clear();
+            result.Slabs.AddRange(priced);
+        }
+
         // A WALL ENCLOSURE INSIDE A FLOOR IS NOT AUTOMATICALLY A SHAFT. Tried and withdrawn.
         //
         // The reasoning was that an elevator or stair core is a closed wall enclosure standing in a
