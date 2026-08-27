@@ -36,6 +36,15 @@ public class RulingCoverageTests
     /// </summary>
     private static readonly Dictionary<string, string> Proven = new(StringComparer.OrdinalIgnoreCase)
     {
+        // The placement model, banked by migration 057 on 2026-08-27. One question — which storey
+        // does a member belong to, and whose building is it — found as seven separate faults.
+        ["a-set-defines-its-own-shorthand"] = "PlacementModelTests.ASetSpellsItsShorthandOutOnceAndTheShortFormMeansIt",
+        ["issued-sheets-beat-kept-views"] = "PlacementModelTests.AnIssuedSheetCarriesItsNumberAndAKeptViewDoesNot",
+        ["a-storey-height-is-measured-up-one-building"] = "PlacementModelTests.AStoreyHeightIsMeasuredUpOneBuildingNotAcrossASite",
+        ["below-a-buildings-start-another-prefix-is-the-base"] = "PlacementModelTests.AMemberRisesOntoTheSharedBaseEvenWhenItIsNamedForAnotherBuilding, and AboveWhereItsBuildingStartsAMemberNeverCrossesIntoAnother for the other half of it",
+        ["one-floor-holds-one-of-each-member"] = "PlacementModelTests.OneFloorHoldsOneOfEachMemberAndTheSurplusAssignIsWhatGoes",
+        ["a-circle-the-set-draws-no-column-at"] = "PlacementModelTests.ACircleDrawnAsAPolygonIsRememberedAsOne",
+        ["a-drawing-that-lands-nowhere"] = "ModelQuestionnaire J7, raised from the run's own flag; ModelCoverageTests.NoNoteNamesAStoreyThisModelDoesNotHave keeps it honest about which storeys it names",
         ["a-tag-inside-a-region-means-slab"] = "TagGatedSlabRecoveryTests.AnOpenOutlineWithNoCallOutInsideItRecoversNothing",
         ["a-plate-recovered-twice-is-not-a-hole"] = "PlateReadTwiceTests.AFloorFoundTwiceIsOnePlateAndNoOpening",
         ["a-question-she-has-answered-is-not-asked-again"] = "RulingCoverageTests.NoQuestionIsAskedOnATopicSheHasAlreadyRuledOn",
