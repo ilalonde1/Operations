@@ -130,6 +130,15 @@ PortfolioWork AS (
              THEN iw.CanonicalOrgId END AS GeneralContractorCanonicalOrgId,
         CAST(NULL AS nvarchar(100)) AS KorPipelineTag,
         CAST(NULL AS nvarchar(max)) AS ScheduleNotes,
+        -- Lifecycle columns: an IntelWork portfolio edge is not an inventory row,
+        -- so it can never be owned or dismissed. They exist here only to keep this
+        -- SELECT list aligned with ExistingPipeline's — the UNION ALL below is
+        -- positional, and omitting them is a hard SQL 205 on every org dossier.
+        CAST(NULL AS nvarchar(300)) AS OwnerStaffId,
+        CAST(NULL AS datetimeoffset(7)) AS OwnedAtUtc,
+        CAST(NULL AS datetimeoffset(7)) AS DismissedAtUtc,
+        CAST(NULL AS nvarchar(300)) AS DismissedBy,
+        CAST(NULL AS nvarchar(1000)) AS DismissedReason,
         CAST(N'Portfolio' AS nvarchar(30)) AS FootprintSource,
         NULLIF(LTRIM(RTRIM(iw.Role)), N'') AS FootprintRole,
         COALESCE(NULLIF(LTRIM(RTRIM(iw.NormalizedProjectName)), N''),
