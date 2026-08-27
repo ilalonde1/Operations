@@ -644,17 +644,50 @@ public static class StructuralPlanClassifier
             // the same code was not: it can no longer invent a floor, only confirm one.
             if (layer == RoleSlab && built.OpenChains.Count > 0 && result.Tags.Count > 0)
             {
+                // A REFUSAL IS SAID, NOT SWALLOWED.
+                //
+                // These three tests are what keep this pass from inventing floors, and every one of
+                // them used to drop a chain in silence. So when the engineer says a storey has three
+                // slabs and the model has two, nothing anywhere names the region that was seen and
+                // turned down, or why — and the only way to find out is to guess which of three
+                // guards did it and change one.
+                //
+                // She does not need us to guess. She needs the candidates: here is what we kept,
+                // here is what we saw and refused and for what reason, which of them is yours. One
+                // sentence back and it is settled for this sheet forever, without moving a
+                // threshold that holds on every other job.
+                void Refused(PlanLoop ring, string why)
+                {
+                    var at = ring.Centroid();
+                    result.Flags.Add(
+                        $"{layer}: CANDIDATE NOT MODELLED — a region of {ring.Area / 144:N0} sq ft at " +
+                        $"({at.X / 12:0}, {at.Y / 12:0}) ft, {why}. If this is a floor, say so and it is " +
+                        "read from here on.");
+                }
+
                 foreach (var chain in built.OpenChains)
                 {
                     if (chain.Count < 4) continue;
 
                     var ring = new PlanLoop(layer, chain, closedExactly: false);
 
-                    if (ring.Area < options.MinPlateArea) continue;
+                    if (ring.Area < options.MinPlateArea)
+                    {
+                        if (ring.Area >= options.MinPlateArea / 4.0)
+                            Refused(ring, $"smaller than the {options.MinPlateArea / 144:N0} sq ft this office " +
+                                          "calls a floor plate");
+                        continue;
+                    }
 
                     var (minX, minY, maxX, maxY) = ring.Bounds();
                     double box = (maxX - minX) * (maxY - minY);
-                    if (box <= 0 || ring.Area / box < 0.55) continue;
+                    if (box <= 0 || ring.Area / box < 0.55)
+                    {
+                        Refused(ring, $"filling {(box <= 0 ? 0 : ring.Area / box):P0} of its own box, under the " +
+                                      "55% a solid floor holds — a thin or hooked shape, which is what a slab " +
+                                      "edge looks like when its two ends are joined across the wrong gap");
+                        continue;
+                    }
 
                     var says = result.Tags.FirstOrDefault(t =>
                         SlabThicknessCallout.MatchNumberFirstText(t.Text).Any() &&
@@ -699,7 +732,13 @@ public static class StructuralPlanClassifier
                                                   && LoopGeometry.PointInPolygon(t.Point, closed.Points)));
 
                     var sheetSays = says ?? proved;
-                    if (sheetSays is null) continue;
+                    if (sheetSays is null)
+                    {
+                        Refused(ring, "with no slab thickness printed inside it and none this sheet has " +
+                                      "proved on an outline that closed — so nothing on the drawing says " +
+                                      "this region is a floor");
+                        continue;
+                    }
 
                     closedFromChains.Add(ring);
                     chainRings.Add(ring);

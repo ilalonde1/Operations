@@ -621,17 +621,68 @@ public static class ModelQuestionnaire
             .ToList();
 
         if (shortOfHerCount.Count > 0)
+        {
+            // AND THE CANDIDATES IT REFUSED, so the gap can be closed by her pointing rather than
+            // by us guessing which guard to move.
+            //
+            // Telling her the model is one slab short is honest and useless on its own. What she
+            // can act on is the list beside it: here is what we kept, here is every region we saw
+            // and turned down, and the reason for each. One sentence back — "the 502 at (128, 300)
+            // is the third" — settles it for this sheet, and no threshold that holds on every other
+            // job has to be touched to do it.
+            // ONLY THE SHEETS THAT DREW THE STOREY IN QUESTION, and biggest first.
+            //
+            // Gathered from every sheet, the list came out as six 100 sq ft scraps off other
+            // drawings with the one region that might be her slab buried second. She is being asked
+            // to point at something; the something has to be in front of her.
+            var storeysShort = shortOfHerCount
+                .Select(x => x[..x.IndexOf(':', StringComparison.Ordinal)])
+                .ToList();
+
+            // AND IN THE MODEL'S COORDINATES, NOT THE DRAWING'S.
+            //
+            // A Revit export is in site survey coordinates and the run moves it onto the engineer's
+            // grid; these regions are measured before that move. Handed the drawing's number she
+            // looks at (3303, 2531) and finds nothing there, which is worse than not being told.
+            var (ox, oy) = report.AppliedOffset;
+
+            string Shift(string note) => Regex.Replace(note, @"\((-?[\d.]+), (-?[\d.]+)\) ft", m =>
+                $"({double.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) + ox / 12.0:0}, " +
+                $"{double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) + oy / 12.0:0}) ft");
+
+            static double AreaIn(string note)
+            {
+                var m = Regex.Match(note, @"a region of ([\d,]+) sq ft");
+                return m.Success && double.TryParse(m.Groups[1].Value.Replace(",", ""), out double v) ? v : 0;
+            }
+
+            var candidates = report.Sheets
+                .Where(sheet => sheet.Stories.Any(st => storeysShort.Contains(st, StringComparer.OrdinalIgnoreCase)))
+                .SelectMany(sheet => sheet.Flags)
+                .Where(f => f.Contains("CANDIDATE NOT MODELLED", StringComparison.Ordinal))
+                .Select(f => f[(f.IndexOf("a region of", StringComparison.Ordinal) is var i && i >= 0 ? i : 0)..])
+                .Distinct(StringComparer.Ordinal)
+                .OrderByDescending(AreaIn)
+                .Take(5)
+                .Select(Shift)
+                .ToList();
+
+            string alsoSaw = candidates.Count == 0
+                ? " Nothing else on those drawings came close enough to a floor to be worth offering."
+                : " These are the regions the tool saw on those drawings and did NOT model, with the reason " +
+                  "for each — if one of them is the floor you mean, say which and it is read from here on: " +
+                  string.Join("  ·  ", candidates);
+
             yield return new ModelQuestion("S6", "Slab counts you have already given",
-                "A FAULT, NOT A QUESTION — " + string.Join("; ", shortOfHerCount) + ". You have already told us how " +
-                "many slabs these storeys carry, so this is the tool falling short of your answer rather " +
-                "than anything we need from you again. The drawing leaves the missing outlines open and " +
-                "this reading has not recovered them.",
+                "A FAULT, NOT A QUESTION — " + string.Join("; ", shortOfHerCount) + "." + alsoSaw,
                 "Nothing was invented to make the count up: a region that cannot be closed and cannot be " +
                 "priced is not turned into a diaphragm to satisfy a number.",
                 "A floor that is not in the model is not in any other count in this workbook either, so " +
                 "every figure on that storey looks right without it.",
-                "Your own answer, banked, and the count in the file that shipped.")
+                "Your own answer, banked, against the count in the file that shipped — and every region " +
+                "this reading turned down on the way.")
                 { RuleTopic = "a-count-she-gave-is-checked", Decided = true, Defect = true };
+        }
 
         var underRead = report.Sheets
             .Where(sheet => sheet.Slabs > 0)
