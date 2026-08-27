@@ -65,6 +65,7 @@ public class RequiredRuleCoverageTests
 
         DxfToEtabsService.ApplyRules(new PlanClassificationOptions(), recorder);
         DxfToEtabsService.ApplyRules(new ComposeOptions(), recorder);
+        DxfToEtabsService.ApplyRules(DrawingVocabulary.Default, recorder);
 
         var read = recorder.Asked.Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
@@ -96,6 +97,7 @@ public class RequiredRuleCoverageTests
 
         DxfToEtabsService.ApplyRules(new PlanClassificationOptions(), recorder);
         DxfToEtabsService.ApplyRules(new ComposeOptions(), recorder);
+        DxfToEtabsService.ApplyRules(DrawingVocabulary.Default, recorder);
 
         var read = recorder.Asked.ToHashSet(StringComparer.OrdinalIgnoreCase);
 

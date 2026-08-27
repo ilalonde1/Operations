@@ -199,6 +199,14 @@ public static class DxfToEtabsService
         "dxf.column-layer-patterns",
         "dxf.slab-layer-patterns",
         "dxf.non-structural-sheet-patterns",
+        "dxf.level-words",
+        "dxf.building-words",
+        "dxf.parkade-words",
+        "dxf.range-words",
+        "dxf.roof-words",
+        "dxf.mezzanine-words",
+        "dxf.foundation-words",
+        "dxf.elevator-roof-words",
         "dxf.min-wall-thickness",
         "dxf.max-wall-thickness",
         "dxf.min-wall-length",
@@ -272,6 +280,14 @@ public static class DxfToEtabsService
         "dxf.column-layer-patterns",
         "dxf.slab-layer-patterns",
         "dxf.non-structural-sheet-patterns",
+        "dxf.level-words",
+        "dxf.building-words",
+        "dxf.parkade-words",
+        "dxf.range-words",
+        "dxf.roof-words",
+        "dxf.mezzanine-words",
+        "dxf.foundation-words",
+        "dxf.elevator-roof-words",
     ];
 
     private static IReadOnlyDictionary<string, double> BuiltInRuleValues(
@@ -376,6 +392,27 @@ public static class DxfToEtabsService
             SlabCalloutMinThickness = settings.ValueOr("dxf.slab-callout-min-thickness", options.SlabCalloutMinThickness),
             SlabCalloutMaxThickness = settings.ValueOr("dxf.slab-callout-max-thickness", options.SlabCalloutMaxThickness),
             RingOnPlateEdgeFraction = settings.ValueOr("dxf.ring-on-plate-edge-fraction", options.RingOnPlateEdgeFraction),
+        };
+
+    /// <summary>
+    /// The words this office uses, from KorStandards. Named ApplyRules like its two siblings and
+    /// for the same reason: RequiredRuleCoverageTests hands each of them a dictionary that records
+    /// every key looked up, and a rule read anywhere else is a rule that gate cannot see. It found
+    /// these eight the moment they existed.
+    /// </summary>
+    internal static DrawingVocabulary ApplyRules(
+        DrawingVocabulary vocabulary,
+        IReadOnlyDictionary<string, RuleSetting> settings)
+        => vocabulary with
+        {
+            LevelWords = settings.ListOr("dxf.level-words", vocabulary.LevelWords),
+            BuildingWords = settings.ListOr("dxf.building-words", vocabulary.BuildingWords),
+            ParkadeWords = settings.ListOr("dxf.parkade-words", vocabulary.ParkadeWords),
+            RangeWords = settings.ListOr("dxf.range-words", vocabulary.RangeWords),
+            RoofWords = settings.ListOr("dxf.roof-words", vocabulary.RoofWords),
+            MezzanineWords = settings.ListOr("dxf.mezzanine-words", vocabulary.MezzanineWords),
+            FoundationWords = settings.ListOr("dxf.foundation-words", vocabulary.FoundationWords),
+            ElevatorRoofWords = settings.ListOr("dxf.elevator-roof-words", vocabulary.ElevatorRoofWords),
         };
 
     internal static ComposeOptions ApplyRules(
@@ -518,6 +555,20 @@ public static class DxfToEtabsService
             ? RuleSettings.LoadRequired(request.RuleSettingsConnection, RequiredRuleKeys)
             : new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase);
         warnings.AddRange(RuleSettings.Describe(banked, builtIn));
+
+        // THE WORDS THIS OFFICE USES, BEFORE ANY SHEET NAME IS READ.
+        //
+        // Sheet naming is asked about from five places, so the vocabulary is set once here rather
+        // than threaded through all of them. Everything else about reading a plan was already a
+        // rule; what a drawing is CALLED was seven regexes compiled into the assembly, and it is
+        // the one thing a practice reliably differs on.
+        PlanSheetNaming.Vocabulary = ApplyRules(DrawingVocabulary.Default, banked);
+
+        // The sheets were parsed with whatever vocabulary was in force when the folder was read,
+        // which on the first run of a process is the default. Re-read them now that the office's
+        // own words are known, or a firm's rule would take effect one run late.
+        foreach (string file in files.ToList())
+            sheetInfoByFile[file] = PlanSheetNaming.Parse(file);
 
         var requested = ApplyRules(request.Classification, banked);
 

@@ -41,6 +41,7 @@ public class RulingCoverageTests
         ["a-question-she-has-answered-is-not-asked-again"] = "RulingCoverageTests.NoQuestionIsAskedOnATopicSheHasAlreadyRuledOn",
         ["compose-the-site-once-then-cut"] = "ShippedModelsAgreeWithEachOtherTests.TheTwoPublished31168ModelsAgreeOnEveryStoreyTheyShare",
         ["a-whole-floor-sheet-and-its-parts-are-one-drawing"] = "ShippedModelsAgreeWithEachOtherTests.TheTwoPublished31168ModelsAgreeOnEveryStoreyTheyShare (C-LEVEL 3 carries its own members)",
+        ["the-words-are-the-firms-the-grammar-is-ours"] = "AnotherOfficesWordsTests (a drawing set in another office's language)",
         ["not-every-plan-is-a-structural-plan"] = "NonStructuralSheetsAreRefusedTests.OnlyThePlansThatDrawTheStructureAreRead",
         ["pier-label-every-wall"] = "EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel",
         ["hatch-is-not-structure"] = "EngineerRulingsStillHoldTests.HatchOnAStructuralLayerContributesNoGeometry",

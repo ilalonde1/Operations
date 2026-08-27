@@ -67,61 +67,36 @@ public sealed record PlanSheetInfo(
 /// </summary>
 public static partial class PlanSheetNaming
 {
-    /// <summary>One sheet can serve several buildings — "BLDG A&amp;B", "BLDG A &amp; B".</summary>
-    [GeneratedRegex(@"BLDG\s*([A-Z](?:\s*&\s*[A-Z])*)", RegexOptions.IgnoreCase)]
-    private static partial Regex BuildingRegex();
-
-    /// <summary>Storey-prefixed sheet names such as "A-LEVEL 28" name their building directly.</summary>
-    [GeneratedRegex(@"(?<![A-Z0-9])([A-Z])-LEVEL\s*\d", RegexOptions.IgnoreCase)]
-    private static partial Regex PrefixBuildingRegex();
-
-    [GeneratedRegex(@"L(?:EVEL)?\s*(\d+)\s*(?:-|TO|THRU|THROUGH)\s*L?(?:EVEL)?\s*(\d+)", RegexOptions.IgnoreCase)]
-    private static partial Regex RangeRegex();
 
     /// <summary>
-    /// A title may LIST its levels rather than range them: "LEVEL 8, 9 PLAN" is two floors, and
-    /// only the first was ever read. Three sheets on 31138 are titled that way, so L09, L12 and L18
-    /// came out empty — 27 walls and 56 columns modelled nowhere, with nothing in any count to say
-    /// so, because the sheet reported itself as placed on the one storey it did find.
+    /// The words this office uses on its drawings. Set once per run from KorStandards; KOR's own
+    /// vocabulary until something says otherwise, so a job that says nothing reads as it always did.
+    ///
+    /// Static because sheet naming is asked about from five places and threading a vocabulary
+    /// through every one of them would be a larger change than the one this is worth. A run sets
+    /// it before reading any sheet.
     /// </summary>
-    [GeneratedRegex(@"L(?:EVEL)?\s*(\d+)((?:\s*(?:,|&|and)\s*\d+)+)", RegexOptions.IgnoreCase)]
-    private static partial Regex LevelListRegex();
-
-    [GeneratedRegex(@"L(?:EVEL)?\s*(\d+)", RegexOptions.IgnoreCase)]
-    private static partial Regex SingleLevelRegex();
-
-    /// <summary>Parkade levels are numbered separately: "LEVEL P2" is not level 2.</summary>
-    [GeneratedRegex(@"L(?:EVEL)?\s*P\s*(\d+)", RegexOptions.IgnoreCase)]
-    private static partial Regex ParkadeLevelRegex();
-
-    /// <summary>
-    /// A parkade storey as a model names one. Drafting titles a sheet "LEVEL P2", but a model may
-    /// call the storey just "P2" — 31138 does, and because the sheet pattern demanded the word
-    /// LEVEL, every below-grade sheet in that project matched no storey and was dropped. The whole
-    /// parkade went missing for want of a prefix.
-    /// </summary>
-    [GeneratedRegex(@"^\s*(?:L(?:EVEL)?\s*)?P\s*(\d+)\s*$", RegexOptions.IgnoreCase)]
-    private static partial Regex ParkadeStoryRegex();
+    public static DrawingVocabulary Vocabulary { get; set; } = DrawingVocabulary.Default;
 
     public static PlanSheetInfo Parse(string fileName)
     {
         string name = Path.GetFileNameWithoutExtension(fileName);
         var buildings = new List<string>();
-        if (BuildingRegex().Match(name) is { Success: true } b)
+        if (Vocabulary.Building.Match(name) is { Success: true } b)
         {
             foreach (char c in b.Groups[1].Value.ToUpperInvariant())
                 if (char.IsLetter(c)) buildings.Add(c.ToString());
         }
-        else if (PrefixBuildingRegex().Match(name) is { Success: true } p)
+        else if (Vocabulary.PrefixBuilding.Match(name) is { Success: true } p)
         {
             buildings.Add(p.Groups[1].Value.ToUpperInvariant());
         }
 
         string? building = buildings.Count > 0 ? buildings[0] : null;
 
-        bool isRoof = name.Contains("ROOF", StringComparison.OrdinalIgnoreCase);
+        bool isRoof = Vocabulary.IsRoofName(name);
 
-        var parkade = ParkadeLevelRegex().Matches(name)
+        var parkade = Vocabulary.ParkadeLevel.Matches(name)
             .Select(m => int.Parse(m.Groups[1].Value))
             .Distinct()
             .OrderBy(v => v)
@@ -129,7 +104,7 @@ public static partial class PlanSheetNaming
 
         var levels = new List<int>();
 
-        foreach (Match m in RangeRegex().Matches(name))
+        foreach (Match m in Vocabulary.Range.Matches(name))
         {
             int from = int.Parse(m.Groups[1].Value);
             int to = int.Parse(m.Groups[2].Value);
@@ -148,7 +123,7 @@ public static partial class PlanSheetNaming
 
             // A listed title first — "LEVEL 8, 9" is two floors, and reading only the 8 loses a
             // whole storey silently.
-            foreach (Match m in LevelListRegex().Matches(title))
+            foreach (Match m in Vocabulary.LevelList.Matches(title))
             {
                 levels.Add(int.Parse(m.Groups[1].Value));
                 foreach (Match more in Regex.Matches(m.Groups[2].Value, @"\d+"))
@@ -156,7 +131,7 @@ public static partial class PlanSheetNaming
             }
 
             if (levels.Count == 0)
-                foreach (Match m in SingleLevelRegex().Matches(title))
+                foreach (Match m in Vocabulary.SingleLevel.Matches(title))
                     levels.Add(int.Parse(m.Groups[1].Value));
         }
 
@@ -167,9 +142,8 @@ public static partial class PlanSheetNaming
             isRoof,
             CleanLabel(name))
         {
-            IsFoundation = name.Contains("FOUNDATION", StringComparison.OrdinalIgnoreCase),
-            IsElevatorRoof = name.Contains("ELEVATOR ROOF", StringComparison.OrdinalIgnoreCase)
-                          || name.Contains("ELEV ROOF", StringComparison.OrdinalIgnoreCase),
+            IsFoundation = Vocabulary.IsFoundationName(name),
+            IsElevatorRoof = Vocabulary.IsElevatorRoofName(name),
             IsMezzanine = IsMezzanineName(name),
             MezzanineLevels = MezzanineLevelsIn(StripSheetNumber(name)),
             ParkadeLevels = parkade,
@@ -198,7 +172,7 @@ public static partial class PlanSheetNaming
 
         foreach (string part in parts)
         {
-            var levels = SingleLevelRegex().Matches(part).Select(m => int.Parse(m.Groups[1].Value)).ToList();
+            var levels = Vocabulary.SingleLevel.Matches(part).Select(m => int.Parse(m.Groups[1].Value)).ToList();
             if (levels.Count == 0) continue;
 
             if (IsMezzanineName(part)) mezzanine.AddRange(levels);
@@ -211,8 +185,7 @@ public static partial class PlanSheetNaming
             : Array.Empty<int>();
     }
 
-    private static bool IsMezzanineName(string text) =>
-        text.Contains("MEZZ", StringComparison.OrdinalIgnoreCase);
+    private static bool IsMezzanineName(string text) => Vocabulary.IsMezzanineName(text);
 
     private static string StripSheetNumber(string name)
     {
@@ -276,7 +249,7 @@ public static partial class PlanSheetNaming
             if (sheet.BuildingTags.Count > 0 &&
                 !sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(story, tag))) continue;
 
-            var parkadeInStory = ParkadeStoryRegex().Match(story);
+            var parkadeInStory = Vocabulary.ParkadeStory.Match(story);
             if (parkadeInStory.Success)
             {
                 if (sheet.ParkadeLevels.Contains(int.Parse(parkadeInStory.Groups[1].Value))) matches.Add(story);
@@ -285,7 +258,7 @@ public static partial class PlanSheetNaming
 
             if (sheet.ParkadeLevels.Count > 0 && sheet.Levels.Count == 0) continue;
 
-            var levelInStory = SingleLevelRegex().Match(story);
+            var levelInStory = Vocabulary.SingleLevel.Match(story);
             if (!levelInStory.Success) continue;
 
             int storyLevel = int.Parse(levelInStory.Groups[1].Value);
@@ -304,7 +277,7 @@ public static partial class PlanSheetNaming
         if (matches.Count == 0 && sheet.IsMezzanine)
         {
             var unnumbered = stories
-                .Where(s => IsMezzanineName(s) && !SingleLevelRegex().IsMatch(s))
+                .Where(s => IsMezzanineName(s) && !Vocabulary.SingleLevel.IsMatch(s))
                 .Where(s => sheet.BuildingTags.Count == 0 || sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(s, tag)))
                 .ToList();
             if (unnumbered.Count > 0) return unnumbered;
@@ -319,7 +292,7 @@ public static partial class PlanSheetNaming
             {
                 if (IsMezzanineName(story) != sheet.IsMezzanine) continue;
 
-                var level = SingleLevelRegex().Match(story);
+                var level = Vocabulary.SingleLevel.Match(story);
                 if (level.Success && sheet.Levels.Contains(int.Parse(level.Groups[1].Value)))
                     matches.Add(story);
             }
@@ -409,7 +382,7 @@ public static partial class PlanSheetNaming
         int top = 0;
         foreach (string s in stories)
         {
-            var m = SingleLevelRegex().Match(s);
+            var m = Vocabulary.SingleLevel.Match(s);
             if (m.Success && int.TryParse(m.Groups[1].Value, out int n) && n > top) top = n;
         }
         return top;
