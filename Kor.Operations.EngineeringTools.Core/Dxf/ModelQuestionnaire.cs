@@ -656,6 +656,17 @@ public static class ModelQuestionnaire
                 return m.Success && double.TryParse(m.Groups[1].Value.Replace(",", ""), out double v) ? v : 0;
             }
 
+            // Said shortly. "a region of 325 sq ft at (115, 411) ft, smaller than the 400 sq ft this
+            // office calls a floor plate. If this is a floor, say so and it is read from here on."
+            // is a paragraph per candidate; she needs the size and where to look.
+            static string Shorten(string note)
+            {
+                var m = Regex.Match(note, @"a region of ([\d,]+) sq ft at \((-?[\d.]+), (-?[\d.]+)\) ft");
+                return m.Success
+                    ? $"{m.Groups[1].Value} sq ft at ({m.Groups[2].Value}, {m.Groups[3].Value})"
+                    : note;
+            }
+
             var candidates = report.Sheets
                 .Where(sheet => sheet.Stories.Any(st => storeysShort.Contains(st, StringComparer.OrdinalIgnoreCase)))
                 .SelectMany(sheet => sheet.Flags)
@@ -668,19 +679,17 @@ public static class ModelQuestionnaire
                 .ToList();
 
             string alsoSaw = candidates.Count == 0
-                ? " Nothing else on those drawings came close enough to a floor to be worth offering."
-                : " These are the regions the tool saw on those drawings and did NOT model, with the reason " +
-                  "for each — if one of them is the floor you mean, say which and it is read from here on: " +
-                  string.Join("  ·  ", candidates);
+                ? " We found nothing else on those drawings close enough to a floor to offer you."
+                : " Is one of these it? " + string.Join("  ·  ", candidates.Select(Shorten));
 
-            yield return new ModelQuestion("S6", "Slab counts you have already given",
-                "A FAULT, NOT A QUESTION — " + string.Join("; ", shortOfHerCount) + "." + alsoSaw,
-                "Nothing was invented to make the count up: a region that cannot be closed and cannot be " +
-                "priced is not turned into a diaphragm to satisfy a number.",
+            yield return new ModelQuestion("S6", "A slab count of yours the model falls short of",
+                string.Join("; ", shortOfHerCount) + "." + alsoSaw,
+                "Nothing was invented to make the count up: a region we cannot close and cannot price is " +
+                "not turned into a floor to satisfy a number.",
                 "A floor that is not in the model is not in any other count in this workbook either, so " +
-                "every figure on that storey looks right without it.",
-                "Your own answer, banked, against the count in the file that shipped — and every region " +
-                "this reading turned down on the way.")
+                "every figure on that level looks right without it.",
+                "Your answer, banked, against the count in the file that shipped — and every region this " +
+                "reading turned down on the way, with the reason for each.")
                 { RuleTopic = "a-count-she-gave-is-checked", Decided = true, Defect = true };
         }
 
@@ -698,21 +707,40 @@ public static class ModelQuestionnaire
 
         if (underRead.Count > 0)
         {
-            string sheets = string.Join("; ", underRead.Select(x =>
-                $"{x.sheet.Label} — {x.sheet.Slabs} slab(s) modelled, {IgnoredUnits(x.Note!) / 12:N0} ft of slab " +
-                "edge left unclosed"));
+            // ASKED IN HER UNITS. A storey, and a number.
+            //
+            // The first draft listed eight DRAWINGS with "5,019 ft of slab edge left unclosed"
+            // against each. That is the tool describing its own insides: she does not think in feet
+            // of unclosed edge or in .dxf filenames, she thinks in levels and how many slabs are on
+            // them. The machinery belongs in the evidence column, and the question belongs in one
+            // line she can answer with a digit.
+            // THE STOREYS THE FILE HAS, AND THE COUNT IT HAS. A sheet's Stories are where it was
+            // MATCHED, before any cut: in the building-C model that still says A-LEVEL 1 and
+            // B-LEVEL 1, two storeys merged into LEVEL 1 before it shipped. Asking her about
+            // storeys her file does not contain is the same fault as J7 naming .dxf files.
+            var perStorey = underRead
+                .SelectMany(x => x.sheet.Stories)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(report.PlatesByStorey.ContainsKey)
+                .Select(st => (Storey: st, Slabs: report.PlatesByStorey[st]))
+                .OrderBy(x => x.Storey, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            yield return new ModelQuestion("S4", "How many slabs are on these sheets",
-                $"HOW MANY FLOORS SHOULD THESE STOREYS HAVE? Each of these drawings has a slab edge this " +
-                $"tool could not close, and it modelled the outlines that did close: {sheets}. Where a " +
-                "level carries several slabs and the drawing closes only one of them, we model one and " +
-                "nothing says the others are missing. Answer with a count per storey — \"mezzanine has 3\" " +
-                "is enough — and they are recovered and checked against it from then on.",
-                "Nothing was invented in the unclosed edge: a region we cannot close and cannot price is not " +
-                "made into a diaphragm on a guess.",
-                "A floor that is not in the model is not in any count in this workbook either, so every other " +
-                "number on that storey looks right without it.",
-                "Taken from this run: the sheets that modelled a floor and abandoned slab edge doing it.")
+            if (perStorey.Count == 0) yield break;
+
+            string counted = string.Join(" · ", perStorey.Select(x => $"{x.Storey}: {x.Slabs}"));
+
+            string workings = string.Join("; ", underRead.Select(x =>
+                $"{x.sheet.Label} — {IgnoredUnits(x.Note!) / 12:N0} ft of slab edge would not close"));
+
+            yield return new ModelQuestion("S4", "How many slabs on each of these levels",
+                $"HOW MANY SEPARATE SLABS ARE ON EACH OF THESE LEVELS? We modelled — {counted}. " +
+                "Correct any that are wrong; a number is enough.",
+                "On these levels the drawing leaves part of the slab edge open, so we modelled the outlines " +
+                "that close and nothing in their place.",
+                "A floor that is not in the model is not in any count in this workbook either, so every " +
+                "other number on that level looks right without it.",
+                "Slab edge read and not closed, by drawing: " + workings)
                 { RuleTopic = "how-many-slabs-on-a-sheet" };
         }
 
@@ -729,18 +757,17 @@ public static class ModelQuestionnaire
         // beyond the members standing on it.
         if (oneBuilding is not null && wideFloors.Count > 0)
         {
-            yield return new ModelQuestion("S5", "The shared floors under one building",
-                $"THIS IS A MODEL OF BUILDING {oneBuilding} AND THESE FLOORS ARE THE WHOLE SITE'S: " +
-                string.Join(", ", wideFloors) + ". They are drawn once for every building that stands " +
-                "on them and no sheet closes a slab edge for this building's share alone, so the model " +
-                "carries the whole slab with only this building's columns under part of it. Should a " +
-                "building model carry the shared parkade and podium entire, or only its own share — and " +
-                "if its own share, where is the line? No drawing in the set answers that.",
-                "The whole slab was kept rather than cut on a guess: an invented slab edge is worse than a " +
-                "large one, and a storey with no diaphragm at all is worse than both.",
+            yield return new ModelQuestion("S5", "Whose parkade is it",
+                $"THIS IS A MODEL OF BUILDING {oneBuilding} ALONE, BUT IT CARRIES THE WHOLE SITE'S " +
+                $"{string.Join(" and ", wideFloors)}. Should a single-building model hold the shared " +
+                "parkade and podium entire, or only this building's share of them?",
+                $"The whole slab was kept. Building {oneBuilding}'s own columns stand under about half of " +
+                "it, and no drawing closes a slab edge for this building's share alone, so there is no line " +
+                "to cut it on.",
                 "A diaphragm spanning ground this building does not support changes how the whole model " +
-                "behaves laterally, and it is not visible in any count.",
-                "Taken from this run: floors reaching well past the members that stand on them.")
+                "behaves laterally, and no count in this workbook can see it.",
+                "The parkade is drawn per building at P1, P2 and P3 — BLDG C and WEST — but neither of " +
+                "those sheets closes a slab outline, so the only floor available is the undivided one.")
                 { RuleTopic = "shared-floors-under-one-building" };
         }
 
@@ -757,16 +784,28 @@ public static class ModelQuestionnaire
         if (Flag("carry structure that is NOT IN THIS MODEL") is { } orphaned)
         {
             string sheets = orphaned[(orphaned.IndexOf(':') + 1)..].Split(". Either")[0].Trim();
-            yield return new ModelQuestion("J7", "Drawings that are not in the model",
-                $"THE FIRST THING TO LOOK AT. These drawings were read — the tool understood their walls, " +
-                $"columns and slabs — and then placed on nothing, because the storeys they name are not in " +
-                $"the model: {sheets}. Either the model is missing those storeys, or your model names them " +
-                "differently from the drawings. Tell us which, and they go in.",
-                "Nothing was guessed onto a nearby storey in their place — a sheet on the wrong floor is worse " +
-                "than a sheet on no floor, because it looks like structure you drew.",
-                "A drawing that reads cleanly and lands nowhere is a piece of the building that is simply " +
-                "absent, and every other count in this workbook still looks right without it.",
-                "Taken from this run: the sheet names, and what each one carries.")
+
+            // The STOREY she would add, not the filenames. "LEVEL P1 MEZZ PLAN - CONCRETE
+            // OUTLINE.dxf (54 wall(s), 51 column(s), 1 plate(s))" is a question about our file
+            // handling; "your model has no LEVEL P1 MEZZ" is a question about her building.
+            var missing = Regex.Matches(sheets, @"(?<![\w-])(?:[A-Z]-)?(?:LEVEL|STORY|STOREY)\s*P?\d+(?:\s+MEZZ)?(?![\w-])")
+                .Select(m => m.Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            string named = missing.Count > 0
+                ? string.Join(" and ", missing)
+                : "the levels those drawings name";
+
+            yield return new ModelQuestion("J7", "A level the drawings have and the model does not",
+                $"YOUR MODEL HAS NO {named.ToUpperInvariant()}, BUT THE DRAWINGS DO — and the structure on " +
+                "those sheets is therefore not in this model. Should that level be added, or do you call it " +
+                "something else?",
+                "Nothing was moved onto a nearby level in its place: a floor put on the wrong storey looks " +
+                "like structure you drew.",
+                "It is a piece of the building that was read, understood and then left out, and every other " +
+                "count in this workbook still looks right without it.",
+                "Drawings placed on no storey in this model: " + sheets)
                 { RuleTopic = "drawings-that-land-nowhere" };
         }
 
