@@ -818,21 +818,52 @@ public sealed class E2kDocument
     }
 
     /// <summary>
-    /// Which floor each storey is part of, where storeys nearer than twelve inches are one floor.
+    /// How near two storeys have to be to be one floor, measured from this model rather than
+    /// chosen: half a storey, where a storey is the median rise WITHIN ONE BUILDING'S STACK.
     ///
-    /// A site model gets a storey for every distinct floor elevation across every building, so one
-    /// physical floor arrives as two or three storeys an inch or two apart. Named by the lowest of
-    /// them.
+    /// Measuring it across the site measures the wrong thing. Where two towers interleave, the
+    /// consecutive elevations in ETABS's one global storey list are the same floor drafted twice,
+    /// so their median gap is half a storey and half of that is a quarter of one. Tower A's level
+    /// 33 stands 37 in above tower B's — one floor by any reading — and a site-wide median called
+    /// them different floors, which let an uncropped working view of floor 33 send both towers'
+    /// 73 columns up tower B's stack.
+    ///
+    /// Half a storey is safe in the other direction by construction: two genuinely consecutive
+    /// floors are a whole storey apart, so they can never be merged by it.
+    /// </summary>
+    public double SameFloorTolerance()
+    {
+        var gaps = new List<double>();
+
+        foreach (var stack in ReadStories()
+                     .GroupBy(s => BuildingTagOf(s.Name), StringComparer.OrdinalIgnoreCase)
+                     .Select(g => g.Select(s => s.Elevation).OrderBy(e => e).ToList()))
+        {
+            for (int i = 1; i < stack.Count; i++)
+                if (stack[i] - stack[i - 1] > 12.0)
+                    gaps.Add(stack[i] - stack[i - 1]);
+        }
+
+        gaps.Sort();
+        return gaps.Count == 0 ? 12.0 : Math.Max(12.0, gaps[gaps.Count / 2] / 2.0);
+    }
+
+    /// <summary>
+    /// Which floor each storey is part of. A site model gets a storey for every distinct floor
+    /// elevation across every building, so one physical floor arrives as two or three storeys a
+    /// few inches apart; each floor is named by the lowest of them.
     /// </summary>
     public IReadOnlyDictionary<string, string> FloorOfStorey()
     {
+        double tolerance = SameFloorTolerance();
+
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string? floor = null;
         double at = double.NaN;
 
         foreach (var storey in ReadStories().OrderBy(s => s.Elevation))
         {
-            if (floor is null || Math.Abs(storey.Elevation - at) > 12.0)
+            if (floor is null || Math.Abs(storey.Elevation - at) > tolerance)
             {
                 floor = storey.Name;
                 at = storey.Elevation;
