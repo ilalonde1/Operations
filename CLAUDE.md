@@ -61,6 +61,20 @@ URLs.
 
 Background test runs, watchers and scans count. "I'll stop after this finishes" is not stopping.
 
+## 7. Never write a C# regex through a non-raw Python string.
+
+`\b` in a Python string is a BACKSPACE, U+0008. It converts silently — no warning, unlike `\s`
+and `\d`, which at least raise a SyntaxWarning. The C# then holds an invisible control character
+where a word boundary was meant, the pattern matches nothing, and every part of it tests fine in
+isolation.
+
+What this cost: a diaphragm check that never fired, an hour hunting an innocent `LinesOf` call,
+and a Codex brief written around a hypothesis that was wrong. Also a mangled `\bin\Debug\net8.0`
+path in a PowerShell script, from the same cause.
+
+Use the Edit tool for anything containing a regex or a Windows path. If a script must generate
+it, use a raw string (`r"..."`) and read the file back to confirm what landed.
+
 ## 8. One artefact, one place, one name. Every time.
 
 A Codex brief goes in `docs/codex/` and is called `CODEX-<TOPIC>.md`. Nothing else, nowhere else,
@@ -82,6 +96,40 @@ characterising the fault once. Consistency on the small, boring things is the ev
 is a method at all.
 
 Before creating any recurring artefact: `find . -iname "*<thing>*"` first, and match what is there.
+
+## 9. Before the first fix: ground truth, a harness, and a picture.
+
+On any problem expected to take more than an hour, three things exist BEFORE the first code change,
+and the reply that starts the work names all three:
+
+1. **The data is local.** Nothing that gets read on every iteration is read over SMB or the VPN.
+2. **One command measures EVERY deliverable.** Not the one being worked on — all of them, and the
+   other project too. If a fix can break something without the harness saying so, the harness is
+   not finished.
+3. **The output has been LOOKED AT**, rendered, not counted. `docs/etabs-handoff/plan_sheet.py`
+   draws every storey on one sheet in a second.
+
+What this cost: on 2026-08-27 each iteration re-read 139 DXFs across the VPN — four minutes a
+turn, for hours, until Ian said "PULL THE DXFs LOCAL". Copying them took twenty-six seconds and
+made a full two-model regeneration take thirty-seven. In the same session every change was measured
+against ONE of the two deliverables, so four separate fixes each repaired one model and silently
+broke the other. And every fault for two days was found by the engineer opening the file or by Ian
+sending a screenshot, because the checking was count tables — while a rule in this file already
+said to render it and look.
+
+## 10. Two regressions means STOP and characterise.
+
+A fix that repairs one thing and breaks another is information the first time. The second time, the
+model in your head is wrong, and every further patch is a coin flip that costs an hour.
+
+Stop touching the code. Write down what the system actually is — the entities, how they relate, and
+the single rule that has to hold — and find every place the code contradicts it. Then fix it once.
+
+What this cost: four days on ONE question — which storey a member belongs to and whose building it
+is — as a sequence of single-symptom patches. Three rules that were each defensible alone and
+mutually inconsistent together; fixing any one of them broke the other two. The characterisation
+that should have come on day one was finally written as
+`docs/codex/CODEX-DXF-TO-ETABS-WHOLE-SYSTEM-AUDIT.md`, and only because Ian demanded it.
 
 ## Environment facts worth not rediscovering
 
@@ -106,17 +154,3 @@ Before creating any recurring artefact: `find . -iname "*<thing>*"` first, and m
 - `\\Kor-fs01\Projects\Projects` is `E:\Projects\Projects` on the server itself.
 - FS01 has no .NET runtime. A self-contained single-file publish
   (`-r win-x64 --self-contained -p:PublishSingleFile=true`) runs there without installing anything.
-
-## 7. Never write a C# regex through a non-raw Python string.
-
-`\b` in a Python string is a BACKSPACE, U+0008. It converts silently — no warning, unlike `\s`
-and `\d`, which at least raise a SyntaxWarning. The C# then holds an invisible control character
-where a word boundary was meant, the pattern matches nothing, and every part of it tests fine in
-isolation.
-
-What this cost: a diaphragm check that never fired, an hour hunting an innocent `LinesOf` call,
-and a Codex brief written around a hypothesis that was wrong. Also a mangled `\bin\Debug\net8.0`
-path in a PowerShell script, from the same cause.
-
-Use the Edit tool for anything containing a regex or a Windows path. If a script must generate
-it, use a raw string (`r"..."`) and read the file back to confirm what landed.
