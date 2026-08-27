@@ -1,0 +1,101 @@
+GOAL
+Third adversarial audit of the DXF-to-ETABS intake, and the brief is different from the last two
+because the last two were both beaten by the same thing: a defect that only appeared when the
+model was OPENED IN ETABS.
+
+Audit 2 read the artifacts carefully and passed them. Then ETABS said:
+
+    "Area Object KF54 not correctly defined"
+    "Error reading line 12726. Line Ignored."
+      AREAASSIGN "KF54" "LEVEL 2" SECTION "KOR-S14" ...
+
+KF54's outline ran down 24 inches along one x and back up 96 along the same one -- three collinear
+joints with the path reversing at the middle. Right area, right position, no coincident joints, no
+proper self-crossing. Every check in the tool passed it and the floor was simply absent from the
+model the engineer opened, while the report went on counting it.
+
+So: ASSUME THERE ARE MORE OF THESE. Your job is to find what ETABS will reject, mis-mesh, or
+silently drop, in a file that passes every check this tool has. Read the .e2k as ETABS's parser
+would, not as a summary.
+
+Read-only. No file changes, no builds, no tests, no writing git commands.
+
+THE ARTIFACTS
+  \\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\
+     02 Engineering\02 Lateral Design\01 ETABS Models\
+       31168-FROM-DRAWINGS.e2k          the YMCA        15 storeys,  16 plates
+       31168-TOWERS-FROM-DRAWINGS.e2k   the whole site  65 storeys, 106 plates
+       31168-reference-SHELL.e2k        the engineer's own file, for comparison
+       31168-QUESTIONS.xlsx, 31168-TOWERS-QUESTIONS.xlsx
+       both -report.txt files
+
+REPOS
+  C:\VIsual Studio Projects\Operations          generator, tests, publisher
+  C:\VIsual Studio Projects\KOR.Drafter         Revit bridge, db\ migrations (051-056 APPLIED)
+
+PART A — WHAT ELSE WILL ETABS REFUSE?
+
+A1. GEOMETRY THAT IS LEGAL TO A SUMMARY AND ILLEGAL TO A SOLVER. KF54 was one shape. Enumerate the
+    others and CHECK FOR EACH in both files:
+      - a ring that touches itself at a point (a figure-eight) without properly crossing
+      - three or more collinear joints where the path reverses (the KF54 shape) — now removed for
+        FLOOR and opening AREA objects; is anything else written as a ring?
+      - a ring wound clockwise where ETABS wants anticlockwise, or mixed winding between a plate
+        and the opening cut from it
+      - an opening whose ring is not entirely inside its plate
+      - joints repeated non-adjacently in one ring
+      - a ring whose joints are not coplanar once storey elevations are applied
+      - an AREA whose joint COUNT field disagrees with the joints listed
+      - a joint referenced by an object and never defined, or defined twice
+      - a section, pier or spandrel referenced by an assign and never defined
+      - degenerate area: three joints that are collinear, or an area below a square foot
+
+A2. THE STOREY STACK. Read STORY heights and elevations in both files and against the reference.
+      - any storey of zero or negative height, or one shorter than a person
+      - the base elevation, and whether the lowest storey absorbs an implausible distance
+      - a member assigned to a storey the file does not define
+      - the same object assigned twice to one storey
+
+A3. WALL PANELS specifically. A wall is four joints, two at the bottom of a plan line and two at
+    the top. Verify that is true of every KW in both files: two distinct plan points, the right
+    repetition, and a section that exists. A panel written some other way is one ETABS will drop.
+
+PART B — WHAT THE ENGINEER WILL SEE
+
+B1. Open both QUESTIONS workbooks. The front sheet now has three kinds of row: NEEDS YOU, DECIDED,
+    SCOPE, and a fourth, DEFECT, introduced today. Check the DEFECT rows are the faults that
+    actually exist, that no row marked DECIDED or SCOPE is describing an unresolved fault, and that
+    the title's fault count matches the rows.
+
+B2. Both reports are >100 KB. Find any sentence that contradicts another, any count in the summary
+    that disagrees with the flags below it, and anything important buried under something trivial.
+
+B3. The two explainer PDFs, KOR-Model-From-Drawings-DOSSIER.pdf and -READ-THIS-FIRST.pdf. Every
+    count they state must appear in the model they sit beside. Check them as TEXT, not the HTML
+    they were rendered from.
+
+PART C — WHAT IS STILL NOT MEASURED
+
+C1. Name every part of this pipeline where a defect would reach an engineer with nothing turning
+    red. Today's list of those was: the vertex count of a traced outline, and an outline that
+    doubles back. Both are now checked. What is the next one?
+
+C2. The tool now reads 58 rules and a drawing vocabulary from KorStandards. Find a rule whose
+    value could be changed to something plausible that would produce a WRONG model with no
+    complaint from any test or invariant.
+
+OUT OF SCOPE by the engineer's own ruling, do not report: beams, diaphragms, loads, load
+assignment, stiffness modifiers, section properties.
+
+RULES OF ENGAGEMENT
+- Every claim cites a file and line, or a number read out of an artifact.
+- No style, naming or comment-volume findings.
+- Where a test exists, say what it MISSES.
+- Reading the share is encouraged. NEVER Get-ChildItem -Recurse over SMB; enumerate one directory
+  at a time.
+- Do not trust a commit message. Several were written today by someone who wanted them to be true.
+
+FINISH WITH AN ADVERSARIAL REVIEW OF YOUR OWN FINDINGS
+For each, state the strongest argument that it is NOT a defect, then say whether that argument
+defeats it. Drop the ones it defeats. Rank what survives by what would reach an engineer's model
+without anything turning red — and put anything ETABS would refuse at the top.
