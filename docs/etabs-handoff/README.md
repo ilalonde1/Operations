@@ -19,6 +19,7 @@ Paths below assume the 31168 job folder:
 | `selfcross.py M.e2k` | rings that cross themselves or repeat a point | (clean — the real fault was a *reversal*, which this misses by design; see below) |
 | `plate_areas.py M.e2k` | plate count, median and total area, openings | — |
 | `read_questions.py Q.xlsx …` | the workbook's front sheet, as text | rows marked DECIDED that were describing unresolved faults |
+| `plan_sheet.py M.e2k out.svg "title" [cols] [px]` | **every storey drawn, on one sheet** | eight faults in one look, after a day of count tables found none of them |
 
 **What none of them can see** is what ETABS refuses. `AREAASSIGN … Line Ignored.` on import is the
 only thing that found KF54 — an outline running down 24 in along one x and back up 96 along the
@@ -26,6 +27,12 @@ same one. Right area, right position, no coincident joints, no *proper* self-cro
 blocking invariant for that shape now, but the general lesson stands:
 
 > **Open the file in ETABS.** A green suite and a clean report describe what the tool believes.
+
+And before that, **render it**. `plan_sheet.py` draws all 63 storeys on one page in about a second,
+and on 27 August it showed at a glance what a day of per-storey count tables had not: storeys with a
+floor and nothing under it, storeys with structure and no floor, one tower's storey carrying both
+towers' columns, and the whole site's ground slab under a single building. Every fault that day was
+otherwise found by the engineer opening the model — which is the most expensive way to find one.
 
 ## Driving the bridge
 
