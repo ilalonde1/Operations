@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Kor.Operations.EngineeringTools.Dxf;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -37,7 +38,12 @@ public class ShippedModelsAgreeWithEachOtherTests
     private static readonly Regex Prop = new(@"^\s*SHELLPROP\s+""([^""]+)"".*?SLABTHICKNESS\s+([\d.]+)", RegexOptions.Compiled);
     private static readonly Regex Quoted = new(@"""([^""]+)""", RegexOptions.Compiled);
 
-    private sealed record Storey(double AreaSqFt, string[] Thicknesses);
+    /// <summary>
+    /// What a storey holds. Area and thickness alone could not see the fault they were written to
+    /// catch: on 27 August C-ROOF carried 3 walls and 8 columns in one published model and 33 and
+    /// 56 in the other, and its plate is the same 2,015 sq ft in both.
+    /// </summary>
+    private sealed record Storey(double AreaSqFt, string[] Thicknesses, int Walls, int Columns, int Plates);
 
     private static Dictionary<string, Storey>? Read(string path)
     {
@@ -47,6 +53,8 @@ public class ShippedModelsAgreeWithEachOtherTests
         var props = new Dictionary<string, double>(StringComparer.Ordinal);
         var areaOf = new Dictionary<string, double>(StringComparer.Ordinal);
         var byStorey = new Dictionary<string, (double Area, SortedSet<string> T)>(StringComparer.OrdinalIgnoreCase);
+        var kindOf = new Dictionary<string, string>(StringComparer.Ordinal);
+        var count = new Dictionary<string, (int W, int C, int P)>(StringComparer.OrdinalIgnoreCase);
 
         foreach (string raw in File.ReadLines(path))
         {
@@ -82,6 +90,22 @@ public class ShippedModelsAgreeWithEachOtherTests
                 continue;
             }
 
+            var k = Regex.Match(raw.TrimStart(), @"^(?:AREA|LINE)\s+""([^""]+)""\s+(\w+)");
+            if (k.Success) kindOf[k.Groups[1].Value] = k.Groups[2].Value;
+
+            var any = Regex.Match(raw.TrimStart(), @"^(?:AREA|LINE)ASSIGN\s+""([^""]+)""\s+""([^""]+)""");
+            if (any.Success && kindOf.TryGetValue(any.Groups[1].Value, out string? what))
+            {
+                count.TryGetValue(any.Groups[2].Value, out var n);
+                count[any.Groups[2].Value] = what switch
+                {
+                    "PANEL" => (n.W + 1, n.C, n.P),
+                    "COLUMN" => (n.W, n.C + 1, n.P),
+                    "FLOOR" => (n.W, n.C, n.P + 1),
+                    _ => n,
+                };
+            }
+
             m = Assign.Match(raw);
             if (m.Success && areaOf.TryGetValue(m.Groups[1].Value, out double area))
             {
@@ -94,7 +118,13 @@ public class ShippedModelsAgreeWithEachOtherTests
             }
         }
 
-        return byStorey.ToDictionary(x => x.Key, x => new Storey(x.Value.Area, x.Value.T.ToArray()),
+        return byStorey.ToDictionary(
+            x => x.Key,
+            x =>
+            {
+                count.TryGetValue(x.Key, out var n);
+                return new Storey(x.Value.Area, x.Value.T.ToArray(), n.W, n.C, n.P);
+            },
             StringComparer.OrdinalIgnoreCase);
     }
 
@@ -114,17 +144,50 @@ public class ShippedModelsAgreeWithEachOtherTests
             var a = site[storey];
             var b = ymca[storey];
 
-            // Area within a fiftieth: the two runs read the same linework and round the same way,
-            // so a real agreement is exact to within rounding, not merely close.
+            // WHICH INVARIANT APPLIES DEPENDS ON WHOSE STOREY IT IS.
+            //
+            // This asked for equality on every shared storey, which was right while the
+            // one-building model kept everything standing on a shared floor. It is not right now:
+            // the drawings split every shared level by building — BLDG C and WEST at level 1,
+            // level 2, the mezzanine and all three parkade levels — so building C's model holds
+            // C's share of them and the site model holds all three buildings'. Demanding equality
+            // there demands the YMCA model carry the towers' structure.
+            //
+            // On a storey named for building C, equality still holds and must: the two files are
+            // cut from ONE composition, so C-ROOF cannot be 3 walls and 8 columns in one and 33
+            // and 56 in the other. It was, for most of 27 August, and this test could not see it —
+            // it compared floor AREA, and C-ROOF's plate is the same 2,015 sq ft either way.
+            bool exclusiveToThisBuilding = E2kDocument.BuildingTagOf(storey).Length > 0;
+
             double drift = Math.Abs(a.AreaSqFt - b.AreaSqFt) / Math.Max(a.AreaSqFt, b.AreaSqFt);
             bool sameThickness = a.Thicknesses.SequenceEqual(b.Thicknesses, StringComparer.Ordinal);
 
             _out.WriteLine($"{storey,-16}{a.AreaSqFt,10:N0} sf [{string.Join("/", a.Thicknesses)}]" +
-                           $"   {b.AreaSqFt,10:N0} sf [{string.Join("/", b.Thicknesses)}]");
+                           $"   {b.AreaSqFt,10:N0} sf [{string.Join("/", b.Thicknesses)}]" +
+                           $"   {a.Walls}/{a.Columns}/{a.Plates} vs {b.Walls}/{b.Columns}/{b.Plates}" +
+                           (exclusiveToThisBuilding ? "   [must be identical]" : "   [subset]"));
 
-            if (drift >= 0.02 || !sameThickness)
-                wrong.Add($"{storey}: site {a.AreaSqFt:N0} sq ft [{string.Join("/", a.Thicknesses)}\"] " +
-                          $"vs YMCA {b.AreaSqFt:N0} sq ft [{string.Join("/", b.Thicknesses)}\"]");
+            if (exclusiveToThisBuilding)
+            {
+                if (drift >= 0.02 || !sameThickness)
+                    wrong.Add($"{storey}: site {a.AreaSqFt:N0} sq ft [{string.Join("/", a.Thicknesses)}\"] " +
+                              $"vs YMCA {b.AreaSqFt:N0} sq ft [{string.Join("/", b.Thicknesses)}\"]");
+
+                if (a.Walls != b.Walls || a.Columns != b.Columns || a.Plates != b.Plates)
+                    wrong.Add($"{storey} belongs to one building and the two files disagree about what stands " +
+                              $"on it: site {a.Walls} wall(s), {a.Columns} column(s), {a.Plates} plate(s) " +
+                              $"vs YMCA {b.Walls}, {b.Columns}, {b.Plates}");
+
+                continue;
+            }
+
+            // Shared: the building model is a subset, never a superset. More in the smaller file
+            // than the larger one means they were not cut from one composition.
+            if (b.Walls > a.Walls || b.Columns > a.Columns || b.Plates > a.Plates
+                || b.AreaSqFt > a.AreaSqFt * 1.02)
+                wrong.Add($"{storey} is shared, so the YMCA model must hold a SUBSET of the site model — " +
+                          $"it holds more: site {a.Walls}/{a.Columns}/{a.Plates} at {a.AreaSqFt:N0} sq ft " +
+                          $"vs YMCA {b.Walls}/{b.Columns}/{b.Plates} at {b.AreaSqFt:N0} sq ft");
         }
 
         Assert.True(wrong.Count == 0,

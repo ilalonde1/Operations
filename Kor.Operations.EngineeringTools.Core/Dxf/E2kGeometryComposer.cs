@@ -701,15 +701,6 @@ public static class E2kGeometryComposer
         /// hanging a storey above its floor. Assigning it to both builds one continuous wall.
         /// ETABS supports this directly — an object carries an assign line per storey.
         /// </summary>
-        static double HalfOfATypicalStorey(IReadOnlyList<StoryLevel> stories, double sameLevel)
-        {
-            var levels = new List<double>();
-            foreach (var s in stories.OrderBy(x => x.Elevation))
-                if (levels.Count == 0 || s.Elevation - levels[^1] > sameLevel) levels.Add(s.Elevation);
-
-            var gaps = levels.Zip(levels.Skip(1), (a, b) => b - a).Where(g => g > 0).OrderBy(g => g).ToList();
-            return gaps.Count == 0 ? 60.0 : gaps[gaps.Count / 2] / 2.0;
-        }
 
         List<string> StoreysSpannedBy(StoryLevel story)
         {
@@ -751,7 +742,15 @@ public static class E2kGeometryComposer
         // What this building calls a storey, from its own floor elevations: the median gap between
         // consecutive DISTINCT levels, the near-coincident pairs collapsed first so the duplicates
         // do not drag the median to nothing.
-        double HalfAStorey = HalfOfATypicalStorey(allStories, SameLevel);
+        // ONE DEFINITION OF A PHYSICAL FLOOR, and it lives on the document.
+        //
+        // There were two. The document grouped by building tag before taking the median gap; the
+        // composer measured the whole site stack. Where towers interleave, consecutive elevations
+        // in ETABS's one global storey list are the SAME floor drafted twice, so the site-wide
+        // median is half a storey and half of that is a quarter — 29 in on 31168, against the 55
+        // the per-building measure gives. So the cut and the supersede rule used one notion of a
+        // floor and placement used another, and a fix aimed at either broke the other.
+        double sameFloor = doc.SameFloorTolerance();
         StoryLevel RisesTo(StoryLevel from, string? sheetTag = null)
         {
             // Never onto another building's storey.
@@ -767,60 +766,64 @@ public static class E2kGeometryComposer
             string tag = E2kDocument.BuildingTagOf(from.Name);
             if (tag.Length == 0 && !string.IsNullOrWhiteSpace(sheetTag)) tag = sheetTag.Trim();
 
+            // THE NEXT FLOOR OF THIS MEMBER'S OWN BUILDING, unless the shared stack gets there
+            // first, or the floor above is the base every building stands on.
+            //
+            // Three questions in one, and each was answered alone at some point this week.
+            //
+            // OWN STACK LEADS. Anchoring on whichever storey is simply lowest above put the window
+            // on the neighbouring tower: from A-LEVEL 28 the nearest storey up is B-LEVEL 28, 36 in
+            // away, and A-LEVEL 29 sat 2 in outside the window that opened around it. Tower A's
+            // members stayed where they were and A-LEVEL 29 shipped as a plate over nothing. A
+            // member follows its own building up.
+            //
+            // THE SHARED STACK CAN GET THERE FIRST. A tower's ground floor is followed by LEVEL 1
+            // MEZZ and LEVEL 2 before that tower has another storey of its own, so an own storey
+            // twenty-five levels up must not win over the shared floor immediately above.
+            //
+            // AND BELOW WHERE THIS BUILDING STARTS, ANOTHER BUILDING'S PREFIX IS THE BASE. This is
+            // E2kDocument.KeepOnlyTower's rule, which the cut has used since it was written and
+            // placement did not: "a storey belonging to another building is dropped, but only from
+            // the point this building starts. BELOW that, a tagged storey is the shared base the
+            // buildings stand on." 31168's ground floor is A-LEVEL 1 and B-LEVEL 1 — named for two
+            // of the three buildings on it — so building C's parkade columns were refused it and
+            // rose past the ground floor to the mezzanine.
             var above = allStories
                 .Where(s => s.Elevation > from.Elevation + SameLevel)
-                .Where(s => E2kDocument.BuildingTagOf(s.Name) is var t
-                            && (t.Length == 0 || tag.Length == 0
-                                || t.Equals(tag, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(s => s.Elevation)
                 .ToList();
 
             if (above.Count == 0) return from;
 
-            // A MEMBER RISES TO THE NEXT STOREY OF ITS OWN BUILDING.
-            //
-            // An UNPREFIXED storey counts as shared, which is right for a podium every building
-            // stands on and wrong the moment a shared name sits at the same LEVEL as a tagged one.
-            // On 31168's site model the YMCA's C-LEVEL 4 is 5.4 inches above the tower's LEVEL 4,
-            // C-LEVEL 9 is 27 inches above LEVEL 9, and C-ROOF is 38 above LEVEL 10 — the same
-            // physical levels, drafted twice, exactly as the ground floor is A-LEVEL 1 and
-            // B-LEVEL 1. Taking the nearest candidate took the tower's every time.
-            //
-            // The cost was six storeys of the YMCA shipping with ZERO walls and ZERO columns —
-            // floor plates over nothing — while LEVEL 4 to LEVEL 8 each carried 89 columns, the
-            // tower's 48 and the YMCA's 41 stacked on one storey. The YMCA-only model built from
-            // the same drawings had them right, which is the only reason it was findable: the two
-            // deliverables disagreed.
-            //
-            // NO DISTANCE WINDOW, AND NO COUNTING EITHER. What decides it is whether the
-            // own-building storey and the next shared one are the SAME LEVEL, and this building
-            // says how big a level is: the median gap between its own distinct floor elevations.
-            //
-            // 31168 drafts one physical level twice wherever two buildings meet it, and the pairs
-            // are 1.7 in apart at the ground floor, 5.4 in at level 4, 27 in at level 9 and 38 at
-            // the roof. Every one of those is a fraction of the 110 in this building calls a storey,
-            // and a real storey is never a fraction of one. So: nearer than half a storey is the
-            // same level, and the member goes to its own building's copy of it.
-            //
-            // Counting shared storeys was the earlier answer and it was nearly right. It failed
-            // where only ONE shared storey stood above — from LEVEL 25 the next shared is LEVEL 26
-            // and there is no second, so "fewer than two" fired and every member skipped LEVEL 26
-            // for A-LEVEL 27, a full storey higher. LEVEL 26 shipped as two floor plates with
-            // nothing under them.
-            if (tag.Length > 0)
-            {
-                var own = above
+            double buildingStarts = tag.Length == 0
+                ? double.MaxValue
+                : above.Concat(allStories)
                     .Where(s => E2kDocument.BuildingTagOf(s.Name).Equals(tag, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-                var shared = above
-                    .Where(s => E2kDocument.BuildingTagOf(s.Name).Length == 0)
-                    .ToList();
+                    .OrderBy(s => s.Elevation)
+                    .Select(s => (double?)s.Elevation)
+                    .FirstOrDefault() ?? double.MaxValue;
 
-                if (own.Count > 0
-                    && (shared.Count == 0 || own[0].Elevation <= shared[0].Elevation + HalfAStorey))
-                    return own[0];
-            }
+            var ownNext = tag.Length == 0
+                ? null
+                : above.FirstOrDefault(s => E2kDocument.BuildingTagOf(s.Name)
+                    .Equals(tag, StringComparison.OrdinalIgnoreCase));
 
-            return above[0];
+            var sharedNext = above.FirstOrDefault(s => E2kDocument.BuildingTagOf(s.Name).Length == 0);
+
+            // The base: the floor immediately above is named only for other buildings AND stands
+            // below the floor this building starts at.
+            if (above[0].Elevation < buildingStarts
+                && E2kDocument.BuildingTagOf(above[0].Name).Length > 0
+                && !above[0].Name.Equals(ownNext?.Name, StringComparison.OrdinalIgnoreCase))
+                return above[0];
+
+            if (ownNext is not null
+                && (sharedNext is null || ownNext.Elevation <= sharedNext.Elevation + sameFloor))
+                return ownNext;
+
+            if (sharedNext is not null) return sharedNext;
+
+            return ownNext ?? from;
         }
 
         // EVERY PLATE ON EVERY STOREY, BEFORE ANY OPENING IS CUT.

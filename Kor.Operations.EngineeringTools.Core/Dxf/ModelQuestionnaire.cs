@@ -571,6 +571,32 @@ public static class ModelQuestionnaire
                 { RuleTopic = "storeys-with-no-drawn-floor", Decided = true };
         }
 
+        // A DRAWING FULL OF STRUCTURE THAT IS NOT IN THE MODEL. The one question worth asking
+        // before any other, because everything else on this sheet describes a building that is
+        // missing a piece.
+        //
+        // 31168's parkade is drawn per building — BLDG C and WEST at P1, P2 and P3 — and the model
+        // has one storey per parkade level with no building in its name. The per-building sheets
+        // matched nothing and were dropped, the undivided site-wide sheet was placed, and building
+        // C's model came out standing on the whole site's parkade with 108 columns instead of 66.
+        // Every count in the report was plausible. The only evidence was seven lines saying "not
+        // placed", four hundred lines down.
+        if (Flag("carry structure that is NOT IN THIS MODEL") is { } orphaned)
+        {
+            string sheets = orphaned[(orphaned.IndexOf(':') + 1)..].Split(". Either")[0].Trim();
+            yield return new ModelQuestion("J7", "Drawings that are not in the model",
+                $"THE FIRST THING TO LOOK AT. These drawings were read — the tool understood their walls, " +
+                $"columns and slabs — and then placed on nothing, because the storeys they name are not in " +
+                $"the model: {sheets}. Either the model is missing those storeys, or your model names them " +
+                "differently from the drawings. Tell us which, and they go in.",
+                "Nothing was guessed onto a nearby storey in their place — a sheet on the wrong floor is worse " +
+                "than a sheet on no floor, because it looks like structure you drew.",
+                "A drawing that reads cleanly and lands nowhere is a piece of the building that is simply " +
+                "absent, and every other count in this workbook still looks right without it.",
+                "Taken from this run: the sheet names, and what each one carries.")
+                { RuleTopic = "drawings-that-land-nowhere" };
+        }
+
         if (Flag("no wall or column beneath") is { } floating)
         {
             string storeys = floating[(floating.IndexOf(':') + 1)..].Split('.')[0].Trim();

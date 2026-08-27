@@ -714,6 +714,8 @@ public static class DxfToEtabsService
         var matchNames = cutStoreys.Count == 0 ? storyNames : storiesBeforeCuts;
 
         var outcomes = new List<SheetOutcome>();
+        var readButNotPlaced = new List<(string Sheet, int Walls, int Columns, int Slabs)>();
+        string? unplacedNote = null;
         var parsed = new List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)>();
         var readSheets = new List<IReadOnlyList<DxfSegment>>();
 
@@ -833,6 +835,22 @@ public static class DxfToEtabsService
                 warnings.Add(!sheet.HasPlacement
                     ? $"{sheet.FileName}: no level number in the sheet name — not placed."
                     : $"{sheet.FileName}: levels {string.Join(",", sheet.Levels.Select(l => l.ToString()).Concat(sheet.ParkadeLevels.Select(p => "P" + p)))} match no storey in the model — not placed.");
+
+                // A DRAWING FULL OF STRUCTURE THAT LANDS NOWHERE IS THE LOUDEST FAULT THERE IS.
+                //
+                // It was the quietest. Seven of 31168's parkade sheets — every per-building plan of
+                // levels P1, P2 and P3, 26 walls and 66 columns on one of them — matched no storey
+                // and said so on line 400 of a 72 KB report, one line each, in the same voice as a
+                // key plan with nothing on it. The undivided site-wide parkade sheet WAS placed, so
+                // every count came out plausible and the model of building C alone stood on the
+                // whole site's parkade. Nobody looked, for four days.
+                //
+                // Counted separately from the empty ones and said once, at the top, with what was
+                // on them. A sheet with no structure landing nowhere is housekeeping; a sheet with
+                // structure landing nowhere is a piece of the building that is not in the model.
+                if (geometry.Walls.Count + geometry.Columns.Count + geometry.Slabs.Count > 0)
+                    readButNotPlaced.Add((sheet.FileName, geometry.Walls.Count, geometry.Columns.Count, geometry.Slabs.Count));
+
                 continue;
             }
 
@@ -897,6 +915,19 @@ public static class DxfToEtabsService
                     "drawn with arcs. A circle drawn as a polygon at a size the set does use is still modelled, " +
                     "and so is every column drawn with an arc, whatever its size.");
         }
+
+        if (readButNotPlaced.Count > 0)
+            unplacedNote =
+                $"{readButNotPlaced.Count} drawing(s) carry structure that is NOT IN THIS MODEL, because the " +
+                "storeys they name do not exist in it: " +
+                string.Join("; ", readButNotPlaced
+                    .OrderByDescending(x => x.Walls + x.Columns)
+                    .Select(x => $"{x.Sheet} ({x.Walls} wall(s), {x.Columns} column(s), {x.Slabs} plate(s))")
+                    .Take(8)) +
+                (readButNotPlaced.Count > 8 ? $", and {readButNotPlaced.Count - 8} more" : "") +
+                ". Either the model needs those storeys, or the drawings name them differently from the " +
+                "way the model does. This is not a warning about the drawings — it is a piece of the " +
+                "building that was read, understood, and then left out.";
 
         // LAYERS. What a piece of linework IS comes from the layer it sits on, and the patterns are
         // KOR's own drafting convention. A drafter who names columns anything else gets no error —
@@ -1196,6 +1227,11 @@ public static class DxfToEtabsService
 
         summary = summary with { Flags = summary.Flags.Concat(LayerLedger.Describe(ledger)).ToList() };
 
+        // Said where the workbook will find it. A note about a piece of the building that is not in
+        // the model belongs in front of the engineer, not in the run log.
+        if (unplacedNote is not null)
+            summary = summary with { Flags = summary.Flags.Append(unplacedNote).ToList() };
+
         foreach (var rule in derived)
             summary = summary with
             {
@@ -1363,6 +1399,20 @@ public static class DxfToEtabsService
             foreach (var (obj, storeys) in storeyOf)
             {
                 if (going.Contains(obj) || plates.Contains(obj)) continue;
+
+                // NEVER A MEMBER THE DRAWING SAYS IS THIS BUILDING'S. Position is the weakest
+                // evidence there is and it only gets a say where the drawings are silent.
+                //
+                // This rule exists to take the site's ground-floor structure out of a one-building
+                // model, back when the only sheet drawing it named no building. The parkade is
+                // drawn per building too — BLDG C and WEST at every level — and once those sheets
+                // were actually placed, building C's own parkade columns rise from P1 to LEVEL 1
+                // and stand across the whole of C's parkade, which is far wider than the 11,026
+                // sq ft of building sitting on it. Judged by position they are all outside, and
+                // LEVEL 1 emptied for the second time this week: 0 walls, 0 columns.
+                if (summary.BuildingOfObject.TryGetValue(obj, out var mine)
+                    && mine.Contains(onlyBuilding, StringComparer.OrdinalIgnoreCase)) continue;
+
                 if (!planOf.TryGetValue(obj, out var points)) continue;
 
                 if (storeys.All(s => E2kDocument.BuildingTagOf(s)

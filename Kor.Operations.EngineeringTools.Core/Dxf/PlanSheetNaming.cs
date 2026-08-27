@@ -293,11 +293,33 @@ public static partial class PlanSheetNaming
         // A building tag only narrows the choice where the model actually separates buildings.
         // Lower storeys are often shared and unprefixed, so a sheet titled "BLDG A&B" covering
         // levels 15-26 must still land on plain "LEVEL 15" and up.
+        //
+        // AND THE PARKADE IS THE MOST SHARED STOREY THERE IS. This is where a tagged sheet gets its
+        // second chance, and it looked only at NUMBERED levels — so every per-building parkade
+        // sheet in the set landed nowhere and was silently not placed:
+        //
+        //     S2.05.1_1_LEVEL P1 PLAN - CONCRETE OUTLINE - BLDG C     26 walls  66 columns
+        //     S2.06.1_1_LEVEL P1 PLAN - CONCRETE OUTLINE - WEST       42 walls  67 columns
+        //     S2.03/S2.04 the same at P2, S2.01/S2.02 the same at P3
+        //
+        // "levels P1 match no storey in the model — not placed", seven times, in a report nobody
+        // read that far down. Only the undivided "LEVEL P1 PLAN - CONCRETE OUTLINE" was placed, so
+        // the parkade arrived as one site-wide slab and 108 columns with nothing saying whose they
+        // were — and a model of building C alone came out standing on the whole site's parkade.
         if (matches.Count == 0 && sheet.BuildingTags.Count > 0)
         {
             foreach (string story in storyNames)
             {
                 if (IsMezzanineName(story) != sheet.IsMezzanine) continue;
+
+                var parkade = Vocabulary.ParkadeStory.Match(story);
+                if (parkade.Success)
+                {
+                    if (sheet.ParkadeLevels.Contains(int.Parse(parkade.Groups[1].Value))) matches.Add(story);
+                    continue;
+                }
+
+                if (sheet.ParkadeLevels.Count > 0 && sheet.Levels.Count == 0) continue;
 
                 var level = Vocabulary.SingleLevel.Match(story);
                 if (level.Success && sheet.Levels.Contains(int.Parse(level.Groups[1].Value)))
