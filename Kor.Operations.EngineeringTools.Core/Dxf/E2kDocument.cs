@@ -718,6 +718,27 @@ public sealed class E2kDocument
         return removed;
     }
 
+    /// <summary>
+    /// How many objects THIS FILE holds with the given prefix, counted from the document rather
+    /// than from what was composed. After a cut the two differ, and the report is read as the
+    /// second when it is only ever entitled to be the first.
+    /// </summary>
+    public int CountGenerated(string keyword, string prefix)
+    {
+        int n = 0;
+        foreach (string header in new[] { "AREA CONNECTIVITIES", "LINE CONNECTIVITIES" })
+            foreach (string raw in LinesOf(header))
+            {
+                string line = raw.TrimStart();
+                if (!line.StartsWith(keyword + " ", StringComparison.Ordinal)) continue;
+
+                var m = System.Text.RegularExpressions.Regex.Match(line, @"^\w+\s+""([^""]+)""");
+                if (m.Success && m.Groups[1].Value.StartsWith(prefix, StringComparison.Ordinal)) n++;
+            }
+
+        return n;
+    }
+
     /// <summary>Names already used for points/areas/lines, so generated names never collide.</summary>
     /// <summary>
     /// How long the model's own length unit is, in inches, from its <c>CONTROLS UNITS</c> line.

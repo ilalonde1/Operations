@@ -849,8 +849,42 @@ public static class DxfToEtabsService
             if (slender.FromReference) classification = classification with { MaxColumnAspect = slender.Value };
         }
 
-        var offset = request.Offset
-            ?? (request.CentreOnGrid ? AutoOffset(doc, parsed.Select(p => p.Geometry)) : (0.0, 0.0));
+        // A MODEL HALF A MILE FROM ITS OWN GRIDS IS A MODEL NOBODY CAN SEE.
+        //
+        // The engineer's own 31168 sits at x -12..885, y 3,717..5,237 and her grids run -1,379 to
+        // about 900. The Revit export is in SHARED coordinates -- the site survey system, which is
+        // what makes every sheet stack -- and lands at x 38,815..41,683, y 27,057..31,107. Three
+        // thousand feet east and two thousand north of her building.
+        //
+        // Nothing was wrong with the geometry. It opened, it was complete, it was internally
+        // consistent, and it was off the screen: "the buildings don't show up". Centring existed
+        // (AutoOffset) and was reachable only through a flag no publish sets.
+        //
+        // So it is not a flag any more. Where the drawing does not overlap the model's grids AT
+        // ALL, it is moved onto them and the move is stated. Where it does overlap, nothing is
+        // touched -- a drawing already in the model's coordinates must not be shifted, and that is
+        // every job this tool has read until today.
+        var offset = request.Offset ?? (0.0, 0.0);
+
+        if (request.Offset is null)
+        {
+            var geometry = parsed.Select(p => p.Geometry).ToList();
+            if (request.CentreOnGrid)
+            {
+                offset = AutoOffset(doc, geometry);
+            }
+            else if (DrawingMissesTheGrid(doc, geometry, out string howFar))
+            {
+                offset = AutoOffset(doc, geometry);
+                if (offset != (0.0, 0.0))
+                    warnings.Add(
+                        $"The drawings do not overlap this model's grid lines at all — {howFar}. They have " +
+                        $"been moved onto the grid by {offset.Item1:0} , {offset.Item2:0} in so the model " +
+                        "opens where the grids are. Nothing about the structure changed; a drawing exported " +
+                        "in site coordinates lands a long way from a model built at its own origin, and a " +
+                        "model nobody can find is a model nobody can check.");
+            }
+        }
 
         if (sheetsCutAway > 0)
             warnings.Add($"{sheetsCutAway} sheet(s) draw storeys this run removed and were not placed. " +
@@ -1099,6 +1133,23 @@ public static class DxfToEtabsService
         // The bill for composing once and cutting afterwards: members that belong to a building
         // this model is not of are defined here and assigned to nothing. They come out.
         int orphanObjects = doc.DropObjectsWithNoAssign();
+
+        // THE COUNTS HAVE TO BE THE COUNTS OF THE FILE, NOT OF THE COMPOSITION.
+        //
+        // Composing the whole site once and cutting afterwards left the summary describing what was
+        // BUILT rather than what was KEPT. The YMCA report opened "63 storeys, 1,416 walls, 2,461
+        // columns, 106 floors" beside a file holding 15, 294, 629 and 16 -- the first four numbers
+        // an engineer reads, and every one of them a count of somebody else's building. The cuts
+        // were disclosed further down; nobody reads further down when the top looks wrong.
+        //
+        // Recounted from the document itself, which is the only thing that can be right.
+        summary = summary with
+        {
+            Walls = doc.CountGenerated("AREA", "KW"),
+            Columns = doc.CountGenerated("LINE", "KC"),
+            Floors = doc.CountGenerated("AREA", "KF"),
+            Stories = doc.ReadStories().Count,
+        };
         if (orphanObjects > 0)
             summary = summary with
             {
@@ -1112,9 +1163,18 @@ public static class DxfToEtabsService
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(request.OutputE2k))!);
         doc.Save(request.OutputE2k);
 
+        // Storeys the FILE carries structure on, not storeys the composition placed a sheet on.
+        // The two are the same until a cut, and after one the second is a count of a building this
+        // model is not of.
+        var storeysInFile = doc.ReadStories()
+            .Select(x => x.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         return new DxfToEtabsReport(
             request.OutputE2k, files.Count, parsed.Count,
-            placements.Select(p => p.Story.Name).Distinct().Count(),
+            placements.Select(p => p.Story.Name)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count(storeysInFile.Contains),
             summary, offset, outcomes, warnings, requested, composeFromReference)
         {
             RulesApplied = banked,
@@ -1193,6 +1253,71 @@ public static class DxfToEtabsService
                          "was changed about it.");
 
         return warnings;
+    }
+
+    /// <summary>
+    /// Whether the drawings and the model's grid lines share no ground at all.
+    ///
+    /// Deliberately "no overlap whatsoever" rather than "not centred". A drawing offset from its
+    /// grids by a bay is a drawing with a bay's worth of drafting slop and must be left alone;
+    /// one that does not touch them anywhere is in a different coordinate system.
+    /// </summary>
+    private static bool DrawingMissesTheGrid(
+        E2kDocument doc, IReadOnlyList<PlanGeometrySet> sets, out string howFar)
+    {
+        howFar = string.Empty;
+
+        var (gMinX, gMaxX, gMinY, gMaxY) = ReadGridExtents(doc);
+        if (double.IsInfinity(gMinX) || double.IsInfinity(gMinY)) return false;
+
+        double minX = double.MaxValue, maxX = double.MinValue, minY = double.MaxValue, maxY = double.MinValue;
+        foreach (var set in sets)
+        {
+            foreach (var wall in set.Walls)
+                foreach (var p in new[] { wall.Start, wall.End })
+                {
+                    minX = Math.Min(minX, p.X); maxX = Math.Max(maxX, p.X);
+                    minY = Math.Min(minY, p.Y); maxY = Math.Max(maxY, p.Y);
+                }
+            foreach (var column in set.Columns)
+            {
+                minX = Math.Min(minX, column.Center.X); maxX = Math.Max(maxX, column.Center.X);
+                minY = Math.Min(minY, column.Center.Y); maxY = Math.Max(maxY, column.Center.Y);
+            }
+            foreach (var slab in set.Slabs)
+                foreach (var p in slab.Points)
+                {
+                    minX = Math.Min(minX, p.X); maxX = Math.Max(maxX, p.X);
+                    minY = Math.Min(minY, p.Y); maxY = Math.Max(maxY, p.Y);
+                }
+        }
+
+        if (minX > maxX) return false;
+
+        // MEASURED AGAINST THE BUILDING'S OWN SIZE, not against zero.
+        //
+        // "Does not overlap the grids" is too eager. 31138's drawings sit 68 ft off its grid
+        // extents on a building 170 ft across -- drafting slop and a grid that does not reach the
+        // whole plan -- and shifting it broke a baseline that exists precisely to say this tool
+        // does not move drawings. 31168's Revit export sits 3,200 ft from a building 340 ft
+        // across. One is a drawing slightly off its grid; the other is a different coordinate
+        // system, and the difference is a factor of ten.
+        //
+        // So: the centres must be further apart than the whole drawing is wide before anything is
+        // moved. Below that, leave it alone -- being a little off the grid is what drawings are.
+        double dxfCx = (minX + maxX) / 2.0, dxfCy = (minY + maxY) / 2.0;
+        double gridCx = (gMinX + gMaxX) / 2.0, gridCy = (gMinY + gMaxY) / 2.0;
+
+        double apart = Math.Sqrt((dxfCx - gridCx) * (dxfCx - gridCx) + (dxfCy - gridCy) * (dxfCy - gridCy));
+        double drawingSize = Math.Sqrt((maxX - minX) * (maxX - minX) + (maxY - minY) * (maxY - minY));
+
+        if (drawingSize <= 0 || apart <= drawingSize) return false;
+
+        howFar =
+            $"their centres are {apart / 12:N0} ft apart and the whole drawing is only " +
+            $"{drawingSize / 12:N0} ft across — the drawings span x {minX:0}..{maxX:0}, " +
+            $"y {minY:0}..{maxY:0} in and the grids span x {gMinX:0}..{gMaxX:0}, y {gMinY:0}..{gMaxY:0}";
+        return true;
     }
 
     private static (double X, double Y) AutoOffset(E2kDocument doc, IEnumerable<PlanGeometrySet> sets)
