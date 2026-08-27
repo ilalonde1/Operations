@@ -53,6 +53,13 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public double RingOnPlateEdgeFraction { get; init; } = 0.5;
 
+    /// <summary>
+    /// How far a straightened outline may sit from the trace it came from, in inches. A floor
+    /// recovered by flood fill is traced off pixels and arrives as a staircase; this is what
+    /// turns it back into walls. See `dxf.recovered-outline-tolerance`.
+    /// </summary>
+    public double RecoveredOutlineTolerance { get; init; } = 3.0;
+
     public double MinWallThickness { get; init; } = 4.0;
     public double MaxWallThickness { get; init; } = 36.0;
 
@@ -266,6 +273,7 @@ public sealed record PlanClassificationOptions
             // And this one, which the audit missed and a reflection test caught: the gap an
             // outline may close through itself is a twentieth of an INCH.
             OutlineSelfTouchTolerance = OutlineSelfTouchTolerance * f,
+            RecoveredOutlineTolerance = RecoveredOutlineTolerance * f,
             DashJoinGap = DashJoinGap * f,
             ExtendLimit = ExtendLimit * f,
             JoinTolerance = JoinTolerance * f,
@@ -998,8 +1006,15 @@ public static class StructuralPlanClassifier
                     // opening in it, the flood fill recovered the same floor as 12,862, the chain
                     // ring was correctly dropped -- and its orphaned opening was then cut out of
                     // the survivor, 91 per cent of it. The plate came back and the hole ate it.
+                    // CONTAINMENT, NOT A CENTROID.
+                    //
+                    // A centroid inside the dropped ring is not the same as belonging to it: an
+                    // L-shaped void or a long slot cut from the SURVIVING floor can have its
+                    // centre sitting in the ring that goes, and deleting it takes out a hole the
+                    // drawing shows. Most of the ring has to be inside, sampled along its length
+                    // rather than at its corners.
                     int orphaned = result.Openings.RemoveAll(hole =>
-                        swallowed.Any(dropped => LoopGeometry.PointInPolygon(hole.Centroid(), dropped.Points)));
+                        swallowed.Any(dropped => FractionInside(hole, dropped) >= 0.8));
 
                     if (orphaned > 0)
                         result.Flags.Add(
@@ -1031,6 +1046,51 @@ public static class StructuralPlanClassifier
 
             if (best is not null)
             {
+                // THE TAG PASS ALREADY RAN. This plate arrives after it, so it would carry no
+                // thickness at all and fall back to the stick file or the default -- while the
+                // very call-out that names it sits inside it. The flood fill is exactly the case
+                // where the drawing had to be leaned on hardest, so losing its words there is the
+                // worst place to lose them.
+                //
+                // Priced here rather than by running the whole pass again: one plate, one look.
+                if (result.Tags.Count > 0 && best.ThicknessInchesFromTag is null)
+                {
+                    int? printed = null;
+                    string quoted = string.Empty;
+
+                    foreach (var tag in result.Tags)
+                    {
+                        if (!LoopGeometry.PointInPolygon(tag.Point, best.Points)) continue;
+                        if (result.Openings.Any(o => LoopGeometry.PointInPolygon(tag.Point, o.Points))) continue;
+
+                        var parsed = SlabThicknessCallout.MatchAnyOrderText(tag.Text);
+                        if (parsed is not { } value) continue;
+
+                        int inches = value.ValueIn;
+                        if (inches < options.SlabCalloutMinThickness
+                            || inches > options.SlabCalloutMaxThickness) continue;
+
+                        // Two different numbers inside one recovered plate is the same ambiguity
+                        // the main pass refuses, and for the same reason.
+                        if (printed is not null && printed != inches) { printed = null; break; }
+
+                        printed = inches;
+                        quoted = tag.Text.Replace('\n', ' ').Replace('\r', ' ').Trim();
+                    }
+
+                    if (printed is { } thick)
+                    {
+                        best = new PlanLoop(best.Layer, best.Points, best.ClosedExactly)
+                        {
+                            ThicknessInchesFromTag = thick
+                        };
+                        if (quoted.Length > 40) quoted = quoted[..40] + "…";
+                        result.Flags.Add(
+                            $"{best.Layer}: the recovered floor of {best.Area / 144:N0} sq ft is {thick}\" " +
+                            $"thick — read from \"{quoted}\", printed inside it.");
+                    }
+                }
+
                 result.Slabs.Add(best);
                 result.Flags.Add(bestNote + $" Read from {bestLayer} alone.");
             }
@@ -1721,6 +1781,34 @@ public static class StructuralPlanClassifier
         }
 
         return total == 0 ? 0.0 : on / (double)total;
+    }
+
+    /// <summary>
+    /// What fraction of <paramref name="ring"/> lies inside <paramref name="of"/>, sampled along
+    /// its edges. Corners alone cannot see an L-shaped ring that leaves and re-enters.
+    /// </summary>
+    internal static double FractionInside(PlanLoop ring, PlanLoop of, double step = 12.0)
+    {
+        int inside = 0, total = 0;
+        var pts = ring.Points;
+
+        for (int i = 0; i < pts.Count; i++)
+        {
+            var a = pts[i];
+            var b = pts[(i + 1) % pts.Count];
+            double length = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+            int samples = Math.Max(1, (int)(length / step));
+
+            for (int k = 0; k < samples; k++)
+            {
+                double f = k / (double)samples;
+                var q = new DxfPoint(a.X + (b.X - a.X) * f, a.Y + (b.Y - a.Y) * f);
+                total++;
+                if (LoopGeometry.PointInPolygon(q, of.Points)) inside++;
+            }
+        }
+
+        return total == 0 ? 0.0 : inside / (double)total;
     }
 
     private static double DistanceToBoundary(DxfPoint p, PlanLoop loop)

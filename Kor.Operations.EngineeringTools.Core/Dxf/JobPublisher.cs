@@ -178,6 +178,18 @@ public static class JobPublisher
 
         foreach (string file in Directory.EnumerateFiles(dxfFolder, "*.dxf", SearchOption.TopDirectoryOnly))
         {
+            // THE SAME SHEETS THE RUN WILL READ, AND NO OTHERS.
+            //
+            // The generator refuses reinforcing plans, key plans and load plans by rule; reach did
+            // not, and reach decides which sheets feed which BUILDING before a model is generated.
+            // A key plan is a schematic of the whole site, so its linework reaches everywhere, and
+            // letting it vote on a building's footprint is how a split goes wrong in a way no
+            // later filter can undo.
+            string name = Path.GetFileNameWithoutExtension(file);
+            if (options.NonStructuralSheetPatterns.Any(
+                    pattern => name.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0))
+                continue;
+
             var sheet = PlanSheetNaming.Parse(file);
             var on = PlanSheetNaming.MatchStories(sheet, storeys);
             if (on.Count == 0) continue;

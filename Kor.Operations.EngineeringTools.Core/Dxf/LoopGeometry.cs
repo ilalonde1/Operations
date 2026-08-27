@@ -81,6 +81,81 @@ public static class LoopGeometry
         return inside;
     }
 
+    /// <summary>
+    /// Straightens a traced outline: Ramer-Douglas-Peucker over a closed ring.
+    ///
+    /// <see cref="Simplify"/> asks of each vertex whether it lies on the line between its two
+    /// NEIGHBOURS, and that is the wrong question for a raster trace. Every step of a staircase
+    /// deviates from its neighbours by a pixel, so every one survives, and a floor recovered by
+    /// flood-filling arrives as 1,942 vertices where the drawing has perhaps forty. ETABS is
+    /// handed the staircase and meshes it.
+    ///
+    /// This asks instead whether a whole RUN of vertices lies within tolerance of the straight
+    /// line across it, which is what turns a thousand pixel steps back into one wall.
+    ///
+    /// The ring is split at its two most distant points before recursing: an open polyline has
+    /// ends to anchor on and a closed ring does not, and anchoring at an arbitrary vertex bends
+    /// the outline around it.
+    /// </summary>
+    public static List<DxfPoint> Straighten(IReadOnlyList<DxfPoint> ring, double tolerance)
+    {
+        if (ring.Count < 8 || tolerance <= 0) return ring.ToList();
+
+        int a = 0, b = 0;
+        double worst = -1;
+        for (int i = 0; i < ring.Count; i++)
+            for (int j = i + 1; j < ring.Count; j++)
+            {
+                double d = ring[i].DistanceTo(ring[j]);
+                if (d > worst) { worst = d; a = i; b = j; }
+            }
+
+        var first = new List<DxfPoint>();
+        for (int i = a; i != b; i = (i + 1) % ring.Count) first.Add(ring[i]);
+        first.Add(ring[b]);
+
+        var second = new List<DxfPoint>();
+        for (int i = b; i != a; i = (i + 1) % ring.Count) second.Add(ring[i]);
+        second.Add(ring[a]);
+
+        var kept = Reduce(first, tolerance);
+        kept.RemoveAt(kept.Count - 1);
+        var back = Reduce(second, tolerance);
+        back.RemoveAt(back.Count - 1);
+        kept.AddRange(back);
+
+        return kept.Count >= 3 ? kept : ring.ToList();
+    }
+
+    private static List<DxfPoint> Reduce(List<DxfPoint> run, double tolerance)
+    {
+        if (run.Count < 3) return run.ToList();
+
+        double worst = 0;
+        int at = 0;
+        for (int i = 1; i < run.Count - 1; i++)
+        {
+            double d = PerpendicularDistance(run[i], run[0], run[^1]);
+            if (d > worst) { worst = d; at = i; }
+        }
+
+        if (worst <= tolerance) return new List<DxfPoint> { run[0], run[^1] };
+
+        var left = Reduce(run.GetRange(0, at + 1), tolerance);
+        var right = Reduce(run.GetRange(at, run.Count - at), tolerance);
+        left.RemoveAt(left.Count - 1);
+        left.AddRange(right);
+        return left;
+    }
+
+    private static double PerpendicularDistance(DxfPoint p, DxfPoint a, DxfPoint b)
+    {
+        double dx = b.X - a.X, dy = b.Y - a.Y;
+        double len = Math.Sqrt(dx * dx + dy * dy);
+        if (len < 1e-9) return p.DistanceTo(a);
+        return Math.Abs((p.X - a.X) * dy - (p.Y - a.Y) * dx) / len;
+    }
+
     /// <summary>Drops collinear and near-duplicate vertices so ETABS gets clean polygons.</summary>
     public static List<DxfPoint> Simplify(IReadOnlyList<DxfPoint> points, double tolerance)
     {

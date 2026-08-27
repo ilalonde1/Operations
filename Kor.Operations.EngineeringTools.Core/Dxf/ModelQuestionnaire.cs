@@ -32,6 +32,20 @@ public sealed record ModelQuestion(
     /// </summary>
     public bool ForTheRecord { get; init; }
 
+    /// <summary>
+    /// True where this row is a FAULT IN THE MODEL rather than a decision or a question.
+    ///
+    /// The workbook had two answers for a row: she has to settle it, or we settled it. A plate
+    /// whose outline closes through itself is neither. Nothing is being asked of her — there is no
+    /// answer that would change it — but calling it DECIDED or SCOPE puts "nothing here is waiting
+    /// on you" at the top of a page that goes on to say ETABS will mesh eighteen of her floors
+    /// badly or refuse them.
+    ///
+    /// A defect is not a question and is not an answer. It is the tool telling her what is wrong
+    /// with what it built, and it gets its own colour and its own line in the heading.
+    /// </summary>
+    public bool Defect { get; init; }
+
     public string RuleScope { get; init; } = "etabs-modelling";
     public string RuleTopic { get; init; } = string.Empty;
     public string? SettingKey { get; init; }
@@ -633,11 +647,11 @@ public static class ModelQuestionnaire
             // mezz have each two separate slabs" -- banked as a-storey-may-have-two-separate-slabs.
             // Asking her whether LEVEL 2 is two slabs is asking her to say it a third time.
             yield return new ModelQuestion("J6", "A floor outline that closes through itself",
-                $"FOR INFORMATION, ANSWERED — {where}. Each of these was already SPLIT into the " +
-                "separate plates it draws, by your rule; what is listed is the residue, where the " +
-                "split pieces still pass within two inches of each other. Nothing is needed from " +
-                "you — it is here because two inches of slab is a meshing problem in ETABS and the " +
-                "coordinate is what you would need to nudge it.",
+                $"A FAULT, NOT A QUESTION — {where}. Each was already SPLIT into the separate " +
+                "plates it draws, by your rule, and this is the residue: the split pieces still " +
+                "pass within two inches of each other. ETABS will mesh a plate that meets itself " +
+                "badly or refuse it outright, so this is something wrong with the model rather " +
+                "than something we need from you. The coordinate is what you would nudge.",
                 "Split, then reported. The ring was cut at the point it met its own edge into the plates " +
                 "it was drawing, and what remains within two inches of itself is named rather than cut " +
                 "further, because widening the cut drops real slab.",
@@ -645,7 +659,7 @@ public static class ModelQuestionnaire
                 "badly or refuses it.",
                 "Two inches is dxf.self-touch-report-gap, measured across 31168: normal notched plates come " +
                 "no closer than 0.38 ft to themselves, so it fires only on something degenerate.")
-                { RuleTopic = "plate-outline-closes-through-itself", Decided = true };
+                { RuleTopic = "plate-outline-closes-through-itself", Decided = true, Defect = true };
         }
 
         // SHE HAS ALREADY ANSWERED THIS ONE, FOUR TIMES IN ONE CALL.
@@ -691,7 +705,7 @@ public static class ModelQuestionnaire
                 // closed, the row already says in capitals that it is a defect and not a question
                 // -- and it was still printing NEEDS YOU beside that sentence, which is the
                 // workbook contradicting itself on the one page an engineer reads.
-                { RuleTopic = "floor-stops-short-of-members", Decided = edgeKnownOpen };
+                { RuleTopic = "floor-stops-short-of-members", Decided = edgeKnownOpen, Defect = edgeKnownOpen };
         }
 
         // Only the ones that could be concrete.
@@ -848,20 +862,27 @@ public static class ModelQuestionnaire
     /// seven rows, and the promise survived a correction because it sat in the branch no current
     /// job triggers.
     /// </summary>
-    public static string Introduction(int open, int changeable)
+    public static string Introduction(int open, int changeable, int defects = 0)
     {
+        // Said FIRST, before anything reassuring. The old text opened "nothing here is waiting on
+        // you" whenever no row needed an answer, and a defect needs no answer.
+        string faults = defects == 0
+            ? string.Empty
+            : $"{defects} row(s) are marked DEFECT: something is wrong with the model this tool built, " +
+              "and no answer from you would change it. They are what to read first. ";
+
         string dials =
             $"{changeable} row(s) are tied to a rule and change the model when you write in YOUR ANSWER. " +
             "The rest record what the tool does or does not attempt at all — they are marked SCOPE, and an " +
             "answer to one is noted but changes nothing, so say it to us instead.";
 
-        return open == 0
-            ? "Every judgement this tool had to make is listed, and every one has been taken — nothing here " +
-              "is waiting on you. Each row carries what was decided and the measurement behind it, so you " +
-              "can disagree with a specific number rather than with the whole tool. " + dials
+        return faults + (open == 0
+            ? "Every judgement this tool had to make is listed, and every one has been taken — no row here " +
+              "is waiting on an answer from you. Each carries what was decided and the measurement behind " +
+              "it, so you can disagree with a specific number rather than with the whole tool. " + dials
             : $"Every judgement this tool had to make is listed. DECIDED and SCOPE rows are ours, taken on " +
               $"the evidence beside them. NEEDS YOU marks the {open} nothing in the drawings could settle. " +
-              dials;
+              dials);
     }
 
     private static void WriteQuestions(XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, ComposeOptions compose, string projectName)
@@ -883,15 +904,24 @@ public static class ModelQuestionnaire
         // fixed bugs and this office's own layer names in the same list as the decisions that
         // actually shape her model.
         var questions = all.Where(q => !q.ForTheRecord).ToList();
-        int open = questions.Count(q => !q.Decided);
+        int open = questions.Count(q => !q.Decided && !q.Defect);
+        int defects = questions.Count(q => q.Defect);
 
-        sheet.Cell(1, 1).Value = open == 0
-            ? $"{projectName} — decisions"
-            : $"{projectName} — decisions, and {open} thing(s) only you can settle";
+        // A page that says "decisions" while the report below it says ETABS may refuse eighteen of
+        // her floors is a page that has misled her. Both numbers go in the title, and the title
+        // says nothing reassuring unless both are zero.
+        string headline = (open, defects) switch
+        {
+            (0, 0) => $"{projectName} — decisions",
+            (_, 0) => $"{projectName} — decisions, and {open} thing(s) only you can settle",
+            (0, _) => $"{projectName} — decisions, and {defects} FAULT(S) IN THIS MODEL",
+            _ => $"{projectName} — {open} thing(s) only you can settle, and {defects} FAULT(S) IN THIS MODEL",
+        };
+        sheet.Cell(1, 1).Value = headline;
         sheet.Cell(1, 1).Style.Font.Bold = true;
         sheet.Cell(1, 1).Style.Font.FontSize = 13;
 
-        sheet.Cell(2, 1).Value = Introduction(open, questions.Count(Changeable));
+        sheet.Cell(2, 1).Value = Introduction(open, questions.Count(Changeable), defects);
         sheet.Cell(2, 1).Style.Font.Italic = true;
 
         string[] headers =
@@ -919,9 +949,11 @@ public static class ModelQuestionnaire
             // the sheet invited an answer it could not act on, and only a sentence at the top,
             // which nobody reads twice, said otherwise.
             var status = sheet.Cell(row, 2);
-            status.Value = !q.Decided ? "NEEDS YOU" : Changeable(q) ? "DECIDED" : "SCOPE";
+            status.Value = q.Defect ? "DEFECT"
+                : !q.Decided ? "NEEDS YOU"
+                : Changeable(q) ? "DECIDED" : "SCOPE";
             status.Style.Font.Bold = true;
-            status.Style.Font.FontColor = !q.Decided
+            status.Style.Font.FontColor = q.Defect || !q.Decided
                 ? XLColor.FromArgb(169, 58, 51)
                 : Changeable(q) ? XLColor.FromArgb(44, 115, 85) : XLColor.FromArgb(110, 110, 110);
 

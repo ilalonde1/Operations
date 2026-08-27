@@ -255,6 +255,7 @@ public static class DxfToEtabsService
         "dxf.slab-callout-min-thickness",
         "dxf.slab-callout-max-thickness",
         "dxf.ring-on-plate-edge-fraction",
+        "dxf.recovered-outline-tolerance",
         "dxf.storeys-at-one-level-gap",
         "dxf.same-ground-area-tolerance",
         "dxf.same-ground-centre-tolerance",
@@ -333,6 +334,7 @@ public static class DxfToEtabsService
             ["dxf.slab-callout-min-thickness"] = classification.SlabCalloutMinThickness,
             ["dxf.slab-callout-max-thickness"] = classification.SlabCalloutMaxThickness,
             ["dxf.ring-on-plate-edge-fraction"] = classification.RingOnPlateEdgeFraction,
+            ["dxf.recovered-outline-tolerance"] = classification.RecoveredOutlineTolerance,
             ["dxf.storeys-at-one-level-gap"] = compose.StoreysAtOneLevelGap,
             ["dxf.same-ground-area-tolerance"] = compose.SameGroundAreaTolerance,
             ["dxf.same-ground-centre-tolerance"] = compose.SameGroundCentreTolerance,
@@ -392,6 +394,7 @@ public static class DxfToEtabsService
             SlabCalloutMinThickness = settings.ValueOr("dxf.slab-callout-min-thickness", options.SlabCalloutMinThickness),
             SlabCalloutMaxThickness = settings.ValueOr("dxf.slab-callout-max-thickness", options.SlabCalloutMaxThickness),
             RingOnPlateEdgeFraction = settings.ValueOr("dxf.ring-on-plate-edge-fraction", options.RingOnPlateEdgeFraction),
+            RecoveredOutlineTolerance = settings.ValueOr("dxf.recovered-outline-tolerance", options.RecoveredOutlineTolerance),
         };
 
     /// <summary>

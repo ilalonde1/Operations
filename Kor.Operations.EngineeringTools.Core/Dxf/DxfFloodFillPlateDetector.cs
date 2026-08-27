@@ -72,13 +72,31 @@ internal static class DxfFloodFillPlateDetector
 
         if (points.Count < 3) return false;
 
+        // A TRACE IS NOT AN OUTLINE UNTIL IT IS STRAIGHTENED.
+        //
+        // The collinear pass above removes a vertex only where it sits on the line between its two
+        // neighbours, and on a raster staircase none of them does. 31168's LEVEL 2 shipped as 1,942
+        // vertices and C-LEVEL 3 as 1,084, against perhaps forty in the drawing. ETABS is handed
+        // the staircase and meshes it, and no count in the report can see that.
+        //
+        // Straightened at the rule, then CHECKED: an outline that loses real area under it is not
+        // simplified, it is different, so the straightening is kept only where the area holds.
+        var straightened = LoopGeometry.Straighten(points, options.RecoveredOutlineTolerance);
+        if (straightened.Count >= 3)
+        {
+            double before = Math.Abs(new PlanLoop("t", points, false).SignedArea);
+            double after = Math.Abs(new PlanLoop("t", straightened, false).SignedArea);
+            if (before > 0 && Math.Abs(after - before) / before <= 0.01) points = straightened;
+        }
+
         var recovered = new PlanLoop("slab-edge flood fill", points, closedExactly: false);
         if (recovered.Area < options.MinPlateArea) return false;
         if (BoundingFillRatio(recovered.Points, recovered.Area) < 0.80) return false;
 
         plate = recovered;
         note = $"Slab edges did not close as vectors, so one floor plate was recovered by flood-filling " +
-               $"the drawn slab-edge linework — {recovered.Area / 144:N0} sq ft. Treat as recovered geometry.";
+               $"the drawn slab-edge linework — {recovered.Area / 144:N0} sq ft in {recovered.Points.Count} " +
+               "corners. Treat as recovered geometry.";
         return true;
 
         void Plot(int x, int y)
