@@ -41,6 +41,18 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public IReadOnlyList<string> NonStructuralSheetPatterns { get; init; } = Array.Empty<string>();
 
+    /// <summary>Thinnest printed slab call-out this believes. See `dxf.slab-callout-min-thickness`.</summary>
+    public double SlabCalloutMinThickness { get; init; } = 4.0;
+
+    /// <summary>Thickest printed slab call-out this believes. See `dxf.slab-callout-max-thickness`.</summary>
+    public double SlabCalloutMaxThickness { get; init; } = 120.0;
+
+    /// <summary>
+    /// How much of a ring's edge must lie ON a floor's own edge before it is that edge rather than
+    /// a hole in it. See `dxf.ring-on-plate-edge-fraction`.
+    /// </summary>
+    public double RingOnPlateEdgeFraction { get; init; } = 0.5;
+
     public double MinWallThickness { get; init; } = 4.0;
     public double MaxWallThickness { get; init; } = 36.0;
 
@@ -1784,7 +1796,7 @@ public static class StructuralPlanClassifier
                 // this on 25 August, "he inverted slab and opening".
                 double sharedEdge = FractionOnBoundary(loop, container, options.MinWallThickness);
 
-                if (sharedEdge >= 0.5)
+                if (sharedEdge >= options.RingOnPlateEdgeFraction)
                 {
                     result.Flags.Add(
                         $"{loop.Layer}: a ring of {loop.Area / 144:N0} sq ft inside a floor of " +

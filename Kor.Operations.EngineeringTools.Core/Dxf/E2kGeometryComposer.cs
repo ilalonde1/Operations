@@ -27,6 +27,16 @@ public sealed record StoryPlacement(
     /// belongs to, and goes to whichever storey is nearest above -- the tower's.
     /// </summary>
     public string? SheetBuildingTag { get; init; }
+
+    /// <summary>
+    /// True where the sheet's title names a building at all — one or several.
+    ///
+    /// Separate from <see cref="SheetBuildingTag"/> on purpose, and the two answer different
+    /// questions. A sheet titled "BLDG A&amp;B" IS a per-building sheet, so it counts among the
+    /// parts that can supersede a whole-floor drawing; but it is not building A's, so its members
+    /// must not prefer A's storeys. Conflating them broke each rule in turn.
+    /// </summary>
+    public bool IsPerBuildingSheet { get; init; }
 }
 
 /// <summary>
@@ -215,6 +225,8 @@ public sealed record ComposeOptions
             // wrong by the square.
             JointMergeTolerance = JointMergeTolerance * f,
             SelfTouchReportGap = SelfTouchReportGap * f,
+            StoreysAtOneLevelGap = StoreysAtOneLevelGap * f,
+            SameGroundCentreTolerance = SameGroundCentreTolerance * f,
         };
     }
 
@@ -254,6 +266,23 @@ public sealed record ComposeOptions
     /// printed dimension in inches while every other length here is in the model's own unit.
     /// </summary>
     public double ModelUnitInInches { get; init; } = 1.0;
+
+    /// <summary>
+    /// Two storeys closer than this are one physical level drafted twice, and a member rises past
+    /// them. See `dxf.storeys-at-one-level-gap`.
+    /// </summary>
+    public double StoreysAtOneLevelGap { get; init; } = 12.0;
+
+    /// <summary>
+    /// How close in AREA two plates must be to be standing on the same ground, as a fraction. See
+    /// `dxf.same-ground-area-tolerance`.
+    /// </summary>
+    public double SameGroundAreaTolerance { get; init; } = 0.02;
+
+    /// <summary>
+    /// And how close their centres must be, in model units. See `dxf.same-ground-centre-tolerance`.
+    /// </summary>
+    public double SameGroundCentreTolerance { get; init; } = 24.0;
 
     public double SpandrelDepthFloor { get; init; } = 18.0;
 
@@ -671,7 +700,7 @@ public static class E2kGeometryComposer
         // 1.7 in apart. Rising to the nearer of those builds a wall 1.7 in tall, which is how this
         // change first announced itself: "no wall is shorter than a person" went red on 31168.
         // Two storeys within a foot of each other are one level, and a member rises past them.
-        const double SameLevel = 12.0;
+        double SameLevel = options.StoreysAtOneLevelGap;
         StoryLevel RisesTo(StoryLevel from, string? sheetTag = null)
         {
             // Never onto another building's storey.
@@ -778,8 +807,9 @@ public static class E2kGeometryComposer
             foreach (var (x, y, plateArea, from) in plates)
             {
                 if (string.Equals(from, sheet, StringComparison.OrdinalIgnoreCase)) continue;
-                if (Math.Abs(plateArea - area) > area * 0.02) continue;
-                if (Math.Abs(x - at.X) > 24.0 || Math.Abs(y - at.Y) > 24.0) continue;
+                if (Math.Abs(plateArea - area) > area * options.SameGroundAreaTolerance) continue;
+                if (Math.Abs(x - at.X) > options.SameGroundCentreTolerance
+                    || Math.Abs(y - at.Y) > options.SameGroundCentreTolerance) continue;
                 return from;
             }
 

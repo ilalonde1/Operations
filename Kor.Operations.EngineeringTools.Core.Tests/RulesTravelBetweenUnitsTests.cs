@@ -44,6 +44,11 @@ public class RulesTravelBetweenUnitsTests
         ["ModelUnitInInches"] = "what a unit MEASURES, not a length measured in one — scaling it " +
                                "would make the tag-thickness conversion wrong by the square",
         ["DefaultSlabThicknessInches"] = "stated in inches on purpose, for the report's wording",
+        ["SameGroundAreaTolerance"] = "a fraction of an area",
+        ["RingOnPlateEdgeFraction"] = "a fraction of a ring's length",
+        ["SlabCalloutMinThickness"] = "compared against a number PRINTED on the drawing, which says " +
+                                      "its own unit — inches whatever the geometry counts in",
+        ["SlabCalloutMaxThickness"] = "the same: a printed dimension, not a model length",
     };
 
     public static TheoryData<string> Records => new() { "classification", "compose" };

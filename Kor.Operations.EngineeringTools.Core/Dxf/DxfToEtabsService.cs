@@ -244,6 +244,12 @@ public static class DxfToEtabsService
         // happens when one is absent and what she is told.
         "dxf.donor-plate-likeness-margin",
         "dxf.doubled-edge-coverage",
+        "dxf.slab-callout-min-thickness",
+        "dxf.slab-callout-max-thickness",
+        "dxf.ring-on-plate-edge-fraction",
+        "dxf.storeys-at-one-level-gap",
+        "dxf.same-ground-area-tolerance",
+        "dxf.same-ground-centre-tolerance",
         "dxf.doubled-edge-parallel-ratio",
         "dxf.flood-fill-bridge",
         "dxf.joint-merge-tolerance",
@@ -308,6 +314,12 @@ public static class DxfToEtabsService
             ["dxf.spandrel-depth-ceiling"] = compose.SpandrelDepthCeiling,
             ["dxf.donor-plate-likeness-margin"] = compose.DonorPlateLikenessMargin,
             ["dxf.doubled-edge-coverage"] = classification.DoubledEdgeCoverage,
+            ["dxf.slab-callout-min-thickness"] = classification.SlabCalloutMinThickness,
+            ["dxf.slab-callout-max-thickness"] = classification.SlabCalloutMaxThickness,
+            ["dxf.ring-on-plate-edge-fraction"] = classification.RingOnPlateEdgeFraction,
+            ["dxf.storeys-at-one-level-gap"] = compose.StoreysAtOneLevelGap,
+            ["dxf.same-ground-area-tolerance"] = compose.SameGroundAreaTolerance,
+            ["dxf.same-ground-centre-tolerance"] = compose.SameGroundCentreTolerance,
             ["dxf.doubled-edge-parallel-ratio"] = classification.DoubledEdgeParallelRatio,
             ["dxf.flood-fill-bridge"] = classification.FloodFillBridge,
             ["dxf.joint-merge-tolerance"] = compose.JointMergeTolerance,
@@ -361,6 +373,9 @@ public static class DxfToEtabsService
             FloodFillBridge = settings.ValueOr("dxf.flood-fill-bridge", options.FloodFillBridge),
             DoubledEdgeParallelRatio = settings.ValueOr("dxf.doubled-edge-parallel-ratio", options.DoubledEdgeParallelRatio),
             DoubledEdgeCoverage = settings.ValueOr("dxf.doubled-edge-coverage", options.DoubledEdgeCoverage),
+            SlabCalloutMinThickness = settings.ValueOr("dxf.slab-callout-min-thickness", options.SlabCalloutMinThickness),
+            SlabCalloutMaxThickness = settings.ValueOr("dxf.slab-callout-max-thickness", options.SlabCalloutMaxThickness),
+            RingOnPlateEdgeFraction = settings.ValueOr("dxf.ring-on-plate-edge-fraction", options.RingOnPlateEdgeFraction),
         };
 
     internal static ComposeOptions ApplyRules(
@@ -381,6 +396,9 @@ public static class DxfToEtabsService
             DonorPlateLikenessMargin = settings.ValueOr("dxf.donor-plate-likeness-margin", options.DonorPlateLikenessMargin),
             MinFloorCoverage = settings.ValueOr("dxf.min-floor-coverage", options.MinFloorCoverage),
             SelfTouchReportGap = settings.ValueOr("dxf.self-touch-report-gap", options.SelfTouchReportGap),
+            StoreysAtOneLevelGap = settings.ValueOr("dxf.storeys-at-one-level-gap", options.StoreysAtOneLevelGap),
+            SameGroundAreaTolerance = settings.ValueOr("dxf.same-ground-area-tolerance", options.SameGroundAreaTolerance),
+            SameGroundCentreTolerance = settings.ValueOr("dxf.same-ground-centre-tolerance", options.SameGroundCentreTolerance),
         };
 
     private static string Describe(double unitInInches) => unitInInches switch
@@ -812,11 +830,97 @@ public static class DxfToEtabsService
                 if (byName.TryGetValue(storyName, out var story))
                     placements.Add(new StoryPlacement(story, geometry, sheet.FileName, sheet.IsFoundation)
                     {
-                        SheetBuildingTag = sheet.BuildingTag,
+                        // ONE building, or none. A sheet titled "BLDG A&B" is drawn for both and
+                        // is shared between them; taking its first tag made it building A's, and
+                        // its members then rose to the next A-tagged storey and skipped the shared
+                        // one between. LEVEL 26 lost every wall and column holding its floor up.
+                        SheetBuildingTag = sheet.BuildingTags.Count == 1 ? sheet.BuildingTag : null,
+                        IsPerBuildingSheet = sheet.BuildingTags.Count > 0,
                         SlabThickness = slabThickness is null ? null : slabThickness.ThicknessInches / modelUnitInInches,
                         SlabThicknessInches = slabThickness?.ThicknessInches,
                         SlabThicknessPage = slabThickness?.PageNumber,
                     });
+        }
+
+        // A WHOLE-FLOOR SHEET AND THE PER-BUILDING SHEETS OF THE SAME FLOOR ARE ONE DRAWING.
+        //
+        // 31168 draws LEVEL 2 three times: once whole, on a sheet with no building in its title,
+        // and once per building — "BLDG C" and "WEST (BLDG A & B)". Measured from this run's own
+        // ledger, the whole sheet yields 38 walls and 60 columns and the two halves yield 16/36
+        // and 22/24. 38 = 16 + 22 and 60 = 36 + 24: the same structure, drawn once entire and once
+        // in parts.
+        //
+        // Only the parts know which building they belong to, and a member is placed by rising to
+        // the storey above IT — so the whole sheet's members all rose to the shared storey and the
+        // YMCA's C-LEVEL 3 came out with a floor plate and nothing holding it up. The parts put
+        // them on C-LEVEL 3 and LEVEL 3 respectively, which is the building.
+        //
+        // So where a storey is drawn both ways, the parts win. Not a preference — the whole sheet
+        // cannot answer the question placement asks.
+        //
+        // Deliberately narrow: it fires only where a storey has BOTH an untagged sheet and at
+        // least one tagged one. A job whose sheets are all untagged, or all tagged, is untouched.
+        // AND ONLY WHERE THE PARTS ACTUALLY COVER THE WHOLE.
+        //
+        // "The same storey is also drawn per building" is not enough on its own. 31168 issues a
+        // RANGE sheet — "LEVEL 15 PLAN (L15-26) ... BLDG A&B" — which is tagged and lands on
+        // twelve storeys, so every per-level sheet from LEVEL 15 to LEVEL 26 looked superseded.
+        // LEVEL 26 lost the members holding its floor up and came back as a plate over nothing.
+        //
+        // The evidence that justified this rule was arithmetic: on LEVEL 2 the whole sheet gives
+        // 38 walls and 60 columns and the parts give 16/36 and 22/24, so 38 = 16 + 22 exactly. So
+        // that is the test. The parts must together carry at least what the whole carries; where
+        // they do not, the whole sheet is drawing structure they leave out and it stays.
+        var partsByStorey = placements
+            .Where(p => p.IsPerBuildingSheet)
+            .GroupBy(p => p.Story.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => (Walls: g.Sum(p => p.Geometry.Walls.Count),
+                      Columns: g.Sum(p => p.Geometry.Columns.Count)),
+                StringComparer.OrdinalIgnoreCase);
+
+        var supersededByParts = placements
+            .Where(p => !p.IsPerBuildingSheet)
+            .Where(p => partsByStorey.TryGetValue(p.Story.Name, out var parts)
+                        && parts.Walls >= p.Geometry.Walls.Count
+                        && parts.Columns >= p.Geometry.Columns.Count)
+            .ToList();
+
+        // MEMBERS ONLY. The whole-floor sheet keeps its FLOOR.
+        //
+        // Dropping the whole sheet outright cost sixteen plates: 106 to 90. The parts draw the
+        // structure the whole sheet draws, member for member, but they do NOT always draw the same
+        // slab edge — a half-sheet is cropped to its building and the whole one is not. So the
+        // whole sheet stays for its plates and openings, and stands down only for the walls and
+        // columns, which are the things placement has to know a building for.
+        //
+        // Plates arriving twice is a case the composer already settles: one plate per place per
+        // storey, and a floor read twice is not a floor with a hole in it.
+        if (supersededByParts.Count > 0)
+        {
+            foreach (var whole in supersededByParts)
+            {
+                var floorsOnly = new PlanGeometrySet();
+                floorsOnly.Slabs.AddRange(whole.Geometry.Slabs);
+                floorsOnly.Openings.AddRange(whole.Geometry.Openings);
+                floorsOnly.Tags.AddRange(whole.Geometry.Tags);
+                floorsOnly.Flags.AddRange(whole.Geometry.Flags);
+
+                placements[placements.IndexOf(whole)] = whole with { Geometry = floorsOnly };
+            }
+
+            warnings.Add(
+                $"{supersededByParts.Count} whole-floor sheet placement(s) gave up their walls and columns " +
+                "because the same storey is also drawn per building, and only the per-building sheets say " +
+                "which building a member belongs to: " +
+                string.Join(", ", supersededByParts
+                    .Select(w => $"{Path.GetFileName(w.SourceSheet)} on {w.Story.Name}")
+                    .Distinct()
+                    .Take(6)) +
+                (supersededByParts.Count > 6 ? $", and {supersededByParts.Count - 6} more" : "") +
+                ". Their floor plates are kept — a half-sheet is cropped to its building and does not " +
+                "always draw the whole slab edge.");
         }
 
         var foundationStoreys = placements
