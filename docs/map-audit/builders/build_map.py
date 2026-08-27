@@ -31,6 +31,10 @@ PAGE = """<meta charset="utf-8">
   html,body{margin:0;padding:0;background:#fff;font-family:Segoe UI,Arial,sans-serif}
   #map{width:__W__px;height:__H__px}
   .leaflet-container{background:#f2f2f0}
+  /* Raster OSM is far busier and more colourful than the basemap these pins
+     were designed against. Desaturating the TILE pane only leaves the markers
+     their orange and green. */
+  .leaflet-tile-pane{filter:grayscale(1) brightness(1.07) contrast(.92)}
   .kor-cap{background:rgba(255,255,255,.95);white-space:nowrap;
            border-left:4px solid #ff5c35;padding:9px 16px;font-size:15px;color:#2f3338;
            box-shadow:0 1px 6px rgba(0,0,0,.18)}
@@ -47,8 +51,21 @@ PAGE = """<meta charset="utf-8">
 <script>
 var DATA = __DATA__, SITES = __SITES__, CAPTION = "__CAP__";
 var map = L.map('map', {zoomControl:false, attributionControl:true, preferCanvas:true});
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  {maxZoom:19, attribution:'&copy; OpenStreetMap, &copy; CARTO'}).addTo(map);
+/* Basemap: OpenStreetMap raster, desaturated by the .leaflet-tile-pane filter
+   above so it reads like the grey canvas the orange and green pins were drawn
+   against.
+
+   CARTO began stamping "API KEY REQUIRED" into key-less tiles on 2026-08-26,
+   and their signup turned out to be a 14-day trial of the whole platform, not
+   a tile allowance. OpenFreeMap serves the identical Positron style with no key
+   and no account, but it is VECTOR: under headless SwiftShader MapLibre never
+   reaches its `idle` event and the figure renders blank -- tested twice, once
+   with compositor flags and a 90-second budget. A basemap this figure cannot
+   reproduce would put a different map in the proposal than on the website, so
+   raster it is. */
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {maxZoom:19, subdomains:'abc',
+   attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 var pts = [];
 // Orange is KOR's own work; green is Jim DesRoches' pre-KOR experience. They
 // are NOT the same claim and must not share a colour on a fee proposal.

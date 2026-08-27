@@ -960,6 +960,26 @@ public static class StructuralPlanClassifier
                     // by a raster fill of the same linework. Keeping the larger and dropping the
                     // smaller is all that is wanted.
                     foreach (var inside in swallowed) result.Slabs.Remove(inside);
+
+                    // AN OPENING GOES WITH THE PLATE IT WAS CUT FROM.
+                    //
+                    // A hole belongs to a floor. Where that floor turns out to be a second reading
+                    // of one already found, the hole is a second reading too -- and left behind it
+                    // does not vanish, it gets cut into whichever plate survives.
+                    //
+                    // 31168's C-LEVEL 3: a chain closed into 22,676 sq ft with an 11,804 sq ft
+                    // opening in it, the flood fill recovered the same floor as 12,862, the chain
+                    // ring was correctly dropped -- and its orphaned opening was then cut out of
+                    // the survivor, 91 per cent of it. The plate came back and the hole ate it.
+                    int orphaned = result.Openings.RemoveAll(hole =>
+                        swallowed.Any(dropped => LoopGeometry.PointInPolygon(hole.Centroid(), dropped.Points)));
+
+                    if (orphaned > 0)
+                        result.Flags.Add(
+                            $"{orphaned} opening(s) were dropped with the outline(s) they were cut from — " +
+                            "a hole read out of a floor that turned out to be the same floor read twice is " +
+                            "the same hole read twice, and cutting it from the surviving plate would " +
+                            "take out ground the drawing never opened.");
                     result.Flags.Add(
                         $"{swallowed.Count} closed outline(s) totalling {swallowed.Sum(x => x.Area) / 144:N0} sq ft " +
                         $"lie inside the {best.Area / 144:N0} sq ft floor recovered from the same linework, so they " +
