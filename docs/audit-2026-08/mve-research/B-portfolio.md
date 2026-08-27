@@ -121,7 +121,7 @@ within it: **eight towers of 20 storeys or more**, several above 35.
 | **4th & Hewitt** | Los Angeles, Arts District | Shoreham Capital | 93 units, 20,250 sf retail, 0.5 ac | **ARCHIVED MVE PAGE** |
 | **Meridian** | Newport Beach | The New Home Company | 79 units, 4.25 ac | **ARCHIVED MVE PAGE** |
 | **8000 West 3rd Street** | Los Angeles | JLAA Capital, LLC | 50 units, 5 storeys, 5,200 sf retail, Type V | **ARCHIVED MVE PAGE** |
-| **4002 Park** | San Diego, Hillcrest | REDA | 195 units, 5,700 sf amenities, 2,400 sf retail | **ARCHIVED MVE PAGE**. ⚠ Same client, same neighbourhood as **Pali**; whether these are two projects or one renamed is **UNRESOLVED** — do not present as two without asking |
+| ~~**4002 Park**~~ | San Diego, Hillcrest | REDA | ~~195 units~~ | **RESOLVED 2026-08-26 — this is the same project as Pali, not a second one.** The row above is the current record: 206 units, 21 storeys. The 195-unit / 20-storey figures are the superseded May 2024 press description. The City of San Diego's permit record (PRJ-1127128, 4002 Park Bl) carries 21 storeys, 212,821 sf and a 206-unit mix, which matches MVE's live **Pali** page. **Do not carry as a separate project.** |
 | **Riverview** · **Verona** · **Santa Clara Park** · **Santa Clara Square** · **Spectrum Court** · **The Pennant** | San Jose / Santa Clara / Irvine / South Jordan UT | — | carried in MVE's own map data with no published detail | **VERIFIED** that MVE lists them; **program UNRESOLVED** |
 
 **The Pennant** is separately confirmed: MVE's Downtown Daybreak page states *"MVE serves as the architect
@@ -487,7 +487,7 @@ direct commission.
 | **Bridge Housing** | **COMM22** (252 u), **9th & Broadway** (250 u) | **ARCHIVED MVE PAGE** |
 | **Shea Properties** | **120 Vantis**, **130 Vantis** | **ARCHIVED MVE PAGE** |
 | **Brookfield Residential** | **Playa Vista II** (with Playa Capital); and **The Landing at Tustin Legacy** in partnership with the City of Tustin | **VERIFIED** |
-| **REDA** | **Pali** (206 u), **6201 Residences** (846 u, with RCB Equities), **4002 Park** (195 u) | **VERIFIED** + **ARCHIVED MVE PAGE** |
+| **REDA** | **Pali / 4002 Park** (206 u — one project, not two), **6201 Residences** (846 u, with RCB Equities) | **VERIFIED** |
 | **UDR** | **Residences at Pacific City** (516 u) — ⚠ MVE's own current page states **"Master Planning, Entitlements"**, while third-party sources call MVE simply "architect". **State MVE's own wording.** | **VERIFIED**, with the role discrepancy flagged |
 | **Vestar** | **Legacy Park**, Mesa AZ | **VERIFIED**, scope shared — see §15 |
 | **JADE Enterprises** | **Emerald** (154 u), **Main Street Park** (379 u) | **VERIFIED** + **ARCHIVED MVE PAGE** |
@@ -569,8 +569,9 @@ project-level backing spanning 1998–2025; the other two categories rest on MVE
    divides the 200-acre programme between them.
 4. **Four Seasons DTLA — client and role UNRESOLVED.** It sits in MVE's archived portfolio at 60 storeys
    with no client field. Do not describe MVE's role.
-5. **Pali vs 4002 Park — possibly one project.** Same client (REDA), same neighbourhood (Hillcrest),
-   different unit counts and storeys. **Ask, do not assert.**
+5. ~~**Pali vs 4002 Park — possibly one project.**~~ **CLOSED 2026-08-26. They are one project.**
+   MVE's live Pali page and the City of San Diego permit record for 4002 Park Bl agree on 21 storeys
+   and 206 units; the 195-unit / 20-storey figures are the superseded 2024 press description.
 6. **Uptown Newport — not attributed to The Irvine Company.** Client field reads "Uptown Newport LP".
 7. **The Plaza Irvine — actively refuted as Irvine Company work.** Opus West / Geoffrey Edmunds, and
    credited to **MVP International, Inc.**

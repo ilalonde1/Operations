@@ -26,6 +26,21 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public double DoubledEdgeCoverage { get; init; } = 0.5;
 
+    /// <summary>
+    /// Sheets whose NAME says they are not a structural plan. See
+    /// `dxf.non-structural-sheet-patterns`.
+    ///
+    /// A drawing set contains more than the plans a model is built from. 31168's Revit export
+    /// offers 139 plan views per run and 57 of them are reinforcing plans, core-wall key plans,
+    /// uncropped working views and a design load plan -- drawings whose linework is a schematic
+    /// OF the building rather than the building. A load plan's zone boundary reached a model on
+    /// 2026-08-26 and was cut out of the ground floor as a 10,245 sq ft opening.
+    ///
+    /// Matched against the file name, case-insensitively, as substrings. Empty means read
+    /// everything, which is what a folder somebody has already curated wants.
+    /// </summary>
+    public IReadOnlyList<string> NonStructuralSheetPatterns { get; init; } = Array.Empty<string>();
+
     public double MinWallThickness { get; init; } = 4.0;
     public double MaxWallThickness { get; init; } = 36.0;
 

@@ -49,6 +49,23 @@ public static class RuleSettings
     /// <summary>The units a rule declares when its value is a semicolon-separated list of strings.</summary>
     public const string TextUnits = "layers";
 
+    /// <summary>
+    /// Every units string that means "this value is a list of names, not a number".
+    ///
+    /// It was one word, "layers", from the days when the only list rules were layer patterns. The
+    /// first list rule that was not about layers — dxf.non-structural-sheet-patterns, which names
+    /// SHEETS — was refused on arrival: the loader tried to parse "REINFORC;REBAR;KEY PLAN..." as
+    /// a size, failed, and stopped the run before a model was written.
+    ///
+    /// That refusal is the right behaviour for a size it cannot read. It was the wrong answer
+    /// here, and the fix is not to mislabel the row as layers when it is nothing of the sort.
+    /// </summary>
+    private static readonly string[] ListUnits = { TextUnits, "names", "patterns", "sheets" };
+
+    /// <summary>Whether a rule's declared units say its value is a list rather than a size.</summary>
+    public static bool IsListUnits(string units)
+        => ListUnits.Any(u => u.Equals(units, StringComparison.OrdinalIgnoreCase));
+
     public const string ConnectionEnvironmentVariable = "KOR_ENGINEERINGTOOLS_STANDARDSDB";
 
     /// <summary>
@@ -123,7 +140,7 @@ public static class RuleSettings
                 // for that would stop the run. Anything else that will not parse still does: a
                 // size the tool cannot read is a rule it cannot apply, and continuing would mean
                 // silently using the constant compiled into the code instead.
-                bool isList = units.Equals(TextUnits, StringComparison.OrdinalIgnoreCase);
+                bool isList = IsListUnits(units);
                 double value = double.NaN;
                 if (!isList && !TryParseSettingValue(reader.GetValue(1), units, out value))
                 {
@@ -293,7 +310,7 @@ public static class RuleSettings
             // A list rule's answer is the answer. Running "S-WALL-CONC" through a parser that
             // hunts for digits would find none and refuse the row, or worse, find the 8 in
             // "S8-WALL" and store that.
-            if (units.Count == keys.Count && units.All(u => u.Equals(TextUnits, StringComparison.OrdinalIgnoreCase)))
+            if (units.Count == keys.Count && units.All(IsListUnits))
             {
                 var cleaned = answer
                     .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

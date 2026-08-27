@@ -83,7 +83,18 @@ public static class JobPublisher
         var document = E2kDocument.Load(referencePath);
         var storeys = document.ReadStories().Select(s => s.Name).ToList();
 
-        var plans = PublishPlan.ForBuildings(storeys, ReachByStorey(request.DxfFolder, storeys));
+        // THE SAME RULES THE MODEL IS BUILT ON, not this file's defaults.
+        //
+        // Reach decides which sheets feed which building, so it decides what is IN each published
+        // model before a single one is generated. Reading it with built-in layer patterns meant a
+        // firm whose layers are named anything else got their buildings split on no structure at
+        // all -- and nothing downstream could tell, because each model that came out was then
+        // built correctly from whatever reach had handed it.
+        //
+        // Found by an adversarial audit on 2026-08-26. It could not have been found by the
+        // required-rule coverage test, which watches ApplyRules and never sees this call.
+        var reachRules = PlanRulesFor(request.RuleSettingsConnection);
+        var plans = PublishPlan.ForBuildings(storeys, ReachByStorey(request.DxfFolder, storeys, reachRules));
 
         var built = new List<Built>();
         foreach (var plan in plans)
@@ -130,13 +141,39 @@ public static class JobPublisher
     }
 
     /// <summary>
+    /// The classification rules from KorStandards, for the reads that happen BEFORE a model run.
+    ///
+    /// A run refuses to start without them. This one cannot: reach is computed while deciding
+    /// what to build, and a job published from a machine that cannot see the database should
+    /// still produce a model rather than an exception. So a missing connection falls back to the
+    /// built-in values and the caller is no worse off than before -- but a connection that IS
+    /// there is used, which is the whole point.
+    /// </summary>
+    private static PlanClassificationOptions PlanRulesFor(string? connection)
+    {
+        if (string.IsNullOrWhiteSpace(connection)) return new PlanClassificationOptions();
+
+        try
+        {
+            var settings = RuleSettings.LoadRequired(connection, DxfToEtabsService.RequiredRuleKeys);
+            return DxfToEtabsService.ApplyRules(new PlanClassificationOptions(), settings);
+        }
+        catch
+        {
+            // Unreachable or incomplete: the model run that follows will refuse for the same
+            // reason and say so properly. Reach is not the place to fail a publish.
+            return new PlanClassificationOptions();
+        }
+    }
+
+    /// <summary>
     /// Where the structure read from each storey's sheets stands, in plan. This is what tells a
     /// tower floor with no prefix apart from the mid-rise's own — nothing in the NAME does.
     /// </summary>
     public static IReadOnlyList<PublishPlan.StoreyReach> ReachByStorey(
-        string dxfFolder, IReadOnlyList<string> storeys)
+        string dxfFolder, IReadOnlyList<string> storeys, PlanClassificationOptions? rules = null)
     {
-        var options = new PlanClassificationOptions();
+        var options = rules ?? new PlanClassificationOptions();
         var reach = new Dictionary<string, PublishPlan.StoreyReach>(StringComparer.OrdinalIgnoreCase);
 
         foreach (string file in Directory.EnumerateFiles(dxfFolder, "*.dxf", SearchOption.TopDirectoryOnly))

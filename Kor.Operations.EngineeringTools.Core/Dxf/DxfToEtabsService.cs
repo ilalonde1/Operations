@@ -198,6 +198,7 @@ public static class DxfToEtabsService
         "dxf.wall-layer-patterns",
         "dxf.column-layer-patterns",
         "dxf.slab-layer-patterns",
+        "dxf.non-structural-sheet-patterns",
         "dxf.min-wall-thickness",
         "dxf.max-wall-thickness",
         "dxf.min-wall-length",
@@ -264,6 +265,7 @@ public static class DxfToEtabsService
         "dxf.wall-layer-patterns",
         "dxf.column-layer-patterns",
         "dxf.slab-layer-patterns",
+        "dxf.non-structural-sheet-patterns",
     ];
 
     private static IReadOnlyDictionary<string, double> BuiltInRuleValues(
@@ -331,6 +333,7 @@ public static class DxfToEtabsService
             WallLayerPatterns = settings.ListOr("dxf.wall-layer-patterns", options.WallLayerPatterns),
             ColumnLayerPatterns = settings.ListOr("dxf.column-layer-patterns", options.ColumnLayerPatterns),
             SlabLayerPatterns = settings.ListOr("dxf.slab-layer-patterns", options.SlabLayerPatterns),
+            NonStructuralSheetPatterns = settings.ListOr("dxf.non-structural-sheet-patterns", options.NonStructuralSheetPatterns),
             MinWallThickness = settings.ValueOr("dxf.min-wall-thickness", options.MinWallThickness),
             MaxWallThickness = settings.ValueOr("dxf.max-wall-thickness", options.MaxWallThickness),
             MinWallLength = settings.ValueOr("dxf.min-wall-length", options.MinWallLength),
@@ -497,6 +500,42 @@ public static class DxfToEtabsService
         warnings.AddRange(RuleSettings.Describe(banked, builtIn));
 
         var requested = ApplyRules(request.Classification, banked);
+
+        // NOT EVERY PLAN IN A DRAWING SET IS A PLAN THIS BUILDS FROM.
+        //
+        // Until 2026-08-26 this read every .dxf in the folder and the filtering was done by hand,
+        // outside the tool, in a script — which protected exactly one job and no other. 31168's
+        // Revit export offers 139 plan views and 57 are reinforcing plans, core-wall key plans,
+        // uncropped working views and a design load plan: drawings whose linework is a schematic
+        // OF the building rather than the building. A load plan's zone boundary reached a model
+        // and was cut out of the ground floor as a 10,245 sq ft opening.
+        //
+        // Applied here rather than at the enumeration because the rule comes from KorStandards
+        // and is not known until the settings are read. Named, never silent: a sheet refused is a
+        // floor that will not be in the model, and whoever looks for it is owed the reason.
+        if (requested.NonStructuralSheetPatterns.Count > 0)
+        {
+            var refused = new List<string>();
+
+            foreach (string file in files.ToList())
+            {
+                string name = Path.GetFileNameWithoutExtension(file);
+                string? hit = requested.NonStructuralSheetPatterns.FirstOrDefault(
+                    pattern => name.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (hit is null) continue;
+
+                files.Remove(file);
+                sheetInfoByFile.Remove(file);
+                refused.Add($"{Path.GetFileName(file)} [{hit}]");
+            }
+
+            if (refused.Count > 0)
+                warnings.Add(
+                    $"{refused.Count} sheet(s) in the folder are not structural plans and were not read: " +
+                    string.Join(", ", refused.Take(6)) +
+                    (refused.Count > 6 ? $", and {refused.Count - 6} more" : "") +
+                    ". Governed by dxf.non-structural-sheet-patterns.");
+        }
 
         // After the rules, never before: ApplyRules takes the database value over whatever the
         // caller set, which is right for a threshold and wrong for a name given for this job.

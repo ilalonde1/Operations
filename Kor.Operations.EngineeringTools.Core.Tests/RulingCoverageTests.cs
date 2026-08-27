@@ -39,6 +39,7 @@ public class RulingCoverageTests
         ["a-tag-inside-a-region-means-slab"] = "TagGatedSlabRecoveryTests.AnOpenOutlineWithNoCallOutInsideItRecoversNothing",
         ["a-plate-recovered-twice-is-not-a-hole"] = "PlateReadTwiceTests.AFloorFoundTwiceIsOnePlateAndNoOpening",
         ["a-question-she-has-answered-is-not-asked-again"] = "RulingCoverageTests.NoQuestionIsAskedOnATopicSheHasAlreadyRuledOn",
+        ["not-every-plan-is-a-structural-plan"] = "NonStructuralSheetsAreRefusedTests.OnlyThePlansThatDrawTheStructureAreRead",
         ["pier-label-every-wall"] = "EngineerRulingsStillHoldTests.EveryGeneratedWallCarriesAPierLabel",
         ["hatch-is-not-structure"] = "EngineerRulingsStillHoldTests.HatchOnAStructuralLayerContributesNoGeometry",
         ["layers-that-are-not-structure"] = "EngineerRulingsStillHoldTests.GeometryOnAnUnrecognisedLayerIsNotModelled",
