@@ -45,6 +45,20 @@ public sealed class OnDemandHoningSynthesizer
     private const string DefaultModel = "claude-sonnet-5";  // synthesis != research; accurate delta over DB signals
     private const int MaxDuePerCall = 6;   // batch cap - one call covers a whole view
 
+    /// <summary>
+    /// Wall-clock ceiling on synthesis for one view. The batch cap alone bounds
+    /// the size of a CALL, not the number of them: a sector whose nightly honing
+    /// has lapsed can have dozens of due rows, and the chunks run one after
+    /// another with the report blocked behind them. K-12 Schools (561 projects,
+    /// 72 due) sat on "Generating K-12 Schools report..." for over two minutes
+    /// and had not finished - which reads as a report that never comes up.
+    ///
+    /// Past the budget the remaining rows keep their cached verdicts and get
+    /// picked up by the next view or by the nightly pipeline. A view that is
+    /// mostly-current NOW beats one that is perfectly current in five minutes.
+    /// </summary>
+    private static readonly TimeSpan DefaultViewBudget = TimeSpan.FromSeconds(20);
+
     private readonly string _connectionString;
     private readonly HttpClient _http;
     private readonly string _apiKey;
@@ -77,19 +91,28 @@ public sealed class OnDemandHoningSynthesizer
         int AgeDays, int TtlDays, int NewSignalCount, Freshness Class,
         string? ExistingHoningJson, string? DeltaText);
 
-    public sealed record EnsureResult(int Total, int Fresh, int Quiet, int Due, int Synthesized, int TokensSpentApprox);
+    /// <summary><paramref name="Deferred"/> counts due rows the view budget ran
+    /// out before reaching; they keep their cached verdict for now.</summary>
+    public sealed record EnsureResult(
+        int Total, int Fresh, int Quiet, int Due, int Synthesized, int TokensSpentApprox, int Deferred = 0);
 
     /// <summary>
     /// Classify each project (zero tokens), synthesize only the DUE ones (one
     /// batched call), persist, and return the run's cost breakdown. Safe to call
     /// on every view: when everything is FRESH/QUIET it makes no API call at all.
     /// </summary>
-    public async Task<EnsureResult> EnsureFreshAsync(IReadOnlyList<long> mpiIds, CancellationToken ct)
+    public async Task<EnsureResult> EnsureFreshAsync(
+        IReadOnlyList<long> mpiIds,
+        CancellationToken ct,
+        TimeSpan? viewBudget = null)
     {
         if (mpiIds is null || mpiIds.Count == 0)
         {
             return new EnsureResult(0, 0, 0, 0, 0, 0);
         }
+
+        var budget = viewBudget ?? DefaultViewBudget;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
 
         var classified = await ClassifyAsync(mpiIds, ct).ConfigureAwait(false);
         var fresh = classified.Count(c => c.Class == Freshness.Fresh);
@@ -103,20 +126,38 @@ public sealed class OnDemandHoningSynthesizer
             await TouchVerifiedAsync(q.MpiId, ct).ConfigureAwait(false);
         }
 
+        // Spend the budget where it changes decisions: an URGENT or PURSUE
+        // verdict going stale matters more than a DISCOVER one, and anything
+        // deferred still shows its cached verdict.
+        due = due
+            .OrderBy(d => BdVerdicts.Rank(d.Verdict))
+            .ThenByDescending(d => d.NewSignalCount)
+            .ToList();
+
         var synthesized = 0;
         var tokens = 0;
+        var deferred = 0;
         foreach (var chunk in Chunk(due, MaxDuePerCall))
         {
+            // Check BEFORE the call, never mid-flight: a half-finished batch
+            // would spend the tokens and throw away the answer.
+            if (clock.Elapsed >= budget)
+            {
+                deferred += chunk.Count;
+                continue;
+            }
+
             var (updated, approxTokens) = await SynthesizeAndPersistAsync(chunk, ct).ConfigureAwait(false);
             synthesized += updated;
             tokens += approxTokens;
         }
 
         _logger?.LogInformation(
-            "OnDemand synthesis: {Total} projects - {Fresh} fresh, {Quiet} quiet(0-tok), {Due} due, {Synth} synthesized (~{Tok} tokens).",
-            classified.Count, fresh, quiet.Count, due.Count, synthesized, tokens);
+            "OnDemand synthesis: {Total} projects - {Fresh} fresh, {Quiet} quiet(0-tok), {Due} due, {Synth} synthesized, {Deferred} deferred past the {Budget}s budget (~{Tok} tokens, {Elapsed}s).",
+            classified.Count, fresh, quiet.Count, due.Count, synthesized, deferred,
+            (int)budget.TotalSeconds, tokens, (int)clock.Elapsed.TotalSeconds);
 
-        return new EnsureResult(classified.Count, fresh, quiet.Count, due.Count, synthesized, tokens);
+        return new EnsureResult(classified.Count, fresh, quiet.Count, due.Count, synthesized, tokens, deferred);
     }
 
     /// <summary>Pure SQL cost gate - no tokens. Returns each project's freshness

@@ -66,7 +66,7 @@ internal static class OpportunitiesModule
             ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY", EnvironmentVariableTarget.User)
             ?? Environment.GetEnvironmentVariable("KOR_ANTHROPIC_KEY");
         services.AddSingleton<Kor.Opportunities.Data.BdReports.IBdReportService>(
-            _ =>
+            sp =>
             {
                 Kor.Opportunities.Data.BdReports.OnDemandHoningSynthesizer? synth = null;
                 if (!string.IsNullOrWhiteSpace(reportAnthropicKey))
@@ -74,7 +74,13 @@ internal static class OpportunitiesModule
                     synth = new Kor.Opportunities.Data.BdReports.OnDemandHoningSynthesizer(
                         options.OpportunitiesDb,
                         new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(90) },
-                        reportAnthropicKey!);
+                        reportAnthropicKey!,
+                        model: null,
+                        // Without this the synthesizer logged nothing at all, so a
+                        // sector report stuck behind dozens of sequential model
+                        // calls looked identical to one that was simply broken.
+                        logger: sp.GetRequiredService<
+                            ILogger<Kor.Opportunities.Data.BdReports.OnDemandHoningSynthesizer>>());
                 }
                 return new Kor.Opportunities.Data.BdReports.SqlBdReportService(options.OpportunitiesDb, synth);
             });
