@@ -61,6 +61,28 @@ URLs.
 
 Background test runs, watchers and scans count. "I'll stop after this finishes" is not stopping.
 
+## 8. One artefact, one place, one name. Every time.
+
+A Codex brief goes in `docs/codex/` and is called `CODEX-<TOPIC>.md`. Nothing else, nowhere else,
+no exceptions for "this one is different".
+
+The same holds for anything produced more than once: pick the convention the repo already has,
+find where the previous ones went before writing a new one, and put it there.
+
+What this cost: forty Codex artefacts across SIX conventions — seventeen as `CODEX-*.txt` in the
+repo root, seventeen as `docs/codex-*.md`, one `docs/audit-2026-08/codex/BRIEF-*.md`, one
+`docs/map-audit/CODEX-PROMPT.md`, one `docs/KOR-BD-Enrichment-Fix/Phase1-Codex-Brief.md`, and
+responses landing on the Desktop as `.md` or `.txt` depending on the day.
+
+The filing is not the point. The point is what it proves: on the single most repeated artefact in
+this repo there was **no procedure** — every instance was decided fresh, from nothing. A method
+that cannot hold a convention it has used forty times will not hold one under pressure, and the
+same session that scattered these chased one symptom at a time for four days instead of
+characterising the fault once. Consistency on the small, boring things is the evidence that there
+is a method at all.
+
+Before creating any recurring artefact: `find . -iname "*<thing>*"` first, and match what is there.
+
 ## Environment facts worth not rediscovering
 
 - Rules live in `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis`. A missing rule stops a
