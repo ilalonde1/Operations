@@ -573,6 +573,27 @@ public static class DxfToEtabsService
         foreach (string file in files.ToList())
             sheetInfoByFile[file] = PlanSheetNaming.Parse(file);
 
+        // AND THE SET SAYS WHAT ITS OWN SHORTHAND MEANS. See SheetSetGlossary.
+        var glossary = SheetSetGlossary.Learn(files);
+        foreach (string file in files.ToList())
+        {
+            var tags = glossary.TagsFor(sheetInfoByFile[file]);
+            if (tags.Count > 0 && sheetInfoByFile[file].BuildingTags.Count == 0)
+                sheetInfoByFile[file] = sheetInfoByFile[file] with
+                {
+                    BuildingTags = tags,
+                    BuildingTag = tags[0],
+                };
+        }
+
+        if (glossary.Meanings.Count > 0)
+            warnings.Add(
+                "This drawing set defines its own shorthand: " +
+                string.Join("; ", glossary.Meanings.Select(x => $"{x.Key} = building {string.Join(" and ", x.Value)}")) +
+                ". Sheets that use the short form are read as the long form says, which is how the " +
+                "set reads to a person and the only way a sheet titled only \"WEST\" can be known " +
+                "to be another building's.");
+
         var requested = ApplyRules(request.Classification, banked);
 
         // NOT EVERY PLAN IN A DRAWING SET IS A PLAN THIS BUILDS FROM.
@@ -923,6 +944,8 @@ public static class DxfToEtabsService
                         // its members then rose to the next A-tagged storey and skipped the shared
                         // one between. LEVEL 26 lost every wall and column holding its floor up.
                         SheetBuildingTag = sheet.BuildingTags.Count == 1 ? sheet.BuildingTag : null,
+                        SheetBuildingTags = sheet.BuildingTags,
+                        IsIssuedSheet = sheet.IsIssuedSheet,
                         IsPerBuildingSheet = sheet.BuildingTags.Count > 0,
                         SlabThickness = slabThickness is null ? null : slabThickness.ThicknessInches / modelUnitInInches,
                         SlabThicknessInches = slabThickness?.ThicknessInches,
@@ -959,20 +982,57 @@ public static class DxfToEtabsService
         // 38 walls and 60 columns and the parts give 16/36 and 22/24, so 38 = 16 + 22 exactly. So
         // that is the test. The parts must together carry at least what the whole carries; where
         // they do not, the whole sheet is drawing structure they leave out and it stays.
-        var partsByStorey = placements
-            .Where(p => p.IsPerBuildingSheet)
-            .GroupBy(p => p.Story.Name, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                g => g.Key,
-                g => (Walls: g.Sum(p => p.Geometry.Walls.Count),
-                      Columns: g.Sum(p => p.Geometry.Columns.Count)),
-                StringComparer.OrdinalIgnoreCase);
+        // A SHEET IS A WHOLE WHENEVER OTHER SHEETS DRAW ITS BUILDINGS SEPARATELY.
+        //
+        // Untagged against tagged was only the common case of it. 31168's towers are also drawn
+        // together — "LEVEL 15 PLAN (L15-26) - CONCRETE OUTLINE - BLDG A&B" — and again apart, as
+        // BLDG A and BLDG B. That sheet names two buildings, so it is nobody's: its members cannot
+        // prefer A's storeys or B's, and above LEVEL 26, where the stack splits into A-LEVEL 27 and
+        // B-LEVEL 27 four inches apart, all of them rose to whichever came first. A-LEVEL 27 shipped
+        // with 40 walls and 48 columns — both towers — and B-LEVEL 27 with a floor plate and nothing
+        // under it. The same at 34, 35 and 36.
+        //
+        // Treating it as a part, because it named buildings at all, is what let it through. Against
+        // BLDG A and BLDG B it is not a part; it is the whole they are the parts of. So the test is
+        // containment, not taggedness: a sheet stands down where other sheets on the same storey
+        // name a STRICT SUBSET of its buildings and together carry what it carries. An untagged
+        // sheet names every building, which is why the old rule was a special case of this one.
+        static bool DrawnBy(StoryPlacement p, StoryPlacement whole) =>
+            p.SheetBuildingTags.Count > 0
+            && (whole.SheetBuildingTags.Count == 0
+                || (p.SheetBuildingTags.Count < whole.SheetBuildingTags.Count
+                    && p.SheetBuildingTags.All(t => whole.SheetBuildingTags.Contains(t, StringComparer.OrdinalIgnoreCase))));
+
+        // BY FLOOR, NOT BY STOREY NAME. A whole and its parts often land on different storeys of
+        // the same floor: 31168's kept view "B-LEVEL 33" and the issued sheets "LEVEL 33 - BLDG A"
+        // and "- BLDG B" are one floor under three names four inches apart, and a rule that
+        // grouped on the name could not see them together.
+        var floorOfStorey = doc.FloorOfStorey();
+        string FloorNamed(string storey) =>
+            floorOfStorey.TryGetValue(storey, out string? f) ? f : storey;
+
+        var onFloor = placements
+            .GroupBy(p => FloorNamed(p.Story.Name), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        // AND A KEPT VIEW STANDS DOWN TO AN ISSUED DRAWING OF THE SAME FLOOR.
+        //
+        // A Revit export offers every view in the model. The issued drawings are cropped to what
+        // they are about; the working views the drafter kept are not, so "B-LEVEL 33" draws every
+        // building standing at that elevation while carrying one tower's name. Its 73 columns went
+        // up tower B and tower A's storeys came out as floor plates over nothing.
+        //
+        // Only where an issued sheet covers that floor. Levels 10 to 14 are drawn on kept views
+        // alone, and they keep everything they have.
+        static bool StandsDownTo(StoryPlacement part, StoryPlacement whole) =>
+            DrawnBy(part, whole) || (part.IsIssuedSheet && !whole.IsIssuedSheet);
 
         var supersededByParts = placements
-            .Where(p => !p.IsPerBuildingSheet)
-            .Where(p => partsByStorey.TryGetValue(p.Story.Name, out var parts)
-                        && parts.Walls >= p.Geometry.Walls.Count
-                        && parts.Columns >= p.Geometry.Columns.Count)
+            .Where(whole => onFloor.TryGetValue(FloorNamed(whole.Story.Name), out var siblings)
+                            && siblings.Where(p => StandsDownTo(p, whole)) is var parts
+                            && parts.Any()
+                            && parts.Sum(p => p.Geometry.Walls.Count) >= whole.Geometry.Walls.Count
+                            && parts.Sum(p => p.Geometry.Columns.Count) >= whole.Geometry.Columns.Count)
             .ToList();
 
         // MEMBERS ONLY. The whole-floor sheet keeps its FLOOR.
@@ -990,8 +1050,33 @@ public static class DxfToEtabsService
             foreach (var whole in supersededByParts)
             {
                 var floorsOnly = new PlanGeometrySet();
-                floorsOnly.Slabs.AddRange(whole.Geometry.Slabs);
-                floorsOnly.Openings.AddRange(whole.Geometry.Openings);
+
+                // AND ITS FLOOR ONLY WHERE THE PARTS LEAVE GROUND UNCOVERED.
+                //
+                // Keeping every whole-sheet plate outright puts the same floor in the model twice.
+                // 31168's LEVEL 2 came out with four plates and 63,114 sq ft on a storey whose
+                // floor is about 40,000: the whole-site outline, and then building C's and the
+                // west half's drawn again on top of it.
+                //
+                // Dropping them outright is worse — it cost sixteen plates the first time it was
+                // tried, because a half-sheet IS cropped to its building and does not always draw
+                // the whole slab edge. So neither: each whole-sheet plate is measured against the
+                // ground the parts actually cover on that storey, and stands down only where they
+                // have it covered.
+                var partSlabs = placements
+                    .Where(p => p.IsPerBuildingSheet
+                                && p.Story.Name.Equals(whole.Story.Name, StringComparison.OrdinalIgnoreCase))
+                    .SelectMany(p => p.Geometry.Slabs)
+                    .Select(s => s.Points)
+                    .ToList();
+
+                var kept = whole.Geometry.Slabs
+                    .Where(s => CoveredFraction(s.Points, partSlabs) < 0.8)
+                    .ToList();
+
+                floorsOnly.Slabs.AddRange(kept);
+                floorsOnly.Openings.AddRange(
+                    whole.Geometry.Openings.Where(o => kept.Any(s => LoopGeometry.PointInPolygon(Centroid(o.Points), s.Points))));
                 floorsOnly.Tags.AddRange(whole.Geometry.Tags);
                 floorsOnly.Flags.AddRange(whole.Geometry.Flags);
 
@@ -1084,6 +1169,172 @@ public static class DxfToEtabsService
         droppedByName = request.DropStoreys.Count == 0
             ? Array.Empty<string>()
             : doc.DropStoreys(request.DropStoreys).ToArray();
+
+        // A merge is only a merge once the members follow it.
+        int followedRenames = doc.RenameStoreysInAssigns();
+
+        // One floor holds one of each member — whether the cut merged two storeys, or the model
+        // always had two names for the same floor.
+        int mergedAway = doc.DropMembersDuplicatedOnOneFloor();
+        if (mergedAway > 0)
+            warnings.Add(
+                $"{mergedAway} member(s) stood on one floor twice, and one of each was kept. The " +
+                "shared ground floor is drafted once per building, and the engineer's model gives it " +
+                "two storeys 1.67 in apart so each tower can rise through its own — so a whole-site " +
+                "drawing, naming neither, is placed on both. Same joints, same section, an inch and " +
+                "a half apart: right area, right position, and the floor in the model twice.");
+
+        if (followedRenames > 0)
+            warnings.Add(
+                $"{followedRenames} member(s) followed a storey that was renamed by the cut — the shared " +
+                "ground floor is drafted once per building and becomes one storey in a model of one " +
+                "building. Without this they would name a storey the cut had just removed and be dropped, " +
+                "which is a ground floor with nothing on it.");
+
+        // AND THE OTHER BUILDINGS COME OFF THE SHARED STOREYS.
+        //
+        // The storey cut takes A-LEVEL 27 out of a building-C model because the NAME says whose it
+        // is. It can do nothing about the towers' own structure standing on LEVEL 2, which is
+        // shared and named for nobody — so the YMCA model came out carrying 63,114 sq ft of level
+        // 2 when building C's share of it is 14,607, and every tower column with it.
+        //
+        // Which building a member belongs to is not in the file and cannot be recovered from it.
+        // It is known once, where the member is made, from the sheet it was drawn on.
+        if (request.TowerOnly is { } onlyBuilding)
+        {
+            // A member drawn on a sheet that names buildings, none of them this one, is not this
+            // building's — wherever it stands. That covers "BLDG A & B" as squarely as "BLDG A",
+            // and, through the set's own glossary, the bare "WEST" as well.
+            //
+            // A member drawn on a sheet that names nobody is kept. The parkade slab is drafted
+            // once for the whole site and belongs to all three buildings; so does the core-wall
+            // key plan that supplies this building's own ground-floor walls. An earlier attempt
+            // dropped everything untagged on a storey this building drew for itself and took the
+            // YMCA's ground floor with it: 66 walls to nil.
+            var going = summary.BuildingOfObject
+                .Where(x => x.Value.Count > 0
+                            && !x.Value.Contains(onlyBuilding, StringComparer.OrdinalIgnoreCase))
+                .Select(x => x.Key)
+                .ToHashSet(StringComparer.Ordinal);
+
+            var storeyOf = doc.StoreysByObject();
+
+            // AND THE SITE-WIDE FLOOR OF A FLOOR THIS BUILDING DRAWS ITSELF.
+            //
+            // Plates only, and the distinction matters. A member that names nobody has to stay:
+            // the core-wall key plan is drafted once for the site and it is where building C's own
+            // ground-floor walls come from, so dropping untagged members cost the YMCA 66 walls and
+            // 108 columns the first time this was tried.
+            //
+            // A plate is different, because a plate has an extent and the extent IS the answer.
+            // Level 1 is drawn once for the whole site — 73,788 sq ft of podium over the parkade —
+            // and once per building, building C's being 11,026. Both untagged and tagged plates
+            // land on the same floor, so a model of building C came out with the whole podium under
+            // a fifteen-thousand-foot building. Where this building draws its own floor, that
+            // drawing is its floor.
+            //
+            // Where it does not, nothing is dropped: the parkade slab is drafted once for the site
+            // and tagged for nobody, and it is as much building C's as anyone's.
+            var plates = doc.PlateNames();
+            var floorOfCutStorey = doc.FloorOfStorey();
+
+            string FloorOf(string storey) =>
+                floorOfCutStorey.TryGetValue(storey, out string? f) ? f : storey;
+
+            var drawnByThisBuilding = storeyOf
+                .Where(x => plates.Contains(x.Key)
+                            && summary.BuildingOfObject.TryGetValue(x.Key, out var tags)
+                            && tags.Contains(onlyBuilding, StringComparer.OrdinalIgnoreCase))
+                .SelectMany(x => x.Value.Select(FloorOf))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            int siteWide = 0;
+            foreach (var (obj, storeys) in storeyOf)
+            {
+                if (going.Contains(obj) || !plates.Contains(obj)) continue;
+                if (summary.BuildingOfObject.TryGetValue(obj, out var tags) && tags.Count > 0) continue;
+                if (!storeys.Select(FloorOf).Any(drawnByThisBuilding.Contains)) continue;
+
+                going.Add(obj);
+                siteWide++;
+            }
+
+            if (siteWide > 0)
+                warnings.Add(
+                    $"{siteWide} site-wide floor plate(s) were removed from floors building {onlyBuilding} " +
+                    "draws for itself. Level 1 is drawn once entire — the podium over the parkade, 73,788 " +
+                    "sq ft — and once per building; keeping both puts the whole site's ground floor in a " +
+                    "model of one building. Floors this building does not draw for itself, the parkade " +
+                    "among them, keep their shared slab.");
+
+            // AND WHAT STANDS OUTSIDE THE FLOOR THIS BUILDING DREW.
+            //
+            // Having taken the site-wide podium slab off level 1, the model still stood 108 columns
+            // and 64 walls under an 11,026 sq ft plate: the whole site's ground-floor structure,
+            // holding up floor that is no longer there. Plates and members have to answer to the
+            // same rule or the model is incoherent whichever way it is cut.
+            //
+            // The rule is the one the plate already gave: on a floor this building draws for
+            // itself, that drawing is the building. A column standing outside it is holding up
+            // somebody else's floor. Three feet of margin, because a perimeter wall sits ON the
+            // slab edge and half of it is outside by construction.
+            //
+            // Only on floors this building draws for itself — the parkade is drafted once for the
+            // site, building C draws no parkade of its own, and all 108 of its columns stay.
+            //
+            // AND ONLY ON FLOORS THE BUILDINGS SHARE. A storey the engineer named C-LEVEL 3 is
+            // building C's entire, and there is nothing on it to separate from anybody. Applied
+            // there, this rule took nine of C's own columns off C-LEVEL 3 — real columns that rise
+            // to that storey and stand beside its plate rather than on it, which is what a column
+            // at a slab edge or under a setback does. The site model kept them; the two deliverables
+            // disagreed about a storey that is one building's.
+            var planOf = doc.PlanPointsOfObjects();
+
+            var floorOutline = storeyOf
+                .Where(x => plates.Contains(x.Key) && !going.Contains(x.Key) && planOf.ContainsKey(x.Key))
+                .SelectMany(x => x.Value.Select(FloorOf).Distinct(StringComparer.OrdinalIgnoreCase)
+                                        .Where(drawnByThisBuilding.Contains)
+                                        .Select(f => (Floor: f, Outline: planOf[x.Key])))
+                .GroupBy(x => x.Floor, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Outline).ToList(), StringComparer.OrdinalIgnoreCase);
+
+            int elsewhere = 0;
+            foreach (var (obj, storeys) in storeyOf)
+            {
+                if (going.Contains(obj) || plates.Contains(obj)) continue;
+                if (!planOf.TryGetValue(obj, out var points)) continue;
+
+                if (storeys.All(s => E2kDocument.BuildingTagOf(s)
+                        .Equals(onlyBuilding, StringComparison.OrdinalIgnoreCase))) continue;
+
+                var floors = storeys.Select(FloorOf).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                if (!floors.Any(floorOutline.ContainsKey)) continue;
+                if (floors.Any(f => !floorOutline.ContainsKey(f))) continue;
+
+                bool onSomeFloor = floors.Any(f => floorOutline[f]
+                    .Any(outline => points.Any(p => WithinOrNear(p, outline, 36.0))));
+
+                if (onSomeFloor) continue;
+                going.Add(obj);
+                elsewhere++;
+            }
+
+            if (elsewhere > 0)
+                warnings.Add(
+                    $"{elsewhere} member(s) stood outside the floor building {onlyBuilding} draws for " +
+                    "itself and were removed. They are the rest of the site's ground-floor structure, " +
+                    "drafted on the same site-wide sheets; left in, they hold up floor this model no " +
+                    "longer has. Floors this building does not draw for itself keep everything.");
+
+            int foreign = doc.DropObjects(going);
+
+            if (foreign > 0)
+                warnings.Add(
+                    $"{foreign} member(s) drawn for another building were removed from the storeys this " +
+                    $"model shares with it. A storey cut works on names, and a shared storey is named for " +
+                    "nobody: without this, building " + onlyBuilding + "'s model carries the towers' own " +
+                    "walls, columns and floor plates on every level they have in common.");
+        }
 
         if (droppedAbove.Length > 0)
         {
@@ -1262,6 +1513,68 @@ public static class DxfToEtabsService
     /// grids by a bay is a drawing with a bay's worth of drafting slop and must be left alone;
     /// one that does not touch them anywhere is in a different coordinate system.
     /// </summary>
+    /// <summary>
+    /// How much of a plate stands on ground some other plate already covers, by sampling.
+    ///
+    /// A grid of points inside the outline, counted against the others. Exact polygon union is a
+    /// great deal more code for an answer this one is asked to give: is this the same floor drawn
+    /// again, or a piece of floor nobody else drew.
+    /// </summary>
+    /// <summary>
+    /// Whether a point is inside an outline, or near enough its edge to be part of it.
+    ///
+    /// The margin is what lets a perimeter wall count as on the floor it edges. Half of such a wall
+    /// is outside the slab by construction, and a rule that asked for strict containment would take
+    /// the outside face of every building it cut.
+    /// </summary>
+    private static bool WithinOrNear(
+        (double X, double Y) point, IReadOnlyList<(double X, double Y)> outline, double margin)
+    {
+        var p = new DxfPoint(point.X, point.Y);
+        var ring = outline.Select(q => new DxfPoint(q.X, q.Y)).ToList();
+
+        if (ring.Count >= 3 && LoopGeometry.PointInPolygon(p, ring)) return true;
+
+        for (int i = 0; i < ring.Count; i++)
+        {
+            var a = ring[i];
+            var b = ring[(i + 1) % ring.Count];
+            if (LoopGeometry.PerpendicularDistance(p, a, b) <= margin) return true;
+        }
+
+        return false;
+    }
+
+    private static double CoveredFraction(
+        IReadOnlyList<DxfPoint> outline, IReadOnlyList<IReadOnlyList<DxfPoint>> others)
+    {
+        if (outline.Count < 3 || others.Count == 0) return 0;
+
+        double minX = outline.Min(p => p.X), maxX = outline.Max(p => p.X);
+        double minY = outline.Min(p => p.Y), maxY = outline.Max(p => p.Y);
+        if (maxX - minX < 1e-6 || maxY - minY < 1e-6) return 0;
+
+        const int steps = 24;
+        int inside = 0, covered = 0;
+
+        for (int i = 0; i < steps; i++)
+        for (int j = 0; j < steps; j++)
+        {
+            var p = new DxfPoint(
+                minX + (maxX - minX) * (i + 0.5) / steps,
+                minY + (maxY - minY) * (j + 0.5) / steps);
+
+            if (!LoopGeometry.PointInPolygon(p, outline)) continue;
+            inside++;
+            if (others.Any(o => LoopGeometry.PointInPolygon(p, o))) covered++;
+        }
+
+        return inside == 0 ? 0 : (double)covered / inside;
+    }
+
+    private static DxfPoint Centroid(IReadOnlyList<DxfPoint> points) =>
+        new(points.Average(p => p.X), points.Average(p => p.Y));
+
     private static bool DrawingMissesTheGrid(
         E2kDocument doc, IReadOnlyList<PlanGeometrySet> sets, out string howFar)
     {

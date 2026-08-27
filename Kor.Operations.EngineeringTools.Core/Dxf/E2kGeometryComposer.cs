@@ -29,6 +29,16 @@ public sealed record StoryPlacement(
     public string? SheetBuildingTag { get; init; }
 
     /// <summary>
+    /// EVERY building the sheet was drawn for. "BLDG A &amp; B" is two, and a sheet the set's own
+    /// glossary explains — 31168's bare "WEST" — is however many the long form named.
+    ///
+    /// <see cref="SheetBuildingTag"/> is the first of these and answers a narrower question: which
+    /// storey stack a member should rise through. This one answers whose the member IS, which is
+    /// what a model of one building has to cut on.
+    /// </summary>
+    public IReadOnlyList<string> SheetBuildingTags { get; init; } = Array.Empty<string>();
+
+    /// <summary>
     /// True where the sheet's title names a building at all — one or several.
     ///
     /// Separate from <see cref="SheetBuildingTag"/> on purpose, and the two answer different
@@ -37,6 +47,9 @@ public sealed record StoryPlacement(
     /// must not prefer A's storeys. Conflating them broke each rule in turn.
     /// </summary>
     public bool IsPerBuildingSheet { get; init; }
+
+    /// <summary>Whether this came from an issued drawing rather than a kept working view.</summary>
+    public bool IsIssuedSheet { get; init; }
 }
 
 /// <summary>
@@ -294,6 +307,16 @@ public sealed record ComposeSummary(
     IReadOnlyList<string> Sections, IReadOnlyList<string> Flags)
 {
     /// <summary>
+    /// Which building each generated object was drawn for, where its sheet said one.
+    ///
+    /// Known here and nowhere else. The finished file records a member's storey and its section
+    /// and says nothing about whose building it is, so a model of one building cannot be cut out
+    /// of the site by reading it back — the shared storeys are named for nobody.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> BuildingOfObject { get; init; } =
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+
+    /// <summary>
     /// The sections that already existed in the model this was built on and were used rather than
     /// duplicated — <c>Rvt-Wall2</c>, <c>Rvt-Floor0</c> and the like on a job whose reference came
     /// out of CSiXRevit.
@@ -503,6 +526,11 @@ public static class E2kGeometryComposer
         var readThickness = new List<(string Storey, string Sheet, double ThicknessInches, int? Page)>();
         var placedOpenings = new HashSet<(long, long, string)>();
         int spandrelCounter = 0, openingCounter = 0;
+
+        // Which building each member was drawn for, so a model of one building can be cut out
+        // of the site afterwards. The finished file cannot answer this: a shared storey is
+        // named for nobody, and a member records its storey and its section and nothing else.
+        var buildingOfObject = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
 
         // The model's whole storey stack, lowest first. A site model interleaves its towers here,
@@ -665,6 +693,16 @@ public static class E2kGeometryComposer
         /// hanging a storey above its floor. Assigning it to both builds one continuous wall.
         /// ETABS supports this directly — an object carries an assign line per storey.
         /// </summary>
+        static double HalfOfATypicalStorey(IReadOnlyList<StoryLevel> stories, double sameLevel)
+        {
+            var levels = new List<double>();
+            foreach (var s in stories.OrderBy(x => x.Elevation))
+                if (levels.Count == 0 || s.Elevation - levels[^1] > sameLevel) levels.Add(s.Elevation);
+
+            var gaps = levels.Zip(levels.Skip(1), (a, b) => b - a).Where(g => g > 0).OrderBy(g => g).ToList();
+            return gaps.Count == 0 ? 60.0 : gaps[gaps.Count / 2] / 2.0;
+        }
+
         List<string> StoreysSpannedBy(StoryLevel story)
         {
             var spanned = allStories
@@ -701,6 +739,11 @@ public static class E2kGeometryComposer
         // change first announced itself: "no wall is shorter than a person" went red on 31168.
         // Two storeys within a foot of each other are one level, and a member rises past them.
         double SameLevel = options.StoreysAtOneLevelGap;
+
+        // What this building calls a storey, from its own floor elevations: the median gap between
+        // consecutive DISTINCT levels, the near-coincident pairs collapsed first so the duplicates
+        // do not drag the median to nothing.
+        double HalfAStorey = HalfOfATypicalStorey(allStories, SameLevel);
         StoryLevel RisesTo(StoryLevel from, string? sheetTag = null)
         {
             // Never onto another building's storey.
@@ -740,13 +783,21 @@ public static class E2kGeometryComposer
             // the same drawings had them right, which is the only reason it was findable: the two
             // deliverables disagreed.
             //
-            // NO DISTANCE WINDOW. A window is a magic number tuned to one gap, and this job has
-            // three different ones. What decides it is SEQUENCE: the own-building storey is the
-            // same level when it arrives before the SECOND shared storey. On C-LEVEL 8 the next
-            // shared is LEVEL 9 and the one after is LEVEL 10, with C-LEVEL 9 between them — so
-            // C-LEVEL 9 is that level and the member goes there. On A-LEVEL 1 the next shared is
-            // LEVEL 2 and the next A storey is A-LEVEL 27, twenty-five levels past it — so the
-            // member goes to LEVEL 2, which is what a tower's ground floor should do.
+            // NO DISTANCE WINDOW, AND NO COUNTING EITHER. What decides it is whether the
+            // own-building storey and the next shared one are the SAME LEVEL, and this building
+            // says how big a level is: the median gap between its own distinct floor elevations.
+            //
+            // 31168 drafts one physical level twice wherever two buildings meet it, and the pairs
+            // are 1.7 in apart at the ground floor, 5.4 in at level 4, 27 in at level 9 and 38 at
+            // the roof. Every one of those is a fraction of the 110 in this building calls a storey,
+            // and a real storey is never a fraction of one. So: nearer than half a storey is the
+            // same level, and the member goes to its own building's copy of it.
+            //
+            // Counting shared storeys was the earlier answer and it was nearly right. It failed
+            // where only ONE shared storey stood above — from LEVEL 25 the next shared is LEVEL 26
+            // and there is no second, so "fewer than two" fired and every member skipped LEVEL 26
+            // for A-LEVEL 27, a full storey higher. LEVEL 26 shipped as two floor plates with
+            // nothing under them.
             if (tag.Length > 0)
             {
                 var own = above
@@ -756,7 +807,8 @@ public static class E2kGeometryComposer
                     .Where(s => E2kDocument.BuildingTagOf(s.Name).Length == 0)
                     .ToList();
 
-                if (own.Count > 0 && (shared.Count < 2 || own[0].Elevation < shared[1].Elevation))
+                if (own.Count > 0
+                    && (shared.Count == 0 || own[0].Elevation <= shared[0].Elevation + HalfAStorey))
                     return own[0];
             }
 
@@ -873,6 +925,7 @@ public static class E2kGeometryComposer
                 // span, because a storey's floor is its OWN tower's previous level.
                 int wallSpan = wallStoreys.Count;
                 string name = NextName("W", ref wallCounter);
+                buildingOfObject[name] = placement.SheetBuildingTags;
                 areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{pa}\"  \"{pb}\"  \"{pb}\"  \"{pa}\"  " +
                               $"{wallSpan}  {wallSpan}  0  0");
 
@@ -948,6 +1001,7 @@ public static class E2kGeometryComposer
                 // the other tower's storeys rather than being cut at each of them.
                 int colSpan = colStoreys.Count;
                 string name = NextName("C", ref colCounter);
+                buildingOfObject[name] = placement.SheetBuildingTags;
                 lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{at}\"  \"{at}\"  {colSpan}");
                 foreach (string on in colStoreys)
                 {
@@ -1047,6 +1101,7 @@ public static class E2kGeometryComposer
                 string headerSection = WallSection(thickness);
                 string spandrel = SpandrelFor(sx, sy, ex, ey);
                 string name = NextName("S", ref spandrelCounter);
+                buildingOfObject[name] = placement.SheetBuildingTags;
                 areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{highA}\"  \"{highB}\"  \"{lowB}\"  \"{lowA}\"  0  0  0  0");
                 areaAssigns.Add(
                     $"  AREAASSIGN  \"{name}\"  \"{headerStorey}\"  SECTION \"{headerSection}\"  SPANDREL  \"{spandrel}\"  " +
@@ -1151,6 +1206,7 @@ public static class E2kGeometryComposer
                 }
 
                 string name = NextName("F", ref floorCounter);
+                buildingOfObject[name] = placement.SheetBuildingTags;
                 storeysWithPlates.Add(slabStory.Name);
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
@@ -1241,6 +1297,7 @@ public static class E2kGeometryComposer
                 if (!placedOpenings.Add(key)) continue;
 
                 string name = NextName("O", ref openingCounter);
+                buildingOfObject[name] = placement.SheetBuildingTags;
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  AREA  {names.Count}  {joints}  {offsets}");
@@ -1692,6 +1749,7 @@ public static class E2kGeometryComposer
             sections, flags)
         {
             Reused = reusedSections.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList(),
+            BuildingOfObject = buildingOfObject,
         };
     }
 

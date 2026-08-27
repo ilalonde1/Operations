@@ -148,7 +148,7 @@ public static class LoopGeometry
         return left;
     }
 
-    private static double PerpendicularDistance(DxfPoint p, DxfPoint a, DxfPoint b)
+    public static double PerpendicularDistance(DxfPoint p, DxfPoint a, DxfPoint b)
     {
         double dx = b.X - a.X, dy = b.Y - a.Y;
         double len = Math.Sqrt(dx * dx + dy * dy);

@@ -84,9 +84,28 @@ public class ModelCoverageTests
         int last = order.FindLastIndex(Populated);
         if (first < 0) return;
 
+        // A HOLE IS A FLOOR WITH NOTHING ON IT, NOT A STOREY.
+        //
+        // A site model names one physical floor twice wherever two buildings meet it: 31168's
+        // ground floor is A-LEVEL 1 and B-LEVEL 1, an inch and a half apart, so each tower can rise
+        // through its own. One of the two carries the members and the other is empty by
+        // construction — putting them on both is the same floor in the model twice, which is the
+        // fault this tool spent a day removing.
+        //
+        // So a storey standing within a foot of a populated one is not a gap in the building. Two
+        // genuinely consecutive floors are a whole storey apart and are still checked.
+        var doc = E2kDocument.Parse(built.Lines);
+        var elevation = doc.ReadStories().ToDictionary(x => x.Name, x => x.Elevation, StringComparer.OrdinalIgnoreCase);
+
+        bool SharesAFloorWithStructure(string storey) =>
+            elevation.TryGetValue(storey, out double at)
+            && elevation.Any(other => other.Key != storey
+                                      && Math.Abs(other.Value - at) <= 12.0
+                                      && Populated(other.Key));
+
         var holes = new List<string>();
         for (int i = first; i <= last; i++)
-            if (!Populated(order[i]))
+            if (!Populated(order[i]) && !SharesAFloorWithStructure(order[i]))
                 holes.Add(order[i]);
 
         _out.WriteLine($"{name}: {order.Count} storeys, structure from '{order[first]}' down to '{order[last]}'.");

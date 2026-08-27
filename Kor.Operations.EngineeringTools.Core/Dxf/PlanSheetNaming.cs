@@ -16,6 +16,12 @@ public sealed record PlanSheetInfo(
     /// <summary>Every building the sheet serves; a plan titled "BLDG A&amp;B" serves both.</summary>
     public IReadOnlyList<string> BuildingTags { get; init; } = Array.Empty<string>();
 
+    /// <summary>
+    /// Whether the title carries a sheet number, and so is a drawing the office issued rather than
+    /// a view the drafter kept. See <see cref="DrawingVocabulary.SheetNumberPattern"/>.
+    /// </summary>
+    public bool IsIssuedSheet { get; init; }
+
     /// <summary>A foundation plan: the lowest slab, named by its job rather than by a level.</summary>
     public bool IsFoundation { get; init; }
 
@@ -148,6 +154,7 @@ public static partial class PlanSheetNaming
             MezzanineLevels = MezzanineLevelsIn(StripSheetNumber(name)),
             ParkadeLevels = parkade,
             BuildingTags = buildings,
+            IsIssuedSheet = Vocabulary.IsIssuedSheetName(name),
         };
     }
 

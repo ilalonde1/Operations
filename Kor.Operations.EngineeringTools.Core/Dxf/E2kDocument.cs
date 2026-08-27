@@ -646,6 +646,293 @@ public sealed class E2kDocument
         return dropped;
     }
 
+    /// <summary>
+    /// Rewrites every assign that names a storey this document has renamed.
+    ///
+    /// The shared ground floor is drafted twice, as A-LEVEL 1 and B-LEVEL 1 an inch and a half
+    /// apart, and a one-building model merges them into LEVEL 1. The rename used to be consumed
+    /// where SHEETS were matched to storeys, which worked while the cuts ran before anything was
+    /// composed. They run after it now, so the map is empty at matching time and the assigns are
+    /// written naming B-LEVEL 1 — a storey the cut is about to remove. The assigns are then
+    /// orphaned, dropped, and the YMCA's ground floor is empty: no walls, no columns, no plate.
+    ///
+    /// So the document applies its own renames. It is the only thing that knows what it renamed.
+    /// </summary>
+    public int RenameStoreysInAssigns()
+    {
+        if (_storeyRenames.Count == 0) return 0;
+
+        int changed = 0;
+
+        foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS", "POINT ASSIGNS" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            for (int i = 0; i < section.Lines.Count; i++)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    section.Lines[i], @"^(\s*\w+ASSIGN\s+""[^""]+""\s+"")([^""]+)("".*)$");
+                if (!m.Success) continue;
+                if (!_storeyRenames.TryGetValue(m.Groups[2].Value, out string? now)) continue;
+
+                section.Lines[i] = m.Groups[1].Value + now + m.Groups[3].Value;
+                changed++;
+            }
+        }
+
+        return changed;
+    }
+
+    /// <summary>
+    /// Removes members that are the same member on the same floor twice, and reports how many
+    /// went.
+    ///
+    /// Two ways a model gets there, and both are 31168's ground floor.
+    ///
+    /// A CUT MERGES TWO STOREYS. The shared level 1 is drafted once per building, so the engineer's
+    /// model carries it as A-LEVEL 1 and B-LEVEL 1, and a model of one building merges them.
+    /// Everything the two sheets drew in common was distinct while the storeys were distinct and is
+    /// one object the moment they are not: LEVEL 1 came out with 169,627 sq ft of floor as four
+    /// plates that were two.
+    ///
+    /// OR THE MODEL ALREADY HAD THEM. A-LEVEL 1 and B-LEVEL 1 stand 1.67 IN apart — not two floors,
+    /// one floor the engineer gave two names so each tower could rise through its own. A whole-site
+    /// drawing names neither, matches both, and is placed on both: KF17 and KF18, the same 58
+    /// points, 73,788 sq ft each, an inch and a half apart, in the site model as shipped. Nothing
+    /// downstream could see it — the area is right, the position is right, and the floor is in the
+    /// model twice.
+    ///
+    /// So storeys closer together than a storey — the twelve inches RisesTo already uses — count as
+    /// one floor here. Within that, two members are the same member when they connect the same
+    /// joints and carry the same section: the whole of what the file says about them, name aside.
+    /// Nothing is judged by tolerance, because a duplicate of this kind is duplicated exactly, and
+    /// anything that differs at all is two things the drawings really did draw differently.
+    /// </summary>
+    public int DropMembersDuplicatedOnOneFloor()
+    {
+        // Storeys nearer than a storey are one floor, and the copy that stays is the one lowest
+        // down: a member belongs to the storey it rises TO, so the lower storey is the one the
+        // rest of the model was built around.
+        var floorOfStorey = FloorOfStorey();
+
+        var connectivity = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (string header in new[] { "AREA CONNECTIVITIES", "LINE CONNECTIVITIES" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            foreach (string line in section.Lines)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    line.TrimStart(), @"^(\w+)\s+""([^""]+)""\s*(.*)$");
+                if (m.Success) connectivity[m.Groups[2].Value] = m.Groups[1].Value + "|" + m.Groups[3].Value;
+            }
+        }
+
+        // Which copy stays is not left to the order the file happens to be in. Every copy is
+        // collected first, then the one on the lowest storey of the floor is kept and the rest go.
+        var elevationOf = ReadStories().ToDictionary(x => x.Name, x => x.Elevation, StringComparer.OrdinalIgnoreCase);
+        var copies = new Dictionary<string, List<(string Object, double At)>>(StringComparer.Ordinal);
+
+        foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            foreach (string line in section.Lines)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    line.TrimStart(), @"^\w+ASSIGN\s+""([^""]+)""\s+""([^""]+)""\s*(.*)$");
+                if (!m.Success) continue;
+                if (!connectivity.TryGetValue(m.Groups[1].Value, out string? shape)) continue;
+
+                string onFloor = floorOfStorey.TryGetValue(m.Groups[2].Value, out string? f)
+                    ? f
+                    : m.Groups[2].Value;
+
+                string signature = onFloor + "\u0001" + shape + "\u0001" + m.Groups[3].Value;
+                if (!copies.TryGetValue(signature, out var alreadyHere))
+                    copies[signature] = alreadyHere = new List<(string, double)>();
+
+                alreadyHere.Add((
+                    m.Groups[1].Value,
+                    elevationOf.TryGetValue(m.Groups[2].Value, out double e) ? e : double.MaxValue));
+            }
+        }
+
+        var duplicates = copies.Values
+            .Where(c => c.Count > 1)
+            .SelectMany(c => c.OrderBy(x => x.At).Skip(1).Select(x => x.Object))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        return duplicates.Count == 0 ? 0 : DropObjects(duplicates);
+    }
+
+    /// <summary>
+    /// Where each object stands on plan, as the joints its connectivity names.
+    ///
+    /// The e2k keeps joints in plan only — a point is x and y, and the storey the assign names
+    /// supplies the third dimension — so this is the whole of an object's position.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<(double X, double Y)>> PlanPointsOfObjects()
+    {
+        var joints = new Dictionary<string, (double X, double Y)>(StringComparer.Ordinal);
+
+        foreach (string line in LinesOf("POINT COORDINATES"))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(
+                line.TrimStart(), @"^POINT\s+""([^""]+)""\s+(-?[\d.eE+]+)\s+(-?[\d.eE+]+)");
+            if (!m.Success) continue;
+            if (double.TryParse(m.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double x)
+                && double.TryParse(m.Groups[3].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double y))
+                joints[m.Groups[1].Value] = (x, y);
+        }
+
+        var where = new Dictionary<string, IReadOnlyList<(double X, double Y)>>(StringComparer.Ordinal);
+
+        foreach (string header in new[] { "AREA CONNECTIVITIES", "LINE CONNECTIVITIES" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            foreach (string line in section.Lines)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    line.TrimStart(), @"^(?:AREA|LINE)\s+""([^""]+)""\s+\w+\s+(.*)$");
+                if (!m.Success) continue;
+
+                var points = System.Text.RegularExpressions.Regex.Matches(m.Groups[2].Value, @"""([^""]+)""")
+                    .Select(j => j.Groups[1].Value)
+                    .Where(joints.ContainsKey)
+                    .Select(j => joints[j])
+                    .ToList();
+
+                if (points.Count > 0) where[m.Groups[1].Value] = points;
+            }
+        }
+
+        return where;
+    }
+
+    /// <summary>
+    /// Which floor each storey is part of, where storeys nearer than twelve inches are one floor.
+    ///
+    /// A site model gets a storey for every distinct floor elevation across every building, so one
+    /// physical floor arrives as two or three storeys an inch or two apart. Named by the lowest of
+    /// them.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> FloorOfStorey()
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        string? floor = null;
+        double at = double.NaN;
+
+        foreach (var storey in ReadStories().OrderBy(s => s.Elevation))
+        {
+            if (floor is null || Math.Abs(storey.Elevation - at) > 12.0)
+            {
+                floor = storey.Name;
+                at = storey.Elevation;
+            }
+            map[storey.Name] = floor;
+        }
+
+        return map;
+    }
+
+    /// <summary>The area objects that are floor plates rather than wall panels.</summary>
+    public IReadOnlySet<string> PlateNames()
+    {
+        var plates = new HashSet<string>(StringComparer.Ordinal);
+        var section = Find("AREA CONNECTIVITIES");
+        if (section is null) return plates;
+
+        foreach (string line in section.Lines)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(
+                line.TrimStart(), @"^AREA\s+""([^""]+)""\s+FLOOR\b");
+            if (m.Success) plates.Add(m.Groups[1].Value);
+        }
+
+        return plates;
+    }
+
+    /// <summary>
+    /// Every object in the model against the storeys it stands on.
+    ///
+    /// One object can stand on several: a column drawn once on a sheet that covers a range of
+    /// levels gets an assign per storey in the range.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> StoreysByObject()
+    {
+        var found = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS", "POINT ASSIGNS" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            foreach (string line in section.Lines)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    line.TrimStart(), @"^\w+ASSIGN\s+""([^""]+)""\s+""([^""]+)""");
+                if (!m.Success) continue;
+
+                if (!found.TryGetValue(m.Groups[1].Value, out var storeys))
+                    found[m.Groups[1].Value] = storeys = new List<string>();
+                storeys.Add(m.Groups[2].Value);
+            }
+        }
+
+        return found.ToDictionary(x => x.Key, x => (IReadOnlyList<string>)x.Value, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Removes the named objects and every assign that stood on them, and reports how many
+    /// objects went.
+    ///
+    /// Used to take one building's members out of a model of another. The storey cut works on
+    /// names and a shared storey is named for nobody, so on LEVEL 2 -- one level, three buildings
+    /// -- there is nothing in the file to cut on. The caller knows whose each member is because it
+    /// knows which sheet drew it.
+    /// </summary>
+    public int DropObjects(IEnumerable<string> names)
+    {
+        var going = new HashSet<string>(names, StringComparer.Ordinal);
+        if (going.Count == 0) return 0;
+
+        int removed = 0;
+
+        foreach (string header in new[] { "AREA CONNECTIVITIES", "LINE CONNECTIVITIES" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            removed += section.Lines.RemoveAll(line =>
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(line.TrimStart(), @"^\w+\s+""([^""]+)""");
+                return m.Success && going.Contains(m.Groups[1].Value);
+            });
+        }
+
+        foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS", "POINT ASSIGNS" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            section.Lines.RemoveAll(line =>
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(line.TrimStart(), @"^\w+ASSIGN\s+""([^""]+)""");
+                return m.Success && going.Contains(m.Groups[1].Value);
+            });
+        }
+
+        return removed;
+    }
+
     /// <summary>Drops every assign that names a storey the model no longer has.</summary>
     public int DropAssignsForMissingStoreys()
     {

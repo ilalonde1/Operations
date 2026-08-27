@@ -41,6 +41,21 @@ public sealed record DrawingVocabulary
     /// <summary>`dxf.mezzanine-words`.</summary>
     public IReadOnlyList<string> MezzanineWords { get; init; } = new[] { "MEZZ" };
 
+    /// <summary>
+    /// How this office numbers an issued sheet, as a regular expression matched against a drawing
+    /// title. `dxf.sheet-number-pattern`.
+    ///
+    /// A Revit export offers every view in the model, and only some of them are drawings. KOR's
+    /// issued sheets carry their number in the title — S2.22.1_1_LEVEL 33 PLAN … — and the rest
+    /// are working views the drafter kept: LEVEL 26, B-LEVEL 33, uncropped, showing every building
+    /// standing at that elevation.
+    ///
+    /// That is why 31168's B-LEVEL 33 held 73 columns where the building has 24. The view is named
+    /// for one tower and draws them all, so both towers' structure went up tower B's stack and
+    /// tower A's storeys came out with a floor plate and nothing under them.
+    /// </summary>
+    public string SheetNumberPattern { get; init; } = @"\b[A-Z]{1,3}\d+(?:\.\d+)*_\d+_";
+
     /// <summary>A slab on grade is not a suspended floor. `dxf.foundation-words`.</summary>
     public IReadOnlyList<string> FoundationWords { get; init; } = new[] { "FOUNDATION" };
 
@@ -60,6 +75,12 @@ public sealed record DrawingVocabulary
     public bool IsRoofName(string name) => Mentions(name, RoofWords);
     public bool IsMezzanineName(string name) => Mentions(name, MezzanineWords);
     public bool IsFoundationName(string name) => Mentions(name, FoundationWords);
+
+    /// <summary>Whether a drawing title carries a sheet number, and so is an issued drawing.</summary>
+    public bool IsIssuedSheetName(string name)
+        => !string.IsNullOrWhiteSpace(SheetNumberPattern)
+           && (_issued ??= new Regex(SheetNumberPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+               .IsMatch(name);
     public bool IsElevatorRoofName(string name) => Mentions(name, ElevatorRoofWords);
 
     // ------------------------------------------------------------------------------------------
@@ -69,7 +90,7 @@ public sealed record DrawingVocabulary
     // Regex per call would be the kind of quiet cost that only shows up on a big drawing set.
     // ------------------------------------------------------------------------------------------
 
-    private Regex? _building, _prefixBuilding, _range, _levelList, _singleLevel, _parkadeLevel, _parkadeStory;
+    private Regex? _building, _prefixBuilding, _range, _levelList, _singleLevel, _parkadeLevel, _parkadeStory, _issued;
 
     private static string Any(IReadOnlyList<string> words)
         => string.Join("|", words.Where(w => w.Length > 0)
