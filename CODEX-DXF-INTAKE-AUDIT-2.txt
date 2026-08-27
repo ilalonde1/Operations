@@ -1,0 +1,97 @@
+GOAL
+Second adversarial audit of the DXF-to-ETABS intake. The first one (findings summarised below)
+was right about five things and they have been fixed. Your job is to (a) check the FIXES are
+real and complete rather than plausible, and (b) reach the ground the first audit did not.
+
+Read-only. Do not modify files. Do not run builds or tests. No writing git commands.
+
+REPOS
+  C:\VIsual Studio Projects\Operations          generator, tests, publisher
+  C:\VIsual Studio Projects\KOR.Drafter         Revit bridge (src\KOR.Drafter.Bridge\)
+  C:\VIsual Studio Projects\KOR.Drafter\db\     migrations; 051, 052, 053 are APPLIED
+
+COMMITS SINCE THE FIRST AUDIT (Operations, newest first)
+  860b9723  Everything the audit left open
+  c8be6193  An opening goes with the plate it was cut from
+  3e3b81b7  What the audit found, and the gates that would have found it first
+(KOR.Drafter)
+  bridge 1.0.35 — SafeName collision keeps both files instead of overwriting
+
+PART A — ARE THE FIXES REAL?
+
+A1. TAG THICKNESS was rewritten from plate-first to tag-first
+    (StructuralPlanClassifier, the block beginning "THE THICKNESS THE DRAWING PRINTS INSIDE THE
+    PLATE"). Claims: a tag belongs to the SMALLEST plate containing it; a tag inside an opening
+    prices nothing; two different values in one plate are refused, not guessed between.
+    ASK: nested plates three deep. A tag on the boundary of two plates. A plate that contains a
+    tag but is later dropped (flood-fill "same floor read twice") — does its thickness leak?
+    Openings are consulted via result.Openings — is that list complete at that point in Classify?
+
+A2. THE ORPHANED-OPENING FIX removes openings whose centroid lies in a dropped plate
+    (StructuralPlanClassifier, "AN OPENING GOES WITH THE PLATE IT WAS CUT FROM").
+    ASK: centroid-in-polygon is not containment. What real opening sits with its centroid inside a
+    dropped ring but belongs to the survivor? Is the reverse case handled — the survivor dropped
+    and the other kept?
+
+A3. NON-STRUCTURAL SHEET PATTERNS (dxf.non-structural-sheet-patterns, migration 053) filters the
+    folder by substring on the FILE NAME, applied in DxfToEtabsService after ApplyRules.
+    ASK: the list is REINFORC;REBAR;KEY PLAN;CORE WALL;MODEL SETTING;DESIGN LOAD;LOAD PLAN;
+    SHORING;DEMO. What real structural plan does each pattern kill? "DEMO" inside "DEMOUNTABLE".
+    A sheet legitimately called "LEVEL 5 - CORE WALL AND SLAB PLAN". Check it is applied
+    everywhere a folder is read, not only in the main path — JobPublisher.ReachByStorey reads the
+    same folder.
+
+A4. REACH now loads the ruled options (JobPublisher.PlanRulesFor). It swallows every exception and
+    falls back to defaults.
+    ASK: is silent fallback right here? A wrong-but-present connection, a retired setting, a
+    permissions change — reach quietly runs on built-ins and the published split is wrong with
+    nothing said. Argue both sides and land somewhere.
+
+A5. InUnitOf now converts four more lengths, and RulesTravelBetweenUnitsTests checks by reflection.
+    ASK: what does the reflection test NOT see? Non-double length fields, lengths inside nested
+    records or collections, and the NotALength allow-list — is every entry on it genuinely unitless?
+
+A6. ShippedModelsAgreeWithEachOtherTests compares the two published .e2k artifacts.
+    ASK: it compares area and thickness per shared storey. What disagreement does that MISS —
+    member counts, wall thicknesses, opening counts, storey elevations, plate POSITION? Two models
+    can agree on total area per storey and be different buildings.
+
+PART B — GROUND THE FIRST AUDIT DID NOT REACH
+
+B1. THE PUBLISHED ARTIFACTS THEMSELVES, in
+    \\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\
+       02 Engineering\02 Lateral Design\01 ETABS Models\
+    31168-FROM-DRAWINGS.e2k (14 storeys, 19 plates) and 31168-TOWERS-FROM-DRAWINGS.e2k (63, 106),
+    both built from _DXF-from-Revit-2026-08-26 with the stick file.
+    ASK: read them as an ENGINEER would. Walls with no joint shared with anything. Columns landing
+    off-grid. Plates whose outline is stepped from a raster trace. Storey elevations that do not
+    match the reference. Openings smaller than a person. Sections referenced but not defined.
+    Anything ETABS would refuse or silently mesh wrongly.
+
+B2. THE QUESTIONS WORKBOOKS, 31168-QUESTIONS.xlsx and 31168-TOWERS-QUESTIONS.xlsx. Both claim zero
+    open questions.
+    ASK: is that true, or is it true because the questions were reworded into statements? Read
+    ModelQuestionnaire against the report flags each model actually carries. A row that says
+    "FOR INFORMATION, ANSWERED" while the underlying fault is unresolved is worse than a question.
+
+B3. THE REPORT AS A DOCUMENT. Both reports are >60 KB. An engineer reads the top and the flags.
+    ASK: is anything IMPORTANT buried below something unimportant? Are counts in the summary
+    consistent with the flags below them? Does any sentence contradict another?
+
+B4. WHAT IS STILL NOT MEASURED AT ALL. Name the parts of this pipeline with no test, no invariant
+    and no report line — where a defect would reach an engineer in silence. Rank by blast radius.
+    Beams, diaphragms and loads are OUT OF SCOPE by the engineer's own ruling; do not report them.
+
+RULES OF ENGAGEMENT
+- Cite a file and line, or a number read out of an artifact. No claim without one.
+- No style, naming or comment-volume findings.
+- Where a test exists, ask what it MISSES.
+- Reading the share is encouraged. NEVER Get-ChildItem -Recurse over SMB; enumerate one directory
+  at a time.
+- Do not trust a commit message, including the ones written today. Several describe measurements
+  taken once, on one job, by someone who wanted them to be true.
+
+FINISH WITH AN ADVERSARIAL REVIEW OF YOUR OWN FINDINGS
+For each finding, state the strongest argument that it is NOT a defect, then say whether that
+argument defeats it. Drop the ones it defeats. Rank what survives by what would reach an
+engineer's model without anything turning red.
