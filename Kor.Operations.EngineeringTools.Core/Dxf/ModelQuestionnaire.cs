@@ -914,12 +914,78 @@ public static class ModelQuestionnaire
         // Two sheets. The questions, and the lookup for when something in the model looks wrong.
         // The per-drawing ledger lives in the report; it is 60 rows nobody reads in a spreadsheet.
         using var workbook = new XLWorkbook();
+        WriteStartHere(workbook, report, options, compose, projectName);
         WriteQuestions(workbook, report, options, compose, projectName);
         WriteRulesInForce(workbook, report, options, compose);
         WriteFlags(workbook, report);
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         workbook.SaveAs(path);
+    }
+
+    /// <summary>
+    /// The first page: what is open, and nothing else.
+    ///
+    /// The Questions sheet lists every judgement the tool made — twenty-nine of them settled, four
+    /// not — because an engineer is entitled to see the lot and to overrule any of it by writing in
+    /// an answer. That is worth keeping and it is also the wrong first thing to hand somebody: the
+    /// four rows that need her sit among twenty-nine that do not, and the four are what get missed.
+    ///
+    /// So this page carries only the open rows and the faults, and says where the rest is. It is
+    /// deliberately not the sheet the importer reads — answers still go on Questions, beside the
+    /// row they answer, so that a decided rule can still be overruled there.
+    /// </summary>
+    private static void WriteStartHere(XLWorkbook workbook, DxfToEtabsReport report,
+        PlanClassificationOptions options, ComposeOptions compose, string projectName)
+    {
+        var all = StandingQuestions(options, compose, report).ToList();
+        var open = all.Where(q => !q.ForTheRecord && (!q.Decided || q.Defect)).ToList();
+
+        var sheet = workbook.Worksheets.Add("Start here");
+
+        sheet.Cell(1, 1).Value = open.Count == 0
+            ? $"{projectName} — nothing is waiting on you"
+            : $"{projectName} — {open.Count(q => !q.Defect)} question(s) for you, " +
+              $"{open.Count(q => q.Defect)} fault(s) in the model";
+        sheet.Cell(1, 1).Style.Font.Bold = true;
+        sheet.Cell(1, 1).Style.Font.FontSize = 14;
+
+        sheet.Cell(2, 1).Value = open.Count == 0
+            ? "Every judgement the tool made is on the Questions sheet with the measurement behind it."
+            : "Write your answer in the Questions sheet, beside the row it answers. Everything already " +
+              "settled is there too, with its evidence — you can overrule any of it the same way.";
+        sheet.Cell(2, 1).Style.Font.Italic = true;
+        sheet.Cell(2, 1).Style.Font.FontColor = XLColor.FromArgb(110, 110, 110);
+
+        int row = 4;
+        foreach (var q in open.OrderBy(q => q.Defect ? 1 : 0).ThenBy(q => q.Code, StringComparer.Ordinal))
+        {
+            var code = sheet.Cell(row, 1);
+            code.Value = q.Code;
+            code.Style.Font.Bold = true;
+
+            var status = sheet.Cell(row, 2);
+            status.Value = q.Defect ? "FAULT" : "NEEDS YOU";
+            status.Style.Font.Bold = true;
+            status.Style.Font.FontColor = XLColor.FromArgb(169, 58, 51);
+
+            sheet.Cell(row, 3).Value = q.Topic;
+            sheet.Cell(row, 4).Value = q.Question;
+            sheet.Cell(row, 4).Style.Alignment.WrapText = true;
+            row += 1;
+        }
+
+        sheet.Cell(row + 1, 1).Value =
+            $"{all.Count - open.Count} further row(s) are settled — on the Questions sheet, each with what " +
+            "was decided and the measurement behind it.";
+        sheet.Cell(row + 1, 1).Style.Font.Italic = true;
+        sheet.Cell(row + 1, 1).Style.Font.FontColor = XLColor.FromArgb(130, 130, 130);
+
+        sheet.Column(1).Width = 7;
+        sheet.Column(2).Width = 12;
+        sheet.Column(3).Width = 34;
+        sheet.Column(4).Width = 96;
+        sheet.SheetView.FreezeRows(3);
     }
 
     /// <summary>
