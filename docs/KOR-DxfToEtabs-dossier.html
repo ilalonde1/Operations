@@ -66,13 +66,13 @@ had already rebuilt that building's walls by hand.</p>
 
 <table>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
-  <tr><td>Storeys populated</td><td><strong>14</strong></td><td>29</td></tr>
-  <tr><td>Wall panels, true thicknesses</td><td><strong>294</strong></td><td>205</td></tr>
-  <tr><td>Columns, sized &amp; oriented</td><td><strong>629</strong></td><td>304</td></tr>
-  <tr><td>Floor plates</td><td><strong>16</strong></td><td>15</td></tr>
-  <tr><td>Headers over openings (spandrel shells)</td><td><strong>17</strong></td><td>22</td></tr>
-  <tr><td>Shaft and stair openings cut</td><td><strong>44</strong></td><td>3</td></tr>
-  <tr><td>Pier labels</td><td><strong>126</strong></td><td>142</td></tr>
+  <tr><td>Storeys populated</td><td><strong>13</strong></td><td>29</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>230</strong></td><td>205</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>578</strong></td><td>304</td></tr>
+  <tr><td>Floor plates</td><td><strong>13</strong></td><td>15</td></tr>
+  <tr><td>Headers over openings (spandrel shells)</td><td><strong>10</strong></td><td>22</td></tr>
+  <tr><td>Shaft and stair openings cut</td><td><strong>41</strong></td><td>3</td></tr>
+  <tr><td>Pier labels</td><td><strong>230</strong></td><td>142</td></tr>
   <tr><td>Members you already had, not duplicated</td><td>—</td><td>348 walls, 391 columns</td></tr>
 </table>
 
@@ -208,8 +208,8 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
 <table>
   <tr><th>File</th><th>What it is</th></tr>
   <tr><td><code>31168-FROM-DRAWINGS.e2k</code></td>
-      <td><strong>The one that matters.</strong> The YMCA, its podium and the parkade — 14 storeys,
-          294 walls, 629 columns, 16 plates, every storey floored. One model per building, as you
+      <td><strong>The one that matters.</strong> The YMCA, its podium and the parkade — 13 storeys,
+          230 walls, 578 columns, 13 plates, every storey floored. One model per building, as you
           asked: nothing belonging to either tower is in this file. The ground floor, drafted twice
           as A-LEVEL 1 and B-LEVEL 1 1.7&quot; apart, is one storey called LEVEL 1 — &ldquo;it&rsquo;s all
           one big slab at L1, one elevation&rdquo;. Nothing of this existed before.</td></tr>
@@ -355,7 +355,7 @@ close as vectors. On 31168 the slab-edge layer arrives as sixty-odd open chains,
 tolerance from 0.05 to 72 inches the largest region they enclose is 119 ft² — so no tolerance was
 ever going to produce those floors, and widening one was measured and abandoned. They are now
 recovered by rasterising the drawn linework and flood-filling it, which is why <strong>every storey
-carrying members now has a floor</strong>. The 16 plates have a median area of 14,906 ft². LEVEL 1 has a floor for the first time — 78,859 ft² on a storey whose slab edge has never closed as vectors — recovered by flood-filling the drawn linework, and the report says so plate by plate.</p>
+carrying members now has a floor</strong>. The 13 plates have a median area of 14,988 ft². LEVEL 1 carries 11,026 ft² — building C’s own ground floor, from the sheet titled for it. Earlier builds put the site-wide podium slab there instead, 78,859 ft² of ground floor under a fifteen-thousand-foot building, because that slab is drafted once for the whole site and names no building; where a building draws its own floor, that drawing is now its floor. The report says so plate by plate.</p>
 <p><strong>The cost of that is the edges.</strong> A plate recovered from a raster is traced off
 pixels, so its outline comes out slightly stepped rather than crisp. The area and the position are
 right; the edge is approximate. Clean the outline wherever it matters.</p>
