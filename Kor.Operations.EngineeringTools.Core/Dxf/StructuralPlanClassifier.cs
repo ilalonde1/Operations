@@ -659,7 +659,47 @@ public static class StructuralPlanClassifier
                     var says = result.Tags.FirstOrDefault(t =>
                         SlabThicknessCallout.MatchNumberFirstText(t.Text).Any() &&
                         LoopGeometry.PointInPolygon(t.Point, ring.Points));
-                    if (says is null) continue;
+
+                    // A FIELD THICKNESS IS WRITTEN ONCE ON A PLAN, NOT IN EVERY BAY.
+                    //
+                    // "No tag, no plate" is what makes this pass safe, and it stays: nothing here
+                    // is modelled unless the DRAWING says a slab of some thickness is on this
+                    // sheet. What changes is where the sentence has to be printed.
+                    //
+                    // The YMCA mezzanine is the case. Its BLDG C sheet closes three rings of about
+                    // 110 sq ft — stair nosings — and leaves the actual slabs as three OPEN chains
+                    // of 2,593, 1,961 and 502 sq ft. «12" SLAB» is printed once, inside the one
+                    // outline that did close. Requiring the call-out INSIDE each chain therefore
+                    // dropped all three, the model shipped one mezzanine plate, and the engineer
+                    // said, twice: "there are actually 3 slabs at mezzanine level for the YMCA."
+                    //
+                    // So a chain is priced by the call-out standing in it, or, failing that, by the
+                    // field thickness this sheet prints somewhere. Both are the drawing speaking;
+                    // the second is weaker evidence and is reported as inherited, never as read.
+                    //
+                    // Everything that stopped this pass inventing floors is untouched: the chain
+                    // must have two loose ends and no more, enclose at least a whole plate, and
+                    // fill 55 per cent of its own box. What is relaxed is only WHERE the thickness
+                    // was written.
+                    // AND ONLY A THICKNESS THIS SHEET HAS ALREADY PROVED.
+                    //
+                    // Not any call-out anywhere on the drawing: one that stands inside an outline
+                    // the sheet actually CLOSED. That is the sheet demonstrating what its field
+                    // slab is, rather than a number floating somewhere on the page.
+                    //
+                    // It is what separates her two rulings, which are both true and look opposed.
+                    // "A tag inside a region means slab" — so a 14" SLAB call-out 9,000 units away
+                    // from a lone open outline confirms nothing, and must not. "There are actually
+                    // 3 slabs at mezzanine level for the YMCA" — and on that sheet 12" SLAB is
+                    // printed inside the one outline that did close, which settles what a slab on
+                    // this mezzanine is before any chain is judged.
+                    var proved = result.Tags.FirstOrDefault(t =>
+                        SlabThicknessCallout.MatchNumberFirstText(t.Text).Any() &&
+                        built.Loops.Any(closed => closed.Area >= options.MinPlateArea
+                                                  && LoopGeometry.PointInPolygon(t.Point, closed.Points)));
+
+                    var sheetSays = says ?? proved;
+                    if (sheetSays is null) continue;
 
                     closedFromChains.Add(ring);
                     chainRings.Add(ring);
@@ -668,11 +708,16 @@ public static class StructuralPlanClassifier
                     // Never silently, and now with the reason. An engineer checking this model is
                     // entitled to know which of her floors this tool inferred, which it read, and
                     // which word on her own drawing it believed.
-                    result.Flags.Add(
-                        $"{layer}: a slab outline of {ring.Area / 144:N0} sq ft was closed by joining " +
-                        "its own two loose ends — the drawing leaves it open where other linework " +
-                        $"crosses it — and modelled as floor because \"{says.Text}\" is printed " +
-                        "inside it. Recovered geometry: check the edge.");
+                    result.Flags.Add(says is not null
+                        ? $"{layer}: a slab outline of {ring.Area / 144:N0} sq ft was closed by joining " +
+                          "its own two loose ends — the drawing leaves it open where other linework " +
+                          $"crosses it — and modelled as floor because \"{says.Text}\" is printed " +
+                          "inside it. Recovered geometry: check the edge."
+                        : $"{layer}: a slab outline of {ring.Area / 144:N0} sq ft was closed by joining " +
+                          "its own two loose ends, and modelled as floor at this sheet's own field " +
+                          $"thickness — \"{sheetSays.Text}\", printed elsewhere on the sheet rather than " +
+                          "inside this outline. INHERITED, not read: a drafter writes the field slab " +
+                          "thickness once on a plan. Recovered geometry: check the edge and the thickness.");
                 }
             }
 
