@@ -37,7 +37,7 @@ bottom-right title block instead and read it:
     pdftoppm -png -r 150 -f <page> -l <page> -x 1950 -y 1400 -W 600 -H 250 <pdf> <stem>
 
 At 150 dpi a 17×11 sheet renders about 2550×1650, so those offsets land on the consultant stamp.
-`scratchpad/titleblocks.py` stacks one crop per page into a single contact sheet, which makes a
+`tools/titleblocks.py` stacks one crop per page into a single contact sheet, which makes a
 36-sheet set readable in one look.
 
 ### 1.2 San Diego's permit record is an open dataset, not the Accela portal
@@ -54,7 +54,7 @@ Columns include `PROJECT_STATUS`, `APPROVAL_TYPE`, `APPROVAL_STATUS`, `APPROVAL_
 `APPROVAL_VALUATION`, `APPROVAL_STORIES`, `APPROVAL_FLOOR_AREA`, the full affordable-unit mix, and
 `APPROVAL_PERMIT_HOLDER`. `GIS_ADDRESS` is formatted `4002 Park Bl, San Diego, CA 92103` — grep on
 the street number and name, not the full string. It covers 2003 to today, so the *"OpenDSD only goes
-to 2018"* limitation does not apply. `scratchpad/sdq.py` queries the local copy.
+to 2018"* limitation does not apply. `tools/sdq.py` queries the local copy.
 
 **It does not name design consultants.** `APPROVAL_PERMIT_HOLDER` is the applicant or expediter. It
 answers *what stage* definitively and *who designed it* not at all.
@@ -77,7 +77,7 @@ Retested this session. `curl -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Apple
 **BuildSD needs one extra step.** Project detail is client-rendered — `__NEXT_DATA__` is empty and
 there is no reachable API — but each project page's server-rendered `<head>` carries `og:title` and
 `og:description` with a one-line status. The 147 project slugs are server-rendered as links on
-`/projects`. `scratchpad/buildsd_meta.py` harvests all 147 in about a minute.
+`/projects`. `tools/buildsd_meta.py` harvests all 147 in about a minute.
 
 ---
 
@@ -318,6 +318,19 @@ County billings rose 25%..."*
 **Cause.** `build_doc.py` calls `pandoc -f gfm`, and this pandoc build treats `$…$` as TeX math. Two
 dollar amounts on the same line — `\$28.1M` and `\$24.5M` — opened and closed a math span, and every
 `**` between them was emitted verbatim instead of being parsed as emphasis.
+
+**A second, worse fault in the same builder, found the same day.** Its running footer is
+`position:fixed; bottom:5mm`, which places it *inside* the text column rather than in the page
+margin. On any page whose text fills the column, the footer **overprints body text** — four of five
+content pages of the 26 August draft, and the already-shipped
+`KOR-MVE-Pipeline-Brief-2026-08-25-web.pdf`, where it strikes through the line about Hines' 276
+Riverwalk townhomes. Negative offsets do not fix it; Chrome clips fixed elements to the page area,
+so the footer simply disappears.
+
+**Both faults are now moot for this brief**, which was rebuilt on the canonical
+`tools/BdDocTemplate/` system — no pandoc, no fixed footer. ⚠ **The rest of the `audit-2026-08`
+series is still on `build_doc.py` and still carries the overprinting defect**, including the MVE
+company profile and demo dossier PDFs.
 
 **Fix.** Escape every `$` as `\$` in the markdown source. Six occurrences in this brief.
 

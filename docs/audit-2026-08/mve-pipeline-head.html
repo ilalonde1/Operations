@@ -1,0 +1,30 @@
+<title>MVE + Partners — Pipeline Brief, 26 August 2026</title>
+<!--
+  KOR MVE + Partners forward-pipeline brief — the meeting document.
+
+  Built on the canonical KOR design system, per tools/BdDocTemplate/README.md.
+  This file is ASSEMBLED, not hand-maintained. To change it, edit the fragment
+  and rebuild:
+
+    cd <repo root>
+    { printf '%s\n' "$(cat docs/audit-2026-08/mve-pipeline-head.html)"
+      sed -n '2,257p' tools/BdDocTemplate/reference-handbook.html
+      cat docs/audit-2026-08/mve-pipeline-print.html
+      cat docs/audit-2026-08/mve-pipeline-body.html
+    } > docs/audit-2026-08/mve-pipeline-brief.html
+
+    pwsh -NoProfile -File tools/Format-BdWebPdf.ps1 \
+      -Html docs\audit-2026-08\mve-pipeline-brief.html \
+      -Pdf  docs\KOR-MVE-Pipeline-Brief-<date>-web.pdf
+
+  Parts:
+    mve-pipeline-head.html   this header
+    (style)                  copied VERBATIM from tools/BdDocTemplate/reference-handbook.html
+                             lines 2-257. Do not restyle per-document — the system is the brand.
+    mve-pipeline-print.html  page-specific PRINT DENSITY only, no brand changes. The reference is
+                             a handbook; this is a briefing document read in one sitting.
+    mve-pipeline-body.html   the content
+
+  Then verify the SHIPPED PDF as text, never the HTML (repo rule 5):
+    pdftotext -enc UTF-8 <pdf> - | grep -c '\*\*'     # want 0
+-->
