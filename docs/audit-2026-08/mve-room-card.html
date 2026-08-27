@@ -1,0 +1,236 @@
+<title>MVE + Partners — Call Prep, Thursday 27 August 2026</title>
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F;
+    --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --crit:#C0392B;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87;
+      --line:#29323B; --line-strong:#38434E; --slate:#7E97AC; --slate-deep:#C4D3DF;
+      --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="light"] { --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --line-strong:#D3D2CE;
+    --slate:#3F5364; --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B; --line-strong:#38434E;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:11pt; line-height:1.4; -webkit-font-smoothing:antialiased; }
+  .page { max-width: 8.1in; margin: 0 auto; padding: 0 0 .3in; }
+
+  .top { background: linear-gradient(180deg,var(--slate-deep),var(--slate));
+    color:#EAF0F5; border-bottom:2.5px solid var(--accent);
+    padding: 15px 22px; display:flex; align-items:baseline; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+  .top h1 { margin:0; font-size:19pt; font-weight:700; letter-spacing:-.01em; color:#fff; }
+  .top .ey { font-family:var(--mono); font-size:7.5pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top p { margin:.15rem 0 0; font-size:10pt; color:#CBD8E2; max-width:32rem; }
+
+  .body { padding: 16px 22px 0; }
+  h2 { font-family:var(--mono); font-size:8pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin: 0 0 .5rem; font-weight:700; }
+
+  /* lifecycle */
+  .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:.55rem; margin:0 0 16px; }
+  .step { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.6rem .7rem;
+    border-left:3px solid var(--accent); }
+  .step .n { font-family:var(--mono); font-weight:700; color:var(--accent-ink); font-size:8.5pt; }
+  .step h3 { margin:.1rem 0 .2rem; font-size:11pt; }
+  .step p { margin:0; font-size:9pt; color:var(--ink-soft); line-height:1.35; }
+
+  /* cheat table */
+  table { border-collapse:collapse; width:100%; font-size:10pt; margin-bottom:16px; }
+  td { padding:.34rem .5rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr td:first-child { font-weight:650; white-space:nowrap; width:11.2rem; color:var(--ink); }
+  tr:nth-child(even) { background:var(--surface-2); }
+
+  .btn { font-family:var(--mono); font-size:8.6pt; background:var(--slate); color:#fff;
+    border-radius:5px; padding:.05em .4em; white-space:nowrap; }
+  :root[data-theme="dark"] .btn { color:#0f141a; }
+  :root[data-theme="light"] .btn { color:#fff; }
+  kbd { font-family:var(--mono); font-size:8.6pt; background:var(--surface); border:1px solid var(--line-strong);
+    border-bottom-width:2px; border-radius:5px; padding:.02em .38em; color:var(--ink); }
+  .path b { color:var(--accent-ink); font-family:var(--mono); font-size:9pt; }
+
+  /* bottom strip */
+  .strip { display:grid; grid-template-columns: 1.15fr 1fr 1.15fr; gap:.7rem; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.7rem .8rem; }
+  .card.accent { border-left:3px solid var(--good); background: color-mix(in srgb, var(--good) 8%, var(--surface)); }
+  .card p { margin:.25rem 0 0; font-size:9pt; color:var(--ink-soft); line-height:1.4; }
+  .card .lead { color:var(--ink); font-weight:600; font-size:9.5pt; }
+  .live { display:flex; flex-direction:column; gap:.28rem; margin-top:.3rem; }
+  .live div { font-size:9pt; }
+  .live b { font-family:var(--mono); font-size:8.6pt; color:var(--accent-ink); }
+
+  .pills { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.35rem; }
+  .pill { display:inline-flex; font-family:var(--mono); font-size:7.6pt; font-weight:600;
+    padding:.14em .5em; border-radius:999px; color:#fff; }
+  .pill--won{background:#228B22} .pill--sub{background:#E5A800} .pill--draft{background:#609BD1}
+  .pill--lost{background:#808080} .pill--fresh{background:#228B22} .pill--watch{background:#E5A800} .pill--cold{background:#C11E1E}
+  .keyrow { display:flex; align-items:center; gap:.4rem; font-size:8.6pt; color:var(--ink-soft); margin-top:.3rem; }
+
+  .foot { padding: 12px 22px 0; font-size:8pt; color:var(--ink-faint); font-family:var(--mono); }
+
+  @page { size: Letter; margin: 12mm 13mm; }
+  @media print {
+    :root { --ground:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F3F1;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --line-strong:#D3D2CE;
+      --slate:#3F5364; --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    .btn { color:#fff !important; }
+    .flow, .step, table, tr, .strip, .card { break-inside:avoid; }
+  }
+</style>
+<style>
+  /* Page-specific only: a stop-card variant and two density tweaks.
+     No brand changes — palette, type and components are the reference's. */
+  :root { --crit:#C0392B; }
+  .card.stop { border-left:3px solid var(--crit);
+    background: color-mix(in srgb, var(--crit) 7%, var(--surface)); }
+  .card.stop h2 { color: var(--crit); }
+  .card h2 { margin-bottom:.35rem; }
+  .strip.two { grid-template-columns: 1fr 1fr; }
+  .strip.one { grid-template-columns: 1fr; }
+  table.tight td { padding:.28rem .45rem; font-size:9.2pt; }
+  table.tight td.q { width:44%; }
+  table.tight td.n { width:1.6rem; font-family:var(--mono); color:var(--accent-ink);
+    font-weight:700; font-size:8.5pt; }
+  .card ul { margin:.3rem 0 0; padding-left:1rem; }
+  .card li { font-size:9pt; color:var(--ink-soft); line-height:1.4; margin-bottom:.22rem; }
+  .card li b, .card li strong { color:var(--ink); }
+  h2 + .strip { margin-bottom:16px; }
+  .strip { margin-bottom:16px; }
+  @media print { .card, .strip, table, tr { break-inside:avoid; } h2 { break-after:avoid; } }
+</style>
+
+<div class="page">
+  <div class="top">
+    <div>
+      <div class="ey">KOR Structural &middot; MVE + Partners &middot; Internal prep &mdash; not for MVE</div>
+      <h1>Thursday, 10 AM</h1>
+      <p>Teams call. Dan Gura and Ken Yahampath, Matt McLarand copied. Jim, Islam and Ian from KOR. This is the prep sheet &mdash; the detail sits in the intelligence brief.</p>
+    </div>
+    <div class="pills" style="align-self:center">
+      <span class="pill pill--fresh">+7.4% in 6 months</span>
+      <span class="pill pill--sub">8 roles open</span>
+      <span class="pill pill--draft">0 in San Diego</span>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <h2>The objective, in Jim&rsquo;s words</h2>
+    <div class="strip two">
+      <div class="card accent">
+        <h2 style="color:var(--good)">▲ What this call is</h2>
+        <p class="lead">&ldquo;Remind them we&rsquo;re still in business, that you need to put us on your list. Find out what they&rsquo;ve got coming up that we can help with &mdash; let&rsquo;s get on that list and we&rsquo;ll send you a proposal.&rdquo;</p>
+        <p>Everything below serves that. The pipeline pages exist so that when Dan says <i>&ldquo;we&rsquo;ve got a few things coming&rdquo;</i>, you already know what they are and can be specific back.</p>
+      </div>
+      <div class="card stop">
+        <h2>⛔ What this call is not</h2>
+        <ul>
+          <li><b>Not a software pitch.</b> The AI tooling is bait &mdash; <i>&ldquo;the only reason I brought it up was to spark interest, and he bit right away.&rdquo;</i> Talk about it <b>verbally</b>, show nothing, and set the hook for a follow-up call.</li>
+          <li><b>No code, no screens, no leave-behind.</b> Agreed at the prep call.</li>
+          <li><b>Do not raise the virtual-engineer / virtual-drafter work.</b> Agreed: it isn&rsquo;t working right now.</li>
+          <li><b>This document does not go to MVE.</b> It is a hunting sheet and reads like one.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>Who is actually on the call</h2>
+    <table class="tight">
+      <tr><td class="q"><b>Dan Gura</b> &mdash; Director of Business Development, Irvine</td><td><b>The primary, and he organised it.</b> Jim&rsquo;s read: &ldquo;a seasoned BD power user &mdash; your counterpart.&rdquo; He moved the call to Thursday himself. o 949.809.3354.</td></tr>
+      <tr><td class="q"><b>Ken Yahampath</b> &mdash; Business Operations Analyst / Resource Coordinator</td><td><b>The new name, and the one worth preparing for.</b> On the To line; Dan routed both technical questions to him. See the card below.</td></tr>
+      <tr><td class="q"><b>Matthew McLarand</b> &mdash; President + Director of Design</td><td><b>Copied only</b> &mdash; may or may not join. Founder&rsquo;s son, runs the firm, and Jim has the relationship. ⚠ He will not decide alone.</td></tr>
+      <tr><td class="q"><i>KOR:</i> <b>Jim</b>, <b>Islam</b>, <b>Ian</b></td><td>Islam gives the call engineering depth beyond BD chat. Omar likely can&rsquo;t make 10 AM.</td></tr>
+    </table>
+
+    <div class="strip two">
+      <div class="card">
+        <h2>Ken Yahampath &mdash; who he is</h2>
+        <p class="lead">Your counterpart, and the man who knows how busy MVE really is.</p>
+        <p>At MVE about a year. In his own words: <i>&ldquo;I work largely with <b>ERP</b> and our leadership team to formulate optimal work plans for <b>maximum utilization and accountability</b>. I also work with most of the other company data to report on and strategize to increase efficiencies.&rdquo;</i></p>
+        <p>He runs <b>Deltek Vantagepoint</b> (the ERP), <b>Mosaic</b> and a <b>HubSpot CRM</b> of ~800 contacts. He is <b>not</b> on MVE&rsquo;s public leadership page, which is why earlier drafts wrongly said MVE has no internal technology function. <b>They do. He is it.</b></p>
+        <p><b>Mosaic is a separate company from Deltek</b> &mdash; a third-party resource and capacity-planning tool that sits <i>on top of</i> the ERP and integrates with it. Its own marketing pages are titled &ldquo;Mosaic vs. ERPs.&rdquo; Ken is on Mosaic&rsquo;s <b>Product Advisory Council</b> &mdash; a customer panel that shapes their roadmap. <b>Not a board of directors, and nothing to do with Deltek.</b></p>
+      </div>
+      <div class="card accent">
+        <h2 style="color:var(--good)">▲ The Deltek remark is common ground, not a gaffe</h2>
+        <p class="lead">You told Dan native Deltek reporting and data mining is painful. MVE agrees &mdash; with budget and with headcount.</p>
+        <p>They <b>bought Mosaic</b> because the ERP alone didn&rsquo;t give them the planning view, and they <b>hired Ken</b> to get insight out of the ERP and the rest of their data. That is the same conclusion you reached, solved two ways. And the tell is in the thread: you wrote it on 19 August and <b>Dan didn&rsquo;t defend Deltek &mdash; he routed the question to Ken.</b></p>
+        <p>⚠ <b>Keep it on <i>native reporting</i>, which is what you actually said.</b> Ken has spent a year making Deltek-and-Mosaic work and sits on Mosaic&rsquo;s advisory council &mdash; do not characterise either product. Better: ask <i>&ldquo;what did you end up putting around Vantagepoint to get the reporting you needed?&rdquo;</i> and agree with the answer.</p>
+      </div>
+      <div class="card accent">
+        <h2 style="color:var(--good)">▲ The strongest opening &mdash; Onni</h2>
+        <p class="lead">Dan asked Jim about Onni, and MVE appears to have landed an Onni job.</p>
+        <p>⚠ <b>Confirm the name first</b> &mdash; it reached us as &ldquo;Ani&rdquo; in a call transcript, and Onni is the reading that fits. If it holds, this is the warmest thing on the table: <b>KOR already works for Onni</b>, and MVE&rsquo;s <b>5350 Wilshire</b> for Onni &mdash; 419 units, 46 storeys, Mid-Wilshire &mdash; had its <b>Draft EIR published on 30 July</b>, four weeks ago, with <b>no structural engineer on public record</b>.</p>
+        <p>One shared client, one live tower, both sides already in the room. Lead with it.</p>
+      </div>
+    </div>
+
+    <h2>Ask, in this order</h2>
+    <table class="tight">
+      <tr><td class="n">1</td><td class="q"><b>&ldquo;You said you were busy &mdash; what&rsquo;s coming up that you might need help on?&rdquo;</b></td><td>The whole objective in one question. Everything else is there to make the follow-up specific.</td></tr>
+      <tr><td class="n">2</td><td class="q"><b>&ldquo;Are you on the Onni tower at Wilshire and Cloverdale?&rdquo;</b></td><td>We already work for Onni. Their Draft EIR is four weeks old and no engineer is named. Warm on both sides &mdash; but confirm the Onni reference before leaning on it.</td></tr>
+      <tr><td class="n">3</td><td class="q"><b>To Ken: &ldquo;Where does your resource picture get tight over the next couple of quarters?&rdquo;</b></td><td>He owns utilization. This is the honest way to learn how busy they actually are &mdash; better than any published number, and it hands Jim the opening for &ldquo;we have resources available.&rdquo;</td></tr>
+      <tr><td class="n">4</td><td class="q"><b>&ldquo;What do you need from us to get back on the proposal list?&rdquo;</b></td><td>Ask it plainly. It is the stated goal, and Dan is the one who can action it.</td></tr>
+      <tr><td class="n">5</td><td class="q"><b>&ldquo;Who&rsquo;s doing structure on the OCVIBE residential buildings?&rdquo;</b></td><td>530 units. The drawings filed with Anaheim name thirteen consultants including geotechnical &mdash; and no structural engineer. The best-evidenced gap we have.</td></tr>
+      <tr><td class="n">6</td><td class="q"><b>&ldquo;What&rsquo;s taking you to Dallas?&rdquo;</b></td><td>Two roles advertised for Texas on 21 August; no Texas office. Nobody has reported it. A flattering question that shows we pay attention.</td></tr>
+      <tr><td class="n">7</td><td class="q"><b>&ldquo;How is the Sa cap in the 2026 code landing on your podium plates?&rdquo;</b></td><td>⚠ For Matt or a design principal, not Dan or Ken. The one question that puts KOR in the room as engineers. Islam is the right voice for it.</td></tr>
+    </table>
+
+    <h2>What&rsquo;s coming at MVE &mdash; so &ldquo;what have you got?&rdquo; gets a specific answer</h2>
+    <div class="strip two">
+      <div class="card accent">
+        <h2 style="color:var(--good)">▲ Live and not locked</h2>
+        <div class="live">
+          <div><b>5350 WILSHIRE</b> Onni &middot; 419 u &middot; 46 st &middot; Draft EIR 30 Jul 2026. <b>The Onni link makes this first.</b></div>
+          <div><b>OCVIBE RESIDENTIAL</b> Anaheim &middot; 530 u &middot; thirteen consultants filed, none structural.</div>
+          <div><b>SANTA CLARA PARK</b> 1,792 u for The Irvine Company &middot; approved, waiting on office leases to run out.</div>
+          <div><b>6201 RESIDENCES</b> Culver City &middot; 846 u &middot; approved, start targeted this year &mdash; shortest fuse.</div>
+          <div><b>LEGACY PARK</b> Mesa AZ &middot; 2,500 u + 750 keys &middot; entitlement still ahead.</div>
+          <div><b>RIVERWALK PH 2</b> 17 of 20 parcels undesigned. They hold the master plan.</div>
+        </div>
+      </div>
+      <div class="card stop">
+        <h2>✕ Don&rsquo;t raise as live work</h2>
+        <ul>
+          <li><b>Discovery Park is not theirs.</b> The Irvine Company&rsquo;s 1,858-unit Irvine entitlement went to <b>BDE Architecture</b>.</li>
+          <li><b>4002 Park Blvd</b> has been engineered since 2024 &mdash; not an open seat, though it hasn&rsquo;t gone vertical.</li>
+          <li><b>Snug Harbor is wounded, not dead.</b> The expansion was rescinded 6&ndash;0, but the 20,000 sf approval survives and they were still discussing it on 18 August. Don&rsquo;t congratulate &mdash; and don&rsquo;t commiserate.</li>
+          <li><b>Reserve at Silo Park</b> broke ground Oct 2025. <b>The Village at Riverwalk</b> is Gensler&rsquo;s. <b>Uptown Newport</b> is Shopoff&rsquo;s.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>Three things to hold in your head</h2>
+    <div class="strip">
+      <div class="card stop">
+        <h2>⛔ The one thing not to say</h2>
+        <p class="lead">Not the name &mdash; the intent.</p>
+        <p><b>Glotman Simpson holds three MVE jobs</b>: Ritz-Carlton Newport, 3rd&nbsp;+&nbsp;Fairfax, and the Hillcrest tower. Jim did two towers with MVE <i>while he was at Glotman</i>, so the name itself is his own history and perfectly sayable. What must never surface is that <b>displacing them on MVE&rsquo;s next Orange County high-rise is KOR&rsquo;s written number-one play</b>. Also: <b>never quote their revenue</b> &mdash; sources disagree and none is a filing.</p>
+      </div>
+      <div class="card">
+        <h2>How MVE decides</h2>
+        <p class="lead">Shared, not top-down. Matt won&rsquo;t call it alone.</p>
+        <p>Cultivate the project architects under him &mdash; Jim has worked with <b>Luis Arambula</b>, <b>Pieter Berger</b> and <b>Paul Kearney</b>. <b>Pieter Berger</b> is the structural-selection voice on Orange County work. Recent hires worth name-dropping: <b>Catherine Tang</b> (Marketing &amp; Strategy, March) and <b>Janet Dennerline</b> (General Counsel, July).</p>
+      </div>
+      <div class="card">
+        <h2>They&rsquo;re growing, fast</h2>
+        <p class="lead">+7.4% headcount in six months, against +5.2% over twelve.</p>
+        <p>The recent half-year outgrew the one before it. Eight roles open, none in San Diego. Four LA projects surfaced in eight months against one in all of 2024. <b>Say the direction, not the headcount</b> &mdash; the absolute number is an estimate. It also corroborates Dan&rsquo;s own &ldquo;we&rsquo;re busy.&rdquo;</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">Internal preparation for the MVE call, Thursday 27 August 2026, 10 AM. <b>Not for distribution to MVE.</b> Where a structural engineer is <b>not publicly named</b>, it means no public record names one &mdash; not that the seat is open. Full detail: KOR-MVE-Intel-Brief-2026-08-26.</div>
+</div>

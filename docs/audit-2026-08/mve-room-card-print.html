@@ -1,0 +1,21 @@
+<style>
+  /* Page-specific only: a stop-card variant and two density tweaks.
+     No brand changes — palette, type and components are the reference's. */
+  :root { --crit:#C0392B; }
+  .card.stop { border-left:3px solid var(--crit);
+    background: color-mix(in srgb, var(--crit) 7%, var(--surface)); }
+  .card.stop h2 { color: var(--crit); }
+  .card h2 { margin-bottom:.35rem; }
+  .strip.two { grid-template-columns: 1fr 1fr; }
+  .strip.one { grid-template-columns: 1fr; }
+  table.tight td { padding:.28rem .45rem; font-size:9.2pt; }
+  table.tight td.q { width:44%; }
+  table.tight td.n { width:1.6rem; font-family:var(--mono); color:var(--accent-ink);
+    font-weight:700; font-size:8.5pt; }
+  .card ul { margin:.3rem 0 0; padding-left:1rem; }
+  .card li { font-size:9pt; color:var(--ink-soft); line-height:1.4; margin-bottom:.22rem; }
+  .card li b, .card li strong { color:var(--ink); }
+  h2 + .strip { margin-bottom:16px; }
+  .strip { margin-bottom:16px; }
+  @media print { .card, .strip, table, tr { break-inside:avoid; } h2 { break-after:avoid; } }
+</style>
