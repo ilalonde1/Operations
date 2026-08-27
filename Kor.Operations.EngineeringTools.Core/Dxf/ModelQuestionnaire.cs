@@ -595,6 +595,44 @@ public static class ModelQuestionnaire
         //
         // Asked wherever a sheet models at least one floor and abandons real slab edge doing it,
         // because that is exactly the shape of a sheet that has been under-read, on any job.
+        // A COUNT SHE HAS ALREADY GIVEN IS CHECKED, NEVER ASKED.
+        //
+        // Banked as slab-count.<job>.<storey>, which is the smallest form of a scoped fact: not a
+        // rule about how drawings are read anywhere, just something true of this building that she
+        // told us. Here it is used the only way an answer should be used — to hold the model to it.
+        //
+        // She has answered this one twice: "Level 2 and level mezz have each two separate slabs",
+        // then "there are actually 3 slabs at mezzanine level for the YMCA". Asking again is what
+        // her own ruling a-question-she-has-answered-is-not-asked-again forbids, and the first
+        // draft of the question below did exactly that.
+        string job = Path.GetFileNameWithoutExtension(report.OutputPath);
+
+        var expected = report.RulesApplied
+            .Where(r => r.Key.StartsWith("slab-count.", StringComparison.OrdinalIgnoreCase))
+            .Select(r => (Parts: r.Key.Split('.', 3), r.Value))
+            .Where(x => x.Parts.Length == 3 && job.Contains(x.Parts[1], StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(x => x.Parts[2], x => x.Value, StringComparer.OrdinalIgnoreCase);
+
+        var shortOfHerCount = expected
+            .Where(x => report.PlatesByStorey.TryGetValue(x.Key, out int had)
+                        && x.Value.IsNumeric && had != (int)x.Value.Value)
+            .Select(x => $"{x.Key}: you told us {x.Value.Value:0}, this model has " +
+                         $"{report.PlatesByStorey[x.Key]}")
+            .ToList();
+
+        if (shortOfHerCount.Count > 0)
+            yield return new ModelQuestion("S6", "Slab counts you have already given",
+                "A FAULT, NOT A QUESTION — " + string.Join("; ", shortOfHerCount) + ". You have already told us how " +
+                "many slabs these storeys carry, so this is the tool falling short of your answer rather " +
+                "than anything we need from you again. The drawing leaves the missing outlines open and " +
+                "this reading has not recovered them.",
+                "Nothing was invented to make the count up: a region that cannot be closed and cannot be " +
+                "priced is not turned into a diaphragm to satisfy a number.",
+                "A floor that is not in the model is not in any other count in this workbook either, so " +
+                "every figure on that storey looks right without it.",
+                "Your own answer, banked, and the count in the file that shipped.")
+                { RuleTopic = "a-count-she-gave-is-checked", Decided = true, Defect = true };
+
         var underRead = report.Sheets
             .Where(sheet => sheet.Slabs > 0)
             .Select(sheet => (sheet, Note: sheet.Flags.FirstOrDefault(f =>
@@ -603,6 +641,7 @@ public static class ModelQuestionnaire
             .Where(x => x.Note is not null)
             .OrderByDescending(x => IgnoredUnits(x.Note!))
             .Where(x => IgnoredUnits(x.Note!) >= 2000)
+            .Where(x => !expected.Keys.Any(storey => x.sheet.Stories.Contains(storey, StringComparer.OrdinalIgnoreCase)))
             .Take(8)
             .ToList();
 

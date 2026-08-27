@@ -177,6 +177,17 @@ public sealed record DxfToEtabsReport(
     public string? BuildingCut { get; init; }
 
     /// <summary>
+    /// How many floor plates each storey of the finished file carries.
+    ///
+    /// So the tool can hold itself to a count the engineer has already given. She said the YMCA
+    /// mezzanine has three slabs; a workbook that asks her again is a workbook that stops being
+    /// read, and one that says "you told us three and this model has two" is the tool doing its
+    /// job.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> PlatesByStorey { get; init; } =
+        new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Storeys whose floor reaches well past the members standing on it — a shared slab under one
     /// building's structure. The engineer is asked whose it is; see ModelQuestionnaire S5.
     /// </summary>
@@ -1648,6 +1659,7 @@ public static class DxfToEtabsService
             FoundationStoreys = foundationStoreys,
             DeclinedCircleDiameters = declinedCircleDiameters,
             BuildingCut = request.TowerOnly,
+            PlatesByStorey = PlatesByStorey(doc),
             FloorsWiderThanTheirStructure = FloorsWiderThanTheirStructure(doc),
         };
     }
@@ -1848,6 +1860,22 @@ public static class DxfToEtabsService
     /// spanning 100 x 292, which is 2.7. A floor half as wide again as its frame is a cantilever
     /// and says nothing; one that covers two and a half times its box is carrying somebody else.
     /// </summary>
+    /// <summary>How many floor plates stand on each storey of the finished file.</summary>
+    private static IReadOnlyDictionary<string, int> PlatesByStorey(E2kDocument doc)
+    {
+        var plates = doc.PlateNames();
+        var count = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (obj, storeys) in doc.StoreysByObject())
+        {
+            if (!plates.Contains(obj)) continue;
+            foreach (string storey in storeys)
+                count[storey] = count.GetValueOrDefault(storey) + 1;
+        }
+
+        return count;
+    }
+
     private static IReadOnlyList<string> FloorsWiderThanTheirStructure(E2kDocument doc)
     {
         var plates = doc.PlateNames();

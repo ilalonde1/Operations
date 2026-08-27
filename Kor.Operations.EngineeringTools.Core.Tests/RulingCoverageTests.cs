@@ -45,6 +45,8 @@ public class RulingCoverageTests
         ["one-floor-holds-one-of-each-member"] = "PlacementModelTests.OneFloorHoldsOneOfEachMemberAndTheSurplusAssignIsWhatGoes",
         ["a-circle-the-set-draws-no-column-at"] = "PlacementModelTests.ACircleDrawnAsAPolygonIsRememberedAsOne",
         ["a-drawing-that-lands-nowhere"] = "ModelQuestionnaire J7, raised from the run's own flag; ModelCoverageTests.NoNoteNamesAStoreyThisModelDoesNotHave keeps it honest about which storeys it names",
+        // Her answer used as a check rather than a question — migration 058, the first scoped fact.
+        ["a-count-she-gave-is-checked"] = "ModelQuestionnaire S6, against slab-count.<job>.<storey>; PlacementModelTests covers the reading rules it reports against",
         ["a-tag-inside-a-region-means-slab"] = "TagGatedSlabRecoveryTests.AnOpenOutlineWithNoCallOutInsideItRecoversNothing",
         ["a-plate-recovered-twice-is-not-a-hole"] = "PlateReadTwiceTests.AFloorFoundTwiceIsOnePlateAndNoOpening",
         ["a-question-she-has-answered-is-not-asked-again"] = "RulingCoverageTests.NoQuestionIsAskedOnATopicSheHasAlreadyRuledOn",
