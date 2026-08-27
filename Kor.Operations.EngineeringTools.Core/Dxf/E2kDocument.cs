@@ -874,6 +874,112 @@ public sealed class E2kDocument
         return map;
     }
 
+    /// <summary>
+    /// Floors that hold a plate with no wall or column under them, and floors that hold walls or
+    /// columns and no plate — read from the FINISHED model.
+    ///
+    /// Both were counted per storey and during composition, and both were therefore wrong twice
+    /// over. Per storey, because a site model names one floor twice: after a merge the ground
+    /// floor's plate sits on B-LEVEL 1 and its 108 columns on A-LEVEL 1, an inch and a half below,
+    /// and the storey-wise reading called that a slab supported by air. During composition, because
+    /// the cuts had not happened yet, so the list described a model nobody was going to receive.
+    ///
+    /// Reported by floor and after every cut, the list is the one an engineer would write down
+    /// looking at the file she was sent.
+    /// </summary>
+    public (IReadOnlyList<string> FloorsWithNoPlate, IReadOnlyList<string> PlatesWithNoSupport) FloorGaps()
+    {
+        var floorOf = FloorOfStorey();
+        var plates = PlateNames();
+        var planOf = PlanPointsOfObjects();
+        var storeysOf = StoreysByObject();
+
+        string FloorNamed(string storey) => floorOf.TryGetValue(storey, out string? f) ? f : storey;
+
+        var platesOnFloor = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var membersOnFloor = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var storeyOfObject = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var (obj, storeys) in storeysOf)
+        {
+            if (!planOf.ContainsKey(obj)) continue;
+            storeyOfObject[obj] = storeys[0];
+
+            foreach (string floor in storeys.Select(FloorNamed).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var into = plates.Contains(obj) ? platesOnFloor : membersOnFloor;
+                if (!into.TryGetValue(floor, out var list)) into[floor] = list = new List<string>();
+                list.Add(obj);
+            }
+        }
+
+        // UNDER, not merely on the same floor. Two towers reach level 28 within an inch of each
+        // other and are still two buildings in the air: tower B's plate is not held up by tower A's
+        // columns two hundred feet away. The shared ground floor is the opposite case — one slab
+        // over both stacks — and only position tells them apart.
+        bool AnyUnder(string plate, IReadOnlyList<string> members) =>
+            planOf.TryGetValue(plate, out var outline)
+            && outline.Count >= 3
+            && members.Any(m => planOf.TryGetValue(m, out var pts)
+                                && pts.Any(p => WithinOrNear(p, outline, 36.0)));
+
+        var unsupported = new List<string>();
+        foreach (var (floor, here) in platesOnFloor)
+        {
+            membersOnFloor.TryGetValue(floor, out var members);
+            foreach (string plate in here)
+                if (!AnyUnder(plate, members ?? new List<string>()))
+                    unsupported.Add(storeyOfObject[plate]);
+        }
+
+        // MOST of a storey, not one member of it. Tower A's level 28 and tower B's stand 36 in
+        // apart and are one floor by elevation; asking whether ANY of tower B's members fell under
+        // tower A's plate found one at the edge and pronounced the whole storey floored. Tower B's
+        // level 28 has no slab on the drawing at all — its outline would not close — and that is a
+        // thing the engineer needs told.
+        bool Covered(string member, IReadOnlyList<string> above) =>
+            planOf.TryGetValue(member, out var pts)
+            && above.Any(p => planOf.TryGetValue(p, out var outline)
+                              && outline.Count >= 3
+                              && pts.Any(q => WithinOrNear(q, outline, 36.0)));
+
+        var plateless = new List<string>();
+        foreach (var (floor, here) in membersOnFloor)
+        {
+            platesOnFloor.TryGetValue(floor, out var above);
+            above ??= new List<string>();
+
+            foreach (var byStorey in here.GroupBy(m => storeyOfObject[m], StringComparer.OrdinalIgnoreCase))
+            {
+                var mine = byStorey.ToList();
+                if (mine.Count(m => Covered(m, above)) * 2 < mine.Count) plateless.Add(byStorey.Key);
+            }
+        }
+
+        var order = ReadStories().Select(s => s.Name).ToList();
+        int Rank(string s) => order.IndexOf(s) is var i && i < 0 ? int.MaxValue : i;
+
+        return (
+            plateless.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(Rank).ToList(),
+            unsupported.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(Rank).ToList());
+    }
+
+    /// <summary>Whether a point lies in an outline, or near enough its edge to count as on it.</summary>
+    private static bool WithinOrNear(
+        (double X, double Y) point, IReadOnlyList<(double X, double Y)> outline, double margin)
+    {
+        var p = new DxfPoint(point.X, point.Y);
+        var ring = outline.Select(q => new DxfPoint(q.X, q.Y)).ToList();
+
+        if (ring.Count >= 3 && LoopGeometry.PointInPolygon(p, ring)) return true;
+
+        for (int i = 0; i < ring.Count; i++)
+            if (LoopGeometry.PerpendicularDistance(p, ring[i], ring[(i + 1) % ring.Count]) <= margin)
+                return true;
+
+        return false;
+    }
+
     /// <summary>The area objects that are floor plates rather than wall panels.</summary>
     public IReadOnlySet<string> PlateNames()
     {

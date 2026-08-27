@@ -1411,6 +1411,36 @@ public static class DxfToEtabsService
                     "models of one building agree about the storeys they share.").ToList(),
             };
 
+        // THE GAPS ARE COUNTED ON THE FILE SHE IS SENT, NOT ON THE COMPOSITION.
+        //
+        // The composer's own versions of these two lists are replaced here. They were written
+        // before the cuts, so they described a model nobody receives, and they were written per
+        // STOREY, so on a floor the engineer named twice they reported the plate on one name as
+        // standing on air while its columns sat an inch and a half away on the other. Both flaws
+        // reach the engineer's workbook as rows she cannot act on, and a workbook with rows like
+        // that in it stops being read.
+        var (floorsWithNoPlate, platesWithNoSupport) = doc.FloorGaps();
+
+        summary = summary with
+        {
+            Flags = summary.Flags
+                .Where(f => !f.Contains("carry walls or columns and no floor plate", StringComparison.OrdinalIgnoreCase)
+                            && !f.Contains("no wall or column beneath it", StringComparison.OrdinalIgnoreCase))
+                .Concat(floorsWithNoPlate.Count == 0 ? Array.Empty<string>() : new[]
+                {
+                    $"{floorsWithNoPlate.Count} storey(s) carry walls or columns and no floor plate, so they " +
+                    $"have no diaphragm: {string.Join(", ", floorsWithNoPlate)}. Nothing was borrowed or " +
+                    "invented for them; add a plate if these storeys need one.",
+                })
+                .Concat(platesWithNoSupport.Count == 0 ? Array.Empty<string>() : new[]
+                {
+                    $"{platesWithNoSupport.Count} storey(s) carry a floor plate with no wall or column beneath " +
+                    $"it: {string.Join(", ", platesWithNoSupport)}. The plan placed there draws no vertical " +
+                    "structure, so either the structure stops below that level or another sheet holds it.",
+                })
+                .ToList(),
+        };
+
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(request.OutputE2k))!);
         doc.Save(request.OutputE2k);
 
