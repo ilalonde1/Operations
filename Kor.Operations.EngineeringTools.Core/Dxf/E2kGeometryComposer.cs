@@ -1071,7 +1071,23 @@ public static class E2kGeometryComposer
 
                 double thickness = fromTag ?? placement.SlabThickness ?? options.DefaultSlabThickness;
 
-                var names = slab.Points
+                // AN OUTLINE THAT DOUBLES BACK ON ITSELF IS ONE ETABS WILL NOT READ.
+                //
+                // KF54 went out with three joints running down 24 inches along one x and back up
+                // 96 along the same one — a spur of no width. ETABS answered "Area Object KF54 not
+                // correctly defined" and then ignored its assign, so the floor was simply absent
+                // from the model the engineer opened. The ring had the right area, the right
+                // position, no coincident joints and no proper self-crossing: nothing in this tool
+                // could see it, and importing the file is what found it.
+                var ring = LoopGeometry.RemoveSpurs(slab.Points);
+                if (ring.Count < slab.Points.Count)
+                    flags.Add(
+                        $"{placement.SourceSheet}: a floor plate of {slab.Area / 144:N0} sq ft on " +
+                        $"{slabStory.Name} doubled back on itself at {slab.Points.Count - ring.Count} " +
+                        "joint(s); the spurs have no width and were removed. ETABS refuses an outline " +
+                        "that does that and drops the floor without saying which.");
+
+                var names = ring
                     .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
                     .Distinct()
                     .ToList();
@@ -1208,7 +1224,7 @@ public static class E2kGeometryComposer
                 // heading right. ETABS said "Area Object KO4 not correctly defined" and threw the
                 // opening away. Four-point openings survived by luck; every six-point one did not.
                 // Found by importing a model, which is the only thing that could have found it.
-                var ordered = InPerimeterOrder(opening.Points);
+                var ordered = LoopGeometry.RemoveSpurs(InPerimeterOrder(opening.Points));
                 var names = ordered
                     .Select(p => PointAt(p.X + options.OffsetX, p.Y + options.OffsetY))
                     .Distinct()

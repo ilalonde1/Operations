@@ -258,6 +258,44 @@ public static class ShippedModelInvariants
                     hole, ModelViolationSeverity.Advisory));
         }
 
+        // 3c. AN OUTLINE ETABS WILL NOT READ.
+        //
+        //     KF54 shipped with three joints running down 24 inches along one x and back up 96
+        //     along the same one. ETABS said "Area Object KF54 not correctly defined", ignored its
+        //     assign, and the floor was absent from the model an engineer opened -- with the report
+        //     still counting it. Nothing in this tool could see it: right area, right position, no
+        //     coincident joints, no proper self-crossing. Importing the file is what found it.
+        //
+        //     BLOCKING, not advisory. A plate ETABS refuses is not a plate.
+        foreach (var (obj, ring) in joints)
+        {
+            if (!obj.StartsWith("K", StringComparison.Ordinal)) continue;
+            if (carriedThrough.Contains(obj)) continue;
+            // FLOORS AND OPENINGS ONLY. A wall panel is four joints -- two at the bottom of a
+            // plan line and two at the top -- so in PLAN it is "KP1 KP2 KP2 KP1", a line and not
+            // a polygon. Read two-dimensionally every wall in the model doubles back on itself,
+            // and the first version of this check called all 1,788 of them broken. What is flat
+            // in plan is not flat in the model.
+            if (!kind.TryGetValue(obj, out string? k) ||
+                !(k.Equals("FLOOR", StringComparison.OrdinalIgnoreCase) ||
+                  k.Equals("AREA", StringComparison.OrdinalIgnoreCase))) continue;
+            if (ring.Count < 3) continue;
+
+            var shape = new List<DxfPoint>();
+            bool complete = true;
+            foreach (string j in ring)
+            {
+                if (!pts.TryGetValue(j, out var q)) { complete = false; break; }
+                shape.Add(new DxfPoint(q.Item1, q.Item2));
+            }
+
+            if (complete && shape.Count >= 3 && LoopGeometry.HasSpur(shape))
+                v.Add(new ModelViolation("outline-doubles-back-on-itself",
+                    $"'{obj}' has an outline that doubles back along itself. ETABS refuses it and " +
+                    "drops the object without naming it, so the model an engineer opens is missing " +
+                    "this one", obj));
+        }
+
         // 4. A member must not belong to two storeys. A floor may -- that is a borrowed plate, and
         //    it is declared. A WALL, COLUMN or header on two storeys is one member counted twice:
         //    six spandrels shipped that way, 1.7 inches tall on the second storey.

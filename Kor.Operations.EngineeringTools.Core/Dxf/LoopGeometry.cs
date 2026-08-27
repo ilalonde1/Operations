@@ -156,6 +156,75 @@ public static class LoopGeometry
         return Math.Abs((p.X - a.X) * dy - (p.Y - a.Y) * dx) / len;
     }
 
+    /// <summary>
+    /// Removes vertices where an outline doubles back along itself.
+    ///
+    /// ETABS refuses these outright — "Area Object KF54 not correctly defined", followed by
+    /// "Error reading line 12726. Line Ignored." for its assign, so the floor is silently absent
+    /// from the model an engineer opens. Found by importing, which is the only thing that could
+    /// have found it: the ring has the right area, the right position, no coincident points and no
+    /// proper self-crossing. Three of its joints simply ran down 24 inches along one x and back up
+    /// 96 along the same one.
+    ///
+    /// A spur is a vertex whose two edges point in OPPOSITE directions. The polygon has no width
+    /// there, so nothing is lost by dropping it; what is gained is a plate ETABS will read.
+    /// Iterated, because removing one spur can expose the next behind it.
+    /// </summary>
+    public static List<DxfPoint> RemoveSpurs(IReadOnlyList<DxfPoint> ring, double tolerance = 1e-6)
+    {
+        var pts = ring.ToList();
+
+        for (bool again = true; again && pts.Count > 3; )
+        {
+            again = false;
+
+            for (int i = 0; i < pts.Count && pts.Count > 3; i++)
+            {
+                var prev = pts[(i - 1 + pts.Count) % pts.Count];
+                var cur = pts[i];
+                var next = pts[(i + 1) % pts.Count];
+
+                double ax = cur.X - prev.X, ay = cur.Y - prev.Y;
+                double bx = next.X - cur.X, by = next.Y - cur.Y;
+
+                double la = Math.Sqrt(ax * ax + ay * ay);
+                double lb = Math.Sqrt(bx * bx + by * by);
+                if (la < tolerance || lb < tolerance) { pts.RemoveAt(i); again = true; i--; continue; }
+
+                // cos of the turn: -1 is a full reversal.
+                double cos = (ax * bx + ay * by) / (la * lb);
+                if (cos <= -1.0 + 1e-9)
+                {
+                    pts.RemoveAt(i);
+                    again = true;
+                    i--;
+                }
+            }
+        }
+
+        return pts;
+    }
+
+    /// <summary>True where an outline doubles back along itself at any vertex.</summary>
+    public static bool HasSpur(IReadOnlyList<DxfPoint> ring)
+    {
+        for (int i = 0; i < ring.Count; i++)
+        {
+            var prev = ring[(i - 1 + ring.Count) % ring.Count];
+            var cur = ring[i];
+            var next = ring[(i + 1) % ring.Count];
+
+            double ax = cur.X - prev.X, ay = cur.Y - prev.Y;
+            double bx = next.X - cur.X, by = next.Y - cur.Y;
+            double la = Math.Sqrt(ax * ax + ay * ay), lb = Math.Sqrt(bx * bx + by * by);
+            if (la < 1e-9 || lb < 1e-9) return true;
+
+            if ((ax * bx + ay * by) / (la * lb) <= -1.0 + 1e-9) return true;
+        }
+
+        return false;
+    }
+
     /// <summary>Drops collinear and near-duplicate vertices so ETABS gets clean polygons.</summary>
     public static List<DxfPoint> Simplify(IReadOnlyList<DxfPoint> points, double tolerance)
     {
