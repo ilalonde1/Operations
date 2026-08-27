@@ -16,6 +16,17 @@ public sealed record StoryPlacement(
     public double? SlabThicknessInches { get; init; }
 
     public int? SlabThicknessPage { get; init; }
+
+    /// <summary>
+    /// The building this SHEET was drawn for, where its name says one — "BLDG C" and the like.
+    ///
+    /// Not the same thing as the building of the storey it lands on, and the difference is what
+    /// put six of the YMCA's storeys on the towers. 31168's "LEVEL 2 PLAN - CONCRETE OUTLINE -
+    /// BLDG C" is placed on a storey called LEVEL 2, which is unprefixed because both buildings
+    /// share it. Rising from an unprefixed storey, a member has nothing to say which building it
+    /// belongs to, and goes to whichever storey is nearest above -- the tower's.
+    /// </summary>
+    public string? SheetBuildingTag { get; init; }
 }
 
 /// <summary>
@@ -661,7 +672,7 @@ public static class E2kGeometryComposer
         // change first announced itself: "no wall is shorter than a person" went red on 31168.
         // Two storeys within a foot of each other are one level, and a member rises past them.
         const double SameLevel = 12.0;
-        StoryLevel RisesTo(StoryLevel from)
+        StoryLevel RisesTo(StoryLevel from, string? sheetTag = null)
         {
             // Never onto another building's storey.
             //
@@ -670,7 +681,11 @@ public static class E2kGeometryComposer
             // tower B's headers on a tower A storey 130 ft from where they were drawn. A member
             // rises to the next storey of the building it belongs to, or to a shared one; a storey
             // named for somebody else is not a candidate.
+            // The storey's own building, or the SHEET's where the storey is shared. A sheet drawn
+            // for one building does not stop belonging to it because the level it sits on is
+            // common to several.
             string tag = E2kDocument.BuildingTagOf(from.Name);
+            if (tag.Length == 0 && !string.IsNullOrWhiteSpace(sheetTag)) tag = sheetTag.Trim();
 
             var above = allStories
                 .Where(s => s.Elevation > from.Elevation + SameLevel)
@@ -679,7 +694,44 @@ public static class E2kGeometryComposer
                                 || t.Equals(tag, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
 
-            return above.Count > 0 ? above[0] : from;
+            if (above.Count == 0) return from;
+
+            // A MEMBER RISES TO THE NEXT STOREY OF ITS OWN BUILDING.
+            //
+            // An UNPREFIXED storey counts as shared, which is right for a podium every building
+            // stands on and wrong the moment a shared name sits at the same LEVEL as a tagged one.
+            // On 31168's site model the YMCA's C-LEVEL 4 is 5.4 inches above the tower's LEVEL 4,
+            // C-LEVEL 9 is 27 inches above LEVEL 9, and C-ROOF is 38 above LEVEL 10 — the same
+            // physical levels, drafted twice, exactly as the ground floor is A-LEVEL 1 and
+            // B-LEVEL 1. Taking the nearest candidate took the tower's every time.
+            //
+            // The cost was six storeys of the YMCA shipping with ZERO walls and ZERO columns —
+            // floor plates over nothing — while LEVEL 4 to LEVEL 8 each carried 89 columns, the
+            // tower's 48 and the YMCA's 41 stacked on one storey. The YMCA-only model built from
+            // the same drawings had them right, which is the only reason it was findable: the two
+            // deliverables disagreed.
+            //
+            // NO DISTANCE WINDOW. A window is a magic number tuned to one gap, and this job has
+            // three different ones. What decides it is SEQUENCE: the own-building storey is the
+            // same level when it arrives before the SECOND shared storey. On C-LEVEL 8 the next
+            // shared is LEVEL 9 and the one after is LEVEL 10, with C-LEVEL 9 between them — so
+            // C-LEVEL 9 is that level and the member goes there. On A-LEVEL 1 the next shared is
+            // LEVEL 2 and the next A storey is A-LEVEL 27, twenty-five levels past it — so the
+            // member goes to LEVEL 2, which is what a tower's ground floor should do.
+            if (tag.Length > 0)
+            {
+                var own = above
+                    .Where(s => E2kDocument.BuildingTagOf(s.Name).Equals(tag, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                var shared = above
+                    .Where(s => E2kDocument.BuildingTagOf(s.Name).Length == 0)
+                    .ToList();
+
+                if (own.Count > 0 && (shared.Count < 2 || own[0].Elevation < shared[1].Elevation))
+                    return own[0];
+            }
+
+            return above[0];
         }
 
         // EVERY PLATE ON EVERY STOREY, BEFORE ANY OPENING IS CUT.
@@ -740,7 +792,7 @@ public static class E2kGeometryComposer
             var slabStory = placement.Story;
 
             // Where what stands on it belongs: one storey up.
-            var story = options.MembersRiseToStoreyAbove ? RisesTo(placement.Story) : placement.Story;
+            var story = options.MembersRiseToStoreyAbove ? RisesTo(placement.Story, placement.SheetBuildingTag) : placement.Story;
 
             foreach (var wall in placement.Geometry.Walls)
             {

@@ -422,22 +422,24 @@ public static class DxfToEtabsService
             .ToList();
         var sheetInfoByFile = files.ToDictionary(f => f, PlanSheetNaming.Parse, StringComparer.OrdinalIgnoreCase);
 
-        // A model of one tower carries only that tower's storeys. On a site model the others stand
-        // empty, which is what the engineer saw: "some levels don't exist, they're blank."
-        var droppedStoreys = request.TowerOnly is null
-            ? Array.Empty<string>()
-            : doc.KeepOnlyTower(request.TowerOnly).ToArray();
-
-        // After the tower cut, not instead of it: the two answer different questions and an
-        // engineer may want both ("building C, and nothing above its roof").
-        var droppedAbove = request.TopStorey is null
-            ? Array.Empty<string>()
-            : doc.KeepStoreysUpTo(request.TopStorey).ToArray();
-
-        // Last, and after both, because it exists to catch what neither of them can see.
-        var droppedByName = request.DropStoreys.Count == 0
-            ? Array.Empty<string>()
-            : doc.DropStoreys(request.DropStoreys).ToArray();
+        // THE CUTS HAPPEN AFTER COMPOSITION, NOT BEFORE IT. See CutToThisBuilding below.
+        //
+        // They used to run here, on the storey list, before a single member was placed — and that
+        // is why two models of one building could not be made to agree. A member is placed by
+        // rising to the storey above it, so placement walks the storey stack; cutting the stack
+        // first means each deliverable walks a DIFFERENT ladder and reaches a different answer for
+        // the same drawing.
+        //
+        // On 31168 that shipped six storeys of the YMCA with no vertical structure at all in the
+        // site model — C-LEVEL 3 to C-LEVEL 8 as floor plates over nothing, while LEVEL 4 to
+        // LEVEL 8 each carried the tower's columns and the YMCA's stacked together. The YMCA-only
+        // model, walking a ladder with no tower storeys in it, had them right.
+        //
+        // Composing once and cutting afterwards makes the smaller model a SUBSET of the larger by
+        // construction. It is not that they now agree; it is that they cannot disagree.
+        string[] droppedStoreys = Array.Empty<string>();
+        string[] droppedAbove = Array.Empty<string>();
+        string[] droppedByName = Array.Empty<string>();
 
         // Drafting can issue parkade levels the model has never had. On 31138 the drawings go to
         // LEVEL P5 and the model stopped at P3, so two whole floors were read and placed nowhere —
@@ -810,6 +812,7 @@ public static class DxfToEtabsService
                 if (byName.TryGetValue(storyName, out var story))
                     placements.Add(new StoryPlacement(story, geometry, sheet.FileName, sheet.IsFoundation)
                     {
+                        SheetBuildingTag = sheet.BuildingTag,
                         SlabThickness = slabThickness is null ? null : slabThickness.ThicknessInches / modelUnitInInches,
                         SlabThicknessInches = slabThickness?.ThicknessInches,
                         SlabThicknessPage = slabThickness?.PageNumber,
@@ -875,6 +878,21 @@ public static class DxfToEtabsService
             };
         }
 
+        // The whole site is composed by now. What this model is NOT of comes off here, in the
+        // order the three cuts have always run in: the building first, then the height, then the
+        // names neither of those can see.
+        droppedStoreys = request.TowerOnly is null
+            ? Array.Empty<string>()
+            : doc.KeepOnlyTower(request.TowerOnly).ToArray();
+
+        droppedAbove = request.TopStorey is null
+            ? Array.Empty<string>()
+            : doc.KeepStoreysUpTo(request.TopStorey).ToArray();
+
+        droppedByName = request.DropStoreys.Count == 0
+            ? Array.Empty<string>()
+            : doc.DropStoreys(request.DropStoreys).ToArray();
+
         if (droppedAbove.Length > 0)
         {
             // Same reason as the tower cut below: the reference's own members on the storeys we
@@ -919,6 +937,19 @@ public static class DxfToEtabsService
                     $"Removed: {string.Join(", ", droppedStoreys.Take(8))}{(droppedStoreys.Length > 8 ? ", …" : "")}.").ToList(),
             };
         }
+
+        // The bill for composing once and cutting afterwards: members that belong to a building
+        // this model is not of are defined here and assigned to nothing. They come out.
+        int orphanObjects = doc.DropObjectsWithNoAssign();
+        if (orphanObjects > 0)
+            summary = summary with
+            {
+                Flags = summary.Flags.Append(
+                    $"{orphanObjects} generated object(s) belonged to storeys this model does not carry and " +
+                    "were removed. The whole site is composed once and then cut to this building, so the " +
+                    "members are made and then taken out rather than never made — which is what lets two " +
+                    "models of one building agree about the storeys they share.").ToList(),
+            };
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(request.OutputE2k))!);
         doc.Save(request.OutputE2k);

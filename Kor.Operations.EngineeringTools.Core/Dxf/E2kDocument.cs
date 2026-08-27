@@ -668,6 +668,56 @@ public sealed class E2kDocument
         return removed;
     }
 
+    /// <summary>
+    /// Remove every AREA and LINE object that no longer has an assign, and report how many.
+    ///
+    /// Cutting a storey drops the assigns that stood on it; the OBJECT stays behind, defined and
+    /// attached to nothing. When the cuts ran before composition that never happened — the members
+    /// were simply never made. Composing the whole site once and cutting afterwards is what makes
+    /// two models of one building agree, and this is its bill: 31168's YMCA came out of the shared
+    /// composition with 1,416 wall panels defined and 338 assigned.
+    ///
+    /// A defined-but-unassigned area is not harmless. ETABS reads it, it has no storey, and it
+    /// belongs to a building this model is explicitly not of.
+    ///
+    /// Points are left alone: they are cheap, shared between objects, and removing one still
+    /// referenced elsewhere would break the file.
+    /// </summary>
+    public int DropObjectsWithNoAssign()
+    {
+        var assigned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS" })
+            foreach (string line in LinesOf(header))
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    line.Trim(), @"^\w+ASSIGN\s+""([^""]+)""");
+                if (m.Success) assigned.Add(m.Groups[1].Value);
+            }
+
+        int removed = 0;
+
+        foreach (string header in new[] { "AREA CONNECTIVITIES", "LINE CONNECTIVITIES" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            removed += section.Lines.RemoveAll(line =>
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    line.Trim(), @"^(?:AREA|LINE)\s+""([^""]+)""");
+
+                // Only ours. A reference model's own object with no assign is the engineer's
+                // business and was here before this tool ran.
+                return m.Success
+                    && m.Groups[1].Value.StartsWith("K", StringComparison.Ordinal)
+                    && !assigned.Contains(m.Groups[1].Value);
+            });
+        }
+
+        return removed;
+    }
+
     /// <summary>Names already used for points/areas/lines, so generated names never collide.</summary>
     /// <summary>
     /// How long the model's own length unit is, in inches, from its <c>CONTROLS UNITS</c> line.
