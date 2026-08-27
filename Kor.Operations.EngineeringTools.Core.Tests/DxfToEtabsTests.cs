@@ -2126,10 +2126,14 @@ public class E2kDocumentTests
             new StoryPlacement(stories["L2"], g, "level2.dxf"),
         });
 
-        string flag = Assert.Single(summary.Flags, f => f.Contains("closes through itself"));
-        Assert.Contains("L2", flag, StringComparison.Ordinal);
-        Assert.Contains("TOUCHING", flag, StringComparison.Ordinal);
-        Assert.Contains("level2.dxf", flag, StringComparison.Ordinal);
+        // The composer MEASURES this; the note is written afterwards, against the finished file,
+        // because an outline is still being worked on here. Measured at this point, 31168's
+        // building-C ground floor reported a pinch the shipped plate does not have, and that false
+        // row was the only DEFECT in the engineer's workbook.
+        var pinch = Assert.Single(summary.PinchedPlates);
+        Assert.Equal("L2", pinch.Storey);
+        Assert.Equal("level2.dxf", pinch.Sheet);
+        Assert.True(pinch.GapInches < 0.5, $"expected the two edges to touch, measured {pinch.GapInches:0.00} in");
 
         // An ordinary rectangle is not flagged, or the check is noise on every job.
         var plain = new PlanGeometrySet();
@@ -2143,7 +2147,7 @@ public class E2kDocumentTests
         {
             new StoryPlacement(stories["L2"], plain, "clean.dxf"),
         });
-        Assert.DoesNotContain(clean.Flags, f => f.Contains("closes through itself"));
+        Assert.Empty(clean.PinchedPlates);
     }
 
     [Fact]

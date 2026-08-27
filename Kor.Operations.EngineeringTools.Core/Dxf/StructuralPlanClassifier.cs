@@ -1358,11 +1358,13 @@ public static class StructuralPlanClassifier
         // says so. That cannot be settled from shape either, so it is reported rather than decided:
         // a footprint with many vertices, near-square, filling about pi/4 of its box, and carrying
         // no arc at all, is exactly what a polygonised circle looks like.
+        bool polygonCircle = false;
         if (!round && loop.Points.Count >= 8 && longSide > 0 &&
             (longSide - shortSide) / longSide < 0.10)
         {
             double fill = Math.Abs(loop.SignedArea) / (longSide * shortSide);
-            if (fill is > 0.72 and < 0.85)
+            polygonCircle = fill is > 0.72 and < 0.85;
+            if (polygonCircle)
                 result.Flags.Add(
                     $"{loop.Layer}: a {shortSide:0}x{longSide:0} footprint with {loop.Points.Count} vertices fills " +
                     $"{fill:0.00} of its box and is drawn with no arc, which is what a circle drawn as a polyline " +
@@ -1371,7 +1373,18 @@ public static class StructuralPlanClassifier
 
         result.Columns.Add(round
             ? new ColumnFootprint(loop.Centroid(), longSide, longSide, loop.Layer, 0) { IsRound = true }
-            : new ColumnFootprint(loop.Centroid(), shortSide, longSide, loop.Layer, AxisAngle(box)));
+            : new ColumnFootprint(loop.Centroid(), shortSide, longSide, loop.Layer, AxisAngle(box))
+                { DrawnAsAPolygonCircle = polygonCircle });
+    }
+
+    /// <summary>How far a point stands from an outline's edge, zero if it is on it.</summary>
+    private static bool NearTheEdge(DxfPoint p, IReadOnlyList<DxfPoint> outline, double margin)
+    {
+        for (int i = 0; i < outline.Count; i++)
+            if (LoopGeometry.PerpendicularDistance(p, outline[i], outline[(i + 1) % outline.Count]) <= margin)
+                return true;
+
+        return false;
     }
 
     /// <summary>

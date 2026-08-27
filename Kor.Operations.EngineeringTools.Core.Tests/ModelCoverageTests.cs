@@ -115,6 +115,57 @@ public class ModelCoverageTests
             $"{string.Join(", ", holes)}. Either a sheet was placed on the wrong storey, or none was placed at all.");
     }
 
+    /// <summary>
+    /// Every storey a note names is a storey the shipped file carries.
+    ///
+    /// The notes are written while the whole site is composed and the cuts come afterwards, so the
+    /// building-C workbook told the engineer that B-LEVEL 28 and B-LEVEL 41 had been given a
+    /// neighbour's floor and that B-LEVEL 1's slab edge touched itself. None of those three storeys
+    /// is in the file she was sent; one of them is a tower two hundred feet away.
+    ///
+    /// This is the cheapest way to lose an engineer. A row she cannot act on teaches her that the
+    /// rows are noise, and the next one that matters is noise too.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Projects))]
+    public void NoNoteNamesAStoreyThisModelDoesNotHave(string name)
+    {
+        var built = GeneratedModel.BuildOrSkip(GeneratedModel.For(name));
+        if (built is null) return;
+
+        var here = new HashSet<string>(
+            GeneratedModel.StoreysTopToBottom(built.Lines), StringComparer.OrdinalIgnoreCase);
+
+        // Every storey this run could have named, longest first so "LEVEL 1" is never matched
+        // inside "LEVEL 1 MEZZ" or "B-LEVEL 1".
+        var everyName = built.Report.Summary.Flags
+            .Concat(built.Report.Warnings)
+            .SelectMany(f => Regex.Matches(f, @"(?<![\w-])(?:[A-Z]-)?(?:LEVEL|STORY|STOREY)\s*P?\d+(?:\s+MEZZ)?(?![\w-])")
+                .Select(m => m.Value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // A note may quote a SHEET title, which names the level it was drawn for rather than a
+        // storey in this file — "--Structural Plan - LEVEL 26.dxf" is a drawing, not a claim.
+        var claimed = new List<string>();
+        foreach (string note in built.Report.Summary.Flags.Concat(built.Report.Warnings))
+        {
+            string withoutSheetTitles = Regex.Replace(note, @"[^,;:]*\.dxf", " ");
+            foreach (string storey in everyName)
+                if (!here.Contains(storey) &&
+                    Regex.IsMatch(withoutSheetTitles,
+                        @"(?<![\w-])" + Regex.Escape(storey) + @"(?![\w-])(?!\s+MEZZ)"))
+                    claimed.Add($"{storey} — \"{note[..Math.Min(160, note.Length)]}…\"");
+        }
+
+        _out.WriteLine($"{name}: {here.Count} storeys, {everyName.Count} storey name(s) mentioned in notes.");
+        foreach (string c in claimed.Take(6)) _out.WriteLine("    " + c);
+
+        Assert.True(claimed.Count == 0,
+            $"{name}: {claimed.Count} note(s) name a storey this model does not carry. " +
+            $"First few: {string.Join("; ", claimed.Distinct().Take(3))}");
+    }
+
     // ---------------------------------------------------------------------------------------
     // 2. modelled -> drawn.  Nothing was invented.
     // ---------------------------------------------------------------------------------------
@@ -307,6 +358,22 @@ public class ModelCoverageTests
 
             foreach (var col in geometry.Columns)
             {
+                // A MEMBER THE RUN DECLINED, AND SAID SO, IS NOT A MEMBER IT LOST.
+                //
+                // This test re-reads each sheet on its own, and one sheet cannot know what a round
+                // column looks like in this drawing set — that is measured across all of them. So
+                // the re-read still turns 31168's 96 ten-inch grid bubbles into columns and then
+                // finds them missing from the model, which is the run refusing them working exactly
+                // as intended.
+                //
+                // The ratchet exists to catch a member that goes quietly. This one goes loudly: it
+                // is on the report, with its diameter and the diameters the set does draw. Counted
+                // as a loss, it would force the ceiling up, and a ratchet that goes up once stops
+                // being a ratchet.
+                if (col.DrawnAsAPolygonCircle &&
+                    built.Report.DeclinedCircleDiameters.Any(d => Math.Abs(d - col.Width) <= 0.5))
+                    continue;
+
                 drawnTotal++;
                 var at = new DxfPoint(col.Center.X + ox, col.Center.Y + oy);
                 if (!Covered(at))

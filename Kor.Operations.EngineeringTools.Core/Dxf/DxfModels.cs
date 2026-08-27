@@ -162,6 +162,14 @@ public sealed record ColumnFootprint(
     /// </summary>
 
     /// <summary>
+    /// Drawn as a many-sided polygon that is the shape of a circle, with no arc anywhere in it.
+    ///
+    /// Ambiguous on its own — a drafter really can draw a round column that way — so it decides
+    /// nothing by itself. Taken together with standing off the floor, it is a grid bubble.
+    /// </summary>
+    public bool DrawnAsAPolygonCircle { get; init; }
+
+    /// <summary>
     /// A round column. Its footprint has no long axis, so the least-area box lands at whatever
     /// angle the tessellation happened to favour: modelled from that box it comes out square and
     /// turned at random, which is what the engineer saw — "these are supposed to be round columns,

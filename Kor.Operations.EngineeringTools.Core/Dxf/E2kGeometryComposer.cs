@@ -317,6 +317,14 @@ public sealed record ComposeSummary(
         new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
 
     /// <summary>
+    /// Plates whose outline came within a whisker of itself, as measured during composition, with
+    /// the sheet that drew each one. Filtered against the finished file before it is reported: the
+    /// outline is still being worked on here, and the sheet name is known only here.
+    /// </summary>
+    public IReadOnlyList<(string Storey, string Sheet, double GapInches, double AtXft, double AtYft)> PinchedPlates
+    { get; init; } = Array.Empty<(string, string, double, double, double)>();
+
+    /// <summary>
     /// The sections that already existed in the model this was built on and were used rather than
     /// duplicated — <c>Rvt-Wall2</c>, <c>Rvt-Floor0</c> and the like on a job whose reference came
     /// out of CSiXRevit.
@@ -1369,6 +1377,17 @@ public static class E2kGeometryComposer
                 // onto that storey would recreate the same false diaphragm by another path.
                 if (foundationStoreys.Contains(storey.Name)) continue;
 
+                // NOR A MEZZANINE. A mezzanine is a partial floor by definition — it covers some of
+                // the storey below and its columns pass through the rest of it — so the one test
+                // this rule turns on, a plate much smaller than the ground its structure stands on,
+                // is the normal condition of a mezzanine rather than evidence of a fragment.
+                //
+                // 31168's LEVEL 1 MEZZ has 2,587 sq ft of floor and 69 walls and 64 columns spread
+                // across the whole site, and was handed LEVEL P1's 76,967 sq ft parkade slab: a
+                // seventy-seven-thousand-foot mezzanine, thirty times the floor that is drawn, with
+                // a diaphragm to match.
+                if (IsMezzanineStorey(storey.Name)) continue;
+
                 // A FRAGMENT is not a floor either.
                 //
                 // This used to fire only where a storey had no plate at all, and drafting does not
@@ -1582,16 +1601,11 @@ public static class E2kGeometryComposer
             }
         }
 
-        if (pinchedPlates.Count > 0)
-            flags.Add(
-                $"{pinchedPlates.Count} floor plate(s) have an outline that closes through itself: " +
-                string.Join(", ", pinchedPlates
-                    .OrderBy(p => p.GapInches)
-                    .Select(p => $"{p.Storey} — two edges {(p.GapInches < 0.5 ? "TOUCHING" : $"{p.GapInches / 12.0:0.0} ft apart")} " +
-                                 $"at ({p.AtXft:0}, {p.AtYft:0}) ft, from {p.Sheet}")) +
-                ". A floor is a ring; where the ring meets itself the outline has closed through its own " +
-                "edge, and ETABS will mesh it badly or refuse it. Two wings joined at a point are usually " +
-                "two plates — which two is the drawing's answer, so this is reported and not repaired.");
+        // The note about these is written after the cuts, against the finished file — see
+        // DxfToEtabsService. Measured here, on an outline that spur removal and the doubled-edge
+        // merge have not finished with, it reported a pinch in 31168's building-C ground floor
+        // that the shipped plate does not have: a six-point wedge with no two edges nearer than
+        // 68 ft, carried into the engineer's workbook as the one DEFECT row in it.
 
         // Named the way PlanSheetNaming names one, so a storey and the sheet that drew it agree.
         static bool IsMezzanineStorey(string storey)
@@ -1750,6 +1764,7 @@ public static class E2kGeometryComposer
         {
             Reused = reusedSections.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList(),
             BuildingOfObject = buildingOfObject,
+            PinchedPlates = pinchedPlates,
         };
     }
 

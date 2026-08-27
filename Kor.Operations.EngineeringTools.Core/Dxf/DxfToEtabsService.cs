@@ -174,6 +174,17 @@ public sealed record DxfToEtabsReport(
     ComposeOptions ComposeUsed)
 {
     /// <summary>
+    /// Diameters of the circles this run read on a column layer and DECLINED, because they are
+    /// drawn as polygons rather than with arcs and are a size the drawing set draws no round
+    /// column at. Grid bubbles, on 31168.
+    ///
+    /// On the report because it is a decision, not a loss, and the difference matters to anything
+    /// counting what was read against what was modelled. Re-reading one sheet cannot reach it —
+    /// what a round column looks like is a fact about the whole set.
+    /// </summary>
+    public IReadOnlyList<double> DeclinedCircleDiameters { get; init; } = Array.Empty<double>();
+
+    /// <summary>
     /// Every rule this run read from KorStandards, with its value, its authority and the reason it
     /// holds. Carried on the report so the deliverable can show an engineer the whole rule set
     /// rather than only the rules a question happens to ask about — a rule she cannot see is one
@@ -837,6 +848,56 @@ public static class DxfToEtabsService
             parsed.Add((sheet, geometry, matched));
         }
 
+        // THE DRAWING SET SAYS WHAT A ROUND COLUMN LOOKS LIKE.
+        //
+        // A circle drawn as a many-sided polygon cannot be told from a chamfered square by shape —
+        // deciding it by shape once turned 160 chamfered columns into ten-inch cylinders — so the
+        // tool reports the shape and models it square. That is right as far as it goes, and it is
+        // not far enough: "LEVEL 33 PLAN - BLDG A" draws no columns at all on its column layer,
+        // only 32 ten-inch circles in pairs around the perimeter band between two slab edges, and
+        // all 32 became columns. Tower A's level 34 shipped with 49 where the tower has 24.
+        //
+        // The set answers it. Every round column anyone drew with a real ARC in these drawings
+        // measures 16, 24 or 30 inches. A ten-inch circle matches none of them, and a drawing set
+        // does not draw the same thing two ways and at a size it uses nowhere else.
+        //
+        // So a polygon that is the shape of a circle is modelled as a column only where the set
+        // draws a real round column of about that size. Where the set draws no round columns with
+        // arcs at all, nothing is known and nothing is dropped.
+        var declinedCircleDiameters = new List<double>();
+        var drawnWithArcs = parsed
+            .SelectMany(p => p.Geometry.Columns)
+            .Where(c => c.IsRound)
+            .Select(c => c.Width)
+            .ToList();
+
+        if (drawnWithArcs.Count > 0)
+        {
+            var outOfFamily = new List<ColumnFootprint>();
+
+            foreach (var (_, geometry, _) in parsed)
+            {
+                var strangers = geometry.Columns
+                    .Where(c => c.DrawnAsAPolygonCircle)
+                    .Where(c => !drawnWithArcs.Any(d => Math.Abs(d - c.Width) <= 2.0))
+                    .ToList();
+
+                foreach (var stranger in strangers) geometry.Columns.Remove(stranger);
+                outOfFamily.AddRange(strangers);
+            }
+
+            declinedCircleDiameters = outOfFamily.Select(c => c.Width).Distinct().ToList();
+
+            if (outOfFamily.Count > 0)
+                warnings.Add(
+                    $"{outOfFamily.Count} circle(s) on a column layer were not modelled, because they are " +
+                    "drawn as polygons rather than with arcs AND are a size this drawing set draws no round " +
+                    $"column at: {string.Join(", ", outOfFamily.Select(c => $"{c.Width:0}\"").Distinct().OrderBy(x => x))} " +
+                    $"against {string.Join(", ", drawnWithArcs.Select(d => $"{d:0}\"").Distinct().OrderBy(x => x))} " +
+                    "drawn with arcs. A circle drawn as a polygon at a size the set does use is still modelled, " +
+                    "and so is every column drawn with an arc, whatever its size.");
+        }
+
         // LAYERS. What a piece of linework IS comes from the layer it sits on, and the patterns are
         // KOR's own drafting convention. A drafter who names columns anything else gets no error —
         // the columns are simply never seen, and every count agrees with itself because nothing was
@@ -1419,6 +1480,72 @@ public static class DxfToEtabsService
         // standing on air while its columns sat an inch and a half away on the other. Both flaws
         // reach the engineer's workbook as rows she cannot act on, and a workbook with rows like
         // that in it stops being read.
+        // AND THE PINCHED PLATES ARE THE ONES STILL PINCHED IN THE FILE.
+        //
+        // A plate is measured for this while it is being composed, which is before spur removal
+        // and the doubled-edge merge have finished with its outline. On 31168 that reported the
+        // building-C ground floor as an outline closing through itself at (159, 406) ft; the plate
+        // that shipped is a six-point wedge whose nearest two non-adjacent edges are 68 ft apart.
+        // It was the only DEFECT row in her workbook, and it was not true of the file she had.
+        //
+        // So the measurement is repeated on what shipped, and an entry survives only if the finished
+        // plate is still pinched within a foot of where it was. The sheet name comes from the
+        // composition, which is the only place that knows it.
+        if (summary.PinchedPlates.Count > 0)
+        {
+            var storeysOfPlate = doc.StoreysByObject();
+            var platePoints = doc.PlanPointsOfObjects();
+            var isPlate = doc.PlateNames();
+
+            var stillPinched = new List<(string Storey, double X, double Y)>();
+            foreach (string plate in isPlate)
+            {
+                if (!platePoints.TryGetValue(plate, out var pts) || pts.Count < 3) continue;
+                if (!storeysOfPlate.TryGetValue(plate, out var storeys)) continue;
+
+                var ring = pts.Select(p => new DxfPoint(p.X, p.Y)).ToList();
+                if (E2kGeometryComposer.NarrowestSelfGap(ring) > composeOptions.SelfTouchReportGap) continue;
+
+                var at = E2kGeometryComposer.SelfGapAt(ring);
+                foreach (string storey in storeys)
+                    stillPinched.Add((storey, at.X / 12.0, at.Y / 12.0));
+            }
+
+            var real = summary.PinchedPlates
+                .Where(p => stillPinched.Any(s =>
+                    s.Storey.Equals(p.Storey, StringComparison.OrdinalIgnoreCase)
+                    && Math.Abs(s.X - p.AtXft) <= 1.0
+                    && Math.Abs(s.Y - p.AtYft) <= 1.0))
+                .ToList();
+
+            if (real.Count > 0)
+                summary = summary with
+                {
+                    Flags = summary.Flags.Append(
+                        $"{real.Count} floor plate(s) have an outline that closes through itself: " +
+                        string.Join(", ", real
+                            .OrderBy(p => p.GapInches)
+                            .Select(p => $"{p.Storey} — two edges {(p.GapInches < 0.5 ? "TOUCHING" : $"{p.GapInches / 12.0:0.0} ft apart")} " +
+                                         $"at ({p.AtXft:0}, {p.AtYft:0}) ft, from {p.Sheet}")) +
+                        ". A floor is a ring; where the ring meets itself the outline has closed through its " +
+                        "own edge, and ETABS will mesh it badly or refuse it. Two wings joined at a point are " +
+                        "usually two plates — which two is the drawing's answer, so this is reported and not " +
+                        "repaired.").ToList(),
+                };
+        }
+
+        // AND EVERY NOTE NAMES A STOREY THIS FILE HAS. See NotesAboutStoreysThisModelHas.
+        summary = summary with
+        {
+            Flags = NotesAboutStoreysThisModelHas(
+                summary.Flags, storiesBeforeCuts, doc.StoreyRenames,
+                doc.ReadStories().Select(s => s.Name).ToList()),
+        };
+
+        warnings = NotesAboutStoreysThisModelHas(
+            warnings, storiesBeforeCuts, doc.StoreyRenames,
+            doc.ReadStories().Select(s => s.Name).ToList());
+
         var (floorsWithNoPlate, platesWithNoSupport) = doc.FloorGaps();
 
         summary = summary with
@@ -1460,6 +1587,7 @@ public static class DxfToEtabsService
         {
             RulesApplied = banked,
             FoundationStoreys = foundationStoreys,
+            DeclinedCircleDiameters = declinedCircleDiameters,
         };
     }
 
@@ -1573,6 +1701,70 @@ public static class DxfToEtabsService
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Rewrites the run's notes so that every storey they name is a storey the shipped file has.
+    ///
+    /// The notes are written while the whole site is being composed; the cuts come afterwards. So
+    /// the building-C workbook told the engineer that B-LEVEL 28 and B-LEVEL 41 had been given a
+    /// neighbour's floor plate and that B-LEVEL 1 had a slab edge touching itself — three storeys
+    /// that are not in the file she was sent, one of them a tower two hundred feet away.
+    ///
+    /// A row she cannot act on is worse than no row: it teaches her that the rows are noise, and
+    /// then the real ones are noise too.
+    ///
+    /// A cut RENAMES some storeys and REMOVES others, so both are applied here. A note left naming
+    /// nothing that exists is dropped whole; one naming a mix keeps the part that survived.
+    /// </summary>
+    private static List<string> NotesAboutStoreysThisModelHas(
+        IEnumerable<string> notes,
+        IReadOnlyList<string> storeysBefore,
+        IReadOnlyDictionary<string, string> renames,
+        IReadOnlyCollection<string> storeysNow)
+    {
+        // Longest first, so "LEVEL 1" never matches inside "LEVEL 1 MEZZ" or "B-LEVEL 1".
+        var known = storeysBefore
+            .Concat(renames.Values)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(s => s.Length)
+            .ToList();
+
+        var here = new HashSet<string>(storeysNow, StringComparer.OrdinalIgnoreCase);
+        var kept = new List<string>();
+
+        foreach (string note in notes)
+        {
+            string text = note;
+
+            foreach (string name in known)
+                if (renames.TryGetValue(name, out string? now))
+                    text = Regex.Replace(text, Regex.Escape(name) + @"(?![\w-])", now);
+
+            var mentioned = known
+                .Where(s => Regex.IsMatch(text, Regex.Escape(s) + @"(?![\w-])"))
+                .ToList();
+
+            if (mentioned.Count == 0) { kept.Add(text); continue; }
+
+            var gone = mentioned.Where(s => !here.Contains(s)).ToList();
+            if (gone.Count == 0) { kept.Add(text); continue; }
+
+            // Each dead storey takes with it the parenthetical that belongs to it — "B-LEVEL 28
+            // (from B-LEVEL 27)" is one entry, not two — and the comma that separated it.
+            foreach (string dead in gone)
+                text = Regex.Replace(
+                    text,
+                    @",?\s*" + Regex.Escape(dead) + @"(?![\w-])(\s*\([^)]*\))?",
+                    string.Empty);
+
+            bool anythingLeft = mentioned.Except(gone, StringComparer.OrdinalIgnoreCase)
+                .Any(s => Regex.IsMatch(text, Regex.Escape(s) + @"(?![\w-])"));
+
+            if (anythingLeft) kept.Add(Regex.Replace(text, @":\s*,", ": ").Trim());
+        }
+
+        return kept;
     }
 
     private static double CoveredFraction(

@@ -32,5 +32,10 @@ for st in shared:
     x, y = a[st], b[st]
     ax = f"{x['wall']}/{x['column']}/{x['plate']}"
     bx = f"{y['wall']}/{y['column']}/{y['plate']}"
-    v = 'ok' if ax == bx else 'DIFFER'
+    # A one-building model is a SUBSET of the site model on the storeys they share, not a copy of
+    # it. The podium levels carry all three buildings in the site file and one of them in the
+    # building file, and that is the cut working. Only a storey where the smaller model carries
+    # MORE than the larger one is a fault -- that means the two walked different ladders.
+    subset = all(x[k] <= y[k] for k in ('wall', 'column', 'plate'))
+    v = 'ok' if ax == bx else ('subset (the cut)' if subset else 'DIFFER')
     print(f'{st:<16}{ax:<26}{bx:<26}{v}')

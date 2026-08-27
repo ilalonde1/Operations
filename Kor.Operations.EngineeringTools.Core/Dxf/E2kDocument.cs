@@ -731,10 +731,18 @@ public sealed class E2kDocument
             }
         }
 
-        // Which copy stays is not left to the order the file happens to be in. Every copy is
-        // collected first, then the one on the lowest storey of the floor is kept and the rest go.
+        // THE SURPLUS ASSIGN GOES, NOT THE OBJECT.
+        //
+        // Both kinds of duplicate arrive as an extra assign, and only one of them is an extra
+        // OBJECT. A storey that borrows its neighbour's floor gets the SAME plate assigned twice —
+        // that is how ETABS repeats a member up a building, one object with an assign per storey —
+        // so dropping the object took the plate off the donor as well, and B-LEVEL 40 lost the
+        // floor B-LEVEL 41 had just borrowed from it.
+        //
+        // Removing the assign is right in both cases. An object that loses its last one is swept
+        // afterwards by the pass that already exists for exactly that.
         var elevationOf = ReadStories().ToDictionary(x => x.Name, x => x.Elevation, StringComparer.OrdinalIgnoreCase);
-        var copies = new Dictionary<string, List<(string Object, double At)>>(StringComparer.Ordinal);
+        var copies = new Dictionary<string, List<(string Line, double At)>>(StringComparer.Ordinal);
 
         foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS" })
         {
@@ -757,18 +765,28 @@ public sealed class E2kDocument
                     copies[signature] = alreadyHere = new List<(string, double)>();
 
                 alreadyHere.Add((
-                    m.Groups[1].Value,
+                    line,
                     elevationOf.TryGetValue(m.Groups[2].Value, out double e) ? e : double.MaxValue));
             }
         }
 
-        var duplicates = copies.Values
+        var surplus = copies.Values
             .Where(c => c.Count > 1)
-            .SelectMany(c => c.OrderBy(x => x.At).Skip(1).Select(x => x.Object))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+            .SelectMany(c => c.OrderBy(x => x.At).Skip(1).Select(x => x.Line))
+            .ToHashSet(StringComparer.Ordinal);
 
-        return duplicates.Count == 0 ? 0 : DropObjects(duplicates);
+        if (surplus.Count == 0) return 0;
+
+        int removed = 0;
+        foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+            removed += section.Lines.RemoveAll(surplus.Contains);
+        }
+
+        DropObjectsWithNoAssign();
+        return removed;
     }
 
     /// <summary>
