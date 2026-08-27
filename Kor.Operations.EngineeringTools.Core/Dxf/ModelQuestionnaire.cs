@@ -543,6 +543,19 @@ public static class ModelQuestionnaire
     {
         if (report is null) yield break;
 
+        // "…(11788 units of edge ignored)" -> 11788
+        static double IgnoredUnits(string note)
+        {
+            var m = Regex.Match(note, @"\(([\d,]+) units of edge ignored\)");
+            return m.Success && double.TryParse(m.Groups[1].Value.Replace(",", ""), out double v) ? v : 0;
+        }
+
+        string? oneBuilding = report.BuildingCut;
+
+        // A floor whose plates reach well past the members standing on them. Computed by the run
+        // and handed over; the questionnaire does no geometry of its own.
+        var wideFloors = report.FloorsWiderThanTheirStructure;
+
         string? Flag(string contains) => report.Summary.Flags
             .FirstOrDefault(f => f.Contains(contains, StringComparison.OrdinalIgnoreCase));
 
@@ -569,6 +582,76 @@ public static class ModelQuestionnaire
                 "Closure tolerance was tested at 6, 12 and 18 inches on this job and the result did not " +
                 "change, so this is not a tolerance that can be widened into a floor.")
                 { RuleTopic = "storeys-with-no-drawn-floor", Decided = true };
+        }
+
+        // HOW MANY SLABS ARE ON THIS SHEET? The one question the drawings cannot answer and she
+        // can, in a sentence.
+        //
+        // A slab edge that will not close is reported per sheet and has been since the beginning.
+        // What was never done is ADD IT UP and put it to her: the YMCA mezzanine sheet reads and
+        // discards 11,788 drawing units — 982 feet — of slab edge while modelling the one outline
+        // that closes, and the model went out with a single mezzanine plate. She had already said,
+        // twice, "there are actually 3 slabs at mezzanine level for the YMCA."
+        //
+        // Asked wherever a sheet models at least one floor and abandons real slab edge doing it,
+        // because that is exactly the shape of a sheet that has been under-read, on any job.
+        var underRead = report.Sheets
+            .Where(sheet => sheet.Slabs > 0)
+            .Select(sheet => (sheet, Note: sheet.Flags.FirstOrDefault(f =>
+                f.Contains("slab edges:", StringComparison.OrdinalIgnoreCase)
+                && f.Contains("would not close", StringComparison.OrdinalIgnoreCase))))
+            .Where(x => x.Note is not null)
+            .OrderByDescending(x => IgnoredUnits(x.Note!))
+            .Where(x => IgnoredUnits(x.Note!) >= 2000)
+            .Take(8)
+            .ToList();
+
+        if (underRead.Count > 0)
+        {
+            string sheets = string.Join("; ", underRead.Select(x =>
+                $"{x.sheet.Label} — {x.sheet.Slabs} slab(s) modelled, {IgnoredUnits(x.Note!) / 12:N0} ft of slab " +
+                "edge left unclosed"));
+
+            yield return new ModelQuestion("S4", "How many slabs are on these sheets",
+                $"HOW MANY FLOORS SHOULD THESE STOREYS HAVE? Each of these drawings has a slab edge this " +
+                $"tool could not close, and it modelled the outlines that did close: {sheets}. Where a " +
+                "level carries several slabs and the drawing closes only one of them, we model one and " +
+                "nothing says the others are missing. Answer with a count per storey — \"mezzanine has 3\" " +
+                "is enough — and they are recovered and checked against it from then on.",
+                "Nothing was invented in the unclosed edge: a region we cannot close and cannot price is not " +
+                "made into a diaphragm on a guess.",
+                "A floor that is not in the model is not in any count in this workbook either, so every other " +
+                "number on that storey looks right without it.",
+                "Taken from this run: the sheets that modelled a floor and abandoned slab edge doing it.")
+                { RuleTopic = "how-many-slabs-on-a-sheet" };
+        }
+
+        // WHOSE PARKADE IS IT? A one-building model standing on a floor drawn for the whole site.
+        //
+        // 31168's parkade is drawn per building — BLDG C and WEST at P1, P2 and P3 — but neither
+        // half closes a slab outline, so the only floor available is the undivided site-wide one.
+        // Building C's model therefore carries 76,967 sq ft of parkade with building C's 66 columns
+        // under about half of it. The banked ruling a-model-carries-only-its-own-elevations says
+        // this exact question is unsettled: "shared structure genuinely under a building, such as
+        // the parkade below both towers, is a separate question this row does not settle."
+        //
+        // Asked only of a model cut to one building, and only where a storey's floor reaches well
+        // beyond the members standing on it.
+        if (oneBuilding is not null && wideFloors.Count > 0)
+        {
+            yield return new ModelQuestion("S5", "The shared floors under one building",
+                $"THIS IS A MODEL OF BUILDING {oneBuilding} AND THESE FLOORS ARE THE WHOLE SITE'S: " +
+                string.Join(", ", wideFloors) + ". They are drawn once for every building that stands " +
+                "on them and no sheet closes a slab edge for this building's share alone, so the model " +
+                "carries the whole slab with only this building's columns under part of it. Should a " +
+                "building model carry the shared parkade and podium entire, or only its own share — and " +
+                "if its own share, where is the line? No drawing in the set answers that.",
+                "The whole slab was kept rather than cut on a guess: an invented slab edge is worse than a " +
+                "large one, and a storey with no diaphragm at all is worse than both.",
+                "A diaphragm spanning ground this building does not support changes how the whole model " +
+                "behaves laterally, and it is not visible in any count.",
+                "Taken from this run: floors reaching well past the members that stand on them.")
+                { RuleTopic = "shared-floors-under-one-building" };
         }
 
         // A DRAWING FULL OF STRUCTURE THAT IS NOT IN THE MODEL. The one question worth asking

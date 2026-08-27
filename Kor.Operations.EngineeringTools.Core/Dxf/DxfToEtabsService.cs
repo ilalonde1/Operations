@@ -173,6 +173,15 @@ public sealed record DxfToEtabsReport(
     PlanClassificationOptions ClassificationUsed,
     ComposeOptions ComposeUsed)
 {
+    /// <summary>The building this model was cut to, where it was cut to one.</summary>
+    public string? BuildingCut { get; init; }
+
+    /// <summary>
+    /// Storeys whose floor reaches well past the members standing on it — a shared slab under one
+    /// building's structure. The engineer is asked whose it is; see ModelQuestionnaire S5.
+    /// </summary>
+    public IReadOnlyList<string> FloorsWiderThanTheirStructure { get; init; } = Array.Empty<string>();
+
     /// <summary>
     /// Diameters of the circles this run read on a column layer and DECLINED, because they are
     /// drawn as polygons rather than with arcs and are a size the drawing set draws no round
@@ -1638,6 +1647,8 @@ public static class DxfToEtabsService
             RulesApplied = banked,
             FoundationStoreys = foundationStoreys,
             DeclinedCircleDiameters = declinedCircleDiameters,
+            BuildingCut = request.TowerOnly,
+            FloorsWiderThanTheirStructure = FloorsWiderThanTheirStructure(doc),
         };
     }
 
@@ -1815,6 +1826,74 @@ public static class DxfToEtabsService
         }
 
         return kept;
+    }
+
+    /// <summary>
+    /// Storeys whose floor plates reach well past the members standing on them.
+    ///
+    /// In a model cut to one building this is a shared floor: the parkade and the podium are
+    /// drafted once for every building that stands on them, so a building's model gets the whole
+    /// slab with its own columns under part of it. 31168's building C carries 76,967 sq ft of
+    /// parkade and 66 columns spread over about half of it.
+    ///
+    /// Not a fault, and not repairable from the drawings — neither the BLDG C nor the WEST parkade
+    /// sheet closes a slab edge, so there is no line to cut on. It is a question, and the ruling
+    /// a-model-carries-only-its-own-elevations already records it as one: "shared structure
+    /// genuinely under a building, such as the parkade below both towers, is a separate question
+    /// this row does not settle."
+    ///
+    /// Measured by the box each holds, not by area, because a floor and the frame under it can be
+    /// the same shape at very different sizes. Two and a half times is the threshold, set where the
+    /// evidence is: 31168's building-C parkade holds a floor spanning 235 x 334 ft over columns
+    /// spanning 100 x 292, which is 2.7. A floor half as wide again as its frame is a cantilever
+    /// and says nothing; one that covers two and a half times its box is carrying somebody else.
+    /// </summary>
+    private static IReadOnlyList<string> FloorsWiderThanTheirStructure(E2kDocument doc)
+    {
+        var plates = doc.PlateNames();
+        var planOf = doc.PlanPointsOfObjects();
+        var storeysOf = doc.StoreysByObject();
+
+        var floorBox = new Dictionary<string, (double MinX, double MaxX, double MinY, double MaxY)>(StringComparer.OrdinalIgnoreCase);
+        var frameBox = new Dictionary<string, (double MinX, double MaxX, double MinY, double MaxY)>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (obj, storeys) in storeysOf)
+        {
+            if (!planOf.TryGetValue(obj, out var pts) || pts.Count == 0) continue;
+
+            // COLUMNS, not every member. A parkade's perimeter wall runs the full site whoever
+            // owns the parkade, so a floor and a frame that both include it always match and the
+            // question is never asked. A column stands where the frame actually is, and in the
+            // e2k it is the object whose two joints share one plan position.
+            bool isColumn = pts.Count == 2
+                            && Math.Abs(pts[0].X - pts[1].X) < 0.01
+                            && Math.Abs(pts[0].Y - pts[1].Y) < 0.01;
+
+            if (!plates.Contains(obj) && !isColumn) continue;
+            var into = plates.Contains(obj) ? floorBox : frameBox;
+
+            foreach (string storey in storeys)
+            {
+                var box = into.TryGetValue(storey, out var had)
+                    ? had
+                    : (double.MaxValue, double.MinValue, double.MaxValue, double.MinValue);
+
+                foreach (var p in pts)
+                    box = (Math.Min(box.Item1, p.X), Math.Max(box.Item2, p.X),
+                           Math.Min(box.Item3, p.Y), Math.Max(box.Item4, p.Y));
+
+                into[storey] = box;
+            }
+        }
+
+        static double AreaOf((double MinX, double MaxX, double MinY, double MaxY) b) =>
+            Math.Max(0, b.MaxX - b.MinX) * Math.Max(0, b.MaxY - b.MinY);
+
+        return doc.ReadStories()
+            .Select(s => s.Name)
+            .Where(s => floorBox.ContainsKey(s) && frameBox.ContainsKey(s))
+            .Where(s => AreaOf(frameBox[s]) > 0 && AreaOf(floorBox[s]) >= AreaOf(frameBox[s]) * 2.5)
+            .ToList();
     }
 
     private static double CoveredFraction(
