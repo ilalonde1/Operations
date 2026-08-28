@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using Kor.Operations.EngineeringTools.ColumnDesign;
 using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using Kor.Operations.EngineeringTools.RebarChange;
@@ -976,6 +977,63 @@ if (args.Length >= 1 && args[0].Equals("revit-takeoff", StringComparison.Ordinal
         }
     }
     Console.WriteLine($"\n  ->  {revitOut}");
+    return 0;
+}
+
+// What a project's column design says, read from the S-Concrete files themselves — including where
+// they disagree. Usage: takeoff sco-schedule <folder|file.SCO ...> <out.xlsx>
+if (args.Length >= 1 && args[0].Equals("sco-schedule", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff sco-schedule <folder|file.SCO> [more...] <out.xlsx>"); return 1; }
+
+    string scoOut = args[^1];
+    var scoFiles = new List<string>();
+    foreach (string a in args[1..^1])
+    {
+        if (Directory.Exists(a)) scoFiles.AddRange(Directory.EnumerateFiles(a, "*.SCO", SearchOption.AllDirectories));
+        else if (File.Exists(a)) scoFiles.Add(a);
+        else { Console.Error.WriteLine($"Not found '{a}'."); return 2; }
+    }
+    if (scoFiles.Count == 0) { Console.Error.WriteLine("No .SCO files found."); return 2; }
+
+    var scoReport = ColumnDemandSchedule.Read(scoFiles.OrderBy(f => f, StringComparer.OrdinalIgnoreCase));
+    if (scoReport.Columns.Count == 0)
+    {
+        Console.Error.WriteLine($"No column demands in {scoFiles.Count} file(s). Are they S-Concrete files?");
+        return 3;
+    }
+
+    File.WriteAllBytes(scoOut, ColumnDemandSchedule.BuildXlsx(scoReport, Path.GetFileNameWithoutExtension(scoOut)));
+
+    Console.WriteLine($"\n{scoReport.FilesRead} S-Concrete file(s) — {scoReport.DemandsRead} demands on {scoReport.Columns.Count} columns.");
+
+    Console.WriteLine($"\n{"Storey",-8} {"Mark",-6} {"Section",-12} {"kl",8} {"Cases",6} {"Max comp",11} {"Max Mfy",10}");
+    foreach (var c in scoReport.Columns.Take(12))
+        Console.WriteLine($"{c.Storey,-8} {c.Mark,-6} {c.Section,-12} {(c.EffectiveLength is double k ? k.ToString("N3") : "—"),8} {c.Cases,6} {c.MaxCompression,11:N1} {c.MaxMfy,10:N1}");
+    if (scoReport.Columns.Count > 12) Console.WriteLine($"   … and {scoReport.Columns.Count - 12} more.");
+
+    if (scoReport.Truncated.Count > 0)
+        Console.WriteLine($"\n{scoReport.Truncated.Count} demand(s) have NO effective length recorded — S-Concrete truncates the "
+            + "comment at about sixty characters, and a long section name pushes kl off the end.");
+
+    if (scoReport.MaterialConflicts > 0)
+    {
+        Console.WriteLine($"\n{scoReport.MaterialConflicts} column/case demand(s) are stated DIFFERENTLY in two files by more than 1%"
+            + (scoReport.TrivialConflicts > 0 ? $" (and {scoReport.TrivialConflicts} more by less, which is rounding)" : "")
+            + ". Which file is current is an engineering call — these are the pairs to settle:");
+
+        foreach (var p in scoReport.ConflictingPairs.Take(6))
+        {
+            Console.WriteLine($"\n   {p.Demands,4} demands apart by up to {p.WorstPercent:N0}%");
+            Console.WriteLine($"        {p.FileA}");
+            Console.WriteLine($"        {p.FileB}");
+        }
+        if (scoReport.ConflictingPairs.Count > 6)
+            Console.WriteLine($"\n   … and {scoReport.ConflictingPairs.Count - 6} more pairs.");
+    }
+    else Console.WriteLine("\nNo two files disagree about any column by more than rounding.");
+
+    Console.WriteLine($"\n  ->  {scoOut}");
     return 0;
 }
 
@@ -3576,6 +3634,7 @@ public static class TakeoffCliHelp
         new("ifc-takeoff", "takeoff ifc-takeoff <model.ifc> <out.xlsx>", "Generate a quantity takeoff from an IFC model."),
         new("e2k-takeoff", "takeoff e2k-takeoff <model.e2k> <out.xlsx> [--metric]", "Price the concrete in a generated ETABS model."),
         new("revit-takeoff", "takeoff revit-takeoff <folder|schedule.csv> [more.csv ...] <out.xlsx>", "Price the concrete straight off Revit schedule exports."),
+        new("sco-schedule", "takeoff sco-schedule <folder|file.SCO> [more...] <out.xlsx>", "Read a project's column demands out of its S-Concrete files."),
         new("e2k-ask", "takeoff e2k-ask <model.e2k> [storeys|look|openings|sections|concrete] [storey]", "Ask a finished ETABS model about itself."),
         new("vector-takeoff", "takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson] [--deterministic] [--fresh]", "Run the vector PDF quantity takeoff pipeline."),
         new("vector-plate", "takeoff vector-plate <pdf> <page> <png>", "Ask the vision layer for one slab plate box."),
