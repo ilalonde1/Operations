@@ -15,7 +15,7 @@ from email.parser import BytesParser
 REPO = r"C:\VIsual Studio Projects\Operations"
 OUT = os.path.join(REPO, "docs", "audit-2026-08", "outbound")
 CLIENT_PDF = os.path.join(REPO, "docs",
-                          "KOR-MVE-Design-Team-Dossier-2026-08-28-web.pdf")
+                          "KOR-MVE-Six-Market-Record-2026-08-28-web.pdf")
 INTERNAL = "KOR-MVE-Regional-Intel-2026-08-27-web.pdf"
 
 want = hashlib.sha256(open(CLIENT_PDF, "rb").read()).hexdigest()

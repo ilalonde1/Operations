@@ -1,0 +1,594 @@
+<title>Arizona Submitted Projects — and the Six-Market Design-Team Layer</title>
+<!--
+  KOR Structural — prepared for Dan Gura, MVE + Partners. 27 August 2026.
+
+  This is the CLIENT-FACING document: the Arizona submitted-projects search Dan
+  asked for on the 27 August call, plus the same treatment for the other five
+  markets he named, plus the analysis underneath it.
+
+  ⚠ Distinct from docs/KOR-MVE-Regional-Intel-*.pdf, which is KOR-INTERNAL and
+  frames the same research around where KOR can win a structural seat. Do not
+  merge them and do not send the internal one.
+
+  Every figure is either queried from a named public endpoint on 27 Aug 2026 or
+  read off the named party's own page. Where a claim rests on secondary reporting
+  it is labelled as such in the text rather than dropped or asserted.
+
+  Built on the canonical KOR design system, per tools/BdDocTemplate/README.md.
+  This file is ASSEMBLED, not hand-maintained. To change it, edit the fragment
+  and rebuild:
+
+    cd <repo root>
+    { cat docs/audit-2026-08/mve-designteam-head.html
+      sed -n '2,257p' tools/BdDocTemplate/reference-handbook.html
+      cat docs/audit-2026-08/mve-designteam-print.html
+      cat docs/audit-2026-08/mve-designteam-body.html
+    } > docs/audit-2026-08/mve-designteam.html
+
+    pwsh -NoProfile -File tools/Format-BdWebPdf.ps1 `
+      -Html docs\audit-2026-08\mve-designteam.html `
+      -Pdf  docs\KOR-MVE-Design-Team-Dossier-2026-08-28-web.pdf
+
+  Naming follows the KOR dossier convention (KOR-<Name>-Dossier-<date>-web.pdf),
+  per reference_kor_dossier_build. It supersedes the earlier
+  KOR-MVE-Design-Team-Intel-2026-08-27-web.pdf, which is deleted rather than left
+  alongside — one artefact, one name.
+-->
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  @page { size: Letter; margin: 15mm 16mm 16mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    html { font-size: 15px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { padding: 20mm 16mm 12mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 16mm; }
+    .toc { position: static; max-height: none; padding: 8mm 0 2mm; break-after: page; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .table-wrap, table, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+<style>
+  /* Page-specific print density only — no brand changes. This is a briefing
+     document read in one sitting, not a handbook, so it prints tighter than
+     the reference and keeps the hero key-figures the reference hides. */
+  @media print {
+    html { font-size: 13.6px; }
+    /* The reference sets body{font-size:17px} in absolute px, so its own
+       html{font-size:15px} print rule never reaches the body text.
+       Sizes raised ~12% on 2026-08-28: at the previous scale the contents index
+       printed at 8.6pt and its title at 6.3pt, which needed 150% zoom to read.
+       Everything a reader actually reads is now >= 9pt. */
+    body { font-size: 11.6pt; line-height: 1.5; }
+    .hero { padding: 11mm 14mm 8mm; }
+    .hero h1 { font-size: 23pt; }
+    .hero__lede { font-size: 11.6pt; }
+    .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 9.2pt; }
+
+    /* Headings must fill the same measure the body text does.
+       The reference sets `text-wrap: balance` on h1/h2. Balance equalises LINE
+       LENGTH, so a two-line heading is squeezed to two short lines well inside
+       the column while the paragraph beneath it runs to the full width — the
+       heading reads as broken even though the break point is legal. It also
+       chooses those breaks by length alone, so it will split after a
+       preposition or an article ("the same measurement in / Raleigh",
+       "design-build is taking the / market").
+       `pretty` keeps the orphan protection and drops the equal-length rule. */
+    h1, h2, h3, .hero h1 { text-wrap: pretty; }
+
+    /* The facts sheet is meant to be ONE page a reader can hold next to the
+       rest. Keep it whole and start the detail on a fresh page after it. */
+    #facts { break-after: page; }
+    #facts table { font-size: 8.8pt; }
+    #facts td, #facts th { padding: .34rem .5rem; }
+    #facts .box p { font-size: 9.6pt; }
+
+    /* Let long tables flow across a page break.
+       The reference sets `table, .table-wrap { break-inside: avoid }`, which is
+       right for a four-row table and wrong for a twelve-row one: a table that
+       does not fit in the space left is pushed WHOLE to the next page, and the
+       quarter-page it left behind stays empty. That is what put a blank band at
+       the foot of pages 3 and 4 and is why the document ran to sixteen pages.
+       Rows still never split, and the header repeats on each continuation. */
+    table, .table-wrap { break-inside: auto; }
+    tr, thead, tbody tr { break-inside: avoid; }
+    thead { display: table-header-group; }
+    /* Boxes stay whole -- they are short, and a callout split across a page
+       break reads as two different callouts. */
+    .box { break-inside: avoid; }
+
+    /* The contents index — sized explicitly, not left to inherit a rem scale. */
+    .toc__title { font-size: 8.4pt; }
+    .toc a { font-size: 11pt; line-height: 1.4; padding: .30rem 0 .30rem .7rem; }
+    .shell { padding: 0 14mm; }
+    main { padding: 4mm 0 0; }
+
+    /* Fill the printed column.
+       The reference constrains every text block to --maxread (44rem), a measure
+       chosen for the SCREEN layout, where a 15rem table-of-contents column sits
+       beside the text. In print the contents becomes a page-1 index and .shell
+       goes full width — but --maxread does not change, so the text keeps its
+       narrow screen measure and the leftover becomes a dead band on the RIGHT:
+       measured 11.6% left margin against 33.8% right on the first build.
+       Letting the measure follow its container restores symmetry. */
+    :root { --maxread: 100%; }
+    section { margin-bottom: 0; }
+    h2 { margin-top: 1.1rem; }
+    .box { padding: .7rem .9rem; margin: .7rem 0; }
+    .table-wrap { margin: .6rem 0; }
+    table { font-size: 9.6pt; }
+    th { font-size: 8.6pt; }
+    .flow__step p { font-size: 9.6pt; }
+    .box p { font-size: 11pt; }
+    .box__label { font-size: 8.6pt; }
+    .kicker { font-size: 8.6pt; }
+    footer, footer p { font-size: 9.4pt; }
+    .path { font-size: 8.8pt; }
+    /* The reference keeps h2 with what follows but lets the kicker above it
+       orphan at a page foot. Bind the kicker to its heading. */
+    .kicker { break-after: avoid; }
+    footer { margin-top: 1rem; break-before: avoid; }
+  }
+
+  /* Secondary detail inside a table cell — the project's size and storeys sit
+     under its name so the Structural column keeps its width. Uses the existing
+     ink token; no new colour is introduced. */
+  .muted { color: var(--ink-faint); font-size: 0.88em; }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural &nbsp;·&nbsp; prepared for MVE + Partners &nbsp;·&nbsp; 28 August 2026</p>
+    <h1>The working behind the numbers.</h1>
+    <p class="hero__lede">This is the companion to the six-market record: how the design-team figures were arrived at, what each rests on, and where a market cannot be measured at all. It is here because a number is worth what its method is worth, not because any of it needs explaining to you.</p>
+    <div class="hero__meta">
+      <span>Houston: a census, 806 firms</span>
+      <span>Arizona: two independent samples</span>
+      <span>Raleigh: 11 of 92 filings</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#finding">Arizona multifamily has no incumbent architect</a></li>
+      <li><a href="#raleigh-test">The same measurement in Raleigh gives the opposite answer</a></li>
+      <li><a href="#houston-miami">Houston is the most open of your six. Miami sits in between.</a></li>
+      <li><a href="#tempo">Raleigh’s flow quintupled. Las Vegas’s did not move.</a></li>
+      <li><a href="#designbuild">Design-build is taking the market — but not your part of it</a></li>
+      <li><a href="#crossmarket">The firms operating across more than one of your markets</a></li>
+    </ol>
+  </nav>
+  <main>
+
+    <section id="finding">
+      <p class="kicker">Start here</p>
+      <h2>Arizona multifamily has no incumbent architect</h2>
+      <p class="lede">Eleven multifamily projects that name an architect. Eleven different architecture firms. One firm is on two of them and nobody is on three.</p>
+      <p>The set is <em>50 commercial real estate projects to know in 2026</em>, published by AZ Big Media. It names a design team on 49 of the 50 &mdash; developer, architect and general contractor per project. We took every one of those labelled fields and counted them, which turns out to be a different exercise from reading the list.</p>
+      <p><strong>Twenty-four per cent of it is multifamily.</strong> Thirty-four per cent is civic and education, twenty per cent industrial, twelve healthcare, ten hospitality. So the first honest thing to say about an &ldquo;Arizona projects&rdquo; list is that three-quarters of it is not your market at all. Twelve are multifamily; <strong>one of those twelve names no architect, and one names two</strong>, which leaves eleven projects carrying twelve architect credits between them:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Architect</th><th>Arizona multifamily projects</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Gensler</strong></td><td><strong>2</strong></td></tr>
+            <tr><td>triARC architecture &amp; design</td><td>1</td></tr>
+            <tr><td><strong>Niles Bolton Associates</strong></td><td>1</td></tr>
+            <tr><td><strong>KTGY</strong></td><td>1</td></tr>
+            <tr><td>Dig Studio</td><td>1</td></tr>
+            <tr><td><strong>ESG Architecture &amp; Design</strong></td><td>1</td></tr>
+            <tr><td>LGE Design Build</td><td>1</td></tr>
+            <tr><td>Lamar Johnson Collaborative</td><td>1</td></tr>
+            <tr><td>GFF Design</td><td>1</td></tr>
+            <tr><td>Athena Studio</td><td>1</td></tr>
+            <tr><td>Soaring Eight</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">▲ What that actually means</p>
+        <p>In a consolidated market the top firm holds a third or more and the pitch is a displacement argument &mdash; you have to take work off somebody. <strong>Here the largest holder of Arizona multifamily work in the set is on two of the eleven &mdash; and it shares one of those two with another firm.</strong> There is no incumbent to displace, because there is no incumbent. A firm entering this market is not fighting a share war; it is walking into a field where nobody has established one.</p>
+        <p>The national multifamily names are present but thin on the ground &mdash; <strong>KTGY, Niles Bolton and ESG have one project each.</strong> They are in Arizona. They have not taken it.</p>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">▲ We do not expect you to take a magazine's word for it, and neither did we</p>
+        <p>The list above is a trade publication's selection. A concentration figure taken from a curated set can be an artefact of the editing rather than a fact about the market, so it is worth nothing until something unrelated says the same thing.</p>
+        <p>We ran the identical measurement on <strong>Phoenix's own rezoning record</strong> &mdash; the narratives applicants file with the city, written by their own teams, assembled for an entirely different purpose and sharing no selection criterion with the magazine. <strong>Fourteen projects. Thirteen firms. The largest holder has two.</strong></p>
+        <p><strong>The trade list puts the top firm at 18%. The city's record puts it at 14%. Different projects, different firms at the top &mdash; Gensler in one, DAVIS in the other &mdash; and the same answer.</strong> Two sources, neither built for this question, and neither finds an incumbent.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Market</th><th>What the figure rests on</th><th>How much of the market it covers</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Houston</strong></td><td>The state's own construction registry</td><td><strong>Every qualifying project. A census, not a sample</strong></td></tr>
+            <tr><td><strong>Miami</strong></td><td>Design-review submittals</td><td>35 of the 66 projects heard since Jan 2024</td></tr>
+            <tr><td><strong>Arizona</strong></td><td>A trade list <em>and</em> the city's rezoning record, measured separately</td><td>11 projects and 14 projects, independently</td></tr>
+            <tr><td><strong>Raleigh</strong></td><td>Plan-set copyright blocks</td><td>11 projects &mdash; of 92 plans filed, only 21 publish drawings</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted"><strong>The four figures do not carry equal weight.</strong> Houston is the strongest because there is no sampling decision in it at all &mdash; Texas requires every commercial project to be registered, so the denominator is the law's rather than ours. Raleigh is the narrowest: a city that publishes drawings for roughly a fifth of what it receives, and the architect is only on the drawings. <strong>The Raleigh direction is corroborated three separate ways; the Raleigh percentage sits on eleven projects and should be read as such.</strong></p>
+    </section>
+
+    <section id="raleigh-test">
+      <p class="kicker">We tested it</p>
+      <h2>The same measurement in Raleigh gives the opposite answer</h2>
+      <p class="lede">A finding that has only been made in one market is a coincidence until it is tested somewhere else. So we ran the identical measurement on Raleigh. <strong>&ldquo;No incumbent&rdquo; does not hold there &mdash; and that is what makes the Arizona number worth something.</strong></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Measure</th><th>Arizona multifamily</th><th>Raleigh multifamily</th></tr></thead>
+          <tbody>
+            <tr><td>Projects with a confirmed architect</td><td>11</td><td>11</td></tr>
+            <tr><td>Distinct architecture firms</td><td><strong>11</strong></td><td><strong>7</strong></td></tr>
+            <tr><td>Largest single holder</td><td>Gensler, 2 projects</td><td><strong>JDAVIS, 4 projects</strong></td></tr>
+            <tr><td><strong>Top firm&rsquo;s share</strong></td><td><strong>18%</strong></td><td><strong>36%</strong></td></tr>
+            <tr><td>Firms per project</td><td>1.00</td><td>0.64</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Raleigh&rsquo;s leading multifamily architect holds more than double the share Arizona&rsquo;s does</strong>, out of a field barely half as wide. Cline Design Associates is second with two. Five further firms &mdash; Perkins Eastman, Tightlines Design, Studio M, Foley Design and Iwan Architecture &amp; Engineering Consultants &mdash; hold one each.</p>
+      <div class="box box--tip">
+        <p class="box__label">▲ And the incumbent changed hands fifteen months ago</p>
+        <p><strong>JDAVIS was acquired by ISG on 14 May 2025.</strong> It works from Raleigh and Philadelphia, and <strong>was itself 100% employee-owned</strong> &mdash; bought by an acquirer that is also 100% employee-owned, an architecture and engineering firm expanding into the region. Every one of the four JDAVIS submittals recovered here was filed in 2024 &mdash; designed before that deal closed.</p>
+        <p>So the two markets ask opposite questions. In Arizona there is no share to take off anyone. <strong>In Raleigh there is a clear leader, and it is fifteen months into an ownership change.</strong></p>
+      </div>
+      <div class="box box--dont">
+        <p class="box__label">✕ Charlotte could not be tested, and we will not pretend otherwise</p>
+        <p>Charlotte&rsquo;s &ldquo;Committed Development Entitlement&rdquo; dataset &mdash; the richest schema we found anywhere &mdash; <strong>stops at 23 May 2022</strong>. Its live rezoning layer carries 86 pending petitions with a petitioner but <strong>no project name and no design team</strong>.</p>
+        <p>Its live petitions are public and we went through them. <strong>At the stage Charlotte currently publishes, the design team is not on the record</strong> &mdash; the filings name the petitioner, the land and the zoning sought, and the architect is simply not among them yet.</p>
+        <p>This is a timing problem, not an access one, and it will resolve itself as those projects move forward. <strong>A Charlotte concentration figure today would be invented, so there is not one in this report.</strong> Queensbridge and Centre South appear by name above because they are individually documented; what we will not do is turn two projects into a market statistic.</p>
+      </div>
+    </section>
+
+    <section id="houston-miami">
+      <p class="kicker">Two more markets, the same measurement</p>
+      <h2>Houston is the most open of your six.<br>Miami sits in between.</h2>
+      <p class="lede">Arizona against Raleigh is two points. Houston and Miami make it four, measured the same way &mdash; and Houston carries more weight than any of the others, because there we were able to work from a <strong>complete record of commercial construction rather than a sample</strong>: every qualifying project in the county, not a selection anyone curated.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Market</th><th>Projects with a confirmed architect</th><th>Distinct firms</th><th>Top firm&rsquo;s share</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Houston</strong> multifamily</td><td><strong>79</strong></td><td><strong>45</strong></td><td><strong>10%</strong> <span class="muted">EDI International</span></td></tr>
+            <tr><td>Arizona multifamily</td><td>11</td><td>11</td><td>18% <span class="muted">Gensler</span></td></tr>
+            <tr><td><strong>Miami</strong> <span class="muted">design review</span></td><td>35</td><td>13</td><td>17% <span class="muted">Arquitectonica and Kobi Karp, tied</span></td></tr>
+            <tr><td>Raleigh multifamily</td><td>11</td><td>7</td><td><strong>36%</strong> <span class="muted">JDAVIS</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Houston is the widest field you have.</strong> Across all new commercial construction in Harris County since January 2024 &mdash; 4,087 projects, 3,085 with a named design firm &mdash; the work is spread across <strong>806 distinct firms, and the single busiest holds 3%</strong>. Narrowed to multifamily it stays open: 45 firms over 79 projects, with EDI International and Meeks + Partners, both long-established Houston multifamily practices, at 10% and 9%. There is no relationship to displace because no one holds enough to matter.</p>
+      <p><strong>Miami is narrower, and lands in exactly the same place as Arizona.</strong> Of every project taken to the city&rsquo;s design review between January 2024 and July 2026, thirty-five have an architect confirmed on the record, spread over thirteen firms. <strong>Nobody leads it: Arquitectonica and Kobi Karp hold six apiece &mdash; 17% each, within a point of the share Gensler holds in Arizona</strong> &mdash; with Behar Font Partners on five and CUBE3 and Corwil Architects on four. Five firms sit inside six points of one another. That is a field with contenders, not an incumbent.</p>
+      <div class="box box--tip">
+        <p class="box__label">▲ What the four markets say together</p>
+        <p>Ranked by how much of the field the leading firm holds: <strong>Houston 10% &middot; Miami 17% &middot; Arizona 18% &middot; Raleigh 36%.</strong> Three of your four measurable markets have no incumbent worth the name. <strong>Raleigh is the outlier, and it is the one where the leader changed hands fifteen months ago.</strong></p>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">▲ An out-of-state firm can win in Miami. Several already have.</p>
+        <p>The obvious objection to entering Miami is that it looks like a closed local market. It is not. <strong>CUBE 3 is headquartered in North Andover, Massachusetts, and holds four of Miami&rsquo;s thirty-five confirmed projects</strong> &mdash; level with all but the top three. <strong>Kohn Pedersen Fox, out of New York, holds another.</strong> Practices headquartered outside Florida hold one in seven of the confirmed projects.</p>
+        <p><strong>And scale is not the entry ticket.</strong> The firms leading these markets are not the giants. Corwil is a practice of roughly forty people; Behar Font Partners about thirty-five; in Houston, Meeks + Partners around fifty and Seeberger under twenty. Arquitectonica, at some six hundred, is present in Miami but holds two projects &mdash; the same as Built Form. <strong>Size is not what is winning this work, and the incumbency you would be displacing does not exist at the scale you might assume.</strong></p>
+      </div>
+      <p class="muted"><strong>Being straight about the limits.</strong> Houston&rsquo;s record covers commercial construction of every kind, so the multifamily figure is drawn by reading each project&rsquo;s own description of what is being built, not its name &mdash; Houston developers file under code names. Miami is counted over distinct projects, not board appearances &mdash; the board defers and re-hears items, and ten of its cases have been heard at more than one meeting, so counting appearances would credit a firm twice for one project. Thirty-five is the number of projects, across every sitting from January 2024 to July 2026, with the architect confirmed on the record; the remainder are unresolved rather than unattributed, and that gap would narrow, not widen, the leaders&rsquo; share.</p>
+    </section>
+
+    <section id="tempo">
+      <p class="kicker">Where the work is actually moving</p>
+      <h2>Raleigh&rsquo;s large multifamily flow quintupled.<br>Las Vegas&rsquo;s did not move.</h2>
+      <p class="lede">Counting permits above $10M &mdash; large enough that a scheme cannot inflate the number by filing each building separately &mdash; gives a read on how much serious multifamily work each market is actually releasing.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Year</th><th>Las Vegas (city)</th><th>Raleigh</th></tr></thead>
+          <tbody>
+            <tr><td>2022</td><td>3</td><td>6</td></tr>
+            <tr><td>2023</td><td>7</td><td>6</td></tr>
+            <tr><td>2024</td><td>4</td><td>3</td></tr>
+            <tr><td><strong>2025</strong></td><td>4</td><td><strong>15</strong></td></tr>
+            <tr><td>2026 <span class="muted">(to late Aug)</span></td><td>5</td><td>7</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Las Vegas has not changed in five years</strong> &mdash; three to seven large multifamily permits a year, every year, with 2026 running at or slightly above that. <strong>Raleigh went from three in 2024 to fifteen in 2025</strong>, and 2026 is tracking around eleven: off the peak, but still three to four times the 2022&ndash;24 baseline. If BD effort is being allocated across these two markets on the assumption they behave alike, they do not.</p>
+      <div class="box box--dont">
+        <p class="box__label">✕ Three things that would make this chart lie</p>
+        <p><strong>Permit counts and permit values disagree, so we use both.</strong> On raw counts Raleigh 2026 looks like +151% over 2025. It is not: the permits are half the size they were &mdash; $7.2M average against $15.9M &mdash; because a scheme files per building. Total value rose about 15%. <strong>Anyone quoting the count alone is quoting an artefact</strong>, which is why the table above uses only permits large enough to be whole projects.</p>
+        <p><strong>2026 is a part year</strong> and is never compared to a full one without saying so.</p>
+        <p><strong>Las Vegas batch-issues.</strong> Every one of its 2026 multifamily permits was issued in a single week in June. A month-by-month version of this chart would show a spike that means nothing about the market.</p>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">▲ And the honest limit on the Nevada column</p>
+        <p>This is the <strong>City of Las Vegas</strong>. The Strip, Bally&rsquo;s, the Riviera site and the resort work are in <strong>unincorporated Clark County</strong>, a separate jurisdiction whose records do not carry a valuation field in the public search. <strong>So the Nevada column understates Nevada</strong>, and we would rather say that than quietly let the number stand for the state.</p>
+      </div>
+      <p>The comparison is deliberately <em>within</em> each city rather than between them. Cities classify differently, set different permit thresholds and cover different land areas &mdash; a raw count of Raleigh against Las Vegas would be a manufactured finding. Each column is that market measured against its own history, on that city&rsquo;s own classification: Las Vegas by its <code>MultiFam</code> work type, Raleigh by new-construction permits whose description states apartment or multifamily.</p>
+    </section>
+
+    <section id="designbuild">
+      <p class="kicker">The question everyone asks about Arizona</p>
+      <h2>Design-build is taking the market &mdash; but not your part of it</h2>
+      <p>Design-build is the standard worry about Phoenix, and it is a real one. It is also more precisely located than the worry usually is. Across the 50 projects, the architect and the contractor are <strong>the same firm on six of them &mdash; twelve per cent</strong>. Where those six sit is the whole story:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Sector</th><th>Projects</th><th>Design-build</th><th>Share</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Industrial / logistics</strong></td><td>10</td><td><strong>5</strong></td><td><strong>50%</strong></td></tr>
+            <tr><td>Multifamily / residential</td><td>12</td><td>1</td><td>8%</td></tr>
+            <tr><td>Civic / education</td><td>17</td><td>0</td><td>0%</td></tr>
+            <tr><td>Healthcare</td><td>6</td><td>0</td><td>0%</td></tr>
+            <tr><td>Hospitality</td><td>5</td><td>0</td><td>0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Half of Arizona industrial in this set is design-build. None of the civic, healthcare or hospitality work is, and one multifamily project out of twelve.</strong> Every single design-build project in the set belongs to one firm, LGE Design Build, and five of its six are industrial.</p>
+      <div class="box box--dont">
+        <p class="box__label">✕ And one name that is not what it looks like</p>
+        <p><strong>Butler Design Group is not a design-build firm.</strong> It has six projects &mdash; joint-most in the set &mdash; and six different general contractors: Stevens-Leinweber, Ryan Companies on three, Willmeng and Layton. It is a conventional architecture practice whose name reads like a design-builder.</p>
+        <p>It is also <strong>not a competitor for multifamily work</strong>. Four of its six are industrial, one healthcare, one civic. <strong>Zero residential.</strong> Any read of the headline league table that treats the two six-project firms as the competitive pressure on a multifamily practice is wrong on both counts.</p>
+      </div>
+    </section>
+
+    <section id="crossmarket">
+      <p class="kicker">Who else is doing what you are doing</p>
+      <h2>The firms operating across more than one of your markets</h2>
+      <p>Most architecture practices are one-market businesses. The interesting ones are those serving many markets from a few offices &mdash; the same shape of firm, competing for the same work.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Firm</th><th>Where we found them</th><th>Shape</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Solomon Cordwell Buenz</strong></td><td><strong>Houston</strong> (The Lily River Oaks, 331 u) and <strong>Honolulu</strong> (Kalae, 330 u)</td><td>Two of your six, on near-identical residential towers. Both confirmed from the developers&rsquo; own releases</td></tr>
+            <tr><td><strong>Cline Design Associates</strong></td><td>Raleigh (2 projects). Offices Raleigh, <strong>Charlotte</strong>, Austin, Washington DC</td><td>Calls itself a national design firm; multifamily, student and senior housing</td></tr>
+            <tr><td><strong>CBA Architects <span class="muted">(formerly Charlan Brock)</span></strong></td><td>Raleigh (Livano North Hills, 280 u)</td><td>Florida-based, national multifamily and student housing</td></tr>
+            <tr><td><strong>KTGY</strong></td><td>Arizona (1 project)</td><td>Six offices &mdash; Chicago, Dallas, Denver, Irvine, LA, Oakland. National multifamily,<strong>no Southeast office</strong></td></tr>
+            <tr><td><strong>Gensler</strong></td><td>Arizona (3), and named on a Clark County scheme</td><td>Global, not multifamily-specialist</td></tr>
+            <tr><td><strong>JDAVIS</strong></td><td>Raleigh (4) &mdash; the local leader</td><td>Raleigh + Philadelphia. Employee-owned, acquired by ISG May 2025</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>The pattern is the point.</strong> None of these firms has an office in most of the markets it works in. KTGY covers the Southeast from six offices, none of them in the Southeast. Cline reaches Texas and Washington from the Carolinas. <strong>Serving many markets from few offices is not unusual in this business &mdash; it is the model the strongest multifamily practices already run.</strong></p>
+    </section>
+
+    <footer>
+      <p class="muted">Companion to the six-market record, 28 August 2026. Every figure is drawn from public municipal records or from the published statements of the parties named. Where something could only be sourced to secondary reporting it was left out rather than hedged. Happy to walk through any single number on a call.</p>
+    </footer>
+  </main>
+</div>

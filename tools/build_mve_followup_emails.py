@@ -39,7 +39,7 @@ from email.message import EmailMessage
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "docs", "audit-2026-08", "outbound")
-PDF = os.path.join(REPO, "docs", "KOR-MVE-Design-Team-Dossier-2026-08-28-web.pdf")
+PDF = os.path.join(REPO, "docs", "KOR-MVE-Six-Market-Record-2026-08-28-web.pdf")
 
 IAN = "Ian Lalonde <ilalonde@korstructural.com>"
 JIM = "Jim DesRoches <jdesroches@korstructural.com>"
@@ -66,11 +66,13 @@ That is only worth saying if the same measurement can produce a different answer
 
 Three of your four measurable markets have no incumbent worth the name. Raleigh is the outlier, and it is the one where the leader has just changed hands.
 
-On the test you set us, what happens to a 40-storey project filed that morning: the honest answer is in the document rather than hidden in it. It is not in any public feed yet, and nobody's is. It surfaces in days. What we can defend is that nothing published gets missed, not that nothing unpublished is known.
+On the test you set us, what happens to a 40-storey project filed that morning: the answer is in the document rather than hidden in it, and it differs by city. Raleigh's development plans had been updated the morning I ran this. Phoenix posts its building permits next-day but runs about a quarter behind on its entitlement cases, so there it is months rather than days. We would rather tell you which city is which than quote you an average.
 
 Every figure is drawn from public municipal records or from the published statements of the parties named, current to 28 August. The Houston record is current to the 27th. Where something could only be sourced to secondary reporting we left it out rather than hedge it, and there are a couple of places where we say plainly that a market cannot be measured yet.
 
 Happy to walk through any single number on a call.
+
+There is a companion to it that I have not attached, because you do not need it to use the above: it sets out how each of those design-team figures was arrived at, what each one rests on, and which of your markets cannot be measured at all. Say the word and I will send it.
 
 I will have the full lifecycle demo ready for the next one: opportunity through to proposal, rather than the tour we gave you.
 
