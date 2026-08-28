@@ -424,3 +424,50 @@ contrast populates `project_name` ("Residential - Multiple Family Development",
 it is genuinely actionable. **The value is agency-dependent and must be stated per agency.**
 
 ⚠ Still true: these are **permits and cases, not design teams.** No architect field anywhere.
+
+## Playwright wired up — and an honest read on what it bought
+
+`pip install playwright`, driven against the **Edge already on this machine**
+(`channel="msedge"`), so no ~150MB Chromium download. `Format-BdWebPdf.ps1` already
+proved Edge was present. Verified working 28 Aug 2026.
+
+⚠ Note this is the **Python** Playwright, deliberately separate from the **.NET**
+Microsoft.Playwright inside `Kor.Opportunities.Data/Ingestion/Scraping` (BcBid,
+AlbertaPurchasing, APC) and the `Kor.Opportunities.Capture` session harness. No C#
+project was touched.
+
+### Phoenix — the wall came down, the room behind it was smaller than expected
+
+The PDD project search *is* now readable. Two corrections were needed and the portal
+stated both itself:
+1. ⛔ **The search requires wildcards.** `MOMENTUM` returns nothing; `*MOMENTUM*` works.
+   The page says so in its own instructions — *"Precede and Follow a key word in the
+   project name with wildcards(\*)"*. The first attempt returned identical bytes for
+   three different terms, which was the tell.
+2. ⛔ **Results are a Kendo grid, and `tbody tr` also matches the navigation tables** —
+   the first run printed the header bar as if it were data. Scope to `.k-grid`.
+
+**But the payoff is modest, and pretending otherwise would be the mistake.** The results
+grid carries only **Project Number · Project Name · Project Fee Total** — *thinner* than
+the ArcGIS `Planning_Permit` layer already in use, which has address, dates, status,
+type and contractor. The portal's genuine addition is a per-project detail panel:
+**REVIEW · ASSIGNEE-CONTACT · DEPT · START DATE · COMPLETED · DECISION**, plus inspection
+history — but that needs a click-through per project.
+
+⭐ **Still no architect.** Phoenix does not expose a design team here either.
+**The ArcGIS layer remains the better Phoenix source.**
+
+### The AJAX endpoint is session-bound
+
+The grid's sort links reveal `/PDD/Search/Projects/_GetProjectData`. Called directly over
+plain HTTP it returns **HTTP 200 with a zero-byte body** — the search term lives in
+server-side session state established by the POST. So Phoenix genuinely needs a browser;
+it is not reachable by a crafted GET.
+
+### Where Playwright should be pointed next
+
+Untested and higher-value than Phoenix turned out to be:
+- **Scottsdale SPUR** (Tyler EnerGov) — OAuth via `identity.tylerportico.com`, which a
+  browser session can carry and a bare POST cannot.
+- **Austin** permit detail — a 958-byte session shell to plain HTTP.
+⚠ **Charlotte no longer needs it** — ACA already answers there (§9d).
