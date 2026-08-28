@@ -13,6 +13,16 @@
     .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 8.4pt; }
     .shell { padding: 0 14mm; }
     main { padding: 4mm 0 0; }
+
+    /* Fill the printed column.
+       The reference constrains every text block to --maxread (44rem), a measure
+       chosen for the SCREEN layout, where a 15rem table-of-contents column sits
+       beside the text. In print the contents becomes a page-1 index and .shell
+       goes full width — but --maxread does not change, so the text keeps its
+       narrow screen measure and the leftover becomes a dead band on the RIGHT:
+       measured 11.6% left margin against 33.8% right on the first build.
+       Letting the measure follow its container restores symmetry. */
+    :root { --maxread: 100%; }
     section { margin-bottom: 0; }
     h2 { margin-top: 1.1rem; }
     .box { padding: .7rem .9rem; margin: .7rem 0; }
