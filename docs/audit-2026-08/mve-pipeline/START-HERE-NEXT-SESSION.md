@@ -1,113 +1,119 @@
-# START HERE — MVE pipeline research
+# START HERE — MVE design-team work, state at 28 August 2026
 
-**Status after session 2 (2026-08-26): the brief is current and shipped. Five of the seven open
-questions are closed. Do not restart the research, and do not re-ask the closed questions.**
-
----
-
-## 1 · Read these first, in this order
-
-| File | What it holds |
-|---|---|
-| `../mve-pipeline-brief.html` | **The deliverable, and now the single meeting document.** Shipped as `docs/KOR-MVE-Pipeline-Brief-2026-08-26-web.pdf` (11 pp). Built on the canonical `tools/BdDocTemplate/`. Edit `../mve-pipeline-body.html`, not the assembled file. `../11-MVE-PIPELINE-BRIEF.md` is RETIRED |
-| **`P4-session2-resolutions.md`** | **Read this second.** What session 2 resolved, with sources — and the three techniques that did it. It will save you a day |
-| `P1-oc-la.md` | Orange County + LA — forward projects, SE field, the "getting busier" cadence |
-| `P2-san-diego.md` | San Diego — the studio's real workload |
-| `P3-utah-bay-developers.md` | Utah, Bay Area, Arizona + the developer-side view |
-| `../10-MVE-COMPANY-DOSSIER.md` | ~155 built projects. **Reference only — do not re-research the portfolio** |
-| `../09-MVE-DEMO-DOSSIER.md` | Who is in the room; David Arnold as likely evaluator |
-
-**The one rule that governs all of it:** where a document says a structural engineer is *"not
-publicly named,"* that means no public record names one. **It does not mean the seat is open.**
-Never upgrade that phrasing.
+Supersedes the earlier version of this file. Read this before touching anything.
 
 ---
 
-## 2 · Closed — do not spend a minute on these again
+## 1. The deliverable
 
-Full sourcing in `P4-session2-resolutions.md`.
+**`docs/KOR-MVE-Design-Team-Dossier-2026-08-28-web.pdf`** — 7pp, built on `tools/BdDocTemplate`,
+assembled from `docs/audit-2026-08/mve-designteam-{head,print,body}.html` (build command is in the
+head fragment). **This is the document that goes to Dan Gura at MVE.**
 
-- **Discovery Park is BDE Architecture's, not MVE's.** Read off the plan set filed with the City of
-  Irvine. It was the brief's #1 question; the answer is negative.
-- **4002 Park Blvd (Pali) has not started vertical, and its structural seat is not open.** An
-  ACI 318-19 deviation request was issued in May 2024; the building permit is in plan check now.
-- **OCVIBE Residential Phase I names thirteen consultants and no structural engineer**, and John A.
-  Martin is not among them. This is now the strongest lead in the brief.
-- **Kennedy Wilson / Toll Brothers: 24 land positions, ≈\$2.9B per the SEC filings.** The site list
-  is not published and there is no filing obligation that would make it so.
-- **MVE has five offices** — Irvine, Los Angeles, San Diego, San Francisco, **Guadalajara**. No US
-  office outside California. Denver is absent with no closure evidence.
-- **AvalonBay's supplemental has been pulled.** It names every community under construction and
-  nothing that is not. The forward pipeline is a count only — 31 Development Rights, 9,997 homes.
-  **The real finding is that AvalonBay is merging into Equity Residential**, closing H2 2026.
-- **Riverwalk Phase 2 is genuinely unsequenced in public** — proven from the site's own sitemap, not
-  inferred from a failed search.
+⛔ **`docs/KOR-MVE-Regional-Intel-2026-08-27-web.pdf` is INTERNAL and must never be sent** — it
+frames the same research around where KOR wins a structural seat.
 
----
+### Two rules the client document must keep obeying
+1. **It answers MVE's commercial question, not KOR's.** MVE is an *architect*. A "structural
+   engineer" column was cut for exactly this reason. See
+   `feedback_client_doc_takes_the_client_pov` in memory.
+2. **It states findings, never our method.** A whole methodology section and the endpoint list were
+   removed. Sweep the *rendered PDF* for leaks (`drawing set`, `plan set`, `copyright block`,
+   endpoint names) — two survived the section deletion and were only caught that way. See
+   `feedback_never_hand_the_client_our_method`.
 
-## 3 · What actually remains
-
-1. **Who does structural for MVE in San Diego?** Three independent passes, same absence. This is
-   the question to ask in the room, not a research task. Do not report it as "missing" — report it
-   as unpublished.
-2. **6201 Residences, Culver City** — 846 units, approved October 2025, start targeted 2026, so the
-   shortest fuse in the brief. `culvercity.org` refuses even a browser User-Agent. The plan-set
-   technique in `P4 §1.1` would answer it if the packet can be reached another way.
-3. **Santa Clara Park** — the trigger is lease expiry on the offices it replaces. `santaclaraca.gov`
-   also still 403s. Santa Clara uses Legistar; that was not tried.
-4. **Riverwalk at Studio City and 5350 Wilshire** — both LA cases, both with plan sets that would
-   carry a consultant directory. `planning.lacity.gov` answers a browser User-Agent. **This is the
-   most promising untried work.**
-5. **Apollo, on Ian's say-so only.** 2 credits converts the ~20-open-roles figure from a
-   ZipRecruiter count to a dated primary one. Org record already pulled
-   (`5d0a96e4a3ae61c6bf265b06`). **Get sign-off before any spend.**
+Verify with `scratchpad/checkpdf.py <pdf> --must ... --gone ... --forbid Glotman "open seat"`.
+It normalises whitespace and case; **table cells can still split a phrase across columns in
+`pdftotext`, so a MISS on a table string may be an extraction artefact — look at the page.**
 
 ---
 
-## 4 · Techniques — read `P4 §1` before searching
+## 2. What the dossier says (all verified)
 
-Three things carried this session, and they generalise:
-
-- **City entitlement plan sets carry a full consultant directory** — the single highest-yield
-  artifact for "who is on this project."
-- **San Diego's permit record is a daily CSV at `seshat.datasd.org`**, not the Accela portal.
-- **A browser User-Agent now opens buildsd.org, aiaoc.org and hillcrestbia.org**, not just
-  `planning.lacity.gov`. Culver City and Santa Clara still refuse.
-
-**CEQAnet** keyword search is still broken — it returns all 444,560 documents regardless of query.
-Reach records by direct SCH-number URL only.
-
----
-
-## 5 · Producing the brief
-
-**Edit `../mve-pipeline-body.html`** — the content fragment, not the assembled
-`mve-pipeline-brief.html`. Jim's feedback on the first two dossiers was *"lots of info there, too
-much to go through."* It is now the single meeting document, so it carries more than the pipeline —
-but every addition has to earn its place. Add rows, resolve questions, tighten, re-rank.
-
-The brief is built on **the canonical KOR design system**, `tools/BdDocTemplate/`. Its README is the
-authority: **copy the style block verbatim, do not restyle per document.** The exact rebuild command
-is in the comment at the top of `mve-pipeline-brief.html`; then:
-
-```
-pwsh -NoProfile -File tools/Format-BdWebPdf.ps1 -Html docs\audit-2026-08\mve-pipeline-brief.html \
-  -Pdf docs\KOR-MVE-Pipeline-Brief-<date>-web.pdf
-```
-
-**Verify the shipped PDF as text, never the HTML** — `pdftotext -enc UTF-8` — and render a few pages
-and *look* at them. Both faults found on 26 August were invisible in the source: a footer
-overprinting body text, and a swallowed bold span. See `P4 §6`.
-
-⚠ **Do not go back to `build_doc.py`.** It lives in no repo — only in a session scratchpad — and its
-`position:fixed` running footer overprints body text on most pages of every document it has
-produced. The rest of the `audit-2026-08` series is still on it and still carries that defect.
+- **Arizona multifamily has no incumbent architect** — 12 projects, 11 firms, top firm 17%.
+  ⭐ **Independently corroborated** against Phoenix PUD narratives: 16 projects, ~14 firms, top
+  firm 2. Two unrelated sources, same dispersion.
+- **Raleigh is the opposite** — 11 projects, 7 firms, **JDAVIS 36%**, and JDAVIS was **acquired by
+  ISG on 14 May 2025**.
+- **Design-build is 50% of Arizona industrial, 8% of multifamily.** ⛔ Butler Design Group is *not*
+  a design-build firm and has **zero** multifamily — do not repeat that error.
+- **Four closed developers**: Creation Equity (LGE on all six), Ryan Companies, Statesman,
+  StreetLights.
+- **Market tempo** on permits ≥$10M: Las Vegas flat five years (3–7/yr); Raleigh 3 → 15 → ~11.
+  ⚠ Counts and values disagree; the table uses only whole-project permits.
+- **41 open Phoenix residential submittals** — the thing Dan actually asked for.
 
 ---
 
-## 6 · Standing context
+## 3. ⭐ THE SOURCE CHAINS — the real asset
 
-- **Ian has been right every time he has corrected this research.** If something looks absent, ask
-  him what it is called before reporting it missing.
-- The wider audit this sits inside is at `../START-HERE.md` — unrelated to the MVE work, but it is
-  the same directory and worth not confusing.
+Full detail in memory: `reference_entitlement_and_permit_research` §9b–§9l. Short form:
+
+| Region | Design-team source | Status |
+|---|---|---|
+| **Phoenix / AZ** | **PUD rezoning narratives** — PROJECT TEAM block with emails + phones. `tools/phx_pud_teams.py`, 53% recovery | ✅ free |
+| **Raleigh** | Plan sets → **copyright block on every sheet** | ✅ free |
+| **Nevada / the Strip** | Accela record № → `docimgsrch.clarkcountynv.gov` → **PLAN sheets → title block** | ✅ free, proven |
+| **Charlotte** | Design team not filed at the stage the city publishes | ⛔ not yet exists |
+| **Miami** | **UNTESTED** | ⬜ next |
+| **Houston** | **UNTESTED** | ⬜ next |
+
+⭐ **The general law**: the design team is named on the document written **by** the design team —
+the drawing set, the PUD narrative, the contractor's project page. **No permit feed anywhere names
+an architect**; 14 tested, and every field that looks like it does holds the *contractor*.
+
+### Traps that cost hours — do not re-learn
+- ⛔ **A 403/500 to `urllib` is usually a bot filter or a bad payload, not a wall.** Three
+  "blockers" were false: Clark Construction, charlottenc.gov, Scottsdale SPUR. **Retry in
+  Playwright before recording a negative.**
+- ⛔ **Blazor/Telerik portals**: `fill()` does not bind — searches run EMPTY and look like no data.
+  Use `click()` → `type(delay=90)` → `Tab`. Cost four failed Clark County attempts.
+- ⛔ **Never flatten a table to pipes and collapse runs** — it deletes empty cells and shifts every
+  later column (`project_name` read 0/93 and was merely misaligned).
+- ⛔ **Case-sensitive label matching** returned 0 of 18 PUD narratives and looked like a source with
+  no architects. Always `re.IGNORECASE`.
+- ⚠ **Sanity-check every recovered firm against what it actually does.** Bass Nixon & Kennedy
+  (engineers), Kimley-Horn (civil) and a golf-course architect all surfaced as "architects".
+- ⚠ **Permit name ≠ marketing name.** Collegeview = *Signature at Varsity*; "veteran housing" =
+  *Patriot Apartments*.
+
+---
+
+## 4. ⬜ NEXT: Miami and Houston
+
+The only two regions with no design-team source. For each, look for the document class written by
+the applicant's team — a narrative, justification letter, staff report or plan set:
+
+- **Miami** — City of Miami permits are live (`services1.arcgis.com/CvuPhqcTQpZPT9qY`,
+  230,545 records to 25 Aug 2026) but `CompanyName` is the **contractor**. Untested: Miami-Dade
+  RER, City of Miami planning/zoning appeals board packets, UDRB (Urban Development Review Board)
+  submittals — **UDRB is the strongest lead: it reviews large projects and its packets are
+  architect-prepared.**
+- **Houston** — no zoning, so no rezoning narrative exists. `Planning_and_Development` MapServer is
+  overlays only. Untested: Houston Planning Commission agendas/packets, Chapter 42 plat
+  applications, TIRZ board documents, and the Houston Permitting Center's project search.
+
+---
+
+## 5. Spending — current answer
+
+**Four of six regions are covered free.** BEX (`docs/audit-2026-08/BEX-quote-request.md`, AZBEX
+$575/yr at KOR's tier) and BLDUP (`BLDUP-trial-walkthrough.md`, free account created) now only
+matter for **Miami and Houston**. ⚠ BLDUP free shows address/sector only — design team is Pro.
+⚠ DATABEX is **Arizona-only**; NVBEX is a magazine, not a database.
+⛔ Do **not** buy anything for Arizona, Raleigh or Nevada — we already beat it, free.
+
+⚠ **Clark County's search button carries a non-commercial-use declaration.** Ian's decision on
+28 Aug was to proceed. See `reference_public_record_commercial_use_limits` — the line held is
+*extract the fact, never redistribute the file*.
+
+---
+
+## 6. Tools built this session
+
+- `tools/aca_permit_probe.py` — Accela public search, paginated, reconciles against the portal's
+  own counter. Clark County / Dallas / Charlotte, no account.
+- `tools/phx_pud_teams.py` — Phoenix PUD narratives → design team.
+- `scratchpad/checkpdf.py` — verify a shipped PDF's text (whitespace/case normalised).
+- Playwright (Python) is installed and drives the **installed Edge** via `channel="msedge"` — no
+  browser download. ⚠ Keep separate from the .NET Playwright in `Kor.Opportunities.Data`.
