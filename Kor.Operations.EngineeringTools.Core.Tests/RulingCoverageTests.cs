@@ -89,6 +89,13 @@ public class RulingCoverageTests
         ["wall-connectivity-required"] = "ConnectivityFlagsMatchTheFormsAnEngineersModelUses",
         ["tower-storey-scope"] = "StoreyCutTests.NamingTheTowerStoreysRemovesWhatNeitherFilterCanSee",
         ["sheet-naming-conventions"] = "ParkadeSheetsMatchParkadeStoreysOnly",
+
+        // Andrea Neuviale, 28 August, banked by migration 059. A plan too wide for one sheet is cut
+        // on a match line and drawn twice; the halves are read as one plan, but only on the storeys
+        // she names, because joining every split in a set changes storeys she has already accepted.
+        ["a-plan-split-on-a-match-line-is-one-plan"] =
+            "MatchLineSheetJoinTests.The31168ParkadeSheetsAreTwoHalvesOfOnePlan, with "
+            + "The31138SheetsShareALineButAreNotSplitByIt holding the other side of it",
     };
 
     /// <summary>
