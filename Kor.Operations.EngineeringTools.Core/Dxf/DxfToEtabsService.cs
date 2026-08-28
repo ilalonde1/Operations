@@ -755,15 +755,40 @@ public static class DxfToEtabsService
         // This has to happen BEFORE the building filter below. On a one-building run the other half
         // is somebody else's sheet and would be thrown away, and the parkade would stay broken in
         // exactly the model that needs it: "we need the full structure at the parkade".
+        // ONLY WHERE THE ENGINEER ASKED. Joining every split plan in the set is a rebuild, not an
+        // answer: Andrea signed off on this model except the parkade, and rejoining the ground floor
+        // would change a storey she had already accepted. The storeys to join are a fact she gives —
+        // "we need the full structure at the parkade" — and nothing is joined until she says so.
+        // Banked as match-line-join.<job>.<storey>, the same shape as slab-count.<job>.<storey>:
+        // not a rule about how drawings are read anywhere, just something she told us about this
+        // building.
+        string joinJob = Path.GetFileNameWithoutExtension(request.OutputE2k);
+        var joinStoreys = banked
+            .Where(r => r.Key.StartsWith("match-line-join.", StringComparison.OrdinalIgnoreCase))
+            .Select(r => r.Key.Split('.', 3))
+            .Where(p => p.Length == 3 && joinJob.Contains(p[1], StringComparison.OrdinalIgnoreCase))
+            .Select(p => p[2])
+            .ToList();
         var matchLineLayers = banked.ListOr("dxf.match-line-layer-patterns", MatchLineSheetJoin.DefaultLayerPatterns);
-        var segmentsOf = files.ToDictionary(f => f, DxfPlanReader.ReadSegments, StringComparer.OrdinalIgnoreCase);
 
-        var joined = MatchLineSheetJoin.Group(files.Select(f => (
-            File: f,
-            Seam: MatchLineSheetJoin.SeamOf(segmentsOf[f], matchLineLayers),
-            Storeys: (IReadOnlyList<string>)PlanSheetNaming.MatchStories(sheetInfoByFile[f], matchNames)
+        var storeysOfSheet = files.ToDictionary(
+            f => f,
+            f => (IReadOnlyList<string>)PlanSheetNaming.MatchStories(sheetInfoByFile[f], matchNames)
                 .Where(s => !cutStoreys.Contains(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            StringComparer.OrdinalIgnoreCase);
+
+        var joinable = joinStoreys.Count == 0
+            ? new List<string>()
+            : files.Where(f => storeysOfSheet[f].Any(s =>
+                  joinStoreys.Any(j => s.Contains(j, StringComparison.OrdinalIgnoreCase)))).ToList();
+
+        var segmentsOf = joinable.ToDictionary(f => f, DxfPlanReader.ReadSegments, StringComparer.OrdinalIgnoreCase);
+
+        var joined = MatchLineSheetJoin.Group(joinable.Select(f => (
+            File: f,
+            Seam: MatchLineSheetJoin.SeamOf(segmentsOf[f], matchLineLayers),
+            Storeys: storeysOfSheet[f],
             Segments: segmentsOf[f])));
 
         // Every partner keyed to the sheet that leads its group, and every follower marked so the
