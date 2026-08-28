@@ -55,8 +55,8 @@ Full detail in memory: `reference_entitlement_and_permit_research` §9b–§9l. 
 | **Raleigh** | Plan sets → **copyright block on every sheet** | ✅ free |
 | **Nevada / the Strip** | Accela record № → `docimgsrch.clarkcountynv.gov` → **PLAN sheets → title block** | ✅ free, proven |
 | **Charlotte** | Design team not filed at the stage the city publishes | ⛔ not yet exists |
-| **Miami** | **UNTESTED** | ⬜ next |
-| **Houston** | **UNTESTED** | ⬜ next |
+| **Miami** | **UDRB agenda packets** (IQM2 board 1096) — letter of intent + signed drawing set. `tools/udrb_teams.py` | ✅ free, proven |
+| **Houston** | **TDLR TABS** — statewide registry, every commercial project >$50k names the design firm. `tools/tabs_projects.py` | ✅ free, **a census** |
 
 ⭐ **The general law**: the design team is named on the document written **by** the design team —
 the drawing set, the PUD narrative, the contractor's project page. **No permit feed anywhere names
@@ -79,27 +79,41 @@ an architect**; 14 tested, and every field that looks like it does holds the *co
 
 ---
 
-## 4. ⬜ NEXT: Miami and Houston
+## 4. ✅ ALL SIX REGIONS ARE COVERED (28 Aug)
 
-The only two regions with no design-team source. For each, look for the document class written by
-the applicant's team — a narrative, justification letter, staff report or plan set:
+Miami and Houston were closed on 28 August. Full detail in `VERIFICATION-LOG.md` §"Session 3" and
+in memory `reference_entitlement_and_permit_research` §9m (Miami) and §9n (Houston).
 
-- **Miami** — City of Miami permits are live (`services1.arcgis.com/CvuPhqcTQpZPT9qY`,
-  230,545 records to 25 Aug 2026) but `CompanyName` is the **contractor**. Untested: Miami-Dade
-  RER, City of Miami planning/zoning appeals board packets, UDRB (Urban Development Review Board)
-  submittals — **UDRB is the strongest lead: it reviews large projects and its packets are
-  architect-prepared.**
-- **Houston** — no zoning, so no rezoning narrative exists. `Planning_and_Development` MapServer is
-  overlays only. Untested: Houston Planning Commission agendas/packets, Chapter 42 plat
-  applications, TIRZ board documents, and the Houston Permitting Center's project search.
+**Houston — TDLR TABS is the strongest source in the whole report.** Texas requires every
+commercial project over $50,000 to be registered for accessibility review and the registration
+names the design firm. It is a **census, not a sample** — the denominator is the law's, not an
+editor's — and it is statewide, so **Dallas, Austin and San Antonio come free**.
+Harris County 2024–2026: 11,790 registrations, 4,087 new construction, 358 at $10M+, of which
+**314 (88%) name a design firm across 157 distinct firms**.
+
+⭐ **The Arizona pattern repeated on unrelated data: industrial concentrates (top 3 = 52%),
+multifamily disperses (20 firms over 28 projects).** Two markets, two independent source types.
+
+**Miami — UDRB agenda packets.** 28 published packets, Jan 2024 → Jul 2026, 6.69 GB. Each is the
+applicant's own submittal: letter of intent plus the signed drawing set, with a team directory
+carrying phone numbers.
+
+### ⬜ What is left
+1. **Finish the two harvests** (both were running at the end of the session; both resume — the
+   scripts skip what is already done). Houston: `tabs_projects.py detail`, ~4,087 records.
+   Miami: 28 packets at roughly 1.5 MB/s.
+2. **Write the Miami and Houston sections into the client dossier** — they are not in the PDF yet.
+3. Sanity-check every firm before it is quoted. Non-architects legitimately appear in both sources.
 
 ---
 
 ## 5. Spending — current answer
 
-**Four of six regions are covered free.** BEX (`docs/audit-2026-08/BEX-quote-request.md`, AZBEX
-$575/yr at KOR's tier) and BLDUP (`BLDUP-trial-walkthrough.md`, free account created) now only
-matter for **Miami and Houston**. ⚠ BLDUP free shows address/sector only — design team is Pro.
+**⭐ All six regions are now covered free — buy nothing.** BEX
+(`docs/audit-2026-08/BEX-quote-request.md`, AZBEX $575/yr at KOR's tier) and BLDUP
+(`BLDUP-trial-walkthrough.md`, free account created) were the fallback for Miami and Houston, and
+both regions were solved on public records instead. Houston in particular is a *census*, which no
+paid product can match. ⚠ BLDUP free shows address/sector only — design team is Pro.
 ⚠ DATABEX is **Arizona-only**; NVBEX is a magazine, not a database.
 ⛔ Do **not** buy anything for Arizona, Raleigh or Nevada — we already beat it, free.
 
