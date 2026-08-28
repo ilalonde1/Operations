@@ -89,16 +89,56 @@ NOT_ARCHITECT = re.compile(
     r"traffic|mechanical|electrical|plumbing|mep\b|engineering|engineers?|"
     r"consultants?|contracting|construction|realty|development|holdings|"
     r"capital|partners? llp\b|attorneys?|law\b)\b")
-ARCHITECT_HINT = re.compile(r"(?i)\b(architect|architecture|arquitect|"
+# Must match the PLURAL. "\barchitect\b" does not match "Architects", which cost
+# Kohn Pedersen Fox Associates PC Architects & Planning Consultants its bonus --
+# and it was then penalised for the word "Consultants" in its own name.
+ARCHITECT_HINT = re.compile(r"(?i)\b(architects?|architectur\w*|arquitect\w*|"
                             r"design studio|studio|atelier)\b")
 JUNK = re.compile(r"(?i)^(packet pg|page \d|sheet|scale|north|drawn|checked|"
                   r"date|rev|no\.|project no)")
 
 
+# Some submittals use a blank directory form whose column headers survive
+# extraction as a line of their own. "Architect:" is followed by
+# "Name Address Address Tel: Email" and only THEN by the firm.
+BOILERPLATE = re.compile(r"(?i)^\s*(name\s+address|address\s+address|"
+                         r"name\b.*\baddress\b.*\btel\b|tel:?|email|"
+                         r"firm\s+name|company\s+name)\s*:?\s*$")
+
+# A firm line usually carries its whole address and phone glued on:
+# "Kohn Pedersen Fox Associates PC Architects & Planning Consultants 11 West
+# 42nd Street New York, New York 10036 TEL: 212.977.6500". Cut at the first
+# thing that is plainly contact detail, then length-check what is left --
+# otherwise real names blow the length cap and are silently dropped.
+CONTACT = re.compile(
+    r"(?i)(\s+\d{1,6}\s+(?:[NSEW]{1,2}\.?\s+)?\w+.{0,18}?\b"
+    r"(?:street|st|avenue|ave|road|rd|boulevard|blvd|court|ct|drive|dr|way|"
+    r"place|pl|lane|ln|circle|terrace|ter|highway|hwy)\b"
+    r"|\s+tel:?\s|\s+fax:?\s|\s+phone:?\s"
+    r"|\s*\(\d{3}\)\s*\d{3}"
+    r"|\s+\d{3}[.\-]\d{3}[.\-]\d{4}"
+    r"|\s+[\w.\-]+@[\w.\-]+"
+    r"|\s+suite\s+\d)")
+
+
+def trim_firm(raw):
+    """Strip address/phone/email that extraction glued onto the firm name."""
+    f = re.sub(r"\s+", " ", (raw or "")).strip()
+    m = CONTACT.search(f)
+    if m:
+        f = f[:m.start()]
+    return f.strip(" ,.-")
+
+
 def clean_firm(raw):
-    f = re.sub(r"\s+", " ", (raw or "")).strip(" ,.-")
+    f = trim_firm(raw)
     f = re.sub(r"(?i)\s*(all rights reserved|copyright).*$", "", f).strip(" ,.-")
-    return f
+    # A caption sometimes survives on the same line as its value
+    # ("Design Architect: Brian Vargo LIVWRK").
+    f = re.sub(r"(?i)^(design\s+|landscape\s+|project\s+)?"
+               r"architects?\s+of\s+record\s*:\s*", "", f)
+    f = re.sub(r"(?i)^(design|landscape|project)?\s*architects?\s*:\s*", "", f)
+    return f.strip(" ,.-")
 
 
 def looks_like_firm(f):
@@ -107,7 +147,11 @@ def looks_like_firm(f):
     Vector title blocks extract as things like 'GGGG331HG22GH213' and "I33V'3V",
     which are not names -- they are collapsed glyph runs.
     """
-    if not f or not (4 <= len(f) <= 60) or JUNK.match(f):
+    # 80, not 60: "Kohn Pedersen Fox Associates PC Architects & Planning
+    # Consultants" is 64 characters and a real answer.
+    if not f or not (4 <= len(f) <= 80) or JUNK.match(f):
+        return False
+    if re.search(r"(?i)(www\.|https?://|\.com\b|\.net\b)", f):
         return False
     if len(re.findall(r"\d", f)) >= 3:
         return False
@@ -156,10 +200,12 @@ def candidates(text):
     lines = text.split("\n")
     for i, ln in enumerate(lines):
         if ROLE_HEAD.match(ln):
-            for nxt in lines[i + 1:i + 4]:
+            for nxt in lines[i + 1:i + 6]:
                 # "Architect:" is sometimes followed by "Landscape Architect:" --
-                # another label, not the firm. Step over labels.
-                if ROLE_LABEL.match(nxt.strip()):
+                # another label, not the firm. Step over labels, blank lines and
+                # the blank-form column headers.
+                if not nxt.strip() or ROLE_LABEL.match(nxt.strip()) \
+                        or BOILERPLATE.match(nxt):
                     continue
                 f = clean_firm(nxt)
                 if looks_like_firm(f):
@@ -195,9 +241,12 @@ def score(firm, ev):
                 or ev.get("prose_survey"):
             s -= 450
     s += min(sum(ev.values()), 120)
+    # A firm that calls itself an architect IS one, even when its name also
+    # carries a second discipline ("... Architects & Planning Consultants").
+    # Only demote when nothing in the name claims architecture.
     if ARCHITECT_HINT.search(firm):
         s += 120
-    if NOT_ARCHITECT.search(firm):
+    elif NOT_ARCHITECT.search(firm):
         s -= 500
     return s
 
