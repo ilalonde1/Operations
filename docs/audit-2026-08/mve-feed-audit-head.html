@@ -1,0 +1,24 @@
+<title>Public Project Feeds — Audited, 27 August 2026</title>
+<!--
+  KOR public-feed audit — INTERNAL. Every figure produced by direct query.
+
+  Built on the canonical KOR design system, per tools/BdDocTemplate/README.md.
+  This file is ASSEMBLED, not hand-maintained. To change it, edit the fragment
+  and rebuild:
+
+    cd <repo root>
+    { cat docs/audit-2026-08/mve-feed-audit-head.html
+      sed -n '2,257p' tools/BdDocTemplate/reference-handbook.html
+      cat docs/audit-2026-08/mve-feed-audit-print.html
+      cat docs/audit-2026-08/mve-feed-audit-body.html
+    } > docs/audit-2026-08/mve-feed-audit.html
+
+    pwsh -NoProfile -File tools/Format-BdWebPdf.ps1 `
+      -Html docs\audit-2026-08\mve-feed-audit.html `
+      -Pdf  docs\KOR-Public-Feed-Audit-2026-08-27-web.pdf
+
+  Parts:
+    mve-feed-audit-head.html   this file — title and build recipe
+    mve-feed-audit-print.html  print-density overrides only, no brand changes
+    mve-feed-audit-body.html   the content
+-->

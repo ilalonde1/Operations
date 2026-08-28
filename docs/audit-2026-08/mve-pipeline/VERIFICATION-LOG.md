@@ -109,3 +109,54 @@ W.M. Jordan). **Charlotte does not** — its entitlement feed is frozen at 23 Ma
 
 ⛔ Neither feed carries an architect or an engineer, ever. Owner and contractor only.
 The design-team layer still has to come from somewhere else.
+
+## Wide pass, 27 August 2026 — Houston, Dallas, Miami, Charlotte, Nevada
+
+### Confirmed from the firm's or developer's own page
+
+| Claim | Source |
+|---|---|
+| **DeSimone Consulting Engineering = structural**, Southern Land Upper Kirby (Houston) | Developer's own groundbreaking release, verbatim: *"DeSimone Consulting Engineering for structural engineering"*. Also corrects the GC to **ANDRES Construction**. SCB architect + interiors, Kimley-Horn civil. 953,000 sf, 38-storey/331 units + 10-storey/107,000 sf office |
+| **SCA Design = architect**, Hylo Park (North Las Vegas) | SCA's own project page |
+| **GRAEF = civil/site + CEI, NOT structural**, Waldorf Astoria Miami | GRAEF's own page: *"site/civil engineering services"* |
+
+### Refuted, corrected, or downgraded
+
+- ⛔ **GRAEF is not the structural engineer on the Waldorf Astoria.** Two engineering firms appear in coverage of that tower and reading GRAEF as structural would have repeated the TSK/LVCC error exactly. Their own page settles it: civil.
+- ⚠ **CHM Structural on the Waldorf is secondary-sourced only** — reported in trade coverage, not carried on CHM's own site. Marked unverified in the document.
+- ⚠ **MKA on Queensbridge Collective is unverified.** One thin source called them a "consultant"; MKA's own site does not carry the project, and Riverside's own project page names **no firms at all**.
+- ⚠ **Clark Construction's Queensbridge page returns 403.** BLOCKED, not absent.
+
+### Where the primary source disagrees with the trade press — primary wins
+
+| Item | Trade press | The owner's or engineer's own page |
+|---|---|---|
+| Ālia, Honolulu | 477 units | **457** (WRNS, with a bedroom-by-bedroom breakdown) |
+| Waldorf Astoria, Miami | 1,049 ft, 387 residences | **1,046 ft, 360 residences** (GRAEF) |
+| Queensbridge, Charlotte | 600,000 sf office | **356,000 sf** office, 755 residential units total (Riverside) |
+| Hylo Park, Las Vegas | 700 units on 73 acres | **393 single-family homes** plus a lifestyle centre (SCA Design), developer not named |
+
+Four for four. **Where a number matters, take it from the party that has to be right about it.**
+
+### The Phoenix correction — a shipped document was wrong
+
+The feed audit judged Phoenix on its open-data portal (23 rows, yearly totals) and wrote the city
+off. Phoenix runs a separate service, `maps.phoenix.gov/pub/rest/services/Public/Planning_Permit`,
+carrying **68,292 permits and 13,022 plan reviews**, row-level, **current to 27 August 2026**. It
+includes the case type **FINAL SITE PLAN – MAJOR** — the submittal whose plan set carries the
+consultant directory. That is the Arizona submitted-projects search Ian promised Dan.
+
+⚠ **`PROFESS_NAME` is a trap.** 90.6% populated, and the name promises the design professional.
+The values are the licensed **contractor**: *TO BE BID*, *OWNER*, Valley Fire Sprinkler, solar
+installers, Sundt, Austin Commercial, TSMC. Never present it as an architect.
+
+Why the first pass missed it: the host path is `/pub/rest/services`. Every probe of the conventional
+`/arcgis/rest/services` returned 404 — **and a 404 against a guessed host proves nothing**, the same
+rule the Thornton Tomasetti miss produced. It was found by searching the ArcGIS Online organisation
+catalogue: derived, not guessed.
+
+**Scottsdale is the mirror image.** `Active_CDS_Cases` is flawless — 82 cases, all 8 fields on all
+82 rows — and frozen at 25 Feb 2026 because the city moved to the SPUR portal in January. SPUR's
+search API exists (`GET` returns 405, so the method is right) but every anonymous `POST` returns 500:
+it wants an OAuth token from Tyler's identity service. **A perfect feed can still be a closed one**,
+and as cities migrate onto these platforms this blocker grows while the open ArcGIS ones shrink.

@@ -2,11 +2,11 @@
 <header class="hero">
   <div class="hero__wrap fade">
     <p class="hero__eyebrow">KOR Structural &middot; Business Development &middot; Internal</p>
-    <h1>Eleven public project feeds,<br>tested rather than trusted</h1>
-    <p class="hero__lede">Every figure below was produced by querying the source directly on 27 August 2026 — not read off a portal description. Six of the eleven advertise data they do not deliver, and none of that is visible without running the query. 27 August 2026.</p>
+    <h1>Fourteen public project feeds,<br>tested rather than trusted</h1>
+    <p class="hero__lede">Every figure below was produced by querying the source directly on 27 August 2026 — not read off a portal description. Eight of the fourteen advertise data they do not deliver, and none of that is visible without running the query. One of them is a correction to an earlier draft of this document. 27 August 2026.</p>
     <div class="hero__meta">
-      <span>11 jurisdictions queried</span>
-      <span>6 fail in ways metadata hides</span>
+      <span>12 jurisdictions, 14 sources</span>
+      <span>8 fail in ways metadata hides</span>
       <span>Schema is not data</span>
     </div>
   </div>
@@ -44,7 +44,9 @@
             <tr><td><strong>Charlotte</strong> — entitlements</td><td>1,012</td><td><strong>23 May 2022</strong></td><td>⛔ Dead. Richest schema of any feed found, and none of it current</td></tr>
             <tr><td><strong>Dallas</strong></td><td>126,840</td><td><strong>2020</strong></td><td>⛔ Dead five years, metadata claims 2026</td></tr>
             <tr><td><strong>Houston</strong></td><td>Aggregate only</td><td>—</td><td>⛔ Monthly counts, no project rows. ⚠ Its GeoHub &ldquo;SCPS Permits&rdquo; layer is <em>street-cut</em> excavation, not buildings</td></tr>
-            <tr><td><strong>Phoenix</strong></td><td>23 rows</td><td>—</td><td>⛔ Yearly totals only. Zoning layer has case numbers but no project name, developer or units</td></tr>
+            <tr><td><strong>Phoenix</strong> — open-data portal</td><td>23 rows</td><td>—</td><td>⛔ Yearly totals only. This is the source the first pass tested, and judging the city on it was wrong — see below</td></tr>
+            <tr><td><strong>Phoenix</strong> — <code>Planning_Permit</code> map service</td><td><strong>68,292</strong> permits<br>+ <strong>13,022</strong> plan reviews</td><td><strong>27 Aug 2026</strong></td><td>⭐ Row-level and live to today. Project name, address, type, status, dates, contractor. ⚠ <code>PROFESS_NAME</code> is the <em>contractor</em>, not the architect</td></tr>
+            <tr><td><strong>Scottsdale</strong> — <code>Active_CDS_Cases</code></td><td>82</td><td><strong>25 Feb 2026</strong></td><td>⚠ Flawless schema — all 8 fields on all 82 rows, applicant included — but frozen: the city moved to the SPUR portal in Jan 2026 and the live API needs an OAuth token</td></tr>
             <tr><td><strong>Clark County</strong> (the Strip)</td><td>None</td><td>—</td><td>⛔ No bulk feed. Bally&rsquo;s, the Riviera towers, Durango and Silverado all sit here</td></tr>
           </tbody>
         </table>
@@ -64,6 +66,22 @@
         <p class="box__label">▲ The workaround, and it is simple</p>
         <p><strong>Filter on valuation and contractor, never on unit count.</strong> Those two fields are populated and current in every live feed tested. Then dedupe by address, because several jurisdictions issue many permits per project and repeat the project-level value on each.</p>
       </div>
+    </section>
+
+    <section id="phoenix">
+      <p class="kicker">A correction to this document</p>
+      <h2>Testing one source is not auditing the jurisdiction</h2>
+      <p>The first pass tested Phoenix's open-data portal, found 23 rows of yearly totals, and wrote the city off. <strong>That verdict was wrong, and it was wrong in the same shape as everything else here — a conclusion drawn from one artefact rather than from the jurisdiction.</strong></p>
+      <p>Phoenix runs a separate map service, <code>maps.phoenix.gov/pub/rest/services/Public/Planning_Permit</code>, carrying <strong>68,292 permits and 13,022 plan reviews</strong>, row-level, with project name, address, type, status and dates &mdash; <strong>current to 27 August 2026, the day of this audit</strong>. Among its 80 case types is <strong>FINAL SITE PLAN &ndash; MAJOR</strong>, which is the submittal whose plan set carries the full consultant directory. Recent examples resolve by name: Momentum Apartments, Senior Housing at 41st Ave, 17th St Apartments, Mayo Clinic Patient Pavilion, Scannell Roeser 24 Industrial Park.</p>
+      <div class="box box--dont">
+        <p class="box__label">✕ Why the first pass missed it</p>
+        <p>The service sits at <code>/pub/rest/services</code>. Every probe of the conventional <code>/arcgis/rest/services</code> path returned 404, and a 404 against a <em>guessed</em> host proves nothing at all. The endpoint was found by searching the ArcGIS Online organisation catalogue for the city's published services &mdash; <strong>derived, not guessed</strong>. That rule now applies to every endpoint and every firm URL in this work.</p>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">▲ And the field that looks like the prize is not</p>
+        <p><code>PROFESS_NAME</code> is populated on <strong>90.6%</strong> of plan reviews, and its name promises the design professional &mdash; the one thing no feed anywhere carries. Read the values and it is the <strong>licensed contractor</strong>: the most common entries are <em>TO BE BID</em>, <em>OWNER</em>, Valley Fire Sprinkler, solar installers, Sundt, Austin Commercial, TSMC. Useful for who builds in Phoenix. <strong>It is not an architect and must never be presented as one.</strong></p>
+      </div>
+      <p>Scottsdale tells the mirror-image story. Its <code>Active_CDS_Cases</code> service is immaculate &mdash; 82 cases, <strong>every one of eight fields populated on every row</strong>, applicant included. And the newest submittal is <strong>25 February 2026</strong>, because the city moved to a new portal (SPUR) in January and the map only covers what preceded it. The live successor exposes a search API that requires an OAuth token, so it is reachable by a browser and not by us. <strong>A perfect feed can still be a closed one.</strong></p>
     </section>
 
     <section id="proof">
@@ -94,7 +112,8 @@
         <li><strong>A browser-rendering fetch capability</strong> is the single highest-value addition. Three separate verifications died on it today: Austin&rsquo;s permit-detail portal returns a 958-byte session shell, Charlotte&rsquo;s own rezoning PDFs sit behind an Akamai bot wall that Google&rsquo;s crawler passes and we do not, and Thornton Tomasetti&rsquo;s project page returns 403. Each holds data we can see exists.</li>
         <li><strong>BLDUP.com</strong> maintains exactly the schema this exercise is reconstructing by hand — developer, architect, general contractor, <strong>structural engineer</strong>, landscape — and masks every value behind a paid seat.</li>
         <li><strong>BEX</strong> (AZBEX / NVBEX / DATABEX) covers Arizona and Nevada from one publisher with full design teams, and DATABEX indexes every Arizona job over $5M. Quote-only pricing.</li>
-        <li><strong>Web-search budget</strong> was exhausted at 200 calls during this work, which capped the Carolina and Hawaii passes mid-verification.</li>
+        <li><strong>OAuth-gated portals are the newer wall.</strong> Scottsdale&rsquo;s live SPUR search API exists and answers &mdash; a GET returns 405, so the method is right &mdash; but every anonymous POST returns 500 because it wants a token from Tyler&rsquo;s identity service. Cities are migrating onto these platforms, so this blocker grows over time while the open ArcGIS ones shrink.</li>
+        <li><strong>Web-search budget</strong> was exhausted at 200 calls during this work, which capped the Carolina and Hawaii passes mid-verification. ✔ <strong>Resolved</strong> &mdash; the cap is now 1,000, and both regions have since been completed.</li>
       </ul>
     </section>
 
