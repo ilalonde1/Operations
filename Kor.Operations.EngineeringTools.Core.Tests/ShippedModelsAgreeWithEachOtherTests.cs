@@ -231,7 +231,14 @@ public class ShippedModelsAgreeWithEachOtherTests
                 priced.Add($"{key}: site {a:N1} yd³ vs one-building {b:N1} yd³");
         }
 
-        _out.WriteLine($"Building C priced identically across {site.Keys.Intersect(ymca.Keys, StringComparer.OrdinalIgnoreCase).Count()} storey/element rows.");
+        // A comparison of nothing is not agreement. Without this the test passes when both readers
+        // produce no C-prefixed rows at all — the exact failure it exists to catch.
+        int compared = site.Keys.Intersect(ymca.Keys, StringComparer.OrdinalIgnoreCase).Count();
+        Assert.True(compared >= 16,
+            $"only {compared} building-C storey/element rows were comparable between the two published models. " +
+            "Building C has eight storeys carrying slabs, walls and columns, so this is a broken read, not agreement.");
+
+        _out.WriteLine($"Building C priced identically across {compared} storey/element rows.");
 
         Assert.True(priced.Count == 0,
             "The two published models of 31168 put a different quantity of concrete in building C:\n  " +

@@ -1098,7 +1098,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, pageNumber).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, pageNumber, scale, false).ConfigureAwait(true);
                 DrawOverlay();
-                SetStatus("Re-analysis complete.", "#E8F5E9", "#2E7D32");
+                // Re-analysing at a new scale must report what it found, for the same reason the
+                // first load does: "complete" in green over an empty model is the message that made
+                // this tool look broken.
+                SetStatus(DiagnoseLoad(_extractedGeometry), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
             }
             catch (OperationCanceledException)
             {

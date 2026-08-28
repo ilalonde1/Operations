@@ -115,6 +115,162 @@ public sealed class E2kQuantityTakeoffTests
         Assert.Equal(25.0, result.OpeningAreaDeducted, 6);
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Found by the adversarial audit, 2026-08-27. Each of these produced a plausible wrong number.
+    // ---------------------------------------------------------------------------------------
+
+    [Fact]
+    public void AMetricModelIsPricedInItsOwnUnitsNotAsThoughMillimetresWereInches()
+    {
+        // SLABTHICKNESS 300 in a millimetre model is 300 mm. Read as 300 INCHES while the plan
+        // coordinates were correctly scaled, a 10 m x 10 m x 300 mm slab priced at about 762 m³
+        // instead of 30 — twenty-five times over, and no flag fired because MM is a unit we know.
+        var model = E2kDocument.Parse(new[]
+        {
+            "$ CONTROLS",
+            "  UNITS  \"kN\"  \"MM\"",
+            "",
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 1\"  HEIGHT 3000",
+            "  STORY \"Base\"  ELEV 0",
+            "",
+            "$ SLAB PROPERTIES",
+            "  SHELLPROP  \"S300\"  PROPTYPE  \"Slab\"  MATERIAL \"30 MPa\"  SLABTHICKNESS 300",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"P1\"  0 0 0",
+            "  POINT \"P2\"  10000 0 0",
+            "  POINT \"P3\"  10000 10000 0",
+            "  POINT \"P4\"  0 10000 0",
+            "",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"F1\"  FLOOR  4  \"P1\"  \"P2\"  \"P3\"  \"P4\"  0  0  0  0",
+            "",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"F1\"  \"LEVEL 1\"  SECTION \"S300\"",
+            "",
+            "$ END OF MODEL FILE",
+        });
+
+        var slab = Assert.Single(E2kQuantityTakeoff.Read(model, UnitSystem.Metric).Inputs);
+
+        // 10 m x 10 m x 0.3 m = 30 m³
+        Assert.Equal(30.0, slab.ConcreteVolume, 3);
+    }
+
+    [Fact]
+    public void AMetricColumnSectionIsPricedInItsOwnUnitsToo()
+    {
+        var model = E2kDocument.Parse(new[]
+        {
+            "$ CONTROLS",
+            "  UNITS  \"kN\"  \"MM\"",
+            "",
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 1\"  HEIGHT 3000",
+            "  STORY \"Base\"  ELEV 0",
+            "",
+            "$ FRAME SECTIONS",
+            "  FRAMESECTION  \"C500\"  MATERIAL \"65 MPa\"  SHAPE \"Concrete Rectangular\"  D 500 B 500 ",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"P1\"  0 0 0",
+            "",
+            "$ LINE CONNECTIVITIES",
+            "  LINE  \"C1\"  COLUMN  \"P1\"  \"P1\"  1",
+            "",
+            "$ LINE ASSIGNS",
+            "  LINEASSIGN  \"C1\"  \"LEVEL 1\"  SECTION \"C500\"  ANG 0",
+            "",
+            "$ END OF MODEL FILE",
+        });
+
+        var col = Assert.Single(E2kQuantityTakeoff.Read(model, UnitSystem.Metric).Inputs);
+
+        // 0.5 x 0.5 x 3.0 = 0.75 m³
+        Assert.Equal(0.75, col.ConcreteVolume, 4);
+    }
+
+    [Fact]
+    public void AHoleIsDeductedFromOneSlabEvenWhenTwoOverlapOnAStorey()
+    {
+        // Deducting from every plate containing the hole's centre counted it twice.
+        var result = E2kQuantityTakeoff.Read(Model(
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"F1\"  FLOOR  4  \"P1\"  \"P2\"  \"P3\"  \"P4\"  0  0  0  0",
+            "  AREA \"F2\"  FLOOR  4  \"P1\"  \"P2\"  \"P3\"  \"P4\"  0  0  0  0",
+            "  AREA \"O1\"  AREA  4  \"P5\"  \"P6\"  \"P7\"  \"P8\"  0  0  0  0",
+            "",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"F1\"  \"LEVEL 1\"  SECTION \"KOR-S12\"",
+            "  AREAASSIGN  \"F2\"  \"LEVEL 1\"  SECTION \"KOR-S12\"",
+            "  AREAASSIGN  \"O1\"  \"LEVEL 1\"  OPENING \"Yes\""));
+
+        // Two 100 ft² slabs, one 25 ft² hole taken off ONE of them: 175 ft³, not 150.
+        Assert.Equal(175.0 * Yd3PerFt3, result.Inputs.Sum(i => i.ConcreteVolume), 6);
+        Assert.Equal(25.0, result.OpeningAreaDeducted, 6);
+    }
+
+    [Fact]
+    public void AHoleBiggerThanEverySlabOnItsStoreyIsReportedNotClampedToZero()
+    {
+        var result = E2kQuantityTakeoff.Read(Model(
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"F1\"  FLOOR  4  \"P5\"  \"P6\"  \"P7\"  \"P8\"  0  0  0  0",
+            "  AREA \"O1\"  AREA  4  \"P1\"  \"P2\"  \"P3\"  \"P4\"  0  0  0  0",
+            "",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"F1\"  \"LEVEL 1\"  SECTION \"KOR-S12\"",
+            "  AREAASSIGN  \"O1\"  \"LEVEL 1\"  OPENING \"Yes\""));
+
+        // The slab keeps its full 25 ft²; the oversized hole is reported, not silently applied.
+        var slab = Assert.Single(result.Inputs, i => i.Element == TakeoffElementType.Slab);
+        Assert.Equal(25.0 * Yd3PerFt3, slab.ConcreteVolume, 6);
+
+        var orphan = Assert.Single(result.Residual, r => r.Object == "O1");
+        Assert.Contains("resolved to no slab", orphan.Note);
+    }
+
+    [Fact]
+    public void OneMemberWrittenTwiceOnOneStoreyIsPouredOnce()
+    {
+        // The DXF publisher drops these, but this reader takes any finished model.
+        var result = E2kQuantityTakeoff.Read(Model(
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"W1\"  PANEL  4  \"P9\"  \"P10\"  \"P10\"  \"P9\"  1  1  0  0",
+            "",
+            "$ LINE CONNECTIVITIES",
+            "  LINE  \"C1\"  COLUMN  \"P11\"  \"P11\"  1",
+            "",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"W1\"  \"LEVEL 1\"  SECTION \"KOR-W12\"",
+            "  AREAASSIGN  \"W1\"  \"LEVEL 1\"  SECTION \"KOR-W12\"",
+            "",
+            "$ LINE ASSIGNS",
+            "  LINEASSIGN  \"C1\"  \"LEVEL 1\"  SECTION \"KOR-C12x12\"  ANG 0",
+            "  LINEASSIGN  \"C1\"  \"LEVEL 1\"  SECTION \"KOR-C12x12\"  ANG 0"));
+
+        Assert.Equal(2, result.ObjectsRead);
+        Assert.Equal(110.0 * Yd3PerFt3, result.Inputs.Sum(i => i.ConcreteVolume), 6);
+    }
+
+    [Fact]
+    public void AWallFoldedRoundACornerIsMeasuredAlongItselfNotAcrossTheDiagonal()
+    {
+        // First-to-last distance on a three-point panel is the diagonal: 14.1 ft instead of 20.
+        var result = E2kQuantityTakeoff.Read(Model(
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"W1\"  PANEL  6  \"P1\"  \"P2\"  \"P3\"  \"P3\"  \"P2\"  \"P1\"  1  1  1  0  0  0",
+            "",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"W1\"  \"LEVEL 1\"  SECTION \"KOR-W12\""));
+
+        var wall = Assert.Single(result.Inputs, i => i.Element == TakeoffElementType.Wall);
+
+        // P1(0,0) -> P2(120,0) -> P3(120,120) is 20 ft of wall, 10 ft high, 12 in thick = 200 ft³.
+        Assert.Equal(200.0 * Yd3PerFt3, wall.ConcreteVolume, 6);
+    }
+
     [Fact]
     public void AnOpeningOverNoSlabIsReportedRatherThanDeductedTwice()
     {
@@ -133,7 +289,7 @@ public sealed class E2kQuantityTakeoffTests
         Assert.Equal(0.0, result.OpeningAreaDeducted, 6);
 
         var orphan = Assert.Single(result.Residual, r => r.Object == "O1");
-        Assert.Contains("sits on no floor", orphan.Note);
+        Assert.Contains("resolved to no slab", orphan.Note);
     }
 
     // ---------------------------------------------------------------------------------------

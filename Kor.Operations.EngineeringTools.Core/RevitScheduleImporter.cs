@@ -135,6 +135,20 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     }
 
                     var (volume, unit) = ReadVolume(rawVolume);
+
+                    if (volume is not null && unit is not null && Kind(unit) is null)
+                    {
+                        unitsSeen.Add(unit);      // so the run-level warning can name it
+                        residual.Add(new RevitScheduleResidual(name, lines[r].Trim(),
+                            $"the volume unit \"{unit}\" is not one this reader knows (cubic metres, cubic yards or cubic feet), so the row was not priced rather than assumed."));
+                        continue;
+                    }
+
+                    // Cubic feet are converted to cubic yards, the unit the imperial density table
+                    // is in. An exact factor, stated in the notes, not a guess.
+                    if (volume is not null && unit is not null && Kind(unit) == VolumeUnit.CubicFoot)
+                        volume /= 27.0;
+
                     if (volume is null)
                     {
                         // A totals row Revit appends is not a defect; it is a duplicate, and pricing
@@ -166,11 +180,26 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
             }
 
-            // The unit is read off the cells, not assumed. Revit writes it in every one.
-            var system = unitsSeen.Any(u => u.StartsWith("yd", StringComparison.OrdinalIgnoreCase)
-                                         || u.Equals("CY", StringComparison.OrdinalIgnoreCase))
+            // THE UNIT IS READ OFF THE CELLS, AND AN UNRECOGNISED ONE IS NOT SILENTLY METRIC.
+            //
+            // Revit's volume field can be formatted as cubic feet, cubic yards or cubic metres.
+            // Treating anything that is not a yard as metric priced 100 cubic feet as 100 cubic
+            // metres — thirty-five times over, with nothing turning red. Cubic feet are converted
+            // (a known exact factor, not a guess); anything else is refused.
+            var unknown = unitsSeen.Where(x => Kind(x) is null).ToList();
+            var kinds = unitsSeen.Select(Kind).Where(k => k is not null).Select(k => k!.Value).Distinct().ToList();
+
+            var system = kinds.Contains(VolumeUnit.CubicYard) || kinds.Contains(VolumeUnit.CubicFoot)
                 ? UnitSystem.Imperial
                 : UnitSystem.Metric;
+
+            if (unknown.Count > 0)
+                notes.Add($"WARNING — the volume unit \"{string.Join("\", \"", unknown)}\" is not one this reader knows "
+                    + "(cubic metres, cubic yards or cubic feet). Those rows were not priced. Re-export with the schedule's "
+                    + "volume field formatted in one of those, or say what the unit is.");
+
+            if (kinds.Contains(VolumeUnit.CubicFoot))
+                notes.Add("Cubic feet in the export were converted to cubic yards (÷27) so they can be priced against the imperial density table.");
 
             notes.Add(unitsSeen.Count switch
             {
@@ -215,6 +244,36 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return null;
         }
 
+        private enum VolumeUnit { CubicMetre, CubicYard, CubicFoot }
+
+        /// <summary>Which volume unit Revit printed, or null if this reader does not know it. Every
+        /// spelling seen in the wild for the three units a Revit volume field can carry.</summary>
+        private static VolumeUnit? Kind(string unit)
+        {
+            // The superscript has to become a 3 BEFORE anything strips non-alphanumerics, or "m³"
+            // arrives as a bare "M" and every metric export is refused.
+            string u = unit.ToUpperInvariant().Replace("³", "3").Replace("^", "");
+            u = new string(u.Where(char.IsLetterOrDigit).ToArray());
+
+            // "cu ft", "cubic feet", "CF" all mean the same thing; the column is a volume column,
+            // so a unit that names a length is still naming its cube.
+            // The trade abbreviations, which are not "cubic" plus a unit.
+            if (u is "CF") return VolumeUnit.CubicFoot;
+            if (u is "CY") return VolumeUnit.CubicYard;
+
+            if (u.StartsWith("CUBIC", StringComparison.Ordinal)) u = u[5..];
+            else if (u.StartsWith("CU", StringComparison.Ordinal)) u = u[2..];
+            u = u.TrimEnd('3');
+
+            return u switch
+            {
+                "M" or "METRE" or "METER" or "METRES" or "METERS" => VolumeUnit.CubicMetre,
+                "YD" or "Y" or "YARD" or "YARDS" => VolumeUnit.CubicYard,
+                "FT" or "F" or "FOOT" or "FEET" => VolumeUnit.CubicFoot,
+                _ => null,
+            };
+        }
+
         /// <summary>Revit's total rows, which name a count where a level belongs: "Grand total: 140",
         /// "Total", "Sum". No storey is called any of these.</summary>
         private static bool IsTotalRow(string level)
@@ -231,13 +290,27 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         private static int VolumeIndex(IReadOnlyList<string> header) =>
             IndexOf(header, "volume", "concretevolume", "netvolume", "concretem3", "concreteyd3");
 
-        /// <summary>The number and the unit Revit printed beside it — "489.03 m³" is both.</summary>
+        /// <summary>
+        /// The number and the unit Revit printed beside it — "489.03 m³" is both.
+        ///
+        /// A COMMA IS NOT ALWAYS A THOUSANDS SEPARATOR. Stripping it unconditionally turns the
+        /// European "1.234,56" into 1.23456 — a thousandth of the real figure, and if the rows and
+        /// the grand total share the format the self-check agrees with the wrong number. Where a
+        /// comma is used as a decimal mark the cell is refused rather than guessed at, because the
+        /// two conventions cannot be told apart from one cell and a wrong guess is silent.
+        /// </summary>
         private static (double? Volume, string? Unit) ReadVolume(string cell)
         {
             if (string.IsNullOrWhiteSpace(cell)) return (null, null);
 
-            string s = cell.Replace(",", "").Trim();
-            var m = Regex.Match(s, @"^(-?\d+(?:\.\d+)?)\s*([^\d\s]*)$");
+            string s = cell.Trim();
+
+            // "1.234,56" or "1234,56" — a comma with one or two digits after it, at the end of the
+            // number, is a decimal mark, not a separator.
+            if (Regex.IsMatch(s, @"\d,\d{1,2}(?!\d)")) return (null, null);
+
+            s = s.Replace(",", "");
+            var m = Regex.Match(s, @"^(-?\d+(?:\.\d+)?)\s*(.*)$");
             if (!m.Success) return (null, null);
             if (!double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double v) || v < 0)
                 return (null, null);

@@ -92,7 +92,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 : "concrete in cubic metres, formwork in square metres";
 
             // ---- what the model declares --------------------------------------------------------
-            var rise = StoreyRise(doc);                            // storey -> rise, model units
+            var rise = RiseByStorey(doc);                            // storey -> rise, model units
             var shells = ShellProperties(doc);                     // section -> (kind, thickness, material)
             var frames = FrameSections(doc);                       // section -> (area, perimeter, material) in model units
             var areaKind = ConnectivityKind(doc, "AREA CONNECTIVITIES");   // object -> FLOOR | PANEL | AREA
@@ -118,8 +118,38 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 openings.Add((name, a.Storey, PolygonArea(ring), Centroid(ring)));
             }
 
+            // ---- each hole gets ONE parent plate, decided before anything is priced --------------
+            //
+            // Deducting from every plate whose outline happens to contain the hole's centre double
+            // counts it where two floors overlap on a storey. The parent is the SMALLEST plate on
+            // the same storey that contains the hole's centre and is bigger than the hole — smallest
+            // because a hole in a small infill slab that sits over a larger one belongs to the
+            // infill. A hole that resolves to nothing is reported, never spread around.
+            var platesOnStorey = areaAssign
+                .Where(x => !x.Value.IsOpening
+                            && areaKind.TryGetValue(x.Key, out var pk)
+                            && pk.Equals("FLOOR", StringComparison.OrdinalIgnoreCase)
+                            && plan.ContainsKey(x.Key))
+                .Select(x => (Name: x.Key, x.Value.Storey, Ring: Ring(plan[x.Key])))
+                .Where(x => x.Ring.Count >= 3)
+                .Select(x => (x.Name, x.Storey, x.Ring, Area: PolygonArea(x.Ring)))
+                .ToList();
+
+            var parentOf = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var o in openings)
+            {
+                var parent = platesOnStorey
+                    .Where(p => string.Equals(p.Storey, o.Storey, StringComparison.OrdinalIgnoreCase)
+                                && p.Area > o.Area
+                                && LoopGeometry.PointInPolygon(o.Centre, p.Ring))
+                    .OrderBy(p => p.Area)
+                    .Select(p => p.Name)
+                    .FirstOrDefault();
+
+                if (parent is not null) parentOf[o.Name] = parent;
+            }
+
             var inputs = new List<StructuralTakeoffInput>();
-            var deductedFrom = new HashSet<string>(StringComparer.Ordinal);
             double openingDeducted = 0;
             int read = 0;
             var slabStoreysDefaulted = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -151,7 +181,15 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
 
                 var ring = Ring(pts);
-                double thkIn = prop.ThicknessInches;               // e2k thicknesses are printed in inches
+
+                // A SECTION DIMENSION IS IN THE MODEL'S OWN UNITS, LIKE EVERY OTHER LENGTH IN THE FILE.
+                //
+                // An .e2k is a dump in whatever units the model is set to: our own say
+                // UNITS "KIP" "IN" and write SLABTHICKNESS 8 for eight inches, but a metric model
+                // says "MM" and writes SLABTHICKNESS 300 for the same idea. Reading that 300 as
+                // inches while correctly scaling the plan coordinates priced a 10 m x 10 m x 300 mm
+                // slab at about 762 m³ instead of 30 — twenty-five times over, with nothing saying so.
+                double thkIn = prop.Thickness * u;
 
                 if (string.Equals(kind, "FLOOR", StringComparison.OrdinalIgnoreCase))
                 {
@@ -162,15 +200,23 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     }
 
                     double grossU2 = PolygonArea(ring);
-                    double holesU2 = 0;
-                    foreach (var o in openings)
+
+                    // A HOLE BELONGS TO ONE PLATE. It is deducted here only if this plate is the
+                    // one it was resolved to, decided once for the whole model below — two floors
+                    // overlapping on a storey would otherwise each deduct the same hole.
+                    double holesU2 = openings
+                        .Where(o => parentOf.TryGetValue(o.Name, out string? p) && p == name)
+                        .Sum(o => o.Area);
+
+                    double netU2 = grossU2 - holesU2;
+                    if (netU2 < 0)
                     {
-                        if (!string.Equals(o.Storey, a.Storey, StringComparison.OrdinalIgnoreCase)) continue;
-                        if (!LoopGeometry.PointInPolygon(o.Centre, ring)) continue;
-                        holesU2 += o.Area;
-                        deductedFrom.Add(o.Name);
+                        // Cannot happen once a hole must be smaller than its plate, but a clamp to
+                        // zero is exactly the silent arithmetic this reader is not allowed to do.
+                        residual.Add(new E2kResidual("floor", a.Storey, name,
+                            $"the openings resolved to this slab come to more than the slab itself ({holesU2 * u * u / areaDiv:N0} against {grossU2 * u * u / areaDiv:N0}); it was not priced."));
+                        continue;
                     }
-                    double netU2 = Math.Max(0, grossU2 - holesU2);
                     openingDeducted += holesU2 * u * u / areaDiv;
 
                     double volume = netU2 * u * u * thkIn / volDiv;
@@ -185,9 +231,15 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
                 else if (string.Equals(kind, "PANEL", StringComparison.OrdinalIgnoreCase))
                 {
-                    // A wall panel's plan trace is its two ends, repeated for the top edge.
+                    // A wall panel's plan trace is its base line, repeated for the top edge — usually
+                    // two points, but a panel folded round a corner has three or more, and the
+                    // distance from the first to the last is then the diagonal across the corner
+                    // rather than the wall. Walk the line instead. (Both published 31168 models are
+                    // all two-point panels, so this changes nothing there and everything on a model
+                    // that is not ours.)
                     var ends = ring.Distinct().ToList();
-                    double lengthU = ends.Count >= 2 ? Distance(ends[0], ends[^1]) : 0;
+                    double lengthU = 0;
+                    for (int i = 1; i < ends.Count; i++) lengthU += Distance(ends[i - 1], ends[i]);
                     if (lengthU <= 0)
                     {
                         residual.Add(new E2kResidual("wall", a.Storey, name, "the panel has no plan length."));
@@ -215,9 +267,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
             }
 
-            foreach (var o in openings.Where(o => !deductedFrom.Contains(o.Name)))
+            foreach (var o in openings.Where(o => !parentOf.ContainsKey(o.Name)))
                 residual.Add(new E2kResidual("opening", o.Storey, o.Name,
-                    "the opening sits on no floor in the model, so nothing was deducted for it — it is already absent from the concrete."));
+                    $"this {o.Area * u * u / areaDiv:N0} opening resolved to no slab on its storey — no plate on it both contains the opening's centre and is larger than the opening. Nothing was deducted for it."));
 
             // ---- lines: columns -------------------------------------------------------------------
             foreach (var (name, l) in lineAssign)
@@ -245,9 +297,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
                 anyHeightFromStorey = true;
 
-                // Section dimensions are printed in inches; the storey rise is in model units.
-                double volume = sec.AreaInches2 * riseU * u / volDiv;
-                double formwork = sec.PerimeterInches * riseU * u / areaDiv;
+                // Section dimensions are in the model's units, the same as every other length here.
+                double volume = sec.Area * u * u * riseU * u / volDiv;
+                double formwork = sec.Perimeter * u * riseU * u / areaDiv;
 
                 inputs.Add(new StructuralTakeoffInput(l.Storey, TakeoffElementType.Column, null,
                     volume, formwork, Grade(sec.Material)));
@@ -305,7 +357,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// The elevations agree exactly across the two published 31168 files; only the HEIGHT field,
         /// which is a position in one global list, does not.
         /// </summary>
-        private static Dictionary<string, double> StoreyRise(E2kDocument doc)
+        public static IReadOnlyDictionary<string, double> RiseByStorey(E2kDocument doc)
         {
             var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
@@ -352,7 +404,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return null;
         }
 
-        private readonly record struct ShellProp(string Kind, double ThicknessInches, string Material);
+        private readonly record struct ShellProp(string Kind, double Thickness, string Material);
 
         private static Dictionary<string, ShellProp> ShellProperties(E2kDocument doc)
         {
@@ -377,7 +429,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return result;
         }
 
-        private readonly record struct FrameSec(double AreaInches2, double PerimeterInches, string Material);
+        private readonly record struct FrameSec(double Area, double Perimeter, string Material);
 
         /// <summary>Concrete frame sections only. A steel shape carries no concrete and is skipped,
         /// which surfaces it as a residual rather than pricing it as though it were poured.</summary>
@@ -427,13 +479,21 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         private readonly record struct AreaAssign(string Storey, string? Section, bool IsOpening);
 
+        /// <summary>
+        /// One row per object per storey. A repeated <c>AREAASSIGN</c> for the same object on the
+        /// same storey is the same physical member written twice, and pricing both pours it twice.
+        /// The DXF publisher drops these (<see cref="E2kDocument.DropMembersDuplicatedOnOneFloor"/>)
+        /// but this reader takes any finished model, so it cannot rely on that having run.
+        /// </summary>
         private static List<KeyValuePair<string, AreaAssign>> AreaAssigns(E2kDocument doc)
         {
             var result = new List<KeyValuePair<string, AreaAssign>>();
+            var seen = new HashSet<(string Object, string Storey)>();
             foreach (string line in doc.LinesOf("AREA ASSIGNS"))
             {
                 var m = Regex.Match(line.Trim(), @"^AREAASSIGN\s+""([^""]+)""\s+""([^""]+)""", RegexOptions.IgnoreCase);
                 if (!m.Success) continue;
+                if (!seen.Add((m.Groups[1].Value, m.Groups[2].Value.ToUpperInvariant()))) continue;
                 var sec = Regex.Match(line, @"SECTION\s+""([^""]+)""", RegexOptions.IgnoreCase);
                 bool opening = Regex.IsMatch(line, @"OPENING\s+""Yes""", RegexOptions.IgnoreCase);
                 result.Add(new(m.Groups[1].Value,
@@ -444,13 +504,16 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         private readonly record struct LineAssign(string Storey, string? Section);
 
+        /// <summary>One row per object per storey, for the reason given on <see cref="AreaAssigns"/>.</summary>
         private static List<KeyValuePair<string, LineAssign>> LineAssigns(E2kDocument doc)
         {
             var result = new List<KeyValuePair<string, LineAssign>>();
+            var seen = new HashSet<(string Object, string Storey)>();
             foreach (string line in doc.LinesOf("LINE ASSIGNS"))
             {
                 var m = Regex.Match(line.Trim(), @"^LINEASSIGN\s+""([^""]+)""\s+""([^""]+)""", RegexOptions.IgnoreCase);
                 if (!m.Success) continue;
+                if (!seen.Add((m.Groups[1].Value, m.Groups[2].Value.ToUpperInvariant()))) continue;
                 var sec = Regex.Match(line, @"SECTION\s+""((?:[^""]|"""")+)""", RegexOptions.IgnoreCase);
                 result.Add(new(m.Groups[1].Value,
                     new LineAssign(m.Groups[2].Value, sec.Success ? sec.Groups[1].Value : null)));

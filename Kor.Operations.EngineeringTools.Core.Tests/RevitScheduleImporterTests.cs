@@ -162,6 +162,64 @@ public sealed class RevitScheduleImporterTests
         Assert.Contains(r.Notes, n => n.StartsWith("WARNING", StringComparison.Ordinal) && n.Contains("do not agree on a unit"));
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Found by the adversarial audit, 2026-08-27.
+    // ---------------------------------------------------------------------------------------
+
+    [Fact]
+    public void CubicFeetArePricedAsCubicFeetNotAsCubicMetres()
+    {
+        // Only "yd" and "CY" counted as imperial, so everything else fell through to metric and
+        // 100 cubic feet was priced as 100 cubic metres — thirty-five times over, nothing red.
+        var r = Read("f.csv", Csv("Floor Schedule,", "Level,Volume", ",", "LEVEL 1,270 ft³"));
+
+        Assert.Equal(UnitSystem.Imperial, r.Unit);
+        Assert.Equal(10.0, Assert.Single(r.Inputs).ConcreteVolume, 6);      // 270 ft³ = 10 yd³
+        Assert.Contains(r.Notes, n => n.Contains("Cubic feet in the export were converted"));
+    }
+
+    [Theory]
+    [InlineData("ft3")]
+    [InlineData("ft^3")]
+    [InlineData("CF")]
+    [InlineData("cu ft")]
+    public void EverySpellingOfCubicFeetIsRecognised(string unit)
+    {
+        var r = Read("f.csv", Csv("Floor Schedule,", "Level,Volume", ",", $"LEVEL 1,270 {unit}"));
+
+        Assert.Equal(UnitSystem.Imperial, r.Unit);
+        Assert.Equal(10.0, Assert.Single(r.Inputs).ConcreteVolume, 6);
+    }
+
+    [Fact]
+    public void AVolumeUnitThisReaderDoesNotKnowIsRefusedRatherThanTakenAsMetric()
+    {
+        var r = Read("f.csv", Csv("Floor Schedule,", "Level,Volume", ",", "LEVEL 1,100 barrels"));
+
+        Assert.Empty(r.Inputs);
+        Assert.Contains(r.Residual, x => x.Note.Contains("not one this reader knows"));
+        Assert.Contains(r.Notes, n => n.StartsWith("WARNING", StringComparison.Ordinal) && n.Contains("barrels"));
+    }
+
+    [Fact]
+    public void AEuropeanDecimalIsRefusedBecauseACommaCannotBeToldFromASeparator()
+    {
+        // Stripping the comma turned "1.234,56" into 1.23456 — a thousandth of the figure — and if
+        // the grand total used the same format the self-check agreed with it.
+        var r = Read("f.csv", Csv("Floor Schedule,", "Level,Volume", ",", "LEVEL 1,\"1.234,56 m³\""));
+
+        Assert.Empty(r.Inputs);
+        Assert.Single(r.Residual);
+    }
+
+    [Fact]
+    public void AnAmericanThousandsSeparatorStillReads()
+    {
+        var r = Read("f.csv", Csv("Floor Schedule,", "Level,Volume", ",", "LEVEL 1,\"1,234.56 m³\""));
+
+        Assert.Equal(1234.56, Assert.Single(r.Inputs).ConcreteVolume, 6);
+    }
+
     [Fact]
     public void AFileThatIsNotAQuantityScheduleIsRefusedWithTheReason()
     {

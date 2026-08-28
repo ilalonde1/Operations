@@ -60,7 +60,7 @@ public static class E2kModelQuery
             .GroupBy(i => i.Level, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.ConcreteVolume), StringComparer.OrdinalIgnoreCase);
 
-        var rise = RiseByStorey(doc);
+        var rise = E2kQuantityTakeoff.RiseByStorey(doc);   // ONE implementation, shared with the takeoff
         var result = new List<StoreySummary>();
 
         foreach (var story in doc.ReadStories().OrderByDescending(s => s.Elevation))
@@ -70,9 +70,15 @@ public static class E2kModelQuery
             var slabT = new SortedSet<string>();
             var wallT = new SortedSet<string>();
 
-            foreach (var (obj, section, isOpening) in assigns)
+            // ON THIS STOREY MEANS THIS ROW'S STOREY.
+            //
+            // Counting an assign row while asking whether the OBJECT appears on this storey counts
+            // an object assigned to two storeys once per row on each of them — the table would say
+            // two slabs on both, while the concrete beside it, grouped by the row's own storey, said
+            // one. The takeoff prices by the row's storey, so the count follows the row's storey.
+            foreach (var (obj, storey, section, isOpening) in assigns)
             {
-                if (!OnStorey(storeysOf, obj, story.Name)) continue;
+                if (!string.Equals(storey, story.Name, StringComparison.OrdinalIgnoreCase)) continue;
                 string kind = kinds.TryGetValue(obj, out var k) ? k : "";
 
                 if (isOpening) { openings++; continue; }
@@ -91,8 +97,8 @@ public static class E2kModelQuery
                 }
             }
 
-            foreach (string obj in lineAssigns)
-                if (OnStorey(storeysOf, obj, story.Name)) columns++;
+            foreach (var (_, storey) in lineAssigns)
+                if (string.Equals(storey, story.Name, StringComparison.OrdinalIgnoreCase)) columns++;
 
             result.Add(new StoreySummary(
                 story.Name, story.Elevation,
@@ -160,7 +166,7 @@ public static class E2kModelQuery
         var storeysOf = doc.StoreysByObject();
         var result = new List<(string, string, double)>();
 
-        foreach (var (obj, _, isOpening) in AreaSections(doc))
+        foreach (var (obj, storeyOfRow, _, isOpening) in AreaSections(doc))
         {
             if (!isOpening) continue;
             string storey = storeysOf.TryGetValue(obj, out var st) && st.Count > 0 ? st[0] : "(none)";
@@ -192,8 +198,8 @@ public static class E2kModelQuery
             if (storeysOf.TryGetValue(obj, out var st) && st.Count > 0) e.On.Add(st[0]);
         }
 
-        foreach (var (obj, section, isOpening) in AreaSections(doc)) { if (!isOpening) Note(section, obj); }
-        foreach (var (obj, section) in LineSections(doc)) Note(section, obj);
+        foreach (var (obj, _, section, isOpening) in AreaSections(doc)) { if (!isOpening) Note(section, obj); }
+        foreach (var (obj, _, section) in LineSections(doc)) Note(section, obj);
 
         return used
             .Select(kv =>
@@ -210,63 +216,42 @@ public static class E2kModelQuery
 
     // ---- shared reading -------------------------------------------------------------------
 
-    /// <summary>The rise to each storey, measured the same way the takeoff measures it: from the
-    /// nearest storey more than half a storey below. See <see cref="E2kQuantityTakeoff"/> for why
-    /// the model's own HEIGHT field cannot be used on a site model.</summary>
-    private static Dictionary<string, double> RiseByStorey(E2kDocument doc)
+    /// <summary>One row per object per storey, carrying the storey the row itself states. A repeated
+    /// row for one object on one storey is the same member written twice; the takeoff drops those for
+    /// the same reason, and the two surfaces must agree.</summary>
+    private static List<(string Obj, string Storey, string? Section, bool IsOpening)> AreaSections(E2kDocument doc)
     {
-        var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        var storeys = doc.ReadStories().OrderBy(s => s.Elevation).ToList();
-        if (storeys.Count == 0) return result;
-
-        double sameFloor = doc.SameFloorTolerance();
-        for (int i = 0; i < storeys.Count; i++)
-        {
-            for (int j = i - 1; j >= 0; j--)
-            {
-                if (storeys[i].Elevation - storeys[j].Elevation <= sameFloor) continue;
-                result[storeys[i].Name] = storeys[i].Elevation - storeys[j].Elevation;
-                break;
-            }
-
-            // The lowest storey stands on nothing in the model; its own ElevationBelow is the rise.
-            if (!result.ContainsKey(storeys[i].Name) && storeys[i].Elevation > storeys[i].ElevationBelow)
-                result[storeys[i].Name] = storeys[i].Elevation - storeys[i].ElevationBelow;
-        }
-        return result;
-    }
-
-    private static bool OnStorey(IReadOnlyDictionary<string, IReadOnlyList<string>> storeysOf, string obj, string storey) =>
-        storeysOf.TryGetValue(obj, out var st) && st.Contains(storey, StringComparer.OrdinalIgnoreCase);
-
-    private static List<(string Obj, string? Section, bool IsOpening)> AreaSections(E2kDocument doc)
-    {
-        var result = new List<(string, string?, bool)>();
+        var result = new List<(string, string, string?, bool)>();
+        var seen = new HashSet<(string Object, string Storey)>();
         foreach (string line in doc.LinesOf("AREA ASSIGNS"))
         {
-            var m = Regex.Match(line.Trim(), @"^AREAASSIGN\s+""([^""]+)""", RegexOptions.IgnoreCase);
+            var m = Regex.Match(line.Trim(), @"^AREAASSIGN\s+""([^""]+)""\s+""([^""]+)""", RegexOptions.IgnoreCase);
             if (!m.Success) continue;
+            if (!seen.Add((m.Groups[1].Value, m.Groups[2].Value.ToUpperInvariant()))) continue;
             var sec = Regex.Match(line, @"SECTION\s+""([^""]+)""", RegexOptions.IgnoreCase);
-            result.Add((m.Groups[1].Value, sec.Success ? sec.Groups[1].Value : null,
+            result.Add((m.Groups[1].Value, m.Groups[2].Value, sec.Success ? sec.Groups[1].Value : null,
                 Regex.IsMatch(line, @"OPENING\s+""Yes""", RegexOptions.IgnoreCase)));
         }
         return result;
     }
 
-    private static List<(string Obj, string? Section)> LineSections(E2kDocument doc)
+    private static List<(string Obj, string Storey, string? Section)> LineSections(E2kDocument doc)
     {
-        var result = new List<(string, string?)>();
+        var result = new List<(string, string, string?)>();
+        var seen = new HashSet<(string Object, string Storey)>();
         foreach (string line in doc.LinesOf("LINE ASSIGNS"))
         {
-            var m = Regex.Match(line.Trim(), @"^LINEASSIGN\s+""([^""]+)""", RegexOptions.IgnoreCase);
+            var m = Regex.Match(line.Trim(), @"^LINEASSIGN\s+""([^""]+)""\s+""([^""]+)""", RegexOptions.IgnoreCase);
             if (!m.Success) continue;
+            if (!seen.Add((m.Groups[1].Value, m.Groups[2].Value.ToUpperInvariant()))) continue;
             var sec = Regex.Match(line, @"SECTION\s+""((?:[^""]|"""")+)""", RegexOptions.IgnoreCase);
-            result.Add((m.Groups[1].Value, sec.Success ? sec.Groups[1].Value : null));
+            result.Add((m.Groups[1].Value, m.Groups[2].Value, sec.Success ? sec.Groups[1].Value : null));
         }
         return result;
     }
 
-    private static List<string> LineStoreys(E2kDocument doc) => LineSections(doc).Select(x => x.Obj).ToList();
+    private static List<(string Obj, string Storey)> LineStoreys(E2kDocument doc) =>
+        LineSections(doc).Select(x => (x.Obj, x.Storey)).ToList();
 
     private static Dictionary<string, string> ConnectivityKinds(E2kDocument doc)
     {
