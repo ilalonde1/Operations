@@ -1,0 +1,830 @@
+[
+ {
+  "plan": "ASR-0001-2024",
+  "project": "DSLC - Hammell Drive Mixed-Use (SUB)",
+  "submitted": "2024-01-02",
+  "applicant": "McAdams",
+  "pages": 38,
+  "architect": "PERKINS EASTMAN",
+  "recovered_from": "directory line"
+ },
+ {
+  "plan": "ASR-0001-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0002-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0002-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0003-2024",
+  "project": "DSLC - Budleigh East Flats I",
+  "submitted": "2024-01-10",
+  "applicant": "WithersRavenel",
+  "pages": 21,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0004-2024",
+  "project": "DSLC - Budleigh East Flats II",
+  "submitted": "2024-01-10",
+  "applicant": "WithersRavenel",
+  "pages": 20,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0006-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0008-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0009-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0010-2024",
+  "project": "DSLC - Lake Haven Affordable Housing Development - ASR",
+  "submitted": "2024-02-09",
+  "applicant": "EVERGREEN CONSTRUCTION - TIM MORGAN",
+  "pages": 30,
+  "architect": "TIGHTLINES DESIGN",
+  "recovered_from": "directory line"
+ },
+ {
+  "plan": "ASR-0011-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0013-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0014-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0015-2024",
+  "project": "DSLC - Mitchell Mill Apartments",
+  "submitted": "2024-02-28",
+  "applicant": "Advanced Civil Design",
+  "pages": 29,
+  "architect": "JDAVIS ARCHITECTS",
+  "recovered_from": "copyright block"
+ },
+ {
+  "plan": "ASR-0016-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 8,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0017-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0019-2024",
+  "project": "DSLC - Life Time Living Residential",
+  "submitted": "2024-04-09",
+  "applicant": "Advanced Civil Design",
+  "pages": 27,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0019-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0020-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0023-2024",
+  "project": "Varsity Drive Apartments",
+  "submitted": "2024-04-30",
+  "applicant": "McAdams",
+  "pages": 25,
+  "architect": "JDAVIS ARCHITECTS",
+  "recovered_from": "copyright block"
+ },
+ {
+  "plan": "ASR-0025-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0026-2022",
+  "project": "DSLC - LOUISBURG ROAD MULTI-FAMILY",
+  "submitted": "2025-08-06",
+  "applicant": "Kimley-Horn",
+  "pages": 23,
+  "architect": "STUDIO M",
+  "recovered_from": "directory line"
+ },
+ {
+  "plan": "ASR-0031-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0033-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0036-2024",
+  "project": "DSLC - 4020 TRYON RD APTS. - AFFORDABLE HOUSING ASR",
+  "submitted": "2024-06-12",
+  "applicant": "Kimley-Horn and Associates",
+  "pages": 34,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0039-2024",
+  "project": "DSLC - Trailwood Townhomes",
+  "submitted": "2024-06-17",
+  "applicant": "BGE, Inc.",
+  "pages": 20,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0041-2024",
+  "project": "DSLC - West South Street Apartments",
+  "submitted": "2024-06-21",
+  "applicant": "WithersRavenel",
+  "pages": 26,
+  "architect": "CLINE DESIGN ASSOCIATES, PA",
+  "recovered_from": "copyright block"
+ },
+ {
+  "plan": "ASR-0043-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0047-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0049-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0052-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0053-2024",
+  "project": "DSLC - Quinn Residences at Edgewater Commons",
+  "submitted": "2024-08-14",
+  "applicant": "J DAVIS ARCHITECTS",
+  "pages": 53,
+  "architect": "JDAVIS ARCHITECTS",
+  "recovered_from": "copyright block"
+ },
+ {
+  "plan": "ASR-0053-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0053-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0057-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 38,
+  "architect": "BASS, NIXON & KENNEDY, INC",
+  "recovered_from": "copyright block"
+ },
+ {
+  "plan": "ASR-0058-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0059-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0062-2024",
+  "project": "DSLC - Blue Ridge Multifamily",
+  "submitted": "2024-09-10",
+  "applicant": "Mcadams",
+  "pages": 34,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0062-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0062-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0063-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0064-2024",
+  "project": "DSLC -  OAKS AT WHITAKER GLEN SENIOR LIVING COMMUNITY",
+  "submitted": "2024-09-17",
+  "applicant": "Curry Engineering",
+  "pages": 60,
+  "architect": "FOLEY DESIGN",
+  "recovered_from": "directory line"
+ },
+ {
+  "plan": "ASR-0066-2024",
+  "project": "DSLC - Crabtree Boulevard Apts.",
+  "submitted": "2024-09-18",
+  "applicant": "Site Collaborative",
+  "pages": 30,
+  "architect": "CLINE DESIGN ASSOCIATES",
+  "recovered_from": "directory line"
+ },
+ {
+  "plan": "ASR-0069-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0070-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0074-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0075-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0077-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0079-2024",
+  "project": "DSLC- MOORE SQUARE AFFORDABLE HOUSING PROJECT",
+  "submitted": "2024-10-10",
+  "applicant": "McAdams",
+  "pages": 21,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0079-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0080-2024",
+  "project": "DSLC - BARTON OAKS AFFORDABLE HOUSING PROJECT",
+  "submitted": "2024-10-10",
+  "applicant": "Oppidan Investment Company",
+  "pages": 40,
+  "architect": "JDAVIS ARCHITECTS",
+  "recovered_from": "copyright block"
+ },
+ {
+  "plan": "ASR-0082-2024",
+  "project": "DSLC - AFFORDABLE HOUSING PROJECT - HOKE STREET APARTMENT (ASR)",
+  "submitted": "2024-10-18",
+  "applicant": "Mc2 Engineering",
+  "pages": 34,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0083-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 11,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0083-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0084-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 16,
+  "architect": "BASS, NIXON & KENNEDY, INC",
+  "recovered_from": "copyright block"
+ },
+ {
+  "plan": "ASR-0085-2024",
+  "project": "DSLC - AFFORDABLE HOUSING PROJECT - MAPLE RIDGE APARTMENTS - ASR",
+  "submitted": "2024-10-30",
+  "applicant": "South Creek Development",
+  "pages": 42,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0085-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0088-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 16,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0090-2024",
+  "project": "DSLC - TRYON APARTMENTS",
+  "submitted": "2024-11-19",
+  "applicant": "Crow Group",
+  "pages": 63,
+  "architect": "IWAN IWAN ARCHITECTURE CONSULTANTS, PLLC",
+  "recovered_from": "directory line"
+ },
+ {
+  "plan": "ASR-0098-2022",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 10,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "ASR-0098-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 24,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0004-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0007-2024",
+  "project": "DSLC - Chapman Cottages",
+  "submitted": "2024-02-14",
+  "applicant": "Swift Partners PLLC",
+  "pages": 18,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0010-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0017-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0020-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0023-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0027-2024",
+  "project": "DSLC - Mitchell Mill Apartments",
+  "submitted": "2024-05-22",
+  "applicant": "Advanced Civil Design",
+  "pages": 17,
+  "architect": "JDAVIS ARCHITECTS",
+  "recovered_from": "copyright block"
+ },
+ {
+  "plan": "SUB-0027-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0029-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0031-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0032-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 13,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0032-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0035-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0042-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0043-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0045-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 11,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0046-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0047-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0049-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0050-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0050-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0051-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0052-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0053-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 7,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0053-2026",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0054-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0059-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0060-2024",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 12,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0061-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0066-2024",
+  "project": "DSLC - Forestville Road Townhomes",
+  "submitted": "2024-12-03",
+  "applicant": "TMTLA Associates",
+  "pages": 37,
+  "architect": "",
+  "recovered_from": ""
+ },
+ {
+  "plan": "SUB-0072-2025",
+  "project": "",
+  "submitted": "",
+  "applicant": "",
+  "pages": 1,
+  "architect": "",
+  "recovered_from": ""
+ }
+]
