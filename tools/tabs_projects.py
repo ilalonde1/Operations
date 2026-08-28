@@ -113,6 +113,17 @@ def cmd_list(county, dfrom, dto, out):
 
 SECTIONS = {"PROJECT", "PERSON FILING FORM", "RAS", "OWNER", "TENANT",
             "DESIGN FIRM", "CONTRACTOR"}
+# The LAST field on the page has no following label to stop it, so it ran on
+# into the page footer -- "Design Firm Address" was capturing the whole legal
+# boilerplate. No count depends on that field (they all use Design Firm Name,
+# which terminates at the next label), but an address is useless like that.
+FOOTER = re.compile(
+    r"(?i)^\s*(registered accessibility specialists|print view|"
+    r"privacy and security policy|accessibility$|open records policy|"
+    r"link policy|compact with texans|report suspected fraud|texas\.gov|"
+    r"statewide search|border programs|team texas|texas veterans portal|"
+    r"contact tdlr|your session is about to expire|in accordance with)")
+
 WANT = ["Project Name", "Facility Name", "Location Address", "Location County",
         "Estimated Cost", "Type of Work", "Type of Funds", "Scope of Work",
         "Square Footage", "Current Status", "Owner Name", "Owner Address",
@@ -134,7 +145,8 @@ def _parse_detail(html):
             continue
         label, vals, j = ln[:-1].strip(), [], i + 1
         while j < len(lines) and not lines[j].endswith(":") \
-                and lines[j].upper() not in SECTIONS:
+                and lines[j].upper() not in SECTIONS \
+                and not FOOTER.match(lines[j]):
             vals.append(lines[j])
             j += 1
         if label in WANT and label not in rec:
