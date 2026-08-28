@@ -746,19 +746,70 @@ public static class DxfToEtabsService
             sheetInfoByFile.Values.ToList(),
             request.StickFilePdf);
 
+        // TWO HALVES OF ONE PLAN, JOINED BEFORE ANYTHING ELSE LOOKS AT THEM.
+        //
+        // A plan too wide for one sheet is cut on a MATCH LINE and drawn twice. Read apart, neither
+        // half closes a slab edge — the edge runs off the page at the seam — so no floor is made and
+        // the parkade comes out with no slab. Half a plan is not a plan, and no threshold fixes it.
+        //
+        // This has to happen BEFORE the building filter below. On a one-building run the other half
+        // is somebody else's sheet and would be thrown away, and the parkade would stay broken in
+        // exactly the model that needs it: "we need the full structure at the parkade".
+        var matchLineLayers = banked.ListOr("dxf.match-line-layer-patterns", MatchLineSheetJoin.DefaultLayerPatterns);
+        var segmentsOf = files.ToDictionary(f => f, DxfPlanReader.ReadSegments, StringComparer.OrdinalIgnoreCase);
+
+        var joined = MatchLineSheetJoin.Group(files.Select(f => (
+            File: f,
+            Seam: MatchLineSheetJoin.SeamOf(segmentsOf[f], matchLineLayers),
+            Storeys: (IReadOnlyList<string>)PlanSheetNaming.MatchStories(sheetInfoByFile[f], matchNames)
+                .Where(s => !cutStoreys.Contains(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            Segments: segmentsOf[f])));
+
+        // Every partner keyed to the sheet that leads its group, and every follower marked so the
+        // loop reads it once, as part of the plan it belongs to, rather than again on its own.
+        var partnersOf = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+        var joinedInto = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var group in joined)
+        {
+            partnersOf[group.Files[0]] = group.Files.Skip(1).ToList();
+            foreach (string follower in group.Files.Skip(1)) joinedInto[follower] = group.Files[0];
+
+            warnings.Add(
+                $"{string.Join(" + ", group.Files.Select(Path.GetFileName))} carry the same match line and were "
+                + "read as ONE plan. A drawing too wide for one sheet is split on a match line, and neither half "
+                + "closes a slab edge on its own.");
+        }
+
         foreach (string file in files)
         {
             var sheet = sheetInfoByFile[file];
 
+            // Already read as part of the plan it is half of.
+            if (joinedInto.ContainsKey(file)) continue;
+
             if (request.BuildingTag is not null &&
                 sheet.BuildingTags.Count > 0 &&
-                !sheet.BuildingTags.Contains(request.BuildingTag, StringComparer.OrdinalIgnoreCase))
+                !sheet.BuildingTags.Contains(request.BuildingTag, StringComparer.OrdinalIgnoreCase) &&
+                !partnersOf.ContainsKey(file))
             {
                 continue;
             }
 
             var segments = DxfPlanReader.ReadSegments(file);
             var tags = DxfPlanReader.ReadPositionedTags(file);
+
+            // The other half of this plan, in the same coordinates. The two sheets are drawn from
+            // one model onto one grid — their match lines land on each other — so joining them is a
+            // union, not a transform. Do not move anything.
+            if (partnersOf.TryGetValue(file, out var partners))
+            {
+                foreach (string other in partners)
+                {
+                    segments = segments.Concat(DxfPlanReader.ReadSegments(other)).ToList();
+                    tags = tags.Concat(DxfPlanReader.ReadPositionedTags(other)).ToList();
+                }
+            }
 
             // THE WORDS COME FROM THE OTHER EXPORT, IF THERE IS ONE.
             //
