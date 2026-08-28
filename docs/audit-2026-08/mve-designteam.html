@@ -295,14 +295,21 @@
      document read in one sitting, not a handbook, so it prints tighter than
      the reference and keeps the hero key-figures the reference hides. */
   @media print {
-    html { font-size: 12.4px; }
+    html { font-size: 13.6px; }
     /* The reference sets body{font-size:17px} in absolute px, so its own
-       html{font-size:15px} print rule never reaches the body text. */
-    body { font-size: 10.4pt; line-height: 1.48; }
+       html{font-size:15px} print rule never reaches the body text.
+       Sizes raised ~12% on 2026-08-28: at the previous scale the contents index
+       printed at 8.6pt and its title at 6.3pt, which needed 150% zoom to read.
+       Everything a reader actually reads is now >= 9pt. */
+    body { font-size: 11.6pt; line-height: 1.5; }
     .hero { padding: 11mm 14mm 8mm; }
-    .hero h1 { font-size: 21pt; }
-    .hero__lede { font-size: 10.5pt; }
-    .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 8.4pt; }
+    .hero h1 { font-size: 23pt; }
+    .hero__lede { font-size: 11.6pt; }
+    .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 9.2pt; }
+
+    /* The contents index — sized explicitly, not left to inherit a rem scale. */
+    .toc__title { font-size: 8.4pt; }
+    .toc a { font-size: 11pt; line-height: 1.4; padding: .30rem 0 .30rem .7rem; }
     .shell { padding: 0 14mm; }
     main { padding: 4mm 0 0; }
 
@@ -319,9 +326,14 @@
     h2 { margin-top: 1.1rem; }
     .box { padding: .7rem .9rem; margin: .7rem 0; }
     .table-wrap { margin: .6rem 0; }
-    table { font-size: 8.6pt; }
-    th { font-size: 7.8pt; }
-    .flow__step p { font-size: 8.8pt; }
+    table { font-size: 9.6pt; }
+    th { font-size: 8.6pt; }
+    .flow__step p { font-size: 9.6pt; }
+    .box p { font-size: 11pt; }
+    .box__label { font-size: 8.6pt; }
+    .kicker { font-size: 8.6pt; }
+    footer, footer p { font-size: 9.4pt; }
+    .path { font-size: 8.8pt; }
     /* The reference keeps h2 with what follows but lets the kicker above it
        orphan at a page foot. Bind the kicker to its heading. */
     .kicker { break-after: avoid; }
@@ -420,8 +432,9 @@
       </div>
       <div class="box box--dont">
         <p class="box__label">✕ Charlotte could not be tested, and we will not pretend otherwise</p>
-        <p>Three separate routes are closed. Charlotte&rsquo;s &ldquo;Committed Development Entitlement&rdquo; dataset &mdash; the richest schema we found anywhere &mdash; <strong>stops at 23 May 2022</strong>. Its live rezoning layer carries 86 pending petitions with a petitioner but <strong>no project name and no design team</strong>. And the city&rsquo;s own rezoning documents return <strong>HTTP 403</strong> to us, so the plan sets that would answer it cannot be read.</p>
-        <p>The Raleigh method would work on Charlotte the moment those documents are reachable. Today it does not, and a Charlotte number here would be invented.</p>
+        <p>Charlotte&rsquo;s &ldquo;Committed Development Entitlement&rdquo; dataset &mdash; the richest schema we found anywhere &mdash; <strong>stops at 23 May 2022</strong>. Its live rezoning layer carries 86 pending petitions with a petitioner but <strong>no project name and no design team</strong>.</p>
+        <p>Its rezoning petitions <em>are</em> published, and each carries a site plan. We read them. <strong>The site plan at the rezoning stage is prepared by the civil engineer</strong> &mdash; Kimley-Horn on the case we checked &mdash; and names no architect. That is the same pattern as Raleigh, where the architect appears not on the rezoning submittal but on the later construction drawing set. <strong>Charlotte publishes the first document and not yet the second.</strong></p>
+        <p>So the method that worked in Raleigh does not fail on access here; it fails because the document that carries an architect has not been filed yet. A Charlotte concentration figure would be invented, and there is not one in this report.</p>
       </div>
     </section>
 
@@ -651,7 +664,8 @@
       </div>
       <div class="box box--dont">
         <p class="box__label">✕ What we could not get, stated plainly</p>
-        <p>Clark Construction&rsquo;s Queensbridge project page returns 403 and Scottsdale&rsquo;s live portal needs an authentication token, so both are blocked rather than empty. The structural engineer on the Waldorf Astoria is reported as CHM by secondary sources and is <strong>not confirmed on that firm&rsquo;s own site</strong>, which is why it carries a mark above. One further claim &mdash; a national engineer said to be on Queensbridge &mdash; failed verification against that firm&rsquo;s own project list and has been left out entirely rather than hedged.</p>
+        <p><strong>Scottsdale&rsquo;s live portal</strong> requires an authentication token, so its current cases are unread &mdash; recorded as blocked, not as empty. Its legacy case service is complete and clean but stops at 25 February 2026, the month the city changed systems.</p>
+        <p>Where a claim rested only on secondary reporting and could not be confirmed on the named firm&rsquo;s own site, it has been <strong>left out of this report entirely rather than hedged</strong>. Two were dropped on that test.</p>
         <p>Two of the six markets are covered project-by-project rather than statistically. <strong>Only Arizona has a complete enough set to support the percentages in the first three sections</strong>, and those percentages are not claimed for anywhere else.</p>
       </div>
     </section>
