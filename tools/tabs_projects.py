@@ -205,8 +205,10 @@ def norm_firm(name):
             break
         core = new
     core = re.sub(r"[^A-Za-z0-9& ]", " ", core)
-    core = re.sub(r"\s+", " ", core).strip().upper()
-    return core or re.sub(r"[^A-Za-z0-9 ]", "", n).upper().strip()
+    # Strip spaces out of the KEY, not just collapse them: "CUBE 3" and "CUBE3"
+    # are one firm, and so are "SCB" and "S C B".
+    core = re.sub(r"\s+", "", core).upper()
+    return core or re.sub(r"[^A-Za-z0-9]", "", n).upper().strip()
 
 
 SECTORS = [

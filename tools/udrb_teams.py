@@ -138,6 +138,8 @@ def clean_firm(raw):
     f = re.sub(r"(?i)^(design\s+|landscape\s+|project\s+)?"
                r"architects?\s+of\s+record\s*:\s*", "", f)
     f = re.sub(r"(?i)^(design|landscape|project)?\s*architects?\s*:\s*", "", f)
+    # The blank directory form's own field captions leak in the same way.
+    f = re.sub(r"(?i)^(name|firm|company)\s*:\s*", "", f)
     return f.strip(" ,.-")
 
 
