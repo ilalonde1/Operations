@@ -911,6 +911,74 @@ if (args.Length >= 1 && args[0].Equals("ifc-takeoff", StringComparison.OrdinalIg
     return 0;
 }
 
+// The takeoff straight off the Revit schedules, as Revit exports them — no hand-assembled sheet in
+// between. Usage: takeoff revit-takeoff <folder-or-csv...> <out.xlsx>
+if (args.Length >= 1 && args[0].Equals("revit-takeoff", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff revit-takeoff <folder|schedule.csv> [more.csv ...] <out.xlsx>"); return 1; }
+
+    string revitOut = args[^1];
+    var revitFiles = new List<string>();
+    foreach (string a in args[1..^1])
+    {
+        if (Directory.Exists(a)) revitFiles.AddRange(Directory.EnumerateFiles(a, "*.csv", SearchOption.TopDirectoryOnly));
+        else if (File.Exists(a)) revitFiles.Add(a);
+        else { Console.Error.WriteLine($"Not found '{a}'."); return 2; }
+    }
+    if (revitFiles.Count == 0) { Console.Error.WriteLine("No .csv schedules found."); return 2; }
+
+    var revit = RevitScheduleImporter.Import(
+        revitFiles.OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                  .Select(f => (Path.GetFileName(f), File.ReadAllText(f))));
+
+    if (revit.Inputs.Count == 0)
+    {
+        Console.Error.WriteLine($"Nothing priceable in {revitFiles.Count} file(s).");
+        foreach (var rz in revit.Residual.Take(10)) Console.Error.WriteLine($"   {rz.Source,-34} {rz.Note}");
+        return 3;
+    }
+
+    bool revitMetric = revit.Unit == UnitSystem.Metric;
+    string rVol = revitMetric ? "m³" : "yd³", rMass = revitMetric ? "kg" : "lb";
+    var revitComputed = StructuralTakeoffService.Compute(
+        revit.Inputs, revitMetric ? StructuralDensityTable.KorMetricDefault : StructuralDensityTable.KorImperialDefault);
+
+    var revitModel = new StructuralTakeoffReportModel(
+        Path.GetFileNameWithoutExtension(revitOut), "Revit schedule takeoff", "", DateTime.UtcNow, revitComputed,
+        ConcreteBasis: "Concrete volume is Revit's own, read straight from the exported schedules — modelled solid geometry, so every thickening, drop and transfer the model carries is already in it.",
+        Assumptions: revit.Notes
+            .Concat(revit.Residual.GroupBy(r => r.Source)
+                .Select(g => $"NOT PRICED — {g.Count()} row(s) from {g.Key}: {g.First().Note}"))
+            .ToList());
+    File.WriteAllBytes(revitOut, StructuralTakeoffReportGenerator.BuildXlsx(revitModel));
+
+    Console.WriteLine($"\nRevit schedule takeoff — {revit.RowsRead} row(s) from {revitFiles.Count} export(s).");
+    Console.WriteLine($"Concrete: {revitComputed.TotalConcreteVolume:N1} {rVol}   Reinforcing: {revitComputed.TotalRebarWeight:N0} {rMass}");
+
+    Console.WriteLine("\nPer level:");
+    foreach (var lvl in revitComputed.Lines.GroupBy(l => l.Level).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+    {
+        Console.WriteLine($"  {lvl.Key}");
+        foreach (var ln in lvl.OrderByDescending(l => l.ConcreteVolume))
+            Console.WriteLine($"     {ln.Element,-11} {ln.Grade,-16} {ln.ConcreteVolume,9:N1} {rVol}  {ln.RebarWeight,10:N0} {rMass}");
+    }
+
+    Console.WriteLine("\nWHAT THESE NUMBERS REST ON:");
+    foreach (string n in revit.Notes) Console.WriteLine($"   {n}");
+
+    if (revit.Residual.Count > 0)
+    {
+        Console.WriteLine($"\nNOT PRICED — {revit.Residual.Count} row(s):");
+        foreach (var g in revit.Residual.GroupBy(r => r.Source))
+        {
+            Console.WriteLine($"   {g.Key} x{g.Count()}");
+            foreach (var rz in g.Take(2)) Console.WriteLine($"      \"{(rz.Row.Length > 60 ? rz.Row[..60] + "…" : rz.Row)}\" — {rz.Note}");
+        }
+    }
+    Console.WriteLine($"\n  ->  {revitOut}");
+    return 0;
+}
+
 // Ask a finished model about itself. The query surface an /ask tool will wrap later, driven from a
 // terminal today. Usage: takeoff e2k-ask <model.e2k> [storeys|look|openings|sections|concrete] [storey]
 if (args.Length >= 1 && args[0].Equals("e2k-ask", StringComparison.OrdinalIgnoreCase))
@@ -3507,6 +3575,7 @@ public static class TakeoffCliHelp
         new("verify-e2k", "takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>] [--reference <ref.e2k>]", "Refuse a finished model that breaks a structural invariant."),
         new("ifc-takeoff", "takeoff ifc-takeoff <model.ifc> <out.xlsx>", "Generate a quantity takeoff from an IFC model."),
         new("e2k-takeoff", "takeoff e2k-takeoff <model.e2k> <out.xlsx> [--metric]", "Price the concrete in a generated ETABS model."),
+        new("revit-takeoff", "takeoff revit-takeoff <folder|schedule.csv> [more.csv ...] <out.xlsx>", "Price the concrete straight off Revit schedule exports."),
         new("e2k-ask", "takeoff e2k-ask <model.e2k> [storeys|look|openings|sections|concrete] [storey]", "Ask a finished ETABS model about itself."),
         new("vector-takeoff", "takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson] [--deterministic] [--fresh]", "Run the vector PDF quantity takeoff pipeline."),
         new("vector-plate", "takeoff vector-plate <pdf> <page> <png>", "Ask the vision layer for one slab plate box."),
