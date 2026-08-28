@@ -471,3 +471,58 @@ Untested and higher-value than Phoenix turned out to be:
   browser session can carry and a bare POST cannot.
 - **Austin** permit detail — a 958-byte session shell to plain HTTP.
 ⚠ **Charlotte no longer needs it** — ACA already answers there (§9d).
+
+## ⭐⭐⭐ ARIZONA VALIDATED — and a better Arizona source than the listicle
+
+### The risk that needed testing
+The Arizona headline ("12 multifamily projects, 11 firms, no incumbent") rested entirely on
+**AZ Big Media's "50 projects to know"** — a CURATED editorial selection, not a census. If that
+magazine spreads coverage across firms, or favours advertisers, then **"no incumbent" would be an
+artefact of the editing rather than a fact about Phoenix**. That was the most damaging thing a
+reader could find, and it had not been tested.
+
+### The independent source: Phoenix PUD narratives
+Phoenix publishes **PUD rezoning narratives** — indexed from the PUD/PCD Current Cases page,
+files under `phoenix.gov/content/dam/phoenix/pddsite/documents/planning-zoning-pud/`. A narrative
+is written BY the applicant's team and carries a **PROJECT TEAM block naming the developer, the
+ARCHITECT, the civil engineer, landscape and land-use attorney — with named individuals, emails
+and phone numbers.**
+
+⚠ This **corrects an earlier finding in this log**: "Phoenix publishes no reachable plan sets" was
+right about plan sets and wrong about the conclusion drawn from it. Phoenix publishes something
+*better* than a plan set for this purpose, and it is free.
+
+**426 PUD PDFs on the index; 129 are narratives.** Tool: `tools/phx_pud_teams.py`.
+
+### The verdict — it corroborates
+
+| | AZ Big Media (curated) | PUD narratives (independent) |
+|---|---|---|
+| projects with an architect | 12 | **16** (of 30 narratives read, 53%) |
+| distinct firms | 11 | **~14** |
+| largest single holder | 2 (Gensler) | **2 (DAVIS)** |
+
+**Two unrelated sources, the same dispersion.** The no-incumbent finding is a property of the
+Phoenix market, not of a magazine's editorial choices. Firms recovered independently: KTGY ·
+Butler Design Group · DAVIS ×2 · Deutsch Architecture Group · Kass Wilson · BSB Design ·
+CCBG · Circle West · Upward Architects · PHNX Design · TRM · SeFDesign · Edifice.
+
+### ⛔ Two extractor bugs, both mine
+
+1. **Uppercase-only label matching returned 0 of 18** and looked exactly like a source with no
+   architects in it. The narratives are inconsistent — one writes `ARCHITECTS & DESIGN TEAM:` in
+   caps, the next writes `Architect` in title case on its own line. **Adding `re.IGNORECASE` took
+   it from 0% to 28%.** A zero result from a source that obviously contains the data is a bug,
+   never a finding.
+2. **Non-narratives were being counted as misses.** Ordinances, PC memos, findings-and-legal and
+   bump memos have no team block at all. Excluding them moved the true recovery rate from
+   28% to **53%**.
+
+### ⚠ Honest limits
+- PUD narratives cover **rezoning cases only** — a project needing no rezoning never appears, so
+  this is not a census either. It is an *independent* sample, which is what validation needs.
+- The **developer** field is still noisy ("s Vestar", "shall execute a Propositio") — the stop
+  pattern is too loose on that role. Architect is the field that was needed and it is clean.
+- Two captures are role-confusions to watch: **Kimley-Horn** (civil, appearing under architect on
+  one case) and **Forrest Richardson, ASGCA** (a golf-course architect). Same class of error as
+  Bass, Nixon & Kennedy in Raleigh — **always sanity-check a recovered firm against what it does.**
