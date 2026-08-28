@@ -377,3 +377,50 @@ sets need pagination or the page's own *"Download results"*, both `__doPostBack`
 harness. That is the browser-rendering capability named three times today as the top blocker.
 It would unlock ACA pagination/export, Phoenix's JS project search, Scottsdale SPUR and Austin.
 ⚠ Adding a scraper to that production project is a real code change and has not been made.
+
+## ⭐⭐ `tools/aca_permit_probe.py` — the three agencies, working, with pagination
+
+Built as a research PROBE alongside `tools/BcBidDetailProbe` and `tools/ApcInterestProbe`.
+⚠ It deliberately does **not** touch the production permit ingest
+(`Kor.Opportunities.Data/Awards/BuildingPermitsImportService.cs` and its
+`PermitSourceRow`/`PermitFieldMap` adapter framework, per
+`docs/codex/CODEX-permit-adapters-block3.md`). That framework is where an ACA source
+belongs if it is ever productionised — as an adapter, with a migration. Nothing in the
+C# projects was modified, so no build lock and no test suite were touched.
+
+**Verified working, 27 Aug 2026.** Full pagination via ASP.NET postback, reconciled against
+the portal's own counter on every page: `athletics ballpark` → pages 1-8, **79 of 79 records**,
+03 Mar 2025 → 24 Aug 2026 — the ballpark's construction sequence, precast through grading.
+
+| Agency | Records pulled | Newest |
+|---|---|---|
+| CLARKCO | 79 (ballpark), 30 (apartments) | 24 Aug 2026 |
+| dallastx | 93 (multifamily), 57 (pre-dev) | 27 Aug 2026 |
+| CHARLOTTE | 14 (apartments) | Aug 2026 |
+
+### Three defects found and fixed in my own parser
+
+1. ⛔ **Partial postback returned a silent zero-row page.** Echoing only the viewstate and
+   the event target is not enough — ACA served an **empty `__EVENTVALIDATION`** and the grid
+   came back empty rather than erroring. Fix: echo the **entire form**.
+2. ⛔ **Dates were sorted lexicographically**, so 01/09/2026 sorted before 12/18/2025 and
+   the range printed backwards. Fix: parse MM/DD/YYYY to YYYYMMDD before sorting.
+3. ⛔ **Column misalignment destroyed the most valuable field.** Flattening the grid to pipe
+   characters and then collapsing consecutive runs of them silently **deleted empty cells**,
+   shifting every column after them — which is why `project_name` read 0/93 populated. It was
+   never empty, it was misaligned. Fix: parse the table rows and cells properly and zip
+   positionally. After the fix: `project_name` **29/30**, `status` **30/30**.
+
+### ⭐ The signal this exposes — and its honest limit
+
+Dallas runs **~197 Pre-Development Meetings in 2026** (`PREDEV-26-000197`, sequential), the
+earliest formal contact a developer has with a city — before entitlement, before the design
+team is chosen, before trade press or CoStar. **89 are visible, newest dated today.**
+
+⚠ **But Dallas PREDEV rows carry only date, number, type and status — no name, no address,
+no applicant.** So it is a measure of *market tempo*, NOT a lead list. Clark County by
+contrast populates `project_name` ("Residential - Multiple Family Development",
+"ATHLETICS LAS VEGAS BALLPARK") and `status` ("Pending", "In Process", "Approved") — there
+it is genuinely actionable. **The value is agency-dependent and must be stated per agency.**
+
+⚠ Still true: these are **permits and cases, not design teams.** No architect field anywhere.
