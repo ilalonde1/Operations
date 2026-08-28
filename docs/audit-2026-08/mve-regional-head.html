@@ -1,0 +1,28 @@
+<title>CoStar Gap and Regional Pipeline — 27 August 2026</title>
+<!--
+  KOR regional pipeline and CoStar-gap intel — INTERNAL, not for distribution to MVE.
+
+  Built on the canonical KOR design system, per tools/BdDocTemplate/README.md.
+  This file is ASSEMBLED, not hand-maintained. To change it, edit the fragment
+  and rebuild:
+
+    cd <repo root>
+    { cat docs/audit-2026-08/mve-regional-head.html
+      sed -n '2,257p' tools/BdDocTemplate/reference-handbook.html
+      cat docs/audit-2026-08/mve-regional-print.html
+      cat docs/audit-2026-08/mve-regional-body.html
+    } > docs/audit-2026-08/mve-regional-intel.html
+
+    pwsh -NoProfile -File tools/Format-BdWebPdf.ps1 `
+      -Html docs\audit-2026-08\mve-regional-intel.html `
+      -Pdf  docs\KOR-MVE-Regional-Intel-2026-08-27-web.pdf
+
+  This fragment exists because the title was previously carried only inside the
+  assembled output. A rebuild that did not first rescue line 1 silently dropped
+  the <title>, and the document had no name in the tab or the gallery.
+
+  Parts:
+    mve-regional-head.html   this file — title and build recipe
+    mve-regional-print.html  print-density overrides only, no brand changes
+    mve-regional-body.html   the content
+-->

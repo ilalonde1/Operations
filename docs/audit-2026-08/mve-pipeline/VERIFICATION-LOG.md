@@ -70,3 +70,42 @@ All four are now in the table and the sentence is corrected.
 
 The "Type" column now says what it is: how the firm appears *in this set*, not an audited
 national footprint.
+
+## Hawaii — from empty to the second-strongest region
+
+The Honolulu permit feed is frozen at 1 July 2025, so the feed audit had written Hawaii
+off. It should not have: **the regulator publishes a monthly PDF that names what is under
+construction.** The HCDA Executive Director's Kaka'ako report is the workaround.
+
+From the reports of 6 May and 1 July 2026, cross-checked against each other:
+
+| Tower | Developer | Architect | Confirmed by |
+|---|---|---|---|
+| **Kalae** | Howard Hughes / Victoria Ward Ltd | **Solomon Cordwell Buenz** | The developer's own groundbreaking release, which also names Layton Construction (GC), Vita (landscape), Nicole Hollis (interiors). 330 homes |
+| **Ālia** | **Kobayashi Group** | **WRNS Studio** | Both the official project team page and WRNS's own project page. 457 units, 39 storeys over a 5-storey podium, 1,075,981 sf, completion 2027 |
+| **Launiu** | Howard Hughes | **Arquitectonica** — their first Hawaii project | 486 homes, 40 storeys, ground broken 21 Oct 2025 |
+
+**No structural engineer is named on any of the three.** That is three separate primary
+sources checked — the developer's project-team page, the architect's own page, and the
+groundbreaking release — not one search that came back empty. Still: not publicly named
+is not the same as an open seat.
+
+Two further findings:
+
+- **The Park Ward Village appears as under-construction in the May report and is absent
+  from the July one.** The monthly cadence gives a completion signal for free.
+- **Ālia is an early project under Kamehameha Schools' Kaia'ulu 'o Kaka'ako master plan**,
+  so the same landowner has more towers behind it.
+
+Unit-count discrepancy noted: trade press reports Ālia at 477 units; WRNS Studio's own
+page says 457 with a full bedroom-by-bedroom breakdown. The architect's figure is used.
+
+## North Carolina — half a region, and say which half
+
+Raleigh/Wake resolves 2026 projects with owner and contractor from the permit feed
+(Omni Hotel Raleigh $308.2M / Brasfield & Gorrie; Block 4 Midrise $69.6M / Tributary SPV
+LLC / John Moriarty; 5000 Louisburg Rd $77.8M / Halle; West South Street $47.3M /
+W.M. Jordan). **Charlotte does not** — its entitlement feed is frozen at 23 May 2022.
+
+⛔ Neither feed carries an architect or an engineer, ever. Owner and contractor only.
+The design-team layer still has to come from somewhere else.
