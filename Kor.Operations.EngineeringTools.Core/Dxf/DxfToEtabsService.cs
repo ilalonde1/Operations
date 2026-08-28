@@ -910,34 +910,21 @@ public static class DxfToEtabsService
             readSheets.Add(segments);
             var geometry = StructuralPlanClassifier.Classify(segments, classification, sheet, tags);
 
-            // A COUNT SHE GAVE ADMITS THE SLAB THE THRESHOLD REFUSED.
+            // WITHDRAWN. Admitting the largest region her count was short by looked right and was
+            // wrong twice over.
             //
-            // slab-count.<job>.<storey> was banked so the tool could hold itself to her number.
-            // Until now it only reported the shortfall — which reads as a question, and she has
-            // answered this one three times. Where a storey is short of her count and a region
-            // closed but fell under the office minimum, the largest of those is a floor: a default
-            // measured across 1,126 models does not outrank the engineer counting her own building.
-            if (geometry.RefusedForSize.Count > 0)
-            {
-                foreach (string storey in storeysOfSheet[file])
-                {
-                    if (!slabCounts.TryGetValue(storey, out int wanted)) continue;
-                    int shortBy = wanted - geometry.Slabs.Count;
-                    if (shortBy <= 0) continue;
-
-                    foreach (var ring in geometry.RefusedForSize.OrderByDescending(r => r.Area).Take(shortBy))
-                    {
-                        geometry.Slabs.Add(ring);
-                        var at = ring.Centroid();
-                        geometry.Flags.Add(
-                            $"ADMITTED ON HER COUNT — a region of {ring.Area / 144:N0} sq ft at "
-                            + $"({at.X / 12:0}, {at.Y / 12:0}) ft was under the "
-                            + $"{classification.MinPlateArea / 144:N0} sq ft floor-plate minimum, and is modelled "
-                            + $"because {storey} is stated to carry {wanted} slabs.");
-                    }
-                    break;
-                }
-            }
+            // It admitted at the SIZE gate, before the shape checks that follow it, so a 325 sq ft
+            // region came through as a 37-point ring — a "thin or hooked shape", which is exactly
+            // what the 55% box-fill test exists to reject. ETABS refused it outright:
+            // "Area Object KF7 not correctly defined". It reached Andrea's screen.
+            //
+            // And it was the wrong region anyway. Her three mezzanine slabs are the open chains of
+            // 2,593, 1,961 and 502 sq ft — all ABOVE the 400 sq ft minimum, as the comment at that
+            // threshold already said. Whatever is losing her third slab, it is not the size gate,
+            // and a count is not a licence to admit the largest thing that failed a different test.
+            //
+            // RefusedForSize is kept because the question it answers is still the right one; what
+            // was missing is which check is actually dropping a 502 sq ft chain.
 
             var matched = PlanSheetNaming.MatchStories(sheet, matchNames)
                 .Select(s => doc.StoreyRenames.TryGetValue(s, out string? now) ? now : s)
