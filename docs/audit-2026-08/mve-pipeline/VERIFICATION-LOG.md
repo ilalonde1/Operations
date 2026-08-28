@@ -160,3 +160,56 @@ catalogue: derived, not guessed.
 search API exists (`GET` returns 405, so the method is right) but every anonymous `POST` returns 500:
 it wants an OAuth token from Tyler's identity service. **A perfect feed can still be a closed one**,
 and as cities migrate onto these platforms this blocker grows while the open ArcGIS ones shrink.
+
+## The Arizona 50, interrogated rather than listed — 27 August 2026
+
+The set had only ever been *read*. Counting it changes the conclusion, and two of the
+document's own claims were wrong.
+
+**Sector mix** — civic/education 17 (34%), **multifamily 12 (24%)**, industrial 10 (20%),
+healthcare 6, hospitality 5. Three-quarters of an "Arizona projects" list is not MVE's market.
+
+### ⭐ The finding: Arizona multifamily has no incumbent
+
+Twelve multifamily projects went to **eleven different architects**. Gensler has two; nobody
+has three. The top firm holds **17% of multifamily slots**. KTGY, Niles Bolton and ESG — the
+national multifamily names — hold **one each**. There is no incumbent to displace because
+there is no incumbent.
+
+### ⛔ Two claims in our own document were wrong
+
+- **"Butler Design Group is a design-build outfit"** — false. Six projects, **six different
+  contractors** (Stevens-Leinweber, Ryan ×3, Willmeng, Layton). A conventional architecture
+  practice whose *name* reads like a design-builder. Sector split: 4 industrial, 1 healthcare,
+  1 civic — **zero multifamily**, so not an MVE competitor either.
+- **"That is the competitive pressure in Arizona"** — misplaced. Design-build is **50% of
+  industrial** (5 of 10) and **8% of multifamily** (1 of 12), 0% of civic, healthcare and
+  hospitality. Every design-build project in the set is LGE, five of six industrial.
+
+### ⭐ Four structurally closed developers — the don't-call list
+
+| Developer | Evidence |
+|---|---|
+| **Creation Equity** (6 projects — most active in the set) | LGE Design Build on **all six**; no outside architect on any |
+| **Ryan Companies US** (4) | Developer *and* GC on all four, brings Butler on three, Deutsch on one |
+| **Statesman Group** | Developer and GC; **no architect named at all** |
+| **StreetLights Residential** (Houston) | Architect, interiors and GC all in-house |
+
+**Butler–Ryan is the only architect-to-contractor pairing that repeats** anywhere in the fifty
+(3 projects). Everything else is a one-off — the same unconsolidated picture as the headline.
+
+## Phoenix forward pipeline
+
+**373 open** site-plan/rezoning cases; **280** submitted since 1 Jan 2025; **41 distinct
+residential** by project name (42 rows — Sagewood Phase 4 spans two parcels).
+
+⚠ **Every row carries status OPEN.** Counting by year would show 2024 below 2025 and it would
+mean nothing — closed cases leave the layer, so older years shrink by survivorship. It is a
+snapshot, not a time series, and the document says so.
+
+## Verification-checker defect, fixed
+
+Two "MISS" results today were the checker, not the document: a box label rendered **uppercase**
+by CSS, and "Creation Equity" **wrapping across a line**. Both were reported as missing content
+that was present. `checkpdf.py` now normalises whitespace and compares case-insensitively.
+**A checker that cries wolf gets ignored, which is worse than no checker.**

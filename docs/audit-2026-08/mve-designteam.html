@@ -1,0 +1,519 @@
+<title>Arizona Submitted Projects — and the Six-Market Design-Team Layer</title>
+<!--
+  KOR Structural — prepared for Dan Gura, MVE + Partners. 27 August 2026.
+
+  This is the CLIENT-FACING document: the Arizona submitted-projects search Dan
+  asked for on the 27 August call, plus the same treatment for the other five
+  markets he named, plus the analysis underneath it.
+
+  ⚠ Distinct from docs/KOR-MVE-Regional-Intel-*.pdf, which is KOR-INTERNAL and
+  frames the same research around where KOR can win a structural seat. Do not
+  merge them and do not send the internal one.
+
+  Every figure is either queried from a named public endpoint on 27 Aug 2026 or
+  read off the named party's own page. Where a claim rests on secondary reporting
+  it is labelled as such in the text rather than dropped or asserted.
+
+  Built on the canonical KOR design system, per tools/BdDocTemplate/README.md.
+  This file is ASSEMBLED, not hand-maintained. To change it, edit the fragment
+  and rebuild:
+
+    cd <repo root>
+    { cat docs/audit-2026-08/mve-designteam-head.html
+      sed -n '2,257p' tools/BdDocTemplate/reference-handbook.html
+      cat docs/audit-2026-08/mve-designteam-print.html
+      cat docs/audit-2026-08/mve-designteam-body.html
+    } > docs/audit-2026-08/mve-designteam.html
+
+    pwsh -NoProfile -File tools/Format-BdWebPdf.ps1 `
+      -Html docs\audit-2026-08\mve-designteam.html `
+      -Pdf  docs\KOR-MVE-Design-Team-Intel-2026-08-27-web.pdf
+-->
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  @page { size: Letter; margin: 15mm 16mm 16mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    html { font-size: 15px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { padding: 20mm 16mm 12mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 16mm; }
+    .toc { position: static; max-height: none; padding: 8mm 0 2mm; break-after: page; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .table-wrap, table, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+<style>
+  /* Page-specific print density only — no brand changes. This is a briefing
+     document read in one sitting, not a handbook, so it prints tighter than
+     the reference and keeps the hero key-figures the reference hides. */
+  @media print {
+    html { font-size: 12.4px; }
+    /* The reference sets body{font-size:17px} in absolute px, so its own
+       html{font-size:15px} print rule never reaches the body text. */
+    body { font-size: 10.4pt; line-height: 1.48; }
+    .hero { padding: 11mm 14mm 8mm; }
+    .hero h1 { font-size: 21pt; }
+    .hero__lede { font-size: 10.5pt; }
+    .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 8.4pt; }
+    .shell { padding: 0 14mm; }
+    main { padding: 4mm 0 0; }
+    section { margin-bottom: 0; }
+    h2 { margin-top: 1.1rem; }
+    .box { padding: .7rem .9rem; margin: .7rem 0; }
+    .table-wrap { margin: .6rem 0; }
+    table { font-size: 8.6pt; }
+    th { font-size: 7.8pt; }
+    .flow__step p { font-size: 8.8pt; }
+    /* The reference keeps h2 with what follows but lets the kicker above it
+       orphan at a page foot. Bind the kicker to its heading. */
+    .kicker { break-after: avoid; }
+    footer { margin-top: 1rem; break-before: avoid; }
+  }
+
+  /* Secondary detail inside a table cell — the project's size and storeys sit
+     under its name so the Structural column keeps its width. Uses the existing
+     ink token; no new colour is introduced. */
+  .muted { color: var(--ink-faint); font-size: 0.88em; }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural &nbsp;·&nbsp; prepared for MVE + Partners &nbsp;·&nbsp; 27 August 2026</p>
+    <h1>Arizona submitted projects &mdash;<br>and the finding underneath them</h1>
+    <p class="hero__lede">You asked for the Arizona submitted-projects search. It is in here, out of the city&rsquo;s own records, along with the same treatment for the other five markets you named. But the list is not the valuable part. The valuable part is what fifty Arizona projects say when you count them properly.</p>
+    <div class="hero__meta">
+      <span>41 open Phoenix residential submittals</span>
+      <span>50 projects, 49 design teams, counted</span>
+      <span>6 markets</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <main>
+
+    <section id="finding">
+      <p class="kicker">Start here</p>
+      <h2>Arizona multifamily has no incumbent architect</h2>
+      <p class="lede">Twelve multifamily projects. Eleven different architecture firms. One firm has two of them and nobody has three.</p>
+      <p>The set is <em>50 commercial real estate projects to know in 2026</em>, published by AZ Big Media. It names a design team on 49 of the 50 &mdash; developer, architect and general contractor per project. We took every one of those labelled fields and counted them, which turns out to be a different exercise from reading the list.</p>
+      <p><strong>Twenty-four per cent of it is multifamily.</strong> Thirty-four per cent is civic and education, twenty per cent industrial, twelve healthcare, ten hospitality. So the first honest thing to say about an &ldquo;Arizona projects&rdquo; list is that three-quarters of it is not your market at all. The twelve that are look like this:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Architect</th><th>Arizona multifamily projects</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Gensler</strong></td><td><strong>2</strong></td></tr>
+            <tr><td>triARC architecture &amp; design</td><td>1</td></tr>
+            <tr><td><strong>Niles Bolton Associates</strong></td><td>1</td></tr>
+            <tr><td><strong>KTGY</strong></td><td>1</td></tr>
+            <tr><td>Dig Studio</td><td>1</td></tr>
+            <tr><td><strong>ESG Architecture &amp; Design</strong></td><td>1</td></tr>
+            <tr><td>LGE Design Build</td><td>1</td></tr>
+            <tr><td>Lamar Johnson Collaborative</td><td>1</td></tr>
+            <tr><td>GFF Design</td><td>1</td></tr>
+            <tr><td>Athena Studio</td><td>1</td></tr>
+            <tr><td>Soaring Eight</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="box box--tip">
+        <p class="box__label">▲ What that actually means</p>
+        <p>In a consolidated market the top firm holds a third or more and the pitch is a displacement argument &mdash; you have to take work off somebody. <strong>Here the largest holder of Arizona multifamily work in the set has two projects out of twelve.</strong> There is no incumbent to displace, because there is no incumbent. A firm entering this market is not fighting a share war; it is walking into a field where nobody has established one.</p>
+        <p>The national multifamily names are present but thin on the ground &mdash; <strong>KTGY, Niles Bolton and ESG have one project each.</strong> They are in Arizona. They have not taken it.</p>
+      </div>
+    </section>
+
+    <section id="designbuild">
+      <p class="kicker">The question everyone asks about Arizona</p>
+      <h2>Design-build is taking the market &mdash; but not your part of it</h2>
+      <p>Design-build is the standard worry about Phoenix, and it is a real one. It is also more precisely located than the worry usually is. Across the 50 projects, the architect and the contractor are <strong>the same firm on six of them &mdash; twelve per cent</strong>. Where those six sit is the whole story:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Sector</th><th>Projects</th><th>Design-build</th><th>Share</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Industrial / logistics</strong></td><td>10</td><td><strong>5</strong></td><td><strong>50%</strong></td></tr>
+            <tr><td>Multifamily / residential</td><td>12</td><td>1</td><td>8%</td></tr>
+            <tr><td>Civic / education</td><td>17</td><td>0</td><td>0%</td></tr>
+            <tr><td>Healthcare</td><td>6</td><td>0</td><td>0%</td></tr>
+            <tr><td>Hospitality</td><td>5</td><td>0</td><td>0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Half of Arizona industrial in this set is design-build. None of the civic, healthcare or hospitality work is, and one multifamily project out of twelve.</strong> Every single design-build project in the set belongs to one firm, LGE Design Build, and five of its six are industrial.</p>
+      <div class="box box--dont">
+        <p class="box__label">✕ And one name that is not what it looks like</p>
+        <p><strong>Butler Design Group is not a design-build firm.</strong> It has six projects &mdash; joint-most in the set &mdash; and six different general contractors: Stevens-Leinweber, Ryan Companies on three, Willmeng and Layton. It is a conventional architecture practice whose name reads like a design-builder.</p>
+        <p>It is also <strong>not a competitor for multifamily work</strong>. Four of its six are industrial, one healthcare, one civic. <strong>Zero residential.</strong> Any read of the headline league table that treats the two six-project firms as the competitive pressure on a multifamily practice is wrong on both counts.</p>
+      </div>
+    </section>
+
+    <section id="closed">
+      <p class="kicker">Where not to spend the call</p>
+      <h2>Four developers that will not hire an outside architect</h2>
+      <p>This falls out of the same data and is the part we would want if the positions were reversed. These are developers whose design work is structurally unavailable &mdash; not because they said no, but because of how they are built.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Developer</th><th>Projects</th><th>What the record shows</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Creation Equity</strong></td><td><strong>6</strong> — the most active developer in the set</td><td>LGE Design Build on <strong>all six</strong>: five as design-builder, one as contractor alongside GFF Design. No outside architect appears on any Creation Equity project</td></tr>
+            <tr><td><strong>Ryan Companies US</strong></td><td>4</td><td>Developer <em>and</em> general contractor on all four, and it brings its own architect &mdash; Butler Design Group on three, Deutsch on the fourth</td></tr>
+            <tr><td><strong>Statesman Group</strong></td><td>1 (565,729 sf, six buildings)</td><td>Developer and contractor both. <strong>No architect named at all</strong></td></tr>
+            <tr><td><strong>StreetLights Residential</strong> <span class="pill">Houston</span></td><td>The Langley, 134 units</td><td>Fully vertically integrated: <strong>StreetLights Creative Studio</strong> is architect and interior designer, <strong>SLR Construction</strong> is the general contractor. Every seat in-house</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The Butler–Ryan pairing is worth isolating: it is the <strong>only architect-to-contractor relationship that repeats more than once</strong> anywhere in the 50. Three projects together. Everything else in Arizona is a one-off pairing, which is another way of saying the same thing as the first section &mdash; this market has very few locked relationships.</p>
+    </section>
+
+    <section id="arizona">
+      <p class="kicker">The thing you asked for</p>
+      <h2>Phoenix submitted projects, from the city&rsquo;s own record</h2>
+      <p>Phoenix publishes a live planning and permit service. It currently carries <strong>68,292 permits and 13,022 plan reviews</strong>, row-level, <strong>current to the day this was run</strong>. Filtered to site-plan and rezoning cases it returns <strong>373 open cases</strong>; filtered to those submitted since 1 January 2025, <strong>280</strong>; of which <strong>41 are residential by project name</strong>.</p>
+      <p>Among its eighty case types the one that matters most is <strong>FINAL SITE PLAN &ndash; MAJOR</strong>. That is the submittal whose drawing set carries the project directory sheet &mdash; every consultant, by discipline, with contact details. It is how a full design team gets confirmed from a city record rather than inferred from a press release.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Submitted</th><th>Case</th><th>Project</th><th>Address</th><th>Stage</th></tr></thead>
+          <tbody>
+            <tr><td>12 May 2026</td><td>2602491</td><td><strong>Momentum Apartments</strong></td><td>734 E Vineyard Rd</td><td>Preliminary site plan</td></tr>
+            <tr><td>6 May 2026</td><td>2602468</td><td><strong>Senior Housing at 41st Ave</strong></td><td>2700 N 41st Ave</td><td>Preliminary site plan</td></tr>
+            <tr><td>21 Apr 2026</td><td>2602361</td><td><strong>17th St Apartments</strong></td><td>1634 E Wood St</td><td>Preliminary site plan</td></tr>
+            <tr><td>9 Apr 2026</td><td>2602015</td><td>Sagewood Phase 4 — residential &amp; clubhouse</td><td>4400 E Palo Verde Dr</td><td>Preliminary site plan</td></tr>
+            <tr><td>1 Apr 2026</td><td>2601847</td><td>Virginia Townhome Project</td><td>4840 E Virginia Ave</td><td>Preliminary site plan</td></tr>
+            <tr><td>25 Feb 2026</td><td>2601066</td><td>Maryland Townhomes</td><td>742 E Maryland Ave</td><td><strong>Final site plan</strong></td></tr>
+            <tr><td>6 Feb 2026</td><td>2600890</td><td>Lion Foundation Housing</td><td>1415 E Wood St</td><td>Preliminary site plan</td></tr>
+            <tr><td>24 Dec 2025</td><td>2507260</td><td><strong>Deer Valley Apartments</strong></td><td>3010 W Deer Valley Dr</td><td><strong>Final site plan — major</strong></td></tr>
+            <tr><td>11 Dec 2025</td><td>2506990</td><td>34th &amp; Thomas Apartment Homes</td><td>3425 E Thomas Rd</td><td>Preliminary site plan</td></tr>
+            <tr><td>9 Dec 2025</td><td>2506904</td><td>4th St Residences</td><td>4144 S 4th St</td><td><strong>Final site plan — major</strong></td></tr>
+            <tr><td>9 Dec 2025</td><td>2506899</td><td>Sierra Verde Townhomes</td><td>4800 S 16th St</td><td><strong>Final site plan — major</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Eleven of the forty-one, newest first. The full set travels with this document.</p>
+      <div class="box box--dont">
+        <p class="box__label">✕ Two things this list is not</p>
+        <p><strong>It is a snapshot, not a trend.</strong> Every row carries status OPEN, because closed cases leave the layer. Counting them by year would show 2024 smaller than 2025 and that would mean nothing &mdash; older cases have simply had longer to close. Anyone who hands you a submissions-per-year chart built from this feed has made that mistake.</p>
+        <p><strong>And it does not name your architect competitor.</strong> The feed has a field called <code>PROFESS_NAME</code>, populated on 90.6% of plan reviews, and the name promises exactly that. Read the values and it is the licensed <em>contractor</em> &mdash; the most frequent entries are &ldquo;TO BE BID&rdquo;, &ldquo;OWNER&rdquo;, fire-sprinkler firms and solar installers. It is genuinely useful for who <em>builds</em> in Phoenix. It is not an architect and we will not present it as one.</p>
+      </div>
+      <p><strong>Scottsdale is the instructive counter-example.</strong> Its case service is the cleanest we tested anywhere &mdash; 82 cases with all eight fields populated on all 82 rows, applicant included. And the newest submittal in it is <strong>25 February 2026</strong>, because the city moved to a new portal in January and the map only covers what came before. The live successor has a search API that requires an authentication token. <strong>A perfect feed can still be a closed one</strong>, and the only way to know which you are holding is to query it and look at the dates.</p>
+      <div class="box box--screen">
+        <p class="box__label">▲ On the test you set us</p>
+        <p>You asked what happens to a 40-storey project filed that morning. <strong>It is not in any public feed yet, and nobody&rsquo;s is.</strong> It surfaces when the city posts the case or the trade press picks it up &mdash; typically days. The defensible claim is that nothing published gets missed. It is not that nothing unpublished is known, and we would rather say so than have you find out by testing it.</p>
+      </div>
+    </section>
+
+    <section id="markets">
+      <p class="kicker">The other five</p>
+      <h2>What the layer holds in the rest of your markets</h2>
+      <p>Same standard throughout: a firm appears against a project only where that firm&rsquo;s own page, the developer&rsquo;s own release, or the public record says so. Where the design team is incomplete the gap is shown rather than filled.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Market &amp; project</th><th>Architect</th><th>Contractor</th><th>Structural</th></tr></thead>
+          <tbody>
+            <tr><td><strong>NEVADA</strong> &middot; A&rsquo;s Ballpark, Las Vegas<br><span class="muted">33,000 seats, 2028</span></td><td>BIG + HNTB</td><td>Mortenson&ndash;McCarthy</td><td><strong>Thornton Tomasetti</strong></td></tr>
+            <tr><td><strong>NEVADA</strong> &middot; Bally&rsquo;s Integrated Resort<br><span class="muted">26 ac, former Tropicana</span></td><td>Marnell Howryla</td><td>&mdash;</td><td><strong>Thornton Tomasetti</strong></td></tr>
+            <tr><td><strong>HAWAII</strong> &middot; Kalae, Ward Village<br><span class="muted">330 homes</span></td><td>Solomon Cordwell Buenz</td><td>Layton</td><td><em>not named</em></td></tr>
+            <tr><td><strong>HAWAII</strong> &middot; &Amacr;lia, Kaka&rsquo;ako<br><span class="muted">457 units, 39 storeys</span></td><td>WRNS Studio</td><td>&mdash;</td><td><em>not named</em></td></tr>
+            <tr><td><strong>HAWAII</strong> &middot; Launiu, Ward Village<br><span class="muted">486 homes, 40 storeys</span></td><td>Arquitectonica</td><td>&mdash;</td><td><em>not named</em></td></tr>
+            <tr><td><strong>HOUSTON</strong> &middot; The Lily River Oaks<br><span class="muted">38 storeys, 331 units</span></td><td>Solomon Cordwell Buenz</td><td>ANDRES</td><td><strong>DeSimone</strong></td></tr>
+            <tr><td><strong>HOUSTON</strong> &middot; The Langley<br><span class="muted">20 storeys, 134 units</span></td><td>StreetLights Creative Studio</td><td>SLR</td><td><em>not named</em></td></tr>
+            <tr><td><strong>DALLAS</strong> &middot; Lucille, Uptown<br><span class="muted">22 storeys, 265 units</span></td><td>HKS</td><td>Rogers-O&rsquo;Brien</td><td><strong>BDD</strong></td></tr>
+            <tr><td><strong>MIAMI</strong> &middot; Waldorf Astoria<br><span class="muted">100 storeys, 360 residences</span></td><td>Sieger Suarez + Carlos Ott</td><td>&mdash;</td><td>CHM ⚠ <span class="muted">reported</span></td></tr>
+            <tr><td><strong>MIAMI</strong> &middot; Delano Residences<br><span class="muted">90 storeys</span></td><td>Carlos Ott · CUBE3 (AOR)</td><td>&mdash;</td><td><em>not named</em></td></tr>
+            <tr><td><strong>CHARLOTTE</strong> &middot; Queensbridge Collective<br><span class="muted">755 units, $725M</span></td><td>Goettsch Partners</td><td>Clark</td><td><em>not named</em></td></tr>
+            <tr><td><strong>RALEIGH</strong> &middot; Tributary, North Hills<br><span class="muted">332 units</span></td><td>Hickok Cole</td><td>John Moriarty</td><td><em>not named</em></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><em>not named</em> means no public record names one. It does not mean the seat is open, and we would not tell you it did.</p>
+      <div class="box box--tip">
+        <p class="box__label">▲ One pattern worth your attention</p>
+        <p><strong>Solomon Cordwell Buenz is in two of your six markets</strong> &mdash; Kalae in Honolulu and The Lily River Oaks in Houston &mdash; on residential towers of 330 and 331 units respectively. Both confirmed from the developers&rsquo; own releases. Whatever else the six markets have in common, one firm is already moving between them the way you are.</p>
+      </div>
+    </section>
+
+    <section id="method">
+      <p class="kicker">Why these numbers</p>
+      <h2>What we did to keep this honest</h2>
+      <p>Every figure above is either a query against a named public endpoint run on 27 August 2026, or a statement read off the named party&rsquo;s own page. Three habits produced the difference, and each came from getting something wrong first.</p>
+      <div class="flow">
+        <div class="flow__step">
+          <h3>Counts reconcile against the source&rsquo;s own labels</h3>
+          <p>The parser that read the 50 projects is checked against the document&rsquo;s own label count &mdash; 50 blocks against 50 <code>Address:</code>, 49 architects against 49 <code>Architect:</code>. An earlier parser silently under-reported and would have produced a tidier, wrong table. <strong>A number that cannot be reconciled to its source is not reported.</strong></p>
+        </div>
+        <div class="flow__step">
+          <h3>The primary source wins, every time</h3>
+          <p>We checked trade-press figures against the party who has to be right about them. It disagreed four times out of four, and the primary source won each one.</p>
+        </div>
+        <div class="flow__step">
+          <h3>&ldquo;Could not read it&rdquo; is not &ldquo;it is not there&rdquo;</h3>
+          <p>Two pages we needed returned 403 and one portal requires an auth token. Those are recorded as blocked, never as absent. A negative finding has to be earned.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Figure</th><th>Trade press</th><th>The party who has to be right</th></tr></thead>
+          <tbody>
+            <tr><td>Ālia, Honolulu</td><td>477 units</td><td><strong>457</strong> — WRNS Studio&rsquo;s own page, with a bedroom-by-bedroom breakdown</td></tr>
+            <tr><td>Waldorf Astoria, Miami</td><td>1,049 ft · 387 residences</td><td><strong>1,046 ft · 360 residences</strong> — the project engineer&rsquo;s own page</td></tr>
+            <tr><td>Queensbridge, Charlotte</td><td>600,000 sf office</td><td><strong>356,000 sf</strong>, 755 residential units — the developer&rsquo;s own page</td></tr>
+            <tr><td>Hylo Park, Las Vegas</td><td>700 units on 73 acres</td><td><strong>393 single-family homes</strong> plus a lifestyle centre — the architect&rsquo;s own page</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="box box--dont">
+        <p class="box__label">✕ What we could not get, stated plainly</p>
+        <p>Clark Construction&rsquo;s Queensbridge project page returns 403 and Scottsdale&rsquo;s live portal needs an authentication token, so both are blocked rather than empty. The structural engineer on the Waldorf Astoria is reported as CHM by secondary sources and is <strong>not confirmed on that firm&rsquo;s own site</strong>, which is why it carries a mark above. One further claim &mdash; a national engineer said to be on Queensbridge &mdash; failed verification against that firm&rsquo;s own project list and has been left out entirely rather than hedged.</p>
+        <p>Two of the six markets are covered project-by-project rather than statistically. <strong>Only Arizona has a complete enough set to support the percentages in the first three sections</strong>, and those percentages are not claimed for anywhere else.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p><strong>KOR Structural</strong> &mdash; prepared for MVE + Partners, 27 August 2026. Every row count, date and percentage is reproducible from the endpoints named in the text.</p>
+      <p class="path">Sources: AZ Big Media, <em>50 commercial real estate projects to know in 2026</em> · City of Phoenix <code>Planning_Permit</code> map service · City of Scottsdale <code>Active_CDS_Cases</code> · Hawaii Community Development Authority Executive Director&rsquo;s Kaka&rsquo;ako reports, May and July 2026 · Wake County permit feed · and the published project pages of the firms named.</p>
+    </footer>
+
+  </main>
+</div>
