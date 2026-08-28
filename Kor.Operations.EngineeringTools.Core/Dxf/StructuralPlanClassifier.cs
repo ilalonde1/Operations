@@ -674,8 +674,14 @@ public static class StructuralPlanClassifier
                     if (ring.Area < options.MinPlateArea)
                     {
                         if (ring.Area >= options.MinPlateArea / 4.0)
+                        {
                             Refused(ring, $"smaller than the {options.MinPlateArea / 144:N0} sq ft this office " +
                                           "calls a floor plate");
+                            // Kept, not just named: the engineer's count of her own storey can
+                            // admit it, and a threshold measured across a corpus does not outrank
+                            // her counting this building.
+                            result.RefusedForSize.Add(ring);
+                        }
                         continue;
                     }
 

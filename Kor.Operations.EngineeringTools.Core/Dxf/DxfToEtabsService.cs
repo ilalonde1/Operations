@@ -763,6 +763,16 @@ public static class DxfToEtabsService
         // not a rule about how drawings are read anywhere, just something she told us about this
         // building.
         string joinJob = Path.GetFileNameWithoutExtension(request.OutputE2k);
+
+        // slab-count.<job>.<storey> — how many separate slabs she says a storey carries.
+        var slabCounts = banked
+            .Where(r => r.Key.StartsWith("slab-count.", StringComparison.OrdinalIgnoreCase))
+            .Select(r => (Parts: r.Key.Split('.', 3), r.Value))
+            .Where(x => x.Parts.Length == 3
+                        && joinJob.Contains(x.Parts[1], StringComparison.OrdinalIgnoreCase)
+                        && x.Value.IsNumeric)
+            .ToDictionary(x => x.Parts[2], x => (int)x.Value.Value, StringComparer.OrdinalIgnoreCase);
+
         var joinStoreys = banked
             .Where(r => r.Key.StartsWith("match-line-join.", StringComparison.OrdinalIgnoreCase))
             .Select(r => r.Key.Split('.', 3))
@@ -899,6 +909,36 @@ public static class DxfToEtabsService
 
             readSheets.Add(segments);
             var geometry = StructuralPlanClassifier.Classify(segments, classification, sheet, tags);
+
+            // A COUNT SHE GAVE ADMITS THE SLAB THE THRESHOLD REFUSED.
+            //
+            // slab-count.<job>.<storey> was banked so the tool could hold itself to her number.
+            // Until now it only reported the shortfall — which reads as a question, and she has
+            // answered this one three times. Where a storey is short of her count and a region
+            // closed but fell under the office minimum, the largest of those is a floor: a default
+            // measured across 1,126 models does not outrank the engineer counting her own building.
+            if (geometry.RefusedForSize.Count > 0)
+            {
+                foreach (string storey in storeysOfSheet[file])
+                {
+                    if (!slabCounts.TryGetValue(storey, out int wanted)) continue;
+                    int shortBy = wanted - geometry.Slabs.Count;
+                    if (shortBy <= 0) continue;
+
+                    foreach (var ring in geometry.RefusedForSize.OrderByDescending(r => r.Area).Take(shortBy))
+                    {
+                        geometry.Slabs.Add(ring);
+                        var at = ring.Centroid();
+                        geometry.Flags.Add(
+                            $"ADMITTED ON HER COUNT — a region of {ring.Area / 144:N0} sq ft at "
+                            + $"({at.X / 12:0}, {at.Y / 12:0}) ft was under the "
+                            + $"{classification.MinPlateArea / 144:N0} sq ft floor-plate minimum, and is modelled "
+                            + $"because {storey} is stated to carry {wanted} slabs.");
+                    }
+                    break;
+                }
+            }
+
             var matched = PlanSheetNaming.MatchStories(sheet, matchNames)
                 .Select(s => doc.StoreyRenames.TryGetValue(s, out string? now) ? now : s)
                 .Where(s => !cutStoreys.Contains(s))

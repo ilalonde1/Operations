@@ -202,6 +202,19 @@ public sealed class PlanGeometrySet
     /// </summary>
     public List<PlanLoop> EnclosedByWalls { get; } = new();
 
+    /// <summary>
+    /// Regions that closed and were refused ONLY for being under the minimum plate area, largest
+    /// first — kept so an engineer's own count of a storey can overrule the threshold.
+    ///
+    /// The 400 sq ft minimum was measured: standalone rings 52-115 sq ft, real plates 915 and up,
+    /// nothing between. 31168's mezzanine has a real slab of 325 sq ft sitting in that gap, and
+    /// Andrea Neuviale has said three times that the storey carries three. A default measured
+    /// across a corpus does not outrank the engineer counting her own building, so where her count
+    /// says a storey is short, the largest of these is admitted rather than reported as a question
+    /// she has already answered.
+    /// </summary>
+    public List<PlanLoop> RefusedForSize { get; } = new();
+
     /// <summary>Human-readable notes about anything that could not be resolved cleanly.</summary>
     public List<string> Flags { get; } = new();
 }
