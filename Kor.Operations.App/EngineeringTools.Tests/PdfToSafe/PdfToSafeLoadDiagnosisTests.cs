@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using Kor.Operations.EngineeringTools.PdfToSafe;
 using Xunit;
 
@@ -25,7 +26,7 @@ public sealed class PdfToSafeLoadDiagnosisTests
         string said = PdfToSafeWindow.DiagnoseLoad(Vector(7_098));
 
         Assert.Contains("7,098 vector paths", said);
-        Assert.Contains("none of them are markups", said);
+        Assert.Contains("no page in this document carries markups", said);
         Assert.Contains("Bluebeam", said);
 
         // And it points at the tool that CAN read an issued set.
@@ -48,6 +49,43 @@ public sealed class PdfToSafeLoadDiagnosisTests
         Assert.Contains("1 slab", said);
         Assert.Contains("1 column", said);
         Assert.Contains("Ready for configuration and export", said);
+    }
+
+    [Fact]
+    public void ABarePageNamesThePageThatDoesCarryTheMarkup()
+    {
+        // Andrea's parking mark-up is 41 pages: nothing on the first eleven, 216 annotations on
+        // page 12. Telling someone standing on page 1 that the document has no markups is wrong,
+        // and it is why they stop trying.
+        string said = PdfToSafeWindow.DiagnoseLoad(Vector(292), markedPages: new[] { 12, 18 }, currentPage: 1);
+
+        Assert.Contains("pages 12, 18 do", said);
+        Assert.Contains("go to that page", said);
+        Assert.DoesNotContain("no page in this document", said);
+    }
+
+    [Fact]
+    public void OnePageWithMarkupIsNamedInTheSingular()
+    {
+        string said = PdfToSafeWindow.DiagnoseLoad(Vector(292), markedPages: new[] { 12 }, currentPage: 1);
+        Assert.Contains("page 12 does", said);
+    }
+
+    [Fact]
+    public void ADocumentWithNoMarkupAnywhereSaysSoRatherThanSendingYouHunting()
+    {
+        string said = PdfToSafeWindow.DiagnoseLoad(Vector(7_098), markedPages: Array.Empty<int>(), currentPage: 1);
+
+        Assert.Contains("no page in this document carries markups", said);
+        Assert.Contains("Drawings to ETABS Model", said);
+    }
+
+    [Fact]
+    public void TheMarkedPageDoesNotTellYouToGoToItself()
+    {
+        // Standing on page 12 with the markup filtered out by scale or size, "go to page 12" is noise.
+        string said = PdfToSafeWindow.DiagnoseLoad(Vector(3_686), markedPages: new[] { 12 }, currentPage: 12);
+        Assert.Contains("no page in this document carries markups", said);
     }
 
     [Fact]

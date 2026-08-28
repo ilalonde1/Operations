@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UglyToad.PdfPig;
+using UglyToad.PdfPig.Annotations;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
@@ -57,6 +58,40 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
     internal static class PdfGeometryExtractor
     {
+        /// <summary>
+        /// Which pages of this document actually carry mark-up, cheapest possible check — the
+        /// annotation list only, no geometry.
+        ///
+        /// A structural set is dozens of sheets and the engineer marks up two of them. Telling
+        /// someone standing on page 1 that there are no mark-ups, when page 12 holds 216 of them,
+        /// reads as "this tool does not work" and is why it went unused. Andrea's parking mark-up is
+        /// 41 pages; every one of the first eleven is bare.
+        /// </summary>
+        public static IReadOnlyList<int> PagesWithMarkup(string filePath, int maxPages = 400)
+        {
+            var found = new List<int>();
+            try
+            {
+                using var doc = PdfDocument.Open(filePath);
+                int last = Math.Min(doc.NumberOfPages, maxPages);
+                for (int p = 1; p <= last; p++)
+                {
+                    try
+                    {
+                        // Links, popups and text notes are not traced structure; shapes are.
+                        bool shapes = doc.GetPage(p).ExperimentalAccess.GetAnnotations().Any(a =>
+                            a.Type is AnnotationType.Polygon or AnnotationType.PolyLine
+                                   or AnnotationType.Square or AnnotationType.Circle
+                                   or AnnotationType.Line or AnnotationType.Ink);
+                        if (shapes) found.Add(p);
+                    }
+                    catch { /* a page that will not parse carries nothing we can use */ }
+                }
+            }
+            catch { /* caller falls back to saying nothing about other pages */ }
+            return found;
+        }
+
         public static ExtractedGeometry Extract(
             string filePath,
             int    scaleDenominator,

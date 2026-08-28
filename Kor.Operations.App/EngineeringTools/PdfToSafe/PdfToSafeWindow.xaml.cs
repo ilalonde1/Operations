@@ -123,10 +123,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ScaleInput.Text = scale.ToString(CultureInfo.InvariantCulture);
 
                 _projectSettingsLoaded = false; // fresh PDF → firm defaults apply
+
+                // Which sheets carry mark-up, once per file, so a bare page can name one that is not.
+                string markupPath = _loadedFilePath;
+                _markedPages = await Task.Run(() => PdfGeometryExtractor.PagesWithMarkup(markupPath)).ConfigureAwait(true);
+
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, 1).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, 1, scale, true).ConfigureAwait(true);
 
-                SetStatus(DiagnoseLoad(_extractedGeometry), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
+                SetStatus(DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
 
                 // Vision auto-classification. By default fire-and-forget so
                 // the user can continue reviewing the preview; Auto-Import
@@ -150,6 +155,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 LoadPdfButton.IsEnabled = true;
             }
         }
+
+        /// <summary>Pages of the loaded document that carry mark-up, so a bare page can point at one
+        /// that is not. Refreshed when a file is loaded.</summary>
+        private IReadOnlyList<int> _markedPages = Array.Empty<int>();
+
+        private int CurrentPageNumber => Math.Max(1, PageSelector.SelectedIndex + 1);
 
         private async Task<ExtractedGeometry> ExtractGeometryAsync(string filePath, int scale, int pageNumber)
         {
@@ -911,7 +922,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         ///
         /// A tool that finds nothing has to say what it looked for.
         /// </summary>
-        internal static string DiagnoseLoad(ExtractedGeometry g)
+        internal static string DiagnoseLoad(ExtractedGeometry g, IReadOnlyList<int>? markedPages = null, int currentPage = 0)
         {
             if (!g.IsVectorPdf)
                 return "Raster or image-only PDF detected. Vector PDF is required for export.";
@@ -920,8 +931,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (found > 0)
                 return $"Vector PDF detected — {g.Slabs.Count} slab, {g.Columns.Count} column and {g.Lines.Count} line markup(s) read. Ready for configuration and export.";
 
+            // POINT AT THE PAGE THAT WORKS.
+            //
+            // A structural set is dozens of sheets and the engineer marks up one or two. Andrea's
+            // parking mark-up is 41 pages with 216 annotations on page 12 and nothing on the first
+            // eleven; telling someone on page 1 that this document has no mark-ups is both wrong and
+            // the reason they stop trying.
+            var elsewhere = (markedPages ?? Array.Empty<int>()).Where(p => p != currentPage).ToList();
+            if (elsewhere.Count > 0)
+                return $"This page holds {g.RawPathCount:N0} vector paths and no markups, but "
+                    + (elsewhere.Count == 1 ? $"page {elsewhere[0]} does" : $"pages {string.Join(", ", elsewhere.Take(8))} do")
+                    + ". This reader takes the structure traced over the drawing, not the drawing itself — go to that page.";
+
             return
-                $"This page holds {g.RawPathCount:N0} vector paths, and none of them are markups. " +
+                $"This page holds {g.RawPathCount:N0} vector paths, and no page in this document carries markups. " +
                 "This reader takes Bluebeam markup annotations — the structure traced over the drawing — " +
                 "not the drawing itself, so an issued set gives it nothing. Mark the structure up in " +
                 "Bluebeam and load it again, or use Drawings to ETABS Model if you have the DXFs.";
@@ -1065,7 +1088,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, pageNumber).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, pageNumber, scale, false).ConfigureAwait(true);
                 // Turning to a page that yields nothing must say so too, for the same reason.
-                SetStatus(DiagnoseLoad(_extractedGeometry), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
+                SetStatus(DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
             }
             catch (OperationCanceledException)
             {
@@ -1101,7 +1124,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 // Re-analysing at a new scale must report what it found, for the same reason the
                 // first load does: "complete" in green over an empty model is the message that made
                 // this tool look broken.
-                SetStatus(DiagnoseLoad(_extractedGeometry), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
+                SetStatus(DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
             }
             catch (OperationCanceledException)
             {

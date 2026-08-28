@@ -42,6 +42,10 @@ public sealed class PageContentVsAnnotationsMeasurement
         yield return new object[] { "31065 IFC (5380 Heather)", Path.Combine(Desktop, "Structural Quantity Takeoff Demo", "Inputs", "31065 - AFTER (IFC 2026-03-06).pdf") };
         yield return new object[] { "31065 IFT addendum", Path.Combine(Desktop, "Structural Quantity Takeoff Demo", "Inputs", "31065 - BEFORE (IFT Addendum 2025-10-07).pdf") };
         yield return new object[] { "31202-01 reinforcing + markup", Path.Combine(Desktop, "31202-01 - Reinforcing Sheets - REVISED per JD markup 2026-07-27.pdf") };
+
+        // The case this reader was actually built for: an engineer's own Bluebeam markup. If it
+        // reads nothing here either, the tool has no working input at all.
+        yield return new object[] { "engineer's Bluebeam markup", Path.Combine(Desktop, "AN-parking-markup.pdf") };
     }
 
     [Theory]
@@ -53,10 +57,15 @@ public sealed class PageContentVsAnnotationsMeasurement
         _out.WriteLine($"===== {label}");
         _out.WriteLine($"      {Path.GetFileName(path)}  ({new FileInfo(path).Length / 1_000_000.0:N1} MB)");
 
+        // SCAN FOR THE MARKUP, DO NOT ASSUME WHERE IT IS.
+        //
+        // The first version read pages 1-6 and reported that an engineer's own Bluebeam markup
+        // extracted nothing — from a 41-page document whose markup is on page 12. It was measuring
+        // the cover sheets. A drawing set's marked-up sheet is wherever the engineer put it.
         int pages = 0;
         var rows = new List<string>();
 
-        for (int page = 1; page <= 6; page++)
+        for (int page = 1; page <= 16; page++)
         {
             ExtractedGeometry annotated, whole;
             try
