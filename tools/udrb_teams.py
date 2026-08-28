@@ -85,7 +85,9 @@ PROSE = re.compile(
 # Screens. These do not decide anything on their own -- they demote a candidate
 # so a landscape or engineering firm cannot outrank the architect by accident.
 NOT_ARCHITECT = re.compile(
-    r"(?i)\b(landscape|civil|structural|geotechnical|surveying|surveyors?|"
+    # "surveys?" as well as surveying/surveyors: "Survey Pros, Inc" matched
+    # none of the longer forms and was counted as a Miami architect.
+    r"(?i)\b(landscape|civil|structural|geotechnical|surveys?|surveying|surveyors?|"
     r"traffic|mechanical|electrical|plumbing|mep\b|engineering|engineers?|"
     r"consultants?|contracting|construction|realty|development|holdings|"
     r"capital|partners? llp\b|attorneys?|law\b)\b")
@@ -94,6 +96,21 @@ NOT_ARCHITECT = re.compile(
 # and it was then penalised for the word "Consultants" in its own name.
 ARCHITECT_HINT = re.compile(r"(?i)\b(architects?|architectur\w*|arquitect\w*|"
                             r"design studio|studio|atelier)\b")
+
+# Firms whose NAME carries no discipline word, so no pattern can screen them,
+# and which have each been checked and are NOT architects. Every one of these
+# has actually surfaced under "architect" in this corpus at least once --
+# Kimley-Horn twice, in two different markets.
+KNOWN_NOT_ARCHITECT = {
+    "KIMLEYHORN", "KIMLEYHORN&", "LANGAN", "FORTINLEAVYSKILES",
+    "LONGITUDESURVEYORS", "SCHWEBKESHISKIN", "BASSNIXON&KENNEDY",
+    "WITKINHULTS", "EGS2", "DAVIDPLUMMER", "CHMSTRUCTURAL", "MGENGINEERING",
+    "SURVEYPROS", "COBBFENDLEY", "BINKLEY&BARFIELD", "DOSHI",
+}
+
+
+def _bare(name):
+    return re.sub(r"[^A-Za-z0-9&]", "", (name or "")).upper()
 JUNK = re.compile(r"(?i)^(packet pg|page \d|sheet|scale|north|drawn|checked|"
                   r"date|rev|no\.|project no)")
 
@@ -152,6 +169,9 @@ def looks_like_firm(f):
     # 80, not 60: "Kohn Pedersen Fox Associates PC Architects & Planning
     # Consultants" is 64 characters and a real answer.
     if not f or not (4 <= len(f) <= 80) or JUNK.match(f):
+        return False
+    bare = _bare(f)
+    if any(bare.startswith(k) or k.startswith(bare) for k in KNOWN_NOT_ARCHITECT):
         return False
     if re.search(r"(?i)(www\.|https?://|\.com\b|\.net\b)", f):
         return False
