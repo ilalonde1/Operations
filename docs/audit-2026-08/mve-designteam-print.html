@@ -26,6 +26,13 @@
        `pretty` keeps the orphan protection and drops the equal-length rule. */
     h1, h2, h3, .hero h1 { text-wrap: pretty; }
 
+    /* The facts sheet is meant to be ONE page a reader can hold next to the
+       rest. Keep it whole and start the detail on a fresh page after it. */
+    #facts { break-after: page; }
+    #facts table { font-size: 8.8pt; }
+    #facts td, #facts th { padding: .34rem .5rem; }
+    #facts .box p { font-size: 9.6pt; }
+
     /* Let long tables flow across a page break.
        The reference sets `table, .table-wrap { break-inside: avoid }`, which is
        right for a four-row table and wrong for a twelve-row one: a table that
