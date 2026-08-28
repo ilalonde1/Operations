@@ -197,4 +197,47 @@ public class ShippedModelsAgreeWithEachOtherTests
             "finds two answers for one slab. Publish both from the same drawing set, or explain the " +
             "difference in the report before either ships.");
     }
+
+    /// <summary>
+    /// And they must not give two prices for one building either.
+    ///
+    /// The takeoff restates the model, so a quantity that differs between the two files is a
+    /// geometry difference the storey comparison above did not catch — and it arrives at the
+    /// estimator as money. Building C's own storeys are identical in both models by construction
+    /// (the one-building file is the site file, cut), so every yard of its concrete must match.
+    /// </summary>
+    [Fact]
+    public void TheTwoPublished31168ModelsPriceBuildingCTheSame()
+    {
+        string sitePath = Path.Combine(Folder, "31168-TOWERS-FROM-DRAWINGS.e2k");
+        string ymcaPath = Path.Combine(Folder, "31168-FROM-DRAWINGS.e2k");
+        if (!File.Exists(sitePath) || !File.Exists(ymcaPath)) { _out.WriteLine("SKIPPED: share unreachable."); return; }
+
+        static Dictionary<string, double> ByStoreyElement(string path) =>
+            QuantityTakeoff.E2kQuantityTakeoff.Read(E2kDocument.Load(path)).Inputs
+                .Where(i => i.Level.StartsWith("C-", StringComparison.OrdinalIgnoreCase))
+                .GroupBy(i => $"{i.Level}|{i.Element}")
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.ConcreteVolume), StringComparer.OrdinalIgnoreCase);
+
+        var site = ByStoreyElement(sitePath);
+        var ymca = ByStoreyElement(ymcaPath);
+
+        var priced = new List<string>();
+        foreach (string key in site.Keys.Union(ymca.Keys, StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+        {
+            double a = site.GetValueOrDefault(key), b = ymca.GetValueOrDefault(key);
+            if (Math.Abs(a - b) > 0.05)
+                priced.Add($"{key}: site {a:N1} yd³ vs one-building {b:N1} yd³");
+        }
+
+        _out.WriteLine($"Building C priced identically across {site.Keys.Intersect(ymca.Keys, StringComparer.OrdinalIgnoreCase).Count()} storey/element rows.");
+
+        Assert.True(priced.Count == 0,
+            "The two published models of 31168 put a different quantity of concrete in building C:\n  " +
+            string.Join("\n  ", priced) +
+            "\n\nThe one-building model is the site model cut, so its own building cannot cost a " +
+            "different amount in the two files. A difference here is a geometry difference that " +
+            "reaches the estimator as money.");
+    }
 }

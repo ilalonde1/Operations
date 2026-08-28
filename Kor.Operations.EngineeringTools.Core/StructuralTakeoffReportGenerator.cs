@@ -25,7 +25,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         // Per-level sum of the QUANTITY-BEARING reinforcing call-outs readable on that level's sheets
         // (count × length × CSA mass) — an independent cross-check on the density estimate. Not a bar
         // list: mats-by-area, ties and continuous bars carry no computable weight and are excluded.
-        IReadOnlyDictionary<string, double>? CalloutRebarLbByLevel = null);
+        IReadOnlyDictionary<string, double>? CalloutRebarLbByLevel = null,
+        // Everything the numbers rest on that was inferred rather than read, and everything the
+        // takeoff left out. Printed in the flag colour on its own block, because a silent assumption
+        // is a defect even when the number is right, and a reader of the WORKBOOK must see what a
+        // reader of the console saw.
+        IReadOnlyList<string>? Assumptions = null);
 
     /// <summary>
     /// Per-floor absolute takeoff workbook — concrete + reinforcing + formwork by level, in the
@@ -183,6 +188,27 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 ws.Cell(n, 2).Style.Font.SetItalic().Font.FontColor = Grey;
                 ws.Cell(n, 2).Style.Alignment.WrapText = true;
                 ws.Row(n).Height = 28;
+            }
+
+            // What was inferred, and what was left out — in the flag colour, above the fold of the
+            // reader's attention rather than in a console they never saw.
+            if (model.Assumptions is { Count: > 0 })
+            {
+                n += 2;
+                ws.Cell(n, 2).Value = "What these numbers rest on";
+                ws.Cell(n, 2).Style.Font.Bold = true;
+                ws.Cell(n, 2).Style.Font.FontColor = XLColor.FromHtml("#843C0C");
+
+                foreach (string note in model.Assumptions.Where(s => !string.IsNullOrWhiteSpace(s)))
+                {
+                    n++;
+                    ws.Range(n, 2, n, 8).Merge();
+                    ws.Cell(n, 2).Value = note;
+                    ws.Cell(n, 2).Style.Fill.BackgroundColor = EditOrange;
+                    ws.Cell(n, 2).Style.Alignment.WrapText = true;
+                    ws.Cell(n, 2).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                    ws.Row(n).Height = 30;
+                }
             }
 
             ws.PageSetup.PageOrientation = XLPageOrientation.Portrait;
