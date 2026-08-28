@@ -51,7 +51,7 @@ IAN_BODY = """Dan,
 
 Good to meet. Here is the package I promised, produced by our Ops Brain.
 
-You asked for the Arizona submitted-projects search. It is in there: 373 open site-plan and rezoning cases out of Phoenix's own record, 280 of them filed since January 2025, and 41 residential. Each one is marked preliminary or final, so you can see how much of the design conversation is still open before you spend a call on it.
+You asked for the Arizona submitted-projects search. It is in there: 373 open site-plan and rezoning cases out of Phoenix's own record, and 280 of them filed since January 2025. Around forty of those read as residential from the project name, though that last step is a judgement on the name rather than a field in the record. The 373 and the 280 are exact, and I re-ran both against the live service this morning before sending. Each case is marked preliminary or final, so you can see how much of the design conversation is still open before you spend a call on it.
 
 The list turned out to be the least interesting part.
 
