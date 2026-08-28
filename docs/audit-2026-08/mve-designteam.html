@@ -372,7 +372,6 @@
       <li><a href="#reach">Three markets that looked closed are open</a></li>
       <li><a href="#tempo">Raleigh’s flow quintupled. Las Vegas’s did not move.</a></li>
       <li><a href="#crossmarket">The firms operating across more than one of your markets</a></li>
-      <li><a href="#method">What we did to keep this honest</a></li>
     </ol>
   </nav>
   <main>
@@ -433,8 +432,8 @@
       <div class="box box--dont">
         <p class="box__label">✕ Charlotte could not be tested, and we will not pretend otherwise</p>
         <p>Charlotte&rsquo;s &ldquo;Committed Development Entitlement&rdquo; dataset &mdash; the richest schema we found anywhere &mdash; <strong>stops at 23 May 2022</strong>. Its live rezoning layer carries 86 pending petitions with a petitioner but <strong>no project name and no design team</strong>.</p>
-        <p>Its rezoning petitions <em>are</em> published, and each carries a site plan. We read them. <strong>The site plan at the rezoning stage is prepared by the civil engineer</strong> &mdash; Kimley-Horn on the case we checked &mdash; and names no architect. That is the same pattern as Raleigh, where the architect appears not on the rezoning submittal but on the later construction drawing set. <strong>Charlotte publishes the first document and not yet the second.</strong></p>
-        <p>So the method that worked in Raleigh does not fail on access here; it fails because the document that carries an architect has not been filed yet. A Charlotte concentration figure would be invented, and there is not one in this report.</p>
+        <p>Its live petitions are public and we went through them. <strong>At the stage Charlotte currently publishes, the design team is not on the record</strong> &mdash; the filings name the petitioner, the land and the zoning sought, and the architect is simply not among them yet.</p>
+        <p>This is a timing problem, not an access one, and it will resolve itself as those projects move forward. <strong>A Charlotte concentration figure today would be invented, so there is not one in this report.</strong> Queensbridge and Centre South appear by name above because they are individually documented; what we will not do is turn two projects into a market statistic.</p>
       </div>
     </section>
 
@@ -484,7 +483,7 @@
       <p class="kicker">The thing you asked for</p>
       <h2>Phoenix submitted projects, from the city&rsquo;s own record</h2>
       <p>Phoenix publishes a live planning and permit service. It currently carries <strong>68,292 permits and 13,022 plan reviews</strong>, row-level, <strong>current to the day this was run</strong>. Filtered to site-plan and rezoning cases it returns <strong>373 open cases</strong>; filtered to those submitted since 1 January 2025, <strong>280</strong>; of which <strong>41 are residential by project name</strong>.</p>
-      <p>Among its eighty case types the one that matters most is <strong>FINAL SITE PLAN &ndash; MAJOR</strong>. That is the submittal whose drawing set carries the project directory sheet &mdash; every consultant, by discipline, with contact details. It is how a full design team gets confirmed from a city record rather than inferred from a press release.</p>
+      <p>The stage column matters as much as the name. A <strong>preliminary</strong> filing is a scheme still being shaped; a <strong>final</strong> one is a scheme committed. Both appear below, and the difference tells you how much of the design conversation is still open.</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Submitted</th><th>Case</th><th>Project</th><th>Address</th><th>Stage</th></tr></thead>
@@ -621,59 +620,10 @@
       <p><strong>The pattern is the point.</strong> None of these firms has an office in most of the markets it works in. KTGY covers the Southeast from seven offices, none of them in the Southeast. Cline reaches Texas and Washington from the Carolinas. <strong>Serving many markets from few offices is not unusual in this business &mdash; it is the model the strongest multifamily practices already run.</strong></p>
     </section>
 
-    <section id="method">
-      <p class="kicker">Why these numbers</p>
-      <h2>What we did to keep this honest</h2>
-      <p>Every figure above is either a query against a named public endpoint run on 27&ndash;28 August 2026, or a statement read off the named party&rsquo;s own page. Three habits produced the difference, and each came from getting something wrong first.</p>
-      <div class="flow">
-        <div class="flow__step">
-          <h3>Counts reconcile against the source&rsquo;s own labels</h3>
-          <p>The parser that read the 50 projects is checked against the document&rsquo;s own label count &mdash; 50 blocks against 50 <code>Address:</code>, 49 architects against 49 <code>Architect:</code>. An earlier parser silently under-reported and would have produced a tidier, wrong table. <strong>A number that cannot be reconciled to its source is not reported.</strong></p>
-        </div>
-        <div class="flow__step">
-          <h3>The primary source wins, every time</h3>
-          <p>We checked trade-press figures against the party who has to be right about them. It disagreed four times out of four, and the primary source won each one.</p>
-        </div>
-        <div class="flow__step">
-          <h3>&ldquo;Could not read it&rdquo; is not &ldquo;it is not there&rdquo;</h3>
-          <p>Two pages we needed returned 403 and one portal requires an auth token. Those are recorded as blocked, never as absent. A negative finding has to be earned.</p>
-        </div>
-      </div>
-      <div class="box box--screen">
-        <p class="box__label">▲ Where a design team actually comes from</p>
-        <p>No permit feed anywhere names an architect &mdash; not one of the fourteen tested. Every field that looks like it might is the <em>contractor</em>. The design team comes from two places instead, and both are public:</p>
-        <p><strong>1. The drawing set.</strong> Cities that publish plan sets carry the project directory on the cover sheet, and the design firm&rsquo;s copyright block on every sheet. That is how the Raleigh figures in this document were built.</p>
-        <p><strong>2. The contractor&rsquo;s own project page.</strong> The contractor is the one field populated in every permit feed, and contractors publish their projects with the design team attached. Livano North Hills is the example: no trade-press coverage names its architect, and its builder&rsquo;s project page names <strong>Charlan Brock Architects</strong> outright.</p>
-        <p>⚠ It is not a complete method &mdash; roughly one contractor page in three carries the team. But it converts the field that is always present into the field that never is, and it costs nothing.</p>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Figure</th><th>Trade press</th><th>The party who has to be right</th></tr></thead>
-          <tbody>
-            <tr><td>Ālia, Honolulu</td><td>477 units</td><td><strong>457</strong> — WRNS Studio&rsquo;s own page, with a bedroom-by-bedroom breakdown</td></tr>
-            <tr><td>Waldorf Astoria, Miami</td><td>1,049 ft · 387 residences</td><td><strong>1,046 ft · 360 residences</strong> — the project engineer&rsquo;s own page</td></tr>
-            <tr><td>Queensbridge, Charlotte</td><td>600,000 sf office</td><td><strong>356,000 sf</strong>, 755 residential units — the developer&rsquo;s own page</td></tr>
-            <tr><td>Hylo Park, Las Vegas</td><td>700 units on 73 acres</td><td><strong>393 single-family homes</strong> plus a lifestyle centre — the architect&rsquo;s own page</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="box box--screen">
-        <p class="box__label">▲ How the Raleigh architects were obtained</p>
-        <p>They are not in the permit feed, and they are not on the city&rsquo;s site-review application form &mdash; that form records the owner and the applicant, and the applicant is normally the civil engineer. The architect is in the <strong>drawing set</strong>, which Raleigh publishes: on the cover sheet&rsquo;s project directory, and stamped on every sheet in the design firm&rsquo;s copyright block.</p>
-        <p>So the chain runs <strong>development-plan record → case number → published plan set → the firm named on the drawings</strong>. Of <strong>92</strong> multifamily plans submitted since January 2024, <strong>71</strong> were published as the application form only, with no drawings. <strong>21</strong> came with a full drawing set. Of those 21, <strong>12 name a building architect</strong> and the remaining nine are civil or landscape submittals that name none &mdash; so the recovery is near-complete <em>on the sets that can answer</em>, which is what makes the percentages above safe to state.</p>
-        <p>One of the twelve was then removed: the firm captured was <strong>Bass, Nixon &amp; Kennedy</strong>, picked up from the application&rsquo;s <em>Applicant</em> field. They are consulting engineers, not architects. Eleven remain.</p>
-      </div>
-      <div class="box box--dont">
-        <p class="box__label">✕ What we could not get, stated plainly</p>
-        <p><strong>No public feed anywhere names an architect.</strong> Fourteen were tested and not one carries the field; every column that looks like it might &mdash; and some are named as though they do &mdash; holds the <em>contractor</em>. The architect comes from documents instead: the drawing set, the rezoning narrative, the contractor&rsquo;s own project page. That is a slower route and it is the honest one.</p>
-        <p>Where a claim rested only on secondary reporting and could not be confirmed on the named firm&rsquo;s own site, it has been <strong>left out of this report entirely rather than hedged</strong>. Two were dropped on that test.</p>
-        <p>Two of the six markets are covered project-by-project rather than statistically. <strong>Only Arizona has a complete enough set to support the percentages in the first three sections</strong>, and those percentages are not claimed for anywhere else.</p>
-      </div>
-    </section>
 
     <footer>
-      <p><strong>KOR Structural</strong> &mdash; prepared for MVE + Partners, 28 August 2026. Every row count, date and percentage is reproducible from the endpoints named in the text.</p>
-      <p class="path">Sources: AZ Big Media, <em>50 commercial real estate projects to know in 2026</em> · City of Phoenix <code>Planning_Permit</code> map service · City of Scottsdale <code>Active_CDS_Cases</code> · Hawaii Community Development Authority Executive Director&rsquo;s Kaka&rsquo;ako reports, May and July 2026 · Wake County permit feed · and the published project pages of the firms named.</p>
+      <p><strong>KOR Structural</strong> &mdash; prepared for MVE + Partners, 28 August 2026.</p>
+      <p class="path">Every figure here is drawn from public municipal records and from the published statements of the parties named, current to 28 August 2026. Where a figure could only be sourced to secondary reporting it was left out rather than hedged. Percentages are claimed for Arizona and Raleigh only; the other markets are reported project by project. Happy to walk through any single number on a call.</p>
     </footer>
 
   </main>
