@@ -19,8 +19,24 @@ text = subprocess.run(["pdftotext", "-q", PDF, "-"], capture_output=True,
                       text=True, encoding="utf-8", errors="replace").stdout
 flat = re.sub(r"\s+", " ", text)
 
-rows = [json.loads(l) for l in open("harris_detail.jsonl", encoding="utf-8")]
-idx = [json.loads(l) for l in open("harris.jsonl", encoding="utf-8")]
+import os
+
+# The harvested files are large and live outside the repo. Pass the directory
+# holding harris.jsonl / harris_detail.jsonl as argv[1], or set TABS_DATA.
+DATA = (sys.argv[1] if len(sys.argv) > 1
+        else os.environ.get("TABS_DATA", "."))
+try:
+    rows = [json.loads(l) for l in
+            open(os.path.join(DATA, "harris_detail.jsonl"), encoding="utf-8")]
+    idx = [json.loads(l) for l in
+           open(os.path.join(DATA, "harris.jsonl"), encoding="utf-8")]
+except FileNotFoundError:
+    print("Houston data not found in %s.\n"
+          "Pass the directory holding harris.jsonl and harris_detail.jsonl:\n"
+          "    python verify_dossier_claims.py <dir>\n"
+          "Regenerate with tools/tabs_projects.py list/detail if it is gone."
+          % os.path.abspath(DATA))
+    raise SystemExit(2)
 
 checks = []
 
@@ -70,16 +86,22 @@ def norm_owner(n):
     return re.sub(r"\s+", "", re.sub(r"[^A-Za-z0-9& ]", " ", core)).upper()
 
 
+# NO OWNER CLAIM IS ASSERTED, AND THAT IS DELIBERATE.
+# The dossier briefly said the Houston multifamily buyer side was as fragmented
+# as the design side. It is not measurable from this record. The owner field is
+# the TITLE-HOLDING ENTITY and developers file each project under a separate
+# vehicle, so "CPR/AR Prose Grant Road Owner LP" and "CRP/AR Prose Barker
+# Cypress Owner LP" are two rows and probably one sponsor. Exact-string matching
+# finds 5 repeat owners over 12 projects; fuzzy matching manufactured 7 by
+# merging entities that are not the same company. Neither number can separate
+# "many one-time buyers" from "one sponsor, many LLCs", so the claim was
+# withdrawn from the document rather than hedged. Do not reinstate it without a
+# sponsor-level source.
 og = Counter(norm_owner(r.get("Owner Name") or "") for r in mf)
-# Two DIFFERENT quantities, and conflating them is what put a false number in
-# the document: 7 owners built more than once; those 7 hold 12 projects; the
-# remaining 67 of 79 each have an owner that appears once.
-claim("Houston multifamily OWNERS building more than once", 7,
-      len([k for k, v in og.items() if v >= 2 and k]))
-claim("Houston multifamily PROJECTS held by a repeat owner", 12,
-      sum(v for k, v in og.items() if v >= 2 and k))
-claim("Houston multifamily projects with a one-time owner", 67,
-      len(mf) - sum(v for k, v in og.items() if v >= 2 and k))
+print("  --   owner analysis withheld: %d exact repeat owners over %d projects,"
+      " not a sound basis for a fragmentation claim"
+      % (len([k for k, v in og.items() if v >= 2 and k]),
+         sum(v for k, v in og.items() if v >= 2 and k)))
 
 print("=== claims re-derived from the data ===")
 for ok, label, printed, actual in checks:

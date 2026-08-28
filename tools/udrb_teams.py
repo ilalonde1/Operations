@@ -114,6 +114,16 @@ def _bare(name):
 JUNK = re.compile(r"(?i)^(packet pg|page \d|sheet|scale|north|drawn|checked|"
                   r"date|rev|no\.|project no)")
 
+# "prepared by" appears in specifications as well as in letters of intent:
+# "...MANAGEMENT MANUAL PREPARED BY THE MANUFACTURER AND THE SYSTEM INSTALLER"
+# captured a generic trade role as a firm. These words are never a firm name.
+ROLE_NOUN = re.compile(r"(?i)\b(manufacturer|installer|supplier|vendor|"
+                       r"contractor|sub-?contractor|owner|applicant|landlord|"
+                       r"tenant|petitioner)\b")
+# A block or address caught the same way: "NE 8TH STREET BLOCK F-WEST".
+ADDRESSY = re.compile(r"(?i)\b(street|avenue|boulevard|road|drive|court|"
+                      r"block|parcel|lot|phase|terrace|way)\b")
+
 
 # Some submittals use a blank directory form whose column headers survive
 # extraction as a line of their own. "Architect:" is followed by
@@ -172,6 +182,16 @@ def looks_like_firm(f):
         return False
     bare = _bare(f)
     if any(bare.startswith(k) or k.startswith(bare) for k in KNOWN_NOT_ARCHITECT):
+        return False
+    if ROLE_NOUN.search(f):
+        return False
+    # An address only disqualifies when it reads as one -- a street word next to
+    # a number. "Street-Works Development" would otherwise be lost.
+    if ADDRESSY.search(f) and re.search(r"\d", f):
+        return False
+    # "BLOCK F-EAST" carries no digit, so the rule above misses it. No practice
+    # is named starting with a plat word.
+    if re.match(r"(?i)^(block|parcel|lot|phase|tract|unit|site)\b", f):
         return False
     if re.search(r"(?i)(www\.|https?://|\.com\b|\.net\b)", f):
         return False
