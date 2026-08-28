@@ -1,0 +1,107 @@
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural &middot; Business Development &middot; Internal</p>
+    <h1>Eleven public project feeds,<br>tested rather than trusted</h1>
+    <p class="hero__lede">Every figure below was produced by querying the source directly on 27 August 2026 — not read off a portal description. Six of the eleven advertise data they do not deliver, and none of that is visible without running the query. 27 August 2026.</p>
+    <div class="hero__meta">
+      <span>11 jurisdictions queried</span>
+      <span>6 fail in ways metadata hides</span>
+      <span>Schema is not data</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <main>
+
+    <section id="why">
+      <p class="kicker">The finding</p>
+      <h2>Schema is not data</h2>
+      <p class="lede">Every one of these feeds looks usable from its field list. Six of them are not, and in each case the failure is invisible until you query the contents.</p>
+      <p>This matters because it is precisely the wall a business-development team hits when it tries to build lead generation from public records. The portal advertises project names, unit counts and valuations; the field list confirms them; and then the field turns out to be empty, or frozen three years ago, or stamped identically across forty child permits. <strong>None of that is discoverable from documentation. It only shows up when you count rows.</strong></p>
+      <div class="box box--dont">
+        <p class="box__label">✕ Two feeds actively mislead</p>
+        <p><strong>Dallas</strong> publishes a building-permit dataset of 126,840 rows whose portal metadata claims a June 2026 update. Queried by year: <strong>52,037 rows in 2019, 27,459 in 2020, and zero in every year since.</strong> Five years dead, advertised as current.</p>
+        <p><strong>Charlotte&rsquo;s</strong> &ldquo;Committed Development Entitlement Update&rdquo; is the single richest schema found anywhere — development name, address, acreage, single-family and multifamily unit counts, hotel rooms, and square footage split by use. It holds 1,012 rows. <strong>The newest approval in it is 23 May 2022.</strong> The metadata says 2023.</p>
+      </div>
+    </section>
+
+    <section id="table">
+      <p class="kicker">The audit</p>
+      <h2>What each feed actually contains</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Jurisdiction</th><th>Rows</th><th>Newest record</th><th>Verdict</th></tr></thead>
+          <tbody>
+            <tr><td><strong>San Diego</strong></td><td>~834,000</td><td><strong>Daily</strong></td><td>⭐ The benchmark. Status, valuation, storeys, affordable-unit mix, per address</td></tr>
+            <tr><td><strong>Raleigh / Wake</strong></td><td><strong>183,807</strong></td><td><strong>25 Aug 2026</strong></td><td>⭐ Best of the new set — project name, owner, contractor and cost all populated. ⚠ But see the unit-count trap below</td></tr>
+            <tr><td><strong>Las Vegas</strong></td><td><strong>437,123</strong></td><td>Aug 2026</td><td>✔ Live, with valuation and applicant. No unit count, no architect</td></tr>
+            <tr><td><strong>Austin</strong></td><td>287,044</td><td>Current</td><td>✔ Live; 7,600 of 7,626 rows in 2026 carry a unit count. ⚠ Valuation is project-wide, repeated on every child permit</td></tr>
+            <tr><td><strong>Henderson</strong></td><td>28,137</td><td>Same-day</td><td>✔ Live and useful by valuation. ⛔ Unit field populated on <strong>19 rows out of 28,137</strong></td></tr>
+            <tr><td><strong>Honolulu</strong></td><td>432,021</td><td><strong>1 Jul 2025</strong></td><td>⚠ Fourteen months frozen. The city changed permitting systems in Aug 2025 and published no bridge extract</td></tr>
+            <tr><td><strong>Charlotte</strong> — rezoning index</td><td>86 pending / 7,603 historic</td><td>Aug 2026</td><td>✔ Live, but an index only — petitioner and a link, no project detail</td></tr>
+            <tr><td><strong>Charlotte</strong> — entitlements</td><td>1,012</td><td><strong>23 May 2022</strong></td><td>⛔ Dead. Richest schema of any feed found, and none of it current</td></tr>
+            <tr><td><strong>Dallas</strong></td><td>126,840</td><td><strong>2020</strong></td><td>⛔ Dead five years, metadata claims 2026</td></tr>
+            <tr><td><strong>Houston</strong></td><td>Aggregate only</td><td>—</td><td>⛔ Monthly counts, no project rows. ⚠ Its GeoHub &ldquo;SCPS Permits&rdquo; layer is <em>street-cut</em> excavation, not buildings</td></tr>
+            <tr><td><strong>Phoenix</strong></td><td>23 rows</td><td>—</td><td>⛔ Yearly totals only. Zoning layer has case numbers but no project name, developer or units</td></tr>
+            <tr><td><strong>Clark County</strong> (the Strip)</td><td>None</td><td>—</td><td>⛔ No bulk feed. Bally&rsquo;s, the Riviera towers, Durango and Silverado all sit here</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="units">
+      <p class="kicker">The trap nobody documents</p>
+      <h2>The unit-count field is the least reliable field in every feed</h2>
+      <p>It is also the one a business-development team would naturally filter on, which is what makes it dangerous.</p>
+      <ul class="plain">
+        <li><strong>Raleigh</strong> carries <code>housingunitstotal</code>, and it is well populated historically — 115,401 rows overall, 935 of them with 40 or more units. In 2026 the feed issued <strong>3,700 permits and exactly 2 of them carry a unit count</strong>. The newest permit anywhere in the file with 40+ units is <strong>14 July 2025</strong>. Every other field kept working: cost 3,700 of 3,700, contractor 3,669, owner 3,639, project name 3,306. <strong>One field went dark and nothing announced it.</strong> Filter on units and you would conclude Raleigh stopped building apartments last summer.</li>
+        <li><strong>Henderson</strong> carries <code>MultiFamilyDwellingUnits</code>. It is populated on <strong>19 rows out of 28,137</strong>. I previously described this feed as richer than San Diego&rsquo;s on the strength of its field list — that was wrong, and reading the contents corrected it.</li>
+        <li><strong>Austin</strong> populates units properly, but the number describes the <em>host building</em>, not the permit&rsquo;s scope: a lobby fit-out in a 30-storey tower reports 35 units. And its valuation is the <em>whole project&rsquo;s</em>, repeated on every child permit — one lakefront development stamped <strong>$830M onto 81 separate permits</strong> for pergolas, pools and parking garages.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">▲ The workaround, and it is simple</p>
+        <p><strong>Filter on valuation and contractor, never on unit count.</strong> Those two fields are populated and current in every live feed tested. Then dedupe by address, because several jurisdictions issue many permits per project and repeat the project-level value on each.</p>
+      </div>
+    </section>
+
+    <section id="proof">
+      <p class="kicker">Proof it works</p>
+      <h2>What the method returns when the feed is sound</h2>
+      <p>Raleigh, queried for 2026 permits above $8M, sorted by value. Every row is city data, current to two days ago, with the owning entity and the contractor attached:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Value</th><th>Issued</th><th>Project</th><th>Owner</th><th>Contractor</th></tr></thead>
+          <tbody>
+            <tr><td><strong>$308.2M</strong></td><td>10 Jul 2026</td><td>Omni Hotel Raleigh</td><td>Omni Raleigh Hotel Lessor LLC</td><td>Brasfield &amp; Gorrie</td></tr>
+            <tr><td>$77.8M</td><td>30 Jan 2026</td><td>5000 Louisburg Rd</td><td>Louisburg WEH LP</td><td>Halle Building Group</td></tr>
+            <tr><td><strong>$69.6M</strong></td><td>21 Jan 2026</td><td><strong>Block 4 Midrise</strong></td><td><strong>Tributary SPV LLC</strong></td><td>John Moriarty &amp; Associates</td></tr>
+            <tr><td>$47.3M</td><td>31 Jul 2026</td><td>West South Street Apartments</td><td>BH-South Street LLC</td><td>W.M. Jordan</td></tr>
+            <tr><td>$18.2M</td><td>15 Jun 2026</td><td>Old Poole Multifamily</td><td>Roers Raleigh Apartments LLC</td><td>Roers General Contracting</td></tr>
+            <tr><td>$12.6M</td><td>13 Jul 2026</td><td>Chapanoke Affordable Housing</td><td>Wake County</td><td>C Herman Construction</td></tr>
+            <tr><td>$11.4M</td><td>30 Jul 2026</td><td>Abbottswood at Stonehenge</td><td>Abbotswood at Stonehenge Owner LLC</td><td>Clancy &amp; Theys</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>The third row is the argument.</strong> Separate research into Charlotte and Raleigh flagged Kane Realty&rsquo;s <em>Tributary</em> at North Hills as a project whose details could not be resolved from trade press. The permit feed named the owning entity, the contractor, the value and the date in a single query. <strong>That is the gap between reading coverage and reading records.</strong></p>
+    </section>
+
+    <section id="next">
+      <p class="kicker">What would extend this</p>
+      <h2>The blockers are technical, not analytical</h2>
+      <ul class="plain">
+        <li><strong>A browser-rendering fetch capability</strong> is the single highest-value addition. Three separate verifications died on it today: Austin&rsquo;s permit-detail portal returns a 958-byte session shell, Charlotte&rsquo;s own rezoning PDFs sit behind an Akamai bot wall that Google&rsquo;s crawler passes and we do not, and Thornton Tomasetti&rsquo;s project page returns 403. Each holds data we can see exists.</li>
+        <li><strong>BLDUP.com</strong> maintains exactly the schema this exercise is reconstructing by hand — developer, architect, general contractor, <strong>structural engineer</strong>, landscape — and masks every value behind a paid seat.</li>
+        <li><strong>BEX</strong> (AZBEX / NVBEX / DATABEX) covers Arizona and Nevada from one publisher with full design teams, and DATABEX indexes every Arizona job over $5M. Quote-only pricing.</li>
+        <li><strong>Web-search budget</strong> was exhausted at 200 calls during this work, which capped the Carolina and Hawaii passes mid-verification.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>KOR Structural — internal BD intelligence, 27 August 2026. Every row count, date and field-population figure above was obtained by direct query against the named endpoint on that date and is reproducible.</p>
+      <p class="path">Endpoints: San Diego <code>seshat.datasd.org</code> · Raleigh/Wake, Las Vegas, Henderson, Charlotte ArcGIS FeatureServers · Austin and Dallas Socrata · Honolulu Socrata · Phoenix open data.</p>
+    </footer>
+
+  </main>
+</div>

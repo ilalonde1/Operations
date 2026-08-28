@@ -1,0 +1,392 @@
+<title>Public Project Feeds — Audited, 27 August 2026</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  @page { size: Letter; margin: 15mm 16mm 16mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    html { font-size: 15px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { padding: 20mm 16mm 12mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 16mm; }
+    .toc { position: static; max-height: none; padding: 8mm 0 2mm; break-after: page; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .table-wrap, table, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+<style>
+  /* Page-specific print density only — no brand changes. This is a briefing
+     document read in one sitting, not a handbook, so it prints tighter than
+     the reference and keeps the hero key-figures the reference hides. */
+  @media print {
+    html { font-size: 12.4px; }
+    /* The reference sets body{font-size:17px} in absolute px, so its own
+       html{font-size:15px} print rule never reaches the body text. */
+    body { font-size: 10.4pt; line-height: 1.48; }
+    .hero { padding: 11mm 14mm 8mm; }
+    .hero h1 { font-size: 21pt; }
+    .hero__lede { font-size: 10.5pt; }
+    .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 8.4pt; }
+    .shell { padding: 0 14mm; }
+    main { padding: 4mm 0 0; }
+    section { margin-bottom: 0; }
+    h2 { margin-top: 1.1rem; }
+    .box { padding: .7rem .9rem; margin: .7rem 0; }
+    .table-wrap { margin: .6rem 0; }
+    table { font-size: 8.6pt; }
+    th { font-size: 7.8pt; }
+    .flow__step p { font-size: 8.8pt; }
+    /* The reference keeps h2 with what follows but lets the kicker above it
+       orphan at a page foot. Bind the kicker to its heading. */
+    .kicker { break-after: avoid; }
+    footer { margin-top: 1rem; break-before: avoid; }
+  }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural &middot; Business Development &middot; Internal</p>
+    <h1>Eleven public project feeds,<br>tested rather than trusted</h1>
+    <p class="hero__lede">Every figure below was produced by querying the source directly on 27 August 2026 — not read off a portal description. Six of the eleven advertise data they do not deliver, and none of that is visible without running the query. 27 August 2026.</p>
+    <div class="hero__meta">
+      <span>11 jurisdictions queried</span>
+      <span>6 fail in ways metadata hides</span>
+      <span>Schema is not data</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <main>
+
+    <section id="why">
+      <p class="kicker">The finding</p>
+      <h2>Schema is not data</h2>
+      <p class="lede">Every one of these feeds looks usable from its field list. Six of them are not, and in each case the failure is invisible until you query the contents.</p>
+      <p>This matters because it is precisely the wall a business-development team hits when it tries to build lead generation from public records. The portal advertises project names, unit counts and valuations; the field list confirms them; and then the field turns out to be empty, or frozen three years ago, or stamped identically across forty child permits. <strong>None of that is discoverable from documentation. It only shows up when you count rows.</strong></p>
+      <div class="box box--dont">
+        <p class="box__label">✕ Two feeds actively mislead</p>
+        <p><strong>Dallas</strong> publishes a building-permit dataset of 126,840 rows whose portal metadata claims a June 2026 update. Queried by year: <strong>52,037 rows in 2019, 27,459 in 2020, and zero in every year since.</strong> Five years dead, advertised as current.</p>
+        <p><strong>Charlotte&rsquo;s</strong> &ldquo;Committed Development Entitlement Update&rdquo; is the single richest schema found anywhere — development name, address, acreage, single-family and multifamily unit counts, hotel rooms, and square footage split by use. It holds 1,012 rows. <strong>The newest approval in it is 23 May 2022.</strong> The metadata says 2023.</p>
+      </div>
+    </section>
+
+    <section id="table">
+      <p class="kicker">The audit</p>
+      <h2>What each feed actually contains</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Jurisdiction</th><th>Rows</th><th>Newest record</th><th>Verdict</th></tr></thead>
+          <tbody>
+            <tr><td><strong>San Diego</strong></td><td>~834,000</td><td><strong>Daily</strong></td><td>⭐ The benchmark. Status, valuation, storeys, affordable-unit mix, per address</td></tr>
+            <tr><td><strong>Raleigh / Wake</strong></td><td><strong>183,807</strong></td><td><strong>25 Aug 2026</strong></td><td>⭐ Best of the new set — project name, owner, contractor and cost all populated. ⚠ But see the unit-count trap below</td></tr>
+            <tr><td><strong>Las Vegas</strong></td><td><strong>437,123</strong></td><td>Aug 2026</td><td>✔ Live, with valuation and applicant. No unit count, no architect</td></tr>
+            <tr><td><strong>Austin</strong></td><td>287,044</td><td>Current</td><td>✔ Live; 7,600 of 7,626 rows in 2026 carry a unit count. ⚠ Valuation is project-wide, repeated on every child permit</td></tr>
+            <tr><td><strong>Henderson</strong></td><td>28,137</td><td>Same-day</td><td>✔ Live and useful by valuation. ⛔ Unit field populated on <strong>19 rows out of 28,137</strong></td></tr>
+            <tr><td><strong>Honolulu</strong></td><td>432,021</td><td><strong>1 Jul 2025</strong></td><td>⚠ Fourteen months frozen. The city changed permitting systems in Aug 2025 and published no bridge extract</td></tr>
+            <tr><td><strong>Charlotte</strong> — rezoning index</td><td>86 pending / 7,603 historic</td><td>Aug 2026</td><td>✔ Live, but an index only — petitioner and a link, no project detail</td></tr>
+            <tr><td><strong>Charlotte</strong> — entitlements</td><td>1,012</td><td><strong>23 May 2022</strong></td><td>⛔ Dead. Richest schema of any feed found, and none of it current</td></tr>
+            <tr><td><strong>Dallas</strong></td><td>126,840</td><td><strong>2020</strong></td><td>⛔ Dead five years, metadata claims 2026</td></tr>
+            <tr><td><strong>Houston</strong></td><td>Aggregate only</td><td>—</td><td>⛔ Monthly counts, no project rows. ⚠ Its GeoHub &ldquo;SCPS Permits&rdquo; layer is <em>street-cut</em> excavation, not buildings</td></tr>
+            <tr><td><strong>Phoenix</strong></td><td>23 rows</td><td>—</td><td>⛔ Yearly totals only. Zoning layer has case numbers but no project name, developer or units</td></tr>
+            <tr><td><strong>Clark County</strong> (the Strip)</td><td>None</td><td>—</td><td>⛔ No bulk feed. Bally&rsquo;s, the Riviera towers, Durango and Silverado all sit here</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="units">
+      <p class="kicker">The trap nobody documents</p>
+      <h2>The unit-count field is the least reliable field in every feed</h2>
+      <p>It is also the one a business-development team would naturally filter on, which is what makes it dangerous.</p>
+      <ul class="plain">
+        <li><strong>Raleigh</strong> carries <code>housingunitstotal</code>, and it is well populated historically — 115,401 rows overall, 935 of them with 40 or more units. In 2026 the feed issued <strong>3,700 permits and exactly 2 of them carry a unit count</strong>. The newest permit anywhere in the file with 40+ units is <strong>14 July 2025</strong>. Every other field kept working: cost 3,700 of 3,700, contractor 3,669, owner 3,639, project name 3,306. <strong>One field went dark and nothing announced it.</strong> Filter on units and you would conclude Raleigh stopped building apartments last summer.</li>
+        <li><strong>Henderson</strong> carries <code>MultiFamilyDwellingUnits</code>. It is populated on <strong>19 rows out of 28,137</strong>. I previously described this feed as richer than San Diego&rsquo;s on the strength of its field list — that was wrong, and reading the contents corrected it.</li>
+        <li><strong>Austin</strong> populates units properly, but the number describes the <em>host building</em>, not the permit&rsquo;s scope: a lobby fit-out in a 30-storey tower reports 35 units. And its valuation is the <em>whole project&rsquo;s</em>, repeated on every child permit — one lakefront development stamped <strong>$830M onto 81 separate permits</strong> for pergolas, pools and parking garages.</li>
+      </ul>
+      <div class="box box--tip">
+        <p class="box__label">▲ The workaround, and it is simple</p>
+        <p><strong>Filter on valuation and contractor, never on unit count.</strong> Those two fields are populated and current in every live feed tested. Then dedupe by address, because several jurisdictions issue many permits per project and repeat the project-level value on each.</p>
+      </div>
+    </section>
+
+    <section id="proof">
+      <p class="kicker">Proof it works</p>
+      <h2>What the method returns when the feed is sound</h2>
+      <p>Raleigh, queried for 2026 permits above $8M, sorted by value. Every row is city data, current to two days ago, with the owning entity and the contractor attached:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Value</th><th>Issued</th><th>Project</th><th>Owner</th><th>Contractor</th></tr></thead>
+          <tbody>
+            <tr><td><strong>$308.2M</strong></td><td>10 Jul 2026</td><td>Omni Hotel Raleigh</td><td>Omni Raleigh Hotel Lessor LLC</td><td>Brasfield &amp; Gorrie</td></tr>
+            <tr><td>$77.8M</td><td>30 Jan 2026</td><td>5000 Louisburg Rd</td><td>Louisburg WEH LP</td><td>Halle Building Group</td></tr>
+            <tr><td><strong>$69.6M</strong></td><td>21 Jan 2026</td><td><strong>Block 4 Midrise</strong></td><td><strong>Tributary SPV LLC</strong></td><td>John Moriarty &amp; Associates</td></tr>
+            <tr><td>$47.3M</td><td>31 Jul 2026</td><td>West South Street Apartments</td><td>BH-South Street LLC</td><td>W.M. Jordan</td></tr>
+            <tr><td>$18.2M</td><td>15 Jun 2026</td><td>Old Poole Multifamily</td><td>Roers Raleigh Apartments LLC</td><td>Roers General Contracting</td></tr>
+            <tr><td>$12.6M</td><td>13 Jul 2026</td><td>Chapanoke Affordable Housing</td><td>Wake County</td><td>C Herman Construction</td></tr>
+            <tr><td>$11.4M</td><td>30 Jul 2026</td><td>Abbottswood at Stonehenge</td><td>Abbotswood at Stonehenge Owner LLC</td><td>Clancy &amp; Theys</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>The third row is the argument.</strong> Separate research into Charlotte and Raleigh flagged Kane Realty&rsquo;s <em>Tributary</em> at North Hills as a project whose details could not be resolved from trade press. The permit feed named the owning entity, the contractor, the value and the date in a single query. <strong>That is the gap between reading coverage and reading records.</strong></p>
+    </section>
+
+    <section id="next">
+      <p class="kicker">What would extend this</p>
+      <h2>The blockers are technical, not analytical</h2>
+      <ul class="plain">
+        <li><strong>A browser-rendering fetch capability</strong> is the single highest-value addition. Three separate verifications died on it today: Austin&rsquo;s permit-detail portal returns a 958-byte session shell, Charlotte&rsquo;s own rezoning PDFs sit behind an Akamai bot wall that Google&rsquo;s crawler passes and we do not, and Thornton Tomasetti&rsquo;s project page returns 403. Each holds data we can see exists.</li>
+        <li><strong>BLDUP.com</strong> maintains exactly the schema this exercise is reconstructing by hand — developer, architect, general contractor, <strong>structural engineer</strong>, landscape — and masks every value behind a paid seat.</li>
+        <li><strong>BEX</strong> (AZBEX / NVBEX / DATABEX) covers Arizona and Nevada from one publisher with full design teams, and DATABEX indexes every Arizona job over $5M. Quote-only pricing.</li>
+        <li><strong>Web-search budget</strong> was exhausted at 200 calls during this work, which capped the Carolina and Hawaii passes mid-verification.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>KOR Structural — internal BD intelligence, 27 August 2026. Every row count, date and field-population figure above was obtained by direct query against the named endpoint on that date and is reproducible.</p>
+      <p class="path">Endpoints: San Diego <code>seshat.datasd.org</code> · Raleigh/Wake, Las Vegas, Henderson, Charlotte ArcGIS FeatureServers · Austin and Dallas Socrata · Honolulu Socrata · Phoenix open data.</p>
+    </footer>
+
+  </main>
+</div>
