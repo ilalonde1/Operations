@@ -213,3 +213,64 @@ Two "MISS" results today were the checker, not the document: a box label rendere
 by CSS, and "Creation Equity" **wrapping across a line**. Both were reported as missing content
 that was present. `checkpdf.py` now normalises whitespace and compares case-insensitively.
 **A checker that cries wolf gets ignored, which is worse than no checker.**
+
+## ⭐⭐ The Arizona finding TESTED in Raleigh — 27 August 2026
+
+**"No incumbent" does NOT generalise. Arizona is the outlier, and that is what makes
+the Arizona number worth stating.**
+
+| Measure | Arizona multifamily | Raleigh multifamily |
+|---|---|---|
+| Projects with a confirmed architect | 12 | 11 |
+| Distinct firms | **11** | **7** |
+| Largest holder | Gensler, 2 | **JDAVIS, 4** |
+| **Top firm share** | **17%** | **36%** |
+| Firms per project | 0.92 | 0.64 |
+
+Raleigh's leader holds more than double Arizona's, from a field half as wide. Cline
+Design Associates second with 2; Perkins Eastman, Tightlines Design, Studio M, Foley
+Design and Iwan Architecture & Engineering Consultants one each.
+
+⭐ **JDAVIS was acquired by ISG on 14 May 2025** (Raleigh HQ, 89 staff). All four of its
+recovered submittals were filed in 2024 — designed pre-deal. The Raleigh incumbent is
+fifteen months into an ownership change.
+
+### How the Raleigh architects were obtained — a reusable chain
+
+Architects are **not** in the permit feed and **not** on the site-review application form
+(that form has owner + applicant, and the applicant is normally the civil engineer). They
+are on the **drawing set**, which Raleigh publishes:
+`development-plan record → case number → .../COR15/<plan_number>.pdf → the firm on the drawings`
+
+Two signals inside the PDF, precision first:
+1. ⭐ **The sheet COPYRIGHT BLOCK** — *"(C) 2024 JDAVIS ARCHITECTS EXPRESSLY RESERVES ITS
+   COMMON LAW COPYRIGHT…"*. Repeats on every sheet, names the firm unambiguously. This is
+   the strong signal; the cover-sheet directory is vector layout, so `pdftotext` separates
+   the label `ARCHITECT` from the firm name beside it.
+2. The directory line, **only** when a street address follows the firm name.
+
+Coverage: 92 multifamily plans submitted since Jan 2024 → **71 published as form only**
+(no drawings) → **21 full drawing sets** → **12 name a building architect**, the other 9
+being civil/landscape submittals that name none. So recovery is near-complete *on the sets
+that can answer*, which is what makes the percentages safe.
+
+### ⛔ Three extraction errors caught before they shipped
+
+- **A loose `ARCHITECT` regex returned construction notes as firm names** — "PRIOR TO ANY
+  CONSTRUCTION ACTIVITIES", "OF ANY DISCREPANCIES BETWEEN THE NOTES", "OWNER". About 4 of 23
+  were real. On a drawing set the token appears in general notes far more than in the
+  directory. **Never match a bare label on a plan set.**
+- **Bass, Nixon & Kennedy** was captured as an architect. They are consulting engineers
+  (civil/MEP/survey) and it came from the *Applicant* field. Removed — 12 → 11.
+- **"IWAN IWAN ARCHITECTURE CONSULTANTS"** was a parse artifact; the firm is
+  **Iwan Architecture and Engineering Consultants, LLC**. Kept, name corrected.
+- Also correctly rejected: **"Southeastern Architectural Systems"** — a screen-system
+  *manufacturer* named in a materials schedule, not a project architect.
+
+### ⛔ Charlotte cannot be tested — three closed routes
+
+Its "Committed Development Entitlement" dataset (richest schema found anywhere) **stops at
+23 May 2022**. Its live rezoning layer holds 86 pending petitions with a petitioner but **no
+project name and no design team**. And the city's own rezoning documents return **HTTP 403**.
+The Raleigh chain would work the moment those documents are reachable. A Charlotte figure
+today would be invented.
