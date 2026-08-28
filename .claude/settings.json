@@ -1,5 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "env": {
+    "CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION": "1000"
+  },
   "hooks": {
     "PreToolUse": [
       {
