@@ -39,6 +39,16 @@ for fn in sorted(os.listdir(OUT)):
     text = body.get_content() if body else ""
     checks.append(("body is present and not truncated",
                    len(text) > 400 and text.rstrip().endswith("korstructural.com")))
+    # The defect that shipped the first time: a single non-ASCII character
+    # forces quoted-printable, and any reader that fails to decode it shows a
+    # literal "=" and eats the character after it.
+    checks.append(("body is 7bit, not quoted-printable",
+                   (body["Content-Transfer-Encoding"] or "").lower() == "7bit"))
+    checks.append(("body is pure ASCII",
+                   all(ord(c) < 128 for c in text)))
+    checks.append(("no stray '=' anywhere in the body", "=" not in text))
+    checks.append(("subject is pure ASCII",
+                   all(ord(c) < 128 for c in (msg["Subject"] or ""))))
     checks.append(("no internal-only document referenced",
                    INTERNAL not in text))
 
