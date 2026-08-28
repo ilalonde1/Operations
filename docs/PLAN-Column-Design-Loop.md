@@ -125,6 +125,63 @@ where. Nothing about the design decision moves.
    parallel check.** If people are taking loads down by hand *as well*, that is a second menial task
    sitting next to this one.
 
+## What was proven overnight, 27–28 August
+
+**The transform is reproducible.** AEM's 31 hand-made `.SCO` files match the `Calculator` sheet they
+were typed from on every one of 1,665 demands — 9,990 axials, shears and moments, zero mismatches.
+The mapping is `N,T,Vz,My,Vy,Mz` → `Nf,Tf,Vfz,Mfy,Vfy,Mfz`.
+
+**And the boundary is now known exactly.** It is not one transform, it is two:
+
+| step | what it is | status |
+|---|---|---|
+| ETABS + Manual Loads + LLRF + Rd/Ro → `Calculator` | the engineer's METHOD | needs a specification from an engineer |
+| `Calculator` → `.SCO` | pure transcription | **proven, buildable** |
+
+`1.4 × DEAD` gives −118.36 where the sheet says −181.02, because three more inputs feed it: manually
+typed secondary-element loads accumulated per column, live load reduction by tributary area, and
+Rd 3.5 / Ro 1.6 seismic scaling. That is judgement, not typing, and it will not be reverse-engineered
+from a spreadsheet.
+
+**Built and committed:** `SConcreteFile` (read and write, replacing only the loads so the engineer's
+section, bar layout and parameters survive untouched) and `ColumnDemandSchedule`
+(`takeoff sco-schedule <folder> <out.xlsx>`). 31 tests.
+
+### What running it found
+
+**Two conventions are in use.** On 30961-01 a file holds many columns with the identity in each
+row's Comment. On 31021-01 — San Diego, six weeks ago — one file *is* one member, every Comment is
+`--`, and the only identity is the filename. A reader written for the first returns **nothing at all**
+from the second's 117 files. It now reads both and marks which, because renaming a file on that job
+makes its design untraceable.
+
+**The files contradict each other.** On 30961-01, 507 column/case demands are stated differently in
+two files by more than 1% (42 more by less, which is rounding). Named by file pair, because that is
+what a person settles:
+
+```
+90 demands apart by up to 84%
+   14X36 (L02-L8)(C18 to C21).SCO
+   14X36 (L2-L8)(C18 to C21).SCO
+```
+
+Two filenames one character apart, the same four columns. One is stale; which is an engineering call.
+
+**225 demands have no effective length recorded anywhere.** S-Concrete truncates the Comment near
+sixty characters, and the Excel route writes a round column's equivalent square at full float
+precision — `15.9520846581496X15.9520846581496` for what the filename calls D18 — pushing `kl` off
+the end.
+
+### How widespread
+
+Of the 25 most recently touched projects in each of Residential, Commercial and Office (75 sampled),
+**64 have an `05 Column Design` folder and 6 hold S-Concrete files** — 254 files between them. It is
+concentrated on large concrete jobs, and it is current: 31021-01 has 117 files touched 2026-07-07,
+31039-01 has 110 touched 2026-04-28. 30961-01 has 119.
+
+So roughly **110–120 files per concrete tower**, each carrying dozens to hundreds of hand-typed load
+rows, redone whenever the model changes.
+
 ## Ranked against the alternative
 
 The other candidate was reading unmarked architect prelims into a model. That is weeks of
