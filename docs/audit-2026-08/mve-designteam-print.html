@@ -15,6 +15,31 @@
     .hero__lede { font-size: 11.6pt; }
     .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 9.2pt; }
 
+    /* Headings must fill the same measure the body text does.
+       The reference sets `text-wrap: balance` on h1/h2. Balance equalises LINE
+       LENGTH, so a two-line heading is squeezed to two short lines well inside
+       the column while the paragraph beneath it runs to the full width — the
+       heading reads as broken even though the break point is legal. It also
+       chooses those breaks by length alone, so it will split after a
+       preposition or an article ("the same measurement in / Raleigh",
+       "design-build is taking the / market").
+       `pretty` keeps the orphan protection and drops the equal-length rule. */
+    h1, h2, h3, .hero h1 { text-wrap: pretty; }
+
+    /* Let long tables flow across a page break.
+       The reference sets `table, .table-wrap { break-inside: avoid }`, which is
+       right for a four-row table and wrong for a twelve-row one: a table that
+       does not fit in the space left is pushed WHOLE to the next page, and the
+       quarter-page it left behind stays empty. That is what put a blank band at
+       the foot of pages 3 and 4 and is why the document ran to sixteen pages.
+       Rows still never split, and the header repeats on each continuation. */
+    table, .table-wrap { break-inside: auto; }
+    tr, thead, tbody tr { break-inside: avoid; }
+    thead { display: table-header-group; }
+    /* Boxes stay whole -- they are short, and a callout split across a page
+       break reads as two different callouts. */
+    .box { break-inside: avoid; }
+
     /* The contents index — sized explicitly, not left to inherit a rem scale. */
     .toc__title { font-size: 8.4pt; }
     .toc a { font-size: 11pt; line-height: 1.4; padding: .30rem 0 .30rem .7rem; }

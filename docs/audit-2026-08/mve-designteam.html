@@ -307,6 +307,31 @@
     .hero__lede { font-size: 11.6pt; }
     .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 9.2pt; }
 
+    /* Headings must fill the same measure the body text does.
+       The reference sets `text-wrap: balance` on h1/h2. Balance equalises LINE
+       LENGTH, so a two-line heading is squeezed to two short lines well inside
+       the column while the paragraph beneath it runs to the full width — the
+       heading reads as broken even though the break point is legal. It also
+       chooses those breaks by length alone, so it will split after a
+       preposition or an article ("the same measurement in / Raleigh",
+       "design-build is taking the / market").
+       `pretty` keeps the orphan protection and drops the equal-length rule. */
+    h1, h2, h3, .hero h1 { text-wrap: pretty; }
+
+    /* Let long tables flow across a page break.
+       The reference sets `table, .table-wrap { break-inside: avoid }`, which is
+       right for a four-row table and wrong for a twelve-row one: a table that
+       does not fit in the space left is pushed WHOLE to the next page, and the
+       quarter-page it left behind stays empty. That is what put a blank band at
+       the foot of pages 3 and 4 and is why the document ran to sixteen pages.
+       Rows still never split, and the header repeats on each continuation. */
+    table, .table-wrap { break-inside: auto; }
+    tr, thead, tbody tr { break-inside: avoid; }
+    thead { display: table-header-group; }
+    /* Boxes stay whole -- they are short, and a callout split across a page
+       break reads as two different callouts. */
+    .box { break-inside: avoid; }
+
     /* The contents index — sized explicitly, not left to inherit a rem scale. */
     .toc__title { font-size: 8.4pt; }
     .toc a { font-size: 11pt; line-height: 1.4; padding: .30rem 0 .30rem .7rem; }
@@ -349,7 +374,7 @@
 <header class="hero">
   <div class="hero__wrap fade">
     <p class="hero__eyebrow">KOR Structural &nbsp;·&nbsp; prepared for MVE + Partners &nbsp;·&nbsp; 28 August 2026</p>
-    <h1>Arizona has no incumbent architect.<br>Raleigh has one, and it just changed&nbsp;hands.</h1>
+    <h1>Arizona has no incumbent architect.<br>Raleigh has one, and it just changed hands.</h1>
     <p class="hero__lede">You asked for the Arizona submitted-projects search. It is in here, out of the city&rsquo;s own records. But the list is not the valuable part — the valuable part is what fifty Arizona projects say when you count them properly, and what happens when the same measurement is run on a second market.</p>
     <div class="hero__meta">
       <span>Arizona: 12 projects, 11 firms</span>
@@ -411,7 +436,7 @@
 
     <section id="raleigh-test">
       <p class="kicker">We tested it</p>
-      <h2>The same measurement in&nbsp;Raleigh gives the opposite answer</h2>
+      <h2>The same measurement in Raleigh gives the opposite answer</h2>
       <p class="lede">A finding that has only been made in one market is a coincidence until it is tested somewhere else. So we ran the identical measurement on Raleigh. <strong>&ldquo;No incumbent&rdquo; does not hold there &mdash; and that is what makes the Arizona number worth something.</strong></p>
       <div class="table-wrap">
         <table>
@@ -475,7 +500,7 @@
 
     <section id="designbuild">
       <p class="kicker">The question everyone asks about Arizona</p>
-      <h2>Design-build is taking the&nbsp;market &mdash; but not your part of it</h2>
+      <h2>Design-build is taking the market &mdash; but not your part of it</h2>
       <p>Design-build is the standard worry about Phoenix, and it is a real one. It is also more precisely located than the worry usually is. Across the 50 projects, the architect and the contractor are <strong>the same firm on six of them &mdash; twelve per cent</strong>. Where those six sit is the whole story:</p>
       <div class="table-wrap">
         <table>
@@ -664,7 +689,7 @@
 
     <section id="crossmarket">
       <p class="kicker">Who else is doing what you are doing</p>
-      <h2>The firms operating across more&nbsp;than&nbsp;one of your markets</h2>
+      <h2>The firms operating across more than one of your markets</h2>
       <p>Most architecture practices are one-market businesses. The interesting ones are those serving many markets from a few offices &mdash; the same shape of firm, competing for the same work.</p>
       <div class="table-wrap">
         <table>
