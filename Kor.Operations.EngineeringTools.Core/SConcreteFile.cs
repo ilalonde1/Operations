@@ -158,6 +158,73 @@ namespace Kor.Operations.EngineeringTools.ColumnDesign
 
         /// <summary>The identity line S-Concrete keeps in the Comment column, written the way the
         /// engineers write it — so a generated file is indistinguishable from a typed one.</summary>
+        /// <summary>
+        /// The same file with a new set of demands in its Sectional Loads table, and every other
+        /// byte untouched.
+        ///
+        /// AN .SCO IS NOT ONLY LOADS. It also carries the section, the bar layout, the zones, the
+        /// design parameters and the code — all of which are the engineer's decisions, made once and
+        /// kept. So this replaces the demands and nothing else: an existing file is the template,
+        /// and generating is putting the current analysis into a column somebody already set up.
+        /// Rewriting the whole file would mean choosing bar arrangements, which is not a thing a
+        /// transcription tool gets to do.
+        /// </summary>
+        public static IReadOnlyList<string> WithDemands(
+            IEnumerable<string> originalLines, IReadOnlyList<ColumnDemand> demands)
+        {
+            ArgumentNullException.ThrowIfNull(originalLines);
+            ArgumentNullException.ThrowIfNull(demands);
+
+            var all = originalLines as IList<string> ?? originalLines.ToList();
+            var output = new List<string>(all.Count + demands.Count);
+
+            for (int i = 0; i < all.Count; i++)
+            {
+                output.Add(all[i]);
+
+                var m = ObjectLine.Match(all[i]);
+                if (!m.Success || !m.Groups[1].Value.Contains("Sectional Loads", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // @Table@n@ — the count is the number of COLUMNS, not rows, so it is carried over.
+                if (i + 1 >= all.Count || !all[i + 1].StartsWith("@Table@", StringComparison.Ordinal)) continue;
+                output.Add(all[++i]);
+
+                if (i + 1 >= all.Count) break;
+                var header = all[++i].Split('\t');
+                output.Add(all[i]);
+
+                for (int lc = 0; lc < demands.Count; lc++)
+                    output.Add(LoadRow(lc + 1, demands[lc], header.Length));
+
+                // Skip the rows this replaces, keeping the terminator.
+                while (i + 1 < all.Count && !all[i + 1].StartsWith("@EndTable@", StringComparison.Ordinal)) i++;
+            }
+
+            return output;
+        }
+
+        /// <summary>One Sectional Loads row, in the column order the format fixes:
+        /// LC, Nf, Tf, Vfz, Mfy, Cmy, Vfy, Mfz, Cmz, Pdistr, CheckLC, Load Type, Comment, AutoGen.</summary>
+        private static string LoadRow(int lc, ColumnDemand d, int columns)
+        {
+            static string N(double v) => v.ToString("0.######", CultureInfo.InvariantCulture);
+
+            var cells = new List<string>
+            {
+                lc.ToString(CultureInfo.InvariantCulture),
+                N(d.Nf), N(d.Tf), N(d.Vfz), N(d.Mfy), "1", N(d.Vfy), N(d.Mfz), "1",
+                "0",            // Pdistr
+                "1",            // CheckLC — every generated case is checked
+                "1",            // Load Type — factored
+                Comment(d),
+                "0",            // AutoGen — this is an applied demand, not S-Concrete's own alternate
+            };
+
+            while (cells.Count < columns) cells.Add("");
+            return string.Join("\t", cells.Take(Math.Max(columns, 14)));
+        }
+
         public static string Comment(ColumnDemand d) =>
             $"{d.Storey}  {d.Mark} -> {d.Case}, {d.Section}, {d.Strength}"
             + (d.EffectiveLength is double kl

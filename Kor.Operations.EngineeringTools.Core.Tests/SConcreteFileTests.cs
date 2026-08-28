@@ -17,6 +17,12 @@ public sealed class SConcreteFileTests
     private readonly ITestOutputHelper _out;
     public SConcreteFileTests(ITestOutputHelper output) => _out = output;
 
+    /// <summary>The 31 files one engineer made by hand on 30961-01, which everything here is
+    /// measured against.</summary>
+    private const string RealFolder =
+        @"\\Kor-fs01\Projects\Projects\03 Residential\30961-01 (River District Parcel 29 & 30)"
+        + @"\02 Engineering\05 Column Design\Column Design - AEM\S-CONCRETE";
+
     // The real shape, taken from 30961-01: object header, table count, tab-separated header row,
     // rows, terminator. The Comment column is the only place the identity lives.
     private static readonly string[] Sample =
@@ -84,6 +90,101 @@ public sealed class SConcreteFileTests
         Assert.Equal("L02TH  C75 -> Grav1, 12X30, 45Mpa, kl 8.8497,Cm-1", SConcreteFile.Comment(d));
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Writing. An existing file is the template; only the demands are replaced.
+    // ---------------------------------------------------------------------------------------
+
+    [Fact]
+    public void PuttingBackWhatWasReadChangesNothingButTheLoadRows()
+    {
+        var demands = SConcreteFile.ReadDemands(Sample);
+        var written = SConcreteFile.WithDemands(Sample, demands);
+
+        // Every line outside the Sectional Loads rows survives untouched, in order.
+        Assert.Equal("@Object@S-CONCRETE Identifiers@", written[0]);
+        Assert.Equal("Version\t2022.1", written[2]);
+        Assert.Equal("@EndTable@", written[3]);
+        Assert.Equal("@Object@S-CONCRETE Sectional Loads@", written[4]);
+        Assert.Equal("@Table@14@", written[5]);
+        Assert.StartsWith("LC\tNf\t", written[6]);
+        Assert.Equal("@EndTable@", written[^1]);
+
+        // Three demands in, three rows out — S-Concrete's own generated alternate is not written
+        // back, because it is the program's output and it regenerates it.
+        Assert.Equal(3, written.Count(l => l.Contains(" -> ", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void AWrittenFileReadsBackAsTheSameDemands()
+    {
+        // The round trip that matters: whatever we write, our own reader — and therefore
+        // S-Concrete's format — gets the same numbers back out.
+        var original = SConcreteFile.ReadDemands(Sample);
+        var reread = SConcreteFile.ReadDemands(SConcreteFile.WithDemands(Sample, original));
+
+        Assert.Equal(original.Count, reread.Count);
+        foreach (var (a, b) in original.Zip(reread))
+        {
+            Assert.Equal(a.Storey, b.Storey);
+            Assert.Equal(a.Mark, b.Mark);
+            Assert.Equal(a.Case, b.Case);
+            Assert.Equal(a.Section, b.Section);
+            Assert.Equal(a.Nf, b.Nf, 6);
+            Assert.Equal(a.Vfz, b.Vfz, 6);
+            Assert.Equal(a.Mfy, b.Mfy, 6);
+            Assert.Equal(a.Vfy, b.Vfy, 6);
+            Assert.Equal(a.Mfz, b.Mfz, 6);
+            Assert.Equal(a.EffectiveLength, b.EffectiveLength);
+        }
+    }
+
+    [Fact]
+    public void TheLoadCasesAreNumberedFromOneInTheOrderTheyAreGiven()
+    {
+        var demands = SConcreteFile.ReadDemands(Sample);
+        var written = SConcreteFile.WithDemands(Sample, demands);
+
+        var rows = written.Where(l => l.Contains(" -> ", StringComparison.Ordinal)).ToList();
+        Assert.Equal("1", rows[0].Split('\t')[0]);
+        Assert.Equal("2", rows[1].Split('\t')[0]);
+        Assert.Equal("3", rows[2].Split('\t')[0]);
+    }
+
+    /// <summary>
+    /// EVERY REAL FILE ON THE JOB, ROUND-TRIPPED. Read each of the 31 files, write the demands back,
+    /// read them again, and require the numbers to survive. A writer that cannot reproduce what an
+    /// engineer already made has no business generating anything new.
+    /// </summary>
+    [Fact]
+    public void EveryHandMadeFileOn30961SurvivesBeingWrittenBack()
+    {
+        if (!Directory.Exists(RealFolder)) { _out.WriteLine("SKIPPED: share unreachable."); return; }
+
+        int files = 0, demands = 0;
+        foreach (string path in Directory.EnumerateFiles(RealFolder, "*.SCO"))
+        {
+            var lines = File.ReadAllLines(path, System.Text.Encoding.Latin1);
+            var before = SConcreteFile.ReadDemands(lines);
+            if (before.Count == 0) continue;
+
+            var after = SConcreteFile.ReadDemands(SConcreteFile.WithDemands(lines, before));
+
+            Assert.Equal(before.Count, after.Count);
+            foreach (var (a, b) in before.Zip(after))
+                Assert.True(a.Key == b.Key
+                            && Math.Abs(a.Nf - b.Nf) < 1e-6 && Math.Abs(a.Vfz - b.Vfz) < 1e-6
+                            && Math.Abs(a.Mfy - b.Mfy) < 1e-6 && Math.Abs(a.Vfy - b.Vfy) < 1e-6
+                            && Math.Abs(a.Mfz - b.Mfz) < 1e-6,
+                    $"{Path.GetFileName(path)}: {a.Key} did not survive the round trip.");
+
+            files++;
+            demands += before.Count;
+        }
+
+        _out.WriteLine($"{files} files, {demands} demands round-tripped with no loss.");
+        Assert.True(demands > 1000, $"only {demands} demands round-tripped — the format has changed.");
+    }
+
     /// <summary>
     /// THE RECONCILIATION. 31 S-Concrete files on 30961-01 were made by hand from one workbook; the
     /// workbook's Calculator sheet holds the row each of them came from. Every force in the files
@@ -95,13 +196,9 @@ public sealed class SConcreteFileTests
     [Fact]
     public void TheHandMadeFilesOn30961MatchTheWorkbookTheyWereTypedFrom()
     {
-        const string folder =
-            @"\\Kor-fs01\Projects\Projects\03 Residential\30961-01 (River District Parcel 29 & 30)"
-            + @"\02 Engineering\05 Column Design\Column Design - AEM\S-CONCRETE";
+        if (!Directory.Exists(RealFolder)) { _out.WriteLine("SKIPPED: share unreachable."); return; }
 
-        if (!Directory.Exists(folder)) { _out.WriteLine("SKIPPED: share unreachable."); return; }
-
-        var files = Directory.EnumerateFiles(folder, "*.SCO").ToList();
+        var files = Directory.EnumerateFiles(RealFolder, "*.SCO").ToList();
         if (files.Count == 0) { _out.WriteLine("SKIPPED: no .SCO files."); return; }
 
         var demands = files.SelectMany(SConcreteFile.ReadDemands).ToList();
