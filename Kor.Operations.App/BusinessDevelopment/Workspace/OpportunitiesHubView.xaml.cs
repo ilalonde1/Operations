@@ -32,6 +32,30 @@ public partial class OpportunitiesHubView : UserControl
         if (allTenders) { ShowAll(); } else { ShowGrab(); }
     }
 
+    /// <summary>
+    /// Land on "All tenders" with one opportunity pre-selected — the
+    /// kor://opp/&lt;id&gt; deep link. The full registry is used rather than
+    /// "To grab" because a linked tender may already be claimed, and the
+    /// un-claimed slice would silently hide it. The id is stamped on the view
+    /// model and consumed by its next load, the same handshake
+    /// <c>NavigateToPursuit</c> uses.
+    /// </summary>
+    public void ShowOpportunity(long opportunityId)
+    {
+        ShowAll();
+        if (_all?.DataContext is App.Opportunities.OpportunitiesViewModel vm)
+        {
+            vm.PendingSelectOpportunityId = opportunityId;
+
+            // The view may already be loaded and idle (the hub reuses it), in
+            // which case no further load would run to consume the stamp.
+            if (vm.Opportunities.Count > 0 && vm.SelectById(opportunityId))
+            {
+                vm.PendingSelectOpportunityId = null;
+            }
+        }
+    }
+
     private void ToGrab_Click(object sender, RoutedEventArgs e) => ShowGrab();
     private void All_Click(object sender, RoutedEventArgs e) => ShowAll();
 

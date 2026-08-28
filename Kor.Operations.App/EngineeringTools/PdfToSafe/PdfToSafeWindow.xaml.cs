@@ -126,12 +126,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, 1).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, 1, scale, true).ConfigureAwait(true);
 
-                SetStatus(
-                    _extractedGeometry.IsVectorPdf
-                        ? "Vector PDF detected. Ready for configuration and export."
-                        : "Raster or image-only PDF detected. Vector PDF is required for export.",
-                    _extractedGeometry.IsVectorPdf ? "#E8F5E9" : "#FFF3E0",
-                    _extractedGeometry.IsVectorPdf ? "#2E7D32" : "#E65100");
+                SetStatus(DiagnoseLoad(_extractedGeometry), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
 
                 // Vision auto-classification. By default fire-and-forget so
                 // the user can continue reviewing the preview; Auto-Import
@@ -904,6 +899,40 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private int ParseScale()
             => int.TryParse(ScaleInput.Text, out var s) && s > 0 ? s : 100;
 
+        /// <summary>
+        /// What this PDF actually gave us, said plainly.
+        ///
+        /// "Vector PDF detected. Ready for configuration and export." was shown in green on three
+        /// real issued sets — 31065 IFC, its IFT addendum, and a 31202 reinforcing set — every one
+        /// of which extracted ZERO slabs, columns and lines. The page is full of vectors, so
+        /// IsVectorPdf is true; the reader takes only Bluebeam markup ANNOTATIONS, and an issued
+        /// drawing has none. The tool reported success and produced an empty model, which reads as
+        /// broken and is why people go back to tracing by hand.
+        ///
+        /// A tool that finds nothing has to say what it looked for.
+        /// </summary>
+        internal static string DiagnoseLoad(ExtractedGeometry g)
+        {
+            if (!g.IsVectorPdf)
+                return "Raster or image-only PDF detected. Vector PDF is required for export.";
+
+            int found = g.Slabs.Count + g.Columns.Count + g.Lines.Count;
+            if (found > 0)
+                return $"Vector PDF detected — {g.Slabs.Count} slab, {g.Columns.Count} column and {g.Lines.Count} line markup(s) read. Ready for configuration and export.";
+
+            return
+                $"This page holds {g.RawPathCount:N0} vector paths, and none of them are markups. " +
+                "This reader takes Bluebeam markup annotations — the structure traced over the drawing — " +
+                "not the drawing itself, so an issued set gives it nothing. Mark the structure up in " +
+                "Bluebeam and load it again, or use Drawings to ETABS Model if you have the DXFs.";
+        }
+
+        private static string StatusFill(ExtractedGeometry g) =>
+            !g.IsVectorPdf || g.Slabs.Count + g.Columns.Count + g.Lines.Count == 0 ? "#FFF3E0" : "#E8F5E9";
+
+        private static string StatusInk(ExtractedGeometry g) =>
+            !g.IsVectorPdf || g.Slabs.Count + g.Columns.Count + g.Lines.Count == 0 ? "#E65100" : "#2E7D32";
+
         private void LegendSlab_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (_extractedGeometry is null || _extractedGeometry.Slabs.Count == 0)
@@ -1035,10 +1064,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _excl.Clear();
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, pageNumber).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, pageNumber, scale, false).ConfigureAwait(true);
-                SetStatus(
-                    _extractedGeometry.IsVectorPdf ? "Page analysed." : "Selected page is not a vector PDF page.",
-                    _extractedGeometry.IsVectorPdf ? "#E8F5E9" : "#FFF3E0",
-                    _extractedGeometry.IsVectorPdf ? "#2E7D32" : "#E65100");
+                // Turning to a page that yields nothing must say so too, for the same reason.
+                SetStatus(DiagnoseLoad(_extractedGeometry), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
             }
             catch (OperationCanceledException)
             {

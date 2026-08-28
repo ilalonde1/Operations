@@ -1,4 +1,5 @@
 #nullable enable
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -26,6 +27,28 @@ namespace Kor.Operations
 
             var owner = Application.Current?.MainWindow;
             Window? opened = null;
+
+            // An opportunity has no standalone window — the registry inside the
+            // BD workspace IS its listing. Reuse a visible workspace when there
+            // is one, the same "one door" rule OpenPursuitInWorkspace follows.
+            if (kind == KorReportLinks.OpportunityKind)
+            {
+                var workspace = Application.Current?.Windows
+                                    .OfType<BdWorkspaceWindow>()
+                                    .FirstOrDefault(w => w.IsVisible)
+                                ?? AppServices.Get<BdWorkspaceWindow>();
+
+                workspace.NavigateToOpportunity(id);
+                workspace.Show();
+                if (workspace.WindowState == WindowState.Minimized)
+                {
+                    // Activate() alone does not restore a minimized window.
+                    workspace.WindowState = WindowState.Normal;
+                }
+
+                workspace.Activate();
+                return;
+            }
 
             switch (kind)
             {

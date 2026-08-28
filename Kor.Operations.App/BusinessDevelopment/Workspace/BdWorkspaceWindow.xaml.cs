@@ -104,6 +104,19 @@ public partial class BdWorkspaceWindow : Window
     /// <summary>Back-compat for existing callers (dashboard). Opens the full tender list.</summary>
     public void NavigateToRfps() => NavigateToOpportunities(allTenders: true);
 
+    /// <summary>
+    /// Land on the Opportunities registry with one tender pre-selected — the
+    /// kor://opp/&lt;id&gt; deep link, so a listing can be linked from an email
+    /// or a report the way mpi/org/person already are.
+    /// </summary>
+    public void NavigateToOpportunity(long opportunityId)
+    {
+        SetActiveNav(OpportunitiesButton);
+        var hub = _services.GetRequiredService<OpportunitiesHubView>();
+        hub.ShowOpportunity(opportunityId);
+        ContentHost.Content = hub;
+    }
+
     public void NavigateToForwardPipeline()
     {
         NavigateToForwardPipelineWithFilter(null, null, null);

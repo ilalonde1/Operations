@@ -28,6 +28,32 @@ public sealed class KorReportLinksTests
         Assert.Equal(9, id);
     }
 
+    [Fact]
+    public void Opportunity_MintsAndRoundTrips()
+    {
+        Assert.Equal("kor://opp/23643", KorReportLinks.Opportunity(23643));
+        Assert.Null(KorReportLinks.Opportunity(null)); // no id -> no link
+
+        Assert.True(KorReportLinks.TryParse(KorReportLinks.Opportunity(23643), out var kind, out var id));
+        Assert.Equal("opp", kind);
+        Assert.Equal(23643, id);
+
+        Assert.True(KorReportLinks.TryParse("KOR://OPP/1", out kind, out id)); // case-insensitive
+        Assert.Equal("opp", kind);
+        Assert.Equal(1, id);
+    }
+
+    [Theory]
+    [InlineData("kor://opp/")]               // missing id
+    [InlineData("kor://opp/abc")]            // non-numeric
+    [InlineData("kor://opp/0")]              // non-positive
+    [InlineData("kor://opp/-5")]             // negative
+    [InlineData("kor://opportunity/5")]      // long form is NOT the vocabulary
+    public void TryParse_RejectsMalformedOpportunityUris(string uri)
+    {
+        Assert.False(KorReportLinks.TryParse(uri, out _, out _));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

@@ -120,6 +120,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
     public ObservableCollection<OpportunityRowView> Opportunities { get; } = new();
 
+    /// <summary>
+    /// Set by <c>BdWorkspaceWindow.NavigateToOpportunity</c> before this view is
+    /// shown (the kor://opp/&lt;id&gt; deep link). Consumed once by the next
+    /// <see cref="LoadAsync"/>, where it wins over selection preservation.
+    /// Mirrors CrmViewModel.PendingSelectEngagementId.
+    /// </summary>
+    public long? PendingSelectOpportunityId { get; set; }
+
     /// <summary>Filter-aware projection bound by the DataGrid. <see cref="Opportunities"/>
     /// stays as the full set so AI context, headlines, etc. see everything.</summary>
     public ICollectionView FilteredOpportunitiesView { get; }
@@ -426,7 +434,13 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
                 Opportunities.Add(new OpportunityRowView(r));
             }
 
-            if (!string.IsNullOrEmpty(preservedKey))
+            // A pending deep-link (kor://opp/<id>) wins over preservation, and
+            // reveals itself by clearing filters that would hide the row.
+            var pendingId = PendingSelectOpportunityId;
+            PendingSelectOpportunityId = null;
+            var deepLinked = pendingId.HasValue && SelectById(pendingId.Value);
+
+            if (!deepLinked && !string.IsNullOrEmpty(preservedKey))
             {
                 Selected = Opportunities.FirstOrDefault(r => r.OpportunityKey == preservedKey);
             }
@@ -439,6 +453,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             StatusMessage = rows.Count == 0
                 ? "No opportunities yet — click \"New Opportunity\" or pick a source from \"Run Source ▾\" to populate."
                 : $"Loaded {rows.Count} opportunit{(rows.Count == 1 ? "y" : "ies")}.";
+
+            // A deep link that lands on nothing must SAY so rather than quietly
+            // showing the default selection (audit finding: "the system reports
+            // success it has not earned").
+            if (pendingId.HasValue && !deepLinked)
+            {
+                StatusMessage = $"Opportunity {pendingId.Value.ToString(CultureInfo.InvariantCulture)} is not in the open registry — it may be closed, dismissed, or from another environment.";
+            }
         }
         catch (OperationCanceledException)
         {
@@ -955,9 +977,19 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     /// would otherwise be hidden. Returns false when the key isn't loaded.
     /// </summary>
     public bool SelectByKey(string key)
+        => SelectRow(Opportunities.FirstOrDefault(
+            r => string.Equals(r.OpportunityKey, key, StringComparison.OrdinalIgnoreCase)));
+
+    /// <summary>
+    /// Select the loaded opportunity with this id — the kor://opp/&lt;id&gt;
+    /// deep-link route. Same reveal semantics as <see cref="SelectByKey"/>.
+    /// Returns false when the id isn't loaded (e.g. a closed tender, which
+    /// <see cref="LoadAsync"/> does not fetch).
+    /// </summary>
+    public bool SelectById(long id) => SelectRow(Opportunities.FirstOrDefault(r => r.Id == id));
+
+    private bool SelectRow(OpportunityRowView? row)
     {
-        var row = Opportunities.FirstOrDefault(
-            r => string.Equals(r.OpportunityKey, key, StringComparison.OrdinalIgnoreCase));
         if (row is null)
         {
             return false;
